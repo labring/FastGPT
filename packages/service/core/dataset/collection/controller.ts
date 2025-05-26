@@ -39,6 +39,7 @@ import {
   getLLMMaxChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { MongoDatasetCollectionImage } from '../schema';
 
 export const createCollectionAndInsertData = async ({
   dataset,
@@ -364,7 +365,12 @@ export async function delCollection({
           ]
         : []),
       // Delete vector data
-      deleteDatasetDataVector({ teamId, datasetIds, collectionIds })
+      deleteDatasetDataVector({ teamId, datasetIds, collectionIds }),
+      // Delete collection images
+      MongoDatasetCollectionImage.deleteMany({
+        teamId,
+        collectionId: { $in: collectionIds }
+      })
     ]);
 
     // delete collections

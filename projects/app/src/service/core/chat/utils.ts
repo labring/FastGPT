@@ -12,7 +12,8 @@ export function processChatTimeFilter(
       q: item.q,
       a: item.a,
       updateTime: item.updateTime,
-      index: item.chunkIndex
+      index: item.chunkIndex,
+      imageFileId: item.imageFileId
     };
 
     if (!item.history) return defaultItem;
@@ -40,6 +41,7 @@ export function processChatTimeFilter(
       a: latestHistory.a,
       updateTime: latestHistory.updateTime,
       index: item.chunkIndex,
+      imageFileId: item.imageFileId,
       updated: true
     };
   });

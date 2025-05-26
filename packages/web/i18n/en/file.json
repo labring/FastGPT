@@ -1,4 +1,5 @@
 {
+  " please input image description": "Please enter a picture description",
   " t('core.dataset.collection.Create Success', { count.core.dataset.collection.Create Success": "",
   " t('file.Please select the image to upload select the image to upload'),\n        status.file.Please select the image to upload select the image to upload": "Please select the image to upload select the image to upload",
   "Action": "Please select the image to upload",
@@ -9,6 +10,13 @@
   "bucket_chat": "Conversation Files",
   "bucket_file": "Dataset Documents",
   "click_to_view_raw_source": "Click to View Original Source",
+  "common.Dataset ID not found": "The dataset ID does not exist",
+  "common.Failed to get token": "Failed to obtain the token",
+  "common.Image Preview": "Picture preview",
+  "common.Image dataset requires VLM model to be configured": "The image dataset needs to be configured with the image understanding model (VLM) to be used. Please add a model that supports image understanding in the model configuration first.",
+  "common.Image does not belong to current team": "The picture does not belong to the current team",
+  "common.Image file does not exist": "The picture does not exist",
+  "common.Loading image": "Loading the picture...",
   "delete_image": "Delete pictures",
   "file_name": "Filename",
   "file_size": "Filesize",
@@ -23,5 +31,6 @@
   "support_max_size": "Maximum file size is {{maxSize}}",
   "upload_error_description": "Only multiple files or a single folder can be uploaded at a time",
   "upload_failed": "Upload Failed",
+  "upload_file_error": "Please upload pictures",
   "uploading": "Uploading..."
 }

@@ -16,6 +16,7 @@ import {
   getLLMDefaultChunkSize,
   getLLMMaxChunkSize
 } from '../../../../global/core/dataset/training/utils';
+import { connectionMongo } from '../../../common/mongo';
 
 export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => {
   try {
@@ -74,6 +75,13 @@ export async function pushDataListToTrainingQueue({
     indexSize,
     dataLen: data.length
   });
+
+  const mongoose = connectionMongo;
+  const ObjectId = mongoose.Types.ObjectId;
+
+  const objectIdDatasetId = typeof datasetId === 'string' ? new ObjectId(datasetId) : datasetId;
+  const objectIdCollectionId =
+    collectionId && typeof collectionId === 'string' ? new ObjectId(collectionId) : collectionId;
 
   const getImageChunkMode = (data: PushDatasetDataChunkProps, mode: TrainingModeEnum) => {
     if (mode !== TrainingModeEnum.image) return mode;
@@ -212,8 +220,8 @@ export async function pushDataListToTrainingQueue({
         list.map((item) => ({
           teamId,
           tmbId,
-          datasetId,
-          collectionId,
+          datasetId: objectIdDatasetId,
+          collectionId: objectIdCollectionId,
           billId,
           mode: getImageChunkMode(item, mode),
           prompt,

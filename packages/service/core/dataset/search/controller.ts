@@ -28,6 +28,7 @@ import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { datasetSearchQueryExtension } from './utils';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { addLog } from '../../../common/system/log';
+import { generateImagePreviewUrlServer } from '../../../support/permission/controller';
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
@@ -463,7 +464,7 @@ export async function searchDatasetData(
           collectionId: { $in: collectionIdList },
           'indexes.dataId': { $in: results.map((item) => item.id?.trim()) }
         },
-        '_id datasetId collectionId updateTime q a chunkIndex indexes',
+        '_id datasetId collectionId updateTime q a chunkIndex indexes imageFileId',
         { ...readFromSecondary }
       ).lean(),
       MongoDatasetCollection.find(
@@ -500,7 +501,8 @@ export async function searchDatasetData(
           datasetId: String(data.datasetId),
           collectionId: String(data.collectionId),
           ...getCollectionSourceData(collection),
-          score: [{ type: SearchScoreTypeEnum.embedding, value: item?.score || 0, index }]
+          score: [{ type: SearchScoreTypeEnum.embedding, value: item?.score || 0, index }],
+          ...(data.imageFileId && { imageFileId: data.imageFileId })
         };
 
         return result;
@@ -597,7 +599,7 @@ export async function searchDatasetData(
           {
             _id: { $in: searchResults.map((item) => item.dataId) }
           },
-          '_id datasetId collectionId updateTime q a chunkIndex indexes',
+          '_id datasetId collectionId updateTime q a chunkIndex indexes imageFileId',
           { ...readFromSecondary }
         ).lean(),
         MongoDatasetCollection.find(
@@ -641,7 +643,8 @@ export async function searchDatasetData(
                   value: item.score || 0,
                   index
                 }
-              ]
+              ],
+              ...(data.imageFileId && { imageFileId: data.imageFileId })
             };
           })
           .filter((item) => {
@@ -832,8 +835,11 @@ export async function searchDatasetData(
   // token filter
   const filterMaxTokensResult = await filterDatasetDataByMaxTokens(scoreFilter, maxTokens);
 
+  // Handle image links in search results
+  const processedResults = await processSearchResultsWithImageLinks(filterMaxTokensResult, teamId);
+
   return {
-    searchRes: filterMaxTokensResult,
+    searchRes: processedResults,
     embeddingTokens,
     reRankInputTokens,
     searchMode,
@@ -895,3 +901,11 @@ export type DeepRagSearchProps = SearchDatasetDataProps & {
   [NodeInputKeyEnum.datasetDeepSearchBg]?: string;
 };
 export const deepRagSearch = (data: DeepRagSearchProps) => global.deepRagHandler(data);
+
+export const processSearchResultsWithImageLinks = async (
+  searchResults: SearchDataResponseItemType[],
+  teamId: string
+): Promise<SearchDataResponseItemType[]> => {
+  // Return to the original result of the "imageFileId" field to handle the display of the image.
+  return searchResults;
+};

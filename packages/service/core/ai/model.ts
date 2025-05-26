@@ -20,6 +20,15 @@ export const getVlmModel = (model?: string) => {
     ?.find((item) => item.model === model || item.name === model);
 };
 
+export const getVlmModelList = () => {
+  return Array.from(global.llmModelMap.values())?.filter((item) => item.vision) || [];
+};
+
+export const hasAvailableVlmModel = () => {
+  const vlmModels = getVlmModelList();
+  return vlmModels.length > 0;
+};
+
 export const getDefaultEmbeddingModel = () => global?.systemDefaultModel.embedding!;
 export const getEmbeddingModel = (model?: string) => {
   if (!model) return getDefaultEmbeddingModel();

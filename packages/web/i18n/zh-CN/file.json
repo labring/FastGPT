@@ -1,4 +1,5 @@
 {
+  " please input image description": "请输入图片描述",
   "Action": "请选择要上传的图片",
   "All images import failed": "所有图片导入失败",
   "Please select the image to upload": "请选择要上传的图片",
@@ -6,6 +7,14 @@
   "bucket_chat": "对话文件",
   "bucket_file": "知识库文件",
   "click_to_view_raw_source": "点击查看来源",
+  "common.Dataset ID not found": "数据集ID不存在",
+  "common.Failed to get token": "获取令牌失败",
+  "common.Image Preview": "图片预览",
+  "common.Image dataset requires VLM model to be configured": "图片数据集需要配置图片理解模型(VLM)才能使用，请先在模型配置中添加支持图片理解的模型",
+  "common.Image does not belong to current team": "图片不属于当前团队",
+  "common.Image file does not exist": "图片不存在",
+  "common.Loading image": "加载图片中...",
+  "common.Some images failed to process": "部分图片处理失败",
   "count.core.dataset.collection.Create Success": "成功导入 {{count}} 张图片",
   "delete_image": "删除图片",
   "file_name": "文件名",
@@ -21,5 +30,6 @@
   "support_max_size": "单个文件最大 {{maxSize}}",
   "upload_error_description": "单次只支持上传多个文件或者一个文件夹",
   "upload_failed": "上传异常",
+  "upload_file_error": "请上传图片",
   "uploading": "正在上传..."
 }

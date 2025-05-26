@@ -7,7 +7,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { bucketName, fileId, teamId, datasetId } = req.body;
+    const { bucketName, fileId, teamId, datasetId, expireMinutes = 30 } = req.body;
 
     if (!bucketName || !fileId) {
       return jsonRes(res, {
@@ -55,14 +55,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
       finalTeamId = finalTeamId || (req as any).user?.teamId || '';
       uid = uid || (req as any).user?.tmbId || '';
     }
-
-    console.log('创建文件token参数:', { bucketName, teamId: finalTeamId, uid, fileId });
-
     const token = await createFileToken({
       bucketName,
       teamId: finalTeamId,
       uid,
-      fileId
+      fileId,
+      customExpireMinutes: expireMinutes
     });
 
     jsonRes(res, {

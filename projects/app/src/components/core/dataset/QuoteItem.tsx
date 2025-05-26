@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Box, Flex, Link, Progress } from '@chakra-ui/react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Box, Flex, Link, Progress, Image, Text, AspectRatio } from '@chakra-ui/react';
 import RawSourceBox from '@/components/core/dataset/RawSourceBox';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type.d';
 import NextLink from 'next/link';
@@ -11,6 +11,8 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { SearchScoreTypeEnum, SearchScoreTypeMap } from '@fastgpt/global/core/dataset/constants';
 import type { readCollectionSourceBody } from '@/pages/api/core/dataset/collection/read';
 import Markdown from '@/components/Markdown';
+import { generateImagePreviewUrl } from '@/web/common/file/api';
+import MyDivider from '@fastgpt/web/components/common/MyDivider';
 
 const InputDataModal = dynamic(() => import('@/pageComponents/dataset/detail/InputDataModal'));
 
@@ -97,10 +99,36 @@ const QuoteItem = ({
 } & Omit<readCollectionSourceBody, 'collectionId'>) => {
   const { t } = useTranslation();
   const [editInputData, setEditInputData] = useState<{ dataId: string; collectionId: string }>();
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string>('');
 
   const score = useMemo(() => {
     return formatScore(quoteItem.score);
   }, [quoteItem.score]);
+
+  const isImageDataset = useMemo(() => {
+    const result = !!quoteItem.imageFileId;
+    return result;
+  }, [quoteItem.imageFileId]);
+
+  useEffect(() => {
+    if (isImageDataset && quoteItem.imageFileId && quoteItem.datasetId) {
+      const fetchImageUrl = async () => {
+        try {
+          const url = await generateImagePreviewUrl(
+            quoteItem.imageFileId!,
+            String(quoteItem.datasetId),
+            'chat' // 7days
+          );
+          if (url) {
+            setImagePreviewUrl(url);
+          }
+        } catch (error) {
+          // Silently handle error
+        }
+      };
+      fetchImageUrl();
+    }
+  }, [isImageDataset, quoteItem.imageFileId, quoteItem.datasetId]);
 
   return (
     <>
@@ -178,8 +206,92 @@ const QuoteItem = ({
         </Flex>
 
         <Box flex={'1 0 0'}>
-          <Markdown source={quoteItem.q} />
-          <Markdown source={quoteItem.a} />
+          {isImageDataset ? (
+            // Image dataset layout
+            <Box
+              display="flex"
+              padding="8px 8px 10px 8px"
+              justifyContent="center"
+              alignItems="center"
+              alignSelf="stretch"
+              borderRadius="md"
+              overflow="hidden"
+              bg="#F4F4F7"
+              gap="24px"
+            >
+              {/* Image preview card */}
+              <Box
+                border="0"
+                bg="#fffbf1"
+                boxShadow="none"
+                borderRadius="md"
+                overflow="hidden"
+                flexShrink={0}
+              >
+                <Box display="flex" alignItems="center" justifyContent="center" p={2}>
+                  <Box width="202px">
+                    <AspectRatio ratio={202 / 186}>
+                      {imagePreviewUrl ? (
+                        <Image
+                          src={imagePreviewUrl}
+                          alt={quoteItem.q || t('file:common.Image Preview')}
+                          width="100%"
+                          height="100%"
+                          objectFit="cover"
+                          borderRadius="md"
+                          cursor="pointer"
+                          _hover={{ transform: 'scale(1.02)' }}
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <Box
+                          width="100%"
+                          height="100%"
+                          display="flex"
+                          justifyContent="center"
+                          alignItems="center"
+                          bg="lightgray"
+                          borderRadius="md"
+                        >
+                          <Text color="gray.400">{t('file:common.Loading image')}</Text>
+                        </Box>
+                      )}
+                    </AspectRatio>
+                  </Box>
+                </Box>
+              </Box>
+
+              {/* Text content */}
+              <Box
+                flex="1 0 0"
+                color="#1D2532"
+                fontFamily="PingFang SC"
+                fontSize="14px"
+                fontStyle="normal"
+                fontWeight="400"
+                lineHeight="20px"
+                letterSpacing="0.25px"
+                overflow="auto"
+                maxHeight="272px"
+              >
+                <Markdown source={quoteItem.q} />
+                {!!quoteItem.a && (
+                  <>
+                    <MyDivider />
+                    <Markdown source={quoteItem.a} />
+                  </>
+                )}
+              </Box>
+            </Box>
+          ) : (
+            // Regular dataset layout
+            <>
+              <Markdown source={quoteItem.q} />
+              <Markdown source={quoteItem.a} />
+            </>
+          )}
         </Box>
 
         <Flex
@@ -254,7 +366,7 @@ const QuoteItem = ({
         <InputDataModal
           onClose={() => setEditInputData(undefined)}
           onSuccess={() => {
-            console.log('更新引用成功');
+            // Handle success silently
           }}
           dataId={editInputData.dataId}
           collectionId={editInputData.collectionId}

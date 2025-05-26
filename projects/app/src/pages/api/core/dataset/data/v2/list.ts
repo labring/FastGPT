@@ -1,5 +1,6 @@
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoDatasetCollectionImage } from '@fastgpt/service/core/dataset/schema';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -22,7 +23,6 @@ async function handler(
 
   pageSize = Math.min(pageSize, 30);
 
-  // 凭证校验
   const { teamId, collection } = await authDatasetCollection({
     req,
     authToken: true,
@@ -52,8 +52,35 @@ async function handler(
     MongoDatasetData.countDocuments(match)
   ]);
 
+  const imageFileIds = list.filter((item) => item.imageFileId).map((item) => item.imageFileId);
+  let imageSizeMap: Record<string, number> = {};
+
+  if (imageFileIds.length > 0) {
+    const imageInfos = await MongoDatasetCollectionImage.find(
+      { _id: { $in: imageFileIds } },
+      '_id size'
+    ).lean();
+
+    imageSizeMap = imageInfos.reduce(
+      (acc, img) => {
+        acc[String(img._id)] = img.size;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
+  }
+
+  const listWithImageSize = list.map((item) => ({
+    ...item,
+    ...(item.imageFileId && imageSizeMap[item.imageFileId]
+      ? {
+          imageSize: imageSizeMap[item.imageFileId]
+        }
+      : {})
+  }));
+
   return {
-    list,
+    list: listWithImageSize,
     total
   };
 }

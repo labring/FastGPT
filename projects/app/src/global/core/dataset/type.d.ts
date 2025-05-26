@@ -34,12 +34,12 @@ export type DatasetDataListItemType = {
   _id: string;
   datasetId: string;
   collectionId: string;
-  q: string; // embedding content
-  a: string; // bonus content
+  q: string;
+  a: string;
   chunkIndex?: number;
   updated?: boolean;
   teamId?: string;
   imageFileId?: string;
+  imageSize?: number;
   previewUrl?: string;
-  // indexes: DatasetDataSchemaType['indexes'];
 };

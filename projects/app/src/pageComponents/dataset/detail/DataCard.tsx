@@ -14,7 +14,6 @@ import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
 import InputDataModal from './InputDataModal';
-import ImageDatasetInputModal from './ImageDatasetInputModal';
 import RawSourceBox from '@/components/core/dataset/RawSourceBox';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -30,29 +29,29 @@ import Markdown from '@/components/Markdown';
 import { useMemoizedFn } from 'ahooks';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { TabEnum } from './NavBar';
-import {
-  DatasetCollectionDataProcessModeEnum,
-  ImportDataSourceEnum
-} from '@fastgpt/global/core/dataset/constants';
+import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import TrainingStates from './CollectionCard/TrainingStates';
 import { getTextValidLength } from '@fastgpt/global/common/string/utils';
-import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
 import { GET, POST } from '@/web/common/api/request';
+import { generateImagePreviewUrl } from '@/web/common/file/api';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 
 const postGetFileToken = (params: {
   bucketName: string;
   fileId: string;
   teamId: string;
   datasetId: string;
+  expireMinutes?: number;
 }) => POST<string>('common/file/token', params);
 
 const getImagePreviewUrl = async (
   fileId: string,
   fileName: string,
   teamId: string,
-  datasetId: string
+  datasetId: string,
+  expireMinutes: number = 30
 ) => {
   try {
     if (!fileId) {
@@ -62,10 +61,11 @@ const getImagePreviewUrl = async (
       bucketName: 'dataset',
       fileId,
       teamId,
-      datasetId
+      datasetId,
+      expireMinutes
     });
     const origin = window.location.origin;
-    const previewUrl = `${origin}${ReadFileBaseUrl}/${encodeURIComponent(fileName)}?token=${token}`;
+    const previewUrl = `${origin}/api/core/dataset/image/${fileId}?token=${token}`;
     return previewUrl;
   } catch (error) {
     return '';
@@ -129,7 +129,6 @@ const DataCard = () => {
 
   const canWrite = useMemo(() => datasetDetail.permission.hasWritePer, [datasetDetail]);
 
-<<<<<<< HEAD
   const onDeleteOneData = useMemoizedFn(async (dataId: string) => {
     try {
       await delOneDatasetDataById(dataId);
@@ -146,115 +145,7 @@ const DataCard = () => {
         status: 'error'
       });
     }
-=======
-  const { openConfirm, ConfirmModal } = useConfirm({
-    content: t('common:dataset.Confirm to delete the data'),
-    type: 'delete'
   });
-  const onDeleteOneData = useMemoizedFn((dataId: string) => {
-    openConfirm(async () => {
-      try {
-        // 删除数据
-        await delOneDatasetDataById(dataId);
-        setDatasetDataList((prev) => {
-          return prev.filter((data) => data._id !== dataId);
-        });
-        toast({
-          title: t('common:common.Delete Success'),
-          status: 'success'
-        });
-      } catch (error) {
-        console.error('删除数据失败:', error);
-        toast({
-          title: getErrText(error),
-          status: 'error'
-        });
-      }
-    })();
->>>>>>> 532180ecb (更新数据集相关类型，添加图像文件ID和预览URL支持；优化数据集导入功能，新增图像数据集处理组件；修复部分国际化文本；更新文件上传逻辑以支持新功能。)
-  });
-
-  // 判断是否为图片集合的函数
-  const isImageCollection = useMemo(() => {
-    if (!collection) return false;
-    // 检查metadata中是否有标记
-    if (
-      collection.metadata &&
-      typeof collection.metadata === 'object' &&
-      'isImageCollection' in collection.metadata
-    ) {
-      return collection.metadata.isImageCollection === true;
-    }
-    // 集合名称判断（备选方案）
-    return collection.name?.includes('图片集合') || false;
-  }, [collection]);
-
-  // 添加状态存储预览URLs
-  const [imagePreviewUrls, setImagePreviewUrls] = useState<Record<string, string>>({});
-
-  // 在数据加载成功后生成预览URLs
-  useEffect(() => {
-    if (!datasetDataList.length) {
-      console.log('数据列表为空，不生成预览URL');
-      return;
-    }
-
-    if (!isImageCollection) {
-      console.log('非图片集合，不生成预览URL');
-      return;
-    }
-
-    console.log('数据列表长度:', datasetDataList.length);
-    console.log(
-      '列表数据:',
-      datasetDataList.map((item) => ({
-        id: item._id,
-        q: item.q,
-        a: item.a,
-        imageFileId: item.imageFileId
-      }))
-    );
-
-    // 直接使用列表数据生成预览URL
-    const fetchDetailsAndCreateUrls = async () => {
-      const urlMap: Record<string, string> = {};
-
-      // 并行处理所有项目
-      const previewPromises = datasetDataList.map(async (item) => {
-        try {
-          // 直接检查列表数据中是否包含imageFileId
-          if (item.imageFileId) {
-            console.log(`项目 ${item._id} 包含图片ID:`, {
-              imageFileId: item.imageFileId,
-              fileName: item.a || 'image.jpg'
-            });
-
-            const previewUrl = await getImagePreviewUrl(
-              item.imageFileId,
-              item.a ?? 'image.jpg',
-              item.teamId ?? '',
-              item.datasetId
-            );
-
-            if (previewUrl) {
-              urlMap[item._id] = previewUrl;
-              console.log(`生成项目 ${item._id} 的预览URL成功`);
-            }
-          }
-        } catch (error) {
-          console.error(`生成项目 ${item._id} 预览URL失败:`, error);
-        }
-      });
-
-      // 等待所有预览URL生成完成
-      await Promise.all(previewPromises);
-
-      console.log(`成功生成 ${Object.keys(urlMap).length} 个预览URL`);
-      setImagePreviewUrls(urlMap);
-    };
-
-    fetchDetailsAndCreateUrls();
-  }, [datasetDataList, isImageCollection]);
 
   const isImageCollection = useMemo(() => {
     if (!collection) return false;
@@ -283,11 +174,10 @@ const DataCard = () => {
       const previewPromises = datasetDataList.map(async (item) => {
         try {
           if (item.imageFileId) {
-            const previewUrl = await getImagePreviewUrl(
+            const previewUrl = await generateImagePreviewUrl(
               item.imageFileId,
-              item.a ?? 'image.jpg',
-              item.teamId ?? '',
-              item.datasetId
+              item.datasetId,
+              'list'
             );
             if (previewUrl) {
               urlMap[item._id] = previewUrl;
@@ -573,17 +463,27 @@ const DataCard = () => {
                     py={1}
                     mr={2}
                   >
-                    <MyIcon
-                      bg={'white'}
-                      color={'myGray.600'}
-                      borderRadius={'sm'}
-                      border={'1px'}
-                      borderColor={'myGray.200'}
-                      name="common/text/t"
-                      w={'14px'}
-                      mr={1}
-                    />
-                    {getTextValidLength(item.q + item.a || '')}
+                    {isImageCollection ? (
+                      item.imageSize ? (
+                        `${(item.imageSize / (1024 * 1024)).toFixed(2)} MB`
+                      ) : (
+                        '- MB'
+                      )
+                    ) : (
+                      <>
+                        <MyIcon
+                          bg={'white'}
+                          color={'myGray.600'}
+                          borderRadius={'sm'}
+                          border={'1px'}
+                          borderColor={'myGray.200'}
+                          name="common/text/t"
+                          w={'14px'}
+                          mr={1}
+                        />
+                        {getTextValidLength(item.q + item.a || '')}
+                      </>
+                    )}
                   </Flex>
                   {canWrite && (
                     <PopoverConfirm
@@ -613,55 +513,30 @@ const DataCard = () => {
         </ScrollData>
       </Flex>
 
-      {editDataId !== undefined &&
-        collection &&
-        (isImageCollection ? (
-          <ImageDatasetInputModal
-            collectionId={collection._id}
-            dataId={editDataId}
-            onClose={() => setEditDataId(undefined)}
-            onSuccess={(data: any) => {
-              if (editDataId === '') {
-                refreshList();
-                return;
-              }
-              setDatasetDataList((prev) => {
-                return prev.map((item) => {
-                  if (item._id === editDataId) {
-                    return {
-                      ...item,
-                      ...data
-                    };
-                  }
-                  return item;
-                });
+      {editDataId !== undefined && collection && (
+        <InputDataModal
+          collectionId={collection._id}
+          dataId={editDataId}
+          onClose={() => setEditDataId(undefined)}
+          onSuccess={(data: any) => {
+            if (editDataId === '') {
+              refreshList();
+              return;
+            }
+            setDatasetDataList((prev) => {
+              return prev.map((item) => {
+                if (item._id === editDataId) {
+                  return {
+                    ...item,
+                    ...data
+                  };
+                }
+                return item;
               });
-            }}
-          />
-        ) : (
-          <InputDataModal
-            collectionId={collection._id}
-            dataId={editDataId}
-            onClose={() => setEditDataId(undefined)}
-            onSuccess={(data: any) => {
-              if (editDataId === '') {
-                refreshList();
-                return;
-              }
-              setDatasetDataList((prev) => {
-                return prev.map((item) => {
-                  if (item._id === editDataId) {
-                    return {
-                      ...item,
-                      ...data
-                    };
-                  }
-                  return item;
-                });
-              });
-            }}
-          />
-        ))}
+            });
+          }}
+        />
+      )}
       {errorModalId && (
         <TrainingStates
           datasetId={datasetId}

@@ -251,7 +251,23 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                     {
                       label: (
                         <Flex>
-                          <MyIcon name={'backup'} mr={2} w={'20px'} />
+                          <MyIcon name={'image'} mr={2} w={'20px'} />
+                          {t('common:core.dataset.Image collection')}
+                        </Flex>
+                      ),
+                      onClick: () =>
+                        router.replace({
+                          query: {
+                            ...router.query,
+                            currentTab: TabEnum.import,
+                            source: ImportDataSourceEnum.imageDataset
+                          }
+                        })
+                    },
+                    {
+                      label: (
+                        <Flex>
+                          <MyIcon name={'common/backLight'} mr={2} w={'20px'} />
                           {t('dataset:backup_dataset')}
                         </Flex>
                       ),
@@ -269,22 +285,6 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                         </Flex>
                       ),
                       onClick: () => setEditFolderData({})
-                    },
-                    {
-                      label: (
-                        <Flex>
-                          <MyIcon name={'image'} mr={2} w={'20px'} />
-                          {t('common:core.dataset.Image collection')}
-                        </Flex>
-                      ),
-                      onClick: () =>
-                        router.replace({
-                          query: {
-                            ...router.query,
-                            currentTab: TabEnum.import,
-                            source: ImportDataSourceEnum.imageDataset
-                          }
-                        })
                     }
                   ]
                 }

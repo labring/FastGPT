@@ -9,8 +9,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { TabEnum } from '../../NavBar';
-import { uploadFile2DB } from '@/web/common/file/controller';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import { BucketNameEnum, ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
 import { postCreateDatasetFileCollection, postInsertData2Dataset } from '@/web/core/dataset/api';
 import {
   DatasetCollectionDataProcessModeEnum,
@@ -18,11 +17,15 @@ import {
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { postGetFileToken } from '@/web/common/file/api';
+import { uploadImage2Dataset, createImageDatasetCollection } from '@/web/common/image/controller';
+import { generateImagePreviewUrl } from '@/web/common/file/api';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 // Extended type definition to include previewUrl
 type ExtendedImportSourceItemType = ImportSourceItemType & {
   previewUrl?: string;
-  file: File; // Ensure file is always present
+  file: File;
 };
 
 const fileType = '.jpg, .jpeg, .png, .gif, .webp';
@@ -37,12 +40,13 @@ const SelectFile = React.memo(function SelectFile() {
   const { t } = useTranslation();
   const router = useRouter();
   const { toast } = useToast();
+  const { userInfo } = useUserStore();
   const { sources, setSources, parentId } = useContextSelector(DatasetImportContext, (v) => v);
   const [selectFiles, setSelectFiles] = useState<ExtendedImportSourceItemType[]>(
     sources.map((source) => ({
       isUploading: false,
       ...source,
-      file: source.file as File // Ensure type is correct
+      file: source.file as File
     }))
   );
   const [uploading, setUploading] = useState(false);
@@ -62,14 +66,13 @@ const SelectFile = React.memo(function SelectFile() {
     });
   };
 
-  // Add a custom file selection handler for the component
   const handleFileSelection = async (files: File[]) => {
     if (files.length === 0) return;
 
     const datasetId = router.query.datasetId as string;
     if (!datasetId) {
       toast({
-        title: '数据集ID不存在',
+        title: t('file:common.Dataset ID not found'),
         status: 'error'
       });
       return;
@@ -86,50 +89,74 @@ const SelectFile = React.memo(function SelectFile() {
 
     setSelectFiles((prev) => [...prev, ...fileItems]);
 
-    for (let i = 0; i < fileItems.length; i++) {
-      const fileItem = fileItems[i];
+    // Concurrent file upload processing
+    const uploadPromises = fileItems.map(async (fileItem) => {
+      try {
+        const result = await uploadImage2Dataset({
+          file: fileItem.file,
+          datasetId,
+          collectionId: parentId,
+          percentListen: (percent) => {
+            setSelectFiles((prev) =>
+              prev.map((item) =>
+                item.id === fileItem.id ? { ...item, uploadedFileRate: percent } : item
+              )
+            );
+          }
+        });
 
-      uploadFile2DB({
-        file: fileItem.file,
-        bucketName: BucketNameEnum.dataset,
-        data: { datasetId },
-        percentListen: (percent) => {
+        const { id: imageId } = result;
+
+        try {
+          // Generate preview URL
+          const previewUrl = await generateImagePreviewUrl(
+            imageId,
+            datasetId,
+            userInfo?.team?.teamId ?? '',
+            'preview'
+          );
+
           setSelectFiles((prev) =>
             prev.map((item) =>
-              item.id === fileItem.id ? { ...item, uploadedFileRate: percent } : item
-            )
-          );
-        }
-      })
-        .then((response) => {
-          const { fileId, previewUrl } = response;
-
-          setSelectFiles((prev) => {
-            const updated = prev.map((item) =>
               item.id === fileItem.id
                 ? {
                     ...item,
                     previewUrl,
-                    dbFileId: fileId,
+                    dbFileId: imageId,
                     isUploading: false,
                     uploadedFileRate: 100
                   }
                 : item
-            );
-            return updated;
-          });
-        })
-        .catch((error) => {
-          setSelectFiles((prev) =>
-            prev.map((item) =>
-              item.id === fileItem.id ? { ...item, isUploading: false, errorMsg: '上传失败' } : item
             )
           );
-        });
-    }
+        } catch (error) {
+          // If preview URL generation fails, still update state without preview URL
+          setSelectFiles((prev) =>
+            prev.map((item) =>
+              item.id === fileItem.id
+                ? {
+                    ...item,
+                    dbFileId: imageId,
+                    isUploading: false,
+                    uploadedFileRate: 100
+                  }
+                : item
+            )
+          );
+        }
+      } catch (error) {
+        setSelectFiles((prev) =>
+          prev.map((item) =>
+            item.id === fileItem.id ? { ...item, isUploading: false, errorMsg: '上传失败' } : item
+          )
+        );
+      }
+    });
+
+    // Wait for all uploads to complete
+    await Promise.allSettled(uploadPromises);
   };
 
-  // Use fileId to create collection and upload
   const handleUploadAndCreateCollection = async () => {
     if (selectFiles.length === 0) {
       toast({
@@ -152,15 +179,17 @@ const SelectFile = React.memo(function SelectFile() {
       setIsSubmitting(true);
 
       const collectionName =
-        databaseName || `图片集合_${new Date().toISOString().slice(0, 19).replace(/[T:]/g, '_')}`;
+        databaseName ||
+        t('common:core.dataset.Image collection') +
+          `_${new Date().toISOString().slice(0, 19).replace(/[T:]/g, '_')}`;
       const datasetId = router.query.datasetId as string;
 
-      const imageRefs = [];
+      const imageIds = [];
       const filesInfo = [];
 
       for (const file of selectFiles) {
         if (file.dbFileId && !file.errorMsg) {
-          imageRefs.push(file.dbFileId);
+          imageIds.push(file.dbFileId);
           filesInfo.push({
             name: file.file.name,
             size: file.file.size,
@@ -169,94 +198,35 @@ const SelectFile = React.memo(function SelectFile() {
         }
       }
 
-      if (imageRefs.length > 0) {
-        try {
-          const response = await fetch('/api/core/dataset/collection/create', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              datasetId,
-              parentId,
-              fileIds: imageRefs,
-              name: collectionName,
-              type: DatasetCollectionTypeEnum.file,
-              rawText: JSON.stringify({
-                images: imageRefs.length,
-                files: filesInfo
-              }),
-              trainingType: DatasetCollectionDataProcessModeEnum.chunk,
-              chunkSettingMode: ChunkSettingModeEnum.auto,
-              metadata: {
-                imageCount: imageRefs.length,
-                isImageCollection: true
-              }
-            })
-          });
+      if (imageIds.length > 0) {
+        const result = await createImageDatasetCollection({
+          datasetId,
+          parentId,
+          collectionName,
+          imageIds,
+          filesInfo
+        });
 
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || t('common:common.Create Failed'));
-          }
+        toast({
+          title: t('file:count.core.dataset.collection.Create Success', {
+            count: result.successCount
+          }),
+          status: 'success'
+        });
 
-          const result = await response.json();
-          const collectionId = result.data;
-
-          for (let i = 0; i < selectFiles.length; i++) {
-            try {
-              const currentFile = selectFiles[i];
-              if (!currentFile.dbFileId) continue;
-
-              // Use fileId to create collection and upload
-              const fileIdParams = {
-                fileId: currentFile.dbFileId,
-                datasetId: datasetId,
-                trainingType: 'chunk', // Use preset training type
-                imageIndex: true, // Enable image indexing
-                customPdfParse: false,
-                parentId: collectionId // Use parentId instead of collectionId
-              };
-
-              // Call API to create collection
-              try {
-                const response = await fetch('/api/core/dataset/collection/create/fileId_image', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify(fileIdParams)
-                });
-
-                if (!response.ok) {
-                  const errorText = await response.text();
-                  throw new Error(t('file:upload_failed') + `: ${response.status} ${errorText}`);
-                }
-
-                const result = await response.json();
-              } catch (error) {}
-            } catch (error) {}
-          }
-
+        if (result.successCount < result.totalCount) {
           toast({
-            title: t('file:count.core.dataset.collection.Create Success', {
-              count: imageRefs.length
-            }),
-            status: 'success'
-          });
-
-          router.replace({
-            query: {
-              datasetId: router.query.datasetId,
-              currentTab: TabEnum.collectionCard
-            }
-          });
-        } catch (error: any) {
-          toast({
-            title: error?.message || t('common:common.Create Failed'),
-            status: 'error'
+            title: `部分图片处理失败 (${result.totalCount - result.successCount}/${result.totalCount})`,
+            status: 'warning'
           });
         }
+
+        router.replace({
+          query: {
+            datasetId: router.query.datasetId,
+            currentTab: TabEnum.collectionCard
+          }
+        });
       } else {
         toast({
           title: t('file:All images import failed'),
@@ -289,7 +259,7 @@ const SelectFile = React.memo(function SelectFile() {
             width="76px"
             whiteSpace="nowrap"
           >
-            {t('core.dataset.collection.Collection name')}
+            {t('common:core.dataset.collection.Collection name')}
           </Text>
 
           <Input
@@ -299,7 +269,7 @@ const SelectFile = React.memo(function SelectFile() {
             borderWidth="1px"
             bg="var(--Gray-Modern-50, #F7F8FA)"
             border="1px solid var(--Gray-Modern-200, #E8EBF0)"
-            placeholder={t('core.dataset.collection.Collection name')}
+            placeholder={t('common:core.dataset.collection.Collection name')}
             value={databaseName}
             onChange={(e) => setDatabaseName(e.target.value)}
           />
@@ -318,7 +288,7 @@ const SelectFile = React.memo(function SelectFile() {
             width="76px"
             whiteSpace="nowrap"
           >
-            {t('core.dataset.collection.Collection raw text')}
+            {t('common:core.dataset.collection.Collection raw text')}
           </Text>
 
           <Flex direction="column" width="706px" alignItems="flex-start" gap="8px">

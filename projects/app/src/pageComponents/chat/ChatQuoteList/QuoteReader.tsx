@@ -56,7 +56,9 @@ const QuoteReader = ({
           icon: getSourceNameIcon({
             sourceId: searchItem.sourceId,
             sourceName: searchItem.sourceName
-          })
+          }),
+          imageFileId: dataItem?.imageFileId || searchItem.imageFileId,
+          datasetId: searchItem.datasetId
         };
       })
       .sort((a, b) => {
@@ -149,6 +151,8 @@ const QuoteReader = ({
                 score={item.score}
                 q={item.q}
                 a={item.a}
+                imageFileId={item.imageFileId}
+                datasetId={item.datasetId}
               />
             ))}
           </Flex>

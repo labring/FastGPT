@@ -1,11 +1,14 @@
 import { type ScoreItemType } from '@/components/core/dataset/QuoteItem';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex, Image, Text, AspectRatio } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import ScoreTag from './ScoreTag';
 import Markdown from '@/components/Markdown';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
+import { generateImagePreviewUrl } from '@/web/common/file/api';
+import { useState, useEffect, useMemo } from 'react';
+import MyDivider from '@fastgpt/web/components/common/MyDivider';
 
 const QuoteItem = ({
   index,
@@ -13,7 +16,9 @@ const QuoteItem = ({
   sourceName,
   score,
   q,
-  a
+  a,
+  imageFileId,
+  datasetId
 }: {
   index: number;
   icon: string;
@@ -21,10 +26,39 @@ const QuoteItem = ({
   score: { primaryScore?: ScoreItemType; secondaryScore: ScoreItemType[] };
   q: string;
   a?: string;
+  imageFileId?: string;
+  datasetId?: string;
 }) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
   const isDeleted = !q;
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string>('');
+
+  // 检测是否为图片数据集
+  const isImageDataset = useMemo(() => {
+    return !!imageFileId;
+  }, [imageFileId]);
+
+  // 获取图片预览URL
+  useEffect(() => {
+    if (isImageDataset && imageFileId && datasetId) {
+      const fetchImageUrl = async () => {
+        try {
+          const url = await generateImagePreviewUrl(
+            imageFileId,
+            String(datasetId),
+            'chat' // 7days
+          );
+          if (url) {
+            setImagePreviewUrl(url);
+          }
+        } catch (error) {
+          console.error('获取图片预览URL失败:', error);
+        }
+      };
+      fetchImageUrl();
+    }
+  }, [isImageDataset, imageFileId, datasetId]);
 
   return (
     <Box
@@ -90,11 +124,95 @@ const QuoteItem = ({
       </Flex>
       {!isDeleted ? (
         <>
-          <Markdown source={q} />
-          {!!a && (
-            <Box>
-              <Markdown source={a} />
+          {isImageDataset ? (
+            // image dataset
+            <Box
+              display="flex"
+              padding="8px 8px 10px 8px"
+              justifyContent="center"
+              alignItems="center"
+              alignSelf="stretch"
+              borderRadius="md"
+              overflow="hidden"
+              bg="#F4F4F7"
+              gap="24px"
+            >
+              {/* preview */}
+              <Box
+                border="0"
+                bg="#fffbf1"
+                boxShadow="none"
+                borderRadius="md"
+                overflow="hidden"
+                flexShrink={0}
+              >
+                <Box display="flex" alignItems="center" justifyContent="center" p={2}>
+                  <Box width="202px">
+                    <AspectRatio ratio={202 / 186}>
+                      {imagePreviewUrl ? (
+                        <Image
+                          src={imagePreviewUrl}
+                          alt={q || t('file:common.Image Preview')}
+                          width="100%"
+                          height="100%"
+                          objectFit="cover"
+                          borderRadius="md"
+                          cursor="pointer"
+                          _hover={{ transform: 'scale(1.02)' }}
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <Box
+                          width="100%"
+                          height="100%"
+                          display="flex"
+                          justifyContent="center"
+                          alignItems="center"
+                          bg="lightgray"
+                          borderRadius="md"
+                        >
+                          <Text color="gray.400">{t('file:common.Loading image')}</Text>
+                        </Box>
+                      )}
+                    </AspectRatio>
+                  </Box>
+                </Box>
+              </Box>
+
+              {/* word */}
+              <Box
+                flex="1 0 0"
+                color="#1D2532"
+                fontFamily="PingFang SC"
+                fontSize="14px"
+                fontStyle="normal"
+                fontWeight="400"
+                lineHeight="20px"
+                letterSpacing="0.25px"
+                overflow="auto"
+                maxHeight="272px"
+              >
+                <Markdown source={q} />
+                {!!a && (
+                  <>
+                    <MyDivider />
+                    <Markdown source={a} />
+                  </>
+                )}
+              </Box>
             </Box>
+          ) : (
+            // common
+            <>
+              <Markdown source={q} />
+              {!!a && (
+                <Box>
+                  <Markdown source={a} />
+                </Box>
+              )}
+            </>
           )}
         </>
       ) : (

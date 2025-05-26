@@ -13,7 +13,6 @@ import type {
 import { MongoDatasetTraining } from '../training/schema';
 import { MongoDatasetData } from '../data/schema';
 import { delImgByRelatedId } from '../../../common/file/image/controller';
-// import { deleteDatasetDataVector } from '../../../common/vectorStore/controller';
 import { deleteDatasetDataVector } from '../../../common/vectorDB/controller';
 import { delFileByFileIdList } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
@@ -38,6 +37,8 @@ import {
   computeChunkSplitter,
   getLLMMaxChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { MongoDatasetCollectionImage } from '../schema';
 
 export const createCollectionAndInsertData = async ({
   dataset,
@@ -84,8 +85,7 @@ export const createCollectionAndInsertData = async ({
     chunkSize,
     maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
     overlapRatio: trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
-    customReg: chunkSplitter ? [chunkSplitter] : [],
-    isQAImport
+    customReg: chunkSplitter ? [chunkSplitter] : []
   });
 
   // 2. auth limit
@@ -102,8 +102,7 @@ export const createCollectionAndInsertData = async ({
   });
 
   const fn = async (session: ClientSession) => {
-    // 3. create collection,拿着传入的collectionId
-
+    // 3. Use the passed collectionId and do not create a new collection.
     // 4. create training bill
     const traingBillId = await (async () => {
       if (billId) return billId;
@@ -120,19 +119,26 @@ export const createCollectionAndInsertData = async ({
       return newBillId;
     })();
 
-    // 5. insert to training queue
-    console.log(`[Image parse queue] Pushing data to training queue:`, {
-      datasetId: dataset._id,
-      collectionId: collectionId || '',
-      mode: getTrainingModeByCollection({
-        trainingType: trainingType,
-        autoIndexes: createCollectionParams.autoIndexes,
-        imageIndex: createCollectionParams.imageIndex,
-        isImageCollection: createCollectionParams.metadata?.isImageCollection === true
-      }),
-      chunksCount: chunks.length
-    });
+    // 5. Update the collectionId field in the image record
+    if (createCollectionParams.metadata?.isImageCollection && createCollectionParams.fileId) {
+      await MongoDatasetCollectionImage.updateOne(
+        {
+          _id: createCollectionParams.fileId,
+          teamId: teamId
+        },
+        {
+          $set: {
+            collectionId: collectionId
+          },
+          $unset: {
+            expiredTime: 1
+          }
+        },
+        { session }
+      );
+    }
 
+    // 6. insert to training queue
     const insertResults = await pushDataListToTrainingQueue({
       teamId,
       tmbId,
@@ -152,6 +158,10 @@ export const createCollectionAndInsertData = async ({
       billId: traingBillId,
       data: chunks.map((item, index) => ({
         ...item,
+        indexes: item.indexes?.map((text) => ({
+          type: DatasetDataIndexTypeEnum.custom,
+          text
+        })),
         chunkIndex: index
       })),
       session
@@ -177,7 +187,7 @@ export const createCollectionAndInsertData = async ({
     }
 
     return {
-      collectionId,
+      collectionId: collectionId,
       insertResults
     };
   };
@@ -382,7 +392,12 @@ export async function delCollection({
           ]
         : []),
       // Delete vector data
-      deleteDatasetDataVector({ teamId, datasetIds, collectionIds })
+      deleteDatasetDataVector({ teamId, datasetIds, collectionIds }),
+      // Delete collection images
+      MongoDatasetCollectionImage.deleteMany({
+        teamId,
+        collectionId: { $in: collectionIds }
+      })
     ]);
 
     // delete collections
@@ -413,16 +428,20 @@ export async function pushImageFileToTrainingQueue({
   billId?: string;
   model?: string;
 }) {
+  const mongoose = require('mongoose');
+  const ObjectId = mongoose.Types.ObjectId;
+
   await MongoDatasetTraining.create({
-    teamId,
-    tmbId,
-    datasetId,
-    collectionId,
+    teamId: new ObjectId(teamId),
+    tmbId: new ObjectId(tmbId),
+    datasetId: new ObjectId(datasetId),
+    collectionId: new ObjectId(collectionId),
     billId,
     mode: TrainingModeEnum.imageParse,
     model,
     imageFileId,
     retryCount: 5,
+    lockTime: new Date('2000/1/1'),
     indexes: []
   });
 }
