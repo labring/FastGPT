@@ -51,11 +51,10 @@ export const defaultFormData: ImportFormType = {
   autoIndexes: false,
 
   chunkSettingMode: ChunkSettingModeEnum.auto,
-  chunkSplitMode: DataChunkSplitModeEnum.size,
+  chunkSplitMode: DataChunkSplitModeEnum.paragraph,
   paragraphChunkAIMode: ParagraphChunkAIModeEnum.auto,
-  paragraphChunkDeep: 4,
+  paragraphChunkDeep: 5,
   paragraphChunkMinSize: 100,
-  paragraphChunkMaxSize: chunkAutoChunkSize,
 
   chunkSize: chunkAutoChunkSize,
   chunkSplitter: '',

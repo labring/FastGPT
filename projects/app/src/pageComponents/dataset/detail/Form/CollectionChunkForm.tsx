@@ -17,10 +17,8 @@ import {
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
-import type {
-  ChunkTriggerConfigTypeEnum,
-  ParagraphChunkAIModeEnum
-} from '@fastgpt/global/core/dataset/constants';
+import type { ParagraphChunkAIModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { ChunkTriggerConfigTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   DataChunkSplitModeEnum,
   DatasetCollectionDataProcessModeEnum,
@@ -108,7 +106,6 @@ export type CollectionChunkFormType = {
   paragraphChunkAIMode: ParagraphChunkAIModeEnum;
   paragraphChunkDeep: number; // Paragraph deep
   paragraphChunkMinSize: number; // Paragraph min size, if too small, it will merge
-  paragraphChunkMaxSize: number; // Paragraph max size, if too large, it will split
   // Size split
   chunkSize: number;
   // Char split
@@ -130,6 +127,7 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
   const { setValue, register, watch, getValues } = form;
 
   const trainingType = watch('trainingType');
+  const chunkTriggerType = watch('chunkTriggerType');
   const chunkSettingMode = watch('chunkSettingMode');
   const chunkSplitMode = watch('chunkSplitMode');
   const autoIndexes = watch('autoIndexes');
@@ -151,6 +149,14 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
     }));
   }, [t]);
 
+  // Chunk trigger
+  const chunkTriggerSelectList = [
+    { label: t('dataset:chunk_trigger_min_size'), value: ChunkTriggerConfigTypeEnum.minSize },
+    { label: t('dataset:chunk_trigger_max_size'), value: ChunkTriggerConfigTypeEnum.maxSize },
+    { label: t('dataset:chunk_trigger_force_chunk'), value: ChunkTriggerConfigTypeEnum.forceChunk }
+  ];
+
+  // Form max or min value
   const {
     maxChunkSize,
     minChunkSize: minChunkSizeValue,
@@ -189,14 +195,11 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
     { label: '=====', value: '=====' },
     { label: t('dataset:split_sign_custom'), value: 'Other' }
   ];
-  const [customListSelectValue, setCustomListSelectValue] = useState(getValues('chunkSplitter'));
-  useEffect(() => {
-    if (customListSelectValue === 'Other') {
-      setValue('chunkSplitter', '');
-    } else {
-      setValue('chunkSplitter', customListSelectValue);
-    }
-  }, [customListSelectValue, setValue]);
+  const [customListSelectValue, setCustomListSelectValue] = useState(
+    customSplitList.some((item) => item.value === getValues('chunkSplitter'))
+      ? getValues('chunkSplitter')
+      : 'Other'
+  );
 
   // Index size
   const indexSizeSeletorList = useMemo(() => getIndexSizeSelectList(maxIndexSize), [maxIndexSize]);
@@ -243,6 +246,41 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
           gridTemplateColumns={'repeat(2, 1fr)'}
         />
       </Box>
+
+      {trainingType === DatasetCollectionDataProcessModeEnum.chunk && (
+        <Box mt={6}>
+          <HStack fontSize={'sm'} mb={2} color={'myGray.600'} spacing={1}>
+            <Box>{t('dataset:chunk_trigger')}</Box>
+            <QuestionTip label={t('dataset:chunk_trigger_tips')} />
+          </HStack>
+          <HStack>
+            <Box flex={'1 0 0'} h={'34px'}>
+              <MySelect
+                borderRadius={'md'}
+                list={chunkTriggerSelectList}
+                value={chunkTriggerType}
+                onChange={(e) => {
+                  setValue('chunkTriggerType', e);
+                }}
+              />
+            </Box>
+            {chunkTriggerType === ChunkTriggerConfigTypeEnum.minSize && (
+              <Box flex={'1 0 0'}>
+                <MyNumberInput
+                  h={'34px'}
+                  bg={'white'}
+                  min={100}
+                  max={100000}
+                  register={register}
+                  name={'chunkTriggerMinSize'}
+                  step={100}
+                />
+              </Box>
+            )}
+          </HStack>
+        </Box>
+      )}
+
       {trainingType === DatasetCollectionDataProcessModeEnum.chunk &&
         feConfigs?.show_dataset_enhance !== false && (
           <Box mt={6}>
@@ -287,7 +325,7 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
         )}
       <Box mt={6}>
         <Box fontSize={'sm'} mb={2} color={'myGray.600'}>
-          {t('dataset:params_setting')}
+          {t('dataset:chunk_process_params')}
         </Box>
         <LeftRadio<ChunkSettingModeEnum>
           list={[
@@ -306,6 +344,11 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
                     <RadioGroup<DataChunkSplitModeEnum>
                       list={[
                         {
+                          title: t('dataset:paragraph_split'),
+                          value: DataChunkSplitModeEnum.paragraph,
+                          tooltip: t('dataset:paragraph_split_tip')
+                        },
+                        {
                           title: t('dataset:split_chunk_size'),
                           value: DataChunkSplitModeEnum.size
                         },
@@ -321,30 +364,76 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
                       }}
                     />
 
-                    {chunkSplitMode === DataChunkSplitModeEnum.size && (
-                      <Box
-                        mt={1.5}
-                        css={{
-                          '& > span': {
-                            display: 'block'
-                          }
-                        }}
-                      >
-                        <MyTooltip
-                          label={t('common:core.dataset.import.Chunk Range', {
-                            min: minChunkSizeValue,
-                            max: maxChunkSize
-                          })}
-                        >
+                    {chunkSplitMode === DataChunkSplitModeEnum.paragraph && (
+                      <>
+                        <Box mt={1.5}>
+                          <Box>{t('dataset:paragraph_max_deep')}</Box>
                           <MyNumberInput
-                            register={register}
-                            name={'chunkSize'}
-                            min={minChunkSizeValue}
-                            max={maxChunkSize}
                             size={'sm'}
-                            step={100}
+                            bg={'myGray.50'}
+                            register={register}
+                            name={'paragraphChunkDeep'}
+                            min={1}
+                            max={8}
+                            step={1}
+                            h={'32px'}
                           />
-                        </MyTooltip>
+                        </Box>
+                        <Box mt={1.5}>
+                          <Box>{t('dataset:max_chunk_size')}</Box>
+                          <Box
+                            css={{
+                              '& > span': {
+                                display: 'block'
+                              }
+                            }}
+                          >
+                            <MyTooltip
+                              label={t('common:core.dataset.import.Chunk Range', {
+                                min: minChunkSizeValue,
+                                max: maxChunkSize
+                              })}
+                            >
+                              <MyNumberInput
+                                register={register}
+                                name={'chunkSize'}
+                                min={minChunkSizeValue}
+                                max={maxChunkSize}
+                                size={'sm'}
+                                step={100}
+                              />
+                            </MyTooltip>
+                          </Box>
+                        </Box>
+                      </>
+                    )}
+
+                    {chunkSplitMode === DataChunkSplitModeEnum.size && (
+                      <Box mt={1.5}>
+                        <Box>{t('dataset:chunk_size')}</Box>
+                        <Box
+                          css={{
+                            '& > span': {
+                              display: 'block'
+                            }
+                          }}
+                        >
+                          <MyTooltip
+                            label={t('common:core.dataset.import.Chunk Range', {
+                              min: minChunkSizeValue,
+                              max: maxChunkSize
+                            })}
+                          >
+                            <MyNumberInput
+                              register={register}
+                              name={'chunkSize'}
+                              min={minChunkSizeValue}
+                              max={maxChunkSize}
+                              size={'sm'}
+                              step={100}
+                            />
+                          </MyTooltip>
+                        </Box>
                       </Box>
                     )}
 
@@ -358,6 +447,11 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
                             value={customListSelectValue}
                             h={'32px'}
                             onChange={(val) => {
+                              if (val === 'Other') {
+                                setValue('chunkSplitter', '');
+                              } else {
+                                setValue('chunkSplitter', val);
+                              }
                               setCustomListSelectValue(val);
                             }}
                           />

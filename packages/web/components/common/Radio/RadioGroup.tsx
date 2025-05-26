@@ -54,7 +54,7 @@ const RadioGroup = <T = any,>({ list, value, onChange, ...props }: Props<T>) => 
               />
             </Flex>
           </Box>
-          <HStack spacing={1} color={'myGray.900'} whiteSpace={'nowrap'} fontSize={'sm'}>
+          <HStack spacing={0.5} color={'myGray.900'} whiteSpace={'nowrap'} fontSize={'sm'}>
             <Box>{typeof item.title === 'string' ? t(item.title as any) : item.title}</Box>
             {!!item.tooltip && <QuestionTip label={item.tooltip} color={'myGray.600'} />}
           </HStack>

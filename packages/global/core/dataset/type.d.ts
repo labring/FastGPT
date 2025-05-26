@@ -9,7 +9,8 @@ import type {
   DatasetTypeEnum,
   SearchScoreTypeEnum,
   TrainingModeEnum,
-  ChunkSettingModeEnum
+  ChunkSettingModeEnum,
+  ChunkTriggerConfigTypeEnum
 } from './constants';
 import type { DatasetPermission } from '../../support/permission/dataset/controller';
 import type { APIFileServer, FeishuServer, YuqueServer } from './apiDataset';
@@ -37,11 +38,10 @@ export type ChunkSettingsType = {
   paragraphChunkAIMode?: ParagraphChunkAIModeEnum;
   paragraphChunkDeep?: number; // Paragraph deep
   paragraphChunkMinSize?: number; // Paragraph min size, if too small, it will merge
-  paragraphChunkMaxSize?: number; // Paragraph max size, if too large, it will split
   // Size split
-  chunkSize?: number;
+  chunkSize?: number; // chunk/qa chunk size, Paragraph max chunk size.
   // Char split
-  chunkSplitter?: string;
+  chunkSplitter?: string; // chunk/qa chunk splitter
   indexSize?: number;
 
   qaPrompt?: string;

@@ -1,5 +1,8 @@
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
-import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  ChunkTriggerConfigTypeEnum,
+  DatasetSourceReadTypeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { readFileContentFromMongo } from '../../common/file/gridfs/controller';
 import { urlsFetch } from '../../common/string/cheerio';
 import { type TextSplitProps, splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
@@ -179,11 +182,17 @@ export const readApiServerFileContent = async ({
 
 export const rawText2Chunks = ({
   rawText,
+  chunkTriggerType = ChunkTriggerConfigTypeEnum.minSize,
+  chunkTriggerMinSize = 1000,
   backupParse,
   chunkSize = 512,
   ...splitProps
 }: {
   rawText: string;
+
+  chunkTriggerType?: ChunkTriggerConfigTypeEnum;
+  chunkTriggerMinSize?: number; // maxSize from agent model, not store
+
   backupParse?: boolean;
   tableParse?: boolean;
 } & TextSplitProps): {
@@ -208,6 +217,28 @@ export const rawText2Chunks = ({
       chunks
     };
   };
+
+  // Chunk condition
+  // 1. 选择最大值条件，只有超过了最大值(默认为模型的最大值*0.7），才会触发分块
+  if (chunkTriggerType === ChunkTriggerConfigTypeEnum.maxSize) {
+    const textLength = rawText.trim().length;
+    const maxSize = splitProps.maxSize ? splitProps.maxSize * 0.7 : 16000;
+    if (textLength < maxSize) {
+      return [
+        {
+          q: rawText,
+          a: ''
+        }
+      ];
+    }
+  }
+  // 2. 选择最小值条件，只有超过最小值(手动决定)才会触发分块
+  if (chunkTriggerType !== ChunkTriggerConfigTypeEnum.forceChunk) {
+    const textLength = rawText.trim().length;
+    if (textLength < chunkTriggerMinSize) {
+      return [{ q: rawText, a: '' }];
+    }
+  }
 
   if (backupParse) {
     return parseDatasetBackup2Chunks(rawText).chunks;
