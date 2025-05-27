@@ -450,7 +450,7 @@ export const emptyTemplates: Record<
             renderTypeList: [FlowNodeInputTypeEnum.hidden],
             label: 'core.app.Question Guide',
             value: {
-              open: false
+              open: true
             }
           },
           {
@@ -468,7 +468,7 @@ export const emptyTemplates: Record<
             valueType: WorkflowIOValueTypeEnum.any,
             label: '',
             value: {
-              open: false,
+              open: true,
               autoSend: false,
               autoTTSResponse: false
             }
