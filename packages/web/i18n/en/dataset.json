@@ -19,7 +19,7 @@
   "chunk_size": "Block size",
   "chunk_trigger": "Blocking conditions",
   "chunk_trigger_force_chunk": "Forced chunking",
-  "chunk_trigger_max_size": "The original text length is less than the maximum context 70% of the file processing model",
+  "chunk_trigger_max_size": "The original text length is greater than the maximum context of the file processing model 70%",
   "chunk_trigger_min_size": "The original text is greater than",
   "chunk_trigger_tips": "Block storage is triggered when certain conditions are met, otherwise the original text will be stored in full directly",
   "close_auto_sync": "Are you sure you want to turn off automatic sync?",
