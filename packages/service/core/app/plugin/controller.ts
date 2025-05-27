@@ -53,7 +53,7 @@ const getSystemPluginTemplateById = async (
   versionId?: string
 ): Promise<ChildAppType> => {
   const item = getSystemPluginTemplates().find((plugin) => plugin.id === pluginId);
-  if (!item) return Promise.reject(PluginErrEnum.unAuth);
+  if (!item) return Promise.reject(PluginErrEnum.unExist);
 
   const plugin = cloneDeep(item);
 
@@ -63,10 +63,10 @@ const getSystemPluginTemplateById = async (
       { pluginId: plugin.id, 'customConfig.associatedPluginId': plugin.associatedPluginId },
       'associatedPluginId'
     ).lean();
-    if (!systemPlugin) return Promise.reject(PluginErrEnum.unAuth);
+    if (!systemPlugin) return Promise.reject(PluginErrEnum.unExist);
 
     const app = await MongoApp.findById(plugin.associatedPluginId).lean();
-    if (!app) return Promise.reject(PluginErrEnum.unAuth);
+    if (!app) return Promise.reject(PluginErrEnum.unExist);
 
     const version = versionId
       ? await getAppVersionById({
@@ -118,7 +118,7 @@ export async function getChildAppPreviewNode({
 
     if (source === PluginSourceEnum.personal) {
       const item = await MongoApp.findById(appId).lean();
-      if (!item) return Promise.reject('plugin not found');
+      if (!item) return Promise.reject(PluginErrEnum.unExist);
 
       const version = await getAppVersionById({ appId, versionId, app: item });
 
@@ -233,7 +233,7 @@ export async function getChildAppRuntimeById(
 
     if (source === PluginSourceEnum.personal) {
       const item = await MongoApp.findById(id).lean();
-      if (!item) return Promise.reject('plugin not found');
+      if (!item) return Promise.reject(PluginErrEnum.unExist);
 
       const version = await getAppVersionById({
         appId: id,
