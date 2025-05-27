@@ -84,8 +84,7 @@ const SelectFile = React.memo(function SelectFile() {
       createStatus: 'waiting',
       file: file,
       sourceName: file.name,
-      isUploading: true,
-      uploadedFileRate: 0
+      isUploading: true
     })) as ExtendedImportSourceItemType[];
 
     setSelectFiles((prev) => [...prev, ...fileItems]);
@@ -96,14 +95,7 @@ const SelectFile = React.memo(function SelectFile() {
         const result = await uploadImage2Dataset({
           file: fileItem.file,
           datasetId,
-          collectionId: parentId,
-          percentListen: (percent) => {
-            setSelectFiles((prev) =>
-              prev.map((item) =>
-                item.id === fileItem.id ? { ...item, uploadedFileRate: percent } : item
-              )
-            );
-          }
+          collectionId: parentId
         });
 
         const { id: imageId } = result;
@@ -124,8 +116,7 @@ const SelectFile = React.memo(function SelectFile() {
                     ...item,
                     previewUrl,
                     dbFileId: imageId,
-                    isUploading: false,
-                    uploadedFileRate: 100
+                    isUploading: false
                   }
                 : item
             )
@@ -138,8 +129,7 @@ const SelectFile = React.memo(function SelectFile() {
                 ? {
                     ...item,
                     dbFileId: imageId,
-                    isUploading: false,
-                    uploadedFileRate: 100
+                    isUploading: false
                   }
                 : item
             )
@@ -377,51 +367,17 @@ const SelectFile = React.memo(function SelectFile() {
                             objectFit="cover"
                           />
                         ) : (
-                          <Flex
-                            width="100%"
-                            height="100%"
-                            bg="var(--Gray-Modern-50, #F7F8FA)"
-                            alignItems="center"
-                            justifyContent="center"
-                          >
-                            <MyIcon name="file/fill/file" width="24px" height="24px" />
-                          </Flex>
+                          <MyIcon
+                            name="loading"
+                            width="48px"
+                            height="48px"
+                            color="blue"
+                            style={{
+                              animation: 'spin 1s linear infinite'
+                            }}
+                          />
                         )}
                       </Flex>
-
-                      {file.isUploading && (
-                        <Box
-                          position="absolute"
-                          bottom="0"
-                          left="0"
-                          width="100%"
-                          display="flex"
-                          justifyContent="center"
-                          padding="2px"
-                        >
-                          <Box
-                            width="78.67px"
-                            height="78.67px"
-                            flexShrink={0}
-                            display="flex"
-                            flexDirection="column"
-                            alignItems="center"
-                            justifyContent="center"
-                            bg="rgba(255, 255, 255, 0.7)"
-                            borderRadius="4px"
-                          >
-                            <MyIcon
-                              name="loading"
-                              width="48px"
-                              height="48px"
-                              color="blue"
-                              style={{
-                                animation: 'spin 1s linear infinite'
-                              }}
-                            />
-                          </Box>
-                        </Box>
-                      )}
 
                       <IconButton
                         aria-label={t('file:delete_image')}
@@ -495,7 +451,7 @@ const SelectFile = React.memo(function SelectFile() {
                   letterSpacing="0.1px"
                   lineHeight="20px"
                 >
-                  共{selectFiles.length}个文件
+                  {t('file:common.total_files', { selectFiles: { length: selectFiles.length } })}
                 </Text>
                 <Box width="1px" height="11px" bg="white" />
               </>
@@ -507,7 +463,7 @@ const SelectFile = React.memo(function SelectFile() {
               letterSpacing="0.1px"
               lineHeight="20px"
             >
-              确认导入
+              {t('common:comfirm_import')}
             </Text>
           </Button>
         </Flex>

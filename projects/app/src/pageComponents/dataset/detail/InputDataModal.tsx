@@ -507,7 +507,7 @@ const InputDataModal = ({
                           maxHeight="100%"
                           maxWidth="100%"
                           objectFit="contain"
-                          alt="图片预览"
+                          alt={t('file:common.Image Preview')}
                           cursor="pointer"
                           onClick={handleImageClick}
                         />
@@ -845,7 +845,7 @@ const InputDataModal = ({
               />
             </Box>
             <Text fontSize="sm" fontWeight="medium" color="red.800">
-              仅支持上传一张图片
+              {t('file:common.Only support uploading one image')}
             </Text>
           </Flex>
 
