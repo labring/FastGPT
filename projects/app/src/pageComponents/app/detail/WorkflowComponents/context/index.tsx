@@ -56,6 +56,7 @@ import { getAppConfigByDiff } from '@/web/core/app/diff';
 import WorkflowStatusContextProvider from './workflowStatusContext';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { type TFunction } from 'i18next';
 
 /* 
   Context
@@ -206,6 +207,8 @@ type WorkflowContextType = {
       | undefined
     >
   >;
+
+  findNode: (params: { keyword: string; index: number; t: TFunction }) => number;
 };
 
 export type DebugDataType = {
@@ -340,6 +343,9 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     chatConfig: AppChatConfigType;
     isSaved?: boolean;
   }): boolean {
+    throw new Error('Function not implemented.');
+  },
+  findNode: function (params: { keyword: string; index: number; t: TFunction }): number {
     throw new Error('Function not implemented.');
   }
 });
@@ -902,6 +908,32 @@ const WorkflowContextProvider = ({
     }
   });
 
+  const findNode = useMemoizedFn(
+    ({ keyword, index = 0, t }: { keyword: string; index: number; t: TFunction }) => {
+      const nodes = getNodes();
+      const searchResult = nodes.filter((node) => {
+        const nodeName = t(node.data.name as any);
+        return nodeName.toLowerCase().includes(keyword.toLowerCase());
+      });
+      if (searchResult.length > 0 && index < searchResult.length) {
+        const searchedNode = searchResult[index];
+        console.log(searchedNode);
+        setNodes((state) =>
+          state.map((node) => {
+            if (node.id === searchedNode.id) {
+              return { ...node, selected: true };
+            }
+            return { ...node, selected: false };
+          })
+        );
+        fitView({
+          nodes: [searchedNode]
+        });
+      }
+      return searchResult.length;
+    }
+  );
+
   const initData = useCallback(
     async (
       e: {
@@ -1047,7 +1079,10 @@ const WorkflowContextProvider = ({
       onStopNodeDebug,
 
       // chat test
-      setWorkflowTestData
+      setWorkflowTestData,
+
+      // find node
+      findNode
     }),
     [
       appId,
@@ -1075,7 +1110,8 @@ const WorkflowContextProvider = ({
       setPast,
       splitToolInputs,
       undo,
-      workflowDebugData
+      workflowDebugData,
+      findNode
     ]
   );
 
