@@ -4,18 +4,16 @@ import type { UploadDatasetImageProps } from '@fastgpt/global/core/dataset/image
 export const uploadImage2Dataset = async ({
   file,
   datasetId,
-  collectionId,
-  percentListen
+  collectionId
 }: {
   file: File;
   datasetId: string;
   collectionId?: string;
-  percentListen?: (percent: number) => void;
 }) => {
   const data: UploadDatasetImageProps = {
     datasetId,
     collectionId
   };
 
-  return uploadDatasetImage(file, data, percentListen);
+  return uploadDatasetImage(file, data);
 };

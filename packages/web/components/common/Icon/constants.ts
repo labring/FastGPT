@@ -2,6 +2,7 @@
 
 export const iconPaths = {
   alignLeft: () => import('./icons/alignLeft.svg'),
+  backup: () => import('./icons/backup.svg'),
   book: () => import('./icons/book.svg'),
   change: () => import('./icons/change.svg'),
   chatSend: () => import('./icons/chatSend.svg'),
@@ -224,6 +225,7 @@ export const iconPaths = {
   'core/dataset/manualCollection': () => import('./icons/core/dataset/manualCollection.svg'),
   'core/dataset/mixedRecall': () => import('./icons/core/dataset/mixedRecall.svg'),
   'core/dataset/modeEmbedding': () => import('./icons/core/dataset/modeEmbedding.svg'),
+  'core/dataset/otherDataset': () => import('./icons/core/dataset/otherDataset.svg'),
   'core/dataset/questionExtension': () => import('./icons/core/dataset/questionExtension.svg'),
   'core/dataset/rerank': () => import('./icons/core/dataset/rerank.svg'),
   'core/dataset/searchfilter': () => import('./icons/core/dataset/searchfilter.svg'),
@@ -231,7 +233,6 @@ export const iconPaths = {
   'core/dataset/tableCollection': () => import('./icons/core/dataset/tableCollection.svg'),
   'core/dataset/tag': () => import('./icons/core/dataset/tag.svg'),
   'core/dataset/websiteDataset': () => import('./icons/core/dataset/websiteDataset.svg'),
-  'core/dataset/otherDataset': () => import('./icons/core/dataset/otherDataset.svg'),
   'core/dataset/websiteDatasetColor': () => import('./icons/core/dataset/websiteDatasetColor.svg'),
   'core/dataset/websiteDatasetOutline': () =>
     import('./icons/core/dataset/websiteDatasetOutline.svg'),

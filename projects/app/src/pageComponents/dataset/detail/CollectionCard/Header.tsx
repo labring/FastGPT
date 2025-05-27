@@ -267,7 +267,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                     {
                       label: (
                         <Flex>
-                          <MyIcon name={'common/backLight'} mr={2} w={'20px'} />
+                          <MyIcon name={'backup'} mr={2} w={'20px'} />
                           {t('dataset:backup_dataset')}
                         </Flex>
                       ),

@@ -11,7 +11,7 @@ export const fileImgs = [
   // { suffix: '.', src: '/imgs/files/file.svg' }
 ];
 
-export function getFileIcon(name = '', defaultImg = 'file/fill/file') {
+export function getFileIcon(name = '', defaultImg = 'image') {
   return (
     fileImgs.find((item) => new RegExp(`\.${item.suffix}`, 'gi').test(name))?.src || defaultImg
   );

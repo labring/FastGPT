@@ -48,8 +48,8 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
     ) {
       return collection.metadata.isImageCollection === true;
     }
-    return collection.name?.includes('图片集合') || false;
-  }, [collection]);
+    return collection.name?.includes(t('file:image_collection')) || false;
+  }, [collection, t]);
 
   const metadataList = useMemo<{ label?: string; value?: any }[]>(() => {
     if (!collection) return [];

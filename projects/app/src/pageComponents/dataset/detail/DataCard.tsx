@@ -123,8 +123,8 @@ const DataCard = () => {
       return collection.metadata.isImageCollection === true;
     }
     // Fallback: check collection name
-    return collection.name?.includes('图片集合') || false;
-  }, [collection]);
+    return collection.name?.includes(t('file:image_collection')) || false;
+  }, [collection, t]);
 
   const [imagePreviewUrls, setImagePreviewUrls] = useState<Record<string, string>>({});
 

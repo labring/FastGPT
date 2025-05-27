@@ -93,7 +93,6 @@ const InputDataModal = ({
   const [isImageEnlarged, setIsImageEnlarged] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [isImageHovered, setIsImageHovered] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
 
   const { File: FileSelectDom, onOpen: onSelectFile } = useSelectFile({
     fileType: 'image/*',
@@ -132,8 +131,8 @@ const InputDataModal = ({
       return collection.metadata.isImageCollection === true;
     }
     // Fallback: check collection name
-    return collection.name?.includes('图片集合') || false;
-  }, [collection]);
+    return collection.name?.includes(t('file:image_collection')) || false;
+  }, [collection, t]);
 
   // Set default tab based on dataset type
   useEffect(() => {
@@ -162,16 +161,12 @@ const InputDataModal = ({
 
         const file = files[0];
         setUploading(true);
-        setUploadProgress(0);
 
         try {
           const result = await uploadImage2Dataset({
             file,
             datasetId: collection.dataset._id,
-            collectionId: collectionId,
-            percentListen: (percent) => {
-              setUploadProgress(percent);
-            }
+            collectionId: collectionId
           });
 
           const { id: imageId } = result;
@@ -189,26 +184,24 @@ const InputDataModal = ({
           } catch (error) {
             setUploadedFileId(imageId);
             toast({
-              title: '图片上传成功，但预览加载失败',
+              title: t('file:common.Loading image failed'),
               status: 'warning'
             });
           }
         } catch (error) {
           toast({
-            title: getErrText(error, '图片上传失败'),
+            title: getErrText(error, t('file:common.Loading image failed')),
             status: 'error'
           });
         } finally {
           setUploading(false);
-          setUploadProgress(0);
         }
       } catch (error) {
         toast({
-          title: '图片预览失败',
+          title: t('file:common.Loading image failed'),
           status: 'error'
         });
         setUploading(false);
-        setUploadProgress(0);
       }
     },
     [collection.dataset._id, collectionId, toast, userInfo?.team?.teamId]
@@ -282,7 +275,7 @@ const InputDataModal = ({
         })
         .catch((error) => {
           toast({
-            title: '预览加载失败',
+            title: t('file:common.Loading image failed'),
             status: 'warning'
           });
         });
@@ -306,7 +299,7 @@ const InputDataModal = ({
 
       // Check if image is uploaded for image datasets
       if (isImageCollection && !uploadedFileId) {
-        return Promise.reject('请先上传图片');
+        return Promise.reject(t('file:please upload image first'));
       }
 
       const totalLength = e.q.length + (e.a?.length || 0);
@@ -481,7 +474,7 @@ const InputDataModal = ({
                   ? t('common:dataset_data_input_chunk_content')
                   : currentTab === TabEnum.qa
                     ? t('common:dataset_data_input_q')
-                    : '图片描述'}
+                    : t('file:please input image description')}
               </FormLabel>
               {currentTab === TabEnum.image ? (
                 <>
@@ -546,7 +539,7 @@ const InputDataModal = ({
                                   e.stopPropagation();
                                   navigator.clipboard.writeText(uploadedFileId);
                                   toast({
-                                    title: '已复制ID',
+                                    title: t('file:common.Image ID copied'),
                                     status: 'success',
                                     duration: 2000,
                                     isClosable: true,
@@ -624,37 +617,20 @@ const InputDataModal = ({
                       >
                         <MyIcon name="common/uploadFileFill" w="32px" />
                         <Box fontWeight="bold" mt={2}>
-                          {uploading ? `上传中... ${uploadProgress}%` : '选择图片或拖拽到此处'}
+                          {uploading ? '上传中...' : '选择图片或拖拽到此处'}
                         </Box>
                         <Box color="myGray.500" fontSize="xs" mt={1}>
-                          支持 .jpg, .jpeg, .png, .gif, .webp 格式
+                          {t('file:common.dataset_data_input_image_support_format')}
                         </Box>
-                        {uploading && (
-                          <Box
-                            width="200px"
-                            height="4px"
-                            bg="gray.200"
-                            borderRadius="2px"
-                            mt={3}
-                            overflow="hidden"
-                          >
-                            <Box
-                              width={`${uploadProgress}%`}
-                              height="100%"
-                              bg="primary.500"
-                              transition="width 0.3s ease"
-                            />
-                          </Box>
-                        )}
                       </Box>
                     )}
                   </Box>
                   <FormLabel required mb={1}>
-                    图片描述
+                    {t('file:please input image description')}
                   </FormLabel>
                   <Textarea
                     resize={'none'}
-                    placeholder="请输入图片的描述内容"
+                    placeholder={t('file:Please enter the description of the picture')}
                     className={styles.scrollbar}
                     maxLength={8000}
                     flex={'1 0 0'}
@@ -817,7 +793,7 @@ const InputDataModal = ({
               // @ts-ignore
               onClick={handleSubmit(dataId ? onUpdateData : sureImportData)}
             >
-              {dataId ? t('common:confirm_update') : t('comfirm_import')}
+              {dataId ? t('common:confirm_update') : t('common:comfirm_import')}
             </Button>
           </MyTooltip>
         </ModalFooter>

@@ -6,8 +6,7 @@ export const uploadDatasetImage = (
   data: {
     datasetId: string;
     collectionId?: string;
-  },
-  onProgress?: (percent: number) => void
+  }
 ) => {
   const formData = new FormData();
   formData.append('file', file, encodeURIComponent(file.name));
@@ -17,11 +16,6 @@ export const uploadDatasetImage = (
     id: string;
   }>('/core/dataset/image/upload', formData, {
     timeout: 600000,
-    onUploadProgress: (e) => {
-      if (!e.total) return;
-      const percent = Math.round((e.loaded / e.total) * 100);
-      onProgress?.(percent);
-    },
     headers: {
       'Content-Type': 'multipart/form-data; charset=utf-8'
     }
