@@ -4,8 +4,6 @@ import dynamic from 'next/dynamic';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { useContextSelector } from 'use-context-selector';
 import DatasetImportContextProvider, { DatasetImportContext } from './Context';
-import ImageDatasetEntry from './diffSource/ImageDatasetEntry';
-import { useRouter } from 'next/router';
 
 const FileLocal = dynamic(() => import('./diffSource/FileLocal'));
 const FileLink = dynamic(() => import('./diffSource/FileLink'));
@@ -13,6 +11,7 @@ const FileCustomText = dynamic(() => import('./diffSource/FileCustomText'));
 const ExternalFileCollection = dynamic(() => import('./diffSource/ExternalFile'));
 const APIDatasetCollection = dynamic(() => import('./diffSource/APIDataset'));
 const ReTraining = dynamic(() => import('./diffSource/ReTraining'));
+const ImageDataset = dynamic(() => import('./diffSource/ImageDataset'));
 
 const ImportDataset = () => {
   const importSource = useContextSelector(DatasetImportContext, (v) => v.importSource);
@@ -24,6 +23,7 @@ const ImportDataset = () => {
     if (importSource === ImportDataSourceEnum.fileCustom) return FileCustomText;
     if (importSource === ImportDataSourceEnum.externalFile) return ExternalFileCollection;
     if (importSource === ImportDataSourceEnum.apiDataset) return APIDatasetCollection;
+    if (importSource === ImportDataSourceEnum.imageDataset) return ImageDataset;
     return null;
   }, [importSource]);
 
@@ -35,13 +35,6 @@ const ImportDataset = () => {
 };
 
 const Render = () => {
-  const router = useRouter();
-  const { source } = router.query || {};
-
-  if (source === ImportDataSourceEnum.imageDataset) {
-    return <ImageDatasetEntry />;
-  }
-
   return (
     <Flex
       flexDirection={'column'}

@@ -100,8 +100,7 @@ const TrainingDataSchema = new Schema({
     default: []
   },
   imageFileId: {
-    type: String,
-    default: ''
+    type: String
   },
 
   errorMsg: String

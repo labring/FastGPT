@@ -226,7 +226,6 @@ export async function insertData2Dataset({
         teamId,
         datasetId,
         collectionId,
-        imageFileId,
         dataId: _id,
         fullTextToken: await jiebaSplit({ text: `${q}\n${a}`.trim() })
       }

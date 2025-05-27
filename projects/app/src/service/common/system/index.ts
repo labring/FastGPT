@@ -154,14 +154,6 @@ export async function initSystemConfig() {
 
   // set config
   initFastGPTConfig(config);
-
-  console.log({
-    feConfigs: global.feConfigs,
-    systemEnv: global.systemEnv,
-    subPlans: global.subPlans,
-    licenseData: global.licenseData,
-    aiproxy: process.env.AIPROXY_API_ENDPOINT
-  });
 }
 
 export async function initSystemPluginGroups() {

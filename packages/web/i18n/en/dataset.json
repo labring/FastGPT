@@ -1,5 +1,4 @@
 {
-  " error?.message || t('core.dataset.collection.Create Failed'),\n            status.core.dataset.collection.Create Failed": "",
   "Enable": "Enable",
   "add_file": "Import",
   "api_file": "API Dataset",

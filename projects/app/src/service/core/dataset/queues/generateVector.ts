@@ -255,13 +255,13 @@ const insertData = async ({
   const { tokens } = await mongoSessionRun(async (session) => {
     // insert new data to dataset
     const { tokens } = await insertData2Dataset({
-      imageFileId: trainingData.imageFileId,
       teamId: trainingData.teamId,
       tmbId: trainingData.tmbId,
       datasetId: trainingData.datasetId,
       collectionId: trainingData.collectionId,
       q: trainingData.q,
       a: trainingData.a,
+      imageFileId: trainingData.imageFileId,
       chunkIndex: trainingData.chunkIndex,
       indexSize: trainingData.indexSize,
       indexes: trainingData.indexes,

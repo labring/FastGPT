@@ -38,40 +38,6 @@ import { GET, POST } from '@/web/common/api/request';
 import { generateImagePreviewUrl } from '@/web/common/file/api';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 
-const postGetFileToken = (params: {
-  bucketName: string;
-  fileId: string;
-  teamId: string;
-  datasetId: string;
-  expireMinutes?: number;
-}) => POST<string>('common/file/token', params);
-
-const getImagePreviewUrl = async (
-  fileId: string,
-  fileName: string,
-  teamId: string,
-  datasetId: string,
-  expireMinutes: number = 30
-) => {
-  try {
-    if (!fileId) {
-      return '';
-    }
-    const token = await postGetFileToken({
-      bucketName: 'dataset',
-      fileId,
-      teamId,
-      datasetId,
-      expireMinutes
-    });
-    const origin = window.location.origin;
-    const previewUrl = `${origin}/api/core/dataset/image/${fileId}?token=${token}`;
-    return previewUrl;
-  } catch (error) {
-    return '';
-  }
-};
-
 const DataCard = () => {
   const theme = useTheme();
   const router = useRouter();

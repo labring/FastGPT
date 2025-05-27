@@ -9,7 +9,6 @@ export type Response = {
   a: string;
   source: string;
   imageFileId?: string;
-  dataName?: string;
 };
 
 async function handler(req: NextApiRequest) {

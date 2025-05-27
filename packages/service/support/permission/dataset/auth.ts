@@ -267,14 +267,14 @@ export async function authDatasetData({
     updateTime: datasetData.updateTime,
     q: datasetData.q,
     a: datasetData.a,
+    imageFileId: datasetData.imageFileId,
     chunkIndex: datasetData.chunkIndex,
     indexes: datasetData.indexes,
     datasetId: String(datasetData.datasetId),
     collectionId: String(datasetData.collectionId),
     sourceName: result.collection.name || '',
     sourceId: result.collection?.fileId || result.collection?.rawLink,
-    isOwner: String(datasetData.tmbId) === String(result.tmbId),
-    imageFileId: datasetData.imageFileId
+    isOwner: String(datasetData.tmbId) === String(result.tmbId)
     // permission: result.permission
   };
 
