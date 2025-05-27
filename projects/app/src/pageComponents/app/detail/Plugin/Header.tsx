@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   Box,
   Flex,
@@ -28,11 +28,8 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import PublishHistories from '../PublishHistoriesSlider';
 import { WorkflowEventContext } from '../WorkflowComponents/context/workflowEventContext';
 import { WorkflowStatusContext } from '../WorkflowComponents/context/workflowStatusContext';
-import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { useDebounceEffect, useKeyPress } from 'ahooks';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import MyBox from '@fastgpt/web/components/common/MyBox';
 import SaveButton from '../Workflow/components/SaveButton';
+import SearchButton from '../Workflow/components/SearchButton';
 
 const Header = () => {
   const { t } = useTranslation();
@@ -62,7 +59,6 @@ const Header = () => {
   const setPast = useContextSelector(WorkflowContext, (v) => v.setPast);
   const onSwitchTmpVersion = useContextSelector(WorkflowContext, (v) => v.onSwitchTmpVersion);
   const onSwitchCloudVersion = useContextSelector(WorkflowContext, (v) => v.onSwitchCloudVersion);
-  const findNode = useContextSelector(WorkflowContext, (v) => v.findNode);
 
   const showHistoryModal = useContextSelector(WorkflowEventContext, (v) => v.showHistoryModal);
   const setShowHistoryModal = useContextSelector(
@@ -120,33 +116,6 @@ const Header = () => {
     });
   }, [appDetail.parentId, lastAppListRouteType, leaveSaveSign, router]);
 
-  const [keyword, setKeyword] = useState<string | null>(null);
-  const [searchIndex, setSearchIndex] = useState(0);
-  const [searchedNodeCount, setSearchedNodeCount] = useState(0);
-  const isMac = !window ? false : window.navigator.userAgent.toLocaleLowerCase().includes('mac');
-  useKeyPress(['ctrl.f', 'meta.f'], (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setKeyword('');
-  });
-  useDebounceEffect(
-    () => {
-      if (!!keyword) {
-        const count = findNode({ keyword, index: searchIndex, t });
-        setSearchedNodeCount(count);
-      }
-    },
-    [keyword, searchIndex],
-    {
-      wait: 500
-    }
-  );
-  const clearSearch = useCallback(() => {
-    setKeyword(null);
-    setSearchIndex(0);
-    setSearchedNodeCount(0);
-  }, []);
-
   const Render = useMemo(() => {
     return (
       <>
@@ -203,123 +172,7 @@ const Header = () => {
 
           {currentTab === TabEnum.appEdit && (
             <HStack flexDirection={['column', 'row']} spacing={[2, 3]}>
-              {keyword === null ? (
-                <MyTooltip label={isMac ? t('common:find_tip_mac') : t('common:find_tip')}>
-                  <IconButton
-                    icon={<MyIcon name={'common/searchLight'} w={'18px'} />}
-                    aria-label={''}
-                    size={'sm'}
-                    w={'30px'}
-                    variant={'whitePrimary'}
-                    onClick={() => {
-                      setKeyword('');
-                    }}
-                  />
-                </MyTooltip>
-              ) : (
-                <MyBox position={'relative'}>
-                  <SearchInput
-                    w={'200px'}
-                    pr={6}
-                    value={keyword}
-                    placeholder={t('workflow:please_enter_node_name')}
-                    autoFocus={true}
-                    onBlur={() => {
-                      if (keyword) return;
-
-                      clearSearch();
-                    }}
-                    onChange={(e) => {
-                      setKeyword(e.target.value);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (searchIndex === searchedNodeCount - 1) {
-                          setSearchIndex(0);
-                        } else {
-                          setSearchIndex(searchIndex + 1);
-                        }
-                      }
-                    }}
-                  />
-
-                  {!!keyword && (
-                    <>
-                      <Flex
-                        position={'absolute'}
-                        top={1.5}
-                        left={'176px'}
-                        w={'18px'}
-                        h={'18px'}
-                        borderRadius={'sm'}
-                        _hover={{ bg: 'myGray.50' }}
-                        alignItems={'center'}
-                        justifyContent={'center'}
-                        cursor={'pointer'}
-                        onClick={clearSearch}
-                      >
-                        <MyIcon name={'common/closeLight'} w={'14px'} />
-                      </Flex>
-                      <MyBox
-                        position={'absolute'}
-                        top={'34px'}
-                        left={0}
-                        w={'200px'}
-                        h={'40px'}
-                        zIndex={10}
-                        bg={'white'}
-                        rounded={'md'}
-                        boxShadow={
-                          '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10)'
-                        }
-                        px={1.5}
-                      >
-                        <Flex px={1} alignItems={'center'} h={'full'}>
-                          {searchedNodeCount > 0 ? (
-                            <Flex alignItems={'center'} w={'full'} justifyContent={'space-between'}>
-                              <Box fontSize={'12px'} color={'myGray.600'}>
-                                {`${searchIndex + 1} / ${searchedNodeCount}`}
-                              </Box>
-                              <Flex>
-                                <Button
-                                  size={'xs'}
-                                  fontSize={'12px'}
-                                  variant={'ghost'}
-                                  isDisabled={searchIndex === 0}
-                                  onClick={() => {
-                                    if (searchIndex === 0) return;
-                                    setSearchIndex(searchIndex - 1);
-                                  }}
-                                >
-                                  {t('workflow:previous')}
-                                </Button>
-                                <Button
-                                  size={'xs'}
-                                  fontSize={'12px'}
-                                  variant={'ghost'}
-                                  isDisabled={searchIndex === searchedNodeCount - 1}
-                                  onClick={() => {
-                                    if (searchIndex === searchedNodeCount - 1) return;
-                                    setSearchIndex(searchIndex + 1);
-                                  }}
-                                >
-                                  {t('workflow:next')}
-                                </Button>
-                              </Flex>
-                            </Flex>
-                          ) : (
-                            <Flex fontSize={'xs'} color={'myGray.600'}>
-                              {t('workflow:no_node_found')}
-                            </Flex>
-                          )}
-                        </Flex>
-                      </MyBox>
-                    </>
-                  )}
-                </MyBox>
-              )}
+              <SearchButton />
               {!showHistoryModal && (
                 <IconButton
                   icon={<MyIcon name={'history'} w={'18px'} />}
@@ -365,12 +218,7 @@ const Header = () => {
     onBack,
     onOpenBackConfirm,
     isV2Workflow,
-    keyword,
-    isMac,
     t,
-    clearSearch,
-    searchedNodeCount,
-    searchIndex,
     showHistoryModal,
     loading,
     onClickSave,

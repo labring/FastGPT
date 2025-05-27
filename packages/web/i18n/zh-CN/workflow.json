@@ -63,6 +63,8 @@
   "field_required": "必填",
   "field_used_as_tool_input": "作为工具调用参数",
   "filter_description": "目前支持标签和创建时间过滤，需按照以下格式填写：\n{\n  \"tags\": {\n    \"$and\": [\"标签 1\",\"标签 2\"],\n    \"$or\": [\"有 $and 标签时，and 生效，or 不生效\"]\n  },\n  \"createTime\": {\n      \"$gte\": \"YYYY-MM-DD HH:mm 格式即可，集合的创建时间大于该时间\",\n      \"$lte\": \"YYYY-MM-DD HH:mm 格式即可，集合的创建时间小于该时间,可和 $gte 共同使用\"\n  }\n}",
+  "find_tip": "查找节点 ctrl f",
+  "find_tip_mac": "查找节点  ⌘  f",
   "foldAll": "全部折叠",
   "form_input_result": "用户完整输入结果",
   "form_input_result_tip": "一个包含完整结果的对象",
