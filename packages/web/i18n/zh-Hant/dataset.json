@@ -18,7 +18,7 @@
   "chunk_size": "分塊大小",
   "chunk_trigger": "分塊條件",
   "chunk_trigger_force_chunk": "強制分塊",
-  "chunk_trigger_max_size": "原文長度小於文件處理模型最大上下文 70%",
+  "chunk_trigger_max_size": "原文長度大於文件處理模型最大上下文70%",
   "chunk_trigger_min_size": "原文長度大於",
   "close_auto_sync": "確認關閉自動同步功能？",
   "collection.Create update time": "建立／更新時間",

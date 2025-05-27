@@ -19,7 +19,7 @@
   "chunk_size": "分块大小",
   "chunk_trigger": "分块条件",
   "chunk_trigger_force_chunk": "强制分块",
-  "chunk_trigger_max_size": "原文长度小于文件处理模型最大上下文70%",
+  "chunk_trigger_max_size": "原文长度大于文件处理模型最大上下文70%",
   "chunk_trigger_min_size": "原文长度大于",
   "chunk_trigger_tips": "当满足一定条件时才触发分块存储，否则会直接完整存储原文",
   "close_auto_sync": "确认关闭自动同步功能？",
