@@ -8,6 +8,7 @@ import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { Types } from 'common/mongo';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
   teamId,
@@ -74,6 +75,7 @@ export async function rewriteAppWorkflowToDetail({
         };
         node.versionLabel = preview.versionLabel;
         node.isLatestVersion = preview.isLatestVersion;
+        node.version = preview.version;
       } catch (error) {
         node.pluginData = {
           error: getErrText(error)
