@@ -1,6 +1,5 @@
 {
   "author": "",
-  "version": "4816",
   "name": "钉钉 webhook",
   "avatar": "plugins/dingding",
   "intro": "向钉钉机器人发起 webhook 请求。",

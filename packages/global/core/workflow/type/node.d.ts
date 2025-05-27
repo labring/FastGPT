@@ -53,14 +53,12 @@ export type FlowNodeCommonType = {
   pluginId?: string;
   isFolder?: boolean;
   pluginData?: PluginDataType;
-  associatedPluginId?: string;
 
   // tool data
   toolData?: NodeToolConfigType;
 };
 
 export type PluginDataType = {
-  version?: string;
   diagram?: string;
   userGuide?: string;
   courseUrl?: string;

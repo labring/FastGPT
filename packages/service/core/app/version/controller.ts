@@ -68,6 +68,9 @@ export const checkIsLatestVersion = async ({
   appId: string;
   versionId: string;
 }) => {
+  if (!Types.ObjectId.isValid(versionId)) {
+    return false;
+  }
   const version = await MongoAppVersion.findOne(
     {
       appId,

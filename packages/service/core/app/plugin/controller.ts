@@ -23,7 +23,6 @@ import { type PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
 import { MongoSystemPlugin } from './systemPluginSchema';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { Types } from 'mongoose';
-import { i18nT } from '../../../../web/i18n/utils';
 
 /* 
   plugin id rule:
@@ -31,8 +30,7 @@ import { i18nT } from '../../../../web/i18n/utils';
   community: community-id
   commercial: commercial-id
 */
-
-export async function splitCombinePluginId(id: string) {
+export function splitCombineToolId(id: string) {
   const splitRes = id.split('-');
   if (splitRes.length === 1) {
     // app id
@@ -43,7 +41,7 @@ export async function splitCombinePluginId(id: string) {
   }
 
   const [source, pluginId] = id.split('-') as [PluginSourceEnum, string];
-  if (!source || !pluginId) return Promise.reject('pluginId not found');
+  if (!source || !pluginId) throw new Error('pluginId not found');
 
   return { source, pluginId: id };
 }
@@ -78,13 +76,12 @@ const getSystemPluginTemplateById = async (
         })
       : await getAppLatestVersion(plugin.associatedPluginId, app);
     if (!version.versionId) return Promise.reject('App version not found');
-    const isLatest =
-      version.versionId && Types.ObjectId.isValid(version.versionId)
-        ? await checkIsLatestVersion({
-            appId: plugin.associatedPluginId,
-            versionId: version.versionId
-          })
-        : true;
+    const isLatest = version.versionId
+      ? await checkIsLatestVersion({
+          appId: plugin.associatedPluginId,
+          versionId: version.versionId
+        })
+      : true;
 
     return {
       ...plugin,
@@ -93,15 +90,19 @@ const getSystemPluginTemplateById = async (
         edges: version.edges,
         chatConfig: version.chatConfig
       },
-      version: versionId ? String(version.versionId) : '',
-      versionLabel: versionId ? version?.versionName : i18nT('app:keep_the_latest'),
+      version: versionId ? version?.versionId : '',
+      versionLabel: version?.versionName,
       isLatestVersion: isLatest,
       teamId: String(app.teamId),
       tmbId: String(app.tmbId)
     };
   }
 
-  return plugin;
+  return {
+    ...plugin,
+    version: undefined,
+    isLatestVersion: true
+  };
 };
 
 /* Format plugin to workflow preview node data */
@@ -113,7 +114,7 @@ export async function getChildAppPreviewNode({
   versionId?: string;
 }): Promise<FlowNodeTemplateType> {
   const app: ChildAppType = await (async () => {
-    const { source, pluginId } = await splitCombinePluginId(appId);
+    const { source, pluginId } = splitCombineToolId(appId);
 
     if (source === PluginSourceEnum.personal) {
       const item = await MongoApp.findById(appId).lean();
@@ -143,8 +144,8 @@ export async function getChildAppPreviewNode({
         },
         templateType: FlowNodeTemplateTypeEnum.teamApp,
 
-        version: versionId ? String(version.versionId) : '',
-        versionLabel: versionId ? version?.versionName : i18nT('app:keep_the_latest'),
+        version: versionId ? version?.versionId : '',
+        versionLabel: version?.versionName,
         isLatestVersion: isLatest,
 
         originCost: 0,
@@ -207,7 +208,6 @@ export async function getChildAppPreviewNode({
     version: app.version,
     versionLabel: app.versionLabel,
     isLatestVersion: app.isLatestVersion,
-    associatedPluginId: app.associatedPluginId,
 
     sourceHandle: isToolSet
       ? getHandleConfig(false, false, false, false)
@@ -228,8 +228,8 @@ export async function getChildAppRuntimeById(
   id: string,
   versionId?: string
 ): Promise<PluginRuntimeType> {
-  const app: ChildAppType = await (async () => {
-    const { source, pluginId } = await splitCombinePluginId(id);
+  const app = await (async () => {
+    const { source, pluginId } = splitCombineToolId(id);
 
     if (source === PluginSourceEnum.personal) {
       const item = await MongoApp.findById(id).lean();
@@ -256,8 +256,6 @@ export async function getChildAppRuntimeById(
         },
         templateType: FlowNodeTemplateTypeEnum.teamApp,
 
-        // 用不到
-        version: item?.pluginData?.nodeVersion,
         originCost: 0,
         currentCost: 0,
         hasTokenFee: false,

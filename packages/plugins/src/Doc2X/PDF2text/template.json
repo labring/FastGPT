@@ -1,6 +1,5 @@
 {
   "author": "Menghuan1918",
-  "version": "488",
   "name": "PDF识别",
   "avatar": "plugins/doc2x",
   "intro": "将PDF文件发送至Doc2X进行解析，返回结构化的LaTeX公式的文本(markdown)，支持传入String类型的URL或者流程输出中的文件链接变量",

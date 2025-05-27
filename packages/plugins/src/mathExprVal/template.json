@@ -1,6 +1,5 @@
 {
   "author": "",
-  "version": "486",
   "name": "数学公式执行",
   "avatar": "core/workflow/template/mathCall",
   "intro": "用于执行数学表达式的工具，通过 js 的 expr-eval 库运行表达式并返回结果。",

@@ -1,6 +1,5 @@
 {
   "author": "collin",
-  "version": "4817",
   "name": "流程等待",
   "avatar": "core/workflow/template/sleep",
   "intro": "让工作流等待指定时间后运行",

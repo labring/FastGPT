@@ -24,7 +24,7 @@ import { saveChat } from '@fastgpt/service/core/chat/saveChat';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import {
   getChildAppPreviewNode,
-  splitCombinePluginId
+  splitCombineToolId
 } from '@fastgpt/service/core/app/plugin/controller';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
@@ -136,47 +136,4 @@ export const getScheduleTriggerApp = async () => {
       }
     })
   );
-};
-
-export const checkNode = async ({
-  node,
-  ownerTmbId
-}: {
-  node: StoreNodeItemType;
-  ownerTmbId: string;
-}): Promise<StoreNodeItemType> => {
-  const pluginId = node.pluginId;
-  if (!pluginId) return node;
-
-  try {
-    const { source } = await splitCombinePluginId(pluginId);
-
-    if (source === PluginSourceEnum.personal) {
-      await authAppByTmbId({
-        tmbId: ownerTmbId,
-        appId: pluginId,
-        per: ReadPermissionVal
-      });
-    }
-
-    const preview = await getChildAppPreviewNode({ appId: pluginId });
-    return {
-      ...node,
-      pluginData: {
-        version: preview.version,
-        diagram: preview.diagram,
-        userGuide: preview.userGuide,
-        courseUrl: preview.courseUrl,
-        name: preview.name,
-        avatar: preview.avatar
-      }
-    };
-  } catch (error: any) {
-    return {
-      ...node,
-      pluginData: {
-        error: getErrText(error)
-      }
-    };
-  }
 };

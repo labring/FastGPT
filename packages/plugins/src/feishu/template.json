@@ -1,6 +1,5 @@
 {
   "author": "",
-  "version": "488",
   "name": "飞书 webhook",
   "avatar": "core/app/templates/plugin-feishu",
   "intro": "向飞书机器人发起 webhook 请求。",
