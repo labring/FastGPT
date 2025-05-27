@@ -53,6 +53,7 @@ export type FlowNodeCommonType = {
   pluginId?: string;
   isFolder?: boolean;
   pluginData?: PluginDataType;
+  associatedPluginId?: string;
 
   // tool data
   toolData?: NodeToolConfigType;

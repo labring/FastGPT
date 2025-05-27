@@ -9,6 +9,9 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import { MongoAppVersion } from './version/schema';
 import { checkIsLatestVersion } from './version/controller';
 import { Types } from '../../common/mongo';
+import { getSystemPluginTemplates } from '../../../plugins/register';
+import { getChildAppPreviewNode } from './plugin/controller';
+import { i18nT } from '../../../web/i18n/utils';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
   teamId,
@@ -41,42 +44,95 @@ export async function rewriteAppWorkflowToDetail({
 }) {
   const datasetIdSet = new Set<string>();
 
-  // Add node(App Type) versionlabel and latest sign
+  // Add node(App Type) version label and latest sign
   const appNodes = nodes.filter((node) => AppNodeFlowNodeTypeMap[node.flowNodeType]);
-  const versionIds = appNodes
-    .filter((node) => node.version && Types.ObjectId.isValid(node.version))
-    .map((node) => node.version);
-
-  if (versionIds.length > 0) {
-    const versionDataList = await MongoAppVersion.find(
-      {
-        _id: { $in: versionIds }
-      },
-      '_id versionName appId time'
-    ).lean();
-
-    const versionMap: Record<string, any> = {};
-
-    const isLatestChecks = await Promise.all(
-      versionDataList.map(async (version) => {
-        const isLatest = await checkIsLatestVersion({
-          appId: version.appId,
-          versionId: version._id
-        });
-
-        return { versionId: String(version._id), isLatest };
-      })
-    );
-    const isLatestMap = new Map(isLatestChecks.map((item) => [item.versionId, item.isLatest]));
-    versionDataList.forEach((version) => {
-      versionMap[String(version._id)] = version;
-    });
+  if (appNodes.length > 0) {
+    // Add associated plugin ID to app nodes
     appNodes.forEach((node) => {
-      if (!node.version) return;
-      const versionData = versionMap[String(node.version)];
-      if (versionData) {
-        node.versionLabel = versionData.versionName;
-        node.isLatestVersion = isLatestMap.get(String(node.version)) || false;
+      if (node.pluginId) {
+        const systemPlugin = getSystemPluginTemplates().find((item) => item.id === node.pluginId);
+        if (systemPlugin) {
+          node.associatedPluginId = systemPlugin.associatedPluginId;
+        }
+      }
+    });
+
+    const nodesWithVersion = appNodes.filter(
+      (node) => node.version && Types.ObjectId.isValid(node.version)
+    );
+    const versionIds = nodesWithVersion.map((node) => node.version);
+    const nodesWithEmptyVersion = appNodes.filter((node) => !node.version);
+
+    // Get version data
+    const versionDataMap: Record<string, any> = {};
+    if (versionIds.length > 0) {
+      const versionDataList = await MongoAppVersion.find(
+        { _id: { $in: versionIds } },
+        '_id versionName appId time'
+      ).lean();
+
+      await Promise.all(
+        versionDataList.map(async (version) => {
+          const isLatest = await checkIsLatestVersion({
+            appId: version.appId,
+            versionId: version._id
+          });
+
+          versionDataMap[String(version._id)] = {
+            versionData: version,
+            isLatest
+          };
+        })
+      );
+    }
+
+    // Get latest version data
+    const latestVersionDataMap: Record<string, any> = {};
+    if (nodesWithEmptyVersion.length > 0) {
+      const appIds = nodesWithEmptyVersion
+        .map((node) => node.associatedPluginId || node.pluginId || '')
+        .filter((appId) => appId !== '');
+
+      if (appIds.length > 0) {
+        const uniqueAppIds = [...new Set(appIds)];
+        const latestVersionDataResults = await Promise.all(
+          uniqueAppIds.map(async (appId) => {
+            try {
+              return {
+                appId,
+                versionData: await getChildAppPreviewNode({ appId })
+              };
+            } catch (error) {
+              console.error(`Failed to get latest version for appId ${appId}:`, error);
+              return { appId, versionData: null };
+            }
+          })
+        );
+
+        latestVersionDataResults.forEach(({ appId, versionData }) => {
+          if (versionData) latestVersionDataMap[appId] = versionData;
+        });
+      }
+    }
+
+    // Add version label and latest sign to nodes
+    appNodes.forEach((node) => {
+      if (!node.version) {
+        node.versionLabel = i18nT('app:keep_the_latest');
+        node.isLatestVersion = true;
+
+        const appId = node.associatedPluginId || node.pluginId;
+        const latestVersionData = appId ? latestVersionDataMap[appId] : null;
+        if (latestVersionData) {
+          node.inputs = latestVersionData.inputs;
+          node.outputs = latestVersionData.outputs;
+        }
+      } else {
+        const versionInfo = versionDataMap[String(node.version)];
+        if (versionInfo) {
+          node.versionLabel = versionInfo.versionData.versionName;
+          node.isLatestVersion = versionInfo.isLatest;
+        }
       }
     });
   }

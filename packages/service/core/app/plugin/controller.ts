@@ -23,6 +23,7 @@ import { type PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
 import { MongoSystemPlugin } from './systemPluginSchema';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { Types } from 'mongoose';
+import { i18nT } from '../../../../web/i18n/utils';
 
 /* 
   plugin id rule:
@@ -77,6 +78,13 @@ const getSystemPluginTemplateById = async (
         })
       : await getAppLatestVersion(plugin.associatedPluginId, app);
     if (!version.versionId) return Promise.reject('App version not found');
+    const isLatest =
+      version.versionId && Types.ObjectId.isValid(version.versionId)
+        ? await checkIsLatestVersion({
+            appId: plugin.associatedPluginId,
+            versionId: version.versionId
+          })
+        : true;
 
     return {
       ...plugin,
@@ -85,11 +93,14 @@ const getSystemPluginTemplateById = async (
         edges: version.edges,
         chatConfig: version.chatConfig
       },
-      version: versionId || String(version.versionId),
+      version: versionId ? String(version.versionId) : '',
+      versionLabel: versionId ? version?.versionName : i18nT('app:keep_the_latest'),
+      isLatestVersion: isLatest,
       teamId: String(app.teamId),
       tmbId: String(app.tmbId)
     };
   }
+
   return plugin;
 };
 
@@ -132,8 +143,8 @@ export async function getChildAppPreviewNode({
         },
         templateType: FlowNodeTemplateTypeEnum.teamApp,
 
-        version: version.versionId,
-        versionLabel: version?.versionName || '',
+        version: versionId ? String(version.versionId) : '',
+        versionLabel: versionId ? version?.versionName : i18nT('app:keep_the_latest'),
         isLatestVersion: isLatest,
 
         originCost: 0,
@@ -142,7 +153,7 @@ export async function getChildAppPreviewNode({
         pluginOrder: 0
       };
     } else {
-      return getSystemPluginTemplateById(pluginId);
+      return getSystemPluginTemplateById(pluginId, versionId);
     }
   })();
 
@@ -196,6 +207,7 @@ export async function getChildAppPreviewNode({
     version: app.version,
     versionLabel: app.versionLabel,
     isLatestVersion: app.isLatestVersion,
+    associatedPluginId: app.associatedPluginId,
 
     sourceHandle: isToolSet
       ? getHandleConfig(false, false, false, false)
