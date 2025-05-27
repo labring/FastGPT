@@ -658,7 +658,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
       ...(versionList.length > 0
         ? [
             {
-              label: t('app:stay_latest'),
+              label: t('app:keep_the_latest'),
               value: ''
             }
           ]

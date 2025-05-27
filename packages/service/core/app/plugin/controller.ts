@@ -94,7 +94,7 @@ const getSystemPluginTemplateById = async (
         chatConfig: version.chatConfig
       },
       version: versionId ? String(version.versionId) : '',
-      versionLabel: versionId ? version?.versionName : i18nT('app:stay_latest'),
+      versionLabel: versionId ? version?.versionName : i18nT('app:keep_the_latest'),
       isLatestVersion: isLatest,
       teamId: String(app.teamId),
       tmbId: String(app.tmbId)
@@ -144,7 +144,7 @@ export async function getChildAppPreviewNode({
         templateType: FlowNodeTemplateTypeEnum.teamApp,
 
         version: versionId ? String(version.versionId) : '',
-        versionLabel: versionId ? version?.versionName : i18nT('app:stay_latest'),
+        versionLabel: versionId ? version?.versionName : i18nT('app:keep_the_latest'),
         isLatestVersion: isLatest,
 
         originCost: 0,

@@ -85,6 +85,7 @@
   "interval.per_hour": "Every Hour",
   "intro": "A comprehensive model application orchestration system that offers out-of-the-box data processing and model invocation capabilities. It allows for rapid Dataset construction and workflow orchestration through Flow visualization, enabling complex Dataset scenarios!",
   "invalid_json_format": "JSON format error",
+  "keep_the_latest": "Keep the latest",
   "llm_not_support_vision": "This model does not support image recognition",
   "llm_use_vision": "Vision",
   "llm_use_vision_tip": "After clicking on the model selection, you can see whether the model supports image recognition and the ability to control whether to start image recognition. \nAfter starting image recognition, the model will read the image content in the file link, and if the user question is less than 500 words, it will automatically parse the image in the user question.",

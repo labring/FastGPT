@@ -118,7 +118,7 @@ export async function rewriteAppWorkflowToDetail({
     // Add version label and latest sign to nodes
     appNodes.forEach((node) => {
       if (!node.version) {
-        node.versionLabel = i18nT('app:stay_latest');
+        node.versionLabel = i18nT('app:keep_the_latest');
         node.isLatestVersion = true;
 
         const appId = node.associatedPluginId || node.pluginId;
