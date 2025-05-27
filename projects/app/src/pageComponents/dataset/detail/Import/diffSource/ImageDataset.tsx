@@ -18,7 +18,8 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { postGetFileToken } from '@/web/common/file/api';
-import { uploadImage2Dataset, createImageDatasetCollection } from '@/web/common/image/controller';
+import { uploadImage2Dataset } from '@/web/common/image/controller';
+import { createImageDatasetCollection } from '@/web/common/image/api';
 import { generateImagePreviewUrl } from '@/web/common/file/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
@@ -201,7 +202,6 @@ const SelectFile = React.memo(function SelectFile() {
       if (imageIds.length > 0) {
         const result = await createImageDatasetCollection({
           datasetId,
-          parentId,
           collectionName,
           imageIds,
           filesInfo

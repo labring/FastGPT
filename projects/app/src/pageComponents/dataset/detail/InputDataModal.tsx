@@ -817,7 +817,7 @@ const InputDataModal = ({
               // @ts-ignore
               onClick={handleSubmit(dataId ? onUpdateData : sureImportData)}
             >
-              {dataId ? t('common:common.Confirm Update') : t('comfirm_import')}
+              {dataId ? t('common:confirm_update') : t('comfirm_import')}
             </Button>
           </MyTooltip>
         </ModalFooter>

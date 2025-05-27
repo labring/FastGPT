@@ -1,7 +1,8 @@
 import {
   DatasetCollectionTypeEnum,
   DatasetCollectionDataProcessModeEnum,
-  DatasetTypeEnum
+  DatasetTypeEnum,
+  TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import type { CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { MongoDatasetCollection } from './schema';
@@ -12,7 +13,6 @@ import type {
 import { MongoDatasetTraining } from '../training/schema';
 import { MongoDatasetData } from '../data/schema';
 import { delImgByRelatedId } from '../../../common/file/image/controller';
-// import { deleteDatasetDataVector } from '../../../common/vectorStore/controller';
 import { deleteDatasetDataVector } from '../../../common/vectorDB/controller';
 import { delFileByFileIdList } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
@@ -48,7 +48,8 @@ export const createCollectionAndInsertData = async ({
   createCollectionParams,
   backupParse = false,
   billId,
-  session
+  session,
+  parentCollectionId
 }: {
   dataset: DatasetSchemaType;
   rawText: string;
@@ -58,6 +59,7 @@ export const createCollectionAndInsertData = async ({
 
   billId?: string;
   session?: ClientSession;
+  parentCollectionId?: string;
 }) => {
   // Adapter 4.9.0
   if (createCollectionParams.trainingType === DatasetCollectionDataProcessModeEnum.auto) {
@@ -120,30 +122,40 @@ export const createCollectionAndInsertData = async ({
   });
 
   const fn = async (session: ClientSession) => {
-    // 3. create collection
-    const { _id: collectionId } = await createOneCollection({
-      ...createCollectionParams,
-      trainingType,
-      paragraphChunkDeep,
-      chunkSize,
-      chunkSplitter,
+    let collectionId: string;
 
-      hashRawText: hashStr(rawText),
-      rawTextLength: rawText.length,
-      nextSyncTime: (() => {
-        // ignore auto collections sync for website datasets
-        if (!dataset.autoSync && dataset.type === DatasetTypeEnum.websiteDataset) return undefined;
-        if (
-          [DatasetCollectionTypeEnum.link, DatasetCollectionTypeEnum.apiFile].includes(
-            createCollectionParams.type
-          )
-        ) {
-          return addDays(new Date(), 1);
-        }
-        return undefined;
-      })(),
-      session
-    });
+    // 3. Create collection only if parentCollectionId is not provided
+    if (!parentCollectionId) {
+      // Create new collection
+      const { _id: newCollectionId } = await createOneCollection({
+        ...createCollectionParams,
+        trainingType,
+        paragraphChunkDeep,
+        chunkSize,
+        chunkSplitter,
+
+        hashRawText: hashStr(rawText),
+        rawTextLength: rawText.length,
+        nextSyncTime: (() => {
+          // ignore auto collections sync for website datasets
+          if (!dataset.autoSync && dataset.type === DatasetTypeEnum.websiteDataset)
+            return undefined;
+          if (
+            [DatasetCollectionTypeEnum.link, DatasetCollectionTypeEnum.apiFile].includes(
+              createCollectionParams.type
+            )
+          ) {
+            return addDays(new Date(), 1);
+          }
+          return undefined;
+        })(),
+        session
+      });
+      collectionId = String(newCollectionId);
+    } else {
+      // Use existing collection for subsequent images
+      collectionId = parentCollectionId;
+    }
 
     // 4. create training bill
     const traingBillId = await (async () => {
@@ -161,7 +173,26 @@ export const createCollectionAndInsertData = async ({
       return newBillId;
     })();
 
-    // 5. insert to training queue
+    // 5. Update the collectionId field in the image record (for image collections)
+    if (createCollectionParams.metadata?.isImageCollection && createCollectionParams.fileId) {
+      await MongoDatasetCollectionImage.updateOne(
+        {
+          _id: createCollectionParams.fileId,
+          teamId: teamId
+        },
+        {
+          $set: {
+            collectionId: collectionId
+          },
+          $unset: {
+            expiredTime: 1
+          }
+        },
+        { session }
+      );
+    }
+
+    // 6. insert to training queue
     const insertResults = await pushDataListToTrainingQueue({
       teamId,
       tmbId,
@@ -190,7 +221,7 @@ export const createCollectionAndInsertData = async ({
       session
     });
 
-    // 6. remove related image ttl
+    // 7. remove related image ttl
     if (relatedId) {
       await MongoImage.updateMany(
         {
@@ -381,5 +412,40 @@ export async function delCollection({
       },
       { session }
     );
+  });
+}
+
+export async function pushImageFileToTrainingQueue({
+  teamId,
+  tmbId,
+  datasetId,
+  collectionId,
+  imageFileId,
+  billId,
+  model
+}: {
+  teamId: string;
+  tmbId: string;
+  datasetId: string;
+  collectionId: string;
+  imageFileId: string;
+  billId?: string;
+  model?: string;
+}) {
+  const mongoose = require('mongoose');
+  const ObjectId = mongoose.Types.ObjectId;
+
+  await MongoDatasetTraining.create({
+    teamId: new ObjectId(teamId),
+    tmbId: new ObjectId(tmbId),
+    datasetId: new ObjectId(datasetId),
+    collectionId: new ObjectId(collectionId),
+    billId,
+    mode: TrainingModeEnum.imageParse,
+    model,
+    imageFileId,
+    retryCount: 5,
+    lockTime: new Date('2000/1/1'),
+    indexes: []
   });
 }

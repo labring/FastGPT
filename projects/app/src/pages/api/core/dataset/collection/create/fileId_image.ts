@@ -3,7 +3,7 @@ import { type FileIdCreateDatasetCollectionParams } from '@fastgpt/global/core/d
 import {
   createCollectionAndInsertData,
   pushImageFileToTrainingQueue
-} from '@fastgpt/service/core/dataset/collection/controller_imageFileId';
+} from '@fastgpt/service/core/dataset/collection/controller';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
@@ -15,14 +15,19 @@ import { hasAvailableVlmModel } from '@fastgpt/service/core/ai/model';
 import { t } from 'i18next';
 
 async function handler(
-  req: ApiRequestProps<FileIdCreateDatasetCollectionParams>
+  req: ApiRequestProps<
+    FileIdCreateDatasetCollectionParams & {
+      collectionName?: string;
+      metadata?: Record<string, any>;
+      fileIds?: string[];
+    }
+  >
 ): CreateCollectionResponse {
-  // Check if VLM model is available for image datasets
   if (!hasAvailableVlmModel()) {
     throw new Error(t('file:common.Image dataset requires VLM model to be configured'));
   }
 
-  const { fileId, customPdfParse, ...body } = req.body;
+  const { fileId, fileIds, customPdfParse, collectionName, metadata, ...body } = req.body;
 
   const { teamId, tmbId, dataset } = await authDataset({
     req,
@@ -32,66 +37,91 @@ async function handler(
     datasetId: body.datasetId
   });
 
-  // Get image info
-  const imageInfo = await getDatasetImage(fileId || '');
-  if (!imageInfo) {
-    throw new Error('Image not found');
+  const imageIds = fileIds && fileIds.length > 0 ? fileIds : [fileId];
+  if (!imageIds || imageIds.length === 0) {
+    throw new Error('No image IDs provided');
   }
 
-  // Verify image belongs to current dataset
-  if (String(imageInfo.datasetId) !== String(body.datasetId)) {
-    throw new Error('Image does not belong to current dataset');
-  }
+  let finalCollectionId = '';
+  const allResults = [];
 
-  const { collectionId, insertResults } = await createCollectionAndInsertData({
-    dataset,
-    rawText: '',
-    collectionId: body.parentId,
-    createCollectionParams: {
-      ...body,
+  for (let i = 0; i < imageIds.length; i++) {
+    const currentFileId = imageIds[i];
+
+    const imageInfo = await getDatasetImage(currentFileId || '');
+    if (!imageInfo) {
+      throw new Error(`Image not found: ${currentFileId}`);
+    }
+
+    if (String(imageInfo.datasetId) !== String(body.datasetId)) {
+      throw new Error(`Image does not belong to current dataset: ${currentFileId}`);
+    }
+
+    const finalCollectionName = i === 0 ? collectionName || imageInfo.name : imageInfo.name;
+    const finalMetadata = {
+      relatedImgId: currentFileId,
+      isImageCollection: true,
+      contentType: imageInfo.contentType,
+      fileSize: imageInfo.size,
+      ...(i === 0 ? metadata || {} : {})
+    };
+
+    const { collectionId, insertResults } = await createCollectionAndInsertData({
+      dataset,
+      rawText: '',
+      parentCollectionId: i === 0 ? body.parentId : finalCollectionId,
+      createCollectionParams: {
+        ...body,
+        teamId,
+        tmbId,
+        type: DatasetCollectionTypeEnum.file,
+        name: finalCollectionName,
+        fileId: currentFileId,
+        metadata: finalMetadata,
+        customPdfParse
+      },
+      relatedId: currentFileId
+    });
+
+    if (i === 0) {
+      finalCollectionId = collectionId;
+    }
+
+    await MongoDatasetCollectionImage.updateOne(
+      {
+        _id: currentFileId,
+        teamId: teamId
+      },
+      {
+        $unset: {
+          expiredTime: 1
+        }
+      }
+    );
+
+    await pushImageFileToTrainingQueue({
       teamId,
       tmbId,
-      type: DatasetCollectionTypeEnum.file,
-      name: imageInfo.name,
-      fileId,
-      metadata: {
-        relatedImgId: fileId,
-        isImageCollection: true,
-        contentType: imageInfo.contentType,
-        fileSize: imageInfo.size
-      },
-      customPdfParse
-    },
-    relatedId: fileId
-  });
+      datasetId: dataset._id,
+      collectionId: finalCollectionId,
+      imageFileId: currentFileId || '',
+      billId: undefined,
+      model: dataset.vlmModel
+    });
 
-  // Remove image TTL to prevent expiration during training
-  await MongoDatasetCollectionImage.updateOne(
-    {
-      _id: fileId,
-      teamId: teamId
-    },
-    {
-      $unset: {
-        expiredTime: 1
-      }
-    }
-  );
-
-  // Push image training task
-  await pushImageFileToTrainingQueue({
-    teamId,
-    tmbId,
-    datasetId: dataset._id,
-    collectionId: collectionId || '',
-    imageFileId: fileId || '',
-    billId: undefined,
-    model: dataset.vlmModel
-  });
+    allResults.push(insertResults);
+  }
 
   return {
-    collectionId: collectionId || '',
-    results: insertResults
+    collectionId: finalCollectionId,
+    results: {
+      insertLen: allResults.reduce((sum, result) => sum + result.insertLen, 0),
+      message:
+        allResults
+          .map((result) => result.message)
+          .filter(Boolean)
+          .join('; ') || undefined
+    }
   };
 }
 
