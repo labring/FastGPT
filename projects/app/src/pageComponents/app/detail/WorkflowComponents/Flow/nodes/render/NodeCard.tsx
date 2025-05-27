@@ -106,7 +106,7 @@ const NodeCard = (props: Props) => {
   const showVersion = useMemo(() => {
     if (!isAppNode || !node?.pluginId) return false;
     if ([FlowNodeTypeEnum.tool, FlowNodeTypeEnum.toolSet].includes(node.flowNodeType)) return false;
-    if (node.pluginId.split('-').length > 1) {
+    if (node.pluginId.split('-').length > 1 && !node.associatedPluginId) {
       return false;
     }
     return true;
@@ -620,7 +620,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
   const { ScrollData, data: versionList } = useScrollPagination(getAppVersionList, {
     pageSize: 20,
     params: {
-      appId: node.pluginId,
+      appId: node.associatedPluginId || node.pluginId,
       isPublish: true
     },
     refreshDeps: [node.pluginId, isOpen],
@@ -654,17 +654,26 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
   );
 
   const renderList = useCreation(
-    () =>
-      versionList.map((item) => ({
+    () => [
+      ...(versionList.length > 0
+        ? [
+            {
+              label: t('app:stay_latest'),
+              value: ''
+            }
+          ]
+        : []),
+      ...versionList.map((item) => ({
         label: item.versionName,
         value: item._id
-      })),
+      }))
+    ],
     [node.isLatestVersion, node.version, t, versionList]
   );
   const valueLabel = useMemo(() => {
     return (
       <Flex alignItems={'center'} gap={0.5}>
-        {node?.versionLabel}
+        {t(node?.versionLabel as any)}
         {!node.isLatestVersion && (
           <MyTag type="fill" colorSchema={'adora'} fontSize={'mini'} borderRadius={'lg'}>
             {t('app:not_the_newest')}
