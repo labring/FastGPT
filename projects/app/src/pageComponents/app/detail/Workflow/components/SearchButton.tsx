@@ -1,10 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Box, Flex, Button, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowNodeEdgeContext } from '../../WorkflowComponents/context/workflowInitContext';
 import { useReactFlow } from 'reactflow';
-import { useDebounceEffect, useKeyPress } from 'ahooks';
+import { useKeyPress } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -16,7 +16,7 @@ const SearchButton = () => {
   const { fitView } = useReactFlow();
 
   const [keyword, setKeyword] = useState<string | null>(null);
-  const [searchIndex, setSearchIndex] = useState(0);
+  const [searchIndex, setSearchIndex] = useState<number | null>(null);
   const [searchedNodeCount, setSearchedNodeCount] = useState(0);
 
   const isMac =
@@ -28,34 +28,47 @@ const SearchButton = () => {
     setKeyword('');
   });
 
-  useDebounceEffect(
-    () => {
-      if (!keyword) return;
+  useEffect(() => {
+    setNodes((nodes) => {
+      if (!keyword) {
+        setSearchIndex(null);
+        setSearchedNodeCount(0);
+        return nodes.map((node) => ({
+          ...node,
+          data: {
+            ...node.data,
+            searched: false
+          }
+        }));
+      }
 
-      setNodes((nodes) => {
-        const searchResult = nodes.filter((node) => {
-          const nodeName = t(node.data.name as any);
-          return nodeName.toLowerCase().includes(keyword.toLowerCase());
-        });
+      const searchResult = nodes.filter((node) => {
+        const nodeName = t(node.data.name as any);
+        return nodeName.toLowerCase().includes(keyword.toLowerCase());
+      });
 
-        setSearchedNodeCount(searchResult.length);
+      setSearchedNodeCount(searchResult.length);
 
+      let searchedNode = null;
+      if (searchIndex !== null) {
         if (searchResult.length === 0 || searchIndex >= searchResult.length) {
           return nodes;
         }
 
-        const searchedNode = searchResult[searchIndex];
+        searchedNode = searchResult[searchIndex];
         fitView({ nodes: [searchedNode] });
+      }
 
-        return nodes.map((node) => ({
-          ...node,
-          selected: node.id === searchedNode.id
-        }));
-      });
-    },
-    [keyword, searchIndex],
-    { wait: 500 }
-  );
+      return nodes.map((node) => ({
+        ...node,
+        selected: node.id === searchedNode?.id,
+        data: {
+          ...node.data,
+          searched: searchResult.map((item) => item.id).includes(node.id)
+        }
+      }));
+    });
+  }, [fitView, keyword, searchIndex, setNodes, t]);
 
   const clearSearch = useCallback(() => {
     setKeyword(null);
@@ -66,15 +79,21 @@ const SearchButton = () => {
   const goToNextMatch = useCallback(() => {
     if (searchIndex === searchedNodeCount - 1) {
       setSearchIndex(0);
+    } else if (searchIndex !== null) {
+      setSearchIndex(searchIndex + 1);
     } else {
-      setSearchIndex((prev) => prev + 1);
+      setSearchIndex(0);
     }
   }, [searchIndex, searchedNodeCount]);
 
   const goToPreviousMatch = useCallback(() => {
     if (searchIndex === 0) return;
-    setSearchIndex((prev) => prev - 1);
-  }, [searchIndex]);
+    if (searchIndex !== null) {
+      setSearchIndex(searchIndex - 1);
+    } else {
+      setSearchIndex(searchedNodeCount - 1);
+    }
+  }, [searchIndex, searchedNodeCount]);
 
   if (keyword === null) {
     return (
@@ -146,7 +165,7 @@ const SearchButton = () => {
               {searchedNodeCount > 0 ? (
                 <Flex alignItems="center" w="full" justifyContent="space-between">
                   <Box fontSize="12px" color="myGray.600">
-                    {`${searchIndex + 1} / ${searchedNodeCount}`}
+                    {`${searchIndex !== null ? searchIndex + 1 : '?'} / ${searchedNodeCount}`}
                   </Box>
                   <Flex>
                     <Button

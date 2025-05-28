@@ -126,6 +126,7 @@ export type FlowNodeItemType = FlowNodeTemplateType & {
   nodeId: string;
   parentNodeId?: string;
   isError?: boolean;
+  searched?: boolean;
   debugResult?: {
     status: 'running' | 'success' | 'skipped' | 'failed';
     message?: string;
