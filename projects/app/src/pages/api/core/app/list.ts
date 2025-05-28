@@ -138,8 +138,8 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
   })();
   const limit = (() => {
     if (getRecentlyChat) return 15;
-    if (searchKey) return 20;
-    return 1000;
+    if (searchKey) return 50;
+    return 10000;
   })();
 
   const myApps = await MongoApp.find(
