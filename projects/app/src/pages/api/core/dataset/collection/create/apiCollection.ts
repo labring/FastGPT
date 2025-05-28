@@ -27,6 +27,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
   const feishuShareServer = dataset.feishuShareServer;
   const yuqueServer = dataset.yuqueServer;
   const feishuKnowledgeServer = dataset.feishuKnowledgeServer;
+  const feishuPrivateServer = dataset.feishuPrivateServer;
 
   // Auth same apiFileId
   const storeCol = await MongoDatasetCollection.findOne(
@@ -47,6 +48,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
     feishuShareServer,
     feishuKnowledgeServer,
     yuqueServer,
+    feishuPrivateServer,
     apiFileId,
     teamId,
     tmbId,

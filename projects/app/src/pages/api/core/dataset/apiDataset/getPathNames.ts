@@ -6,7 +6,8 @@ import type {
   YuqueServer,
   FeishuShareServer,
   ApiDatasetDetailResponse,
-  FeishuKnowledgeServer
+  FeishuKnowledgeServer,
+  FeishuPrivateServer
 } from '@fastgpt/global/core/dataset/apiDataset';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
@@ -23,6 +24,7 @@ export type GetApiDatasetPathBody = {
   feishuShareServer?: FeishuShareServer;
   apiServer?: APIFileServer;
   feishuKnowledgeServer?: FeishuKnowledgeServer;
+  feishuPrivateServer?: FeishuPrivateServer;
 };
 
 export type GetApiDatasetPathResponse = string;
@@ -52,49 +54,60 @@ async function handler(
   const { datasetId, parentId } = req.body;
   if (!parentId) return '';
 
-  const { yuqueServer, feishuShareServer, apiServer, feishuKnowledgeServer } = await (async () => {
-    if (datasetId) {
-      const { dataset } = await authDataset({
-        req,
-        authToken: true,
-        authApiKey: true,
-        per: ManagePermissionVal,
-        datasetId
-      });
+  const { yuqueServer, feishuShareServer, apiServer, feishuKnowledgeServer, feishuPrivateServer } =
+    await (async () => {
+      if (datasetId) {
+        const { dataset } = await authDataset({
+          req,
+          authToken: true,
+          authApiKey: true,
+          per: ManagePermissionVal,
+          datasetId
+        });
 
-      return {
-        yuqueServer: req.body.yuqueServer
-          ? { ...req.body.yuqueServer, token: dataset.yuqueServer?.token ?? '' }
-          : dataset.yuqueServer,
-        feishuShareServer: req.body.feishuShareServer
-          ? { ...req.body.feishuShareServer, appSecret: dataset.feishuShareServer?.appSecret ?? '' }
-          : dataset.feishuShareServer,
-        apiServer: req.body.apiServer
-          ? {
-              ...req.body.apiServer,
-              authorization: dataset.apiServer?.authorization ?? ''
-            }
-          : dataset.apiServer,
-        feishuKnowledgeServer: req.body.feishuKnowledgeServer
-          ? {
-              ...req.body.feishuKnowledgeServer,
-              appSecret: dataset.feishuKnowledgeServer?.appSecret ?? ''
-            }
-          : dataset.feishuKnowledgeServer
-      };
-    } else {
-      await authCert({ req, authToken: true });
+        return {
+          yuqueServer: req.body.yuqueServer
+            ? { ...req.body.yuqueServer, token: dataset.yuqueServer?.token ?? '' }
+            : dataset.yuqueServer,
+          feishuShareServer: req.body.feishuShareServer
+            ? {
+                ...req.body.feishuShareServer,
+                appSecret: dataset.feishuShareServer?.appSecret ?? ''
+              }
+            : dataset.feishuShareServer,
+          apiServer: req.body.apiServer
+            ? {
+                ...req.body.apiServer,
+                authorization: dataset.apiServer?.authorization ?? ''
+              }
+            : dataset.apiServer,
+          feishuKnowledgeServer: req.body.feishuKnowledgeServer
+            ? {
+                ...req.body.feishuKnowledgeServer,
+                appSecret: dataset.feishuKnowledgeServer?.appSecret ?? ''
+              }
+            : dataset.feishuKnowledgeServer,
+          feishuPrivateServer: req.body.feishuPrivateServer
+            ? {
+                ...req.body.feishuPrivateServer,
+                user_access_token: dataset.feishuPrivateServer?.user_access_token ?? ''
+              }
+            : dataset.feishuPrivateServer
+        };
+      } else {
+        await authCert({ req, authToken: true });
 
-      return {
-        yuqueServer: req.body.yuqueServer,
-        feishuShareServer: req.body.feishuShareServer,
-        apiServer: req.body.apiServer,
-        feishuKnowledgeServer: req.body.feishuKnowledgeServer
-      };
-    }
-  })();
+        return {
+          yuqueServer: req.body.yuqueServer,
+          feishuShareServer: req.body.feishuShareServer,
+          apiServer: req.body.apiServer,
+          feishuKnowledgeServer: req.body.feishuKnowledgeServer,
+          feishuPrivateServer: req.body.feishuPrivateServer
+        };
+      }
+    })();
 
-  if (feishuShareServer) {
+  if (feishuShareServer || feishuPrivateServer) {
     return '';
   }
 

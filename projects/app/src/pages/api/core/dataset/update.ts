@@ -70,6 +70,7 @@ async function handler(
     yuqueServer,
     feishuShareServer,
     feishuKnowledgeServer,
+    feishuPrivateServer,
     autoSync,
     chunkSettings
   } = req.body;
@@ -192,6 +193,9 @@ async function handler(
         }),
         ...(!!feishuKnowledgeServer?.basePath !== undefined && {
           'feishuKnowledgeServer.basePath': feishuKnowledgeServer?.basePath
+        }),
+        ...(!!feishuPrivateServer?.basePath !== undefined && {
+          'feishuPrivateServer.basePath': feishuPrivateServer?.basePath
         }),
         ...(isMove && { inheritPermission: true }),
         ...(typeof autoSync === 'boolean' && { autoSync })

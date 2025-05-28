@@ -1,5 +1,5 @@
 import type { ApiDatasetDetailResponse } from '@fastgpt/global/core/dataset/apiDataset';
-import { FeishuServer, YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
+import { FeishuShareServer, YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
 import type {
   DeepRagSearchProps,
   SearchDatasetDataResponse

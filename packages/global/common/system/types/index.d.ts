@@ -73,6 +73,9 @@ export type FastGPTFeConfigsType = {
   show_dataset_enhance?: boolean;
   show_batch_eval?: boolean;
 
+  feishu_auth_robot_client_id?: string;
+  feishu_auth_robot_client_secret?: string;
+
   concatMd?: string;
   docUrl?: string;
   openAPIDocUrl?: string;

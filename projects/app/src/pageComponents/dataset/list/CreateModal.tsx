@@ -28,6 +28,7 @@ export type CreateDatasetType =
   | DatasetTypeEnum.websiteDataset
   | DatasetTypeEnum.feishuShare
   | DatasetTypeEnum.feishuKnowledge
+  | DatasetTypeEnum.feishuPrivate
   | DatasetTypeEnum.yuque;
 
 const CreateModal = ({
@@ -65,6 +66,10 @@ const CreateModal = ({
       [DatasetTypeEnum.feishuKnowledge]: {
         name: t('dataset:feishu_knowledge_dataset'),
         icon: 'core/dataset/feishuKnowledgeDatasetColor'
+      },
+      [DatasetTypeEnum.feishuPrivate]: {
+        name: t('dataset:feishu_private_dataset'),
+        icon: 'core/dataset/feishuPrivateDatasetColor'
       },
       [DatasetTypeEnum.yuque]: {
         name: t('dataset:yuque_dataset'),

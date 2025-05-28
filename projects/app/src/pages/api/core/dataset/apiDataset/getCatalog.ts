@@ -6,7 +6,8 @@ import type {
   APIFileServer,
   YuqueServer,
   FeishuShareServer,
-  FeishuKnowledgeServer
+  FeishuKnowledgeServer,
+  FeishuPrivateServer
 } from '@fastgpt/global/core/dataset/apiDataset';
 import { type NextApiRequest } from 'next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
@@ -16,6 +17,7 @@ export type GetApiDatasetCataLogProps = {
   yuqueServer?: YuqueServer;
   feishuShareServer?: FeishuShareServer;
   feishuKnowledgeServer?: FeishuKnowledgeServer;
+  feishuPrivateServer?: FeishuPrivateServer;
   apiServer?: APIFileServer;
 };
 
@@ -28,7 +30,8 @@ async function handler(req: NextApiRequest) {
     yuqueServer,
     feishuShareServer,
     apiServer,
-    feishuKnowledgeServer
+    feishuKnowledgeServer,
+    feishuPrivateServer
   } = req.body;
 
   await authCert({ req, authToken: true });
@@ -38,7 +41,8 @@ async function handler(req: NextApiRequest) {
       feishuShareServer,
       yuqueServer,
       apiServer,
-      feishuKnowledgeServer
+      feishuKnowledgeServer,
+      feishuPrivateServer
     })
   ).listFiles({ parentId, searchKey });
 

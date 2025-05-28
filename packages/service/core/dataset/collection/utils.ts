@@ -162,6 +162,7 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
       apiServer: dataset.apiServer,
       feishuShareServer: dataset.feishuShareServer,
       feishuKnowledgeServer: dataset.feishuKnowledgeServer,
+      feishuPrivateServer: dataset.feishuPrivateServer,
       yuqueServer: dataset.yuqueServer
     };
   })();

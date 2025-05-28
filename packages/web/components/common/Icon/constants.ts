@@ -219,6 +219,10 @@ export const iconPaths = {
     import('./icons/core/dataset/feishuShareDatasetColor.svg'),
   'core/dataset/feishuKnowledgeDatasetColor': () =>
     import('./icons/core/dataset/feishuKnowledgeDatasetColor.svg'),
+  'core/dataset/feishuPrivateDatasetColor': () =>
+    import('./icons/core/dataset/feishuPrivateDatasetColor.svg'),
+  'core/dataset/feishuPrivateDatasetOutline': () =>
+    import('./icons/core/dataset/feishuPrivateDatasetOutline.svg'),
   'core/dataset/feishuKnowledgeDatasetOutline': () =>
     import('./icons/core/dataset/feishuKnowledgeDatasetOutline.svg'),
   'core/dataset/feishuShareDatasetOutline': () =>

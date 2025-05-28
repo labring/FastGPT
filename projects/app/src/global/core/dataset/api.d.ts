@@ -5,6 +5,7 @@ import type {
 import type {
   APIFileServer,
   FeishuShareServer,
+  FeishuPrivateServer,
   YuqueServer,
   FeishuKnowledgeServer
 } from '@fastgpt/global/core/dataset/apiDataset';
@@ -36,6 +37,7 @@ export type CreateDatasetParams = {
   feishuShareServer?: FeishuShareServer;
   yuqueServer?: YuqueServer;
   feishuKnowledgeServer?: FeishuKnowledgeServer;
+  feishuPrivateServer?: FeishuPrivateServer;
 };
 
 export type RebuildEmbeddingProps = {

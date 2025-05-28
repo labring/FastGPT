@@ -17,7 +17,8 @@ import type {
   APIFileServer,
   FeishuShareServer,
   YuqueServer,
-  FeishuKnowledgeServer
+  FeishuKnowledgeServer,
+  FeishuPrivateServer
 } from './apiDataset';
 import type { SourceMemberType } from 'support/user/type';
 import type { DatasetDataIndexTypeEnum } from './data/constants';
@@ -81,6 +82,7 @@ export type DatasetSchemaType = {
   feishuShareServer?: FeishuShareServer;
   yuqueServer?: YuqueServer;
   feishuKnowledgeServer?: FeishuKnowledgeServer;
+  feishuPrivateServer?: FeishuPrivateServer;
 
   // abandon
   autoSync?: boolean;
