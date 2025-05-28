@@ -175,5 +175,4 @@ export const clearExpiredRawTextBufferCron = async () => {
       }
     }
   });
-  clearExpiredRawTextBuffer();
 };
