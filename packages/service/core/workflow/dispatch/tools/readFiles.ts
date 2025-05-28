@@ -5,8 +5,6 @@ import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import axios from 'axios';
 import { serverRequestBaseUrl } from '../../../../common/api/serverRequest';
-import { MongoRawTextBuffer } from '../../../../common/buffer/rawText/schema';
-import { readFromSecondary } from '../../../../common/mongo/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { detectFileEncoding, parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { readRawContentByFileBuffer } from '../../../../common/file/read/utils';
@@ -14,6 +12,8 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { addLog } from '../../../../common/system/log';
+import { addRawTextBuffer, getRawTextBuffer } from '../../../../common/buffer/rawText/controller';
+import { addMinutes } from 'date-fns';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
@@ -158,14 +158,12 @@ export const getFileContentFromLinks = async ({
     parseUrlList
       .map(async (url) => {
         // Get from buffer
-        const fileBuffer = await MongoRawTextBuffer.findOne({ sourceId: url }, undefined, {
-          ...readFromSecondary
-        }).lean();
+        const fileBuffer = await getRawTextBuffer(url);
         if (fileBuffer) {
           return formatResponseObject({
-            filename: fileBuffer.metadata?.filename || url,
+            filename: fileBuffer.sourceName || url,
             url,
-            content: fileBuffer.rawText
+            content: fileBuffer.text
           });
         }
 
@@ -220,17 +218,12 @@ export const getFileContentFromLinks = async ({
           });
 
           // Add to buffer
-          try {
-            if (buffer.length < 14 * 1024 * 1024 && rawText.trim()) {
-              MongoRawTextBuffer.create({
-                sourceId: url,
-                rawText,
-                metadata: {
-                  filename: filename
-                }
-              });
-            }
-          } catch (error) {}
+          addRawTextBuffer({
+            sourceId: url,
+            sourceName: filename,
+            text: rawText,
+            expiredTime: addMinutes(new Date(), 20)
+          });
 
           return formatResponseObject({ filename, url, content: rawText });
         } catch (error) {
