@@ -143,9 +143,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         })
       }
     ];
-    if (interactiveResponse) {
-      return value.slice(0, -2);
-    }
     return value;
   })();
 
