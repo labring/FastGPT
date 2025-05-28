@@ -73,6 +73,14 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
           basePath: dataset.feishuKnowledgeServer.basePath
         }
       : undefined,
+    feishuPrivateServer: dataset.feishuPrivateServer
+      ? {
+          user_access_token: dataset.feishuPrivateServer.user_access_token,
+          refresh_token: dataset.feishuPrivateServer.refresh_token,
+          outdate_time: dataset.feishuPrivateServer.outdate_time,
+          basePath: dataset.feishuPrivateServer.basePath
+        }
+      : undefined,
     permission,
     vectorModel: getEmbeddingModel(dataset.vectorModel),
     agentModel: getLLMModel(dataset.agentModel),

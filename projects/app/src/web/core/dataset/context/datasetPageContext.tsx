@@ -130,7 +130,15 @@ export const DatasetPageContextProvider = ({
               appSecret: '',
               basePath: data.feishuKnowledgeServer.basePath
             }
-          : state.feishuKnowledgeServer
+          : state.feishuKnowledgeServer,
+        feishuPrivateServer: data.feishuPrivateServer
+          ? {
+              user_access_token: data.feishuPrivateServer.user_access_token,
+              refresh_token: data.feishuPrivateServer.refresh_token,
+              outdate_time: data.feishuPrivateServer.outdate_time,
+              basePath: data.feishuPrivateServer.basePath
+            }
+          : state.feishuPrivateServer
       }));
     }
   };

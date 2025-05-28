@@ -28,6 +28,7 @@ export type DatasetUpdateBody = {
   yuqueServer?: DatasetSchemaType['yuqueServer'];
   feishuShareServer?: DatasetSchemaType['feishuShareServer'];
   feishuKnowledgeServer?: DatasetSchemaType['feishuKnowledgeServer'];
+  feishuPrivateServer?: DatasetSchemaType['feishuPrivateServer'];
   chunkSettings?: DatasetSchemaType['chunkSettings'];
 
   // sync schedule

@@ -394,6 +394,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             </Box>
           </>
         )}
+
+        {datasetDetail.type === DatasetTypeEnum.feishuPrivate && <></>}
       </Box>
 
       {datasetDetail.permission.hasManagePer && (
@@ -462,7 +464,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               apiServer: data.apiServer,
               yuqueServer: data.yuqueServer,
               feishuShareServer: data.feishuShareServer,
-              feishuKnowledgeServer: data.feishuKnowledgeServer
+              feishuKnowledgeServer: data.feishuKnowledgeServer,
+              feishuPrivateServer: data.feishuPrivateServer
             })
           }
         />

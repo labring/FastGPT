@@ -27,13 +27,15 @@ async function handler(req: NextApiRequest) {
   const feishuShareServer = dataset.feishuShareServer;
   const yuqueServer = dataset.yuqueServer;
   const feishuKnowledgeServer = dataset.feishuKnowledgeServer;
+  const feishuPrivateServer = dataset.feishuPrivateServer;
 
   return (
     await getApiDatasetRequest({
       apiServer,
       yuqueServer,
       feishuShareServer,
-      feishuKnowledgeServer
+      feishuKnowledgeServer,
+      feishuPrivateServer
     })
   ).listFiles({ searchKey, parentId });
 }

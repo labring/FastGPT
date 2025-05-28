@@ -292,3 +292,6 @@ export const getApiDatasetCatalog = (data: GetApiDatasetCataLogProps) =>
 
 export const getApiDatasetPaths = (data: GetApiDatasetPathBody) =>
   POST<GetApiDatasetPathResponse>('/core/dataset/apiDataset/getPathNames', data);
+
+export const getUserAccessToken = (data: { code: string; datasetId: string }) =>
+  POST<string>('/core/dataset/feishu/getUserAccessToken', data);

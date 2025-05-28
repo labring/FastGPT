@@ -9,6 +9,7 @@ export enum DatasetTypeEnum {
   apiDataset = 'apiDataset',
   feishuShare = 'feishuShare',
   feishuKnowledge = 'feishuKnowledge',
+  feishuPrivate = 'feishuPrivate',
   yuque = 'yuque'
 }
 export const DatasetTypeMap = {
@@ -45,6 +46,11 @@ export const DatasetTypeMap = {
   [DatasetTypeEnum.feishuKnowledge]: {
     icon: 'core/dataset/feishuKnowledgeDatasetOutline',
     label: i18nT('dataset:feishu_knowledge_dataset'),
+    collectionLabel: i18nT('common:File')
+  },
+  [DatasetTypeEnum.feishuPrivate]: {
+    icon: 'core/dataset/feishuPrivateDatasetOutline',
+    label: i18nT('dataset:feishu_private_dataset'),
     collectionLabel: i18nT('common:File')
   },
   [DatasetTypeEnum.yuque]: {

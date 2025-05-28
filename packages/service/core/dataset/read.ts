@@ -13,7 +13,8 @@ import {
   type APIFileServer,
   type FeishuShareServer,
   type YuqueServer,
-  type FeishuKnowledgeServer
+  type FeishuKnowledgeServer,
+  type FeishuPrivateServer
 } from '@fastgpt/global/core/dataset/apiDataset';
 import { getApiDatasetRequest } from './apiDataset';
 import Papa from 'papaparse';
@@ -74,6 +75,7 @@ export const readDatasetSourceRawText = async ({
   feishuShareServer,
   yuqueServer,
   feishuKnowledgeServer,
+  feishuPrivateServer,
   customPdfParse,
   getFormatText
 }: {
@@ -89,6 +91,7 @@ export const readDatasetSourceRawText = async ({
   apiServer?: APIFileServer; // api dataset
   feishuShareServer?: FeishuShareServer; // feishu dataset
   feishuKnowledgeServer?: FeishuKnowledgeServer; // feishu dataset
+  feishuPrivateServer?: FeishuPrivateServer; // feishu dataset
   yuqueServer?: YuqueServer; // yuque dataset
 }): Promise<{
   title?: string;
@@ -135,6 +138,7 @@ export const readDatasetSourceRawText = async ({
       feishuShareServer,
       yuqueServer,
       feishuKnowledgeServer,
+      feishuPrivateServer,
       apiFileId: sourceId,
       teamId,
       tmbId
@@ -155,6 +159,7 @@ export const readApiServerFileContent = async ({
   feishuShareServer,
   yuqueServer,
   feishuKnowledgeServer,
+  feishuPrivateServer,
   apiFileId,
   teamId,
   tmbId,
@@ -164,6 +169,7 @@ export const readApiServerFileContent = async ({
   feishuShareServer?: FeishuShareServer;
   yuqueServer?: YuqueServer;
   feishuKnowledgeServer?: FeishuKnowledgeServer;
+  feishuPrivateServer?: FeishuPrivateServer;
   apiFileId: string;
   teamId: string;
   tmbId: string;
@@ -177,7 +183,8 @@ export const readApiServerFileContent = async ({
       apiServer,
       yuqueServer,
       feishuShareServer,
-      feishuKnowledgeServer
+      feishuKnowledgeServer,
+      feishuPrivateServer
     })
   ).getFileContent({
     teamId,

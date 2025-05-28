@@ -131,6 +131,7 @@ const DatasetSchema = new Schema({
   feishuShareServer: Object,
   yuqueServer: Object,
   feishuKnowledgeServer: Object,
+  feishuPrivateServer: Object,
 
   // abandoned
   autoSync: Boolean,

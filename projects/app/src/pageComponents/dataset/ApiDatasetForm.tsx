@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { Flex, Input, Button, ModalBody, ModalFooter, Box } from '@chakra-ui/react';
 import type { UseFormReturn } from 'react-hook-form';
@@ -7,6 +7,7 @@ import type {
   APIFileServer,
   FeishuShareServer,
   FeishuKnowledgeServer,
+  FeishuPrivateServer,
   YuqueServer
 } from '@fastgpt/global/core/dataset/apiDataset';
 import { getApiDatasetPaths, getApiDatasetCatalog } from '@/web/core/dataset/api';
@@ -36,6 +37,7 @@ const ApiDatasetForm = ({
       apiServer?: APIFileServer;
       feishuShareServer?: FeishuShareServer;
       feishuKnowledgeServer?: FeishuKnowledgeServer;
+      feishuPrivateServer?: FeishuPrivateServer;
       yuqueServer?: YuqueServer;
     },
     any
@@ -48,6 +50,7 @@ const ApiDatasetForm = ({
   const feishuShareServer = watch('feishuShareServer');
   const apiServer = watch('apiServer');
   const feishuKnowledgeServer = watch('feishuKnowledgeServer');
+  const feishuPrivateServer = watch('feishuPrivateServer');
 
   const [pathNames, setPathNames] = useState(t('dataset:rootdirectory'));
   const [
@@ -55,7 +58,11 @@ const ApiDatasetForm = ({
     { setTrue: openBaseurlSeletModal, setFalse: closeBaseurlSelectModal }
   ] = useBoolean();
 
-  const parentId = yuqueServer?.basePath || apiServer?.basePath || feishuKnowledgeServer?.basePath;
+  const parentId =
+    yuqueServer?.basePath ||
+    apiServer?.basePath ||
+    feishuKnowledgeServer?.basePath ||
+    feishuPrivateServer?.basePath;
 
   const canSelectBaseUrl = useMemo(() => {
     switch (type) {
@@ -67,6 +74,8 @@ const ApiDatasetForm = ({
         return feishuKnowledgeServer?.appId && feishuKnowledgeServer?.appSecret;
       case DatasetTypeEnum.apiDataset:
         return !!apiServer?.baseUrl;
+      case DatasetTypeEnum.feishuPrivate:
+        return feishuPrivateServer?.user_access_token;
       default:
         return false;
     }
@@ -78,7 +87,8 @@ const ApiDatasetForm = ({
     feishuShareServer?.appSecret,
     feishuKnowledgeServer?.appId,
     feishuKnowledgeServer?.appSecret,
-    apiServer?.baseUrl
+    apiServer?.baseUrl,
+    feishuPrivateServer?.user_access_token
   ]);
 
   // Unified function to get the current path
@@ -89,7 +99,8 @@ const ApiDatasetForm = ({
         ((yuqueServer && (!yuqueServer.userId || !yuqueServer?.token)) ||
           (apiServer && !apiServer?.baseUrl) ||
           (feishuKnowledgeServer &&
-            (!feishuKnowledgeServer?.appId || !feishuKnowledgeServer?.appSecret)))
+            (!feishuKnowledgeServer?.appId || !feishuKnowledgeServer?.appSecret)) ||
+          (feishuPrivateServer && !feishuPrivateServer?.user_access_token))
       ) {
         return setPathNames(t('dataset:input_required_field_to_select_baseurl'));
       }
@@ -103,7 +114,8 @@ const ApiDatasetForm = ({
         yuqueServer,
         feishuShareServer,
         apiServer,
-        feishuKnowledgeServer
+        feishuKnowledgeServer,
+        feishuPrivateServer
       });
       setPathNames(path);
     },
@@ -128,6 +140,9 @@ const ApiDatasetForm = ({
         break;
       case DatasetTypeEnum.feishuKnowledge:
         setValue('feishuKnowledgeServer.basePath', value);
+        break;
+      case DatasetTypeEnum.feishuPrivate:
+        setValue('feishuPrivateServer.basePath', value);
         break;
     }
 
@@ -182,6 +197,14 @@ const ApiDatasetForm = ({
               params.feishuKnowledgeServer = {
                 appId: feishuKnowledgeServer?.appId || '',
                 appSecret: feishuKnowledgeServer?.appSecret || '',
+                basePath: ''
+              };
+              break;
+            case DatasetTypeEnum.feishuPrivate:
+              params.feishuPrivateServer = {
+                user_access_token: feishuPrivateServer?.user_access_token || '',
+                refresh_token: feishuPrivateServer?.refresh_token || '',
+                outdate_time: feishuPrivateServer?.outdate_time || 0,
                 basePath: ''
               };
               break;
@@ -316,7 +339,12 @@ const ApiDatasetForm = ({
           {renderDirectoryModal()}
         </>
       )}
-
+      {type === DatasetTypeEnum.feishuPrivate && (
+        <>
+          {/* {renderBaseUrlSelector()}
+          {renderDirectoryModal()} */}
+        </>
+      )}
       {type === DatasetTypeEnum.yuque && (
         <>
           <Flex mt={6} alignItems={'center'}>

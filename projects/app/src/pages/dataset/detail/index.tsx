@@ -1,7 +1,19 @@
 'use client';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { Box, Flex, type FlexProps } from '@chakra-ui/react';
+import {
+  Box,
+  Flex,
+  type FlexProps,
+  useDisclosure,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  Button,
+  ModalFooter
+} from '@chakra-ui/react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import dynamic from 'next/dynamic';
@@ -19,7 +31,9 @@ import CollectionPageContextProvider from '@/pageComponents/dataset/detail/Colle
 import { useContextSelector } from 'use-context-selector';
 import NextHead from '@/components/common/NextHead';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const CollectionCard = dynamic(
   () => import('@/pageComponents/dataset/detail/CollectionCard/index')
@@ -50,8 +64,22 @@ const Detail = ({ datasetId, currentTab }: Props) => {
   const { toast } = useToast();
   const router = useRouter();
   const { isPc } = useSystem();
+  const { feConfigs } = useSystemStore();
+
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const loadDatasetDetail = useContextSelector(DatasetPageContext, (v) => v.loadDatasetDetail);
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const appid = feConfigs?.feishu_auth_robot_client_id;
+
+  // check feishu auth status
+  useEffect(() => {
+    if (
+      datasetDetail?.type === DatasetTypeEnum.feishuPrivate &&
+      !datasetDetail?.feishuPrivateServer?.user_access_token
+    ) {
+      onOpen();
+    }
+  }, [datasetDetail?.type, datasetDetail?.feishuPrivateServer?.user_access_token, onOpen]);
 
   useRequest2(() => loadDatasetDetail(datasetId), {
     onError(err: any) {
@@ -67,6 +95,30 @@ const Detail = ({ datasetId, currentTab }: Props) => {
   return (
     <>
       <NextHead title={datasetDetail?.name} icon={datasetDetail?.avatar} />
+
+      {/* 飞书授权弹窗 */}
+      <Modal isOpen={isOpen} onClose={onClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>{t('dataset:feishu_auth_title')}</ModalHeader>
+          <ModalBody>{t('dataset:feishu_auth_description')}</ModalBody>
+          <ModalFooter>
+            <a
+              href={`https://open.feishu.cn/open-apis/authen/v1/authorize?app_id=${appid}&redirect_uri=${window.location.origin}/api/core/dataset/feishu/oauth&scope=drive:drive.metadata:readonly%20drive:drive:readonly%20docx:document:readonly%20wiki:wiki:readonly%20offline_access&state=${encodeURIComponent(
+                JSON.stringify({
+                  returnUrl: window.location.pathname + window.location.search,
+                  datasetId
+                })
+              )}`}
+            >
+              {t('dataset:feishu_auth_button')}
+            </a>
+            <Button variant="ghost" onClick={onClose}>
+              {t('common:Close')}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       {isPc ? (
         <Flex h={'100%'} py={3} pl={1} pr={3} gap={2}>

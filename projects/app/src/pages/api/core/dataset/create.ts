@@ -38,7 +38,8 @@ async function handler(
     apiServer,
     feishuShareServer,
     yuqueServer,
-    feishuKnowledgeServer
+    feishuKnowledgeServer,
+    feishuPrivateServer
   } = req.body;
 
   // auth
@@ -87,6 +88,7 @@ async function handler(
           apiServer,
           feishuShareServer,
           feishuKnowledgeServer,
+          feishuPrivateServer,
           yuqueServer
         }
       ],

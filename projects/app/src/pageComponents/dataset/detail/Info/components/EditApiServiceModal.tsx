@@ -9,7 +9,8 @@ import {
   type APIFileServer,
   type FeishuShareServer,
   type YuqueServer,
-  type FeishuKnowledgeServer
+  type FeishuKnowledgeServer,
+  type FeishuPrivateServer
 } from '@fastgpt/global/core/dataset/apiDataset';
 import ApiDatasetForm from '@/pageComponents/dataset/ApiDatasetForm';
 import { useContextSelector } from 'use-context-selector';
@@ -24,6 +25,7 @@ export type EditAPIDatasetInfoFormType = {
   yuqueServer?: YuqueServer;
   feishuShareServer?: FeishuShareServer;
   feishuKnowledgeServer?: FeishuKnowledgeServer;
+  feishuPrivateServer?: FeishuPrivateServer;
 };
 
 const EditAPIDatasetInfoModal = ({
