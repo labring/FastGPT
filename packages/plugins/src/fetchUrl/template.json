@@ -1,6 +1,5 @@
 {
   "author": "",
-  "version": "486",
   "name": "网页内容抓取",
   "avatar": "core/workflow/template/fetchUrl",
   "intro": "可获取一个网页链接内容，并以 Markdown 格式输出，仅支持获取静态网站。",

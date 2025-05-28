@@ -1,6 +1,5 @@
 {
   "author": "silencezhang",
-  "version": "4811",
   "name": "数据库连接",
   "avatar": "core/workflow/template/datasource",
   "intro": "可连接常用数据库，并执行sql",

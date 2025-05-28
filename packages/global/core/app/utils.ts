@@ -10,6 +10,8 @@ import { AppTypeEnum } from './constants';
 import { AppErrEnum } from '../../common/error/code/app';
 import { PluginErrEnum } from '../../common/error/code/plugin';
 import { i18nT } from '../../../web/i18n/utils';
+import appErrList from '../../common/error/code/app';
+import pluginErrList from '../../common/error/code/plugin';
 
 export const getDefaultAppForm = (): AppSimpleEditFormType => {
   return {
@@ -190,17 +192,10 @@ export const getAppType = (config?: WorkflowTemplateBasicType | AppSimpleEditFor
   return '';
 };
 
-export const formatToolError = (error?: string) => {
-  const unExistError: Array<string> = [
-    AppErrEnum.unAuthApp,
-    AppErrEnum.unExist,
-    PluginErrEnum.unAuth,
-    PluginErrEnum.unExist
-  ];
+export const formatToolError = (error?: any) => {
+  if (!error || typeof error !== 'string') return;
 
-  if (error && unExistError.includes(error)) {
-    return i18nT('app:un_auth');
-  } else {
-    return error;
-  }
+  const errorText = appErrList[error]?.message || pluginErrList[error]?.message;
+
+  return errorText || error;
 };
