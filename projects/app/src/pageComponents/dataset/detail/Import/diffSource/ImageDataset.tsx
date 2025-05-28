@@ -219,7 +219,7 @@ const SelectFile = React.memo(function SelectFile() {
 
   return (
     <Flex direction="column" alignItems="center" gap="36px" width="100%" mt="80px">
-      <Flex direction="column" alignItems="flex-start" gap="20px" width="782px">
+      <Flex direction="column" alignItems="flex-start" gap="20px" width="857px">
         <Flex alignItems="center" gap="76px" width="100%">
           <Text
             color="var(--light-general-on-surface, var(--Gray-Modern-900, #111824))"
@@ -363,28 +363,43 @@ const SelectFile = React.memo(function SelectFile() {
                         )}
                       </Flex>
 
-                      <IconButton
-                        aria-label={t('file:delete_image')}
-                        icon={<MyIcon name="soliderror" width="12px" height="12px" color="white" />}
-                        position="absolute"
-                        top="-10px"
-                        right="-10px"
-                        size="xs"
-                        bg="var(--Gray-Modern-400, #8A95A7)"
-                        borderRadius="full"
-                        boxSize="7px"
-                        p={0}
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                        onClick={() => removeFile(index)}
-                        zIndex={1}
-                        _hover={{
-                          bg: 'red.500',
-                          transform: 'scale(1.2)',
-                          transition: 'all 0.2s ease'
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '-8px',
+                          right: '-8px',
+                          zIndex: 1,
+                          width: '16.667px',
+                          height: '16.667px',
+                          flexShrink: 0,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
                         }}
-                      />
+                        onClick={() => removeFile(index)}
+                      >
+                        <MyIcon
+                          name="outlineHighest"
+                          width="30px"
+                          height="16.667px"
+                          style={{
+                            fill: 'var(--Gray-Modern-400, #8A95A7)',
+                            filter:
+                              'drop-shadow(0px 0px 1.667px rgba(19, 51, 107, 0.08)) drop-shadow(0px 6.667px 6.667px rgba(19, 51, 107, 0.10))'
+                          }}
+                        />
+                        <MyIcon
+                          name="soliderror"
+                          width="12px"
+                          height="12px"
+                          color="white"
+                          style={{
+                            position: 'absolute',
+                            zIndex: 2
+                          }}
+                        />
+                      </div>
 
                       {file.errorMsg && (
                         <Box

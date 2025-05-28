@@ -431,6 +431,7 @@ export const iconPaths = {
   more: () => import('./icons/more.svg'),
   moreLine: () => import('./icons/moreLine.svg'),
   out: () => import('./icons/out.svg'),
+  outlineHighest: () => import('./icons/outline-highest.svg'),
   paragraph: () => import('./icons/paragraph.svg'),
   'phoneTabbar/me': () => import('./icons/phoneTabbar/me.svg'),
   'phoneTabbar/tool': () => import('./icons/phoneTabbar/tool.svg'),
