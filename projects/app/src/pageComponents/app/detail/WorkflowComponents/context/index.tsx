@@ -105,7 +105,6 @@ type WorkflowContextType = {
 
   // nodes
   nodeList: FlowNodeItemType[];
-  hasToolNode: boolean;
 
   onUpdateNodeError: (node: string, isError: Boolean) => void;
   onResetNode: (e: { id: string; node: FlowNodeTemplateType }) => void;
@@ -226,7 +225,6 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   },
   basicNodeTemplates: [],
   nodeList: [],
-  hasToolNode: false,
   onUpdateNodeError: function (node: string, isError: Boolean): void {
     throw new Error('Function not implemented.');
   },
@@ -398,10 +396,6 @@ const WorkflowContextProvider = ({
     () => JSON.parse(nodeListString) as FlowNodeItemType[],
     [nodeListString]
   );
-
-  const hasToolNode = useMemo(() => {
-    return !!nodeList.find((node) => node.flowNodeType === FlowNodeTypeEnum.tools);
-  }, [nodeList]);
 
   const onUpdateNodeError = useMemoizedFn((nodeId: string, isError: Boolean) => {
     setNodes((state) => {
@@ -1011,7 +1005,6 @@ const WorkflowContextProvider = ({
 
       // node
       nodeList,
-      hasToolNode,
       onUpdateNodeError,
       onResetNode,
       onChangeNode,
@@ -1057,7 +1050,6 @@ const WorkflowContextProvider = ({
       flowData2StoreDataAndCheck,
       future,
       getNodeDynamicInputs,
-      hasToolNode,
       initData,
       nodeList,
       onChangeNode,

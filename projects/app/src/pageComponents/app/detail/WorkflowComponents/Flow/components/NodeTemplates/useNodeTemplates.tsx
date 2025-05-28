@@ -19,7 +19,7 @@ export const useNodeTemplates = () => {
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
   const hasToolNode = useMemo(
-    () => nodeList.some((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet),
+    () => nodeList.some((node) => node.flowNodeType === FlowNodeTypeEnum.tools),
     [nodeList]
   );
 
