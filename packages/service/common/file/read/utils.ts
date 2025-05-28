@@ -110,7 +110,7 @@ export const readRawContentByFileBuffer = async ({
 
     return {
       rawText: text,
-      formatText: rawText,
+      formatText: text,
       imageList
     };
   };

@@ -39,6 +39,12 @@ export async function register() {
       systemStartCb();
       initGlobalVariables();
 
+      try {
+        await preLoadWorker();
+      } catch (error) {
+        console.error('Preload worker error', error);
+      }
+
       // Connect to MongoDB
       await connectMongo(connectionMongo, MONGO_URL);
       connectMongo(connectionLogMongo, MONGO_LOG_URL);
@@ -53,12 +59,6 @@ export async function register() {
       startMongoWatch();
       startCron();
       startTrainingQueue(true);
-
-      try {
-        await preLoadWorker();
-      } catch (error) {
-        console.error('Preload worker error', error);
-      }
 
       console.log('Init system success');
     }
