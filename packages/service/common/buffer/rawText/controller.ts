@@ -2,6 +2,9 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 import { connectionMongo } from '../../mongo';
 import { MongoRawTextBufferSchema, bucketName } from './schema';
 import { addLog } from '../../system/log';
+import { setCron } from '../../system/cron';
+import { checkTimerLock } from '../../system/timerLock/utils';
+import { TimerIdEnum } from '../../system/timerLock/constants';
 
 const getGridBucket = () => {
   return new connectionMongo.mongo.GridFSBucket(connectionMongo.connection.db!, {
@@ -136,4 +139,41 @@ export const updateRawTextBufferExpiredTime = async ({
       { $set: { 'metadata.expiredTime': expiredTime } }
     );
   });
+};
+
+export const clearExpiredRawTextBufferCron = async () => {
+  const clearExpiredRawTextBuffer = async () => {
+    addLog.debug('Clear expired raw text buffer start');
+    const gridBucket = getGridBucket();
+
+    return retryFn(async () => {
+      const data = await MongoRawTextBufferSchema.find(
+        {
+          'metadata.expiredTime': { $lt: new Date() }
+        },
+        '_id'
+      ).lean();
+
+      for (const item of data) {
+        await gridBucket.delete(item._id);
+      }
+      addLog.debug('Clear expired raw text buffer end');
+    });
+  };
+
+  setCron('*/10 * * * *', async () => {
+    if (
+      await checkTimerLock({
+        timerId: TimerIdEnum.clearExpiredRawTextBuffer,
+        lockMinuted: 9
+      })
+    ) {
+      try {
+        await clearExpiredRawTextBuffer();
+      } catch (error) {
+        addLog.error('clearExpiredRawTextBufferCron error', error);
+      }
+    }
+  });
+  clearExpiredRawTextBuffer();
 };
