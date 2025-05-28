@@ -1,10 +1,10 @@
 import { getMongoModel, Schema } from '../../../common/mongo';
-import { DatasetImageSchema } from '@fastgpt/global/core/dataset/image/type';
+import type { DatasetImageSchema } from '@fastgpt/global/core/dataset/image/type';
 import mongoose from 'mongoose';
 
 export const DatasetCollectionImageCollectionName = 'dataset_collection_images';
 
-const DatasetImageSchema = new Schema({
+const DatasetImageMongoSchema = new Schema({
   teamId: {
     type: String,
     required: true
@@ -49,13 +49,13 @@ const DatasetImageSchema = new Schema({
   }
 });
 
-DatasetImageSchema.index({ expiredTime: 1 }, { expireAfterSeconds: 0 });
+DatasetImageMongoSchema.index({ expiredTime: 1 }, { expireAfterSeconds: 0 });
 
-DatasetImageSchema.index({ teamId: 1 });
-DatasetImageSchema.index({ datasetId: 1 });
-DatasetImageSchema.index({ collectionId: 1 });
+DatasetImageMongoSchema.index({ teamId: 1 });
+DatasetImageMongoSchema.index({ datasetId: 1 });
+DatasetImageMongoSchema.index({ collectionId: 1 });
 
-mongoose.model('dataset_collection_images', DatasetImageSchema, 'dataset_collection_images');
+mongoose.model('dataset_collection_images', DatasetImageMongoSchema, 'dataset_collection_images');
 
 export const MongoDatasetCollectionImage = getMongoModel<DatasetImageSchema>(
   DatasetCollectionImageCollectionName,
