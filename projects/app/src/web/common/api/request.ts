@@ -1,5 +1,9 @@
-import type { Method, InternalAxiosRequestConfig, AxiosResponse, AxiosProgressEvent } from 'axios';
-import axios, { AxiosRequestConfig } from 'axios';
+import axios, {
+  type Method,
+  type InternalAxiosRequestConfig,
+  type AxiosResponse,
+  type AxiosProgressEvent
+} from 'axios';
 import { clearToken } from '@/web/support/user/auth';
 import { TOKEN_ERROR_CODE } from '@fastgpt/global/common/error/errorCode';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
@@ -13,7 +17,7 @@ interface ConfigType {
   timeout?: number;
   onUploadProgress?: (progressEvent: AxiosProgressEvent) => void;
   cancelToken?: AbortController;
-  maxQuantity?: number;
+  maxQuantity?: number; // The maximum number of simultaneous requests, usually used to cancel old requests
   withCredentials?: boolean;
 }
 interface ResponseDataType {
@@ -31,6 +35,10 @@ const maxQuantityMap: Record<
     }[]
 > = {};
 
+/* 
+  Every request generates a unique sign
+  If the number of requests exceeds maxQuantity, cancel the earliest request and initiate a new request
+*/
 function checkMaxQuantity({ url, maxQuantity }: { url: string; maxQuantity?: number }) {
   if (!maxQuantity) return {};
   const item = maxQuantityMap[url];
@@ -67,6 +75,9 @@ function requestFinish({ signId, url }: { signId?: string; url: string }) {
   }
 }
 
+/**
+ * 请求开始
+ */
 function startInterceptors(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
   if (config.headers) {
   }
@@ -74,12 +85,18 @@ function startInterceptors(config: InternalAxiosRequestConfig): InternalAxiosReq
   return config;
 }
 
+/**
+ * 请求成功,检查请求头
+ */
 function responseSuccess(response: AxiosResponse<ResponseDataType>) {
   return response;
 }
-
+/**
+ * 响应数据检查
+ */
 function checkRes(data: ResponseDataType) {
   if (data === undefined) {
+    console.log('error->', data, 'data is empty');
     return Promise.reject('服务器异常');
   } else if (data.code < 200 || data.code >= 400) {
     return Promise.reject(data);
@@ -87,7 +104,17 @@ function checkRes(data: ResponseDataType) {
   return data.data;
 }
 
+/**
+ * 响应错误
+ */
 function responseError(err: any) {
+  console.log('error->', '请求错误', err);
+  const isOutlinkPage = {
+    '/chat/share': true,
+    '/chat/team': true,
+    '/login': true
+  }[window.location.pathname];
+
   const data = err?.response?.data || err;
 
   if (!err) {
@@ -100,8 +127,9 @@ function responseError(err: any) {
     return Promise.reject(data);
   }
 
+  // 有报错响应
   if (data?.code in TOKEN_ERROR_CODE) {
-    if (!['/chat/share', '/chat/team', '/login'].includes(window.location.pathname)) {
+    if (!isOutlinkPage) {
       clearToken();
       window.location.replace(
         getWebReqUrl(`/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`)
@@ -111,13 +139,17 @@ function responseError(err: any) {
     return Promise.reject({ message: i18nT('common:unauth_token') });
   }
   if (
-    data?.statusText === TeamErrEnum.aiPointsNotEnough ||
-    data?.statusText === TeamErrEnum.datasetSizeNotEnough ||
-    data?.statusText === TeamErrEnum.datasetAmountNotEnough ||
-    data?.statusText === TeamErrEnum.appAmountNotEnough ||
-    data?.statusText === TeamErrEnum.pluginAmountNotEnough ||
-    data?.statusText === TeamErrEnum.websiteSyncNotEnough ||
-    data?.statusText === TeamErrEnum.reRankNotEnough
+    data?.statusText &&
+    [
+      TeamErrEnum.aiPointsNotEnough,
+      TeamErrEnum.datasetSizeNotEnough,
+      TeamErrEnum.datasetAmountNotEnough,
+      TeamErrEnum.appAmountNotEnough,
+      TeamErrEnum.pluginAmountNotEnough,
+      TeamErrEnum.websiteSyncNotEnough,
+      TeamErrEnum.reRankNotEnough
+    ].includes(data?.statusText) &&
+    !isOutlinkPage
   ) {
     useSystemStore.getState().setNotSufficientModalType(data.statusText);
     return Promise.reject(data);
@@ -125,14 +157,17 @@ function responseError(err: any) {
   return Promise.reject(data);
 }
 
+/* 创建请求实例 */
 const instance = axios.create({
-  timeout: 60000,
+  timeout: 60000, // 超时时间
   headers: {
     'content-type': 'application/json'
   }
 });
 
+/* 请求拦截 */
 instance.interceptors.request.use(startInterceptors, (err) => Promise.reject(err));
+/* 响应拦截 */
 instance.interceptors.response.use(responseSuccess, (err) => Promise.reject(err));
 
 function request(
@@ -141,6 +176,7 @@ function request(
   { cancelToken, maxQuantity, withCredentials, ...config }: ConfigType,
   method: Method
 ): any {
+  /* 去空 */
   for (const key in data) {
     if (data[key] === undefined) {
       delete data[key];
@@ -158,26 +194,27 @@ function request(
       params: !['POST', 'PUT'].includes(method) ? data : undefined,
       signal: cancelToken?.signal ?? abortSignal,
       withCredentials,
-      ...config
+      ...config // 用户自定义配置，可以覆盖前面的配置
     })
     .then((res) => checkRes(res.data))
     .catch((err) => responseError(err))
     .finally(() => requestFinish({ signId, url }));
 }
 
+/**
+ * api请求方式
+ * @param {String} url
+ * @param {Any} params
+ * @param {Object} config
+ * @returns
+ */
 export function GET<T = undefined>(url: string, params = {}, config: ConfigType = {}): Promise<T> {
   return request(url, params, config, 'GET');
 }
 
-export const POST = async <T = any>(url: string, data?: any, options?: ConfigType): Promise<T> => {
-  try {
-    const config = options || {};
-    const res = await request(url, data, config, 'POST');
-    return res;
-  } catch (error) {
-    throw error;
-  }
-};
+export function POST<T = undefined>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
+  return request(url, data, config, 'POST');
+}
 
 export function PUT<T = undefined>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
   return request(url, data, config, 'PUT');

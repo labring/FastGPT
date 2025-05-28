@@ -11,7 +11,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { SearchScoreTypeEnum, SearchScoreTypeMap } from '@fastgpt/global/core/dataset/constants';
 import type { readCollectionSourceBody } from '@/pages/api/core/dataset/collection/read';
 import Markdown from '@/components/Markdown';
-import { generateImagePreviewUrl } from '@/web/common/file/api';
+import { generateImagePreviewUrl } from '@/web/core/dataset/image/utils';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 
 const InputDataModal = dynamic(() => import('@/pageComponents/dataset/detail/InputDataModal'));

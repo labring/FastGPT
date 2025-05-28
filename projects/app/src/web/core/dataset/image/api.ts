@@ -1,7 +1,7 @@
-import { GET, POST, DELETE } from '@/web/common/api/request';
-import { type AxiosProgressEvent } from 'axios';
+import { POST } from '@/web/common/api/request';
+import type { UploadDatasetImageProps } from '@fastgpt/global/core/dataset/image/type';
 
-export const uploadDatasetImage = (
+export const uploadDatasetImage = async (
   file: File,
   data: {
     datasetId: string;
@@ -12,14 +12,15 @@ export const uploadDatasetImage = (
   formData.append('file', file, encodeURIComponent(file.name));
   formData.append('data', JSON.stringify(data));
 
-  return POST<{
-    id: string;
-  }>('/core/dataset/image/upload', formData, {
+  const imageId = await POST<string>('/core/dataset/image/upload', formData, {
     timeout: 600000,
     headers: {
       'Content-Type': 'multipart/form-data; charset=utf-8'
     }
   });
+
+  // To maintain compatibility, the string ID is wrapped into an object and returned.
+  return { id: imageId };
 };
 
 export const createImageDatasetCollection = async ({
@@ -42,40 +43,27 @@ export const createImageDatasetCollection = async ({
     const fileIdParams = {
       fileIds: imageIds,
       datasetId: datasetId,
-      imageIndex: true,
-      customPdfParse: false,
       collectionName,
       metadata: {
-        imageCount: imageIds.length,
-        isImageCollection: true
+        imageCount: imageIds.length
       }
     };
 
-    const processResponse = await fetch('/api/core/dataset/collection/create/fileId_image', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(fileIdParams)
-    });
-
-    if (!processResponse.ok) {
-      const errorText = await processResponse.text();
-      throw new Error(`处理图片失败: ${processResponse.status} ${errorText}`);
-    }
-
-    const processResult = await processResponse.json();
+    const processResult = await POST<{ collectionId: string }>(
+      '/core/dataset/collection/create/images',
+      fileIdParams
+    );
 
     // Create results for each image
     const processResults = imageIds.map((imageId, index) => ({
       imageId,
-      collectionId: processResult.data?.collectionId || '',
+      collectionId: processResult.collectionId || '',
       fileName: filesInfo[index]?.name || `图片${index + 1}`,
       result: processResult
     }));
 
     return {
-      collectionId: processResult.data?.collectionId || '',
+      collectionId: processResult.collectionId || '',
       processResults,
       successCount: processResults.length,
       totalCount: imageIds.length

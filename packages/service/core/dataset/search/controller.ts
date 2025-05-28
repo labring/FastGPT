@@ -28,7 +28,6 @@ import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { datasetSearchQueryExtension } from './utils';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { addLog } from '../../../common/system/log';
-import { generateImagePreviewUrlServer } from '../../../support/permission/controller';
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
@@ -517,7 +516,7 @@ export async function searchDatasetData(
         if (!item) return;
         return {
           ...item,
-          score: item.score.map((item) => ({ ...item, index }))
+          score: item.score.map((scoreItem) => ({ ...scoreItem, index }))
         };
       }) as SearchDataResponseItemType[];
 
@@ -655,7 +654,7 @@ export async function searchDatasetData(
             if (!item) return;
             return {
               ...item,
-              score: item.score.map((item) => ({ ...item, index }))
+              score: item.score.map((scoreItem) => ({ ...scoreItem, index }))
             };
           }) as SearchDataResponseItemType[],
         tokenLen: 0

@@ -1,6 +1,7 @@
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetCollection } from './collection/schema';
-import { MongoDataset, MongoDatasetCollectionImage } from './schema';
+import { MongoDataset } from './schema';
+import { MongoDatasetCollectionImage } from './image/schema';
 import { delCollectionRelatedSource } from './collection/controller';
 import { type ClientSession } from '../../common/mongo';
 import { MongoDatasetTraining } from './training/schema';
@@ -9,7 +10,6 @@ import { deleteDatasetDataVector } from '../../common/vectorDB/controller';
 import { MongoDatasetDataText } from './data/dataTextSchema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import { addMinutes } from 'date-fns';
 
 /* ============= dataset ========== */
 /* find all datasetId by top datasetId */
@@ -120,58 +120,4 @@ export async function delDatasetRelevantData({
     teamId,
     datasetId: { $in: datasetIds }
   }).session(session);
-}
-
-/* ============= dataset images ========== */
-
-export async function createDatasetImage({
-  teamId,
-  datasetId,
-  collectionId,
-  name,
-  path,
-  contentType,
-  size,
-  metadata = {}
-}: {
-  teamId: string;
-  datasetId: string;
-  collectionId?: string;
-  name: string;
-  path: string;
-  contentType: string;
-  size: number;
-  metadata?: Record<string, any>;
-}): Promise<string> {
-  // Set TTL to 30min
-  const expiredTime = addMinutes(new Date(), 30);
-
-  const image = await MongoDatasetCollectionImage.create({
-    teamId: String(teamId),
-    datasetId: String(datasetId),
-    collectionId: collectionId ? String(collectionId) : null,
-    name,
-    path,
-    contentType,
-    size,
-    metadata,
-    createTime: new Date(),
-    expiredTime
-  });
-
-  return String(image._id);
-}
-
-export async function getDatasetImage(imageId: string): Promise<any> {
-  try {
-    if (!imageId || imageId.length !== 24) {
-      return null;
-    }
-
-    const result = await MongoDatasetCollectionImage.findById(imageId).lean();
-
-    return result;
-  } catch (error) {
-    return null;
-  }
 }

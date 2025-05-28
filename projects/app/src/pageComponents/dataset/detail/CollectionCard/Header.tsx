@@ -99,7 +99,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
         getData(pageNum);
       },
       successToast: t('common:create_success'),
-      errorToast: t('common:common.Create Failed')
+      errorToast: t('common:error.Create failed')
     }
   );
 

@@ -120,6 +120,7 @@ export const DatasetCollectionSyncResultMap = {
 export enum DatasetCollectionDataProcessModeEnum {
   chunk = 'chunk',
   qa = 'qa',
+  imageParse = 'imageParse',
   backup = 'backup',
 
   auto = 'auto' // abandon
@@ -132,6 +133,10 @@ export const DatasetCollectionDataProcessModeMap = {
   [DatasetCollectionDataProcessModeEnum.qa]: {
     label: i18nT('common:core.dataset.training.QA mode'),
     tooltip: i18nT('common:core.dataset.import.QA Import Tip')
+  },
+  [DatasetCollectionDataProcessModeEnum.imageParse]: {
+    label: i18nT('common:core.dataset.training.Image mode'),
+    tooltip: i18nT('common:core.dataset.import.Chunk Split Tip')
   },
   [DatasetCollectionDataProcessModeEnum.backup]: {
     label: i18nT('dataset:backup_mode'),

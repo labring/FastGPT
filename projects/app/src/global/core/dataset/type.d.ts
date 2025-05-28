@@ -36,9 +36,9 @@ export type DatasetDataListItemType = {
   collectionId: string;
   q: string;
   a: string;
+  imageFileId?: string;
   chunkIndex?: number;
   updated?: boolean;
-  imageFileId?: string;
   imageSize?: number;
   previewUrl?: string;
 };

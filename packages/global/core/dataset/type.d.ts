@@ -143,6 +143,7 @@ export type DatasetDataSchemaType = {
   updateTime: Date;
   q: string; // large chunks or question
   a: string; // answer or custom content
+  imageFileId?: string;
   history?: {
     q: string;
     a: string;
@@ -152,7 +153,6 @@ export type DatasetDataSchemaType = {
   fullTextToken: string;
   indexes: DatasetDataIndexItemType[];
   rebuilding?: boolean;
-  imageFileId?: string;
 };
 
 export type DatasetDataTextSchemaType = {
@@ -180,13 +180,13 @@ export type DatasetTrainingSchemaType = {
   dataId?: string;
   q: string;
   a: string;
+  imageFileId?: string;
   chunkIndex: number;
   indexSize?: number;
   weight: number;
   indexes: Omit<DatasetDataIndexItemType, 'dataId'>[];
   retryCount: number;
   errorMsg?: string;
-  imageFileId?: string;
 };
 
 export type CollectionWithDatasetType = DatasetCollectionSchemaType & {
@@ -256,10 +256,10 @@ export type DatasetDataItemType = {
   sourceId?: string;
   q: string;
   a: string;
+  imageFileId?: string;
   chunkIndex: number;
   indexes: DatasetDataIndexItemType[];
   isOwner: boolean;
-  imageFileId?: string;
 };
 
 /* --------------- file ---------------------- */

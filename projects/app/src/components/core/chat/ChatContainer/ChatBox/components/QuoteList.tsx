@@ -54,14 +54,12 @@ const QuoteList = React.memo(function QuoteList({
     const processedData = rawSearch.map((item) => {
       if (chatItemDataId && quoteList) {
         const currentFilterItem = quoteList.find((res) => res._id === item.id);
-        const result = {
+        return {
           ...item,
           q: currentFilterItem?.q || '',
           a: currentFilterItem?.a || '',
           imageFileId: currentFilterItem?.imageFileId || item.imageFileId
         };
-
-        return result;
       }
 
       return { ...item, q: item.q || '', a: item.a || '' };

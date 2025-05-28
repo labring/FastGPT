@@ -1,6 +1,6 @@
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetCollectionImage } from '@fastgpt/service/core/dataset/schema';
+import { MongoDatasetCollectionImage } from '@fastgpt/service/core/dataset/image/schema';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';

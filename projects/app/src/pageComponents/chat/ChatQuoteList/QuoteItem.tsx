@@ -6,7 +6,7 @@ import Markdown from '@/components/Markdown';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
-import { generateImagePreviewUrl } from '@/web/common/file/api';
+import { generateImagePreviewUrl } from '@/web/core/dataset/image/utils';
 import { useState, useEffect, useMemo } from 'react';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 
@@ -41,14 +41,10 @@ const QuoteItem = ({
 
   // 获取图片预览URL
   useEffect(() => {
-    if (isImageDataset && imageFileId && datasetId) {
+    if (imageFileId && datasetId) {
       const fetchImageUrl = async () => {
         try {
-          const url = await generateImagePreviewUrl(
-            imageFileId,
-            String(datasetId),
-            'chat' // 7days
-          );
+          const url = await generateImagePreviewUrl(imageFileId, String(datasetId), 'chat');
           if (url) {
             setImagePreviewUrl(url);
           }
@@ -58,7 +54,7 @@ const QuoteItem = ({
       };
       fetchImageUrl();
     }
-  }, [isImageDataset, imageFileId, datasetId]);
+  }, [imageFileId, datasetId]);
 
   return (
     <Box

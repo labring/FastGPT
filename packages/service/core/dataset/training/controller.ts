@@ -63,8 +63,7 @@ export async function pushDataListToTrainingQueue({
   indexSize,
   session
 }: PushDataToTrainingQueueProps): Promise<PushDatasetDataResponse> {
-  const mongoose = connectionMongo;
-  const ObjectId = mongoose.Types.ObjectId;
+  const ObjectId = connectionMongo.Types.ObjectId;
 
   const objectIdDatasetId = typeof datasetId === 'string' ? new ObjectId(datasetId) : datasetId;
   const objectIdCollectionId =
@@ -159,7 +158,8 @@ export async function pushDataListToTrainingQueue({
       .filter(Boolean);
 
     // filter repeat content
-    if (!item.q) {
+    // For imageParse mode, allow empty q if imageFileId exists
+    if (!item.q && !(mode === TrainingModeEnum.imageParse && item.imageFileId)) {
       filterResult.error.push(item);
       return;
     }
@@ -172,11 +172,15 @@ export async function pushDataListToTrainingQueue({
       return;
     }
 
-    if (set.has(text)) {
+    // For imageParse mode with imageFileId, use imageFileId as unique key
+    const uniqueKey =
+      mode === TrainingModeEnum.imageParse && item.imageFileId ? item.imageFileId : text;
+
+    if (set.has(uniqueKey)) {
       filterResult.repeat.push(item);
     } else {
       filterResult.success.push(item);
-      set.add(text);
+      set.add(uniqueKey);
     }
   });
 
@@ -208,7 +212,8 @@ export async function pushDataListToTrainingQueue({
           indexSize,
           weight: weight ?? 0,
           indexes: item.indexes,
-          retryCount: 5
+          retryCount: 5,
+          ...(item.imageFileId ? { imageFileId: item.imageFileId } : {})
         })),
         {
           session,

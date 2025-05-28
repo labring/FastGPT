@@ -17,6 +17,7 @@ import { deleteDatasetDataVector } from '../../../common/vectorDB/controller';
 import { delFileByFileIdList } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import type { ClientSession } from '../../../common/mongo';
+import { connectionMongo } from '../../../common/mongo';
 import { createOrGetCollectionTags } from './utils';
 import { rawText2Chunks } from '../read';
 import { checkDatasetLimit } from '../../../support/permission/teamLimit';
@@ -39,7 +40,7 @@ import {
   getLLMMaxChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { MongoDatasetCollectionImage } from '../schema';
+import { MongoDatasetCollectionImage } from '../image/schema';
 
 export const createCollectionAndInsertData = async ({
   dataset,
@@ -48,18 +49,16 @@ export const createCollectionAndInsertData = async ({
   createCollectionParams,
   backupParse = false,
   billId,
-  session,
-  parentCollectionId
+  session
 }: {
   dataset: DatasetSchemaType;
-  rawText: string;
+  rawText?: string;
   relatedId?: string;
   createCollectionParams: CreateOneCollectionParams;
   backupParse?: boolean;
 
   billId?: string;
   session?: ClientSession;
-  parentCollectionId?: string;
 }) => {
   // Adapter 4.9.0
   if (createCollectionParams.trainingType === DatasetCollectionDataProcessModeEnum.auto) {
@@ -72,7 +71,11 @@ export const createCollectionAndInsertData = async ({
 
   // Set default params
   const trainingType =
-    createCollectionParams.trainingType || DatasetCollectionDataProcessModeEnum.chunk;
+    createCollectionParams.trainingType ||
+    (createCollectionParams.metadata?.imageIdList &&
+    createCollectionParams.metadata.imageIdList.length > 0
+      ? DatasetCollectionDataProcessModeEnum.imageParse
+      : DatasetCollectionDataProcessModeEnum.chunk);
   const chunkSize = computeChunkSize({
     ...createCollectionParams,
     trainingType,
@@ -94,19 +97,56 @@ export const createCollectionAndInsertData = async ({
     delete createCollectionParams.qaPrompt;
   }
 
-  // 1. split chunks
-  const chunks = rawText2Chunks({
-    rawText,
-    chunkTriggerType: createCollectionParams.chunkTriggerType,
-    chunkTriggerMinSize: createCollectionParams.chunkTriggerMinSize,
-    chunkSize,
-    paragraphChunkDeep,
-    paragraphChunkMinSize: createCollectionParams.paragraphChunkMinSize,
-    maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
-    overlapRatio: trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
-    customReg: chunkSplitter ? [chunkSplitter] : [],
-    backupParse
-  });
+  // 1. split chunks or create image chunks
+  let chunks: Array<{
+    q: string;
+    a?: string;
+    imageId?: string;
+    indexes?: string[];
+    imageIdList?: string[];
+  }>;
+
+  if (rawText) {
+    // Process text chunks
+    const textChunks = rawText2Chunks({
+      rawText,
+      chunkTriggerType: createCollectionParams.chunkTriggerType,
+      chunkTriggerMinSize: createCollectionParams.chunkTriggerMinSize,
+      chunkSize,
+      paragraphChunkDeep,
+      paragraphChunkMinSize: createCollectionParams.paragraphChunkMinSize,
+      maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
+      overlapRatio: trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
+      customReg: chunkSplitter ? [chunkSplitter] : [],
+      backupParse,
+      imageIdList: createCollectionParams.metadata?.imageIdList
+    });
+    chunks = textChunks;
+  } else if (
+    createCollectionParams.metadata?.imageIdList &&
+    createCollectionParams.metadata.imageIdList.length > 0
+  ) {
+    // Process image chunks
+    chunks = createCollectionParams.metadata.imageIdList.map((imageId: string) => ({
+      q: '',
+      a: '',
+      imageId,
+      imageIdList: [imageId]
+    }));
+  } else {
+    throw new Error('Either rawText or imageIdList must be provided');
+  }
+
+  // Extract all imageIds from chunks for batch operations
+  const allImageIds = chunks.reduce((acc: string[], chunk) => {
+    if (chunk.imageIdList) {
+      acc.push(...chunk.imageIdList);
+    }
+    if (chunk.imageId) {
+      acc.push(chunk.imageId);
+    }
+    return acc;
+  }, []);
 
   // 2. auth limit
   await checkDatasetLimit({
@@ -122,40 +162,30 @@ export const createCollectionAndInsertData = async ({
   });
 
   const fn = async (session: ClientSession) => {
-    let collectionId: string;
+    // 3. Create collection
+    const { _id: collectionId } = await createOneCollection({
+      ...createCollectionParams,
+      trainingType,
+      paragraphChunkDeep,
+      chunkSize,
+      chunkSplitter,
 
-    // 3. Create collection only if parentCollectionId is not provided
-    if (!parentCollectionId) {
-      // Create new collection
-      const { _id: newCollectionId } = await createOneCollection({
-        ...createCollectionParams,
-        trainingType,
-        paragraphChunkDeep,
-        chunkSize,
-        chunkSplitter,
-
-        hashRawText: hashStr(rawText),
-        rawTextLength: rawText.length,
-        nextSyncTime: (() => {
-          // ignore auto collections sync for website datasets
-          if (!dataset.autoSync && dataset.type === DatasetTypeEnum.websiteDataset)
-            return undefined;
-          if (
-            [DatasetCollectionTypeEnum.link, DatasetCollectionTypeEnum.apiFile].includes(
-              createCollectionParams.type
-            )
-          ) {
-            return addDays(new Date(), 1);
-          }
-          return undefined;
-        })(),
-        session
-      });
-      collectionId = String(newCollectionId);
-    } else {
-      // Use existing collection for subsequent images
-      collectionId = parentCollectionId;
-    }
+      hashRawText: hashStr(rawText || ''),
+      rawTextLength: rawText?.length || 0,
+      nextSyncTime: (() => {
+        // ignore auto collections sync for website datasets
+        if (!dataset.autoSync && dataset.type === DatasetTypeEnum.websiteDataset) return undefined;
+        if (
+          [DatasetCollectionTypeEnum.link, DatasetCollectionTypeEnum.apiFile].includes(
+            createCollectionParams.type
+          )
+        ) {
+          return addDays(new Date(), 1);
+        }
+        return undefined;
+      })(),
+      session
+    });
 
     // 4. create training bill
     const traingBillId = await (async () => {
@@ -173,16 +203,19 @@ export const createCollectionAndInsertData = async ({
       return newBillId;
     })();
 
-    // 5. Update the collectionId field in the image record (for image collections)
-    if (createCollectionParams.metadata?.isImageCollection && createCollectionParams.fileId) {
-      await MongoDatasetCollectionImage.updateOne(
+    // 5. Update image records for image collections (batch processing)
+    if (
+      trainingType === DatasetCollectionDataProcessModeEnum.imageParse &&
+      allImageIds.length > 0
+    ) {
+      await MongoDatasetCollectionImage.updateMany(
         {
-          _id: createCollectionParams.fileId,
+          _id: { $in: allImageIds },
           teamId: teamId
         },
         {
           $set: {
-            collectionId: collectionId
+            collectionId: String(collectionId)
           },
           $unset: {
             expiredTime: 1
@@ -197,7 +230,7 @@ export const createCollectionAndInsertData = async ({
       teamId,
       tmbId,
       datasetId: dataset._id,
-      collectionId,
+      collectionId: String(collectionId),
       agentModel: dataset.agentModel,
       vectorModel: dataset.vectorModel,
       vlmModel: dataset.vlmModel,
@@ -205,8 +238,7 @@ export const createCollectionAndInsertData = async ({
       mode: getTrainingModeByCollection({
         trainingType: trainingType,
         autoIndexes: createCollectionParams.autoIndexes,
-        imageIndex: createCollectionParams.imageIndex,
-        isImageCollection: createCollectionParams.metadata?.isImageCollection === true
+        imageIndex: createCollectionParams.imageIndex
       }),
       prompt: createCollectionParams.qaPrompt,
       billId: traingBillId,
@@ -216,7 +248,8 @@ export const createCollectionAndInsertData = async ({
           type: DatasetDataIndexTypeEnum.custom,
           text
         })),
-        chunkIndex: index
+        chunkIndex: index,
+        ...(item.imageId ? { imageFileId: item.imageId } : {})
       })),
       session
     });
@@ -240,8 +273,23 @@ export const createCollectionAndInsertData = async ({
       );
     }
 
+    // 8. Batch delete expired image indexes if imageIds are present (only for imageParse mode)
+    if (
+      trainingType === DatasetCollectionDataProcessModeEnum.imageParse &&
+      allImageIds.length > 0
+    ) {
+      await MongoDatasetCollectionImage.deleteMany(
+        {
+          teamId,
+          _id: { $in: allImageIds },
+          expiredTime: { $exists: true, $lt: new Date() }
+        },
+        { session }
+      );
+    }
+
     return {
-      collectionId,
+      collectionId: String(collectionId),
       insertResults
     };
   };
@@ -412,40 +460,5 @@ export async function delCollection({
       },
       { session }
     );
-  });
-}
-
-export async function pushImageFileToTrainingQueue({
-  teamId,
-  tmbId,
-  datasetId,
-  collectionId,
-  imageFileId,
-  billId,
-  model
-}: {
-  teamId: string;
-  tmbId: string;
-  datasetId: string;
-  collectionId: string;
-  imageFileId: string;
-  billId?: string;
-  model?: string;
-}) {
-  const mongoose = require('mongoose');
-  const ObjectId = mongoose.Types.ObjectId;
-
-  await MongoDatasetTraining.create({
-    teamId: new ObjectId(teamId),
-    tmbId: new ObjectId(tmbId),
-    datasetId: new ObjectId(datasetId),
-    collectionId: new ObjectId(collectionId),
-    billId,
-    mode: TrainingModeEnum.imageParse,
-    model,
-    imageFileId,
-    retryCount: 5,
-    lockTime: new Date('2000/1/1'),
-    indexes: []
   });
 }

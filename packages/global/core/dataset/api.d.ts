@@ -128,9 +128,9 @@ export type PgSearchRawType = {
 export type PushDatasetDataChunkProps = {
   q: string; // embedding content
   a?: string; // bonus content
+  imageFileId?: string; //file id preview
   chunkIndex?: number;
   indexes?: Omit<DatasetDataIndexItemType, 'dataId'>[];
-  imageFileId?: string; //file id preview
 };
 
 export type PostWebsiteSyncParams = {

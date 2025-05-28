@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { getDatasetImage } from '@fastgpt/service/core/dataset/controller';
+import { getDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import fs from 'fs';
 import path from 'path';
@@ -110,18 +110,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       res.end();
     });
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.message.includes('Token') || error.message.includes('not found')) {
-        return jsonRes(res, {
-          code: 401,
-          error: 'Unauthorized'
-        });
-      }
+    if (
+      error instanceof Error &&
+      (error.message.includes('Token') || error.message.includes('not found'))
+    ) {
+      return jsonRes(res, {
+        code: 401,
+        error: 'Unauthorized'
+      });
     }
 
     jsonRes(res, {
       code: 500,
-      error: 'Internal server error'
+      error
     });
   }
 }

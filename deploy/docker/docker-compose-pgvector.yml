@@ -143,7 +143,8 @@ services:
       # 文件阅读加密
       - FILE_TOKEN_KEY=filetoken
       # MongoDB 连接参数. 用户名myusername,密码mypassword。
-      - MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin&directConnection=true # pg 连接参数
+      - MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
+      # pg 连接参数
       - PG_URL=postgresql://username:password@pg:5432/postgres
       # Redis 连接参数
       - REDIS_URL=redis://default:mypassword@redis:6379

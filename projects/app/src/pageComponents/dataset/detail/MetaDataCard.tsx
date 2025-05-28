@@ -9,7 +9,8 @@ import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import {
   DatasetCollectionDataProcessModeMap,
-  DatasetCollectionTypeMap
+  DatasetCollectionTypeMap,
+  DatasetCollectionDataProcessModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -40,16 +41,8 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
   );
 
   const isImageCollection = useMemo(() => {
-    if (!collection) return false;
-    if (
-      collection.metadata &&
-      typeof collection.metadata === 'object' &&
-      'isImageCollection' in collection.metadata
-    ) {
-      return collection.metadata.isImageCollection === true;
-    }
-    return collection.name?.includes(t('file:image_collection')) || false;
-  }, [collection, t]);
+    return collection?.trainingType === DatasetCollectionDataProcessModeEnum.imageParse;
+  }, [collection]);
 
   const metadataList = useMemo<{ label?: string; value?: any }[]>(() => {
     if (!collection) return [];

@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { ImportSourceItemType } from '@/web/core/dataset/type.d';
 import { Box, Button, Flex, Text, Input, Image, IconButton, Progress } from '@chakra-ui/react';
-import FileSelector from '../components/FileSelector';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
@@ -9,23 +8,15 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { TabEnum } from '../../NavBar';
-import { BucketNameEnum, ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
-import { postCreateDatasetFileCollection, postInsertData2Dataset } from '@/web/core/dataset/api';
-import {
-  DatasetCollectionDataProcessModeEnum,
-  ChunkSettingModeEnum,
-  DatasetCollectionTypeEnum
-} from '@fastgpt/global/core/dataset/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { postGetFileToken } from '@/web/common/file/api';
-import { uploadImage2Dataset } from '@/web/common/image/controller';
-import { createImageDatasetCollection } from '@/web/common/image/api';
-import { generateImagePreviewUrl } from '@/web/common/file/api';
+import { uploadImage2Dataset } from '@/web/core/dataset/image/controller';
+import { createImageDatasetCollection } from '@/web/core/dataset/image/api';
+import { generateImagePreviewUrl } from '@/web/core/dataset/image/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
 // Extended type definition to include previewUrl
 type ExtendedImportSourceItemType = ImportSourceItemType & {
-  previewUrl?: string;
+  imagePreviewUrl?: string;
   file: File;
 };
 
@@ -98,24 +89,17 @@ const SelectFile = React.memo(function SelectFile() {
           collectionId: parentId
         });
 
-        const { id: imageId } = result;
-
         try {
           // Generate preview URL
-          const previewUrl = await generateImagePreviewUrl(
-            imageId,
-            datasetId,
-            userInfo?.team?.teamId ?? '',
-            'preview'
-          );
+          const previewUrl = await generateImagePreviewUrl(result.id, datasetId, 'preview');
 
           setSelectFiles((prev) =>
             prev.map((item) =>
               item.id === fileItem.id
                 ? {
                     ...item,
-                    previewUrl,
-                    dbFileId: imageId,
+                    imagePreviewUrl: previewUrl,
+                    dbFileId: result.id,
                     isUploading: false
                   }
                 : item
@@ -128,7 +112,7 @@ const SelectFile = React.memo(function SelectFile() {
               item.id === fileItem.id
                 ? {
                     ...item,
-                    dbFileId: imageId,
+                    dbFileId: result.id,
                     isUploading: false
                   }
                 : item
@@ -225,7 +209,7 @@ const SelectFile = React.memo(function SelectFile() {
       }
     } catch (error: any) {
       toast({
-        title: error?.message || t('common:common.Create Failed'),
+        title: error?.message || t('common:error.Create failed'),
         status: 'error'
       });
     } finally {
@@ -358,9 +342,9 @@ const SelectFile = React.memo(function SelectFile() {
                         boxShadow="0px 4.286px 10.714px 0px rgba(19, 51, 107, 0.08), 0px 0px 1.071px 0px rgba(19, 51, 107, 0.08)"
                         overflow="hidden"
                       >
-                        {file.previewUrl ? (
+                        {file.imagePreviewUrl ? (
                           <Image
-                            src={file.previewUrl}
+                            src={file.imagePreviewUrl}
                             alt={file.sourceName || `图片${index + 1}`}
                             width="100%"
                             height="100%"

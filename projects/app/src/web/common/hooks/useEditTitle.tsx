@@ -4,8 +4,8 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import InfoTip from '@fastgpt/web/components/common/MyBox/InfoTip';
+import LightTip from '@fastgpt/web/components/common/LightTip';
+
 export const useEditTitle = ({
   title,
   tip,
@@ -90,7 +90,7 @@ export const useEditTitle = ({
       return (
         <MyModal isOpen={isOpen} onClose={onClose} iconSrc={iconSrc} title={title} maxW={'500px'}>
           <ModalBody>
-            {!!tip && <InfoTip mb={3}>{tip}</InfoTip>}
+            {!!tip && <LightTip text={tip} mb={3} />}
 
             <Input
               ref={inputRef}

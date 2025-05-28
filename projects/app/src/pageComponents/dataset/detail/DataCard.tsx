@@ -29,13 +29,14 @@ import Markdown from '@/components/Markdown';
 import { useMemoizedFn } from 'ahooks';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { TabEnum } from './NavBar';
-import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  ImportDataSourceEnum,
+  DatasetCollectionDataProcessModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import TrainingStates from './CollectionCard/TrainingStates';
 import { getTextValidLength } from '@fastgpt/global/common/string/utils';
-import { ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
-import { GET, POST } from '@/web/common/api/request';
-import { generateImagePreviewUrl } from '@/web/common/file/api';
+import { generateImagePreviewUrl } from '@/web/core/dataset/image/utils';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 
 const DataCard = () => {
@@ -114,25 +115,13 @@ const DataCard = () => {
   });
 
   const isImageCollection = useMemo(() => {
-    if (!collection) return false;
-    if (
-      collection.metadata &&
-      typeof collection.metadata === 'object' &&
-      'isImageCollection' in collection.metadata
-    ) {
-      return collection.metadata.isImageCollection === true;
-    }
-    // Fallback: check collection name
-    return collection.name?.includes(t('file:image_collection')) || false;
-  }, [collection, t]);
+    return collection?.trainingType === DatasetCollectionDataProcessModeEnum.imageParse;
+  }, [collection]);
 
   const [imagePreviewUrls, setImagePreviewUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (!datasetDataList.length) {
-      return;
-    }
-    if (!isImageCollection) {
+    if (!datasetDataList.length || !isImageCollection) {
       return;
     }
     const fetchDetailsAndCreateUrls = async () => {
@@ -328,36 +317,15 @@ const DataCard = () => {
                 {/* Data content */}
                 <Box wordBreak={'break-all'} fontSize={'sm'}>
                   {isImageCollection ? (
-                    <Box
-                      display="flex"
-                      padding="8px 8px 10px 8px"
-                      justifyContent="center"
-                      alignItems="center"
-                      alignSelf="stretch"
-                      borderRadius="md"
-                      overflow="hidden"
-                      bg="var(--Gray-Modern-100, #F4F4F7)"
-                      gap="24px"
-                    >
-                      <Box
-                        width="420px"
-                        flexShrink={0}
-                        borderRadius="md"
-                        overflow="hidden"
-                        display="flex"
-                        justifyContent="center"
-                        alignItems="center"
-                        position="relative"
-                        bg="lightgray"
-                      >
+                    <Box display="flex" p={2} bg={'myGray.100'} gap={6}>
+                      <Box w="420px" flexShrink={0} bg="lightgray">
                         {imagePreviewUrls[item._id] ? (
                           <Image
                             src={imagePreviewUrls[item._id]}
                             alt={item.q}
-                            width="100%"
-                            height="100%"
+                            w="100%"
+                            h="100%"
                             objectFit="contain"
-                            borderRadius="md"
                             cursor="pointer"
                             _hover={{ transform: 'scale(1.02)' }}
                             onError={(e) => {
@@ -366,8 +334,8 @@ const DataCard = () => {
                           />
                         ) : (
                           <Box
-                            width="100%"
-                            height="100%"
+                            w="100%"
+                            h="100%"
                             display="flex"
                             justifyContent="center"
                             alignItems="center"
@@ -376,18 +344,7 @@ const DataCard = () => {
                           </Box>
                         )}
                       </Box>
-                      <Box
-                        flex="1 0 0"
-                        color="var(--Gray-Modern-800, #1D2532)"
-                        fontFamily="PingFang SC"
-                        fontSize="14px"
-                        fontStyle="normal"
-                        fontWeight="400"
-                        lineHeight="20px"
-                        letterSpacing="0.25px"
-                        overflow="auto"
-                        maxHeight="272px"
-                      >
+                      <Box flex="1" color="myGray.800" fontSize="sm" maxH="272px" overflow="auto">
                         <Markdown source={item.q} isDisabled />
                       </Box>
                     </Box>

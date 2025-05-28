@@ -8,7 +8,7 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { authFrequencyLimit } from '@/service/common/frequencyLimit/api';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { createDatasetImage } from '@fastgpt/service/core/dataset/controller';
+import { createDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
 import { addSeconds } from 'date-fns';
 import { createFileToken } from '@fastgpt/service/support/permission/controller';
 import { hasAvailableVlmModel } from '@fastgpt/service/core/ai/model';
@@ -71,17 +71,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     });
 
     jsonRes(res, {
-      data: {
-        id: id
-      }
+      data: id
     });
   } catch (error) {
     // Only remove files on error
     removeFilesByPaths(filePaths);
-    jsonRes(res, {
-      code: 500,
-      error
-    });
+    return Promise.reject(error);
   }
 }
 export default NextAPI(handler);

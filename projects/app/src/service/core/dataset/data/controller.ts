@@ -18,7 +18,7 @@ import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTex
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
-import { MongoDatasetCollectionImage } from '@fastgpt/service/core/dataset/schema';
+import { MongoDatasetCollectionImage } from '@fastgpt/service/core/dataset/image/schema';
 
 const formatIndexes = async ({
   indexes = [],
@@ -233,15 +233,6 @@ export async function insertData2Dataset({
     { session, ordered: true }
   );
 
-  // 4. Remove TTL from image if imageFileId exists (prevent image expiration during training)
-  if (imageFileId) {
-    await MongoDatasetCollectionImage.updateOne(
-      { _id: imageFileId },
-      { $unset: { expiredTime: 1 } },
-      { session }
-    );
-  }
-
   return {
     insertId: _id,
     tokens: results.reduce((acc, cur) => acc + cur.tokens, 0)
@@ -415,11 +406,7 @@ export const deleteDatasetData = async (data: DatasetDataItemType) => {
 
     // 3. If there are any image files, delete the image records.
     if (data.imageFileId) {
-      try {
-        await MongoDatasetCollectionImage.deleteOne({ _id: data.imageFileId }, { session });
-      } catch (error) {
-        console.error('删除图片记录失败:', error);
-      }
+      await MongoDatasetCollectionImage.deleteOne({ _id: data.imageFileId }, { session });
     }
   });
 };

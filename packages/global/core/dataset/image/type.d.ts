@@ -1,4 +1,4 @@
-export interface DatasetCollectionImageSchema {
+export type DatasetImageSchema = {
   _id: string;
   teamId: string;
   datasetId: string;
@@ -10,10 +10,10 @@ export interface DatasetCollectionImageSchema {
   path: string;
   contentType: string;
   metadata?: Record<string, any>;
-}
+};
 
 // API请求参数类型
-export interface UploadDatasetImageProps {
+export type UploadDatasetImageProps = {
   datasetId: string;
   collectionId?: string;
-}
+};

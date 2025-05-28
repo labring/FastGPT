@@ -234,20 +234,17 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
 export const getTrainingModeByCollection = ({
   trainingType,
   autoIndexes,
-  imageIndex,
-  isImageCollection
+  imageIndex
 }: {
   trainingType: DatasetCollectionDataProcessModeEnum;
   autoIndexes?: boolean;
   imageIndex?: boolean;
-  isImageCollection?: boolean;
 }) => {
-  if (isImageCollection) {
-    return TrainingModeEnum.imageParse;
-  }
-
   if (imageIndex) {
     return TrainingModeEnum.image;
+  }
+  if (trainingType === DatasetCollectionDataProcessModeEnum.imageParse) {
+    return TrainingModeEnum.imageParse;
   }
   if (trainingType === DatasetCollectionDataProcessModeEnum.chunk) {
     return autoIndexes ? TrainingModeEnum.auto : TrainingModeEnum.chunk;

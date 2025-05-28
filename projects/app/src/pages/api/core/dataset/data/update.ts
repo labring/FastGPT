@@ -5,11 +5,11 @@ import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { MongoDatasetCollectionImage } from '@fastgpt/service/core/dataset/schema';
+import { MongoDatasetCollectionImage } from '@fastgpt/service/core/dataset/image/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 
 async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
-  const { dataId, q, a, indexes = [], imageFileId } = req.body;
+  const { dataId, q, a, indexes = [], imageId } = req.body;
 
   // auth data permission
   const {
@@ -43,26 +43,19 @@ async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
     });
   }
 
-  // Handle imageFileId update
-  if (imageFileId !== undefined) {
-    await MongoDatasetData.findByIdAndUpdate(dataId, {
-      imageFileId
-    });
-
-    // Remove image TTL to prevent expiration during training
-    if (imageFileId) {
-      await MongoDatasetCollectionImage.updateOne(
-        {
-          _id: imageFileId,
-          teamId: teamId
-        },
-        {
-          $unset: {
-            expiredTime: 1
-          }
+  // Remove image TTL to prevent expiration during training
+  if (imageId) {
+    await MongoDatasetCollectionImage.updateOne(
+      {
+        _id: imageId,
+        teamId: teamId
+      },
+      {
+        $unset: {
+          expiredTime: 1
         }
-      );
-    }
+      }
+    );
   }
 }
 

@@ -1,5 +1,5 @@
 import { uploadDatasetImage } from './api';
-import type { UploadDatasetImageProps } from '@fastgpt/global/core/dataset/imageCollection';
+import type { UploadDatasetImageProps } from '@fastgpt/global/core/dataset/image/type';
 
 export const uploadImage2Dataset = async ({
   file,

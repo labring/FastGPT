@@ -43,12 +43,13 @@ import {
   DatasetDataIndexTypeEnum,
   getDatasetIndexMapData
 } from '@fastgpt/global/core/dataset/data/constants';
+import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { generateImagePreviewUrl } from '@/web/common/file/api';
-import { uploadImage2Dataset } from '@/web/common/image/controller';
+import { generateImagePreviewUrl } from '@/web/core/dataset/image/utils';
+import { uploadImage2Dataset } from '@/web/core/dataset/image/controller';
 
 export type InputDataType = {
   q: string;
@@ -122,17 +123,8 @@ const InputDataModal = ({
 
   // Check if it's an image dataset
   const isImageCollection = useMemo(() => {
-    if (!collection) return false;
-    if (
-      collection.metadata &&
-      typeof collection.metadata === 'object' &&
-      'isImageCollection' in collection.metadata
-    ) {
-      return collection.metadata.isImageCollection === true;
-    }
-    // Fallback: check collection name
-    return collection.name?.includes(t('file:image_collection')) || false;
-  }, [collection, t]);
+    return collection?.trainingType === DatasetCollectionDataProcessModeEnum.imageParse;
+  }, [collection]);
 
   // Set default tab based on dataset type
   useEffect(() => {
@@ -169,20 +161,17 @@ const InputDataModal = ({
             collectionId: collectionId
           });
 
-          const { id: imageId } = result;
-
           try {
             const previewUrl = await generateImagePreviewUrl(
-              imageId,
+              result.id,
               collection.dataset._id,
-              userInfo?.team?.teamId || '',
               'preview'
             );
 
-            setUploadedFileId(imageId);
+            setUploadedFileId(result.id);
             setImagePreview(previewUrl);
           } catch (error) {
-            setUploadedFileId(imageId);
+            setUploadedFileId(result.id);
             toast({
               title: t('file:common.Loading image failed'),
               status: 'warning'
@@ -234,21 +223,29 @@ const InputDataModal = ({
             }))
           });
 
-          // Handle image data
-          if (res.imageFileId && res.imageFileId.trim() !== '' && isImageCollection) {
+          // Handle image data - check if this specific data item has an image
+          if (res.imageFileId && res.imageFileId.trim() !== '') {
             setUploadedFileId(res.imageFileId);
             setCurrentTab(TabEnum.image);
+          } else if (res.a || defaultValue?.a) {
+            // Only switch to QA tab if there's answer content and no image
+            setCurrentTab(TabEnum.qa);
+          } else {
+            // Default to chunk tab for text-only data
+            setCurrentTab(TabEnum.chunk);
           }
         } else if (defaultValue) {
           reset({
             q: defaultValue.q,
             a: defaultValue.a
           });
-        }
 
-        // Only switch to QA tab for non-image datasets
-        if (!isImageCollection && (res?.a || defaultValue?.a)) {
-          setCurrentTab(TabEnum.qa);
+          // Set default tab based on content
+          if (defaultValue.a) {
+            setCurrentTab(TabEnum.qa);
+          } else {
+            setCurrentTab(TabEnum.chunk);
+          }
         }
       },
       onError(err) {
@@ -263,13 +260,8 @@ const InputDataModal = ({
 
   // Handle image preview URL generation separately
   useEffect(() => {
-    if (uploadedFileId && userInfo?.team?.teamId && collection.dataset._id && isImageCollection) {
-      generateImagePreviewUrl(
-        uploadedFileId,
-        collection.dataset._id,
-        userInfo.team.teamId,
-        'preview'
-      )
+    if (uploadedFileId && userInfo?.team?.teamId && collection.dataset._id) {
+      generateImagePreviewUrl(uploadedFileId, collection.dataset._id, 'preview')
         .then((url) => {
           setPreviewUrl(url);
         })
@@ -280,7 +272,7 @@ const InputDataModal = ({
           });
         });
     }
-  }, [uploadedFileId, userInfo?.team?.teamId, collection.dataset._id, toast, isImageCollection]);
+  }, [uploadedFileId, userInfo?.team?.teamId, collection.dataset._id, toast]);
 
   const maxToken = useMemo(() => {
     const vectorModel =
@@ -298,7 +290,7 @@ const InputDataModal = ({
       }
 
       // Check if image is uploaded for image datasets
-      if (isImageCollection && !uploadedFileId) {
+      if (currentTab === TabEnum.image && !uploadedFileId) {
         return Promise.reject(t('file:please upload image first'));
       }
 
@@ -318,7 +310,7 @@ const InputDataModal = ({
       };
 
       // Add image ID for image datasets
-      if (isImageCollection && uploadedFileId) {
+      if (currentTab === TabEnum.image && uploadedFileId) {
         postData.imageFileId = uploadedFileId;
       }
 
@@ -357,8 +349,8 @@ const InputDataModal = ({
       if (!dataId) return Promise.reject(t('common:error.unKnow'));
 
       // Check if image is uploaded for image datasets
-      if (isImageCollection && !uploadedFileId) {
-        return Promise.reject('请先上传图片');
+      if (currentTab === TabEnum.image && !uploadedFileId) {
+        return Promise.reject(t('file:please upload image first'));
       }
 
       const updateData: any = {
@@ -369,7 +361,7 @@ const InputDataModal = ({
       };
 
       // Add image ID for image datasets
-      if (isImageCollection && uploadedFileId) {
+      if (currentTab === TabEnum.image && uploadedFileId) {
         updateData.imageFileId = uploadedFileId;
       }
 
@@ -480,32 +472,28 @@ const InputDataModal = ({
                 <>
                   <Box
                     position="relative"
-                    borderRadius="md"
-                    borderWidth="1px"
                     borderColor="myGray.200"
                     bg="myGray.25"
-                    width="100%"
-                    height="276px"
+                    w="100%"
+                    h="276px"
                     mb={3}
-                    display="flex"
-                    flexDirection="column"
                     overflow="hidden"
                   >
                     {previewUrl || imagePreview ? (
                       <Box
                         flex="1"
                         overflow="hidden"
-                        display="flex"
-                        justifyContent="center"
-                        alignItems="center"
                         position="relative"
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
                         onMouseEnter={() => setIsImageHovered(true)}
                         onMouseLeave={() => setIsImageHovered(false)}
                       >
                         <Image
                           src={previewUrl || imagePreview}
-                          maxHeight="100%"
-                          maxWidth="100%"
+                          maxH="100%"
+                          maxW="100%"
                           objectFit="contain"
                           alt={t('file:common.Image Preview')}
                           cursor="pointer"
@@ -515,18 +503,14 @@ const InputDataModal = ({
                         {uploadedFileId && isImageHovered && (
                           <Box
                             position="absolute"
-                            width="265px"
-                            height="27.5px"
+                            w="265px"
+                            h="27.5px"
                             top="8px"
                             left="8px"
-                            borderRadius="6px"
-                            padding="4px 8px"
-                            border="1px solid var(--Gray-Modern-200, #E8EBF0)"
-                            bg="var(--White, #FFFFFF)"
-                            boxShadow="0px 0px 1px 0px #13336B14, 0px 1px 2px 0px #13336B0D"
-                            display="flex"
-                            alignItems="center"
-                            justifyContent="space-between"
+                            p="4px 8px"
+                            border="1px solid"
+                            borderColor="myGray.200"
+                            bg="white"
                             overflow="hidden"
                           >
                             <Text fontSize="xs" color="gray.600" isTruncated maxW="200px">
@@ -549,18 +533,13 @@ const InputDataModal = ({
                               >
                                 <MyIcon
                                   name="copy"
-                                  width="14px"
-                                  height="14px"
+                                  w="14px"
+                                  h="14px"
                                   color="gray.500"
                                   _hover={{ color: 'blue.500' }}
                                 />
                               </Box>
-                              <MyIcon
-                                name="common/link"
-                                width="12px"
-                                height="12px"
-                                color="blue.500"
-                              />
+                              <MyIcon name="common/link" w="12px" h="12px" color="blue.500" />
                             </Flex>
                           </Box>
                         )}
@@ -568,16 +547,14 @@ const InputDataModal = ({
                         {isImageHovered && (
                           <Box
                             position="absolute"
-                            width="22px"
-                            height="25.20833px"
+                            w="22px"
+                            h="25.20833px"
                             bottom="8px"
                             right="8px"
-                            borderRadius="4px"
-                            padding="4px"
+                            p="4px"
                             bg="white"
                             border="1px solid"
-                            borderColor="var(--Gray-Modern-250, #DFE2EA)"
-                            boxShadow="0px 0px 1px 0px #13336B14, 0px 1px 2px 0px #13336B0D"
+                            borderColor="myGray.250"
                             cursor="pointer"
                             _hover={{ bg: 'gray.50' }}
                             onClick={(e) => {
@@ -587,7 +564,7 @@ const InputDataModal = ({
                               setUploadedFileId('');
                             }}
                           >
-                            <MyIcon name="delete" width="14px" height="14px" color="myGray.600" />
+                            <MyIcon name="delete" w="14px" h="14px" color="myGray.600" />
                           </Box>
                         )}
                       </Box>
@@ -597,12 +574,11 @@ const InputDataModal = ({
                         flexDirection="column"
                         alignItems="center"
                         justifyContent="center"
-                        height="100%"
-                        width="100%"
+                        h="100%"
+                        w="100%"
                         borderWidth="1.5px"
                         borderStyle="dashed"
                         borderColor={uploading ? 'primary.600' : 'borderColor.high'}
-                        borderRadius="md"
                         bg={uploading ? 'primary.50' : 'white'}
                         cursor={uploading ? 'default' : 'pointer'}
                         _hover={
@@ -913,7 +889,7 @@ const InputDataModal = ({
                   onClick={handleCloseEnlargedImage}
                   zIndex={5}
                 >
-                  <MyIcon name="close2" width="24px" height="24px" color="white" />
+                  <MyIcon name="close" width="24px" height="24px" color="white" />
                 </Box>
               </Box>
             </ModalBody>
