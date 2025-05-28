@@ -8,7 +8,7 @@ import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Types } from 'common/mongo';
+import { Types } from 'mongoose';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
   teamId,
