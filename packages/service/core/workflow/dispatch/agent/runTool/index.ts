@@ -86,7 +86,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     });
 
   // Check interactive entry
-  const interactiveResponse = lastInteractive;
   props.node.isEntry = false;
   const hasReadFilesTool = toolNodes.some(
     (item) => item.flowNodeType === FlowNodeTypeEnum.readFiles
@@ -143,7 +142,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         })
       }
     ];
-    if (interactiveResponse) {
+    if (lastInteractive && isEntry) {
       return value.slice(0, -2);
     }
     return value;
@@ -183,7 +182,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         toolModel,
         maxRunToolTimes: 30,
         messages: adaptMessages,
-        interactiveEntryToolParams: interactiveResponse?.toolParams
+        interactiveEntryToolParams: lastInteractive?.toolParams
       });
     }
     if (toolModel.functionCall) {
@@ -194,7 +193,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         toolNodes,
         toolModel,
         messages: adaptMessages,
-        interactiveEntryToolParams: interactiveResponse?.toolParams
+        interactiveEntryToolParams: lastInteractive?.toolParams
       });
     }
 
@@ -224,7 +223,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       toolNodes,
       toolModel,
       messages: adaptMessages,
-      interactiveEntryToolParams: interactiveResponse?.toolParams
+      interactiveEntryToolParams: lastInteractive?.toolParams
     });
   })();
 
