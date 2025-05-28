@@ -75,7 +75,7 @@ const CollectionCard = () => {
   const formatCollections = useMemo(
     () =>
       collections.map((collection) => {
-        const icon = getCollectionIcon(collection.type, collection.name);
+        const icon = getCollectionIcon(collection.type, collection.name, collection.trainingType);
         const status = (() => {
           if (collection.hasError) {
             return {
