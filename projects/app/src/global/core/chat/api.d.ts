@@ -24,7 +24,7 @@ export type GetChatRecordsProps = OutLinkChatAuthProps & {
   appId: string;
   chatId?: string;
   loadCustomFeedbacks?: boolean;
-  type: `${GetChatTypeEnum}`;
+  type?: `${GetChatTypeEnum}`;
 };
 
 export type InitOutLinkChatProps = {

@@ -1,6 +1,5 @@
 {
   "author": "",
-  "version": "4816",
   "name": "Search XNG 搜索",
   "avatar": "core/workflow/template/searxng",
   "intro": "使用 Search XNG 服务进行搜索。",

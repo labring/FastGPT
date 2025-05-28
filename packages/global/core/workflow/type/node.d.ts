@@ -59,7 +59,6 @@ export type FlowNodeCommonType = {
 };
 
 export type PluginDataType = {
-  version?: string;
   diagram?: string;
   userGuide?: string;
   courseUrl?: string;

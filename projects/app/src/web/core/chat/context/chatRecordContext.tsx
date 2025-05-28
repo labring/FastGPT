@@ -51,7 +51,7 @@ const ChatRecordContextProvider = ({
   params
 }: {
   children: ReactNode;
-  params: Record<string, any>;
+  params: Omit<getPaginationRecordsBody, 'offset' | 'pageSize'>;
 }) => {
   const ChatBoxRef = useContextSelector(ChatItemContext, (v) => v.ChatBoxRef);
   const [isChatRecordsLoaded, setIsChatRecordsLoaded] = useState(false);

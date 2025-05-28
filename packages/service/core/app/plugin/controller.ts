@@ -30,8 +30,7 @@ import { Types } from 'mongoose';
   community: community-id
   commercial: commercial-id
 */
-
-export async function splitCombinePluginId(id: string) {
+export function splitCombineToolId(id: string) {
   const splitRes = id.split('-');
   if (splitRes.length === 1) {
     // app id
@@ -42,7 +41,7 @@ export async function splitCombinePluginId(id: string) {
   }
 
   const [source, pluginId] = id.split('-') as [PluginSourceEnum, string];
-  if (!source || !pluginId) return Promise.reject('pluginId not found');
+  if (!source || !pluginId) throw new Error('pluginId not found');
 
   return { source, pluginId: id };
 }
@@ -54,7 +53,7 @@ const getSystemPluginTemplateById = async (
   versionId?: string
 ): Promise<ChildAppType> => {
   const item = getSystemPluginTemplates().find((plugin) => plugin.id === pluginId);
-  if (!item) return Promise.reject(PluginErrEnum.unAuth);
+  if (!item) return Promise.reject(PluginErrEnum.unExist);
 
   const plugin = cloneDeep(item);
 
@@ -64,10 +63,10 @@ const getSystemPluginTemplateById = async (
       { pluginId: plugin.id, 'customConfig.associatedPluginId': plugin.associatedPluginId },
       'associatedPluginId'
     ).lean();
-    if (!systemPlugin) return Promise.reject(PluginErrEnum.unAuth);
+    if (!systemPlugin) return Promise.reject(PluginErrEnum.unExist);
 
     const app = await MongoApp.findById(plugin.associatedPluginId).lean();
-    if (!app) return Promise.reject(PluginErrEnum.unAuth);
+    if (!app) return Promise.reject(PluginErrEnum.unExist);
 
     const version = versionId
       ? await getAppVersionById({
@@ -77,6 +76,12 @@ const getSystemPluginTemplateById = async (
         })
       : await getAppLatestVersion(plugin.associatedPluginId, app);
     if (!version.versionId) return Promise.reject('App version not found');
+    const isLatest = version.versionId
+      ? await checkIsLatestVersion({
+          appId: plugin.associatedPluginId,
+          versionId: version.versionId
+        })
+      : true;
 
     return {
       ...plugin,
@@ -85,12 +90,19 @@ const getSystemPluginTemplateById = async (
         edges: version.edges,
         chatConfig: version.chatConfig
       },
-      version: versionId || String(version.versionId),
+      version: versionId ? version?.versionId : '',
+      versionLabel: version?.versionName,
+      isLatestVersion: isLatest,
       teamId: String(app.teamId),
       tmbId: String(app.tmbId)
     };
   }
-  return plugin;
+
+  return {
+    ...plugin,
+    version: undefined,
+    isLatestVersion: true
+  };
 };
 
 /* Format plugin to workflow preview node data */
@@ -102,11 +114,11 @@ export async function getChildAppPreviewNode({
   versionId?: string;
 }): Promise<FlowNodeTemplateType> {
   const app: ChildAppType = await (async () => {
-    const { source, pluginId } = await splitCombinePluginId(appId);
+    const { source, pluginId } = splitCombineToolId(appId);
 
     if (source === PluginSourceEnum.personal) {
       const item = await MongoApp.findById(appId).lean();
-      if (!item) return Promise.reject('plugin not found');
+      if (!item) return Promise.reject(PluginErrEnum.unExist);
 
       const version = await getAppVersionById({ appId, versionId, app: item });
 
@@ -132,8 +144,8 @@ export async function getChildAppPreviewNode({
         },
         templateType: FlowNodeTemplateTypeEnum.teamApp,
 
-        version: version.versionId,
-        versionLabel: version?.versionName || '',
+        version: versionId ? version?.versionId : '',
+        versionLabel: version?.versionName,
         isLatestVersion: isLatest,
 
         originCost: 0,
@@ -142,7 +154,7 @@ export async function getChildAppPreviewNode({
         pluginOrder: 0
       };
     } else {
-      return getSystemPluginTemplateById(pluginId);
+      return getSystemPluginTemplateById(pluginId, versionId);
     }
   })();
 
@@ -216,12 +228,12 @@ export async function getChildAppRuntimeById(
   id: string,
   versionId?: string
 ): Promise<PluginRuntimeType> {
-  const app: ChildAppType = await (async () => {
-    const { source, pluginId } = await splitCombinePluginId(id);
+  const app = await (async () => {
+    const { source, pluginId } = splitCombineToolId(id);
 
     if (source === PluginSourceEnum.personal) {
       const item = await MongoApp.findById(id).lean();
-      if (!item) return Promise.reject('plugin not found');
+      if (!item) return Promise.reject(PluginErrEnum.unExist);
 
       const version = await getAppVersionById({
         appId: id,
@@ -244,8 +256,6 @@ export async function getChildAppRuntimeById(
         },
         templateType: FlowNodeTemplateTypeEnum.teamApp,
 
-        // 用不到
-        version: item?.pluginData?.nodeVersion,
         originCost: 0,
         currentCost: 0,
         hasTokenFee: false,
