@@ -4,11 +4,11 @@ import { type FileIdCreateDatasetCollectionParams } from '@fastgpt/global/core/d
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
-import { MongoRawTextBuffer } from '@fastgpt/service/common/buffer/rawText/schema';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type CreateCollectionResponse } from '@/global/core/dataset/api';
+import { deleteRawTextBuffer } from '@fastgpt/service/common/buffer/rawText/controller';
 
 async function handler(
   req: ApiRequestProps<FileIdCreateDatasetCollectionParams>
@@ -52,7 +52,7 @@ async function handler(
   });
 
   // remove buffer
-  await MongoRawTextBuffer.deleteOne({ sourceId: fileId });
+  await deleteRawTextBuffer(fileId);
 
   return {
     collectionId,

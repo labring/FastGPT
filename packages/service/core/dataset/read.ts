@@ -218,6 +218,10 @@ export const rawText2Chunks = ({
     };
   };
 
+  if (backupParse) {
+    return parseDatasetBackup2Chunks(rawText).chunks;
+  }
+
   // Chunk condition
   // 1. 选择最大值条件，只有超过了最大值(默认为模型的最大值*0.7），才会触发分块
   if (chunkTriggerType === ChunkTriggerConfigTypeEnum.maxSize) {
@@ -238,10 +242,6 @@ export const rawText2Chunks = ({
     if (textLength < chunkTriggerMinSize) {
       return [{ q: rawText, a: '' }];
     }
-  }
-
-  if (backupParse) {
-    return parseDatasetBackup2Chunks(rawText).chunks;
   }
 
   const { chunks } = splitText2Chunks({

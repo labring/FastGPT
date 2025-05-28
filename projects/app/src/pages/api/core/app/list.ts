@@ -138,18 +138,20 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
   })();
   const limit = (() => {
     if (getRecentlyChat) return 15;
-    if (searchKey) return 20;
-    return 1000;
+    if (searchKey) return 50;
+    return;
   })();
 
   const myApps = await MongoApp.find(
     findAppsQuery,
-    '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission'
+    '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission',
+    {
+      limit: limit
+    }
   )
     .sort({
       updateTime: -1
     })
-    .limit(limit)
     .lean();
 
   // Add app permission and filter apps by read permission
