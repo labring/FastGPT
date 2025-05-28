@@ -77,7 +77,10 @@ export const createCollectionAndInsertData = async ({
   const chunkSplitter = computeChunkSplitter(createCollectionParams);
   const paragraphChunkDeep = computeParagraphChunkDeep(createCollectionParams);
 
-  if (trainingType === DatasetCollectionDataProcessModeEnum.qa) {
+  if (
+    trainingType === DatasetCollectionDataProcessModeEnum.qa ||
+    trainingType === DatasetCollectionDataProcessModeEnum.backup
+  ) {
     delete createCollectionParams.chunkTriggerType;
     delete createCollectionParams.chunkTriggerMinSize;
     delete createCollectionParams.dataEnhanceCollectionName;
