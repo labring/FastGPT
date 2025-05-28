@@ -15,23 +15,19 @@ const SearchButton = () => {
   const setNodes = useContextSelector(WorkflowNodeEdgeContext, (state) => state.setNodes);
   const { fitView } = useReactFlow();
 
-  // 搜索状态
   const [keyword, setKeyword] = useState<string | null>(null);
   const [searchIndex, setSearchIndex] = useState(0);
   const [searchedNodeCount, setSearchedNodeCount] = useState(0);
 
-  // 检测是否为Mac系统
   const isMac =
     typeof window !== 'undefined' && window.navigator.userAgent.toLocaleLowerCase().includes('mac');
 
-  // 监听Ctrl+F或Command+F快捷键
   useKeyPress(['ctrl.f', 'meta.f'], (e) => {
     e.preventDefault();
     e.stopPropagation();
     setKeyword('');
   });
 
-  // 搜索节点处理
   useDebounceEffect(
     () => {
       if (!keyword) return;
@@ -61,14 +57,12 @@ const SearchButton = () => {
     { wait: 500 }
   );
 
-  // 清除搜索
   const clearSearch = useCallback(() => {
     setKeyword(null);
     setSearchIndex(0);
     setSearchedNodeCount(0);
   }, []);
 
-  // 切换到下一个匹配项
   const goToNextMatch = useCallback(() => {
     if (searchIndex === searchedNodeCount - 1) {
       setSearchIndex(0);
@@ -77,7 +71,6 @@ const SearchButton = () => {
     }
   }, [searchIndex, searchedNodeCount]);
 
-  // 切换到上一个匹配项
   const goToPreviousMatch = useCallback(() => {
     if (searchIndex === 0) return;
     setSearchIndex((prev) => prev - 1);
