@@ -803,25 +803,16 @@ const InputDataModal = ({
           zIndex={1000}
         >
           <Flex alignItems="center" gap={2}>
-            <Box
-              width="24px"
-              height="24px"
+            <MyIcon
+              width="18px"
+              height="18px"
               borderRadius="full"
-              bg="var(--Red-600, #D92D20)"
               display="flex"
               alignItems="center"
               justifyContent="center"
               boxSizing="border-box"
-              border="1px solid rgba(255,255,255,0.2)"
-            >
-              <MyIcon
-                name="soliderror"
-                width="14px"
-                height="14px"
-                color="white"
-                style={{ margin: 'auto' }}
-              />
-            </Box>
+              name="common/errorFill"
+            />
             <Text fontSize="sm" fontWeight="medium" color="red.800">
               {t('file:common.Only support uploading one image')}
             </Text>
