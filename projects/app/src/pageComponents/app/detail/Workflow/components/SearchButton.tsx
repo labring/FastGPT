@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Box, Flex, Button, IconButton } from '@chakra-ui/react';
+import { Box, Flex, Button, IconButton, type ButtonProps, Input } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowNodeEdgeContext } from '../../WorkflowComponents/context/workflowInitContext';
@@ -7,10 +7,8 @@ import { useReactFlow } from 'reactflow';
 import { useKeyPress } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import MyBox from '@fastgpt/web/components/common/MyBox';
-import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 
-const SearchButton = () => {
+const SearchButton = (props: ButtonProps) => {
   const { t } = useTranslation();
   const setNodes = useContextSelector(WorkflowNodeEdgeContext, (state) => state.setNodes);
   const { fitView } = useReactFlow();
@@ -49,14 +47,18 @@ const SearchButton = () => {
 
       setSearchedNodeCount(searchResult.length);
 
-      let searchedNode = null;
-      if (searchIndex !== null) {
-        if (searchResult.length === 0 || searchIndex >= searchResult.length) {
-          return nodes;
+      const searchedNode = (() => {
+        if (searchIndex === null) {
+          return null;
         }
+        if (searchResult.length === 0 || searchIndex >= searchResult.length) {
+          return null;
+        }
+        return searchResult[searchIndex];
+      })();
 
-        searchedNode = searchResult[searchIndex];
-        fitView({ nodes: [searchedNode] });
+      if (searchedNode) {
+        fitView({ nodes: [searchedNode], padding: 0.4 });
       }
 
       return nodes.map((node) => ({
@@ -77,12 +79,13 @@ const SearchButton = () => {
   }, []);
 
   const goToNextMatch = useCallback(() => {
-    if (searchIndex === searchedNodeCount - 1) {
+    if (
+      searchIndex === searchedNodeCount - 1 ||
+      (searchedNodeCount !== 0 && searchIndex === null)
+    ) {
       setSearchIndex(0);
-    } else if (searchIndex !== null) {
+    } else if (searchedNodeCount !== 0 && searchIndex !== null) {
       setSearchIndex(searchIndex + 1);
-    } else {
-      setSearchIndex(0);
     }
   }, [searchIndex, searchedNodeCount]);
 
@@ -97,24 +100,53 @@ const SearchButton = () => {
 
   if (keyword === null) {
     return (
-      <MyTooltip label={isMac ? t('workflow:find_tip_mac') : t('workflow:find_tip')}>
-        <IconButton
-          icon={<MyIcon name="common/searchLight" w="18px" />}
-          aria-label=""
-          size="sm"
-          w="30px"
-          variant="whitePrimary"
-          onClick={() => setKeyword('')}
-        />
-      </MyTooltip>
+      <Box position={'absolute'} top={'72px'} left={6} zIndex={1}>
+        <MyTooltip label={isMac ? t('workflow:find_tip_mac') : t('workflow:find_tip')}>
+          <IconButton
+            icon={<MyIcon name="common/searchLight" w="20px" color={'#8A95A7'} />}
+            aria-label=""
+            variant="whitePrimary"
+            size={'mdSquare'}
+            borderRadius={'50%'}
+            bg={'white'}
+            _hover={{ bg: 'white', borderColor: 'primary.300' }}
+            boxShadow={'0px 4px 10px 0px rgba(19, 51, 107, 0.20)'}
+            {...props}
+            onClick={() => setKeyword('')}
+          />
+        </MyTooltip>
+      </Box>
     );
   }
 
   return (
-    <MyBox position="relative">
-      <SearchInput
-        w="200px"
-        pr={6}
+    <Flex
+      position="absolute"
+      top={3}
+      left="50%"
+      transform="translateX(-50%)"
+      pl={5}
+      pr={4}
+      py={4}
+      zIndex={1}
+      borderRadius={'16px'}
+      bg={'white'}
+      alignItems={'center'}
+      boxShadow={
+        '0px 20px 24px -8px rgba(19, 51, 107, 0.15), 0px 0px 1px 0px rgba(19, 51, 107, 0.15)'
+      }
+      border={'0.5px solid rgba(0, 0, 0, 0.13)'}
+    >
+      <Input
+        w="400px"
+        h={8}
+        border={'none'}
+        px={0}
+        _focus={{
+          border: 'none',
+          boxShadow: 'none'
+        }}
+        fontSize={'16px'}
         value={keyword}
         placeholder={t('workflow:please_enter_node_name')}
         autoFocus
@@ -132,72 +164,39 @@ const SearchButton = () => {
         }}
       />
 
-      {!!keyword && (
-        <>
-          <Flex
-            position="absolute"
-            top={1.5}
-            left="176px"
-            w="18px"
-            h="18px"
-            borderRadius="sm"
-            _hover={{ bg: 'myGray.50' }}
-            alignItems="center"
-            justifyContent="center"
-            cursor="pointer"
-            onClick={clearSearch}
-          >
-            <MyIcon name="common/closeLight" w="14px" />
-          </Flex>
-          <MyBox
-            position="absolute"
-            top="34px"
-            left={0}
-            w="200px"
-            h="40px"
-            zIndex={10}
-            bg="white"
-            rounded="md"
-            boxShadow="0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10)"
-            px={1.5}
-          >
-            <Flex px={1} alignItems="center" h="full">
-              {searchedNodeCount > 0 ? (
-                <Flex alignItems="center" w="full" justifyContent="space-between">
-                  <Box fontSize="12px" color="myGray.600">
-                    {`${searchIndex !== null ? searchIndex + 1 : '?'} / ${searchedNodeCount}`}
-                  </Box>
-                  <Flex>
-                    <Button
-                      size="xs"
-                      fontSize="12px"
-                      variant="ghost"
-                      isDisabled={searchIndex === 0}
-                      onClick={goToPreviousMatch}
-                    >
-                      {t('workflow:previous')}
-                    </Button>
-                    <Button
-                      size="xs"
-                      fontSize="12px"
-                      variant="ghost"
-                      isDisabled={searchIndex === searchedNodeCount - 1}
-                      onClick={goToNextMatch}
-                    >
-                      {t('workflow:next')}
-                    </Button>
-                  </Flex>
-                </Flex>
-              ) : (
-                <Flex fontSize="xs" color="myGray.600">
-                  {t('workflow:no_node_found')}
-                </Flex>
-              )}
-            </Flex>
-          </MyBox>
-        </>
-      )}
-    </MyBox>
+      <Box fontSize="16px" color="myGray.600" whiteSpace={'nowrap'} userSelect={'none'}>
+        {`${searchIndex !== null ? searchIndex + 1 : '?'} / ${searchedNodeCount}`}
+      </Box>
+
+      <Box h={5} w={'1px'} bg={'myGray.250'} mx={3} />
+
+      <Button
+        size="xs"
+        variant="ghost"
+        isDisabled={searchIndex === 0 || searchedNodeCount === 0}
+        onClick={goToPreviousMatch}
+      >
+        {t('workflow:previous')}
+      </Button>
+      <Button
+        size="xs"
+        variant="ghost"
+        isDisabled={searchIndex === searchedNodeCount - 1 || searchedNodeCount === 0}
+        onClick={goToNextMatch}
+      >
+        {t('workflow:next')}
+      </Button>
+
+      <Flex
+        borderRadius="sm"
+        _hover={{ bg: 'myGray.50' }}
+        p={'7px'}
+        cursor="pointer"
+        onClick={clearSearch}
+      >
+        <MyIcon name="common/closeLight" w="18px" />
+      </Flex>
+    </Flex>
   );
 };
 

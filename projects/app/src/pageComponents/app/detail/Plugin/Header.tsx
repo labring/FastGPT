@@ -29,7 +29,6 @@ import PublishHistories from '../PublishHistoriesSlider';
 import { WorkflowEventContext } from '../WorkflowComponents/context/workflowEventContext';
 import { WorkflowStatusContext } from '../WorkflowComponents/context/workflowStatusContext';
 import SaveButton from '../Workflow/components/SaveButton';
-import SearchButton from '../Workflow/components/SearchButton';
 
 const Header = () => {
   const { t } = useTranslation();
@@ -172,7 +171,6 @@ const Header = () => {
 
           {currentTab === TabEnum.appEdit && (
             <HStack flexDirection={['column', 'row']} spacing={[2, 3]}>
-              <SearchButton />
               {!showHistoryModal && (
                 <IconButton
                   icon={<MyIcon name={'history'} w={'18px'} />}
