@@ -1,6 +1,6 @@
 import React from 'react';
 import ErrorBoundary from './errorBoundry';
-import { filterSafeProps } from './index';
+import { filterSafeProps } from './utils';
 
 interface SVGProps {
   children?: React.ReactNode;
@@ -26,80 +26,30 @@ const SVG_ALLOWED_ATTRS = new Set([
 ]);
 
 const SVGRenderer = ({ children, className, style, ...props }: SVGProps) => {
-  // filter props
-  const svgProps = { ...props, className, style };
-  const sanitizedProps = filterSafeProps(svgProps, SVG_ALLOWED_ATTRS, false);
+  const sanitizedProps = filterSafeProps({ ...props, className, style }, SVG_ALLOWED_ATTRS);
 
   const sanitizeSVGContent = (content: string | React.ReactNode): string => {
-    if (typeof content !== 'string') {
-      return '';
-    }
+    if (typeof content !== 'string') return '';
 
-    let cleaned = content;
-
-    cleaned = cleaned.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-    cleaned = cleaned.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
-    cleaned = cleaned.replace(
-      /<foreignObject\b[^<]*(?:(?!<\/foreignObject>)<[^<]*)*<\/foreignObject>/gi,
-      ''
-    );
-
-    cleaned = cleaned.replace(/\son\w+="[^"]*"/gi, '');
-    cleaned = cleaned.replace(/\son\w+='[^']*'/gi, '');
-    cleaned = cleaned.replace(/url\s*\(\s*['"]?\s*javascript:[^)]+\)/gi, '');
-    cleaned = cleaned.replace(/\bhref="javascript:[^"]*"/gi, '');
-    cleaned = cleaned.replace(/\bhref='javascript:[^']*'/gi, '');
-    cleaned = cleaned.replace(/\bxlink:href="javascript:[^"]*"/gi, '');
-    cleaned = cleaned.replace(/\bxlink:href='javascript:[^']*'/gi, '');
-    cleaned = cleaned.replace(/\bxmlns(:xlink)?=['"]?javascript:[^"']*['"]?/gi, '');
-    cleaned = cleaned.replace(/style\s*=\s*(['"])(?:(?!\1).)*javascript:.*?\1/gi, '');
-
-    cleaned = cleaned.replace(/\bdata:[^,]*?;base64,[^"')]*["')]/gi, (match) => {
-      return match.toLowerCase().includes('javascript') ? '' : match;
-    });
-
-    const ALLOWED_ATTRS = new Set([
-      'width',
-      'height',
-      'viewBox',
-      'fill',
-      'stroke',
-      'd',
-      'x',
-      'y',
-      'cx',
-      'cy',
-      'r',
-      'class',
-      'style'
-    ]);
-    cleaned = cleaned.replace(/\s(\w+)=['"][^'"]*['"]/gi, (match, attr) => {
-      return ALLOWED_ATTRS.has(attr.toLowerCase()) ? match : '';
-    });
-
-    cleaned = cleaned.replace(/<!--[\s\S]*?-->/g, '');
-
-    return cleaned;
+    return content
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+      .replace(/<foreignObject\b[^<]*(?:(?!<\/foreignObject>)<[^<]*)*<\/foreignObject>/gi, '')
+      .replace(/<!--[\s\S]*?-->/g, '');
   };
 
-  const sanitizedContent = React.Children.map(children, (child) => {
-    if (typeof child === 'string') {
-      return sanitizeSVGContent(child);
-    }
-    return child;
-  });
-
   return (
-    <ErrorBoundary fallback={<div>Something went wrong while rendering Markdown.</div>}>
+    <ErrorBoundary fallback={<div>SVG rendering error</div>}>
       <svg
         {...sanitizedProps}
-        className={className}
-        style={style}
         dangerouslySetInnerHTML={
           typeof children === 'string' ? { __html: sanitizeSVGContent(children) } : undefined
         }
       >
-        {typeof children !== 'string' && sanitizedContent}
+        {typeof children !== 'string' &&
+          React.Children.map(children, (child) =>
+            typeof child === 'string' ? sanitizeSVGContent(child) : child
+          )}
       </svg>
     </ErrorBoundary>
   );

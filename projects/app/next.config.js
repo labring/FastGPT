@@ -1,6 +1,7 @@
 const { i18n } = require('./next-i18next.config.js');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -14,51 +15,50 @@ const nextConfig = {
 
   headers: async () => {
     const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
-    const csp = `'nonce-${nonce}'`;
+    const csp_nonce = `'nonce-${nonce}'`;
     const scheme_source = 'data: mediastream: blob: filesystem:';
-    const NECESSARY_DOMAINS = [
-      '*.sentry.io',
-      'http://localhost:*',
-      'http://127.0.0.1:*',
-      'https://analytics.google.com',
-      'googletagmanager.com',
-      '*.googletagmanager.com',
-      'https://www.google-analytics.com',
-      'https://api.github.com'
-    ].join(' ');
+
+    const SENTRY_DOMAINS = '*.sentry.io';
+    const GOOGLE_DOMAINS = 'https://www.googletagmanager.com https://www.google-analytics.com';
+    const LOCALHOST = 'http://localhost:* http://127.0.0.1:*';
+    const OTHER_DOMAINS = 'https://api.example.com';
+
+    const csp = [
+      `default-src 'self' ${scheme_source} ${SENTRY_DOMAINS} ${GOOGLE_DOMAINS} ${OTHER_DOMAINS} ${LOCALHOST}`,
+      `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${csp_nonce} ${SENTRY_DOMAINS} ${GOOGLE_DOMAINS} ${OTHER_DOMAINS} ${LOCALHOST}`,
+      `style-src 'self' 'unsafe-inline' ${SENTRY_DOMAINS} ${GOOGLE_DOMAINS} ${OTHER_DOMAINS} ${LOCALHOST}`,
+      `img-src  data: blob: ${SENTRY_DOMAINS} ${GOOGLE_DOMAINS} ${OTHER_DOMAINS} ${LOCALHOST} *`,
+      `connect-src 'self' wss: https: ${SENTRY_DOMAINS} ${GOOGLE_DOMAINS} ${OTHER_DOMAINS} ${LOCALHOST}`,
+      `font-src 'self'`,
+      `media-src 'self' ${scheme_source} ${SENTRY_DOMAINS} ${GOOGLE_DOMAINS} ${OTHER_DOMAINS} ${LOCALHOST}`,
+      `worker-src 'self' ${SENTRY_DOMAINS} ${GOOGLE_DOMAINS} ${OTHER_DOMAINS} ${LOCALHOST} ${scheme_source}`,
+      `object-src 'none'`,
+      `form-action 'self'`,
+      `base-uri 'self'`,
+      `frame-src 'self' ${SENTRY_DOMAINS} ${GOOGLE_DOMAINS} ${OTHER_DOMAINS}`,
+      `sandbox allow-scripts allow-same-origin allow-popups allow-forms`,
+      `upgrade-insecure-requests`
+    ].join('; ');
 
     return [
       {
-        source: '/chat/(.*)',
+        source: '/(.*)',
         headers: [
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-XSS-Protection', value: '1; mode=block' },
           { key: 'Referrer-Policy', value: 'no-referrer' },
           {
-            key: 'Content-Security-Policy',
-            value: [
-              `default-src 'self' ${scheme_source} ${NECESSARY_DOMAINS} ${csp}`,
-              `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${csp} ${NECESSARY_DOMAINS}`,
-              `style-src 'self' 'unsafe-inline' ${csp} ${NECESSARY_DOMAINS}`,
-              `media-src 'self' http: ${scheme_source} ${NECESSARY_DOMAINS} ${csp}`,
-              `worker-src 'self' ${csp} ${NECESSARY_DOMAINS} ${scheme_source}`,
-              `img-src * data: blob:`,
-              `font-src 'self'`,
-              `connect-src 'self' wss: https: ${scheme_source} ${NECESSARY_DOMAINS} ${csp}`,
-              "object-src 'none'",
-              "form-action 'self'",
-              "base-uri 'self'",
-              "frame-src 'self' 'allow-scripts'",
-              'sandbox allow-scripts allow-same-origin allow-popups allow-forms',
-              'upgrade-insecure-requests'
-            ].join('; ')
-          }
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload'
+          },
+          { key: 'Content-Security-Policy', value: csp }
         ]
       }
     ];
   },
-  webpack(config, { isServer, nextRuntime }) {
+
+  webpack: (config, { isServer, nextRuntime }) => {
     Object.assign(config.resolve.alias, {
       '@mongodb-js/zstd': false,
       '@aws-sdk/credential-providers': false,
