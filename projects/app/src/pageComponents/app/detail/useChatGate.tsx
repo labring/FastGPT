@@ -4,7 +4,6 @@ import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type
 import { streamFetch } from '@/web/common/api/fetch';
 import { useMemoizedFn } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
-import { AppContext } from './context';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
