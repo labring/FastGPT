@@ -126,6 +126,7 @@
   "mouse_priority": "Mouse first\n- Press the left button to drag the canvas\n- Hold down shift and left click to select batches",
   "new_context": "New Context",
   "next": "Next",
+  "no_match_node": "No results",
   "no_node_found": "No node was not found",
   "not_contains": "Does Not Contain",
   "only_the_reference_type_is_supported": "Only reference type is supported",

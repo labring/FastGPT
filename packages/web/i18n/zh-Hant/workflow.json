@@ -126,6 +126,7 @@
   "mouse_priority": "滑鼠優先\n- 按下左鍵拖曳畫布\n- 按住 Shift 鍵並點選左鍵可批次選取",
   "new_context": "新的脈絡",
   "next": "下一個",
+  "no_match_node": "無結果",
   "no_node_found": "未搜索到節點",
   "not_contains": "不包含",
   "only_the_reference_type_is_supported": "僅支援引用類型",

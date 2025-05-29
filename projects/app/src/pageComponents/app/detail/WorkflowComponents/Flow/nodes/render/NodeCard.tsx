@@ -36,6 +36,7 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useCreation } from 'ahooks';
 import { formatToolError } from '@fastgpt/global/core/app/utils';
+import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -45,7 +46,7 @@ type Props = FlowNodeItemType & {
   w?: string | number;
   h?: string | number;
   selected?: boolean;
-  searched?: boolean;
+  searchedText?: string;
   menuForbid?: {
     debug?: boolean;
     copy?: boolean;
@@ -71,7 +72,7 @@ const NodeCard = (props: Props) => {
     h = 'full',
     nodeId,
     selected,
-    searched,
+    searchedText,
     menuForbid,
     isTool = false,
     isError = false,
@@ -188,14 +189,13 @@ const NodeCard = (props: Props) => {
                 w={'24px'}
                 h={'24px'}
               />
-              <Box
-                ml={2}
-                fontSize={'18px'}
-                fontWeight={'medium'}
-                color={'myGray.900'}
-                bg={searched ? '#ffe82d' : 'transparent'}
-              >
-                {t(name as any)}
+              <Box ml={2} fontSize={'18px'} fontWeight={'medium'} color={'myGray.900'}>
+                <HighlightText
+                  rawText={t(name as any)}
+                  matchText={searchedText ?? ''}
+                  mode={'bg'}
+                  color={'#ffe82d'}
+                />
               </Box>
               <Button
                 display={'none'}
@@ -288,7 +288,7 @@ const NodeCard = (props: Props) => {
     nodeId,
     isFolded,
     avatar,
-    searched,
+    searchedText,
     t,
     name,
     showVersion,

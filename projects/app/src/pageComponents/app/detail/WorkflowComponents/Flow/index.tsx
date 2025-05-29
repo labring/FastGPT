@@ -129,9 +129,9 @@ const Workflow = () => {
               isOpenTemplate ? onCloseTemplate() : onOpenTemplate();
             }}
           />
+          <SearchButton />
           <NodeTemplatesModal isOpen={isOpenTemplate} onClose={onCloseTemplate} />
           <NodeTemplatesPopover />
-          <SearchButton />
         </>
 
         <ReactFlow
