@@ -141,8 +141,8 @@ export async function pushDataListToTrainingQueue({
       .filter(Boolean);
 
     // filter repeat content
-    // For imageParse mode, allow empty q if imageFileId exists
-    if (!item.q && !(mode === TrainingModeEnum.imageParse && item.imageFileId)) {
+    // For imageParse mode, allow empty q if imageId exists
+    if (!item.q && !(mode === TrainingModeEnum.imageParse && item.imageId)) {
       filterResult.error.push(item);
       return;
     }
@@ -155,9 +155,8 @@ export async function pushDataListToTrainingQueue({
       return;
     }
 
-    // For imageParse mode with imageFileId, use imageFileId as unique key
-    const uniqueKey =
-      mode === TrainingModeEnum.imageParse && item.imageFileId ? item.imageFileId : text;
+    // For imageParse mode with imageId, use imageId as unique key
+    const uniqueKey = mode === TrainingModeEnum.imageParse && item.imageId ? item.imageId : text;
 
     if (set.has(uniqueKey)) {
       filterResult.repeat.push(item);
@@ -196,7 +195,7 @@ export async function pushDataListToTrainingQueue({
           weight: weight ?? 0,
           indexes: item.indexes,
           retryCount: 5,
-          ...(item.imageFileId ? { imageFileId: item.imageFileId } : {})
+          ...(item.imageId ? { imageId: item.imageId } : {})
         })),
         {
           session,

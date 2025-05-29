@@ -99,7 +99,7 @@ const TrainingDataSchema = new Schema({
     ],
     default: []
   },
-  imageFileId: {
+  imageId: {
     type: String
   },
 

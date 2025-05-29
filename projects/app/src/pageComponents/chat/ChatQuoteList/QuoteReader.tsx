@@ -57,7 +57,7 @@ const QuoteReader = ({
             sourceId: searchItem.sourceId,
             sourceName: searchItem.sourceName
           }),
-          imageFileId: dataItem?.imageFileId || searchItem.imageFileId,
+          imageId: dataItem?.imageId || searchItem.imageId,
           datasetId: searchItem.datasetId
         };
       })
@@ -151,7 +151,7 @@ const QuoteReader = ({
                 score={item.score}
                 q={item.q}
                 a={item.a}
-                imageFileId={item.imageFileId}
+                imageId={item.imageId}
                 datasetId={item.datasetId}
               />
             ))}

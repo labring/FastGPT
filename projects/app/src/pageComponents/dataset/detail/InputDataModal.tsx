@@ -53,6 +53,7 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { generateImagePreviewUrl } from '@/web/core/dataset/image/utils';
 import { uploadImage2Dataset } from '@/web/core/dataset/image/controller';
+import MyPhotoView from '@fastgpt/web/components/common/Image/PhotoView';
 
 export type InputDataType = {
   q: string;
@@ -226,8 +227,8 @@ const InputDataModal = ({
           });
 
           // Handle image data - check if this specific data item has an image
-          if (res.imageFileId && res.imageFileId.trim() !== '') {
-            setUploadedFileId(res.imageFileId);
+          if (res.imageId && res.imageId.trim() !== '') {
+            setUploadedFileId(res.imageId);
             setCurrentTab(TabEnum.image);
           } else if (res.a || defaultValue?.a) {
             // Only switch to QA tab if there's answer content and no image
@@ -313,7 +314,7 @@ const InputDataModal = ({
 
       // Add image ID for image datasets
       if (currentTab === TabEnum.image && uploadedFileId) {
-        postData.imageFileId = uploadedFileId;
+        postData.imageId = uploadedFileId;
       }
 
       const dataId = await postInsertData2Dataset(postData);
@@ -364,7 +365,7 @@ const InputDataModal = ({
 
       // Add image ID for image datasets
       if (currentTab === TabEnum.image && uploadedFileId) {
-        updateData.imageFileId = uploadedFileId;
+        updateData.imageId = uploadedFileId;
       }
 
       await putDatasetDataById(updateData);
@@ -820,8 +821,8 @@ const InputDataModal = ({
 
           <MyIcon
             name="close"
-            width="16px"
-            height="16px"
+            width="1rem"
+            height="1rem"
             cursor="pointer"
             color="gray.500"
             onClick={() => setMultipleImagesError(false)}
@@ -846,25 +847,13 @@ const InputDataModal = ({
                 position="relative"
                 overflow="hidden"
               >
-                <Box
+                <MyPhotoView
+                  src={previewUrl || imagePreview}
                   width="100%"
                   height="100%"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  bg="var(--Gray-Modern-100, #FFFFFF)"
-                  borderRadius="lg"
-                  overflow="hidden"
-                >
-                  <Image
-                    src={previewUrl || imagePreview}
-                    width="100%"
-                    height="100%"
-                    objectFit="contain"
-                    alt="放大的图片"
-                  />
-                </Box>
-
+                  objectFit="contain"
+                  alt={t('file:common.Image Preview') || '放大的图片'}
+                />
                 <Box
                   position="absolute"
                   top="0px"
@@ -882,7 +871,7 @@ const InputDataModal = ({
                   onClick={handleCloseEnlargedImage}
                   zIndex={5}
                 >
-                  <MyIcon name="close" width="24px" height="24px" color="white" />
+                  <MyIcon name="close" width="1rem" height="1rem" color="white" />
                 </Box>
               </Box>
             </ModalBody>

@@ -21,7 +21,7 @@ import { MongoDatasetCollectionImage } from '@fastgpt/service/core/dataset/image
 
 async function handler(req: NextApiRequest) {
   try {
-    const { collectionId, q, a, indexes, imageFileId } = req.body as InsertOneDatasetDataProps;
+    const { collectionId, q, a, indexes, imageId } = req.body as InsertOneDatasetDataProps;
 
     if (!q) {
       return Promise.reject(CommonErrEnum.missingParams);
@@ -85,13 +85,13 @@ async function handler(req: NextApiRequest) {
         chunkIndex: 0,
         embeddingModel: vectorModelData.model,
         indexes: formatIndexes,
-        imageFileId
+        imageId
       });
 
-      // Remove TTL from image if imageFileId exists (prevent image expiration during training)
-      if (imageFileId) {
+      // Remove TTL from image if imageId exists (prevent image expiration during training)
+      if (imageId) {
         await MongoDatasetCollectionImage.updateOne(
-          { _id: imageFileId },
+          { _id: imageId },
           { $unset: { expiredTime: 1 } }
         );
       }

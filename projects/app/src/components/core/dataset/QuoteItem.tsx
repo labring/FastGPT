@@ -106,16 +106,16 @@ const QuoteItem = ({
   }, [quoteItem.score]);
 
   const isImageDataset = useMemo(() => {
-    const result = !!quoteItem.imageFileId;
+    const result = !!quoteItem.imageId;
     return result;
-  }, [quoteItem.imageFileId]);
+  }, [quoteItem.imageId]);
 
   useEffect(() => {
-    if (isImageDataset && quoteItem.imageFileId && quoteItem.datasetId) {
+    if (isImageDataset && quoteItem.imageId && quoteItem.datasetId) {
       const fetchImageUrl = async () => {
         try {
           const url = await generateImagePreviewUrl(
-            quoteItem.imageFileId!,
+            quoteItem.imageId!,
             String(quoteItem.datasetId),
             'chat' // 7days
           );
@@ -128,7 +128,7 @@ const QuoteItem = ({
       };
       fetchImageUrl();
     }
-  }, [isImageDataset, quoteItem.imageFileId, quoteItem.datasetId]);
+  }, [isImageDataset, quoteItem.imageId, quoteItem.datasetId]);
 
   return (
     <>

@@ -244,7 +244,7 @@ export const createCollectionAndInsertData = async ({
           text
         })),
         chunkIndex: index,
-        imageFileId: item.imageId
+        imageId: item.imageId
       })),
       session
     });

@@ -129,12 +129,8 @@ const DataCard = () => {
       const urlMap: Record<string, string> = {};
       const previewPromises = datasetDataList.map(async (item) => {
         try {
-          if (item.imageFileId) {
-            const previewUrl = await generateImagePreviewUrl(
-              item.imageFileId,
-              item.datasetId,
-              'list'
-            );
+          if (item.imageId) {
+            const previewUrl = await generateImagePreviewUrl(item.imageId, item.datasetId, 'list');
             if (previewUrl) {
               urlMap[item._id] = previewUrl;
             }

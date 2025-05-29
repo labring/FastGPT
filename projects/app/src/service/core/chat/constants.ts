@@ -1,6 +1,6 @@
 import { type DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 
-export const quoteDataFieldSelector = '_id q a history updateTime chunkIndex imageFileId';
+export const quoteDataFieldSelector = '_id q a history updateTime chunkIndex imageId';
 
 export type QuoteDataItemType = {
   _id: string;
@@ -9,6 +9,6 @@ export type QuoteDataItemType = {
   history?: DatasetDataSchemaType['history'];
   updateTime: DatasetDataSchemaType['updateTime'];
   index: DatasetDataSchemaType['chunkIndex'];
-  imageFileId?: DatasetDataSchemaType['imageFileId'];
+  imageId?: DatasetDataSchemaType['imageId'];
   updated?: boolean;
 };

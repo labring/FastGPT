@@ -17,7 +17,7 @@ const QuoteItem = ({
   score,
   q,
   a,
-  imageFileId,
+  imageId,
   datasetId
 }: {
   index: number;
@@ -26,7 +26,7 @@ const QuoteItem = ({
   score: { primaryScore?: ScoreItemType; secondaryScore: ScoreItemType[] };
   q: string;
   a?: string;
-  imageFileId?: string;
+  imageId?: string;
   datasetId?: string;
 }) => {
   const { t } = useTranslation();
@@ -36,15 +36,15 @@ const QuoteItem = ({
 
   // 检测是否为图片数据集
   const isImageDataset = useMemo(() => {
-    return !!imageFileId;
-  }, [imageFileId]);
+    return !!imageId;
+  }, [imageId]);
 
   // 获取图片预览URL
   useEffect(() => {
-    if (imageFileId && datasetId) {
+    if (imageId && datasetId) {
       const fetchImageUrl = async () => {
         try {
-          const url = await generateImagePreviewUrl(imageFileId, String(datasetId), 'chat');
+          const url = await generateImagePreviewUrl(imageId, String(datasetId), 'chat');
           if (url) {
             setImagePreviewUrl(url);
           }
@@ -54,7 +54,7 @@ const QuoteItem = ({
       };
       fetchImageUrl();
     }
-  }, [imageFileId, datasetId]);
+  }, [imageId, datasetId]);
 
   return (
     <Box

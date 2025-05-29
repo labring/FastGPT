@@ -8,7 +8,7 @@ export type CreateDatasetDataProps = {
   chunkIndex?: number;
   q: string;
   a?: string;
-  imageFileId?: string;
+  imageId?: string;
   indexes?: Omit<DatasetDataIndexItemType, 'dataId'>[];
 };
 

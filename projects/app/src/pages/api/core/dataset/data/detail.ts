@@ -7,7 +7,7 @@ export type Response = {
   id: string;
   q: string;
   a: string;
-  imageFileId?: string;
+  imageId?: string;
   source: string;
 };
 

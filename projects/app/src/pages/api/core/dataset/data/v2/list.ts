@@ -44,7 +44,7 @@ async function handler(
   };
 
   const [list, total] = await Promise.all([
-    MongoDatasetData.find(match, '_id datasetId collectionId q a chunkIndex imageFileId teamId')
+    MongoDatasetData.find(match, '_id datasetId collectionId q a chunkIndex imageId teamId')
       .sort({ chunkIndex: 1, _id: -1 })
       .skip(offset)
       .limit(pageSize)
@@ -52,12 +52,12 @@ async function handler(
     MongoDatasetData.countDocuments(match)
   ]);
 
-  const imageFileIds = list.filter((item) => item.imageFileId).map((item) => item.imageFileId);
+  const imageIds = list.filter((item) => item.imageId).map((item) => item.imageId);
   let imageSizeMap: Record<string, number> = {};
 
-  if (imageFileIds.length > 0) {
+  if (imageIds.length > 0) {
     const imageInfos = await MongoDatasetCollectionImage.find(
-      { _id: { $in: imageFileIds } },
+      { _id: { $in: imageIds } },
       '_id size'
     ).lean();
 
@@ -72,9 +72,9 @@ async function handler(
 
   const listWithImageSize = list.map((item) => ({
     ...item,
-    ...(item.imageFileId && imageSizeMap[item.imageFileId]
+    ...(item.imageId && imageSizeMap[item.imageId]
       ? {
-          imageSize: imageSizeMap[item.imageFileId]
+          imageSize: imageSizeMap[item.imageId]
         }
       : {})
   }));

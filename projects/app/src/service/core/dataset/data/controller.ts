@@ -148,7 +148,7 @@ export async function insertData2Dataset({
   indexSize = 512,
   indexes,
   embeddingModel,
-  imageFileId,
+  imageId,
   session
 }: CreateDatasetDataProps & {
   embeddingModel: string;
@@ -209,7 +209,7 @@ export async function insertData2Dataset({
         tmbId,
         datasetId,
         collectionId,
-        imageFileId,
+        imageId,
         q,
         a,
         chunkIndex,
@@ -399,8 +399,8 @@ export const deleteDatasetData = async (data: DatasetDataItemType) => {
     await MongoDatasetDataText.deleteMany({ dataId: data.id }, { session });
 
     // 2. If there are any image files, delete the image records.
-    if (data.imageFileId) {
-      await MongoDatasetCollectionImage.deleteOne({ _id: data.imageFileId }, { session });
+    if (data.imageId) {
+      await MongoDatasetCollectionImage.deleteOne({ _id: data.imageId }, { session });
     }
 
     // 3. Delete vector data
