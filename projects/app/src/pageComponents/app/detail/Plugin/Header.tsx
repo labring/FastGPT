@@ -25,16 +25,20 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import SaveButton from '../Workflow/components/SaveButton';
 import PublishHistories from '../PublishHistoriesSlider';
 import { WorkflowEventContext } from '../WorkflowComponents/context/workflowEventContext';
 import { WorkflowStatusContext } from '../WorkflowComponents/context/workflowStatusContext';
+import SaveButton from '../Workflow/components/SaveButton';
 
 const Header = () => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const router = useRouter();
-  const { toast } = useToast();
+  const { toast: backSaveToast } = useToast({
+    containerStyle: {
+      mt: '60px'
+    }
+  });
 
   const { appDetail, onSaveApp, currentTab } = useContextSelector(AppContext, (v) => v);
   const isV2Workflow = appDetail?.version === 'v2';
@@ -183,6 +187,7 @@ const Header = () => {
                 size={'sm'}
                 leftIcon={<MyIcon name={'core/workflow/debug'} w={['14px', '16px']} />}
                 variant={'whitePrimary'}
+                flexShrink={0}
                 onClick={() => {
                   const data = flowData2StoreDataAndCheck();
                   if (data) {
@@ -211,12 +216,12 @@ const Header = () => {
     onBack,
     onOpenBackConfirm,
     isV2Workflow,
-    showHistoryModal,
     t,
+    showHistoryModal,
     loading,
     onClickSave,
-    flowData2StoreDataAndCheck,
     setShowHistoryModal,
+    flowData2StoreDataAndCheck,
     setWorkflowTestData
   ]);
 
@@ -229,10 +234,11 @@ const Header = () => {
             setShowHistoryModal(false);
           }}
           past={past}
-          onSwitchTmpVersion={onSwitchTmpVersion}
           onSwitchCloudVersion={onSwitchCloudVersion}
+          onSwitchTmpVersion={onSwitchTmpVersion}
         />
       )}
+
       <MyModal
         isOpen={isOpenBackConfirm}
         onClose={onCloseBackConfirm}
@@ -254,7 +260,7 @@ const Header = () => {
                 await onClickSave({});
                 onCloseBackConfirm();
                 onBack();
-                toast({
+                backSaveToast({
                   status: 'success',
                   title: t('app:saved_success'),
                   position: 'top-right'
