@@ -20,6 +20,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppVersionById } from '../../../app/version/controller';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { type ChildrenInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { getUserChatInfoAndAuthTeamPoints } from '../../../../support/permission/auth/team';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -97,11 +98,13 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
 
   // Rewrite children app variables
   const systemVariables = filterSystemVariables(variables);
+  const { externalProvider } = await getUserChatInfoAndAuthTeamPoints(appData.tmbId);
   const childrenRunVariables = {
     ...systemVariables,
     ...childrenAppVariables,
     histories: chatHistories,
-    appId: String(appData._id)
+    appId: String(appData._id),
+    ...(externalProvider ? externalProvider.externalWorkflowVariables : {})
   };
 
   const childrenInteractive =

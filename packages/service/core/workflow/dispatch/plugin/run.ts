@@ -17,6 +17,7 @@ import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { getUserChatInfoAndAuthTeamPoints } from '../../../../support/permission/auth/team';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
@@ -73,9 +74,11 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     };
   });
 
+  const { externalProvider } = await getUserChatInfoAndAuthTeamPoints(runningAppInfo.tmbId);
   const runtimeVariables = {
     ...filterSystemVariables(props.variables),
-    appId: String(plugin.id)
+    appId: String(plugin.id),
+    ...(externalProvider ? externalProvider.externalWorkflowVariables : {})
   };
   const { flowResponses, flowUsages, assistantResponses, runTimes } = await dispatchWorkFlow({
     ...props,
