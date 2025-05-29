@@ -96,6 +96,8 @@ type Props = OutLinkChatAuthProps &
     showVoiceIcon?: boolean;
     showEmptyIntro?: boolean;
     active?: boolean; // can use
+    selectedToolIds?: string[];
+    onSelectedToolIdsChange?: (toolIds: string[]) => void;
 
     onStartChat?: (e: StartChatFnProps) => Promise<
       StreamResponseType & {
@@ -112,7 +114,9 @@ const ChatBox = ({
   showEmptyIntro = false,
   active = true,
   onStartChat,
-  chatType
+  chatType,
+  selectedToolIds,
+  onSelectedToolIdsChange
 }: Props) => {
   const ScrollContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
@@ -1172,6 +1176,8 @@ const ChatBox = ({
                   resetInputVal={resetInputVal}
                   chatForm={chatForm}
                   placeholder={gateConfig?.placeholderText || '你可以问我任何问题'}
+                  selectedToolIds={selectedToolIds}
+                  onSelectedToolIdsChange={onSelectedToolIdsChange}
                 />
               </Box>
             )}
@@ -1219,6 +1225,8 @@ const ChatBox = ({
                     resetInputVal={resetInputVal}
                     chatForm={chatForm}
                     placeholder={gateConfig?.placeholderText || t('common:gate.placeholder')}
+                    selectedToolIds={selectedToolIds}
+                    onSelectedToolIdsChange={onSelectedToolIdsChange}
                   />
                 )}
                 {!inGateRoute && (

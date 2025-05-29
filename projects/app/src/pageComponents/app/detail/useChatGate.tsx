@@ -25,12 +25,16 @@ import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 
 export const useChatGate = ({
+  selectedToolIds,
+  onSelectedToolIdsChange,
   nodes,
   edges,
   chatConfig,
   isReady,
   appDetail
 }: {
+  selectedToolIds?: string[];
+  onSelectedToolIdsChange?: (toolIds: string[]) => void;
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
   chatConfig: AppChatConfigType;
@@ -69,7 +73,8 @@ export const useChatGate = ({
           metadata: {
             source: 'web',
             userAgent: navigator.userAgent
-          }
+          },
+          selectedToolIds: selectedToolIds || []
         },
         onMessage: generatingMessage,
         abortCtrl: controller
@@ -165,6 +170,8 @@ export const useChatGate = ({
         showMarkIcon
         chatType={'chat'}
         onStartChat={startChat}
+        selectedToolIds={selectedToolIds}
+        onSelectedToolIdsChange={onSelectedToolIdsChange}
       />
     )
   );

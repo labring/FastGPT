@@ -25,9 +25,12 @@ import { AppFormContext } from '@/pages/chat/gate/index';
 import Icon from '@fastgpt/web/components/common/Icon';
 import GateSelect from '@fastgpt/web/components/common/MySelect/GateSelect';
 
-const ToolSelect = dynamic(() => import('@/pageComponents/app/detail/Gate/components/ToolSelect'), {
-  ssr: false
-});
+const GateToolSelect = dynamic(
+  () => import('@/pageComponents/app/detail/Gate/components/GateToolSelect'),
+  {
+    ssr: false
+  }
+);
 
 const fileTypeFilter = (file: File) => {
   return (
@@ -43,6 +46,8 @@ type Props = {
   resetInputVal: (val: ChatBoxInputType) => void;
   chatForm: UseFormReturn<ChatBoxInputFormType>;
   placeholder?: string;
+  selectedToolIds?: string[];
+  onSelectedToolIdsChange?: (toolIds: string[]) => void;
 };
 
 const GateChatInput = ({
@@ -51,7 +56,9 @@ const GateChatInput = ({
   TextareaDom,
   resetInputVal,
   chatForm,
-  placeholder
+  placeholder,
+  selectedToolIds: externalSelectedToolIds,
+  onSelectedToolIdsChange
 }: Props) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
@@ -71,8 +78,11 @@ const GateChatInput = ({
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const fileSelectConfig = useContextSelector(ChatBoxContext, (v) => v.fileSelectConfig);
 
-  const [showToolSelect, setShowToolSelect] = useState(false);
-  const [selectedTool, setSelectedTool] = useState<string | null>(null);
+  // 如果有外部传入的工具选择，使用外部的；否则使用内部状态
+  const [internalSelectedToolIds, setInternalSelectedToolIds] = useState<string[]>([]);
+  const selectedToolIds = externalSelectedToolIds ?? internalSelectedToolIds;
+  const setSelectedToolIds = onSelectedToolIdsChange ?? setInternalSelectedToolIds;
+
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { llmModelList } = useSystemStore();
   const modelList = useMemo(
@@ -178,7 +188,7 @@ const GateChatInput = ({
         text: textareaValue.trim(),
         files: fileList,
         gateModel: showModelSelector ? selectedModel : undefined,
-        selectedTool // 传递选中的工具ID
+        selectedTool: selectedToolIds.length > 0 ? selectedToolIds.join(',') : null // 将工具ID数组转换为逗号分隔的字符串
       });
       replaceFiles([]);
     },
@@ -190,11 +200,9 @@ const GateChatInput = ({
       replaceFiles,
       showModelSelector,
       selectedModel,
-      selectedTool
+      selectedToolIds
     ]
   );
-
-  // 工具列表菜单
 
   return (
     <Box
@@ -219,13 +227,6 @@ const GateChatInput = ({
         boxShadow: '0px 5px 20px -4px rgba(19, 51, 107, 0.13)'
       }}
     >
-      {/* Tool select configuration */}
-      {showToolSelect && (
-        <Box mb={4} p={3} bg="gray.50" borderRadius="md">
-          <ToolSelect appForm={appForm} setAppForm={setAppForm} />
-        </Box>
-      )}
-
       {/* file preview */}
       <Box px={[1, 3]}>
         <FilePreview fileList={fileList} removeFiles={removeFiles} />
@@ -350,36 +351,11 @@ const GateChatInput = ({
             />
           )}
           {showTools && (
-            <Button
-              leftIcon={
-                <MyIcon
-                  name={'support/gate/chat/toolkitLine'}
-                  w={'18px'}
-                  h={'18px'}
-                  color="blue.500"
-                />
-              }
-              size={buttonSize}
-              display="flex"
-              padding="8px 12px"
-              justifyContent="center"
-              alignItems="center"
-              gap="4px"
-              iconSpacing="4px"
-              borderRadius="9999px"
-              border="0.5px solid var(--Royal-Blue-200, #C5D7FF)"
-              background="var(--light-fastgpt-primary-container-low, #F0F4FF)"
-              color="blue.500"
-              fontWeight="500"
-              onClick={() => setShowToolSelect(!showToolSelect)}
-              flexShrink={0}
-              _hover={{
-                background: 'var(--light-fastgpt-primary-container-low, #E6EDFF)'
-              }}
-            >
-              <Box display={{ base: 'none', md: 'block' }}>{t('common:tool_select')}:&nbsp;</Box>
-              {appForm?.selectedTools?.length || 0}
-            </Button>
+            <GateToolSelect
+              selectedToolIds={selectedToolIds}
+              onToolsChange={setSelectedToolIds}
+              buttonSize={buttonSize}
+            />
           )}
         </Flex>
 

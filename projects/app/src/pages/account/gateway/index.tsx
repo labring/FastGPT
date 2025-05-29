@@ -79,16 +79,7 @@ const GatewayConfig = () => {
       }
     }
   );
-  const handleStatusChange = useCallback(
-    (newStatus: boolean) => {
-      if (!gateConfig) return;
-      setGateConfig({
-        ...gateConfig,
-        status: newStatus
-      });
-    },
-    [gateConfig]
-  );
+
   // 添加 handleToolsChange 函数
   const handleToolsChange = useCallback(
     (newTools: string[]) => {
@@ -231,9 +222,7 @@ const GatewayConfig = () => {
               tools={gateConfig.tools}
               slogan={gateConfig.slogan}
               placeholderText={gateConfig.placeholderText}
-              status={gateConfig.status}
               onToolsChange={handleToolsChange}
-              onStatusChange={handleStatusChange}
               onSloganChange={handleSloganChange}
               onPlaceholderChange={handlePlaceholderChange}
               // 添加 appForm 相关 props
@@ -266,7 +255,6 @@ const GatewayConfig = () => {
     appForm,
     appDetail,
     handleToolsChange,
-    handleStatusChange,
     handleSloganChange,
     handlePlaceholderChange,
     handleAppFormChange,

@@ -22,6 +22,13 @@ import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
 import { useMount } from 'ahooks';
 import type { AppDetailType, AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { useSimpleAppSnapshots } from '@/pageComponents/app/detail/Gate/useSnapshots';
+import { Dropdown } from 'react-day-picker';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import AddQuickAppModal from './AddQuickAppModal';
+import { listQuickApps } from '@/web/support/user/team/gate/quickApp';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import type { AppListItemType } from '@fastgpt/global/core/app/type';
 
 export const saveGateConfig = async (data: putUpdateGateConfigData) => {
   try {
@@ -36,7 +43,6 @@ type Props = {
   tools: string[];
   slogan: string;
   placeholderText: string;
-  status: boolean;
   onStatusChange?: (status: boolean) => void;
   onSloganChange?: (slogan: string) => void;
   onPlaceholderChange?: (text: string) => void;
@@ -48,7 +54,6 @@ const HomeTable = ({
   appDetail,
   slogan,
   placeholderText,
-  status,
   onStatusChange,
   onSloganChange,
   onPlaceholderChange,
@@ -57,6 +62,18 @@ const HomeTable = ({
   const { t } = useTranslation();
   // 批量获取插件信息
   const [appForm, setAppForm] = useState(getDefaultAppForm());
+  // 快捷应用modal状态
+  const [isQuickAppModalOpen, setIsQuickAppModalOpen] = useState(false);
+
+  // 获取快捷应用数据
+  const {
+    data: quickApps = [],
+    loading: loadingQuickApps,
+    refresh: refreshQuickApps
+  } = useRequest2(() => listQuickApps(), {
+    manual: false
+  });
+
   const { forbiddenSaveSnapshot, past, setPast, saveSnapshot } = useSimpleAppSnapshots(
     appDetail._id
   );
@@ -162,6 +179,22 @@ const HomeTable = ({
     onPlaceholderChange?.(val);
   };
 
+  // 快捷应用相关处理函数
+  const handleOpenQuickAppModal = () => {
+    setIsQuickAppModalOpen(true);
+  };
+
+  const handleCloseQuickAppModal = () => {
+    setIsQuickAppModalOpen(false);
+  };
+
+  const handleQuickAppSuccess = (selectedApps: any[]) => {
+    // 刷新快捷应用列表
+    refreshQuickApps();
+    console.log('快捷应用更新成功:', selectedApps);
+    setIsQuickAppModalOpen(false);
+  };
+
   // 修改 setAppForm，使其同时调用父组件的回调
   const updateAppForm = useCallback(
     (newAppForm: AppSimpleEditFormType) => {
@@ -170,6 +203,78 @@ const HomeTable = ({
     },
     [onAppFormChange]
   );
+
+  // 渲染快捷应用项
+  const renderQuickAppItem = (app: AppListItemType, index: number) => {
+    const gradients = [
+      'linear-gradient(200.75deg, #67BFFF 13.74%, #5BA6FF 89.76%)', // 蓝色渐变
+      'linear-gradient(200.75deg, #7895FE 13.74%, #7177FF 89.76%)', // 紫色渐变
+      'linear-gradient(200.75deg, #67BFFF 13.74%, #5BA6FF 89.76%)', // 蓝色渐变
+      'linear-gradient(200.75deg, #67BFFF 13.74%, #5BA6FF 89.76%)' // 蓝色渐变
+    ];
+
+    const gradient = gradients[index % gradients.length];
+
+    return (
+      <React.Fragment key={app._id}>
+        {/* 应用项 */}
+        <Flex
+          flexDirection="column"
+          alignItems="flex-start"
+          padding="4px 0px"
+          gap="10px"
+          w="80px"
+          h="28px"
+          borderRadius="6px"
+        >
+          <Flex alignItems="center" gap="4px" w="80px" h="20px">
+            <Box
+              w="20px"
+              h="20px"
+              background={gradient}
+              borderRadius="6px"
+              position="relative"
+              overflow="hidden"
+            >
+              {app.avatar ? (
+                <Avatar src={app.avatar} alt={app.name} w="100%" h="100%" borderRadius="6px" />
+              ) : (
+                <MyIcon
+                  name="core/app/type/simple"
+                  position="absolute"
+                  left="15%"
+                  right="15%"
+                  top="15%"
+                  bottom="15%"
+                  color="white"
+                />
+              )}
+            </Box>
+            <Text
+              w="56px"
+              h="16px"
+              fontFamily="PingFang SC"
+              fontWeight={400}
+              fontSize="12px"
+              lineHeight="16px"
+              letterSpacing="0.004em"
+              color="#111824"
+              overflow="hidden"
+              textOverflow="ellipsis"
+              whiteSpace="nowrap"
+            >
+              {app.name}
+            </Text>
+          </Flex>
+        </Flex>
+
+        {/* 分隔线 - 除了最后一个应用之外都显示 */}
+        {index < Math.min(quickApps.length - 1, 3) && (
+          <Box w="11.46px" h="0px" border="1px solid #DFE2EA" transform="rotate(90deg)" />
+        )}
+      </React.Fragment>
+    );
+  };
 
   return (
     <Box flex="1 0 0" overflow="auto" px={spacing.sm}>
@@ -251,6 +356,80 @@ const HomeTable = ({
             </Stack>
           </RadioGroup>
         </FormControl>
+        {/* 快捷应用 */}
+        <FormControl
+          display={'flex'}
+          flexDirection={'column'}
+          justifyContent={'center'}
+          alignItems={'flex-start'}
+          gap={'8px'}
+        >
+          {/* 标题行 */}
+          <Flex alignItems={'center'} gap={'4px'}>
+            <Text
+              color={'var(--Gray-Modern-600, #485264)'}
+              fontFamily={'PingFang SC'}
+              fontSize={'14px'}
+              fontWeight={500}
+              lineHeight={'20px'}
+              letterSpacing={'0.1px'}
+            >
+              {t('account_gate:quick_app')}
+            </Text>
+            <MyIcon name="common/help" w="16px" h="16px" color="#667085" />
+          </Flex>
+
+          {/* 下拉框区域 */}
+          <Flex alignItems="center" gap="8px" w="640px" h="40px">
+            {/* 应用容器 */}
+            <Box
+              position="relative"
+              w="600px"
+              h="40px"
+              bg="#FBFBFC"
+              border="1px solid #E8EBF0"
+              borderRadius="8px"
+            >
+              {/* 应用列表 */}
+              <Flex
+                position="absolute"
+                alignItems="center"
+                gap="8px"
+                w="560px"
+                h="28px"
+                left="12px"
+                top="calc(50% - 14px)"
+              >
+                {quickApps.length > 0 ? (
+                  quickApps.slice(0, 4).map((app, index) => renderQuickAppItem(app, index))
+                ) : (
+                  <Text fontSize="12px" color="#667085" fontFamily="PingFang SC">
+                    {loadingQuickApps ? '加载中...' : '暂无快捷应用'}
+                  </Text>
+                )}
+              </Flex>
+            </Box>
+
+            {/* 设置按钮 */}
+            <Flex
+              alignItems="center"
+              justifyContent="center"
+              padding="7px"
+              gap="6px"
+              w="32px"
+              h="32px"
+              borderRadius="6px"
+              cursor="pointer"
+              onClick={handleOpenQuickAppModal}
+              _hover={{
+                bg: 'myGray.100'
+              }}
+            >
+              <MyIcon name="common/settingLight" w="18px" h="18px" color="#667085" />
+            </Flex>
+          </Flex>
+        </FormControl>
+
         {/* 可用工具选择 */}
         <FormControl display="flex" flexDirection="column" gap={spacing.sm} w="full">
           <ToolSelect
@@ -396,6 +575,15 @@ const HomeTable = ({
           </CheckboxGroup>
         </FormControl> */}
       </Flex>
+
+      {/* 快捷应用配置Modal */}
+      {isQuickAppModalOpen && (
+        <AddQuickAppModal
+          isOpen={isQuickAppModalOpen}
+          onClose={handleCloseQuickAppModal}
+          onSuccess={handleQuickAppSuccess}
+        />
+      )}
     </Box>
   );
 };

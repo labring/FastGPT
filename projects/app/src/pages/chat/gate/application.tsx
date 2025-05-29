@@ -290,16 +290,6 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
 
   // 初始化聊天框
   useMount(async () => {
-    // 检查gate status，如果为false则重定向到应用列表页面
-    if (gateConfig && !gateConfig.status) {
-      toast({
-        status: 'warning',
-        title: t('common:Gate.service.is.unavailable')
-      });
-      router.replace('/dashboard/apps');
-      return;
-    }
-
     // pc: redirect to latest model chat
     if (!appId) {
       const apps = await loadMyApps();
@@ -321,17 +311,6 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
     setSource('online');
   });
 
-  // 监听gateConfig变化，如果status变为false则重定向
-  useEffect(() => {
-    if (gateConfig && !gateConfig.status) {
-      toast({
-        status: 'warning',
-        title: t('common:Gate.service.is.unavailable')
-      });
-      router.replace('/dashboard/apps');
-    }
-  }, [gateConfig, router, toast, t]);
-
   // Watch appId
   useEffect(() => {
     setAppId(appId);
@@ -348,10 +327,7 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
       chatId: chatId
     };
   }, [appId, chatId]);
-  // 如果状态检查失败，不渲染任何内容
-  if (gateConfig && !gateConfig.status) {
-    return null;
-  }
+
   return source === ChatSourceEnum.online ? (
     <ChatContextProvider params={chatHistoryProviderParams}>
       <ChatItemContextProvider

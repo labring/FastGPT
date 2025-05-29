@@ -1,5 +1,5 @@
 import { Box, Flex } from '@chakra-ui/react';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import { useSafeState } from 'ahooks';
 import type { AppDetailType, AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
@@ -24,6 +24,9 @@ const ChatGate = ({ appForm, setRenderEdit, appDetail }: Props) => {
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
+  // 添加 selectedToolIds 状态管理
+  const [selectedToolIds, setSelectedToolIds] = useState<string[]>([]);
+
   const [workflowData] = useSafeState({
     nodes: appDetail.modules || [],
     edges: appDetail.edges || []
@@ -37,7 +40,9 @@ const ChatGate = ({ appForm, setRenderEdit, appDetail }: Props) => {
     ...workflowData,
     chatConfig: appForm.chatConfig,
     isReady: true,
-    appDetail
+    appDetail,
+    selectedToolIds, // 传递 selectedToolIds
+    onSelectedToolIdsChange: setSelectedToolIds // 传递更新函数
   });
 
   return (

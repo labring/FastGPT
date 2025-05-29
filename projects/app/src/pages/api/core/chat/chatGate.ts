@@ -52,10 +52,6 @@ import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/save
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { addLog } from '@fastgpt/service/common/system/log';
 import requestIp from 'request-ip';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
-import { form2AppWorkflow } from '@/web/core/app/utils';
-import { useTranslation } from 'react-i18next';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
@@ -68,30 +64,77 @@ export type Props = {
   chatId: string;
   chatConfig: AppChatConfigType;
   metadata?: Record<string, any>;
-  model?: string;
-  selectedTools?: string[];
+  selectedToolIds?: string[];
 };
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const startTime = Date.now();
   const originIp = requestIp.getClientIp(req);
-  const t = useTranslation();
+
   let {
+    nodes = [],
+    edges = [],
     messages = [],
     responseChatItemId,
     variables = {},
     appName,
     appId,
+    chatConfig,
     chatId,
     metadata = {},
-    model,
-    selectedTools = []
+    selectedToolIds = []
   } = req.body as Props;
-
   try {
-    if (!appId) {
-      Promise.reject(CommonErrEnum.missingParams);
+    if (!Array.isArray(nodes)) {
+      throw new Error('Nodes is not array');
     }
+    if (!Array.isArray(edges)) {
+      throw new Error('Edges is not array');
+    }
+
+    //对边进行过滤，只保留selectedToolIds中的边
+    console.log('selectedToolIds', selectedToolIds);
+
+    // 创建从 pluginId 到 nodeId 的映射
+    const pluginIdToNodeIdMap = new Map<string, string>();
+    nodes.forEach((node) => {
+      if (node.pluginId) {
+        pluginIdToNodeIdMap.set(node.pluginId, node.nodeId);
+      }
+    });
+    console.log('pluginIdToNodeIdMap', Object.fromEntries(pluginIdToNodeIdMap));
+
+    // 获取选中工具对应的 nodeId 集合
+    const selectedNodeIds = new Set<string>();
+    selectedToolIds.forEach((pluginId) => {
+      const nodeId = pluginIdToNodeIdMap.get(pluginId);
+      if (nodeId) {
+        selectedNodeIds.add(nodeId);
+      }
+    });
+    console.log('selectedNodeIds', Array.from(selectedNodeIds));
+
+    // 过滤边：保留第一个边和目标节点在选中工具中的边
+    const filteredEdges = edges.filter((edge, index) => {
+      // 保留第一个边
+      if (index === 0) {
+        return true;
+      }
+
+      // 保留目标节点在选中工具中的边
+      return selectedNodeIds.has(edge.target);
+    });
+
+    console.log('Original edges count:', edges.length);
+    console.log('Filtered edges count:', filteredEdges.length);
+    console.log('Filtered edges:', filteredEdges);
+
+    // 使用过滤后的边
+    edges = filteredEdges;
+
+    const chatMessages = GPTMessages2Chats(messages);
+    // console.log(JSON.stringify(chatMessages, null, 2), '====', chatMessages.length);
+
     /* user auth */
     const { app, teamId, tmbId } = await authApp({
       req,
@@ -99,28 +142,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       appId,
       per: ReadPermissionVal
     });
-    const { modules, edges } = app;
-
-    const nodes = modules || [];
-    const chatConfig = app.chatConfig || {};
-    const appForm = appWorkflow2Form({
-      nodes,
-      chatConfig
-    });
-    // 覆写 appForm 的aiSettings
-    if (model) {
-      appForm.aiSettings.model = model;
-    }
-    const realAppWorkflow = form2AppWorkflow(appForm, t);
-    //TODO : 到时候删除
-    if (!Array.isArray(nodes)) {
-      throw new Error('Nodes is not array');
-    }
-    if (!Array.isArray(edges)) {
-      throw new Error('Edges is not array');
-    }
-    const chatMessages = GPTMessages2Chats(messages);
-    // console.log(JSON.stringify(chatMessages, null, 2), '====', chatMessages.length);
 
     const isPlugin = app.type === AppTypeEnum.plugin;
     const isTool = app.type === AppTypeEnum.tool;
