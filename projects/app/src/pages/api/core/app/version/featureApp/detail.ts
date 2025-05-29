@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { checkNode } from '@/service/core/app/utils';
 import { rewriteAppWorkflowToDetail } from '@fastgpt/service/core/app/utils';
 import { getGateConfig } from '@fastgpt/service/support/user/team/gate/controller';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
@@ -53,6 +52,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   await rewriteAppWorkflowToDetail({
     nodes: app.modules,
     teamId,
+    ownerTmbId: app.tmbId,
     isRoot
   });
 
@@ -65,10 +65,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   }
 
   return {
-    ...app,
-    modules: await Promise.all(
-      app.modules.map((node) => checkNode({ node, ownerTmbId: app.tmbId }))
-    )
+    ...app
   };
 }
 

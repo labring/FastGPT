@@ -4,7 +4,7 @@
 import type { NextApiResponse } from 'next';
 import {
   getChildAppPreviewNode,
-  splitCombinePluginId
+  splitCombineToolId
 } from '@fastgpt/service/core/app/plugin/controller';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
 import { NextAPI } from '@/service/middleware/entry';
@@ -34,7 +34,7 @@ async function handler(
   await Promise.all(
     pluginIds.map(async (pluginId) => {
       try {
-        const { source } = await splitCombinePluginId(pluginId);
+        const { source } = await splitCombineToolId(pluginId);
 
         if (source === PluginSourceEnum.personal) {
           await authApp({ req, authToken: true, appId: pluginId, per: ReadPermissionVal });
