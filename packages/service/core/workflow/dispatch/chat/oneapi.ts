@@ -556,30 +556,21 @@ async function streamResponse({
     res,
     readStream: stream
   });
-  let answer = '';
-  let reasoning = '';
-  let finish_reason: CompletionFinishReason = null;
-  let usage: CompletionUsage = getLLMDefaultUsage();
 
-  const { parsePart } = parseLLMStreamResponse();
+  const { parsePart, getResponseData, updateFinishReason } = parseLLMStreamResponse();
 
   for await (const part of stream) {
-    usage = part.usage || usage;
-
     if (res.closed) {
       stream.controller?.abort();
-      finish_reason = 'close';
+      updateFinishReason('close');
       break;
     }
 
-    const { reasoningContent, content, responseContent, finishReason } = parsePart({
+    const { reasoningContent, responseContent } = parsePart({
       part,
       parseThinkTag,
       retainDatasetCite
     });
-    finish_reason = finish_reason || finishReason;
-    answer += content;
-    reasoning += reasoningContent;
 
     if (aiChatReasoning && reasoningContent) {
       workflowStreamResponse?.({
@@ -601,6 +592,8 @@ async function streamResponse({
       });
     }
   }
+
+  const { reasoningContent: reasoning, content: answer, finish_reason, usage } = getResponseData();
 
   return { answer, reasoning, finish_reason, usage };
 }

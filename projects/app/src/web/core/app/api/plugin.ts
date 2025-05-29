@@ -24,6 +24,10 @@ import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import type { updateMCPToolsBody } from '@/pages/api/core/app/mcpTools/update';
 import type { RunMCPToolBody } from '@/pages/api/support/mcp/client/runTool';
 import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
+import type {
+  getToolVersionListProps,
+  getToolVersionResponse
+} from '@/pages/api/core/app/plugin/getVersionList';
 import type { GetBatchPluginsBody } from '@/pages/api/core/app/plugin/getBatchPlugins';
 
 /* ============ team plugin ============== */
@@ -71,6 +75,9 @@ export const getSystemPluginPaths = (data: GetPathProps) => {
 
 export const getPreviewPluginNode = (data: GetPreviewNodeQuery) =>
   GET<FlowNodeTemplateType>('/core/app/plugin/getPreviewNode', data);
+
+export const getToolVersionList = (data: getToolVersionListProps) =>
+  POST<getToolVersionResponse>('/core/app/plugin/getVersionList', data);
 
 /* ============ mcp tools ============== */
 export const postCreateMCPTools = (data: createMCPToolsBody) =>

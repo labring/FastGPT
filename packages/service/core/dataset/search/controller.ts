@@ -27,6 +27,7 @@ import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { datasetSearchQueryExtension } from './utils';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { addLog } from '../../../common/system/log';
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
@@ -544,123 +545,125 @@ export async function searchDatasetData(
       };
     }
 
-    const searchResults = (
-      await Promise.all(
-        datasetIds.map(async (id) => {
-          return MongoDatasetDataText.aggregate(
-            [
-              {
-                $match: {
-                  teamId: new Types.ObjectId(teamId),
-                  datasetId: new Types.ObjectId(id),
-                  $text: { $search: await jiebaSplit({ text: query }) },
-                  ...(filterCollectionIdList
-                    ? {
-                        collectionId: {
-                          $in: filterCollectionIdList.map((id) => new Types.ObjectId(id))
-                        }
-                      }
-                    : {}),
-                  ...(forbidCollectionIdList && forbidCollectionIdList.length > 0
-                    ? {
-                        collectionId: {
-                          $nin: forbidCollectionIdList.map((id) => new Types.ObjectId(id))
-                        }
-                      }
-                    : {})
-                }
-              },
-              {
-                $sort: {
-                  score: { $meta: 'textScore' }
-                }
-              },
-              {
-                $limit: limit
-              },
-              {
-                $project: {
-                  _id: 1,
-                  collectionId: 1,
-                  dataId: 1,
-                  score: { $meta: 'textScore' }
-                }
-              }
-            ],
-            {
-              ...readFromSecondary
+    try {
+      const searchResults = (await MongoDatasetDataText.aggregate(
+        [
+          {
+            $match: {
+              teamId: new Types.ObjectId(teamId),
+              $text: { $search: await jiebaSplit({ text: query }) },
+              datasetId: { $in: datasetIds.map((id) => new Types.ObjectId(id)) },
+              ...(filterCollectionIdList
+                ? {
+                    collectionId: {
+                      $in: filterCollectionIdList.map((id) => new Types.ObjectId(id))
+                    }
+                  }
+                : {}),
+              ...(forbidCollectionIdList && forbidCollectionIdList.length > 0
+                ? {
+                    collectionId: {
+                      $nin: forbidCollectionIdList.map((id) => new Types.ObjectId(id))
+                    }
+                  }
+                : {})
             }
-          );
-        })
-      )
-    ).flat() as (DatasetDataTextSchemaType & { score: number })[];
-
-    // Get data and collections
-    const [dataList, collections] = await Promise.all([
-      MongoDatasetData.find(
-        {
-          _id: { $in: searchResults.map((item) => item.dataId) }
-        },
-        '_id datasetId collectionId updateTime q a chunkIndex indexes',
-        { ...readFromSecondary }
-      ).lean(),
-      MongoDatasetCollection.find(
-        {
-          _id: { $in: searchResults.map((item) => item.collectionId) }
-        },
-        '_id name fileId rawLink apiFileId externalFileId externalFileUrl',
-        { ...readFromSecondary }
-      ).lean()
-    ]);
-
-    return {
-      fullTextRecallResults: searchResults
-        .map((item, index) => {
-          const collection = collections.find(
-            (col) => String(col._id) === String(item.collectionId)
-          );
-          if (!collection) {
-            console.log('Collection is not found', item);
-            return;
+          },
+          {
+            $sort: {
+              score: { $meta: 'textScore' }
+            }
+          },
+          {
+            $limit: limit
+          },
+          {
+            $project: {
+              _id: 1,
+              collectionId: 1,
+              dataId: 1,
+              score: { $meta: 'textScore' }
+            }
           }
-          const data = dataList.find((data) => String(data._id) === String(item.dataId));
-          if (!data) {
-            console.log('Data is not found', item);
-            return;
-          }
+        ],
+        {
+          ...readFromSecondary
+        }
+      )) as (DatasetDataTextSchemaType & { score: number })[];
 
-          return {
-            id: String(data._id),
-            datasetId: String(data.datasetId),
-            collectionId: String(data.collectionId),
-            updateTime: data.updateTime,
-            q: data.q,
-            a: data.a,
-            chunkIndex: data.chunkIndex,
-            indexes: data.indexes,
-            ...getCollectionSourceData(collection),
-            score: [
-              {
-                type: SearchScoreTypeEnum.fullText,
-                value: item.score || 0,
-                index
-              }
-            ]
-          };
-        })
-        .filter((item) => {
-          if (!item) return false;
-          return true;
-        })
-        .map((item, index) => {
-          if (!item) return;
-          return {
-            ...item,
-            score: item.score.map((item) => ({ ...item, index }))
-          };
-        }) as SearchDataResponseItemType[],
-      tokenLen: 0
-    };
+      // Get data and collections
+      const [dataList, collections] = await Promise.all([
+        MongoDatasetData.find(
+          {
+            _id: { $in: searchResults.map((item) => item.dataId) }
+          },
+          '_id datasetId collectionId updateTime q a chunkIndex indexes',
+          { ...readFromSecondary }
+        ).lean(),
+        MongoDatasetCollection.find(
+          {
+            _id: { $in: searchResults.map((item) => item.collectionId) }
+          },
+          '_id name fileId rawLink apiFileId externalFileId externalFileUrl',
+          { ...readFromSecondary }
+        ).lean()
+      ]);
+
+      return {
+        fullTextRecallResults: searchResults
+          .map((item, index) => {
+            const collection = collections.find(
+              (col) => String(col._id) === String(item.collectionId)
+            );
+            if (!collection) {
+              console.log('Collection is not found', item);
+              return;
+            }
+            const data = dataList.find((data) => String(data._id) === String(item.dataId));
+            if (!data) {
+              console.log('Data is not found', item);
+              return;
+            }
+
+            return {
+              id: String(data._id),
+              datasetId: String(data.datasetId),
+              collectionId: String(data.collectionId),
+              updateTime: data.updateTime,
+              q: data.q,
+              a: data.a,
+              chunkIndex: data.chunkIndex,
+              indexes: data.indexes,
+              ...getCollectionSourceData(collection),
+              score: [
+                {
+                  type: SearchScoreTypeEnum.fullText,
+                  value: item.score || 0,
+                  index
+                }
+              ]
+            };
+          })
+          .filter((item) => {
+            if (!item) return false;
+            return true;
+          })
+          .map((item, index) => {
+            if (!item) return;
+            return {
+              ...item,
+              score: item.score.map((item) => ({ ...item, index }))
+            };
+          }) as SearchDataResponseItemType[],
+        tokenLen: 0
+      };
+    } catch (error) {
+      addLog.error('Full text search error', error);
+      return {
+        fullTextRecallResults: [],
+        tokenLen: 0
+      };
+    }
   };
   const multiQueryRecall = async ({
     embeddingLimit,

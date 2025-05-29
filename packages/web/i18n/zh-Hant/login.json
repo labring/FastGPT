@@ -16,5 +16,6 @@
   "register": "註冊帳號",
   "root_password_placeholder": "root 使用者密碼為環境變數 DEFAULT_ROOT_PSW 的值",
   "terms": "服務條款",
-  "use_root_login": "使用 root 使用者登入"
+  "use_root_login": "使用 root 使用者登入",
+  "wecom": "企業微信"
 }

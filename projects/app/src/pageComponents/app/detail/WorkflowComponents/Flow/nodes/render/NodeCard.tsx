@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo, useRef } from 'react';
-import { Box, Button, Flex, HStack, useDisclosure, type FlexProps } from '@chakra-ui/react';
+import React, { useCallback, useMemo } from 'react';
+import { Box, Button, Flex, useDisclosure, type FlexProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
@@ -15,7 +15,7 @@ import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
 import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
 import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
 import { useDebug } from '../../hooks/useDebug';
-import { getPreviewPluginNode } from '@/web/core/app/api/plugin';
+import { getPreviewPluginNode, getToolVersionList } from '@/web/core/app/api/plugin';
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useContextSelector } from 'use-context-selector';
@@ -36,6 +36,7 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useCreation } from 'ahooks';
 import { formatToolError } from '@fastgpt/global/core/app/utils';
+import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -45,6 +46,7 @@ type Props = FlowNodeItemType & {
   w?: string | number;
   h?: string | number;
   selected?: boolean;
+  searchedText?: string;
   menuForbid?: {
     debug?: boolean;
     copy?: boolean;
@@ -70,6 +72,7 @@ const NodeCard = (props: Props) => {
     h = 'full',
     nodeId,
     selected,
+    searchedText,
     menuForbid,
     isTool = false,
     isError = false,
@@ -104,12 +107,9 @@ const NodeCard = (props: Props) => {
   }, [nodeList, nodeId]);
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
   const showVersion = useMemo(() => {
-    if (!isAppNode || !node?.pluginId) return false;
+    if (!isAppNode || !node?.pluginId || node?.pluginData?.error) return false;
     if ([FlowNodeTypeEnum.tool, FlowNodeTypeEnum.toolSet].includes(node.flowNodeType)) return false;
-    if (node.pluginId.split('-').length > 1) {
-      return false;
-    }
-    return true;
+    return typeof node.version === 'string';
   }, [isAppNode, node]);
 
   const { data: nodeTemplate } = useRequest2(
@@ -190,7 +190,12 @@ const NodeCard = (props: Props) => {
                 h={'24px'}
               />
               <Box ml={2} fontSize={'18px'} fontWeight={'medium'} color={'myGray.900'}>
-                {t(name as any)}
+                <HighlightText
+                  rawText={t(name as any)}
+                  matchText={searchedText ?? ''}
+                  mode={'bg'}
+                  color={'#ffe82d'}
+                />
               </Box>
               <Button
                 display={'none'}
@@ -283,6 +288,7 @@ const NodeCard = (props: Props) => {
     nodeId,
     isFolded,
     avatar,
+    searchedText,
     t,
     name,
     showVersion,
@@ -308,8 +314,9 @@ const NodeCard = (props: Props) => {
     );
   }, [nodeId, isFolded]);
   const RenderToolHandle = useMemo(
-    () => (node?.flowNodeType === FlowNodeTypeEnum.tools ? <ToolSourceHandle /> : null),
-    [node?.flowNodeType]
+    () =>
+      node?.flowNodeType === FlowNodeTypeEnum.tools ? <ToolSourceHandle nodeId={nodeId} /> : null,
+    [node?.flowNodeType, nodeId]
   );
 
   return (
@@ -616,11 +623,10 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   // Load version list
-  const { ScrollData, data: versionList } = useScrollPagination(getAppVersionList, {
+  const { ScrollData, data: versionList } = useScrollPagination(getToolVersionList, {
     pageSize: 20,
     params: {
-      appId: node.pluginId,
-      isPublish: true
+      toolId: node.pluginId
     },
     refreshDeps: [node.pluginId, isOpen],
     disalbed: !isOpen,
@@ -652,18 +658,23 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
     }
   );
 
-  const renderList = useCreation(
-    () =>
-      versionList.map((item) => ({
+  const renderVersionList = useCreation(
+    () => [
+      {
+        label: t('app:keep_the_latest'),
+        value: ''
+      },
+      ...versionList.map((item) => ({
         label: item.versionName,
         value: item._id
-      })),
+      }))
+    ],
     [node.isLatestVersion, node.version, t, versionList]
   );
   const valueLabel = useMemo(() => {
     return (
       <Flex alignItems={'center'} gap={0.5}>
-        {node?.versionLabel}
+        {node?.version === '' ? t('app:keep_the_latest') : node?.versionLabel}
         {!node.isLatestVersion && (
           <MyTag type="fill" colorSchema={'adora'} fontSize={'mini'} borderRadius={'lg'}>
             {t('app:not_the_newest')}
@@ -671,7 +682,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
         )}
       </Flex>
     );
-  }, [node.isLatestVersion, node?.versionLabel, t]);
+  }, [node.isLatestVersion, node?.version, node?.versionLabel, t]);
 
   return (
     <MySelect
@@ -684,7 +695,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
       placeholder={node?.versionLabel}
       variant={'whitePrimaryOutline'}
       size={'sm'}
-      list={renderList}
+      list={renderVersionList}
       ScrollData={(props) => (
         <ScrollData minH={'100px'} maxH={'40vh'}>
           {props.children}

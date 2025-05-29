@@ -1,5 +1,5 @@
 /* push data to training queue */
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiResponse } from 'next';
 import type { PushDatasetDataProps } from '@fastgpt/global/core/dataset/api.d';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
@@ -8,9 +8,10 @@ import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/train
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 
-async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  const body = req.body as PushDatasetDataProps;
+async function handler(req: ApiRequestProps<PushDatasetDataProps>, res: NextApiResponse<any>) {
+  const body = req.body;
   // Adapter 4.9.0
   body.trainingType = body.trainingType || body.trainingMode;
 

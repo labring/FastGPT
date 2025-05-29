@@ -1,6 +1,5 @@
-import type {
+import {
   ChunkSettingModeEnum,
-  DataChunkSplitModeEnum,
   DatasetCollectionDataProcessModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -16,30 +15,25 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import {
   computeChunkSize,
   computeChunkSplitter,
+  computeParagraphChunkDeep,
   getLLMMaxChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getLLMModel } from '@fastgpt/service/core/ai/model';
+import type { ChunkSettingsType } from '@fastgpt/global/core/dataset/type';
 
-export type PostPreviewFilesChunksProps = {
+export type PostPreviewFilesChunksProps = ChunkSettingsType & {
   datasetId: string;
   type: DatasetSourceReadTypeEnum;
   sourceId: string;
 
   customPdfParse?: boolean;
 
-  trainingType: DatasetCollectionDataProcessModeEnum;
-
   // Chunk settings
-  chunkSettingMode: ChunkSettingModeEnum;
-  chunkSplitMode: DataChunkSplitModeEnum;
-  chunkSize: number;
-  chunkSplitter?: string;
   overlapRatio: number;
 
   // Read params
   selector?: string;
-  isQAImport?: boolean;
   externalFileId?: string;
 };
 export type PreviewChunksResponse = {
@@ -58,15 +52,20 @@ async function handler(
     sourceId,
     customPdfParse = false,
 
-    trainingType,
-    chunkSettingMode,
+    trainingType = DatasetCollectionDataProcessModeEnum.chunk,
+
+    chunkTriggerType,
+    chunkTriggerMinSize,
+
+    chunkSettingMode = ChunkSettingModeEnum.auto,
     chunkSplitMode,
+    paragraphChunkDeep,
+    paragraphChunkMinSize,
     chunkSize,
     chunkSplitter,
 
     overlapRatio,
     selector,
-    isQAImport,
     datasetId,
     externalFileId
   } = req.body;
@@ -105,11 +104,15 @@ async function handler(
     chunkSize,
     llmModel: getLLMModel(dataset.agentModel)
   });
-
   chunkSplitter = computeChunkSplitter({
     chunkSettingMode,
     chunkSplitMode,
     chunkSplitter
+  });
+  paragraphChunkDeep = computeParagraphChunkDeep({
+    chunkSettingMode,
+    chunkSplitMode,
+    paragraphChunkDeep
   });
 
   const { rawText } = await readDatasetSourceRawText({
@@ -118,7 +121,6 @@ async function handler(
     type,
     sourceId,
     selector,
-    isQAImport,
     apiServer: dataset.apiServer,
     feishuServer: dataset.feishuServer,
     yuqueServer: dataset.yuqueServer,
@@ -128,12 +130,16 @@ async function handler(
 
   const chunks = rawText2Chunks({
     rawText,
+    chunkTriggerType,
+    chunkTriggerMinSize,
     chunkSize,
+    paragraphChunkDeep,
+    paragraphChunkMinSize,
     maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
     overlapRatio,
-    customReg: chunkSplitter ? [chunkSplitter] : [],
-    isQAImport: isQAImport
+    customReg: chunkSplitter ? [chunkSplitter] : []
   });
+
   return {
     chunks: chunks.slice(0, 10),
     total: chunks.length

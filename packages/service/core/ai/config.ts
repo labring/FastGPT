@@ -78,7 +78,7 @@ export const createChatCompletion = async ({
     }
     body.model = modelConstantsData.model;
 
-    const formatTimeout = timeout ? timeout : body.stream ? 60000 : 600000;
+    const formatTimeout = timeout ? timeout : 600000;
     const ai = getAIApi({
       userKey,
       timeout: formatTimeout

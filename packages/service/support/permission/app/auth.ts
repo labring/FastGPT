@@ -10,7 +10,7 @@ import { AppPermission } from '@fastgpt/global/support/permission/app/controller
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { splitCombinePluginId } from '../../../core/app/plugin/controller';
+import { splitCombineToolId } from '../../../core/app/plugin/controller';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { type AuthModeType, type AuthResponseType } from '../type';
 import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/constant';
@@ -24,7 +24,7 @@ export const authPluginByTmbId = async ({
   appId: string;
   per: PermissionValueType;
 }) => {
-  const { source } = await splitCombinePluginId(appId);
+  const { source } = splitCombineToolId(appId);
   if (source === PluginSourceEnum.personal) {
     const { app } = await authAppByTmbId({
       appId,

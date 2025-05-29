@@ -5,14 +5,13 @@ import { FolderIcon } from '@fastgpt/global/common/file/image/constants';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useTranslation } from 'next-i18next';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import CollaboratorContextProvider, {
   type MemberManagerInputPropsType
 } from '../../support/permission/MemberManager/context';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ResumeInherit from '@/components/support/permission/ResumeInheritText';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 
 const FolderSlideCard = ({
   refreshDeps,
@@ -46,11 +45,6 @@ const FolderSlideCard = ({
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-
-  const { ConfirmModal, openConfirm } = useConfirm({
-    type: 'delete',
-    content: deleteTip
-  });
 
   return (
     <Box w={'13rem'}>
@@ -93,22 +87,26 @@ const FolderSlideCard = ({
               {t('common:Move')}
             </Button>
             {managePer.permission.isOwner && (
-              <Button
-                variant={'transparentDanger'}
-                pl={1}
-                leftIcon={<MyIcon name={'delete'} w={'1rem'} />}
-                transform={'none !important'}
-                w={'100%'}
-                justifyContent={'flex-start'}
-                size={'sm'}
-                fontSize={'mini'}
-                mt={3}
-                onClick={() => {
-                  openConfirm(onDelete)();
-                }}
-              >
-                {t('common:delete_folder')}
-              </Button>
+              <PopoverConfirm
+                Trigger={
+                  <Button
+                    variant={'transparentDanger'}
+                    pl={1}
+                    leftIcon={<MyIcon name={'delete'} w={'1rem'} />}
+                    transform={'none !important'}
+                    w={'100%'}
+                    justifyContent={'flex-start'}
+                    size={'sm'}
+                    fontSize={'mini'}
+                    mt={3}
+                  >
+                    {t('common:delete_folder')}
+                  </Button>
+                }
+                type="delete"
+                content={deleteTip}
+                onConfirm={onDelete}
+              />
             )}
           </Box>
         </>
@@ -177,8 +175,6 @@ const FolderSlideCard = ({
           </Box>
         </>
       )}
-
-      <ConfirmModal />
     </Box>
   );
 };

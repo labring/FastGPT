@@ -24,6 +24,8 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import ValueTypeLabel from './render/ValueTypeLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getWebLLMModel } from '@/web/common/system/utils';
+import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 
 const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
@@ -32,35 +34,58 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   const CustomComponent = useMemo(() => {
     const quoteList = inputs.filter((item) => item.canEdit);
-    const tokenLimit = (() => {
-      let maxTokens = 16000;
+    const maxTokens = (() => {
+      let maxTokens = 0;
 
       nodeList.forEach((item) => {
         if ([FlowNodeTypeEnum.chatNode, FlowNodeTypeEnum.tools].includes(item.flowNodeType)) {
           const model =
             item.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
-          const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken || 16000;
+          const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken || 0;
 
           maxTokens = Math.max(maxTokens, quoteMaxToken);
         }
       });
 
-      return maxTokens;
+      return maxTokens ? maxTokens : undefined;
+    })();
+
+    const maxTokenStep = (() => {
+      if (!maxTokens || maxTokens < 8000) return 80;
+      return Math.ceil(maxTokens / 80 / 100) * 100;
     })();
 
     return {
-      [NodeInputKeyEnum.datasetMaxTokens]: (item: FlowNodeInputItemType) => (
-        <Box px={2}>
-          <MySlider
-            markList={[
-              { label: '100', value: 100 },
-              { label: tokenLimit, value: tokenLimit }
-            ]}
-            width={'100%'}
+      [NodeInputKeyEnum.datasetMaxTokens]: (item: FlowNodeInputItemType) =>
+        maxTokens ? (
+          <Box px={2} bg={'white'} py={2} border={'base'} borderRadius={'md'}>
+            <InputSlider
+              min={100}
+              max={maxTokens}
+              step={maxTokenStep}
+              value={item.value}
+              onChange={(e) => {
+                onChangeNode({
+                  nodeId,
+                  type: 'updateInput',
+                  key: item.key,
+                  value: {
+                    ...item,
+                    value: e
+                  }
+                });
+              }}
+            />
+          </Box>
+        ) : (
+          <MyNumberInput
+            size={'sm'}
             min={100}
-            max={tokenLimit}
-            step={50}
+            max={1000000}
+            step={100}
             value={item.value}
+            name={NodeInputKeyEnum.datasetMaxTokens}
+            bg={'white'}
             onChange={(e) => {
               onChangeNode({
                 nodeId,
@@ -73,8 +98,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               });
             }}
           />
-        </Box>
-      ),
+        ),
       [NodeInputKeyEnum.datasetQuoteList]: (item: FlowNodeInputItemType) => {
         return (
           <>

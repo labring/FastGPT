@@ -6,13 +6,13 @@ import { type DatasetFileSchema } from '@fastgpt/global/core/dataset/type';
 import { MongoChatFileSchema, MongoDatasetFileSchema } from './schema';
 import { detectFileEncoding, detectFileEncodingByPath } from '@fastgpt/global/common/file/tools';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { MongoRawTextBuffer } from '../../buffer/rawText/schema';
 import { readRawContentByFileBuffer } from '../read/utils';
 import { gridFsStream2Buffer, stream2Encoding } from './utils';
 import { addLog } from '../../system/log';
-import { readFromSecondary } from '../../mongo/utils';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { Readable } from 'stream';
+import { addRawTextBuffer, getRawTextBuffer } from '../../buffer/rawText/controller';
+import { addMinutes } from 'date-fns';
 
 export function getGFSCollection(bucket: `${BucketNameEnum}`) {
   MongoDatasetFileSchema;
@@ -210,28 +210,26 @@ export const readFileContentFromMongo = async ({
   tmbId,
   bucketName,
   fileId,
-  isQAImport = false,
-  customPdfParse = false
+  customPdfParse = false,
+  getFormatText
 }: {
   teamId: string;
   tmbId: string;
   bucketName: `${BucketNameEnum}`;
   fileId: string;
-  isQAImport?: boolean;
   customPdfParse?: boolean;
+  getFormatText?: boolean; // 数据类型都尽可能转化成 markdown 格式
 }): Promise<{
   rawText: string;
   filename: string;
 }> => {
-  const bufferId = `${fileId}-${customPdfParse}`;
+  const bufferId = `${String(fileId)}-${customPdfParse}`;
   // read buffer
-  const fileBuffer = await MongoRawTextBuffer.findOne({ sourceId: bufferId }, undefined, {
-    ...readFromSecondary
-  }).lean();
+  const fileBuffer = await getRawTextBuffer(bufferId);
   if (fileBuffer) {
     return {
-      rawText: fileBuffer.rawText,
-      filename: fileBuffer.metadata?.filename || ''
+      rawText: fileBuffer.text,
+      filename: fileBuffer?.sourceName
     };
   }
 
@@ -254,8 +252,8 @@ export const readFileContentFromMongo = async ({
   // Get raw text
   const { rawText } = await readRawContentByFileBuffer({
     customPdfParse,
+    getFormatText,
     extension,
-    isQAImport,
     teamId,
     tmbId,
     buffer: fileBuffers,
@@ -265,16 +263,13 @@ export const readFileContentFromMongo = async ({
     }
   });
 
-  // < 14M
-  if (fileBuffers.length < 14 * 1024 * 1024 && rawText.trim()) {
-    MongoRawTextBuffer.create({
-      sourceId: bufferId,
-      rawText,
-      metadata: {
-        filename: file.filename
-      }
-    });
-  }
+  // Add buffer
+  addRawTextBuffer({
+    sourceId: bufferId,
+    sourceName: file.filename,
+    text: rawText,
+    expiredTime: addMinutes(new Date(), 20)
+  });
 
   return {
     rawText,

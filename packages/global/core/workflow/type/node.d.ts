@@ -59,7 +59,6 @@ export type FlowNodeCommonType = {
 };
 
 export type PluginDataType = {
-  version?: string;
   diagram?: string;
   userGuide?: string;
   courseUrl?: string;
@@ -126,6 +125,7 @@ export type FlowNodeItemType = FlowNodeTemplateType & {
   nodeId: string;
   parentNodeId?: string;
   isError?: boolean;
+  searchedText?: string;
   debugResult?: {
     status: 'running' | 'success' | 'skipped' | 'failed';
     message?: string;

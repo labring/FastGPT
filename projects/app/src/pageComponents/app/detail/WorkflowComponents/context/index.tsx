@@ -2,7 +2,7 @@ import { postWorkflowDebug } from '@/web/core/workflow/api';
 import {
   checkWorkflowNodeAndConnection,
   compareSnapshot,
-  storeEdgesRenderEdge,
+  storeEdge2RenderEdge,
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -105,7 +105,6 @@ type WorkflowContextType = {
 
   // nodes
   nodeList: FlowNodeItemType[];
-  hasToolNode: boolean;
 
   onUpdateNodeError: (node: string, isError: Boolean) => void;
   onResetNode: (e: { id: string; node: FlowNodeTemplateType }) => void;
@@ -226,7 +225,6 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   },
   basicNodeTemplates: [],
   nodeList: [],
-  hasToolNode: false,
   onUpdateNodeError: function (node: string, isError: Boolean): void {
     throw new Error('Function not implemented.');
   },
@@ -398,10 +396,6 @@ const WorkflowContextProvider = ({
     () => JSON.parse(nodeListString) as FlowNodeItemType[],
     [nodeListString]
   );
-
-  const hasToolNode = useMemo(() => {
-    return !!nodeList.find((node) => node.flowNodeType === FlowNodeTypeEnum.tools);
-  }, [nodeList]);
 
   const onUpdateNodeError = useMemoizedFn((nodeId: string, isError: Boolean) => {
     setNodes((state) => {
@@ -861,7 +855,7 @@ const WorkflowContextProvider = ({
   });
   const onSwitchCloudVersion = useMemoizedFn((appVersion: AppVersionSchemaType) => {
     const nodes = appVersion.nodes.map((item) => storeNode2FlowNode({ item, t }));
-    const edges = appVersion.edges.map((item) => storeEdgesRenderEdge({ edge: item }));
+    const edges = appVersion.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
     const chatConfig = appVersion.chatConfig;
 
     resetSnapshot({
@@ -912,7 +906,7 @@ const WorkflowContextProvider = ({
       isInit?: boolean
     ) => {
       const nodes = e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [];
-      const edges = e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || [];
+      const edges = e.edges?.map((item) => storeEdge2RenderEdge({ edge: item })) || [];
 
       // Get storage snapshot，兼容旧版正在编辑的用户，刷新后会把 local 数据存到内存并删除
       const pastSnapshot = (() => {
@@ -1011,7 +1005,6 @@ const WorkflowContextProvider = ({
 
       // node
       nodeList,
-      hasToolNode,
       onUpdateNodeError,
       onResetNode,
       onChangeNode,
@@ -1057,7 +1050,6 @@ const WorkflowContextProvider = ({
       flowData2StoreDataAndCheck,
       future,
       getNodeDynamicInputs,
-      hasToolNode,
       initData,
       nodeList,
       onChangeNode,

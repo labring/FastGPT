@@ -187,7 +187,7 @@ export function useScrollPagination<
     scrollLoadType = 'bottom',
 
     pageSize = 10,
-    params = {},
+    params,
     EmptyTip,
     showErrorToast = true,
     disalbed = false,
@@ -196,7 +196,7 @@ export function useScrollPagination<
     scrollLoadType?: 'top' | 'bottom';
 
     pageSize?: number;
-    params?: Record<string, any>;
+    params?: Omit<TParams, 'offset' | 'pageSize'>;
     EmptyTip?: React.JSX.Element;
     showErrorToast?: boolean;
     disalbed?: boolean;

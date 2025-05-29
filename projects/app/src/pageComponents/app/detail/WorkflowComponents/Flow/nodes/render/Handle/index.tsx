@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { Handle, Position } from 'reactflow';
-import { handleHighLightStyle, sourceCommonStyle, handleConnectedStyle, handleSize } from './style';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../../context';
@@ -10,6 +9,37 @@ import {
   WorkflowInitContext
 } from '../../../../context/workflowInitContext';
 import { WorkflowEventContext } from '../../../../context/workflowEventContext';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { useTranslation } from 'react-i18next';
+import { Box, Flex } from '@chakra-ui/react';
+
+const handleSizeConnected = 16;
+const handleSizeConnecting = 30;
+const handleAddIconSize = 22;
+
+const sourceCommonStyle = {
+  backgroundColor: 'white',
+  borderRadius: '50%'
+};
+
+const handleConnectedStyle = {
+  ...sourceCommonStyle,
+  borderWidth: '3px',
+  borderColor: '#94B5FF',
+  width: handleSizeConnected,
+  height: handleSizeConnected
+};
+
+const handleHighLightStyle = {
+  ...sourceCommonStyle,
+  borderWidth: '4px',
+  borderColor: '#487FFF',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: handleSizeConnecting,
+  height: handleSizeConnecting
+};
 
 type Props = {
   nodeId: string;
@@ -18,23 +48,21 @@ type Props = {
   translate?: [number, number];
 };
 
-const MySourceHandle = React.memo(function MySourceHandle({
+export const MySourceHandle = React.memo(function MySourceHandle({
   nodeId,
   translate,
   handleId,
-  position,
-  highlightStyle,
-  connectedStyle
-}: Props & {
-  highlightStyle: Record<string, any>;
-  connectedStyle: Record<string, any>;
-}) {
+  position
+}: Props) {
+  const { t } = useTranslation();
+
   const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
   const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);
-  const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
+  const node = useContextSelector(WorkflowInitContext, (v) =>
+    v.nodes.find((node) => node.data.nodeId === nodeId)
+  );
   const hoverNodeId = useContextSelector(WorkflowEventContext, (v) => v.hoverNodeId);
 
-  const node = useMemo(() => nodes.find((node) => node.data.nodeId === nodeId), [nodes, nodeId]);
   const connected = edges.some((edge) => edge.sourceHandle === handleId);
   const nodeFolded = node?.data.isFolded && edges.some((edge) => edge.source === nodeId);
   const nodeIsHover = hoverNodeId === nodeId;
@@ -46,32 +74,16 @@ const MySourceHandle = React.memo(function MySourceHandle({
   const translateStr = useMemo(() => {
     if (!translate) return '';
     if (position === Position.Right) {
-      return `${active ? translate[0] + 2 : translate[0]}px, -50%`;
-    }
-    if (position === Position.Left) {
-      return `${active ? translate[0] + 2 : translate[0]}px, -50%`;
-    }
-    if (position === Position.Top) {
-      return `-50%, ${active ? translate[1] - 2 : translate[1]}px`;
-    }
-    if (position === Position.Bottom) {
-      return `-50%, ${active ? translate[1] + 2 : translate[1]}px`;
+      return `${active ? translate[0] + 6 : translate[0]}px, -50%`;
     }
   }, [active, position, translate]);
-
-  const transform = useMemo(
-    () => (translateStr ? `translate(${translateStr})` : ''),
-    [translateStr]
-  );
 
   const { styles, showAddIcon } = useMemo(() => {
     if (active) {
       return {
         styles: {
-          ...highlightStyle,
-          ...(translateStr && {
-            transform
-          })
+          ...handleHighLightStyle,
+          transform: `${translateStr ? `translate(${translateStr})` : ''}`
         },
         showAddIcon: true
       };
@@ -80,33 +92,42 @@ const MySourceHandle = React.memo(function MySourceHandle({
     if (connected || nodeFolded) {
       return {
         styles: {
-          ...connectedStyle,
-          ...(translateStr && {
-            transform
-          })
+          ...handleConnectedStyle,
+          transform: `${translateStr ? `translate(${translateStr})` : ''}`
         },
         showAddIcon: false
       };
     }
 
     return {
-      styles: undefined,
+      styles: {
+        visibility: 'hidden' as const
+      },
       showAddIcon: false
     };
-  }, [active, connected, nodeFolded, highlightStyle, translateStr, transform, connectedStyle]);
+  }, [active, connected, nodeFolded, translateStr]);
 
-  const RenderHandle = useMemo(() => {
-    return (
+  if (!node) return null;
+  if (connectingEdge?.handleId === NodeOutputKeyEnum.selectedTools) return null;
+
+  return (
+    <MyTooltip
+      label={
+        <Box>
+          <Flex>
+            <Box color={'myGray.900'}>{t('workflow:Click')}</Box>
+            <Box color={'myGray.600'}>{t('workflow:to_add_node')}</Box>
+          </Flex>
+          <Flex>
+            <Box color={'myGray.900'}>{t('workflow:Drag')}</Box>
+            <Box color={'myGray.600'}>{t('workflow:to_connect_node')}</Box>
+          </Flex>
+        </Box>
+      }
+      shouldWrapChildren={false}
+    >
       <Handle
-        style={
-          !!styles
-            ? styles
-            : {
-                visibility: 'hidden',
-                transform,
-                ...handleSize
-              }
-        }
+        style={styles}
         type="source"
         id={handleId}
         position={position}
@@ -117,125 +138,73 @@ const MySourceHandle = React.memo(function MySourceHandle({
             name={'edgeAdd'}
             color={'primary.500'}
             pointerEvents={'none'}
-            w={'14px'}
-            h={'14px'}
+            w={`${handleAddIconSize}px`}
+            h={`${handleAddIconSize}px`}
           />
         )}
       </Handle>
-    );
-  }, [handleId, position, showAddIcon, styles, transform]);
-
-  if (!node) return null;
-  if (connectingEdge?.handleId === NodeOutputKeyEnum.selectedTools) return null;
-
-  return <>{RenderHandle}</>;
+    </MyTooltip>
+  );
 });
 
-export const SourceHandle = (props: Props) => {
-  return (
-    <MySourceHandle
-      {...props}
-      highlightStyle={{ ...sourceCommonStyle, ...handleHighLightStyle }}
-      connectedStyle={{ ...sourceCommonStyle, ...handleConnectedStyle }}
-    />
-  );
-};
-
-const MyTargetHandle = React.memo(function MyTargetHandle({
+export const MyTargetHandle = React.memo(function MyTargetHandle({
   nodeId,
   handleId,
   position,
   translate,
-  highlightStyle,
-  connectedStyle,
   showHandle
 }: Props & {
   showHandle: boolean;
-  highlightStyle: Record<string, any>;
-  connectedStyle: Record<string, any>;
 }) {
-  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
+  const connected = useContextSelector(WorkflowNodeEdgeContext, (v) =>
+    v.edges.some((edge) => edge.targetHandle === handleId)
+  );
   const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);
-
-  const connected = edges.some((edge) => edge.targetHandle === handleId);
 
   const translateStr = useMemo(() => {
     if (!translate) return '';
 
-    if (position === Position.Right) {
-      return `${connectingEdge ? translate[0] + 2 : translate[0]}px, -50%`;
-    }
     if (position === Position.Left) {
-      return `${connectingEdge ? translate[0] - 2 : translate[0]}px, -50%`;
-    }
-    if (position === Position.Top) {
-      return `-50%, ${connectingEdge ? translate[1] - 2 : translate[1]}px`;
-    }
-    if (position === Position.Bottom) {
-      return `-50%, ${connectingEdge ? translate[1] + 2 : translate[1]}px`;
+      return `${connectingEdge ? translate[0] - 6 : translate[0]}px, -50%`;
     }
   }, [connectingEdge, position, translate]);
 
-  const transform = useMemo(
-    () => (translateStr ? `translate(${translateStr})` : ''),
-    [translateStr]
-  );
-
   const styles = useMemo(() => {
-    if (!connectingEdge && !connected) return;
+    if ((!connectingEdge && !connected) || !showHandle) {
+      return {
+        visibility: 'hidden' as const
+      };
+    }
 
     if (connectingEdge) {
       return {
-        ...highlightStyle,
-        transform
+        ...handleHighLightStyle,
+        transform: `${translateStr ? `translate(${translateStr})` : ''}`
       };
     }
 
     if (connected) {
       return {
-        ...connectedStyle,
-        transform
+        ...handleConnectedStyle,
+        transform: `${translateStr ? `translate(${translateStr})` : ''}`
       };
     }
-    return;
-  }, [connected, connectingEdge, connectedStyle, highlightStyle, transform]);
+    return {
+      visibility: 'hidden' as const
+    };
+  }, [connected, connectingEdge, showHandle, translateStr]);
 
-  const RenderHandle = useMemo(() => {
-    return (
-      <Handle
-        style={
-          styles && showHandle
-            ? styles
-            : {
-                visibility: 'hidden',
-                transform,
-                ...handleSize
-              }
-        }
-        isConnectableEnd={styles && showHandle}
-        type="target"
-        id={handleId}
-        position={position}
-      ></Handle>
-    );
-  }, [styles, showHandle, transform, handleId, position]);
-
-  return RenderHandle;
-});
-
-export const TargetHandle = (
-  props: Props & {
-    showHandle: boolean;
-  }
-) => {
   return (
-    <MyTargetHandle
-      {...props}
-      highlightStyle={{ ...sourceCommonStyle, ...handleHighLightStyle }}
-      connectedStyle={{ ...sourceCommonStyle, ...handleConnectedStyle }}
+    <Handle
+      style={styles}
+      isConnectableEnd={styles && showHandle}
+      isConnectableStart={false}
+      type="target"
+      id={handleId}
+      position={position}
     />
   );
-};
+});
 
 export default function Dom() {
   return <></>;

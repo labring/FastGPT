@@ -11,7 +11,7 @@ import {
   type DatasetDataIndexItemType,
   type DatasetDataItemType
 } from '@fastgpt/global/core/dataset/type';
-import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
@@ -93,13 +93,15 @@ const formatIndexes = async ({
       return item;
     }
   });
-  indexes = indexes.filter((item) => item.type !== DatasetDataIndexTypeEnum.default);
-  indexes.push(...concatDefaultIndexes);
 
-  // Remove same text
+  // 其他索引不能与默认索引相同，且不能自己有重复
   indexes = indexes.filter(
-    (item, index, self) => index === self.findIndex((t) => t.text === item.text)
+    (item, index, self) =>
+      item.type !== DatasetDataIndexTypeEnum.default &&
+      !concatDefaultIndexes.find((t) => t.text === item.text) &&
+      index === self.findIndex((t) => t.text === item.text)
   );
+  indexes.push(...concatDefaultIndexes);
 
   const chekcIndexes = (
     await Promise.all(

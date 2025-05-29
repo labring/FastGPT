@@ -52,7 +52,7 @@ const ApiDatasetForm = ({
     { setTrue: openBaseurlSeletModal, setFalse: closeBaseurlSelectModal }
   ] = useBoolean();
 
-  const parentId = yuqueServer?.basePath || feishuServer?.folderToken || apiServer?.basePath;
+  const parentId = yuqueServer?.basePath || apiServer?.basePath;
 
   const canSelectBaseUrl = useMemo(() => {
     switch (type) {
@@ -61,23 +61,27 @@ const ApiDatasetForm = ({
       case DatasetTypeEnum.feishu:
         return feishuServer?.appId && feishuServer?.appSecret;
       case DatasetTypeEnum.apiDataset:
-        return !!apiServer?.basePath;
+        return !!apiServer?.baseUrl;
       default:
         return false;
     }
   }, [
     type,
-    yuqueServer?.token,
     yuqueServer?.userId,
+    yuqueServer?.token,
     feishuServer?.appId,
     feishuServer?.appSecret,
-    apiServer?.basePath
+    apiServer?.baseUrl
   ]);
 
   // Unified function to get the current path
   const { loading: isFetching } = useRequest2(
     async () => {
-      if (!datasetId && !(yuqueServer?.userId && yuqueServer?.token)) {
+      if (
+        !datasetId &&
+        ((yuqueServer && (!yuqueServer.userId || !yuqueServer?.token)) ||
+          (apiServer && !apiServer?.baseUrl))
+      ) {
         return setPathNames(t('dataset:input_required_field_to_select_baseurl'));
       }
       if (!parentId) {
@@ -141,7 +145,7 @@ const ApiDatasetForm = ({
   const renderDirectoryModal = () =>
     isOpenBaseurlSeletModal ? (
       <BaseUrlSelector
-        selectId={type === DatasetTypeEnum.yuque ? yuqueServer?.basePath || 'root' : 'root'}
+        selectId={yuqueServer?.basePath || apiServer?.basePath || 'root'}
         server={async (e: GetResourceFolderListProps) => {
           const params: GetApiDatasetCataLogProps = { parentId: e.parentId };
 
@@ -203,8 +207,8 @@ const ApiDatasetForm = ({
               {...register('apiServer.authorization')}
             />
           </Flex>
-          {/* {renderBaseUrlSelector()}
-          {renderDirectoryModal()} */}
+          {renderBaseUrlSelector()}
+          {renderDirectoryModal()}
         </>
       )}
       {type === DatasetTypeEnum.feishu && (

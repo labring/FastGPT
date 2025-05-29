@@ -7,26 +7,30 @@ import { useCallback, useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import { WorkflowNodeEdgeContext } from '../../../../context/workflowInitContext';
+import { WorkflowEventContext } from '../../../../context/workflowEventContext';
 
 const handleSize = '16px';
+const activeHandleSize = '20px';
+const handleId = NodeOutputKeyEnum.selectedTools;
 
 type ToolHandleProps = BoxProps & {
   nodeId: string;
   show: boolean;
 };
 export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
-  const { t } = useTranslation();
-  const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);
-  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
+  const toolConnecting = useContextSelector(
+    WorkflowContext,
+    (ctx) => ctx.connectingEdge?.handleId === NodeOutputKeyEnum.selectedTools
+  );
+  const connected = useContextSelector(WorkflowNodeEdgeContext, (v) =>
+    v.edges.some((edge) => edge.target === nodeId && edge.targetHandle === handleId)
+  );
 
-  const handleId = NodeOutputKeyEnum.selectedTools;
-
-  const connected = edges.some((edge) => edge.target === nodeId && edge.targetHandle === handleId);
-
+  const active = show && toolConnecting;
   // if top handle is connected, return null
-  const showHandle = connectingEdge
-    ? show && connectingEdge.handleId === NodeOutputKeyEnum.selectedTools
-    : connected;
+  const showHandle = active || connected;
+
+  const size = active ? activeHandleSize : handleSize;
 
   const Render = useMemo(() => {
     return (
@@ -35,8 +39,8 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
           borderRadius: '0',
           backgroundColor: 'transparent',
           border: 'none',
-          width: handleSize,
-          height: handleSize,
+          width: size,
+          height: size,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -50,8 +54,8 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
       >
         <Box
           className="flow-handle"
-          w={handleSize}
-          h={handleSize}
+          w={size}
+          h={size}
           border={'4px solid #8774EE'}
           rounded={'xs'}
           bg={'white'}
@@ -60,14 +64,21 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
         />
       </Handle>
     );
-  }, [handleId, showHandle]);
+  }, [showHandle, size]);
 
   return Render;
 };
 
-export const ToolSourceHandle = () => {
+export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
   const { t } = useTranslation();
   const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
+  const connectingEdge = useContextSelector(
+    WorkflowContext,
+    (ctx) => ctx.connectingEdge?.nodeId === nodeId
+  );
+  const nodeIsHover = useContextSelector(WorkflowEventContext, (v) => v.hoverNodeId === nodeId);
+
+  const active = useMemo(() => nodeIsHover || connectingEdge, [nodeIsHover, connectingEdge]);
 
   /* onConnect edge, delete tool input and switch */
   const onConnect = useCallback(
@@ -83,6 +94,8 @@ export const ToolSourceHandle = () => {
     [setEdges]
   );
 
+  const size = active ? activeHandleSize : handleSize;
+
   const Render = useMemo(() => {
     return (
       <MyTooltip label={t('common:core.workflow.tool.Handle')} shouldWrapChildren={false}>
@@ -91,8 +104,8 @@ export const ToolSourceHandle = () => {
             borderRadius: '0',
             backgroundColor: 'transparent',
             border: 'none',
-            width: handleSize,
-            height: handleSize,
+            width: size,
+            height: size,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -104,8 +117,8 @@ export const ToolSourceHandle = () => {
           onConnect={onConnect}
         >
           <Box
-            w={handleSize}
-            h={handleSize}
+            w={size}
+            h={size}
             border={'4px solid #8774EE'}
             rounded={'xs'}
             bg={'white'}
@@ -115,7 +128,7 @@ export const ToolSourceHandle = () => {
         </Handle>
       </MyTooltip>
     );
-  }, [onConnect, t]);
+  }, [onConnect, size, t]);
 
   return Render;
 };

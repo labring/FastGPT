@@ -130,8 +130,10 @@ export type SystemEnvType = {
   vectorMaxProcess: number;
   qaMaxProcess: number;
   vlmMaxProcess: number;
-  hnswEfSearch: number;
   tokenWorkers: number; // token count max worker
+
+  hnswEfSearch: number;
+  hnswMaxScanTuples: number;
 
   oneapiUrl?: string;
   chatApiKey?: string;

@@ -2,15 +2,11 @@ import type { NextApiRequest } from 'next';
 import type { LinkCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
-import {
-  TrainingModeEnum,
-  DatasetCollectionTypeEnum
-} from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type CreateCollectionResponse } from '@/global/core/dataset/api';
 import { urlsFetch } from '@fastgpt/service/common/string/cheerio';
-import { hashStr } from '@fastgpt/global/common/string/tools';
 
 async function handler(req: NextApiRequest): CreateCollectionResponse {
   const { link, ...body } = req.body as LinkCreateDatasetCollectionParams;

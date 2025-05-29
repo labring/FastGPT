@@ -4,9 +4,10 @@ import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import type {
   APIFileServer,
   YuqueServer,
-  FeishuServer
+  FeishuServer,
+  ApiDatasetDetailResponse
 } from '@fastgpt/global/core/dataset/apiDataset';
-import { getProApiDatasetFileDetailRequest } from '@/service/core/dataset/apiDataset/controller';
+import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -23,6 +24,24 @@ export type GetApiDatasetPathBody = {
 };
 
 export type GetApiDatasetPathResponse = string;
+
+const getFullPath = async (
+  currentId: string,
+  getFileDetail: ({ apiFileId }: { apiFileId: string }) => Promise<ApiDatasetDetailResponse>
+): Promise<string> => {
+  const response = await getFileDetail({ apiFileId: currentId });
+
+  if (!response) {
+    return '';
+  }
+
+  if (response.parentId && response.parentId !== null) {
+    const parentPath = await getFullPath(response.parentId, getFileDetail);
+    return `${parentPath}/${response.name}`;
+  }
+
+  return `/${response.name}`;
+};
 
 async function handler(
   req: ApiRequestProps<GetApiDatasetPathBody, any>,
@@ -66,31 +85,21 @@ async function handler(
     }
   })();
 
-  if (!apiServer && !feishuServer && !yuqueServer) {
-    return Promise.reject(DatasetErrEnum.noApiServer);
+  if (feishuServer) {
+    return '';
   }
 
-  if (apiServer || feishuServer) {
-    return Promise.reject('不支持获取 BaseUrl');
-  }
+  if (yuqueServer || apiServer) {
+    const apiDataset = await getApiDatasetRequest({
+      yuqueServer,
+      apiServer
+    });
 
-  if (yuqueServer) {
-    const getFullPath = async (currentId: string): Promise<string> => {
-      const response = await getProApiDatasetFileDetailRequest({
-        feishuServer,
-        yuqueServer,
-        apiFileId: currentId
-      });
+    if (!apiDataset?.getFileDetail) {
+      return Promise.reject(DatasetErrEnum.noApiServer);
+    }
 
-      if (response.parentId) {
-        const parentPath = await getFullPath(response.parentId);
-        return `${parentPath}/${response.name}`;
-      }
-
-      return `/${response.name}`;
-    };
-
-    return await getFullPath(parentId);
+    return await getFullPath(parentId, apiDataset.getFileDetail);
   }
 
   return Promise.reject(new Error(DatasetErrEnum.noApiServer));

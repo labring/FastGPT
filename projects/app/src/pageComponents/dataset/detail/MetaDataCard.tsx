@@ -73,25 +73,41 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
         value: collection.rawTextLength ?? '-'
       },
       {
-        label: t('dataset:collection_metadata_image_parse'),
-        value: collection.imageIndex ? 'Yes' : 'No'
-      },
-      {
-        label: t('dataset:auto_indexes'),
-        value: collection.autoIndexes ? 'Yes' : 'No'
-      },
-      {
         label: t('dataset:collection.training_type'),
         value: t(DatasetCollectionDataProcessModeMap[collection.trainingType]?.label as any)
       },
-      {
-        label: t('dataset:chunk_size'),
-        value: collection.chunkSize || '-'
-      },
-      {
-        label: t('dataset:index_size'),
-        value: collection.indexSize || '-'
-      },
+      ...(collection.imageIndex !== undefined
+        ? [
+            {
+              label: t('dataset:data_index_image'),
+              value: collection.imageIndex ? 'Yes' : 'No'
+            }
+          ]
+        : []),
+      ...(collection.autoIndexes !== undefined
+        ? [
+            {
+              label: t('dataset:auto_indexes'),
+              value: collection.autoIndexes ? 'Yes' : 'No'
+            }
+          ]
+        : []),
+      ...(collection.chunkSize
+        ? [
+            {
+              label: t('dataset:chunk_size'),
+              value: collection.chunkSize
+            }
+          ]
+        : []),
+      ...(collection.indexSize
+        ? [
+            {
+              label: t('dataset:index_size'),
+              value: collection.indexSize
+            }
+          ]
+        : []),
       ...(webSelector
         ? [
             {

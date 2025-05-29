@@ -1,6 +1,5 @@
 {
   "author": "cloudpense",
-  "version": "1.0.0",
   "name": "Email 邮件发送",
   "avatar": "plugins/email",
   "intro": "通过SMTP协议发送电子邮件(nodemailer)",

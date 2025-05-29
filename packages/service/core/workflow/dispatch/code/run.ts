@@ -49,8 +49,6 @@ export const dispatchRunCode = async (props: RunCodeType): Promise<RunCodeRespon
       variables: customVariables
     });
 
-    console.log(runResult);
-
     if (runResult.success) {
       return {
         [NodeOutputKeyEnum.rawResponse]: runResult.data.codeReturn,

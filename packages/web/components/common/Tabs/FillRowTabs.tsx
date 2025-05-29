@@ -1,5 +1,5 @@
 import React, { forwardRef, useRef, useState, useEffect } from 'react';
-import { Flex, Box, type BoxProps } from '@chakra-ui/react';
+import { Flex, Box, type BoxProps, HStack } from '@chakra-ui/react';
 import MyIcon from '../Icon';
 
 type Props<T = string> = Omit<BoxProps, 'onChange'> & {
@@ -10,9 +10,22 @@ type Props<T = string> = Omit<BoxProps, 'onChange'> & {
   }[];
   value: T;
   onChange: (e: T) => void;
+  iconSize?: string;
+  labelSize?: string;
+  iconGap?: number;
 };
 
-const FillRowTabs = ({ list, value, onChange, py = '7px', px = '12px', ...props }: Props) => {
+const FillRowTabs = ({
+  list,
+  value,
+  onChange,
+  py = '2.5',
+  px = '4',
+  iconSize = '18px',
+  labelSize = 'sm',
+  iconGap = 2,
+  ...props
+}: Props) => {
   const tabsRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef<Map<any, HTMLDivElement>>(new Map());
   const [sliderStyle, setSliderStyle] = useState({
@@ -78,7 +91,7 @@ const FillRowTabs = ({ list, value, onChange, py = '7px', px = '12px', ...props 
       />
 
       {list.map((item) => (
-        <Flex
+        <HStack
           key={item.value}
           ref={(el) => {
             if (el) itemsRef.current.set(item.value, el);
@@ -92,6 +105,7 @@ const FillRowTabs = ({ list, value, onChange, py = '7px', px = '12px', ...props 
           py={py}
           userSelect={'none'}
           whiteSpace={'noWrap'}
+          gap={iconGap}
           zIndex={1}
           position="relative"
           transition="color 0.25s ease"
@@ -101,9 +115,9 @@ const FillRowTabs = ({ list, value, onChange, py = '7px', px = '12px', ...props 
             color: 'primary.600'
           }}
         >
-          {item.icon && <MyIcon name={item.icon as any} mr={1.5} w={'18px'} />}
-          <Box>{item.label}</Box>
-        </Flex>
+          {item.icon && <MyIcon name={item.icon as any} w={iconSize} />}
+          <Box fontSize={labelSize}>{item.label}</Box>
+        </HStack>
       ))}
     </Box>
   );

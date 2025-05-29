@@ -220,7 +220,8 @@ export const runToolWithPromptCall = async (
 
   const max_tokens = computedMaxToken({
     model: toolModel,
-    maxToken
+    maxToken,
+    min: 100
   });
   const filterMessages = await filterGPTMessageByMaxContext({
     messages,
@@ -592,28 +593,22 @@ async function streamResponse({
 
   let startResponseWrite = false;
   let answer = '';
-  let reasoning = '';
-  let finish_reason: CompletionFinishReason = null;
-  let usage = getLLMDefaultUsage();
 
-  const { parsePart } = parseLLMStreamResponse();
+  const { parsePart, getResponseData, updateFinishReason } = parseLLMStreamResponse();
 
   for await (const part of stream) {
-    usage = part.usage || usage;
     if (res.closed) {
       stream.controller?.abort();
-      finish_reason = 'close';
+      updateFinishReason('close');
       break;
     }
 
-    const { reasoningContent, content, responseContent, finishReason } = parsePart({
+    const { reasoningContent, content, responseContent } = parsePart({
       part,
       parseThinkTag: aiChatReasoning,
       retainDatasetCite
     });
-    finish_reason = finish_reason || finishReason;
     answer += content;
-    reasoning += reasoningContent;
 
     // Reasoning response
     if (aiChatReasoning && reasoningContent) {
@@ -658,7 +653,9 @@ async function streamResponse({
     }
   }
 
-  return { answer, reasoning, finish_reason, usage };
+  const { reasoningContent, content, finish_reason, usage } = getResponseData();
+
+  return { answer: content, reasoning: reasoningContent, finish_reason, usage };
 }
 
 const parseAnswer = (

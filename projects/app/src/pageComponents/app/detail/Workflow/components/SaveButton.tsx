@@ -43,6 +43,7 @@ const SaveButton = ({
       Trigger={
         <Button
           size={'sm'}
+          flexShrink={0}
           rightIcon={
             <MyIcon
               name={isSave ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}

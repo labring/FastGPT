@@ -223,28 +223,29 @@ const toolChoice = async (props: ActionProps) => {
     }
   ];
 
+  const body = llmCompletionsBodyFormat(
+    {
+      stream: true,
+      model: extractModel.model,
+      temperature: 0.01,
+      messages: filterMessages,
+      tools,
+      tool_choice: { type: 'function', function: { name: agentFunName } }
+    },
+    extractModel
+  );
   const { response } = await createChatCompletion({
-    body: llmCompletionsBodyFormat(
-      {
-        stream: true,
-        model: extractModel.model,
-        temperature: 0.01,
-        messages: filterMessages,
-        tools,
-        tool_choice: { type: 'function', function: { name: agentFunName } }
-      },
-      extractModel
-    ),
+    body,
     userKey: externalProvider.openaiAccount
   });
-  const { toolCalls, usage } = await formatLLMResponse(response);
+  const { text, toolCalls, usage } = await formatLLMResponse(response);
 
   const arg: Record<string, any> = (() => {
     try {
       return json5.parse(toolCalls?.[0]?.function?.arguments || '');
     } catch (error) {
-      console.log(agentFunction.parameters);
-      console.log(toolCalls?.[0]?.function);
+      console.log('body', body);
+      console.log('AI response', text, toolCalls?.[0]?.function);
       console.log('Your model may not support tool_call', error);
       return {};
     }

@@ -1,6 +1,5 @@
 {
   "author": "silencezhang",
-  "version": "4817",
   "name": "基础图表",
   "avatar": "core/workflow/template/baseChart",
   "intro": "根据数据生成图表，可根据chartType生成柱状图，折线图，饼图",
