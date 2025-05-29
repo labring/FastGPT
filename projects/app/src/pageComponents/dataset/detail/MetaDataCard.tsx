@@ -92,7 +92,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
             }
           ]
         : []),
-      ...(collection.autoIndexes !== undefined && !isImageCollection
+      ...(collection.autoIndexes !== undefined
         ? [
             {
               label: t('dataset:auto_indexes'),

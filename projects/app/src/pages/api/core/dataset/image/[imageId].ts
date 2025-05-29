@@ -9,8 +9,14 @@ import jwt from 'jsonwebtoken';
 
 const previewableExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
 
+interface VerifyImageTokenParams {
+  token: string;
+  imageId: string;
+  req: NextApiRequest;
+}
+
 // Verify dataset image access token
-const verifyImageToken = async (token: string, imageId: string, req: NextApiRequest) => {
+const verifyImageToken = async ({ token, imageId, req }: VerifyImageTokenParams) => {
   try {
     if (!process.env.FILE_TOKEN_KEY) {
       throw new Error('FILE_TOKEN_KEY not configured');
@@ -27,7 +33,7 @@ const verifyImageToken = async (token: string, imageId: string, req: NextApiRequ
     // Get image info for permission verification
     const imageInfo = await getDatasetImage(imageId);
     if (!imageInfo) {
-      throw new Error('Image not found');
+      return Promise.reject(new Error('Image not found'));
     }
 
     // Verify dataset permissions
@@ -64,15 +70,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // Verify token and permissions
-    const imageInfo = await verifyImageToken(token, imageId, req);
-
-    // Check if file exists
-    if (!fs.existsSync(imageInfo.path)) {
-      return jsonRes(res, {
-        code: 500,
-        error: 'Image file not found on disk'
-      });
-    }
+    const imageInfo = await verifyImageToken({
+      token,
+      imageId,
+      req
+    });
 
     // Get file extension
     const extension = path.extname(imageInfo.name).toLowerCase().slice(1);
