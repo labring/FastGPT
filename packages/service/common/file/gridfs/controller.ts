@@ -223,7 +223,7 @@ export const readFileContentFromMongo = async ({
   rawText: string;
   filename: string;
 }> => {
-  const bufferId = `${fileId}-${customPdfParse}`;
+  const bufferId = `${String(fileId)}-${customPdfParse}`;
   // read buffer
   const fileBuffer = await getRawTextBuffer(bufferId);
   if (fileBuffer) {

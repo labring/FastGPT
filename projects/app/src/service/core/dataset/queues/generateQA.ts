@@ -2,7 +2,7 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { pushQAUsage } from '@/service/support/wallet/usage/push';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { createChatCompletion } from '@fastgpt/service/core/ai/config';
-import type { ChatCompletionMessageParam, StreamChatType } from '@fastgpt/global/core/ai/type.d';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
