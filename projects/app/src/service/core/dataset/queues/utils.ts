@@ -1,6 +1,6 @@
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
-import { sendOneInform } from '../support/user/inform/api';
+import { sendOneInform } from '../../../support/user/inform/api';
 import { lockTrainingDataByTeamId } from '@fastgpt/service/core/dataset/training/controller';
 import { InformLevelEnum } from '@fastgpt/global/support/user/inform/constants';
 
@@ -18,7 +18,7 @@ export const checkTeamAiPointsAndLock = async (teamId: string) => {
           templateParam: {},
           teamId
         });
-        console.log('余额不足，暂停【向量】生成任务');
+        console.log('余额不足，暂停训练生成任务');
         await lockTrainingDataByTeamId(teamId);
       } catch (error) {}
     }

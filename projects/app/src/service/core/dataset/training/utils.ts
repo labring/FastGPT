@@ -1,5 +1,5 @@
-import { generateQA } from '@/service/events/generateQA';
-import { generateVector } from '@/service/events/generateVector';
+import { generateQA } from '@/service/core/dataset/queues/generateQA';
+import { generateVector } from '@/service/core/dataset/queues/generateVector';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
