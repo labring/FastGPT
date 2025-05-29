@@ -11,6 +11,53 @@ const nextConfig = {
   output: 'standalone',
   reactStrictMode: isDev ? false : true,
   compress: true,
+
+  headers: async () => {
+    const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+    const csp = `'nonce-${nonce}'`;
+    const scheme_source = 'data: mediastream: blob: filesystem:';
+    const NECESSARY_DOMAINS = [
+      '*.sentry.io',
+      'http://localhost:*',
+      'http://127.0.0.1:*',
+      'https://analytics.google.com',
+      'googletagmanager.com',
+      '*.googletagmanager.com',
+      'https://www.google-analytics.com',
+      'https://api.github.com'
+    ].join(' ');
+
+    return [
+      {
+        source: '/chat/(.*)',
+        headers: [
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-XSS-Protection', value: '1; mode=block' },
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              `default-src 'self' ${scheme_source} ${NECESSARY_DOMAINS} ${csp}`,
+              `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${csp} ${NECESSARY_DOMAINS}`,
+              `style-src 'self' 'unsafe-inline' ${csp} ${NECESSARY_DOMAINS}`,
+              `media-src 'self' http: ${scheme_source} ${NECESSARY_DOMAINS} ${csp}`,
+              `worker-src 'self' ${csp} ${NECESSARY_DOMAINS} ${scheme_source}`,
+              `img-src * data: blob:`,
+              `font-src 'self'`,
+              `connect-src 'self' wss: https: ${scheme_source} ${NECESSARY_DOMAINS} ${csp}`,
+              "object-src 'none'",
+              "form-action 'self'",
+              "base-uri 'self'",
+              "frame-src 'self' 'allow-scripts'",
+              'sandbox allow-scripts allow-same-origin allow-popups allow-forms',
+              'upgrade-insecure-requests'
+            ].join('; ')
+          }
+        ]
+      }
+    ];
+  },
   webpack(config, { isServer, nextRuntime }) {
     Object.assign(config.resolve.alias, {
       '@mongodb-js/zstd': false,
@@ -85,7 +132,7 @@ const nextConfig = {
       'pg',
       'bullmq',
       '@zilliz/milvus2-sdk-node',
-      "tiktoken",
+      'tiktoken'
     ],
     outputFileTracingRoot: path.join(__dirname, '../../'),
     instrumentationHook: true
