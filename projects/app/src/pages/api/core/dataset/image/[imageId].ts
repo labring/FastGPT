@@ -110,19 +110,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       res.end();
     });
   } catch (error) {
-    if (
-      error instanceof Error &&
-      (error.message.includes('Token') || error.message.includes('not found'))
-    ) {
-      return jsonRes(res, {
-        code: 401,
-        error: 'Unauthorized'
-      });
-    }
-
-    jsonRes(res, {
-      code: 500,
-      error
+    return jsonRes(res, {
+      code:
+        error instanceof Error &&
+        (error.message.includes('Token') || error.message.includes('not found'))
+          ? 401
+          : 500,
+      error:
+        error instanceof Error &&
+        (error.message.includes('Token') || error.message.includes('not found'))
+          ? 'Unauthorized'
+          : error
     });
   }
 }

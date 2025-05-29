@@ -252,7 +252,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                       label: (
                         <Flex>
                           <MyIcon name={'image'} mr={2} w={'20px'} />
-                          {t('common:core.dataset.Image collection')}
+                          {t('dataset:core.dataset.Image collection')}
                         </Flex>
                       ),
                       onClick: () =>

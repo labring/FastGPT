@@ -77,7 +77,8 @@ export enum DatasetCollectionTypeEnum {
   file = 'file',
   link = 'link', // one link
   externalFile = 'externalFile',
-  apiFile = 'apiFile'
+  apiFile = 'apiFile',
+  image = 'image'
 }
 export const DatasetCollectionTypeMap = {
   [DatasetCollectionTypeEnum.folder]: {
@@ -97,6 +98,9 @@ export const DatasetCollectionTypeMap = {
   },
   [DatasetCollectionTypeEnum.apiFile]: {
     name: i18nT('common:core.dataset.apiFile')
+  },
+  [DatasetCollectionTypeEnum.image]: {
+    name: i18nT('dataset:core.dataset.Image collection')
   }
 };
 
@@ -135,7 +139,7 @@ export const DatasetCollectionDataProcessModeMap = {
     tooltip: i18nT('common:core.dataset.import.QA Import Tip')
   },
   [DatasetCollectionDataProcessModeEnum.imageParse]: {
-    label: i18nT('common:core.dataset.training.Image mode'),
+    label: i18nT('dataset:training.Image mode'),
     tooltip: i18nT('common:core.dataset.import.Chunk Split Tip')
   },
   [DatasetCollectionDataProcessModeEnum.backup]: {

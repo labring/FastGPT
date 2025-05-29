@@ -240,17 +240,17 @@ export const getTrainingModeByCollection = ({
   autoIndexes?: boolean;
   imageIndex?: boolean;
 }) => {
-  if (imageIndex) {
+  if (trainingType === DatasetCollectionDataProcessModeEnum.qa) {
+    return TrainingModeEnum.qa;
+  }
+  if (imageIndex && global.feConfigs?.isPlus) {
     return TrainingModeEnum.image;
   }
   if (trainingType === DatasetCollectionDataProcessModeEnum.imageParse) {
     return TrainingModeEnum.imageParse;
   }
-  if (trainingType === DatasetCollectionDataProcessModeEnum.chunk) {
-    return autoIndexes ? TrainingModeEnum.auto : TrainingModeEnum.chunk;
-  }
-  if (trainingType === DatasetCollectionDataProcessModeEnum.qa) {
-    return TrainingModeEnum.qa;
+  if (autoIndexes && global.feConfigs?.isPlus) {
+    return TrainingModeEnum.auto;
   }
   return TrainingModeEnum.chunk;
 };

@@ -66,7 +66,7 @@ const SelectCollections = ({
   const formatCollections = useMemo(
     () =>
       data?.list.map((collection) => {
-        const icon = getCollectionIcon(collection.type, collection.name, collection.trainingType);
+        const icon = getCollectionIcon(collection.type, collection.name);
 
         return {
           ...collection,

@@ -40,7 +40,7 @@ const DatasetImageMongoSchema = new Schema({
   },
   createTime: {
     type: Date,
-    default: Date.now
+    default: () => new Date()
   },
   expiredTime: {
     type: Date,
@@ -51,13 +51,12 @@ const DatasetImageMongoSchema = new Schema({
 
 DatasetImageMongoSchema.index({ expiredTime: 1 }, { expireAfterSeconds: 0 });
 
-DatasetImageMongoSchema.index({ teamId: 1 });
-DatasetImageMongoSchema.index({ datasetId: 1 });
-DatasetImageMongoSchema.index({ collectionId: 1 });
+// Create compound index for better query performance
+DatasetImageMongoSchema.index({ teamId: 1, datasetId: 1, collectionId: 1 });
 
 mongoose.model('dataset_collection_images', DatasetImageMongoSchema, 'dataset_collection_images');
 
 export const MongoDatasetCollectionImage = getMongoModel<DatasetImageSchema>(
   DatasetCollectionImageCollectionName,
-  mongoose.model('dataset_collection_images').schema
+  DatasetImageMongoSchema
 );

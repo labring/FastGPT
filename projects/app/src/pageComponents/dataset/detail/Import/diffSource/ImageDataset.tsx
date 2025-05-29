@@ -153,10 +153,7 @@ const SelectFile = React.memo(function SelectFile() {
     try {
       setIsSubmitting(true);
 
-      const collectionName =
-        databaseName ||
-        t('common:core.dataset.Image collection') +
-          `_${new Date().toISOString().slice(0, 19).replace(/[T:]/g, '_')}`;
+      const collectionName = databaseName;
       const datasetId = router.query.datasetId as string;
 
       const imageIds = [];
@@ -380,23 +377,13 @@ const SelectFile = React.memo(function SelectFile() {
                         onClick={() => removeFile(index)}
                       >
                         <MyIcon
-                          name="outlineHighest"
-                          width="30px"
+                          name="closeSolid"
+                          width="20px"
                           height="16.667px"
                           style={{
                             fill: 'var(--Gray-Modern-400, #8A95A7)',
                             filter:
                               'drop-shadow(0px 0px 1.667px rgba(19, 51, 107, 0.08)) drop-shadow(0px 6.667px 6.667px rgba(19, 51, 107, 0.10))'
-                          }}
-                        />
-                        <MyIcon
-                          name="soliderror"
-                          width="12px"
-                          height="12px"
-                          color="white"
-                          style={{
-                            position: 'absolute',
-                            zIndex: 2
                           }}
                         />
                       </div>

@@ -43,7 +43,10 @@ import {
   DatasetDataIndexTypeEnum,
   getDatasetIndexMapData
 } from '@fastgpt/global/core/dataset/data/constants';
-import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionDataProcessModeEnum,
+  DatasetCollectionTypeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
@@ -123,7 +126,7 @@ const InputDataModal = ({
 
   // Check if it's an image dataset
   const isImageCollection = useMemo(() => {
-    return collection?.trainingType === DatasetCollectionDataProcessModeEnum.imageParse;
+    return collection?.type === DatasetCollectionTypeEnum.image;
   }, [collection]);
 
   // Set default tab based on dataset type
@@ -136,8 +139,7 @@ const InputDataModal = ({
   }, [isImageCollection]);
 
   // Check if VLM model is available
-  const vlmModels = useMemo(() => getVlmModelList(), [getVlmModelList]);
-  const hasVlmModel = vlmModels.length > 0;
+  const hasVlmModel = useMemo(() => getVlmModelList().length > 0, [getVlmModelList]);
 
   // Image handling functions
   const handleSelectImage = useCallback(
@@ -339,7 +341,7 @@ const InputDataModal = ({
 
         onSuccess(e);
       },
-      errorToast: t('common:common.error.unKnow')
+      errorToast: t('dataset:common.error.unKnow')
     }
   );
 

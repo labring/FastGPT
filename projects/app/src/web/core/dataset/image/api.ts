@@ -38,20 +38,21 @@ export const createImageDatasetCollection = async ({
     type: string;
   }>;
 }) => {
+  if (!collectionName) {
+    throw new Error('Collection name is required');
+  }
+
   try {
     // Call fileId_image interface once with all image IDs
-    const fileIdParams = {
-      fileIds: imageIds,
+    const imageParams = {
+      imageIds: imageIds,
       datasetId: datasetId,
-      collectionName,
-      metadata: {
-        imageCount: imageIds.length
-      }
+      collectionName
     };
 
     const processResult = await POST<{ collectionId: string }>(
       '/core/dataset/collection/create/images',
-      fileIdParams
+      imageParams
     );
 
     // Create results for each image

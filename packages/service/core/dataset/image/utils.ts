@@ -22,8 +22,7 @@ export const generateImagePreviewUrlServer = async (
       throw new Error('Failed to get token');
     }
 
-    const timestamp = Date.now();
-    const url = `/api/core/dataset/image/${imageId}?token=${token}&t=${timestamp}`;
+    const url = `/api/core/dataset/image/${imageId}?token=${token}`;
 
     return url;
   } catch (error) {

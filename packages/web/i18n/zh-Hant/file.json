@@ -1,7 +1,5 @@
 {
-  " please input image description": "請輸入圖片描述",
-  " t('core.dataset.collection.Create Success', { count.core.dataset.collection.Create Success": "",
-  " t('file.Please select the image to upload select the image to upload'),\n        status.file.Please select the image to upload select the image to upload": "",
+  "please input image description": "請輸入圖片描述",
   "Action": "請選擇要上傳的圖片",
   "All images import failed": "所有圖片導入失敗",
   "Please enter the description of the picture": "請輸入圖片的描述內容",

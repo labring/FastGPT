@@ -58,6 +58,7 @@ export type CreateDatasetCollectionParams = DatasetCollectionStoreDataType & {
   hashRawText?: string;
 
   tags?: string[];
+  imageIdList?: string[];
 
   createTime?: Date;
   updateTime?: Date;

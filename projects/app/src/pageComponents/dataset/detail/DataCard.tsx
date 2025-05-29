@@ -31,7 +31,8 @@ import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { TabEnum } from './NavBar';
 import {
   ImportDataSourceEnum,
-  DatasetCollectionDataProcessModeEnum
+  DatasetCollectionDataProcessModeEnum,
+  DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import TrainingStates from './CollectionCard/TrainingStates';
@@ -115,7 +116,7 @@ const DataCard = () => {
   });
 
   const isImageCollection = useMemo(() => {
-    return collection?.trainingType === DatasetCollectionDataProcessModeEnum.imageParse;
+    return collection?.type === DatasetCollectionTypeEnum.image;
   }, [collection]);
 
   const [imagePreviewUrls, setImagePreviewUrls] = useState<Record<string, string>>({});

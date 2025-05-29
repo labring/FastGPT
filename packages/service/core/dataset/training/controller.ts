@@ -63,12 +63,6 @@ export async function pushDataListToTrainingQueue({
   indexSize,
   session
 }: PushDataToTrainingQueueProps): Promise<PushDatasetDataResponse> {
-  const ObjectId = connectionMongo.Types.ObjectId;
-
-  const objectIdDatasetId = typeof datasetId === 'string' ? new ObjectId(datasetId) : datasetId;
-  const objectIdCollectionId =
-    collectionId && typeof collectionId === 'string' ? new ObjectId(collectionId) : collectionId;
-
   const getImageChunkMode = (data: PushDatasetDataChunkProps, mode: TrainingModeEnum) => {
     if (mode !== TrainingModeEnum.image) return mode;
     // 检查内容中，是否包含 ![](xxx) 的图片格式
@@ -108,18 +102,7 @@ export async function pushDataListToTrainingQueue({
         weight: 0
       };
     }
-    if (mode === TrainingModeEnum.image) {
-      const vllmModelData = getVlmModel(vlmModel);
-      if (!vllmModelData) {
-        return Promise.reject(i18nT('common:error_vlm_not_config'));
-      }
-      return {
-        maxToken: getLLMMaxChunkSize(vllmModelData),
-        model: vllmModelData.model,
-        weight: 0
-      };
-    }
-    if (mode === TrainingModeEnum.imageParse) {
+    if (mode === TrainingModeEnum.image || mode === TrainingModeEnum.imageParse) {
       const vllmModelData = getVlmModel(vlmModel);
       if (!vllmModelData) {
         return Promise.reject(i18nT('common:error_vlm_not_config'));
@@ -200,8 +183,8 @@ export async function pushDataListToTrainingQueue({
         list.map((item) => ({
           teamId,
           tmbId,
-          datasetId: objectIdDatasetId,
-          collectionId: objectIdCollectionId,
+          datasetId: datasetId,
+          collectionId: collectionId,
           billId,
           mode: getImageChunkMode(item, mode),
           prompt,

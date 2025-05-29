@@ -556,7 +556,6 @@
   "core.dataset.training.Auto mode Tip": "Increase the semantic richness of data blocks by generating related questions and summaries through sub-indexes and calling models, making it more conducive to retrieval. Requires more storage space and increases AI call times.",
   "core.dataset.training.Chunk mode": "Chunk",
   "core.dataset.training.Full": "It is expected to be more than 20 minutes",
-  "core.dataset.training.Image mode": "Image processing",
   "core.dataset.training.Leisure": "Idle",
   "core.dataset.training.QA mode": "QA",
   "core.dataset.training.Vector queue": "Index Queue",

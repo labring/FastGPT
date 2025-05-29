@@ -10,23 +10,22 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type CreateCollectionResponse } from '@/global/core/dataset/api';
 import { getDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
-import { hasAvailableVlmModel } from '@fastgpt/service/core/ai/model';
-import { t } from 'i18next';
+import { getVlmModelList } from '@fastgpt/service/core/ai/model';
 
 async function handler(
   req: ApiRequestProps<
     FileIdCreateDatasetCollectionParams & {
-      collectionName?: string;
+      collectionName: string;
       metadata?: Record<string, any>;
-      fileIds?: string[];
+      imageIds?: string[];
     }
   >
 ): CreateCollectionResponse {
-  if (!hasAvailableVlmModel()) {
-    throw new Error(t('file:common.Image dataset requires VLM model to be configured'));
+  if (getVlmModelList().length === 0) {
+    throw new Error('common.Image dataset requires VLM model to be configured');
   }
 
-  const { fileId, fileIds, collectionName, metadata, ...body } = req.body;
+  const { imageIds, collectionName, metadata, ...body } = req.body;
 
   const { teamId, tmbId, dataset } = await authDataset({
     req,
@@ -36,32 +35,13 @@ async function handler(
     datasetId: body.datasetId
   });
 
-  const imageIds = fileIds && fileIds.length > 0 ? fileIds : [fileId];
   if (!imageIds || imageIds.length === 0) {
     throw new Error('No image IDs provided');
   }
 
-  // Validate all images exist and belong to the dataset
-  for (const currentFileId of imageIds) {
-    const imageInfo = await getDatasetImage(currentFileId || '');
-    if (!imageInfo) {
-      throw new Error(`Image not found: ${currentFileId}`);
-    }
-
-    if (String(imageInfo.datasetId) !== String(body.datasetId)) {
-      throw new Error(`Image does not belong to current dataset: ${currentFileId}`);
-    }
+  if (!collectionName) {
+    throw new Error('Collection name is required');
   }
-
-  // Create collection with all images at once
-  const finalCollectionName =
-    collectionName ||
-    `Image Collection ${new Date().toISOString().slice(0, 19).replace(/[T:]/g, '_')}`;
-  const finalMetadata = {
-    imageCount: imageIds.length,
-    imageIdList: imageIds,
-    ...(metadata || {})
-  };
 
   const { collectionId, insertResults } = await createCollectionAndInsertData({
     dataset,
@@ -69,10 +49,11 @@ async function handler(
       ...body,
       teamId,
       tmbId,
+      imageIdList: imageIds,
       trainingType: DatasetCollectionDataProcessModeEnum.imageParse,
-      type: DatasetCollectionTypeEnum.file,
-      name: finalCollectionName,
-      metadata: finalMetadata
+      type: DatasetCollectionTypeEnum.image,
+      name: collectionName,
+      metadata
     }
   });
 

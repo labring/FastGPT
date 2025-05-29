@@ -11,7 +11,7 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { createDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
 import { addSeconds } from 'date-fns';
 import { createFileToken } from '@fastgpt/service/support/permission/controller';
-import { hasAvailableVlmModel } from '@fastgpt/service/core/ai/model';
+import { getVlmModelList } from '@fastgpt/service/core/ai/model';
 import { t } from 'i18next';
 
 export type UploadDatasetImageProps = {
@@ -32,7 +32,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const filePaths: string[] = [];
   try {
     // Check if VLM model is available for image datasets
-    if (!hasAvailableVlmModel()) {
+    if (getVlmModelList().length === 0) {
       throw new Error(t('file:common.Image dataset requires VLM model to be configured'));
     }
 

@@ -398,15 +398,15 @@ export const deleteDatasetData = async (data: DatasetDataItemType) => {
     await MongoDatasetData.deleteOne({ _id: data.id }, { session });
     await MongoDatasetDataText.deleteMany({ dataId: data.id }, { session });
 
-    // 2. Delete vector data
+    // 2. If there are any image files, delete the image records.
+    if (data.imageFileId) {
+      await MongoDatasetCollectionImage.deleteOne({ _id: data.imageFileId }, { session });
+    }
+
+    // 3. Delete vector data
     await deleteDatasetDataVector({
       teamId: data.teamId,
       idList: data.indexes.map((item) => item.dataId)
     });
-
-    // 3. If there are any image files, delete the image records.
-    if (data.imageFileId) {
-      await MongoDatasetCollectionImage.deleteOne({ _id: data.imageFileId }, { session });
-    }
   });
 };

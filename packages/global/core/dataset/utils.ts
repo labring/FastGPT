@@ -8,8 +8,7 @@ import { strIsLink } from '../../common/string/tools';
 
 export function getCollectionIcon(
   type: DatasetCollectionTypeEnum = DatasetCollectionTypeEnum.file,
-  name = '',
-  trainingType?: DatasetCollectionDataProcessModeEnum
+  name = ''
 ) {
   if (type === DatasetCollectionTypeEnum.folder) {
     return 'common/folderFill';
@@ -20,8 +19,7 @@ export function getCollectionIcon(
   if (type === DatasetCollectionTypeEnum.virtual) {
     return 'file/fill/manual';
   }
-  // 特殊处理图片解析类型的集合
-  if (trainingType === DatasetCollectionDataProcessModeEnum.imageParse) {
+  if (type === DatasetCollectionTypeEnum.image) {
     return 'image';
   }
   return getFileIcon(name);

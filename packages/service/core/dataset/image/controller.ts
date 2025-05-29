@@ -28,15 +28,14 @@ export async function createDatasetImage({
   const expiredTime = addMinutes(new Date(), 30);
 
   const image = await MongoDatasetCollectionImage.create({
-    teamId: String(teamId),
-    datasetId: String(datasetId),
-    collectionId: collectionId ? String(collectionId) : null,
+    teamId: teamId,
+    datasetId: datasetId,
+    collectionId: collectionId,
     name,
     path,
     contentType,
     size,
     metadata,
-    createTime: new Date(),
     expiredTime
   });
 
@@ -44,13 +43,5 @@ export async function createDatasetImage({
 }
 
 export async function getDatasetImage(imageId: string): Promise<DatasetImageSchema | null> {
-  try {
-    if (!imageId || !mongoose.Types.ObjectId.isValid(imageId)) {
-      return null;
-    }
-    const result = await MongoDatasetCollectionImage.findById(imageId).lean();
-    return result;
-  } catch (error) {
-    return null;
-  }
+  return MongoDatasetCollectionImage.findById(imageId).lean();
 }

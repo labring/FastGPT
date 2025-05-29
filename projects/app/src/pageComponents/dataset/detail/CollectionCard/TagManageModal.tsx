@@ -421,7 +421,7 @@ const AddTagToCollections = ({
     () =>
       collectionsList.map((item) => {
         const collection = item.data;
-        const icon = getCollectionIcon(collection.type, collection.name, collection.trainingType);
+        const icon = getCollectionIcon(collection.type, collection.name);
         return {
           id: collection._id,
           tags: collection.tags,

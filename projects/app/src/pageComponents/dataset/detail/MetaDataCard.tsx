@@ -10,7 +10,8 @@ import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import {
   DatasetCollectionDataProcessModeMap,
   DatasetCollectionTypeMap,
-  DatasetCollectionDataProcessModeEnum
+  DatasetCollectionDataProcessModeEnum,
+  DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -41,7 +42,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
   );
 
   const isImageCollection = useMemo(() => {
-    return collection?.trainingType === DatasetCollectionDataProcessModeEnum.imageParse;
+    return collection?.type === DatasetCollectionTypeEnum.image;
   }, [collection]);
 
   const metadataList = useMemo<{ label?: string; value?: any }[]>(() => {
@@ -52,9 +53,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
     return [
       {
         label: t('common:core.dataset.collection.metadata.source'),
-        value: isImageCollection
-          ? t('common:core.dataset.Image collection')
-          : t(DatasetCollectionTypeMap[collection.type]?.name as any)
+        value: t(DatasetCollectionTypeMap[collection.type]?.name as any)
       },
       {
         label: t('common:core.dataset.collection.metadata.source name'),
@@ -162,7 +161,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
             </Flex>
           )
       )}
-      {collection?.sourceId && !isImageCollection && (
+      {!isImageCollection && (
         <Button variant={'whitePrimary'} onClick={readSource}>
           <Flex py={2} px={3}>
             <MyIcon name="visible" w={'1rem'} mr={'0.38rem'} />

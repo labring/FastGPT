@@ -56,8 +56,8 @@ const QuoteList = React.memo(function QuoteList({
         const currentFilterItem = quoteList.find((res) => res._id === item.id);
         return {
           ...item,
-          q: currentFilterItem?.q || '',
-          a: currentFilterItem?.a || '',
+          q: currentFilterItem?.q || item.q,
+          a: currentFilterItem?.a || item.a,
           imageFileId: currentFilterItem?.imageFileId || item.imageFileId
         };
       }

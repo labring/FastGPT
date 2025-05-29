@@ -496,12 +496,12 @@ export async function searchDatasetData(
           updateTime: data.updateTime,
           q: data.q,
           a: data.a,
+          imageFileId: data.imageFileId,
           chunkIndex: data.chunkIndex,
           datasetId: String(data.datasetId),
           collectionId: String(data.collectionId),
           ...getCollectionSourceData(collection),
-          score: [{ type: SearchScoreTypeEnum.embedding, value: item?.score || 0, index }],
-          ...(data.imageFileId && { imageFileId: data.imageFileId })
+          score: [{ type: SearchScoreTypeEnum.embedding, value: item?.score || 0, index }]
         };
 
         return result;
@@ -516,7 +516,7 @@ export async function searchDatasetData(
         if (!item) return;
         return {
           ...item,
-          score: item.score.map((scoreItem) => ({ ...scoreItem, index }))
+          score: item.score.map((item) => ({ ...item, index }))
         };
       }) as SearchDataResponseItemType[];
 
@@ -633,6 +633,7 @@ export async function searchDatasetData(
               updateTime: data.updateTime,
               q: data.q,
               a: data.a,
+              imageFileId: data.imageFileId,
               chunkIndex: data.chunkIndex,
               indexes: data.indexes,
               ...getCollectionSourceData(collection),
@@ -642,8 +643,7 @@ export async function searchDatasetData(
                   value: item.score || 0,
                   index
                 }
-              ],
-              ...(data.imageFileId && { imageFileId: data.imageFileId })
+              ]
             };
           })
           .filter((item) => {
@@ -654,7 +654,7 @@ export async function searchDatasetData(
             if (!item) return;
             return {
               ...item,
-              score: item.score.map((scoreItem) => ({ ...scoreItem, index }))
+              score: item.score.map((item) => ({ ...item, index }))
             };
           }) as SearchDataResponseItemType[],
         tokenLen: 0
@@ -834,11 +834,8 @@ export async function searchDatasetData(
   // token filter
   const filterMaxTokensResult = await filterDatasetDataByMaxTokens(scoreFilter, maxTokens);
 
-  // Handle image links in search results
-  const processedResults = await processSearchResultsWithImageLinks(filterMaxTokensResult, teamId);
-
   return {
-    searchRes: processedResults,
+    searchRes: filterMaxTokensResult,
     embeddingTokens,
     reRankInputTokens,
     searchMode,
@@ -900,11 +897,3 @@ export type DeepRagSearchProps = SearchDatasetDataProps & {
   [NodeInputKeyEnum.datasetDeepSearchBg]?: string;
 };
 export const deepRagSearch = (data: DeepRagSearchProps) => global.deepRagHandler(data);
-
-export const processSearchResultsWithImageLinks = async (
-  searchResults: SearchDataResponseItemType[],
-  teamId: string
-): Promise<SearchDataResponseItemType[]> => {
-  // Return to the original result of the "imageFileId" field to handle the display of the image.
-  return searchResults;
-};
