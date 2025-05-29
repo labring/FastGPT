@@ -24,6 +24,9 @@ import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/u
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
+import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import { getI18nAppType } from '@fastgpt/service/support/operationLog/util';
 
 export type AppUpdateQuery = {
   appId: string;
@@ -54,7 +57,7 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
 
   // this step is to get the app and its permission, and we will check the permission manually for
   // different cases
-  const { app, permission } = await authApp({
+  const { app, permission, teamId, tmbId } = await authApp({
     req,
     authToken: true,
     appId,
@@ -65,11 +68,23 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
     Promise.reject(AppErrEnum.unExist);
   }
 
+  let targetName = '';
+
   if (isMove) {
     if (parentId) {
       // move to a folder, check the target folder's permission
-      await authApp({ req, authToken: true, appId: parentId, per: ManagePermissionVal });
+      const { app: targetApp } = await authApp({
+        req,
+        authToken: true,
+        appId: parentId,
+        per: ManagePermissionVal
+      });
+
+      targetName = targetApp.name;
+    } else {
+      targetName = 'root';
     }
+
     if (app.parentId) {
       // move from a folder, check the (old) folder's permission
       await authApp({ req, authToken: true, appId: app.parentId, per: ManagePermissionVal });
@@ -160,6 +175,19 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
           session
         });
       } else {
+        (async () => {
+          const appType = getI18nAppType(app.type);
+          addOperationLog({
+            tmbId,
+            teamId,
+            event: OperationLogEventEnum.MOVE_APP,
+            params: {
+              appName: app.name,
+              targetFolderName: targetName,
+              appType: appType
+            }
+          });
+        })();
         // Not folder, delete all clb
         await MongoResourcePermission.deleteMany(
           { resourceType: PerResourceTypeEnum.app, teamId: app.teamId, resourceId: app._id },
@@ -169,6 +197,43 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
       return onUpdate(session);
     });
   } else {
+    (async () => {
+      const getUpdateItems = () => {
+        const names: string[] = [];
+        const values: string[] = [];
+
+        if (name !== undefined) {
+          names.push('common:core.app.Name');
+          values.push(name);
+        }
+
+        if (intro !== undefined) {
+          names.push('common:Intro');
+          values.push(intro);
+        }
+
+        return {
+          names,
+          values
+        };
+      };
+
+      const { names: newItemNames, values: newItemValues } = getUpdateItems();
+      const appType = getI18nAppType(app.type);
+
+      addOperationLog({
+        tmbId,
+        teamId,
+        event: OperationLogEventEnum.UPDATE_APP_INFO,
+        params: {
+          appName: app.name,
+          newItemNames: newItemNames,
+          newItemValues: newItemValues,
+          appType: appType
+        }
+      });
+    })();
+
     return onUpdate();
   }
 }

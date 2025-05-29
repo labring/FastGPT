@@ -11,12 +11,19 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { rewriteAppWorkflowToSimple } from '@fastgpt/service/core/app/utils';
-
+import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
+import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import { getI18nAppType } from '@fastgpt/service/support/operationLog/util';
 async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
   const { nodes = [], edges = [], chatConfig, isPublish, versionName, autoSave } = req.body;
 
-  const { app, tmbId } = await authApp({ appId, req, per: WritePermissionVal, authToken: true });
+  const { app, tmbId, teamId } = await authApp({
+    appId,
+    req,
+    per: WritePermissionVal,
+    authToken: true
+  });
 
   const { nodes: formatNodes } = beforeUpdateAppFormat({
     nodes,
@@ -31,6 +38,19 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
       edges,
       chatConfig,
       updateTime: new Date()
+    }).then(() => {
+      const appType = getI18nAppType(app.type);
+      addOperationLog({
+        tmbId,
+        teamId,
+        event: OperationLogEventEnum.UPDATE_PUBLISH_APP,
+        params: {
+          appName: app.name,
+          operationName: 'common:log.update',
+          appId,
+          appType: appType
+        }
+      });
     });
   }
 
@@ -79,6 +99,21 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
       }
     );
   });
+
+  (async () => {
+    const appType = getI18nAppType(app.type);
+    addOperationLog({
+      tmbId,
+      teamId,
+      event: OperationLogEventEnum.UPDATE_PUBLISH_APP,
+      params: {
+        appName: app.name,
+        operationName: isPublish ? 'common:log.save and publish' : 'common:log.update',
+        appId,
+        appType: appType
+      }
+    });
+  })();
 }
 
 export default NextAPI(handler);
