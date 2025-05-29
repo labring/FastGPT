@@ -40,5 +40,6 @@ export function getSourceNameIcon({
 export const predictDataLimitLength = (mode: TrainingModeEnum, data: any[]) => {
   if (mode === TrainingModeEnum.qa) return data.length * 20;
   if (mode === TrainingModeEnum.auto) return data.length * 5;
+  if (mode === TrainingModeEnum.image) return data.length * 2;
   return data.length;
 };

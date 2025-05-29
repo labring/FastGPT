@@ -49,7 +49,7 @@ const CustomTextInput = () => {
           createStatus: 'waiting',
           rawText: data.value,
           sourceName: data.name,
-          icon: 'file/fill/manual'
+          icon: 'file/fill/txt'
         }
       ]);
       goToNext();
