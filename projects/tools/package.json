@@ -32,6 +32,6 @@
   ],
   "packageManager": "bun@1.2.2",
   "dependencies": {
-    "jszip": "^3.10.1"
+    "@ts-rest/express": "^3.52.1"
   }
 }

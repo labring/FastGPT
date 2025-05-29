@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { InputType, OutputType, WorkflowIOValueTypeEnum } from './fastgpt';
+import type { InputType, OutputType } from './fastgpt';
 
 export const ToolCallbackType = z
   .function()
@@ -12,37 +12,75 @@ export const InfoString = z.object({
   'zh-Hant': z.string().optional()
 });
 
+const InputBaseSchema = z.object({
+  version: z.string().optional()
+});
+
+export function defineInputSchema<T extends z.AnyZodObject>(schema: T) {
+  return InputBaseSchema.merge(schema);
+}
+
 export const ToolTypeEnum = z.enum(['tools', 'search', 'multimodal', 'communication', 'other']);
 
-export const ToolSchema = z
-  .object({
-    toolId: z.string().optional(),
-    name: InfoString,
-    description: InfoString,
-    type: ToolTypeEnum,
-    icon: z.string(),
-    cb: ToolCallbackType,
-    author: z.string().optional(),
-    docURL: z.string().optional(),
-    version: z.string(),
-    parentId: z.string().optional(),
-    isToolSet: z.boolean().optional()
-  })
-  .refine((data) => {
-    if (!data.isToolSet && !data.cb) return { message: 'cb is required' };
-  });
+export const VersionSchema = z.object({
+  version: z.string(),
+  description: z.string().optional()
+});
+
+export const ToolSchema = z.object({
+  toolId: z.string(),
+  name: InfoString,
+  description: InfoString,
+  type: ToolTypeEnum,
+  icon: z.string(),
+  author: z.string().optional(),
+  docURL: z.string().optional(),
+  versionList: z.array(VersionSchema).min(1),
+  parentId: z.string().optional(),
+  isToolSet: z.boolean().optional(),
+  cb: ToolCallbackType
+});
 
 export type ToolType = z.infer<typeof ToolSchema> & {
   inputs: InputType[];
   outputs: OutputType[];
 };
 
-export type ToolSetType = z.infer<typeof ToolSchema> & {
-  children: ToolType[];
-};
+export const ToolSetSchema = ToolSchema.merge(
+  z.object({
+    children: z.array(ToolSchema)
+  })
+);
 
-export type ToolConfigType = Omit<ToolType, 'cb' | 'isToolSet'>;
-export type ToolSetConfigType = Omit<ToolSetType, 'cb' | 'inputs' | 'outputs' | 'isToolSet'>;
+export type ToolSetType = z.infer<typeof ToolSetSchema>;
+
+export const ToolConfigSchema = ToolSchema.omit({
+  cb: true,
+  isToolSet: true,
+  toolId: true
+}).merge(
+  z.object({
+    toolId: z.string().optional(),
+    inputs: z.unknown(),
+    outputs: z.unknown()
+  })
+);
+
+export const ToolSetConfigSchema = ToolSetSchema.omit({
+  cb: true,
+  isToolSet: true,
+  toolId: true
+}).merge(
+  z.object({
+    toolId: z.string().optional()
+  })
+);
+
+export type ToolConfigType = z.infer<typeof ToolConfigSchema> & {
+  inputs: InputType[];
+  outputs: OutputType[];
+};
+export type ToolSetConfigType = z.infer<typeof ToolSetConfigSchema>;
 
 export function defineTool(tool: ToolConfigType) {
   return {
@@ -51,11 +89,22 @@ export function defineTool(tool: ToolConfigType) {
   };
 }
 
-export function defineToolSet(folder: ToolSetConfigType) {
+export function defineToolSet(toolset: ToolSetConfigType) {
   return {
     isToolSet: true,
-    ...folder
+    ...toolset
   };
 }
+
+export const ToolListSchema = z.array(
+  ToolSchema.omit({
+    cb: true
+  }).merge(
+    z.object({
+      inputs: z.any(),
+      outputs: z.any()
+    })
+  )
+);
 
 export * from './fastgpt';

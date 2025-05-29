@@ -3,5 +3,4 @@ packages:
   - projects/app
   - projects/mcp_server
   - projects/sandbox
-  - projects/tools
   - scripts/icon

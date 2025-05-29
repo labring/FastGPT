@@ -16,7 +16,12 @@ export default defineToolSet({
     en: 'This is a sample tool set'
   },
   icon: '',
-  version: '1.0.0',
+  versionList: [
+    {
+      version: '1.0.0',
+      description: '初始版本'
+    }
+  ],
   author: 'FastGPT',
   children: [tool] // 添加更多 tools
 });

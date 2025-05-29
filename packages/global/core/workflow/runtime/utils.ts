@@ -1,7 +1,7 @@
 import json5 from 'json5';
 import { replaceVariable, valToStr } from '../../../common/string/tools';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '../../../core/chat/constants';
-import { ChatItemType, NodeOutputItemType } from '../../../core/chat/type';
+import type { ChatItemType, NodeOutputItemType } from '../../../core/chat/type';
 import { ChatCompletionRequestMessageRoleEnum } from '../../ai/constants';
 import {
   NodeInputKeyEnum,
@@ -14,11 +14,11 @@ import {
   type InteractiveNodeResponseType,
   type WorkflowInteractiveResponseType
 } from '../template/system/interactive/type';
-import { StoreEdgeItemType } from '../type/edge';
-import { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
-import { StoreNodeItemType } from '../type/node';
+import type { StoreEdgeItemType } from '../type/edge';
+import type { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
+import type { StoreNodeItemType } from '../type/node';
 import { isValidReferenceValueFormat } from '../utils';
-import { RuntimeEdgeItemType, RuntimeNodeItemType } from './type';
+import type { RuntimeEdgeItemType, RuntimeNodeItemType } from './type';
 
 export const extractDeepestInteractive = (
   interactive: WorkflowInteractiveResponseType

@@ -16,14 +16,8 @@ const name = program.args[0];
 
 // name validation:
 // 1. less than 20 characters
-// 2. kebab-case
 if (name.length > 20) {
   console.error('Tool name must be less than 20 characters');
-  process.exit(1);
-}
-
-if (!/^[a-z0-9-]+$/.test(name)) {
-  console.error('Tool name must be kebab-case');
   process.exit(1);
 }
 

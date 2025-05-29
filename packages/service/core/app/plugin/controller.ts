@@ -28,6 +28,7 @@ import type {
 } from '@fastgpt/global/core/workflow/type/io';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { getHandleConfig } from '@fastgpt/global/core/workflow/template/utils';
 
 /*
   plugin id rule:
@@ -65,7 +66,6 @@ const getSystemPluginTemplateById = async (
   pluginId: string,
   versionId?: string
 ): Promise<ChildAppType> => {
-  const items = getSystemPluginTemplates();
   const item = getSystemPluginTemplates().find((plugin) => plugin.id === pluginId);
   if (!item) return Promise.reject(PluginErrEnum.unExist);
 
@@ -123,7 +123,7 @@ const getSystemPluginTemplateById = async (
 export async function getChildAppPreviewNode({
   appId,
   versionId,
-  lang = 'zh-CN'
+  lang = 'en'
 }: {
   appId: string;
   versionId?: string;
@@ -209,8 +209,8 @@ export async function getChildAppPreviewNode({
         nodeIOConfig: {
           inputs: app.inputs!,
           outputs: app.outputs!,
-          toolConfig: {
-            systemToolConfig: {
+          toolData: {
+            systemTool: {
               toolId: app.id
             }
           }
@@ -243,7 +243,7 @@ export async function getChildAppPreviewNode({
   };
 }
 
-/*
+/**
   Get runtime plugin data
   System plugin: plugin id
   Personal plugin: Version id

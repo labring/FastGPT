@@ -18,6 +18,7 @@ config.toolId = config.toolId ?? __dirname.split('/').pop()?.split('.').shift();
 
 const tool: ToolType = {
   ...config,
+  toolId: config.toolId as string,
   cb: main
 };
 

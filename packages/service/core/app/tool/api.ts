@@ -1,20 +1,23 @@
-import { ToolType } from '@fastgpt/global/core/workflow/type/tool';
-import axios from 'axios';
+// import type { ToolType } from '@fastgpt/global/core/workflow/type/tool';
+// import axios from 'axios';
+import createClient from 'fastgpt-tools/sdk/client';
 
-const ToolBaseURL = process.env.TOOL_BASE_URL;
+const ToolBaseURL = process.env.TOOL_BASE_URL || '';
+const client = createClient(ToolBaseURL);
 export async function getSystemToolList() {
-  const { data: list } = await axios.get<ToolType[]>(`/list`, {
-    baseURL: ToolBaseURL
-  });
+  const res = await client.list();
+  if (res.status !== 200) return [];
+  const list = res.body;
 
   return list.map((item, index) => ({
     id: item.toolId,
-    isFolder: item.isFolder,
+    isFolder: item.isToolSet,
     parentId: item.parentId,
+    docUrl: item.docURL,
     name: item.name,
     avatar: item.icon,
-    version: item.version ?? '0.0.0',
-    workflow: item.workflow ?? {
+    versionList: item.versionList,
+    workflow: {
       nodes: [],
       edges: []
     },
@@ -32,25 +35,36 @@ export async function getSystemToolList() {
 }
 
 export async function runTool(toolId: string, input: object) {
-  const { data: result } = await axios.post<{
-    error?: string;
-    output: object;
-  }>(
-    `/run`,
-    {
-      toolId,
-      input
-    },
-    {
-      baseURL: ToolBaseURL
+  // const { data: result } = await axios.post<{
+  //   error?: string;
+  //   output: object;
+  // }>(
+  //   `/run`,
+  //   {
+  //     toolId,
+  //     input
+  //   },
+  //   {
+  //     baseURL: ToolBaseURL
+  //   }
+  // );
+  // return result;
+  const res = await client.run({
+    body: {
+      inputs: input,
+      toolId
     }
-  );
-  return result;
+  });
+  if (res.status !== 200) return Promise.reject(res.body);
+  return res.body.output;
 }
 
 export async function getToolFlushId() {
-  const { data: result } = await axios.get<string>(`/flushId`, {
-    baseURL: ToolBaseURL
-  });
-  return result;
+  // const { data: result } = await axios.get<string>(`/flushId`, {
+  //   baseURL: ToolBaseURL
+  // });
+  // return result;
+  const res = await client.flushId();
+  if (res.status !== 200) return Promise.reject(res.body);
+  return res.body;
 }

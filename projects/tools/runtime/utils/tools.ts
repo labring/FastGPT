@@ -1,7 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import type { ToolSetType, ToolType } from '../../type';
-import { randomUUID } from 'crypto';
+import { ToolListSchema } from '../../type';
+import { z } from 'zod';
 
 export async function saveFile(url: string, path: string) {
   const response = await fetch(url);
@@ -15,20 +16,18 @@ export async function saveFile(url: string, path: string) {
 
 const tools: ToolType[] = [];
 const toolsDir = process.env.TOOLS_DIR || path.join(process.cwd(), 'tools');
-const flushId = randomUUID();
 
 async function LoadTool(mod: ToolType | ToolSetType, defaultToolId: string) {
   if (!mod.toolId) mod.toolId = defaultToolId;
   if (!mod.isToolSet) {
     tools.push(mod as ToolType);
   } else {
-    const children = (mod as ToolSetType).children;
+    const children = (mod as ToolSetType).children as ToolType[];
     tools.push({
       ...mod,
-      children: undefined,
       inputs: [],
       outputs: []
-    } as any);
+    } as ToolType);
     tools.push(...children);
   }
 }
@@ -97,10 +96,6 @@ export function getTools() {
     ...tool,
     cb: undefined
   }));
-}
-
-export function getFlushId() {
-  return flushId;
 }
 
 export async function init(prod: boolean) {

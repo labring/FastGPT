@@ -1,6 +1,6 @@
-import { z } from 'zod';
-import type { ToolType } from '../../type';
-import { config } from './config';
+import type { z } from 'zod';
+import type { ToolType } from '@/type';
+import config from './config';
 import { InputType, tool as toolCb } from './src';
 
 export const main = async (props: z.infer<typeof InputType>) => {
@@ -13,6 +13,8 @@ export const main = async (props: z.infer<typeof InputType>) => {
     return { error: err };
   }
 };
+
+config.toolId = config.toolId ?? __dirname.split('/').pop()?.split('.').shift();
 
 const tool: ToolType = {
   ...config,

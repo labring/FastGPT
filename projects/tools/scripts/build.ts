@@ -1,8 +1,6 @@
 import { $ } from 'bun';
 import fs from 'fs';
 import path from 'path';
-// import archiver from 'archiver';
-// const archive = archiver('zip');
 
 const outDir = path.join(__dirname, '..', 'dist');
 if (!fs.existsSync(outDir)) {

@@ -8,8 +8,10 @@ export type ToolType = {
     'zh-Hant'?: string;
     en?: string | undefined;
   };
-  version: string;
-  versionList: string[];
+  versionList: {
+    version: string;
+    description?: string | undefined;
+  }[];
   description: {
     'zh-CN': string;
     'zh-Hant'?: string;

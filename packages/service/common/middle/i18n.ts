@@ -1,4 +1,4 @@
-import { ApiRequestProps } from '../../type/next';
+import type { ApiRequestProps } from '../../type/next';
 
 const locales = ['en', 'zh-CN', 'zh-Hant'];
 type LocaleType = 'en' | 'zh-CN' | 'zh-Hant';

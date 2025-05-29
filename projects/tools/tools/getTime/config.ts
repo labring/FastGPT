@@ -1,13 +1,18 @@
 import {
+  defineTool,
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   WorkflowIOValueTypeEnum
-} from '@/type/fastgpt';
-import { type ToolType } from '../../type';
+} from '@/type';
 
-export const config: Omit<ToolType, 'cb'> = {
+export default defineTool({
   toolId: 'community-getTime',
-  version: '4.9.6',
+  versionList: [
+    {
+      version: '1.0',
+      description: '初始版本'
+    }
+  ],
   type: 'tools',
   name: {
     'zh-CN': '获取当前时间',
@@ -17,7 +22,8 @@ export const config: Omit<ToolType, 'cb'> = {
     'zh-CN': '获取当前时间',
     en: 'Get current time'
   },
-  icon: '',
+  author: 'FastGPT',
+  icon: 'core/workflow/template/getTime',
   inputs: [
     {
       key: 'formatStr',
@@ -35,4 +41,4 @@ export const config: Omit<ToolType, 'cb'> = {
       description: '当前时间'
     }
   ]
-};
+});

@@ -1,12 +1,9 @@
-import { defineInputSchema } from '@/type';
 import { format } from 'date-fns';
 import { z } from 'zod';
 
-export const InputType = defineInputSchema(
-  z.object({
-    formatStr: z.string().optional()
-  })
-);
+export const InputType = z.object({
+  formatStr: z.string().optional()
+});
 
 export const OutputType = z.object({
   time: z.string()

@@ -12,6 +12,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import type { NextApiResponse } from 'next';
+import { getLocale } from '@fastgpt/service/common/middle/i18n';
 
 export type GetPreviewNodeQuery = { appId: string; versionId?: string };
 
@@ -27,7 +28,9 @@ async function handler(
     await authApp({ req, authToken: true, appId, per: ReadPermissionVal });
   }
 
-  return getChildAppPreviewNode({ appId, versionId });
+  const lang = getLocale(req);
+
+  return getChildAppPreviewNode({ appId, versionId, lang });
 }
 
 export default NextAPI(handler);
