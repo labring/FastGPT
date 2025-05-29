@@ -43,16 +43,13 @@ import {
   DatasetDataIndexTypeEnum,
   getDatasetIndexMapData
 } from '@fastgpt/global/core/dataset/data/constants';
-import {
-  DatasetCollectionDataProcessModeEnum,
-  DatasetCollectionTypeEnum
-} from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { generateImagePreviewUrl } from '@/web/core/dataset/image/utils';
-import { uploadImage2Dataset } from '@/web/core/dataset/image/controller';
+import { uploadDatasetImage } from '@/web/core/dataset/image/api';
 import MyPhotoView from '@fastgpt/web/components/common/Image/PhotoView';
 
 export type InputDataType = {
@@ -127,7 +124,7 @@ const InputDataModal = ({
 
   // Check if it's an image dataset
   const isImageCollection = useMemo(() => {
-    return collection?.type === DatasetCollectionTypeEnum.image;
+    return collection?.type === DatasetCollectionTypeEnum.images;
   }, [collection]);
 
   // Set default tab based on dataset type
@@ -158,11 +155,7 @@ const InputDataModal = ({
         setUploading(true);
 
         try {
-          const result = await uploadImage2Dataset({
-            file,
-            datasetId: collection.dataset._id,
-            collectionId: collectionId
-          });
+          const result = await uploadDatasetImage(file, collection.dataset._id, collectionId);
 
           try {
             const previewUrl = await generateImagePreviewUrl(
@@ -176,13 +169,13 @@ const InputDataModal = ({
           } catch (error) {
             setUploadedFileId(result.id);
             toast({
-              title: t('file:common.Loading image failed'),
+              title: t('file:Loading_image failed'),
               status: 'warning'
             });
           }
         } catch (error) {
           toast({
-            title: getErrText(error, t('file:common.Loading image failed')),
+            title: getErrText(error, t('file:Loading_image failed')),
             status: 'error'
           });
         } finally {
@@ -190,7 +183,7 @@ const InputDataModal = ({
         }
       } catch (error) {
         toast({
-          title: t('file:common.Loading image failed'),
+          title: t('file:Loading_image failed'),
           status: 'error'
         });
         setUploading(false);
@@ -270,7 +263,7 @@ const InputDataModal = ({
         })
         .catch((error) => {
           toast({
-            title: t('file:common.Loading image failed'),
+            title: t('file:Loading_image failed'),
             status: 'warning'
           });
         });
@@ -294,7 +287,7 @@ const InputDataModal = ({
 
       // Check if image is uploaded for image datasets
       if (currentTab === TabEnum.image && !uploadedFileId) {
-        return Promise.reject(t('file:please upload image first'));
+        return Promise.reject(t('file:please_upload_image_first'));
       }
 
       const totalLength = e.q.length + (e.a?.length || 0);
@@ -353,7 +346,7 @@ const InputDataModal = ({
 
       // Check if image is uploaded for image datasets
       if (currentTab === TabEnum.image && !uploadedFileId) {
-        return Promise.reject(t('file:please upload image first'));
+        return Promise.reject(t('file:please_upload_image_first'));
       }
 
       const updateData: any = {
@@ -469,7 +462,7 @@ const InputDataModal = ({
                   ? t('common:dataset_data_input_chunk_content')
                   : currentTab === TabEnum.qa
                     ? t('common:dataset_data_input_q')
-                    : t('file:please input image description')}
+                    : t('file:image_description')}
               </FormLabel>
               {currentTab === TabEnum.image ? (
                 <>
@@ -498,7 +491,7 @@ const InputDataModal = ({
                           maxH="100%"
                           maxW="100%"
                           objectFit="contain"
-                          alt={t('file:common.Image Preview')}
+                          alt={t('file:Image_Preview')}
                           cursor="pointer"
                           onClick={handleImageClick}
                         />
@@ -526,7 +519,7 @@ const InputDataModal = ({
                                   e.stopPropagation();
                                   navigator.clipboard.writeText(uploadedFileId);
                                   toast({
-                                    title: t('file:common.Image ID copied'),
+                                    title: t('file:Image_ID_copied'),
                                     status: 'success',
                                     duration: 2000,
                                     isClosable: true,
@@ -605,7 +598,7 @@ const InputDataModal = ({
                     )}
                   </Box>
                   <FormLabel required mb={1}>
-                    {t('file:please input image description')}
+                    {t('file:please_input_image_description')}
                   </FormLabel>
                   <Textarea
                     resize={'none'}
@@ -815,7 +808,7 @@ const InputDataModal = ({
               name="common/errorFill"
             />
             <Text fontSize="sm" fontWeight="medium" color="red.800">
-              {t('file:common.Only support uploading one image')}
+              {t('file:Only_support_uploading_one_image')}
             </Text>
           </Flex>
 
@@ -852,7 +845,7 @@ const InputDataModal = ({
                   width="100%"
                   height="100%"
                   objectFit="contain"
-                  alt={t('file:common.Image Preview') || '放大的图片'}
+                  alt={t('file:Image_Preview') || '放大的图片'}
                 />
                 <Box
                   position="absolute"

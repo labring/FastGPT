@@ -10,8 +10,6 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { createDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
 import { addSeconds } from 'date-fns';
-import { createFileToken } from '@fastgpt/service/support/permission/controller';
-import { getVlmModelList } from '@fastgpt/service/core/ai/model';
 import { t } from 'i18next';
 
 export type UploadDatasetImageProps = {
@@ -31,11 +29,6 @@ const authUploadLimit = (tmbId: string) => {
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const filePaths: string[] = [];
   try {
-    // Check if VLM model is available for image datasets
-    if (getVlmModelList().length === 0) {
-      throw new Error(t('file:common.Image dataset requires VLM model to be configured'));
-    }
-
     const start = Date.now();
     // Create multer uploader
     const upload = getUploadModel({
@@ -52,6 +45,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
       req,
       authToken: true
     });
+
+    // Check if dataset has a VLM model configured
+    if (!authData.dataset.vlmModel) {
+      return Promise.reject(new Error(t('file:Image_dataset_requires_VLM_model_to_be_configured')));
+    }
 
     // Verify upload frequency limit
     await authUploadLimit(authData.tmbId);
@@ -70,15 +68,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
       metadata
     });
 
-    jsonRes(res, {
-      data: id
-    });
+    return id;
   } catch (error) {
     // Only remove files on error
     removeFilesByPaths(filePaths);
     return Promise.reject(error);
   }
 }
+
 export default NextAPI(handler);
 
 export const config = {

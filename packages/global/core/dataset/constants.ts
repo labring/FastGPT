@@ -78,7 +78,7 @@ export enum DatasetCollectionTypeEnum {
   link = 'link', // one link
   externalFile = 'externalFile',
   apiFile = 'apiFile',
-  image = 'image'
+  images = 'images'
 }
 export const DatasetCollectionTypeMap = {
   [DatasetCollectionTypeEnum.folder]: {
@@ -99,7 +99,7 @@ export const DatasetCollectionTypeMap = {
   [DatasetCollectionTypeEnum.apiFile]: {
     name: i18nT('common:core.dataset.apiFile')
   },
-  [DatasetCollectionTypeEnum.image]: {
+  [DatasetCollectionTypeEnum.images]: {
     name: i18nT('dataset:core.dataset.Image collection')
   }
 };

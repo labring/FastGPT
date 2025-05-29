@@ -1,7 +1,6 @@
 import { addMinutes } from 'date-fns';
 import { MongoDatasetCollectionImage } from './schema';
 import type { DatasetImageSchema } from '@fastgpt/global/core/dataset/image/type';
-import mongoose from 'mongoose';
 
 /* ============= dataset images ========== */
 

@@ -20,96 +20,85 @@ import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils'
 import { MongoDatasetCollectionImage } from '@fastgpt/service/core/dataset/image/schema';
 
 async function handler(req: NextApiRequest) {
-  try {
-    const { collectionId, q, a, indexes, imageId } = req.body as InsertOneDatasetDataProps;
+  const { collectionId, q, a, indexes, imageId } = req.body as InsertOneDatasetDataProps;
 
-    if (!q) {
-      return Promise.reject(CommonErrEnum.missingParams);
-    }
-
-    if (!collectionId) {
-      return Promise.reject(CommonErrEnum.missingParams);
-    }
-
-    try {
-      const { teamId, tmbId } = await authDatasetCollection({
-        req,
-        authToken: true,
-        authApiKey: true,
-        collectionId,
-        per: WritePermissionVal
-      });
-
-      await checkDatasetLimit({
-        teamId,
-        insertLen: 1
-      });
-
-      const [
-        {
-          dataset: { _id: datasetId, vectorModel, agentModel }
-        }
-      ] = await Promise.all([getCollectionWithDataset(collectionId)]);
-
-      const formatQ = simpleText(q);
-      const formatA = simpleText(a);
-      const formatIndexes = indexes?.map((item) => ({
-        ...item,
-        text: simpleText(item.text)
-      }));
-
-      const token = await countPromptTokens(formatQ + formatA, '');
-      const vectorModelData = getEmbeddingModel(vectorModel);
-      const llmModelData = getLLMModel(agentModel);
-      const maxChunkSize = getLLMMaxChunkSize(llmModelData);
-
-      if (token > maxChunkSize) {
-        return Promise.reject(`Content over max chunk size: ${maxChunkSize}`);
-      }
-
-      await hasSameValue({
-        teamId,
-        datasetId,
-        collectionId,
-        q: formatQ,
-        a: formatA
-      });
-
-      const { insertId, tokens } = await insertData2Dataset({
-        teamId,
-        tmbId,
-        datasetId,
-        collectionId,
-        q: formatQ,
-        a: formatA,
-        chunkIndex: 0,
-        embeddingModel: vectorModelData.model,
-        indexes: formatIndexes,
-        imageId
-      });
-
-      // Remove TTL from image if imageId exists (prevent image expiration during training)
-      if (imageId) {
-        await MongoDatasetCollectionImage.updateOne(
-          { _id: imageId },
-          { $unset: { expiredTime: 1 } }
-        );
-      }
-
-      pushGenerateVectorUsage({
-        teamId,
-        tmbId,
-        inputTokens: tokens,
-        model: vectorModelData.model
-      });
-
-      return insertId;
-    } catch (error) {
-      return Promise.reject(error);
-    }
-  } catch (outerError) {
-    return Promise.reject(outerError);
+  if (!q) {
+    return Promise.reject(CommonErrEnum.missingParams);
   }
+
+  if (!collectionId) {
+    return Promise.reject(CommonErrEnum.missingParams);
+  }
+
+  const { teamId, tmbId } = await authDatasetCollection({
+    req,
+    authToken: true,
+    authApiKey: true,
+    collectionId,
+    per: WritePermissionVal
+  });
+
+  await checkDatasetLimit({
+    teamId,
+    insertLen: 1
+  });
+
+  const [
+    {
+      dataset: { _id: datasetId, vectorModel, agentModel }
+    }
+  ] = await Promise.all([getCollectionWithDataset(collectionId)]);
+
+  const formatQ = simpleText(q);
+  const formatA = simpleText(a);
+  const formatIndexes = indexes?.map((item) => ({
+    ...item,
+    text: simpleText(item.text)
+  }));
+
+  const token = await countPromptTokens(formatQ + formatA, '');
+  const vectorModelData = getEmbeddingModel(vectorModel);
+  const llmModelData = getLLMModel(agentModel);
+  const maxChunkSize = getLLMMaxChunkSize(llmModelData);
+
+  if (token > maxChunkSize) {
+    return Promise.reject(`Content over max chunk size: ${maxChunkSize}`);
+  }
+
+  await hasSameValue({
+    teamId,
+    datasetId,
+    collectionId,
+    q: formatQ,
+    a: formatA
+  });
+
+  const { insertId, tokens } = await insertData2Dataset({
+    teamId,
+    tmbId,
+    datasetId,
+    collectionId,
+    q: formatQ,
+    a: formatA,
+    chunkIndex: 0,
+    embeddingModel: vectorModelData.model,
+    indexes: formatIndexes,
+    imageId
+  });
+
+  // Remove TTL from image if imageId exists (prevent image expiration during training)
+  if (imageId) {
+    await MongoDatasetCollectionImage.updateOne({ _id: imageId }, { $unset: { expiredTime: 1 } });
+  }
+
+  pushGenerateVectorUsage({
+    teamId,
+    tmbId,
+    inputTokens: tokens,
+    model: vectorModelData.model
+  });
+
+  return insertId;
 }
 
 export default NextAPI(handler);

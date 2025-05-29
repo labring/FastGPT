@@ -19,7 +19,7 @@ export function getCollectionIcon(
   if (type === DatasetCollectionTypeEnum.virtual) {
     return 'file/fill/manual';
   }
-  if (type === DatasetCollectionTypeEnum.image) {
+  if (type === DatasetCollectionTypeEnum.images) {
     return 'image';
   }
   return getFileIcon(name);

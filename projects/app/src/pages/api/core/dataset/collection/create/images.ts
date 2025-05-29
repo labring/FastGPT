@@ -22,7 +22,7 @@ async function handler(
   >
 ): CreateCollectionResponse {
   if (getVlmModelList().length === 0) {
-    throw new Error('common.Image dataset requires VLM model to be configured');
+    throw new Error('Image_dataset_requires_VLM_model_to_be_configured');
   }
 
   const { imageIds, collectionName, metadata, ...body } = req.body;
@@ -51,7 +51,7 @@ async function handler(
       tmbId,
       imageIdList: imageIds,
       trainingType: DatasetCollectionDataProcessModeEnum.imageParse,
-      type: DatasetCollectionTypeEnum.image,
+      type: DatasetCollectionTypeEnum.images,
       name: collectionName,
       metadata
     }

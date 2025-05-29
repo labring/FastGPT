@@ -9,7 +9,7 @@ import { useRouter } from 'next/router';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { TabEnum } from '../../NavBar';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { uploadImage2Dataset } from '@/web/core/dataset/image/controller';
+import { uploadDatasetImage } from '@/web/core/dataset/image/api';
 import { createImageDatasetCollection } from '@/web/core/dataset/image/api';
 import { generateImagePreviewUrl } from '@/web/core/dataset/image/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -64,7 +64,7 @@ const SelectFile = React.memo(function SelectFile() {
     const datasetId = router.query.datasetId as string;
     if (!datasetId) {
       toast({
-        title: t('file:common.Dataset ID not found'),
+        title: t('file:Dataset_ID_not_found'),
         status: 'error'
       });
       return;
@@ -83,11 +83,7 @@ const SelectFile = React.memo(function SelectFile() {
     // Concurrent file upload processing
     const uploadPromises = fileItems.map(async (fileItem) => {
       try {
-        const result = await uploadImage2Dataset({
-          file: fileItem.file,
-          datasetId,
-          collectionId: parentId
-        });
+        const result = await uploadDatasetImage(fileItem.file, datasetId, parentId);
 
         try {
           // Generate preview URL
@@ -437,7 +433,7 @@ const SelectFile = React.memo(function SelectFile() {
                   letterSpacing="0.1px"
                   lineHeight="20px"
                 >
-                  {t('file:common.total_files', { selectFiles: { length: selectFiles.length } })}
+                  {t('file:total_files', { selectFiles: { length: selectFiles.length } })}
                 </Text>
                 <Box width="1px" height="11px" bg="white" />
               </>

@@ -51,14 +51,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     if (!imageId) {
       return jsonRes(res, {
-        code: 400,
+        code: 401,
         error: 'imageId is required'
       });
     }
 
     if (!token) {
       return jsonRes(res, {
-        code: 400,
+        code: 401,
         error: 'token is required'
       });
     }
@@ -66,18 +66,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // Verify token and permissions
     const imageInfo = await verifyImageToken(token, imageId, req);
 
-    // Check if image has expired
-    if (imageInfo.expiredTime && new Date() > new Date(imageInfo.expiredTime)) {
-      return jsonRes(res, {
-        code: 410,
-        error: 'Image has expired'
-      });
-    }
-
     // Check if file exists
     if (!fs.existsSync(imageInfo.path)) {
       return jsonRes(res, {
-        code: 404,
+        code: 500,
         error: 'Image file not found on disk'
       });
     }
@@ -111,16 +103,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
   } catch (error) {
     return jsonRes(res, {
-      code:
-        error instanceof Error &&
-        (error.message.includes('Token') || error.message.includes('not found'))
-          ? 401
-          : 500,
-      error:
-        error instanceof Error &&
-        (error.message.includes('Token') || error.message.includes('not found'))
-          ? 'Unauthorized'
-          : error
+      code: 500,
+      error
     });
   }
 }

@@ -148,7 +148,7 @@ const QuoteItem = ({
                       {imagePreviewUrl ? (
                         <Image
                           src={imagePreviewUrl}
-                          alt={q || t('file:common.Image Preview')}
+                          alt={q || t('file:Image_Preview')}
                           width="100%"
                           height="100%"
                           objectFit="cover"
@@ -169,7 +169,7 @@ const QuoteItem = ({
                           bg="lightgray"
                           borderRadius="md"
                         >
-                          <Text color="gray.400">{t('file:common.Loading image')}</Text>
+                          <Text color="gray.400">{t('file:Loading_image')}</Text>
                         </Box>
                       )}
                     </AspectRatio>

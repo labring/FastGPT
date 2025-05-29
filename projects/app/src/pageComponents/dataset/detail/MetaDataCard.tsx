@@ -10,7 +10,6 @@ import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import {
   DatasetCollectionDataProcessModeMap,
   DatasetCollectionTypeMap,
-  DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
@@ -41,9 +40,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
     }
   );
 
-  const isImageCollection = useMemo(() => {
-    return collection?.type === DatasetCollectionTypeEnum.image;
-  }, [collection]);
+  const isImageCollection = collection?.type === DatasetCollectionTypeEnum.images;
 
   const metadataList = useMemo<{ label?: string; value?: any }[]>(() => {
     if (!collection) return [];
@@ -161,7 +158,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
             </Flex>
           )
       )}
-      {!isImageCollection && (
+      {collection?.sourceId && (
         <Button variant={'whitePrimary'} onClick={readSource}>
           <Flex py={2} px={3}>
             <MyIcon name="visible" w={'1rem'} mr={'0.38rem'} />

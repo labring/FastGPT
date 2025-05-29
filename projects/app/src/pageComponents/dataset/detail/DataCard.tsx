@@ -116,7 +116,7 @@ const DataCard = () => {
   });
 
   const isImageCollection = useMemo(() => {
-    return collection?.type === DatasetCollectionTypeEnum.image;
+    return collection?.type === DatasetCollectionTypeEnum.images;
   }, [collection]);
 
   const [imagePreviewUrls, setImagePreviewUrls] = useState<Record<string, string>>({});

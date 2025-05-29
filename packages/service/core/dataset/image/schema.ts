@@ -1,6 +1,6 @@
 import { getMongoModel, Schema } from '../../../common/mongo';
 import type { DatasetImageSchema } from '@fastgpt/global/core/dataset/image/type';
-import mongoose from 'mongoose';
+import mongoose from '../../../common/mongo';
 
 export const DatasetCollectionImageCollectionName = 'dataset_collection_images';
 
@@ -53,8 +53,6 @@ DatasetImageMongoSchema.index({ expiredTime: 1 }, { expireAfterSeconds: 0 });
 
 // Create compound index for better query performance
 DatasetImageMongoSchema.index({ teamId: 1, datasetId: 1, collectionId: 1 });
-
-mongoose.model('dataset_collection_images', DatasetImageMongoSchema, 'dataset_collection_images');
 
 export const MongoDatasetCollectionImage = getMongoModel<DatasetImageSchema>(
   DatasetCollectionImageCollectionName,

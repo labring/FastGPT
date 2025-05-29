@@ -1,16 +1,9 @@
 import { POST } from '@/web/common/api/request';
-import type { UploadDatasetImageProps } from '@fastgpt/global/core/dataset/image/type';
 
-export const uploadDatasetImage = async (
-  file: File,
-  data: {
-    datasetId: string;
-    collectionId?: string;
-  }
-) => {
+export const uploadDatasetImage = async (file: File, datasetId: string, collectionId?: string) => {
   const formData = new FormData();
   formData.append('file', file, encodeURIComponent(file.name));
-  formData.append('data', JSON.stringify(data));
+  formData.append('data', JSON.stringify({ datasetId, collectionId }));
 
   const imageId = await POST<string>('/core/dataset/image/upload', formData, {
     timeout: 600000,
@@ -39,7 +32,7 @@ export const createImageDatasetCollection = async ({
   }>;
 }) => {
   if (!collectionName) {
-    throw new Error('Collection name is required');
+    return Promise.reject(new Error('Collection name cannot be empty'));
   }
 
   try {

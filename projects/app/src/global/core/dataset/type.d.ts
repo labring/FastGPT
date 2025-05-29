@@ -40,5 +40,5 @@ export type DatasetDataListItemType = {
   chunkIndex?: number;
   updated?: boolean;
   imageSize?: number;
-  previewUrl?: string;
+  imagePreviewUrl?: string; //image preview url
 };
