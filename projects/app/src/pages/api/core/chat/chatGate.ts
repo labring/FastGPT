@@ -52,6 +52,10 @@ import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/save
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { addLog } from '@fastgpt/service/common/system/log';
 import requestIp from 'request-ip';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
+import { form2AppWorkflow } from '@/web/core/app/utils';
+import { useTranslation } from 'react-i18next';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
@@ -64,25 +68,51 @@ export type Props = {
   chatId: string;
   chatConfig: AppChatConfigType;
   metadata?: Record<string, any>;
+  model?: string;
+  selectedTools?: string[];
 };
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const startTime = Date.now();
   const originIp = requestIp.getClientIp(req);
-
+  const t = useTranslation();
   let {
-    nodes = [],
-    edges = [],
     messages = [],
     responseChatItemId,
     variables = {},
     appName,
     appId,
-    chatConfig,
     chatId,
-    metadata = {}
+    metadata = {},
+    model,
+    selectedTools = []
   } = req.body as Props;
+
   try {
+    if (!appId) {
+      Promise.reject(CommonErrEnum.missingParams);
+    }
+    /* user auth */
+    const { app, teamId, tmbId } = await authApp({
+      req,
+      authToken: true,
+      appId,
+      per: ReadPermissionVal
+    });
+    const { modules, edges } = app;
+
+    const nodes = modules || [];
+    const chatConfig = app.chatConfig || {};
+    const appForm = appWorkflow2Form({
+      nodes,
+      chatConfig
+    });
+    // 覆写 appForm 的aiSettings
+    if (model) {
+      appForm.aiSettings.model = model;
+    }
+    const realAppWorkflow = form2AppWorkflow(appForm, t);
+    //TODO : 到时候删除
     if (!Array.isArray(nodes)) {
       throw new Error('Nodes is not array');
     }
@@ -91,14 +121,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
     const chatMessages = GPTMessages2Chats(messages);
     // console.log(JSON.stringify(chatMessages, null, 2), '====', chatMessages.length);
-
-    /* user auth */
-    const { app, teamId, tmbId } = await authApp({
-      req,
-      authToken: true,
-      appId,
-      per: ReadPermissionVal
-    });
 
     const isPlugin = app.type === AppTypeEnum.plugin;
     const isTool = app.type === AppTypeEnum.tool;

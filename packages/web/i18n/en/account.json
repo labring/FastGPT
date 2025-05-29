@@ -19,6 +19,7 @@
   "gateway.share": "share",
   "gateways": "Gate Management",
   "logout": "Sign out",
+  "logs": "Homepage log",
   "model.active": "Active",
   "model.alias": "Alias",
   "model.alias_tip": "The name of the model displayed in the system is convenient for users to understand.",

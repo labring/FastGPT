@@ -34,6 +34,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import AppCard from '@/pageComponents/chat/gatechat/AppCard';
 import type { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
 import { getTeamGateConfig } from '@/web/support/user/team/gate/api';
+import { listFeatureApps } from '@/web/support/user/team/gate/featureApp';
 
 const Chat = ({
   myApps,
@@ -268,7 +269,7 @@ const Render = (props: {
     loadConfig();
   }, []);
   const { data: myApps = [], runAsync: loadMyApps } = useRequest2(
-    () => getMyApps({ getRecentlyChat: true }),
+    () => listFeatureApps({ getRecentlyChat: true }),
     {
       manual: false,
       refreshDeps: [appId]

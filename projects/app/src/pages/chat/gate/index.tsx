@@ -8,7 +8,6 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 
 import PageContainer from '@/components/PageContainer';
-import SideBar from '@/components/SideBar';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { getAppDetailById, getMyApps, getMyAppsGate } from '@/web/core/app/api';
@@ -52,18 +51,22 @@ export const AppFormContext = React.createContext<{
 
 const Chat = ({
   myApps,
-  initialAppDetail
+  initialAppDetail,
+  currentAppId
 }: {
   myApps: AppListItemType[];
   initialAppDetail?: AppDetailType;
+  currentAppId?: string;
 }) => {
   const router = useRouter();
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const refresh = router.query.refresh;
 
+  // 从 router.query 获取 appId，而不是从 store
+  const appId = (router.query.appId as string) || currentAppId;
   const { userInfo } = useUserStore();
-  const { setLastChatAppId, chatId, appId } = useChatStore();
+  const { setLastChatAppId, chatId } = useChatStore();
 
   const [gateConfig, setGateConfig] = useState<GateSchemaType | undefined>(undefined);
   // 加载 gateConfig
@@ -266,11 +269,15 @@ const Chat = ({
 };
 
 const Render = (props: { appId: string; appDetail?: AppDetailType; isStandalone?: string }) => {
-  const { appId, appDetail: initialAppDetail, isStandalone } = props;
+  const { appId: propsAppId, appDetail: initialAppDetail, isStandalone } = props;
   const { t } = useTranslation();
   const { toast } = useToast();
   const router = useRouter();
   const { source, chatId, lastChatAppId, setSource, setAppId } = useChatStore();
+
+  // 从 router.query 获取 appId，优先使用 query 中的值
+  const appId = (router.query.appId as string) || propsAppId;
+
   const [gateConfig, setGateConfig] = useState<GateSchemaType | undefined>(undefined);
   // 加载 gateConfig
   useEffect(() => {
@@ -352,9 +359,11 @@ const Render = (props: { appId: string; appDetail?: AppDetailType; isStandalone?
     }
   }, [gateConfig, router, toast, t]);
 
-  // Watch appId
+  // Watch appId - 同步到 store，但主要依赖来源不是 store
   useEffect(() => {
-    setAppId(appId);
+    if (appId) {
+      setAppId(appId);
+    }
   }, [appId, setAppId]);
 
   const chatHistoryProviderParams = useMemo(
@@ -384,7 +393,7 @@ const Render = (props: { appId: string; appDetail?: AppDetailType; isStandalone?
         showNodeStatus
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
-          <Chat myApps={myApps} initialAppDetail={initialAppDetail} />
+          <Chat myApps={myApps} initialAppDetail={initialAppDetail} currentAppId={appId} />
         </ChatRecordContextProvider>
       </ChatItemContextProvider>
     </ChatContextProvider>
@@ -392,23 +401,8 @@ const Render = (props: { appId: string; appDetail?: AppDetailType; isStandalone?
 };
 
 export async function getServerSideProps(context: any) {
-  const appId = context?.query?.appId || '';
-  let appDetail;
-  let testGateConfig;
-  if (appId) {
-    try {
-      appDetail = await getAppDetailById(appId);
-      testGateConfig = await getTeamGateConfig();
-      console.log('testGateConfig', testGateConfig);
-    } catch (error) {
-      console.error('Failed to fetch app detail:', error);
-    }
-  }
-
   return {
     props: {
-      appId,
-      appDetail: appDetail || null,
       isStandalone: context?.query?.isStandalone || '',
       ...(await serviceSideProps(context, [
         'file',

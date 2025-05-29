@@ -28,3 +28,6 @@ export const batchAddTagsToApp = (appId: string, tagIds: string[]) =>
 
 export const batchRemoveTagsFromApp = (appId: string, tagIds: string[]) =>
   POST<boolean>('/core/app/tags/batchRemoveFromApp', { appId, tagIds });
+
+export const batchAddAppsToTag = (tagId: string, appIds: string[]) =>
+  POST<{ success: boolean }>('/core/app/tags/addApptoTag', { tagId, appIds });

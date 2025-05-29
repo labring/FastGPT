@@ -4,7 +4,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { type AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { theme } from '@fastgpt/web/styles/theme';
 import DeleteIcon, { hoverDeleteStyles } from '@fastgpt/web/components/common/Icon/delete';
@@ -17,6 +17,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import ConfigToolModal from './ConfigToolModal';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { formatToolError } from '@fastgpt/global/core/app/utils';
 
 const ToolSelect = ({
   appForm,
@@ -64,6 +65,8 @@ const ToolSelect = ({
         gridGap={[2, 4]}
       >
         {appForm.selectedTools.map((item) => {
+          const toolError = formatToolError(item.pluginData?.error);
+
           return (
             <MyTooltip key={item.id} label={item.intro}>
               <Flex
@@ -74,10 +77,10 @@ const ToolSelect = ({
                 boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
                 borderRadius={'md'}
                 border={theme.borders.base}
-                borderColor={''}
+                borderColor={toolError ? 'red.600' : ''}
                 _hover={{
                   ...hoverDeleteStyles,
-                  borderColor: 'primary.300'
+                  borderColor: toolError ? 'red.600' : 'primary.300'
                 }}
                 cursor={'pointer'}
                 onClick={() => {
@@ -90,6 +93,7 @@ const ToolSelect = ({
                           input.renderTypeList.includes(FlowNodeInputTypeEnum.selectLLMModel) ||
                           input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
                       ) ||
+                    toolError ||
                     item.flowNodeType === FlowNodeTypeEnum.tool ||
                     item.flowNodeType === FlowNodeTypeEnum.toolSet
                   ) {
@@ -109,7 +113,20 @@ const ToolSelect = ({
                 >
                   {item.name}
                 </Box>
-
+                {toolError && (
+                  <Flex
+                    bg={'red.50'}
+                    alignItems={'center'}
+                    h={6}
+                    px={2}
+                    rounded={'6px'}
+                    fontSize={'xs'}
+                    fontWeight={'medium'}
+                  >
+                    <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
+                    <Box color={'red.600'}>{t(toolError as any)}</Box>
+                  </Flex>
+                )}
                 <DeleteIcon
                   ml={2}
                   onClick={(e) => {

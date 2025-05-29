@@ -155,7 +155,7 @@ const CopyrightTable = ({
           {/* Logo 设置区域 */}
           <Flex flexDirection="column" gap={{ base: 3, md: 4 }}>
             <Text fontSize="14px" color="#485264" fontWeight={500}>
-              Logo预览
+              {t('account_gate:gate_logo')}
             </Text>
 
             <Flex

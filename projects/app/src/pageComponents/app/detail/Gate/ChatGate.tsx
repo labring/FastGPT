@@ -1,10 +1,8 @@
 import { Box, Flex } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
 import React, { useEffect, useMemo } from 'react';
 
 import { useSafeState } from 'ahooks';
 import type { AppDetailType, AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
-import { form2AppWorkflow } from '@/web/core/app/utils';
 import { useContextSelector } from 'use-context-selector';
 import { useChatGate } from '../useChatGate';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
@@ -20,20 +18,16 @@ type Props = {
   appDetail: AppDetailType; // 添加 appDetail prop
 };
 const ChatGate = ({ appForm, setRenderEdit, appDetail }: Props) => {
-  const { t } = useTranslation();
+  console.log('appDetai', appDetail);
+  console.log('appform', appForm);
 
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
-  const [workflowData, setWorkflowData] = useSafeState({
+  const [workflowData] = useSafeState({
     nodes: appDetail.modules || [],
     edges: appDetail.edges || []
   });
-
-  useEffect(() => {
-    const { nodes, edges } = form2AppWorkflow(appForm, t);
-    setWorkflowData({ nodes, edges });
-  }, [appForm, setWorkflowData, t]);
 
   useEffect(() => {
     setRenderEdit(!datasetCiteData);

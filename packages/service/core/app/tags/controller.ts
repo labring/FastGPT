@@ -201,3 +201,42 @@ export const batchRemoveTagsFromApp = async ({
 
   return true;
 };
+
+/**
+ * 批量为某一标签添加 app（全量更新）
+ */
+export const batchAddAppsToTag = async ({
+  tagId,
+  appIds,
+  teamId
+}: {
+  tagId: string;
+  appIds: string[];
+  teamId: string;
+}) => {
+  // 确认标签存在且属于该团队
+  const tag = await MongoTag.findOne({ _id: tagId, teamId });
+  if (!tag) {
+    throw new Error('Tag not found or not authorized');
+  }
+
+  // 如果 appIds 为空数组，则移除该标签的所有应用
+  if (!appIds || appIds.length === 0) {
+    await MongoApp.updateMany({ teamId, tags: tagId }, { $pull: { tags: tagId } });
+    return true;
+  }
+
+  // 确认所有 app 都存在且属于该团队
+  const apps = await MongoApp.find({ _id: { $in: appIds }, teamId });
+  if (apps.length !== appIds.length) {
+    throw new Error('Some apps not found or not authorized');
+  }
+
+  // 先从所有应用中移除该标签
+  await MongoApp.updateMany({ teamId, tags: tagId }, { $pull: { tags: tagId } });
+
+  // 然后为指定的应用添加该标签
+  await MongoApp.updateMany({ _id: { $in: appIds }, teamId }, { $addToSet: { tags: tagId } });
+
+  return true;
+};

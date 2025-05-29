@@ -1,8 +1,8 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { getTeamTags, getTagsWithCount } from '@fastgpt/service/core/app/tags/controller';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { TeamReadPermissionVal } from '@fastgpt/global/support/permission/user/constant';
 
 type Props = {
   withCount?: boolean;
@@ -20,7 +20,7 @@ async function handler(req: ApiRequestProps<Props>) {
     req,
     authToken: true,
     authApiKey: true,
-    per: ReadPermissionVal
+    per: TeamReadPermissionVal
   });
 
   if (withCount) {

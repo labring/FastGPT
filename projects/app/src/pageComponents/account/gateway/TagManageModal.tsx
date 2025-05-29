@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -6,42 +6,44 @@ import {
   Input,
   ModalBody,
   ModalFooter,
-  Table,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
   useToast,
   HStack,
   IconButton,
-  Tag,
   Container,
-  Tooltip,
-  Divider
+  Divider,
+  Text,
+  Checkbox
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getTeamTags, createTag, updateTag, deleteTag } from '@/web/core/app/api/tags';
-import type { TagSchemaType, TagWithCountType } from '@fastgpt/global/core/app/tags';
+import {
+  getTeamTags,
+  createTag,
+  updateTag,
+  deleteTag,
+  batchAddTagsToApp,
+  batchRemoveTagsFromApp,
+  batchAddAppsToTag
+} from '@/web/core/app/api/tags';
+import type { TagWithCountType } from '@fastgpt/global/core/app/tags';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyTag from '@fastgpt/web/components/common/Tag';
-
-// 颜色选项
-const colorOptions: { value: string; color: string; bg: string }[] = [
-  { value: 'blue', color: 'blue.600', bg: 'blue.50' },
-  { value: 'green', color: 'green.600', bg: 'green.50' },
-  { value: 'red', color: 'red.600', bg: 'red.50' },
-  { value: 'yellow', color: 'yellow.600', bg: 'yellow.50' },
-  { value: 'purple', color: 'purple.600', bg: 'purple.50' },
-  { value: 'teal', color: 'teal.600', bg: 'teal.50' }
-];
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import SelectMultipleResource from './SelectMultipleResource';
+import {
+  type GetResourceFolderListProps,
+  type GetResourceListItemResponse
+} from '@fastgpt/global/common/parentFolder/type';
+import { getMyApps } from '@/web/core/app/api';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import type { AppListItemType } from '@fastgpt/global/core/app/type.d';
 
 interface TagManageModalProps {
   onClose: () => void;
   onTagsUpdated?: () => void;
 }
+
+type ViewMode = 'tagList' | 'appSelection';
 
 const TagManageModal = ({ onClose, onTagsUpdated }: TagManageModalProps) => {
   const { t } = useTranslation();
@@ -50,13 +52,18 @@ const TagManageModal = ({ onClose, onTagsUpdated }: TagManageModalProps) => {
   const [editingTag, setEditingTag] = useState<{
     _id?: string;
     name: string;
-    color: string;
-  }>({ name: '', color: 'blue' });
+  }>({ name: '' });
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('tagList');
+  const [selectedTagForAddApps, setSelectedTagForAddApps] = useState<TagWithCountType | null>(null);
+  const [searchKey, setSearchKey] = useState('');
+  const [selectedAppIds, setSelectedAppIds] = useState<string[]>([]);
+  const [allApps, setAllApps] = useState<AppListItemType[]>([]);
+  const [initialAppsWithTag, setInitialAppsWithTag] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // 获取标签列表 - 使用声明式加载方式
+  // 获取标签列表
   const { data: tags = [], loading: loadingTags } = useRequest2(
     async () => {
       const result = await getTeamTags(true);
@@ -73,7 +80,7 @@ const TagManageModal = ({ onClose, onTagsUpdated }: TagManageModalProps) => {
 
   // 创建标签
   const { runAsync: createTagMutate, loading: createLoading } = useRequest2(
-    (data: { name: string; color?: string }) => createTag(data),
+    (data: { name: string }) => createTag(data),
     {
       onSuccess: () => {
         toast({
@@ -82,10 +89,9 @@ const TagManageModal = ({ onClose, onTagsUpdated }: TagManageModalProps) => {
           duration: 3000,
           isClosable: true
         });
-        setRefreshTrigger((prev) => prev + 1); // 触发刷新
+        setRefreshTrigger((prev) => prev + 1);
         setIsCreating(false);
-        setEditingTag({ name: '', color: 'blue' });
-        // 通知父组件标签已更新
+        setEditingTag({ name: '' });
         onTagsUpdated?.();
       }
     }
@@ -93,7 +99,7 @@ const TagManageModal = ({ onClose, onTagsUpdated }: TagManageModalProps) => {
 
   // 更新标签
   const { runAsync: updateTagMutate, loading: updateLoading } = useRequest2(
-    (data: { tagId: string; name?: string; color?: string }) => updateTag(data),
+    (data: { tagId: string; name: string }) => updateTag(data),
     {
       onSuccess: () => {
         toast({
@@ -102,10 +108,9 @@ const TagManageModal = ({ onClose, onTagsUpdated }: TagManageModalProps) => {
           duration: 3000,
           isClosable: true
         });
-        setRefreshTrigger((prev) => prev + 1); // 触发刷新
+        setRefreshTrigger((prev) => prev + 1);
         setIsEditing(false);
-        setEditingTag({ name: '', color: 'blue' });
-        // 通知父组件标签已更新
+        setEditingTag({ name: '' });
         onTagsUpdated?.();
       }
     }
@@ -122,8 +127,7 @@ const TagManageModal = ({ onClose, onTagsUpdated }: TagManageModalProps) => {
           duration: 3000,
           isClosable: true
         });
-        setRefreshTrigger((prev) => prev + 1); // 触发刷新
-        // 通知父组件标签已更新
+        setRefreshTrigger((prev) => prev + 1);
         onTagsUpdated?.();
       }
     }
@@ -151,8 +155,7 @@ const TagManageModal = ({ onClose, onTagsUpdated }: TagManageModalProps) => {
     }
 
     createTagMutate({
-      name: editingTag.name,
-      color: editingTag.color
+      name: editingTag.name
     });
   };
 
@@ -172,8 +175,7 @@ const TagManageModal = ({ onClose, onTagsUpdated }: TagManageModalProps) => {
 
     updateTagMutate({
       tagId: editingTag._id,
-      name: editingTag.name,
-      color: editingTag.color
+      name: editingTag.name
     });
   };
 
@@ -184,17 +186,14 @@ const TagManageModal = ({ onClose, onTagsUpdated }: TagManageModalProps) => {
 
   // 开始编辑标签
   const startEditTag = (tag: TagWithCountType) => {
-    // 如果点击的是当前正在编辑的标签，则取消编辑
     if (isEditing && editingTag._id === tag._id) {
       cancelEdit();
       return;
     }
 
-    // 切换到新的编辑标签
     setEditingTag({
       _id: tag._id,
-      name: tag.name,
-      color: tag.color
+      name: tag.name
     });
     setIsEditing(true);
     setIsCreating(false);
@@ -202,7 +201,7 @@ const TagManageModal = ({ onClose, onTagsUpdated }: TagManageModalProps) => {
 
   // 开始创建新标签
   const startCreateTag = () => {
-    setEditingTag({ name: '', color: 'blue' });
+    setEditingTag({ name: '' });
     setIsCreating(true);
     setIsEditing(false);
   };
@@ -211,385 +210,567 @@ const TagManageModal = ({ onClose, onTagsUpdated }: TagManageModalProps) => {
   const cancelEdit = () => {
     setIsEditing(false);
     setIsCreating(false);
-    setEditingTag({ name: '', color: 'blue' });
+    setEditingTag({ name: '' });
+  };
+
+  // 获取应用列表的函数
+  const getAppList = useCallback(
+    async ({ parentId }: GetResourceFolderListProps) => {
+      const apps = await getMyApps({
+        parentId,
+        searchKey,
+        type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin]
+      });
+
+      // 保存所有应用数据，用于后续判断哪些应用已经有当前标签
+      setAllApps(apps);
+
+      // 如果是第一次加载（parentId 为 null）且有选中的标签，保存初始有标签的应用
+      if (parentId === null && selectedTagForAddApps && initialAppsWithTag.length === 0) {
+        const appsWithCurrentTag = apps
+          .filter((app) => app.tags?.includes(selectedTagForAddApps._id))
+          .map((app) => app._id);
+        setInitialAppsWithTag(appsWithCurrentTag);
+      }
+
+      return apps.map<GetResourceListItemResponse>((item) => ({
+        id: item._id,
+        name: item.name,
+        avatar: item.avatar,
+        isFolder: item.type === AppTypeEnum.folder
+      }));
+    },
+    [searchKey, selectedTagForAddApps, initialAppsWithTag.length]
+  );
+
+  // 处理应用选择
+  const handleAppSelect = useCallback(
+    (appId: string, appData: GetResourceListItemResponse) => {
+      if (!selectedTagForAddApps) return;
+
+      // 获取当前目录中有标签的应用
+      const currentAppsWithTag = allApps
+        .filter((app) => app.tags?.includes(selectedTagForAddApps._id))
+        .map((app) => app._id);
+
+      // 判断这个应用是否初始就被选中（包括初始有标签的 + 当前目录中有标签的）
+      const allInitialSelected = [...new Set([...initialAppsWithTag, ...currentAppsWithTag])];
+      const isInitiallySelected = allInitialSelected.includes(appId);
+      const isCurrentlyInSelectedIds = selectedAppIds.includes(appId);
+
+      setSelectedAppIds((prev) => {
+        if (isInitiallySelected) {
+          // 如果是初始就选中的应用
+          if (isCurrentlyInSelectedIds) {
+            // 当前在 selectedAppIds 中，移除它（表示取消选择）
+            return prev.filter((id) => id !== appId);
+          } else {
+            // 当前不在 selectedAppIds 中，添加它（表示取消选择）
+            return [...prev, appId];
+          }
+        } else {
+          // 如果是初始没有选中的应用
+          if (isCurrentlyInSelectedIds) {
+            // 当前已选中，取消选择
+            return prev.filter((id) => id !== appId);
+          } else {
+            // 当前未选中，添加选择
+            return [...prev, appId];
+          }
+        }
+      });
+    },
+    [selectedTagForAddApps, initialAppsWithTag, allApps, selectedAppIds]
+  );
+
+  // 获取当前选中的应用ID列表（包括已有标签的应用）
+  const getSelectedIds = useCallback(() => {
+    if (!selectedTagForAddApps) return [];
+
+    // 获取当前目录中有标签的应用
+    const currentAppsWithTag = allApps
+      .filter((app) => app.tags?.includes(selectedTagForAddApps._id))
+      .map((app) => app._id);
+
+    // 合并：初始有标签的应用 + 当前目录中有标签的应用 + 用户手动选中的应用
+    // 然后减去用户手动取消选择的应用
+    const allInitialSelected = [...new Set([...initialAppsWithTag, ...currentAppsWithTag])];
+
+    // 计算最终选中的应用：
+    // 1. 从所有初始选中的应用开始
+    // 2. 加上用户新选中的应用
+    // 3. 减去用户取消选择的应用
+    const finalSelected = new Set(allInitialSelected);
+
+    // 处理用户的选择变更
+    selectedAppIds.forEach((appId) => {
+      if (allInitialSelected.includes(appId)) {
+        // 如果这个应用初始是选中的，现在在 selectedAppIds 中表示用户取消了选择
+        finalSelected.delete(appId);
+      } else {
+        // 如果这个应用初始不是选中的，现在在 selectedAppIds 中表示用户新选择了它
+        finalSelected.add(appId);
+      }
+    });
+
+    return Array.from(finalSelected);
+  }, [selectedTagForAddApps, initialAppsWithTag, allApps, selectedAppIds]);
+
+  // 批量更新应用标签
+  const { runAsync: updateAppTags, loading: isUpdating } = useRequest2(
+    async () => {
+      if (!selectedTagForAddApps) return;
+
+      // 直接使用 getSelectedIds 获取最终应该拥有该标签的应用列表
+      const finalSelectedIds = getSelectedIds();
+
+      // 使用新的批量添加应用到标签的 API 进行全量更新
+      // 传入最终选中的所有应用 ID
+      await batchAddAppsToTag(selectedTagForAddApps._id, finalSelectedIds);
+    },
+    {
+      manual: true,
+      onSuccess: () => {
+        toast({
+          title: '标签应用更新成功',
+          status: 'success',
+          duration: 3000,
+          isClosable: true
+        });
+        setRefreshTrigger((prev) => prev + 1);
+        onTagsUpdated?.();
+        // 返回标签列表视图
+        setViewMode('tagList');
+        setSelectedTagForAddApps(null);
+        setSelectedAppIds([]);
+        setSearchKey('');
+        setInitialAppsWithTag([]); // 清理初始应用列表
+      },
+      onError: (error) => {
+        console.error('更新标签应用失败:', error);
+        toast({
+          title: '更新标签应用失败',
+          status: 'error',
+          duration: 3000,
+          isClosable: true
+        });
+      }
+    }
+  );
+
+  // 开始添加应用到标签
+  const startAddAppsToTag = (tag: TagWithCountType) => {
+    setSelectedTagForAddApps(tag);
+    setViewMode('appSelection');
+    setSelectedAppIds([]);
+    setSearchKey('');
+    setInitialAppsWithTag([]); // 重置初始应用列表，将在 getAppList 中重新设置
+  };
+
+  // 返回标签列表
+  const backToTagList = () => {
+    setViewMode('tagList');
+    setSelectedTagForAddApps(null);
+    setSelectedAppIds([]);
+    setSearchKey('');
+    setInitialAppsWithTag([]); // 清理初始应用列表
   };
 
   const isLoading = loadingTags || createLoading || updateLoading || deleteLoading;
-
-  // 添加自定义颜色处理函数
-  const handleCustomColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditingTag({ ...editingTag, color: e.target.value });
-  };
-
-  // 获取标签样式
-  const getTagStyle = (color: string) => {
-    // 处理预设颜色
-    const preset = colorOptions.find((opt) => opt.value === color);
-    if (preset) {
-      return {
-        colorScheme: color,
-        bg: preset.bg,
-        color: preset.color
-      };
-    }
-    // 处理自定义颜色 (#XXXXXX)
-    if (color.startsWith('#')) {
-      return {
-        bg: `${color}15`, // 15 表示透明度
-        color: color
-      };
-    }
-    // 默认返回蓝色
-    return {
-      colorScheme: 'blue',
-      bg: 'blue.50',
-      color: 'blue.600'
-    };
-  };
 
   return (
     <MyModal
       isOpen
       onClose={onClose}
       iconSrc="/imgs/modal/tag.svg"
-      title="团队标签管理"
-      w="680px"
+      title={viewMode === 'tagList' ? '分类管理' : `为标签"${selectedTagForAddApps?.name}"添加应用`}
+      w="580px"
       maxW="100%"
-      isLoading={isLoading}
+      isLoading={isLoading || isUpdating}
     >
-      <ModalBody px={6} py={4}>
+      <ModalBody px={9} py={6}>
         <Container maxW="100%" p={0}>
-          <Flex justifyContent="space-between" mb={6} alignItems="center">
-            <Box fontSize="lg" fontWeight="500">
-              标签 ({tags.length})
-            </Box>
-            <Button
-              leftIcon={<MyIcon name="common/addLight" w="16px" />}
-              onClick={startCreateTag}
-              colorScheme="blue"
-              size="sm"
-              isDisabled={isCreating}
-            >
-              创建标签
-            </Button>
-          </Flex>
-
-          {/* 创建新标签表单 */}
-          {isCreating && (
-            <Box mb={6} p={5} borderWidth="1px" borderRadius="lg" bg="gray.50">
-              <Flex direction="column" gap={4}>
-                <Box fontSize="md" fontWeight="500" color="gray.700">
-                  创建新标签
-                </Box>
-                <Flex gap={4} alignItems="center">
-                  <Box width="80px" flexShrink={0} color="gray.600">
-                    标签名称:
-                  </Box>
-                  <Input
-                    ref={inputRef}
-                    value={editingTag.name}
-                    onChange={(e) => setEditingTag({ ...editingTag, name: e.target.value })}
-                    placeholder="输入标签名称"
-                    maxLength={20}
-                    bg="white"
-                    size="md"
-                  />
-                </Flex>
-                <Flex gap={4} alignItems="center">
-                  <Box width="80px" flexShrink={0} color="gray.600">
-                    标签颜色:
-                  </Box>
-                  <Flex gap={3} flex={1} alignItems="center">
-                    <Flex gap={3}>
-                      {colorOptions.map((option) => (
-                        <Box
-                          key={option.value}
-                          w="28px"
-                          h="28px"
-                          borderRadius="md"
-                          bg={option.bg}
-                          borderWidth={editingTag.color === option.value ? '2px' : '1px'}
-                          borderColor={
-                            editingTag.color === option.value ? option.color : 'gray.200'
-                          }
-                          cursor="pointer"
-                          transition="all 0.2s"
-                          _hover={{
-                            transform: 'scale(1.1)',
-                            boxShadow: 'sm'
-                          }}
-                          onClick={() => setEditingTag({ ...editingTag, color: option.value })}
-                        />
-                      ))}
-                    </Flex>
-
-                    <Divider orientation="vertical" h="28px" />
-
-                    <Tooltip label="选择自定义颜色" placement="top">
-                      <Box
-                        position="relative"
-                        w="28px"
-                        h="28px"
-                        borderRadius="md"
-                        overflow="hidden"
-                        borderWidth={editingTag.color.startsWith('#') ? '2px' : '1px'}
-                        borderColor={
-                          editingTag.color.startsWith('#') ? editingTag.color : 'gray.200'
-                        }
-                        bg={
-                          editingTag.color.startsWith('#')
-                            ? getTagStyle(editingTag.color).bg
-                            : 'transparent'
-                        }
-                        cursor="pointer"
-                        transition="all 0.2s"
-                        _hover={{
-                          transform: 'scale(1.1)',
-                          boxShadow: 'sm'
-                        }}
-                      >
-                        <Input
-                          type="color"
-                          value={editingTag.color.startsWith('#') ? editingTag.color : '#3370ff'}
-                          onChange={handleCustomColorChange}
-                          position="absolute"
-                          top="0"
-                          left="0"
-                          width="150%"
-                          height="150%"
-                          transform="translate(-25%, -25%)"
-                          cursor="pointer"
-                          p={0}
-                          opacity={0}
-                        />
-                      </Box>
-                    </Tooltip>
-                    <Box fontSize="sm" color="gray.600">
-                      自定义颜色
+          {viewMode === 'tagList' ? (
+            <>
+              {/* 标签列表视图 */}
+              {/* 头部区域 */}
+              <Flex direction="column" gap={4} w="100%" h="40px" mb={4}>
+                <Flex justifyContent="space-between" alignItems="center" w="100%" h="32px">
+                  <Flex alignItems="center" gap={2}>
+                    <MyIcon name="common/list" w="20px" h="20px" color="#111824" />
+                    <Box
+                      fontSize="16px"
+                      fontWeight="500"
+                      lineHeight="24px"
+                      letterSpacing="0.15px"
+                      color="#111824"
+                    >
+                      共 {tags.length} 个分类
                     </Box>
                   </Flex>
-                </Flex>
-                <Flex gap={4} alignItems="center">
-                  <Box width="80px" flexShrink={0} color="gray.600">
-                    预览:
-                  </Box>
-                  <Tag
-                    size="md"
-                    variant="subtle"
-                    {...(editingTag.color.startsWith('#')
-                      ? {
-                          bg: `${editingTag.color}15`,
-                          color: editingTag.color
-                        }
-                      : getTagStyle(editingTag.color))}
-                    px={3}
-                    py={1.5}
+                  <Button
+                    leftIcon={<MyIcon name="common/addLight" w="16px" h="16px" color="#485264" />}
+                    onClick={startCreateTag}
+                    size="sm"
+                    variant="outline"
+                    bg="white"
+                    border="1px solid #DFE2EA"
+                    boxShadow="0px 1px 2px rgba(19, 51, 107, 0.05), 0px 0px 1px rgba(19, 51, 107, 0.08)"
+                    borderRadius="6px"
+                    h="32px"
+                    px="14px"
+                    fontSize="12px"
+                    fontWeight="500"
+                    lineHeight="16px"
+                    letterSpacing="0.5px"
+                    color="#485264"
+                    isDisabled={isCreating}
+                    _hover={{
+                      bg: 'gray.50'
+                    }}
                   >
-                    {editingTag.name || '标签预览'}
-                  </Tag>
-                </Flex>
-                <Flex justifyContent="flex-end" gap={3} mt={2}>
-                  <Button variant="outline" size="sm" onClick={cancelEdit}>
-                    取消
-                  </Button>
-                  <Button colorScheme="blue" size="sm" onClick={handleCreateTag}>
-                    创建
+                    新建
                   </Button>
                 </Flex>
+                <Divider borderColor="#E8EBF0" />
               </Flex>
-            </Box>
-          )}
 
-          {/* 标签列表 */}
-          <Box overflowX="auto" borderWidth="1px" borderRadius="lg" boxShadow="sm">
-            <Table variant="simple">
-              <Thead bg="gray.50">
-                <Tr>
-                  <Th width="45%">标签名称</Th>
-                  <Th width="25%">使用次数</Th>
-                  <Th width="30%">操作</Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {(tags as TagWithCountType[]).map((tag) =>
-                  isEditing && editingTag._id === tag._id ? (
-                    // 编辑模式行 - 显示编辑表单
-                    <Tr key={tag._id} bg="gray.50">
-                      <Td colSpan={3}>
-                        <Flex px={2} py={3} direction="column" gap={4}>
-                          <Flex gap={4} alignItems="center">
-                            <Box width="80px" flexShrink={0} color="gray.600">
-                              标签名称:
-                            </Box>
+              {/* 标签列表区域 */}
+              <Flex direction="column" gap={2} w="100%" maxH="304px" overflowY="auto">
+                {/* 创建新标签表单 */}
+                {isCreating && (
+                  <Flex
+                    alignItems="center"
+                    p="4px 8px"
+                    gap={2}
+                    w="100%"
+                    h="36px"
+                    borderRadius="4px"
+                    bg="transparent"
+                  >
+                    <Flex alignItems="center" gap={2} w="195px" h="28px">
+                      <Box
+                        position="relative"
+                        w="168px"
+                        h="28px"
+                        bg="white"
+                        border="1px solid #3370FF"
+                        boxShadow="0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)"
+                        borderRadius="4px"
+                      >
+                        <Input
+                          ref={inputRef}
+                          value={editingTag.name}
+                          onChange={(e) => setEditingTag({ ...editingTag, name: e.target.value })}
+                          placeholder="新建分类"
+                          maxLength={20}
+                          bg="transparent"
+                          border="none"
+                          h="100%"
+                          w="100%"
+                          px="8px"
+                          fontSize="12px"
+                          fontWeight="400"
+                          lineHeight="16px"
+                          letterSpacing="0.004em"
+                          color="#111824"
+                          _focus={{ boxShadow: 'none' }}
+                          _placeholder={{ color: '#667085' }}
+                        />
+                      </Box>
+                      <Box
+                        fontSize="14px"
+                        fontWeight="400"
+                        lineHeight="20px"
+                        letterSpacing="0.25px"
+                        color="#667085"
+                      >
+                        (0)
+                      </Box>
+                    </Flex>
+                  </Flex>
+                )}
+
+                {/* 标签列表 */}
+                {(tags as TagWithCountType[]).map((tag, index) => (
+                  <React.Fragment key={tag._id}>
+                    {isEditing && editingTag._id === tag._id ? (
+                      // 编辑模式
+                      <Flex
+                        alignItems="center"
+                        p="4px 8px"
+                        gap={2}
+                        w="100%"
+                        h="36px"
+                        borderRadius="4px"
+                        bg="transparent"
+                      >
+                        <Flex alignItems="center" gap={2} w="195px" h="28px">
+                          <Box
+                            position="relative"
+                            w="168px"
+                            h="28px"
+                            bg="white"
+                            border="1px solid #3370FF"
+                            boxShadow="0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)"
+                            borderRadius="4px"
+                          >
                             <Input
                               ref={inputRef}
                               value={editingTag.name}
                               onChange={(e) =>
                                 setEditingTag({ ...editingTag, name: e.target.value })
                               }
-                              placeholder="输入标签名称"
                               maxLength={20}
-                              bg="white"
-                              size="md"
+                              bg="transparent"
+                              border="none"
+                              h="100%"
+                              w="100%"
+                              px="8px"
+                              fontSize="12px"
+                              fontWeight="400"
+                              lineHeight="16px"
+                              letterSpacing="0.004em"
+                              color="#111824"
+                              _focus={{ boxShadow: 'none' }}
+                              _placeholder={{ color: '#667085' }}
                             />
-                          </Flex>
-                          <Flex gap={4} alignItems="center">
-                            <Box width="80px" flexShrink={0} color="gray.600">
-                              标签颜色:
-                            </Box>
-                            <Flex gap={3} flex={1} alignItems="center">
-                              <Flex gap={3}>
-                                {colorOptions.map((option) => (
-                                  <Box
-                                    key={option.value}
-                                    w="28px"
-                                    h="28px"
-                                    borderRadius="md"
-                                    bg={option.bg}
-                                    borderWidth={editingTag.color === option.value ? '2px' : '1px'}
-                                    borderColor={
-                                      editingTag.color === option.value ? option.color : 'gray.200'
-                                    }
-                                    cursor="pointer"
-                                    transition="all 0.2s"
-                                    _hover={{
-                                      transform: 'scale(1.1)',
-                                      boxShadow: 'sm'
-                                    }}
-                                    onClick={() =>
-                                      setEditingTag({ ...editingTag, color: option.value })
-                                    }
-                                  />
-                                ))}
-                              </Flex>
-
-                              <Divider orientation="vertical" h="28px" />
-
-                              <Tooltip label="选择自定义颜色" placement="top">
-                                <Box
-                                  position="relative"
-                                  w="28px"
-                                  h="28px"
-                                  borderRadius="md"
-                                  overflow="hidden"
-                                  borderWidth={editingTag.color.startsWith('#') ? '2px' : '1px'}
-                                  borderColor={
-                                    editingTag.color.startsWith('#') ? editingTag.color : 'gray.200'
-                                  }
-                                  bg={
-                                    editingTag.color.startsWith('#')
-                                      ? getTagStyle(editingTag.color).bg
-                                      : 'transparent'
-                                  }
-                                  cursor="pointer"
-                                  transition="all 0.2s"
-                                  _hover={{
-                                    transform: 'scale(1.1)',
-                                    boxShadow: 'sm'
-                                  }}
-                                >
-                                  <Input
-                                    type="color"
-                                    value={
-                                      editingTag.color.startsWith('#')
-                                        ? editingTag.color
-                                        : '#3370ff'
-                                    }
-                                    onChange={handleCustomColorChange}
-                                    position="absolute"
-                                    top="0"
-                                    left="0"
-                                    width="150%"
-                                    height="150%"
-                                    transform="translate(-25%, -25%)"
-                                    cursor="pointer"
-                                    p={0}
-                                    opacity={0}
-                                  />
-                                </Box>
-                              </Tooltip>
-                              <Box fontSize="sm" color="gray.600">
-                                自定义颜色
-                              </Box>
-                            </Flex>
-                          </Flex>
-                          <Flex gap={4} alignItems="center">
-                            <Box width="80px" flexShrink={0} color="gray.600">
-                              预览:
-                            </Box>
-                            <Tag
-                              size="md"
-                              variant="subtle"
-                              {...(editingTag.color.startsWith('#')
-                                ? {
-                                    bg: `${editingTag.color}15`,
-                                    color: editingTag.color
-                                  }
-                                : getTagStyle(editingTag.color))}
-                              px={3}
-                              py={1.5}
-                            >
-                              {editingTag.name || '标签预览'}
-                            </Tag>
-                          </Flex>
-                          <Flex justifyContent="flex-end" gap={3} mt={2}>
-                            <Button variant="outline" size="sm" onClick={cancelEdit}>
-                              取消
-                            </Button>
-                            <Button colorScheme="blue" size="sm" onClick={handleUpdateTag}>
-                              保存
-                            </Button>
-                          </Flex>
+                          </Box>
+                          <Box
+                            fontSize="14px"
+                            fontWeight="400"
+                            lineHeight="20px"
+                            letterSpacing="0.25px"
+                            color="#667085"
+                          >
+                            ({tag.count || 0})
+                          </Box>
                         </Flex>
-                      </Td>
-                    </Tr>
-                  ) : (
-                    // 普通显示行
-                    <Tr key={tag._id}>
-                      <Td>
-                        <Tag size="md" variant="subtle" {...getTagStyle(tag.color)} px={3} py={1.5}>
-                          {tag.name}
-                        </Tag>
-                      </Td>
-                      <Td>{tag.count || 0}</Td>
-                      <Td>
-                        <HStack spacing={3}>
+                      </Flex>
+                    ) : (
+                      // 普通显示模式
+                      <Flex
+                        alignItems="center"
+                        p="4px 8px"
+                        gap={2}
+                        w="100%"
+                        h="36px"
+                        borderRadius="4px"
+                        bg="transparent"
+                        _hover={{ bg: '#F9F9F9' }}
+                      >
+                        <Flex alignItems="center" gap={2} flex={1}>
+                          <Flex
+                            justifyContent="center"
+                            alignItems="center"
+                            p="10px 8px"
+                            h="28px"
+                            bg="#F4F4F5"
+                            borderRadius="6px"
+                            minW="fit-content"
+                          >
+                            <Box
+                              fontSize="12px"
+                              fontWeight="500"
+                              lineHeight="16px"
+                              color="#525252"
+                              whiteSpace="nowrap"
+                            >
+                              {tag.name}
+                            </Box>
+                          </Flex>
+                          <Box fontSize="14px" color="#667085">
+                            ({tag.count || 0})
+                          </Box>
+                        </Flex>
+
+                        <Flex alignItems="center" gap={2}>
                           <IconButton
-                            aria-label="编辑"
-                            icon={<MyIcon name="edit" w="16px" />}
+                            aria-label="添加"
+                            icon={
+                              <MyIcon name="common/addLight" w="16px" h="16px" color="#485264" />
+                            }
                             size="sm"
                             variant="ghost"
+                            w="24px"
+                            h="24px"
+                            borderRadius="6px"
+                            onClick={() => startAddAppsToTag(tag)}
+                            isDisabled={isCreating}
+                          />
+                          <IconButton
+                            aria-label="编辑"
+                            icon={<MyIcon name="edit" w="16px" h="16px" color="#485264" />}
+                            size="sm"
+                            variant="ghost"
+                            w="24px"
+                            h="24px"
+                            borderRadius="6px"
                             onClick={() => startEditTag(tag)}
                             isDisabled={isCreating}
                           />
                           <IconButton
                             aria-label="删除"
-                            icon={<MyIcon name="delete" w="16px" />}
+                            icon={<MyIcon name="delete" w="16px" h="16px" color="#485264" />}
                             size="sm"
                             variant="ghost"
-                            colorScheme="red"
+                            w="24px"
+                            h="24px"
+                            borderRadius="6px"
                             onClick={() => handleDeleteTag(tag._id)}
                             isDisabled={isCreating}
                           />
-                        </HStack>
-                      </Td>
-                    </Tr>
-                  )
-                )}
+                        </Flex>
+                      </Flex>
+                    )}
+                    {index < tags.length - 1 && <Divider borderColor="#E8EBF0" />}
+                  </React.Fragment>
+                ))}
+
                 {tags.length === 0 && !loadingTags && (
-                  <Tr>
-                    <Td colSpan={3} textAlign="center" py={6} color="gray.500">
-                      暂无标签
-                    </Td>
-                  </Tr>
+                  <Flex
+                    justifyContent="center"
+                    alignItems="center"
+                    h="100px"
+                    color="gray.500"
+                    fontSize="14px"
+                  >
+                    暂无标签
+                  </Flex>
                 )}
-              </Tbody>
-            </Table>
-          </Box>
+              </Flex>
+            </>
+          ) : (
+            <>
+              {/* 应用选择视图 */}
+              <Flex direction="column" h="500px" gap={4}>
+                {/* 头部区域 */}
+                <Flex direction="column" gap={4} w="100%" h="46px">
+                  <Flex justifyContent="space-between" alignItems="center" w="100%" h="38px">
+                    <Flex alignItems="center" gap={3}>
+                      <IconButton
+                        aria-label="返回"
+                        icon={
+                          <MyIcon name="common/leftArrowLight" w="18px" h="18px" color="#485264" />
+                        }
+                        size="sm"
+                        variant="ghost"
+                        w="32px"
+                        h="32px"
+                        borderRadius="6px"
+                        onClick={backToTagList}
+                        _hover={{
+                          bg: 'rgba(31, 35, 41, 0.08)'
+                        }}
+                      />
+                      <Flex alignItems="center" gap={2}>
+                        <Flex
+                          justifyContent="center"
+                          alignItems="center"
+                          px="8px"
+                          py="6px"
+                          h="28px"
+                          bg="#F4F4F5"
+                          borderRadius="6px"
+                          minW="fit-content"
+                        >
+                          <Box
+                            fontSize="12px"
+                            fontWeight="500"
+                            lineHeight="16px"
+                            color="#525252"
+                            whiteSpace="nowrap"
+                          >
+                            {selectedTagForAddApps?.name}
+                          </Box>
+                        </Flex>
+                        <Box
+                          fontSize="14px"
+                          fontWeight="400"
+                          lineHeight="20px"
+                          letterSpacing="0.25px"
+                          color="#667085"
+                        >
+                          ({selectedTagForAddApps?.count || 0})
+                        </Box>
+                      </Flex>
+                    </Flex>
+                    <Flex alignItems="center" gap={2}>
+                      <Box w="200px" h="32px">
+                        <SearchInput
+                          value={searchKey}
+                          onChange={(e) => setSearchKey(e.target.value)}
+                          placeholder="搜索"
+                          bg="#F7F8FA"
+                          border="1px solid #E8EBF0"
+                          borderRadius="6px"
+                          h="32px"
+                          fontSize="12px"
+                        />
+                      </Box>
+                      <Button
+                        leftIcon={<MyIcon name="save" w="16px" h="16px" color="#FFFFFF" />}
+                        onClick={() => updateAppTags()}
+                        size="sm"
+                        bg="#3370FF"
+                        color="white"
+                        boxShadow="0px 1px 2px rgba(19, 51, 107, 0.05), 0px 0px 1px rgba(19, 51, 107, 0.08)"
+                        borderRadius="6px"
+                        h="32px"
+                        px="14px"
+                        fontSize="12px"
+                        fontWeight="500"
+                        lineHeight="16px"
+                        letterSpacing="0.5px"
+                        isLoading={isUpdating}
+                        _hover={{
+                          bg: '#2C5CE6'
+                        }}
+                      >
+                        保存
+                      </Button>
+                    </Flex>
+                  </Flex>
+                  <Divider borderColor="#E8EBF0" />
+                </Flex>
+
+                {/* 应用选择区域 */}
+                <Box flex={1} overflow="auto" w="100%" maxH="400px">
+                  <SelectMultipleResource
+                    selectedIds={getSelectedIds()}
+                    onSelect={handleAppSelect}
+                    server={getAppList}
+                    searchKey={searchKey}
+                    maxH="400px"
+                  />
+                </Box>
+              </Flex>
+            </>
+          )}
         </Container>
       </ModalBody>
+
       <ModalFooter borderTopWidth="1px" py={4}>
-        <Button onClick={onClose}>关闭</Button>
+        <Flex gap={3}>
+          {(isCreating || isEditing) && viewMode === 'tagList' && (
+            <>
+              <Button variant="outline" size="sm" onClick={cancelEdit}>
+                取消
+              </Button>
+              <Button
+                colorScheme="blue"
+                size="sm"
+                onClick={isCreating ? handleCreateTag : handleUpdateTag}
+              >
+                {isCreating ? '创建' : '保存'}
+              </Button>
+            </>
+          )}
+          {!isCreating && !isEditing && viewMode === 'tagList' && (
+            <Button onClick={onClose}>关闭</Button>
+          )}
+          {viewMode === 'appSelection' && <Button onClick={backToTagList}>关闭</Button>}
+        </Flex>
       </ModalFooter>
     </MyModal>
   );

@@ -6,31 +6,79 @@ import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import ConfigButtons from '@/pageComponents/account/gateway/ConfigButtons';
-import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getTeamGateConfig, getTeamGateConfigCopyRight } from '@/web/support/user/team/gate/api';
 import type { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
 import type { getGateConfigCopyRightResponse } from '@fastgpt/global/support/user/team/gate/api';
-import { putUpdateGateConfigCopyRightData } from '@fastgpt/global/support/user/team/gate/api';
+import { getAppDetailById, getMyAppsGate } from '@/web/core/app/api';
+import type {
+  AppDetailType,
+  AppListItemType,
+  AppSimpleEditFormType
+} from '@fastgpt/global/core/app/type';
+import { defaultApp } from '@/web/core/app/constants';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import router from 'next/router';
 
 // 动态导入两个新组件
 const HomeTable = dynamic(() => import('@/pageComponents/account/gateway/HomeTable'));
 const CopyrightTable = dynamic(() => import('@/pageComponents/account/gateway/CopyrightTable'));
 const GateAppsList = dynamic(() => import('@/pageComponents/account/gateway/GateAppsList'));
 const AppTable = dynamic(() => import('@/pageComponents/account/gateway/AppTable'));
-type TabType = 'home' | 'copyright' | 'app';
+const Logs = dynamic(() => import('@/pageComponents/account/gateway/logs'));
+type TabType = 'home' | 'copyright' | 'app' | 'logs';
 
 const GatewayConfig = () => {
   const { t } = useTranslation();
-  const { gateApps, loadGateApps } = useGateStore();
   const [gateConfig, setGateConfig] = useState<GateSchemaType | undefined>(undefined);
+  // 添加 appForm 状态
+  const [appForm, setAppForm] = useState<AppSimpleEditFormType | undefined>(undefined);
+  //从 appForm 中获取 selectedTools的 id 组成 string 数组
+
+  //gateConfig?.tools 改成
   const [copyRightConfig, setCopyRightConfig] = useState<
     getGateConfigCopyRightResponse | undefined
   >(undefined);
   const [tab, setTab] = useState<TabType>('home');
   const [isLoadingApps, setIsLoadingApps] = useState(true);
+  const [gateApps, setGateApps] = useState<AppListItemType[]>([]);
+  useEffect(() => {
+    const fetchGateApps = async () => {
+      try {
+        const gateApps = await getMyAppsGate();
+        setGateApps(gateApps);
+        setIsLoadingApps(false);
+      } catch (error) {
+        console.error('Failed to load gate apps:', error);
+        setIsLoadingApps(false);
+      }
+    };
 
-  // 添加 handleStatusChange 函数
+    fetchGateApps();
+  }, []);
+
+  console.log('gateAppsList', gateApps);
+  const gateAppId = useMemo(() => gateApps[0]?._id || '', [gateApps]);
+  const [appDetail, setAppDetail] = useState<AppDetailType>(defaultApp);
+
+  const { loading: loadingApp, runAsync: reloadApp } = useRequest2(
+    () => {
+      if (gateAppId) {
+        return getAppDetailById(gateAppId);
+      }
+      return Promise.resolve(defaultApp);
+    },
+    {
+      manual: false,
+      refreshDeps: [gateAppId],
+      errorToast: t('common:core.app.error.Get app failed'),
+      onError(err: any) {
+        router.replace('/dashboard/apps');
+      },
+      onSuccess(res) {
+        setAppDetail(res);
+      }
+    }
+  );
   const handleStatusChange = useCallback(
     (newStatus: boolean) => {
       if (!gateConfig) return;
@@ -105,6 +153,18 @@ const GatewayConfig = () => {
     },
     [copyRightConfig]
   );
+  // 添加 handleAppFormChange 函数
+  const handleAppFormChange = useCallback(
+    (newAppForm: AppSimpleEditFormType) => {
+      setAppForm(newAppForm);
+      handleToolsChange(
+        newAppForm.selectedTools
+          .map((tool) => tool.pluginId)
+          .filter((id): id is string => id !== undefined) || []
+      );
+    },
+    [handleToolsChange]
+  );
 
   // 加载 gateConfig
   useEffect(() => {
@@ -121,37 +181,8 @@ const GatewayConfig = () => {
     loadConfig();
   }, []);
 
-  // 获取 Gate 应用列表，添加重试机制
-  const fetchGateApps = useCallback(
-    async (retryCount = 0) => {
-      try {
-        setIsLoadingApps(true);
-        await loadGateApps();
-      } catch (error) {
-        console.error('Failed to fetch gate apps:', error);
-
-        // 添加重试逻辑，最多重试3次
-        if (retryCount < 3) {
-          setTimeout(
-            () => {
-              fetchGateApps(retryCount + 1);
-            },
-            1000 * (retryCount + 1)
-          ); // 逐次增加重试等待时间
-        }
-      } finally {
-        setIsLoadingApps(false);
-      }
-    },
-    [loadGateApps]
-  );
   // 设置标志让在app tab下不显示 config按钮
   const isAppTab = useMemo(() => tab === 'app', [tab]);
-
-  // 应用列表加载
-  useEffect(() => {
-    fetchGateApps();
-  }, [fetchGateApps]);
 
   const Tab = useMemo(() => {
     return (
@@ -159,7 +190,8 @@ const GatewayConfig = () => {
         list={[
           { label: t('account:config_home'), value: 'home' },
           { label: t('account:config_copyright'), value: 'copyright' },
-          { label: t('account:config_app'), value: 'app' }
+          { label: t('account:config_app'), value: 'app' },
+          { label: t('account:logs'), value: 'logs' }
         ]}
         value={tab}
         py={1}
@@ -179,24 +211,23 @@ const GatewayConfig = () => {
 
     return (
       <Flex h={'100%'}>
-        {isLoadingApps ? (
-          <Center w="220px" h="100%" bg="#FBFBFC" borderRight="1px solid #E8EBF0">
-            <Spinner size="md" color="blue.500" thickness="3px" />
-          </Center>
-        ) : (
-          <GateAppsList gateApps={gateApps} />
-        )}
         <Flex flex={1} flexDirection={'column'} gap={4} py={4} px={6}>
           <Flex alignItems={'center'}>
             {Tab}
             <Box flex={1} />
             {!isAppTab && (
-              <ConfigButtons tab={tab} gateConfig={gateConfig} copyRightConfig={copyRightConfig} />
+              <ConfigButtons
+                tab={tab}
+                appForm={appForm}
+                gateConfig={gateConfig}
+                copyRightConfig={copyRightConfig}
+              />
             )}
           </Flex>
 
           {tab === 'home' && (
             <HomeTable
+              appDetail={appDetail}
               tools={gateConfig.tools}
               slogan={gateConfig.slogan}
               placeholderText={gateConfig.placeholderText}
@@ -205,6 +236,8 @@ const GatewayConfig = () => {
               onStatusChange={handleStatusChange}
               onSloganChange={handleSloganChange}
               onPlaceholderChange={handlePlaceholderChange}
+              // 添加 appForm 相关 props
+              onAppFormChange={handleAppFormChange}
             />
           )}
           {tab === 'copyright' && (
@@ -218,6 +251,7 @@ const GatewayConfig = () => {
             />
           )}
           {tab === 'app' && <AppTable />}
+          {tab === 'logs' && <Logs gateAppId={gateAppId} />}
         </Flex>
       </Flex>
     );
@@ -229,13 +263,17 @@ const GatewayConfig = () => {
     Tab,
     isAppTab,
     tab,
+    appForm,
+    appDetail,
     handleToolsChange,
     handleStatusChange,
     handleSloganChange,
     handlePlaceholderChange,
+    handleAppFormChange,
     handleCopyRightNameChange,
     handleCopyRightLogoChange,
-    handleCopyRightBannerChange
+    handleCopyRightBannerChange,
+    gateAppId
   ]);
 
   return <AccountContainer>{content}</AccountContainer>;

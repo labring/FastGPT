@@ -12,13 +12,16 @@ import {
   Link
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import type { ToolSelectRefType, ToolItemType } from './ToolSelect';
 import ToolSelect from './ToolSelect';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getBatchPlugins } from '@/web/core/app/api/plugin';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { putUpdateGateConfigData } from '@fastgpt/global/support/user/team/gate/api';
 import { updateTeamGateConfig } from '@/web/support/user/team/gate/api';
+import { appWorkflow2Form, getDefaultAppForm } from '@fastgpt/global/core/app/utils';
+import type { SimpleAppSnapshotType } from '@/pageComponents/app/detail/SimpleApp/useSnapshots';
+import { getAppConfigByDiff } from '@/web/core/app/diff';
+import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
+import { useMount } from 'ahooks';
+import type { AppDetailType, AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { useSimpleAppSnapshots } from '@/pageComponents/app/detail/Gate/useSnapshots';
 
 export const saveGateConfig = async (data: putUpdateGateConfigData) => {
   try {
@@ -29,6 +32,7 @@ export const saveGateConfig = async (data: putUpdateGateConfigData) => {
 };
 
 type Props = {
+  appDetail: AppDetailType;
   tools: string[];
   slogan: string;
   placeholderText: string;
@@ -37,72 +41,88 @@ type Props = {
   onSloganChange?: (slogan: string) => void;
   onPlaceholderChange?: (text: string) => void;
   onToolsChange?: (tools: string[]) => void;
+  onAppFormChange?: (appForm: AppSimpleEditFormType) => void;
 };
 
 const HomeTable = ({
-  tools,
+  appDetail,
   slogan,
   placeholderText,
   status,
   onStatusChange,
   onSloganChange,
   onPlaceholderChange,
-  onToolsChange
+  onAppFormChange
 }: Props) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
-  const toolSelectRef = useRef<ToolSelectRefType>(null);
-  const [selectedTools, setSelectedTools] = useState<ToolItemType[]>([]);
   // 批量获取插件信息
-  const { runAsync: loadBatchPlugins, loading: loadingPlugins } = useRequest2(
-    async (pluginIds: string[]) => {
-      if (!pluginIds || pluginIds.length === 0) return {};
-
-      return getBatchPlugins(pluginIds);
-    },
-    {
-      manual: true,
-      onError: (err) => {
-        toast({
-          status: 'error',
-          title: t('common:load_failed'),
-          description: err?.message
-        });
-      }
-    }
+  const [appForm, setAppForm] = useState(getDefaultAppForm());
+  const { forbiddenSaveSnapshot, past, setPast, saveSnapshot } = useSimpleAppSnapshots(
+    appDetail._id
   );
+  useMount(() => {
+    if (appDetail.version !== 'v2') {
+      const form = appWorkflow2Form({
+        nodes: v1Workflow2V2((appDetail.modules || []) as any)?.nodes,
+        chatConfig: appDetail.chatConfig
+      });
+      return updateAppForm(form);
+    }
 
-  // 初始加载插件信息
-  useEffect(() => {
-    if (tools?.length > 0) {
-      loadBatchPlugins(tools).then((pluginInfoMap) => {
-        if (!pluginInfoMap) return;
+    // 读取旧的存储记录
+    const pastSnapshot = (() => {
+      try {
+        const pastSnapshot = localStorage.getItem(`${appDetail._id}-past`);
+        return pastSnapshot ? (JSON.parse(pastSnapshot) as SimpleAppSnapshotType[]) : [];
+      } catch (error) {
+        return [];
+      }
+    })();
+    const defaultState = pastSnapshot?.[pastSnapshot.length - 1]?.state;
+    if (pastSnapshot?.[0]?.diff && defaultState) {
+      setPast(
+        pastSnapshot
+          .map((item) => {
+            if (!item.state && !item.diff) return;
+            if (!item.diff) {
+              return {
+                title: t('app:initial_form'),
+                isSaved: true,
+                appForm: defaultState
+              };
+            }
 
-        // 将插件信息转换为工具项
-        const toolItems: ToolItemType[] = tools
-          .map((pluginId) => {
-            const info = pluginInfoMap[pluginId];
-            if (!info) return null;
-
+            const currentState = getAppConfigByDiff(defaultState, item.diff);
             return {
-              id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-              name: info.name,
-              pluginId: pluginId,
-              avatar: info.avatar,
-              intro: info.intro || '',
-              inputs: info.inputs || [],
-              outputs: info.outputs || [],
-              flowNodeType: info.flowNodeType || 'pluginModule',
-              version: info.version || 'v1',
-              templateType: info.templateType || 'tools'
+              title: item.title,
+              isSaved: item.isSaved,
+              appForm: currentState
             };
           })
-          .filter(Boolean) as ToolItemType[];
+          .filter(Boolean) as SimpleAppSnapshotType[]
+      );
 
-        setSelectedTools(toolItems);
-      });
+      const pastState = getAppConfigByDiff(defaultState, pastSnapshot[0].diff);
+      localStorage.removeItem(`${appDetail._id}-past`);
+      return updateAppForm(pastState);
     }
-  }, [tools, loadBatchPlugins]);
+
+    // 无旧的记录，正常初始化
+    if (past.length === 0) {
+      const appForm = appWorkflow2Form({
+        nodes: appDetail.modules,
+        chatConfig: appDetail.chatConfig
+      });
+      saveSnapshot({
+        appForm,
+        title: t('app:initial_form'),
+        isSaved: true
+      });
+      updateAppForm(appForm);
+    } else {
+      updateAppForm(past[0].appForm);
+    }
+  });
 
   // 通用样式变量
   const spacing = {
@@ -130,35 +150,6 @@ const HomeTable = ({
 
   // 响应式工具布局
 
-  // 工具选择变更时的处理函数
-  const saveToolsToStore = useCallback(() => {
-    if (toolSelectRef.current) {
-      const selectedTools = toolSelectRef.current.getSelectedTools();
-      // 提取所有插件ID
-      const pluginIds = selectedTools.map((tool) => tool.pluginId).filter(Boolean) as string[];
-
-      // 检查值是否有变化，避免不必要的更新
-      if (JSON.stringify(tools) !== JSON.stringify(pluginIds)) {
-        onToolsChange?.(pluginIds);
-      }
-    }
-  }, [tools, onToolsChange]);
-
-  // 监听工具选择变更
-  useEffect(() => {
-    // 组件挂载后初始保存一次
-    saveToolsToStore();
-    // 添加 saveToolsToStore 作为依赖项，确保使用最新版本的函数
-  }, [saveToolsToStore]);
-
-  const handleToolsChange = (selected: ToolItemType[]) => {
-    setSelectedTools(selected);
-    const pluginIds = selected.map((tool) => tool.pluginId).filter(Boolean) as string[];
-    // 检查值是否有变化，避免不必要的更新
-    if (JSON.stringify(tools) !== JSON.stringify(pluginIds)) {
-      onToolsChange?.(pluginIds);
-    }
-  };
   const handleStatusChange = (val: string) => {
     onStatusChange?.(val === 'enabled');
   };
@@ -170,6 +161,15 @@ const HomeTable = ({
   const handlePlaceholderChange = (val: string) => {
     onPlaceholderChange?.(val);
   };
+
+  // 修改 setAppForm，使其同时调用父组件的回调
+  const updateAppForm = useCallback(
+    (newAppForm: AppSimpleEditFormType) => {
+      setAppForm(newAppForm);
+      onAppFormChange?.(newAppForm);
+    },
+    [onAppFormChange]
+  );
 
   return (
     <Box flex="1 0 0" overflow="auto" px={spacing.sm}>
@@ -254,11 +254,8 @@ const HomeTable = ({
         {/* 可用工具选择 */}
         <FormControl display="flex" flexDirection="column" gap={spacing.sm} w="full">
           <ToolSelect
-            ref={toolSelectRef}
-            key="tool-select"
-            defaultTools={selectedTools}
-            isLoading={loadingPlugins}
-            onChange={saveToolsToStore}
+            appForm={appForm}
+            setAppForm={updateAppForm} // 使用 updateAppForm 替代 setAppForm
           />
         </FormControl>
         {/* slogan设置 */}

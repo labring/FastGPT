@@ -13,18 +13,20 @@ import { saveGateConfig } from './HomeTable';
 import type { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
 import type { putUpdateGateConfigCopyRightData } from '@fastgpt/global/support/user/team/gate/api';
 import { saveCopyRightConfig } from './CopyrightTable';
+import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { form2AppWorkflow } from '@/web/core/app/utils';
 
 type Props = {
-  tab: 'home' | 'copyright' | 'app';
+  tab: 'home' | 'copyright' | 'app' | 'logs';
+  appForm?: AppSimpleEditFormType;
   gateConfig?: GateSchemaType;
   copyRightConfig?: putUpdateGateConfigCopyRightData;
 };
 
-const ConfigButtons = ({ tab, gateConfig, copyRightConfig }: Props) => {
+const ConfigButtons = ({ tab, appForm, gateConfig, copyRightConfig }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const { userInfo } = useUserStore();
 
   // 保存配置
   const { runAsync: saveHomeConfig, loading: savingHome } = useRequest2(
@@ -48,6 +50,13 @@ const ConfigButtons = ({ tab, gateConfig, copyRightConfig }: Props) => {
       }
     }
   );
+  console.log('buttons appForm', appForm);
+  const { nodes, edges } = appForm
+    ? form2AppWorkflow(appForm, t)
+    : {
+        nodes: emptyTemplates[AppTypeEnum.gate].nodes,
+        edges: emptyTemplates[AppTypeEnum.gate].edges
+      };
 
   // 保存版权配置
   const { runAsync: saveCopyrightConfig, loading: savingCopyright } = useRequest2(
@@ -80,12 +89,20 @@ const ConfigButtons = ({ tab, gateConfig, copyRightConfig }: Props) => {
       const gateApp = apps.find((app) => app.type === AppTypeEnum.gate);
       const currentTeamAvatar = copyRightConfig?.logo;
       const currentSlogan = gateConfig?.slogan;
-
+      console.log('gateApp', gateApp, currentTeamAvatar, currentSlogan, nodes, edges);
       if (gateApp) {
-        if (gateApp.avatar !== currentTeamAvatar || gateApp.intro !== currentSlogan) {
+        if (
+          gateApp.avatar !== currentTeamAvatar ||
+          gateApp.intro !== currentSlogan ||
+          nodes !== emptyTemplates[AppTypeEnum.gate].nodes ||
+          edges !== emptyTemplates[AppTypeEnum.gate].edges
+        ) {
           await putAppById(gateApp._id, {
             avatar: currentTeamAvatar,
-            intro: currentSlogan
+            intro: currentSlogan,
+            name: gateConfig?.name,
+            nodes,
+            edges
           });
           toast({
             title: t('common:update_success'),
@@ -94,8 +111,8 @@ const ConfigButtons = ({ tab, gateConfig, copyRightConfig }: Props) => {
         }
       } else {
         await postCreateApp({
-          avatar: currentTeamAvatar,
-          name: 'gate',
+          avatar: gateConfig?.logo,
+          name: gateConfig?.name,
           intro: gateConfig?.slogan,
           type: AppTypeEnum.gate,
           modules: emptyTemplates[AppTypeEnum.gate].nodes,

@@ -1,16 +1,4 @@
-import {
-  Box,
-  Flex,
-  Tag,
-  Text,
-  useColorModeValue,
-  Tooltip,
-  HStack,
-  Wrap,
-  WrapItem,
-  Button,
-  Divider
-} from '@chakra-ui/react';
+import { Box, Flex, Text, Tooltip, Button } from '@chakra-ui/react';
 import type { AppListItemType } from '@fastgpt/global/core/app/type.d';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRouter } from 'next/router';
@@ -25,40 +13,6 @@ type Props = {
 
 const MAX_VISIBLE_TAGS = 2;
 
-// 复用 AppTable 中的颜色选项
-const colorOptions: { value: string; color: string; bg: string }[] = [
-  { value: 'blue', color: 'blue.600', bg: 'blue.50' },
-  { value: 'green', color: 'green.600', bg: 'green.50' },
-  { value: 'red', color: 'red.600', bg: 'red.50' },
-  { value: 'yellow', color: 'yellow.600', bg: 'yellow.50' },
-  { value: 'purple', color: 'purple.600', bg: 'purple.50' },
-  { value: 'teal', color: 'teal.600', bg: 'teal.50' }
-];
-
-// 获取标签样式
-const getTagStyle = (color: string) => {
-  // 处理预设颜色
-  const preset = colorOptions.find((opt) => opt.value === color);
-  if (preset) {
-    return {
-      bg: preset.bg,
-      color: preset.color
-    };
-  }
-  // 处理自定义颜色 (#XXXXXX)
-  if (color.startsWith('#')) {
-    return {
-      bg: `${color}15`,
-      color: color
-    };
-  }
-  // 默认返回蓝色
-  return {
-    bg: 'blue.50',
-    color: 'blue.600'
-  };
-};
-
 const AppCard = ({ app, selectedId, tagMap }: Props) => {
   const router = useRouter();
   const { t } = useTranslation();
@@ -69,85 +23,106 @@ const AppCard = ({ app, selectedId, tagMap }: Props) => {
   const renderTags = (showAll = false) => {
     const tagsToShow = showAll ? tags : visibleTags;
     return (
-      <Wrap spacing={2}>
+      <Flex gap="4px" alignItems="center">
         {tagsToShow.map((tagId) => {
           const tag = tagMap?.get(tagId);
           if (!tag) return null;
-          const tagStyle = getTagStyle(tag.color);
           return (
-            <WrapItem key={tagId}>
-              <Tag size="sm" variant="subtle" borderRadius="full" px={2} py={1} {...tagStyle}>
+            <Flex
+              key={tagId}
+              justifyContent="center"
+              alignItems="center"
+              padding="10px 8px"
+              height="22px"
+              bg="#F4F4F5"
+              borderRadius="6px"
+              minW="fit-content"
+            >
+              <Text
+                fontSize="12px"
+                fontWeight="500"
+                lineHeight="16px"
+                color="#525252"
+                whiteSpace="nowrap"
+              >
                 {tag.name}
-              </Tag>
-            </WrapItem>
+              </Text>
+            </Flex>
           );
         })}
         {!showAll && remainingCount > 0 && (
-          <WrapItem>
-            <Tooltip
-              label={
-                <Wrap spacing={2} maxW="300px" p={2}>
-                  {tags.slice(MAX_VISIBLE_TAGS).map((tagId) => {
-                    const tag = tagMap?.get(tagId);
-                    if (!tag) return null;
-                    const tagStyle = getTagStyle(tag.color);
-                    return (
-                      <WrapItem key={tagId}>
-                        <Tag
-                          size="sm"
-                          variant="subtle"
-                          borderRadius="full"
-                          px={2}
-                          py={1}
-                          {...tagStyle}
-                        >
-                          {tag.name}
-                        </Tag>
-                      </WrapItem>
-                    );
-                  })}
-                </Wrap>
-              }
-              hasArrow
-              placement="top"
-              bg="white"
-              color="inherit"
-              p={0}
-              boxShadow="lg"
+          <Tooltip
+            label={
+              <Flex gap="4px" maxW="300px" p={2} flexWrap="wrap">
+                {tags.slice(MAX_VISIBLE_TAGS).map((tagId) => {
+                  const tag = tagMap?.get(tagId);
+                  if (!tag) return null;
+                  return (
+                    <Flex
+                      key={tagId}
+                      justifyContent="center"
+                      alignItems="center"
+                      padding="10px 8px"
+                      height="22px"
+                      bg="#F4F4F5"
+                      borderRadius="6px"
+                      minW="fit-content"
+                    >
+                      <Text
+                        fontSize="12px"
+                        fontWeight="500"
+                        lineHeight="16px"
+                        color="#525252"
+                        whiteSpace="nowrap"
+                      >
+                        {tag.name}
+                      </Text>
+                    </Flex>
+                  );
+                })}
+              </Flex>
+            }
+            hasArrow
+            placement="top"
+            bg="white"
+            color="inherit"
+            p={0}
+            boxShadow="lg"
+          >
+            <Flex
+              justifyContent="center"
+              alignItems="center"
+              padding="10px 8px"
+              height="22px"
+              bg="#F4F4F5"
+              borderRadius="6px"
+              minW="fit-content"
             >
-              <Tag
-                size="sm"
-                variant="subtle"
-                borderRadius="full"
-                px={2}
-                py={1}
-                bg="gray.100"
-                color="gray.500"
-              >
+              <Text fontSize="12px" fontWeight="500" lineHeight="16px" color="#525252">
                 +{remainingCount}
-              </Tag>
-            </Tooltip>
-          </WrapItem>
+              </Text>
+            </Flex>
+          </Tooltip>
         )}
-      </Wrap>
+      </Flex>
     );
   };
 
   return (
     <Flex
-      position={'relative'}
-      width={'370px'}
-      height={'150px'}
-      padding={'20px 20px 16px 20px'}
-      flexDirection={'column'}
-      justifyContent={'space-between'}
-      alignItems={'flex-start'}
-      cursor={'pointer'}
-      borderRadius={'12px'}
-      border={'1px solid'}
-      borderColor={selectedId === app._id ? 'blue.500' : 'gray.200'}
-      bg={'white'}
-      boxShadow={'0px 4px 4px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'}
+      position="relative"
+      flexDirection="column"
+      justifyContent="space-between"
+      alignItems="flex-start"
+      padding="20px 20px 16px"
+      width="370px"
+      height="150px"
+      cursor="pointer"
+      borderRadius="12px"
+      border="1px solid"
+      borderColor={selectedId === app._id ? 'blue.500' : '#E8EBF0'}
+      bg="#FFFFFF"
+      boxShadow="0px 4px 4px rgba(19, 51, 107, 0.05), 0px 0px 1px rgba(19, 51, 107, 0.08)"
       _hover={{
         transform: 'translateY(-2px)',
         transition: 'all 0.2s ease-in-out'
@@ -159,48 +134,81 @@ const AppCard = ({ app, selectedId, tagMap }: Props) => {
         }
       }}
     >
-      <Flex width="100%" gap={3}>
+      {/* 头部区域 */}
+      <Flex alignItems="flex-start" gap="12px" width="330px" height="44px" alignSelf="stretch">
+        {/* 图标 */}
         <Box
-          w={'36px'}
-          h={'36px'}
-          borderRadius={'4px'}
-          overflow={'hidden'}
-          bg={'blue.50'}
+          width="32px"
+          height="32px"
+          borderRadius="4px"
+          overflow="hidden"
+          bg="blue.50"
           flexShrink={0}
         >
           {app.avatar ? (
-            <Avatar src={app.avatar} w={'100%'} h={'100%'} />
+            <Avatar src={app.avatar} w="100%" h="100%" />
           ) : (
             <Flex
-              w={'100%'}
-              h={'100%'}
-              alignItems={'center'}
-              justifyContent={'center'}
-              fontSize={'20px'}
-              fontWeight={'bold'}
-              color={'blue.500'}
+              w="100%"
+              h="100%"
+              alignItems="center"
+              justifyContent="center"
+              fontSize="20px"
+              fontWeight="bold"
+              color="blue.500"
             >
               {app.name[0]?.toUpperCase()}
             </Flex>
           )}
         </Box>
-        <Box flex={1}>
+
+        {/* 文本信息 */}
+        <Flex
+          flexDirection="column"
+          alignItems="flex-start"
+          gap="4px"
+          width="286px"
+          height="44px"
+          flex={1}
+        >
           <Text
-            fontWeight={'500'}
-            fontSize={'md'}
+            width="100%"
+            height="24px"
+            fontFamily="PingFang SC"
+            fontWeight="500"
+            fontSize="16px"
+            lineHeight="24px"
+            letterSpacing="0.15px"
+            color={selectedId === app._id ? 'blue.500' : '#111824'}
             noOfLines={1}
-            color={selectedId === app._id ? 'blue.500' : 'gray.900'}
+            alignSelf="stretch"
           >
             {app.name}
           </Text>
-          <Text fontSize={'sm'} color={'gray.500'} noOfLines={2} mt={1} lineHeight={'1.4'}>
+          <Text
+            width="273px"
+            height="16px"
+            fontFamily="PingFang SC"
+            fontWeight="400"
+            fontSize="12px"
+            lineHeight="16px"
+            letterSpacing="0.004em"
+            color="#667085"
+            noOfLines={1}
+          >
             {app.intro || '-'}
           </Text>
-        </Box>
+        </Flex>
       </Flex>
-      <Divider mt={4} mb={1} borderColor="gray.100" />
-      <Flex width="100%" justifyContent="space-between" alignItems="center">
-        <Box flex={1}>{renderTags()}</Box>
+
+      {/* 底部标签区域 */}
+      <Flex justifyContent="space-between" alignItems="center" width="100%" height="22px">
+        {/* 标签容器 */}
+        <Flex justifyContent="flex-start" alignItems="center" gap="4px" height="22px" flex={1}>
+          {renderTags()}
+        </Flex>
+
+        {/* 试用按钮 */}
         <Button
           size="sm"
           variant="ghost"
@@ -208,7 +216,7 @@ const AppCard = ({ app, selectedId, tagMap }: Props) => {
             e.stopPropagation();
             router.push(`/chat/gate/application?appId=${app._id}`);
           }}
-          px={2}
+          px={0}
           py={0}
           height="auto"
           minW="unset"
@@ -216,19 +224,12 @@ const AppCard = ({ app, selectedId, tagMap }: Props) => {
           _hover={{ bg: 'transparent', textDecoration: 'underline' }}
           _active={{ bg: 'transparent' }}
           _focus={{ boxShadow: 'none' }}
-          style={{
-            color: 'var(--light-general-outline-highest, var(--Gray-Modern-400, #8A95A7))',
-            fontFamily: 'PingFang SC',
-            fontSize: '12px',
-            fontStyle: 'normal',
-            fontWeight: 400,
-            lineHeight: '16px',
-            letterSpacing: '0.048px',
-            boxShadow: 'none',
-            border: 'none',
-            background: 'none',
-            padding: 0
-          }}
+          fontFamily="PingFang SC"
+          fontSize="12px"
+          fontWeight="400"
+          lineHeight="16px"
+          letterSpacing="0.048px"
+          color="#8A95A7"
         >
           {t('common:have_a_try')}
         </Button>

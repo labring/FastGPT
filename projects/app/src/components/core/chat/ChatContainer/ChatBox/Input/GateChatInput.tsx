@@ -69,7 +69,6 @@ const GateChatInput = ({
   const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
   const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
-  const whisperConfig = useContextSelector(ChatBoxContext, (v) => v.whisperConfig);
   const fileSelectConfig = useContextSelector(ChatBoxContext, (v) => v.fileSelectConfig);
 
   const [showToolSelect, setShowToolSelect] = useState(false);
@@ -151,9 +150,7 @@ const GateChatInput = ({
     uploadFiles,
     removeFiles,
     replaceFiles,
-    hasFileUploading,
-    showSelectFile,
-    showSelectImg
+    hasFileUploading
   } = useFileUpload({
     fileSelectConfig,
     fileCtrl,
@@ -387,51 +384,48 @@ const GateChatInput = ({
         </Flex>
 
         <Flex align="center" gap="2px" flexShrink={0}>
-          {(showSelectFile || showSelectImg) && (
-            <IconButton
-              aria-label="Upload file"
-              icon={<MyIcon name={'support/gate/chat/paperclip'} w={'20px'} h={'20px'} />}
-              size="auto" // 尝试移除buttonSize变量的影响
-              variant="ghost"
-              display="flex"
-              padding="8px"
-              alignItems="center"
-              minW="36px" // 使用minW而不是w
-              minH="36px" // 使用minH而不是h
-              w="36px"
-              h="36px"
-              boxSize="36px" // 添加boxSize属性更强制性地控制尺寸
-              onClick={() => onOpenSelectFile()}
-              flexShrink={0}
-              _hover={{
-                background: 'var(--light-general-surface-opacity-005, rgba(17, 24, 36, 0.05))',
-                '& svg path': {
-                  fill: '#3370FF !important'
-                }
-              }}
-            />
-          )}
-          {whisperConfig?.open && (
-            <IconButton
-              aria-label="Voice input"
-              icon={<Icon name={'support/gate/chat/voiceGray'} w={'20px'} h={'20px'} />}
-              size="auto"
-              variant="ghost"
-              display="flex"
-              padding="8px"
-              w="36px"
-              h="36px"
-              alignItems="center"
-              onClick={() => VoiceInputRef.current?.onSpeak?.()}
-              flexShrink={0}
-              _hover={{
-                background: 'var(--light-general-surface-opacity-005, rgba(17, 24, 36, 0.05))',
-                '& svg path': {
-                  fill: '#3370FF !important'
-                }
-              }}
-            />
-          )}
+          <IconButton
+            aria-label="Upload file"
+            icon={<MyIcon name={'support/gate/chat/paperclip'} w={'20px'} h={'20px'} />}
+            size="auto" // 尝试移除buttonSize变量的影响
+            variant="ghost"
+            display="flex"
+            padding="8px"
+            alignItems="center"
+            minW="36px" // 使用minW而不是w
+            minH="36px" // 使用minH而不是h
+            w="36px"
+            h="36px"
+            boxSize="36px" // 添加boxSize属性更强制性地控制尺寸
+            onClick={() => onOpenSelectFile()}
+            flexShrink={0}
+            _hover={{
+              background: 'var(--light-general-surface-opacity-005, rgba(17, 24, 36, 0.05))',
+              '& svg path': {
+                fill: '#3370FF !important'
+              }
+            }}
+          />
+
+          <IconButton
+            aria-label="Voice input"
+            icon={<Icon name={'support/gate/chat/voiceGray'} w={'20px'} h={'20px'} />}
+            size="auto"
+            variant="ghost"
+            display="flex"
+            padding="8px"
+            w="36px"
+            h="36px"
+            alignItems="center"
+            onClick={() => VoiceInputRef.current?.onSpeak?.()}
+            flexShrink={0}
+            _hover={{
+              background: 'var(--light-general-surface-opacity-005, rgba(17, 24, 36, 0.05))',
+              '& svg path': {
+                fill: '#3370FF !important'
+              }
+            }}
+          />
 
           <Box w="2px" h="16px" bg="#F0F1F6" mx={1} flexShrink={0} />
 
