@@ -45,6 +45,7 @@ type Props = FlowNodeItemType & {
   w?: string | number;
   h?: string | number;
   selected?: boolean;
+  searched?: boolean;
   menuForbid?: {
     debug?: boolean;
     copy?: boolean;
@@ -70,6 +71,7 @@ const NodeCard = (props: Props) => {
     h = 'full',
     nodeId,
     selected,
+    searched,
     menuForbid,
     isTool = false,
     isError = false,
@@ -186,7 +188,13 @@ const NodeCard = (props: Props) => {
                 w={'24px'}
                 h={'24px'}
               />
-              <Box ml={2} fontSize={'18px'} fontWeight={'medium'} color={'myGray.900'}>
+              <Box
+                ml={2}
+                fontSize={'18px'}
+                fontWeight={'medium'}
+                color={'myGray.900'}
+                bg={searched ? '#ffe82d' : 'transparent'}
+              >
                 {t(name as any)}
               </Box>
               <Button
@@ -280,6 +288,7 @@ const NodeCard = (props: Props) => {
     nodeId,
     isFolded,
     avatar,
+    searched,
     t,
     name,
     showVersion,
