@@ -13,6 +13,7 @@ const staticPluginList = [
   'WeWorkWebhook',
   'google',
   'bing',
+  'bocha',
   'delay'
 ];
 // Run in worker thread (Have npm packages)
