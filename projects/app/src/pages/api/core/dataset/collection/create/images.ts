@@ -10,7 +10,6 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
 import { getVlmModelList } from '@fastgpt/service/core/ai/model';
-import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 
 type RequestBody = {
   datasetId: string;
@@ -41,12 +40,14 @@ async function handler(req: ApiRequestProps<RequestBody>) {
     authToken: true
   });
 
-  // Get all image paths before creating collection
-  const filePaths: string[] = [];
+  // Verify all images exist and belong to the dataset
   for (const imageId of imageIds) {
     const image = await getDatasetImage(imageId);
-    if (image?.path) {
-      filePaths.push(image.path);
+    if (!image) {
+      throw new Error('Dataset_ID_not_found');
+    }
+    if (String(image.teamId) !== String(authData.teamId)) {
+      throw new Error('Image_does_not_belong_to_current_team');
     }
   }
 
@@ -63,11 +64,6 @@ async function handler(req: ApiRequestProps<RequestBody>) {
       imageIdList: imageIds
     }
   });
-
-  // Delete temporary files after successful import
-  if (filePaths.length > 0) {
-    removeFilesByPaths(filePaths);
-  }
 
   return {
     collectionId: result.collectionId,
