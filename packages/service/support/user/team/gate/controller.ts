@@ -1,5 +1,86 @@
-import { MongoTeamGate, gateCollectionName } from './schema';
+import { MongoTeamGate } from './schema';
 import { Types } from '../../../../common/mongo';
+import type { ClientSession } from '../../../../common/mongo';
+import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
+import {
+  GateFeaturedAppPermission,
+  GateQuickAppPermission
+} from '@fastgpt/global/support/permission/app/constant';
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
+import { MongoMemberGroupModel } from '../../../permission/memberGroup/memberGroupSchema';
+import { MongoResourcePermission } from '../../../permission/schema';
+
+export const addGatePermission = async ({
+  teamId,
+  appId,
+  per,
+  session
+}: {
+  teamId: string;
+  appId: string;
+  per: number;
+  session?: ClientSession;
+}) => {
+  // 1. 先找全员组
+  const teamGroup = await MongoMemberGroupModel.findOne({
+    teamId,
+    name: DefaultGroupName
+  });
+  if (!teamGroup) {
+    return Promise.reject('找不到全员组');
+  }
+
+  // 2. 加权限
+  await MongoResourcePermission.updateOne(
+    {
+      teamId,
+      groupId: teamGroup?._id,
+      resourceType: PerResourceTypeEnum.app,
+      resourceId: appId
+    },
+    {
+      permission: per
+    },
+    {
+      session,
+      upsert: true
+    }
+  );
+};
+export const removeGatePermission = async ({
+  teamId,
+  appId,
+  per,
+  session
+}: {
+  teamId: string;
+  appId: string;
+  per: number;
+  session?: ClientSession;
+}) => {
+  // 1. 先找全员组
+  const teamGroup = await MongoMemberGroupModel.findOne({
+    teamId,
+    name: DefaultGroupName
+  });
+  if (!teamGroup) {
+    return Promise.reject('找不到全员组');
+  }
+
+  await MongoResourcePermission.deleteOne(
+    {
+      teamId,
+      groupId: teamGroup?._id,
+      resourceType: PerResourceTypeEnum.app,
+      resourceId: appId,
+      permission: per
+    },
+    {
+      session
+    }
+  );
+};
 
 /**
  * 创建团队门户配置
@@ -133,8 +214,20 @@ export const addFeaturedApp = async ({ teamId, appId }: { teamId: string; appId:
 /**
  * 删除特色应用
  */
-export const removeFeaturedApp = async ({ teamId, appId }: { teamId: string; appId: string }) => {
-  await MongoTeamGate.updateOne({ teamId }, { $pull: { featuredApps: new Types.ObjectId(appId) } });
+export const removeFeaturedApp = async ({
+  teamId,
+  appId,
+  session
+}: {
+  teamId: string;
+  appId: string;
+  session?: ClientSession;
+}) => {
+  await MongoTeamGate.updateOne(
+    { teamId },
+    { $pull: { featuredApps: new Types.ObjectId(appId) } },
+    { session }
+  );
   return MongoTeamGate.findOne({ teamId }).lean();
 };
 
@@ -252,7 +345,34 @@ export const batchUpdateFeaturedApps = async (
     return true;
   }
 
-  await MongoTeamGate.bulkWrite(operations);
+  const teamId = updates[0]?.teamId;
+
+  const gateConfig = await MongoTeamGate.findOne({ teamId });
+  if (!gateConfig) return Promise.reject('无 gate 配置');
+
+  const updatedAppId = updates[0].featuredApps;
+  const deleteAppId = gateConfig.featuredApps.filter((id) => !updatedAppId.includes(id));
+
+  await mongoSessionRun(async (session) => {
+    await MongoTeamGate.bulkWrite(operations, { session });
+
+    for (const id of deleteAppId) {
+      await removeGatePermission({
+        teamId,
+        appId: id,
+        per: GateFeaturedAppPermission,
+        session
+      });
+    }
+    for (const id of updatedAppId) {
+      await addGatePermission({
+        teamId,
+        appId: id,
+        per: GateFeaturedAppPermission,
+        session
+      });
+    }
+  });
   return true;
 };
 
@@ -291,10 +411,12 @@ export const batchUpdateToolsOrder = async (
  */
 export const batchDeleteFeaturedApps = async ({
   teamId,
-  appIds
+  appIds,
+  session
 }: {
   teamId: string;
   appIds: string[];
+  session?: ClientSession;
 }) => {
   if (!appIds || appIds.length === 0) {
     return false;
@@ -302,7 +424,10 @@ export const batchDeleteFeaturedApps = async ({
 
   await MongoTeamGate.updateOne(
     { teamId },
-    { $pull: { featuredApps: { $in: appIds.map((id) => new Types.ObjectId(id)) } } }
+    { $pull: { featuredApps: { $in: appIds.map((id) => new Types.ObjectId(id)) } } },
+    {
+      session
+    }
   );
   return true;
 };
@@ -384,31 +509,39 @@ export const moveQuickAppToPosition = async ({
 /**
  * 批量更新快速应用
  */
-export const batchUpdateQuickApps = async (
-  updates: {
-    teamId: string;
-    quickApps: string[];
-  }[]
-) => {
-  const operations = updates.map((update) => {
-    const { teamId, quickApps } = update;
-    // 将字符串数组转换为 ObjectId 数组
-    const objectIdArray = quickApps.map((id) => new Types.ObjectId(id));
-    return {
-      updateOne: {
-        filter: { teamId },
-        update: { $set: { quickApps: objectIdArray } },
-        upsert: true
-      }
-    };
-  });
-
-  if (operations.length === 0) {
-    return true;
+export const batchUpdateQuickApps = async (teamId: string, quickApps: string[]) => {
+  const gateConfig = await MongoTeamGate.findOne({ teamId });
+  if (!gateConfig) {
+    return false;
   }
 
-  await MongoTeamGate.bulkWrite(operations);
-  return true;
+  // 计算删除的appId
+  const deleteAppIds = gateConfig.quickApps.filter((id) => !quickApps.includes(id.toString()));
+
+  return mongoSessionRun(async (session) => {
+    // 1. 删除权限
+    for (const id of deleteAppIds) {
+      await removeGatePermission({
+        teamId,
+        appId: id,
+        per: GateQuickAppPermission,
+        session
+      });
+    }
+    // 加权限
+    for (const id of quickApps) {
+      await addGatePermission({
+        teamId,
+        appId: id,
+        per: GateQuickAppPermission,
+        session
+      });
+    }
+
+    gateConfig.quickApps = quickApps;
+    await gateConfig.save({ session });
+    return true;
+  });
 };
 
 /**
