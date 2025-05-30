@@ -19,6 +19,9 @@ const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
   const chatData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const showRouteToAppDetail = useContextSelector(ChatItemContext, (v) => v.showRouteToAppDetail);
 
+  // 检查当前路由是否以/chat/gate开头，如果是则禁止显示应用详情
+  const isGateRoute = router.pathname.startsWith('/chat/gate');
+
   return (
     <MyMenu
       Button={
@@ -60,7 +63,7 @@ const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
             // }
           ]
         },
-        ...(showRouteToAppDetail
+        ...(showRouteToAppDetail && !isGateRoute
           ? [
               {
                 children: [

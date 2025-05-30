@@ -40,7 +40,11 @@ type FormType = {
   curlContent: string;
 };
 
-export type CreateAppType = AppTypeEnum.simple | AppTypeEnum.workflow | AppTypeEnum.plugin;
+export type CreateAppType =
+  | AppTypeEnum.simple
+  | AppTypeEnum.workflow
+  | AppTypeEnum.plugin
+  | AppTypeEnum.gate;
 
 const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => void }) => {
   const { t } = useTranslation();

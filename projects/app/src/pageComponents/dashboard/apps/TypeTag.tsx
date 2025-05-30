@@ -38,6 +38,12 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
       bg: '',
       color: ''
     },
+    [AppTypeEnum.gate]: {
+      label: t('app:type.Gate'),
+      icon: 'support/gate/gateLight',
+      bg: '',
+      color: ''
+    },
     [AppTypeEnum.tool]: undefined,
     [AppTypeEnum.folder]: undefined
   });

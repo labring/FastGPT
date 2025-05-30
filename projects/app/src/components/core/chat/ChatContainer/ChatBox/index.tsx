@@ -14,7 +14,7 @@ import type {
 } from '@fastgpt/global/core/chat/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Box, Checkbox } from '@chakra-ui/react';
+import { Box, Checkbox, Flex, Text } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { useForm } from 'react-hook-form';
@@ -67,6 +67,13 @@ import TimeBox from './components/TimeBox';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+import GateChatInput from './Input/GateChatInput';
+import ChatWelcome from './components/ChatWelcome';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { useRouter } from 'next/router';
+import { getTeamGateConfig, getTeamGateConfigCopyRight } from '@/web/support/user/team/gate/api';
+import type { getGateConfigCopyRightResponse } from '@fastgpt/global/support/user/team/gate/api';
+import type { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
@@ -89,6 +96,8 @@ type Props = OutLinkChatAuthProps &
     showVoiceIcon?: boolean;
     showEmptyIntro?: boolean;
     active?: boolean; // can use
+    selectedToolIds?: string[];
+    onSelectedToolIdsChange?: (toolIds: string[]) => void;
 
     onStartChat?: (e: StartChatFnProps) => Promise<
       StreamResponseType & {
@@ -105,7 +114,9 @@ const ChatBox = ({
   showEmptyIntro = false,
   active = true,
   onStartChat,
-  chatType
+  chatType,
+  selectedToolIds,
+  onSelectedToolIdsChange
 }: Props) => {
   const ScrollContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
@@ -127,6 +138,7 @@ const ChatBox = ({
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
 
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.avatar);
+  const appIntro = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.intro);
   const userAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.userAvatar);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const ChatBoxRef = useContextSelector(ChatItemContext, (v) => v.ChatBoxRef);
@@ -407,6 +419,10 @@ const ChatBox = ({
     pluginController.current?.abort(signal);
   });
 
+  const router = useRouter();
+  const inGateRoute = useMemo(() => {
+    return router.pathname.startsWith('/chat/gate');
+  }, [router.pathname]);
   /**
    * user confirm send prompt
    */
@@ -417,7 +433,8 @@ const ChatBox = ({
       history = chatRecords,
       autoTTSResponse = false,
       isInteractivePrompt = false,
-      hideInUI = false
+      hideInUI = false,
+      gateModel = ''
     }) => {
       variablesForm.handleSubmit(
         async ({ variables = {} }) => {
@@ -536,6 +553,7 @@ const ChatBox = ({
             });
 
             const { responseText } = await onStartChat({
+              gateModel,
               messages, // 保证最后一条是 Human 的消息
               responseChatItemId: responseChatId,
               controller: abortSignal,
@@ -1085,6 +1103,34 @@ const ChatBox = ({
     welcomeText
   ]);
 
+  const [gateConfig, setGateConfig] = useState<GateSchemaType | undefined>(undefined);
+  const [copyRightConfig, setCopyRightConfig] = useState<
+    getGateConfigCopyRightResponse | undefined
+  >(undefined);
+  // 加载 gateConfig 和 copyRightConfig
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const gateConfig = await getTeamGateConfig();
+        setGateConfig(gateConfig);
+        const copyRightConfig = await getTeamGateConfigCopyRight();
+        setCopyRightConfig(copyRightConfig);
+      } catch (error) {
+        console.error('Failed to load gate config:', error);
+      }
+    };
+    loadConfig();
+  }, []);
+  const { userInfo } = useUserStore();
+
+  const showWelcome = useMemo(() => {
+    return (
+      router.pathname.startsWith('/chat/gate') &&
+      !router.pathname.includes('/chat/gate/application') &&
+      chatRecords.length === 0
+    );
+  }, [router.pathname, chatRecords.length]);
+
   return (
     <MyBox
       isLoading={isLoading}
@@ -1094,18 +1140,124 @@ const ChatBox = ({
       position={'relative'}
     >
       <Script src={getWebReqUrl('/js/html2pdf.bundle.min.js')} strategy="lazyOnload"></Script>
-      {/* chat box container */}
-      {RenderRecords}
-      {/* message input */}
-      {onStartChat && chatStarted && active && !isInteractive && (
-        <ChatInput
-          onSendMessage={sendPrompt}
-          onStop={() => chatController.current?.abort('stop')}
-          TextareaDom={TextareaDom}
-          resetInputVal={resetInputVal}
-          chatForm={chatForm}
-        />
+
+      {chatRecords.length === 0 && showWelcome ? (
+        <Flex
+          flex={1}
+          direction="column"
+          align="center"
+          justify="space-between"
+          h="100%"
+          w="100%"
+          position="relative"
+          maxW="1360px"
+          mx="auto"
+          pt={{ base: '100px', sm: '120px', md: '158px' }}
+          px={{ base: '20px', sm: '30px', md: '40px' }}
+          pb={{ base: '12px', sm: '12px' }}
+          gap={{ base: 4, md: 6 }}
+        >
+          <Flex direction="column" align="center" justify="center" w="100%" gap="44px">
+            <Box>
+              <ChatWelcome
+                teamName={copyRightConfig?.name || chatBoxData?.app?.name}
+                teamAvatar={copyRightConfig?.logo}
+                slogan={appIntro}
+              />
+            </Box>
+
+            {/* message input */}
+            {onStartChat && chatStarted && active && !isInteractive && (
+              <Box w={{ base: 'calc(100% - 48px)', md: '700px' }} maxH="132px" h="100%" px={0}>
+                <GateChatInput
+                  onSendMessage={sendPrompt}
+                  onStop={() => chatController.current?.abort('stop')}
+                  TextareaDom={TextareaDom}
+                  resetInputVal={resetInputVal}
+                  chatForm={chatForm}
+                  placeholder={gateConfig?.placeholderText || '你可以问我任何问题'}
+                  selectedToolIds={selectedToolIds}
+                  onSelectedToolIdsChange={onSelectedToolIdsChange}
+                />
+              </Box>
+            )}
+          </Flex>
+
+          {/* 移动端下的版权信息容器 */}
+          <Box w="100%" mt="auto">
+            {/* 在inGateRoute状态下显示底部语句 */}
+            {inGateRoute && (
+              <Flex
+                justify="center"
+                w="100%"
+                py={3}
+                px={4}
+                fontSize={{ base: '2xs', sm: 'xs' }}
+                color="gray.500"
+              >
+                <Text textAlign="center">{t('common:gate.copyright')}</Text>
+              </Flex>
+            )}
+          </Box>
+        </Flex>
+      ) : (
+        <>
+          {RenderRecords}
+
+          {/* 移动端下的输入框和版权信息容器 */}
+          <Flex direction="column" w="100%" mb={{ base: '12px', sm: 0 }} gap="12px">
+            {/* message input */}
+            {onStartChat && chatStarted && active && !isInteractive && (
+              <Box
+                m={['0 auto', '10px auto']}
+                w={'100%'}
+                maxW={['auto', 'min(800px, 100%)']}
+                px={['16px', 5]}
+                display="flex"
+                justifyContent="center"
+                alignItems="center"
+              >
+                {inGateRoute && (
+                  <GateChatInput
+                    onSendMessage={sendPrompt}
+                    onStop={() => chatController.current?.abort('stop')}
+                    TextareaDom={TextareaDom}
+                    resetInputVal={resetInputVal}
+                    chatForm={chatForm}
+                    placeholder={gateConfig?.placeholderText || t('common:gate.placeholder')}
+                    selectedToolIds={selectedToolIds}
+                    onSelectedToolIdsChange={onSelectedToolIdsChange}
+                  />
+                )}
+                {!inGateRoute && (
+                  <ChatInput
+                    onSendMessage={sendPrompt}
+                    onStop={() => chatController.current?.abort('stop')}
+                    TextareaDom={TextareaDom}
+                    resetInputVal={resetInputVal}
+                    chatForm={chatForm}
+                  />
+                )}
+              </Box>
+            )}
+
+            {/* 在inGateRoute状态下显示底部语句 */}
+            {inGateRoute && (
+              <Flex
+                justify="center"
+                w="100%"
+                py={3}
+                px={4}
+                fontSize={{ base: '2xs', sm: 'xs' }}
+                color="gray.500"
+              >
+                <Text textAlign="center">{t('common:gate.copyright')}</Text>
+              </Flex>
+            )}
+          </Flex>
+        </>
       )}
+
       {/* user feedback modal */}
       {!!feedbackId && chatId && (
         <FeedbackModal

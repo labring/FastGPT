@@ -4,6 +4,9 @@ import { type ErrType } from '../errorCode';
 /* dataset: 507000 */
 const startCode = 507000;
 export enum CommonErrEnum {
+  methodNotAllowed = 'methodNotAllowed',
+  systemError = 'systemError',
+  unauthorized = 'unauthorized',
   invalidParams = 'invalidParams',
   invalidResource = 'invalidResource',
   fileNotFound = 'fileNotFound',
@@ -35,6 +38,22 @@ const datasetErr = [
   {
     statusText: CommonErrEnum.inheritPermissionError,
     message: 'error.inheritPermissionError'
+  },
+  {
+    statusText: CommonErrEnum.methodNotAllowed,
+    message: i18nT('common:code_error.error_message.405')
+  },
+  {
+    statusText: CommonErrEnum.systemError,
+    message: i18nT('common:code_error.error_message.500')
+  },
+  {
+    statusText: CommonErrEnum.unauthorized,
+    message: i18nT('common:code_error.error_message.403')
+  },
+  {
+    statusText: CommonErrEnum.invalidParams,
+    message: i18nT('common:code_error.error_message.422')
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

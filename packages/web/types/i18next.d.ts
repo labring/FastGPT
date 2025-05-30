@@ -34,6 +34,7 @@ export interface I18nNamespaces {
   account_info: typeof account_info;
   account_usage: typeof account_usage;
   account_bill: typeof account_bill;
+  account_gate: typeof account_gate;
   account_apikey: typeof account_apikey;
   account_setting: typeof account_setting;
   account_inform: typeof account_inform;
@@ -71,6 +72,7 @@ declare module 'i18next' {
       'account_info',
       'account_usage',
       'account_bill',
+      'account_gate',
       'account_apikey',
       'account_setting',
       'account_inform',
