@@ -37,13 +37,13 @@ export const AppPermissionList: PermissionListType<AppPermissionKeyEnum> = {
     name: '门户快捷应用权限',
     description: '',
     value: GateQuickAppPermission,
-    checkBoxType: 'multiple' // TODO: 加个隐藏选项
+    checkBoxType: 'hiden'
   },
   [AppPermissionKeyEnum.featuredGate]: {
     name: '门户推荐应用权限',
     description: '',
     value: GateFeaturedAppPermission,
-    checkBoxType: 'multiple' // TODO: 加个隐藏选项
+    checkBoxType: 'hiden'
   }
 };
 

@@ -83,7 +83,7 @@ function PermissionSelect({
   const selectedSingleValue = useMemo(() => {
     if (!permissionList) return undefined;
 
-    const per = new Permission({ per: value });
+    const per = new Permission({ per: value, permissionList });
 
     if (per.hasManagePer) return permissionList['manage'].value;
     if (per.hasWritePer) return permissionList['write'].value;
@@ -91,18 +91,18 @@ function PermissionSelect({
     return permissionList['read'].value;
   }, [permissionList, value]);
   const selectedMultipleValues = useMemo(() => {
-    const per = new Permission({ per: value });
+    const per = new Permission({ per: value, permissionList });
 
     return permissionSelectList.multipleCheckBoxList
       .filter((item) => {
         return per.checkPer(item.value);
       })
       .map((item) => item.value);
-  }, [permissionSelectList.multipleCheckBoxList, value]);
+  }, [permissionList, permissionSelectList.multipleCheckBoxList, value]);
 
   const onSelectPer = (perValue: PermissionValueType) => {
     if (perValue === value) return;
-    const per = new Permission({ per: perValue });
+    const per = new Permission({ per: perValue, permissionList });
     per.addPer(...selectedMultipleValues);
     onChange(per.value);
   };
@@ -157,7 +157,7 @@ function PermissionSelect({
           {/* The list of single select permissions */}
           {permissionSelectList.singleCheckBoxList.map((item) => {
             const change = () => {
-              const per = new Permission({ per: value });
+              const per = new Permission({ per: value, permissionList });
               per.removePer(selectedSingleValue);
               per.addPer(item.value);
               onSelectPer(per.value);
@@ -191,12 +191,13 @@ function PermissionSelect({
               <MyDivider my={2} />
               {permissionSelectList.multipleCheckBoxList.map((item) => {
                 const isChecked = selectedMultipleValues.includes(item.value);
-                const isDisabled = new Permission({ per: selectedSingleValue }).checkPer(
-                  item.value
-                );
+                const isDisabled = new Permission({
+                  per: selectedSingleValue,
+                  permissionList
+                }).checkPer(item.value);
                 const change = () => {
                   if (isDisabled) return;
-                  const per = new Permission({ per: value });
+                  const per = new Permission({ per: value, permissionList });
                   if (isChecked) {
                     per.removePer(item.value);
                   } else {
@@ -221,14 +222,18 @@ function PermissionSelect({
                       : {
                           cursor: 'pointer'
                         })}
+                    onClick={change}
                   >
                     <Checkbox
                       size="lg"
                       isChecked={isChecked}
-                      onChange={change}
+                      // onChange={(e) => {
+                      //   e.stopPropagation();
+                      //   e.preventDefault();
+                      // }}
                       isDisabled={isDisabled}
                     />
-                    <Box ml={4} onClick={change}>
+                    <Box ml={4}>
                       <Box>{t(item.name as any)}</Box>
                       <Box color={'myGray.500'} fontSize={'mini'}>
                         {t(item.description as any)}

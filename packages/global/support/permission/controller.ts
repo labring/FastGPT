@@ -1,5 +1,10 @@
 import { type PermissionListType, type PermissionValueType } from './type';
-import { PermissionList, NullPermission, OwnerPermissionVal } from './constant';
+import {
+  PermissionList,
+  NullPermission,
+  OwnerPermissionVal,
+  ManagePermissionVal
+} from './constant';
 
 export type PerConstructPros = {
   per?: PermissionValueType;
@@ -63,6 +68,12 @@ export class Permission {
     if (perm === OwnerPermissionVal) {
       return this.value === OwnerPermissionVal;
     }
+
+    // 管理员
+    if ((this.value & ManagePermissionVal) === ManagePermissionVal) {
+      return (this._permissionList.manage.value & perm) === perm;
+    }
+
     return (this.value & perm) === perm;
   }
 

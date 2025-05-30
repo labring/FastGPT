@@ -170,7 +170,7 @@ export async function authChatCrud({
     };
 
   if (String(teamId) !== String(chat.teamId)) return Promise.reject(ChatErrEnum.unAuthChat);
-  if (permission.hasManagePer)
+  if (permission.hasLogPer)
     return {
       teamId,
       tmbId,
