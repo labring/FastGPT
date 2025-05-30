@@ -125,7 +125,8 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
       return {
         ...appPerQuery,
         teamId,
-        ...searchMatch
+        ...searchMatch,
+        type: { $ne: AppTypeEnum.gate } // 排除 gate 类型
       };
     }
 
@@ -133,7 +134,8 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
       ...appPerQuery,
       teamId,
       ...(type && (Array.isArray(type) ? { type: { $in: type } } : { type })),
-      ...parseParentIdInMongo(parentId)
+      ...parseParentIdInMongo(parentId),
+      ...(type ? {} : { type: { $ne: AppTypeEnum.gate } }) // 当未指定类型时排除 gate 类型
     };
   })();
   const limit = (() => {
@@ -144,7 +146,8 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
 
   const myApps = await MongoApp.find(
     findAppsQuery,
-    '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission',
+
+    '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission tags',
     {
       limit: limit
     }

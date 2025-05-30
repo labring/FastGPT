@@ -22,7 +22,8 @@ export enum TabEnum {
   'apikey' = 'apikey',
   'loginout' = 'loginout',
   'team' = 'team',
-  'model' = 'model'
+  'model' = 'model',
+  gateway = 'gateway'
 }
 
 const AccountContainer = ({
@@ -60,7 +61,16 @@ const AccountContainer = ({
             icon: 'support/usage/usageRecordLight',
             label: t('account:usage_records'),
             value: TabEnum.usage
-          }
+          },
+          ...(userInfo?.team?.permission.hasManagePer
+            ? [
+                {
+                  icon: 'support/gate/gateLight',
+                  label: t('account:gateways'),
+                  value: TabEnum.gateway
+                }
+              ]
+            : [])
         ]
       : []),
     ...(feConfigs?.show_pay && userInfo?.team?.permission.hasManagePer

@@ -18,6 +18,7 @@ import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSc
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { AppLogPermissionVal } from '@fastgpt/global/support/permission/app/constant';
 
 const formatJsonString = (data: any) => {
   return JSON.stringify(data).replace(/"/g, '""').replace(/\n/g, '\\n');
@@ -44,7 +45,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     throw new Error('缺少参数');
   }
 
-  const { teamId } = await authApp({ req, authToken: true, appId, per: WritePermissionVal });
+  const { teamId } = await authApp({ req, authToken: true, appId, per: AppLogPermissionVal });
 
   const teamMemberWithContact = await MongoTeamMember.aggregate([
     { $match: { teamId: new Types.ObjectId(teamId) } },

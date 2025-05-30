@@ -7,7 +7,8 @@ import {
   Radio,
   useOutsideClick,
   HStack,
-  MenuButton
+  MenuButton,
+  Checkbox
 } from '@chakra-ui/react';
 import React, { useMemo, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -82,27 +83,28 @@ function PermissionSelect({
   const selectedSingleValue = useMemo(() => {
     if (!permissionList) return undefined;
 
-    const per = new Permission({ per: value });
+    const per = new Permission({ per: value, permissionList });
 
     if (per.hasManagePer) return permissionList['manage'].value;
     if (per.hasWritePer) return permissionList['write'].value;
 
     return permissionList['read'].value;
   }, [permissionList, value]);
-  // const selectedMultipleValues = useMemo(() => {
-  //   const per = new Permission({ per: value });
-  //
-  //   return permissionSelectList.multipleCheckBoxList
-  //     .filter((item) => {
-  //       return per.checkPer(item.value);
-  //     })
-  //     .map((item) => item.value);
-  // }, [permissionSelectList.multipleCheckBoxList, value]);
+  const selectedMultipleValues = useMemo(() => {
+    const per = new Permission({ per: value, permissionList });
 
-  const onSelectPer = (per: PermissionValueType) => {
-    if (per === value) return;
-    onChange(per);
-    setIsOpen(false);
+    return permissionSelectList.multipleCheckBoxList
+      .filter((item) => {
+        return per.checkPer(item.value);
+      })
+      .map((item) => item.value);
+  }, [permissionList, permissionSelectList.multipleCheckBoxList, value]);
+
+  const onSelectPer = (perValue: PermissionValueType) => {
+    if (perValue === value) return;
+    const per = new Permission({ per: perValue, permissionList });
+    per.addPer(...selectedMultipleValues);
+    onChange(per.value);
   };
 
   useOutsideClick({
@@ -155,7 +157,7 @@ function PermissionSelect({
           {/* The list of single select permissions */}
           {permissionSelectList.singleCheckBoxList.map((item) => {
             const change = () => {
-              const per = new Permission({ per: value });
+              const per = new Permission({ per: value, permissionList });
               per.removePer(selectedSingleValue);
               per.addPer(item.value);
               onSelectPer(per.value);
@@ -184,50 +186,65 @@ function PermissionSelect({
             );
           })}
 
-          {/* <MyDivider my={3} />
-
-          {multipleValues.length > 0 && <Box m="4">其他权限（多选）</Box>} */}
-
-          {/* The list of multiple select permissions */}
-          {/* {list
-            .filter((item) => item.type === 'multiple')
-            .map((item) => {
-              const change = () => {
-                if (checkPermission(valueState, item.value)) {
-                  setValueState(new Permission(valueState).remove(item.value).value);
-                } else {
-                  setValueState(new Permission(valueState).add(item.value).value);
-                }
-              };
-              return (
-                <Flex
-                  key={item.value}
-                  {...(checkPermission(valueState, item.value)
-                    ? {
-                        color: 'primary.500',
-                        bg: 'myWhite.300'
-                      }
-                    : {})}
-                  whiteSpace="pre-wrap"
-                  flexDirection="row"
-                  justifyContent="start"
-                  p="2"
-                  _hover={{
-                    bg: 'myGray.50'
-                  }}
-                >
-                  <Checkbox
-                    size="lg"
-                    isChecked={checkPermission(valueState, item.value)}
-                    onChange={change}
-                  />
-                  <Flex px="4" flexDirection="column" onClick={change}>
-                    <Box fontWeight="500">{item.name}</Box>
-                    <Box fontWeight="400">{item.description}</Box>
+          {permissionSelectList.multipleCheckBoxList.length > 0 && (
+            <>
+              <MyDivider my={2} />
+              {permissionSelectList.multipleCheckBoxList.map((item) => {
+                const isChecked = selectedMultipleValues.includes(item.value);
+                const isDisabled = new Permission({
+                  per: selectedSingleValue,
+                  permissionList
+                }).checkPer(item.value);
+                const change = () => {
+                  if (isDisabled) return;
+                  const per = new Permission({ per: value, permissionList });
+                  if (isChecked) {
+                    per.removePer(item.value);
+                  } else {
+                    per.addPer(item.value);
+                  }
+                  onChange(per.value);
+                };
+                return (
+                  <Flex
+                    key={item.value}
+                    {...(isChecked
+                      ? {
+                          color: 'primary.600'
+                        }
+                      : {})}
+                    {...MenuStyle}
+                    maxW={['70vw', '260px']}
+                    {...(isDisabled
+                      ? {
+                          cursor: 'not-allowed'
+                        }
+                      : {
+                          cursor: 'pointer'
+                        })}
+                    onClick={change}
+                  >
+                    <Checkbox
+                      size="lg"
+                      isChecked={isChecked}
+                      // onChange={(e) => {
+                      //   e.stopPropagation();
+                      //   e.preventDefault();
+                      // }}
+                      isDisabled={isDisabled}
+                    />
+                    <Box ml={4}>
+                      <Box>{t(item.name as any)}</Box>
+                      <Box color={'myGray.500'} fontSize={'mini'}>
+                        {t(item.description as any)}
+                      </Box>
+                    </Box>
                   </Flex>
-                </Flex>
-              );
-            })}*/}
+                );
+              })}
+            </>
+          )}
+
           {onDelete && (
             <>
               <MyDivider my={2} h={'2px'} borderColor={'myGray.200'} />

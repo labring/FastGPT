@@ -7,6 +7,7 @@ import {
 } from './type';
 
 export enum AppTypeEnum {
+  gate = 'gate',
   folder = 'folder',
   simple = 'simple',
   workflow = 'advanced',

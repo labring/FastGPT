@@ -64,7 +64,12 @@ const AppSchema = new Schema({
     type: Date,
     default: () => new Date()
   },
-
+  tags: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: 'app_tags'
+    }
+  ],
   // role and auth
   teamTags: {
     type: [String]

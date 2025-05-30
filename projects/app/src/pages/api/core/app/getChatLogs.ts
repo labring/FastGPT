@@ -13,6 +13,7 @@ import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { type PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import { AppLogPermissionVal } from '@fastgpt/global/support/permission/app/constant';
 
 async function handler(
   req: NextApiRequest,
@@ -33,7 +34,7 @@ async function handler(
   }
 
   // 凭证校验
-  const { teamId } = await authApp({ req, authToken: true, appId, per: WritePermissionVal });
+  const { teamId } = await authApp({ req, authToken: true, appId, per: AppLogPermissionVal });
 
   const where = {
     teamId: new Types.ObjectId(teamId),

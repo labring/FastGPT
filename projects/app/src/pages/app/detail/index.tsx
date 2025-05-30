@@ -14,6 +14,10 @@ const SimpleEdit = dynamic(() => import('@/pageComponents/app/detail/SimpleApp')
   ssr: false,
   loading: () => <Loading fixed={false} />
 });
+const Gate = dynamic(() => import('@/pageComponents/app/detail/Gate'), {
+  ssr: false,
+  loading: () => <Loading fixed={false} />
+});
 const Workflow = dynamic(() => import('@/pageComponents/app/detail/Workflow'), {
   ssr: false,
   loading: () => <Loading fixed={false} />
@@ -45,6 +49,7 @@ const AppDetail = () => {
         ) : (
           <>
             {appDetail.type === AppTypeEnum.simple && <SimpleEdit />}
+            {appDetail.type === AppTypeEnum.gate && <Gate />}
             {appDetail.type === AppTypeEnum.workflow && <Workflow />}
             {appDetail.type === AppTypeEnum.plugin && <Plugin />}
             {appDetail.type === AppTypeEnum.toolSet && <MCPTools />}

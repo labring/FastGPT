@@ -27,5 +27,8 @@
     },
     "markdown.copyFiles.destination": {
         "/docSite/content/**/*": "${documentWorkspaceFolder}/docSite/assets/imgs/"
+    },
+    "[svg]": {
+        "editor.defaultFormatter": "jock.svg"
     }
 }

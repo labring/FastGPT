@@ -137,7 +137,7 @@ export const authApp = async ({
   appId: ParentIdType;
   per: PermissionValueType;
 }): Promise<
-  AuthResponseType & {
+  AuthResponseType<AppPermission> & {
     app: AppDetailType;
   }
 > => {
