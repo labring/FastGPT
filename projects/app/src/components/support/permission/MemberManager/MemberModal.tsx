@@ -104,8 +104,8 @@ function MemberModal({
     permissionList?.read?.value
   );
   const perLabel = useMemo(() => {
-    if (selectedPermission === undefined) return '';
-    return getPerLabelList(selectedPermission!).join('、');
+    if (selectedPermission === undefined) return [];
+    return getPerLabelList(selectedPermission!);
   }, [getPerLabelList, selectedPermission]);
 
   const onUpdateCollaborators = useContextSelector(
@@ -438,7 +438,7 @@ function MemberModal({
                 borderRadius={'md'}
                 h={'32px'}
               >
-                {t(perLabel as any)}
+                {perLabel.map((item) => t(item as any)).join('、')}
                 <ChevronDownIcon fontSize={'md'} />
               </Flex>
             }
