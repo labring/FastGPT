@@ -28,6 +28,7 @@ import type {
   getToolVersionListProps,
   getToolVersionResponse
 } from '@/pages/api/core/app/plugin/getVersionList';
+import type { GetBatchPluginsBody } from '@/pages/api/core/app/plugin/getBatchPlugins';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = (data?: ListAppBody) =>
@@ -105,3 +106,9 @@ export const getApiSchemaByUrl = (url: string) =>
       timeout: 30000
     }
   );
+
+// 批量获取插件信息的方法
+export const getBatchPlugins = (pluginIds: string[]) =>
+  POST<Record<string, FlowNodeTemplateType>>('/core/app/plugin/getBatchPlugins', {
+    pluginIds
+  } as GetBatchPluginsBody);

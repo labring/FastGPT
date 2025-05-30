@@ -59,6 +59,7 @@ import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runt
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { type ExternalProviderType } from '@fastgpt/global/core/workflow/runtime/type';
 
 type FastGptWebChatProps = {
@@ -77,6 +78,7 @@ export type Props = ChatCompletionCreateParams &
     detail?: boolean;
     retainDatasetCite?: boolean;
     variables: Record<string, any>; // Global variables or plugin inputs
+    gateModel?: string;
   };
 
 type AuthResponseType = {
@@ -112,7 +114,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     messages = [],
     variables = {},
     responseChatItemId = getNanoid(),
-    metadata
+    metadata,
+    gateModel
   } = req.body as Props;
 
   const originIp = requestIp.getClientIp(req);
@@ -190,7 +193,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     })();
     retainDatasetCite = retainDatasetCite && !!responseDetail;
     const isPlugin = app.type === AppTypeEnum.plugin;
-
     // Check message type
     if (isPlugin) {
       detail = true;
@@ -230,6 +232,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       getAppLatestVersion(app._id, app),
       MongoChat.findOne({ appId: app._id, chatId }, 'source variableList variables')
     ]);
+
+    if (app.name === 'gate') {
+      nodes.forEach((node) => {
+        if (node.flowNodeType === FlowNodeTypeEnum.chatNode) {
+          node.inputs.forEach((input) => {
+            if (input.key === 'model') {
+              input.value = gateModel;
+            }
+          });
+        }
+      });
+    }
 
     // Get store variables(Api variable precedence)
     if (chatDetail?.variables) {

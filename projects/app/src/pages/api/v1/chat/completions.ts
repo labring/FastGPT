@@ -59,6 +59,7 @@ import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runt
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { type ExternalProviderType } from '@fastgpt/global/core/workflow/runtime/type';
 
 type FastGptWebChatProps = {
@@ -77,6 +78,8 @@ export type Props = ChatCompletionCreateParams &
     detail?: boolean;
     retainDatasetCite?: boolean;
     variables: Record<string, any>; // Global variables or plugin inputs
+    gateModel?: string; // gate model
+    selectedTool?: string; // selected tool ID for gate
   };
 
 type AuthResponseType = {
@@ -112,7 +115,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     messages = [],
     variables = {},
     responseChatItemId = getNanoid(),
-    metadata
+    metadata,
+    gateModel,
+    selectedTool
   } = req.body as Props;
 
   const originIp = requestIp.getClientIp(req);
@@ -230,7 +235,29 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       getAppLatestVersion(app._id, app),
       MongoChat.findOne({ appId: app._id, chatId }, 'source variableList variables')
     ]);
+    if (app.name === 'gate') {
+      nodes.forEach((node) => {
+        if (node.flowNodeType === FlowNodeTypeEnum.chatNode) {
+          node.inputs.forEach((input) => {
+            if (input.key === 'model') {
+              input.value = gateModel;
+            }
+          });
+        }
 
+        // 如果指定了工具，通过直接操作工具节点启用该工具
+        if (selectedTool && node.flowNodeType === FlowNodeTypeEnum.tools) {
+          const selectedToolEntries = node.inputs
+            .filter((input) => input.key === 'selectedTools')
+            .flatMap((input) => (Array.isArray(input.value) ? input.value : []));
+
+          if (selectedToolEntries.some((toolEntry) => toolEntry.id === selectedTool)) {
+            // 找到了对应的工具，可以在这里激活它
+            console.log('找到并激活工具:', selectedTool);
+          }
+        }
+      });
+    }
     // Get store variables(Api variable precedence)
     if (chatDetail?.variables) {
       variables = {

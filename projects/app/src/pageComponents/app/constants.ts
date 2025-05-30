@@ -19,5 +19,11 @@ export const appTypeMap = {
     avatar: 'core/app/type/pluginFill',
     title: i18nT('app:type.Create plugin bot'),
     emptyCreateText: i18nT('app:create_empty_plugin')
+  },
+  [AppTypeEnum.gate]: {
+    icon: 'support/gate/gateLight',
+    avatar: 'support/gate/gateLight',
+    title: i18nT('app:type.Create gate'),
+    emptyCreateText: i18nT('app:create_empty_gate')
   }
 };
