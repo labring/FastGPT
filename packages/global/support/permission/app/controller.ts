@@ -11,6 +11,7 @@ export class AppPermission extends Permission {
     } else if (!props?.per) {
       props.per = AppDefaultPermissionVal;
     }
+    props.permissionList = AppPermissionList;
     super(props);
     this.setUpdatePermissionCallback(() => {
       this.hasReadPer = this.checkPer(AppPermissionList.read.value);

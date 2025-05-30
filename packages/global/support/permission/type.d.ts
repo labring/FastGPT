@@ -18,7 +18,7 @@ export type PermissionListType<T = {}> = Record<
     name: string;
     description: string;
     value: PermissionValueType;
-    checkBoxType: 'single' | 'multiple';
+    checkBoxType: 'single' | 'multiple' | 'hiden';
   }
 >;
 
