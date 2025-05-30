@@ -4,6 +4,9 @@
   "click_to_view_raw_source": "Click to View Original Source",
   "file_name": "Filename",
   "file_size": "Filesize",
+  "max_size_per_file": "Each file size should be less than {{maxSize}}",
+  "only_support": "Supported only",
+  "reached_max_file_count": "Maximum file count reached",
   "release_the_mouse_to_upload_the_file": "Release Mouse to Upload File",
   "select_and_drag_file_tip": "Click or Drag Files Here to Upload",
   "select_file_amount_limit": "You can select up to {{max}} files",
@@ -12,7 +15,7 @@
   "support_file_type": "Supports {{fileType}} file types",
   "support_max_count": "Supports up to {{maxCount}} files",
   "support_max_size": "Maximum file size is {{maxSize}}",
-  "upload_failed": "Upload Failed",
-  "reached_max_file_count": "Maximum file count reached",
-  "upload_error_description": "Only multiple files or a single folder can be uploaded at a time"
+  "template_strict_highlight": "Strictly follow the template",
+  "upload_error_description": "Only multiple files or a single folder can be uploaded at a time",
+  "upload_failed": "Upload Failed"
 }

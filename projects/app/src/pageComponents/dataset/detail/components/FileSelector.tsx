@@ -21,12 +21,14 @@ const FileSelector = ({
   selectFiles,
   setSelectFiles,
   maxCount = 1000,
+  customDescriptionNode,
   ...props
 }: {
   fileType: string;
   selectFiles: SelectFileItemType[];
   setSelectFiles: React.Dispatch<React.SetStateAction<SelectFileItemType[]>>;
   maxCount?: number;
+  customDescriptionNode?: React.ReactNode;
 } & FlexProps) => {
   const { t } = useTranslation();
 
@@ -197,16 +199,22 @@ const FileSelector = ({
               ? t('file:release_the_mouse_to_upload_the_file')
               : t('file:select_and_drag_file_tip')}
           </Box>
-          {/* file type */}
-          <Box color={'myGray.500'} fontSize={'xs'}>
-            {t('file:support_file_type', { fileType })}
-          </Box>
-          <Box color={'myGray.500'} fontSize={'xs'}>
-            {/* max count */}
-            {maxCount && t('file:support_max_count', { maxCount })}
-            {/* max size */}
-            {maxSize && t('file:support_max_size', { maxSize: formatFileSize(maxSize) })}
-          </Box>
+          {/* file type, max count, max size */}
+          {customDescriptionNode ? (
+            customDescriptionNode
+          ) : (
+            <>
+              <Box color={'myGray.500'} fontSize={'xs'}>
+                {t('file:support_file_type', { fileType })}
+              </Box>
+              <Box color={'myGray.500'} fontSize={'xs'}>
+                {/* max count */}
+                {maxCount && <>{t('file:support_max_count', { maxCount })} </>}
+                {/* max size */}
+                {maxSize && t('file:support_max_size', { maxSize: formatFileSize(maxSize) })}
+              </Box>
+            </>
+          )}
 
           <File onSelect={(files) => onSelectFile(files)} />
         </>
