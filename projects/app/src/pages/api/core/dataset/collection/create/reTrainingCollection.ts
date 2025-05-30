@@ -62,6 +62,7 @@ async function handler(
         apiServer: collection.dataset.apiServer,
         feishuShareServer: collection.dataset.feishuShareServer,
         feishuKnowledgeServer: collection.dataset.feishuKnowledgeServer,
+        feishuPrivateServer: collection.dataset.feishuPrivateServer,
         yuqueServer: collection.dataset.yuqueServer
       };
     }

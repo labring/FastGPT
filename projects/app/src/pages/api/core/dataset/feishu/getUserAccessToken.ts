@@ -1,6 +1,5 @@
 import axios from 'axios';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const appId = global.feConfigs.feishu_auth_robot_client_id;
@@ -19,8 +18,12 @@ export async function getUserAccessToken(code: string, datasetId: string) {
   }
 
   // 检查数据集类型
-  if (dataset.type !== DatasetTypeEnum.feishuPrivate) {
-    throw new Error('Dataset type is not feishu private');
+  if (
+    dataset.type !== DatasetTypeEnum.feishuPrivate &&
+    dataset.type !== DatasetTypeEnum.feishuShare &&
+    dataset.type !== DatasetTypeEnum.feishuKnowledge
+  ) {
+    throw new Error('Dataset type is not feishu]');
   }
 
   try {
@@ -51,7 +54,7 @@ export async function getUserAccessToken(code: string, datasetId: string) {
 
     await MongoDataset.findByIdAndUpdate(datasetId, {
       $set: {
-        [`feishuPrivateServer`]: {
+        [`${dataset.type}Server`]: {
           user_access_token: response.data.access_token,
           refresh_token: response.data.refresh_token,
           outdate_time: Date.now() + response.data.expires_in * 1000
