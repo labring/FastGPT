@@ -64,7 +64,6 @@ export type Props = {
   chatId: string;
   chatConfig: AppChatConfigType;
   metadata?: Record<string, any>;
-  selectedToolIds?: string[];
 };
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -81,8 +80,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     appId,
     chatConfig,
     chatId,
-    metadata = {},
-    selectedToolIds = []
+    metadata = {}
   } = req.body as Props;
   try {
     if (!Array.isArray(nodes)) {
@@ -91,47 +89,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (!Array.isArray(edges)) {
       throw new Error('Edges is not array');
     }
-
-    //对边进行过滤，只保留selectedToolIds中的边
-    console.log('selectedToolIds', selectedToolIds);
-
-    // 创建从 pluginId 到 nodeId 的映射
-    const pluginIdToNodeIdMap = new Map<string, string>();
-    nodes.forEach((node) => {
-      if (node.pluginId) {
-        pluginIdToNodeIdMap.set(node.pluginId, node.nodeId);
-      }
-    });
-    console.log('pluginIdToNodeIdMap', Object.fromEntries(pluginIdToNodeIdMap));
-
-    // 获取选中工具对应的 nodeId 集合
-    const selectedNodeIds = new Set<string>();
-    selectedToolIds.forEach((pluginId) => {
-      const nodeId = pluginIdToNodeIdMap.get(pluginId);
-      if (nodeId) {
-        selectedNodeIds.add(nodeId);
-      }
-    });
-    console.log('selectedNodeIds', Array.from(selectedNodeIds));
-
-    // 过滤边：保留第一个边和目标节点在选中工具中的边
-    const filteredEdges = edges.filter((edge, index) => {
-      // 保留第一个边
-      if (index === 0) {
-        return true;
-      }
-
-      // 保留目标节点在选中工具中的边
-      return selectedNodeIds.has(edge.target);
-    });
-
-    console.log('Original edges count:', edges.length);
-    console.log('Filtered edges count:', filteredEdges.length);
-    console.log('Filtered edges:', filteredEdges);
-
-    // 使用过滤后的边
-    edges = filteredEdges;
-
     const chatMessages = GPTMessages2Chats(messages);
     // console.log(JSON.stringify(chatMessages, null, 2), '====', chatMessages.length);
 

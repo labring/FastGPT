@@ -50,6 +50,7 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange'> & {
     showBorder?: boolean;
   }[];
   isLoading?: boolean;
+  showAvatar?: boolean;
   onChange?: (val: T) => any | Promise<any>;
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
   customOnOpen?: () => void;
@@ -79,6 +80,7 @@ const MySelect = <T = any,>(
     list = [],
     onChange,
     isLoading = false,
+    showAvatar = true,
     ScrollData,
     customOnOpen,
     customOnClose,
@@ -255,7 +257,7 @@ const MySelect = <T = any,>(
                     />
                   ) : (
                     <>
-                      {selectItem?.icon && (
+                      {selectItem?.icon && showAvatar && (
                         <Avatar
                           mr={2}
                           src={selectItem.icon as any}

@@ -1,16 +1,10 @@
 import { useUserStore } from '@/web/support/user/useUserStore';
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { streamFetch } from '@/web/common/api/fetch';
-import { useMemoizedFn } from 'ahooks';
+import { useMemoizedFn, useSafeState } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import dynamic from 'next/dynamic';
-import { Box } from '@chakra-ui/react';
-import type { AppChatConfigType, AppDetailType } from '@fastgpt/global/core/app/type';
+import type { AppDetailType, AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
@@ -20,29 +14,39 @@ import { useTranslation } from 'next-i18next';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-
-const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
+import { form2AppWorkflow } from '@/web/core/app/utils';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
+import { listQuickApps } from '@/web/support/user/team/gate/quickApp';
 
 export const useChatGate = ({
-  selectedToolIds,
-  onSelectedToolIdsChange,
-  nodes,
-  edges,
-  chatConfig,
+  appForm,
   isReady,
   appDetail
 }: {
-  selectedToolIds?: string[];
-  onSelectedToolIdsChange?: (toolIds: string[]) => void;
-  nodes: StoreNodeItemType[];
-  edges: StoreEdgeItemType[];
-  chatConfig: AppChatConfigType;
+  appForm: AppSimpleEditFormType;
   isReady: boolean;
   appDetail: AppDetailType;
 }) => {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
   const { setChatId, chatId, appId } = useChatStore();
+  const [selectedTools, setSelectedTools] = useState<FlowNodeTemplateType[]>([]);
+
+  const [workflowData, setWorkflowData] = useSafeState({
+    nodes: appDetail.modules || [],
+    edges: appDetail.edges || []
+  });
+  useEffect(() => {
+    const { nodes, edges } = form2AppWorkflow(
+      {
+        ...appForm,
+        selectedTools
+      },
+      t
+    );
+    setWorkflowData({ nodes, edges });
+  }, [appForm, selectedTools, setWorkflowData, t]);
+
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
 
   const startChat = useMemoizedFn(
@@ -61,19 +65,18 @@ export const useChatGate = ({
         data: {
           // Send histories and user messages
           messages: histories,
-          nodes,
-          edges,
+          nodes: workflowData.nodes,
+          edges: workflowData.edges,
           variables,
           responseChatItemId,
           appId,
           appName: t('chat:chat_gate_app', { name: appDetail.name }),
           chatId,
-          chatConfig,
+          chatConfig: appForm.chatConfig,
           metadata: {
             source: 'web',
             userAgent: navigator.userAgent
-          },
-          selectedToolIds: selectedToolIds || []
+          }
         },
         onMessage: generatingMessage,
         abortCtrl: controller
@@ -99,22 +102,18 @@ export const useChatGate = ({
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const clearChatRecords = useContextSelector(ChatItemContext, (v) => v.clearChatRecords);
 
-  const pluginInputs = useMemo(() => {
-    return nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs || [];
-  }, [nodes]);
-
   // Set chat box data
   useEffect(() => {
     setChatBoxData({
       userAvatar: userInfo?.avatar,
       appId: appId,
       app: {
-        chatConfig,
+        chatConfig: appForm.chatConfig,
         name: appDetail.name,
         avatar: appDetail.avatar,
         intro: appDetail.intro,
         type: appDetail.type,
-        pluginInputs
+        pluginInputs: []
       }
     });
   }, [
@@ -122,9 +121,8 @@ export const useChatGate = ({
     appDetail.intro,
     appDetail.name,
     appDetail.type,
+    appForm.chatConfig,
     appId,
-    chatConfig,
-    pluginInputs,
     setChatBoxData,
     userInfo?.avatar
   ]);
@@ -151,29 +149,24 @@ export const useChatGate = ({
     setChatId();
   }, [clearChatRecords, setChatId]);
 
-  const CustomChatContainer = useMemoizedFn(() =>
-    appDetail.type === AppTypeEnum.plugin ? (
-      <Box p={5} pb={16}>
-        <PluginRunBox
-          appId={appId}
-          chatId={chatId}
-          onNewChat={restartChat}
-          onStartChat={startChat}
-        />
-      </Box>
-    ) : (
-      <ChatBox
-        isReady={isReady}
-        appId={appId}
-        chatId={chatId}
-        showMarkIcon
-        chatType={'chat'}
-        onStartChat={startChat}
-        selectedToolIds={selectedToolIds}
-        onSelectedToolIdsChange={onSelectedToolIdsChange}
-      />
-    )
-  );
+  // 精选应用
+  const { data: recommendApps = [] } = useRequest2(listQuickApps, {
+    manual: false
+  });
+
+  const CustomChatContainer = useMemoizedFn(() => (
+    <ChatBox
+      isReady={isReady}
+      appId={appId}
+      chatId={chatId}
+      showMarkIcon
+      chatType={'chat'}
+      onStartChat={startChat}
+      selectedTools={selectedTools}
+      onSelectTools={setSelectedTools}
+      recommendApps={recommendApps}
+    />
+  ));
 
   return {
     ChatContainer: CustomChatContainer,

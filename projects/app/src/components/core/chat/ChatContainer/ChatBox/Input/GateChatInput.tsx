@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useMemo, useState, useEffect, useContext } from 'react';
-import { Box, Flex, Textarea, IconButton, useBreakpointValue, Button } from '@chakra-ui/react';
+import { Box, Flex, Textarea, IconButton, useBreakpointValue } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
@@ -23,7 +23,8 @@ import dynamic from 'next/dynamic';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { AppFormContext } from '@/pages/chat/gate/index';
 import Icon from '@fastgpt/web/components/common/Icon';
-import GateSelect from '@fastgpt/web/components/common/MySelect/GateSelect';
+import AIModelSelector from '@/components/Select/AIModelSelector';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 
 const GateToolSelect = dynamic(
   () => import('@/pageComponents/app/detail/Gate/components/GateToolSelect'),
@@ -46,8 +47,8 @@ type Props = {
   resetInputVal: (val: ChatBoxInputType) => void;
   chatForm: UseFormReturn<ChatBoxInputFormType>;
   placeholder?: string;
-  selectedToolIds?: string[];
-  onSelectedToolIdsChange?: (toolIds: string[]) => void;
+  selectedTools?: FlowNodeTemplateType[];
+  onSelectTools?: (toolIds: FlowNodeTemplateType[]) => void;
 };
 
 const GateChatInput = ({
@@ -57,8 +58,8 @@ const GateChatInput = ({
   resetInputVal,
   chatForm,
   placeholder,
-  selectedToolIds: externalSelectedToolIds,
-  onSelectedToolIdsChange
+  selectedTools: externalSelectedToolIds,
+  onSelectTools
 }: Props) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
@@ -78,10 +79,9 @@ const GateChatInput = ({
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const fileSelectConfig = useContextSelector(ChatBoxContext, (v) => v.fileSelectConfig);
 
-  // 如果有外部传入的工具选择，使用外部的；否则使用内部状态
-  const [internalSelectedToolIds, setInternalSelectedToolIds] = useState<string[]>([]);
-  const selectedToolIds = externalSelectedToolIds ?? internalSelectedToolIds;
-  const setSelectedToolIds = onSelectedToolIdsChange ?? setInternalSelectedToolIds;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const selectedTools = externalSelectedToolIds ?? [];
+  const setSelectedToolIds = onSelectTools!;
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { llmModelList } = useSystemStore();
@@ -93,10 +93,7 @@ const GateChatInput = ({
   const [selectedModel, setSelectedModel] = useState(defaultModel);
 
   const showModelSelector = useMemo(() => {
-    return (
-      router.pathname.startsWith('/chat/gate') &&
-      !router.pathname.includes('/chat/gate/application')
-    );
+    return router.pathname === '/chat/gate';
   }, [router.pathname]);
 
   // 是否显示工具选择器
@@ -188,7 +185,7 @@ const GateChatInput = ({
         text: textareaValue.trim(),
         files: fileList,
         gateModel: showModelSelector ? selectedModel : undefined,
-        selectedTool: selectedToolIds.length > 0 ? selectedToolIds.join(',') : null // 将工具ID数组转换为逗号分隔的字符串
+        selectedTool: selectedTools.length > 0 ? selectedTools.join(',') : null // 将工具ID数组转换为逗号分隔的字符串
       });
       replaceFiles([]);
     },
@@ -200,7 +197,7 @@ const GateChatInput = ({
       replaceFiles,
       showModelSelector,
       selectedModel,
-      selectedToolIds
+      selectedTools
     ]
   );
 
@@ -214,8 +211,9 @@ const GateChatInput = ({
       boxShadow="0px 5px 16px -4px rgba(19, 51, 107, 0.08)"
       borderRadius="20px"
       position="relative"
-      p={4}
-      pb="56px"
+      px={4}
+      pb={'62px'}
+      pt={fileList.length > 0 ? 0 : 4}
       overflow="hidden"
       transition="all 0.2s ease"
       _hover={{
@@ -335,24 +333,18 @@ const GateChatInput = ({
       >
         <Flex align="center" gap={2} overflow="hidden" maxW="65%" flexShrink={1} flexWrap="nowrap">
           {showModelSelector && (
-            <GateSelect
-              value={selectedModel}
+            <AIModelSelector
               list={modelList}
+              value={selectedModel}
+              showAvatar={false}
               onChange={setSelectedModel}
-              minW="128px"
-              maxW="180px"
-              w="auto"
-              bg="#F9F9F9"
-              border="0.5px solid #E0E0E0"
-              borderRadius="10px"
-              color="#485264"
-              h="36px"
-              fontSize="14px"
+              bg={'myGray.50'}
+              borderRadius={'lg'}
             />
           )}
           {showTools && (
             <GateToolSelect
-              selectedToolIds={selectedToolIds}
+              selectedTools={selectedTools}
               onToolsChange={setSelectedToolIds}
               buttonSize={buttonSize}
             />

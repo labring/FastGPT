@@ -7,7 +7,6 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import ShareGateModal from './ShareModol';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getMyAppsGate, postCreateApp, putAppById } from '@/web/core/app/api';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import { emptyTemplates } from '@/web/core/app/templates';
 import { saveGateConfig } from './HomeTable';
 import type { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
@@ -32,7 +31,10 @@ const ConfigButtons = ({ tab, appForm, gateConfig, copyRightConfig }: Props) => 
   const { runAsync: saveHomeConfig, loading: savingHome } = useRequest2(
     async () => {
       if (!!gateConfig) {
-        await saveGateConfig(gateConfig);
+        await saveGateConfig({
+          ...gateConfig,
+          status: true
+        });
         toast({
           title: t('common:save_success'),
           status: 'success'
@@ -89,7 +91,6 @@ const ConfigButtons = ({ tab, appForm, gateConfig, copyRightConfig }: Props) => 
       const gateApp = apps.find((app) => app.type === AppTypeEnum.gate);
       const currentTeamAvatar = copyRightConfig?.logo;
       const currentSlogan = gateConfig?.slogan;
-      console.log('gateApp', gateApp, currentTeamAvatar, currentSlogan, nodes, edges);
       if (gateApp) {
         if (
           gateApp.avatar !== currentTeamAvatar ||
@@ -104,24 +105,16 @@ const ConfigButtons = ({ tab, appForm, gateConfig, copyRightConfig }: Props) => 
             nodes,
             edges
           });
-          toast({
-            title: t('common:update_success'),
-            status: 'success'
-          });
         }
       } else {
         await postCreateApp({
           avatar: gateConfig?.logo,
-          name: gateConfig?.name,
+          name: 'App',
           intro: gateConfig?.slogan,
           type: AppTypeEnum.gate,
           modules: emptyTemplates[AppTypeEnum.gate].nodes,
           edges: emptyTemplates[AppTypeEnum.gate].edges,
           chatConfig: emptyTemplates[AppTypeEnum.gate].chatConfig
-        });
-        toast({
-          title: t('common:create_success'),
-          status: 'success'
         });
       }
     } catch (error) {

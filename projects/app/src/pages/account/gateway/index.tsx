@@ -29,9 +29,9 @@ type TabType = 'home' | 'copyright' | 'app' | 'logs';
 
 const GatewayConfig = () => {
   const { t } = useTranslation();
-  const [gateConfig, setGateConfig] = useState<GateSchemaType | undefined>(undefined);
+  const [gateConfig, setGateConfig] = useState<GateSchemaType>();
   // 添加 appForm 状态
-  const [appForm, setAppForm] = useState<AppSimpleEditFormType | undefined>(undefined);
+  const [appForm, setAppForm] = useState<AppSimpleEditFormType>();
   //从 appForm 中获取 selectedTools的 id 组成 string 数组
 
   //gateConfig?.tools 改成
