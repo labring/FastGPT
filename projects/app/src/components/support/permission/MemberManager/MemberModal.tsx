@@ -46,15 +46,21 @@ function MemberModal({
   const collaboratorList = useContextSelector(CollaboratorContext, (v) => v.collaboratorList);
   const [filterClass, setFilterClass] = useState<'member' | 'org' | 'group'>();
   const {
-    paths,
+    paths: orgPaths,
     onClickOrg,
     members: orgMembers,
     MemberScrollData: OrgMemberScrollData,
-    onPathClick,
+    onPathClick: onOrgPathClick,
     orgs,
     searchKey,
     setSearchKey
   } = useOrg({ withPermission: false });
+
+  const onExpandOrg = (org: OrgListItemType) => {
+    setFilterClass('org');
+    setSearchKey('');
+    onClickOrg(org);
+  };
 
   const {
     data: members,
@@ -194,6 +200,7 @@ function MemberModal({
               placeholder={t('user:search_group_org_user')}
               bgColor="myGray.50"
               onChange={(e) => setSearchKey(e.target.value)}
+              value={searchKey}
             />
 
             <Flex flexDirection="column" mt="3" overflow={'auto'} flex={'1 0 0'} h={0}>
@@ -238,21 +245,21 @@ function MemberModal({
                               ? t('user:team.org.org')
                               : t('user:team.group.group')
                       },
-                      ...paths
+                      ...orgPaths
                     ]}
                     onClick={(parentId) => {
                       if (parentId === '') {
                         setFilterClass(undefined);
-                        onPathClick('');
+                        onOrgPathClick('');
                       } else if (
                         parentId === 'member' ||
                         parentId === 'org' ||
                         parentId === 'group'
                       ) {
                         setFilterClass(parentId);
-                        onPathClick('');
+                        onOrgPathClick('');
                       } else {
-                        onPathClick(parentId);
+                        onOrgPathClick(parentId);
                       }
                     }}
                     rootName={t('common:Team')}
@@ -329,8 +336,8 @@ function MemberModal({
                                 bgColor: 'myGray.200'
                               }}
                               onClick={(e) => {
-                                onClickOrg(org);
-                                // setPath(getOrgChildrenPath(org));
+                                // onClickOrg(org);
+                                onExpandOrg(org);
                                 e.stopPropagation();
                               }}
                             />
