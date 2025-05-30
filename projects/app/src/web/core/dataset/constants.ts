@@ -71,9 +71,9 @@ export const datasetTypeCourseMap: Record<`${DatasetTypeEnum}`, string> = {
   [DatasetTypeEnum.dataset]: '',
   [DatasetTypeEnum.apiDataset]: '/docs/guide/knowledge_base/api_dataset/',
   [DatasetTypeEnum.websiteDataset]: '/docs/guide/knowledge_base/websync/',
-  [DatasetTypeEnum.feishuShare]: '/docs/guide/knowledge_base/lark_share_dataset/',
+  [DatasetTypeEnum.feishuShare]: '/docs/guide/knowledge_base/lark_dataset/',
   [DatasetTypeEnum.feishuKnowledge]: '/docs/guide/knowledge_base/lark_dataset/',
-  [DatasetTypeEnum.feishuPrivate]: '/docs/guide/knowledge_base/lark_private_dataset/',
+  [DatasetTypeEnum.feishuPrivate]: '/docs/guide/knowledge_base/lark_dataset/',
   [DatasetTypeEnum.yuque]: '/docs/guide/knowledge_base/yuque_dataset/',
   [DatasetTypeEnum.externalFile]: ''
 };

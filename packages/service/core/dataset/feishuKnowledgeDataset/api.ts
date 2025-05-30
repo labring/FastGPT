@@ -121,15 +121,7 @@ export const useFeishuKnowledgeDatasetRequest = ({
   // 添加请求拦截器
   instance.interceptors.request.use(async (config) => {
     if (!config.headers.Authorization) {
-      const { data } = await axios.post<{ tenant_access_token: string }>(
-        `${feishuBaseUrl}/open-apis/auth/v3/tenant_access_token/internal`,
-        {
-          app_id: feishuKnowledgeServer.appId,
-          app_secret: feishuKnowledgeServer.appSecret
-        }
-      );
-
-      config.headers['Authorization'] = `Bearer ${data.tenant_access_token}`;
+      config.headers['Authorization'] = `Bearer ${feishuKnowledgeServer.user_access_token}`;
       config.headers['Content-Type'] = 'application/json; charset=utf-8';
     }
     return config;

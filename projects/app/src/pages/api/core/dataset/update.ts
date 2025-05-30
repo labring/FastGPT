@@ -178,18 +178,8 @@ async function handler(
         ...(!!yuqueServer?.basePath !== undefined && {
           'yuqueServer.basePath': yuqueServer?.basePath
         }),
-        ...(!!feishuShareServer?.appId && { 'feishuShareServer.appId': feishuShareServer.appId }),
-        ...(!!feishuShareServer?.appSecret && {
-          'feishuShareServer.appSecret': feishuShareServer.appSecret
-        }),
         ...(!!feishuShareServer?.folderToken && {
           'feishuShareServer.folderToken': feishuShareServer.folderToken
-        }),
-        ...(!!feishuKnowledgeServer?.appId && {
-          'feishuKnowledgeServer.appId': feishuKnowledgeServer.appId
-        }),
-        ...(!!feishuKnowledgeServer?.appSecret && {
-          'feishuKnowledgeServer.appSecret': feishuKnowledgeServer.appSecret
         }),
         ...(!!feishuKnowledgeServer?.basePath !== undefined && {
           'feishuKnowledgeServer.basePath': feishuKnowledgeServer?.basePath

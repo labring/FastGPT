@@ -119,15 +119,17 @@ export const DatasetPageContextProvider = ({
           : state.yuqueServer,
         feishuShareServer: data.feishuShareServer
           ? {
-              appId: data.feishuShareServer.appId,
-              appSecret: '',
+              user_access_token: data.feishuShareServer.user_access_token,
+              refresh_token: data.feishuShareServer.refresh_token,
+              outdate_time: data.feishuShareServer.outdate_time,
               folderToken: data.feishuShareServer.folderToken
             }
           : state.feishuShareServer,
         feishuKnowledgeServer: data.feishuKnowledgeServer
           ? {
-              appId: data.feishuKnowledgeServer.appId,
-              appSecret: '',
+              user_access_token: data.feishuKnowledgeServer.user_access_token,
+              refresh_token: data.feishuKnowledgeServer.refresh_token,
+              outdate_time: data.feishuKnowledgeServer.outdate_time,
               basePath: data.feishuKnowledgeServer.basePath
             }
           : state.feishuKnowledgeServer,

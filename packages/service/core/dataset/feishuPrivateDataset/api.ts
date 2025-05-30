@@ -130,7 +130,10 @@ export const useFeishuPrivateDatasetRequest = ({
 
       return data.files;
     };
-    const parent = parentId?.split('-')[1];
+    if (!parentId) {
+      parentId = feishuPrivateServer.basePath?.split('-').slice(-1)[0];
+    }
+    const parent = parentId ? parentId.split('-').slice(-1)[0] : undefined;
 
     const allFiles = await fetchFiles(undefined, parent);
 
@@ -147,8 +150,8 @@ export const useFeishuPrivateDatasetRequest = ({
       .map((file) => ({
         id:
           file.type === 'shortcut'
-            ? file.parent_token + '-' + file.shortcut_info!.target_token
-            : file.parent_token + '-' + file.token,
+            ? parentId + '-' + file.shortcut_info!.target_token
+            : parentId + '-' + file.token,
         parentId: parentId,
         name: file.name,
         type: file.type === 'folder' ? ('folder' as const) : ('file' as const),
@@ -199,15 +202,15 @@ export const useFeishuPrivateDatasetRequest = ({
   }: {
     apiFileId: string;
   }): Promise<ApiDatasetDetailResponse> => {
-    const parentId = apiFileId.split('-')[0];
-    const fileId = apiFileId.split('-')[1];
+    const parentId = apiFileId.split('-').slice(0, -1).join('-');
+    const fileId = apiFileId.split('-').slice(-1)[0];
 
     const fileDetail = await request<FeishuFileDetailResponse['data']>(
       `/open-apis/drive/explorer/v2/folder/${fileId}/meta`,
       {},
       'GET'
     );
-    console.log('fileDetail', fileDetail);
+
     if (!fileDetail) {
       return {
         name: '',
@@ -218,7 +221,7 @@ export const useFeishuPrivateDatasetRequest = ({
 
     return {
       name: fileDetail?.name,
-      parentId: null,
+      parentId: parentId !== 'null' ? parentId : null,
       id: apiFileId
     };
   };

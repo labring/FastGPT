@@ -72,7 +72,7 @@ async function handler(
           feishuShareServer: req.body.feishuShareServer
             ? {
                 ...req.body.feishuShareServer,
-                appSecret: dataset.feishuShareServer?.appSecret ?? ''
+                user_access_token: dataset.feishuShareServer?.user_access_token ?? ''
               }
             : dataset.feishuShareServer,
           apiServer: req.body.apiServer
@@ -84,7 +84,7 @@ async function handler(
           feishuKnowledgeServer: req.body.feishuKnowledgeServer
             ? {
                 ...req.body.feishuKnowledgeServer,
-                appSecret: dataset.feishuKnowledgeServer?.appSecret ?? ''
+                user_access_token: dataset.feishuKnowledgeServer?.user_access_token ?? ''
               }
             : dataset.feishuKnowledgeServer,
           feishuPrivateServer: req.body.feishuPrivateServer
@@ -107,15 +107,16 @@ async function handler(
       }
     })();
 
-  if (feishuShareServer || feishuPrivateServer) {
+  if (feishuShareServer) {
     return '';
   }
 
-  if (yuqueServer || apiServer || feishuKnowledgeServer) {
+  if (yuqueServer || apiServer || feishuKnowledgeServer || feishuPrivateServer) {
     const apiDataset = await getApiDatasetRequest({
       yuqueServer,
       apiServer,
-      feishuKnowledgeServer
+      feishuKnowledgeServer,
+      feishuPrivateServer
     });
 
     if (!apiDataset?.getFileDetail) {

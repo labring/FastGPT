@@ -18,13 +18,15 @@ export type APIFileServer = {
   basePath?: string;
 };
 export type FeishuShareServer = {
-  appId: string;
-  appSecret?: string;
+  user_access_token: string;
+  refresh_token: string;
+  outdate_time: number;
   folderToken: string;
 };
 export type FeishuKnowledgeServer = {
-  appId: string;
-  appSecret: string;
+  user_access_token: string;
+  refresh_token: string;
+  outdate_time: number;
   basePath?: string;
 };
 

@@ -2,9 +2,6 @@ import axios from 'axios';
 import { MongoDataset } from '../schema';
 import { addLog } from '../../../common/system/log';
 
-const appId = global.feConfigs.feishu_auth_robot_client_id;
-const appSecret = global.feConfigs.feishu_auth_robot_client_secret;
-
 /**
  * refresh feishu token
  * refresh token before 10 minutes
@@ -12,13 +9,22 @@ const appSecret = global.feConfigs.feishu_auth_robot_client_secret;
 export async function refreshFeishuToken() {
   try {
     const datasets = await MongoDataset.find({
-      type: { $in: ['feishuPrivate'] }
+      type: { $in: ['feishuPrivate', 'feishuShare', 'feishuKnowledge'] }
     });
 
+    const appId = global.feConfigs?.feishu_auth_robot_client_id;
+    const appSecret = global.feConfigs?.feishu_auth_robot_client_secret;
+
     const refreshPromises = datasets
-      .filter((dataset) => dataset.feishuPrivateServer)
+      .filter(
+        (dataset) =>
+          (dataset.type === 'feishuPrivate' && dataset.feishuPrivateServer) ||
+          (dataset.type === 'feishuShare' && dataset.feishuShareServer) ||
+          (dataset.type === 'feishuKnowledge' && dataset.feishuKnowledgeServer)
+      )
       .map(async (dataset) => {
         try {
+          const serverKey = `${dataset.type}Server` as keyof typeof dataset;
           const response = await axios.post<{
             access_token: string;
             refresh_token: string;
@@ -29,11 +35,11 @@ export async function refreshFeishuToken() {
               client_id: appId,
               client_secret: appSecret,
               grant_type: 'refresh_token',
-              refresh_token: dataset.feishuPrivateServer?.refresh_token
+              refresh_token: dataset[serverKey]?.refresh_token
             },
             {
               headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json; charset=utf-8'
               }
             }
           );
@@ -48,7 +54,7 @@ export async function refreshFeishuToken() {
           // update dataset
           await MongoDataset.findByIdAndUpdate(dataset._id, {
             $set: {
-              feishuPrivateServer: {
+              [serverKey]: {
                 user_access_token: response.data.access_token,
                 refresh_token: response.data.refresh_token,
                 outdate_time: Date.now() + response.data.expires_in * 1000
@@ -61,8 +67,8 @@ export async function refreshFeishuToken() {
           });
         } catch (error) {
           addLog.error('Refresh Feishu token error', {
-            error,
-            datasetId: dataset._id
+            datasetId: dataset._id,
+            error: JSON.stringify(error)
           });
         }
       });

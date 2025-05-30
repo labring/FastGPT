@@ -20,6 +20,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import type { GetApiDatasetCataLogProps } from '@/pages/api/core/dataset/apiDataset/getCatalog';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useBoolean, useMemoizedFn, useMount } from 'ahooks';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -58,20 +59,81 @@ const ApiDatasetForm = ({
     { setTrue: openBaseurlSeletModal, setFalse: closeBaseurlSelectModal }
   ] = useBoolean();
 
+  const { feConfigs } = useSystemStore();
+
+  const appid = feConfigs?.feishu_auth_robot_client_id;
+  const urlParams = new URLSearchParams(window.location.search);
+
   const parentId =
     yuqueServer?.basePath ||
     apiServer?.basePath ||
     feishuKnowledgeServer?.basePath ||
     feishuPrivateServer?.basePath;
 
+  const renderFeishuAuth = (
+    server: FeishuShareServer | FeishuKnowledgeServer | FeishuPrivateServer | undefined
+  ) => {
+    if (urlParams.get('datasetId')) {
+      return (
+        <>
+          <Flex mt={6} alignItems={'center'}>
+            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
+              Feishu Auth
+            </FormLabel>
+            <MyBox py={1} fontSize={'sm'} flex={'1 0 0'} overflow="auto">
+              {!server?.user_access_token ? t('dataset:have_not_auth') : t('dataset:have_auth')}
+            </MyBox>
+            <Button
+              type="button"
+              onClick={() => {
+                const url = `https://open.feishu.cn/open-apis/authen/v1/authorize?app_id=${appid}&redirect_uri=${window.location.origin}/api/core/dataset/feishu/oauth&scope=drive:drive.metadata:readonly%20drive:drive:readonly%20docx:document:readonly%20wiki:wiki:readonly%20offline_access&state=${encodeURIComponent(
+                  JSON.stringify({
+                    returnUrl: window.location.pathname + window.location.search,
+                    datasetId: datasetId
+                  })
+                )}`;
+                window.location.href = url;
+              }}
+              ml={2}
+              variant={'whiteBase'}
+            >
+              {!server?.user_access_token
+                ? t('dataset:feishu_auth_button')
+                : t('dataset:feishu_change_auth_button')}
+            </Button>
+          </Flex>
+          {type === DatasetTypeEnum.feishuShare ? (
+            <Flex mt={6}>
+              <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
+                Folder Token
+              </FormLabel>
+              <Input
+                bg={'myWhite.600'}
+                placeholder={'Folder Token'}
+                maxLength={200}
+                {...register('feishuShareServer.folderToken', { required: true })}
+              />
+            </Flex>
+          ) : (
+            <>
+              {renderBaseUrlSelector()}
+              {renderDirectoryModal()}
+            </>
+          )}
+        </>
+      );
+    }
+    return <></>;
+  };
+
   const canSelectBaseUrl = useMemo(() => {
     switch (type) {
       case DatasetTypeEnum.yuque:
         return yuqueServer?.userId && yuqueServer?.token;
       case DatasetTypeEnum.feishuShare:
-        return feishuShareServer?.appId && feishuShareServer?.appSecret;
+        return feishuShareServer?.user_access_token;
       case DatasetTypeEnum.feishuKnowledge:
-        return feishuKnowledgeServer?.appId && feishuKnowledgeServer?.appSecret;
+        return feishuKnowledgeServer?.user_access_token;
       case DatasetTypeEnum.apiDataset:
         return !!apiServer?.baseUrl;
       case DatasetTypeEnum.feishuPrivate:
@@ -83,10 +145,8 @@ const ApiDatasetForm = ({
     type,
     yuqueServer?.userId,
     yuqueServer?.token,
-    feishuShareServer?.appId,
-    feishuShareServer?.appSecret,
-    feishuKnowledgeServer?.appId,
-    feishuKnowledgeServer?.appSecret,
+    feishuShareServer?.user_access_token,
+    feishuKnowledgeServer?.user_access_token,
     apiServer?.baseUrl,
     feishuPrivateServer?.user_access_token
   ]);
@@ -98,8 +158,7 @@ const ApiDatasetForm = ({
         !datasetId &&
         ((yuqueServer && (!yuqueServer.userId || !yuqueServer?.token)) ||
           (apiServer && !apiServer?.baseUrl) ||
-          (feishuKnowledgeServer &&
-            (!feishuKnowledgeServer?.appId || !feishuKnowledgeServer?.appSecret)) ||
+          (feishuKnowledgeServer && !feishuKnowledgeServer?.user_access_token) ||
           (feishuPrivateServer && !feishuPrivateServer?.user_access_token))
       ) {
         return setPathNames(t('dataset:input_required_field_to_select_baseurl'));
@@ -185,18 +244,19 @@ const ApiDatasetForm = ({
                 basePath: ''
               };
               break;
-            // Currently, only Yuque is using it
             case DatasetTypeEnum.feishuShare:
               params.feishuShareServer = {
-                appId: feishuShareServer?.appId || '',
-                appSecret: feishuShareServer?.appSecret || '',
+                user_access_token: feishuShareServer?.user_access_token || '',
+                refresh_token: feishuShareServer?.refresh_token || '',
+                outdate_time: feishuShareServer?.outdate_time || 0,
                 folderToken: feishuShareServer?.folderToken || ''
               };
               break;
             case DatasetTypeEnum.feishuKnowledge:
               params.feishuKnowledgeServer = {
-                appId: feishuKnowledgeServer?.appId || '',
-                appSecret: feishuKnowledgeServer?.appSecret || '',
+                user_access_token: feishuKnowledgeServer?.user_access_token || '',
+                refresh_token: feishuKnowledgeServer?.refresh_token || '',
+                outdate_time: feishuKnowledgeServer?.outdate_time || 0,
                 basePath: ''
               };
               break;
@@ -254,97 +314,9 @@ const ApiDatasetForm = ({
           {renderDirectoryModal()}
         </>
       )}
-      {type === DatasetTypeEnum.feishuShare && (
-        <>
-          <Flex mt={6}>
-            <Flex
-              alignItems={'center'}
-              flex={['', '0 0 110px']}
-              color={'myGray.900'}
-              fontWeight={500}
-              fontSize={'sm'}
-            >
-              App ID
-            </Flex>
-            <Input
-              bg={'myWhite.600'}
-              placeholder={'App ID'}
-              maxLength={200}
-              {...register('feishuShareServer.appId', { required: true })}
-            />
-          </Flex>
-          <Flex mt={6}>
-            <Flex
-              alignItems={'center'}
-              flex={['', '0 0 110px']}
-              color={'myGray.900'}
-              fontWeight={500}
-              fontSize={'sm'}
-            >
-              App Secret
-            </Flex>
-            <Input
-              bg={'myWhite.600'}
-              placeholder={'App Secret'}
-              maxLength={200}
-              {...register('feishuShareServer.appSecret', { required: true })}
-            />
-          </Flex>
-          <Flex mt={6}>
-            <Flex
-              alignItems={'center'}
-              flex={['', '0 0 110px']}
-              color={'myGray.900'}
-              fontWeight={500}
-              fontSize={'sm'}
-            >
-              Folder Token
-            </Flex>
-            <Input
-              bg={'myWhite.600'}
-              placeholder={'Folder Token'}
-              maxLength={200}
-              {...register('feishuShareServer.folderToken', { required: true })}
-            />
-          </Flex>
-          {/* {renderBaseUrlSelector()}
-          {renderDirectoryModal()} */}
-        </>
-      )}
-      {type === DatasetTypeEnum.feishuKnowledge && (
-        <>
-          <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
-              App ID
-            </FormLabel>
-            <Input
-              bg={'myWhite.600'}
-              placeholder={'App ID'}
-              maxLength={200}
-              {...register('feishuKnowledgeServer.appId', { required: true })}
-            />
-          </Flex>
-          <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
-              App Secret
-            </FormLabel>
-            <Input
-              bg={'myWhite.600'}
-              placeholder={'App Secret'}
-              maxLength={200}
-              {...register('feishuKnowledgeServer.appSecret', { required: true })}
-            />
-          </Flex>
-          {renderBaseUrlSelector()}
-          {renderDirectoryModal()}
-        </>
-      )}
-      {type === DatasetTypeEnum.feishuPrivate && (
-        <>
-          {/* {renderBaseUrlSelector()}
-          {renderDirectoryModal()} */}
-        </>
-      )}
+      {type === DatasetTypeEnum.feishuShare && <>{renderFeishuAuth(feishuShareServer)}</>}
+      {type === DatasetTypeEnum.feishuKnowledge && <>{renderFeishuAuth(feishuKnowledgeServer)}</>}
+      {type === DatasetTypeEnum.feishuPrivate && <>{renderFeishuAuth(feishuPrivateServer)}</>}
       {type === DatasetTypeEnum.yuque && (
         <>
           <Flex mt={6} alignItems={'center'}>
