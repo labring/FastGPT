@@ -3,9 +3,10 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { getDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import fs from 'fs';
-import path from 'path';
 import jwt from 'jsonwebtoken';
+import { getDownloadStream, getFileById } from '@fastgpt/service/common/file/gridfs/controller';
+import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 const previewableExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
 
@@ -76,21 +77,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       req
     });
 
+    const bucketName = BucketNameEnum.dataset;
+    const [file, fileStream] = await Promise.all([
+      getFileById({ bucketName, fileId: imageId }),
+      getDownloadStream({ bucketName, fileId: imageId })
+    ]);
+
+    if (!file) {
+      return Promise.reject(CommonErrEnum.fileNotFound);
+    }
+
     // Get file extension
-    const extension = path.extname(imageInfo.name).toLowerCase().slice(1);
+    const extension = (imageInfo.name.split('.').pop() || '').toLowerCase();
     const disposition = previewableExtensions.includes(extension) ? 'inline' : 'attachment';
 
     // Set response headers
-    res.setHeader('Content-Type', imageInfo.contentType);
+    res.setHeader('Content-Type', file.contentType || imageInfo.contentType);
     res.setHeader('Cache-Control', 'public, max-age=31536000');
     res.setHeader(
       'Content-Disposition',
       `${disposition}; filename="${encodeURIComponent(imageInfo.name)}"`
     );
-    res.setHeader('Content-Length', imageInfo.size);
-
-    // Create file stream and send
-    const fileStream = fs.createReadStream(imageInfo.path);
+    res.setHeader('Content-Length', file.length);
 
     fileStream.pipe(res);
 

@@ -19,6 +19,7 @@ import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/cons
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
 import { MongoDatasetCollectionImage } from '@fastgpt/service/core/dataset/image/schema';
+import { deleteDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
 
 const formatIndexes = async ({
   indexes = [],
@@ -398,9 +399,9 @@ export const deleteDatasetData = async (data: DatasetDataItemType) => {
     await MongoDatasetData.deleteOne({ _id: data.id }, { session });
     await MongoDatasetDataText.deleteMany({ dataId: data.id }, { session });
 
-    // 2. If there are any image files, delete the image records.
+    // 2. If there are any image files, delete the image records and GridFS file.
     if (data.imageId) {
-      await MongoDatasetCollectionImage.deleteOne({ _id: data.imageId }, { session });
+      await deleteDatasetImage(data.imageId);
     }
 
     // 3. Delete vector data

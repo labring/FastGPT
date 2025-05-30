@@ -1,6 +1,5 @@
 import { getMongoModel, Schema } from '../../../common/mongo';
 import type { DatasetImageSchema } from '@fastgpt/global/core/dataset/image/type';
-import mongoose from '../../../common/mongo';
 
 export const DatasetCollectionImageCollectionName = 'dataset_collection_images';
 
@@ -19,10 +18,6 @@ const DatasetImageMongoSchema = new Schema({
     default: null
   },
   name: {
-    type: String,
-    required: true
-  },
-  path: {
     type: String,
     required: true
   },

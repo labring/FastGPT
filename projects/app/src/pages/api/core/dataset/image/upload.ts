@@ -70,9 +70,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
 
     return id;
   } catch (error) {
-    // Only remove files on error
-    removeFilesByPaths(filePaths);
     return Promise.reject(error);
+  } finally {
+    removeFilesByPaths(filePaths);
   }
 }
 

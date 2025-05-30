@@ -41,6 +41,7 @@ import {
 } from '@fastgpt/global/core/dataset/training/utils';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { MongoDatasetCollectionImage } from '../image/schema';
+import { deleteDatasetImage } from '../image/controller';
 
 export const createCollectionAndInsertData = async ({
   dataset,
@@ -423,16 +424,14 @@ export async function delCollection({
         datasetId: { $in: datasetIds },
         collectionId: { $in: collectionIds }
       }),
+      // Delete images if needed
       ...(delImg
-        ? [
-            delImgByRelatedId({
-              teamId,
-              relateIds: collections
-                .map((item) => item?.metadata?.relatedImgId || '')
-                .filter(Boolean)
-            })
-          ]
+        ? collections
+            .map((item) => item?.metadata?.relatedImgId || '')
+            .filter(Boolean)
+            .map((imageId) => deleteDatasetImage(imageId))
         : []),
+      // Delete files if needed
       ...(delFile
         ? [
             delFileByFileIdList({
@@ -443,11 +442,15 @@ export async function delCollection({
         : []),
       // Delete vector data
       deleteDatasetDataVector({ teamId, datasetIds, collectionIds }),
-      // Delete collection images
-      MongoDatasetCollectionImage.deleteMany({
-        teamId,
-        collectionId: { $in: collectionIds }
-      })
+      // Get all collection images and delete them with GridFS
+      (async () => {
+        const collectionImages = await MongoDatasetCollectionImage.find({
+          teamId,
+          collectionId: { $in: collectionIds }
+        }).lean();
+
+        await Promise.all(collectionImages.map((image) => deleteDatasetImage(String(image._id))));
+      })()
     ]);
 
     // delete collections

@@ -3,13 +3,13 @@ export type DatasetImageSchema = {
   teamId: string;
   datasetId: string;
   collectionId?: string;
-  createTime: Date;
-  expiredTime: Date;
-  size: number;
   name: string;
-  path: string;
   contentType: string;
+  size: number;
   metadata?: Record<string, any>;
+  expiredTime?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 // API请求参数类型
