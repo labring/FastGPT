@@ -281,7 +281,7 @@ const ChatInput = ({
     [
       File,
       TextareaDom,
-      fileList,
+      fileList.length,
       handleSend,
       hasFileUploading,
       havInput,
@@ -296,7 +296,8 @@ const ChatInput = ({
       setValue,
       showSelectFile,
       showSelectImg,
-      t
+      t,
+      whisperConfig?.open
     ]
   );
 

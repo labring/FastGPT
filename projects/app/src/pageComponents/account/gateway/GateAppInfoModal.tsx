@@ -36,6 +36,7 @@ import {
   batchRemoveTagsFromApp
 } from '@/web/core/app/api/tags';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 interface AppInfoModalProps {
   app: AppListItemType;
@@ -51,6 +52,8 @@ const AppInfoModal = ({ app, onClose, onUpdateSuccess }: AppInfoModalProps) => {
   const [availableTags, setAvailableTags] = useState<TagSchemaType[]>([]);
   const [initialTags, setInitialTags] = useState<string[]>(app.tags || []);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const { ttsModelList, sttModelList } = useSystemStore();
 
   const {
     File,

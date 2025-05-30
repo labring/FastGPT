@@ -124,17 +124,15 @@ const Chat = ({
       });
 
       // 如果还没有 AppDetail，则重新获取
-      if (!appDetail && appId) {
+      if (appId) {
         try {
           const detail = await getAppDetailById(appId);
-          if (detail?.modules) {
-            setAppDetail(detail);
-            const form = appWorkflow2Form({
-              nodes: detail.modules,
-              chatConfig: detail.chatConfig || {}
-            });
-            setAppForm(form);
-          }
+          const form = appWorkflow2Form({
+            nodes: detail.modules,
+            chatConfig: detail.chatConfig || {}
+          });
+          setAppDetail(detail);
+          setAppForm(form);
         } catch (error) {
           console.error('Failed to fetch app detail:', error);
         }
