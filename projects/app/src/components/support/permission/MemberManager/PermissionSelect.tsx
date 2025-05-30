@@ -7,7 +7,8 @@ import {
   Radio,
   useOutsideClick,
   HStack,
-  MenuButton
+  MenuButton,
+  Checkbox
 } from '@chakra-ui/react';
 import React, { useMemo, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -89,19 +90,21 @@ function PermissionSelect({
 
     return permissionList['read'].value;
   }, [permissionList, value]);
-  // const selectedMultipleValues = useMemo(() => {
-  //   const per = new Permission({ per: value });
-  //
-  //   return permissionSelectList.multipleCheckBoxList
-  //     .filter((item) => {
-  //       return per.checkPer(item.value);
-  //     })
-  //     .map((item) => item.value);
-  // }, [permissionSelectList.multipleCheckBoxList, value]);
+  const selectedMultipleValues = useMemo(() => {
+    const per = new Permission({ per: value });
 
-  const onSelectPer = (per: PermissionValueType) => {
-    if (per === value) return;
-    onChange(per);
+    return permissionSelectList.multipleCheckBoxList
+      .filter((item) => {
+        return per.checkPer(item.value);
+      })
+      .map((item) => item.value);
+  }, [permissionSelectList.multipleCheckBoxList, value]);
+
+  const onSelectPer = (perValue: PermissionValueType) => {
+    if (perValue === value) return;
+    const per = new Permission({ per: perValue });
+    per.addPer(...selectedMultipleValues);
+    onChange(per.value);
     setIsOpen(false);
   };
 
@@ -184,50 +187,61 @@ function PermissionSelect({
             );
           })}
 
-          {/* <MyDivider my={3} />
+          <MyDivider my={2} />
 
-          {multipleValues.length > 0 && <Box m="4">其他权限（多选）</Box>} */}
+          {/* {permissionSelectList.multipleCheckBoxList.length > 0 && (
+            <Box m="4">其他权限（多选）</Box>
+          )} */}
 
-          {/* The list of multiple select permissions */}
-          {/* {list
-            .filter((item) => item.type === 'multiple')
-            .map((item) => {
-              const change = () => {
-                if (checkPermission(valueState, item.value)) {
-                  setValueState(new Permission(valueState).remove(item.value).value);
-                } else {
-                  setValueState(new Permission(valueState).add(item.value).value);
-                }
-              };
-              return (
-                <Flex
-                  key={item.value}
-                  {...(checkPermission(valueState, item.value)
-                    ? {
-                        color: 'primary.500',
-                        bg: 'myWhite.300'
-                      }
-                    : {})}
-                  whiteSpace="pre-wrap"
-                  flexDirection="row"
-                  justifyContent="start"
-                  p="2"
-                  _hover={{
-                    bg: 'myGray.50'
-                  }}
-                >
-                  <Checkbox
-                    size="lg"
-                    isChecked={checkPermission(valueState, item.value)}
-                    onChange={change}
-                  />
-                  <Flex px="4" flexDirection="column" onClick={change}>
-                    <Box fontWeight="500">{item.name}</Box>
-                    <Box fontWeight="400">{item.description}</Box>
-                  </Flex>
+          {permissionSelectList.multipleCheckBoxList.map((item) => {
+            const isChecked = selectedMultipleValues.includes(item.value);
+            const isDisabled = new Permission({ per: selectedSingleValue }).checkPer(item.value);
+            const change = () => {
+              if (isDisabled) return;
+              const per = new Permission({ per: value });
+              if (isChecked) {
+                per.removePer(item.value);
+              } else {
+                per.addPer(item.value);
+              }
+              onChange(per.value);
+            };
+            return (
+              <Flex
+                key={item.value}
+                {...(isChecked
+                  ? {
+                      color: 'primary.500',
+                      bg: 'myWhite.300'
+                    }
+                  : {})}
+                whiteSpace="pre-wrap"
+                flexDirection="row"
+                justifyContent="start"
+                p="2"
+                _hover={{
+                  bg: 'myGray.50'
+                }}
+                {...(isDisabled
+                  ? {
+                      cursor: 'not-allowed',
+                      opacity: 0.5
+                    }
+                  : {})}
+              >
+                <Checkbox
+                  size="lg"
+                  isChecked={isChecked}
+                  onChange={change}
+                  isDisabled={isDisabled}
+                />
+                <Flex px="4" flexDirection="column" onClick={change}>
+                  <Box fontWeight="500">{t(item.name as any)}</Box>
+                  <Box fontWeight="400">{t(item.description as any)}</Box>
                 </Flex>
-              );
-            })}*/}
+              </Flex>
+            );
+          })}
           {onDelete && (
             <>
               <MyDivider my={2} h={'2px'} borderColor={'myGray.200'} />
