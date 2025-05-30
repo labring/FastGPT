@@ -14,6 +14,7 @@ import { rewriteAppWorkflowToSimple } from '@fastgpt/service/core/app/utils';
 import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
 import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
 import { getI18nAppType } from '@fastgpt/service/support/operationLog/util';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
   const { nodes = [], edges = [], chatConfig, isPublish, versionName, autoSave } = req.body;
@@ -39,16 +40,15 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
       chatConfig,
       updateTime: new Date()
     }).then(() => {
-      const appType = getI18nAppType(app.type);
       addOperationLog({
         tmbId,
         teamId,
         event: OperationLogEventEnum.UPDATE_PUBLISH_APP,
         params: {
           appName: app.name,
-          operationName: 'common:log.update',
+          operationName: i18nT('account_team:update'),
           appId,
-          appType: appType
+          appType: getI18nAppType(app.type)
         }
       });
     });
@@ -101,16 +101,17 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
   });
 
   (async () => {
-    const appType = getI18nAppType(app.type);
     addOperationLog({
       tmbId,
       teamId,
       event: OperationLogEventEnum.UPDATE_PUBLISH_APP,
       params: {
         appName: app.name,
-        operationName: isPublish ? 'common:log.save and publish' : 'common:log.update',
+        operationName: isPublish
+          ? i18nT('account_team:save_and_publish')
+          : i18nT('account_team:update'),
         appId,
-        appType: appType
+        appType: getI18nAppType(app.type)
       }
     });
   })();

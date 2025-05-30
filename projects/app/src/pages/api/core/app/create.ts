@@ -2,7 +2,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import type { AppTypeEnum} from '@fastgpt/global/core/app/constants';
+import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import type { AppSchema } from '@fastgpt/global/core/app/type';
 import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
@@ -152,15 +152,13 @@ export const onCreateApp = async ({
       );
     }
     (async () => {
-      const appType = getI18nAppType(type!);
-
       addOperationLog({
         tmbId,
         teamId,
         event: OperationLogEventEnum.CREATE_APP,
         params: {
           appName: name!,
-          appType: appType
+          appType: getI18nAppType(type!)
         }
       });
     })();

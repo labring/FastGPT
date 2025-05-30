@@ -148,14 +148,13 @@ async function handler(
   const listWithoutTmbId = list.filter((item) => !item.tmbId);
 
   (async () => {
-    const appType = getI18nAppType(app.type);
     addOperationLog({
       tmbId,
       teamId,
       event: OperationLogEventEnum.EXPORT_APP_CHAT_LOG,
       params: {
         appName: app.name,
-        appType: appType
+        appType: getI18nAppType(app.type)
       }
     });
   })();

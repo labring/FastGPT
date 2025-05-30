@@ -6,6 +6,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
 import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
 import { getI18nAppType } from '@fastgpt/service/support/operationLog/util';
+
 export type OutLinkDeleteQuery = {
   id: string;
 };
@@ -17,15 +18,16 @@ async function handler(
   req: ApiRequestProps<OutLinkDeleteBody, OutLinkDeleteQuery>
 ): Promise<OutLinkDeleteResponse> {
   const { id } = req.query;
-  const { tmbId, teamId, app, outLink } = await authOutLinkCrud({
+  const { tmbId, teamId, outLink, app } = await authOutLinkCrud({
     req,
     outLinkId: id,
     authToken: true,
     per: OwnerPermissionVal
   });
+
   await MongoOutLink.findByIdAndDelete(id);
+
   (async () => {
-    const appType = getI18nAppType(app.type);
     addOperationLog({
       tmbId,
       teamId,
@@ -33,10 +35,11 @@ async function handler(
       params: {
         appName: app.name,
         channelName: outLink.name,
-        appType: appType
+        appType: getI18nAppType(app.type)
       }
     });
   })();
+
   return {};
 }
 

@@ -42,7 +42,6 @@ async function handler(
   });
 
   (async () => {
-    const appType = getI18nAppType(app.type);
     addOperationLog({
       tmbId,
       teamId,
@@ -50,7 +49,7 @@ async function handler(
       params: {
         appName: app.name,
         channelName: props.name,
-        appType: appType
+        appType: getI18nAppType(app.type)
       }
     });
   })();

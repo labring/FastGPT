@@ -26,6 +26,7 @@ async function handler(req: ApiRequestProps<EditApiKeyProps & { _id: string }>):
       }
     });
   })();
+
   await MongoOpenApi.findByIdAndUpdate(_id, {
     ...(name && { name }),
     ...(limit && { limit })

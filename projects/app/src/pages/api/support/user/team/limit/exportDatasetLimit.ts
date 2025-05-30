@@ -30,14 +30,13 @@ async function handler(req: NextApiRequest) {
   });
 
   (async () => {
-    const datasetType = getI18nDatasetType(dataset.type);
     addOperationLog({
       tmbId,
       teamId,
       event: OperationLogEventEnum.EXPORT_DATASET,
       params: {
         datasetName: dataset.name,
-        datasetType: datasetType
+        datasetType: getI18nDatasetType(dataset.type)
       }
     });
   })();

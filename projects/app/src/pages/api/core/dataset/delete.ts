@@ -33,8 +33,6 @@ async function handler(req: NextApiRequest) {
     per: OwnerPermissionVal
   });
 
-  const name = dataset.name;
-
   const datasets = await findDatasetAndAllChildren({
     teamId,
     datasetId
@@ -73,14 +71,13 @@ async function handler(req: NextApiRequest) {
   });
 
   (async () => {
-    const datasetType = getI18nDatasetType(dataset.type);
     addOperationLog({
       tmbId,
       teamId,
       event: OperationLogEventEnum.DELETE_DATASET,
       params: {
-        datasetName: name,
-        datasetType: datasetType
+        datasetName: dataset.name,
+        datasetType: getI18nDatasetType(dataset.type)
       }
     });
   })();

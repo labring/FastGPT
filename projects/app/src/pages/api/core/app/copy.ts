@@ -46,14 +46,13 @@ async function handler(
     pluginData: app.pluginData
   });
   (async () => {
-    const appType = getI18nAppType(app.type);
     addOperationLog({
       tmbId,
       teamId,
       event: OperationLogEventEnum.CREATE_APP_COPY,
       params: {
         appName: app.name,
-        appType: appType
+        appType: getI18nAppType(app.type)
       }
     });
   })();

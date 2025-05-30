@@ -235,33 +235,9 @@ async function handler(
           collaborators: parentClbsAndGroups,
           session
         });
-        (async () => {
-          const datasetType = getI18nDatasetType(dataset.type);
-          addOperationLog({
-            tmbId,
-            teamId,
-            event: OperationLogEventEnum.MOVE_DATASET,
-            params: {
-              datasetName: dataset.name,
-              targetFolderName: targetName,
-              datasetType: datasetType
-            }
-          });
-        })();
+        logDatasetMove({ tmbId, teamId, dataset, targetName });
       } else {
-        (async () => {
-          const datasetType = getI18nDatasetType(dataset.type);
-          addOperationLog({
-            tmbId,
-            teamId,
-            event: OperationLogEventEnum.MOVE_DATASET,
-            params: {
-              datasetName: dataset.name,
-              targetFolderName: targetName,
-              datasetType: datasetType
-            }
-          });
-        })();
+        logDatasetMove({ tmbId, teamId, dataset, targetName });
         // Not folder, delete all clb
         await MongoResourcePermission.deleteMany(
           { resourceId: id, teamId: dataset.teamId, resourceType: PerResourceTypeEnum.dataset },
@@ -270,18 +246,7 @@ async function handler(
       }
       return onUpdate(session);
     } else {
-      (async () => {
-        const datasetType = getI18nDatasetType(dataset.type);
-        addOperationLog({
-          tmbId,
-          teamId,
-          event: OperationLogEventEnum.UPDATE_DATASET,
-          params: {
-            datasetName: dataset.name,
-            datasetType: datasetType
-          }
-        });
-      })();
+      logDatasetUpdate({ tmbId, teamId, dataset });
       return onUpdate(session);
     }
   });
@@ -366,4 +331,51 @@ const updateSyncSchedule = async ({
       );
     }
   }
+};
+
+const logDatasetMove = ({
+  tmbId,
+  teamId,
+  dataset,
+  targetName
+}: {
+  tmbId: string;
+  teamId: string;
+  dataset: any;
+  targetName: string;
+}) => {
+  (async () => {
+    addOperationLog({
+      tmbId,
+      teamId,
+      event: OperationLogEventEnum.MOVE_DATASET,
+      params: {
+        datasetName: dataset.name,
+        targetFolderName: targetName,
+        datasetType: getI18nDatasetType(dataset.type)
+      }
+    });
+  })();
+};
+
+const logDatasetUpdate = ({
+  tmbId,
+  teamId,
+  dataset
+}: {
+  tmbId: string;
+  teamId: string;
+  dataset: any;
+}) => {
+  (async () => {
+    addOperationLog({
+      tmbId,
+      teamId,
+      event: OperationLogEventEnum.UPDATE_DATASET,
+      params: {
+        datasetName: dataset.name,
+        datasetType: getI18nDatasetType(dataset.type)
+      }
+    });
+  })();
 };

@@ -26,6 +26,7 @@ async function handler(
     id,
     per: OwnerPermissionVal
   });
+
   (async () => {
     addOperationLog({
       tmbId,

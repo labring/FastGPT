@@ -49,6 +49,7 @@ async function handler(req: ApiRequestProps<EditApiKeyProps>): Promise<string> {
     name,
     limit
   });
+
   (async () => {
     addOperationLog({
       tmbId,

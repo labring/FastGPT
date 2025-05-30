@@ -43,14 +43,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     appId
   });
   (async () => {
-    const appType = getI18nAppType(app.type);
     addOperationLog({
       tmbId,
       teamId,
       event: OperationLogEventEnum.DELETE_APP,
       params: {
         appName: app.name,
-        appType: appType
+        appType: getI18nAppType(app.type)
       }
     });
   })();

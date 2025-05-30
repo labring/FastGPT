@@ -39,6 +39,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     password: newPsw,
     passwordUpdateTime: new Date()
   });
+
   (async () => {
     addOperationLog({
       tmbId,

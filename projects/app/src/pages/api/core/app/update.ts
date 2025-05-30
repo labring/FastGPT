@@ -27,6 +27,7 @@ import { MongoResourcePermission } from '@fastgpt/service/support/permission/sch
 import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
 import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
 import { getI18nAppType } from '@fastgpt/service/support/operationLog/util';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 
 export type AppUpdateQuery = {
   appId: string;
@@ -175,19 +176,7 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
           session
         });
       } else {
-        (async () => {
-          const appType = getI18nAppType(app.type);
-          addOperationLog({
-            tmbId,
-            teamId,
-            event: OperationLogEventEnum.MOVE_APP,
-            params: {
-              appName: app.name,
-              targetFolderName: targetName,
-              appType: appType
-            }
-          });
-        })();
+        logAppMove({ tmbId, teamId, app, targetName });
         // Not folder, delete all clb
         await MongoResourcePermission.deleteMany(
           { resourceType: PerResourceTypeEnum.app, teamId: app.teamId, resourceId: app._id },
@@ -197,45 +186,85 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
       return onUpdate(session);
     });
   } else {
-    (async () => {
-      const getUpdateItems = () => {
-        const names: string[] = [];
-        const values: string[] = [];
-
-        if (name !== undefined) {
-          names.push('common:core.app.Name');
-          values.push(name);
-        }
-
-        if (intro !== undefined) {
-          names.push('common:Intro');
-          values.push(intro);
-        }
-
-        return {
-          names,
-          values
-        };
-      };
-
-      const { names: newItemNames, values: newItemValues } = getUpdateItems();
-      const appType = getI18nAppType(app.type);
-
-      addOperationLog({
-        tmbId,
-        teamId,
-        event: OperationLogEventEnum.UPDATE_APP_INFO,
-        params: {
-          appName: app.name,
-          newItemNames: newItemNames,
-          newItemValues: newItemValues,
-          appType: appType
-        }
-      });
-    })();
+    logAppUpdate({ tmbId, teamId, app, name, intro });
 
     return onUpdate();
   }
 }
 
 export default NextAPI(handler);
+
+const logAppMove = ({
+  tmbId,
+  teamId,
+  app,
+  targetName
+}: {
+  tmbId: string;
+  teamId: string;
+  app: any;
+  targetName: string;
+}) => {
+  (async () => {
+    addOperationLog({
+      tmbId,
+      teamId,
+      event: OperationLogEventEnum.MOVE_APP,
+      params: {
+        appName: app.name,
+        targetFolderName: targetName,
+        appType: getI18nAppType(app.type)
+      }
+    });
+  })();
+};
+
+const logAppUpdate = ({
+  tmbId,
+  teamId,
+  app,
+  name,
+  intro
+}: {
+  tmbId: string;
+  teamId: string;
+  app: any;
+  name?: string;
+  intro?: string;
+}) => {
+  (async () => {
+    const getUpdateItems = () => {
+      const names: string[] = [];
+      const values: string[] = [];
+
+      if (name !== undefined) {
+        names.push(i18nT('common:core.app.name'));
+        values.push(name);
+      }
+
+      if (intro !== undefined) {
+        names.push(i18nT('common:Intro'));
+        values.push(intro);
+      }
+
+      return {
+        names,
+        values
+      };
+    };
+
+    const { names: newItemNames, values: newItemValues } = getUpdateItems();
+
+    addOperationLog({
+      tmbId,
+      teamId,
+      event: OperationLogEventEnum.UPDATE_APP_INFO,
+      params: {
+        appName: app.name,
+        newItemNames: newItemNames,
+        newItemValues: newItemValues,
+        appType: getI18nAppType(app.type)
+      }
+    });
+  })();
+};

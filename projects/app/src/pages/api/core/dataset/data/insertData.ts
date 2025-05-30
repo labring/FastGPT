@@ -98,6 +98,7 @@ async function handler(req: NextApiRequest) {
     inputTokens: tokens,
     model: vectorModelData.model
   });
+
   (async () => {
     addOperationLog({
       tmbId,

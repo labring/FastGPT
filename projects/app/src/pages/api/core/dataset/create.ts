@@ -106,14 +106,13 @@ async function handler(
   });
 
   (async () => {
-    const datasetType = getI18nDatasetType(type);
     addOperationLog({
       tmbId,
       teamId,
       event: OperationLogEventEnum.CREATE_DATASET,
       params: {
         datasetName: name,
-        datasetType: datasetType
+        datasetType: getI18nDatasetType(type)
       }
     });
   })();
