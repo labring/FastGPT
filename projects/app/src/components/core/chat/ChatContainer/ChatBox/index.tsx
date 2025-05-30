@@ -14,7 +14,7 @@ import type {
 } from '@fastgpt/global/core/chat/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Box, Checkbox, Flex, Text } from '@chakra-ui/react';
+import { Box, Checkbox, Flex, HStack, Text } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { useForm } from 'react-hook-form';
@@ -74,6 +74,9 @@ import { useRouter } from 'next/router';
 import { getTeamGateConfig, getTeamGateConfigCopyRight } from '@/web/support/user/team/gate/api';
 import type { getGateConfigCopyRightResponse } from '@fastgpt/global/support/user/team/gate/api';
 import type { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
+import type { AppListItemType } from '@fastgpt/global/core/app/type';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
@@ -96,8 +99,9 @@ type Props = OutLinkChatAuthProps &
     showVoiceIcon?: boolean;
     showEmptyIntro?: boolean;
     active?: boolean; // can use
-    selectedToolIds?: string[];
-    onSelectedToolIdsChange?: (toolIds: string[]) => void;
+    selectedTools?: FlowNodeTemplateType[];
+    onSelectTools?: (toolIds: FlowNodeTemplateType[]) => void;
+    recommendApps?: AppListItemType[];
 
     onStartChat?: (e: StartChatFnProps) => Promise<
       StreamResponseType & {
@@ -115,8 +119,9 @@ const ChatBox = ({
   active = true,
   onStartChat,
   chatType,
-  selectedToolIds,
-  onSelectedToolIdsChange
+  selectedTools,
+  onSelectTools,
+  recommendApps = []
 }: Props) => {
   const ScrollContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
@@ -421,7 +426,7 @@ const ChatBox = ({
 
   const router = useRouter();
   const inGateRoute = useMemo(() => {
-    return router.pathname.startsWith('/chat/gate');
+    return router.pathname === '/chat/gate';
   }, [router.pathname]);
   /**
    * user confirm send prompt
@@ -1124,11 +1129,7 @@ const ChatBox = ({
   const { userInfo } = useUserStore();
 
   const showWelcome = useMemo(() => {
-    return (
-      router.pathname.startsWith('/chat/gate') &&
-      !router.pathname.includes('/chat/gate/application') &&
-      chatRecords.length === 0
-    );
+    return router.pathname === '/chat/gate' && chatRecords.length === 0;
   }, [router.pathname, chatRecords.length]);
 
   return (
@@ -1169,6 +1170,29 @@ const ChatBox = ({
             {/* message input */}
             {onStartChat && chatStarted && active && !isInteractive && (
               <Box w={{ base: 'calc(100% - 48px)', md: '700px' }} maxH="132px" h="100%" px={0}>
+                <HStack mb={3}>
+                  {recommendApps.map((item) => (
+                    <HStack
+                      gap={1}
+                      key={item._id}
+                      border={'base'}
+                      px={2}
+                      py={1}
+                      borderRadius={'sm'}
+                      cursor={'pointer'}
+                      _hover={{
+                        bg: 'primary.50',
+                        borderColor: 'primary.400'
+                      }}
+                      onClick={() => {
+                        router.push(`/chat/gate/application?appId=${item._id}`);
+                      }}
+                    >
+                      <Avatar src={item.avatar} w="1rem" h="1rem" borderRadius={'sm'} />
+                      <Box fontSize={'sm'}>{item.name}</Box>
+                    </HStack>
+                  ))}
+                </HStack>
                 <GateChatInput
                   onSendMessage={sendPrompt}
                   onStop={() => chatController.current?.abort('stop')}
@@ -1176,8 +1200,8 @@ const ChatBox = ({
                   resetInputVal={resetInputVal}
                   chatForm={chatForm}
                   placeholder={gateConfig?.placeholderText || '你可以问我任何问题'}
-                  selectedToolIds={selectedToolIds}
-                  onSelectedToolIdsChange={onSelectedToolIdsChange}
+                  selectedTools={selectedTools}
+                  onSelectTools={onSelectTools}
                 />
               </Box>
             )}
@@ -1205,7 +1229,7 @@ const ChatBox = ({
           {RenderRecords}
 
           {/* 移动端下的输入框和版权信息容器 */}
-          <Flex direction="column" w="100%" mb={{ base: '12px', sm: 0 }} gap="12px">
+          <Flex direction="column" w="100%" mb={{ base: '12px', sm: 0 }}>
             {/* message input */}
             {onStartChat && chatStarted && active && !isInteractive && (
               <Box
@@ -1225,8 +1249,8 @@ const ChatBox = ({
                     resetInputVal={resetInputVal}
                     chatForm={chatForm}
                     placeholder={gateConfig?.placeholderText || t('common:gate.placeholder')}
-                    selectedToolIds={selectedToolIds}
-                    onSelectedToolIdsChange={onSelectedToolIdsChange}
+                    selectedTools={selectedTools}
+                    onSelectTools={onSelectTools}
                   />
                 )}
                 {!inGateRoute && (

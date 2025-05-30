@@ -1,11 +1,10 @@
 import { Box, Button, Flex, Grid, useDisclosure, Text } from '@chakra-ui/react';
-import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { theme } from '@fastgpt/web/styles/theme';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -113,9 +112,8 @@ const ToolSelect = ({
     <>
       {/* 标题区域 */}
       <Flex alignItems="center" justifyContent="space-between" width="100%">
-        <Flex alignItems="center" gap={spacing.xs}>
+        <Flex alignItems="center" gap={1}>
           <Text
-            ml={2}
             fontWeight={formStyles.fontWeight}
             fontSize={formStyles.fontSize}
             lineHeight={formStyles.lineHeight}
@@ -124,7 +122,7 @@ const ToolSelect = ({
           >
             {t('common:core.app.Tool call')}
           </Text>
-          <QuestionTip ml={1} label={t('app:plugin_dispatch_tip')} />
+          <QuestionTip label={t('app:plugin_dispatch_tip')} />
         </Flex>
 
         {/* 已有工具时显示新增按钮 */}

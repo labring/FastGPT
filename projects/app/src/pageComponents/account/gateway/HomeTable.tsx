@@ -22,7 +22,6 @@ import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
 import { useMount } from 'ahooks';
 import type { AppDetailType, AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { useSimpleAppSnapshots } from '@/pageComponents/app/detail/Gate/useSnapshots';
-import { Dropdown } from 'react-day-picker';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import AddQuickAppModal from './AddQuickAppModal';
 import { listQuickApps } from '@/web/support/user/team/gate/quickApp';
@@ -43,7 +42,6 @@ type Props = {
   tools: string[];
   slogan: string;
   placeholderText: string;
-  onStatusChange?: (status: boolean) => void;
   onSloganChange?: (slogan: string) => void;
   onPlaceholderChange?: (text: string) => void;
   onToolsChange?: (tools: string[]) => void;
@@ -54,7 +52,6 @@ const HomeTable = ({
   appDetail,
   slogan,
   placeholderText,
-  onStatusChange,
   onSloganChange,
   onPlaceholderChange,
   onAppFormChange
@@ -163,12 +160,6 @@ const HomeTable = ({
     fontSize: '14px',
     lineHeight: '20px',
     letterSpacing: '0.25px'
-  };
-
-  // 响应式工具布局
-
-  const handleStatusChange = (val: string) => {
-    onStatusChange?.(val === 'enabled');
   };
 
   const handleSloganChange = (val: string) => {
@@ -287,75 +278,6 @@ const HomeTable = ({
         pb={6}
         pt={{ base: 4, md: 6 }}
       >
-        {/* 状态选择 */}
-        <FormControl display="flex" flexDirection="column" gap={spacing.sm} w="full">
-          <FormLabel
-            fontWeight={formStyles.fontWeight}
-            fontSize={formStyles.fontSize}
-            lineHeight={formStyles.lineHeight}
-            letterSpacing={formStyles.letterSpacing}
-            color="myGray.700"
-            mb="0"
-          >
-            {t('account_gate:status')}
-          </FormLabel>
-          <RadioGroup value={status ? 'enabled' : 'disabled'} onChange={handleStatusChange}>
-            <Stack direction={{ base: 'column', sm: 'row' }} spacing={spacing.md}>
-              <Flex
-                alignItems="center"
-                p={`${spacing.sm} ${spacing.lg} ${spacing.sm} ${spacing.md}`}
-                borderWidth="1px"
-                borderColor={status ? 'primary.500' : 'myGray.200'}
-                borderRadius="7px"
-                bg={status ? 'blue.50' : 'white'}
-                transition="all 0.2s ease-in-out"
-                _hover={{
-                  bg: status ? 'blue.100' : 'myGray.50',
-                  borderColor: status ? 'primary.600' : 'myGray.300',
-                  boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.05)',
-                  transform: 'translateY(-1px)'
-                }}
-              >
-                <Radio value="enabled" colorScheme="blue">
-                  <Text
-                    fontSize={formStyles.fontSize}
-                    lineHeight={formStyles.lineHeight}
-                    fontWeight={formStyles.fontWeight}
-                    letterSpacing={formStyles.letterSpacing}
-                  >
-                    {t('account_gate:enabled')}
-                  </Text>
-                </Radio>
-              </Flex>
-              <Flex
-                alignItems="center"
-                p={`${spacing.sm} ${spacing.lg} ${spacing.sm} ${spacing.md}`}
-                borderWidth="1px"
-                borderColor={!status ? 'primary.500' : 'myGray.200'}
-                borderRadius="7px"
-                bg={!status ? 'blue.50' : 'white'}
-                transition="all 0.2s ease-in-out"
-                _hover={{
-                  bg: !status ? 'blue.100' : 'myGray.50',
-                  borderColor: !status ? 'primary.600' : 'myGray.300',
-                  boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.05)',
-                  transform: 'translateY(-1px)'
-                }}
-              >
-                <Radio value="disabled" colorScheme="blue">
-                  <Text
-                    fontSize={formStyles.fontSize}
-                    lineHeight={formStyles.lineHeight}
-                    fontWeight={formStyles.fontWeight}
-                    letterSpacing={formStyles.letterSpacing}
-                  >
-                    {t('account_gate:disabled')}
-                  </Text>
-                </Radio>
-              </Flex>
-            </Stack>
-          </RadioGroup>
-        </FormControl>
         {/* 快捷应用 */}
         <FormControl
           display={'flex'}
@@ -365,7 +287,7 @@ const HomeTable = ({
           gap={'8px'}
         >
           {/* 标题行 */}
-          <Flex alignItems={'center'} gap={'4px'}>
+          <Flex alignItems={'center'} gap={'1'}>
             <Text
               color={'var(--Gray-Modern-600, #485264)'}
               fontFamily={'PingFang SC'}

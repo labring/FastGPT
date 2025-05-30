@@ -1,7 +1,6 @@
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex, HStack } from '@chakra-ui/react';
 import React, { useEffect, useMemo, useState } from 'react';
 
-import { useSafeState } from 'ahooks';
 import type { AppDetailType, AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import { useChatGate } from '../useChatGate';
@@ -11,6 +10,9 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { cardStyles } from '../constants';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { getQuickApps, listQuickApps } from '@/web/support/user/team/gate/quickApp';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 
 type Props = {
   appForm: AppSimpleEditFormType;
@@ -18,31 +20,17 @@ type Props = {
   appDetail: AppDetailType; // 添加 appDetail prop
 };
 const ChatGate = ({ appForm, setRenderEdit, appDetail }: Props) => {
-  console.log('appDetai', appDetail);
-  console.log('appform', appForm);
-
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
-
-  // 添加 selectedToolIds 状态管理
-  const [selectedToolIds, setSelectedToolIds] = useState<string[]>([]);
-
-  const [workflowData] = useSafeState({
-    nodes: appDetail.modules || [],
-    edges: appDetail.edges || []
-  });
 
   useEffect(() => {
     setRenderEdit(!datasetCiteData);
   }, [datasetCiteData, setRenderEdit]);
 
-  const { ChatContainer, restartChat, loading } = useChatGate({
-    ...workflowData,
-    chatConfig: appForm.chatConfig,
+  const { ChatContainer } = useChatGate({
+    appForm,
     isReady: true,
-    appDetail,
-    selectedToolIds, // 传递 selectedToolIds
-    onSelectedToolIdsChange: setSelectedToolIds // 传递更新函数
+    appDetail
   });
 
   return (

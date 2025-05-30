@@ -110,7 +110,14 @@ const OneRowSelector = ({ list, onChange, disableTip, ...props }: Props) => {
     </Box>
   );
 };
-const MultipleRowSelector = ({ list, onChange, disableTip, placeholder, ...props }: Props) => {
+const MultipleRowSelector = ({
+  list,
+  onChange,
+  disableTip,
+  placeholder,
+  showAvatar = true,
+  ...props
+}: Props) => {
   const { t } = useTranslation();
   const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
     useSystemStore();
@@ -193,17 +200,20 @@ const MultipleRowSelector = ({ list, onChange, disableTip, placeholder, ...props
 
     return (
       <HStack spacing={1}>
-        <Avatar
-          borderRadius={'0'}
-          mr={2}
-          src={modelData?.avatar}
-          fallbackSrc={HUGGING_FACE_ICON}
-          w={avatarSize}
-        />
+        {showAvatar && (
+          <Avatar
+            borderRadius={'0'}
+            mr={2}
+            src={modelData?.avatar}
+            fallbackSrc={HUGGING_FACE_ICON}
+            w={avatarSize}
+          />
+        )}
+
         <Box>{modelData?.name}</Box>
       </HStack>
     );
-  }, [modelList, props.value, t, avatarSize]);
+  }, [modelList, props.value, t, showAvatar, avatarSize]);
 
   return (
     <Box
