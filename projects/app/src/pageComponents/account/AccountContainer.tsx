@@ -62,11 +62,15 @@ const AccountContainer = ({
             label: t('account:usage_records'),
             value: TabEnum.usage
           },
-          {
-            icon: 'support/gate/gateLight',
-            label: t('account:gateways'),
-            value: TabEnum.gateway
-          }
+          ...(userInfo?.team?.permission.hasManagePer
+            ? [
+                {
+                  icon: 'support/gate/gateLight',
+                  label: t('account:gateways'),
+                  value: TabEnum.gateway
+                }
+              ]
+            : [])
         ]
       : []),
     ...(feConfigs?.show_pay && userInfo?.team?.permission.hasManagePer

@@ -158,12 +158,7 @@ const CopyrightTable = ({
               {t('account_gate:gate_logo')}
             </Text>
 
-            <Flex
-              gap={{ base: 4, md: 8 }}
-              alignItems="center"
-              justifyContent="flex-start"
-              flexDirection={{ base: 'column', md: 'row' }}
-            >
+            <Flex gap={{ base: 4, md: 8 }} alignItems="center" justifyContent="flex-start">
               {/* 左侧 Banner 显示 - 带文字 */}
               <Flex direction="column" gap={2} alignItems="center">
                 <Box
@@ -369,8 +364,8 @@ const CopyrightTable = ({
       <LogoFile
         onSelect={(e: File[]) =>
           onSelectLogoImage(e, {
-            maxH: 300,
-            maxW: 300,
+            maxH: 3000,
+            maxW: 3000,
             callback: (e: string) => {
               setValue('logo', e);
               handleGateLogoChange(e);
@@ -382,8 +377,8 @@ const CopyrightTable = ({
       <BannerFile
         onSelect={(e: File[]) =>
           onSelectBannerImage(e, {
-            maxH: 300,
-            maxW: 300,
+            maxH: 3000,
+            maxW: 3000,
             callback: (e: string) => {
               setValue('banner', e);
               handleGateBannerChange(e);

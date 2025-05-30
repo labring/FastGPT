@@ -338,7 +338,8 @@ const AppTable = () => {
   );
 
   const { openConfirm: openConfirmDel, ConfirmModal: DelConfirmModal } = useConfirm({
-    type: 'delete'
+    type: 'delete',
+    title: '确认删除该应用？'
   });
 
   const { runAsync: onDeleteApp } = useRequest2(delAppById, {
@@ -487,12 +488,11 @@ const AppTable = () => {
           flexDirection={{ base: 'column', md: 'row' }}
           alignItems={{ base: 'stretch', md: 'center' }}
         >
-          <Flex flex={1} gap={4}>
+          <Flex gap={4}>
             <SearchInput
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t('app:search_app')}
-              flex={1}
             />
             <Box w="200px">
               <Menu closeOnSelect={false}>

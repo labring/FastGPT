@@ -35,9 +35,7 @@ const GatewayConfig = () => {
   //从 appForm 中获取 selectedTools的 id 组成 string 数组
 
   //gateConfig?.tools 改成
-  const [copyRightConfig, setCopyRightConfig] = useState<
-    getGateConfigCopyRightResponse | undefined
-  >(undefined);
+  const [copyRightConfig, setCopyRightConfig] = useState<getGateConfigCopyRightResponse>();
   const [tab, setTab] = useState<TabType>('home');
   const [isLoadingApps, setIsLoadingApps] = useState(true);
   const [gateApps, setGateApps] = useState<AppListItemType[]>([]);
@@ -247,8 +245,6 @@ const GatewayConfig = () => {
   }, [
     gateConfig,
     copyRightConfig,
-    isLoadingApps,
-    gateApps,
     Tab,
     isAppTab,
     tab,
