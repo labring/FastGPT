@@ -9,7 +9,8 @@ import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import {
   DatasetCollectionDataProcessModeMap,
-  DatasetCollectionTypeMap
+  DatasetCollectionTypeMap,
+  DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -38,6 +39,9 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
       manual: false
     }
   );
+
+  const isImageCollection = collection?.type === DatasetCollectionTypeEnum.images;
+
   const metadataList = useMemo<{ label?: string; value?: any }[]>(() => {
     if (!collection) return [];
 
@@ -64,19 +68,23 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
         label: t('common:core.dataset.collection.metadata.Updatetime'),
         value: formatTime2YMDHM(collection.updateTime)
       },
-      {
-        label: t('dataset:collection_metadata_custom_pdf_parse'),
-        value: collection.customPdfParse ? 'Yes' : 'No'
-      },
-      {
-        label: t('common:core.dataset.collection.metadata.Raw text length'),
-        value: collection.rawTextLength ?? '-'
-      },
-      {
-        label: t('dataset:collection.training_type'),
-        value: t(DatasetCollectionDataProcessModeMap[collection.trainingType]?.label as any)
-      },
-      ...(collection.imageIndex !== undefined
+      ...(isImageCollection
+        ? []
+        : [
+            {
+              label: t('dataset:collection_metadata_custom_pdf_parse'),
+              value: collection.customPdfParse ? 'Yes' : 'No'
+            },
+            {
+              label: t('common:core.dataset.collection.metadata.Raw text length'),
+              value: collection.rawTextLength ?? '-'
+            },
+            {
+              label: t('dataset:collection.training_type'),
+              value: t(DatasetCollectionDataProcessModeMap[collection.trainingType]?.label as any)
+            }
+          ]),
+      ...(collection.imageIndex !== undefined && !isImageCollection
         ? [
             {
               label: t('dataset:data_index_image'),
@@ -92,7 +100,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
             }
           ]
         : []),
-      ...(collection.chunkSize
+      ...(collection.chunkSize && !isImageCollection
         ? [
             {
               label: t('dataset:chunk_size'),
@@ -100,7 +108,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
             }
           ]
         : []),
-      ...(collection.indexSize
+      ...(collection.indexSize && !isImageCollection
         ? [
             {
               label: t('dataset:index_size'),
@@ -108,7 +116,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
             }
           ]
         : []),
-      ...(webSelector
+      ...(webSelector && !isImageCollection
         ? [
             {
               label: t('common:core.dataset.collection.metadata.Web page selector'),
@@ -116,18 +124,16 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
             }
           ]
         : []),
-      {
-        ...(collection.tags
-          ? [
-              {
-                label: t('dataset:collection_tags'),
-                value: collection.tags?.join(', ') || '-'
-              }
-            ]
-          : [])
-      }
+      ...(collection.tags
+        ? [
+            {
+              label: t('dataset:collection_tags'),
+              value: collection.tags?.join(', ') || '-'
+            }
+          ]
+        : [])
     ];
-  }, [collection, t]);
+  }, [collection, t, isImageCollection]);
 
   return (
     <MyBox isLoading={isLoading} w={'100%'} h={'100%'} p={6}>

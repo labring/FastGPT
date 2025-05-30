@@ -1,13 +1,14 @@
 import {
   DatasetCollectionTypeEnum,
   DatasetCollectionDataProcessModeEnum,
-  DatasetTypeEnum
+  DatasetTypeEnum,
+  TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import type { CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { MongoDatasetCollection } from './schema';
-import {
-  type DatasetCollectionSchemaType,
-  type DatasetSchemaType
+import type {
+  DatasetCollectionSchemaType,
+  DatasetSchemaType
 } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetTraining } from '../training/schema';
 import { MongoDatasetData } from '../data/schema';
@@ -15,7 +16,8 @@ import { delImgByRelatedId } from '../../../common/file/image/controller';
 import { deleteDatasetDataVector } from '../../../common/vectorDB/controller';
 import { delFileByFileIdList } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
-import { type ClientSession } from '../../../common/mongo';
+import type { ClientSession } from '../../../common/mongo';
+import { connectionMongo } from '../../../common/mongo';
 import { createOrGetCollectionTags } from './utils';
 import { rawText2Chunks } from '../read';
 import { checkDatasetLimit } from '../../../support/permission/teamLimit';
@@ -38,6 +40,8 @@ import {
   getLLMMaxChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { MongoDatasetCollectionImage } from '../image/schema';
+import { deleteDatasetImage } from '../image/controller';
 
 export const createCollectionAndInsertData = async ({
   dataset,
@@ -49,7 +53,7 @@ export const createCollectionAndInsertData = async ({
   session
 }: {
   dataset: DatasetSchemaType;
-  rawText: string;
+  rawText?: string;
   relatedId?: string;
   createCollectionParams: CreateOneCollectionParams;
   backupParse?: boolean;
@@ -68,7 +72,10 @@ export const createCollectionAndInsertData = async ({
 
   // Set default params
   const trainingType =
-    createCollectionParams.trainingType || DatasetCollectionDataProcessModeEnum.chunk;
+    createCollectionParams.trainingType ||
+    (createCollectionParams.imageIdList && createCollectionParams.imageIdList.length > 0
+      ? DatasetCollectionDataProcessModeEnum.imageParse
+      : DatasetCollectionDataProcessModeEnum.chunk);
   const chunkSize = computeChunkSize({
     ...createCollectionParams,
     trainingType,
@@ -90,19 +97,55 @@ export const createCollectionAndInsertData = async ({
     delete createCollectionParams.qaPrompt;
   }
 
-  // 1. split chunks
-  const chunks = rawText2Chunks({
-    rawText,
-    chunkTriggerType: createCollectionParams.chunkTriggerType,
-    chunkTriggerMinSize: createCollectionParams.chunkTriggerMinSize,
-    chunkSize,
-    paragraphChunkDeep,
-    paragraphChunkMinSize: createCollectionParams.paragraphChunkMinSize,
-    maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
-    overlapRatio: trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
-    customReg: chunkSplitter ? [chunkSplitter] : [],
-    backupParse
-  });
+  // 1. split chunks or create image chunks
+  const chunks: Array<{
+    q: string;
+    a?: string;
+    imageId?: string;
+    indexes?: string[];
+    imageIdList?: string[];
+  }> = (() => {
+    if (rawText) {
+      // Process text chunks
+      return rawText2Chunks({
+        rawText,
+        chunkTriggerType: createCollectionParams.chunkTriggerType,
+        chunkTriggerMinSize: createCollectionParams.chunkTriggerMinSize,
+        chunkSize,
+        paragraphChunkDeep,
+        paragraphChunkMinSize: createCollectionParams.paragraphChunkMinSize,
+        maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
+        overlapRatio: trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
+        customReg: chunkSplitter ? [chunkSplitter] : [],
+        backupParse,
+        imageIdList: createCollectionParams.imageIdList
+      });
+    } else if (
+      createCollectionParams.imageIdList &&
+      createCollectionParams.imageIdList.length > 0
+    ) {
+      // Process image chunks
+      return createCollectionParams.imageIdList.map((imageId: string) => ({
+        q: '',
+        a: '',
+        imageId,
+        imageIdList: [imageId]
+      }));
+    } else {
+      throw new Error('Either rawText or imageIdList must be provided');
+    }
+  })();
+
+  // Extract all imageIds from chunks for batch operations
+  const allImageIds = chunks.reduce((acc: string[], chunk) => {
+    if (chunk.imageIdList) {
+      acc.push(...chunk.imageIdList);
+    }
+    if (chunk.imageId) {
+      acc.push(chunk.imageId);
+    }
+    return acc;
+  }, []);
 
   // 2. auth limit
   await checkDatasetLimit({
@@ -118,7 +161,7 @@ export const createCollectionAndInsertData = async ({
   });
 
   const fn = async (session: ClientSession) => {
-    // 3. create collection
+    // 3. Create collection
     const { _id: collectionId } = await createOneCollection({
       ...createCollectionParams,
       trainingType,
@@ -126,8 +169,8 @@ export const createCollectionAndInsertData = async ({
       chunkSize,
       chunkSplitter,
 
-      hashRawText: hashStr(rawText),
-      rawTextLength: rawText.length,
+      hashRawText: rawText ? hashStr(rawText) : undefined,
+      rawTextLength: rawText?.length || 0,
       nextSyncTime: (() => {
         // ignore auto collections sync for website datasets
         if (!dataset.autoSync && dataset.type === DatasetTypeEnum.websiteDataset) return undefined;
@@ -159,12 +202,31 @@ export const createCollectionAndInsertData = async ({
       return newBillId;
     })();
 
-    // 5. insert to training queue
+    // 5. Update image records for image collections (batch processing)
+    if (allImageIds.length > 0) {
+      await MongoDatasetCollectionImage.updateMany(
+        {
+          _id: { $in: allImageIds },
+          teamId: teamId
+        },
+        {
+          $set: {
+            collectionId: collectionId
+          },
+          $unset: {
+            expiredTime: 1
+          }
+        },
+        { session }
+      );
+    }
+
+    // 6. insert to training queue
     const insertResults = await pushDataListToTrainingQueue({
       teamId,
       tmbId,
       datasetId: dataset._id,
-      collectionId,
+      collectionId: collectionId,
       agentModel: dataset.agentModel,
       vectorModel: dataset.vectorModel,
       vlmModel: dataset.vlmModel,
@@ -182,32 +244,48 @@ export const createCollectionAndInsertData = async ({
           type: DatasetDataIndexTypeEnum.custom,
           text
         })),
-        chunkIndex: index
+        chunkIndex: index,
+        imageId: item.imageId
       })),
       session
     });
 
-    // 6. remove related image ttl
-    if (relatedId) {
-      await MongoImage.updateMany(
-        {
-          teamId,
-          'metadata.relatedId': relatedId
-        },
-        {
-          // Remove expiredTime to avoid ttl expiration
-          $unset: {
-            expiredTime: 1
-          }
-        },
-        {
-          session
-        }
-      );
-    }
+    // 7. Execute related image operations in parallel
+    await Promise.all([
+      // Remove related image ttl
+      relatedId
+        ? MongoImage.updateMany(
+            {
+              teamId,
+              'metadata.relatedId': relatedId
+            },
+            {
+              // Remove expiredTime to avoid ttl expiration
+              $unset: {
+                expiredTime: 1
+              }
+            },
+            {
+              session
+            }
+          )
+        : Promise.resolve(),
+
+      // Batch delete expired image indexes if imageIds are present (only for imageParse mode)
+      trainingType === DatasetCollectionDataProcessModeEnum.imageParse && allImageIds.length > 0
+        ? MongoDatasetCollectionImage.deleteMany(
+            {
+              teamId,
+              _id: { $in: allImageIds },
+              expiredTime: { $exists: true, $lt: new Date() }
+            },
+            { session }
+          )
+        : Promise.resolve()
+    ]);
 
     return {
-      collectionId,
+      collectionId: String(collectionId),
       insertResults
     };
   };
@@ -288,17 +366,20 @@ export const delCollectionRelatedSource = async ({
     .map((item) => item?.metadata?.relatedImgId || '')
     .filter(Boolean);
 
-  // Delete files
-  await delFileByFileIdList({
-    bucketName: BucketNameEnum.dataset,
-    fileIdList
-  });
-  // Delete images
-  await delImgByRelatedId({
-    teamId,
-    relateIds: relatedImageIds,
-    session
-  });
+  // Delete files and images in parallel
+  await Promise.all([
+    // Delete files
+    delFileByFileIdList({
+      bucketName: BucketNameEnum.dataset,
+      fileIdList
+    }),
+    // Delete images
+    delImgByRelatedId({
+      teamId,
+      relateIds: relatedImageIds,
+      session
+    })
+  ]);
 };
 /**
  * delete collection and it related data
@@ -343,16 +424,14 @@ export async function delCollection({
         datasetId: { $in: datasetIds },
         collectionId: { $in: collectionIds }
       }),
+      // Delete images if needed
       ...(delImg
-        ? [
-            delImgByRelatedId({
-              teamId,
-              relateIds: collections
-                .map((item) => item?.metadata?.relatedImgId || '')
-                .filter(Boolean)
-            })
-          ]
+        ? collections
+            .map((item) => item?.metadata?.relatedImgId || '')
+            .filter(Boolean)
+            .map((imageId) => deleteDatasetImage(imageId))
         : []),
+      // Delete files if needed
       ...(delFile
         ? [
             delFileByFileIdList({
@@ -362,7 +441,16 @@ export async function delCollection({
           ]
         : []),
       // Delete vector data
-      deleteDatasetDataVector({ teamId, datasetIds, collectionIds })
+      deleteDatasetDataVector({ teamId, datasetIds, collectionIds }),
+      // Get all collection images and delete them with GridFS
+      (async () => {
+        const collectionImages = await MongoDatasetCollectionImage.find({
+          teamId,
+          collectionId: { $in: collectionIds }
+        }).lean();
+
+        await Promise.all(collectionImages.map((image) => deleteDatasetImage(String(image._id))));
+      })()
     ]);
 
     // delete collections

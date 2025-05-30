@@ -143,6 +143,7 @@ export type DatasetDataSchemaType = {
   updateTime: Date;
   q: string; // large chunks or question
   a: string; // answer or custom content
+  imageId?: string;
   history?: {
     q: string;
     a: string;
@@ -179,6 +180,7 @@ export type DatasetTrainingSchemaType = {
   dataId?: string;
   q: string;
   a: string;
+  imageId?: string;
   chunkIndex: number;
   indexSize?: number;
   weight: number;
@@ -254,10 +256,10 @@ export type DatasetDataItemType = {
   sourceId?: string;
   q: string;
   a: string;
+  imageId?: string;
   chunkIndex: number;
   indexes: DatasetDataIndexItemType[];
   isOwner: boolean;
-  // permission: DatasetPermission;
 };
 
 /* --------------- file ---------------------- */

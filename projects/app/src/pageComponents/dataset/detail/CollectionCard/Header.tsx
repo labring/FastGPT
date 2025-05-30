@@ -99,7 +99,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
         getData(pageNum);
       },
       successToast: t('common:create_success'),
-      errorToast: t('common:create_failed')
+      errorToast: t('common:error.Create failed')
     }
   );
 
@@ -247,6 +247,22 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                             onCreateCollection({ name, type: DatasetCollectionTypeEnum.virtual })
                         });
                       }
+                    },
+                    {
+                      label: (
+                        <Flex>
+                          <MyIcon name={'image'} mr={2} w={'20px'} />
+                          {t('dataset:core.dataset.Image collection')}
+                        </Flex>
+                      ),
+                      onClick: () =>
+                        router.replace({
+                          query: {
+                            ...router.query,
+                            currentTab: TabEnum.import,
+                            source: ImportDataSourceEnum.imageDataset
+                          }
+                        })
                     },
                     {
                       label: (
@@ -473,7 +489,10 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
           name={editFolderData.name}
         />
       )}
-      <EditCreateVirtualFileModal iconSrc={'modal/manualDataset'} closeBtnText={''} />
+      <EditCreateVirtualFileModal
+        iconSrc={'modal/manualDataset'}
+        closeBtnText={t('common:Cancel')}
+      />
       {isOpenFileSourceSelector && <FileSourceSelector onClose={onCloseFileSourceSelector} />}
       {isOpenBackupImportModal && (
         <BackupImportModal

@@ -10,26 +10,26 @@ import { insertData2Dataset } from '@/service/core/dataset/data/controller';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
-import { type InsertOneDatasetDataProps } from '@/global/core/dataset/api';
+import type { InsertOneDatasetDataProps } from '@/global/core/dataset/api';
 import { simpleText } from '@fastgpt/global/common/string/tools';
 import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
+import { MongoDatasetCollectionImage } from '@fastgpt/service/core/dataset/image/schema';
 
 async function handler(req: NextApiRequest) {
-  const { collectionId, q, a, indexes } = req.body as InsertOneDatasetDataProps;
+  const { collectionId, q, a, indexes, imageId } = req.body as InsertOneDatasetDataProps;
 
   if (!q) {
-    Promise.reject(CommonErrEnum.missingParams);
+    return Promise.reject(CommonErrEnum.missingParams);
   }
 
   if (!collectionId) {
-    Promise.reject(CommonErrEnum.missingParams);
+    return Promise.reject(CommonErrEnum.missingParams);
   }
 
-  // 凭证校验
   const { teamId, tmbId } = await authDatasetCollection({
     req,
     authToken: true,
@@ -43,14 +43,12 @@ async function handler(req: NextApiRequest) {
     insertLen: 1
   });
 
-  // auth collection and get dataset
   const [
     {
       dataset: { _id: datasetId, vectorModel, agentModel }
     }
   ] = await Promise.all([getCollectionWithDataset(collectionId)]);
 
-  // format data
   const formatQ = simpleText(q);
   const formatA = simpleText(a);
   const formatIndexes = indexes?.map((item) => ({
@@ -58,7 +56,6 @@ async function handler(req: NextApiRequest) {
     text: simpleText(item.text)
   }));
 
-  // token check
   const token = await countPromptTokens(formatQ + formatA, '');
   const vectorModelData = getEmbeddingModel(vectorModel);
   const llmModelData = getLLMModel(agentModel);
@@ -68,7 +65,6 @@ async function handler(req: NextApiRequest) {
     return Promise.reject(`Content over max chunk size: ${maxChunkSize}`);
   }
 
-  // Duplicate data check
   await hasSameValue({
     teamId,
     datasetId,
@@ -86,8 +82,14 @@ async function handler(req: NextApiRequest) {
     a: formatA,
     chunkIndex: 0,
     embeddingModel: vectorModelData.model,
-    indexes: formatIndexes
+    indexes: formatIndexes,
+    imageId
   });
+
+  // Remove TTL from image if imageId exists (prevent image expiration during training)
+  if (imageId) {
+    await MongoDatasetCollectionImage.updateOne({ _id: imageId }, { $unset: { expiredTime: 1 } });
+  }
 
   pushGenerateVectorUsage({
     teamId,

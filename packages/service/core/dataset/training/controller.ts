@@ -16,6 +16,7 @@ import {
   getLLMDefaultChunkSize,
   getLLMMaxChunkSize
 } from '../../../../global/core/dataset/training/utils';
+import { connectionMongo } from '../../../common/mongo';
 
 export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => {
   try {
@@ -101,7 +102,7 @@ export async function pushDataListToTrainingQueue({
         weight: 0
       };
     }
-    if (mode === TrainingModeEnum.image) {
+    if (mode === TrainingModeEnum.image || mode === TrainingModeEnum.imageParse) {
       const vllmModelData = getVlmModel(vlmModel);
       if (!vllmModelData) {
         return Promise.reject(i18nT('common:error_vlm_not_config'));
@@ -140,7 +141,8 @@ export async function pushDataListToTrainingQueue({
       .filter(Boolean);
 
     // filter repeat content
-    if (!item.q) {
+    // For imageParse mode, allow empty q if imageId exists
+    if (!item.q && !(mode === TrainingModeEnum.imageParse && item.imageId)) {
       filterResult.error.push(item);
       return;
     }
@@ -153,11 +155,14 @@ export async function pushDataListToTrainingQueue({
       return;
     }
 
-    if (set.has(text)) {
+    // For imageParse mode with imageId, use imageId as unique key
+    const uniqueKey = mode === TrainingModeEnum.imageParse && item.imageId ? item.imageId : text;
+
+    if (set.has(uniqueKey)) {
       filterResult.repeat.push(item);
     } else {
       filterResult.success.push(item);
-      set.add(text);
+      set.add(uniqueKey);
     }
   });
 
@@ -177,8 +182,8 @@ export async function pushDataListToTrainingQueue({
         list.map((item) => ({
           teamId,
           tmbId,
-          datasetId,
-          collectionId,
+          datasetId: datasetId,
+          collectionId: collectionId,
           billId,
           mode: getImageChunkMode(item, mode),
           prompt,
@@ -189,7 +194,8 @@ export async function pushDataListToTrainingQueue({
           indexSize,
           weight: weight ?? 0,
           indexes: item.indexes,
-          retryCount: 5
+          retryCount: 5,
+          ...(item.imageId ? { imageId: item.imageId } : {})
         })),
         {
           session,
@@ -202,11 +208,12 @@ export async function pushDataListToTrainingQueue({
       error.writeErrors?.forEach((writeError: any) => {
         failedDocuments.push(data[writeError.index]);
       });
-      console.log('failed', failedDocuments);
     }
 
     // 对于失败的文档，尝试单独插入
-    await MongoDatasetTraining.create(failedDocuments, { session });
+    if (failedDocuments.length > 0) {
+      await MongoDatasetTraining.create(failedDocuments, { session });
+    }
 
     return insertData(startIndex + batchSize, session);
   };

@@ -267,6 +267,7 @@ export async function authDatasetData({
     updateTime: datasetData.updateTime,
     q: datasetData.q,
     a: datasetData.a,
+    imageId: datasetData.imageId,
     chunkIndex: datasetData.chunkIndex,
     indexes: datasetData.indexes,
     datasetId: String(datasetData.datasetId),

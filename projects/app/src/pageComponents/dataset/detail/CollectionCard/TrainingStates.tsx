@@ -259,6 +259,7 @@ const ErrorView = ({ datasetId, collectionId }: { datasetId: string; collectionI
   const TrainingText = {
     [TrainingModeEnum.chunk]: t('dataset:process.Vectorizing'),
     [TrainingModeEnum.qa]: t('dataset:process.Get QA'),
+    [TrainingModeEnum.imageParse]: t('dataset:process.Image_Index'),
     [TrainingModeEnum.image]: t('dataset:process.Image_Index'),
     [TrainingModeEnum.auto]: t('dataset:process.Auto_Index')
   };

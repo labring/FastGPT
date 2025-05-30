@@ -58,6 +58,7 @@ export type CreateDatasetCollectionParams = DatasetCollectionStoreDataType & {
   hashRawText?: string;
 
   tags?: string[];
+  imageIdList?: string[];
 
   createTime?: Date;
   updateTime?: Date;
@@ -127,6 +128,7 @@ export type PgSearchRawType = {
 export type PushDatasetDataChunkProps = {
   q: string; // embedding content
   a?: string; // bonus content
+  imageId?: string; //file id preview
   chunkIndex?: number;
   indexes?: Omit<DatasetDataIndexItemType, 'dataId'>[];
 };
@@ -151,4 +153,5 @@ export type PushDatasetDataProps = {
 };
 export type PushDatasetDataResponse = {
   insertLen: number;
+  message?: string;
 };

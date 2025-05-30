@@ -18,6 +18,8 @@ import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTex
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
+import { MongoDatasetCollectionImage } from '@fastgpt/service/core/dataset/image/schema';
+import { deleteDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
 
 const formatIndexes = async ({
   indexes = [],
@@ -147,6 +149,7 @@ export async function insertData2Dataset({
   indexSize = 512,
   indexes,
   embeddingModel,
+  imageId,
   session
 }: CreateDatasetDataProps & {
   embeddingModel: string;
@@ -207,6 +210,7 @@ export async function insertData2Dataset({
         tmbId,
         datasetId,
         collectionId,
+        imageId,
         q,
         a,
         chunkIndex,
@@ -391,8 +395,16 @@ export async function updateData2Dataset({
 
 export const deleteDatasetData = async (data: DatasetDataItemType) => {
   await mongoSessionRun(async (session) => {
+    // 1. Delete MongoDB data
     await MongoDatasetData.deleteOne({ _id: data.id }, { session });
     await MongoDatasetDataText.deleteMany({ dataId: data.id }, { session });
+
+    // 2. If there are any image files, delete the image records and GridFS file.
+    if (data.imageId) {
+      await deleteDatasetImage(data.imageId);
+    }
+
+    // 3. Delete vector data
     await deleteDatasetDataVector({
       teamId: data.teamId,
       idList: data.indexes.map((item) => item.dataId)

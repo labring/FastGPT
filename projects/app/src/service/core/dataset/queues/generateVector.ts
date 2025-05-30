@@ -261,6 +261,7 @@ const insertData = async ({
       collectionId: trainingData.collectionId,
       q: trainingData.q,
       a: trainingData.a,
+      imageId: trainingData.imageId,
       chunkIndex: trainingData.chunkIndex,
       indexSize: trainingData.indexSize,
       indexes: trainingData.indexes,

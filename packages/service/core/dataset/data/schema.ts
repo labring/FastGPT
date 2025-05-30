@@ -74,6 +74,9 @@ const DatasetDataSchema = new Schema({
     default: []
   },
 
+  imageId: {
+    type: String
+  },
   updateTime: {
     type: Date,
     default: () => new Date()

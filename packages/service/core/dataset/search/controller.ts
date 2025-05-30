@@ -463,7 +463,7 @@ export async function searchDatasetData(
           collectionId: { $in: collectionIdList },
           'indexes.dataId': { $in: results.map((item) => item.id?.trim()) }
         },
-        '_id datasetId collectionId updateTime q a chunkIndex indexes',
+        '_id datasetId collectionId updateTime q a chunkIndex indexes imageId',
         { ...readFromSecondary }
       ).lean(),
       MongoDatasetCollection.find(
@@ -496,6 +496,7 @@ export async function searchDatasetData(
           updateTime: data.updateTime,
           q: data.q,
           a: data.a,
+          imageId: data.imageId,
           chunkIndex: data.chunkIndex,
           datasetId: String(data.datasetId),
           collectionId: String(data.collectionId),
@@ -597,7 +598,7 @@ export async function searchDatasetData(
           {
             _id: { $in: searchResults.map((item) => item.dataId) }
           },
-          '_id datasetId collectionId updateTime q a chunkIndex indexes',
+          '_id datasetId collectionId updateTime q a chunkIndex indexes imageId',
           { ...readFromSecondary }
         ).lean(),
         MongoDatasetCollection.find(
@@ -632,6 +633,7 @@ export async function searchDatasetData(
               updateTime: data.updateTime,
               q: data.q,
               a: data.a,
+              imageId: data.imageId,
               chunkIndex: data.chunkIndex,
               indexes: data.indexes,
               ...getCollectionSourceData(collection),

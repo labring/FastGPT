@@ -1,6 +1,7 @@
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetCollection } from './collection/schema';
 import { MongoDataset } from './schema';
+import { MongoDatasetCollectionImage } from './image/schema';
 import { delCollectionRelatedSource } from './collection/controller';
 import { type ClientSession } from '../../common/mongo';
 import { MongoDatasetTraining } from './training/schema';
@@ -105,7 +106,12 @@ export async function delDatasetRelevantData({
       // Delete Image and file
       delCollectionRelatedSource({ collections }),
       // Delete vector data
-      deleteDatasetDataVector({ teamId, datasetIds })
+      deleteDatasetDataVector({ teamId, datasetIds }),
+      // Delete dataset collection images
+      MongoDatasetCollectionImage.deleteMany({
+        teamId,
+        datasetId: { $in: datasetIds }
+      })
     ]);
   });
 
