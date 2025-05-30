@@ -10,6 +10,7 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controlle
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 async function handler(
   req: NextApiRequest,
@@ -42,7 +43,13 @@ async function handler(
   }
 
   // get app and history
-  const { nodes, chatConfig } = await getAppLatestVersion(app._id, app);
+  const { nodes, chatConfig } =
+    app.type === AppTypeEnum.gate
+      ? {
+          nodes: app.modules,
+          chatConfig: app.chatConfig
+        }
+      : await getAppLatestVersion(app._id, app);
   const pluginInputs =
     chat?.pluginInputs ??
     nodes?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs ??

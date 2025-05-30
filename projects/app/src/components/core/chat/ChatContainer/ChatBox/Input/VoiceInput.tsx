@@ -6,12 +6,10 @@ import React, {
   useCallback,
   useState,
   forwardRef,
-  useImperativeHandle,
-  useMemo
+  useImperativeHandle
 } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';

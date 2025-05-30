@@ -46,7 +46,7 @@ export const appWorkflow2Form = ({
   chatConfig
 }: {
   nodes: StoreNodeItemType[];
-  chatConfig: AppChatConfigType;
+  chatConfig?: AppChatConfigType;
 }) => {
   const defaultAppForm = getDefaultAppForm();
   const findInputValueByKey = (inputs: FlowNodeInputItemType[], key: string) => {
@@ -171,6 +171,10 @@ export const appWorkflow2Form = ({
       });
     }
   });
+
+  if (chatConfig) {
+    defaultAppForm.chatConfig = chatConfig;
+  }
 
   return defaultAppForm;
 };

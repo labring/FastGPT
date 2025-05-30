@@ -153,7 +153,7 @@ export const useChatGate = ({
   const { data: recommendApps = [] } = useRequest2(listQuickApps, {
     manual: false
   });
-
+  console.log(appForm, 111);
   const CustomChatContainer = useMemoizedFn(() => (
     <ChatBox
       isReady={isReady}

@@ -14,6 +14,7 @@ import type { putUpdateGateConfigCopyRightData } from '@fastgpt/global/support/u
 import { saveCopyRightConfig } from './CopyrightTable';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { form2AppWorkflow } from '@/web/core/app/utils';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type Props = {
   tab: 'home' | 'copyright' | 'app' | 'logs';
@@ -84,6 +85,7 @@ const ConfigButtons = ({ tab, appForm, gateConfig, copyRightConfig }: Props) => 
     }
   );
 
+  const { ttsModelList, sttModelList } = useSystemStore();
   const checkAndCreateGateApp = async () => {
     try {
       // 获取应用列表
@@ -103,7 +105,27 @@ const ConfigButtons = ({ tab, appForm, gateConfig, copyRightConfig }: Props) => 
             intro: currentSlogan,
             name: gateConfig?.name,
             nodes,
-            edges
+            edges,
+            chatConfig: {
+              ttsConfig:
+                ttsModelList.length > 0
+                  ? {
+                      type: 'model',
+                      model: ttsModelList[0].model
+                    }
+                  : undefined,
+              whisperConfig: {
+                open: sttModelList.length > 0,
+                autoSend: false,
+                autoTTSResponse: false
+              },
+              fileSelectConfig: {
+                canSelectFile: true,
+                customPdfParse: false,
+                canSelectImg: true,
+                maxFiles: 10
+              }
+            }
           });
         }
       } else {
@@ -114,7 +136,26 @@ const ConfigButtons = ({ tab, appForm, gateConfig, copyRightConfig }: Props) => 
           type: AppTypeEnum.gate,
           modules: emptyTemplates[AppTypeEnum.gate].nodes,
           edges: emptyTemplates[AppTypeEnum.gate].edges,
-          chatConfig: emptyTemplates[AppTypeEnum.gate].chatConfig
+          chatConfig: {
+            ttsConfig:
+              ttsModelList.length > 0
+                ? {
+                    type: 'model',
+                    model: ttsModelList[0].model
+                  }
+                : undefined,
+            whisperConfig: {
+              open: sttModelList.length > 0,
+              autoSend: false,
+              autoTTSResponse: false
+            },
+            fileSelectConfig: {
+              canSelectFile: true,
+              customPdfParse: false,
+              canSelectImg: true,
+              maxFiles: 10
+            }
+          }
         });
       }
     } catch (error) {

@@ -83,7 +83,6 @@ const GateChatInput = ({
   const selectedTools = externalSelectedToolIds ?? [];
   const setSelectedToolIds = onSelectTools!;
 
-  const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { llmModelList } = useSystemStore();
   const modelList = useMemo(
     () => llmModelList.map((item) => ({ label: item.name, value: item.model })),
@@ -100,36 +99,6 @@ const GateChatInput = ({
   const showTools = useMemo(() => {
     return router.pathname === '/chat/gate';
   }, [router.pathname]);
-
-  // 初始化加载appForm - 从Gate应用获取配置
-  useEffect(() => {
-    if (!appId || !showTools) return;
-
-    const fetchAppForm = async () => {
-      try {
-        // 加载Gate应用列表
-        // 获取当前应用或第一个可用的Gate应用
-        const currentApp = appDetail;
-
-        if (currentApp && currentApp.modules) {
-          // 将模块转换为appForm格式
-          const form = appWorkflow2Form({
-            nodes: currentApp.modules,
-            chatConfig: currentApp.chatConfig || {}
-          });
-          setAppForm(form);
-          // 如果选择了模型，设置为默认模型
-          if (form.aiSettings.model) {
-            setSelectedModel(form.aiSettings.model);
-          }
-        }
-      } catch (error) {
-        console.error('加载Gate应用信息失败:', error);
-      }
-    };
-
-    fetchAppForm();
-  }, [appId, showTools, appDetail, setAppForm]);
 
   // 当模型选择变化时更新appForm
   useEffect(() => {
@@ -229,15 +198,6 @@ const GateChatInput = ({
       <Box px={[1, 3]}>
         <FilePreview fileList={fileList} removeFiles={removeFiles} />
       </Box>
-
-      {/* voice input and loading container */}
-      {!inputValue && (
-        <VoiceInput
-          ref={VoiceInputRef}
-          onSendMessage={onSendMessage}
-          resetInputVal={resetInputVal}
-        />
-      )}
 
       <Textarea
         ref={TextareaDom}
@@ -451,6 +411,15 @@ const GateChatInput = ({
 
       <File onSelect={(files) => onSelectFile({ files })} />
       <ComplianceTip type={'chat'} />
+
+      {/* voice input and loading container */}
+      {!inputValue && (
+        <VoiceInput
+          ref={VoiceInputRef}
+          onSendMessage={onSendMessage}
+          resetInputVal={resetInputVal}
+        />
+      )}
     </Box>
   );
 };
