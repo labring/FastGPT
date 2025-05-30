@@ -19,7 +19,7 @@ export const TeamPermissionList: PermissionListType<TeamPermissionKeyEnum> = {
   },
   [PermissionKeyEnum.manage]: {
     ...PermissionList[PermissionKeyEnum.manage],
-    value: 0b000001
+    value: 0b000101
   },
   [TeamPermissionKeyEnum.appCreate]: {
     checkBoxType: 'multiple',

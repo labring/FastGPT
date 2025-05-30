@@ -69,11 +69,6 @@ export class Permission {
       return this.value === OwnerPermissionVal;
     }
 
-    // 管理员
-    if ((this.value & ManagePermissionVal) === ManagePermissionVal) {
-      return (this._permissionList.manage.value & perm) === perm;
-    }
-
     return (this.value & perm) === perm;
   }
 
