@@ -122,7 +122,6 @@ const MarkdownRender = ({
                       node.type = 'text';
                       node.value = `<${node.tagName}`;
                     }
-
                     // use filterSafeProps to filter component properties
                     if (node.properties) {
                       const ALLOWED_ATTRS = new Set([
@@ -249,7 +248,33 @@ function Image({ src }: { src?: string }) {
   return <MdImage src={safeSrc} />;
 }
 
-function RewritePre({ children }: any) {
+const ALLOWED_IMG_ATTRS = new Set([
+  'alt',
+  'width',
+  'height',
+  'className',
+  'style',
+  'title',
+  'loading',
+  'decoding',
+  'crossOrigin',
+  'referrerPolicy'
+]);
+
+function Image({ src, ...rest }: { src?: string; [key: string]: any }) {
+  const safeSrc = sanitizeImageSrc(src);
+  if (!safeSrc) {
+    console.warn(`Blocked unsafe image src: ${src}`);
+  }
+  // only allow whitelist attributes, and remove all on* events
+  const safeProps = filterSafeProps(rest, ALLOWED_IMG_ATTRS);
+  return <MdImage src={safeSrc} {...safeProps} />;
+}
+
+function RewritePre({ children, ...rest }: any) {
+  // only allow className, style, etc. safe attributes
+  const ALLOWED_PRE_ATTRS = new Set(['className', 'style']);
+  const safeProps = filterSafeProps(rest, ALLOWED_PRE_ATTRS);
   const modifiedChildren = React.Children.map(children, (child) => {
     if (React.isValidElement(child)) {
       // @ts-ignore
@@ -257,8 +282,142 @@ function RewritePre({ children }: any) {
     }
     return child;
   });
+  return <pre {...safeProps}>{modifiedChildren}</pre>;
+}
 
-  return <>{modifiedChildren}</>;
+/**
+ * general safe attribute filter
+ * @param props input props object
+ * @param allowedAttrs allowed attribute name Set
+ * @param eventTypeCheck whether to check event type (e.g. onClick must be a function)
+ */
+export function filterSafeProps(
+  props: Record<string, any>,
+  allowedAttrs: Set<string>,
+  eventTypeCheck: boolean = true
+) {
+  // dangerous protocols
+  const DANGEROUS_PROTOCOLS =
+    /^(?:\s|&nbsp;|&#160;)*(?:javascript|vbscript|data(?!:(?:image|audio|video)))/i;
+
+  // dangerous event properties (including various possible ways)
+  const DANGEROUS_EVENTS =
+    /^(?:\s|&nbsp;|&#160;)*(?:on|formaction|data-|\[\[|\{\{|xlink:|href|src|action)/i;
+
+  // complete decode function
+  function fullDecode(input: string): string {
+    if (!input) return '';
+
+    let result = input;
+    let lastResult = '';
+
+    // continue decoding until no more decoding can be done
+    while (result !== lastResult) {
+      lastResult = result;
+      try {
+        // HTML entity decode
+        result = result.replace(/&(#?[\w\d]+);/g, (_, entity) => {
+          try {
+            const txt = document.createElement('textarea');
+            txt.innerHTML = `&${entity};`;
+            return txt.value;
+          } catch {
+            return '';
+          }
+        });
+
+        // Unicode decode (\u0061 format)
+        result = result.replace(/(?:\\|%5C|%5c)u([0-9a-f]{4})/gi, (_, hex) =>
+          String.fromCharCode(parseInt(hex, 16))
+        );
+
+        // URL encode decode
+        result = result.replace(/%([0-9a-f]{2})/gi, (_, hex) =>
+          String.fromCharCode(parseInt(hex, 16))
+        );
+
+        // octal decode
+        result = result.replace(/\\([0-7]{3})/gi, (_, oct) =>
+          String.fromCharCode(parseInt(oct, 8))
+        );
+
+        // hexadecimal decode (\x61 format)
+        result = result.replace(/(?:\\|%5C|%5c)x([0-9a-f]{2})/gi, (_, hex) =>
+          String.fromCharCode(parseInt(hex, 16))
+        );
+
+        // handle whitespace and comments
+        result = result.replace(/(?:\s|\/\*.*?\*\/|<!--.*?-->)+/g, '');
+      } catch {
+        break;
+      }
+    }
+
+    return result.toLowerCase();
+  }
+
+  // check if it contains dangerous content
+  function containsDangerousContent(value: string): boolean {
+    const decoded = fullDecode(value);
+
+    return (
+      // check dangerous protocol
+      DANGEROUS_PROTOCOLS.test(decoded) ||
+      // check dangerous event
+      DANGEROUS_EVENTS.test(decoded) ||
+      // check inline event
+      /on\w+\s*=/.test(decoded) ||
+      // check javascript: link
+      /javascript\s*:/.test(decoded) ||
+      // check other possible injections
+      /<\w+/i.test(decoded) ||
+      /\(\s*\)/i.test(decoded) ||
+      /\[\s*\]/i.test(decoded) ||
+      /\{\s*\}/i.test(decoded)
+    );
+  }
+
+  return Object.fromEntries(
+    Object.entries(props).filter(([key, value]) => {
+      // 1. decode and check property name
+      const decodedKey = fullDecode(key);
+
+      // 2. intercept all event related properties
+      if (DANGEROUS_EVENTS.test(decodedKey)) {
+        return false;
+      }
+
+      // 3. all properties not in the whitelist are rejected
+      if (!allowedAttrs.has(key)) {
+        return false;
+      }
+
+      // 4. check property value
+      if (typeof value === 'string') {
+        if (containsDangerousContent(value)) {
+          return false;
+        }
+      } else if (typeof value === 'object' && value !== null) {
+        // only allow simple style objects
+        if (key !== 'style') {
+          return false;
+        }
+        // check the value of the style object
+        for (const styleKey in value) {
+          if (containsDangerousContent(String(value[styleKey]))) {
+            return false;
+          }
+        }
+      } else if (typeof value === 'function') {
+        // only allow specific function properties (e.g. onClick)
+        if (!eventTypeCheck || decodedKey !== 'onclick') {
+          return false;
+        }
+      }
+
+      return true;
+    })
+  );
 }
 
 const ScriptBlock = memo(({ node }: any) => {
