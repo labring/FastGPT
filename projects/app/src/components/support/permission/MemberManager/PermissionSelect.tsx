@@ -105,7 +105,6 @@ function PermissionSelect({
     const per = new Permission({ per: perValue });
     per.addPer(...selectedMultipleValues);
     onChange(per.value);
-    setIsOpen(false);
   };
 
   useOutsideClick({
@@ -187,61 +186,60 @@ function PermissionSelect({
             );
           })}
 
-          <MyDivider my={2} />
+          {permissionSelectList.multipleCheckBoxList.length > 0 && (
+            <>
+              <MyDivider my={2} />
+              {permissionSelectList.multipleCheckBoxList.map((item) => {
+                const isChecked = selectedMultipleValues.includes(item.value);
+                const isDisabled = new Permission({ per: selectedSingleValue }).checkPer(
+                  item.value
+                );
+                const change = () => {
+                  if (isDisabled) return;
+                  const per = new Permission({ per: value });
+                  if (isChecked) {
+                    per.removePer(item.value);
+                  } else {
+                    per.addPer(item.value);
+                  }
+                  onChange(per.value);
+                };
+                return (
+                  <Flex
+                    key={item.value}
+                    {...(isChecked
+                      ? {
+                          color: 'primary.600'
+                        }
+                      : {})}
+                    {...MenuStyle}
+                    maxW={['70vw', '260px']}
+                    {...(isDisabled
+                      ? {
+                          cursor: 'not-allowed'
+                        }
+                      : {
+                          cursor: 'pointer'
+                        })}
+                  >
+                    <Checkbox
+                      size="lg"
+                      isChecked={isChecked}
+                      onChange={change}
+                      isDisabled={isDisabled}
+                    />
+                    <Box ml={4} onClick={change}>
+                      <Box>{t(item.name as any)}</Box>
+                      <Box color={'myGray.500'} fontSize={'mini'}>
+                        {t(item.description as any)}
+                      </Box>
+                    </Box>
+                  </Flex>
+                );
+              })}
+            </>
+          )}
 
-          {/* {permissionSelectList.multipleCheckBoxList.length > 0 && (
-            <Box m="4">其他权限（多选）</Box>
-          )} */}
-
-          {permissionSelectList.multipleCheckBoxList.map((item) => {
-            const isChecked = selectedMultipleValues.includes(item.value);
-            const isDisabled = new Permission({ per: selectedSingleValue }).checkPer(item.value);
-            const change = () => {
-              if (isDisabled) return;
-              const per = new Permission({ per: value });
-              if (isChecked) {
-                per.removePer(item.value);
-              } else {
-                per.addPer(item.value);
-              }
-              onChange(per.value);
-            };
-            return (
-              <Flex
-                key={item.value}
-                {...(isChecked
-                  ? {
-                      color: 'primary.500',
-                      bg: 'myWhite.300'
-                    }
-                  : {})}
-                whiteSpace="pre-wrap"
-                flexDirection="row"
-                justifyContent="start"
-                p="2"
-                _hover={{
-                  bg: 'myGray.50'
-                }}
-                {...(isDisabled
-                  ? {
-                      cursor: 'not-allowed',
-                      opacity: 0.5
-                    }
-                  : {})}
-              >
-                <Checkbox
-                  size="lg"
-                  isChecked={isChecked}
-                  onChange={change}
-                  isDisabled={isDisabled}
-                />
-                <Flex px="4" flexDirection="column" onClick={change}>
-                  <Box fontWeight="500">{t(item.name as any)}</Box>
-                  <Box fontWeight="400">{t(item.description as any)}</Box>
-                </Flex>
-              </Flex>
-            );
-          })}
           {onDelete && (
             <>
               <MyDivider my={2} h={'2px'} borderColor={'myGray.200'} />

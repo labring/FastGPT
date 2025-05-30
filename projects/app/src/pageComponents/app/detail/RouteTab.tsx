@@ -1,5 +1,5 @@
 import { Box, HStack } from '@chakra-ui/react';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { AppContext, TabEnum } from './context';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
@@ -25,11 +25,17 @@ const RouteTab = () => {
 
   const tabList = useMemo(
     () => [
-      {
-        label:
-          appDetail.type === AppTypeEnum.plugin ? t('app:setting_plugin') : t('app:setting_app'),
-        id: TabEnum.appEdit
-      },
+      ...(appDetail.permission.hasWritePer
+        ? [
+            {
+              label:
+                appDetail.type === AppTypeEnum.plugin
+                  ? t('app:setting_plugin')
+                  : t('app:setting_app'),
+              id: TabEnum.appEdit
+            }
+          ]
+        : []),
       ...(appDetail.permission.hasManagePer
         ? [
             {
@@ -40,8 +46,21 @@ const RouteTab = () => {
         : []),
       ...(appDetail.permission.hasLogPer ? [{ label: t('app:chat_logs'), id: TabEnum.logs }] : [])
     ],
-    [appDetail.permission.hasManagePer, appDetail.type]
+    [
+      appDetail.permission.hasLogPer,
+      appDetail.permission.hasManagePer,
+      appDetail.permission.hasWritePer,
+      appDetail.type,
+      t
+    ]
   );
+
+  useEffect(() => {
+    // 没找到合适的 id，则自动跳转
+    if (!tabList.find((item) => item.id === currentTab)) {
+      setCurrentTab(tabList[0].id);
+    }
+  }, [tabList, currentTab, setCurrentTab]);
 
   return (
     <HStack spacing={4} whiteSpace={'nowrap'}>
