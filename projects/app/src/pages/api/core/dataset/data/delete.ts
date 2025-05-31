@@ -4,7 +4,9 @@ import { deleteDatasetData } from '@/service/core/dataset/data/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-
+import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
+import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import { getI18nDatasetType } from '@fastgpt/service/support/operationLog/util';
 async function handler(req: NextApiRequest) {
   const { id: dataId } = req.query as {
     id: string;
@@ -15,7 +17,7 @@ async function handler(req: NextApiRequest) {
   }
 
   // 凭证校验
-  const { datasetData } = await authDatasetData({
+  const { datasetData, tmbId, teamId, collection } = await authDatasetData({
     req,
     authToken: true,
     authApiKey: true,
@@ -24,7 +26,18 @@ async function handler(req: NextApiRequest) {
   });
 
   await deleteDatasetData(datasetData);
-
+  (async () => {
+    addOperationLog({
+      tmbId,
+      teamId,
+      event: OperationLogEventEnum.DELETE_DATA,
+      params: {
+        collectionName: collection.name,
+        datasetName: collection.dataset?.name || '',
+        datasetType: getI18nDatasetType(collection.dataset?.type || '')
+      }
+    });
+  })();
   return 'success';
 }
 

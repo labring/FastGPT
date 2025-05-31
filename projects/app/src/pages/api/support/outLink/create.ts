@@ -6,7 +6,9 @@ import type { PublishChannelEnum } from '@fastgpt/global/support/outLink/constan
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-
+import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
+import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import { getI18nAppType } from '@fastgpt/service/support/operationLog/util';
 /* create a shareChat */
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
@@ -23,7 +25,7 @@ async function handler(
 ): Promise<OutLinkCreateResponse> {
   const { appId, ...props } = req.body;
 
-  const { teamId, tmbId } = await authApp({
+  const { teamId, tmbId, app } = await authApp({
     req,
     authToken: true,
     appId,
@@ -38,6 +40,19 @@ async function handler(
     appId,
     ...props
   });
+
+  (async () => {
+    addOperationLog({
+      tmbId,
+      teamId,
+      event: OperationLogEventEnum.CREATE_APP_PUBLISH_CHANNEL,
+      params: {
+        appName: app.name,
+        channelName: props.name,
+        appType: getI18nAppType(app.type)
+      }
+    });
+  })();
 
   return shareId;
 }

@@ -11,6 +11,9 @@ import { MongoDatasetCollectionTags } from '@fastgpt/service/core/dataset/tag/sc
 import { removeImageByPath } from '@fastgpt/service/common/file/image/controller';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { removeWebsiteSyncJobScheduler } from '@fastgpt/service/core/dataset/websiteSync';
+import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
+import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import { getI18nDatasetType } from '@fastgpt/service/support/operationLog/util';
 
 async function handler(req: NextApiRequest) {
   const { id: datasetId } = req.query as {
@@ -22,7 +25,7 @@ async function handler(req: NextApiRequest) {
   }
 
   // auth owner
-  const { teamId } = await authDataset({
+  const { teamId, tmbId, dataset } = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
@@ -66,6 +69,18 @@ async function handler(req: NextApiRequest) {
       await removeImageByPath(dataset.avatar, session);
     }
   });
+
+  (async () => {
+    addOperationLog({
+      tmbId,
+      teamId,
+      event: OperationLogEventEnum.DELETE_DATASET,
+      params: {
+        datasetName: dataset.name,
+        datasetType: getI18nDatasetType(dataset.type)
+      }
+    });
+  })();
 }
 
 export default NextAPI(handler);

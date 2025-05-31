@@ -37,6 +37,9 @@ import {
 } from '@fastgpt/service/core/dataset/websiteSync';
 import { delDatasetRelevantData } from '@fastgpt/service/core/dataset/controller';
 import { isEqual } from 'lodash';
+import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
+import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import { getI18nDatasetType } from '@fastgpt/service/support/operationLog/util';
 
 export type DatasetUpdateQuery = {};
 export type DatasetUpdateResponse = any;
@@ -79,16 +82,27 @@ async function handler(
 
   const isMove = parentId !== undefined;
 
-  const { dataset, permission } = await authDataset({
+  const { dataset, permission, tmbId, teamId } = await authDataset({
     req,
     authToken: true,
     datasetId: id,
     per: ReadPermissionVal
   });
+
+  let targetName = '';
+
   if (isMove) {
     if (parentId) {
       // move to a folder, check the target folder's permission
-      await authDataset({ req, authToken: true, datasetId: parentId, per: ManagePermissionVal });
+      const { dataset: targetDataset } = await authDataset({
+        req,
+        authToken: true,
+        datasetId: parentId,
+        per: ManagePermissionVal
+      });
+      targetName = targetDataset.name;
+    } else {
+      targetName = 'root';
     }
     if (dataset.parentId) {
       // move from a folder, check the (old) folder's permission
@@ -221,7 +235,9 @@ async function handler(
           collaborators: parentClbsAndGroups,
           session
         });
+        logDatasetMove({ tmbId, teamId, dataset, targetName });
       } else {
+        logDatasetMove({ tmbId, teamId, dataset, targetName });
         // Not folder, delete all clb
         await MongoResourcePermission.deleteMany(
           { resourceId: id, teamId: dataset.teamId, resourceType: PerResourceTypeEnum.dataset },
@@ -230,6 +246,7 @@ async function handler(
       }
       return onUpdate(session);
     } else {
+      logDatasetUpdate({ tmbId, teamId, dataset });
       return onUpdate(session);
     }
   });
@@ -314,4 +331,51 @@ const updateSyncSchedule = async ({
       );
     }
   }
+};
+
+const logDatasetMove = ({
+  tmbId,
+  teamId,
+  dataset,
+  targetName
+}: {
+  tmbId: string;
+  teamId: string;
+  dataset: any;
+  targetName: string;
+}) => {
+  (async () => {
+    addOperationLog({
+      tmbId,
+      teamId,
+      event: OperationLogEventEnum.MOVE_DATASET,
+      params: {
+        datasetName: dataset.name,
+        targetFolderName: targetName,
+        datasetType: getI18nDatasetType(dataset.type)
+      }
+    });
+  })();
+};
+
+const logDatasetUpdate = ({
+  tmbId,
+  teamId,
+  dataset
+}: {
+  tmbId: string;
+  teamId: string;
+  dataset: any;
+}) => {
+  (async () => {
+    addOperationLog({
+      tmbId,
+      teamId,
+      event: OperationLogEventEnum.UPDATE_DATASET,
+      params: {
+        datasetName: dataset.name,
+        datasetType: getI18nDatasetType(dataset.type)
+      }
+    });
+  })();
 };

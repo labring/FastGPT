@@ -5,7 +5,8 @@ import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { NextAPI } from '@/service/middleware/entry';
-
+import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
+import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { oldPsw, newPsw } = req.body as { oldPsw: string; newPsw: string };
 
@@ -13,7 +14,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     return Promise.reject('Params is missing');
   }
 
-  const { tmbId } = await authCert({ req, authToken: true });
+  const { tmbId, teamId } = await authCert({ req, authToken: true });
   const tmb = await MongoTeamMember.findById(tmbId);
   if (!tmb) {
     return Promise.reject('can not find it');
@@ -39,6 +40,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     passwordUpdateTime: new Date()
   });
 
+  (async () => {
+    addOperationLog({
+      tmbId,
+      teamId,
+      event: OperationLogEventEnum.CHANGE_PASSWORD,
+      params: {}
+    });
+  })();
   return user;
 }
 

@@ -26,6 +26,7 @@ import MultipleSelect, {
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getTeamMembers } from '@/web/support/user/team/api';
+import { createMetadataProcessorMap, type MetadataProcessor } from './processors';
 
 function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useTranslation();
@@ -57,6 +58,17 @@ function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
       })),
     [t]
   );
+
+  // 使用模块化的元数据处理器
+  const metadataProcessorMap: Record<OperationLogEventEnum, MetadataProcessor> = useMemo(
+    () => createMetadataProcessorMap(t),
+    [t]
+  );
+
+  const processMetadataByEvent = (event: string, metadata: any) => {
+    const processor = metadataProcessorMap[event as OperationLogEventEnum];
+    return processor ? processor(metadata) : metadata;
+  };
 
   const {
     data: operationLogs = [],
@@ -159,17 +171,7 @@ function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
               <Tbody>
                 {operationLogs?.map((log) => {
                   const i18nData = operationLogMap[log.event];
-                  const metadata = { ...log.metadata };
-
-                  if (log.event === OperationLogEventEnum.ASSIGN_PERMISSION) {
-                    const permissionValue = parseInt(metadata.permission, 10);
-
-                    const permission = new TeamPermission({ per: permissionValue });
-                    metadata.appCreate = permission.hasAppCreatePer ? '✔' : '✘';
-                    metadata.datasetCreate = permission.hasDatasetCreatePer ? '✔' : '✘';
-                    metadata.apiKeyCreate = permission.hasApikeyCreatePer ? '✔' : '✘';
-                    metadata.manage = permission.hasManagePer ? '✔' : '✘';
-                  }
+                  const metadata = processMetadataByEvent(log.event, { ...log.metadata });
 
                   return i18nData ? (
                     <Tr key={log._id} overflow={'unset'}>

@@ -8,7 +8,8 @@ import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { OpenApiErrEnum } from '@fastgpt/global/common/error/code/openapi';
 import { TeamApikeyCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
-
+import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
+import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
 async function handler(req: ApiRequestProps<EditApiKeyProps>): Promise<string> {
   const { appId, name, limit } = req.body;
   const { tmbId, teamId } = await (async () => {
@@ -48,6 +49,18 @@ async function handler(req: ApiRequestProps<EditApiKeyProps>): Promise<string> {
     name,
     limit
   });
+
+  (async () => {
+    addOperationLog({
+      tmbId,
+      teamId,
+      event: OperationLogEventEnum.CREATE_API_KEY,
+      params: {
+        keyName: name
+      }
+    });
+  })();
+
   return apiKey;
 }
 

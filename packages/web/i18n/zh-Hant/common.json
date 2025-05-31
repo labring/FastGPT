@@ -215,6 +215,7 @@
   "core.app.Interval timer run": "排程執行",
   "core.app.Interval timer tip": "可排程執行應用程式",
   "core.app.Make a brief introduction of your app": "為您的 AI 應用程式寫一段介紹",
+  "core.app.name": "名稱",
   "core.app.Name and avatar": "頭像與名稱",
   "core.app.Publish": "發布",
   "core.app.Publish Confirm": "確認發布應用程式？這將立即更新所有發布管道的應用程式狀態。",

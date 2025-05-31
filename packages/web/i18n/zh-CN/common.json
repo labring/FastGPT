@@ -215,6 +215,7 @@
   "core.app.Interval timer run": "定时执行",
   "core.app.Interval timer tip": "可定时执行应用",
   "core.app.Make a brief introduction of your app": "给你的 AI 应用一个介绍",
+  "core.app.name": "名称",
   "core.app.Name and avatar": "头像 & 名称",
   "core.app.Publish": "发布",
   "core.app.Publish Confirm": "确认发布应用？会立即更新所有发布渠道的应用状态。",
