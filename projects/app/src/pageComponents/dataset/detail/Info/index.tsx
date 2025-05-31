@@ -109,6 +109,73 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     reset(datasetDetail);
   }, [datasetDetail, datasetDetail._id, reset]);
 
+  useEffect(() => {
+    if (!datasetId) return;
+
+    const serverConfig: any = { id: datasetDetail._id };
+
+    const needAuth =
+      (datasetDetail.type === DatasetTypeEnum.feishuPrivate &&
+        !datasetDetail.feishuPrivateServer?.user_access_token) ||
+      (datasetDetail.type === DatasetTypeEnum.feishuShare &&
+        !datasetDetail.feishuShareServer?.user_access_token) ||
+      (datasetDetail.type === DatasetTypeEnum.feishuKnowledge &&
+        !datasetDetail.feishuKnowledgeServer?.user_access_token);
+
+    let shouldSetDataset = false;
+
+    if (needAuth) {
+      serverConfig.feishuPrivateServer = datasetDetail.feishuPrivateServer;
+      serverConfig.feishuShareServer = datasetDetail.feishuShareServer;
+      serverConfig.feishuKnowledgeServer = datasetDetail.feishuKnowledgeServer;
+      shouldSetDataset = true;
+    }
+
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const openConfigModal = urlParams.get('openConfigModal');
+      if (
+        openConfigModal === 'true' &&
+        (datasetDetail.type === DatasetTypeEnum.feishuPrivate ||
+          datasetDetail.type === DatasetTypeEnum.feishuShare ||
+          datasetDetail.type === DatasetTypeEnum.feishuKnowledge)
+      ) {
+        switch (datasetDetail.type) {
+          case DatasetTypeEnum.feishuPrivate:
+            serverConfig.feishuPrivateServer = datasetDetail.feishuPrivateServer;
+            break;
+          case DatasetTypeEnum.feishuShare:
+            serverConfig.feishuShareServer = datasetDetail.feishuShareServer;
+            break;
+          case DatasetTypeEnum.feishuKnowledge:
+            serverConfig.feishuKnowledgeServer = datasetDetail.feishuKnowledgeServer;
+            break;
+          default:
+            break;
+        }
+        shouldSetDataset = true;
+
+        const url = new URL(window.location.href);
+        url.searchParams.delete('openConfigModal');
+        window.history.replaceState({}, document.title, url.toString());
+      }
+    }
+
+    if (shouldSetDataset) {
+      setEditedAPIDataset(serverConfig);
+    }
+  }, [
+    datasetId,
+    datasetDetail._id,
+    datasetDetail.type,
+    datasetDetail.feishuPrivateServer,
+    datasetDetail.feishuPrivateServer?.user_access_token,
+    datasetDetail.feishuShareServer,
+    datasetDetail.feishuShareServer?.user_access_token,
+    datasetDetail.feishuKnowledgeServer,
+    datasetDetail.feishuKnowledgeServer?.user_access_token
+  ]);
+
   const isTraining = rebuildingCount > 0 || trainingCount > 0;
 
   return (
@@ -345,13 +412,12 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             </Box>
           </>
         )}
-
-        {datasetDetail.type === DatasetTypeEnum.feishu && (
+        {datasetDetail.type === DatasetTypeEnum.feishuKnowledge && (
           <>
             <Box w={'100%'} alignItems={'center'} pt={4}>
               <Flex justifyContent={'space-between'} mb={1}>
                 <FormLabel fontSize={'mini'} fontWeight={'500'}>
-                  {t('dataset:feishu_dataset_config')}
+                  {t('dataset:feishu_knowledge_dataset_config')}
                 </FormLabel>
                 <MyIcon
                   name={'edit'}
@@ -361,15 +427,73 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                   onClick={() =>
                     setEditedAPIDataset({
                       id: datasetDetail._id,
-                      feishuServer: datasetDetail.feishuServer
+                      feishuKnowledgeServer: datasetDetail.feishuKnowledgeServer
                     })
                   }
                 />
               </Flex>
-              <Box fontSize={'mini'}>{datasetDetail.feishuServer?.folderToken}</Box>
+              <Box fontSize={'mini'}>
+                {datasetDetail.feishuKnowledgeServer?.basePath || t('common:root_folder')}
+              </Box>
             </Box>
           </>
         )}
+
+        {datasetDetail.type === DatasetTypeEnum.feishuPrivate && (
+          <>
+            <Box w={'100%'} alignItems={'center'} pt={4}>
+              <Flex justifyContent={'space-between'} mb={1}>
+                <FormLabel fontSize={'mini'} fontWeight={'500'}>
+                  {t('dataset:feishu_private_dataset_config')}
+                </FormLabel>
+                <MyIcon
+                  name={'edit'}
+                  w={'14px'}
+                  _hover={{ color: 'primary.600' }}
+                  cursor={'pointer'}
+                  onClick={() =>
+                    setEditedAPIDataset({
+                      id: datasetDetail._id,
+                      feishuPrivateServer: datasetDetail.feishuPrivateServer
+                    })
+                  }
+                />
+              </Flex>
+              <Box fontSize={'mini'}>
+                {datasetDetail.feishuPrivateServer?.basePath || t('common:root_folder')}
+              </Box>
+            </Box>
+          </>
+        )}
+
+        {datasetDetail.type === DatasetTypeEnum.feishuShare && (
+          <>
+            <Box w={'100%'} alignItems={'center'} pt={4}>
+              <Flex justifyContent={'space-between'} mb={1}>
+                <FormLabel fontSize={'mini'} fontWeight={'500'}>
+                  {t('dataset:feishu_share_dataset_config')}
+                </FormLabel>
+                <MyIcon
+                  name={'edit'}
+                  w={'14px'}
+                  _hover={{ color: 'primary.600' }}
+                  cursor={'pointer'}
+                  onClick={() =>
+                    setEditedAPIDataset({
+                      id: datasetDetail._id,
+                      feishuShareServer: datasetDetail.feishuShareServer
+                    })
+                  }
+                />
+              </Flex>
+              <Box fontSize={'mini'}>
+                {datasetDetail.feishuShareServer?.folderToken || t('dataset:not_set')}
+              </Box>
+            </Box>
+          </>
+        )}
+
+        {datasetDetail.type === DatasetTypeEnum.feishuPrivate && <></>}
       </Box>
 
       {datasetDetail.permission.hasManagePer && (
@@ -437,7 +561,9 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               id: datasetId,
               apiServer: data.apiServer,
               yuqueServer: data.yuqueServer,
-              feishuServer: data.feishuServer
+              feishuShareServer: data.feishuShareServer,
+              feishuKnowledgeServer: data.feishuKnowledgeServer,
+              feishuPrivateServer: data.feishuPrivateServer
             })
           }
         />

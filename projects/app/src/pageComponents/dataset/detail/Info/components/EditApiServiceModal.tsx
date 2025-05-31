@@ -7,8 +7,10 @@ import { useForm } from 'react-hook-form';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   type APIFileServer,
-  type FeishuServer,
-  type YuqueServer
+  type FeishuShareServer,
+  type YuqueServer,
+  type FeishuKnowledgeServer,
+  type FeishuPrivateServer
 } from '@fastgpt/global/core/dataset/apiDataset';
 import ApiDatasetForm from '@/pageComponents/dataset/ApiDatasetForm';
 import { useContextSelector } from 'use-context-selector';
@@ -21,7 +23,9 @@ export type EditAPIDatasetInfoFormType = {
   id: string;
   apiServer?: APIFileServer;
   yuqueServer?: YuqueServer;
-  feishuServer?: FeishuServer;
+  feishuShareServer?: FeishuShareServer;
+  feishuKnowledgeServer?: FeishuKnowledgeServer;
+  feishuPrivateServer?: FeishuPrivateServer;
 };
 
 const EditAPIDatasetInfoModal = ({

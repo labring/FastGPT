@@ -25,9 +25,17 @@ const SideTag = ({ type, ...props }: { type: `${DatasetTypeEnum}` } & FlexProps)
         icon: 'core/dataset/externalDatasetOutline',
         label: t('dataset:api_file')
       },
-      [DatasetTypeEnum.feishu]: {
-        icon: 'core/dataset/feishuDatasetOutline',
-        label: t('dataset:feishu_dataset')
+      [DatasetTypeEnum.feishuShare]: {
+        icon: 'core/dataset/feishuShareDatasetOutline',
+        label: t('dataset:feishu_share_dataset')
+      },
+      [DatasetTypeEnum.feishuPrivate]: {
+        icon: 'core/dataset/feishuPrivateDatasetOutline',
+        label: t('dataset:feishu_private_dataset')
+      },
+      [DatasetTypeEnum.feishuKnowledge]: {
+        icon: 'core/dataset/feishuKnowledgeDatasetOutline',
+        label: t('dataset:feishu_knowledge_dataset')
       },
       [DatasetTypeEnum.yuque]: {
         icon: 'core/dataset/yuqueDatasetOutline',

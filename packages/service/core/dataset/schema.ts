@@ -128,8 +128,10 @@ const DatasetSchema = new Schema({
     default: true
   },
   apiServer: Object,
-  feishuServer: Object,
+  feishuShareServer: Object,
   yuqueServer: Object,
+  feishuKnowledgeServer: Object,
+  feishuPrivateServer: Object,
 
   // abandoned
   autoSync: Boolean,

@@ -4,8 +4,10 @@ import type {
 } from '@fastgpt/global/core/dataset/api';
 import type {
   APIFileServer,
-  FeishuServer,
-  YuqueServer
+  FeishuShareServer,
+  FeishuPrivateServer,
+  YuqueServer,
+  FeishuKnowledgeServer
 } from '@fastgpt/global/core/dataset/apiDataset';
 import type {
   DatasetSearchModeEnum,
@@ -32,8 +34,10 @@ export type CreateDatasetParams = {
   agentModel?: string;
   vlmModel?: string;
   apiServer?: APIFileServer;
-  feishuServer?: FeishuServer;
+  feishuShareServer?: FeishuShareServer;
   yuqueServer?: YuqueServer;
+  feishuKnowledgeServer?: FeishuKnowledgeServer;
+  feishuPrivateServer?: FeishuPrivateServer;
 };
 
 export type RebuildEmbeddingProps = {

@@ -13,7 +13,13 @@ import type {
   ChunkTriggerConfigTypeEnum
 } from './constants';
 import type { DatasetPermission } from '../../support/permission/dataset/controller';
-import type { APIFileServer, FeishuServer, YuqueServer } from './apiDataset';
+import type {
+  APIFileServer,
+  FeishuShareServer,
+  YuqueServer,
+  FeishuKnowledgeServer,
+  FeishuPrivateServer
+} from './apiDataset';
 import type { SourceMemberType } from 'support/user/type';
 import type { DatasetDataIndexTypeEnum } from './data/constants';
 
@@ -73,8 +79,10 @@ export type DatasetSchemaType = {
 
   inheritPermission: boolean;
   apiServer?: APIFileServer;
-  feishuServer?: FeishuServer;
+  feishuShareServer?: FeishuShareServer;
   yuqueServer?: YuqueServer;
+  feishuKnowledgeServer?: FeishuKnowledgeServer;
+  feishuPrivateServer?: FeishuPrivateServer;
 
   // abandon
   autoSync?: boolean;

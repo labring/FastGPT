@@ -17,11 +17,26 @@ export type APIFileServer = {
   authorization?: string;
   basePath?: string;
 };
-export type FeishuServer = {
-  appId: string;
-  appSecret?: string;
+export type FeishuShareServer = {
+  user_access_token: string;
+  refresh_token: string;
+  outdate_time: number;
   folderToken: string;
 };
+export type FeishuKnowledgeServer = {
+  user_access_token: string;
+  refresh_token: string;
+  outdate_time: number;
+  basePath?: string;
+};
+
+export type FeishuPrivateServer = {
+  user_access_token: string;
+  refresh_token: string;
+  outdate_time: number;
+  basePath?: string;
+};
+
 export type YuqueServer = {
   userId: string;
   token?: string;

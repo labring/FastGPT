@@ -95,14 +95,18 @@ async function handler(
     }
     if (collection.type === DatasetCollectionTypeEnum.apiFile && collection.apiFileId) {
       const apiServer = collection.dataset.apiServer;
-      const feishuServer = collection.dataset.feishuServer;
+      const feishuShareServer = collection.dataset.feishuShareServer;
       const yuqueServer = collection.dataset.yuqueServer;
+      const feishuKnowledgeServer = collection.dataset.feishuKnowledgeServer;
+      const feishuPrivateServer = collection.dataset.feishuPrivateServer;
 
       return (
         await getApiDatasetRequest({
           apiServer,
-          feishuServer,
-          yuqueServer
+          feishuShareServer,
+          feishuKnowledgeServer,
+          yuqueServer,
+          feishuPrivateServer
         })
       ).getFilePreviewUrl({
         apiFileId: collection.apiFileId

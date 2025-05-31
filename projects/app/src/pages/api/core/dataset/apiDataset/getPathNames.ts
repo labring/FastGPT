@@ -4,8 +4,10 @@ import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import type {
   APIFileServer,
   YuqueServer,
-  FeishuServer,
-  ApiDatasetDetailResponse
+  FeishuShareServer,
+  ApiDatasetDetailResponse,
+  FeishuKnowledgeServer,
+  FeishuPrivateServer
 } from '@fastgpt/global/core/dataset/apiDataset';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
@@ -19,8 +21,10 @@ export type GetApiDatasetPathBody = {
   datasetId?: string;
   parentId?: ParentIdType;
   yuqueServer?: YuqueServer;
-  feishuServer?: FeishuServer;
+  feishuShareServer?: FeishuShareServer;
   apiServer?: APIFileServer;
+  feishuKnowledgeServer?: FeishuKnowledgeServer;
+  feishuPrivateServer?: FeishuPrivateServer;
 };
 
 export type GetApiDatasetPathResponse = string;
@@ -50,49 +54,69 @@ async function handler(
   const { datasetId, parentId } = req.body;
   if (!parentId) return '';
 
-  const { yuqueServer, feishuServer, apiServer } = await (async () => {
-    if (datasetId) {
-      const { dataset } = await authDataset({
-        req,
-        authToken: true,
-        authApiKey: true,
-        per: ManagePermissionVal,
-        datasetId
-      });
+  const { yuqueServer, feishuShareServer, apiServer, feishuKnowledgeServer, feishuPrivateServer } =
+    await (async () => {
+      if (datasetId) {
+        const { dataset } = await authDataset({
+          req,
+          authToken: true,
+          authApiKey: true,
+          per: ManagePermissionVal,
+          datasetId
+        });
 
-      return {
-        yuqueServer: req.body.yuqueServer
-          ? { ...req.body.yuqueServer, token: dataset.yuqueServer?.token ?? '' }
-          : dataset.yuqueServer,
-        feishuServer: req.body.feishuServer
-          ? { ...req.body.feishuServer, appSecret: dataset.feishuServer?.appSecret ?? '' }
-          : dataset.feishuServer,
-        apiServer: req.body.apiServer
-          ? {
-              ...req.body.apiServer,
-              authorization: dataset.apiServer?.authorization ?? ''
-            }
-          : dataset.apiServer
-      };
-    } else {
-      await authCert({ req, authToken: true });
+        return {
+          yuqueServer: req.body.yuqueServer
+            ? { ...req.body.yuqueServer, token: dataset.yuqueServer?.token ?? '' }
+            : dataset.yuqueServer,
+          feishuShareServer: req.body.feishuShareServer
+            ? {
+                ...req.body.feishuShareServer,
+                user_access_token: dataset.feishuShareServer?.user_access_token ?? ''
+              }
+            : dataset.feishuShareServer,
+          apiServer: req.body.apiServer
+            ? {
+                ...req.body.apiServer,
+                authorization: dataset.apiServer?.authorization ?? ''
+              }
+            : dataset.apiServer,
+          feishuKnowledgeServer: req.body.feishuKnowledgeServer
+            ? {
+                ...req.body.feishuKnowledgeServer,
+                user_access_token: dataset.feishuKnowledgeServer?.user_access_token ?? ''
+              }
+            : dataset.feishuKnowledgeServer,
+          feishuPrivateServer: req.body.feishuPrivateServer
+            ? {
+                ...req.body.feishuPrivateServer,
+                user_access_token: dataset.feishuPrivateServer?.user_access_token ?? ''
+              }
+            : dataset.feishuPrivateServer
+        };
+      } else {
+        await authCert({ req, authToken: true });
 
-      return {
-        yuqueServer: req.body.yuqueServer,
-        feishuServer: req.body.feishuServer,
-        apiServer: req.body.apiServer
-      };
-    }
-  })();
+        return {
+          yuqueServer: req.body.yuqueServer,
+          feishuShareServer: req.body.feishuShareServer,
+          apiServer: req.body.apiServer,
+          feishuKnowledgeServer: req.body.feishuKnowledgeServer,
+          feishuPrivateServer: req.body.feishuPrivateServer
+        };
+      }
+    })();
 
-  if (feishuServer) {
+  if (feishuShareServer) {
     return '';
   }
 
-  if (yuqueServer || apiServer) {
+  if (yuqueServer || apiServer || feishuKnowledgeServer || feishuPrivateServer) {
     const apiDataset = await getApiDatasetRequest({
       yuqueServer,
-      apiServer
+      apiServer,
+      feishuKnowledgeServer,
+      feishuPrivateServer
     });
 
     if (!apiDataset?.getFileDetail) {

@@ -160,7 +160,9 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
       type: DatasetSourceReadTypeEnum.apiFile,
       sourceId,
       apiServer: dataset.apiServer,
-      feishuServer: dataset.feishuServer,
+      feishuShareServer: dataset.feishuShareServer,
+      feishuKnowledgeServer: dataset.feishuKnowledgeServer,
+      feishuPrivateServer: dataset.feishuPrivateServer,
       yuqueServer: dataset.yuqueServer
     };
   })();

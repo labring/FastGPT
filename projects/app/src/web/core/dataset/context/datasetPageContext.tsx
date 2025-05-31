@@ -117,13 +117,30 @@ export const DatasetPageContextProvider = ({
               basePath: data.yuqueServer.basePath
             }
           : state.yuqueServer,
-        feishuServer: data.feishuServer
+        feishuShareServer: data.feishuShareServer
           ? {
-              appId: data.feishuServer.appId,
-              appSecret: '',
-              folderToken: data.feishuServer.folderToken
+              user_access_token: data.feishuShareServer.user_access_token,
+              refresh_token: data.feishuShareServer.refresh_token,
+              outdate_time: data.feishuShareServer.outdate_time,
+              folderToken: data.feishuShareServer.folderToken
             }
-          : state.feishuServer
+          : state.feishuShareServer,
+        feishuKnowledgeServer: data.feishuKnowledgeServer
+          ? {
+              user_access_token: data.feishuKnowledgeServer.user_access_token,
+              refresh_token: data.feishuKnowledgeServer.refresh_token,
+              outdate_time: data.feishuKnowledgeServer.outdate_time,
+              basePath: data.feishuKnowledgeServer.basePath
+            }
+          : state.feishuKnowledgeServer,
+        feishuPrivateServer: data.feishuPrivateServer
+          ? {
+              user_access_token: data.feishuPrivateServer.user_access_token,
+              refresh_token: data.feishuPrivateServer.refresh_token,
+              outdate_time: data.feishuPrivateServer.outdate_time,
+              basePath: data.feishuPrivateServer.basePath
+            }
+          : state.feishuPrivateServer
       }));
     }
   };

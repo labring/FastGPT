@@ -416,7 +416,9 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
           )}
           {/* apiDataset */}
           {(datasetDetail?.type === DatasetTypeEnum.apiDataset ||
-            datasetDetail?.type === DatasetTypeEnum.feishu ||
+            datasetDetail?.type === DatasetTypeEnum.feishuShare ||
+            datasetDetail?.type === DatasetTypeEnum.feishuKnowledge ||
+            datasetDetail?.type === DatasetTypeEnum.feishuPrivate ||
             datasetDetail?.type === DatasetTypeEnum.yuque) && (
             <Flex
               px={3.5}

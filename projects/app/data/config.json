@@ -2,7 +2,9 @@
 {
   "feConfigs": {
     "lafEnv": "https://laf.dev", // laf环境。 https://laf.run （杭州阿里云） ,或者私有化的laf环境。如果使用 Laf openapi 功能，需要最新版的 laf 。
-    "mcpServerProxyEndpoint": "" // mcp server 代理地址，例如： http://localhost:3005
+    "mcpServerProxyEndpoint": "", // mcp server 代理地址，例如： http://localhost:3005
+    "feishu_auth_robot_client_id": "", // 飞书机器人客户端ID
+    "feishu_auth_robot_client_secret": "" // 飞书机器人客户端密钥
   },
   "systemEnv": {
     "vectorMaxProcess": 10, // 向量处理线程数量

@@ -5,7 +5,9 @@ import type {
   APIFileItem,
   APIFileServer,
   YuqueServer,
-  FeishuServer
+  FeishuShareServer,
+  FeishuKnowledgeServer,
+  FeishuPrivateServer
 } from '@fastgpt/global/core/dataset/apiDataset';
 import { type NextApiRequest } from 'next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
@@ -13,22 +15,34 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 export type GetApiDatasetCataLogProps = {
   parentId?: ParentIdType;
   yuqueServer?: YuqueServer;
-  feishuServer?: FeishuServer;
+  feishuShareServer?: FeishuShareServer;
+  feishuKnowledgeServer?: FeishuKnowledgeServer;
+  feishuPrivateServer?: FeishuPrivateServer;
   apiServer?: APIFileServer;
 };
 
 export type GetApiDatasetCataLogResponse = APIFileItem[];
 
 async function handler(req: NextApiRequest) {
-  let { searchKey = '', parentId = null, yuqueServer, feishuServer, apiServer } = req.body;
+  let {
+    searchKey = '',
+    parentId = null,
+    yuqueServer,
+    feishuShareServer,
+    apiServer,
+    feishuKnowledgeServer,
+    feishuPrivateServer
+  } = req.body;
 
   await authCert({ req, authToken: true });
 
   const data = await (
     await getApiDatasetRequest({
-      feishuServer,
+      feishuShareServer,
       yuqueServer,
-      apiServer
+      apiServer,
+      feishuKnowledgeServer,
+      feishuPrivateServer
     })
   ).listFiles({ parentId, searchKey });
 

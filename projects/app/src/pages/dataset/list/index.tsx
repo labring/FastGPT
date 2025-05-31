@@ -177,10 +177,30 @@ const Dataset = () => {
                         ...(feConfigs?.show_dataset_feishu !== false
                           ? [
                               {
-                                icon: 'core/dataset/feishuDatasetColor',
-                                label: t('dataset:feishu_dataset'),
-                                description: t('dataset:feishu_dataset_desc'),
-                                onClick: () => onSelectDatasetType(DatasetTypeEnum.feishu)
+                                icon: 'core/dataset/feishuShareDatasetColor',
+                                label: t('dataset:feishu_share_dataset'),
+                                description: t('dataset:feishu_share_dataset_desc'),
+                                onClick: () => onSelectDatasetType(DatasetTypeEnum.feishuShare)
+                              }
+                            ]
+                          : []),
+                        ...(feConfigs?.show_dataset_feishu !== false
+                          ? [
+                              {
+                                icon: 'core/dataset/feishuKnowledgeDatasetColor',
+                                label: t('dataset:feishu_knowledge_dataset'),
+                                description: t('dataset:feishu_knowledge_dataset_desc'),
+                                onClick: () => onSelectDatasetType(DatasetTypeEnum.feishuKnowledge)
+                              }
+                            ]
+                          : []),
+                        ...(feConfigs?.show_dataset_feishu !== false
+                          ? [
+                              {
+                                icon: 'core/dataset/feishuPrivateDatasetColor',
+                                label: t('dataset:feishu_private_dataset'),
+                                description: t('dataset:feishu_private_dataset_desc'),
+                                onClick: () => onSelectDatasetType(DatasetTypeEnum.feishuPrivate)
                               }
                             ]
                           : []),
