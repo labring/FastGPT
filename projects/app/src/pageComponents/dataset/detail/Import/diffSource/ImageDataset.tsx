@@ -16,7 +16,7 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import { DatasetImportContext } from '../Context';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 
-const fileType = '.jpg, .jpeg, .png, .gif, .webp';
+const fileType = '.jpg, .jpeg, .png';
 
 const ImageDataset = () => {
   return <SelectFile />;
@@ -59,9 +59,7 @@ const SelectFile = React.memo(function SelectFile() {
   };
   const onRemoveFile = (index: number) => {
     setSelectFiles((prev) => {
-      const newFiles = [...prev];
-      newFiles.splice(index, 1);
-      return newFiles;
+      return prev.filter((_, i) => i !== index);
     });
   };
 

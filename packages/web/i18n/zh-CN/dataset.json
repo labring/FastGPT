@@ -110,6 +110,8 @@
   "index_size": "索引大小",
   "index_size_tips": "向量化时内容的长度，系统会自动按该大小对分块进行进一步的分割。",
   "input_required_field_to_select_baseurl": "请先输入必填信息",
+  "insert_images": "新增图片",
+  "insert_images_success": "新增图片成功，需等待训练完成才会展示",
   "is_open_schedule": "启用定时同步",
   "keep_image": "保留图片",
   "loading": "加载中...",

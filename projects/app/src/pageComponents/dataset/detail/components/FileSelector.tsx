@@ -25,7 +25,7 @@ const FileSelector = ({
 }: {
   fileType: string;
   selectFiles: SelectFileItemType[];
-  setSelectFiles: React.Dispatch<React.SetStateAction<SelectFileItemType[]>>;
+  setSelectFiles: (files: SelectFileItemType[]) => void;
   maxCount?: number;
 } & FlexProps) => {
   const { t } = useTranslation();
@@ -62,11 +62,11 @@ const FileSelector = ({
         name: file.name,
         size: formatFileSize(file.size)
       }));
-      setSelectFiles((state) => {
-        return [...fileList, ...state].slice(0, maxCount);
-      });
+
+      const newFiles = [...fileList, ...selectFiles].slice(0, maxCount);
+      setSelectFiles(newFiles);
     },
-    [maxCount, setSelectFiles]
+    [maxCount, selectFiles, setSelectFiles]
   );
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {

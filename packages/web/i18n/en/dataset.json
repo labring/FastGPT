@@ -110,6 +110,8 @@
   "index_size": "Index size",
   "index_size_tips": "When vectorized, the system will automatically further segment the blocks according to this size.",
   "input_required_field_to_select_baseurl": "Please enter the required information first",
+  "insert_images": "Added pictures",
+  "insert_images_success": "The new picture is successfully added, and you need to wait for the training to be completed before it will be displayed.",
   "is_open_schedule": "Enable scheduled synchronization",
   "keep_image": "Keep the picture",
   "loading": "Loading...",

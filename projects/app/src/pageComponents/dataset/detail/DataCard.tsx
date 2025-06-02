@@ -24,19 +24,26 @@ import TagsPopOver from './CollectionCard/TagsPopOver';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import Markdown from '@/components/Markdown';
-import { useMemoizedFn } from 'ahooks';
+import { useBoolean, useMemoizedFn } from 'ahooks';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { TabEnum } from './NavBar';
-import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTypeEnum,
+  ImportDataSourceEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import TrainingStates from './CollectionCard/TrainingStates';
 import { getTextValidLength } from '@fastgpt/global/common/string/utils';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
+import dynamic from 'next/dynamic';
+
+const InsertImagesModal = dynamic(() => import('./data/InsertImageModal'), {
+  ssr: false
+});
 
 const DataCard = () => {
-  const theme = useTheme();
   const router = useRouter();
   const { isPc } = useSystem();
   const { feConfigs } = useSystemStore();
@@ -93,6 +100,12 @@ const DataCard = () => {
   });
 
   const canWrite = useMemo(() => datasetDetail.permission.hasWritePer, [datasetDetail]);
+
+  const [
+    isInsertImagesModalOpen,
+    { setTrue: openInsertImagesModal, setFalse: closeInsertImagesModal }
+  ] = useBoolean();
+  const isImageCollection = collection?.type === DatasetCollectionTypeEnum.images;
 
   const onDeleteOneData = useMemoizedFn(async (dataId: string) => {
     try {
@@ -159,7 +172,7 @@ const DataCard = () => {
                 {t('dataset:retain_collection')}
               </Button>
             )}
-          {canWrite && (
+          {canWrite && !isImageCollection && (
             <Button
               ml={2}
               variant={'whitePrimary'}
@@ -170,6 +183,17 @@ const DataCard = () => {
               }}
             >
               {t('common:dataset.Insert Data')}
+            </Button>
+          )}
+          {canWrite && isImageCollection && (
+            <Button
+              ml={2}
+              variant={'whitePrimary'}
+              size={['sm', 'md']}
+              isDisabled={!collection}
+              onClick={openInsertImagesModal}
+            >
+              {t('dataset:insert_images')}
             </Button>
           )}
         </Flex>
@@ -413,6 +437,9 @@ const DataCard = () => {
           collectionId={errorModalId}
           onClose={() => setErrorModalId('')}
         />
+      )}
+      {isInsertImagesModalOpen && (
+        <InsertImagesModal collectionId={collectionId} onClose={closeInsertImagesModal} />
       )}
     </MyBox>
   );

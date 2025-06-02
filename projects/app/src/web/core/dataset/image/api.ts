@@ -30,3 +30,34 @@ export const createImageDatasetCollection = async ({
     }
   });
 };
+
+export const insertImagesToCollection = async ({
+  files,
+  collectionId,
+  onUploadProgress
+}: {
+  onUploadProgress?: (e: number) => void;
+  files: File[];
+  collectionId: string;
+}) => {
+  const formData = new FormData();
+  files.forEach((file) => {
+    formData.append('file', file, encodeURIComponent(file.name));
+  });
+  formData.append('data', JSON.stringify({ collectionId }));
+
+  return await POST<{ collectionId: string }>('/core/dataset/data/insertImages', formData, {
+    timeout: 600000,
+    headers: {
+      'Content-Type': 'multipart/form-data; charset=utf-8'
+    },
+    onUploadProgress: (e) => {
+      if (!onUploadProgress) return;
+      if (!e.progress) {
+        return onUploadProgress(0);
+      }
+      const percent = +Math.round(e.progress * 100).toFixed(2);
+      onUploadProgress(percent);
+    }
+  });
+};
