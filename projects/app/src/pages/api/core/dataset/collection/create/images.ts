@@ -1,5 +1,5 @@
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { type CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
+import type { ImageCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import {
   DatasetCollectionTypeEnum,
@@ -8,67 +8,97 @@ import {
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { getDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
-import { getVlmModelList } from '@fastgpt/service/core/ai/model';
+import type { CreateCollectionResponse } from '@/global/core/dataset/api';
+import { getUploadModel } from '@fastgpt/service/common/file/multer';
+import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
+import type { NextApiResponse } from 'next';
+import { i18nT } from '@fastgpt/web/i18n/utils';
+import { authFrequencyLimit } from '@/service/common/frequencyLimit/api';
+import { addSeconds } from 'date-fns';
+import { createDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
 
-type RequestBody = {
-  datasetId: string;
-  collectionName: string;
-  imageIds: string[];
+const authUploadLimit = (tmbId: string, num: number) => {
+  if (!global.feConfigs.uploadFileMaxAmount) return;
+  return authFrequencyLimit({
+    eventId: `${tmbId}-uploadfile`,
+    maxAmount: global.feConfigs.uploadFileMaxAmount * 2,
+    expiredTime: addSeconds(new Date(), 30), // 30s
+    num
+  });
 };
 
-async function handler(req: ApiRequestProps<RequestBody>) {
-  if (getVlmModelList().length === 0) {
-    throw new Error('Image_dataset_requires_VLM_model_to_be_configured');
-  }
+async function handler(
+  req: ApiRequestProps<ImageCreateDatasetCollectionParams>,
+  res: NextApiResponse<any>
+): CreateCollectionResponse {
+  const filePaths: string[] = [];
 
-  const { imageIds, datasetId, collectionName } = req.body;
+  try {
+    const upload = getUploadModel({
+      maxSize: global.feConfigs?.uploadFileMaxSize
+    });
+    const {
+      files,
+      data: { parentId, datasetId, collectionName }
+    } = await upload.getUploadFiles<ImageCreateDatasetCollectionParams>(req, res);
+    filePaths.push(...files.map((item) => item.path));
 
-  if (!imageIds || imageIds.length === 0) {
-    throw new Error('No image IDs provided');
-  }
-
-  if (!collectionName) {
-    throw new Error('Collection name is required');
-  }
-
-  // Verify permissions
-  const authData = await authDataset({
-    datasetId,
-    per: WritePermissionVal,
-    req,
-    authToken: true
-  });
-
-  // Verify all images exist and belong to the dataset
-  for (const imageId of imageIds) {
-    const image = await getDatasetImage(imageId);
-    if (!image) {
-      throw new Error('Dataset_ID_not_found');
-    }
-    if (String(image.teamId) !== String(authData.teamId)) {
-      throw new Error('Image_does_not_belong_to_current_team');
-    }
-  }
-
-  // Create collection
-  const result = await createCollectionAndInsertData({
-    dataset: authData.dataset,
-    createCollectionParams: {
-      teamId: authData.teamId,
-      tmbId: authData.tmbId,
+    const { dataset, teamId, tmbId } = await authDataset({
       datasetId,
-      name: collectionName,
-      type: DatasetCollectionTypeEnum.images,
-      trainingType: DatasetCollectionDataProcessModeEnum.imageParse,
-      imageIdList: imageIds
-    }
-  });
+      per: WritePermissionVal,
+      req,
+      authToken: true,
+      authApiKey: true
+    });
+    await authUploadLimit(tmbId, files.length);
 
-  return {
-    collectionId: result.collectionId,
-    results: result.insertResults
-  };
+    if (!dataset.vlmModel) {
+      return Promise.reject(i18nT('file:Image_dataset_requires_VLM_model_to_be_configured'));
+    }
+
+    // 1. Save image to db
+    const imageIds = await Promise.all(
+      files.map(async (file) => {
+        return (
+          await createDatasetImage({
+            teamId,
+            datasetId,
+            file
+          })
+        ).imageId;
+      })
+    );
+
+    // 2. Create collection
+    const { collectionId, insertResults } = await createCollectionAndInsertData({
+      dataset,
+      imageIds,
+      createCollectionParams: {
+        parentId,
+        teamId,
+        tmbId,
+        datasetId,
+        type: DatasetCollectionTypeEnum.images,
+        name: collectionName,
+        trainingType: DatasetCollectionDataProcessModeEnum.imageParse
+      }
+    });
+
+    return {
+      collectionId,
+      results: insertResults
+    };
+  } catch (error) {
+    return Promise.reject(error);
+  } finally {
+    removeFilesByPaths(filePaths);
+  }
 }
 
 export default NextAPI(handler);
+
+export const config = {
+  api: {
+    bodyParser: false
+  }
+};

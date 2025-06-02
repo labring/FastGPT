@@ -18,7 +18,6 @@ import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTex
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
-import { MongoDatasetCollectionImage } from '@fastgpt/service/core/dataset/image/schema';
 import { deleteDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
 
 const formatIndexes = async ({
@@ -144,12 +143,12 @@ export async function insertData2Dataset({
   datasetId,
   collectionId,
   q,
-  a = '',
+  a,
+  imageId,
   chunkIndex = 0,
   indexSize = 512,
   indexes,
   embeddingModel,
-  imageId,
   session
 }: CreateDatasetDataProps & {
   embeddingModel: string;

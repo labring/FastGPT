@@ -11,7 +11,6 @@ import { MongoDatasetCollectionTags } from '@fastgpt/service/core/dataset/tag/sc
 import { removeImageByPath } from '@fastgpt/service/common/file/image/controller';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { removeWebsiteSyncJobScheduler } from '@fastgpt/service/core/dataset/websiteSync';
-import { MongoDatasetCollectionImage } from '@fastgpt/service/core/dataset/image/schema';
 import { deleteDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
 
 async function handler(req: NextApiRequest) {
@@ -44,15 +43,7 @@ async function handler(req: NextApiRequest) {
     datasetId: { $in: datasetIds }
   });
 
-  // Find all images associated with these datasets
-  const images = await MongoDatasetCollectionImage.find({
-    teamId,
-    datasetId: { $in: datasetIds }
-  }).lean();
-
-  // Delete each image and its GridFS file
-  await Promise.all(images.map((image) => deleteDatasetImage(String(image._id))));
-
+  // Remove cron job
   await Promise.all(
     datasets.map((dataset) => {
       if (dataset.type === DatasetTypeEnum.websiteDataset)

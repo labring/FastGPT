@@ -11,9 +11,3 @@ export type DatasetImageSchema = {
   createdAt: Date;
   updatedAt: Date;
 };
-
-// API请求参数类型
-export type UploadDatasetImageProps = {
-  datasetId: string;
-  collectionId?: string;
-};

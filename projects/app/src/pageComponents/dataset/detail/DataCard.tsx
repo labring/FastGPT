@@ -1,11 +1,9 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Box, Card, IconButton, Flex, Button, useTheme, Image, Text } from '@chakra-ui/react';
+import React, { useState, useMemo } from 'react';
+import { Box, Card, IconButton, Flex, Button, useTheme, Image } from '@chakra-ui/react';
 import {
   getDatasetDataList,
   delOneDatasetDataById,
-  getDatasetCollectionById,
-  getDatasetDataItemById,
-  putDatasetDataById
+  getDatasetCollectionById
 } from '@/web/core/dataset/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -29,27 +27,26 @@ import Markdown from '@/components/Markdown';
 import { useMemoizedFn } from 'ahooks';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { TabEnum } from './NavBar';
-import {
-  ImportDataSourceEnum,
-  DatasetCollectionDataProcessModeEnum,
-  DatasetCollectionTypeEnum
-} from '@fastgpt/global/core/dataset/constants';
+import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import TrainingStates from './CollectionCard/TrainingStates';
 import { getTextValidLength } from '@fastgpt/global/common/string/utils';
-import { generateImagePreviewUrl } from '@/web/core/dataset/image/utils';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
+import { formatFileSize } from '@fastgpt/global/common/file/tools';
+import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 
 const DataCard = () => {
   const theme = useTheme();
   const router = useRouter();
   const { isPc } = useSystem();
-  const { collectionId = '', datasetId } = router.query as {
+  const { feConfigs } = useSystemStore();
+
+  const { collectionId = '' } = router.query as {
     collectionId: string;
     datasetId: string;
   };
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
-  const { feConfigs } = useSystemStore();
+  const datasetId = useContextSelector(DatasetPageContext, (v) => v.datasetId);
 
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
@@ -82,7 +79,7 @@ const DataCard = () => {
 
   const [editDataId, setEditDataId] = useState<string>();
 
-  // get file info
+  // Get collection info
   const { data: collection } = useRequest2(() => getDatasetCollectionById(collectionId), {
     refreshDeps: [collectionId],
     manual: false,
@@ -114,34 +111,6 @@ const DataCard = () => {
       });
     }
   });
-
-  const isImageCollection = useMemo(() => {
-    return collection?.type === DatasetCollectionTypeEnum.images;
-  }, [collection]);
-
-  const [imagePreviewUrls, setImagePreviewUrls] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    if (!datasetDataList.length || !isImageCollection) {
-      return;
-    }
-    const fetchDetailsAndCreateUrls = async () => {
-      const urlMap: Record<string, string> = {};
-      const previewPromises = datasetDataList.map(async (item) => {
-        try {
-          if (item.imageId) {
-            const previewUrl = await generateImagePreviewUrl(item.imageId, item.datasetId, 'list');
-            if (previewUrl) {
-              urlMap[item._id] = previewUrl;
-            }
-          }
-        } catch (error) {}
-      });
-      await Promise.all(previewPromises);
-      setImagePreviewUrls(urlMap);
-    };
-    fetchDetailsAndCreateUrls();
-  }, [datasetDataList, isImageCollection]);
 
   return (
     <MyBox py={[1, 0]} h={'100%'}>
@@ -268,7 +237,7 @@ const DataCard = () => {
                 userSelect={'none'}
                 boxShadow={'none'}
                 bg={index % 2 === 1 ? 'myGray.50' : 'blue.50'}
-                border={theme.borders.sm}
+                border={'sm'}
                 position={'relative'}
                 overflow={'hidden'}
                 _hover={{
@@ -314,53 +283,35 @@ const DataCard = () => {
                 </Flex>
 
                 {/* Data content */}
-                <Box wordBreak={'break-all'} fontSize={'sm'}>
-                  {isImageCollection ? (
-                    <Box display="flex" p={2} bg={'myGray.100'} gap={6}>
-                      <Box w="420px" flexShrink={0} bg="lightgray">
-                        {imagePreviewUrls[item._id] ? (
-                          <Image
-                            src={imagePreviewUrls[item._id]}
-                            alt={item.q}
-                            w="100%"
-                            h="100%"
-                            objectFit="contain"
-                            cursor="pointer"
-                            _hover={{ transform: 'scale(1.02)' }}
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
-                        ) : (
-                          <Box
-                            w="100%"
-                            h="100%"
-                            display="flex"
-                            justifyContent="center"
-                            alignItems="center"
-                          >
-                            <Text color="gray.400">加载图片中...</Text>
-                          </Box>
-                        )}
-                      </Box>
-                      <Box flex="1" color="myGray.800" fontSize="sm" maxH="272px" overflow="auto">
-                        <Markdown source={item.q} isDisabled />
-                      </Box>
+                {item.imagePreviewUrl ? (
+                  <Box display={['block', 'flex']} alignItems={'center'} gap={[3, 6]}>
+                    <Box flex="1 0 0">
+                      <MyImage
+                        src={item.imagePreviewUrl}
+                        alt={''}
+                        w={'100%'}
+                        h="100%"
+                        maxH={'300px'}
+                        objectFit="contain"
+                      />
                     </Box>
-                  ) : (
-                    <>
+                    <Box flex="1 0 0" maxH={'300px'} overflow={'hidden'} fontSize="sm">
                       <Markdown source={item.q} isDisabled />
-                      {!!item.a && (
-                        <>
-                          <MyDivider />
-                          <Markdown source={item.a} isDisabled />
-                        </>
-                      )}
-                    </>
-                  )}
-                </Box>
+                    </Box>
+                  </Box>
+                ) : (
+                  <Box wordBreak={'break-all'} fontSize={'sm'}>
+                    <Markdown source={item.q} isDisabled />
+                    {!!item.a && (
+                      <>
+                        <MyDivider />
+                        <Markdown source={item.a} isDisabled />
+                      </>
+                    )}
+                  </Box>
+                )}
 
-                {/* Mask */}
+                {/* Footer */}
                 <Flex
                   className="footer"
                   position={'absolute'}
@@ -385,12 +336,8 @@ const DataCard = () => {
                     py={1}
                     mr={2}
                   >
-                    {isImageCollection ? (
-                      item.imageSize ? (
-                        `${(item.imageSize / (1024 * 1024)).toFixed(2)} MB`
-                      ) : (
-                        '- MB'
-                      )
+                    {item.imageSize ? (
+                      <>{formatFileSize(item.imageSize)}</>
                     ) : (
                       <>
                         <MyIcon
@@ -403,7 +350,7 @@ const DataCard = () => {
                           w={'14px'}
                           mr={1}
                         />
-                        {getTextValidLength(item.q + item.a || '')}
+                        {getTextValidLength((item?.q || '') + (item?.a || ''))}
                       </>
                     )}
                   </Flex>

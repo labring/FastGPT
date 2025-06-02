@@ -1,94 +1,155 @@
 import { addMinutes } from 'date-fns';
-import { MongoDatasetCollectionImage } from './schema';
-import type { DatasetImageSchema } from '@fastgpt/global/core/dataset/image/type';
-import { Types } from '../../../common/mongo';
-import { getGridBucket } from '../../../common/file/gridfs/controller';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import { bucketName, MongoDatasetImageSchema } from './schema';
+import { connectionMongo, Types } from '../../../common/mongo';
 import fs from 'fs';
-import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import type { FileType } from '../../../common/file/multer';
+import fsp from 'fs/promises';
+import { computeGridFsChunSize } from '../../../common/file/gridfs/utils';
+import { setCron } from '../../../common/system/cron';
+import { checkTimerLock } from '../../../common/system/timerLock/utils';
+import { TimerIdEnum } from '../../../common/system/timerLock/constants';
+import { addLog } from '../../../common/system/log';
 
-/* ============= dataset images ========== */
+const getGridBucket = () => {
+  return new connectionMongo.mongo.GridFSBucket(connectionMongo.connection.db!, {
+    bucketName: bucketName
+  });
+};
 
-export async function createDatasetImage({
+export const createDatasetImage = async ({
   teamId,
   datasetId,
-  collectionId,
-  name,
-  path,
-  contentType,
-  size,
-  metadata = {}
+  file,
+  expiredTime = addMinutes(new Date(), 30)
 }: {
   teamId: string;
   datasetId: string;
-  collectionId?: string;
-  name: string;
-  path: string;
-  contentType: string;
-  size: number;
-  metadata?: Record<string, any>;
-}): Promise<string> {
-  try {
-    const fileId = new Types.ObjectId();
+  file: FileType;
+  expiredTime?: Date;
+}): Promise<{ imageId: string; previewUrl: string }> => {
+  const path = file.path;
+  const gridBucket = getGridBucket();
+  const metadata = {
+    teamId: String(teamId),
+    datasetId: String(datasetId),
+    expiredTime
+  };
 
-    const bucket = getGridBucket(BucketNameEnum.dataset);
-    const uploadStream = bucket.openUploadStreamWithId(fileId, name, {
-      contentType,
-      metadata: {
-        ...metadata,
-        teamId,
-        datasetId
-      }
-    });
+  const stats = await fsp.stat(path);
+  if (!stats.isFile()) return Promise.reject(`${path} is not a file`);
 
-    const readStream = fs.createReadStream(path);
-    await new Promise((resolve, reject) => {
-      readStream.pipe(uploadStream).on('finish', resolve).on('error', reject);
-    });
+  const readStream = fs.createReadStream(path, {
+    highWaterMark: 256 * 1024
+  });
+  const chunkSizeBytes = computeGridFsChunSize(stats.size);
 
-    // Set TTL to 30min
-    const expiredTime = addMinutes(new Date(), 30);
+  const stream = gridBucket.openUploadStream(file.originalname, {
+    metadata,
+    contentType: file.mimetype,
+    chunkSizeBytes
+  });
 
-    const image = await MongoDatasetCollectionImage.create({
-      _id: fileId,
-      teamId,
-      datasetId,
-      collectionId,
-      name,
-      contentType,
-      size,
-      metadata,
-      expiredTime
-    });
+  // save to gridfs
+  await new Promise((resolve, reject) => {
+    readStream
+      .pipe(stream as any)
+      .on('finish', resolve)
+      .on('error', reject);
+  });
 
-    return String(image._id);
-  } catch (error) {
-    fs.unlink(path, () => {});
-    throw error;
+  return {
+    imageId: String(stream.id),
+    previewUrl: ''
+  };
+};
+
+export const getDatasetImageReadData = async (imageId: string) => {
+  // Get file metadata to get contentType
+  const fileInfo = await MongoDatasetImageSchema.findOne({
+    _id: new Types.ObjectId(imageId)
+  }).lean();
+  if (!fileInfo) {
+    return Promise.reject('Image not found');
   }
-}
 
-export async function getDatasetImage(imageId: string): Promise<DatasetImageSchema | null> {
-  return MongoDatasetCollectionImage.findById(imageId).lean();
-}
+  const gridBucket = getGridBucket();
+  return {
+    stream: gridBucket.openDownloadStream(new Types.ObjectId(imageId)),
+    fileInfo
+  };
+};
+export const getDatasetImageBase64 = async (imageId: string) => {
+  // Get file metadata to get contentType
+  const fileInfo = await MongoDatasetImageSchema.findOne({
+    _id: new Types.ObjectId(imageId)
+  }).lean();
+  if (!fileInfo) {
+    return Promise.reject('Image not found');
+  }
 
-export async function getDatasetImageStream(imageId: string) {
-  const bucket = getGridBucket(BucketNameEnum.dataset);
-  return bucket.openDownloadStream(new Types.ObjectId(imageId));
-}
+  // Get image stream from GridFS
+  const { stream } = await getDatasetImageReadData(imageId);
 
-export async function deleteDatasetImage(imageId: string) {
-  return mongoSessionRun(async (session) => {
-    try {
-      const bucket = getGridBucket(BucketNameEnum.dataset);
+  // Convert stream to buffer
+  const chunks: Buffer[] = [];
 
-      await Promise.all([
-        bucket.delete(new Types.ObjectId(imageId)),
-        MongoDatasetCollectionImage.findByIdAndDelete(imageId).session(session)
-      ]);
-    } catch (error) {
-      console.error('Failed to delete image:', error);
-      throw error;
+  return new Promise<string>((resolve, reject) => {
+    stream.on('data', (chunk: Buffer) => {
+      chunks.push(chunk);
+    });
+
+    stream.on('end', () => {
+      // Combine all chunks into a single buffer
+      const buffer = Buffer.concat(chunks);
+      // Convert buffer to base64 string
+      const base64 = buffer.toString('base64');
+      const dataUrl = `data:${fileInfo.contentType || 'image/jpeg'};base64,${base64}`;
+      resolve(dataUrl);
+    });
+
+    stream.on('error', reject);
+  });
+};
+
+export const deleteDatasetImage = async (imageId: string) => {
+  const gridBucket = getGridBucket();
+  await gridBucket.delete(new Types.ObjectId(imageId));
+};
+
+export const clearExpiredDatasetImageCron = async () => {
+  const gridBucket = getGridBucket();
+  const clearExpiredDatasetImages = async () => {
+    addLog.debug('Clear expired dataset image start');
+
+    const data = await MongoDatasetImageSchema.find(
+      {
+        'metadata.expiredTime': { $lt: new Date() }
+      },
+      '_id'
+    ).lean();
+
+    for (const item of data) {
+      try {
+        await gridBucket.delete(item._id);
+      } catch (error) {
+        addLog.error('Delete expired dataset image error', error);
+      }
+    }
+    addLog.debug('Clear expired dataset image end');
+  };
+
+  setCron('*/10 * * * *', async () => {
+    if (
+      await checkTimerLock({
+        timerId: TimerIdEnum.clearExpiredDatasetImage,
+        lockMinuted: 9
+      })
+    ) {
+      try {
+        await clearExpiredDatasetImages();
+      } catch (error) {
+        addLog.error('clearExpiredDatasetImageCron error', error);
+      }
     }
   });
-}
+};

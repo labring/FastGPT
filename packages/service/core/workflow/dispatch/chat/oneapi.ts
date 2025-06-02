@@ -358,7 +358,7 @@ async function filterDatasetQuote({
     return replaceVariable(quoteTemplate, {
       id: item.id,
       q: item.q,
-      a: item.a,
+      a: item.a || '',
       updateTime: formatTime2YMDHM(item.updateTime),
       source: item.sourceName,
       sourceId: String(item.sourceId || ''),

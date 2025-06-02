@@ -15,7 +15,7 @@ export type CreateDatasetDataProps = {
 export type UpdateDatasetDataProps = {
   dataId: string;
 
-  q?: string;
+  q: string;
   a?: string;
   indexes?: (Omit<DatasetDataIndexItemType, 'dataId'> & {
     dataId?: string; // pg data id

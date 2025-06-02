@@ -40,8 +40,6 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
     }
   );
 
-  const isImageCollection = collection?.type === DatasetCollectionTypeEnum.images;
-
   const metadataList = useMemo<{ label?: string; value?: any }[]>(() => {
     if (!collection) return [];
 
@@ -53,13 +51,17 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
         value: t(DatasetCollectionTypeMap[collection.type]?.name as any)
       },
       {
-        label: t('common:core.dataset.collection.metadata.source name'),
+        label: t('dataset:collection_name'),
         value: collection.file?.filename || collection?.rawLink || collection?.name
       },
-      {
-        label: t('common:core.dataset.collection.metadata.source size'),
-        value: collection.file ? formatFileSize(collection.file.length) : '-'
-      },
+      ...(collection.file
+        ? [
+            {
+              label: t('common:core.dataset.collection.metadata.source size'),
+              value: formatFileSize(collection.file.length)
+            }
+          ]
+        : []),
       {
         label: t('common:core.dataset.collection.metadata.Createtime'),
         value: formatTime2YMDHM(collection.createTime)
@@ -68,23 +70,31 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
         label: t('common:core.dataset.collection.metadata.Updatetime'),
         value: formatTime2YMDHM(collection.updateTime)
       },
-      ...(isImageCollection
-        ? []
-        : [
+      ...(collection.customPdfParse !== undefined
+        ? [
             {
               label: t('dataset:collection_metadata_custom_pdf_parse'),
               value: collection.customPdfParse ? 'Yes' : 'No'
-            },
+            }
+          ]
+        : []),
+      ...(collection.rawTextLength !== undefined
+        ? [
             {
               label: t('common:core.dataset.collection.metadata.Raw text length'),
-              value: collection.rawTextLength ?? '-'
-            },
+              value: collection.rawTextLength
+            }
+          ]
+        : []),
+      ...(DatasetCollectionDataProcessModeMap[collection.trainingType]
+        ? [
             {
               label: t('dataset:collection.training_type'),
               value: t(DatasetCollectionDataProcessModeMap[collection.trainingType]?.label as any)
             }
-          ]),
-      ...(collection.imageIndex !== undefined && !isImageCollection
+          ]
+        : []),
+      ...(collection.imageIndex !== undefined
         ? [
             {
               label: t('dataset:data_index_image'),
@@ -100,7 +110,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
             }
           ]
         : []),
-      ...(collection.chunkSize && !isImageCollection
+      ...(collection.chunkSize !== undefined
         ? [
             {
               label: t('dataset:chunk_size'),
@@ -108,7 +118,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
             }
           ]
         : []),
-      ...(collection.indexSize && !isImageCollection
+      ...(collection.indexSize !== undefined
         ? [
             {
               label: t('dataset:index_size'),
@@ -116,7 +126,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
             }
           ]
         : []),
-      ...(webSelector && !isImageCollection
+      ...(webSelector !== undefined
         ? [
             {
               label: t('common:core.dataset.collection.metadata.Web page selector'),
@@ -133,7 +143,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
           ]
         : [])
     ];
-  }, [collection, t, isImageCollection]);
+  }, [collection, t]);
 
   return (
     <MyBox isLoading={isLoading} w={'100%'} h={'100%'} p={6}>

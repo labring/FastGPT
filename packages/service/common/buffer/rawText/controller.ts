@@ -142,23 +142,26 @@ export const updateRawTextBufferExpiredTime = async ({
 };
 
 export const clearExpiredRawTextBufferCron = async () => {
+  const gridBucket = getGridBucket();
+
   const clearExpiredRawTextBuffer = async () => {
     addLog.debug('Clear expired raw text buffer start');
-    const gridBucket = getGridBucket();
 
-    return retryFn(async () => {
-      const data = await MongoRawTextBufferSchema.find(
-        {
-          'metadata.expiredTime': { $lt: new Date() }
-        },
-        '_id'
-      ).lean();
+    const data = await MongoRawTextBufferSchema.find(
+      {
+        'metadata.expiredTime': { $lt: new Date() }
+      },
+      '_id'
+    ).lean();
 
-      for (const item of data) {
+    for (const item of data) {
+      try {
         await gridBucket.delete(item._id);
+      } catch (error) {
+        addLog.error('Delete expired raw text buffer error', error);
       }
-      addLog.debug('Clear expired raw text buffer end');
-    });
+    }
+    addLog.debug('Clear expired raw text buffer end');
   };
 
   setCron('*/10 * * * *', async () => {

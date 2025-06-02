@@ -34,7 +34,7 @@ export const valToStr = (val: any) => {
 };
 
 // replace {{variable}} to value
-export function replaceVariable(text: any, obj: Record<string, string | number>) {
+export function replaceVariable(text: any, obj: Record<string, string | number | undefined>) {
   if (typeof text !== 'string') return text;
 
   for (const key in obj) {

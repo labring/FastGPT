@@ -12,11 +12,7 @@ import { getCollectionWithDataset } from '../controller';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { type PushDataToTrainingQueueProps } from '@fastgpt/global/core/dataset/training/type';
 import { i18nT } from '../../../../web/i18n/utils';
-import {
-  getLLMDefaultChunkSize,
-  getLLMMaxChunkSize
-} from '../../../../global/core/dataset/training/utils';
-import { connectionMongo } from '../../../common/mongo';
+import { getLLMMaxChunkSize } from '../../../../global/core/dataset/training/utils';
 
 export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => {
   try {
@@ -66,7 +62,7 @@ export async function pushDataListToTrainingQueue({
   const getImageChunkMode = (data: PushDatasetDataChunkProps, mode: TrainingModeEnum) => {
     if (mode !== TrainingModeEnum.image) return mode;
     // 检查内容中，是否包含 ![](xxx) 的图片格式
-    const text = data.q + data.a || '';
+    const text = (data.q || '') + (data.a || '');
     const regex = /!\[\]\((.*?)\)/g;
     const match = text.match(regex);
     if (match) {
@@ -82,9 +78,6 @@ export async function pushDataListToTrainingQueue({
   const agentModelData = getLLMModel(agentModel);
   if (!agentModelData) {
     return Promise.reject(i18nT('common:error_llm_not_config'));
-  }
-  if (mode === TrainingModeEnum.chunk || mode === TrainingModeEnum.auto) {
-    prompt = undefined;
   }
 
   const { model, maxToken, weight } = await (async () => {
@@ -118,11 +111,9 @@ export async function pushDataListToTrainingQueue({
   })();
 
   // filter repeat or equal content
-  const set = new Set();
   const filterResult: Record<string, PushDatasetDataChunkProps[]> = {
     success: [],
     overToken: [],
-    repeat: [],
     error: []
   };
 
@@ -141,8 +132,7 @@ export async function pushDataListToTrainingQueue({
       .filter(Boolean);
 
     // filter repeat content
-    // For imageParse mode, allow empty q if imageId exists
-    if (!item.q && !(mode === TrainingModeEnum.imageParse && item.imageId)) {
+    if (!item.imageId && !item.q) {
       filterResult.error.push(item);
       return;
     }
@@ -155,30 +145,21 @@ export async function pushDataListToTrainingQueue({
       return;
     }
 
-    // For imageParse mode with imageId, use imageId as unique key
-    const uniqueKey = mode === TrainingModeEnum.imageParse && item.imageId ? item.imageId : text;
-
-    if (set.has(uniqueKey)) {
-      filterResult.repeat.push(item);
-    } else {
-      filterResult.success.push(item);
-      set.add(uniqueKey);
-    }
+    filterResult.success.push(item);
   });
 
   // insert data to db
   const insertLen = filterResult.success.length;
-  const failedDocuments: PushDatasetDataChunkProps[] = [];
 
   // 使用 insertMany 批量插入
-  const batchSize = 200;
+  const batchSize = 500;
   const insertData = async (startIndex: number, session: ClientSession) => {
     const list = filterResult.success.slice(startIndex, startIndex + batchSize);
 
     if (list.length === 0) return;
 
     try {
-      await MongoDatasetTraining.insertMany(
+      const result = await MongoDatasetTraining.insertMany(
         list.map((item) => ({
           teamId,
           tmbId,
@@ -199,20 +180,18 @@ export async function pushDataListToTrainingQueue({
         })),
         {
           session,
-          ordered: true
+          ordered: false,
+          rawResult: true,
+          includeResultMetadata: false // 进一步减少返回数据
         }
       );
+
+      if (result.insertedCount !== list.length) {
+        return Promise.reject(`Insert data error, ${JSON.stringify(result)}`);
+      }
     } catch (error: any) {
       addLog.error(`Insert error`, error);
-      // 如果有错误，将失败的文档添加到失败列表中
-      error.writeErrors?.forEach((writeError: any) => {
-        failedDocuments.push(data[writeError.index]);
-      });
-    }
-
-    // 对于失败的文档，尝试单独插入
-    if (failedDocuments.length > 0) {
-      await MongoDatasetTraining.create(failedDocuments, { session });
+      return Promise.reject(error);
     }
 
     return insertData(startIndex + batchSize, session);
@@ -229,7 +208,6 @@ export async function pushDataListToTrainingQueue({
   delete filterResult.success;
 
   return {
-    insertLen,
-    ...filterResult
+    insertLen
   };
 }

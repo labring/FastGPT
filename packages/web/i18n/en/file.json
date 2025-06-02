@@ -1,5 +1,4 @@
 {
-  "please_input_image_description": "Please enter a picture description",
   "Action": "Please select the image to upload",
   "All images import failed": "All pictures failed to import",
   "Dataset_ID_not_found": "The dataset ID does not exist",
@@ -23,6 +22,7 @@
   "delete_image": "Delete pictures",
   "file_name": "Filename",
   "file_size": "Filesize",
+  "image": "picture",
   "image_collection": "Picture collection",
   "image_description": "Image description",
   "please_upload_image_first": "Please upload the picture first",

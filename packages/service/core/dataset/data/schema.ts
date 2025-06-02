@@ -37,8 +37,7 @@ const DatasetDataSchema = new Schema({
     required: true
   },
   a: {
-    type: String,
-    default: ''
+    type: String
   },
   history: {
     type: [

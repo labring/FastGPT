@@ -16,6 +16,7 @@ import { type AuthModeType, type AuthResponseType } from '../type';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/dataset/constant';
+import { getDatasetImagePreviewUrl } from '../../../core/dataset/image/utils';
 
 export const authDatasetByTmbId = async ({
   tmbId,
@@ -268,6 +269,14 @@ export async function authDatasetData({
     q: datasetData.q,
     a: datasetData.a,
     imageId: datasetData.imageId,
+    imagePreivewUrl: datasetData.imageId
+      ? getDatasetImagePreviewUrl({
+          imageId: datasetData.imageId,
+          teamId: datasetData.teamId,
+          datasetId: datasetData.datasetId,
+          expiredMinutes: 30
+        })
+      : undefined,
     chunkIndex: datasetData.chunkIndex,
     indexes: datasetData.indexes,
     datasetId: String(datasetData.datasetId),

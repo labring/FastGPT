@@ -240,16 +240,28 @@ export const getTrainingModeByCollection = ({
   autoIndexes?: boolean;
   imageIndex?: boolean;
 }) => {
+  if (
+    trainingType === DatasetCollectionDataProcessModeEnum.imageParse &&
+    global.feConfigs?.isPlus
+  ) {
+    return TrainingModeEnum.imageParse;
+  }
+
   if (trainingType === DatasetCollectionDataProcessModeEnum.qa) {
     return TrainingModeEnum.qa;
   }
-  if (imageIndex && global.feConfigs?.isPlus) {
+  if (
+    trainingType === DatasetCollectionDataProcessModeEnum.chunk &&
+    imageIndex &&
+    global.feConfigs?.isPlus
+  ) {
     return TrainingModeEnum.image;
   }
-  if (trainingType === DatasetCollectionDataProcessModeEnum.imageParse) {
-    return TrainingModeEnum.imageParse;
-  }
-  if (autoIndexes && global.feConfigs?.isPlus) {
+  if (
+    trainingType === DatasetCollectionDataProcessModeEnum.chunk &&
+    autoIndexes &&
+    global.feConfigs?.isPlus
+  ) {
     return TrainingModeEnum.auto;
   }
   return TrainingModeEnum.chunk;

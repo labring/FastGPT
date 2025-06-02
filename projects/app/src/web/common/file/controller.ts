@@ -29,17 +29,13 @@ export const uploadFile2DB = async ({
     formData.append('data', JSON.stringify(data));
   }
 
-  try {
-    const res = await postUploadFiles(formData, (e) => {
-      if (!e.total) return;
+  const res = await postUploadFiles(formData, (e) => {
+    if (!e.total) return;
 
-      const percent = Math.round((e.loaded / e.total) * 100);
-      percentListen?.(percent);
-    });
-    return res;
-  } catch (error) {
-    throw error;
-  }
+    const percent = Math.round((e.loaded / e.total) * 100);
+    percentListen?.(percent);
+  });
+  return res;
 };
 
 /**

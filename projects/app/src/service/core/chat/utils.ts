@@ -1,20 +1,12 @@
-import { type DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { type QuoteDataItemType } from './constants';
 
 // 获取对话时间时，引用的内容
 export function processChatTimeFilter(
-  dataList: DatasetDataSchemaType[],
+  dataList: QuoteDataItemType[],
   chatTime: Date
 ): QuoteDataItemType[] {
   return dataList.map((item) => {
-    const defaultItem = {
-      _id: item._id,
-      q: item.q,
-      a: item.a,
-      updateTime: item.updateTime,
-      index: item.chunkIndex,
-      imageId: item.imageId
-    };
+    const defaultItem = item;
 
     if (!item.history) return defaultItem;
 
@@ -36,12 +28,10 @@ export function processChatTimeFilter(
     const latestHistory = history[latestHistoryIndex];
 
     return {
-      _id: item._id,
+      ...item,
       q: latestHistory.q,
       a: latestHistory.a,
       updateTime: latestHistory.updateTime,
-      index: item.chunkIndex,
-      imageId: item.imageId,
       updated: true
     };
   });

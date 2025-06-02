@@ -17,10 +17,9 @@ import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
-import { MongoDatasetCollectionImage } from '@fastgpt/service/core/dataset/image/schema';
 
 async function handler(req: NextApiRequest) {
-  const { collectionId, q, a, indexes, imageId } = req.body as InsertOneDatasetDataProps;
+  const { collectionId, q, a, indexes } = req.body as InsertOneDatasetDataProps;
 
   if (!q) {
     return Promise.reject(CommonErrEnum.missingParams);
@@ -82,14 +81,8 @@ async function handler(req: NextApiRequest) {
     a: formatA,
     chunkIndex: 0,
     embeddingModel: vectorModelData.model,
-    indexes: formatIndexes,
-    imageId
+    indexes: formatIndexes
   });
-
-  // Remove TTL from image if imageId exists (prevent image expiration during training)
-  if (imageId) {
-    await MongoDatasetCollectionImage.updateOne({ _id: imageId }, { $unset: { expiredTime: 1 } });
-  }
 
   pushGenerateVectorUsage({
     teamId,

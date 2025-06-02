@@ -34,11 +34,11 @@ export type DatasetDataListItemType = {
   _id: string;
   datasetId: string;
   collectionId: string;
-  q: string;
-  a: string;
+  q?: string;
+  a?: string;
   imageId?: string;
-  chunkIndex?: number;
-  updated?: boolean;
   imageSize?: number;
   imagePreviewUrl?: string; //image preview url
+  chunkIndex?: number;
+  updated?: boolean;
 };

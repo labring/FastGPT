@@ -48,6 +48,8 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
   const { t } = useTranslation();
 
   const isQA = trainingDetail?.trainingType === DatasetCollectionDataProcessModeEnum.qa;
+  const isImageParse =
+    trainingDetail?.trainingType === DatasetCollectionDataProcessModeEnum.imageParse;
 
   /* 
     状态计算
@@ -102,6 +104,18 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
         status: TrainingStatus.Ready,
         errorCount: 0
       },
+      ...(isImageParse
+        ? [
+            {
+              errorCount: trainingDetail.errorCounts.imageParse,
+              label: t(TrainingProcess.parseImage.label),
+              statusText: getStatusText(TrainingModeEnum.imageParse),
+              status: getTrainingStatus({
+                errorCount: trainingDetail.errorCounts.imageParse
+              })
+            }
+          ]
+        : []),
       ...(isQA
         ? [
             {
@@ -114,7 +128,7 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
             }
           ]
         : []),
-      ...(trainingDetail?.advancedTraining.imageIndex && !isQA
+      ...(trainingDetail?.advancedTraining.imageIndex
         ? [
             {
               errorCount: trainingDetail.errorCounts.image,
@@ -126,7 +140,7 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
             }
           ]
         : []),
-      ...(trainingDetail?.advancedTraining.autoIndexes && !isQA
+      ...(trainingDetail?.advancedTraining.autoIndexes
         ? [
             {
               errorCount: trainingDetail.errorCounts.auto,
@@ -159,7 +173,17 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
     ];
 
     return states;
-  }, [trainingDetail, t, isQA]);
+  }, [
+    trainingDetail.queuedCounts,
+    trainingDetail.trainingCounts,
+    trainingDetail.errorCounts,
+    trainingDetail?.advancedTraining.imageIndex,
+    trainingDetail?.advancedTraining.autoIndexes,
+    trainingDetail.trainedCount,
+    t,
+    isImageParse,
+    isQA
+  ]);
 
   return (
     <Flex flexDirection={'column'} gap={6}>

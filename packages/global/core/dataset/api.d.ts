@@ -1,4 +1,9 @@
-import type { ChunkSettingsType, DatasetDataIndexItemType, DatasetSchemaType } from './type';
+import type {
+  ChunkSettingsType,
+  DatasetDataIndexItemType,
+  DatasetDataFieldType,
+  DatasetSchemaType
+} from './type';
 import type {
   DatasetCollectionTypeEnum,
   DatasetCollectionDataProcessModeEnum,
@@ -7,8 +12,7 @@ import type {
   ChunkTriggerConfigTypeEnum,
   ParagraphChunkAIModeEnum
 } from './constants';
-import type { LLMModelItemType } from '../ai/model.d';
-import type { ParentIdType } from 'common/parentFolder/type';
+import type { ParentIdType } from '../../common/parentFolder/type';
 
 /* ================= dataset ===================== */
 export type DatasetUpdateBody = {
@@ -58,7 +62,6 @@ export type CreateDatasetCollectionParams = DatasetCollectionStoreDataType & {
   hashRawText?: string;
 
   tags?: string[];
-  imageIdList?: string[];
 
   createTime?: Date;
   updateTime?: Date;
@@ -101,6 +104,9 @@ export type ExternalFileCreateDatasetCollectionParams = ApiCreateDatasetCollecti
   externalFileUrl: string;
   filename?: string;
 };
+export type ImageCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
+  collectionName: string;
+};
 
 /* ================= tag ===================== */
 export type CreateDatasetCollectionTagParams = {
@@ -126,9 +132,9 @@ export type PgSearchRawType = {
   score: number;
 };
 export type PushDatasetDataChunkProps = {
-  q: string; // embedding content
-  a?: string; // bonus content
-  imageId?: string; //file id preview
+  q?: string;
+  a?: string;
+  imageId?: string;
   chunkIndex?: number;
   indexes?: Omit<DatasetDataIndexItemType, 'dataId'>[];
 };
@@ -153,5 +159,4 @@ export type PushDatasetDataProps = {
 };
 export type PushDatasetDataResponse = {
   insertLen: number;
-  message?: string;
 };

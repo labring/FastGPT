@@ -220,6 +220,7 @@ export const iconPaths = {
     import('./icons/core/dataset/feishuDatasetOutline.svg'),
   'core/dataset/fileCollection': () => import('./icons/core/dataset/fileCollection.svg'),
   'core/dataset/fullTextRecall': () => import('./icons/core/dataset/fullTextRecall.svg'),
+  'core/dataset/imageFill': () => import('./icons/core/dataset/imageFill.svg'),
   'core/dataset/manualCollection': () => import('./icons/core/dataset/manualCollection.svg'),
   'core/dataset/mixedRecall': () => import('./icons/core/dataset/mixedRecall.svg'),
   'core/dataset/modeEmbedding': () => import('./icons/core/dataset/modeEmbedding.svg'),

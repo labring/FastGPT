@@ -1,8 +1,4 @@
-import {
-  TrainingModeEnum,
-  DatasetCollectionTypeEnum,
-  DatasetCollectionDataProcessModeEnum
-} from './constants';
+import { TrainingModeEnum, DatasetCollectionTypeEnum } from './constants';
 import { getFileIcon } from '../../common/file/icon';
 import { strIsLink } from '../../common/string/tools';
 
@@ -20,7 +16,7 @@ export function getCollectionIcon(
     return 'file/fill/manual';
   }
   if (type === DatasetCollectionTypeEnum.images) {
-    return 'image';
+    return 'core/dataset/imageFill';
   }
   return getFileIcon(name);
 }

@@ -1,21 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Box,
-  Flex,
-  Button,
-  Textarea,
-  ModalFooter,
-  HStack,
-  VStack,
-  Image,
-  Text,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalBody,
-  Alert,
-  AlertIcon
-} from '@chakra-ui/react';
+import { Box, Flex, Button, Textarea, ModalFooter, HStack, VStack, Image } from '@chakra-ui/react';
 import type { UseFormRegister } from 'react-hook-form';
 import { useFieldArray, useForm } from 'react-hook-form';
 import {
@@ -24,7 +8,6 @@ import {
   getDatasetCollectionById,
   getDatasetDataItemById
 } from '@/web/core/dataset/api';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -35,9 +18,7 @@ import type { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type
 import DeleteIcon from '@fastgpt/web/components/common/Icon/delete';
 import { defaultCollectionDetail } from '@/web/core/dataset/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import styles from './styles.module.scss';
 import {
   DatasetDataIndexTypeEnum,
@@ -47,14 +28,12 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { generateImagePreviewUrl } from '@/web/core/dataset/image/utils';
-import { uploadDatasetImage } from '@/web/core/dataset/image/api';
-import MyPhotoView from '@fastgpt/web/components/common/Image/PhotoView';
+import MyImage from '@/components/MyImage/index';
 
 export type InputDataType = {
   q: string;
   a: string;
+  imagePreivewUrl?: string;
   indexes: (Omit<DatasetDataIndexItemType, 'dataId'> & {
     dataId?: string; // pg data id
     fold: boolean;
@@ -76,32 +55,16 @@ const InputDataModal = ({
 }: {
   collectionId: string;
   dataId?: string;
-  defaultValue?: { q: string; a?: string };
+  defaultValue?: { q?: string; a?: string; imagePreivewUrl?: string };
   onClose: () => void;
   onSuccess: (data: InputDataType & { dataId: string }) => void;
 }) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
-  const { embeddingModelList, defaultModels, getVlmModelList } = useSystemStore();
-  const { userInfo } = useUserStore();
+  const { embeddingModelList, defaultModels } = useSystemStore();
 
-  const [currentTab, setCurrentTab] = useState(TabEnum.chunk);
+  const [currentTab, setCurrentTab] = useState<TabEnum>();
 
-  // Image related states
-  const [imagePreview, setImagePreview] = useState<string>('');
-  const [uploading, setUploading] = useState(false);
-  const [multipleImagesError, setMultipleImagesError] = useState(false);
-  const [uploadedFileId, setUploadedFileId] = useState<string>('');
-  const [isImageEnlarged, setIsImageEnlarged] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState('');
-  const [isImageHovered, setIsImageHovered] = useState(false);
-
-  const { File: FileSelectDom, onOpen: onSelectFile } = useSelectFile({
-    fileType: 'image/*',
-    multiple: false
-  });
-
-  const { register, handleSubmit, reset, control } = useForm<InputDataType>();
+  const { register, handleSubmit, reset, control, watch } = useForm<InputDataType>();
   const {
     fields: indexes,
     prepend: prependIndexes,
@@ -111,95 +74,24 @@ const InputDataModal = ({
     control,
     name: 'indexes'
   });
+  const imagePreivewUrl = watch('imagePreivewUrl');
 
   const { data: collection = defaultCollectionDetail } = useRequest2(
-    () => {
-      return getDatasetCollectionById(collectionId);
-    },
+    () => getDatasetCollectionById(collectionId),
     {
       manual: false,
-      refreshDeps: [collectionId]
-    }
-  );
-
-  // Check if it's an image dataset
-  const isImageCollection = useMemo(() => {
-    return collection?.type === DatasetCollectionTypeEnum.images;
-  }, [collection]);
-
-  // Set default tab based on dataset type
-  useEffect(() => {
-    if (isImageCollection) {
-      setCurrentTab(TabEnum.image);
-    } else {
-      setCurrentTab(TabEnum.chunk);
-    }
-  }, [isImageCollection]);
-
-  // Check if VLM model is available
-  const hasVlmModel = useMemo(() => getVlmModelList().length > 0, [getVlmModelList]);
-
-  // Image handling functions
-  const handleSelectImage = useCallback(
-    async (files: File[]) => {
-      try {
-        if (files.length > 1) {
-          setMultipleImagesError(true);
-          setTimeout(() => setMultipleImagesError(false), 3000);
-          return;
+      refreshDeps: [collectionId],
+      onSuccess(res) {
+        if (res.type === DatasetCollectionTypeEnum.images) {
+          setCurrentTab(TabEnum.image);
+        } else {
+          setCurrentTab(TabEnum.chunk);
         }
-
-        if (files.length === 0) return;
-
-        const file = files[0];
-        setUploading(true);
-
-        try {
-          const result = await uploadDatasetImage(file, collection.dataset._id, collectionId);
-
-          try {
-            const previewUrl = await generateImagePreviewUrl(
-              result.id,
-              collection.dataset._id,
-              'preview'
-            );
-
-            setUploadedFileId(result.id);
-            setImagePreview(previewUrl);
-          } catch (error) {
-            setUploadedFileId(result.id);
-            toast({
-              title: t('file:Loading_image failed'),
-              status: 'warning'
-            });
-          }
-        } catch (error) {
-          toast({
-            title: getErrText(error, t('file:Loading_image failed')),
-            status: 'error'
-          });
-        } finally {
-          setUploading(false);
-        }
-      } catch (error) {
-        toast({
-          title: t('file:Loading_image failed'),
-          status: 'error'
-        });
-        setUploading(false);
       }
-    },
-    [collection.dataset._id, collectionId, toast, userInfo?.team?.teamId]
+    }
   );
 
-  const handleImageClick = useCallback(() => {
-    setIsImageEnlarged(true);
-  }, []);
-
-  const handleCloseEnlargedImage = useCallback(() => {
-    setIsImageEnlarged(false);
-  }, []);
-
+  // Get data
   const { loading: isFetchingData } = useRequest2(
     async () => {
       if (dataId) return getDatasetDataItemById(dataId);
@@ -211,90 +103,31 @@ const InputDataModal = ({
       onSuccess(res) {
         if (res) {
           reset({
-            q: res.q,
-            a: res.a,
+            q: res.q || '',
+            a: res.a || '',
+            imagePreivewUrl: res.imagePreivewUrl,
             indexes: res.indexes.map((item) => ({
               ...item,
               fold: true
             }))
           });
-
-          // Handle image data - check if this specific data item has an image
-          if (res.imageId && res.imageId.trim() !== '') {
-            setUploadedFileId(res.imageId);
-            setCurrentTab(TabEnum.image);
-          } else if (res.a || defaultValue?.a) {
-            // Only switch to QA tab if there's answer content and no image
-            setCurrentTab(TabEnum.qa);
-          } else {
-            // Default to chunk tab for text-only data
-            setCurrentTab(TabEnum.chunk);
-          }
         } else if (defaultValue) {
           reset({
-            q: defaultValue.q,
-            a: defaultValue.a
+            q: defaultValue.q || '',
+            a: defaultValue.a || '',
+            imagePreivewUrl: defaultValue.imagePreivewUrl
           });
-
-          // Set default tab based on content
-          if (defaultValue.a) {
-            setCurrentTab(TabEnum.qa);
-          } else {
-            setCurrentTab(TabEnum.chunk);
-          }
         }
       },
       onError(err) {
-        toast({
-          status: 'error',
-          title: t(getErrText(err) as any)
-        });
         onClose();
       }
     }
   );
 
-  // Handle image preview URL generation separately
-  useEffect(() => {
-    if (uploadedFileId && userInfo?.team?.teamId && collection.dataset._id) {
-      generateImagePreviewUrl(uploadedFileId, collection.dataset._id, 'preview')
-        .then((url) => {
-          setPreviewUrl(url);
-        })
-        .catch((error) => {
-          toast({
-            title: t('file:Loading_image failed'),
-            status: 'warning'
-          });
-        });
-    }
-  }, [uploadedFileId, userInfo?.team?.teamId, collection.dataset._id, toast]);
-
-  const maxToken = useMemo(() => {
-    const vectorModel =
-      embeddingModelList.find((item) => item.model === collection.dataset.vectorModel) ||
-      defaultModels.embedding;
-
-    return vectorModel?.maxToken || 3000;
-  }, [collection.dataset.vectorModel, defaultModels.embedding, embeddingModelList]);
-
   // Import new data
   const { runAsync: sureImportData, loading: isImporting } = useRequest2(
     async (e: InputDataType) => {
-      if (!e.q) {
-        return Promise.reject(t('common:dataset.data.input is empty'));
-      }
-
-      // Check if image is uploaded for image datasets
-      if (currentTab === TabEnum.image && !uploadedFileId) {
-        return Promise.reject(t('file:please_upload_image_first'));
-      }
-
-      const totalLength = e.q.length + (e.a?.length || 0);
-      if (totalLength >= maxToken * 1.4) {
-        return Promise.reject(t('common:core.dataset.data.Too Long'));
-      }
-
       const data = { ...e };
 
       const postData: any = {
@@ -305,11 +138,6 @@ const InputDataModal = ({
         indexes: e.indexes.filter((item) => !!item.text?.trim())
       };
 
-      // Add image ID for image datasets
-      if (currentTab === TabEnum.image && uploadedFileId) {
-        postData.imageId = uploadedFileId;
-      }
-
       const dataId = await postInsertData2Dataset(postData);
 
       return {
@@ -318,7 +146,7 @@ const InputDataModal = ({
       };
     },
     {
-      refreshDeps: [currentTab, uploadedFileId],
+      refreshDeps: [currentTab],
       successToast: t('common:dataset.data.Input Success Tip'),
       onSuccess(e) {
         reset({
@@ -327,11 +155,6 @@ const InputDataModal = ({
           a: '',
           indexes: []
         });
-
-        // Clear image states
-        setImagePreview('');
-        setUploadedFileId('');
-        setPreviewUrl('');
 
         onSuccess(e);
       },
@@ -344,22 +167,12 @@ const InputDataModal = ({
     async (e: InputDataType) => {
       if (!dataId) return Promise.reject(t('common:error.unKnow'));
 
-      // Check if image is uploaded for image datasets
-      if (currentTab === TabEnum.image && !uploadedFileId) {
-        return Promise.reject(t('file:please_upload_image_first'));
-      }
-
       const updateData: any = {
         dataId,
         q: e.q,
         a: currentTab === TabEnum.qa ? e.a : '',
         indexes: e.indexes.filter((item) => !!item.text?.trim())
       };
-
-      // Add image ID for image datasets
-      if (currentTab === TabEnum.image && uploadedFileId) {
-        updateData.imageId = uploadedFileId;
-      }
 
       await putDatasetDataById(updateData);
 
@@ -369,7 +182,7 @@ const InputDataModal = ({
       };
     },
     {
-      refreshDeps: [currentTab, uploadedFileId],
+      refreshDeps: [currentTab],
       successToast: t('common:dataset.data.Update Success Tip'),
       onSuccess(data) {
         onSuccess(data);
@@ -381,9 +194,20 @@ const InputDataModal = ({
   const isLoading = isFetchingData;
 
   const icon = useMemo(
-    () => getSourceNameIcon({ sourceName: collection.sourceName, sourceId: collection.sourceId }),
+    () =>
+      collection.type === DatasetCollectionTypeEnum.images
+        ? 'core/dataset/imageFill'
+        : getSourceNameIcon({ sourceName: collection.sourceName, sourceId: collection.sourceId }),
     [collection]
   );
+
+  const maxToken = useMemo(() => {
+    const vectorModel =
+      embeddingModelList.find((item) => item.model === collection.dataset.vectorModel) ||
+      defaultModels.embedding;
+
+    return vectorModel?.maxToken || 2000;
+  }, [collection.dataset.vectorModel, defaultModels.embedding, embeddingModelList]);
 
   return (
     <MyModal
@@ -408,7 +232,7 @@ const InputDataModal = ({
             overflow={'hidden'}
             textOverflow={'ellipsis'}
           >
-            {collection.sourceName || t('unknow_source')}
+            {collection.sourceName || t('common:unknow_source')}
           </Box>
         </Flex>
       }
@@ -422,14 +246,7 @@ const InputDataModal = ({
       >
         {/* Tab */}
         <Box px={[5, '3.25rem']}>
-          {isImageCollection && !hasVlmModel && (
-            <Alert status="warning" mb={4}>
-              <AlertIcon />
-              <Text fontSize="sm">{t('dataset:vlm_model_required_warning')}</Text>
-            </Alert>
-          )}
-
-          {!isImageCollection && (
+          {(currentTab === TabEnum.chunk || currentTab === TabEnum.qa) && (
             <FillRowTabs
               list={[
                 { label: t('common:dataset_data_input_chunk'), value: TabEnum.chunk },
@@ -456,155 +273,36 @@ const InputDataModal = ({
             w={['100%', 0]}
             overflow={['unset', 'auto']}
           >
-            <Flex flexDir={'column'} h={'100%'}>
-              <FormLabel required mb={1} h={'30px'}>
-                {currentTab === TabEnum.chunk
-                  ? t('common:dataset_data_input_chunk_content')
-                  : currentTab === TabEnum.qa
-                    ? t('common:dataset_data_input_q')
-                    : t('file:image_description')}
-              </FormLabel>
-              {currentTab === TabEnum.image ? (
+            <Flex flexDir={'column'} flex={'1 0 0'} h={0}>
+              {currentTab === TabEnum.image && (
                 <>
-                  <Box
-                    position="relative"
-                    borderColor="myGray.200"
-                    bg="myGray.25"
-                    w="100%"
-                    h="276px"
-                    mb={3}
-                    overflow="hidden"
-                  >
-                    {previewUrl || imagePreview ? (
-                      <Box
-                        flex="1"
-                        overflow="hidden"
-                        position="relative"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                        onMouseEnter={() => setIsImageHovered(true)}
-                        onMouseLeave={() => setIsImageHovered(false)}
-                      >
-                        <Image
-                          src={previewUrl || imagePreview}
-                          maxH="100%"
-                          maxW="100%"
-                          objectFit="contain"
-                          alt={t('file:Image_Preview')}
-                          cursor="pointer"
-                          onClick={handleImageClick}
-                        />
-
-                        {uploadedFileId && isImageHovered && (
-                          <Box
-                            position="absolute"
-                            w="265px"
-                            h="27.5px"
-                            top="8px"
-                            left="8px"
-                            p="4px 8px"
-                            border="1px solid"
-                            borderColor="myGray.200"
-                            bg="white"
-                            overflow="hidden"
-                          >
-                            <Text fontSize="xs" color="gray.600" isTruncated maxW="200px">
-                              ID: {uploadedFileId}
-                            </Text>
-                            <Flex gap="8px" alignItems="center">
-                              <Box
-                                cursor="pointer"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigator.clipboard.writeText(uploadedFileId);
-                                  toast({
-                                    title: t('file:Image_ID_copied'),
-                                    status: 'success',
-                                    duration: 2000,
-                                    isClosable: true,
-                                    position: 'top'
-                                  });
-                                }}
-                              >
-                                <MyIcon
-                                  name="copy"
-                                  w="14px"
-                                  h="14px"
-                                  color="gray.500"
-                                  _hover={{ color: 'blue.500' }}
-                                />
-                              </Box>
-                              <MyIcon name="common/link" w="12px" h="12px" color="blue.500" />
-                            </Flex>
-                          </Box>
-                        )}
-
-                        {isImageHovered && (
-                          <Box
-                            position="absolute"
-                            w="22px"
-                            h="25.20833px"
-                            bottom="8px"
-                            right="8px"
-                            p="4px"
-                            bg="white"
-                            border="1px solid"
-                            borderColor="myGray.250"
-                            cursor="pointer"
-                            _hover={{ bg: 'gray.50' }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setPreviewUrl('');
-                              setImagePreview('');
-                              setUploadedFileId('');
-                            }}
-                          >
-                            <MyIcon name="delete" w="14px" h="14px" color="myGray.600" />
-                          </Box>
-                        )}
-                      </Box>
-                    ) : (
-                      <Box
-                        display="flex"
-                        flexDirection="column"
-                        alignItems="center"
-                        justifyContent="center"
+                  <FormLabel required mb={1} h={'30px'}>
+                    {t('file:image')}
+                  </FormLabel>
+                  <Box flex={'1 0 0'} h={0} w="100%">
+                    <Box height="100%" position="relative" border="base" borderRadius={'md'} p={1}>
+                      <MyImage
+                        src={imagePreivewUrl}
                         h="100%"
                         w="100%"
-                        borderWidth="1.5px"
-                        borderStyle="dashed"
-                        borderColor={uploading ? 'primary.600' : 'borderColor.high'}
-                        bg={uploading ? 'primary.50' : 'white'}
-                        cursor={uploading ? 'default' : 'pointer'}
-                        _hover={
-                          uploading
-                            ? {}
-                            : {
-                                bg: 'primary.50',
-                                borderColor: 'primary.600'
-                              }
-                        }
-                        onClick={() => !uploading && onSelectFile()}
-                      >
-                        <MyIcon name="common/uploadFileFill" w="32px" />
-                        <Box fontWeight="bold" mt={2}>
-                          {uploading ? '上传中...' : '选择图片或拖拽到此处'}
-                        </Box>
-                        <Box color="myGray.500" fontSize="xs" mt={1}>
-                          {t('file:common.dataset_data_input_image_support_format')}
-                        </Box>
-                      </Box>
-                    )}
+                        objectFit="contain"
+                        alt={t('file:Image_Preview')}
+                      />
+                    </Box>
                   </Box>
-                  <FormLabel required mb={1}>
-                    {t('file:please_input_image_description')}
+                </>
+              )}
+              {(currentTab === TabEnum.chunk || currentTab === TabEnum.qa) && (
+                <>
+                  <FormLabel required mb={1} h={'30px'}>
+                    {currentTab === TabEnum.chunk
+                      ? t('common:dataset_data_input_chunk_content')
+                      : t('common:dataset_data_input_q')}
                   </FormLabel>
+
                   <Textarea
                     resize={'none'}
-                    placeholder={t('file:Please enter the description of the picture')}
                     className={styles.scrollbar}
-                    maxLength={8000}
                     flex={'1 0 0'}
                     tabIndex={1}
                     _focus={{
@@ -615,50 +313,49 @@ const InputDataModal = ({
                     bg={'myGray.25'}
                     borderRadius={'md'}
                     borderColor={'myGray.200'}
-                    {...register('q', {
+                    {...register(`q`, {
                       required: true
                     })}
                   />
                 </>
-              ) : (
-                <Textarea
-                  resize={'none'}
-                  placeholder={t('common:dataset_data_import_q_placeholder', { maxToken })}
-                  className={styles.scrollbar}
-                  maxLength={maxToken}
-                  flex={'1 0 0'}
-                  tabIndex={1}
-                  _focus={{
-                    borderColor: 'primary.500',
-                    boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
-                    bg: 'white'
-                  }}
-                  bg={'myGray.25'}
-                  borderRadius={'md'}
-                  borderColor={'myGray.200'}
-                  {...register(`q`, {
-                    required: true
-                  })}
-                />
               )}
             </Flex>
             {currentTab === TabEnum.qa && (
-              <Flex flexDir={'column'} h={'100%'}>
+              <Flex flexDir={'column'} flex={'1 0 0'}>
                 <FormLabel required mb={1}>
                   {t('common:dataset_data_input_a')}
                 </FormLabel>
                 <Textarea
                   resize={'none'}
-                  placeholder={t('common:dataset_data_import_q_placeholder', { maxToken })}
                   className={styles.scrollbar}
                   flex={'1 0 0'}
                   tabIndex={1}
                   bg={'myGray.25'}
-                  maxLength={maxToken}
                   borderRadius={'md'}
                   border={'1.5px solid '}
                   borderColor={'myGray.200'}
                   {...register('a', { required: true })}
+                />
+              </Flex>
+            )}
+            {currentTab === TabEnum.image && (
+              <Flex flexDir={'column'} flex={'1 0 0'}>
+                <FormLabel required mb={1}>
+                  {t('file:image_description')}
+                </FormLabel>
+                <Textarea
+                  resize={'none'}
+                  placeholder={t('file:Please enter the description of the picture')}
+                  className={styles.scrollbar}
+                  flex={'1 0 0'}
+                  tabIndex={1}
+                  bg={'myGray.25'}
+                  borderRadius={'md'}
+                  border={'1.5px solid '}
+                  borderColor={'myGray.200'}
+                  {...register('q', {
+                    required: true
+                  })}
                 />
               </Flex>
             )}
@@ -770,107 +467,6 @@ const InputDataModal = ({
           </MyTooltip>
         </ModalFooter>
       </MyBox>
-
-      {isImageCollection && (
-        <FileSelectDom
-          onSelect={(files) => {
-            handleSelectImage(files);
-          }}
-        />
-      )}
-
-      {multipleImagesError && (
-        <Flex
-          position="fixed"
-          top="10px"
-          left="50%"
-          transform="translateX(-50%)"
-          width="390px"
-          height="48px"
-          borderRadius="sm"
-          justifyContent="space-between"
-          alignItems="center"
-          px={6}
-          py={3}
-          bg="var(--Red-50, #FEF3F2)"
-          boxShadow="0px 0px 1px 0px #13336B1A, 0px 4px 10px 0px #13336B1A"
-          zIndex={1000}
-        >
-          <Flex alignItems="center" gap={2}>
-            <MyIcon
-              width="18px"
-              height="18px"
-              borderRadius="full"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-              boxSizing="border-box"
-              name="common/errorFill"
-            />
-            <Text fontSize="sm" fontWeight="medium" color="red.800">
-              {t('file:Only_support_uploading_one_image')}
-            </Text>
-          </Flex>
-
-          <MyIcon
-            name="close"
-            width="1rem"
-            height="1rem"
-            cursor="pointer"
-            color="gray.500"
-            onClick={() => setMultipleImagesError(false)}
-          />
-        </Flex>
-      )}
-
-      {isImageEnlarged && (
-        <Modal isOpen={isImageEnlarged} onClose={handleCloseEnlargedImage} size="6xl" isCentered>
-          <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(10px)" />
-          <ModalContent maxWidth="95vw" maxHeight="95vh" bg="transparent" boxShadow="none">
-            <ModalBody display="flex" alignItems="center" justifyContent="center" p={0}>
-              <Box
-                width="1440px"
-                padding="24px 40px 24px 0px"
-                flexDirection="column"
-                alignItems="flex-start"
-                gap="10px"
-                flex-shrink="0"
-                bg="blackAlpha.200"
-                borderRadius="lg"
-                position="relative"
-                overflow="hidden"
-              >
-                <MyPhotoView
-                  src={previewUrl || imagePreview}
-                  width="100%"
-                  height="100%"
-                  objectFit="contain"
-                  alt={t('file:Image_Preview') || '放大的图片'}
-                />
-                <Box
-                  position="absolute"
-                  top="0px"
-                  right="0px"
-                  width="40px"
-                  height="40px"
-                  borderRadius="7.14px"
-                  bg="blackAlpha.200"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  cursor="pointer"
-                  padding="8px"
-                  _hover={{ bg: 'blackAlpha.800' }}
-                  onClick={handleCloseEnlargedImage}
-                  zIndex={5}
-                >
-                  <MyIcon name="close" width="1rem" height="1rem" color="white" />
-                </Box>
-              </Box>
-            </ModalBody>
-          </ModalContent>
-        </Modal>
-      )}
     </MyModal>
   );
 };

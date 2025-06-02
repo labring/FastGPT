@@ -19,8 +19,9 @@ export type ImportSourceItemType = {
   sourceSize?: string;
   isUploading?: boolean;
   uploadedFileRate?: number;
-  dbFileId?: string; // 存储在数据库里的文件Id，这个 ID 还是图片和集合的 metadata 中 relateId
-  file?: File;
+  dbFileId?: string; // 存储在数据库里的文件Id
+
+  file?: File; // Local file
 
   // link
   link?: string;

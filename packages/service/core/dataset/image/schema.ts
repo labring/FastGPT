@@ -1,55 +1,36 @@
+import type { Types } from '../../../common/mongo';
 import { getMongoModel, Schema } from '../../../common/mongo';
-import type { DatasetImageSchema } from '@fastgpt/global/core/dataset/image/type';
 
-export const DatasetCollectionImageCollectionName = 'dataset_collection_images';
+export const bucketName = 'dataset_image';
 
-const DatasetImageMongoSchema = new Schema({
-  teamId: {
-    type: String,
-    required: true
-  },
-  datasetId: {
-    type: String,
-    required: true
-  },
-  collectionId: {
-    type: String,
-    required: false,
-    default: null
-  },
-  name: {
-    type: String,
-    required: true
-  },
-  contentType: {
-    type: String,
-    required: true
-  },
-  size: {
-    type: Number,
-    required: true
-  },
+const MongoDatasetImage = new Schema({
+  length: { type: Number, required: true },
+  chunkSize: { type: Number, required: true },
+  uploadDate: { type: Date, required: true },
+  filename: { type: String, required: true },
+  contentType: { type: String, required: true },
   metadata: {
-    type: Object,
-    default: {}
-  },
-  createTime: {
-    type: Date,
-    default: () => new Date()
-  },
-  expiredTime: {
-    type: Date,
-    required: true,
-    index: { expireAfterSeconds: 0 }
+    teamId: { type: String, required: true },
+    datasetId: { type: String, required: true },
+    collectionId: { type: String },
+    expiredTime: { type: Date, required: true }
   }
 });
+MongoDatasetImage.index({ 'metadata.datasetId': 'hashed' });
+MongoDatasetImage.index({ 'metadata.collectionId': 'hashed' });
+MongoDatasetImage.index({ 'metadata.expiredTime': -1 });
 
-DatasetImageMongoSchema.index({ expiredTime: 1 }, { expireAfterSeconds: 0 });
-
-// Create compound index for better query performance
-DatasetImageMongoSchema.index({ teamId: 1, datasetId: 1, collectionId: 1 });
-
-export const MongoDatasetCollectionImage = getMongoModel<DatasetImageSchema>(
-  DatasetCollectionImageCollectionName,
-  DatasetImageMongoSchema
-);
+export const MongoDatasetImageSchema = getMongoModel<{
+  _id: Types.ObjectId;
+  length: number;
+  chunkSize: number;
+  uploadDate: Date;
+  filename: string;
+  contentType: string;
+  metadata: {
+    teamId: string;
+    datasetId: string;
+    collectionId: string;
+    expiredTime: Date;
+  };
+}>(`${bucketName}.files`, MongoDatasetImage);
