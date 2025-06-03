@@ -18,6 +18,9 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
+import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import { getI18nDatasetType } from '@fastgpt/service/support/operationLog/util';
 
 export type DatasetCreateQuery = {};
 export type DatasetCreateBody = CreateDatasetParams;
@@ -101,6 +104,18 @@ async function handler(
     tmbId,
     uid: userId
   });
+
+  (async () => {
+    addOperationLog({
+      tmbId,
+      teamId,
+      event: OperationLogEventEnum.CREATE_DATASET,
+      params: {
+        datasetName: name,
+        datasetType: getI18nDatasetType(type)
+      }
+    });
+  })();
 
   return datasetId;
 }

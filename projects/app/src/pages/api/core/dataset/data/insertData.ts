@@ -17,6 +17,9 @@ import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
+import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
+import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import { getI18nDatasetType } from '@fastgpt/service/support/operationLog/util';
 
 async function handler(req: NextApiRequest) {
   const { collectionId, q, a, indexes } = req.body as InsertOneDatasetDataProps;
@@ -30,7 +33,7 @@ async function handler(req: NextApiRequest) {
   }
 
   // 凭证校验
-  const { teamId, tmbId } = await authDatasetCollection({
+  const { teamId, tmbId, collection } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
@@ -96,6 +99,18 @@ async function handler(req: NextApiRequest) {
     model: vectorModelData.model
   });
 
+  (async () => {
+    addOperationLog({
+      tmbId,
+      teamId,
+      event: OperationLogEventEnum.CREATE_DATA,
+      params: {
+        collectionName: collection.name,
+        datasetName: collection.dataset?.name || '',
+        datasetType: getI18nDatasetType(collection.dataset?.type || '')
+      }
+    });
+  })();
   return insertId;
 }
 

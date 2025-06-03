@@ -215,6 +215,7 @@
   "core.app.Interval timer run": "Scheduled Execution",
   "core.app.Interval timer tip": "Can Execute App on Schedule",
   "core.app.Make a brief introduction of your app": "Give Your AI App an Introduction",
+  "core.app.name": "name",
   "core.app.Name and avatar": "Avatar & Name",
   "core.app.Publish": "Publish",
   "core.app.Publish Confirm": "Confirm to Publish App? This Will Immediately Update the App Status on All Publishing Channels.",

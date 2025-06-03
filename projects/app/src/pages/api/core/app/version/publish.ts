@@ -11,12 +11,20 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { rewriteAppWorkflowToSimple } from '@fastgpt/service/core/app/utils';
-
+import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
+import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import { getI18nAppType } from '@fastgpt/service/support/operationLog/util';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
   const { nodes = [], edges = [], chatConfig, isPublish, versionName, autoSave } = req.body;
 
-  const { app, tmbId } = await authApp({ appId, req, per: WritePermissionVal, authToken: true });
+  const { app, tmbId, teamId } = await authApp({
+    appId,
+    req,
+    per: WritePermissionVal,
+    authToken: true
+  });
 
   const { nodes: formatNodes } = beforeUpdateAppFormat({
     nodes,
@@ -26,12 +34,26 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
   await rewriteAppWorkflowToSimple(formatNodes);
 
   if (autoSave) {
-    return MongoApp.findByIdAndUpdate(appId, {
+    await MongoApp.findByIdAndUpdate(appId, {
       modules: formatNodes,
       edges,
       chatConfig,
       updateTime: new Date()
     });
+
+    addOperationLog({
+      tmbId,
+      teamId,
+      event: OperationLogEventEnum.UPDATE_PUBLISH_APP,
+      params: {
+        appName: app.name,
+        operationName: i18nT('account_team:update'),
+        appId,
+        appType: getI18nAppType(app.type)
+      }
+    });
+
+    return;
   }
 
   await mongoSessionRun(async (session) => {
@@ -79,6 +101,22 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
       }
     );
   });
+
+  (async () => {
+    addOperationLog({
+      tmbId,
+      teamId,
+      event: OperationLogEventEnum.UPDATE_PUBLISH_APP,
+      params: {
+        appName: app.name,
+        operationName: isPublish
+          ? i18nT('account_team:save_and_publish')
+          : i18nT('account_team:update'),
+        appId,
+        appType: getI18nAppType(app.type)
+      }
+    });
+  })();
 }
 
 export default NextAPI(handler);

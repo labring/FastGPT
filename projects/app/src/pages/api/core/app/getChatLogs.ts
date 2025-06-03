@@ -13,6 +13,9 @@ import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { type PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
+import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import { getI18nAppType } from '@fastgpt/service/support/operationLog/util';
 
 async function handler(
   req: NextApiRequest,
@@ -33,7 +36,12 @@ async function handler(
   }
 
   // 凭证校验
-  const { teamId } = await authApp({ req, authToken: true, appId, per: WritePermissionVal });
+  const { teamId, tmbId, app } = await authApp({
+    req,
+    authToken: true,
+    appId,
+    per: WritePermissionVal
+  });
 
   const where = {
     teamId: new Types.ObjectId(teamId),
@@ -138,6 +146,18 @@ async function handler(
   });
 
   const listWithoutTmbId = list.filter((item) => !item.tmbId);
+
+  (async () => {
+    addOperationLog({
+      tmbId,
+      teamId,
+      event: OperationLogEventEnum.EXPORT_APP_CHAT_LOG,
+      params: {
+        appName: app.name,
+        appType: getI18nAppType(app.type)
+      }
+    });
+  })();
 
   return {
     list: listWithSourceMember.concat(listWithoutTmbId),

@@ -5,7 +5,9 @@ import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-
+import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
+import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import { getI18nDatasetType } from '@fastgpt/service/support/operationLog/util';
 async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
   const { dataId, q, a, indexes = [] } = req.body;
 
@@ -15,7 +17,8 @@ async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
       dataset: { vectorModel }
     },
     teamId,
-    tmbId
+    tmbId,
+    collection
   } = await authDatasetData({
     req,
     authToken: true,
@@ -39,6 +42,19 @@ async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
       inputTokens: tokens,
       model: vectorModel
     });
+
+    (async () => {
+      addOperationLog({
+        tmbId,
+        teamId,
+        event: OperationLogEventEnum.UPDATE_DATA,
+        params: {
+          collectionName: collection.name,
+          datasetName: collection.dataset?.name || '',
+          datasetType: getI18nDatasetType(collection.dataset?.type || '')
+        }
+      });
+    })();
   } else {
     // await MongoDatasetData.findByIdAndUpdate(dataId, {
     //   ...(forbid !== undefined && { forbid })

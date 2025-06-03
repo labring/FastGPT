@@ -99,6 +99,10 @@ export default staticContent;
 - Use the t(namespace:key) format to ensure consistent naming.
 - Translation keys should use lowercase letters and underscores, e.g., common.close.
 
+## audit
+
+Please fill the OperationLogEventEnum and operationLog/audit function is added to the ts, and on the corresponding position to fill i18n, at the same time to add the location of the log using addOpearationLog function add function
+
 ## Build
 
 ```sh
