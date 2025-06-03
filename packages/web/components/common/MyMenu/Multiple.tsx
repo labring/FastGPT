@@ -36,10 +36,12 @@ export type Props = {
   label?: string;
   width?: number | string;
   offset?: [number, number];
-  Button: React.ReactNode;
+  Trigger: React.ReactNode;
   trigger?: 'hover' | 'click';
   size?: MenuSizeType;
   placement?: PlacementWithLogical;
+  hasArrow?: boolean;
+  onClose?: () => void;
   menuList: MenuItemData[];
 };
 
@@ -189,31 +191,31 @@ const sizeMapStyle: Record<
   }
 };
 
-const MenuItem = React.forwardRef<
-  HTMLDivElement,
-  {
-    item: MenuItemData['children'][number];
-    size: MenuSizeType;
-    onClose: () => void;
-  }
->((props, ref) => {
-  const { item, size, onClose } = props;
-
+const MenuItem = ({
+  item,
+  size,
+  onClose
+}: {
+  item: MenuItemData['children'][number];
+  size: MenuSizeType;
+  onClose: () => void;
+}) => {
   return (
     <Box
-      ref={ref}
       px={3}
       py={2}
       cursor="pointer"
+      borderRadius="md"
       _hover={{
         bg: 'primary.50',
         color: 'primary.600'
       }}
       onClick={(e) => {
-        e.stopPropagation();
-        if (item.onClick && !item.menuList) {
-          onClose();
+        if (item.onClick) {
           item.onClick();
+        }
+        if (!item.menuList) {
+          onClose();
         }
       }}
     >
@@ -242,41 +244,53 @@ const MenuItem = React.forwardRef<
       </Flex>
     </Box>
   );
-});
+};
 
-MenuItem.displayName = 'MenuItem';
+const MultipleMenu = (props: Props) => {
+  const {
+    width = 'auto',
+    trigger = 'hover',
+    size = 'sm',
+    offset,
+    Trigger,
+    menuList,
+    hasArrow = false,
+    placement = 'bottom-start'
+  } = props;
 
-const MyMenu = ({
-  width = 'auto',
-  trigger = 'hover',
-  size = 'sm',
-  offset,
-  Button,
-  menuList,
-  placement = 'bottom-start'
-}: Props) => {
   const { isPc } = useSystem();
-  const ref = useRef<HTMLDivElement>(null);
   const formatTrigger = !isPc ? 'click' : trigger;
 
   return (
-    <Box ref={ref} display="inline-block">
-      <MyPopover
-        placement={placement}
-        offset={offset || [0, 5]}
-        hasArrow
-        trigger={formatTrigger}
-        w={width}
-        zIndex={999}
-        closeOnBlur={false}
-        autoFocus={false}
-        Trigger={Button}
-      >
-        {({ onClose }) => (
-          <Box bg="white" minW="150px" maxW="300px" p="6px" borderRadius="md" boxShadow="md">
+    <MyPopover
+      placement={placement}
+      offset={offset}
+      hasArrow={hasArrow}
+      trigger={formatTrigger}
+      w={width}
+      zIndex={999}
+      closeOnBlur={false}
+      autoFocus={false}
+      Trigger={Trigger}
+    >
+      {({ onClose }) => {
+        const onCloseFn = () => {
+          onClose();
+          props?.onClose?.();
+        };
+
+        return (
+          <Box
+            bg="white"
+            maxW="300px"
+            p="6px"
+            border={'1px solid #fff'}
+            boxShadow={'3'}
+            borderRadius={'md'}
+          >
             {menuList.map((group, i) => (
               <Box key={i}>
-                {i !== 0 && <MyDivider {...sizeMapStyle[size].dividerStyle} />}
+                {i !== 0 && <MyDivider h={'1.5px'} {...sizeMapStyle[size].dividerStyle} />}
                 {group.label && (
                   <Box fontSize="sm" px={3} py={1} color="myGray.500">
                     {group.label}
@@ -286,54 +300,21 @@ const MyMenu = ({
                   return (
                     <Box key={index}>
                       {item.menuList ? (
-                        <MyPopover
-                          placement="right-start"
-                          offset={[10, 10]}
-                          hasArrow
-                          trigger={formatTrigger}
-                          w={'auto'}
-                          zIndex={1000}
-                          closeOnBlur={false}
-                          autoFocus={false}
+                        <MultipleMenu
+                          {...props}
+                          placement={'left'}
+                          trigger={'hover'}
+                          menuList={item.menuList}
+                          onClose={onCloseFn}
                           Trigger={
-                            <Box position="relative">
-                              <MenuItem item={item} size={size} onClose={onClose} />
+                            <Box>
+                              <MenuItem item={item} size={size} onClose={onCloseFn} />
                             </Box>
                           }
-                        >
-                          {({ onClose: onCloseSubmenu }) => {
-                            return (
-                              <Box
-                                bg="white"
-                                minW="150px"
-                                maxW="300px"
-                                p="6px"
-                                borderRadius="md"
-                                boxShadow="md"
-                                position="relative"
-                                zIndex={1001}
-                              >
-                                {item.menuList?.map((subGroup, subI) => (
-                                  <Box key={subI}>
-                                    {subGroup.children.map((subItem, subIndex) => (
-                                      <MenuItem
-                                        key={subIndex}
-                                        item={subItem}
-                                        size={size}
-                                        onClose={() => {
-                                          onClose();
-                                          onCloseSubmenu();
-                                        }}
-                                      />
-                                    ))}
-                                  </Box>
-                                ))}
-                              </Box>
-                            );
-                          }}
-                        </MyPopover>
+                          hasArrow
+                        />
                       ) : (
-                        <MenuItem item={item} size={size} onClose={onClose} />
+                        <MenuItem item={item} size={size} onClose={onCloseFn} />
                       )}
                     </Box>
                   );
@@ -341,10 +322,10 @@ const MyMenu = ({
               </Box>
             ))}
           </Box>
-        )}
-      </MyPopover>
-    </Box>
+        );
+      }}
+    </MyPopover>
   );
 };
 
-export default React.memo(MyMenu);
+export default React.memo(MultipleMenu);
