@@ -6,7 +6,7 @@ import type {
   APIFileServer,
   FeishuServer,
   YuqueServer
-} from '@fastgpt/global/core/dataset/apiDataset';
+} from '@fastgpt/global/core/dataset/apiDataset/type';
 import type {
   DatasetSearchModeEnum,
   DatasetTypeEnum
@@ -17,6 +17,7 @@ import {
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
@@ -31,9 +32,7 @@ export type CreateDatasetParams = {
   vectorModel?: string;
   agentModel?: string;
   vlmModel?: string;
-  apiServer?: APIFileServer;
-  feishuServer?: FeishuServer;
-  yuqueServer?: YuqueServer;
+  apiDatasetServer?: ApiDatasetServerType;
 };
 
 export type RebuildEmbeddingProps = {

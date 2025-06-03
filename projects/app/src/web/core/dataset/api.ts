@@ -69,7 +69,7 @@ import type {
   getTrainingErrorBody,
   getTrainingErrorResponse
 } from '@/pages/api/core/dataset/training/getTrainingError';
-import type { APIFileItem } from '@fastgpt/global/core/dataset/apiDataset';
+import type { APIFileItem } from '@fastgpt/global/core/dataset/apiDataset/type';
 import type { GetQuoteDataProps } from '@/pages/api/core/dataset/data/getQuoteData';
 import type {
   GetApiDatasetCataLogResponse,

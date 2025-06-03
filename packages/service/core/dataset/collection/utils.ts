@@ -157,9 +157,7 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
     return {
       type: DatasetSourceReadTypeEnum.apiFile,
       sourceId,
-      apiServer: dataset.apiServer,
-      feishuServer: dataset.feishuServer,
-      yuqueServer: dataset.yuqueServer
+      apiDatasetServer: dataset.apiDatasetServer
     };
   })();
 

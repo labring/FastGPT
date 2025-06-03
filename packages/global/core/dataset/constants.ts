@@ -6,11 +6,51 @@ export enum DatasetTypeEnum {
   dataset = 'dataset',
   websiteDataset = 'websiteDataset', // depp link
   externalFile = 'externalFile',
+
   apiDataset = 'apiDataset',
   feishu = 'feishu',
   yuque = 'yuque'
 }
-export const DatasetTypeMap = {
+
+// @ts-ignore
+export const ApiDatasetTypeMap: Record<
+  `${DatasetTypeEnum}`,
+  {
+    icon: string;
+    label: any;
+    collectionLabel: string;
+    courseUrl?: string;
+  }
+> = {
+  [DatasetTypeEnum.apiDataset]: {
+    icon: 'core/dataset/externalDatasetOutline',
+    label: i18nT('dataset:api_file'),
+    collectionLabel: i18nT('common:File'),
+    courseUrl: '/docs/guide/knowledge_base/api_dataset/'
+  },
+  [DatasetTypeEnum.feishu]: {
+    icon: 'core/dataset/feishuDatasetOutline',
+    label: i18nT('dataset:feishu_dataset'),
+    collectionLabel: i18nT('common:File'),
+    courseUrl: '/docs/guide/knowledge_base/lark_dataset/'
+  },
+  [DatasetTypeEnum.yuque]: {
+    icon: 'core/dataset/yuqueDatasetOutline',
+    label: i18nT('dataset:yuque_dataset'),
+    collectionLabel: i18nT('common:File'),
+    courseUrl: '/docs/guide/knowledge_base/yuque_dataset/'
+  }
+};
+export const DatasetTypeMap: Record<
+  `${DatasetTypeEnum}`,
+  {
+    icon: string;
+    label: any;
+    collectionLabel: string;
+    courseUrl?: string;
+  }
+> = {
+  ...ApiDatasetTypeMap,
   [DatasetTypeEnum.folder]: {
     icon: 'common/folderFill',
     label: i18nT('dataset:folder_dataset'),
@@ -24,26 +64,12 @@ export const DatasetTypeMap = {
   [DatasetTypeEnum.websiteDataset]: {
     icon: 'core/dataset/websiteDatasetOutline',
     label: i18nT('dataset:website_dataset'),
-    collectionLabel: i18nT('common:Website')
+    collectionLabel: i18nT('common:Website'),
+    courseUrl: '/docs/guide/knowledge_base/websync/'
   },
   [DatasetTypeEnum.externalFile]: {
     icon: 'core/dataset/externalDatasetOutline',
     label: i18nT('dataset:external_file'),
-    collectionLabel: i18nT('common:File')
-  },
-  [DatasetTypeEnum.apiDataset]: {
-    icon: 'core/dataset/externalDatasetOutline',
-    label: i18nT('dataset:api_file'),
-    collectionLabel: i18nT('common:File')
-  },
-  [DatasetTypeEnum.feishu]: {
-    icon: 'core/dataset/feishuDatasetOutline',
-    label: i18nT('dataset:feishu_dataset'),
-    collectionLabel: i18nT('common:File')
-  },
-  [DatasetTypeEnum.yuque]: {
-    icon: 'core/dataset/yuqueDatasetOutline',
-    label: i18nT('dataset:yuque_dataset'),
     collectionLabel: i18nT('common:File')
   }
 };

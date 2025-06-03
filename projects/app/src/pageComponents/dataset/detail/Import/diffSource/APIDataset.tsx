@@ -13,7 +13,7 @@ import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder
 import FolderPath from '@/components/common/folder/Path';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { type APIFileItem } from '@fastgpt/global/core/dataset/apiDataset';
+import { type APIFileItem } from '@fastgpt/global/core/dataset/apiDataset/type';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMount } from 'ahooks';
 

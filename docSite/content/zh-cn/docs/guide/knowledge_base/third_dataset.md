@@ -7,142 +7,55 @@ toc: true
 weight: 410
 ---
 
-目前，互联网上拥有各种各样的文档库，例如飞书，语雀等等。 FastGPT 的不同用户可能使用的文档库不同，然而开发人手不够，FastGPT 目前只支持飞书，语雀，api ，web 站点这几个知识库。为了满足广大用户对其他知识库需求，同时增强开源性，现在教学如何自己开发第三方知识库。
+目前，互联网上拥有各种各样的文档库，例如飞书，语雀等等。 FastGPT 的不同用户可能使用的文档库不同，目前 FastGPT 内置了飞书、语雀文档库，如果需要接入其他文档库，可以参考本节内容。
 
-## 准备本地开发环境
 
-想要开发 FastGPT ,首先要拥有本地开发环境，具体参考[快速开始本地开发](../../development/intro.md)
+## 统一的接口规范
 
-## 开始开发
+为了实现对不同文档库的统一接入，FastGPT 对第三方文档库进行了接口的规范，共包含 4 个接口内容，可以[查看 API 文件库接口](/docs/guide/knowledge_base/api_datase)。
+
+所有内置的文档库，都是基于标准的 API 文件库进行扩展。可以参考`FastGPT/packages/service/core/dataset/apiDataset/yuqueDataset/api.ts`中的代码，进行其他文档库的扩展。一共需要完成 4 个接口开发：
+
+1. 获取文件列表
+2. 获取文件内容/文件链接
+3. 获取原文预览地址
+4. 获取文件详情信息
+
+## 开始一个第三方文件库
 
 为了方便讲解，这里以添加飞书知识库为例。
 
-首先，要进入 FastGPT 项目路径下的`FastGPT\packages\global\core\dataset\apiDataset.d.ts`文件，添加自己的知识库 Server 类型。
+### 1. 添加第三方文档库参数
 
-{{% alert icon="🤖 " context="success" %}}
-知识库类型的字段设计是依赖于自己的知识库需要什么字段进行后续的api调用。
-如果知识库有`根目录`选择的功能，需要设置添加一个字段`basePath`。[点击查看`根目录`功能](/docs/guide/knowledge_base/third_dataset/#添加配置表单)
-{{% /alert %}}
+首先，要进入 FastGPT 项目路径下的`FastGPT\packages\global\core\dataset\apiDataset.d.ts`文件，添加第三方文档库 Server 类型。例如，语雀文档中，需要提供`userId`、`token`两个字段作为鉴权信息。
 
-![](/imgs/thirddataset-1.png)
-
-然后需要在 FastGPT 项目路径`FastGPT\packages\service\core\dataset\apiDataset\`下创建一个需要添加的文件夹，这里是`feishuKownledgeDataset`,在添加的文件夹下创建一个`api.ts`,如图:
-
-![](/imgs/thirddataset-2.png)
-
-## `api.ts`文件内容
-
-首先，需要完成一些导入操作，例如
-
-```TS
-import type {
-  APIFileItem,
-  ApiFileReadContentResponse,
-  ApiDatasetDetailResponse,
-  FeishuKnowledgeServer //这里是之前添加的知识库类型Server
-} from '@fastgpt/global/core/dataset/apiDataset';
-import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import axios, { type Method } from 'axios';
-import { addLog } from '../../../common/system/log';
-```
-
-之后定义一些返回体，需要根据自己要调用的 api 接口的返回类型进行设计。这里例如：
-```TS
-type ResponseDataType = {
-  success: boolean;
-  message: string;
-  data: any;
-};
-
-/**
- * Request
- */
-type FeishuFileListResponse = {
-  items: {
-    title: string;
-    creator: string;
-    has_child: boolean;
-    parent_node_token: string;
-    owner_id: string;
-    space_id: string;
-    node_token: string;
-    node_type: string;
-    node_create_time: number;
-    obj_edit_time: number;
-    obj_create_time: number;
-    obj_token: string;
-    obj_type: string;
-    origin_node_token: string;
-    origin_space_id: string;
-  }[];
-  has_more: boolean;
-  next_page_token: string;
+```ts
+export type YuqueServer = {
+  userId: string;
+  token?: string;
+  basePath?: string;
 };
 ```
 
-需要先设计设计一个函数，函数名以`知识库类型+Request`为例，例如:
-
-```TS
-export const useFeishuKnowledgeDatasetRequest = ({
-  feishuKnowledgeServer
-}: {
-  feishuKnowledgeServer: FeishuKnowledgeServer;
-}) => {}
-```
-
-函数定义完成后，需要完成 api 方法的设计，需要以下四个方法：
-
 {{% alert icon="🤖 " context="success" %}}
-方法的具体设计，可以参考`projects\app\src\service\core\dataset\`下的任何一个知识库的`api.ts`文件，知识库文件夹以`dataset`结尾
+如果文档库有`根目录`选择的功能，需要设置添加一个字段`basePath`
 {{% /alert %}}
 
-| 方法名 | 返回体 | 说明 |
-| --- | --- | --- |
-| listFiles | id,parentId,name,type,hasChild,updateTime,createTime | 用于获取知识库的文件列表 |
-| getFileContent | title,rawText | 用于获取知识库文件内容 |
-| getFileDetail | name,parentId,id | 用于获取知识库文件详细信息 |
-| getFilePreviewUrl | '网址' | 用于获取知识库文件原始页面 |
+### 2. 创建 Hook 文件
 
-在设计好`api.ts`文件后，需要在`projects\app\src\service\core\dataset\apidataset\index.ts`里，添加之前写好的函数，例如:
+每个第三方文档库都会采用 Hook 的方式来实现一套 API 接口的维护，Hook 里包含 4 个函数需要完成。
 
-![](/imgs/thirddataset-3.png)
+- 在`FastGPT\packages\service\core\dataset\apiDataset\`下创建一个文档库的文件夹，然后在文件夹下创建一个`api.ts`文件
+- 在`api.ts`文件中，需要完成 4 个函数的定义，分别是：
+  - `listFiles`：获取文件列表
+  - `getFileContent`：获取文件内容/文件链接
+  - `getFileDetail`：获取文件详情信息
+  - `getFilePreviewUrl`：获取原文预览地址
 
-在完成了这些之后，现在，我们需要一些方法的支持。在`index.ts`文件里，查找函数`getApiDatasetRequest`的引用，如图:
+### 3. 数据库添加配置字段
 
-![](/imgs/thirddataset-4.png)
-
-{{% alert icon="🤖 " context="warning" %}}
-其中`getCatalog.ts`和`getPathNames.ts`文件是对根路径设置的支持，如果你的知识库不支持根路径设置，可以设置返回空。[点击查看`根目录`功能](/docs/guide/knowledge_base/third_dataset/#添加配置表单)如图:
-
-![](/imgs/thirddataset-6.png)
-
-{{% /alert %}}
-
-可以看到有一些文件引用这个函数，这些就是知识库的方法，现在我们需要进入这些文件添加我们的知识库类型。以`list.ts`为例，如图添加：
-
-![](/imgs/thirddataset-5.png)
-
-{{% alert icon="🤖 " context="success" %}}
-方法的具体添加，可以参考文件内的其他知识库。
-{{% /alert %}}
-
-在`FastGPT\projects\app\src\pages\api\core\dataset\detail.ts`文件中，添加如下内容。
-
-![](/imgs/thirddataset-22.png)
-
-在`FastGPT\projects\app\src\pages\api\core\dataset\update.ts`文件中，添加如下内容。
-
-{{% alert icon="🤖 " context="warning" %}}
-该文件主要是负责更新知识库配置的，如果不添加，会导致无法正常更新配置。
-{{% /alert %}}
-
-![](/imgs/thirddataset-23.png)
-
-
-
-## 数据库类型添加
-
-添加新的知识库，需要在`packages/service/core/dataset/schema.ts` 中添加自己的知识库类型，如图：
+- 在`packages/service/core/dataset/schema.ts` 中添加第三方文档库的配置字段，类型统一设置成`Object`。
+- 在`FastGPT/packages/global/core/dataset/type.d.ts`中添加第三方文档库配置字段的数据类型，类型设置为第一步创建的参数。
 
 ![](/imgs/thirddataset-7.png)
 
@@ -150,10 +63,9 @@ export const useFeishuKnowledgeDatasetRequest = ({
 `schema.ts`文件修改后，需要重新启动 FastGPT 项目才会生效。
 {{% /alert %}}
 
+### 4. 添加知识库类型
 
-## 添加知识库类型
-
-添加完这些之后，需要添加知识库类型，需要在`projects/app/src/web/core/dataset/constants.ts`中，添加自己的知识库类型
+在`projects/app/src/web/core/dataset/constants.ts`中，添加自己的知识库类型
 
 ```TS
 export const datasetTypeCourseMap: Record<`${DatasetTypeEnum}`, string> = {

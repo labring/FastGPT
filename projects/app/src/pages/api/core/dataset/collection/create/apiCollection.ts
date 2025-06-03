@@ -23,10 +23,6 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
     per: WritePermissionVal
   });
 
-  const apiServer = dataset.apiServer;
-  const feishuServer = dataset.feishuServer;
-  const yuqueServer = dataset.yuqueServer;
-
   // Auth same apiFileId
   const storeCol = await MongoDatasetCollection.findOne(
     {
@@ -42,9 +38,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
   }
 
   const { title, rawText } = await readApiServerFileContent({
-    apiServer,
-    feishuServer,
-    yuqueServer,
+    apiDatasetServer: dataset.apiDatasetServer,
     apiFileId,
     teamId,
     tmbId,
