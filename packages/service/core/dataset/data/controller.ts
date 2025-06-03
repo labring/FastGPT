@@ -1,6 +1,5 @@
 import { getDatasetImagePreviewUrl } from '../image/utils';
-import type { QuoteDataItemType } from '../../../../../projects/app/src/service/core/chat/constants';
-import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
+import type { DatasetCiteItemType, DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 
 export const formatDatasetDataValue = ({
   q,
@@ -41,7 +40,7 @@ export const formatDatasetDataValue = ({
 };
 
 export const getFormatDatasetCiteList = (list: DatasetDataSchemaType[]) => {
-  return list.map<QuoteDataItemType>((item) => ({
+  return list.map<DatasetCiteItemType>((item) => ({
     _id: item._id,
     ...formatDatasetDataValue({
       teamId: item.teamId,
