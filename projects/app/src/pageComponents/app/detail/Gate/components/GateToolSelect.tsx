@@ -47,7 +47,6 @@ const GateToolSelect = ({
   const { data: gateConfig, loading: loadingGateConfig } = useRequest2(() => getTeamGateConfig(), {
     manual: false
   });
-  console.log('gateConfig', gateConfig);
 
   // 获取系统插件模板
   const { data: systemPlugins = [], loading: loadingSystemPlugins } = useRequest2(

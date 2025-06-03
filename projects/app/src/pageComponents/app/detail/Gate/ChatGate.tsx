@@ -10,9 +10,6 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { cardStyles } from '../constants';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getQuickApps, listQuickApps } from '@/web/support/user/team/gate/quickApp';
-import Avatar from '@fastgpt/web/components/common/Avatar';
 
 type Props = {
   appForm: AppSimpleEditFormType;

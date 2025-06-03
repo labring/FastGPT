@@ -31,6 +31,18 @@ export const useChatGate = ({
   const { userInfo } = useUserStore();
   const { setChatId, chatId, appId } = useChatStore();
   const [selectedTools, setSelectedTools] = useState<FlowNodeTemplateType[]>([]);
+  const onSelectTools = useCallback(
+    (tools: FlowNodeTemplateType[]) => {
+      tools.forEach((tool) => {
+        const formTool = appForm.selectedTools.find((t) => t.pluginId === tool.pluginId);
+        if (formTool) {
+          tool.inputs = formTool.inputs;
+        }
+      });
+      setSelectedTools(tools);
+    },
+    [appForm]
+  );
 
   const [workflowData, setWorkflowData] = useSafeState({
     nodes: appDetail.modules || [],
@@ -153,7 +165,7 @@ export const useChatGate = ({
   const { data: recommendApps = [] } = useRequest2(listQuickApps, {
     manual: false
   });
-  console.log(appForm, 111);
+
   const CustomChatContainer = useMemoizedFn(() => (
     <ChatBox
       isReady={isReady}
@@ -163,7 +175,7 @@ export const useChatGate = ({
       chatType={'chat'}
       onStartChat={startChat}
       selectedTools={selectedTools}
-      onSelectTools={setSelectedTools}
+      onSelectTools={onSelectTools}
       recommendApps={recommendApps}
     />
   ));
