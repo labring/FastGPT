@@ -1,10 +1,10 @@
-import { type QuoteDataItemType } from './constants';
+import type { DatasetCiteItemType } from '@fastgpt/global/core/dataset/type';
 
 // 获取对话时间时，引用的内容
 export function processChatTimeFilter(
-  dataList: QuoteDataItemType[],
+  dataList: DatasetCiteItemType[],
   chatTime: Date
-): QuoteDataItemType[] {
+): DatasetCiteItemType[] {
   return dataList.map((item) => {
     const defaultItem = item;
 
