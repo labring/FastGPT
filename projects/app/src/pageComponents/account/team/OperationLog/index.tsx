@@ -59,16 +59,13 @@ function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
     [t]
   );
 
-  // 使用模块化的元数据处理器
-  const metadataProcessorMap: Record<OperationLogEventEnum, MetadataProcessor> = useMemo(
-    () => createMetadataProcessorMap(t),
-    [t]
-  );
-
-  const processMetadataByEvent = (event: string, metadata: any) => {
-    const processor = metadataProcessorMap[event as OperationLogEventEnum];
-    return processor ? processor(metadata) : metadata;
-  };
+  const processMetadataByEvent = useMemo(() => {
+    const metadataProcessorMap = createMetadataProcessorMap();
+    return (event: string, metadata: any) => {
+      const processor = metadataProcessorMap[event as OperationLogEventEnum];
+      return processor ? processor(metadata, t) : metadata;
+    };
+  }, [t]);
 
   const {
     data: operationLogs = [],

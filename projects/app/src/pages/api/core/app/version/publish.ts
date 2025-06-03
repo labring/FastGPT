@@ -34,24 +34,26 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
   await rewriteAppWorkflowToSimple(formatNodes);
 
   if (autoSave) {
-    return MongoApp.findByIdAndUpdate(appId, {
+    await MongoApp.findByIdAndUpdate(appId, {
       modules: formatNodes,
       edges,
       chatConfig,
       updateTime: new Date()
-    }).then(() => {
-      addOperationLog({
-        tmbId,
-        teamId,
-        event: OperationLogEventEnum.UPDATE_PUBLISH_APP,
-        params: {
-          appName: app.name,
-          operationName: i18nT('account_team:update'),
-          appId,
-          appType: getI18nAppType(app.type)
-        }
-      });
     });
+
+    addOperationLog({
+      tmbId,
+      teamId,
+      event: OperationLogEventEnum.UPDATE_PUBLISH_APP,
+      params: {
+        appName: app.name,
+        operationName: i18nT('account_team:update'),
+        appId,
+        appType: getI18nAppType(app.type)
+      }
+    });
+
+    return;
   }
 
   await mongoSessionRun(async (session) => {
