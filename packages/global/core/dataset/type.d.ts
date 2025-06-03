@@ -286,3 +286,14 @@ export type SearchDataResponseItemType = Omit<
   score: { type: `${SearchScoreTypeEnum}`; value: number; index: number }[];
   // score: number;
 };
+
+export type DatasetCiteItemType = {
+  _id: string;
+  q: string;
+  a?: string;
+  imagePreivewUrl?: string;
+  history?: DatasetDataSchemaType['history'];
+  updateTime: DatasetDataSchemaType['updateTime'];
+  index: DatasetDataSchemaType['chunkIndex'];
+  updated?: boolean;
+};
