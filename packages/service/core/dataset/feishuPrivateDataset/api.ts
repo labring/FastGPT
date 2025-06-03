@@ -7,7 +7,6 @@ import type {
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import axios, { type Method } from 'axios';
 import { addLog } from '../../../common/system/log';
-import { preLoadWorker } from 'worker/preload';
 
 type ResponseDataType = {
   success: boolean;
