@@ -5,7 +5,10 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { onCreateApp } from './create';
-
+import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
+import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { getI18nAppType } from '@fastgpt/service/support/operationLog/util';
 export type copyAppQuery = {};
 
 export type copyAppBody = { appId: string };
@@ -18,7 +21,7 @@ async function handler(
   req: ApiRequestProps<copyAppBody, copyAppQuery>,
   res: ApiResponseType<any>
 ): Promise<copyAppResponse> {
-  const { app } = await authApp({
+  const { app, teamId } = await authApp({
     req,
     authToken: true,
     per: WritePermissionVal,
@@ -42,6 +45,17 @@ async function handler(
     tmbId,
     pluginData: app.pluginData
   });
+  (async () => {
+    addOperationLog({
+      tmbId,
+      teamId,
+      event: OperationLogEventEnum.CREATE_APP_COPY,
+      params: {
+        appName: app.name,
+        appType: getI18nAppType(app.type)
+      }
+    });
+  })();
 
   return { appId };
 }

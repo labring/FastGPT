@@ -5,7 +5,9 @@ import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-
+import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
+import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import { getI18nAppType } from '@fastgpt/service/support/operationLog/util';
 export type OutLinkUpdateQuery = {};
 
 // {
@@ -30,7 +32,17 @@ async function handler(
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
-  await authOutLinkCrud({ req, outLinkId: _id, authToken: true, per: ManagePermissionVal });
+  const {
+    tmbId,
+    teamId,
+    outLink,
+    app: logApp
+  } = await authOutLinkCrud({
+    req,
+    outLinkId: _id,
+    authToken: true,
+    per: ManagePermissionVal
+  });
 
   await MongoOutLink.findByIdAndUpdate(_id, {
     name,
@@ -41,6 +53,19 @@ async function handler(
     limit,
     app
   });
+
+  (async () => {
+    addOperationLog({
+      tmbId,
+      teamId,
+      event: OperationLogEventEnum.UPDATE_APP_PUBLISH_CHANNEL,
+      params: {
+        appName: logApp.name,
+        channelName: outLink.name,
+        appType: getI18nAppType(logApp.type)
+      }
+    });
+  })();
   return {};
 }
 export default NextAPI(handler);
