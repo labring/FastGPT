@@ -2,11 +2,9 @@ import { NextAPI } from '@/service/middleware/entry';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import type {
-  APIFileServer,
-  YuqueServer,
-  FeishuServer,
-  ApiDatasetDetailResponse
-} from '@fastgpt/global/core/dataset/apiDataset';
+  ApiDatasetDetailResponse,
+  ApiDatasetServerType
+} from '@fastgpt/global/core/dataset/apiDataset/type';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
@@ -18,9 +16,7 @@ export type GetApiDatasetPathQuery = {};
 export type GetApiDatasetPathBody = {
   datasetId?: string;
   parentId?: ParentIdType;
-  yuqueServer?: YuqueServer;
-  feishuServer?: FeishuServer;
-  apiServer?: APIFileServer;
+  apiDatasetServer?: ApiDatasetServerType;
 };
 
 export type GetApiDatasetPathResponse = string;
@@ -50,7 +46,7 @@ async function handler(
   const { datasetId, parentId } = req.body;
   if (!parentId) return '';
 
-  const { yuqueServer, feishuServer, apiServer } = await (async () => {
+  const apiDatasetServer = await (async () => {
     if (datasetId) {
       const { dataset } = await authDataset({
         req,
@@ -60,49 +56,21 @@ async function handler(
         datasetId
       });
 
-      return {
-        yuqueServer: req.body.yuqueServer
-          ? { ...req.body.yuqueServer, token: dataset.yuqueServer?.token ?? '' }
-          : dataset.yuqueServer,
-        feishuServer: req.body.feishuServer
-          ? { ...req.body.feishuServer, appSecret: dataset.feishuServer?.appSecret ?? '' }
-          : dataset.feishuServer,
-        apiServer: req.body.apiServer
-          ? {
-              ...req.body.apiServer,
-              authorization: dataset.apiServer?.authorization ?? ''
-            }
-          : dataset.apiServer
-      };
+      return dataset.apiDatasetServer;
     } else {
       await authCert({ req, authToken: true });
 
-      return {
-        yuqueServer: req.body.yuqueServer,
-        feishuServer: req.body.feishuServer,
-        apiServer: req.body.apiServer
-      };
+      return req.body.apiDatasetServer;
     }
   })();
 
-  if (feishuServer) {
-    return '';
+  const apiDataset = await getApiDatasetRequest(apiDatasetServer);
+
+  if (!apiDataset?.getFileDetail) {
+    return Promise.reject(DatasetErrEnum.noApiServer);
   }
 
-  if (yuqueServer || apiServer) {
-    const apiDataset = await getApiDatasetRequest({
-      yuqueServer,
-      apiServer
-    });
-
-    if (!apiDataset?.getFileDetail) {
-      return Promise.reject(DatasetErrEnum.noApiServer);
-    }
-
-    return await getFullPath(parentId, apiDataset.getFileDetail);
-  }
-
-  return Promise.reject(new Error(DatasetErrEnum.noApiServer));
+  return await getFullPath(parentId, apiDataset.getFileDetail);
 }
 
 export default NextAPI(handler);

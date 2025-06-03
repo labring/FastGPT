@@ -3,12 +3,11 @@ import type {
   ApiFileReadContentResponse,
   APIFileReadResponse,
   ApiDatasetDetailResponse,
-  APIFileServer,
-  APIFileItem
-} from '@fastgpt/global/core/dataset/apiDataset';
+  APIFileServer
+} from '@fastgpt/global/core/dataset/apiDataset/type';
 import axios, { type Method } from 'axios';
-import { addLog } from '../../../common/system/log';
-import { readFileRawTextByUrl } from '../read';
+import { addLog } from '../../../../common/system/log';
+import { readFileRawTextByUrl } from '../../read';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 

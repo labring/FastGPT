@@ -17,6 +17,9 @@ import type { ParentIdType } from '../../common/parentFolder/type';
 /* ================= dataset ===================== */
 export type DatasetUpdateBody = {
   id: string;
+
+  apiDatasetServer?: DatasetSchemaType['apiDatasetServer'];
+
   parentId?: ParentIdType;
   name?: string;
   avatar?: string;
@@ -28,9 +31,6 @@ export type DatasetUpdateBody = {
   websiteConfig?: DatasetSchemaType['websiteConfig'];
   externalReadUrl?: DatasetSchemaType['externalReadUrl'];
   defaultPermission?: DatasetSchemaType['defaultPermission'];
-  apiServer?: DatasetSchemaType['apiServer'];
-  yuqueServer?: DatasetSchemaType['yuqueServer'];
-  feishuServer?: DatasetSchemaType['feishuServer'];
   chunkSettings?: DatasetSchemaType['chunkSettings'];
 
   // sync schedule

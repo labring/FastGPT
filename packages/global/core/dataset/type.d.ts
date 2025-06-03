@@ -13,7 +13,12 @@ import type {
   ChunkTriggerConfigTypeEnum
 } from './constants';
 import type { DatasetPermission } from '../../support/permission/dataset/controller';
-import type { APIFileServer, FeishuServer, YuqueServer } from './apiDataset';
+import type {
+  ApiDatasetServerType,
+  APIFileServer,
+  FeishuServer,
+  YuqueServer
+} from './apiDataset/type';
 import type { SourceMemberType } from 'support/user/type';
 import type { DatasetDataIndexTypeEnum } from './data/constants';
 import type { ParentIdType } from 'common/parentFolder/type';
@@ -73,14 +78,16 @@ export type DatasetSchemaType = {
   chunkSettings?: ChunkSettingsType;
 
   inheritPermission: boolean;
-  apiServer?: APIFileServer;
-  feishuServer?: FeishuServer;
-  yuqueServer?: YuqueServer;
+
+  apiDatasetServer?: ApiDatasetServerType;
 
   // abandon
   autoSync?: boolean;
   externalReadUrl?: string;
   defaultPermission?: number;
+  apiServer?: APIFileServer;
+  feishuServer?: FeishuServer;
+  yuqueServer?: YuqueServer;
 };
 
 export type DatasetCollectionSchemaType = ChunkSettingsType & {

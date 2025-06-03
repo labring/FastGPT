@@ -9,13 +9,9 @@ import { type TextSplitProps, splitText2Chunks } from '@fastgpt/global/common/st
 import axios from 'axios';
 import { readRawContentByFileBuffer } from '../../common/file/read/utils';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
-import {
-  type APIFileServer,
-  type FeishuServer,
-  type YuqueServer
-} from '@fastgpt/global/core/dataset/apiDataset';
 import { getApiDatasetRequest } from './apiDataset';
 import Papa from 'papaparse';
+import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 
 export const readFileRawTextByUrl = async ({
   teamId,
@@ -69,9 +65,7 @@ export const readDatasetSourceRawText = async ({
   sourceId,
   selector,
   externalFileId,
-  apiServer,
-  feishuServer,
-  yuqueServer,
+  apiDatasetServer,
   customPdfParse,
   getFormatText
 }: {
@@ -84,9 +78,7 @@ export const readDatasetSourceRawText = async ({
 
   selector?: string; // link selector
   externalFileId?: string; // external file dataset
-  apiServer?: APIFileServer; // api dataset
-  feishuServer?: FeishuServer; // feishu dataset
-  yuqueServer?: YuqueServer; // yuque dataset
+  apiDatasetServer?: ApiDatasetServerType; // api dataset
 }): Promise<{
   title?: string;
   rawText: string;
@@ -128,9 +120,7 @@ export const readDatasetSourceRawText = async ({
     };
   } else if (type === DatasetSourceReadTypeEnum.apiFile) {
     const { title, rawText } = await readApiServerFileContent({
-      apiServer,
-      feishuServer,
-      yuqueServer,
+      apiDatasetServer,
       apiFileId: sourceId,
       teamId,
       tmbId
@@ -147,17 +137,13 @@ export const readDatasetSourceRawText = async ({
 };
 
 export const readApiServerFileContent = async ({
-  apiServer,
-  feishuServer,
-  yuqueServer,
+  apiDatasetServer,
   apiFileId,
   teamId,
   tmbId,
   customPdfParse
 }: {
-  apiServer?: APIFileServer;
-  feishuServer?: FeishuServer;
-  yuqueServer?: YuqueServer;
+  apiDatasetServer?: ApiDatasetServerType;
   apiFileId: string;
   teamId: string;
   tmbId: string;
@@ -166,13 +152,7 @@ export const readApiServerFileContent = async ({
   title?: string;
   rawText: string;
 }> => {
-  return (
-    await getApiDatasetRequest({
-      apiServer,
-      yuqueServer,
-      feishuServer
-    })
-  ).getFileContent({
+  return (await getApiDatasetRequest(apiDatasetServer)).getFileContent({
     teamId,
     tmbId,
     apiFileId,

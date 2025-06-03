@@ -17,7 +17,8 @@ import {
   DatasetCollectionTypeEnum,
   DatasetTypeEnum,
   DatasetTypeMap,
-  DatasetStatusEnum
+  DatasetStatusEnum,
+  ApiDatasetTypeMap
 } from '@fastgpt/global/core/dataset/constants';
 import EditFolderModal, { useEditFolder } from '../../EditFolderModal';
 import { TabEnum } from '../../../../pages/dataset/detail/index';
@@ -435,9 +436,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
             />
           )}
           {/* apiDataset */}
-          {(datasetDetail?.type === DatasetTypeEnum.apiDataset ||
-            datasetDetail?.type === DatasetTypeEnum.feishu ||
-            datasetDetail?.type === DatasetTypeEnum.yuque) && (
+          {datasetDetail?.type && ApiDatasetTypeMap[datasetDetail.type] && (
             <Flex
               px={3.5}
               py={2}
