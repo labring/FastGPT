@@ -26,7 +26,7 @@ weight: 410
 
 ![](/imgs/thirddataset-1.png)
 
-然后需要在 FastGPT 项目路径`projects\app\src\service\core\dataset\`下创建一个需要添加的文件夹，这里是`feishuKownledgeDataset`,在添加的文件夹下创建一个`api.ts`,如图:
+然后需要在 FastGPT 项目路径`FastGPT\packages\service\core\dataset\apiDataset\`下创建一个需要添加的文件夹，这里是`feishuKownledgeDataset`,在添加的文件夹下创建一个`api.ts`,如图:
 
 ![](/imgs/thirddataset-2.png)
 
