@@ -456,7 +456,7 @@ const TestResults = React.memo(function TestResults({
           <Box mt={1} gap={4}>
             {datasetTestItem?.results.map((item, index) => (
               <Box key={item.id} p={3} borderRadius={'lg'} bg={'myGray.100'} _notLast={{ mb: 2 }}>
-                <QuoteItem quoteItem={item} canViewSource />
+                <QuoteItem quoteItem={item} canViewSource canEditData />
               </Box>
             ))}
           </Box>

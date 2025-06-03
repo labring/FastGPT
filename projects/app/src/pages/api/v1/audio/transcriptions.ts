@@ -22,7 +22,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     let {
       file,
       data: { appId, duration, shareId, outLinkUid, teamId: spaceTeamId, teamToken }
-    } = await upload.doUpload<
+    } = await upload.getUploadFile<
       OutLinkChatAuthProps & {
         appId: string;
         duration: number;

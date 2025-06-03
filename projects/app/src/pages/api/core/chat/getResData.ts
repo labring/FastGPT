@@ -15,7 +15,7 @@ export type getResDataQuery = OutLinkChatAuthProps & {
 
 export type getResDataBody = {};
 
-export type getResDataResponse = ChatHistoryItemResType[] | {};
+export type getResDataResponse = ChatHistoryItemResType[] | [];
 
 async function handler(
   req: ApiRequestProps<getResDataBody, getResDataQuery>,
@@ -23,7 +23,7 @@ async function handler(
 ): Promise<getResDataResponse> {
   const { appId, chatId, dataId, shareId } = req.query;
   if (!appId || !chatId || !dataId) {
-    return {};
+    return [];
   }
 
   const [{ responseDetail }, chatData] = await Promise.all([
@@ -44,10 +44,10 @@ async function handler(
   ]);
 
   if (chatData?.obj !== ChatRoleEnum.AI) {
-    return {};
+    return [];
   }
 
-  const flowResponses = chatData.responseData ?? {};
+  const flowResponses = chatData.responseData ?? [];
   return req.query.shareId
     ? filterPublicNodeResponseData({
         responseDetail,

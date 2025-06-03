@@ -186,9 +186,11 @@ export const rawText2Chunks = ({
   chunkTriggerMinSize = 1000,
   backupParse,
   chunkSize = 512,
+  imageIdList,
   ...splitProps
 }: {
   rawText: string;
+  imageIdList?: string[];
 
   chunkTriggerType?: ChunkTriggerConfigTypeEnum;
   chunkTriggerMinSize?: number; // maxSize from agent model, not store
@@ -199,6 +201,7 @@ export const rawText2Chunks = ({
   q: string;
   a: string;
   indexes?: string[];
+  imageIdList?: string[];
 }[] => {
   const parseDatasetBackup2Chunks = (rawText: string) => {
     const csvArr = Papa.parse(rawText).data as string[][];
@@ -209,7 +212,8 @@ export const rawText2Chunks = ({
       .map((item) => ({
         q: item[0] || '',
         a: item[1] || '',
-        indexes: item.slice(2)
+        indexes: item.slice(2),
+        imageIdList
       }))
       .filter((item) => item.q || item.a);
 
@@ -231,7 +235,8 @@ export const rawText2Chunks = ({
       return [
         {
           q: rawText,
-          a: ''
+          a: '',
+          imageIdList
         }
       ];
     }
@@ -240,7 +245,7 @@ export const rawText2Chunks = ({
   if (chunkTriggerType !== ChunkTriggerConfigTypeEnum.forceChunk) {
     const textLength = rawText.trim().length;
     if (textLength < chunkTriggerMinSize) {
-      return [{ q: rawText, a: '' }];
+      return [{ q: rawText, a: '', imageIdList }];
     }
   }
 
@@ -253,6 +258,7 @@ export const rawText2Chunks = ({
   return chunks.map((item) => ({
     q: item,
     a: '',
-    indexes: []
+    indexes: [],
+    imageIdList
   }));
 };

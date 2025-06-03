@@ -21,11 +21,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): CreateCo
     const upload = getUploadModel({
       maxSize: global.feConfigs?.uploadFileMaxSize
     });
-    const { file, data, bucketName } = await upload.doUpload<FileCreateDatasetCollectionParams>(
-      req,
-      res,
-      BucketNameEnum.dataset
-    );
+    const { file, data, bucketName } =
+      await upload.getUploadFile<FileCreateDatasetCollectionParams>(
+        req,
+        res,
+        BucketNameEnum.dataset
+      );
     filePaths = [file.path];
 
     if (!file || !bucketName) {
