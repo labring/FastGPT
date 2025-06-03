@@ -17,6 +17,7 @@ export const ApiDatasetTypeMap: Record<
   `${DatasetTypeEnum}`,
   {
     icon: string;
+    avatar: string;
     label: any;
     collectionLabel: string;
     courseUrl?: string;
@@ -24,18 +25,21 @@ export const ApiDatasetTypeMap: Record<
 > = {
   [DatasetTypeEnum.apiDataset]: {
     icon: 'core/dataset/externalDatasetOutline',
+    avatar: 'core/dataset/externalDatasetColor',
     label: i18nT('dataset:api_file'),
     collectionLabel: i18nT('common:File'),
     courseUrl: '/docs/guide/knowledge_base/api_dataset/'
   },
   [DatasetTypeEnum.feishu]: {
     icon: 'core/dataset/feishuDatasetOutline',
+    avatar: 'core/dataset/feishuDatasetColor',
     label: i18nT('dataset:feishu_dataset'),
     collectionLabel: i18nT('common:File'),
     courseUrl: '/docs/guide/knowledge_base/lark_dataset/'
   },
   [DatasetTypeEnum.yuque]: {
     icon: 'core/dataset/yuqueDatasetOutline',
+    avatar: 'core/dataset/yuqueDatasetColor',
     label: i18nT('dataset:yuque_dataset'),
     collectionLabel: i18nT('common:File'),
     courseUrl: '/docs/guide/knowledge_base/yuque_dataset/'
@@ -45,6 +49,7 @@ export const DatasetTypeMap: Record<
   `${DatasetTypeEnum}`,
   {
     icon: string;
+    avatar: string;
     label: any;
     collectionLabel: string;
     courseUrl?: string;
@@ -53,22 +58,26 @@ export const DatasetTypeMap: Record<
   ...ApiDatasetTypeMap,
   [DatasetTypeEnum.folder]: {
     icon: 'common/folderFill',
+    avatar: 'common/folderFill',
     label: i18nT('dataset:folder_dataset'),
     collectionLabel: i18nT('common:Folder')
   },
   [DatasetTypeEnum.dataset]: {
     icon: 'core/dataset/commonDatasetOutline',
+    avatar: 'core/dataset/commonDatasetColor',
     label: i18nT('dataset:common_dataset'),
     collectionLabel: i18nT('common:File')
   },
   [DatasetTypeEnum.websiteDataset]: {
     icon: 'core/dataset/websiteDatasetOutline',
+    avatar: 'core/dataset/websiteDatasetColor',
     label: i18nT('dataset:website_dataset'),
     collectionLabel: i18nT('common:Website'),
     courseUrl: '/docs/guide/knowledge_base/websync/'
   },
   [DatasetTypeEnum.externalFile]: {
     icon: 'core/dataset/externalDatasetOutline',
+    avatar: 'core/dataset/externalDatasetColor',
     label: i18nT('dataset:external_file'),
     collectionLabel: i18nT('common:File')
   }

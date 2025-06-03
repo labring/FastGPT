@@ -9,7 +9,7 @@ import List from '@/pageComponents/dataset/list/List';
 import { DatasetsContext } from './context';
 import DatasetContextProvider from './context';
 import { useContextSelector } from 'use-context-selector';
-import MyMenu from '@fastgpt/web/components/common/MyMenu/secondary';
+import MultipleMenu from '@fastgpt/web/components/common/MyMenu/Multiple';
 import { AddIcon } from '@chakra-ui/icons';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -138,10 +138,9 @@ const Dataset = () => {
               ? folderDetail.permission.hasWritePer
               : userInfo?.team?.permission.hasDatasetCreatePer) && (
               <Box pl={[0, 4]}>
-                <MyMenu
+                <MultipleMenu
                   size="md"
-                  offset={[0, 10]}
-                  Button={
+                  Trigger={
                     <Button variant={'primary'} px="0">
                       <Flex alignItems={'center'} px={5}>
                         <AddIcon mr={2} />
@@ -163,11 +162,7 @@ const Dataset = () => {
                           label: t('dataset:website_dataset'),
                           description: t('dataset:website_dataset_desc'),
                           onClick: () => onSelectDatasetType(DatasetTypeEnum.websiteDataset)
-                        }
-                      ]
-                    },
-                    {
-                      children: [
+                        },
                         {
                           icon: 'core/dataset/otherDataset',
                           label: t('dataset:other_dataset'),

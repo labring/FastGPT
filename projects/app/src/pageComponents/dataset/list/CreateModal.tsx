@@ -50,7 +50,7 @@ const CreateModal = ({
     defaultValues: {
       parentId,
       type: type || DatasetTypeEnum.dataset,
-      avatar: DatasetTypeMap[type].icon,
+      avatar: DatasetTypeMap[type].avatar,
       name: '',
       intro: '',
       vectorModel:
@@ -95,7 +95,7 @@ const CreateModal = ({
             w={'20px'}
             h={'20px'}
             borderRadius={'xs'}
-            src={DatasetTypeMap[type].icon}
+            src={DatasetTypeMap[type].avatar}
             pr={'10px'}
           />
           {t('common:core.dataset.Create dataset', { name: t(DatasetTypeMap[type].label) })}
