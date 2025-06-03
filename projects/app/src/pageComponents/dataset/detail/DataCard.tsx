@@ -139,6 +139,7 @@ const DataCard = () => {
             >
               {collection?._id && (
                 <RawSourceBox
+                  collectionType={collection.type}
                   collectionId={collection._id}
                   {...getCollectionSourceData(collection)}
                   fontSize={['sm', 'md']}

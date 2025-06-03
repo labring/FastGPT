@@ -13,6 +13,7 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { getEmbeddingModel, getLLMModel, getVlmModel } from '@fastgpt/service/core/ai/model';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { removeDatasetImageExpiredTime } from '@fastgpt/service/core/dataset/image/utils';
 
 export type insertImagesQuery = {};
 
@@ -101,6 +102,13 @@ async function handler(
         data: imageIds.map((item, index) => ({
           imageId: item
         })),
+        session
+      });
+
+      // 3. Clear ttl
+      await removeDatasetImageExpiredTime({
+        ids: imageIds,
+        collectionId,
         session
       });
     });

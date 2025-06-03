@@ -37,7 +37,7 @@ const ReTraining = () => {
           apiFileId: collection.apiFileId,
 
           createStatus: 'waiting',
-          icon: getCollectionIcon(collection.type, collection.name),
+          icon: getCollectionIcon({ type: collection.type, name: collection.name }),
           id: collection._id,
           isUploading: false,
           sourceName: collection.name,

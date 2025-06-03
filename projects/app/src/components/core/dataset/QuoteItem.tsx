@@ -8,7 +8,11 @@ import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { SearchScoreTypeEnum, SearchScoreTypeMap } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTypeEnum,
+  SearchScoreTypeEnum,
+  SearchScoreTypeMap
+} from '@fastgpt/global/core/dataset/constants';
 import type { readCollectionSourceBody } from '@/pages/api/core/dataset/collection/read';
 import Markdown from '@/components/Markdown';
 

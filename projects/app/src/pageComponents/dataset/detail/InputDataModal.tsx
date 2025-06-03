@@ -13,7 +13,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
+import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import type { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
 import DeleteIcon from '@fastgpt/web/components/common/Icon/delete';
 import { defaultCollectionDetail } from '@/web/core/dataset/constants';
@@ -194,10 +194,7 @@ const InputDataModal = ({
   const isLoading = isFetchingData;
 
   const icon = useMemo(
-    () =>
-      collection.type === DatasetCollectionTypeEnum.images
-        ? 'core/dataset/imageFill'
-        : getSourceNameIcon({ sourceName: collection.sourceName, sourceId: collection.sourceId }),
+    () => getCollectionIcon({ type: collection.type, name: collection.sourceName }),
     [collection]
   );
 

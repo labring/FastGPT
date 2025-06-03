@@ -113,7 +113,18 @@ export const getDatasetImageBase64 = async (imageId: string) => {
 
 export const deleteDatasetImage = async (imageId: string) => {
   const gridBucket = getGridBucket();
-  await gridBucket.delete(new Types.ObjectId(imageId));
+
+  try {
+    await gridBucket.delete(new Types.ObjectId(imageId));
+  } catch (error: any) {
+    const msg = error?.message;
+    if (msg.includes('File not found')) {
+      addLog.warn('Delete dataset image error', error);
+      return;
+    } else {
+      return Promise.reject(error);
+    }
+  }
 };
 
 export const clearExpiredDatasetImageCron = async () => {
