@@ -410,7 +410,7 @@ const GateChatInput = ({
       </Flex>
 
       <File onSelect={(files) => onSelectFile({ files })} />
-      <ComplianceTip type={'chat'} />
+      {/* <ComplianceTip type={'chat'} /> */}
 
       {/* voice input and loading container */}
       {!inputValue && (

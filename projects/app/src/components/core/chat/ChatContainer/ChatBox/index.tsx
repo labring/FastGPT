@@ -77,6 +77,7 @@ import type { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import type { AppListItemType } from '@fastgpt/global/core/app/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import ComplianceTip from '@/components/common/ComplianceTip/index';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
@@ -1210,18 +1211,7 @@ const ChatBox = ({
           {/* 移动端下的版权信息容器 */}
           <Box w="100%" mt="auto">
             {/* 在inGateRoute状态下显示底部语句 */}
-            {inGateRoute && (
-              <Flex
-                justify="center"
-                w="100%"
-                py={3}
-                px={4}
-                fontSize={{ base: '2xs', sm: 'xs' }}
-                color="gray.500"
-              >
-                <Text textAlign="center">{t('common:gate.copyright')}</Text>
-              </Flex>
-            )}
+            {inGateRoute && <ComplianceTip type={'chat'} />}
           </Box>
         </Flex>
       ) : (
@@ -1266,18 +1256,7 @@ const ChatBox = ({
             )}
 
             {/* 在inGateRoute状态下显示底部语句 */}
-            {inGateRoute && (
-              <Flex
-                justify="center"
-                w="100%"
-                py={3}
-                px={4}
-                fontSize={{ base: '2xs', sm: 'xs' }}
-                color="gray.500"
-              >
-                <Text textAlign="center">{t('common:gate.copyright')}</Text>
-              </Flex>
-            )}
+            {/* {inGateRoute && <ComplianceTip type={'chat'} />} */}
           </Flex>
         </>
       )}
