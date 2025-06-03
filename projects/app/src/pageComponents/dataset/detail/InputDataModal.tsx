@@ -342,7 +342,7 @@ const InputDataModal = ({
                 </FormLabel>
                 <Textarea
                   resize={'none'}
-                  placeholder={t('file:Please enter the description of the picture')}
+                  placeholder={t('file:image_description_tip')}
                   className={styles.scrollbar}
                   flex={'1 0 0'}
                   tabIndex={1}

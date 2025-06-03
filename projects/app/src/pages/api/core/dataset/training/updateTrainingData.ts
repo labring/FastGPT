@@ -3,7 +3,7 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { addMinutes } from 'date-fns';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 
 export type updateTrainingDataBody = {
   datasetId: string;
@@ -37,21 +37,41 @@ async function handler(
     return Promise.reject('data not found');
   }
 
-  await MongoDatasetTraining.updateOne(
-    {
-      teamId,
-      datasetId,
-      _id: dataId
-    },
-    {
-      $unset: { errorMsg: '' },
-      retryCount: 3,
-      ...(q !== undefined && { q }),
-      ...(a !== undefined && { a }),
-      ...(chunkIndex !== undefined && { chunkIndex }),
-      lockTime: addMinutes(new Date(), -10)
-    }
-  );
+  // Add to chunk
+  if (data.imageId && q) {
+    await MongoDatasetTraining.updateOne(
+      {
+        teamId,
+        datasetId,
+        _id: dataId
+      },
+      {
+        $unset: { errorMsg: '' },
+        retryCount: 3,
+        mode: TrainingModeEnum.chunk,
+        ...(q !== undefined && { q }),
+        ...(a !== undefined && { a }),
+        ...(chunkIndex !== undefined && { chunkIndex }),
+        lockTime: new Date('2000')
+      }
+    );
+  } else {
+    await MongoDatasetTraining.updateOne(
+      {
+        teamId,
+        datasetId,
+        _id: dataId
+      },
+      {
+        $unset: { errorMsg: '' },
+        retryCount: 3,
+        ...(q !== undefined && { q }),
+        ...(a !== undefined && { a }),
+        ...(chunkIndex !== undefined && { chunkIndex }),
+        lockTime: new Date('2000')
+      }
+    );
+  }
 
   return {};
 }

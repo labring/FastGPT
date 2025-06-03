@@ -11,7 +11,7 @@
   "Loading_image": "加载图片中...",
   "Loading_image failed": "预览加载失败",
   "Only_support_uploading_one_image": "仅支持上传一张图片",
-  "Please enter the description of the picture": "请输入图片的描述内容",
+  "image_description_tip": "请输入图片的描述内容",
   "Please select the image to upload": "请选择要上传的图片",
   "Please wait for all files to upload": "请等待所有文件上传完成",
   "bucket_chat": "对话文件",

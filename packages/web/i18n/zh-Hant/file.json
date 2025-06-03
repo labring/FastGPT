@@ -11,7 +11,7 @@
   "Loading_image": "加載圖片中...",
   "Loading_image_failed": "預覽加載失敗",
   "Only_support_uploading_one_image": "僅支持上傳一張圖片",
-  "Please enter the description of the picture": "請輸入圖片的描述內容",
+  "image_description_tip": "請輸入圖片的描述內容",
   "Please select the image to upload": "請選擇要上傳的圖片",
   "Please select the image to upload select the image to upload": "",
   "Please wait for all files to upload": "請等待所有文件上傳完成",

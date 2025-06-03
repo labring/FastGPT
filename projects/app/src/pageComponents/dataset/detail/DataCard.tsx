@@ -87,17 +87,20 @@ const DataCard = () => {
   const [editDataId, setEditDataId] = useState<string>();
 
   // Get collection info
-  const { data: collection } = useRequest2(() => getDatasetCollectionById(collectionId), {
-    refreshDeps: [collectionId],
-    manual: false,
-    onError: () => {
-      router.replace({
-        query: {
-          datasetId
-        }
-      });
+  const { data: collection, runAsync: reloadCollection } = useRequest2(
+    () => getDatasetCollectionById(collectionId),
+    {
+      refreshDeps: [collectionId],
+      manual: false,
+      onError: () => {
+        router.replace({
+          query: {
+            datasetId
+          }
+        });
+      }
     }
-  });
+  );
 
   const canWrite = useMemo(() => datasetDetail.permission.hasWritePer, [datasetDetail]);
 
@@ -436,7 +439,11 @@ const DataCard = () => {
           datasetId={datasetId}
           defaultTab={'errors'}
           collectionId={errorModalId}
-          onClose={() => setErrorModalId('')}
+          onClose={() => {
+            setErrorModalId('');
+            refreshList();
+            reloadCollection();
+          }}
         />
       )}
       {isInsertImagesModalOpen && (
