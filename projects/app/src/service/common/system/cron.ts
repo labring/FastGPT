@@ -12,7 +12,7 @@ import { TimerIdEnum } from '@fastgpt/service/common/system/timerLock/constants'
 import { addHours } from 'date-fns';
 import { getScheduleTriggerApp } from '@/service/core/app/utils';
 import { clearExpiredRawTextBufferCron } from '@fastgpt/service/common/buffer/rawText/controller';
-import { refreshFeishuToken } from '@fastgpt/service/core/dataset/feishuPrivateDataset/refreshToken';
+import { refreshFeishuToken } from '@fastgpt/service/core/dataset/apiDataset/feishuPrivateDataset/refreshToken';
 
 // Try to run train every minute
 const setTrainingQueueCron = () => {

@@ -5,7 +5,7 @@ import type {
   ApiDatasetDetailResponse
 } from '@fastgpt/global/core/dataset/apiDataset';
 import axios, { type Method } from 'axios';
-import { addLog } from '../../../common/system/log';
+import { addLog } from '../../../../common/system/log';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 type ResponseDataType = {
