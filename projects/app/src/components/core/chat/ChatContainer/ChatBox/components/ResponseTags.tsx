@@ -81,7 +81,9 @@ const ResponseTags = ({
       .map((item) => ({
         sourceName: item.sourceName,
         sourceId: item.sourceId,
-        icon: getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
+        icon: item.imageId
+          ? 'core/dataset/imageFill'
+          : getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
         collectionId: item.collectionId,
         datasetId: item.datasetId
       }));

@@ -1,37 +1,39 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Flex, Button, Textarea, ModalFooter, HStack, VStack } from '@chakra-ui/react';
-import { type UseFormRegister, useFieldArray, useForm } from 'react-hook-form';
+import { Box, Flex, Button, Textarea, ModalFooter, HStack, VStack, Image } from '@chakra-ui/react';
+import type { UseFormRegister } from 'react-hook-form';
+import { useFieldArray, useForm } from 'react-hook-form';
 import {
   postInsertData2Dataset,
   putDatasetDataById,
   getDatasetCollectionById,
   getDatasetDataItemById
 } from '@/web/core/dataset/api';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
-import { type DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
+import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
+import type { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
 import DeleteIcon from '@fastgpt/web/components/common/Icon/delete';
 import { defaultCollectionDetail } from '@/web/core/dataset/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import styles from './styles.module.scss';
 import {
   DatasetDataIndexTypeEnum,
   getDatasetIndexMapData
 } from '@fastgpt/global/core/dataset/data/constants';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import MyImage from '@/components/MyImage/index';
 
 export type InputDataType = {
   q: string;
   a: string;
+  imagePreivewUrl?: string;
   indexes: (Omit<DatasetDataIndexItemType, 'dataId'> & {
     dataId?: string; // pg data id
     fold: boolean;
@@ -40,7 +42,8 @@ export type InputDataType = {
 
 enum TabEnum {
   chunk = 'chunk',
-  qa = 'qa'
+  qa = 'qa',
+  image = 'image'
 }
 
 const InputDataModal = ({
@@ -52,17 +55,16 @@ const InputDataModal = ({
 }: {
   collectionId: string;
   dataId?: string;
-  defaultValue?: { q: string; a?: string };
+  defaultValue?: { q?: string; a?: string; imagePreivewUrl?: string };
   onClose: () => void;
   onSuccess: (data: InputDataType & { dataId: string }) => void;
 }) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
   const { embeddingModelList, defaultModels } = useSystemStore();
 
-  const [currentTab, setCurrentTab] = useState(TabEnum.chunk);
+  const [currentTab, setCurrentTab] = useState<TabEnum>();
 
-  const { register, handleSubmit, reset, control } = useForm<InputDataType>();
+  const { register, handleSubmit, reset, control, watch } = useForm<InputDataType>();
   const {
     fields: indexes,
     prepend: prependIndexes,
@@ -72,16 +74,24 @@ const InputDataModal = ({
     control,
     name: 'indexes'
   });
+  const imagePreivewUrl = watch('imagePreivewUrl');
 
   const { data: collection = defaultCollectionDetail } = useRequest2(
-    () => {
-      return getDatasetCollectionById(collectionId);
-    },
+    () => getDatasetCollectionById(collectionId),
     {
       manual: false,
-      refreshDeps: [collectionId]
+      refreshDeps: [collectionId],
+      onSuccess(res) {
+        if (res.type === DatasetCollectionTypeEnum.images) {
+          setCurrentTab(TabEnum.image);
+        } else {
+          setCurrentTab(TabEnum.chunk);
+        }
+      }
     }
   );
+
+  // Get data
   const { loading: isFetchingData } = useRequest2(
     async () => {
       if (dataId) return getDatasetDataItemById(dataId);
@@ -93,8 +103,9 @@ const InputDataModal = ({
       onSuccess(res) {
         if (res) {
           reset({
-            q: res.q,
-            a: res.a,
+            q: res.q || '',
+            a: res.a || '',
+            imagePreivewUrl: res.imagePreivewUrl,
             indexes: res.indexes.map((item) => ({
               ...item,
               fold: true
@@ -102,54 +113,32 @@ const InputDataModal = ({
           });
         } else if (defaultValue) {
           reset({
-            q: defaultValue.q,
-            a: defaultValue.a
+            q: defaultValue.q || '',
+            a: defaultValue.a || '',
+            imagePreivewUrl: defaultValue.imagePreivewUrl
           });
-        }
-
-        if (res?.a || defaultValue?.a) {
-          setCurrentTab(TabEnum.qa);
         }
       },
       onError(err) {
-        toast({
-          status: 'error',
-          title: t(getErrText(err) as any)
-        });
         onClose();
       }
     }
   );
 
-  const maxToken = useMemo(() => {
-    const vectorModel =
-      embeddingModelList.find((item) => item.model === collection.dataset.vectorModel) ||
-      defaultModels.embedding;
-
-    return vectorModel?.maxToken || 3000;
-  }, [collection.dataset.vectorModel, defaultModels.embedding, embeddingModelList]);
-
-  // import new data
+  // Import new data
   const { runAsync: sureImportData, loading: isImporting } = useRequest2(
     async (e: InputDataType) => {
-      if (!e.q) {
-        return Promise.reject(t('common:dataset.data.input is empty'));
-      }
-
-      const totalLength = e.q.length + (e.a?.length || 0);
-      if (totalLength >= maxToken * 1.4) {
-        return Promise.reject(t('common:core.dataset.data.Too Long'));
-      }
-
       const data = { ...e };
 
-      const dataId = await postInsertData2Dataset({
+      const postData: any = {
         collectionId: collection._id,
         q: e.q,
         a: currentTab === TabEnum.qa ? e.a : '',
         // Contains no default index
-        indexes: e.indexes?.filter((item) => !!item.text?.trim())
-      });
+        indexes: e.indexes.filter((item) => !!item.text?.trim())
+      };
+
+      const dataId = await postInsertData2Dataset(postData);
 
       return {
         ...data,
@@ -166,23 +155,26 @@ const InputDataModal = ({
           a: '',
           indexes: []
         });
+
         onSuccess(e);
       },
-      errorToast: t('common:error.unKnow')
+      errorToast: t('dataset:common.error.unKnow')
     }
   );
 
-  // update
+  // Update data
   const { runAsync: onUpdateData, loading: isUpdating } = useRequest2(
     async (e: InputDataType) => {
       if (!dataId) return Promise.reject(t('common:error.unKnow'));
 
-      await putDatasetDataById({
+      const updateData: any = {
         dataId,
         q: e.q,
         a: currentTab === TabEnum.qa ? e.a : '',
         indexes: e.indexes.filter((item) => !!item.text?.trim())
-      });
+      };
+
+      await putDatasetDataById(updateData);
 
       return {
         dataId,
@@ -202,9 +194,17 @@ const InputDataModal = ({
   const isLoading = isFetchingData;
 
   const icon = useMemo(
-    () => getSourceNameIcon({ sourceName: collection.sourceName, sourceId: collection.sourceId }),
+    () => getCollectionIcon({ type: collection.type, name: collection.sourceName }),
     [collection]
   );
+
+  const maxToken = useMemo(() => {
+    const vectorModel =
+      embeddingModelList.find((item) => item.model === collection.dataset.vectorModel) ||
+      defaultModels.embedding;
+
+    return vectorModel?.maxToken || 2000;
+  }, [collection.dataset.vectorModel, defaultModels.embedding, embeddingModelList]);
 
   return (
     <MyModal
@@ -243,17 +243,19 @@ const InputDataModal = ({
       >
         {/* Tab */}
         <Box px={[5, '3.25rem']}>
-          <FillRowTabs
-            list={[
-              { label: t('common:dataset_data_input_chunk'), value: TabEnum.chunk },
-              { label: t('common:dataset_data_input_qa'), value: TabEnum.qa }
-            ]}
-            py={1}
-            value={currentTab}
-            onChange={(e) => {
-              setCurrentTab(e);
-            }}
-          />
+          {(currentTab === TabEnum.chunk || currentTab === TabEnum.qa) && (
+            <FillRowTabs
+              list={[
+                { label: t('common:dataset_data_input_chunk'), value: TabEnum.chunk },
+                { label: t('common:dataset_data_input_qa'), value: TabEnum.qa }
+              ]}
+              py={1}
+              value={currentTab}
+              onChange={(e) => {
+                setCurrentTab(e);
+              }}
+            />
+          )}
         </Box>
 
         <Flex flex={'1 0 0'} h={['auto', '0']} gap={6} flexDir={['column', 'row']} px={[5, '0']}>
@@ -268,49 +270,89 @@ const InputDataModal = ({
             w={['100%', 0]}
             overflow={['unset', 'auto']}
           >
-            <Flex flexDir={'column'} h={'100%'}>
-              <FormLabel required mb={1} h={'30px'}>
-                {currentTab === TabEnum.chunk
-                  ? t('common:dataset_data_input_chunk_content')
-                  : t('common:dataset_data_input_q')}
-              </FormLabel>
-              <Textarea
-                resize={'none'}
-                placeholder={t('common:dataset_data_import_q_placeholder', { maxToken })}
-                className={styles.scrollbar}
-                maxLength={maxToken}
-                flex={'1 0 0'}
-                tabIndex={1}
-                _focus={{
-                  borderColor: 'primary.500',
-                  boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
-                  bg: 'white'
-                }}
-                bg={'myGray.25'}
-                borderRadius={'md'}
-                borderColor={'myGray.200'}
-                {...register(`q`, {
-                  required: true
-                })}
-              />
+            <Flex flexDir={'column'} flex={'1 0 0'} h={0}>
+              {currentTab === TabEnum.image && (
+                <>
+                  <FormLabel required mb={1} h={'30px'}>
+                    {t('file:image')}
+                  </FormLabel>
+                  <Box flex={'1 0 0'} h={0} w="100%">
+                    <Box height="100%" position="relative" border="base" borderRadius={'md'} p={1}>
+                      <MyImage
+                        src={imagePreivewUrl}
+                        h="100%"
+                        w="100%"
+                        objectFit="contain"
+                        alt={t('file:Image_Preview')}
+                      />
+                    </Box>
+                  </Box>
+                </>
+              )}
+              {(currentTab === TabEnum.chunk || currentTab === TabEnum.qa) && (
+                <>
+                  <FormLabel required mb={1} h={'30px'}>
+                    {currentTab === TabEnum.chunk
+                      ? t('common:dataset_data_input_chunk_content')
+                      : t('common:dataset_data_input_q')}
+                  </FormLabel>
+
+                  <Textarea
+                    resize={'none'}
+                    className={styles.scrollbar}
+                    flex={'1 0 0'}
+                    tabIndex={1}
+                    _focus={{
+                      borderColor: 'primary.500',
+                      boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
+                      bg: 'white'
+                    }}
+                    bg={'myGray.25'}
+                    borderRadius={'md'}
+                    borderColor={'myGray.200'}
+                    {...register(`q`, {
+                      required: true
+                    })}
+                  />
+                </>
+              )}
             </Flex>
             {currentTab === TabEnum.qa && (
-              <Flex flexDir={'column'} h={'100%'}>
+              <Flex flexDir={'column'} flex={'1 0 0'}>
                 <FormLabel required mb={1}>
                   {t('common:dataset_data_input_a')}
                 </FormLabel>
                 <Textarea
                   resize={'none'}
-                  placeholder={t('common:dataset_data_import_q_placeholder', { maxToken })}
                   className={styles.scrollbar}
                   flex={'1 0 0'}
                   tabIndex={1}
                   bg={'myGray.25'}
-                  maxLength={maxToken}
                   borderRadius={'md'}
                   border={'1.5px solid '}
                   borderColor={'myGray.200'}
                   {...register('a', { required: true })}
+                />
+              </Flex>
+            )}
+            {currentTab === TabEnum.image && (
+              <Flex flexDir={'column'} flex={'1 0 0'}>
+                <FormLabel required mb={1}>
+                  {t('file:image_description')}
+                </FormLabel>
+                <Textarea
+                  resize={'none'}
+                  placeholder={t('file:image_description_tip')}
+                  className={styles.scrollbar}
+                  flex={'1 0 0'}
+                  tabIndex={1}
+                  bg={'myGray.25'}
+                  borderRadius={'md'}
+                  border={'1.5px solid '}
+                  borderColor={'myGray.200'}
+                  {...register('q', {
+                    required: true
+                  })}
                 />
               </Flex>
             )}

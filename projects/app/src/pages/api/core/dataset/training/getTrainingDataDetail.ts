@@ -3,6 +3,7 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { getDatasetImagePreviewUrl } from '@fastgpt/service/core/dataset/image/utils';
 
 export type getTrainingDataDetailQuery = {};
 
@@ -17,8 +18,9 @@ export type getTrainingDataDetailResponse =
       _id: string;
       datasetId: string;
       mode: string;
-      q: string;
-      a: string;
+      q?: string;
+      a?: string;
+      imagePreviewUrl?: string;
     }
   | undefined;
 
@@ -44,6 +46,14 @@ async function handler(
     _id: data._id,
     datasetId: data.datasetId,
     mode: data.mode,
+    imagePreviewUrl: data.imageId
+      ? getDatasetImagePreviewUrl({
+          imageId: data.imageId,
+          teamId,
+          datasetId,
+          expiredMinutes: 30
+        })
+      : undefined,
     q: data.q,
     a: data.a
   };

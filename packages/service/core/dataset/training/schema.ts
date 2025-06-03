@@ -99,6 +99,9 @@ const TrainingDataSchema = new Schema({
     ],
     default: []
   },
+  imageId: {
+    type: String
+  },
 
   errorMsg: String
 });

@@ -173,6 +173,20 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
       {
         title: t('dataset:import_confirm')
       }
+    ],
+    [ImportDataSourceEnum.imageDataset]: [
+      {
+        title: t('dataset:import_select_file')
+      },
+      {
+        title: t('dataset:import_param_setting')
+      },
+      {
+        title: t('dataset:import_data_preview')
+      },
+      {
+        title: t('dataset:import_confirm')
+      }
     ]
   };
   const steps = modeSteps[source];
@@ -238,20 +252,22 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
         <Box flex={1} />
       </Flex>
       {/* step */}
-      <Box
-        mt={4}
-        mb={5}
-        px={3}
-        py={[2, 4]}
-        bg={'myGray.50'}
-        borderWidth={'1px'}
-        borderColor={'borderColor.low'}
-        borderRadius={'md'}
-      >
-        <Box maxW={['100%', '900px']} mx={'auto'}>
-          <MyStep />
+      {source !== ImportDataSourceEnum.imageDataset && (
+        <Box
+          mt={4}
+          mb={5}
+          px={3}
+          py={[2, 4]}
+          bg={'myGray.50'}
+          borderWidth={'1px'}
+          borderColor={'borderColor.low'}
+          borderRadius={'md'}
+        >
+          <Box maxW={['100%', '900px']} mx={'auto'}>
+            <MyStep />
+          </Box>
         </Box>
-      </Box>
+      )}
       {children}
     </DatasetImportContext.Provider>
   );

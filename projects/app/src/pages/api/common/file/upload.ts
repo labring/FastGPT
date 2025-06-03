@@ -38,7 +38,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     const upload = getUploadModel({
       maxSize: global.feConfigs?.uploadFileMaxSize
     });
-    const { file, bucketName, metadata, data } = await upload.doUpload<
+    const { file, bucketName, metadata, data } = await upload.getUploadFile<
       UploadChatFileProps | UploadDatasetFileProps
     >(req, res);
     filePaths.push(file.path);

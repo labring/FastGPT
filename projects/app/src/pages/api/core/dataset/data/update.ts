@@ -43,7 +43,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
       model: vectorModel
     });
 
-    (async () => {
+    (() => {
       addOperationLog({
         tmbId,
         teamId,
@@ -55,10 +55,6 @@ async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
         }
       });
     })();
-  } else {
-    // await MongoDatasetData.findByIdAndUpdate(dataId, {
-    //   ...(forbid !== undefined && { forbid })
-    // });
   }
 }
 

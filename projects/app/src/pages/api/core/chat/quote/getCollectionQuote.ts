@@ -12,6 +12,7 @@ import { quoteDataFieldSelector, type QuoteDataItemType } from '@/service/core/c
 import { processChatTimeFilter } from '@/service/core/chat/utils';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
+import { getFormatDatasetCiteList } from '@fastgpt/service/core/dataset/data/controller';
 
 export type GetCollectionQuoteProps = LinkedPaginationProps & {
   chatId: string;
@@ -139,7 +140,7 @@ async function handleInitialLoad({
     const hasMoreNext = list.length === pageSize;
 
     return {
-      list: processChatTimeFilter(list, chatTime),
+      list: processChatTimeFilter(getFormatDatasetCiteList(list), chatTime),
       hasMorePrev: false,
       hasMoreNext
     };
@@ -164,7 +165,7 @@ async function handleInitialLoad({
   const resultList = [...prevList, centerNode, ...nextList];
 
   return {
-    list: processChatTimeFilter(resultList, chatTime),
+    list: processChatTimeFilter(getFormatDatasetCiteList(resultList), chatTime),
     hasMorePrev,
     hasMoreNext
   };
@@ -192,7 +193,7 @@ async function handlePaginatedLoad({
       ? await getPrevNodes(prevId, prevIndex, pageSize, baseMatch)
       : await getNextNodes(nextId!, nextIndex!, pageSize, baseMatch);
 
-  const processedList = processChatTimeFilter(list, chatTime);
+  const processedList = processChatTimeFilter(getFormatDatasetCiteList(list), chatTime);
 
   return {
     list: processedList,

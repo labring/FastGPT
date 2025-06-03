@@ -4,7 +4,8 @@ import { MongoFrequencyLimit } from './schema';
 export const authFrequencyLimit = async ({
   eventId,
   maxAmount,
-  expiredTime
+  expiredTime,
+  num = 1
 }: AuthFrequencyLimitProps) => {
   try {
     // 对应 eventId 的 account+1, 不存在的话，则创建一个
@@ -14,7 +15,7 @@ export const authFrequencyLimit = async ({
         expiredTime: { $gte: new Date() }
       },
       {
-        $inc: { amount: 1 },
+        $inc: { amount: num },
         // If not exist, set the expiredTime
         $setOnInsert: { expiredTime }
       },
