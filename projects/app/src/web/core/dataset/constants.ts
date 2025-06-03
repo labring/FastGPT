@@ -85,6 +85,10 @@ export const TrainingProcess = {
     label: i18nT('dataset:process.Parsing'),
     value: 'parsing'
   },
+  parseImage: {
+    label: i18nT('dataset:process.Parse_Image'),
+    value: 'parseImage'
+  },
   getQA: {
     label: i18nT('dataset:process.Get QA'),
     value: 'getQA'

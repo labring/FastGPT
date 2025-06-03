@@ -50,7 +50,7 @@ const BackupImportModal = ({
           maxCount={1}
           fileType="csv"
           selectFiles={selectFiles}
-          setSelectFiles={setSelectFiles}
+          setSelectFiles={(e) => setSelectFiles(e)}
         />
         {/* File render */}
         {selectFiles.length > 0 && (

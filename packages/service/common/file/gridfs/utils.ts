@@ -105,3 +105,20 @@ export const stream2Encoding = async (stream: NodeJS.ReadableStream) => {
     stream: copyStream
   };
 };
+
+// 单块大小：尽可能大，但不超过 14MB，不小于512KB
+export const computeGridFsChunSize = (fileSize: number) => {
+  // 计算理想块大小：文件大小 ÷ 目标块数(10)。 并且每个块需要小于 14MB
+  const idealChunkSize = Math.min(Math.ceil(fileSize / 10), 14 * 1024 * 1024);
+
+  // 确保块大小至少为512KB
+  const minChunkSize = 512 * 1024; // 512KB
+
+  // 取理想块大小和最小块大小中的较大值
+  let chunkSize = Math.max(idealChunkSize, minChunkSize);
+
+  // 将块大小向上取整到最接近的64KB的倍数，使其更整齐
+  chunkSize = Math.ceil(chunkSize / (64 * 1024)) * (64 * 1024);
+
+  return chunkSize;
+};

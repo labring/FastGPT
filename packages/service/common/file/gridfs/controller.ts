@@ -7,12 +7,13 @@ import { MongoChatFileSchema, MongoDatasetFileSchema } from './schema';
 import { detectFileEncoding, detectFileEncodingByPath } from '@fastgpt/global/common/file/tools';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { readRawContentByFileBuffer } from '../read/utils';
-import { gridFsStream2Buffer, stream2Encoding } from './utils';
+import { computeGridFsChunSize, gridFsStream2Buffer, stream2Encoding } from './utils';
 import { addLog } from '../../system/log';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { Readable } from 'stream';
 import { addRawTextBuffer, getRawTextBuffer } from '../../buffer/rawText/controller';
 import { addMinutes } from 'date-fns';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 
 export function getGFSCollection(bucket: `${BucketNameEnum}`) {
   MongoDatasetFileSchema;
@@ -64,23 +65,7 @@ export async function uploadFile({
   // create a gridfs bucket
   const bucket = getGridBucket(bucketName);
 
-  const fileSize = stats.size;
-  // 单块大小：尽可能大，但不超过 14MB，不小于512KB
-  const chunkSizeBytes = (() => {
-    // 计算理想块大小：文件大小 ÷ 目标块数(10)。 并且每个块需要小于 14MB
-    const idealChunkSize = Math.min(Math.ceil(fileSize / 10), 14 * 1024 * 1024);
-
-    // 确保块大小至少为512KB
-    const minChunkSize = 512 * 1024; // 512KB
-
-    // 取理想块大小和最小块大小中的较大值
-    let chunkSize = Math.max(idealChunkSize, minChunkSize);
-
-    // 将块大小向上取整到最接近的64KB的倍数，使其更整齐
-    chunkSize = Math.ceil(chunkSize / (64 * 1024)) * (64 * 1024);
-
-    return chunkSize;
-  })();
+  const chunkSizeBytes = computeGridFsChunSize(stats.size);
 
   const stream = bucket.openUploadStream(filename, {
     metadata,
@@ -173,24 +158,18 @@ export async function getFileById({
 
 export async function delFileByFileIdList({
   bucketName,
-  fileIdList,
-  retry = 3
+  fileIdList
 }: {
   bucketName: `${BucketNameEnum}`;
   fileIdList: string[];
-  retry?: number;
 }): Promise<any> {
-  try {
+  return retryFn(async () => {
     const bucket = getGridBucket(bucketName);
 
     for await (const fileId of fileIdList) {
       await bucket.delete(new Types.ObjectId(fileId));
     }
-  } catch (error) {
-    if (retry > 0) {
-      return delFileByFileIdList({ bucketName, fileIdList, retry: retry - 1 });
-    }
-  }
+  });
 }
 
 export async function getDownloadStream({

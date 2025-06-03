@@ -57,11 +57,12 @@ const QuoteList = React.memo(function QuoteList({
         return {
           ...item,
           q: currentFilterItem?.q || '',
-          a: currentFilterItem?.a || ''
+          a: currentFilterItem?.a || '',
+          imagePreivewUrl: currentFilterItem?.imagePreivewUrl
         };
       }
 
-      return { ...item, q: item.q || '', a: item.a || '' };
+      return { ...item, q: item.q || '' };
     });
 
     return processedData.sort((a, b) => {
@@ -87,6 +88,7 @@ const QuoteList = React.memo(function QuoteList({
           <QuoteItem
             quoteItem={item}
             canViewSource={showRawSource}
+            canEditData={showRouteToDatasetDetail}
             canEditDataset={showRouteToDatasetDetail}
             {...RawSourceBoxProps}
           />

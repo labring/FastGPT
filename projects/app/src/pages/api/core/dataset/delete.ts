@@ -11,6 +11,7 @@ import { MongoDatasetCollectionTags } from '@fastgpt/service/core/dataset/tag/sc
 import { removeImageByPath } from '@fastgpt/service/common/file/image/controller';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { removeWebsiteSyncJobScheduler } from '@fastgpt/service/core/dataset/websiteSync';
+import { deleteDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
 
 async function handler(req: NextApiRequest) {
   const { id: datasetId } = req.query as {
@@ -42,6 +43,7 @@ async function handler(req: NextApiRequest) {
     datasetId: { $in: datasetIds }
   });
 
+  // Remove cron job
   await Promise.all(
     datasets.map((dataset) => {
       if (dataset.type === DatasetTypeEnum.websiteDataset)

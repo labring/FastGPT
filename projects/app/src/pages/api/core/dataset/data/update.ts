@@ -7,7 +7,7 @@ import { authDatasetData } from '@fastgpt/service/support/permission/dataset/aut
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 
 async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
-  const { dataId, q, a, indexes = [] } = req.body;
+  const { dataId, q, a, indexes = [], imageId } = req.body;
 
   // auth data permission
   const {
@@ -39,10 +39,6 @@ async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
       inputTokens: tokens,
       model: vectorModel
     });
-  } else {
-    // await MongoDatasetData.findByIdAndUpdate(dataId, {
-    //   ...(forbid !== undefined && { forbid })
-    // });
   }
 }
 
