@@ -39,18 +39,18 @@ export async function register() {
       systemStartCb();
       initGlobalVariables();
 
-      try {
-        await preLoadWorker();
-      } catch (error) {
-        console.error('Preload worker error', error);
-      }
-
       // Connect to MongoDB
       await connectMongo(connectionMongo, MONGO_URL);
       connectMongo(connectionLogMongo, MONGO_LOG_URL);
 
       //init system config；init vector database；init root user
       await Promise.all([getInitConfig(), initVectorStore(), initRootUser(), loadSystemModels()]);
+
+      try {
+        await preLoadWorker();
+      } catch (error) {
+        console.error('Preload worker error', error);
+      }
 
       // 异步加载
       initSystemPluginGroups();
