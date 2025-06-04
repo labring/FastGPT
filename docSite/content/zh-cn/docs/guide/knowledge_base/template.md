@@ -53,7 +53,7 @@ q,a,indexes
 
 #### 问答对的数据模版
 
-![](/imgs/template/nomal.png)
+![](/imgs/template/Question-answer.png)
 
 对应CSV格式为
 
