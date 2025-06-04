@@ -48,7 +48,7 @@ const BackupImportModal = ({
 
         <FileSelector
           maxCount={1}
-          fileType="csv"
+          fileType=".csv"
           selectFiles={selectFiles}
           setSelectFiles={(e) => setSelectFiles(e)}
         />
@@ -82,8 +82,8 @@ const BackupImportModal = ({
         <Button onClick={onBackupImport} isDisabled={selectFiles.length === 0 || isBackupLoading}>
           {isBackupLoading
             ? percent === 100
-              ? t('dataset:backup_data_parse')
-              : t('dataset:backup_data_uploading', { num: percent })
+              ? t('dataset:data_parsing')
+              : t('dataset:data_uploading', { num: percent })
             : t('common:Import')}
         </Button>
       </ModalFooter>

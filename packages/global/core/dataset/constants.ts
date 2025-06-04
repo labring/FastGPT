@@ -129,7 +129,7 @@ export const DatasetCollectionTypeMap = {
     name: i18nT('common:core.dataset.link')
   },
   [DatasetCollectionTypeEnum.virtual]: {
-    name: i18nT('common:core.dataset.Manual collection')
+    name: i18nT('dataset:empty_collection')
   },
   [DatasetCollectionTypeEnum.apiFile]: {
     name: i18nT('common:core.dataset.apiFile')
@@ -160,7 +160,9 @@ export enum DatasetCollectionDataProcessModeEnum {
   chunk = 'chunk',
   qa = 'qa',
   imageParse = 'imageParse',
+
   backup = 'backup',
+  template = 'template',
 
   auto = 'auto' // abandon
 }
@@ -177,13 +179,18 @@ export const DatasetCollectionDataProcessModeMap = {
     label: i18nT('dataset:training.Image mode'),
     tooltip: i18nT('common:core.dataset.import.Chunk Split Tip')
   },
+  [DatasetCollectionDataProcessModeEnum.auto]: {
+    label: i18nT('common:core.dataset.training.Auto mode'),
+    tooltip: i18nT('common:core.dataset.training.Auto mode Tip')
+  },
+
   [DatasetCollectionDataProcessModeEnum.backup]: {
     label: i18nT('dataset:backup_mode'),
     tooltip: i18nT('dataset:backup_mode')
   },
-  [DatasetCollectionDataProcessModeEnum.auto]: {
-    label: i18nT('common:core.dataset.training.Auto mode'),
-    tooltip: i18nT('common:core.dataset.training.Auto mode Tip')
+  [DatasetCollectionDataProcessModeEnum.template]: {
+    label: i18nT('dataset:template_mode'),
+    tooltip: i18nT('dataset:template_mode')
   }
 };
 

@@ -14,20 +14,23 @@ import {
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { uploadFile } from '@fastgpt/service/common/file/gridfs/controller';
 
-export type backupQuery = {};
+export type templateImportQuery = {};
 
-export type backupBody = {};
+export type templateImportBody = { datasetId: string };
 
-export type backupResponse = {};
+export type templateImportResponse = {};
 
-async function handler(req: ApiRequestProps<backupBody, backupQuery>, res: ApiResponseType<any>) {
+async function handler(
+  req: ApiRequestProps<templateImportBody, templateImportQuery>,
+  res: ApiResponseType<any>
+) {
   const filePaths: string[] = [];
 
   try {
     const upload = getUploadModel({
       maxSize: global.feConfigs?.uploadFileMaxSize
     });
-    const { file, data } = await upload.getUploadFile<{ datasetId: string }>(req, res);
+    const { file, data } = await upload.getUploadFile<templateImportBody>(req, res);
     filePaths.push(file.path);
 
     if (file.mimetype !== 'text/csv') {
@@ -51,7 +54,7 @@ async function handler(req: ApiRequestProps<backupBody, backupQuery>, res: ApiRe
       getFormatText: false
     });
     if (!rawText.trim().startsWith('q,a,indexes')) {
-      return Promise.reject(i18nT('dataset:backup_template_invalid'));
+      return Promise.reject(i18nT('dataset:template_file_invalid'));
     }
 
     // 2. Upload file
@@ -64,10 +67,10 @@ async function handler(req: ApiRequestProps<backupBody, backupQuery>, res: ApiRe
       contentType: file.mimetype
     });
 
-    // 2. delete tmp file
+    // 3. delete tmp file
     removeFilesByPaths(filePaths);
 
-    // 3. Create collection
+    // 4. Create collection
     await createCollectionAndInsertData({
       dataset,
       rawText,
@@ -79,7 +82,7 @@ async function handler(req: ApiRequestProps<backupBody, backupQuery>, res: ApiRe
         name: file.originalname,
         type: DatasetCollectionTypeEnum.file,
         fileId,
-        trainingType: DatasetCollectionDataProcessModeEnum.backup
+        trainingType: DatasetCollectionDataProcessModeEnum.template
       }
     });
 

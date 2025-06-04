@@ -423,7 +423,6 @@
   "core.dataset.Empty Dataset Tips": "No Dataset Yet, Create One Now!",
   "core.dataset.Folder placeholder": "This is a Directory",
   "core.dataset.Intro Placeholder": "This Dataset Has No Introduction Yet",
-  "core.dataset.Manual collection": "Manual Dataset",
   "core.dataset.My Dataset": "My Dataset",
   "core.dataset.Query extension intro": "Enabling the question optimization function can improve the accuracy of Dataset searches during continuous conversations. After enabling this function, when performing Dataset searches, the AI will complete the missing information of the question based on the conversation history.",
   "core.dataset.Quote Length": "Quote Content Length",

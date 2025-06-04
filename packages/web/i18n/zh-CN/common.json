@@ -423,7 +423,6 @@
   "core.dataset.Empty Dataset Tips": "还没有知识库，快去创建一个吧！",
   "core.dataset.Folder placeholder": "这是一个目录",
   "core.dataset.Intro Placeholder": "这个知识库还没有介绍~",
-  "core.dataset.Manual collection": "手动数据集",
   "core.dataset.My Dataset": "我的知识库",
   "core.dataset.Query extension intro": "开启问题优化功能，可以提高提高连续对话时，知识库搜索的精度。开启该功能后，在进行知识库搜索时，会根据对话记录，利用 AI 补全问题缺失的信息。",
   "core.dataset.Quote Length": "引用内容长度",

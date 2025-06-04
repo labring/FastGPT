@@ -244,17 +244,11 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                     {
                       label: (
                         <Flex>
-                          <MyIcon name={'core/dataset/manualCollection'} mr={2} w={'20px'} />
-                          {t('common:core.dataset.Manual collection')}
+                          <MyIcon name={'core/dataset/fileCollection'} mr={2} w={'20px'} />
+                          {t('common:core.dataset.Text collection')}
                         </Flex>
                       ),
-                      onClick: () => {
-                        onOpenCreateVirtualFileModal({
-                          defaultVal: '',
-                          onSuccess: (name) =>
-                            onCreateCollection({ name, type: DatasetCollectionTypeEnum.virtual })
-                        });
-                      }
+                      onClick: onOpenFileSourceSelector
                     },
                     ...(feConfigs?.isPlus
                       ? [
@@ -276,14 +270,21 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                           }
                         ]
                       : []),
+
                     {
                       label: (
                         <Flex>
-                          <MyIcon name={'core/dataset/fileCollection'} mr={2} w={'20px'} />
-                          {t('common:core.dataset.Text collection')}
+                          <MyIcon name={'core/dataset/manualCollection'} mr={2} w={'20px'} />
+                          {t('dataset:empty_collection')}
                         </Flex>
                       ),
-                      onClick: onOpenFileSourceSelector
+                      onClick: () => {
+                        onOpenCreateVirtualFileModal({
+                          defaultVal: '',
+                          onSuccess: (name) =>
+                            onCreateCollection({ name, type: DatasetCollectionTypeEnum.virtual })
+                        });
+                      }
                     }
                   ]
                 },
@@ -292,20 +293,20 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                     {
                       label: (
                         <Flex>
-                          <MyIcon name={'backup'} mr={2} w={'20px'} />
-                          {t('dataset:backup_dataset')}
-                        </Flex>
-                      ),
-                      onClick: onOpenBackupImportModal
-                    },
-                    {
-                      label: (
-                        <Flex>
                           <MyIcon name={'common/layer'} w={'20px'} mr={2} />
                           {t('dataset:template_dataset')}
                         </Flex>
                       ),
                       onClick: onOpenTemplateImportModal
+                    },
+                    {
+                      label: (
+                        <Flex>
+                          <MyIcon name={'backup'} mr={2} w={'20px'} />
+                          {t('dataset:backup_dataset')}
+                        </Flex>
+                      ),
+                      onClick: onOpenBackupImportModal
                     }
                   ]
                 }

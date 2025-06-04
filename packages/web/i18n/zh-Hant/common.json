@@ -423,7 +423,6 @@
   "core.dataset.Empty Dataset Tips": "還沒有知識庫，快來建立一個吧！",
   "core.dataset.Folder placeholder": "這是一個目錄",
   "core.dataset.Intro Placeholder": "這個知識庫還沒有介紹",
-  "core.dataset.Manual collection": "手動資料集",
   "core.dataset.My Dataset": "我的知識庫",
   "core.dataset.Query extension intro": "開啟問題最佳化功能，可以提高連續對話時知識庫搜尋的準確度。開啟此功能後，在進行知識庫搜尋時，系統會根據對話記錄，利用 AI 補充問題中缺少的資訊。",
   "core.dataset.Quote Length": "引用內容長度",

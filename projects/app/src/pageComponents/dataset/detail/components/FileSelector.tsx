@@ -1,7 +1,7 @@
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { Box, type FlexProps, VStack, Text } from '@chakra-ui/react';
+import { Box, type FlexProps } from '@chakra-ui/react';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
@@ -22,7 +22,7 @@ const FileSelector = ({
   setSelectFiles,
   maxCount = 1000,
   maxSize,
-  isTemplate = false,
+  FileTypeNode,
   ...props
 }: {
   fileType: string;
@@ -30,7 +30,7 @@ const FileSelector = ({
   setSelectFiles: (files: SelectFileItemType[]) => void;
   maxCount?: number;
   maxSize?: string;
-  isTemplate?: boolean;
+  FileTypeNode?: React.ReactNode;
 } & FlexProps) => {
   const { t } = useTranslation();
 
@@ -191,45 +191,33 @@ const FileSelector = ({
       <MyIcon name={'common/uploadFileFill'} w={'32px'} />
       {isMaxSelected ? (
         <>
-          <Box color={'myGray.500'} fontSize={'xs'}>
+          <Box fontWeight={'500'} fontSize={'sm'}>
             {t('file:reached_max_file_count')}
           </Box>
         </>
       ) : (
         <>
-          <Box fontWeight={'bold'}>
+          <Box fontWeight={'500'} fontSize={'sm'}>
             {isDragging
               ? t('file:release_the_mouse_to_upload_the_file')
               : t('file:select_and_drag_file_tip')}
           </Box>
           {/* file type, max count, max size */}
-          {isTemplate ? (
-            <VStack spacing={1} fontSize={'xs'} color={'myGray.600'} textAlign={'center'}>
-              <Text>
-                {t('file:only_support')}
-                <Text as="span" color="primary.600" fontWeight="medium">
-                  {t('file:template_strict_highlight')}
-                </Text>
-                {t('file:only_support_template_strict_suffix', {
-                  fileType,
-                  count: maxCount
-                })}
-              </Text>
-              <Text>{t('file:max_size_per_file', { maxSize: displayMaxSize })}</Text>
-            </VStack>
-          ) : (
-            <>
+          <>
+            {FileTypeNode ? (
+              FileTypeNode
+            ) : (
               <Box color={'myGray.500'} fontSize={'xs'}>
                 {t('file:support_file_type', { fileType })}
               </Box>
-              <Box color={'myGray.500'} fontSize={'xs'}>
-                {/* max count */}
-                {maxCount && <>{t('file:support_max_count', { maxCount })} </>}
-                {/* max size */}
-                {t('file:support_max_size', { maxSize: displayMaxSize })}
-              </Box>
-            </>
-          )}
+            )}
+            <Box color={'myGray.500'} fontSize={'xs'}>
+              {/* max count */}
+              {maxCount && <>{t('file:support_max_count', { maxCount })}, </>}
+              {/* max size */}
+              {t('file:support_max_size', { maxSize: displayMaxSize })}
+            </Box>
+          </>
 
           <File onSelect={(files) => onSelectFile(files)} />
         </>
