@@ -1,6 +1,7 @@
 packages:
   - packages/*
   - projects/app
+  - projects/tools
   - projects/mcp_server
   - projects/sandbox
   - scripts/icon
