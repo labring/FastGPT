@@ -41,7 +41,11 @@ const TemplateImportModal = ({
   );
 
   const handleDownloadTemplate = () => {
-    const templateContent = 'q,a,indexes\n';
+    const templateContent =
+      `q,a,indexes,\n` +
+      `"你是谁呀？","我呀，是 AI 小助手哟，专门在这儿随时准备着，陪你交流、为你答疑解惑，不管是学习上的知识探讨，生活里的小疑问，还是创意灵感的碰撞，我都能尽力参与，用我的 “知识大脑” 给你提供帮助和陪伴呢，就盼着能成为你互动交流、探索世界的好伙伴呀 。","1. 你是什么？\n2. 你能做什么？\n3. 你可以解答哪些方面的疑问？\n4. 你希望成为什么样的伙伴？\n5. 你如何提供帮助？","你是谁呀？我呀，是 AI 小助手哟，专门在这儿随时准备着...（重复内容）"\n` +
+      `"你是什么？","我是 AI 小助手，专门随时准备陪用户交流、为用户答疑解惑，能参与学习上的知识探讨、生活里的小疑问以及创意灵感的碰撞，用 “知识大脑” 提供帮助和陪伴，希望成为用户互动交流、探索世界的好伙伴。","你是什么？","我是 AI 小助手，专门随时准备陪用户交流...（重复内容）"\n` +
+      `"你能做什么？","能陪用户交流、为用户答疑解惑，参与学习上的知识探讨、生活里的小疑问以及创意灵感的碰撞，用 “知识大脑” 提供帮助和陪伴。","你能做什么？","能陪用户交流、为用户答疑解惑...（重复内容）"\n`;
     const blob = new Blob([templateContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     if (link.download !== undefined) {
@@ -93,7 +97,7 @@ const TemplateImportModal = ({
               px={0}
               variant="ghost"
               onClick={() => {
-                window.open('https://doc.tryfastgpt.ai/docs/intro/', '_blank');
+                window.open('http://localhost:1313/docs/guide/knowledge_base/template/', '_blank');
               }}
               color="primary.600"
               _hover={{ bg: 'primary.50' }}

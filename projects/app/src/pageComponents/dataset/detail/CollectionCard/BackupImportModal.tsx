@@ -51,7 +51,6 @@ const BackupImportModal = ({
           fileType="csv"
           selectFiles={selectFiles}
           setSelectFiles={setSelectFiles}
-          maxSize={1024 * 1024 * 1024}
         />
         {/* File render */}
         {selectFiles.length > 0 && (

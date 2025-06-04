@@ -499,7 +499,6 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
           onClose={onCloseBackupImportModal}
         />
       )}
-      {isOpenTemplateImportModal && <TemplateImportModal onClose={onCloseTemplateImportModal} />}
       {isOpenTemplateImportModal && (
         <TemplateImportModal
           onFinish={() => {
