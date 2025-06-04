@@ -102,9 +102,14 @@ export const readDatasetSourceRawText = async ({
       selector
     });
 
+    const { title = sourceId, content = '' } = result[0];
+    if (!content || content === 'Cannot fetch internal url') {
+      return Promise.reject(content || 'Can not fetch content from link');
+    }
+
     return {
-      title: result[0]?.title,
-      rawText: result[0]?.content || ''
+      title,
+      rawText: content
     };
   } else if (type === DatasetSourceReadTypeEnum.externalFile) {
     if (!externalFileId) return Promise.reject('FileId not found');
@@ -185,7 +190,6 @@ export const rawText2Chunks = ({
 }[] => {
   const parseDatasetBackup2Chunks = (rawText: string) => {
     const csvArr = Papa.parse(rawText).data as string[][];
-    console.log(rawText, csvArr);
 
     const chunks = csvArr
       .slice(1)

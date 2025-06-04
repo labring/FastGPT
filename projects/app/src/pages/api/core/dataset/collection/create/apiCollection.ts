@@ -6,10 +6,10 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type CreateCollectionResponse } from '@/global/core/dataset/api';
-import { readApiServerFileContent } from '@fastgpt/service/core/dataset/read';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 
 async function handler(
   req: ApiRequestProps<ApiDatasetCreateDatasetCollectionParams>
@@ -38,24 +38,21 @@ async function handler(
     return Promise.reject(DatasetErrEnum.sameApiCollection);
   }
 
-  const { title, rawText } = await readApiServerFileContent({
-    apiDatasetServer: dataset.apiDatasetServer,
-    apiFileId,
-    teamId,
-    tmbId,
-    customPdfParse
+  const fileDetail = await (
+    await getApiDatasetRequest(dataset.apiDatasetServer)
+  ).getFileDetail({
+    apiFileId
   });
 
   const { collectionId, insertResults } = await createCollectionAndInsertData({
     dataset,
-    rawText,
     relatedId: apiFileId,
     createCollectionParams: {
       ...body,
       teamId,
       tmbId,
       type: DatasetCollectionTypeEnum.apiFile,
-      name: title || name,
+      name: fileDetail.name || name,
       apiFileId,
       metadata: {
         relatedImgId: apiFileId
