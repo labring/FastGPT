@@ -1,28 +1,42 @@
 import { expect, test, vi } from 'vitest';
-import { main } from '..';
+import tool from '..';
 
-test('get current time', async () => {
-  // Mock Date constructor to return a fixed date
-  const date = new Date('2023-01-01T12:00:00.000');
-  vi.useFakeTimers();
-  vi.setSystemTime(date);
-  const res = await main({
-    formatStr: 'yyyy-MM-dd HH:mm:ss'
+test(async () => {
+  global.fetch = vi.fn().mockImplementation(() =>
+    Promise.resolve({
+      json: () =>
+        Promise.resolve({
+          webPages: {
+            value: [
+              {
+                name: 'test',
+                url: 'https://test.com',
+                snippet: 'test'
+              }
+            ]
+          }
+        }),
+      preconnect: vi.fn()
+    })
+  ) as unknown as typeof fetch;
+  const result = await tool.cb({
+    key: 'test',
+    query: 'test'
   });
-  expect(res.output?.time).toBeDefined();
-  expect(res.output?.time).toEqual('2023-01-01 12:00:00');
-  vi.useRealTimers();
-});
-
-test('get current time with a invalid format', async () => {
-  // Mock Date constructor to return a fixed date
-  const date = new Date('2023-01-01T12:00:00.000');
-  vi.useFakeTimers();
-  vi.setSystemTime(date);
-  const res = await main({
-    formatStr: 'someFormatStrisInvalid'
+  expect(global.fetch).toHaveBeenCalledWith('https://api.bing.microsoft.com/v7.0/search?q=test', {
+    headers: {
+      'Ocp-Apim-Subscription-Key': 'test'
+    }
   });
-  expect(res.error).toBeDefined();
-  expect(res.output?.time).toBeUndefined();
-  vi.useRealTimers();
+  expect(result).toEqual({
+    output: {
+      result: JSON.stringify([
+        {
+          title: 'test',
+          link: 'https://test.com',
+          snippet: 'test'
+        }
+      ])
+    }
+  });
 });

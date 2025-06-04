@@ -51,12 +51,23 @@ export async function runTool(toolId: string, input: object) {
   // return result;
   const res = await client.run({
     body: {
-      inputs: input,
-      toolId
+      toolId,
+      input
     }
   });
-  if (res.status !== 200) return Promise.reject(res.body);
-  return res.body.output;
+  if (res.status === 400 || res.status === 404)
+    return {
+      error: res.body.error
+    };
+  else if (res.status === 200) {
+    return {
+      output: res.body.output
+    };
+  } else {
+    return {
+      error: 'Unknown error'
+    };
+  }
 }
 
 export async function getToolFlushId() {

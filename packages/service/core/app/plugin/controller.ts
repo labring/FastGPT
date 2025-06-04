@@ -203,24 +203,27 @@ export async function getChildAppPreviewNode({
         flowNodeType: FlowNodeTypeEnum.pluginModule,
         nodeIOConfig: pluginData2FlowNodeIO({ nodes: app.workflow.nodes })
       };
-    if (isSystemTool)
+    if (isSystemTool) {
       return {
         flowNodeType: FlowNodeTypeEnum.tool,
         nodeIOConfig: {
           inputs: app.inputs!,
           outputs: app.outputs!,
-          toolData: {
+          toolConfig: {
             systemTool: {
               toolId: app.id
             }
           }
         }
       };
+    }
     return {
       flowNodeType: FlowNodeTypeEnum.appModule,
       nodeIOConfig: appData2FlowNodeIO({ chatConfig: app.workflow.chatConfig })
     };
   })();
+
+  console.log('app', nodeIOConfig, flowNodeType);
 
   return {
     id: getNanoid(),

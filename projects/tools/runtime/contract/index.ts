@@ -1,6 +1,10 @@
 import type { ToolType } from '../../type';
 import { initContract } from '@ts-rest/core';
 import { z } from 'zod';
+export const runType = z.object({
+  toolId: z.string(),
+  input: z.any()
+});
 
 const c = initContract();
 export const contract = c.router({
@@ -8,13 +12,10 @@ export const contract = c.router({
     path: '/run',
     method: 'POST',
     description: 'Run a tool',
-    body: z.object({
-      toolId: z.string(),
-      inputs: z.object({})
-    }),
+    body: runType,
     responses: {
       200: z.object({
-        output: z.any()
+        output: c.type()
       }),
       400: z.object({
         error: z.string()

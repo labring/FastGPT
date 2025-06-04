@@ -6,12 +6,17 @@
     "build": "bun build index.ts --minify --outdir dist --outFile index.js --target=node"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/mssql": "^9.1.7",
+    "@types/pg": "^8.15.2"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "mssql": "^11.0.1",
+    "mysql2": "^3.14.1",
+    "pg": "^8.16.0",
     "zod": "^3.24.2"
   }
 }

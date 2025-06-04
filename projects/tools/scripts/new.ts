@@ -47,12 +47,12 @@ if (isToolset) {
   copyTemplate(templateDir, toolDir);
 } else {
   copyTemplate(path.join(templateDir, 'tool'), toolDir);
-  // update package.json
-  const packageJsonPath = path.join(templateDir, 'package.json');
-  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-  packageJson.name = `fastgpt-tools-${name}`;
-  fs.writeFileSync(toolDir + '/package.json', JSON.stringify(packageJson, null, 2));
 }
+// update package.json
+const packageJsonPath = path.join(templateDir, 'package.json');
+const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+packageJson.name = `fastgpt-tools-${name}`;
+fs.writeFileSync(toolDir + '/package.json', JSON.stringify(packageJson, null, 2));
 
 // output success message
 console.log(`

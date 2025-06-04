@@ -10,6 +10,7 @@ import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { NextApiResponse } from 'next';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { filterWorkflowNodeOutputsByType } from '@/web/core/workflow/utils';
 
 export type GetSystemPluginTemplatesBody = {
   searchKey?: string;
@@ -37,7 +38,8 @@ async function handler(
       isFolder: plugin.isFolder,
       parentId: plugin.parentId === undefined ? null : plugin.parentId,
       templateType: plugin.templateType ?? FlowNodeTemplateTypeEnum.other,
-      flowNodeType: plugin.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
+      // flowNodeType: plugin.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
+      flowNodeType: FlowNodeTypeEnum.tool,
       avatar: plugin.avatar,
       name: parseI18nString(plugin.name, lang),
       intro: parseI18nString(plugin.intro ?? '', lang),

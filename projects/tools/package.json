@@ -15,13 +15,13 @@
     "@eslint/json": "^0.11.0",
     "@types/archiver": "^6.0.3",
     "@types/bun": "latest",
-    "@vitest/coverage-v8": "^3.1.2",
+    "@vitest/coverage-v8": "3.1.2",
     "archiver": "^7.0.1",
     "commander": "^13.1.0",
     "eslint": "^9.24.0",
     "globals": "^16.0.0",
     "typescript-eslint": "^8.29.1",
-    "vitest": "^3.1.1"
+    "vitest": "3.1.2"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
@@ -32,6 +32,8 @@
   ],
   "packageManager": "bun@1.2.2",
   "dependencies": {
-    "@ts-rest/express": "^3.52.1"
+    "@ts-rest/express": "^3.52.1",
+    "nanoid": "^5.1.5",
+    "zod": "^3.25.40"
   }
 }

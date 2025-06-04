@@ -1,31 +1,8 @@
-import { z } from 'zod';
 import { getTool } from '../utils/tools';
 import { prod } from '..';
 import { dispatchWithNewWorker } from '../worker';
-import { contract } from '../contract';
+import { contract, runType } from '../contract';
 import { s } from './init';
-
-export const runType = z.object({
-  toolId: z.string(),
-  input: z.record(z.string())
-});
-
-// export async function run(req: Request<0, 0, z.infer<typeof runType>>, res: Response) {
-//   const { toolId, input } = runType.parse(req.body);
-//   const tool = getTool(toolId);
-//   if (!tool) {
-//     res.status(404).json({ error: 'tool not found' });
-//     return;
-//   }
-//   if (prod) {
-//     // const result = await dispatch({ toolId, input });
-//     const result = await dispatchWithNewWorker({ toolId, input });
-//     res.json(result);
-//     return;
-//   }
-//   res.json(await tool.cb(input));
-//   return;
-// }
 
 export const run = s.route(contract.run, async (args) => {
   const { toolId, input } = runType.parse(args.body);
@@ -42,17 +19,19 @@ export const run = s.route(contract.run, async (args) => {
       const result = await dispatchWithNewWorker({ toolId, input });
       return {
         status: 200,
-        body: contract.run.responses[200].parse(result)
+        body: result
       };
     }
+    const result = await tool.cb(input);
+    console.log('run', toolId, input, result);
     return {
       status: 200,
-      body: await tool.cb(input)
+      body: result
     };
   } catch (error) {
     return {
       status: 400,
-      body: { error: error.message }
+      body: { error: `error:  ${error}` }
     };
   }
 });

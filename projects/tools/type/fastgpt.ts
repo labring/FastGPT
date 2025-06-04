@@ -279,10 +279,10 @@ export type InputType = {
   // dynamic input
   customInputConfig?: CustomFieldConfigType;
   selectedTypeIndex?: number;
-  renderTypeList: FlowNodeInputTypeEnum[]; // Node Type. Decide on a render style
+  renderTypeList: `${FlowNodeInputTypeEnum}`[]; // Node Type. Decide on a render style
 
   key: `${NodeInputKeyEnum}` | string;
-  valueType?: WorkflowIOValueTypeEnum; // data type
+  valueType?: `${WorkflowIOValueTypeEnum}`; // data type
   valueDesc?: string; // data desc
   value?: unknown;
   label: string;
@@ -306,9 +306,9 @@ export type InputType = {
 
 export type OutputType = {
   id: string; // output unique id(Does not follow the key change)
-  type: FlowNodeOutputTypeEnum;
+  type: `${FlowNodeOutputTypeEnum}`;
   key: `${NodeOutputKeyEnum}` | string;
-  valueType?: WorkflowIOValueTypeEnum;
+  valueType?: `${WorkflowIOValueTypeEnum}`;
   valueDesc?: string;
   value?: unknown;
 
@@ -320,7 +320,7 @@ export type OutputType = {
 
 export type CustomFieldConfigType = {
   // reference
-  selectValueTypeList?: WorkflowIOValueTypeEnum[]; // 可以选哪个数据类型, 只有1个的话,则默认选择
+  selectValueTypeList?: `${WorkflowIOValueTypeEnum}`[]; // 可以选哪个数据类型, 只有1个的话,则默认选择
   showDefaultValue?: boolean;
   showDescription?: boolean;
 };

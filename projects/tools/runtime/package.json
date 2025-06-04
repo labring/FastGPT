@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@ts-rest/core": "^3.52.1",
+    "@ts-rest/express": "^3.52.1",
     "express": "^5.1.0",
     "zod": "^3.24.3"
   },

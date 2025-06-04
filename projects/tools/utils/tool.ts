@@ -7,7 +7,7 @@ export const exportTool = ({
   config
 }: {
   toolCb: (props: z.infer<typeof InputType>) => Promise<unknown>;
-  InputType: z.AnyZodObject;
+  InputType: z.ZodType;
   config: ToolConfigType;
 }) => {
   const cb = async (props: z.infer<typeof InputType>) => {
@@ -35,6 +35,7 @@ export const exportToolSet = ({ config }: { config: ToolSetConfigType }) => {
   config.toolId = config.toolId ?? __dirname.split('/').pop()?.split('.').shift();
   config.children.forEach((child) => {
     child.toolId = config.toolId + '/' + child.toolId;
+    child.parentId = config.toolId;
   });
 
   return {

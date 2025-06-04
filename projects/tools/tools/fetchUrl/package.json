@@ -1,0 +1,22 @@
+{
+  "name": "fastgpt-tools-fetchUrl",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "build": "bun build index.ts --minify --outdir dist --outFile index.js --target=node"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/turndown": "^5.0.5"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.9.0",
+    "cheerio": "^1.0.0",
+    "joplin-turndown-plugin-gfm": "^1.0.12",
+    "turndown": "^7.2.0",
+    "zod": "^3.24.2"
+  }
+}

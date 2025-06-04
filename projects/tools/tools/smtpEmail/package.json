@@ -1,0 +1,19 @@
+{
+  "name": "fastgpt-tools-smtpEmail",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "build": "bun build index.ts --minify --outdir dist --outFile index.js --target=node"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/nodemailer": "^6.4.17"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "nodemailer": "^7.0.3",
+    "zod": "^3.24.2"
+  }
+}

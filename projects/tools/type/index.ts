@@ -96,15 +96,4 @@ export function defineToolSet(toolset: ToolSetConfigType) {
   };
 }
 
-export const ToolListSchema = z.array(
-  ToolSchema.omit({
-    cb: true
-  }).merge(
-    z.object({
-      inputs: z.any(),
-      outputs: z.any()
-    })
-  )
-);
-
 export * from './fastgpt';

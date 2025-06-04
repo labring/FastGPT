@@ -1,11 +1,14 @@
+import { defineInputSchema } from '@/type';
 import { z } from 'zod';
 
 const bingURL = 'https://api.bing.microsoft.com/v7.0/search';
 
-export const InputType = z.object({
-  key: z.string(),
-  query: z.string()
-});
+export const InputType = defineInputSchema(
+  z.object({
+    key: z.string(),
+    query: z.string()
+  })
+);
 
 export const OutputType = z.object({
   result: z.string()
@@ -15,7 +18,7 @@ export async function tool(props: z.infer<typeof InputType>): Promise<z.infer<ty
   const { key, query } = props;
   const url = new URL(bingURL);
   url.searchParams.set('q', query);
-  const response = await fetch(url, {
+  const response = await fetch(url.toString(), {
     headers: {
       'Ocp-Apim-Subscription-Key': key
     }

@@ -28,7 +28,7 @@ export default defineTool({
     {
       key: 'formatStr',
       label: '格式化字符串',
-      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+      renderTypeList: ['input', 'reference']
     }
   ],
   outputs: [
