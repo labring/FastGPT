@@ -6,7 +6,7 @@
   "file_size": "文件大小",
   "max_size_per_file": "每个文件大小应小于{{maxSize}}",
   "only_support": "仅支持",
-  "only_support_template_strict_suffix": "填写的{{fileType}}文件，最多支持 {{count}} 个文件。",
+  "only_support_template_strict_suffix": "填写的{{fileType}}文件，最多支持{{maxCount}}个文件。",
   "reached_max_file_count": "已达到最大文件数量",
   "release_the_mouse_to_upload_the_file": "松开鼠标上传文件",
   "select_and_drag_file_tip": "点击或拖动文件到此处上传",

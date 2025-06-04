@@ -9,6 +9,7 @@ import { postBackupDatasetCollection } from '@/web/core/dataset/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useContextSelector } from 'use-context-selector';
+import { getDocPath } from '@/web/common/system/doc';
 
 const TemplateImportModal = ({
   onFinish,
@@ -43,9 +44,8 @@ const TemplateImportModal = ({
   const handleDownloadTemplate = () => {
     const templateContent =
       `q,a,indexes,\n` +
-      `"你是谁呀？","我呀，是 AI 小助手哟，专门在这儿随时准备着，陪你交流、为你答疑解惑，不管是学习上的知识探讨，生活里的小疑问，还是创意灵感的碰撞，我都能尽力参与，用我的 “知识大脑” 给你提供帮助和陪伴呢，就盼着能成为你互动交流、探索世界的好伙伴呀 。","1. 你是什么？\n2. 你能做什么？\n3. 你可以解答哪些方面的疑问？\n4. 你希望成为什么样的伙伴？\n5. 你如何提供帮助？","你是谁呀？我呀，是 AI 小助手哟，专门在这儿随时准备着...（重复内容）"\n` +
-      `"你是什么？","我是 AI 小助手，专门随时准备陪用户交流、为用户答疑解惑，能参与学习上的知识探讨、生活里的小疑问以及创意灵感的碰撞，用 “知识大脑” 提供帮助和陪伴，希望成为用户互动交流、探索世界的好伙伴。","你是什么？","我是 AI 小助手，专门随时准备陪用户交流...（重复内容）"\n` +
-      `"你能做什么？","能陪用户交流、为用户答疑解惑，参与学习上的知识探讨、生活里的小疑问以及创意灵感的碰撞，用 “知识大脑” 提供帮助和陪伴。","你能做什么？","能陪用户交流、为用户答疑解惑...（重复内容）"\n`;
+      `"Who are you?","I am an AI assistant, here to help with your questions and provide support. I can assist with learning, daily life queries, and creative ideas.","1. What are you?\n2. What can you do?\n3. What topics can you help with?\n4. How do you assist users?\n5. What's your goal?","Who are you? I am an AI assistant..."\n` +
+      `"What are you?","I am an AI assistant designed to help users with their questions and provide support across various topics.","What are you?","I am an AI assistant..."\n`;
     const blob = new Blob([templateContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     if (link.download !== undefined) {
@@ -59,24 +59,6 @@ const TemplateImportModal = ({
       URL.revokeObjectURL(url);
     }
   };
-
-  const fileSelectorDescription = useMemo(() => {
-    return (
-      <VStack spacing={1} fontSize={'xs'} color={'myGray.600'} textAlign={'center'}>
-        <Text>
-          {t('file:only_support')}
-          <Text as="span" color="primary.600" fontWeight="medium">
-            {t('file:template_strict_highlight')}
-          </Text>
-          {t('file:only_support_template_strict_suffix', {
-            fileType: '.csv',
-            count: 1
-          })}
-        </Text>
-        <Text>{t('file:max_size_per_file', { maxSize: '100MB' })}</Text>
-      </VStack>
-    );
-  }, [t]);
 
   return (
     <MyModal
@@ -97,7 +79,7 @@ const TemplateImportModal = ({
               px={0}
               variant="ghost"
               onClick={() => {
-                window.open('http://localhost:1313/docs/guide/knowledge_base/template/', '_blank');
+                window.open(getDocPath('/docs/guide/knowledge_base/template/'), '_blank');
               }}
               color="primary.600"
               _hover={{ bg: 'primary.50' }}
@@ -123,10 +105,11 @@ const TemplateImportModal = ({
           <VStack spacing={3} alignItems="stretch" w="full">
             <FileSelector
               maxCount={1}
+              maxSize="100MB"
               fileType=".csv"
               selectFiles={selectFiles}
               setSelectFiles={setSelectFiles}
-              customDescriptionNode={fileSelectorDescription}
+              isTemplate={true}
             />
 
             {selectFiles.length > 0 && (
