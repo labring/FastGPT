@@ -49,7 +49,7 @@ async function handler(req: ApiRequestProps<backupBody, backupQuery>, res: ApiRe
       getFormatText: false
     });
     if (!rawText.trim().startsWith('q,a,indexes')) {
-      return Promise.reject('Backup file start with "q,a,indexes"');
+      return Promise.reject('格式校验不通过');
     }
     // 2. delete tmp file
     removeFilesByPaths(filePaths);

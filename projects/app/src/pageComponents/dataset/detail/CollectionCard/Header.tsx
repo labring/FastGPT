@@ -38,6 +38,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const FileSourceSelector = dynamic(() => import('../Import/components/FileSourceSelector'));
 const BackupImportModal = dynamic(() => import('./BackupImportModal'));
+const TemplateImportModal = dynamic(() => import('./TemplateImportModal'));
 
 const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
   const { t } = useTranslation();
@@ -83,6 +84,12 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
     isOpen: isOpenBackupImportModal,
     onOpen: onOpenBackupImportModal,
     onClose: onCloseBackupImportModal
+  } = useDisclosure();
+  // Template import modal
+  const {
+    isOpen: isOpenTemplateImportModal,
+    onOpen: onOpenTemplateImportModal,
+    onClose: onCloseTemplateImportModal
   } = useDisclosure();
 
   const { runAsync: onCreateCollection } = useRequest2(
@@ -228,11 +235,11 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                     {
                       label: (
                         <Flex>
-                          <MyIcon name={'core/dataset/fileCollection'} mr={2} w={'20px'} />
-                          {t('common:core.dataset.Text collection')}
+                          <MyIcon name={'common/folderFill'} w={'20px'} mr={2} />
+                          {t('common:Folder')}
                         </Flex>
                       ),
-                      onClick: onOpenFileSourceSelector
+                      onClick: () => setEditFolderData({})
                     },
                     {
                       label: (
@@ -272,11 +279,11 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                     {
                       label: (
                         <Flex>
-                          <MyIcon name={'backup'} mr={2} w={'20px'} />
-                          {t('dataset:backup_dataset')}
+                          <MyIcon name={'core/dataset/fileCollection'} mr={2} w={'20px'} />
+                          {t('common:core.dataset.Text collection')}
                         </Flex>
                       ),
-                      onClick: onOpenBackupImportModal
+                      onClick: onOpenFileSourceSelector
                     }
                   ]
                 },
@@ -285,11 +292,20 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                     {
                       label: (
                         <Flex>
-                          <MyIcon name={'common/folderFill'} w={'20px'} mr={2} />
-                          {t('common:Folder')}
+                          <MyIcon name={'backup'} mr={2} w={'20px'} />
+                          {t('dataset:backup_dataset')}
                         </Flex>
                       ),
-                      onClick: () => setEditFolderData({})
+                      onClick: onOpenBackupImportModal
+                    },
+                    {
+                      label: (
+                        <Flex>
+                          <MyIcon name={'common/layer'} w={'20px'} mr={2} />
+                          {t('dataset:template_dataset')}
+                        </Flex>
+                      ),
+                      onClick: onOpenTemplateImportModal
                     }
                   ]
                 }
@@ -503,6 +519,14 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
             getData(1);
           }}
           onClose={onCloseBackupImportModal}
+        />
+      )}
+      {isOpenTemplateImportModal && (
+        <TemplateImportModal
+          onFinish={() => {
+            getData(1);
+          }}
+          onClose={onCloseTemplateImportModal}
         />
       )}
     </MyBox>
