@@ -9,13 +9,9 @@ import { type TextSplitProps, splitText2Chunks } from '@fastgpt/global/common/st
 import axios from 'axios';
 import { readRawContentByFileBuffer } from '../../common/file/read/utils';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
-import {
-  type APIFileServer,
-  type FeishuServer,
-  type YuqueServer
-} from '@fastgpt/global/core/dataset/apiDataset';
 import { getApiDatasetRequest } from './apiDataset';
 import Papa from 'papaparse';
+import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 
 export const readFileRawTextByUrl = async ({
   teamId,
@@ -69,9 +65,7 @@ export const readDatasetSourceRawText = async ({
   sourceId,
   selector,
   externalFileId,
-  apiServer,
-  feishuServer,
-  yuqueServer,
+  apiDatasetServer,
   customPdfParse,
   getFormatText
 }: {
@@ -84,9 +78,7 @@ export const readDatasetSourceRawText = async ({
 
   selector?: string; // link selector
   externalFileId?: string; // external file dataset
-  apiServer?: APIFileServer; // api dataset
-  feishuServer?: FeishuServer; // feishu dataset
-  yuqueServer?: YuqueServer; // yuque dataset
+  apiDatasetServer?: ApiDatasetServerType; // api dataset
 }): Promise<{
   title?: string;
   rawText: string;
@@ -110,9 +102,14 @@ export const readDatasetSourceRawText = async ({
       selector
     });
 
+    const { title = sourceId, content = '' } = result[0];
+    if (!content || content === 'Cannot fetch internal url') {
+      return Promise.reject(content || 'Can not fetch content from link');
+    }
+
     return {
-      title: result[0]?.title,
-      rawText: result[0]?.content || ''
+      title,
+      rawText: content
     };
   } else if (type === DatasetSourceReadTypeEnum.externalFile) {
     if (!externalFileId) return Promise.reject('FileId not found');
@@ -128,9 +125,7 @@ export const readDatasetSourceRawText = async ({
     };
   } else if (type === DatasetSourceReadTypeEnum.apiFile) {
     const { title, rawText } = await readApiServerFileContent({
-      apiServer,
-      feishuServer,
-      yuqueServer,
+      apiDatasetServer,
       apiFileId: sourceId,
       teamId,
       tmbId
@@ -147,17 +142,13 @@ export const readDatasetSourceRawText = async ({
 };
 
 export const readApiServerFileContent = async ({
-  apiServer,
-  feishuServer,
-  yuqueServer,
+  apiDatasetServer,
   apiFileId,
   teamId,
   tmbId,
   customPdfParse
 }: {
-  apiServer?: APIFileServer;
-  feishuServer?: FeishuServer;
-  yuqueServer?: YuqueServer;
+  apiDatasetServer?: ApiDatasetServerType;
   apiFileId: string;
   teamId: string;
   tmbId: string;
@@ -166,13 +157,7 @@ export const readApiServerFileContent = async ({
   title?: string;
   rawText: string;
 }> => {
-  return (
-    await getApiDatasetRequest({
-      apiServer,
-      yuqueServer,
-      feishuServer
-    })
-  ).getFileContent({
+  return (await getApiDatasetRequest(apiDatasetServer)).getFileContent({
     teamId,
     tmbId,
     apiFileId,
@@ -186,9 +171,11 @@ export const rawText2Chunks = ({
   chunkTriggerMinSize = 1000,
   backupParse,
   chunkSize = 512,
+  imageIdList,
   ...splitProps
 }: {
   rawText: string;
+  imageIdList?: string[];
 
   chunkTriggerType?: ChunkTriggerConfigTypeEnum;
   chunkTriggerMinSize?: number; // maxSize from agent model, not store
@@ -199,17 +186,18 @@ export const rawText2Chunks = ({
   q: string;
   a: string;
   indexes?: string[];
+  imageIdList?: string[];
 }[] => {
   const parseDatasetBackup2Chunks = (rawText: string) => {
     const csvArr = Papa.parse(rawText).data as string[][];
-    console.log(rawText, csvArr);
 
     const chunks = csvArr
       .slice(1)
       .map((item) => ({
         q: item[0] || '',
         a: item[1] || '',
-        indexes: item.slice(2)
+        indexes: item.slice(2),
+        imageIdList
       }))
       .filter((item) => item.q || item.a);
 
@@ -231,7 +219,8 @@ export const rawText2Chunks = ({
       return [
         {
           q: rawText,
-          a: ''
+          a: '',
+          imageIdList
         }
       ];
     }
@@ -240,7 +229,7 @@ export const rawText2Chunks = ({
   if (chunkTriggerType !== ChunkTriggerConfigTypeEnum.forceChunk) {
     const textLength = rawText.trim().length;
     if (textLength < chunkTriggerMinSize) {
-      return [{ q: rawText, a: '' }];
+      return [{ q: rawText, a: '', imageIdList }];
     }
   }
 
@@ -253,6 +242,7 @@ export const rawText2Chunks = ({
   return chunks.map((item) => ({
     q: item,
     a: '',
-    indexes: []
+    indexes: [],
+    imageIdList
   }));
 };

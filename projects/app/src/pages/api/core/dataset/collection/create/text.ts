@@ -33,7 +33,6 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
 
   const { collectionId, insertResults } = await createCollectionAndInsertData({
     dataset,
-    rawText: text,
     createCollectionParams: {
       ...body,
       teamId,

@@ -3,14 +3,15 @@ import type {
   ApiFileReadContentResponse,
   APIFileReadResponse,
   ApiDatasetDetailResponse,
-  APIFileServer,
-  APIFileItem
-} from '@fastgpt/global/core/dataset/apiDataset';
+  APIFileServer
+} from '@fastgpt/global/core/dataset/apiDataset/type';
 import axios, { type Method } from 'axios';
-import { addLog } from '../../../common/system/log';
-import { readFileRawTextByUrl } from '../read';
+import { addLog } from '../../../../common/system/log';
+import { readFileRawTextByUrl } from '../../read';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import { addRawTextBuffer, getRawTextBuffer } from '../../../../common/buffer/rawText/controller';
+import { addMinutes } from 'date-fns';
 
 type ResponseDataType = {
   success: boolean;
@@ -141,6 +142,15 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
       };
     }
     if (previewUrl) {
+      // Get from buffer
+      const buffer = await getRawTextBuffer(previewUrl);
+      if (buffer) {
+        return {
+          title,
+          rawText: buffer.text
+        };
+      }
+
       const rawText = await readFileRawTextByUrl({
         teamId,
         tmbId,
@@ -149,6 +159,14 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
         customPdfParse,
         getFormatText: true
       });
+
+      await addRawTextBuffer({
+        sourceId: previewUrl,
+        sourceName: title || '',
+        text: rawText,
+        expiredTime: addMinutes(new Date(), 30)
+      });
+
       return {
         title,
         rawText

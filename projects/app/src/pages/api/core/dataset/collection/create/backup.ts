@@ -25,7 +25,7 @@ async function handler(req: ApiRequestProps<backupBody, backupQuery>, res: ApiRe
     const upload = getUploadModel({
       maxSize: global.feConfigs?.uploadFileMaxSize
     });
-    const { file, data } = await upload.doUpload<{ datasetId: string }>(req, res);
+    const { file, data } = await upload.getUploadFile<{ datasetId: string }>(req, res);
     filePaths.push(file.path);
 
     if (file.mimetype !== 'text/csv') {

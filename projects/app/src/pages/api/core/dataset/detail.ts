@@ -7,6 +7,7 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getWebsiteSyncDatasetStatus } from '@fastgpt/service/core/dataset/websiteSync';
 import { DatasetStatusEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
 
 type Query = {
   id: string;
@@ -40,36 +41,16 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
       errorMsg: undefined
     };
   })();
-
+  console.log(filterApiDatasetServerPublicData(dataset.apiDatasetServer));
   return {
     ...dataset,
     status,
     errorMsg,
-    apiServer: dataset.apiServer
-      ? {
-          baseUrl: dataset.apiServer.baseUrl,
-          authorization: '',
-          basePath: dataset.apiServer.basePath
-        }
-      : undefined,
-    yuqueServer: dataset.yuqueServer
-      ? {
-          userId: dataset.yuqueServer.userId,
-          token: '',
-          basePath: dataset.yuqueServer.basePath
-        }
-      : undefined,
-    feishuServer: dataset.feishuServer
-      ? {
-          appId: dataset.feishuServer.appId,
-          appSecret: '',
-          folderToken: dataset.feishuServer.folderToken
-        }
-      : undefined,
     permission,
     vectorModel: getEmbeddingModel(dataset.vectorModel),
     agentModel: getLLMModel(dataset.agentModel),
-    vlmModel: getVlmModel(dataset.vlmModel)
+    vlmModel: getVlmModel(dataset.vlmModel),
+    apiDatasetServer: filterApiDatasetServerPublicData(dataset.apiDatasetServer)
   };
 }
 

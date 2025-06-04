@@ -11,6 +11,7 @@ const FileCustomText = dynamic(() => import('./diffSource/FileCustomText'));
 const ExternalFileCollection = dynamic(() => import('./diffSource/ExternalFile'));
 const APIDatasetCollection = dynamic(() => import('./diffSource/APIDataset'));
 const ReTraining = dynamic(() => import('./diffSource/ReTraining'));
+const ImageDataset = dynamic(() => import('./diffSource/ImageDataset'));
 
 const ImportDataset = () => {
   const importSource = useContextSelector(DatasetImportContext, (v) => v.importSource);
@@ -22,6 +23,8 @@ const ImportDataset = () => {
     if (importSource === ImportDataSourceEnum.fileCustom) return FileCustomText;
     if (importSource === ImportDataSourceEnum.externalFile) return ExternalFileCollection;
     if (importSource === ImportDataSourceEnum.apiDataset) return APIDatasetCollection;
+    if (importSource === ImportDataSourceEnum.imageDataset) return ImageDataset;
+    return null;
   }, [importSource]);
 
   return ImportComponent ? (

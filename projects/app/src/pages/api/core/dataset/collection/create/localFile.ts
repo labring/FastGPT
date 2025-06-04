@@ -8,7 +8,6 @@ import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/col
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
-import { readRawTextByLocalFile } from '@fastgpt/service/common/file/read/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type CreateCollectionResponse } from '@/global/core/dataset/api';
@@ -21,11 +20,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): CreateCo
     const upload = getUploadModel({
       maxSize: global.feConfigs?.uploadFileMaxSize
     });
-    const { file, data, bucketName } = await upload.doUpload<FileCreateDatasetCollectionParams>(
-      req,
-      res,
-      BucketNameEnum.dataset
-    );
+    const { file, data, bucketName } =
+      await upload.getUploadFile<FileCreateDatasetCollectionParams>(
+        req,
+        res,
+        BucketNameEnum.dataset
+      );
     filePaths = [file.path];
 
     if (!file || !bucketName) {
@@ -45,20 +45,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): CreateCo
 
     const relatedImgId = getNanoid();
 
-    // 1. read file
-    const { rawText } = await readRawTextByLocalFile({
-      teamId,
-      tmbId,
-      path: file.path,
-      encoding: file.encoding,
-      customPdfParse: collectionData.customPdfParse,
-      metadata: {
-        ...fileMetadata,
-        relatedId: relatedImgId
-      }
-    });
-
-    // 2. upload file
+    // 1. upload file
     const fileId = await uploadFile({
       teamId,
       uid: tmbId,
@@ -69,12 +56,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): CreateCo
       metadata: fileMetadata
     });
 
-    // 3. delete tmp file
+    // 2. delete tmp file
     removeFilesByPaths(filePaths);
 
+    // 3. Create collection
     const { collectionId, insertResults } = await createCollectionAndInsertData({
       dataset,
-      rawText,
       relatedId: relatedImgId,
       createCollectionParams: {
         ...collectionData,

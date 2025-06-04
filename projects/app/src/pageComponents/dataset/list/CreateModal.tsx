@@ -11,14 +11,13 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { postCreateDataset } from '@/web/core/dataset/api';
 import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import { useTranslation } from 'next-i18next';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getDocPath } from '@/web/common/system/doc';
-import { datasetTypeCourseMap } from '@/web/core/dataset/constants';
 import ApiDatasetForm from '../ApiDatasetForm';
 import { getWebDefaultEmbeddingModel, getWebDefaultLLMModel } from '@/web/common/system/utils';
 
@@ -43,31 +42,6 @@ const CreateModal = ({
   const { defaultModels, embeddingModelList, datasetModelList, getVlmModelList } = useSystemStore();
   const { isPc } = useSystem();
 
-  const datasetTypeMap = useMemo(() => {
-    return {
-      [DatasetTypeEnum.dataset]: {
-        name: t('dataset:common_dataset'),
-        icon: 'core/dataset/commonDatasetColor'
-      },
-      [DatasetTypeEnum.websiteDataset]: {
-        name: t('dataset:website_dataset'),
-        icon: 'core/dataset/websiteDatasetColor'
-      },
-      [DatasetTypeEnum.apiDataset]: {
-        name: t('dataset:api_file'),
-        icon: 'core/dataset/externalDatasetColor'
-      },
-      [DatasetTypeEnum.feishu]: {
-        name: t('dataset:feishu_dataset'),
-        icon: 'core/dataset/feishuDatasetColor'
-      },
-      [DatasetTypeEnum.yuque]: {
-        name: t('dataset:yuque_dataset'),
-        icon: 'core/dataset/yuqueDatasetColor'
-      }
-    };
-  }, [t]);
-
   const filterNotHiddenVectorModelList = embeddingModelList.filter((item) => !item.hidden);
 
   const vllmModelList = useMemo(() => getVlmModelList(), [getVlmModelList]);
@@ -76,7 +50,7 @@ const CreateModal = ({
     defaultValues: {
       parentId,
       type: type || DatasetTypeEnum.dataset,
-      avatar: datasetTypeMap[type].icon,
+      avatar: DatasetTypeMap[type].avatar,
       name: '',
       intro: '',
       vectorModel:
@@ -121,10 +95,10 @@ const CreateModal = ({
             w={'20px'}
             h={'20px'}
             borderRadius={'xs'}
-            src={datasetTypeMap[type].icon}
+            src={DatasetTypeMap[type].avatar}
             pr={'10px'}
           />
-          {t('common:core.dataset.Create dataset', { name: datasetTypeMap[type].name })}
+          {t('common:core.dataset.Create dataset', { name: t(DatasetTypeMap[type].label) })}
         </Flex>
       }
       isOpen
@@ -138,14 +112,14 @@ const CreateModal = ({
             <Box color={'myGray.900'} fontWeight={500} fontSize={'sm'}>
               {t('common:input_name')}
             </Box>
-            {datasetTypeCourseMap[type] && (
+            {DatasetTypeMap[type]?.courseUrl && (
               <Flex
                 as={'span'}
                 alignItems={'center'}
                 color={'primary.600'}
                 fontSize={'sm'}
                 cursor={'pointer'}
-                onClick={() => window.open(getDocPath(datasetTypeCourseMap[type]), '_blank')}
+                onClick={() => window.open(getDocPath(DatasetTypeMap[type].courseUrl!), '_blank')}
               >
                 <MyIcon name={'book'} w={4} mr={0.5} />
                 {t('common:Instructions')}

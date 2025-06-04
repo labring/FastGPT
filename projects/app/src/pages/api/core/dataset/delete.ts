@@ -45,6 +45,7 @@ async function handler(req: NextApiRequest) {
     datasetId: { $in: datasetIds }
   });
 
+  // Remove cron job
   await Promise.all(
     datasets.map((dataset) => {
       if (dataset.type === DatasetTypeEnum.websiteDataset)

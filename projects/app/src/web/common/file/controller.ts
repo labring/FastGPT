@@ -1,14 +1,14 @@
 import { postUploadImg, postUploadFiles } from '@/web/common/file/api';
-import { type UploadImgProps } from '@fastgpt/global/common/file/api';
+import type { UploadImgProps } from '@fastgpt/global/common/file/api';
 import type { BucketNameEnum } from '@fastgpt/global/common/file/constants';
-import { type preUploadImgProps } from '@fastgpt/global/common/file/api';
+import type { preUploadImgProps } from '@fastgpt/global/common/file/api';
 import { compressBase64Img, type CompressImgProps } from '@fastgpt/web/common/file/img';
 import type { UploadChatFileProps, UploadDatasetFileProps } from '@/pages/api/common/file/upload';
 
 /**
  * upload file to mongo gridfs
  */
-export const uploadFile2DB = ({
+export const uploadFile2DB = async ({
   file,
   bucketName,
   data,
@@ -21,18 +21,21 @@ export const uploadFile2DB = ({
   metadata?: Record<string, any>;
   percentListen?: (percent: number) => void;
 }) => {
-  const form = new FormData();
-  form.append('metadata', JSON.stringify(metadata));
-  form.append('bucketName', bucketName);
-  form.append('file', file, encodeURIComponent(file.name));
-  form.append('data', JSON.stringify(data));
+  const formData = new FormData();
+  formData.append('metadata', JSON.stringify(metadata));
+  formData.append('bucketName', bucketName);
+  formData.append('file', file, encodeURIComponent(file.name));
+  if (data) {
+    formData.append('data', JSON.stringify(data));
+  }
 
-  return postUploadFiles(form, (e) => {
+  const res = await postUploadFiles(formData, (e) => {
     if (!e.total) return;
 
     const percent = Math.round((e.loaded / e.total) * 100);
     percentListen?.(percent);
   });
+  return res;
 };
 
 /**
@@ -74,7 +77,6 @@ export const compressImgFileAndUpload = async ({
       resolve(reader.result as string);
     };
     reader.onerror = (err) => {
-      console.log(err);
       reject('Load image error');
     };
   });

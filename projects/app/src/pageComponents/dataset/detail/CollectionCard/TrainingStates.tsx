@@ -35,6 +35,8 @@ import { useForm } from 'react-hook-form';
 import type { getTrainingDetailResponse } from '@/pages/api/core/dataset/collection/trainingDetail';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import MyImage from '@/components/MyImage';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 enum TrainingStatus {
   NotStart = 'NotStart',
@@ -48,6 +50,8 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
   const { t } = useTranslation();
 
   const isQA = trainingDetail?.trainingType === DatasetCollectionDataProcessModeEnum.qa;
+  const isImageParse =
+    trainingDetail?.trainingType === DatasetCollectionDataProcessModeEnum.imageParse;
 
   /* 
     状态计算
@@ -61,7 +65,10 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
       Object.values(trainingDetail.trainingCounts).every((count) => count === 0) &&
       Object.values(trainingDetail.errorCounts).every((count) => count === 0);
 
+    const isContentParsing = trainingDetail.trainingCounts.parse > 0;
+
     const getTrainingStatus = ({ errorCount }: { errorCount: number }) => {
+      if (isContentParsing) return TrainingStatus.NotStart;
       if (isReady) return TrainingStatus.Ready;
       if (errorCount > 0) {
         return TrainingStatus.Error;
@@ -92,29 +99,40 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
       status: TrainingStatus;
       errorCount: number;
     }[] = [
-      // {
-      //   label: TrainingProcess.waiting.label,
-      //   status: TrainingStatus.Queued,
-      //   statusText: t('dataset:dataset.Completed')
-      // },
       {
         label: t(TrainingProcess.parsing.label),
-        status: TrainingStatus.Ready,
-        errorCount: 0
+        status: (() => {
+          if (trainingDetail.errorCounts.parse > 0) return TrainingStatus.Error;
+          if (isContentParsing) return TrainingStatus.Running;
+          return TrainingStatus.Ready;
+        })(),
+        errorCount: trainingDetail.errorCounts.parse
       },
-      ...(isQA
+      ...(isImageParse
         ? [
             {
-              errorCount: trainingDetail.errorCounts.qa,
-              label: t(TrainingProcess.getQA.label),
-              statusText: getStatusText(TrainingModeEnum.qa),
+              errorCount: trainingDetail.errorCounts.imageParse,
+              label: t(TrainingProcess.parseImage.label),
+              statusText: getStatusText(TrainingModeEnum.imageParse),
               status: getTrainingStatus({
-                errorCount: trainingDetail.errorCounts.qa
+                errorCount: trainingDetail.errorCounts.imageParse
               })
             }
           ]
         : []),
-      ...(trainingDetail?.advancedTraining.imageIndex && !isQA
+      ...(isQA
+        ? [
+            {
+              label: t(TrainingProcess.getQA.label),
+              statusText: getStatusText(TrainingModeEnum.qa),
+              status: getTrainingStatus({
+                errorCount: trainingDetail.errorCounts.qa
+              }),
+              errorCount: trainingDetail.errorCounts.qa
+            }
+          ]
+        : []),
+      ...(trainingDetail?.advancedTraining.imageIndex
         ? [
             {
               errorCount: trainingDetail.errorCounts.image,
@@ -126,7 +144,7 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
             }
           ]
         : []),
-      ...(trainingDetail?.advancedTraining.autoIndexes && !isQA
+      ...(trainingDetail?.advancedTraining.autoIndexes
         ? [
             {
               errorCount: trainingDetail.errorCounts.auto,
@@ -159,7 +177,17 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
     ];
 
     return states;
-  }, [trainingDetail, t, isQA]);
+  }, [
+    trainingDetail.queuedCounts,
+    trainingDetail.trainingCounts,
+    trainingDetail.errorCounts,
+    trainingDetail?.advancedTraining.imageIndex,
+    trainingDetail?.advancedTraining.autoIndexes,
+    trainingDetail.trainedCount,
+    t,
+    isImageParse,
+    isQA
+  ]);
 
   return (
     <Flex flexDirection={'column'} gap={6}>
@@ -254,11 +282,21 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
   );
 };
 
-const ErrorView = ({ datasetId, collectionId }: { datasetId: string; collectionId: string }) => {
+const ErrorView = ({
+  datasetId,
+  collectionId,
+  refreshTrainingDetail
+}: {
+  datasetId: string;
+  collectionId: string;
+  refreshTrainingDetail: () => void;
+}) => {
   const { t } = useTranslation();
   const TrainingText = {
+    [TrainingModeEnum.parse]: t('dataset:process.Parsing'),
     [TrainingModeEnum.chunk]: t('dataset:process.Vectorizing'),
     [TrainingModeEnum.qa]: t('dataset:process.Get QA'),
+    [TrainingModeEnum.imageParse]: t('dataset:process.Image_Index'),
     [TrainingModeEnum.image]: t('dataset:process.Image_Index'),
     [TrainingModeEnum.auto]: t('dataset:process.Auto_Index')
   };
@@ -308,6 +346,7 @@ const ErrorView = ({ datasetId, collectionId }: { datasetId: string; collectionI
       manual: true,
       onSuccess: () => {
         refreshList();
+        refreshTrainingDetail();
         setEditChunk(undefined);
       }
     }
@@ -316,6 +355,7 @@ const ErrorView = ({ datasetId, collectionId }: { datasetId: string; collectionI
   if (editChunk) {
     return (
       <EditView
+        loading={updateLoading}
         editChunk={editChunk}
         onCancel={() => setEditChunk(undefined)}
         onSave={(data) => {
@@ -401,10 +441,12 @@ const ErrorView = ({ datasetId, collectionId }: { datasetId: string; collectionI
 };
 
 const EditView = ({
+  loading,
   editChunk,
   onCancel,
   onSave
 }: {
+  loading: boolean;
   editChunk: getTrainingDataDetailResponse;
   onCancel: () => void;
   onSave: (data: { q: string; a?: string }) => void;
@@ -419,20 +461,41 @@ const EditView = ({
 
   return (
     <Flex flexDirection={'column'} gap={4}>
-      {editChunk?.a && <Box>q</Box>}
-      <MyTextarea {...register('q')} minH={editChunk?.a ? 200 : 400} />
+      {editChunk?.imagePreviewUrl && (
+        <Box>
+          <FormLabel>{t('file:image')}</FormLabel>
+          <Box w={'100%'} h={'200px'} border={'base'} borderRadius={'md'}>
+            <MyImage src={editChunk.imagePreviewUrl} alt="image" w={'100%'} h={'100%'} />
+          </Box>
+        </Box>
+      )}
+
+      <Box>
+        {(editChunk?.a || editChunk?.imagePreviewUrl) && (
+          <FormLabel>
+            {editChunk?.a
+              ? t('common:dataset_data_input_chunk_content')
+              : t('common:dataset_data_input_q')}
+          </FormLabel>
+        )}
+        <MyTextarea
+          {...register('q', { required: true })}
+          minH={editChunk?.a || editChunk?.imagePreviewUrl ? 200 : 400}
+        />
+      </Box>
+
       {editChunk?.a && (
-        <>
-          <Box>a</Box>
+        <Box>
+          <Box>{t('common:dataset_data_input_a')}</Box>
           <MyTextarea {...register('a')} minH={200} />
-        </>
+        </Box>
       )}
       <Flex justifyContent={'flex-end'} gap={4}>
         <Button variant={'outline'} onClick={onCancel}>
           {t('common:Cancel')}
         </Button>
-        <Button variant={'primary'} onClick={handleSubmit(onSave)}>
-          {t('dataset:dataset.ReTrain')}
+        <Button isLoading={loading} variant={'primary'} onClick={handleSubmit(onSave)}>
+          {t('common:Confirm')}
         </Button>
       </Flex>
     </Flex>
@@ -453,14 +516,15 @@ const TrainingStates = ({
   const { t } = useTranslation();
   const [tab, setTab] = useState<typeof defaultTab>(defaultTab);
 
-  const { data: trainingDetail, loading } = useRequest2(
-    () => getDatasetCollectionTrainingDetail(collectionId),
-    {
-      pollingInterval: 5000,
-      pollingWhenHidden: false,
-      manual: false
-    }
-  );
+  const {
+    data: trainingDetail,
+    loading,
+    runAsync: refreshTrainingDetail
+  } = useRequest2(() => getDatasetCollectionTrainingDetail(collectionId), {
+    pollingInterval: 5000,
+    pollingWhenHidden: false,
+    manual: false
+  });
 
   const errorCounts = (Object.values(trainingDetail?.errorCounts || {}) as number[]).reduce(
     (acc, count) => acc + count,
@@ -493,7 +557,13 @@ const TrainingStates = ({
           ]}
         />
         {tab === 'states' && trainingDetail && <ProgressView trainingDetail={trainingDetail} />}
-        {tab === 'errors' && <ErrorView datasetId={datasetId} collectionId={collectionId} />}
+        {tab === 'errors' && (
+          <ErrorView
+            datasetId={datasetId}
+            collectionId={collectionId}
+            refreshTrainingDetail={refreshTrainingDetail}
+          />
+        )}
       </ModalBody>
     </MyModal>
   );

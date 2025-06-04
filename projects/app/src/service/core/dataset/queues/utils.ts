@@ -18,7 +18,7 @@ export const checkTeamAiPointsAndLock = async (teamId: string) => {
           templateParam: {},
           teamId
         });
-        console.log('余额不足，暂停训练生成任务');
+        console.log('余额不足，暂停知识库处理');
         await lockTrainingDataByTeamId(teamId);
       } catch (error) {}
     }

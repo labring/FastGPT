@@ -15,6 +15,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
 import type { Document } from '@fastgpt/service/common/mongo';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getMaxIndexSize } from '@fastgpt/global/core/dataset/training/utils';
 
 const reduceQueue = () => {
   global.vectorQueueLen = global.vectorQueueLen > 0 ? global.vectorQueueLen - 1 : 0;
@@ -261,8 +262,9 @@ const insertData = async ({
       collectionId: trainingData.collectionId,
       q: trainingData.q,
       a: trainingData.a,
+      imageId: trainingData.imageId,
       chunkIndex: trainingData.chunkIndex,
-      indexSize: trainingData.indexSize,
+      indexSize: trainingData.indexSize || getMaxIndexSize(getEmbeddingModel(trainingData.model)),
       indexes: trainingData.indexes,
       embeddingModel: trainingData.model,
       session

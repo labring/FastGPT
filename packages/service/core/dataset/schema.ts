@@ -127,14 +127,16 @@ const DatasetSchema = new Schema({
     type: Boolean,
     default: true
   },
-  apiServer: Object,
-  feishuServer: Object,
-  yuqueServer: Object,
+
+  apiDatasetServer: Object,
 
   // abandoned
   autoSync: Boolean,
   externalReadUrl: String,
-  defaultPermission: Number
+  defaultPermission: Number,
+  apiServer: Object,
+  feishuServer: Object,
+  yuqueServer: Object
 });
 
 try {

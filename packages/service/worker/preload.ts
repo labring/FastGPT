@@ -1,7 +1,7 @@
 import { getWorkerController, WorkerNameEnum } from './utils';
 
 export const preLoadWorker = async () => {
-  const max = Number(global.systemEnv?.tokenWorkers || 30);
+  const max = Math.min(Number(global.systemEnv?.tokenWorkers || 30), 100);
   const workerController = getWorkerController({
     name: WorkerNameEnum.countGptMessagesTokens,
     maxReservedThreads: max

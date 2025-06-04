@@ -9,7 +9,8 @@ import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import {
   DatasetCollectionDataProcessModeMap,
-  DatasetCollectionTypeMap
+  DatasetCollectionTypeMap,
+  DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -38,6 +39,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
       manual: false
     }
   );
+
   const metadataList = useMemo<{ label?: string; value?: any }[]>(() => {
     if (!collection) return [];
 
@@ -49,13 +51,17 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
         value: t(DatasetCollectionTypeMap[collection.type]?.name as any)
       },
       {
-        label: t('common:core.dataset.collection.metadata.source name'),
+        label: t('dataset:collection_name'),
         value: collection.file?.filename || collection?.rawLink || collection?.name
       },
-      {
-        label: t('common:core.dataset.collection.metadata.source size'),
-        value: collection.file ? formatFileSize(collection.file.length) : '-'
-      },
+      ...(collection.file
+        ? [
+            {
+              label: t('common:core.dataset.collection.metadata.source size'),
+              value: formatFileSize(collection.file.length)
+            }
+          ]
+        : []),
       {
         label: t('common:core.dataset.collection.metadata.Createtime'),
         value: formatTime2YMDHM(collection.createTime)
@@ -64,18 +70,30 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
         label: t('common:core.dataset.collection.metadata.Updatetime'),
         value: formatTime2YMDHM(collection.updateTime)
       },
-      {
-        label: t('dataset:collection_metadata_custom_pdf_parse'),
-        value: collection.customPdfParse ? 'Yes' : 'No'
-      },
-      {
-        label: t('common:core.dataset.collection.metadata.Raw text length'),
-        value: collection.rawTextLength ?? '-'
-      },
-      {
-        label: t('dataset:collection.training_type'),
-        value: t(DatasetCollectionDataProcessModeMap[collection.trainingType]?.label as any)
-      },
+      ...(collection.customPdfParse !== undefined
+        ? [
+            {
+              label: t('dataset:collection_metadata_custom_pdf_parse'),
+              value: collection.customPdfParse ? 'Yes' : 'No'
+            }
+          ]
+        : []),
+      ...(collection.rawTextLength !== undefined
+        ? [
+            {
+              label: t('common:core.dataset.collection.metadata.Raw text length'),
+              value: collection.rawTextLength
+            }
+          ]
+        : []),
+      ...(DatasetCollectionDataProcessModeMap[collection.trainingType]
+        ? [
+            {
+              label: t('dataset:collection.training_type'),
+              value: t(DatasetCollectionDataProcessModeMap[collection.trainingType]?.label as any)
+            }
+          ]
+        : []),
       ...(collection.imageIndex !== undefined
         ? [
             {
@@ -92,7 +110,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
             }
           ]
         : []),
-      ...(collection.chunkSize
+      ...(collection.chunkSize !== undefined
         ? [
             {
               label: t('dataset:chunk_size'),
@@ -100,7 +118,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
             }
           ]
         : []),
-      ...(collection.indexSize
+      ...(collection.indexSize !== undefined
         ? [
             {
               label: t('dataset:index_size'),
@@ -108,7 +126,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
             }
           ]
         : []),
-      ...(webSelector
+      ...(webSelector !== undefined
         ? [
             {
               label: t('common:core.dataset.collection.metadata.Web page selector'),
@@ -116,16 +134,14 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
             }
           ]
         : []),
-      {
-        ...(collection.tags
-          ? [
-              {
-                label: t('dataset:collection_tags'),
-                value: collection.tags?.join(', ') || '-'
-              }
-            ]
-          : [])
-      }
+      ...(collection.tags
+        ? [
+            {
+              label: t('dataset:collection_tags'),
+              value: collection.tags?.join(', ') || '-'
+            }
+          ]
+        : [])
     ];
   }, [collection, t]);
 
