@@ -184,8 +184,8 @@ export type DatasetTrainingSchemaType = {
   expireAt: Date;
   lockTime: Date;
   mode: TrainingModeEnum;
-  model: string;
-  prompt: string;
+  model?: string;
+  prompt?: string;
   dataId?: string;
   q: string;
   a: string;

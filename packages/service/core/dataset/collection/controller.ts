@@ -7,7 +7,6 @@ import type { CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset
 import { MongoDatasetCollection } from './schema';
 import type {
   DatasetCollectionSchemaType,
-  DatasetDataFieldType,
   DatasetSchemaType
 } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetTraining } from '../training/schema';
@@ -25,7 +24,7 @@ import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { createTrainingUsage } from '../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { getLLMModel, getEmbeddingModel, getVlmModel } from '../../ai/model';
-import { pushDataListToTrainingQueue } from '../training/controller';
+import { pushDataListToTrainingQueue, pushDatasetToParseQueue } from '../training/controller';
 import { MongoImage } from '../../../common/file/image/schema';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { addDays } from 'date-fns';
@@ -36,6 +35,7 @@ import {
   computeChunkSize,
   computeChunkSplitter,
   computeParagraphChunkDeep,
+  getAutoIndexSize,
   getLLMMaxChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
@@ -99,7 +99,8 @@ export const createCollectionAndInsertData = async ({
   // 1. split chunks or create image chunks
   const {
     chunks,
-    chunkSize
+    chunkSize,
+    indexSize
   }: {
     chunks: Array<{
       q?: string;
@@ -108,6 +109,7 @@ export const createCollectionAndInsertData = async ({
       indexes?: string[];
     }>;
     chunkSize?: number;
+    indexSize?: number;
   } = (() => {
     if (rawText) {
       const chunkSize = computeChunkSize({
@@ -128,7 +130,11 @@ export const createCollectionAndInsertData = async ({
         customReg: chunkSplitter ? [chunkSplitter] : [],
         backupParse
       });
-      return { chunks, chunkSize };
+      return {
+        chunks,
+        chunkSize,
+        indexSize: createCollectionParams.indexSize ?? getAutoIndexSize(dataset.vectorModel)
+      };
     }
 
     if (imageIds) {
@@ -139,7 +145,16 @@ export const createCollectionAndInsertData = async ({
       }));
       return { chunks };
     }
-    throw new Error('Either rawText or imageIdList must be provided');
+
+    return {
+      chunks: [],
+      chunkSize: computeChunkSize({
+        ...createCollectionParams,
+        trainingType,
+        llmModel: getLLMModel(dataset.agentModel)
+      }),
+      indexSize: createCollectionParams.indexSize ?? getAutoIndexSize(dataset.vectorModel)
+    };
   })();
 
   // 2. auth limit
@@ -156,6 +171,7 @@ export const createCollectionAndInsertData = async ({
       paragraphChunkDeep,
       chunkSize,
       chunkSplitter,
+      indexSize,
 
       hashRawText: rawText ? hashStr(rawText) : undefined,
       rawTextLength: rawText?.length,
@@ -191,28 +207,44 @@ export const createCollectionAndInsertData = async ({
     })();
 
     // 5. insert to training queue
-    const insertResults = await pushDataListToTrainingQueue({
-      teamId,
-      tmbId,
-      datasetId: dataset._id,
-      collectionId,
-      agentModel: dataset.agentModel,
-      vectorModel: dataset.vectorModel,
-      vlmModel: dataset.vlmModel,
-      indexSize: createCollectionParams.indexSize,
-      mode: trainingMode,
-      prompt: createCollectionParams.qaPrompt,
-      billId: traingBillId,
-      data: chunks.map((item, index) => ({
-        ...item,
-        indexes: item.indexes?.map((text) => ({
-          type: DatasetDataIndexTypeEnum.custom,
-          text
-        })),
-        chunkIndex: index
-      })),
-      session
-    });
+    const insertResults = await (async () => {
+      if (rawText || imageIds) {
+        return pushDataListToTrainingQueue({
+          teamId,
+          tmbId,
+          datasetId: dataset._id,
+          collectionId,
+          agentModel: dataset.agentModel,
+          vectorModel: dataset.vectorModel,
+          vlmModel: dataset.vlmModel,
+          indexSize,
+          mode: trainingMode,
+          prompt: createCollectionParams.qaPrompt,
+          billId: traingBillId,
+          data: chunks.map((item, index) => ({
+            ...item,
+            indexes: item.indexes?.map((text) => ({
+              type: DatasetDataIndexTypeEnum.custom,
+              text
+            })),
+            chunkIndex: index
+          })),
+          session
+        });
+      } else {
+        await pushDatasetToParseQueue({
+          teamId,
+          tmbId,
+          datasetId: dataset._id,
+          collectionId,
+          billId: traingBillId,
+          session
+        });
+        return {
+          insertLen: 0
+        };
+      }
+    })();
 
     // 6. Remove images ttl index
     await removeDatasetImageExpiredTime({
@@ -276,9 +308,9 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
     [
       {
         ...props,
-        teamId,
+        _id: undefined,
+
         parentId: parentId || null,
-        datasetId,
 
         tags: collectionTags,
 

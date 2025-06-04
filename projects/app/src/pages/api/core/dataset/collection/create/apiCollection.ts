@@ -1,4 +1,3 @@
-import type { NextApiRequest } from 'next';
 import type { ApiDatasetCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
@@ -10,10 +9,12 @@ import { type CreateCollectionResponse } from '@/global/core/dataset/api';
 import { readApiServerFileContent } from '@fastgpt/service/core/dataset/read';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 
-async function handler(req: NextApiRequest): CreateCollectionResponse {
-  const { name, apiFileId, customPdfParse, ...body } =
-    req.body as ApiDatasetCreateDatasetCollectionParams;
+async function handler(
+  req: ApiRequestProps<ApiDatasetCreateDatasetCollectionParams>
+): CreateCollectionResponse {
+  const { name, apiFileId, customPdfParse, ...body } = req.body;
 
   const { teamId, tmbId, dataset } = await authDataset({
     req,

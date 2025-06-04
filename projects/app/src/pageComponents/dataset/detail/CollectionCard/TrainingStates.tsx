@@ -65,7 +65,10 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
       Object.values(trainingDetail.trainingCounts).every((count) => count === 0) &&
       Object.values(trainingDetail.errorCounts).every((count) => count === 0);
 
+    const isContentParsing = trainingDetail.trainingCounts.parse > 0;
+
     const getTrainingStatus = ({ errorCount }: { errorCount: number }) => {
+      if (isContentParsing) return TrainingStatus.NotStart;
       if (isReady) return TrainingStatus.Ready;
       if (errorCount > 0) {
         return TrainingStatus.Error;
@@ -96,15 +99,14 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
       status: TrainingStatus;
       errorCount: number;
     }[] = [
-      // {
-      //   label: TrainingProcess.waiting.label,
-      //   status: TrainingStatus.Queued,
-      //   statusText: t('dataset:dataset.Completed')
-      // },
       {
         label: t(TrainingProcess.parsing.label),
-        status: TrainingStatus.Ready,
-        errorCount: 0
+        status: (() => {
+          if (trainingDetail.errorCounts.parse > 0) return TrainingStatus.Error;
+          if (isContentParsing) return TrainingStatus.Running;
+          return TrainingStatus.Ready;
+        })(),
+        errorCount: trainingDetail.errorCounts.parse
       },
       ...(isImageParse
         ? [
@@ -121,12 +123,12 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
       ...(isQA
         ? [
             {
-              errorCount: trainingDetail.errorCounts.qa,
               label: t(TrainingProcess.getQA.label),
               statusText: getStatusText(TrainingModeEnum.qa),
               status: getTrainingStatus({
                 errorCount: trainingDetail.errorCounts.qa
-              })
+              }),
+              errorCount: trainingDetail.errorCounts.qa
             }
           ]
         : []),
@@ -291,6 +293,7 @@ const ErrorView = ({
 }) => {
   const { t } = useTranslation();
   const TrainingText = {
+    [TrainingModeEnum.parse]: t('dataset:process.Parsing'),
     [TrainingModeEnum.chunk]: t('dataset:process.Vectorizing'),
     [TrainingModeEnum.qa]: t('dataset:process.Get QA'),
     [TrainingModeEnum.imageParse]: t('dataset:process.Image_Index'),
