@@ -23,26 +23,44 @@ from seccomp import *
 import sys
 import errno
 allowed_syscalls = [
-    "syscall.SYS_ARCH_PRCTL", "syscall.SYS_BRK", "syscall.SYS_CLONE",
-    "syscall.SYS_CLOSE", "syscall.SYS_EPOLL_CREATE1", "syscall.SYS_EXECVE",
-    "syscall.SYS_EXIT", "syscall.SYS_EXIT_GROUP", "syscall.SYS_FCNTL",
-    "syscall.SYS_FSTAT", "syscall.SYS_FUTEX", "syscall.SYS_GETDENTS64",
-    "syscall.SYS_GETEGID", "syscall.SYS_GETEUID", "syscall.SYS_GETGID",
-    "syscall.SYS_GETRANDOM", "syscall.SYS_GETTID", "syscall.SYS_GETUID",
-    "syscall.SYS_IOCTL", "syscall.SYS_LSEEK", "syscall.SYS_LSTAT",
-    "syscall.SYS_MBIND", "syscall.SYS_MEMBARRIER", "syscall.SYS_MMAP",
-    "syscall.SYS_MPROTECT", "syscall.SYS_MUNMAP", "syscall.SYS_OPEN",
-    "syscall.SYS_PREAD64", "syscall.SYS_READ", "syscall.SYS_READLINK",
-    "syscall.SYS_READV", "syscall.SYS_RT_SIGACTION", "syscall.SYS_RT_SIGPROCMASK",
-    "syscall.SYS_SCHED_GETAFFINITY", "syscall.SYS_SET_TID_ADDRESS",
-    "syscall.SYS_STAT", "syscall.SYS_UNAME",
-    "syscall.SYS_MREMAP", "syscall.SYS_RT_SIGRETURN", "syscall.SYS_SETUID",
-    "syscall.SYS_SETGID", "syscall.SYS_GETPID", "syscall.SYS_GETPPID",
-    "syscall.SYS_TGKILL", "syscall.SYS_SCHED_YIELD", "syscall.SYS_SET_ROBUST_LIST",
-    "syscall.SYS_GET_ROBUST_LIST", "syscall.SYS_RSEQ", "syscall.SYS_CLOCK_GETTIME",
-    "syscall.SYS_GETTIMEOFDAY", "syscall.SYS_NANOSLEEP", "syscall.SYS_EPOLL_CTL",
-    "syscall.SYS_CLOCK_NANOSLEEP", "syscall.SYS_PSELECT6", "syscall.SYS_TIME",
-    "syscall.SYS_SIGALTSTACK", "syscall.SYS_MKDIRAT", "syscall.SYS_MKDIR"
+    "syscall.SYS_NEWFSTATAT",
+    "syscall.SYS_LSEEK",
+    "syscall.SYS_GETDENTS64",
+    "syscall.SYS_CLOSE",
+    "syscall.SYS_FUTEX",
+    "syscall.SYS_MMAP",
+    "syscall.SYS_BRK",
+    "syscall.SYS_MPROTECT",
+    "syscall.SYS_MUNMAP",
+    "syscall.SYS_RT_SIGRETURN",
+    "syscall.SYS_MREMAP",
+    "syscall.SYS_SETUID",
+    "syscall.SYS_SETGID",
+    "syscall.SYS_GETUID",
+    "syscall.SYS_GETPID",
+    "syscall.SYS_GETPPID",
+    "syscall.SYS_GETTID",
+    "syscall.SYS_EXIT",
+    "syscall.SYS_EXIT_GROUP",
+    "syscall.SYS_TGKILL",
+    "syscall.SYS_RT_SIGACTION",
+    "syscall.SYS_SCHED_YIELD",
+    "syscall.SYS_SET_ROBUST_LIST",
+    "syscall.SYS_GET_ROBUST_LIST",
+    "syscall.SYS_RSEQ",
+    "syscall.SYS_CLOCK_GETTIME",
+    "syscall.SYS_GETTIMEOFDAY",
+    "syscall.SYS_NANOSLEEP",
+    "syscall.SYS_CLOCK_NANOSLEEP",
+    "syscall.SYS_TIME",
+    "syscall.SYS_RT_SIGPROCMASK",
+    "syscall.SYS_SIGALTSTACK",
+    "syscall.SYS_CLONE",
+    "syscall.SYS_MKDIRAT",
+    "syscall.SYS_MKDIR",
+    "syscall.SYS_FSTAT",
+    "syscall.SYS_FCNTL",
+    "syscall.SYS_FSTATFS",
 ]
 allowed_syscalls_tmp = allowed_syscalls
 L = []
@@ -125,7 +143,7 @@ def run_pythonCode(data:dict):
         out = ast.literal_eval(result.stdout.strip())
         return out
     except subprocess.TimeoutExpired:
-        return {"error": "Timeout error"}
+        return {"error": "Timeout error or blocked by system security policy"}
     except Exception as e:
         return {"error": str(e)}
 
