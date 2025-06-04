@@ -221,6 +221,7 @@ export enum ImportDataSourceEnum {
 }
 
 export enum TrainingModeEnum {
+  parse = 'parse',
   chunk = 'chunk',
   qa = 'qa',
   auto = 'auto',

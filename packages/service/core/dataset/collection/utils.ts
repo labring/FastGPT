@@ -192,31 +192,8 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
       dataset,
       rawText: rawText,
       createCollectionParams: {
-        teamId: collection.teamId,
-        tmbId: collection.tmbId,
+        ...collection,
         name: title || collection.name,
-        datasetId: collection.datasetId,
-        parentId: collection.parentId,
-        type: collection.type,
-
-        trainingType: collection.trainingType,
-        chunkSize: collection.chunkSize,
-        chunkSplitter: collection.chunkSplitter,
-        qaPrompt: collection.qaPrompt,
-
-        fileId: collection.fileId,
-        rawLink: collection.rawLink,
-        externalFileId: collection.externalFileId,
-        externalFileUrl: collection.externalFileUrl,
-        apiFileId: collection.apiFileId,
-
-        hashRawText,
-        rawTextLength: rawText.length,
-
-        metadata: collection.metadata,
-
-        tags: collection.tags,
-        createTime: collection.createTime,
         updateTime: new Date()
       }
     });

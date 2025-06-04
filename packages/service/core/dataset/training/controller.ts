@@ -59,7 +59,7 @@ export async function pushDataListToTrainingQueue({
   indexSize,
   session
 }: PushDataToTrainingQueueProps): Promise<PushDatasetDataResponse> {
-  const getImageChunkMode = (data: PushDatasetDataChunkProps, mode: TrainingModeEnum) => {
+  const formatTrainingMode = (data: PushDatasetDataChunkProps, mode: TrainingModeEnum) => {
     if (mode !== TrainingModeEnum.image) return mode;
     // 检查内容中，是否包含 ![](xxx) 的图片格式
     const text = (data.q || '') + (data.a || '');
@@ -110,15 +110,8 @@ export async function pushDataListToTrainingQueue({
     return Promise.reject(`Training mode "${mode}" is inValid`);
   })();
 
-  // filter repeat or equal content
-  const filterResult: Record<string, PushDatasetDataChunkProps[]> = {
-    success: [],
-    overToken: [],
-    error: []
-  };
-
   // format q and a, remove empty char
-  data.forEach((item) => {
+  data = data.filter((item) => {
     item.q = simpleText(item.q);
     item.a = simpleText(item.a);
 
@@ -133,7 +126,6 @@ export async function pushDataListToTrainingQueue({
 
     // filter repeat content
     if (!item.imageId && !item.q) {
-      filterResult.error.push(item);
       return;
     }
 
@@ -141,20 +133,19 @@ export async function pushDataListToTrainingQueue({
 
     // Oversize llm tokens
     if (text.length > maxToken) {
-      filterResult.overToken.push(item);
       return;
     }
 
-    filterResult.success.push(item);
+    return true;
   });
 
   // insert data to db
-  const insertLen = filterResult.success.length;
+  const insertLen = data.length;
 
   // 使用 insertMany 批量插入
   const batchSize = 500;
   const insertData = async (startIndex: number, session: ClientSession) => {
-    const list = filterResult.success.slice(startIndex, startIndex + batchSize);
+    const list = data.slice(startIndex, startIndex + batchSize);
 
     if (list.length === 0) return;
 
@@ -166,17 +157,17 @@ export async function pushDataListToTrainingQueue({
           datasetId: datasetId,
           collectionId: collectionId,
           billId,
-          mode: getImageChunkMode(item, mode),
+          mode: formatTrainingMode(item, mode),
           prompt,
           model,
-          q: item.q,
-          a: item.a,
+          ...(item.q && { q: item.q }),
+          ...(item.a && { a: item.a }),
+          ...(item.imageId && { imageId: item.imageId }),
           chunkIndex: item.chunkIndex ?? 0,
           indexSize,
           weight: weight ?? 0,
           indexes: item.indexes,
-          retryCount: 5,
-          ...(item.imageId ? { imageId: item.imageId } : {})
+          retryCount: 5
         })),
         {
           session,
@@ -205,9 +196,37 @@ export async function pushDataListToTrainingQueue({
     });
   }
 
-  delete filterResult.success;
-
   return {
     insertLen
   };
 }
+
+export const pushDatasetToParseQueue = async ({
+  teamId,
+  tmbId,
+  datasetId,
+  collectionId,
+  billId,
+  session
+}: {
+  teamId: string;
+  tmbId: string;
+  datasetId: string;
+  collectionId: string;
+  billId: string;
+  session: ClientSession;
+}) => {
+  await MongoDatasetTraining.create(
+    [
+      {
+        teamId,
+        tmbId,
+        datasetId,
+        collectionId,
+        billId,
+        mode: TrainingModeEnum.parse
+      }
+    ],
+    { session, ordered: true }
+  );
+};

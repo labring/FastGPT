@@ -263,12 +263,15 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         };
       })();
 
+      const formatReasonContent = removeDatasetCiteText(reasoningContent, retainDatasetCite);
+      const formatContent = removeDatasetCiteText(content, retainDatasetCite);
+
       // Some models do not support streaming
       if (aiChatReasoning && reasoningContent) {
         workflowStreamResponse?.({
           event: SseResponseEventEnum.fastAnswer,
           data: textAdaptGptResponse({
-            reasoning_content: removeDatasetCiteText(reasoningContent, retainDatasetCite)
+            reasoning_content: formatReasonContent
           })
         });
       }
@@ -276,14 +279,14 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         workflowStreamResponse?.({
           event: SseResponseEventEnum.fastAnswer,
           data: textAdaptGptResponse({
-            text: removeDatasetCiteText(content, retainDatasetCite)
+            text: formatContent
           })
         });
       }
 
       return {
-        answerText: content,
-        reasoningText: reasoningContent,
+        reasoningText: formatReasonContent,
+        answerText: formatContent,
         finish_reason,
         inputTokens: usage?.prompt_tokens,
         outputTokens: usage?.completion_tokens

@@ -302,18 +302,21 @@ export const runToolWithPromptCall = async (
       const reasoningContent: string = aiResponse.choices?.[0]?.message?.reasoning_content || '';
       const usage = aiResponse.usage;
 
+      const formatReasonContent = removeDatasetCiteText(reasoningContent, retainDatasetCite);
+      const formatContent = removeDatasetCiteText(content, retainDatasetCite);
+
       // API already parse reasoning content
-      if (reasoningContent || !aiChatReasoning) {
+      if (formatReasonContent || !aiChatReasoning) {
         return {
-          answer: content,
-          reasoning: reasoningContent,
+          answer: formatContent,
+          reasoning: formatReasonContent,
           finish_reason,
           inputTokens: usage?.prompt_tokens,
           outputTokens: usage?.completion_tokens
         };
       }
 
-      const [think, answer] = parseReasoningContent(content);
+      const [think, answer] = parseReasoningContent(formatContent);
       return {
         answer,
         reasoning: think,
@@ -328,7 +331,7 @@ export const runToolWithPromptCall = async (
     workflowStreamResponse?.({
       event: SseResponseEventEnum.fastAnswer,
       data: textAdaptGptResponse({
-        reasoning_content: removeDatasetCiteText(reasoning, retainDatasetCite)
+        reasoning_content: reasoning
       })
     });
   }

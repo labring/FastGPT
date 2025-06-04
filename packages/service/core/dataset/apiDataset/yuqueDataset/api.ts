@@ -105,6 +105,7 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
     if (!parentId) {
       if (yuqueServer.basePath) parentId = yuqueServer.basePath;
     }
+
     let files: APIFileItem[] = [];
 
     if (!parentId) {

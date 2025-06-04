@@ -356,11 +356,14 @@ export const runToolWithToolChoice = async (
         const reasoningContent = result.choices?.[0]?.message?.reasoning_content || '';
         const usage = result.usage;
 
+        const formatReasoningContent = removeDatasetCiteText(reasoningContent, retainDatasetCite);
+        const formatAnswer = removeDatasetCiteText(answer, retainDatasetCite);
+
         if (aiChatReasoning && reasoningContent) {
           workflowStreamResponse?.({
             event: SseResponseEventEnum.fastAnswer,
             data: textAdaptGptResponse({
-              reasoning_content: removeDatasetCiteText(reasoningContent, retainDatasetCite)
+              reasoning_content: formatReasoningContent
             })
           });
         }
@@ -395,14 +398,14 @@ export const runToolWithToolChoice = async (
           workflowStreamResponse?.({
             event: SseResponseEventEnum.fastAnswer,
             data: textAdaptGptResponse({
-              text: removeDatasetCiteText(answer, retainDatasetCite)
+              text: formatAnswer
             })
           });
         }
 
         return {
-          reasoningContent: (reasoningContent as string) || '',
-          answer,
+          reasoningContent: formatReasoningContent,
+          answer: formatAnswer,
           toolCalls: toolCalls,
           finish_reason,
           inputTokens: usage?.prompt_tokens,

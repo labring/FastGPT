@@ -181,14 +181,12 @@ async function handler(
           const value = obj[key];
           const newKey = prefix ? `${prefix}.${key}` : key;
 
-          if (value) {
-            if (typeof value === 'object' && !Array.isArray(value)) {
-              // Recursively flatten nested objects
-              Object.assign(result, flattenObjectWithConditions(value, newKey));
-            } else {
-              // Add non-empty primitive values
-              result[newKey] = value;
-            }
+          if (typeof value === 'object' && !Array.isArray(value)) {
+            // Recursively flatten nested objects
+            Object.assign(result, flattenObjectWithConditions(value, newKey));
+          } else {
+            // Add non-empty primitive values
+            result[newKey] = value;
           }
         });
 
