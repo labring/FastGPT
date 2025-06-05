@@ -28,7 +28,7 @@
     "lodash": "^4.17.21",
     "mammoth": "^1.6.0",
     "mongoose": "^8.10.1",
-    "multer": "2.0.0",
+    "multer": "2.0.1",
     "mysql2": "^3.11.3",
     "next": "14.2.28",
     "nextjs-cors": "^2.2.0",
