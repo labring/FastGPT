@@ -127,6 +127,8 @@ const InputTypeConfig = ({
     return !list.includes(inputType);
   }, [inputType]);
 
+  const showHidden = inputType === VariableInputEnum.custom;
+
   const showMaxLenInput = useMemo(() => {
     const list = [FlowNodeInputTypeEnum.input];
     return list.includes(inputType as FlowNodeInputTypeEnum);
@@ -229,6 +231,14 @@ const InputTypeConfig = ({
               {t('workflow:field_required')}
             </FormLabel>
             <Switch {...register('required')} />
+          </Flex>
+        )}
+        {showHidden && (
+          <Flex alignItems={'center'} minH={'40px'}>
+            <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
+              {t('workflow:field_hidden')}
+            </FormLabel>
+            <Switch {...register('hidden')} />
           </Flex>
         )}
         {/* reference */}

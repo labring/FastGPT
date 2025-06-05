@@ -61,6 +61,7 @@
   "field_description_placeholder": "描述這個輸入欄位的功能，如果是工具呼叫參數，這個描述會影響模型產生的品質",
   "field_name_already_exists": "欄位名稱已存在",
   "field_required": "必填",
+  "field_hidden": "隱藏",
   "field_used_as_tool_input": "作為工具呼叫參數",
   "filter_description": "目前支援標籤和建立時間篩選，需按照以下格式填寫：\n{\n  \"tags\": {\n    \"$and\": [\"標籤 1\",\"標籤 2\"],\n    \"$or\": [\"當有 $and 標籤時，$and 才會生效，$or 不會生效\"]\n  },\n  \"createTime\": {\n      \"$gte\": \"YYYY-MM-DD HH:mm 格式，資料集的建立時間大於這個時間\",\n      \"$lte\": \"YYYY-MM-DD HH:mm 格式，資料集的建立時間小於這個時間，可以和 $gte 一起使用\"\n  }\n}",
   "find_tip": "查找節點 ctrl f",

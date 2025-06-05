@@ -61,6 +61,7 @@
   "field_description_placeholder": "Describe the function of this input field. If it is a tool call parameter, this description will affect the quality of the model generation.",
   "field_name_already_exists": "Field name already exists",
   "field_required": "Required",
+  "field_hidden": "Hidden",
   "field_used_as_tool_input": "Used as Tool Call Parameter",
   "filter_description": "Currently supports filtering by tags and creation time. Fill in the format as follows:\n{\n  \"tags\": {\n    \"$and\": [\"Tag 1\",\"Tag 2\"],\n    \"$or\": [\"When there are $and tags, and is effective, or is not effective\"]\n  },\n  \"createTime\": {\n      \"$gte\": \"YYYY-MM-DD HH:mm format, collection creation time greater than this time\",\n      \"$lte\": \"YYYY-MM-DD HH:mm format, collection creation time less than this time, can be used with $gte\"\n  }\n}",
   "find_tip": "Find node ctrl f",

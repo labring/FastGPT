@@ -61,6 +61,7 @@
   "field_description_placeholder": "描述该输入字段的功能，如果为工具调用参数，则该描述会影响模型生成的质量",
   "field_name_already_exists": "字段名已经存在",
   "field_required": "必填",
+  "field_hidden": "隐藏",
   "field_used_as_tool_input": "作为工具调用参数",
   "filter_description": "目前支持标签和创建时间过滤，需按照以下格式填写：\n{\n  \"tags\": {\n    \"$and\": [\"标签 1\",\"标签 2\"],\n    \"$or\": [\"有 $and 标签时，and 生效，or 不生效\"]\n  },\n  \"createTime\": {\n      \"$gte\": \"YYYY-MM-DD HH:mm 格式即可，集合的创建时间大于该时间\",\n      \"$lte\": \"YYYY-MM-DD HH:mm 格式即可，集合的创建时间小于该时间,可和 $gte 共同使用\"\n  }\n}",
   "find_tip": "查找节点 ctrl f",
