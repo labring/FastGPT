@@ -111,10 +111,11 @@ const ChatInput = ({
       <Flex alignItems={'center'} mt={fileList.length > 0 ? 1 : 0} pl={[2, 4]}>
         {/* file selector */}
 
-        {/* input area */}
+        {/* Prompt Container */}
         <Textarea
           ref={TextareaDom}
           py={0}
+          display={'inline-flex'}
           pl={2}
           pr={['30px', '48px']}
           border={'none'}
@@ -127,7 +128,7 @@ const ChatInput = ({
           resize={'none'}
           rows={1}
           height={'22px'}
-          lineHeight={'22px'}
+          lineHeight={'24px'}
           maxHeight={'50vh'}
           maxLength={-1}
           overflowY={'auto'}
@@ -135,7 +136,20 @@ const ChatInput = ({
           wordBreak={'break-all'}
           boxShadow={'none !important'}
           color={'myGray.900'}
-          fontSize={['md', 'sm']}
+          fontFamily={'PingFang SC'}
+          fontStyle={'normal'}
+          fontWeight={400}
+          fontSize={'16px'}
+          letterSpacing={'0.5px'}
+          _placeholder={{
+            color: '#A4A4A4',
+            fontFamily: 'PingFang SC',
+            fontStyle: 'normal',
+            fontWeight: 400,
+            fontSize: '16px',
+            lineHeight: '24px',
+            letterSpacing: '0.5px'
+          }}
           value={inputValue}
           onChange={(e) => {
             const textarea = e.target;
@@ -339,8 +353,8 @@ const ChatInput = ({
     <Box
       m={['0 auto', '10px auto']}
       w={'100%'}
-      maxW={['auto', 'min(800px, 100%)']}
-      px={[0, 5]}
+      maxW={['auto', 'min(820px, 100%)']}
+      px={[4, 5]}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
@@ -373,18 +387,11 @@ const ChatInput = ({
         pb={['14px', '18px']}
         position={'relative'}
         boxShadow={`0px 5px 16px -4px rgba(19, 51, 107, 0.08)`}
-        borderRadius={['none', '20px']}
+        borderRadius={'20px'}
         bg={'white'}
         overflow={'display'}
-        {...(isPc
-          ? {
-              border: '0.5px solid rgba(0, 0, 0, 0.13)',
-              borderColor: 'rgba(0,0,0,0.12)'
-            }
-          : {
-              borderTop: '1px solid',
-              borderTopColor: 'rgba(0,0,0,0.15)'
-            })}
+        border={'0.5px solid rgba(0, 0, 0, 0.13)'}
+        borderColor={'rgba(0,0,0,0.12)'}
       >
         {/* Chat input guide box */}
         {chatInputGuide.open && (
