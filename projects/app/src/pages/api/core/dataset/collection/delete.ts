@@ -9,6 +9,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
 import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/operationLog/util';
+
 async function handler(req: NextApiRequest) {
   const { id: collectionId } = req.query as { id: string };
 

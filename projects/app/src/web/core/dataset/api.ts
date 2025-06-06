@@ -69,7 +69,7 @@ import type {
   getTrainingErrorBody,
   getTrainingErrorResponse
 } from '@/pages/api/core/dataset/training/getTrainingError';
-import type { APIFileItem } from '@fastgpt/global/core/dataset/apiDataset';
+import type { APIFileItem } from '@fastgpt/global/core/dataset/apiDataset/type';
 import type { GetQuoteDataProps } from '@/pages/api/core/dataset/data/getQuoteData';
 import type {
   GetApiDatasetCataLogResponse,
@@ -132,6 +132,32 @@ export const postBackupDatasetCollection = ({
   formData.append('data', JSON.stringify({ datasetId }));
 
   return POST(`/core/dataset/collection/create/backup`, formData, {
+    timeout: 600000,
+    onUploadProgress: (e) => {
+      if (!e.total) return;
+
+      const percent = Math.round((e.loaded / e.total) * 100);
+      percentListen?.(percent);
+    },
+    headers: {
+      'Content-Type': 'multipart/form-data; charset=utf-8'
+    }
+  });
+};
+export const postTemplateDatasetCollection = ({
+  file,
+  percentListen,
+  datasetId
+}: {
+  file: File;
+  percentListen: (percent: number) => void;
+  datasetId: string;
+}) => {
+  const formData = new FormData();
+  formData.append('file', file, encodeURIComponent(file.name));
+  formData.append('data', JSON.stringify({ datasetId }));
+
+  return POST(`/core/dataset/collection/create/template`, formData, {
     timeout: 600000,
     onUploadProgress: (e) => {
       if (!e.total) return;

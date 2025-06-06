@@ -69,9 +69,7 @@ async function handler(
     vlmModel,
     websiteConfig,
     externalReadUrl,
-    apiServer,
-    yuqueServer,
-    feishuServer,
+    apiDatasetServer,
     autoSync,
     chunkSettings
   } = req.body;
@@ -168,6 +166,35 @@ async function handler(
       await delDatasetRelevantData({ datasets: [dataset], session });
     }
 
+    const apiDatasetParams = (() => {
+      if (!apiDatasetServer) return {};
+
+      const flattenObjectWithConditions = (
+        obj: any,
+        prefix = 'apiDatasetServer'
+      ): Record<string, any> => {
+        const result: Record<string, any> = {};
+
+        if (!obj || typeof obj !== 'object') return result;
+
+        Object.keys(obj).forEach((key) => {
+          const value = obj[key];
+          const newKey = prefix ? `${prefix}.${key}` : key;
+
+          if (typeof value === 'object' && !Array.isArray(value)) {
+            // Recursively flatten nested objects
+            Object.assign(result, flattenObjectWithConditions(value, newKey));
+          } else {
+            // Add non-empty primitive values
+            result[newKey] = value;
+          }
+        });
+
+        return result;
+      };
+      return flattenObjectWithConditions(apiDatasetServer);
+    })();
+
     await MongoDataset.findByIdAndUpdate(
       id,
       {
@@ -180,23 +207,9 @@ async function handler(
         ...(chunkSettings && { chunkSettings }),
         ...(intro !== undefined && { intro }),
         ...(externalReadUrl !== undefined && { externalReadUrl }),
-        ...(!!apiServer?.baseUrl && { 'apiServer.baseUrl': apiServer.baseUrl }),
-        ...(!!apiServer?.authorization && {
-          'apiServer.authorization': apiServer.authorization
-        }),
-        ...(!!apiServer?.basePath !== undefined && { 'apiServer.basePath': apiServer?.basePath }),
-        ...(!!yuqueServer?.userId && { 'yuqueServer.userId': yuqueServer.userId }),
-        ...(!!yuqueServer?.token && { 'yuqueServer.token': yuqueServer.token }),
-        ...(!!yuqueServer?.basePath !== undefined && {
-          'yuqueServer.basePath': yuqueServer?.basePath
-        }),
-        ...(!!feishuServer?.appId && { 'feishuServer.appId': feishuServer.appId }),
-        ...(!!feishuServer?.appSecret && { 'feishuServer.appSecret': feishuServer.appSecret }),
-        ...(!!feishuServer?.folderToken && {
-          'feishuServer.folderToken': feishuServer.folderToken
-        }),
         ...(isMove && { inheritPermission: true }),
-        ...(typeof autoSync === 'boolean' && { autoSync })
+        ...(typeof autoSync === 'boolean' && { autoSync }),
+        ...apiDatasetParams
       },
       { session }
     );

@@ -11,6 +11,8 @@ import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
+import { i18nT } from '@fastgpt/web/i18n/utils';
+import { uploadFile } from '@fastgpt/service/common/file/gridfs/controller';
 
 export type backupQuery = {};
 
@@ -25,7 +27,7 @@ async function handler(req: ApiRequestProps<backupBody, backupQuery>, res: ApiRe
     const upload = getUploadModel({
       maxSize: global.feConfigs?.uploadFileMaxSize
     });
-    const { file, data } = await upload.doUpload<{ datasetId: string }>(req, res);
+    const { file, data } = await upload.getUploadFile<{ datasetId: string }>(req, res);
     filePaths.push(file.path);
 
     if (file.mimetype !== 'text/csv') {
@@ -49,8 +51,19 @@ async function handler(req: ApiRequestProps<backupBody, backupQuery>, res: ApiRe
       getFormatText: false
     });
     if (!rawText.trim().startsWith('q,a,indexes')) {
-      return Promise.reject('Backup file start with "q,a,indexes"');
+      return Promise.reject(i18nT('dataset:backup_template_invalid'));
     }
+
+    // 2. Upload file
+    const fileId = await uploadFile({
+      teamId,
+      uid: tmbId,
+      bucketName: 'dataset',
+      path: file.path,
+      filename: file.originalname,
+      contentType: file.mimetype
+    });
+
     // 2. delete tmp file
     removeFilesByPaths(filePaths);
 
@@ -64,7 +77,8 @@ async function handler(req: ApiRequestProps<backupBody, backupQuery>, res: ApiRe
         tmbId,
         datasetId: dataset._id,
         name: file.originalname,
-        type: DatasetCollectionTypeEnum.virtual,
+        type: DatasetCollectionTypeEnum.file,
+        fileId,
         trainingType: DatasetCollectionDataProcessModeEnum.backup
       }
     });

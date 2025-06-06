@@ -12,10 +12,7 @@ import { getCollectionWithDataset } from '../controller';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { type PushDataToTrainingQueueProps } from '@fastgpt/global/core/dataset/training/type';
 import { i18nT } from '../../../../web/i18n/utils';
-import {
-  getLLMDefaultChunkSize,
-  getLLMMaxChunkSize
-} from '../../../../global/core/dataset/training/utils';
+import { getLLMMaxChunkSize } from '../../../../global/core/dataset/training/utils';
 
 export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => {
   try {
@@ -62,10 +59,10 @@ export async function pushDataListToTrainingQueue({
   indexSize,
   session
 }: PushDataToTrainingQueueProps): Promise<PushDatasetDataResponse> {
-  const getImageChunkMode = (data: PushDatasetDataChunkProps, mode: TrainingModeEnum) => {
+  const formatTrainingMode = (data: PushDatasetDataChunkProps, mode: TrainingModeEnum) => {
     if (mode !== TrainingModeEnum.image) return mode;
     // 检查内容中，是否包含 ![](xxx) 的图片格式
-    const text = data.q + data.a || '';
+    const text = (data.q || '') + (data.a || '');
     const regex = /!\[\]\((.*?)\)/g;
     const match = text.match(regex);
     if (match) {
@@ -81,9 +78,6 @@ export async function pushDataListToTrainingQueue({
   const agentModelData = getLLMModel(agentModel);
   if (!agentModelData) {
     return Promise.reject(i18nT('common:error_llm_not_config'));
-  }
-  if (mode === TrainingModeEnum.chunk || mode === TrainingModeEnum.auto) {
-    prompt = undefined;
   }
 
   const { model, maxToken, weight } = await (async () => {
@@ -101,7 +95,7 @@ export async function pushDataListToTrainingQueue({
         weight: 0
       };
     }
-    if (mode === TrainingModeEnum.image) {
+    if (mode === TrainingModeEnum.image || mode === TrainingModeEnum.imageParse) {
       const vllmModelData = getVlmModel(vlmModel);
       if (!vllmModelData) {
         return Promise.reject(i18nT('common:error_vlm_not_config'));
@@ -116,17 +110,8 @@ export async function pushDataListToTrainingQueue({
     return Promise.reject(`Training mode "${mode}" is inValid`);
   })();
 
-  // filter repeat or equal content
-  const set = new Set();
-  const filterResult: Record<string, PushDatasetDataChunkProps[]> = {
-    success: [],
-    overToken: [],
-    repeat: [],
-    error: []
-  };
-
   // format q and a, remove empty char
-  data.forEach((item) => {
+  data = data.filter((item) => {
     item.q = simpleText(item.q);
     item.a = simpleText(item.a);
 
@@ -140,8 +125,7 @@ export async function pushDataListToTrainingQueue({
       .filter(Boolean);
 
     // filter repeat content
-    if (!item.q) {
-      filterResult.error.push(item);
+    if (!item.imageId && !item.q) {
       return;
     }
 
@@ -149,42 +133,36 @@ export async function pushDataListToTrainingQueue({
 
     // Oversize llm tokens
     if (text.length > maxToken) {
-      filterResult.overToken.push(item);
       return;
     }
 
-    if (set.has(text)) {
-      filterResult.repeat.push(item);
-    } else {
-      filterResult.success.push(item);
-      set.add(text);
-    }
+    return true;
   });
 
   // insert data to db
-  const insertLen = filterResult.success.length;
-  const failedDocuments: PushDatasetDataChunkProps[] = [];
+  const insertLen = data.length;
 
   // 使用 insertMany 批量插入
-  const batchSize = 200;
+  const batchSize = 500;
   const insertData = async (startIndex: number, session: ClientSession) => {
-    const list = filterResult.success.slice(startIndex, startIndex + batchSize);
+    const list = data.slice(startIndex, startIndex + batchSize);
 
     if (list.length === 0) return;
 
     try {
-      await MongoDatasetTraining.insertMany(
+      const result = await MongoDatasetTraining.insertMany(
         list.map((item) => ({
           teamId,
           tmbId,
-          datasetId,
-          collectionId,
+          datasetId: datasetId,
+          collectionId: collectionId,
           billId,
-          mode: getImageChunkMode(item, mode),
+          mode: formatTrainingMode(item, mode),
           prompt,
           model,
-          q: item.q,
-          a: item.a,
+          ...(item.q && { q: item.q }),
+          ...(item.a && { a: item.a }),
+          ...(item.imageId && { imageId: item.imageId }),
           chunkIndex: item.chunkIndex ?? 0,
           indexSize,
           weight: weight ?? 0,
@@ -193,20 +171,19 @@ export async function pushDataListToTrainingQueue({
         })),
         {
           session,
-          ordered: true
+          ordered: false,
+          rawResult: true,
+          includeResultMetadata: false // 进一步减少返回数据
         }
       );
+
+      if (result.insertedCount !== list.length) {
+        return Promise.reject(`Insert data error, ${JSON.stringify(result)}`);
+      }
     } catch (error: any) {
       addLog.error(`Insert error`, error);
-      // 如果有错误，将失败的文档添加到失败列表中
-      error.writeErrors?.forEach((writeError: any) => {
-        failedDocuments.push(data[writeError.index]);
-      });
-      console.log('failed', failedDocuments);
+      return Promise.reject(error);
     }
-
-    // 对于失败的文档，尝试单独插入
-    await MongoDatasetTraining.create(failedDocuments, { session });
 
     return insertData(startIndex + batchSize, session);
   };
@@ -219,10 +196,37 @@ export async function pushDataListToTrainingQueue({
     });
   }
 
-  delete filterResult.success;
-
   return {
-    insertLen,
-    ...filterResult
+    insertLen
   };
 }
+
+export const pushDatasetToParseQueue = async ({
+  teamId,
+  tmbId,
+  datasetId,
+  collectionId,
+  billId,
+  session
+}: {
+  teamId: string;
+  tmbId: string;
+  datasetId: string;
+  collectionId: string;
+  billId: string;
+  session: ClientSession;
+}) => {
+  await MongoDatasetTraining.create(
+    [
+      {
+        teamId,
+        tmbId,
+        datasetId,
+        collectionId,
+        billId,
+        mode: TrainingModeEnum.parse
+      }
+    ],
+    { session, ordered: true }
+  );
+};

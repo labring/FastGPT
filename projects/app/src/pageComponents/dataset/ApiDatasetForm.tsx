@@ -3,11 +3,6 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { Flex, Input, Button, ModalBody, ModalFooter, Box } from '@chakra-ui/react';
 import type { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
-import type {
-  APIFileServer,
-  FeishuServer,
-  YuqueServer
-} from '@fastgpt/global/core/dataset/apiDataset';
 import { getApiDatasetPaths, getApiDatasetCatalog } from '@/web/core/dataset/api';
 import type {
   GetResourceFolderListItemResponse,
@@ -22,6 +17,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { FolderIcon } from '@fastgpt/global/common/file/image/constants';
+import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 
 const ApiDatasetForm = ({
   type,
@@ -32,9 +28,7 @@ const ApiDatasetForm = ({
   datasetId?: string;
   form: UseFormReturn<
     {
-      apiServer?: APIFileServer;
-      feishuServer?: FeishuServer;
-      yuqueServer?: YuqueServer;
+      apiDatasetServer?: ApiDatasetServerType;
     },
     any
   >;
@@ -42,9 +36,10 @@ const ApiDatasetForm = ({
   const { t } = useTranslation();
   const { register, setValue, watch } = form;
 
-  const yuqueServer = watch('yuqueServer');
-  const feishuServer = watch('feishuServer');
-  const apiServer = watch('apiServer');
+  const apiDatasetServer = watch('apiDatasetServer');
+  const yuqueServer = apiDatasetServer?.yuqueServer;
+  const feishuServer = apiDatasetServer?.feishuServer;
+  const apiServer = apiDatasetServer?.apiServer;
 
   const [pathNames, setPathNames] = useState(t('dataset:rootdirectory'));
   const [
@@ -91,9 +86,7 @@ const ApiDatasetForm = ({
       const path = await getApiDatasetPaths({
         datasetId,
         parentId,
-        yuqueServer,
-        feishuServer,
-        apiServer
+        apiDatasetServer
       });
       setPathNames(path);
     },
@@ -108,13 +101,13 @@ const ApiDatasetForm = ({
     const value = id === 'root' || id === null || id === undefined ? '' : id;
     switch (type) {
       case DatasetTypeEnum.yuque:
-        setValue('yuqueServer.basePath', value);
+        setValue('apiDatasetServer.yuqueServer.basePath', value);
         break;
       case DatasetTypeEnum.feishu:
-        setValue('feishuServer.folderToken', value);
+        setValue('apiDatasetServer.feishuServer.folderToken', value);
         break;
       case DatasetTypeEnum.apiDataset:
-        setValue('apiServer.basePath', value);
+        setValue('apiDatasetServer.apiServer.basePath', value);
         break;
     }
 
@@ -147,32 +140,10 @@ const ApiDatasetForm = ({
       <BaseUrlSelector
         selectId={yuqueServer?.basePath || apiServer?.basePath || 'root'}
         server={async (e: GetResourceFolderListProps) => {
-          const params: GetApiDatasetCataLogProps = { parentId: e.parentId };
-
-          switch (type) {
-            case DatasetTypeEnum.yuque:
-              params.yuqueServer = {
-                userId: yuqueServer?.userId || '',
-                token: yuqueServer?.token || '',
-                basePath: ''
-              };
-              break;
-            // Currently, only Yuque is using it
-            case DatasetTypeEnum.feishu:
-              params.feishuServer = {
-                appId: feishuServer?.appId || '',
-                appSecret: feishuServer?.appSecret || '',
-                folderToken: feishuServer?.folderToken || ''
-              };
-              break;
-            case DatasetTypeEnum.apiDataset:
-              params.apiServer = {
-                baseUrl: apiServer?.baseUrl || '',
-                authorization: apiServer?.authorization || '',
-                basePath: ''
-              };
-              break;
-          }
+          const params: GetApiDatasetCataLogProps = {
+            parentId: e.parentId,
+            apiDatasetServer
+          };
 
           return getApiDatasetCatalog(params);
         }}
@@ -193,7 +164,7 @@ const ApiDatasetForm = ({
               bg={'myWhite.600'}
               placeholder={t('dataset:api_url')}
               maxLength={200}
-              {...register('apiServer.baseUrl', { required: true })}
+              {...register('apiDatasetServer.apiServer.baseUrl', { required: true })}
             />
           </Flex>
           <Flex mt={6} alignItems={'center'}>
@@ -204,7 +175,7 @@ const ApiDatasetForm = ({
               bg={'myWhite.600'}
               placeholder={t('dataset:request_headers')}
               maxLength={2000}
-              {...register('apiServer.authorization')}
+              {...register('apiDatasetServer.apiServer.authorization')}
             />
           </Flex>
           {renderBaseUrlSelector()}
@@ -227,7 +198,7 @@ const ApiDatasetForm = ({
               bg={'myWhite.600'}
               placeholder={'App ID'}
               maxLength={200}
-              {...register('feishuServer.appId', { required: true })}
+              {...register('apiDatasetServer.feishuServer.appId', { required: true })}
             />
           </Flex>
           <Flex mt={6}>
@@ -244,7 +215,7 @@ const ApiDatasetForm = ({
               bg={'myWhite.600'}
               placeholder={'App Secret'}
               maxLength={200}
-              {...register('feishuServer.appSecret', { required: true })}
+              {...register('apiDatasetServer.feishuServer.appSecret', { required: true })}
             />
           </Flex>
           <Flex mt={6}>
@@ -261,7 +232,7 @@ const ApiDatasetForm = ({
               bg={'myWhite.600'}
               placeholder={'Folder Token'}
               maxLength={200}
-              {...register('feishuServer.folderToken', { required: true })}
+              {...register('apiDatasetServer.feishuServer.folderToken', { required: true })}
             />
           </Flex>
           {/* {renderBaseUrlSelector()}
@@ -278,7 +249,7 @@ const ApiDatasetForm = ({
               bg={'myWhite.600'}
               placeholder={'User ID'}
               maxLength={200}
-              {...register('yuqueServer.userId', { required: true })}
+              {...register('apiDatasetServer.yuqueServer.userId', { required: true })}
             />
           </Flex>
           <Flex mt={6} alignItems={'center'}>
@@ -289,7 +260,7 @@ const ApiDatasetForm = ({
               bg={'myWhite.600'}
               placeholder={'Token'}
               maxLength={200}
-              {...register('yuqueServer.token', { required: true })}
+              {...register('apiDatasetServer.yuqueServer.token', { required: true })}
             />
           </Flex>
           {renderBaseUrlSelector()}

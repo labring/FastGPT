@@ -227,8 +227,10 @@ export const parseReasoningContent = (text: string): [string, string] => {
 
 export const removeDatasetCiteText = (text: string, retainDatasetCite: boolean) => {
   return retainDatasetCite
-    ? text.replace(/\[id\]\(CITE\)/g, '')
-    : text.replace(/\[([a-f0-9]{24})\](?:\([^\)]*\)?)?/g, '').replace(/\[id\]\(CITE\)/g, '');
+    ? text.replace(/[\[【]id[\]】]\(CITE\)/g, '')
+    : text
+        .replace(/[\[【]([a-f0-9]{24})[\]】](?:\([^\)]*\)?)?/g, '')
+        .replace(/[\[【]id[\]】]\(CITE\)/g, '');
 };
 
 // Parse llm stream part
@@ -426,8 +428,8 @@ export const parseLLMStreamResponse = () => {
         }
 
         // 新内容包含 [，初始化缓冲数据
-        if (text.includes('[')) {
-          const index = text.indexOf('[');
+        if (text.includes('[') || text.includes('【')) {
+          const index = text.indexOf('[') !== -1 ? text.indexOf('[') : text.indexOf('【');
           const beforeContent = citeBuffer + text.slice(0, index);
           citeBuffer = text.slice(index);
 

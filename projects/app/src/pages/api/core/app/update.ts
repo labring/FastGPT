@@ -205,18 +205,16 @@ const logAppMove = ({
   app: any;
   targetName: string;
 }) => {
-  (async () => {
-    addOperationLog({
-      tmbId,
-      teamId,
-      event: OperationLogEventEnum.MOVE_APP,
-      params: {
-        appName: app.name,
-        targetFolderName: targetName,
-        appType: getI18nAppType(app.type)
-      }
-    });
-  })();
+  addOperationLog({
+    tmbId,
+    teamId,
+    event: OperationLogEventEnum.MOVE_APP,
+    params: {
+      appName: app.name,
+      targetFolderName: targetName,
+      appType: getI18nAppType(app.type)
+    }
+  });
 };
 
 const logAppUpdate = ({
@@ -232,39 +230,37 @@ const logAppUpdate = ({
   name?: string;
   intro?: string;
 }) => {
-  (async () => {
-    const getUpdateItems = () => {
-      const names: string[] = [];
-      const values: string[] = [];
+  const getUpdateItems = () => {
+    const names: string[] = [];
+    const values: string[] = [];
 
-      if (name !== undefined) {
-        names.push(i18nT('common:core.app.name'));
-        values.push(name);
-      }
+    if (name !== undefined) {
+      names.push(i18nT('common:core.app.name'));
+      values.push(name);
+    }
 
-      if (intro !== undefined) {
-        names.push(i18nT('common:Intro'));
-        values.push(intro);
-      }
+    if (intro !== undefined) {
+      names.push(i18nT('common:Intro'));
+      values.push(intro);
+    }
 
-      return {
-        names,
-        values
-      };
+    return {
+      names,
+      values
     };
+  };
 
-    const { names: newItemNames, values: newItemValues } = getUpdateItems();
+  const { names: newItemNames, values: newItemValues } = getUpdateItems();
 
-    addOperationLog({
-      tmbId,
-      teamId,
-      event: OperationLogEventEnum.UPDATE_APP_INFO,
-      params: {
-        appName: app.name,
-        newItemNames: newItemNames,
-        newItemValues: newItemValues,
-        appType: getI18nAppType(app.type)
-      }
-    });
-  })();
+  addOperationLog({
+    tmbId,
+    teamId,
+    event: OperationLogEventEnum.UPDATE_APP_INFO,
+    params: {
+      appName: app.name,
+      newItemNames: newItemNames,
+      newItemValues: newItemValues,
+      appType: getI18nAppType(app.type)
+    }
+  });
 };

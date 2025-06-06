@@ -54,16 +54,8 @@ const TrainingDataSchema = new Schema({
     default: 5
   },
 
-  model: {
-    // ai model
-    type: String,
-    required: true
-  },
-  prompt: {
-    // qa split prompt
-    type: String,
-    default: ''
-  },
+  model: String,
+  prompt: String,
   q: {
     type: String,
     default: ''
@@ -72,6 +64,7 @@ const TrainingDataSchema = new Schema({
     type: String,
     default: ''
   },
+  imageId: String,
   chunkIndex: {
     type: Number,
     default: 0
@@ -81,9 +74,7 @@ const TrainingDataSchema = new Schema({
     type: Number,
     default: 0
   },
-  dataId: {
-    type: Schema.Types.ObjectId
-  },
+  dataId: Schema.Types.ObjectId,
   indexes: {
     type: [
       {

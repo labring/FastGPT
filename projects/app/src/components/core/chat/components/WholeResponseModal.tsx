@@ -300,7 +300,7 @@ export const WholeResponseContent = ({
         <Row label={t('chat:query_extension_result')} value={`${activeModule?.extensionResult}`} />
         {activeModule.quoteList && activeModule.quoteList.length > 0 && (
           <Row
-            label={t('common:core.chat.response.module quoteList')}
+            label={t('chat:search_results')}
             rawDom={<QuoteList chatItemDataId={dataId} rawSearch={activeModule.quoteList} />}
           />
         )}

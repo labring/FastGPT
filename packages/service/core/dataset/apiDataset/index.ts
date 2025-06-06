@@ -1,18 +1,10 @@
-import type {
-  APIFileServer,
-  YuqueServer,
-  FeishuServer
-} from '@fastgpt/global/core/dataset/apiDataset';
-import { useApiDatasetRequest } from './api';
-import { useYuqueDatasetRequest } from '../yuqueDataset/api';
-import { useFeishuDatasetRequest } from '../feishuDataset/api';
+import { useApiDatasetRequest } from './custom/api';
+import { useYuqueDatasetRequest } from './yuqueDataset/api';
+import { useFeishuDatasetRequest } from './feishuDataset/api';
+import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 
-export const getApiDatasetRequest = async (data: {
-  apiServer?: APIFileServer;
-  yuqueServer?: YuqueServer;
-  feishuServer?: FeishuServer;
-}) => {
-  const { apiServer, yuqueServer, feishuServer } = data;
+export const getApiDatasetRequest = async (apiDatasetServer?: ApiDatasetServerType) => {
+  const { apiServer, yuqueServer, feishuServer } = apiDatasetServer || {};
 
   if (apiServer) {
     return useApiDatasetRequest({ apiServer });

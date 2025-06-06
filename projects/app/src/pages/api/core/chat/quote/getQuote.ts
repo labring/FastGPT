@@ -2,9 +2,11 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { quoteDataFieldSelector, type QuoteDataItemType } from '@/service/core/chat/constants';
+import { quoteDataFieldSelector } from '@/service/core/chat/constants';
 import { processChatTimeFilter } from '@/service/core/chat/utils';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { getFormatDatasetCiteList } from '@fastgpt/service/core/dataset/data/controller';
+import type { DatasetCiteItemType } from '@fastgpt/global/core/dataset/type';
 
 export type GetQuoteProps = {
   datasetDataIdList: string[];
@@ -19,7 +21,7 @@ export type GetQuoteProps = {
   teamToken?: string;
 };
 
-export type GetQuotesRes = QuoteDataItemType[];
+export type GetQuotesRes = DatasetCiteItemType[];
 
 async function handler(req: ApiRequestProps<GetQuoteProps>): Promise<GetQuotesRes> {
   const {
@@ -56,7 +58,10 @@ async function handler(req: ApiRequestProps<GetQuoteProps>): Promise<GetQuotesRe
     quoteDataFieldSelector
   ).lean();
 
-  const quoteList = processChatTimeFilter(list, chatItem.time);
+  // Get image preview url
+  const formatPreviewUrlList = getFormatDatasetCiteList(list);
+
+  const quoteList = processChatTimeFilter(formatPreviewUrlList, chatItem.time);
 
   return quoteList;
 }

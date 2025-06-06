@@ -1,5 +1,4 @@
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
-import { createSpecialProcessor } from './commonProcessor';
 
 export const processAssignPermissionSpecific = (metadata: any) => {
   const permissionValue = parseInt(metadata.permission, 10);
@@ -14,6 +13,6 @@ export const processAssignPermissionSpecific = (metadata: any) => {
   };
 };
 
-export const createTeamProcessors = () => ({
-  ASSIGN_PERMISSION: createSpecialProcessor(processAssignPermissionSpecific)
-});
+export const createTeamProcessors = {
+  ASSIGN_PERMISSION: processAssignPermissionSpecific
+};

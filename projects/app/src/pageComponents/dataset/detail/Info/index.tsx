@@ -311,12 +311,12 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                   onClick={() =>
                     setEditedAPIDataset({
                       id: datasetDetail._id,
-                      apiServer: datasetDetail.apiServer
+                      apiDatasetServer: datasetDetail.apiDatasetServer
                     })
                   }
                 />
               </Flex>
-              <Box fontSize={'mini'}>{datasetDetail.apiServer?.baseUrl}</Box>
+              <Box fontSize={'mini'}>{datasetDetail.apiDatasetServer?.apiServer?.baseUrl}</Box>
             </Box>
           </>
         )}
@@ -336,12 +336,12 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                   onClick={() =>
                     setEditedAPIDataset({
                       id: datasetDetail._id,
-                      yuqueServer: datasetDetail.yuqueServer
+                      apiDatasetServer: datasetDetail.apiDatasetServer
                     })
                   }
                 />
               </Flex>
-              <Box fontSize={'mini'}>{datasetDetail.yuqueServer?.userId}</Box>
+              <Box fontSize={'mini'}>{datasetDetail.apiDatasetServer?.yuqueServer?.userId}</Box>
             </Box>
           </>
         )}
@@ -361,12 +361,14 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                   onClick={() =>
                     setEditedAPIDataset({
                       id: datasetDetail._id,
-                      feishuServer: datasetDetail.feishuServer
+                      apiDatasetServer: datasetDetail.apiDatasetServer
                     })
                   }
                 />
               </Flex>
-              <Box fontSize={'mini'}>{datasetDetail.feishuServer?.folderToken}</Box>
+              <Box fontSize={'mini'}>
+                {datasetDetail.apiDatasetServer?.feishuServer?.folderToken}
+              </Box>
             </Box>
           </>
         )}
@@ -435,9 +437,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           onEdit={(data) =>
             updateDataset({
               id: datasetId,
-              apiServer: data.apiServer,
-              yuqueServer: data.yuqueServer,
-              feishuServer: data.feishuServer
+              apiDatasetServer: data.apiDatasetServer
             })
           }
         />

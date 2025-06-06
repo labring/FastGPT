@@ -1,5 +1,4 @@
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
-import { createSpecialProcessor } from './commonProcessor';
 
 export const processUpdateAppCollaboratorSpecific = (metadata: any) => {
   const permissionValue = parseInt(metadata.permission, 10);
@@ -12,6 +11,6 @@ export const processUpdateAppCollaboratorSpecific = (metadata: any) => {
   };
 };
 
-export const createAppProcessors = () => ({
-  UPDATE_APP_COLLABORATOR: createSpecialProcessor(processUpdateAppCollaboratorSpecific)
-});
+export const createAppProcessors = {
+  UPDATE_APP_COLLABORATOR: processUpdateAppCollaboratorSpecific
+};

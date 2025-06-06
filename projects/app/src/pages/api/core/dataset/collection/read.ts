@@ -94,17 +94,7 @@ async function handler(
       return collection.rawLink;
     }
     if (collection.type === DatasetCollectionTypeEnum.apiFile && collection.apiFileId) {
-      const apiServer = collection.dataset.apiServer;
-      const feishuServer = collection.dataset.feishuServer;
-      const yuqueServer = collection.dataset.yuqueServer;
-
-      return (
-        await getApiDatasetRequest({
-          apiServer,
-          feishuServer,
-          yuqueServer
-        })
-      ).getFilePreviewUrl({
+      return (await getApiDatasetRequest(collection.dataset.apiDatasetServer)).getFilePreviewUrl({
         apiFileId: collection.apiFileId
       });
     }
