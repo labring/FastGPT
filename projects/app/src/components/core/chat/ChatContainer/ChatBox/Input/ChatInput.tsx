@@ -159,7 +159,7 @@ const ChatInput = ({
           }}
           onKeyDown={(e) => {
             // enter send.(pc or iframe && enter and unPress shift)
-            const isEnter = e.keyCode === 13;
+            const isEnter = e.key === 'Enter';
             if (isEnter && TextareaDom.current && (e.ctrlKey || e.altKey)) {
               // Add a new line
               const index = TextareaDom.current.selectionStart;
