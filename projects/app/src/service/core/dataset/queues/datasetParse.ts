@@ -1,5 +1,6 @@
 /* Dataset collection source parse, not max size. */
 
+import type { ParagraphChunkAIModeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
@@ -27,6 +28,58 @@ import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/cons
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { POST } from '@fastgpt/service/common/api/plusRequest';
+import { deleteRawTextBuffer } from '@fastgpt/service/common/buffer/rawText/controller';
+
+const requestLLMPargraph = async ({
+  rawText,
+  model,
+  billId,
+  paragraphChunkAIMode
+}: {
+  rawText: string;
+  model: string;
+  billId: string;
+  paragraphChunkAIMode: ParagraphChunkAIModeEnum;
+}) => {
+  return {
+    resultText: rawText,
+    totalInputTokens: 0,
+    totalOutputTokens: 0
+  };
+
+  if (!global.feConfigs?.isPlus || !paragraphChunkAIMode) {
+    return {
+      resultText: rawText,
+      totalInputTokens: 0,
+      totalOutputTokens: 0
+    };
+  }
+
+  // Check is markdown text(Include 1 group of title)
+  // if (paragraphChunkAIMode === ParagraphChunkAIModeEnum.auto) {
+  //   const isMarkdown = /^(#+)\s/.test(rawText);
+  //   if (isMarkdown) {
+  //     return {
+  //       resultText: rawText,
+  //       totalInputTokens: 0,
+  //       totalOutputTokens: 0
+  //     };
+  //   }
+  // }
+
+  const data = await POST<{
+    resultText: string;
+    totalInputTokens: number;
+    totalOutputTokens: number;
+  }>('/core/dataset/training/llmPargraph', {
+    rawText,
+    model,
+    billId
+  });
+
+  return data;
+};
 
 export const datasetParseQueue = async (): Promise<any> => {
   const startTime = Date.now();
@@ -172,9 +225,17 @@ export const datasetParseQueue = async (): Promise<any> => {
       ...sourceReadType
     });
 
-    // Chunk split
-    const chunks = rawText2Chunks({
+    // 3. LLM Pargraph
+    const { resultText } = await requestLLMPargraph({
       rawText,
+      model: dataset.agentModel,
+      billId: data.billId,
+      paragraphChunkAIMode: collection.paragraphChunkAIMode
+    });
+
+    // 4. Chunk split
+    const chunks = rawText2Chunks({
+      rawText: resultText,
       chunkTriggerType: collection.chunkTriggerType,
       chunkTriggerMinSize: collection.chunkTriggerMinSize,
       chunkSize: collection.chunkSize,
@@ -186,6 +247,7 @@ export const datasetParseQueue = async (): Promise<any> => {
       customReg: collection.chunkSplitter ? [collection.chunkSplitter] : [],
       backupParse: collection.trainingType === DatasetCollectionDataProcessModeEnum.backup
     });
+
     // Check dataset limit
     try {
       await checkDatasetLimit({
@@ -207,18 +269,18 @@ export const datasetParseQueue = async (): Promise<any> => {
     }
 
     await mongoSessionRun(async (session) => {
-      // Update collection title(Link)
+      // 5. Update collection title(Link)
       await MongoDatasetCollection.updateOne(
         { _id: collection._id },
         {
           ...(title && { name: title }),
-          rawTextLength: rawText.length,
-          hashRawText: hashStr(rawText)
+          rawTextLength: resultText.length,
+          hashRawText: hashStr(resultText)
         },
         { session }
       );
 
-      // Push to chunk queue
+      // 6. Push to chunk queue
       await pushDataListToTrainingQueue({
         teamId: data.teamId,
         tmbId: data.tmbId,
@@ -242,7 +304,7 @@ export const datasetParseQueue = async (): Promise<any> => {
         session
       });
 
-      // Delete task
+      // 7. Delete task
       await MongoDatasetTraining.deleteOne(
         {
           _id: data._id

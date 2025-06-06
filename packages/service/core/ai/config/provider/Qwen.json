@@ -549,11 +549,26 @@
       "showStopSign": false
     },
     {
+      "model": "text-embedding-v4",
+      "name": "text-embedding-v4",
+      "defaultToken": 512,
+      "maxToken": 8000,
+      "type": "embedding",
+      "defaultConfig": {
+        "dimensions": 1536
+      }
+    },
+    {
       "model": "text-embedding-v3",
       "name": "text-embedding-v3",
       "defaultToken": 512,
       "maxToken": 8000,
       "type": "embedding"
+    },
+    {
+      "model": "gte-rerank-v2",
+      "name": "gte-rerank-v2",
+      "type": "rerank"
     }
   ]
 }
