@@ -108,25 +108,9 @@ const ChatInput = ({
 
   const RenderTextarea = useMemo(
     () => (
-      <Flex alignItems={'flex-end'} mt={fileList.length > 0 ? 1 : 0} pl={[2, 4]}>
+      <Flex alignItems={'center'} mt={fileList.length > 0 ? 1 : 0} pl={[2, 4]}>
         {/* file selector */}
-        {(showSelectFile || showSelectImg) && (
-          <Flex
-            h={'22px'}
-            alignItems={'center'}
-            justifyContent={'center'}
-            cursor={'pointer'}
-            transform={'translateY(1px)'}
-            onClick={() => {
-              onOpenSelectFile();
-            }}
-          >
-            <MyTooltip label={selectFileLabel}>
-              <MyIcon name={selectFileIcon as any} w={'18px'} color={'myGray.600'} />
-            </MyTooltip>
-            <File onSelect={(files) => onSelectFile({ files })} />
-          </Flex>
-        )}
+
         {/* input area */}
         <Textarea
           ref={TextareaDom}
@@ -203,77 +187,127 @@ const ChatInput = ({
             }
           }}
         />
+        {/* Button Group */}
         <Flex
           alignItems={'center'}
           position={'absolute'}
-          right={[2, 4]}
-          bottom={['10px', '12px']}
+          right={'16px'}
+          bottom={'14px'}
+          w={'134px'}
+          h={'36px'}
+          gap={'8px'}
           zIndex={3}
         >
-          {/* Voice input icon */}
-          {whisperConfig?.open && !inputValue && (
-            <MyTooltip label={t('common:core.chat.Record')}>
+          {/* Attachment and Voice Group */}
+          <Flex alignItems={'center'} gap={'2px'} w={'74px'} h={'36px'} flex={'none'} order={0}>
+            {/* file selector button */}
+            {(showSelectFile || showSelectImg) && (
               <Flex
                 alignItems={'center'}
                 justifyContent={'center'}
-                flexShrink={0}
-                h={['28px', '32px']}
-                w={['28px', '32px']}
-                mr={2}
-                borderRadius={'md'}
+                w={'36px'}
+                h={'36px'}
+                p={'8px'}
+                borderRadius={'6px'}
                 cursor={'pointer'}
-                _hover={{ bg: '#F5F5F8' }}
+                flex={'none'}
+                order={0}
+                _hover={{ bg: 'rgba(0, 0, 0, 0.04)' }}
+                onClick={() => {
+                  onOpenSelectFile();
+                }}
+              >
+                <MyTooltip label={selectFileLabel}>
+                  <MyIcon name={selectFileIcon as any} w={'20px'} h={'20px'} color={'#707070'} />
+                </MyTooltip>
+                <File onSelect={(files) => onSelectFile({ files })} />
+              </Flex>
+            )}
+
+            {/* Voice input button */}
+            {whisperConfig?.open && !inputValue && (
+              <Flex
+                alignItems={'center'}
+                justifyContent={'center'}
+                w={'36px'}
+                h={'36px'}
+                p={'8px'}
+                borderRadius={'12px'}
+                cursor={'pointer'}
+                flex={'none'}
+                order={1}
+                _hover={{ bg: 'rgba(0, 0, 0, 0.04)' }}
                 onClick={() => {
                   VoiceInputRef.current?.onSpeak?.();
                 }}
               >
-                <MyIcon
-                  name={'core/chat/recordFill'}
-                  width={['22px', '25px']}
-                  height={['22px', '25px']}
-                  color={'myGray.600'}
-                />
+                <MyTooltip label={t('common:core.chat.Record')}>
+                  <MyIcon name={'core/chat/recordFill'} w={'20px'} h={'20px'} color={'#707070'} />
+                </MyTooltip>
               </Flex>
-            </MyTooltip>
-          )}
+            )}
+          </Flex>
 
-          {/* send and stop icon */}
+          {/* Divider Container */}
+          <Flex alignItems={'center'} pr={'8px'} w={'8px'} h={'16px'} flex={'none'} order={1}>
+            <Box
+              w={'16px'}
+              h={'2px'}
+              bg={'#F0F1F6'}
+              transform={'rotate(90deg)'}
+              flex={'none'}
+              order={0}
+            />
+          </Flex>
+
+          {/* Send Button Container */}
           <Flex
             alignItems={'center'}
-            justifyContent={'center'}
-            flexShrink={0}
-            h={['28px', '32px']}
-            w={['28px', '32px']}
-            borderRadius={'md'}
-            bg={isChatting ? '' : !havInput || hasFileUploading ? '#E5E5E5' : 'primary.500'}
-            cursor={havInput ? 'pointer' : 'not-allowed'}
-            lineHeight={1}
-            onClick={() => {
-              if (isChatting) {
-                return onStop();
-              }
-              return handleSend();
-            }}
+            w={'36px'}
+            h={'36px'}
+            borderRadius={'12px'}
+            flex={'none'}
+            order={2}
           >
-            {isChatting ? (
-              <MyIcon
-                animation={'zoomStopIcon 0.4s infinite alternate'}
-                width={['22px', '25px']}
-                height={['22px', '25px']}
-                cursor={'pointer'}
-                name={'stop'}
-                color={'gray.500'}
-              />
-            ) : (
-              <MyTooltip label={t('common:core.chat.Send Message')}>
+            <Flex
+              alignItems={'center'}
+              justifyContent={'center'}
+              w={'36px'}
+              h={'36px'}
+              p={'8px'}
+              bg={
+                isChatting
+                  ? 'rgba(17, 24, 36, 0.1)'
+                  : !havInput || hasFileUploading
+                    ? 'rgba(17, 24, 36, 0.1)'
+                    : 'primary.500'
+              }
+              borderRadius={'12px'}
+              cursor={havInput ? 'pointer' : 'not-allowed'}
+              flex={'none'}
+              order={0}
+              onClick={() => {
+                if (isChatting) {
+                  return onStop();
+                }
+                return handleSend();
+              }}
+            >
+              {isChatting ? (
                 <MyIcon
-                  name={'core/chat/sendFill'}
-                  width={['18px', '20px']}
-                  height={['18px', '20px']}
+                  animation={'zoomStopIcon 0.4s infinite alternate'}
+                  w={'20px'}
+                  h={'20px'}
+                  cursor={'pointer'}
+                  name={'stop'}
                   color={'white'}
                 />
-              </MyTooltip>
-            )}
+              ) : (
+                <MyTooltip label={t('common:core.chat.Send Message')}>
+                  <MyIcon name={'core/chat/sendFill'} w={'20px'} h={'20px'} color={'white'} />
+                </MyTooltip>
+              )}
+            </Flex>
           </Flex>
         </Flex>
       </Flex>
@@ -332,12 +366,14 @@ const ChatInput = ({
         }
       }}
     >
+      {/* Real Chat Input */}
       <Box
+        minH={['132px', '150px']}
         pt={fileList.length > 0 ? '0' : ['14px', '18px']}
         pb={['14px', '18px']}
         position={'relative'}
         boxShadow={`0px 5px 16px -4px rgba(19, 51, 107, 0.08)`}
-        borderRadius={['none', 'lg']}
+        borderRadius={['none', '20px']}
         bg={'white'}
         overflow={'display'}
         {...(isPc
