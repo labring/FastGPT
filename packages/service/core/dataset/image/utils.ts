@@ -81,6 +81,7 @@ export const authDatasetImagePreviewUrl = (token?: string) =>
   });
 
 export const clearDatasetImages = async (datasetIds: string[]) => {
+  if (datasetIds.length === 0) return;
   const images = await MongoDatasetImageSchema.find(
     {
       'metadata.datasetId': { $in: datasetIds.map((item) => String(item)) }
@@ -91,6 +92,7 @@ export const clearDatasetImages = async (datasetIds: string[]) => {
 };
 
 export const clearCollectionImages = async (collectionIds: string[]) => {
+  if (collectionIds.length === 0) return;
   const images = await MongoDatasetImageSchema.find(
     {
       'metadata.collectionId': { $in: collectionIds.map((item) => String(item)) }

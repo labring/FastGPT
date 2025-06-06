@@ -39,7 +39,6 @@ import {
   getLLMMaxChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { deleteDatasetImage } from '../image/controller';
 import { clearCollectionImages, removeDatasetImageExpiredTime } from '../image/utils';
 
 export const createCollectionAndInsertData = async ({
@@ -414,10 +413,14 @@ export async function delCollection({
       clearCollectionImages(collectionIds),
       // Delete images if needed
       ...(delImg
-        ? collections
-            .map((item) => item?.metadata?.relatedImgId || '')
-            .filter(Boolean)
-            .map((imageId) => deleteDatasetImage(imageId))
+        ? [
+            delImgByRelatedId({
+              teamId,
+              relateIds: collections
+                .map((item) => item?.metadata?.relatedImgId || '')
+                .filter(Boolean)
+            })
+          ]
         : []),
       // Delete files if needed
       ...(delFile
