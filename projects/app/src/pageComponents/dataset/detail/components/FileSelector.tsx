@@ -140,13 +140,6 @@ const FileSelector = ({
       }
     } else if (firstEntry?.isFile) {
       const files = Array.from(e.dataTransfer.files);
-      let isErr = files.some((item) => item.type === '');
-      if (isErr) {
-        return toast({
-          title: t('file:upload_error_description'),
-          status: 'error'
-        });
-      }
 
       onSelectFile(files.filter((item) => filterTypeReg.test(item.name)));
     } else {
