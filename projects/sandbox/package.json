@@ -25,7 +25,7 @@
     "@nestjs/platform-fastify": "^10.3.8",
     "@nestjs/swagger": "^7.3.1",
     "dayjs": "^1.11.7",
-    "fastify": "^4.27.0",
+    "fastify": "^4.29.1",
     "isolated-vm": "^4.7.2",
     "node-gyp": "^10.1.0",
     "reflect-metadata": "^0.2.0",
