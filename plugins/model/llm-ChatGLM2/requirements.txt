@@ -6,6 +6,6 @@ sentence_transformers==2.2.2
 sse_starlette==1.6.5
 starlette==0.27.0
 tiktoken==0.4.0
-torch==2.6.0
+torch==2.7.1
 transformers==4.50.0
 uvicorn==0.23.2
