@@ -1,4 +1,4 @@
-import { readFileContentFromMongo } from '@fastgpt/service/common/file/gridfs/controller';
+import { getFileById } from '@fastgpt/service/common/file/gridfs/controller';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { type FileIdCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
@@ -9,6 +9,7 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type CreateCollectionResponse } from '@/global/core/dataset/api';
 import { deleteRawTextBuffer } from '@fastgpt/service/common/buffer/rawText/controller';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 async function handler(
   req: ApiRequestProps<FileIdCreateDatasetCollectionParams>
@@ -24,17 +25,19 @@ async function handler(
   });
 
   // 1. read file
-  const { rawText, filename } = await readFileContentFromMongo({
-    teamId,
-    tmbId,
+  const file = await getFileById({
     bucketName: BucketNameEnum.dataset,
-    fileId,
-    customPdfParse
+    fileId
   });
+
+  if (!file) {
+    return Promise.reject(CommonErrEnum.fileNotFound);
+  }
+
+  const filename = file.filename;
 
   const { collectionId, insertResults } = await createCollectionAndInsertData({
     dataset,
-    rawText,
     createCollectionParams: {
       ...body,
       teamId,

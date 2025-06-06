@@ -18,6 +18,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getWebLLMModel } from '@/web/common/system/utils';
+import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
 
 type DatasetPageContextType = {
   datasetId: string;
@@ -103,27 +104,7 @@ export const DatasetPageContextProvider = ({
         ...data,
         agentModel: data.agentModel ? getWebLLMModel(data.agentModel) : state.agentModel,
         vlmModel: data.vlmModel ? getWebLLMModel(data.vlmModel) : state.vlmModel,
-        apiServer: data.apiServer
-          ? {
-              baseUrl: data.apiServer.baseUrl,
-              authorization: '',
-              basePath: data.apiServer.basePath
-            }
-          : state.apiServer,
-        yuqueServer: data.yuqueServer
-          ? {
-              userId: data.yuqueServer.userId,
-              token: '',
-              basePath: data.yuqueServer.basePath
-            }
-          : state.yuqueServer,
-        feishuServer: data.feishuServer
-          ? {
-              appId: data.feishuServer.appId,
-              appSecret: '',
-              folderToken: data.feishuServer.folderToken
-            }
-          : state.feishuServer
+        apiDatasetServer: filterApiDatasetServerPublicData(data.apiDatasetServer)
       }));
     }
   };

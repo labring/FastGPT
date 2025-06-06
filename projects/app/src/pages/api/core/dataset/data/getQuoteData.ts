@@ -13,7 +13,7 @@ import { i18nT } from '@fastgpt/web/i18n/utils';
 export type GetQuoteDataResponse = {
   collection: DatasetCollectionSchemaType;
   q: string;
-  a: string;
+  a?: string;
 };
 
 export type GetQuoteDataProps =

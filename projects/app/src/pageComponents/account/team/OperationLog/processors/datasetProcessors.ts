@@ -1,5 +1,4 @@
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
-import { createSpecialProcessor } from './commonProcessor';
 
 export const processUpdateDatasetCollaboratorSpecific = (metadata: any) => {
   const permissionValue = parseInt(metadata.permission, 10);
@@ -12,6 +11,6 @@ export const processUpdateDatasetCollaboratorSpecific = (metadata: any) => {
   };
 };
 
-export const createDatasetProcessors = () => ({
-  UPDATE_DATASET_COLLABORATOR: createSpecialProcessor(processUpdateDatasetCollaboratorSpecific)
-});
+export const createDatasetProcessors = {
+  UPDATE_DATASET_COLLABORATOR: processUpdateDatasetCollaboratorSpecific
+};

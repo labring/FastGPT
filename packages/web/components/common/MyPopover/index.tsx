@@ -43,11 +43,11 @@ const MyPopover = ({
       initialFocusRef={firstFieldRef}
       onOpen={() => {
         onOpen();
-        onOpenFunc && onOpenFunc();
+        onOpenFunc?.();
       }}
       onClose={() => {
         onClose();
-        onCloseFunc && onCloseFunc();
+        onCloseFunc?.();
       }}
       placement={placement}
       offset={offset}

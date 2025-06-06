@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Menu,
   MenuList,
@@ -18,9 +18,20 @@ import { useSystem } from '../../../hooks/useSystem';
 import Avatar from '../Avatar';
 
 export type MenuItemType = 'primary' | 'danger' | 'gray' | 'grayBg';
-
 export type MenuSizeType = 'sm' | 'md' | 'xs' | 'mini';
 
+export type MenuItemData = {
+  label?: string;
+  children: Array<{
+    isActive?: boolean;
+    type?: MenuItemType;
+    icon?: IconNameType | string;
+    label: string | React.ReactNode;
+    description?: string;
+    onClick?: () => any;
+    menuItemStyles?: MenuItemProps;
+  }>;
+};
 export type Props = {
   width?: number | string;
   offset?: [number, number];
@@ -29,18 +40,7 @@ export type Props = {
   size?: MenuSizeType;
 
   placement?: PlacementWithLogical;
-  menuList: {
-    label?: string;
-    children: {
-      isActive?: boolean;
-      type?: MenuItemType;
-      icon?: IconNameType | string;
-      label: string | React.ReactNode;
-      description?: string;
-      onClick?: () => any;
-      menuItemStyles?: MenuItemProps;
-    }[];
-  }[];
+  menuList: MenuItemData[];
 };
 
 const typeMapStyle: Record<MenuItemType, { styles: MenuItemProps; iconColor?: string }> = {

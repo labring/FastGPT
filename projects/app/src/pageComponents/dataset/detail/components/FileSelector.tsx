@@ -21,19 +21,24 @@ const FileSelector = ({
   selectFiles,
   setSelectFiles,
   maxCount = 1000,
+  maxSize,
+  FileTypeNode,
   ...props
 }: {
   fileType: string;
   selectFiles: SelectFileItemType[];
-  setSelectFiles: React.Dispatch<React.SetStateAction<SelectFileItemType[]>>;
+  setSelectFiles: (files: SelectFileItemType[]) => void;
   maxCount?: number;
+  maxSize?: string;
+  FileTypeNode?: React.ReactNode;
 } & FlexProps) => {
   const { t } = useTranslation();
 
   const { toast } = useToast();
   const { feConfigs } = useSystemStore();
 
-  const maxSize = (feConfigs?.uploadFileMaxSize || 1024) * 1024 * 1024;
+  const systemMaxSize = (feConfigs?.uploadFileMaxSize || 1024) * 1024 * 1024;
+  const displayMaxSize = maxSize || formatFileSize(systemMaxSize);
 
   const { File, onOpen } = useSelectFile({
     fileType,
@@ -62,11 +67,11 @@ const FileSelector = ({
         name: file.name,
         size: formatFileSize(file.size)
       }));
-      setSelectFiles((state) => {
-        return [...fileList, ...state].slice(0, maxCount);
-      });
+
+      const newFiles = [...fileList, ...selectFiles].slice(0, maxCount);
+      setSelectFiles(newFiles);
     },
-    [maxCount, setSelectFiles]
+    [maxCount, selectFiles, setSelectFiles]
   );
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
@@ -186,27 +191,33 @@ const FileSelector = ({
       <MyIcon name={'common/uploadFileFill'} w={'32px'} />
       {isMaxSelected ? (
         <>
-          <Box color={'myGray.500'} fontSize={'xs'}>
+          <Box fontWeight={'500'} fontSize={'sm'}>
             {t('file:reached_max_file_count')}
           </Box>
         </>
       ) : (
         <>
-          <Box fontWeight={'bold'}>
+          <Box fontWeight={'500'} fontSize={'sm'}>
             {isDragging
               ? t('file:release_the_mouse_to_upload_the_file')
               : t('file:select_and_drag_file_tip')}
           </Box>
-          {/* file type */}
-          <Box color={'myGray.500'} fontSize={'xs'}>
-            {t('file:support_file_type', { fileType })}
-          </Box>
-          <Box color={'myGray.500'} fontSize={'xs'}>
-            {/* max count */}
-            {maxCount && t('file:support_max_count', { maxCount })}
-            {/* max size */}
-            {maxSize && t('file:support_max_size', { maxSize: formatFileSize(maxSize) })}
-          </Box>
+          {/* file type, max count, max size */}
+          <>
+            {FileTypeNode ? (
+              FileTypeNode
+            ) : (
+              <Box color={'myGray.500'} fontSize={'xs'}>
+                {t('file:support_file_type', { fileType })}
+              </Box>
+            )}
+            <Box color={'myGray.500'} fontSize={'xs'}>
+              {/* max count */}
+              {maxCount && <>{t('file:support_max_count', { maxCount })}, </>}
+              {/* max size */}
+              {t('file:support_max_size', { maxSize: displayMaxSize })}
+            </Box>
+          </>
 
           <File onSelect={(files) => onSelectFile(files)} />
         </>

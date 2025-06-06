@@ -28,6 +28,7 @@ import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { datasetSearchQueryExtension } from './utils';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { addLog } from '../../../common/system/log';
+import { formatDatasetDataValue } from '../data/controller';
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
@@ -174,6 +175,12 @@ export async function searchDatasetData(
     datasetIds = [],
     collectionFilterMatch
   } = props;
+
+  // Constants data
+  const datasetDataSelectField =
+    '_id datasetId collectionId updateTime q a imageId chunkIndex indexes';
+  const datsaetCollectionSelectField =
+    '_id name fileId rawLink apiFileId externalFileId externalFileUrl';
 
   /* init params */
   searchMode = DatasetSearchModeMap[searchMode] ? searchMode : DatasetSearchModeEnum.embedding;
@@ -463,14 +470,14 @@ export async function searchDatasetData(
           collectionId: { $in: collectionIdList },
           'indexes.dataId': { $in: results.map((item) => item.id?.trim()) }
         },
-        '_id datasetId collectionId updateTime q a chunkIndex indexes',
+        datasetDataSelectField,
         { ...readFromSecondary }
       ).lean(),
       MongoDatasetCollection.find(
         {
           _id: { $in: collectionIdList }
         },
-        '_id name fileId rawLink apiFileId externalFileId externalFileUrl',
+        datsaetCollectionSelectField,
         { ...readFromSecondary }
       ).lean()
     ]);
@@ -494,8 +501,13 @@ export async function searchDatasetData(
         const result: SearchDataResponseItemType = {
           id: String(data._id),
           updateTime: data.updateTime,
-          q: data.q,
-          a: data.a,
+          ...formatDatasetDataValue({
+            teamId,
+            datasetId: data.datasetId,
+            q: data.q,
+            a: data.a,
+            imageId: data.imageId
+          }),
           chunkIndex: data.chunkIndex,
           datasetId: String(data.datasetId),
           collectionId: String(data.collectionId),
@@ -597,14 +609,14 @@ export async function searchDatasetData(
           {
             _id: { $in: searchResults.map((item) => item.dataId) }
           },
-          '_id datasetId collectionId updateTime q a chunkIndex indexes',
+          datasetDataSelectField,
           { ...readFromSecondary }
         ).lean(),
         MongoDatasetCollection.find(
           {
             _id: { $in: searchResults.map((item) => item.collectionId) }
           },
-          '_id name fileId rawLink apiFileId externalFileId externalFileUrl',
+          datsaetCollectionSelectField,
           { ...readFromSecondary }
         ).lean()
       ]);
@@ -630,8 +642,13 @@ export async function searchDatasetData(
               datasetId: String(data.datasetId),
               collectionId: String(data.collectionId),
               updateTime: data.updateTime,
-              q: data.q,
-              a: data.a,
+              ...formatDatasetDataValue({
+                teamId,
+                datasetId: data.datasetId,
+                q: data.q,
+                a: data.a,
+                imageId: data.imageId
+              }),
               chunkIndex: data.chunkIndex,
               indexes: data.indexes,
               ...getCollectionSourceData(collection),

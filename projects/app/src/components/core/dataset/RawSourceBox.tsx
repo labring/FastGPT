@@ -3,20 +3,22 @@ import { Box, type BoxProps } from '@chakra-ui/react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
-import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
+import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { readCollectionSourceBody } from '@/pages/api/core/dataset/collection/read';
+import type { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 type Props = BoxProps &
   readCollectionSourceBody & {
+    collectionType?: DatasetCollectionTypeEnum;
     sourceName?: string;
-    collectionId: string;
     sourceId?: string;
     canView?: boolean;
   };
 
 const RawSourceBox = ({
   sourceId,
+  collectionType,
   sourceName = '',
   canView = true,
 
@@ -35,7 +37,10 @@ const RawSourceBox = ({
 
   const canPreview = !!sourceId && canView;
 
-  const icon = useMemo(() => getSourceNameIcon({ sourceId, sourceName }), [sourceId, sourceName]);
+  const icon = useMemo(
+    () => getCollectionIcon({ type: collectionType, sourceId, name: sourceName }),
+    [collectionType, sourceId, sourceName]
+  );
   const read = getCollectionSourceAndOpen({
     collectionId,
     appId,

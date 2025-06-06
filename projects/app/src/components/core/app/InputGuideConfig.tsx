@@ -240,7 +240,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
       onSuccess() {
         setNewData(undefined);
       },
-      errorToast: t('common:error.Create failed')
+      errorToast: t('common:create_failed')
     }
   );
 

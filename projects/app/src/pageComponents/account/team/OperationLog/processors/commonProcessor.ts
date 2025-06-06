@@ -10,13 +10,11 @@ export interface CommonMetadataFields {
 export const defaultMetadataProcessor = (metadata: CommonMetadataFields, t: any): any => {
   const result = { ...metadata };
 
-  const translatableFields = ['appType', 'datasetType', 'operationName', 'itemName'];
-
-  Object.entries(metadata)
-    .filter(([key, value]) => translatableFields.includes(key) && value)
-    .forEach(([key, value]) => {
+  Object.entries(metadata).forEach(([key, value]) => {
+    if (typeof value === 'string' && value.includes(':')) {
       result[key] = t(value as any);
-    });
+    }
+  });
 
   if (metadata.newItemNames) {
     if (Array.isArray(metadata.newItemNames)) {
@@ -32,12 +30,4 @@ export const defaultMetadataProcessor = (metadata: CommonMetadataFields, t: any)
   }
 
   return result;
-};
-
-export const createSpecialProcessor = (specificProcessor: (metadata: any) => any) => {
-  return (metadata: any, t: any) => {
-    let processedMetadata = defaultMetadataProcessor(metadata, t);
-    processedMetadata = specificProcessor(processedMetadata);
-    return processedMetadata;
-  };
 };

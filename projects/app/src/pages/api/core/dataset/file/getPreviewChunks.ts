@@ -121,11 +121,9 @@ async function handler(
     type,
     sourceId,
     selector,
-    apiServer: dataset.apiServer,
-    feishuServer: dataset.feishuServer,
-    yuqueServer: dataset.yuqueServer,
     externalFileId,
-    customPdfParse
+    customPdfParse,
+    apiDatasetServer: dataset.apiDatasetServer
   });
 
   const chunks = rawText2Chunks({

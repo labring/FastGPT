@@ -37,8 +37,7 @@ const DatasetDataSchema = new Schema({
     required: true
   },
   a: {
-    type: String,
-    default: ''
+    type: String
   },
   history: {
     type: [
@@ -74,6 +73,9 @@ const DatasetDataSchema = new Schema({
     default: []
   },
 
+  imageId: {
+    type: String
+  },
   updateTime: {
     type: Date,
     default: () => new Date()
