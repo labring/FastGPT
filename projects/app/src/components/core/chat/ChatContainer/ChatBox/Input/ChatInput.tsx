@@ -281,7 +281,7 @@ const ChatInput = ({
     [
       File,
       TextareaDom,
-      fileList,
+      fileList.length,
       handleSend,
       hasFileUploading,
       havInput,
@@ -296,7 +296,8 @@ const ChatInput = ({
       setValue,
       showSelectFile,
       showSelectImg,
-      t
+      t,
+      whisperConfig?.open
     ]
   );
 
@@ -335,13 +336,13 @@ const ChatInput = ({
         pt={fileList.length > 0 ? '0' : ['14px', '18px']}
         pb={['14px', '18px']}
         position={'relative'}
-        boxShadow={`0 0 10px rgba(0,0,0,0.2)`}
-        borderRadius={['none', 'md']}
+        boxShadow={`0px 5px 16px -4px rgba(19, 51, 107, 0.08)`}
+        borderRadius={['none', 'lg']}
         bg={'white'}
         overflow={'display'}
         {...(isPc
           ? {
-              border: '1px solid',
+              border: '0.5px solid rgba(0, 0, 0, 0.13)',
               borderColor: 'rgba(0,0,0,0.12)'
             }
           : {
