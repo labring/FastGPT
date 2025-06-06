@@ -18,7 +18,10 @@ const rawEncodingList = [
 ];
 
 // 加载源文件内容
-export const readFileRawText = ({ buffer, encoding }: ReadRawTextByBuffer): ReadFileResponse => {
+export const readFileRawText = async ({
+  buffer,
+  encoding
+}: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
   const content = (() => {
     try {
       if (rawEncodingList.includes(encoding)) {
