@@ -4,7 +4,7 @@ import { readFileRawText } from './rawText';
 
 // 加载源文件内容
 export const readCsvRawText = async (params: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
-  const { rawText } = readFileRawText(params);
+  const { rawText } = await readFileRawText(params);
 
   const csvArr = Papa.parse(rawText).data as string[][];
 
