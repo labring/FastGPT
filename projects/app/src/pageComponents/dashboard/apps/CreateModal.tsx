@@ -312,6 +312,11 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
       </ModalBody>
 
       <ModalFooter gap={4}>
+        {!isTemplateMode && (
+          <Button variant={'primary'} onClick={handleSubmit((data) => onclickCreate(data))}>
+            {t('common:Confirm')}
+          </Button>
+        )}
         <Button variant={'whiteBase'} onClick={onClose}>
           {t('common:Close')}
         </Button>
