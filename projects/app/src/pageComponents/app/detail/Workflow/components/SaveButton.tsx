@@ -1,4 +1,4 @@
-import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, HStack, useDisclosure } from '@chakra-ui/react';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import React, { useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -59,9 +59,9 @@ const SaveButton = ({
         <Box p={1.5}>
           <MyBox
             display={'flex'}
-            size={'md'}
-            px={1}
-            py={1.5}
+            alignItems={'center'}
+            gap={2}
+            p={1.5}
             rounded={'4px'}
             _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
             cursor={'pointer'}
@@ -78,12 +78,11 @@ const SaveButton = ({
               setIsSave(false);
             }}
           >
-            <MyIcon name={'core/workflow/upload'} w={'16px'} mr={2} />
+            <MyIcon name={'core/workflow/upload'} w={'1rem'} />
             <Box fontSize={'sm'}>{t('common:core.workflow.Save to cloud')}</Box>
           </MyBox>
-          <Flex
-            px={1}
-            py={1.5}
+          <HStack
+            p={1.5}
             rounded={'4px'}
             _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
             cursor={'pointer'}
@@ -96,7 +95,7 @@ const SaveButton = ({
               setIsSave(false);
             }}
           >
-            <MyIcon name={'core/workflow/publish'} w={'16px'} mr={2} />
+            <MyIcon name={'core/workflow/publish'} w={'1rem'} />
             <Box fontSize={'sm'}>{t('common:core.workflow.Save and publish')}</Box>
             {isSaveAndPublishModalOpen && (
               <SaveAndPublishModal
@@ -105,7 +104,7 @@ const SaveButton = ({
                 onClickSave={onClickSave}
               />
             )}
-          </Flex>
+          </HStack>
         </Box>
       )}
     </MyPopover>
