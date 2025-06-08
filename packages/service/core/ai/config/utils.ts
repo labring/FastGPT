@@ -103,7 +103,7 @@ export const loadSystemModels = async (init = false) => {
 
     // Load system model from local
     const modelsPath = getModelConfigBaseUrl();
-    const providerList = fs.readdirSync(modelsPath) as string[];
+    const providerList = await fs.promises.readdir(modelsPath);
     await Promise.all(
       providerList.map(async (name) => {
         const fileContent = (await import(`./provider/${name}`))?.default as {
