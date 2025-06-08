@@ -10,7 +10,7 @@ import { type PostPublishAppProps } from '@/global/core/app/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { rewriteAppWorkflowToSimple } from '@fastgpt/service/core/app/utils';
+import { rewriteAppWorkflowToSimple, storeHeaderAuthSecret } from '@fastgpt/service/core/app/utils';
 import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
 import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
 import { getI18nAppType } from '@fastgpt/service/support/operationLog/util';
@@ -31,6 +31,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
     isPlugin: app.type === AppTypeEnum.plugin
   });
 
+  await storeHeaderAuthSecret(formatNodes, appId);
   await rewriteAppWorkflowToSimple(formatNodes);
 
   if (autoSave) {

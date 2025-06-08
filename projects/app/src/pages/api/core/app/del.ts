@@ -21,8 +21,8 @@ import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { removeImageByPath } from '@fastgpt/service/common/file/image/controller';
 import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
 import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getI18nAppType } from '@fastgpt/service/support/operationLog/util';
+import { MongoTeamSecret } from '@fastgpt/service/support/teamSecret/schema';
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
 
@@ -115,6 +115,10 @@ export const onDelOneApp = async ({
         resourceType: PerResourceTypeEnum.app,
         teamId,
         resourceId: appId
+      }).session(session);
+
+      await MongoTeamSecret.deleteMany({
+        sourceId: { $regex: `^${appId}` }
       }).session(session);
 
       // delete app

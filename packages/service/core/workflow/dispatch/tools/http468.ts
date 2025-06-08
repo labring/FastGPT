@@ -29,6 +29,7 @@ import { createFileToken } from '../../../../support/permission/controller';
 import { JSONPath } from 'jsonpath-plus';
 import type { SystemPluginSpecialResponse } from '../../../../../plugins/type';
 import json5 from 'json5';
+import { formatHeaderAuth } from '../../../app/utils';
 
 type PropsArrType = {
   key: string;
@@ -83,6 +84,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       system_httpFormBody: httpFormBody = [],
       system_httpContentType: httpContentType = ContentTypes.json,
       system_httpTimeout: httpTimeout = 60,
+      system_httpAuth: httpAuth,
       [NodeInputKeyEnum.addInputParam]: dynamicInput,
       ...body
     }
@@ -313,17 +315,21 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
 
   httpReqUrl = replaceStringVariables(httpReqUrl);
 
-  // parse header
-  const headers = await (() => {
+  const headers = await (async () => {
     try {
       const contentType = contentTypeMap[httpContentType];
       if (contentType) {
         httpHeader = [{ key: 'Content-Type', value: contentType, type: 'string' }, ...httpHeader];
       }
 
-      if (!httpHeader || httpHeader.length === 0) return {};
-      // array
-      return httpHeader.reduce((acc: Record<string, string>, item) => {
+      if (httpAuth && Object.keys(httpAuth).length > 0) {
+        const authHeaders = await formatHeaderAuth(httpAuth);
+        if (Array.isArray(authHeaders) && authHeaders.length > 0) {
+          httpHeader = [...authHeaders, ...httpHeader];
+        }
+      }
+
+      return [...(httpHeader || [])].reduce((acc: Record<string, string>, item) => {
         const key = replaceStringVariables(item.key);
         const value = replaceStringVariables(item.value);
         acc[key] = valueTypeFormat(value, WorkflowIOValueTypeEnum.string);

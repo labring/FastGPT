@@ -8,6 +8,12 @@ import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { addTeamSecret, getTeamSecretsByIds } from '../../support/teamSecret/controller';
+import {
+  HeaderAuthTypeEnum,
+  TeamSecretTypeEnum
+} from '@fastgpt/global/common/teamSecret/constants';
+import type { HeaderAuthValueType, TeamSecretType } from '@fastgpt/global/common/teamSecret/type';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
   teamId,
@@ -82,8 +88,6 @@ export async function rewriteAppWorkflowToDetail({
       }
     })
   );
-
-  /* Add node(App Type) versionlabel and latest sign ==== */
 
   // Get all dataset ids from nodes
   nodes.forEach((node) => {
@@ -201,3 +205,63 @@ export async function rewriteAppWorkflowToSimple(formatNodes: StoreNodeItemType[
     });
   });
 }
+
+export async function storeHeaderAuthSecret(formatNodes: StoreNodeItemType[], appId: string) {
+  const secrets = formatNodes
+    .map((node) => {
+      if (node.flowNodeType !== FlowNodeTypeEnum.httpRequest468) return;
+
+      const httpAuth = node.inputs.find((item) => item.key === NodeInputKeyEnum.httpAuth);
+      if (!httpAuth || !httpAuth.value) return;
+
+      const authConfig = httpAuth.value;
+      return authConfig;
+    })
+    .filter(Boolean);
+
+  await addTeamSecret({
+    teamSecret: secrets,
+    type: TeamSecretTypeEnum.headersAuth,
+    appId
+  });
+
+  formatNodes.forEach((node) => {
+    if (node.flowNodeType !== FlowNodeTypeEnum.httpRequest468) return;
+
+    const httpAuth = node.inputs.find((item) => item.key === NodeInputKeyEnum.httpAuth);
+    if (!httpAuth || !httpAuth.value) return;
+
+    Object.keys(httpAuth.value).forEach((key) => {
+      if (httpAuth.value[key]?.value) {
+        httpAuth.value[key].value = '';
+      }
+    });
+  });
+}
+
+export const formatHeaderAuth = async (headerAuth: { [key: string]: HeaderAuthValueType }) => {
+  if (!headerAuth || Object.keys(headerAuth).length === 0) {
+    return [];
+  }
+
+  const secretIds = Object.entries(headerAuth).map(([key, value]) => value.secretId);
+  const secrets = await getTeamSecretsByIds(secretIds);
+
+  return Object.entries(headerAuth).map(([key, value]) => {
+    const secret = secrets.find((item: TeamSecretType) => item.sourceId === value.secretId);
+    const formatKey =
+      key === HeaderAuthTypeEnum.Bearer || key === HeaderAuthTypeEnum.Basic ? 'Authorization' : key;
+    const formatValue =
+      key === HeaderAuthTypeEnum.Bearer
+        ? `Bearer ${secret?.value || value.value || ''}`
+        : key === HeaderAuthTypeEnum.Basic
+          ? `Basic ${secret?.value || value.value || ''}`
+          : secret?.value || value.value || '';
+
+    return {
+      key: formatKey,
+      value: formatValue,
+      type: 'string'
+    };
+  });
+};

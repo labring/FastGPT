@@ -41,6 +41,7 @@ const FileModeSelector = ({ onClose }: { onClose: () => void }) => {
           ]}
           value={value}
           onChange={setValue}
+          fontWeight={'medium'}
         />
       </ModalBody>
       <ModalFooter>

@@ -8,7 +8,6 @@ import RenderOutput from '../render/RenderOutput';
 import {
   Box,
   Flex,
-  Input,
   Table,
   Thead,
   Tbody,
@@ -50,7 +49,9 @@ import { getEditorVariables } from '../../../utils';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { WorkflowNodeEdgeContext } from '../../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { formatAuthData, parseAuthData } from '@/components/support/teamSecrets/HeaderAuthConfig';
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
+const HeaderAuthConfig = dynamic(() => import('@/components/support/teamSecrets/HeaderAuthConfig'));
 
 const defaultFormBody = {
   key: NodeInputKeyEnum.httpFormBody,
@@ -271,6 +272,7 @@ export function RenderHttpProps({
 
   const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { feConfigs } = useSystemStore();
@@ -334,6 +336,28 @@ export function RenderHttpProps({
           <QuestionTip
             ml={1}
             label={t('common:core.module.http.Props tip', { variable: variableText })}
+          />
+          <Flex flex={1} />
+          <HeaderAuthConfig
+            headerAuthConfig={parseAuthData({
+              data: inputs.find((item) => item.key === NodeInputKeyEnum.httpAuth)?.value,
+              appId: appDetail?._id,
+              nodeId
+            })}
+            onSave={(data) => {
+              const formatedData = formatAuthData({ data, appId: appDetail?._id, nodeId });
+              onChangeNode({
+                nodeId,
+                type: 'updateInput',
+                key: NodeInputKeyEnum.httpAuth,
+                value: {
+                  ...(inputs.find(
+                    (item) => item.key === NodeInputKeyEnum.httpAuth
+                  ) as FlowNodeInputItemType),
+                  value: formatedData
+                }
+              });
+            }}
           />
         </Flex>
         <LightRowTabs<TabEnum>
@@ -400,10 +424,13 @@ export function RenderHttpProps({
       </Box>
     );
   }, [
+    appDetail?._id,
     contentType,
     formBody,
     headersLength,
+    inputs,
     nodeId,
+    onChangeNode,
     paramsLength,
     requestMethods,
     selectedTab,
