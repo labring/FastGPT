@@ -38,10 +38,12 @@
   },
   "lint-staged": {
     "./**/**/*.{ts,tsx,scss}": [
-      "npm run format-code",
-      "npm run lint:fix"
+      "pnpm format-code"
     ],
-    "./docSite/**/**/*.md": "npm run format-doc && npm run gen:llms"
+    "./**/**/*.{ts,tsx}": [
+      "pnpm lint:fix"
+    ],
+    "./docSite/**/**/*.md": "pnpm format-doc && pnpm gen:llms"
   },
   "resolutions": {
     "mdast-util-gfm-autolink-literal": "2.0.0"
