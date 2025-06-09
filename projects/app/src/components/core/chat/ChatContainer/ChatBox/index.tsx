@@ -68,6 +68,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 
+const WelcomePage = dynamic(() => import('./components/WelcomePage'));
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
@@ -959,10 +960,21 @@ const ChatBox = ({
         pb={3}
       >
         <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
+          {/* chat header */}
           {showEmpty && <Empty />}
-          {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
+          {!!welcomeText &&
+            !showEmpty &&
+            (!!variableList?.length || !!externalVariableList?.length) && (
+              <WelcomePage
+                welcomeText={welcomeText}
+                chatForm={chatForm}
+                chatStarted={chatStarted}
+                showExternalVariables={chatType === 'chat'}
+              />
+            )}
+          {/* {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />} */}
           {/* variable input */}
-          {(!!variableList?.length || !!externalVariableList?.length) && (
+          {/* {(!!variableList?.length || !!externalVariableList?.length) && (
             <Box id="variable-input">
               <VariableInput
                 chatStarted={chatStarted}
@@ -970,7 +982,7 @@ const ChatBox = ({
                 showExternalVariables={chatType === 'chat'}
               />
             </Box>
-          )}
+          )} */}
           {/* chat history */}
           <Box id={'history'}>
             {chatRecords.map((item, index) => (
