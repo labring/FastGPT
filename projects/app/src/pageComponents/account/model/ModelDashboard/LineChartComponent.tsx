@@ -62,7 +62,10 @@ const CustomTooltip = ({
             }
           })();
 
-          const displayValue = item.formatter ? item.formatter(value) : formatNumber(value);
+          const displayValue = (() => {
+            const val = item.formatter ? item.formatter(value) : formatNumber(value);
+            return val.toLocaleString();
+          })();
 
           return (
             <HStack key={index} fontSize={'sm'} _notLast={{ mb: 1 }}>
