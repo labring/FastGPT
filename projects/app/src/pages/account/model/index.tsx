@@ -34,7 +34,7 @@ const ModelProvider = () => {
             ? [
                 { label: t('account:channel'), value: 'channel' },
                 { label: t('account_model:log'), value: 'channel_log' },
-                { label: t('account_usage:dashboard'), value: 'account_model' }
+                { label: t('account_model:monitoring'), value: 'account_model' }
               ]
             : [])
         ]}

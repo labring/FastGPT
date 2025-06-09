@@ -1,14 +1,13 @@
-import React, { useState } from 'react';
-import { Box, useTheme } from '@chakra-ui/react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Box, HStack, useTheme } from '@chakra-ui/react';
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   type TooltipProps
 } from 'recharts';
 import { type NameType, type ValueType } from 'recharts/types/component/DefaultTooltipContent';
@@ -16,61 +15,29 @@ import { formatNumber } from '@fastgpt/global/common/math/tools';
 
 type XAxisConfig = {
   dataKey: string;
-  tick?: {
-    fontSize?: string;
-    color?: string;
-    fontWeight?: string;
-  };
-  padding?: {
-    left?: number;
-    right?: number;
-  };
-  tickMargin?: number;
-  tickSize?: number;
-  interval?: number;
-};
-
-type YAxisConfig = {
-  axisLine?: boolean;
-  tickSize?: number;
-  tickMargin?: number;
-  tick?: {
-    fontSize?: string;
-    color?: string;
-    fontWeight?: string;
-  };
 };
 
 type LineConfig = {
-  dataKey: string | ((data: any) => number);
+  dataKey: string;
   name: string;
   color: string;
-  strokeWidth?: number;
-  dot?: boolean;
+  gradient?: boolean;
 };
 
 type TooltipItem = {
   label: string;
-  dataKey?: string;
+  dataKey: string;
   color: string;
   formatter?: (value: number) => string;
   customValue?: (data: any) => number;
 };
 
 type LineChartComponentProps = {
-  data: any[];
-  title?: string;
-  xAxisConfig: XAxisConfig;
-  yAxisConfig?: YAxisConfig;
+  data: Record<string, any>[];
+  title: string;
+  HeaderRightChildren?: React.ReactNode;
   lines: LineConfig[];
   tooltipItems?: TooltipItem[];
-  height?: number;
-  margin?: {
-    top?: number;
-    right?: number;
-    left?: number;
-    bottom?: number;
-  };
 };
 
 const CustomTooltip = ({
@@ -82,41 +49,27 @@ const CustomTooltip = ({
 
   if (active && data && tooltipItems) {
     return (
-      <Box
-        bg={'white'}
-        p={3}
-        borderRadius={'md'}
-        border={'0.5px solid'}
-        borderColor={'myGray.200'}
-        boxShadow={
-          '0px 24px 48px -12px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.20)'
-        }
-      >
-        <Box fontSize={'mini'} color={'myGray.600'} mb={3}>
-          {data.date}
+      <Box bg={'white'} p={3} borderRadius={'md'} border={'base'} boxShadow={'sm'}>
+        <Box fontSize={'sm'} color={'myGray.900'} mb={2}>
+          {data.x}
         </Box>
         {tooltipItems.map((item, index) => {
-          let value: number;
-          if (item.customValue) {
-            value = item.customValue(data);
-          } else if (item.dataKey) {
-            value = data[item.dataKey] as number;
-          } else {
-            return null;
-          }
+          const value = (() => {
+            if (item.customValue) {
+              return item.customValue(data);
+            } else {
+              return data[item.dataKey];
+            }
+          })();
 
           const displayValue = item.formatter ? item.formatter(value) : formatNumber(value);
 
           return (
-            <Box
-              key={index}
-              fontSize={'14px'}
-              color={item.color}
-              fontWeight={'medium'}
-              mb={index === tooltipItems.length - 1 ? 0 : 1}
-            >
-              {`${item.label}: ${displayValue}`}
-            </Box>
+            <HStack key={index} fontSize={'sm'} _notLast={{ mb: 1 }}>
+              <Box w={2} h={2} borderRadius={'full'} bg={item.color} />
+              <Box>{item.label}</Box>
+              <Box>{displayValue}</Box>
+            </HStack>
           );
         })}
       </Box>
@@ -125,89 +78,89 @@ const CustomTooltip = ({
   return null;
 };
 
-const LineChartComponent: React.FC<LineChartComponentProps> = ({
+const LineChartComponent = ({
   data,
   title,
-  xAxisConfig,
-  yAxisConfig,
+  HeaderRightChildren,
   lines,
-  tooltipItems,
-  height = 424,
-  margin = { top: 10, right: 30, left: -12, bottom: 0 }
-}) => {
+  tooltipItems
+}: LineChartComponentProps) => {
   const theme = useTheme();
-  const [hiddenLines, setHiddenLines] = useState<Record<string, boolean>>({});
 
-  const defaultYAxisConfig = {
-    axisLine: false,
-    tickSize: 0,
-    tickMargin: 12,
-    tick: { fontSize: '12px', color: theme.colors.myGray['500'], fontWeight: '500' }
-  };
+  // Y-axis number formatter function
+  const formatYAxisNumber = useCallback((value: number): string => {
+    if (value >= 1000000) {
+      return value / 1000000 + 'M';
+    } else if (value >= 1000) {
+      return value / 1000 + 'K';
+    }
+    return value.toString();
+  }, []);
 
-  const finalYAxisConfig = yAxisConfig || defaultYAxisConfig;
+  // Generate gradient definitions
+  const gradientDefs = useMemo(() => {
+    return (
+      <defs>
+        {lines.map((line, index) => (
+          <linearGradient
+            key={`gradient-${line.color}`}
+            id={`gradient-${line.color}`}
+            x1="0"
+            y1="0"
+            x2="0"
+            y2="1"
+          >
+            <stop offset="0%" stopColor={line.color} stopOpacity={0.25} />
+            <stop offset="100%" stopColor={line.color} stopOpacity={0.01} />
+          </linearGradient>
+        ))}
+      </defs>
+    );
+  }, [lines]);
 
   return (
     <>
-      {title && (
-        <Box mb={4} fontSize={'mini'} color={'myGray.500'} fontWeight={'medium'}>
+      <HStack mb={4} justifyContent={'space-between'} alignItems={'flex-start'}>
+        <Box fontSize={'sm'} color={'myGray.900'} fontWeight={'medium'}>
           {title}
         </Box>
-      )}
-      <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={data} margin={margin}>
+        {HeaderRightChildren && HeaderRightChildren}
+      </HStack>
+      <ResponsiveContainer width="100%" height={'100%'}>
+        <AreaChart
+          data={data}
+          margin={{ top: 5, right: 30, left: 0, bottom: HeaderRightChildren ? 30 : 15 }}
+        >
+          {gradientDefs}
           <XAxis
-            dataKey={xAxisConfig.dataKey}
-            padding={xAxisConfig.padding}
-            tickMargin={xAxisConfig.tickMargin}
-            tickSize={xAxisConfig.tickSize}
-            tick={xAxisConfig.tick}
-            interval={
-              xAxisConfig.interval !== undefined
-                ? xAxisConfig.interval
-                : Math.max(Math.floor(data.length / 7), 0)
-            }
+            dataKey={'x'}
+            tickMargin={10}
+            tick={{ fontSize: '12px', color: theme.colors.myGray['500'], fontWeight: '500' }}
+            interval={'preserveStartEnd'}
           />
           <YAxis
-            axisLine={finalYAxisConfig.axisLine}
-            tickSize={finalYAxisConfig.tickSize}
-            tickMargin={finalYAxisConfig.tickMargin}
-            tick={finalYAxisConfig.tick}
+            axisLine={false}
+            tickSize={0}
+            tickMargin={10}
+            tick={{ fontSize: '12px', color: theme.colors.myGray['500'], fontWeight: '500' }}
+            interval={'preserveStartEnd'}
+            tickFormatter={formatYAxisNumber}
           />
           <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
           {tooltipItems && <Tooltip content={<CustomTooltip tooltipItems={tooltipItems} />} />}
-          <Legend
-            onClick={(e) => {
-              setHiddenLines((prev) => {
-                // Regarding the functional key
-                const matchedLine = lines.find((line) => line.name === e.value);
-                if (matchedLine) {
-                  const key =
-                    typeof matchedLine.dataKey === 'string'
-                      ? matchedLine.dataKey
-                      : matchedLine.name;
-                  return {
-                    ...prev,
-                    [key]: !prev[key]
-                  };
-                }
-                return prev;
-              });
-            }}
-          />
           {lines.map((line, index) => (
-            <Line
+            <Area
               key={index}
               type="monotone"
               name={line.name}
               dataKey={line.dataKey}
               stroke={line.color}
-              strokeWidth={line.strokeWidth || 2.5}
-              dot={line.dot !== undefined ? line.dot : false}
-              hide={hiddenLines[typeof line.dataKey === 'string' ? line.dataKey : line.name]}
+              strokeWidth={2}
+              fill={`url(#gradient-${line.color})`}
+              dot={false}
             />
           ))}
-        </LineChart>
+        </AreaChart>
       </ResponsiveContainer>
     </>
   );
