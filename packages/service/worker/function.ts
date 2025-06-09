@@ -5,10 +5,11 @@ import {
 } from '@fastgpt/global/common/string/textSplitter';
 import { runWorker, WorkerNameEnum } from './utils';
 import type { ReadFileResponse } from './readFile/type';
+import { isTestEnv } from '@fastgpt/global/common/system/constants';
 
 export const text2Chunks = (props: SplitProps) => {
   // Test env, not run worker
-  if (process.env.NODE_ENV === 'test') {
+  if (isTestEnv) {
     return splitText2Chunks(props);
   }
   return runWorker<SplitResponse>(WorkerNameEnum.text2Chunks, props);
