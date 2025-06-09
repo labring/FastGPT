@@ -1,10 +1,11 @@
 import axios, { type Method, type AxiosResponse } from 'axios';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
-import {
-  type ChannelInfoType,
-  type ChannelListResponseType,
-  type ChannelLogListItemType,
-  type CreateChannelProps
+import type {
+  DashboardDataItemType,
+  ChannelInfoType,
+  ChannelListResponseType,
+  ChannelLogListItemType,
+  CreateChannelProps
 } from '@/global/aiproxy/type';
 import type { ChannelStatusEnum } from '@/global/aiproxy/constants';
 
@@ -187,3 +188,23 @@ export const getLogDetail = (id: number) =>
     request_body: string;
     response_body: string;
   }>(`/logs/detail/${id}`);
+
+export const getDashboardV2 = (params: {
+  channel?: number;
+  start_timestamp?: number;
+  end_timestamp?: number;
+  timezone?: string;
+  timespan?: 'day' | 'hour';
+}) =>
+  GET<
+    {
+      timestamp: number;
+      models: DashboardDataItemType[];
+    }[]
+  >('/dashboardv2/', {
+    channel: params.channel,
+    start_timestamp: params.start_timestamp,
+    end_timestamp: params.end_timestamp,
+    timezone: params.timezone || 'Local',
+    timespan: params.timespan || 'day'
+  });

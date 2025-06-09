@@ -52,3 +52,13 @@ export type ChannelLogListItemType = {
   content?: string;
   retry_times?: number;
 };
+
+export type DashboardDataItemType = {
+  model: string;
+  request_count: number;
+  used_amount: number;
+  exception_count: number;
+  input_tokens?: number;
+  output_tokens?: number;
+  total_tokens?: number;
+};
