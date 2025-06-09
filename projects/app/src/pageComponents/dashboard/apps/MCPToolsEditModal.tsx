@@ -160,6 +160,8 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
               onSave={(data) => {
                 setValue('mcpData.headerAuth', data);
               }}
+              size={'xs'}
+              variant={'grayGhost'}
             />
           </Flex>
           <Flex alignItems={'center'} gap={2} mt={2}>

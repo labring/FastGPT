@@ -115,10 +115,14 @@ export const defaultHeaderAuthConfig: HeaderAuthConfigType = {
 
 const HeaderAuthConfig = ({
   headerAuthConfig,
-  onSave
+  onSave,
+  size = 'md',
+  variant = 'whiteBase'
 }: {
   headerAuthConfig: HeaderAuthConfigType;
   onSave: (data: HeaderAuthConfigType) => void;
+  size?: string;
+  variant?: string;
 }) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -195,7 +199,8 @@ const HeaderAuthConfig = ({
   return (
     <>
       <Button
-        variant={'whiteBase'}
+        variant={variant}
+        size={size}
         leftIcon={<MyIcon name={'common/setting'} w={4} />}
         onClick={onOpen}
       >
