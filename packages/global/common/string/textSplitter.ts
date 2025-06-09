@@ -1,10 +1,11 @@
 import { defaultMaxChunkSize } from '../../core/dataset/training/utils';
 import { getErrText } from '../error/utils';
+import { simpleText } from './tools';
 import { getTextValidLength } from './utils';
 
 export const CUSTOM_SPLIT_SIGN = '-----CUSTOM_SPLIT_SIGN-----';
 
-type SplitProps = {
+export type SplitProps = {
   text: string;
   chunkSize: number;
 
@@ -19,7 +20,7 @@ export type TextSplitProps = Omit<SplitProps, 'text' | 'chunkSize'> & {
   chunkSize?: number;
 };
 
-type SplitResponse = {
+export type SplitResponse = {
   chunks: string[];
   chars: number;
 };
@@ -474,7 +475,10 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
   });
 
   return {
-    chunks: splitResult.map((item) => item.chunks).flat(),
+    chunks: splitResult
+      .map((item) => item.chunks)
+      .flat()
+      .map((chunk) => simpleText(chunk)),
     chars: splitResult.reduce((sum, item) => sum + item.chars, 0)
   };
 };

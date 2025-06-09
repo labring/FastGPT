@@ -242,7 +242,7 @@ export const datasetParseQueue = async (): Promise<any> => {
     });
 
     // 4. Chunk split
-    const chunks = rawText2Chunks({
+    const chunks = await rawText2Chunks({
       rawText: resultText,
       chunkTriggerType: collection.chunkTriggerType,
       chunkTriggerMinSize: collection.chunkTriggerMinSize,

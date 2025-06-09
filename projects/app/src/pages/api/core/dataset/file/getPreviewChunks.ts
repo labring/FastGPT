@@ -98,7 +98,7 @@ async function handler(
     apiDatasetServer: dataset.apiDatasetServer
   });
 
-  const chunks = rawText2Chunks({
+  const chunks = await rawText2Chunks({
     rawText,
     chunkTriggerType: formatChunkSettings.chunkTriggerType,
     chunkTriggerMinSize: formatChunkSettings.chunkTriggerMinSize,

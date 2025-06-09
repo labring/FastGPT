@@ -125,10 +125,10 @@ export const createCollectionAndInsertData = async ({
     }>;
     chunkSize?: number;
     indexSize?: number;
-  } = (() => {
+  } = await (async () => {
     if (rawText) {
       // Process text chunks
-      const chunks = rawText2Chunks({
+      const chunks = await rawText2Chunks({
         rawText,
         chunkTriggerType: formatCreateCollectionParams.chunkTriggerType,
         chunkTriggerMinSize: formatCreateCollectionParams.chunkTriggerMinSize,

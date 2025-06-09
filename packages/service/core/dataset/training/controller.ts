@@ -112,24 +112,15 @@ export async function pushDataListToTrainingQueue({
 
   // format q and a, remove empty char
   data = data.filter((item) => {
-    item.q = simpleText(item.q);
-    item.a = simpleText(item.a);
-
-    item.indexes = item.indexes
-      ?.map((index) => {
-        return {
-          ...index,
-          text: simpleText(index.text)
-        };
-      })
-      .filter(Boolean);
+    const q = item.q || '';
+    const a = item.a || '';
 
     // filter repeat content
-    if (!item.imageId && !item.q) {
+    if (!item.imageId && !q) {
       return;
     }
 
-    const text = item.q + item.a;
+    const text = q + a;
 
     // Oversize llm tokens
     if (text.length > maxToken) {
