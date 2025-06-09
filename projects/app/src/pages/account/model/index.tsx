@@ -13,8 +13,9 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 const ModelConfigTable = dynamic(() => import('@/pageComponents/account/model/ModelConfigTable'));
 const ChannelTable = dynamic(() => import('@/pageComponents/account/model/Channel'));
 const ChannelLog = dynamic(() => import('@/pageComponents/account/model/Log'));
+const ModelDashboard = dynamic(() => import('@/pageComponents/account/model/ModelDashboard'));
 
-type TabType = 'model' | 'config' | 'channel' | 'channel_log';
+type TabType = 'model' | 'config' | 'channel' | 'channel_log' | 'account_model';
 
 const ModelProvider = () => {
   const { t } = useTranslation();
@@ -32,7 +33,8 @@ const ModelProvider = () => {
           ...(feConfigs?.show_aiproxy
             ? [
                 { label: t('account:channel'), value: 'channel' },
-                { label: t('account_model:log'), value: 'channel_log' }
+                { label: t('account_model:log'), value: 'channel_log' },
+                { label: t('account_model:monitoring'), value: 'account_model' }
               ]
             : [])
         ]}
@@ -50,6 +52,7 @@ const ModelProvider = () => {
         {tab === 'config' && <ModelConfigTable Tab={Tab} />}
         {tab === 'channel' && <ChannelTable Tab={Tab} />}
         {tab === 'channel_log' && <ChannelLog Tab={Tab} />}
+        {tab === 'account_model' && <ModelDashboard Tab={Tab} />}
       </Flex>
     </AccountContainer>
   );
