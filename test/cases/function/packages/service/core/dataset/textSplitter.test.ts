@@ -16,7 +16,7 @@ const formatResult = (result: string[]) => {
 };
 
 // 最大值分块测试-小于最大值，不分块
-it(`Test splitText2Chunks 1`, () => {
+it(`Test splitText2Chunks 1`, async () => {
   const mock = {
     text: `# A
   
@@ -61,7 +61,7 @@ dsgsgfsgs22sddddddd`
     ]
   };
 
-  const data = rawText2Chunks({
+  const data = await rawText2Chunks({
     rawText: mock.text,
     chunkTriggerType: ChunkTriggerConfigTypeEnum.maxSize,
     chunkTriggerMinSize: 1000,
@@ -72,7 +72,7 @@ dsgsgfsgs22sddddddd`
   expect(formatChunks(data)).toEqual(formatResult(mock.result));
 });
 // 最大值分块测试-大于最大值，分块
-it(`Test splitText2Chunks 2`, () => {
+it(`Test splitText2Chunks 2`, async () => {
   const mock = {
     text: `# A
 
@@ -122,7 +122,7 @@ dsgsgfsgs22sddddddd`
     ]
   };
 
-  const data = rawText2Chunks({
+  const data = await rawText2Chunks({
     rawText: mock.text,
     chunkTriggerType: ChunkTriggerConfigTypeEnum.maxSize,
     chunkTriggerMinSize: 10,
@@ -135,7 +135,7 @@ dsgsgfsgs22sddddddd`
 });
 
 // 最小值分块测试-大于最小值，不分块
-it(`Test splitText2Chunks 3`, () => {
+it(`Test splitText2Chunks 3`, async () => {
   const mock = {
     text: `# A
   
@@ -179,7 +179,7 @@ it(`Test splitText2Chunks 3`, () => {
     ]
   };
 
-  const data = rawText2Chunks({
+  const data = await rawText2Chunks({
     rawText: mock.text,
     chunkTriggerType: ChunkTriggerConfigTypeEnum.minSize,
     chunkTriggerMinSize: 1000,
@@ -191,7 +191,7 @@ it(`Test splitText2Chunks 3`, () => {
   expect(formatChunks(data)).toEqual(formatResult(mock.result));
 });
 // 最小值分块测试-小于最小值，分块
-it(`Test splitText2Chunks 4`, () => {
+it(`Test splitText2Chunks 4`, async () => {
   const mock = {
     text: `# A
 
@@ -241,7 +241,7 @@ dsgsgfsgs22sddddddd`,
     ]
   };
 
-  const data = rawText2Chunks({
+  const data = await rawText2Chunks({
     rawText: mock.text,
     chunkTriggerType: ChunkTriggerConfigTypeEnum.minSize,
     chunkTriggerMinSize: 10,
@@ -254,7 +254,7 @@ dsgsgfsgs22sddddddd`,
 });
 
 // 强制分块测试-小于最小值和最大值
-it(`Test splitText2Chunks 5`, () => {
+it(`Test splitText2Chunks 5`, async () => {
   const mock = {
     text: `# A
 
@@ -304,7 +304,7 @@ dsgsgfsgs22sddddddd`,
     ]
   };
 
-  const data = rawText2Chunks({
+  const data = await rawText2Chunks({
     rawText: mock.text,
     chunkTriggerType: ChunkTriggerConfigTypeEnum.forceChunk,
     chunkTriggerMinSize: 1000,
@@ -317,7 +317,7 @@ dsgsgfsgs22sddddddd`,
 });
 
 // 强制分块测试-大于最小值
-it(`Test splitText2Chunks 6`, () => {
+it(`Test splitText2Chunks 6`, async () => {
   const mock = {
     text: `# A
   
@@ -367,7 +367,7 @@ dsgsgfsgs22sddddddd`,
     ]
   };
 
-  const data = rawText2Chunks({
+  const data = await rawText2Chunks({
     rawText: mock.text,
     chunkTriggerType: ChunkTriggerConfigTypeEnum.forceChunk,
     chunkTriggerMinSize: 10,
