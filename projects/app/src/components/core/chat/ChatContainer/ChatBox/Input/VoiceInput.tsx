@@ -40,38 +40,89 @@ const PCVoiceInput = ({
   const { t } = useTranslation();
 
   return (
-    <HStack h={'100%'} px={4}>
-      <Box fontSize="sm" color="myGray.500" flex={'1 0 0'}>
-        {t('common:core.chat.Speaking')}
-      </Box>
-      <canvas
-        ref={canvasRef}
-        style={{
-          height: '10px',
-          width: '100px',
-          background: 'white'
-        }}
-      />
-      <Box fontSize="sm" color="myGray.500" whiteSpace={'nowrap'}>
-        {speakingTimeString}
-      </Box>
-      <MyTooltip label={t('common:core.chat.Cancel Speak')}>
-        <MyIconButton
-          name={'core/chat/cancelSpeak'}
-          h={'22px'}
-          w={'22px'}
-          onClick={() => stopSpeak(true)}
+    <Box
+      position="relative"
+      w="100%"
+      h="100%"
+      bg="white"
+      border="0.5px solid rgba(0, 0, 0, 0.2)"
+      boxShadow="0px 5px 20px -4px rgba(19, 51, 107, 0.13)"
+      borderRadius="20px"
+    >
+      {/* Tool Selection Area - Left Bottom */}
+
+      {/* Center Waveform Area */}
+      <Flex
+        position="absolute"
+        left="50%"
+        top="50%"
+        transform="translate(-50%, -50%)"
+        alignItems="center"
+        justifyContent="center"
+        direction="column"
+        gap={2}
+      >
+        <Box fontSize="sm" color="myGray.500">
+          {t('common:core.chat.Speaking')}
+        </Box>
+        <canvas
+          ref={canvasRef}
+          style={{
+            height: '16px',
+            width: '294px',
+            background: 'transparent'
+          }}
         />
-      </MyTooltip>
-      <MyTooltip label={t('common:core.chat.Finish Speak')}>
-        <MyIconButton
-          name={'core/chat/finishSpeak'}
-          h={'22px'}
-          w={'22px'}
-          onClick={() => stopSpeak(false)}
-        />
-      </MyTooltip>
-    </HStack>
+        <Box fontSize="sm" color="myGray.500">
+          {speakingTimeString}
+        </Box>
+      </Flex>
+
+      {/* Action Buttons - Right Bottom */}
+      <Flex
+        position="absolute"
+        right="16px"
+        bottom="14px"
+        alignItems="center"
+        gap="8px"
+        w="80px"
+        h="36px"
+      >
+        {/* Cancel Button */}
+        <MyTooltip label={t('common:core.chat.Cancel Speak')}>
+          <Flex
+            w="36px"
+            h="36px"
+            alignItems="center"
+            justifyContent="center"
+            border="1px solid #E8EBF0"
+            borderRadius="12px"
+            cursor="pointer"
+            _hover={{ bg: 'rgba(0, 0, 0, 0.04)' }}
+            onClick={() => stopSpeak(true)}
+          >
+            <MyIcon name={'close'} w={'20px'} h={'20px'} color={'#667085'} />
+          </Flex>
+        </MyTooltip>
+
+        {/* Confirm Button */}
+        <MyTooltip label={t('common:core.chat.Finish Speak')}>
+          <Flex
+            w="36px"
+            h="36px"
+            alignItems="center"
+            justifyContent="center"
+            border="1px solid #E8EBF0"
+            borderRadius="12px"
+            cursor="pointer"
+            _hover={{ bg: 'rgba(0, 0, 0, 0.04)' }}
+            onClick={() => stopSpeak(false)}
+          >
+            <MyIcon name={'check'} w={'20px'} h={'20px'} color={'#667085'} />
+          </Flex>
+        </MyTooltip>
+      </Flex>
+    </Box>
   );
 };
 
@@ -348,6 +399,8 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
         {isTransCription && (
           <Flex
             position={'absolute'}
+            border="0.5px solid rgba(0, 0, 0, 0.2)"
+            borderRadius="20px"
             top={0}
             bottom={0}
             left={0}
