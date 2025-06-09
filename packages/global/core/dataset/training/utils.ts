@@ -173,7 +173,9 @@ export const computedCollectionChunkSettings = <T extends ChunkSettingsType>({
     cloneChunkSettings.paragraphChunkDeep =
       chunkSplitMode === DataChunkSplitModeEnum.paragraph ? paragraphChunkDeep : 0;
 
-    cloneChunkSettings.chunkSize = trainingModeSize.chunkSize;
+    cloneChunkSettings.chunkSize = trainingModeSize.chunkSize
+      ? Math.min(trainingModeSize.chunkSize ?? chunkAutoChunkSize, getLLMMaxChunkSize(llmModel))
+      : undefined;
     cloneChunkSettings.indexSize = trainingModeSize.indexSize;
   }
 
