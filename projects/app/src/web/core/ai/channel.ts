@@ -187,3 +187,32 @@ export const getLogDetail = (id: number) =>
     request_body: string;
     response_body: string;
   }>(`/logs/detail/${id}`);
+
+export const getDashboardV2 = (params: {
+  channel?: number;
+  start_timestamp?: number;
+  end_timestamp?: number;
+  timezone?: string;
+  timespan?: 'day' | 'hour';
+}) =>
+  GET<{
+    data: Array<{
+      timestamp: number;
+      models: Array<{
+        model: string;
+        request_count: number;
+        used_amount: number;
+        exception_count: number;
+        input_tokens: number;
+        output_tokens?: number;
+        total_tokens: number;
+      }>;
+    }>;
+    success: boolean;
+  }>('dashboardv2/', {
+    channel: params.channel,
+    start_timestamp: params.start_timestamp,
+    end_timestamp: params.end_timestamp,
+    timezone: params.timezone || 'Local',
+    timespan: params.timespan || 'day'
+  });
