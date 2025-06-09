@@ -1,5 +1,5 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { pushQAUsage } from '@/service/support/wallet/usage/push';
+import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { createChatCompletion } from '@fastgpt/service/core/ai/config';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
@@ -163,13 +163,14 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     await MongoDatasetTraining.findByIdAndDelete(data._id);
 
     // add bill
-    pushQAUsage({
+    pushLLMTrainingUsage({
       teamId: data.teamId,
       tmbId: data.tmbId,
       inputTokens,
       outputTokens,
       billId: data.billId,
-      model: modelData.model
+      model: modelData.model,
+      mode: 'qa'
     });
     addLog.info(`[QA Queue] Finish`, {
       time: Date.now() - startTime,

@@ -8,6 +8,8 @@ import {
   type CreateUsageProps
 } from '@fastgpt/global/support/wallet/usage/api';
 import { i18nT } from '../../../../web/i18n/utils';
+import { formatModelChars2Points } from './utils';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 
 export async function createUsage(data: CreateUsageProps) {
   try {
@@ -67,6 +69,14 @@ export const createChatUsage = ({
   return { totalPoints };
 };
 
+export type DatasetTrainingMode = 'paragraph' | 'qa' | 'autoIndex' | 'imageIndex' | 'imageParse';
+export const datasetTrainingUsageIndexMap: Record<DatasetTrainingMode, number> = {
+  paragraph: 1,
+  qa: 2,
+  autoIndex: 3,
+  imageIndex: 4,
+  imageParse: 5
+};
 export const createTrainingUsage = async ({
   teamId,
   tmbId,
@@ -109,6 +119,13 @@ export const createTrainingUsage = async ({
           ...(agentModel
             ? [
                 {
+                  moduleName: i18nT('account_usage:llm_paragraph'),
+                  model: agentModel,
+                  amount: 0,
+                  inputTokens: 0,
+                  outputTokens: 0
+                },
+                {
                   moduleName: i18nT('account_usage:qa'),
                   model: agentModel,
                   amount: 0,
@@ -126,6 +143,13 @@ export const createTrainingUsage = async ({
             : []),
           ...(vllmModel
             ? [
+                {
+                  moduleName: i18nT('account_usage:image_index'),
+                  model: vllmModel,
+                  amount: 0,
+                  inputTokens: 0,
+                  outputTokens: 0
+                },
                 {
                   moduleName: i18nT('account_usage:image_parse'),
                   model: vllmModel,
@@ -170,4 +194,44 @@ export const createPdfParseUsage = async ({
       }
     ]
   });
+};
+
+export const pushLLMTrainingUsage = async ({
+  teamId,
+  tmbId,
+  model,
+  inputTokens,
+  outputTokens,
+  billId,
+  mode
+}: {
+  teamId: string;
+  tmbId: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  billId: string;
+  mode: DatasetTrainingMode;
+}) => {
+  const index = datasetTrainingUsageIndexMap[mode];
+
+  // Compute points
+  const { totalPoints } = formatModelChars2Points({
+    model,
+    modelType: ModelTypeEnum.llm,
+    inputTokens,
+    outputTokens
+  });
+
+  concatUsage({
+    billId,
+    teamId,
+    tmbId,
+    totalPoints,
+    inputTokens,
+    outputTokens,
+    listIndex: index
+  });
+
+  return { totalPoints };
 };

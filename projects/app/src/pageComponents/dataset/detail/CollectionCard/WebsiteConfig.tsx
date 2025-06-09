@@ -9,25 +9,14 @@ import { useMyStep } from '@fastgpt/web/hooks/useStep';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import React from 'react';
 import { Box, Link, Input, Button, ModalBody, ModalFooter, Stack } from '@chakra-ui/react';
-import {
-  DataChunkSplitModeEnum,
-  DatasetCollectionDataProcessModeEnum
-} from '@fastgpt/global/core/dataset/constants';
-import { ChunkSettingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
-import CollectionChunkForm, {
-  collectionChunkForm2StoreChunkData,
-  type CollectionChunkFormType
-} from '../Form/CollectionChunkForm';
-import {
-  getAutoIndexSize,
-  getLLMDefaultChunkSize
-} from '@fastgpt/global/core/dataset/training/utils';
+import CollectionChunkForm, { type CollectionChunkFormType } from '../Form/CollectionChunkForm';
 import { type ChunkSettingsType } from '@fastgpt/global/core/dataset/type';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { defaultFormData } from '../Import/Context';
+import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/training/utils';
 
 export type WebsiteConfigFormType = {
   websiteConfig: {
@@ -80,7 +69,7 @@ const WebsiteConfigModal = ({
 
   const form = useForm<CollectionChunkFormType>({
     defaultValues: {
-      trainingType: chunkSettings?.trainingType,
+      trainingType: chunkSettings?.trainingType || defaultFormData.trainingType,
 
       chunkTriggerType: chunkSettings?.chunkTriggerType || defaultFormData.chunkTriggerType,
       chunkTriggerMinSize:
@@ -204,9 +193,9 @@ const WebsiteConfigModal = ({
                 form.handleSubmit((data) =>
                   onSuccess({
                     websiteConfig: websiteInfoGetValues(),
-                    chunkSettings: collectionChunkForm2StoreChunkData({
+                    chunkSettings: computedCollectionChunkSettings({
                       ...data,
-                      agentModel: datasetDetail.agentModel,
+                      llmModel: datasetDetail.agentModel,
                       vectorModel: datasetDetail.vectorModel
                     })
                   })

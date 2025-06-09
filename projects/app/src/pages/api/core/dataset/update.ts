@@ -40,6 +40,8 @@ import { isEqual } from 'lodash';
 import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
 import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/operationLog/util';
+import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
+import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/training/utils';
 
 export type DatasetUpdateQuery = {};
 export type DatasetUpdateResponse = any;
@@ -59,7 +61,7 @@ async function handler(
   req: ApiRequestProps<DatasetUpdateBody, DatasetUpdateQuery>,
   _res: ApiResponseType<any>
 ): Promise<DatasetUpdateResponse> {
-  const {
+  let {
     id,
     parentId,
     name,
@@ -88,6 +90,14 @@ async function handler(
   });
 
   let targetName = '';
+
+  chunkSettings = chunkSettings
+    ? computedCollectionChunkSettings({
+        ...chunkSettings,
+        llmModel: getLLMModel(dataset.agentModel),
+        vectorModel: getEmbeddingModel(dataset.vectorModel)
+      })
+    : undefined;
 
   if (isMove) {
     if (parentId) {
