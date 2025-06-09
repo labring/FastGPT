@@ -324,9 +324,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
 
       if (httpAuth && Object.keys(httpAuth).length > 0) {
         const authHeaders = await formatHeaderAuth(httpAuth);
-        if (Array.isArray(authHeaders) && authHeaders.length > 0) {
-          httpHeader = [...authHeaders, ...httpHeader];
-        }
+        httpHeader = [...authHeaders, ...httpHeader];
       }
 
       return [...(httpHeader || [])].reduce((acc: Record<string, string>, item) => {

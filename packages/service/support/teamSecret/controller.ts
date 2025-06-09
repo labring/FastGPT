@@ -2,7 +2,7 @@ import { type TeamSecretTypeEnum } from '@fastgpt/global/common/teamSecret/const
 import { MongoTeamSecret } from './schema';
 import type { HeaderAuthValueType } from '@fastgpt/global/common/teamSecret/type';
 
-export async function addTeamSecret({
+export async function upsertTeamSecrets({
   teamSecret,
   type,
   appId
@@ -11,21 +11,21 @@ export async function addTeamSecret({
   type: TeamSecretTypeEnum;
   appId: string;
 }) {
-  const newSecretIds = teamSecret.flatMap((item) =>
-    Object.values(item)
-      .filter((value) => value && value.secretId)
-      .map((value) => value.secretId)
-  );
-
-  await deleteTeamSecretsByCondition({
+  // delete old secrets
+  await deleteTeamSecrets({
     appId,
     type,
-    excludeSecretIds: newSecretIds
+    excludeSecretIds: teamSecret.flatMap((item) =>
+      Object.values(item)
+        .filter((value) => value && value.secretId)
+        .map((value) => value.secretId)
+    )
   });
 
+  // create new secrets
   const secretItems = teamSecret.flatMap((item) => {
     return Object.entries(item)
-      .map(([key, value]) => ({
+      .map(([_, value]) => ({
         sourceId: value.secretId,
         type,
         value: value.value
@@ -35,26 +35,19 @@ export async function addTeamSecret({
 
   if (secretItems.length === 0) return;
 
-  await handleCreateAndUpdate(secretItems, type);
-}
-
-async function handleCreateAndUpdate(
-  secretItems: Array<{ sourceId: string; type: string; value: string }>,
-  type: string
-) {
   const existingSecrets = await MongoTeamSecret.find({
     sourceId: { $in: secretItems.map((item) => item.sourceId) },
     type
   });
-
   const existingSourceIds = existingSecrets.map((item) => item.sourceId);
+
   const secretsToCreate = secretItems.filter((item) => !existingSourceIds.includes(item.sourceId));
   const secretsToUpdate = secretItems.filter((item) => existingSourceIds.includes(item.sourceId));
 
-  const promises = [];
+  const operations = [];
 
   if (secretsToCreate.length > 0) {
-    promises.push(MongoTeamSecret.insertMany(secretsToCreate));
+    operations.push(MongoTeamSecret.insertMany(secretsToCreate));
   }
 
   if (secretsToUpdate.length > 0) {
@@ -64,10 +57,10 @@ async function handleCreateAndUpdate(
         update: { $set: { value: secret.value } }
       }
     }));
-    promises.push(MongoTeamSecret.bulkWrite(bulkOps));
+    operations.push(MongoTeamSecret.bulkWrite(bulkOps));
   }
 
-  await Promise.all(promises);
+  await Promise.all(operations);
 }
 
 export async function getTeamSecretsByIds(secretIds: string[]) {
@@ -78,7 +71,7 @@ export async function getTeamSecretsByIds(secretIds: string[]) {
   return await MongoTeamSecret.find({ sourceId: { $in: secretIds } }).lean();
 }
 
-export async function deleteTeamSecretsByCondition({
+export async function deleteTeamSecrets({
   appId,
   type,
   excludeSecretIds = []

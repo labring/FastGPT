@@ -49,7 +49,8 @@ import { getEditorVariables } from '../../../utils';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { WorkflowNodeEdgeContext } from '../../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { formatAuthData, parseAuthData } from '@/components/support/teamSecrets/HeaderAuthConfig';
+import { formatAuthData, parseAuthData } from '@/components/support/teamSecrets/utils';
+
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
 const HeaderAuthConfig = dynamic(() => import('@/components/support/teamSecrets/HeaderAuthConfig'));
 
@@ -283,7 +284,10 @@ export function RenderHttpProps({
   const jsonBody = inputs.find((item) => item.key === NodeInputKeyEnum.httpJsonBody);
   const formBody =
     inputs.find((item) => item.key === NodeInputKeyEnum.httpFormBody) || defaultFormBody;
+  const httpAuth = inputs.find((item) => item.key === NodeInputKeyEnum.httpAuth);
   const contentType = inputs.find((item) => item.key === NodeInputKeyEnum.httpContentType);
+
+  const prefix = appDetail?._id && nodeId ? `${appDetail._id}-${nodeId}-` : '';
 
   const paramsLength = params?.value?.length || 0;
   const headersLength = headers?.value?.length || 0;
@@ -340,20 +344,20 @@ export function RenderHttpProps({
           <Flex flex={1} />
           <HeaderAuthConfig
             headerAuthConfig={parseAuthData({
-              data: inputs.find((item) => item.key === NodeInputKeyEnum.httpAuth)?.value,
-              appId: appDetail?._id,
-              nodeId
+              data: httpAuth?.value,
+              prefix
             })}
             onSave={(data) => {
-              const formatedData = formatAuthData({ data, appId: appDetail?._id, nodeId });
+              const formatedData = formatAuthData({
+                data,
+                prefix
+              });
               onChangeNode({
                 nodeId,
                 type: 'updateInput',
                 key: NodeInputKeyEnum.httpAuth,
                 value: {
-                  ...(inputs.find(
-                    (item) => item.key === NodeInputKeyEnum.httpAuth
-                  ) as FlowNodeInputItemType),
+                  ...(httpAuth as FlowNodeInputItemType),
                   value: formatedData
                 }
               });
@@ -424,14 +428,14 @@ export function RenderHttpProps({
       </Box>
     );
   }, [
-    appDetail?._id,
     contentType,
     formBody,
     headersLength,
-    inputs,
+    httpAuth,
     nodeId,
     onChangeNode,
     paramsLength,
+    prefix,
     requestMethods,
     selectedTab,
     stringifyVariables,

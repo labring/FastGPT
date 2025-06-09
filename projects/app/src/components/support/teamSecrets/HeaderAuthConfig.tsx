@@ -10,7 +10,10 @@ import {
   Switch,
   useDisclosure
 } from '@chakra-ui/react';
-import { HeaderAuthTypeEnum } from '@fastgpt/global/common/teamSecret/constants';
+import {
+  headerAuthTypeArray,
+  HeaderAuthTypeEnum
+} from '@fastgpt/global/common/teamSecret/constants';
 import type {
   HeaderAuthValueType,
   HeaderAuthConfigType
@@ -21,126 +24,6 @@ import { useTranslation } from 'react-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
-import { i18nT } from '@fastgpt/web/i18n/utils';
-
-const authTypeArray = [
-  {
-    title: i18nT('common:auth_type.Bearer'),
-    value: HeaderAuthTypeEnum.Bearer
-  },
-  {
-    title: i18nT('common:auth_type.Basic'),
-    value: HeaderAuthTypeEnum.Basic
-  },
-  {
-    title: i18nT('common:auth_type.Custom'),
-    value: HeaderAuthTypeEnum.Custom
-  }
-];
-
-export const formatAuthData = ({
-  data,
-  appId,
-  nodeId
-}: {
-  data: HeaderAuthConfigType;
-  appId?: string;
-  nodeId?: string;
-}) => {
-  if (!data?.enableAuth) return {};
-
-  const prefix = appId && nodeId ? `${appId}-${nodeId}-` : '';
-
-  const processEntries = (entries: Array<{ key: string; value: any }>) =>
-    entries.reduce(
-      (result, { key, value }) =>
-        key
-          ? {
-              ...result,
-              [key]: {
-                value: value?.value || '',
-                secretId: prefix + (value?.secretId || '')
-              }
-            }
-          : result,
-      {}
-    );
-
-  const authEntries =
-    data.authType === HeaderAuthTypeEnum.Custom && Array.isArray(data.customHeaders)
-      ? data.customHeaders
-      : data.authType &&
-          (data.authType === HeaderAuthTypeEnum.Bearer ? data.BearerValue : data.BasicValue)
-        ? [
-            {
-              key: data.authType,
-              value:
-                data.authType === HeaderAuthTypeEnum.Bearer ? data.BearerValue : data.BasicValue
-            }
-          ]
-        : [];
-
-  return processEntries(authEntries);
-};
-export const parseAuthData = ({
-  data,
-  appId,
-  nodeId
-}: {
-  data: Record<string, { value: string; secretId: string }>;
-  appId?: string;
-  nodeId?: string;
-}): HeaderAuthConfigType => {
-  if (!data || Object.keys(data).length === 0) {
-    return { enableAuth: false, authType: HeaderAuthTypeEnum.Bearer };
-  }
-
-  const prefix = appId && nodeId ? `${appId}-${nodeId}-` : '';
-
-  const removePrefix = (secretId: string) => {
-    return secretId?.startsWith(prefix) ? secretId.substring(prefix.length) : secretId;
-  };
-
-  const entries = Object.entries(data);
-
-  if (entries.length === 1) {
-    const [key, value] = entries[0];
-
-    if (key === HeaderAuthTypeEnum.Bearer) {
-      return {
-        enableAuth: true,
-        authType: HeaderAuthTypeEnum.Bearer,
-        BearerValue: {
-          secretId: removePrefix(value.secretId),
-          value: value.value
-        }
-      };
-    }
-
-    if (key === HeaderAuthTypeEnum.Basic) {
-      return {
-        enableAuth: true,
-        authType: HeaderAuthTypeEnum.Basic,
-        BasicValue: {
-          secretId: removePrefix(value.secretId),
-          value: value.value
-        }
-      };
-    }
-  }
-
-  return {
-    enableAuth: true,
-    authType: HeaderAuthTypeEnum.Custom,
-    customHeaders: entries.map(([key, value]) => ({
-      key,
-      value: {
-        secretId: removePrefix(value.secretId),
-        value: value.value
-      }
-    }))
-  };
-};
 
 const getShowInput = ({
   authValue,
@@ -230,11 +113,10 @@ const HeaderAuthConfig = ({
 }) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  console.log(headerAuthConfig);
 
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
-  const { control, register, watch, handleSubmit, reset } = useForm<HeaderAuthConfigType>({
+  const { control, register, watch, handleSubmit } = useForm<HeaderAuthConfigType>({
     defaultValues: {
       enableAuth: headerAuthConfig?.enableAuth || false,
       authType: headerAuthConfig?.authType || HeaderAuthTypeEnum.Bearer,
@@ -272,21 +154,19 @@ const HeaderAuthConfig = ({
     };
 
     const submitData = (() => {
-      if (data.authType === HeaderAuthTypeEnum.Bearer) {
+      if (
+        data.authType === HeaderAuthTypeEnum.Bearer ||
+        data.authType === HeaderAuthTypeEnum.Basic
+      ) {
+        const valueKey = `${data.authType}Value`;
         return {
           ...baseData,
-          BearerValue: { secretId: HeaderAuthTypeEnum.Bearer, value: data.BearerValue?.value || '' }
+          [valueKey]: {
+            secretId: data.authType,
+            value: data[valueKey as keyof HeaderAuthConfigType]?.value || ''
+          }
         };
-      }
-
-      if (data.authType === HeaderAuthTypeEnum.Basic) {
-        return {
-          ...baseData,
-          BasicValue: { secretId: HeaderAuthTypeEnum.Basic, value: data.BasicValue?.value || '' }
-        };
-      }
-
-      if (data.authType === HeaderAuthTypeEnum.Custom) {
+      } else if (data.authType === HeaderAuthTypeEnum.Custom) {
         return {
           ...baseData,
           customHeaders: data.customHeaders?.map((item) => ({
@@ -295,17 +175,12 @@ const HeaderAuthConfig = ({
           }))
         };
       }
-
-      return null;
     })();
-
-    console.log(submitData, 'submitData');
 
     if (submitData) {
       onSave(submitData);
+      onClose();
     }
-
-    onClose();
   };
 
   return (
@@ -352,7 +227,7 @@ const HeaderAuthConfig = ({
                     control={control}
                     render={({ field: { onChange, value } }) => (
                       <LeftRadio
-                        list={authTypeArray}
+                        list={headerAuthTypeArray}
                         value={value}
                         onChange={onChange}
                         py={'4.5px'}
@@ -370,27 +245,15 @@ const HeaderAuthConfig = ({
                   />
                 </FormControl>
 
-                {authType === HeaderAuthTypeEnum.Bearer ? (
+                {authType === HeaderAuthTypeEnum.Bearer || authType === HeaderAuthTypeEnum.Basic ? (
                   <AuthValueDisplay
-                    key={'BearerValue'}
+                    key={authType}
                     showInput={getShowInput({
-                      authValue: BearerValue,
+                      authValue: authType === HeaderAuthTypeEnum.Bearer ? BearerValue : BasicValue,
                       editingIndex,
                       index: 0
                     })}
-                    fieldName="BearerValue.value"
-                    onEdit={setEditingIndex}
-                    register={register}
-                  />
-                ) : authType === HeaderAuthTypeEnum.Basic ? (
-                  <AuthValueDisplay
-                    key={'BasicValue'}
-                    showInput={getShowInput({
-                      authValue: BasicValue,
-                      editingIndex,
-                      index: 0
-                    })}
-                    fieldName="BasicValue.value"
+                    fieldName={`${authType}Value.value` as any}
                     onEdit={setEditingIndex}
                     register={register}
                   />
