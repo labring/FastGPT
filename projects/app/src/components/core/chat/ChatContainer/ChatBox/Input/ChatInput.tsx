@@ -127,11 +127,11 @@ const ChatInput = ({
           }
           resize={'none'}
           rows={1}
-          height={'22px'}
+          height={'24px'}
           lineHeight={'24px'}
           maxHeight={'50vh'}
           maxLength={-1}
-          overflowY={'auto'}
+          overflowY={'hidden'}
           whiteSpace={'pre-wrap'}
           wordBreak={'break-all'}
           boxShadow={'none !important'}
@@ -146,7 +146,7 @@ const ChatInput = ({
             fontFamily: 'PingFang SC',
             fontStyle: 'normal',
             fontWeight: 400,
-            fontSize: '16px',
+            fontSize: '14px',
             lineHeight: '24px',
             letterSpacing: '0.5px'
           }}
@@ -154,7 +154,16 @@ const ChatInput = ({
           onChange={(e) => {
             const textarea = e.target;
             textarea.style.height = textareaMinH;
-            textarea.style.height = `${textarea.scrollHeight}px`;
+            const newHeight = Math.min(textarea.scrollHeight, window.innerHeight * 0.5);
+            textarea.style.height = `${newHeight}px`;
+
+            // 只有当内容超过最大高度时才显示滚动条
+            if (textarea.scrollHeight > window.innerHeight * 0.5) {
+              textarea.style.overflowY = 'auto';
+            } else {
+              textarea.style.overflowY = 'hidden';
+            }
+
             setValue('input', textarea.value);
           }}
           onKeyDown={(e) => {
