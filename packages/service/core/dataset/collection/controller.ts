@@ -32,10 +32,7 @@ import { MongoDatasetDataText } from '../data/dataTextSchema';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getTrainingModeByCollection } from './utils';
 import {
-  computeChunkSize,
-  computeChunkSplitter,
-  computeParagraphChunkDeep,
-  getAutoIndexSize,
+  computedCollectionChunkSettings,
   getLLMMaxChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
@@ -68,31 +65,50 @@ export const createCollectionAndInsertData = async ({
     createCollectionParams.autoIndexes = true;
   }
 
-  const teamId = createCollectionParams.teamId;
-  const tmbId = createCollectionParams.tmbId;
+  const formatCreateCollectionParams = computedCollectionChunkSettings({
+    ...createCollectionParams,
+    llmModel: getLLMModel(dataset.agentModel),
+    vectorModel: getEmbeddingModel(dataset.vectorModel)
+  });
+
+  const teamId = formatCreateCollectionParams.teamId;
+  const tmbId = formatCreateCollectionParams.tmbId;
 
   // Set default params
   const trainingType =
-    createCollectionParams.trainingType || DatasetCollectionDataProcessModeEnum.chunk;
-  const chunkSplitter = computeChunkSplitter(createCollectionParams);
-  const paragraphChunkDeep = computeParagraphChunkDeep(createCollectionParams);
+    formatCreateCollectionParams.trainingType || DatasetCollectionDataProcessModeEnum.chunk;
   const trainingMode = getTrainingModeByCollection({
     trainingType: trainingType,
-    autoIndexes: createCollectionParams.autoIndexes,
-    imageIndex: createCollectionParams.imageIndex
+    autoIndexes: formatCreateCollectionParams.autoIndexes,
+    imageIndex: formatCreateCollectionParams.imageIndex
   });
 
   if (
     trainingType === DatasetCollectionDataProcessModeEnum.qa ||
-    trainingType === DatasetCollectionDataProcessModeEnum.backup
+    trainingType === DatasetCollectionDataProcessModeEnum.backup ||
+    trainingType === DatasetCollectionDataProcessModeEnum.template
   ) {
-    delete createCollectionParams.chunkTriggerType;
-    delete createCollectionParams.chunkTriggerMinSize;
-    delete createCollectionParams.dataEnhanceCollectionName;
-    delete createCollectionParams.imageIndex;
-    delete createCollectionParams.autoIndexes;
-    delete createCollectionParams.indexSize;
-    delete createCollectionParams.qaPrompt;
+    delete formatCreateCollectionParams.chunkTriggerType;
+    delete formatCreateCollectionParams.chunkTriggerMinSize;
+    delete formatCreateCollectionParams.dataEnhanceCollectionName;
+    delete formatCreateCollectionParams.imageIndex;
+    delete formatCreateCollectionParams.autoIndexes;
+
+    if (
+      trainingType === DatasetCollectionDataProcessModeEnum.backup ||
+      trainingType === DatasetCollectionDataProcessModeEnum.template
+    ) {
+      delete formatCreateCollectionParams.paragraphChunkAIMode;
+      delete formatCreateCollectionParams.paragraphChunkDeep;
+      delete formatCreateCollectionParams.paragraphChunkMinSize;
+      delete formatCreateCollectionParams.chunkSplitMode;
+      delete formatCreateCollectionParams.chunkSize;
+      delete formatCreateCollectionParams.chunkSplitter;
+      delete formatCreateCollectionParams.indexSize;
+    }
+  }
+  if (trainingType !== DatasetCollectionDataProcessModeEnum.qa) {
+    delete formatCreateCollectionParams.qaPrompt;
   }
 
   // 1. split chunks or create image chunks
@@ -109,30 +125,27 @@ export const createCollectionAndInsertData = async ({
     }>;
     chunkSize?: number;
     indexSize?: number;
-  } = (() => {
+  } = await (async () => {
     if (rawText) {
-      const chunkSize = computeChunkSize({
-        ...createCollectionParams,
-        trainingType,
-        llmModel: getLLMModel(dataset.agentModel)
-      });
       // Process text chunks
-      const chunks = rawText2Chunks({
+      const chunks = await rawText2Chunks({
         rawText,
-        chunkTriggerType: createCollectionParams.chunkTriggerType,
-        chunkTriggerMinSize: createCollectionParams.chunkTriggerMinSize,
-        chunkSize,
-        paragraphChunkDeep,
-        paragraphChunkMinSize: createCollectionParams.paragraphChunkMinSize,
+        chunkTriggerType: formatCreateCollectionParams.chunkTriggerType,
+        chunkTriggerMinSize: formatCreateCollectionParams.chunkTriggerMinSize,
+        chunkSize: formatCreateCollectionParams.chunkSize,
+        paragraphChunkDeep: formatCreateCollectionParams.paragraphChunkDeep,
+        paragraphChunkMinSize: formatCreateCollectionParams.paragraphChunkMinSize,
         maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
         overlapRatio: trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
-        customReg: chunkSplitter ? [chunkSplitter] : [],
+        customReg: formatCreateCollectionParams.chunkSplitter
+          ? [formatCreateCollectionParams.chunkSplitter]
+          : [],
         backupParse
       });
       return {
         chunks,
-        chunkSize,
-        indexSize: createCollectionParams.indexSize ?? getAutoIndexSize(dataset.vectorModel)
+        chunkSize: formatCreateCollectionParams.chunkSize,
+        indexSize: formatCreateCollectionParams.indexSize
       };
     }
 
@@ -147,12 +160,8 @@ export const createCollectionAndInsertData = async ({
 
     return {
       chunks: [],
-      chunkSize: computeChunkSize({
-        ...createCollectionParams,
-        trainingType,
-        llmModel: getLLMModel(dataset.agentModel)
-      }),
-      indexSize: createCollectionParams.indexSize ?? getAutoIndexSize(dataset.vectorModel)
+      chunkSize: formatCreateCollectionParams.chunkSize,
+      indexSize: formatCreateCollectionParams.indexSize
     };
   })();
 
@@ -165,11 +174,9 @@ export const createCollectionAndInsertData = async ({
   const fn = async (session: ClientSession) => {
     // 3. Create collection
     const { _id: collectionId } = await createOneCollection({
-      ...createCollectionParams,
+      ...formatCreateCollectionParams,
       trainingType,
-      paragraphChunkDeep,
       chunkSize,
-      chunkSplitter,
       indexSize,
 
       hashRawText: rawText ? hashStr(rawText) : undefined,
@@ -179,7 +186,7 @@ export const createCollectionAndInsertData = async ({
         if (!dataset.autoSync && dataset.type === DatasetTypeEnum.websiteDataset) return undefined;
         if (
           [DatasetCollectionTypeEnum.link, DatasetCollectionTypeEnum.apiFile].includes(
-            createCollectionParams.type
+            formatCreateCollectionParams.type
           )
         ) {
           return addDays(new Date(), 1);
@@ -195,7 +202,7 @@ export const createCollectionAndInsertData = async ({
       const { billId: newBillId } = await createTrainingUsage({
         teamId,
         tmbId,
-        appName: createCollectionParams.name,
+        appName: formatCreateCollectionParams.name,
         billSource: UsageSourceEnum.training,
         vectorModel: getEmbeddingModel(dataset.vectorModel)?.name,
         agentModel: getLLMModel(dataset.agentModel)?.name,
@@ -218,7 +225,7 @@ export const createCollectionAndInsertData = async ({
           vlmModel: dataset.vlmModel,
           indexSize,
           mode: trainingMode,
-          prompt: createCollectionParams.qaPrompt,
+          prompt: formatCreateCollectionParams.qaPrompt,
           billId: traingBillId,
           data: chunks.map((item, index) => ({
             ...item,

@@ -55,13 +55,17 @@ export const createFileFromText = async ({
 
 export const gridFsStream2Buffer = (stream: NodeJS.ReadableStream) => {
   return new Promise<Buffer>((resolve, reject) => {
+    if (!stream.readable) {
+      return resolve(Buffer.from([]));
+    }
+
     const chunks: Uint8Array[] = [];
 
     stream.on('data', (chunk) => {
       chunks.push(chunk);
     });
     stream.on('end', () => {
-      const resultBuffer = Buffer.concat(chunks); // 一次性拼接
+      const resultBuffer = Buffer.concat(chunks); // One-time splicing
       resolve(resultBuffer);
     });
     stream.on('error', (err) => {

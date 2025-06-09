@@ -151,8 +151,7 @@ const MySelect = <T = any,>(
                   ? {
                       ref: SelectedItemRef,
                       color: 'primary.700',
-                      bg: 'myGray.100',
-                      fontWeight: '600'
+                      bg: 'myGray.100'
                     }
                   : {
                       color: 'myGray.900'
@@ -167,7 +166,7 @@ const MySelect = <T = any,>(
                 display={'block'}
                 mb={0.5}
               >
-                <Flex alignItems={'center'}>
+                <Flex alignItems={'center'} fontWeight={value === item.value ? '600' : 'normal'}>
                   {item.icon && (
                     <Avatar mr={2} src={item.icon as any} w={item.iconSize ?? '1rem'} />
                   )}

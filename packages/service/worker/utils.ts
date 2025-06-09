@@ -6,7 +6,8 @@ export enum WorkerNameEnum {
   readFile = 'readFile',
   htmlStr2Md = 'htmlStr2Md',
   countGptMessagesTokens = 'countGptMessagesTokens',
-  systemPluginRun = 'systemPluginRun'
+  systemPluginRun = 'systemPluginRun',
+  text2Chunks = 'text2Chunks'
 }
 
 export const getSafeEnv = () => {

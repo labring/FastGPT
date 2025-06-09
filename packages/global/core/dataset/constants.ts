@@ -211,7 +211,8 @@ export enum DataChunkSplitModeEnum {
 }
 export enum ParagraphChunkAIModeEnum {
   auto = 'auto',
-  force = 'force'
+  force = 'force',
+  forbid = 'forbid'
 }
 
 /* ------------ data -------------- */

@@ -37,7 +37,6 @@ import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { DatasetImportContext, type ImportFormType } from '../Context';
 import { type ApiCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
-import { collectionChunkForm2StoreChunkData } from '../../Form/CollectionChunkForm';
 
 const Upload = () => {
   const { t } = useTranslation();
@@ -82,12 +81,6 @@ const Upload = () => {
 
   const { runAsync: startUpload, loading: isLoading } = useRequest2(
     async ({ customPdfParse, webSelector, ...data }: ImportFormType) => {
-      const chunkData = collectionChunkForm2StoreChunkData({
-        ...data,
-        vectorModel: datasetDetail.vectorModel,
-        agentModel: datasetDetail.agentModel
-      });
-
       if (sources.length === 0) return;
       const filterWaitingSources = sources.filter((item) => item.createStatus === 'waiting');
 
@@ -108,7 +101,7 @@ const Upload = () => {
         const commonParams: ApiCreateDatasetCollectionParams & {
           name: string;
         } = {
-          ...chunkData,
+          ...data,
           parentId,
           datasetId: datasetDetail._id,
           name: item.sourceName,

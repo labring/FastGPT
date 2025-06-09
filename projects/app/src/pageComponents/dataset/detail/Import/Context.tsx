@@ -52,7 +52,7 @@ export const defaultFormData: ImportFormType = {
 
   chunkSettingMode: ChunkSettingModeEnum.auto,
   chunkSplitMode: DataChunkSplitModeEnum.paragraph,
-  paragraphChunkAIMode: ParagraphChunkAIModeEnum.auto,
+  paragraphChunkAIMode: ParagraphChunkAIModeEnum.forbid,
   paragraphChunkDeep: 5,
   paragraphChunkMinSize: 100,
 
@@ -198,10 +198,10 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
   const vectorModel = datasetDetail.vectorModel;
 
   const processParamsForm = useForm<ImportFormType>({
-    defaultValues: {
+    defaultValues: (() => ({
       ...defaultFormData,
       indexSize: getAutoIndexSize(vectorModel)
-    }
+    }))()
   });
 
   const [sources, setSources] = useState<ImportSourceItemType[]>([]);

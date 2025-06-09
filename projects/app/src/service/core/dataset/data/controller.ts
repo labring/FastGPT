@@ -16,9 +16,9 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
 import { deleteDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
+import { text2Chunks } from '@fastgpt/service/worker/function';
 
 const formatIndexes = async ({
   indexes = [],
@@ -40,7 +40,7 @@ const formatIndexes = async ({
   }[]
 > => {
   /* get dataset data default index */
-  const getDefaultIndex = ({
+  const getDefaultIndex = async ({
     q = '',
     a,
     indexSize
@@ -49,13 +49,15 @@ const formatIndexes = async ({
     a?: string;
     indexSize: number;
   }) => {
-    const qChunks = splitText2Chunks({
-      text: q,
-      chunkSize: indexSize,
-      maxSize: maxIndexSize
-    }).chunks;
+    const qChunks = (
+      await text2Chunks({
+        text: q,
+        chunkSize: indexSize,
+        maxSize: maxIndexSize
+      })
+    ).chunks;
     const aChunks = a
-      ? splitText2Chunks({ text: a, chunkSize: indexSize, maxSize: maxIndexSize }).chunks
+      ? (await text2Chunks({ text: a, chunkSize: indexSize, maxSize: maxIndexSize })).chunks
       : [];
 
     return [
@@ -80,7 +82,7 @@ const formatIndexes = async ({
     .filter((item) => !!item.text.trim());
 
   // Recompute default indexes, Merge ids of the same index, reduce the number of rebuilds
-  const defaultIndexes = getDefaultIndex({ q, a, indexSize });
+  const defaultIndexes = await getDefaultIndex({ q, a, indexSize });
 
   const concatDefaultIndexes = defaultIndexes.map((item) => {
     const oldIndex = indexes!.find((index) => index.text === item.text);
@@ -114,11 +116,13 @@ const formatIndexes = async ({
         // If oversize tokens, split it
         const tokens = await countPromptTokens(item.text);
         if (tokens > maxIndexSize) {
-          const splitText = splitText2Chunks({
-            text: item.text,
-            chunkSize: indexSize,
-            maxSize: maxIndexSize
-          }).chunks;
+          const splitText = (
+            await text2Chunks({
+              text: item.text,
+              chunkSize: indexSize,
+              maxSize: maxIndexSize
+            })
+          ).chunks;
           return splitText.map((text) => ({
             text,
             type: item.type
