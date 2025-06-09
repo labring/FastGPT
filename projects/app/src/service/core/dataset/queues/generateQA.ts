@@ -1,10 +1,9 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { pushQAUsage } from '@/service/support/wallet/usage/push';
+import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { createChatCompletion } from '@fastgpt/service/core/ai/config';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
@@ -24,6 +23,7 @@ import {
   getLLMMaxChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { text2Chunks } from '@fastgpt/service/worker/function';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -144,7 +144,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     const inputTokens = usage?.prompt_tokens || (await countGptMessagesTokens(messages));
     const outputTokens = usage?.completion_tokens || (await countPromptTokens(answer));
 
-    const qaArr = formatSplitText({ answer, rawText: text, llmModel: modelData }); // 格式化后的QA对
+    const qaArr = await formatSplitText({ answer, rawText: text, llmModel: modelData }); // 格式化后的QA对
 
     // get vector and insert
     await pushDataListToTrainingQueueByCollectionId({
@@ -163,13 +163,14 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     await MongoDatasetTraining.findByIdAndDelete(data._id);
 
     // add bill
-    pushQAUsage({
+    pushLLMTrainingUsage({
       teamId: data.teamId,
       tmbId: data.tmbId,
       inputTokens,
       outputTokens,
       billId: data.billId,
-      model: modelData.model
+      model: modelData.model,
+      mode: 'qa'
     });
     addLog.info(`[QA Queue] Finish`, {
       time: Date.now() - startTime,
@@ -196,7 +197,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
 }
 
 // Format qa answer
-function formatSplitText({
+async function formatSplitText({
   answer,
   rawText,
   llmModel
@@ -223,7 +224,7 @@ function formatSplitText({
 
   // empty result. direct split chunk
   if (result.length === 0) {
-    const { chunks } = splitText2Chunks({
+    const { chunks } = await text2Chunks({
       text: rawText,
       chunkSize: chunkAutoChunkSize,
       maxSize: getLLMMaxChunkSize(llmModel)

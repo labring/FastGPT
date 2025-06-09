@@ -3,8 +3,11 @@ import { type EmbeddingModelItemType, type LLMModelItemType } from '../../../cor
 import {
   ChunkSettingModeEnum,
   DataChunkSplitModeEnum,
-  DatasetCollectionDataProcessModeEnum
+  DatasetCollectionDataProcessModeEnum,
+  ParagraphChunkAIModeEnum
 } from '../constants';
+import type { ChunkSettingsType } from '../type';
+import { cloneDeep } from 'lodash';
 
 export const minChunkSize = 64; // min index and chunk size
 
@@ -103,53 +106,78 @@ export const getIndexSizeSelectList = (max = 512) => {
 };
 
 // Compute
-export const computeChunkSize = (params: {
-  trainingType: DatasetCollectionDataProcessModeEnum;
-  chunkSettingMode?: ChunkSettingModeEnum;
-  chunkSplitMode?: DataChunkSplitModeEnum;
+export const computedCollectionChunkSettings = <T extends ChunkSettingsType>({
+  llmModel,
+  vectorModel,
+  ...data
+}: {
   llmModel?: LLMModelItemType;
-  chunkSize?: number;
-}) => {
-  if (params.trainingType === DatasetCollectionDataProcessModeEnum.qa) {
-    if (params.chunkSettingMode === ChunkSettingModeEnum.auto) {
-      return getLLMDefaultChunkSize(params.llmModel);
+  vectorModel?: EmbeddingModelItemType;
+} & T) => {
+  const {
+    trainingType = DatasetCollectionDataProcessModeEnum.chunk,
+    chunkSettingMode = ChunkSettingModeEnum.auto,
+    chunkSplitMode,
+    chunkSize,
+    paragraphChunkDeep = 5,
+    indexSize,
+    autoIndexes
+  } = data;
+  const cloneChunkSettings = cloneDeep(data);
+
+  if (trainingType !== DatasetCollectionDataProcessModeEnum.qa) {
+    delete cloneChunkSettings.qaPrompt;
+  }
+
+  // Format training type indexSize/chunkSize
+  const trainingModeSize: {
+    autoChunkSize: number;
+    autoIndexSize: number;
+    chunkSize?: number;
+    indexSize?: number;
+  } = (() => {
+    if (trainingType === DatasetCollectionDataProcessModeEnum.qa) {
+      return {
+        autoChunkSize: getLLMDefaultChunkSize(llmModel),
+        autoIndexSize: getMaxIndexSize(vectorModel),
+        chunkSize,
+        indexSize: getMaxIndexSize(vectorModel)
+      };
+    } else if (autoIndexes) {
+      return {
+        autoChunkSize: chunkAutoChunkSize,
+        autoIndexSize: getAutoIndexSize(vectorModel),
+        chunkSize,
+        indexSize
+      };
+    } else {
+      return {
+        autoChunkSize: chunkAutoChunkSize,
+        autoIndexSize: getAutoIndexSize(vectorModel),
+        chunkSize,
+        indexSize
+      };
     }
+  })();
+
+  if (chunkSettingMode === ChunkSettingModeEnum.auto) {
+    cloneChunkSettings.chunkSplitMode = DataChunkSplitModeEnum.paragraph;
+    cloneChunkSettings.paragraphChunkAIMode = ParagraphChunkAIModeEnum.forbid;
+    cloneChunkSettings.paragraphChunkDeep = 5;
+    cloneChunkSettings.paragraphChunkMinSize = 100;
+    cloneChunkSettings.chunkSize = trainingModeSize.autoChunkSize;
+    cloneChunkSettings.indexSize = trainingModeSize.autoIndexSize;
+
+    cloneChunkSettings.chunkSplitter = undefined;
   } else {
-    // chunk
-    if (params.chunkSettingMode === ChunkSettingModeEnum.auto) {
-      return chunkAutoChunkSize;
-    }
+    cloneChunkSettings.paragraphChunkDeep =
+      chunkSplitMode === DataChunkSplitModeEnum.paragraph ? paragraphChunkDeep : 0;
+
+    cloneChunkSettings.chunkSize = trainingModeSize.chunkSize
+      ? Math.min(trainingModeSize.chunkSize ?? chunkAutoChunkSize, getLLMMaxChunkSize(llmModel))
+      : undefined;
+    cloneChunkSettings.indexSize = trainingModeSize.indexSize;
   }
 
-  if (params.chunkSplitMode === DataChunkSplitModeEnum.char) {
-    return getLLMMaxChunkSize(params.llmModel);
-  }
-
-  return Math.min(params.chunkSize ?? chunkAutoChunkSize, getLLMMaxChunkSize(params.llmModel));
-};
-export const computeChunkSplitter = (params: {
-  chunkSettingMode?: ChunkSettingModeEnum;
-  chunkSplitMode?: DataChunkSplitModeEnum;
-  chunkSplitter?: string;
-}) => {
-  if (params.chunkSettingMode === ChunkSettingModeEnum.auto) {
-    return undefined;
-  }
-  if (params.chunkSplitMode !== DataChunkSplitModeEnum.char) {
-    return undefined;
-  }
-  return params.chunkSplitter;
-};
-export const computeParagraphChunkDeep = (params: {
-  chunkSettingMode?: ChunkSettingModeEnum;
-  chunkSplitMode?: DataChunkSplitModeEnum;
-  paragraphChunkDeep?: number;
-}) => {
-  if (params.chunkSettingMode === ChunkSettingModeEnum.auto) {
-    return 5;
-  }
-  if (params.chunkSplitMode === DataChunkSplitModeEnum.paragraph) {
-    return params.paragraphChunkDeep;
-  }
-  return 0;
+  return cloneChunkSettings;
 };

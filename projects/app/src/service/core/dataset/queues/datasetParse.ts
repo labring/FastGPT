@@ -1,6 +1,6 @@
 /* Dataset collection source parse, not max size. */
 
-import type { ParagraphChunkAIModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { ParagraphChunkAIModeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
@@ -29,7 +29,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
-import { deleteRawTextBuffer } from '@fastgpt/service/common/buffer/rawText/controller';
+import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 
 const requestLLMPargraph = async ({
   rawText,
@@ -42,13 +42,11 @@ const requestLLMPargraph = async ({
   billId: string;
   paragraphChunkAIMode: ParagraphChunkAIModeEnum;
 }) => {
-  return {
-    resultText: rawText,
-    totalInputTokens: 0,
-    totalOutputTokens: 0
-  };
-
-  if (!global.feConfigs?.isPlus || !paragraphChunkAIMode) {
+  if (
+    !global.feConfigs?.isPlus ||
+    !paragraphChunkAIMode ||
+    paragraphChunkAIMode === ParagraphChunkAIModeEnum.forbid
+  ) {
     return {
       resultText: rawText,
       totalInputTokens: 0,
@@ -57,16 +55,16 @@ const requestLLMPargraph = async ({
   }
 
   // Check is markdown text(Include 1 group of title)
-  // if (paragraphChunkAIMode === ParagraphChunkAIModeEnum.auto) {
-  //   const isMarkdown = /^(#+)\s/.test(rawText);
-  //   if (isMarkdown) {
-  //     return {
-  //       resultText: rawText,
-  //       totalInputTokens: 0,
-  //       totalOutputTokens: 0
-  //     };
-  //   }
-  // }
+  if (paragraphChunkAIMode === ParagraphChunkAIModeEnum.auto) {
+    const isMarkdown = /^(#+)\s/.test(rawText);
+    if (isMarkdown) {
+      return {
+        resultText: rawText,
+        totalInputTokens: 0,
+        totalOutputTokens: 0
+      };
+    }
+  }
 
   const data = await POST<{
     resultText: string;
@@ -226,15 +224,25 @@ export const datasetParseQueue = async (): Promise<any> => {
     });
 
     // 3. LLM Pargraph
-    const { resultText } = await requestLLMPargraph({
+    const { resultText, totalInputTokens, totalOutputTokens } = await requestLLMPargraph({
       rawText,
       model: dataset.agentModel,
       billId: data.billId,
       paragraphChunkAIMode: collection.paragraphChunkAIMode
     });
+    // Push usage
+    pushLLMTrainingUsage({
+      teamId: data.teamId,
+      tmbId: data.tmbId,
+      model: dataset.agentModel,
+      inputTokens: totalInputTokens,
+      outputTokens: totalOutputTokens,
+      billId: data.billId,
+      mode: 'paragraph'
+    });
 
     // 4. Chunk split
-    const chunks = rawText2Chunks({
+    const chunks = await rawText2Chunks({
       rawText: resultText,
       chunkTriggerType: collection.chunkTriggerType,
       chunkTriggerMinSize: collection.chunkTriggerMinSize,

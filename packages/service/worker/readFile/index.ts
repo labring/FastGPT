@@ -7,6 +7,7 @@ import { readDocsFile } from './extension/docx';
 import { readPptxRawText } from './extension/pptx';
 import { readXlsxRawText } from './extension/xlsx';
 import { readCsvRawText } from './extension/csv';
+import { workerResponse } from '../controller';
 
 parentPort?.on('message', async (props: ReadRawTextProps<Uint8Array>) => {
   const read = async (params: ReadRawTextByBuffer) => {
@@ -41,17 +42,16 @@ parentPort?.on('message', async (props: ReadRawTextProps<Uint8Array>) => {
   };
 
   try {
-    parentPort?.postMessage({
-      type: 'success',
+    workerResponse({
+      parentPort,
+      status: 'success',
       data: await read(newProps)
     });
   } catch (error) {
-    console.log(error);
-    parentPort?.postMessage({
-      type: 'error',
+    workerResponse({
+      parentPort,
+      status: 'error',
       data: error
     });
   }
-
-  process.exit();
 });

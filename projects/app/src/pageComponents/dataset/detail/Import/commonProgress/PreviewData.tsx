@@ -17,7 +17,6 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import Markdown from '@/components/Markdown';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
-import { collectionChunkForm2StoreChunkData } from '../../Form/CollectionChunkForm';
 
 const PreviewData = () => {
   const { t } = useTranslation();
@@ -37,11 +36,7 @@ const PreviewData = () => {
     async () => {
       if (!previewFile) return { chunks: [], total: 0 };
 
-      const chunkData = collectionChunkForm2StoreChunkData({
-        ...processParamsForm.getValues(),
-        vectorModel: datasetDetail.vectorModel,
-        agentModel: datasetDetail.agentModel
-      });
+      const chunkData = processParamsForm.getValues();
 
       if (importSource === ImportDataSourceEnum.fileCustom) {
         const chunkSplitter = processParamsForm.getValues('chunkSplitter');

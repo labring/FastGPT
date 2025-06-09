@@ -5,13 +5,14 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { readFileContentFromMongo } from '../../common/file/gridfs/controller';
 import { urlsFetch } from '../../common/string/cheerio';
-import { type TextSplitProps, splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
+import { type TextSplitProps } from '@fastgpt/global/common/string/textSplitter';
 import axios from 'axios';
 import { readRawContentByFileBuffer } from '../../common/file/read/utils';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { getApiDatasetRequest } from './apiDataset';
 import Papa from 'papaparse';
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
+import { text2Chunks } from '../../worker/function';
 
 export const readFileRawTextByUrl = async ({
   teamId,
@@ -165,7 +166,7 @@ export const readApiServerFileContent = async ({
   });
 };
 
-export const rawText2Chunks = ({
+export const rawText2Chunks = async ({
   rawText,
   chunkTriggerType = ChunkTriggerConfigTypeEnum.minSize,
   chunkTriggerMinSize = 1000,
@@ -182,12 +183,14 @@ export const rawText2Chunks = ({
 
   backupParse?: boolean;
   tableParse?: boolean;
-} & TextSplitProps): {
-  q: string;
-  a: string;
-  indexes?: string[];
-  imageIdList?: string[];
-}[] => {
+} & TextSplitProps): Promise<
+  {
+    q: string;
+    a: string;
+    indexes?: string[];
+    imageIdList?: string[];
+  }[]
+> => {
   const parseDatasetBackup2Chunks = (rawText: string) => {
     const csvArr = Papa.parse(rawText).data as string[][];
 
@@ -233,7 +236,7 @@ export const rawText2Chunks = ({
     }
   }
 
-  const { chunks } = splitText2Chunks({
+  const { chunks } = await text2Chunks({
     text: rawText,
     chunkSize,
     ...splitProps

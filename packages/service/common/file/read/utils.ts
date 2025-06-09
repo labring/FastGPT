@@ -1,6 +1,5 @@
 import { uploadMongoImg } from '../image/controller';
 import FormData from 'form-data';
-import { WorkerNameEnum, runWorker } from '../../../worker/utils';
 import fs from 'fs';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
 import axios from 'axios';
@@ -9,6 +8,7 @@ import { batchRun } from '@fastgpt/global/common/system/utils';
 import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
 import { useDoc2xServer } from '../../../thirdProvider/doc2x';
+import { readRawContentFromBuffer } from '../../../worker/function';
 
 export type readRawTextByLocalFileParams = {
   teamId: string;
@@ -63,11 +63,10 @@ export const readRawContentByFileBuffer = async ({
   rawText: string;
 }> => {
   const systemParse = () =>
-    runWorker<ReadFileResponse>(WorkerNameEnum.readFile, {
+    readRawContentFromBuffer({
       extension,
       encoding,
-      buffer,
-      teamId
+      buffer
     });
   const parsePdfFromCustomService = async (): Promise<ReadFileResponse> => {
     const url = global.systemEnv.customPdfParse?.url;
