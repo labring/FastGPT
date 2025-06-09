@@ -4,8 +4,6 @@ import React, { useEffect, useMemo } from 'react';
 import { Controller, type UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Card, Flex, Switch, Textarea, Text } from '@chakra-ui/react';
-import ChatAvatar from './ChatAvatar';
-import { MessageCardStyle } from '../constants';
 import {
   VariableInputEnum,
   WorkflowIOValueTypeEnum
@@ -228,20 +226,25 @@ const VariableInput = ({
   }, [allVariableList, getValues, setValue, variableList]);
 
   return (
-    <Box py={3}>
+    <Box>
       {externalVariableList.length > 0 && (
-        <Box textAlign={'left'}>
-          <Card
+        <Box
+          textAlign={'left'}
+          width={'100%'}
+          maxWidth={'100%'}
+          display={'flex'}
+          justifyContent={'center'}
+        >
+          <Flex
             order={2}
             mt={2}
-            w={'400px'}
-            {...MessageCardStyle}
-            bg={'white'}
-            boxShadow={'0 0 8px rgba(0,0,0,0.15)'}
+            w={['100%', '700px']}
+            maxW={'700px'}
+            borderRadius={'12px'}
+            border={'0.5px solid var(--Gray-Modern-250, #DFE2EA)'}
           >
             <Flex
               color={'primary.600'}
-              bg={'primary.100'}
               mb={3}
               px={3}
               py={1.5}
@@ -269,21 +272,28 @@ const VariableInput = ({
                 </Button>
               </Box>
             )}
-          </Card>
+          </Flex>
         </Box>
       )}
 
       {variableList.length > 0 && (
-        <Box textAlign={'left'}>
+        <Box
+          textAlign={'left'}
+          width={'100%'}
+          maxWidth={'100%'}
+          display={'flex'}
+          justifyContent={'center'}
+        >
           <Card
             order={2}
-            w={'400px'}
+            w={['100%', '700px']}
+            maxW={'700px'}
             padding={'24px 32px'}
-            bg={'white'}
             borderRadius={'12px'}
             border={'0.5px solid var(--Gray-Modern-250, #DFE2EA)'}
             gap={'10px'}
             justifyContent={'center'}
+            boxShadow="none"
           >
             {variableList.map((item) => (
               <VariableInputItem key={item.id} item={item} variablesForm={variablesForm} />
@@ -291,9 +301,11 @@ const VariableInput = ({
             {!chatStarted && (
               <Box>
                 <Button
-                  leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
+                  variant={'outline'}
+                  colorScheme={'primary'}
+                  leftIcon={<MyIcon name={'core/chat/sendFill'} w={'16px'} />}
                   size={'sm'}
-                  maxW={'100px'}
+                  w={'100%'}
                   onClick={handleSubmitChat(() => {
                     console.log('start chat');
                     chatForm.setValue('chatStarted', true);
@@ -324,7 +336,7 @@ const WelcomePage = ({
       alignItems={'center'}
       padding={'0px'}
       gap={'16px'}
-      width={'388px'}
+      width={'100%'}
       height={'auto'}
       flex={'none'}
       order={0}
@@ -332,85 +344,99 @@ const WelcomePage = ({
       margin={'0 auto'}
       py={6}
     >
-      {/* Logo and Title */}
+      {/* Header Section */}
       <Flex
-        flexDirection={'row'}
-        alignItems={'center'}
-        padding={'0px'}
-        gap={'20px'}
         width={'100%'}
-        maxWidth={'388px'}
-        height={'60px'}
-        flex={'none'}
-        order={0}
-        flexGrow={0}
+        maxWidth={['100%', '388px']}
+        height={['auto']}
+        flexDirection={'column'}
+        alignItems={'center'}
+        gap={'16px'}
+        px={[4, 0]}
+        mx={'auto'}
       >
-        {/* Logo Container */}
-        <Box
-          boxSizing={'border-box'}
-          width={'60px'}
-          height={'60px'}
-          borderRadius={'15px'}
+        {/* Logo and Title */}
+        <Flex
+          flexDirection={'row'}
+          alignItems={'center'}
+          justifyContent={'center'}
+          padding={'0px'}
+          gap={['12px', '20px']}
+          width={'100%'}
+          maxWidth={['100%', '388px']}
+          height={['auto', '60px']}
+          minH={['48px', '60px']}
           flex={'none'}
           order={0}
           flexGrow={0}
-          position={'relative'}
-          display={'flex'}
-          alignItems={'center'}
-          justifyContent={'center'}
+          mx={'auto'}
         >
-          {/* Logo Icon */}
+          {/* Logo Container */}
+          <Box
+            boxSizing={'border-box'}
+            width={['48px', '60px']}
+            height={['48px', '60px']}
+            borderRadius={['12px', '15px']}
+            flex={'none'}
+            order={0}
+            flexGrow={0}
+            position={'relative'}
+            display={'flex'}
+            alignItems={'center'}
+            justifyContent={'center'}
+          >
+            {/* Logo Icon */}
 
-          <Avatar
-            width={'40px'}
-            height={'40px'}
-            src={appAvatar}
-            backgroundSize={'cover'}
-            backgroundPosition={'center'}
-            borderRadius={'10px'}
-          />
-        </Box>
+            <Avatar
+              width={['32px', '40px']}
+              height={['32px', '40px']}
+              src={appAvatar}
+              backgroundSize={'cover'}
+              backgroundPosition={'center'}
+              borderRadius={['8px', '10px']}
+            />
+          </Box>
 
-        {/* Title */}
-        <Text
-          flex={1}
-          height={'48px'}
-          fontFamily={'Inter'}
+          {/* Title */}
+          <Text
+            flex={1}
+            height={['auto', '48px']}
+            fontFamily={'Inter'}
+            fontStyle={'normal'}
+            fontWeight={700}
+            fontSize={['24px', '34.2857px']}
+            lineHeight={'140%'}
+            display={'flex'}
+            alignItems={'center'}
+            color={'#111824'}
+            whiteSpace={'nowrap'}
+            overflow={'hidden'}
+            textOverflow={'ellipsis'}
+            order={1}
+          >
+            {appName}
+          </Text>
+        </Flex>
+
+        {/* Welcome Message with Markdown */}
+        <Box
+          width={'100%'}
+          maxWidth={['100%', '388px']}
+          fontFamily={'PingFang SC'}
           fontStyle={'normal'}
-          fontWeight={700}
-          fontSize={'34.2857px'}
-          lineHeight={'140%'}
-          display={'flex'}
-          alignItems={'center'}
-          color={'#111824'}
-          whiteSpace={'nowrap'}
-          overflow={'hidden'}
-          textOverflow={'ellipsis'}
-          order={1}
+          fontWeight={400}
+          fontSize={['16px', '18px']}
+          lineHeight={'26px'}
+          letterSpacing={'0.15px'}
+          color={'#707070'}
+          textAlign={'center'}
+          mx={'auto'}
         >
-          {appName}
-        </Text>
+          <Markdown source={`~~~guide \n${welcomeText}`} forbidZhFormat />
+        </Box>
       </Flex>
-
-      {/* Welcome Message with Markdown */}
-      <Box
-        width={'388px'}
-        fontFamily={'PingFang SC'}
-        fontStyle={'normal'}
-        fontWeight={400}
-        fontSize={'18px'}
-        lineHeight={'26px'}
-        letterSpacing={'0.15px'}
-        color={'#707070'}
-        flex={'none'}
-        order={1}
-        alignSelf={'stretch'}
-        flexGrow={0}
-        textAlign={'center'}
-      >
-        <Markdown source={`~~~guide \n${welcomeText}`} forbidZhFormat />
-      </Box>
-      <Box id="variable-input" order={2}>
+      {/* Form Container */}
+      <Box id="variable-input" order={2} width={'100%'} maxWidth={'100%'}>
         <VariableInput
           chatStarted={chatStarted}
           chatForm={chatForm}
