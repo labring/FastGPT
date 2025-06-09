@@ -8,7 +8,7 @@ import { nanoid } from 'nanoid';
 import { type McpToolConfigType } from '../type';
 import { i18nT } from '../../../../web/i18n/utils';
 import { type RuntimeNodeItemType } from '../../workflow/runtime/type';
-import { type StoreHeaderAuthValueType } from 'common/teamSecret/type';
+import { type StoreHeaderAuthValueType } from '../../../common/teamSecret/type';
 
 export const getMCPToolSetRuntimeNode = ({
   url,
