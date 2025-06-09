@@ -54,6 +54,4 @@ parentPort?.on('message', async (props: ReadRawTextProps<Uint8Array>) => {
       data: error
     });
   }
-
-  process.exit();
 });

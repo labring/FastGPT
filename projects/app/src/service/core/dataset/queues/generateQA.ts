@@ -23,7 +23,7 @@ import {
   getLLMMaxChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { text2ChunksWorker } from '@fastgpt/service/core/dataset/read';
+import { text2Chunks } from '@fastgpt/service/worker/function';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -224,7 +224,7 @@ async function formatSplitText({
 
   // empty result. direct split chunk
   if (result.length === 0) {
-    const { chunks } = await text2ChunksWorker({
+    const { chunks } = await text2Chunks({
       text: rawText,
       chunkSize: chunkAutoChunkSize,
       maxSize: getLLMMaxChunkSize(llmModel)

@@ -13,4 +13,6 @@ export const workerResponse = ({
     type: status,
     data: data
   });
+
+  process.exit();
 };

@@ -18,7 +18,7 @@ import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTex
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
 import { deleteDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
-import { text2ChunksWorker } from '@fastgpt/service/core/dataset/read';
+import { text2Chunks } from '@fastgpt/service/worker/function';
 
 const formatIndexes = async ({
   indexes = [],
@@ -50,14 +50,14 @@ const formatIndexes = async ({
     indexSize: number;
   }) => {
     const qChunks = (
-      await text2ChunksWorker({
+      await text2Chunks({
         text: q,
         chunkSize: indexSize,
         maxSize: maxIndexSize
       })
     ).chunks;
     const aChunks = a
-      ? (await text2ChunksWorker({ text: a, chunkSize: indexSize, maxSize: maxIndexSize })).chunks
+      ? (await text2Chunks({ text: a, chunkSize: indexSize, maxSize: maxIndexSize })).chunks
       : [];
 
     return [
@@ -117,7 +117,7 @@ const formatIndexes = async ({
         const tokens = await countPromptTokens(item.text);
         if (tokens > maxIndexSize) {
           const splitText = (
-            await text2ChunksWorker({
+            await text2Chunks({
               text: item.text,
               chunkSize: indexSize,
               maxSize: maxIndexSize

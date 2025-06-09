@@ -5,6 +5,8 @@ import { addLog } from '../../system/log';
 import { setCron } from '../../system/cron';
 import { checkTimerLock } from '../../system/timerLock/utils';
 import { TimerIdEnum } from '../../system/timerLock/constants';
+import { gridFsStream2Buffer } from '../../file/gridfs/utils';
+import { readRawContentFromBuffer } from '../../../worker/function';
 
 const getGridBucket = () => {
   return new connectionMongo.mongo.GridFSBucket(connectionMongo.connection.db!, {
@@ -85,30 +87,27 @@ export const getRawTextBuffer = async (sourceId: string) => {
 
     // Read file content
     const downloadStream = gridBucket.openDownloadStream(bufferData._id);
-    const chunks: Buffer[] = [];
 
-    return new Promise<{
-      text: string;
-      sourceName: string;
-    } | null>((resolve, reject) => {
-      downloadStream.on('data', (chunk) => {
-        chunks.push(chunk);
-      });
+    const fileBuffers = await gridFsStream2Buffer(downloadStream);
 
-      downloadStream.on('end', () => {
-        const buffer = Buffer.concat(chunks);
-        const text = buffer.toString('utf8');
-        resolve({
-          text,
-          sourceName: bufferData.metadata?.sourceName || ''
-        });
-      });
+    const rawText = await (async () => {
+      if (fileBuffers.length < 10000000) {
+        return fileBuffers.toString('utf8');
+      } else {
+        return (
+          await readRawContentFromBuffer({
+            extension: 'txt',
+            encoding: 'utf8',
+            buffer: fileBuffers
+          })
+        ).rawText;
+      }
+    })();
 
-      downloadStream.on('error', (error) => {
-        addLog.error('getRawTextBuffer error', error);
-        resolve(null);
-      });
-    });
+    return {
+      text: rawText,
+      sourceName: bufferData.metadata?.sourceName || ''
+    };
   });
 };
 

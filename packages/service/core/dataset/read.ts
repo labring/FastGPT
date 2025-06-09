@@ -5,7 +5,6 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { readFileContentFromMongo } from '../../common/file/gridfs/controller';
 import { urlsFetch } from '../../common/string/cheerio';
-import type { SplitProps, SplitResponse } from '@fastgpt/global/common/string/textSplitter';
 import { type TextSplitProps } from '@fastgpt/global/common/string/textSplitter';
 import axios from 'axios';
 import { readRawContentByFileBuffer } from '../../common/file/read/utils';
@@ -13,7 +12,7 @@ import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { getApiDatasetRequest } from './apiDataset';
 import Papa from 'papaparse';
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
-import { runWorker, WorkerNameEnum } from '../../worker/utils';
+import { text2Chunks } from '../../worker/function';
 
 export const readFileRawTextByUrl = async ({
   teamId,
@@ -167,9 +166,6 @@ export const readApiServerFileContent = async ({
   });
 };
 
-export const text2ChunksWorker = (props: SplitProps) => {
-  return runWorker<SplitResponse>(WorkerNameEnum.text2Chunks, props);
-};
 export const rawText2Chunks = async ({
   rawText,
   chunkTriggerType = ChunkTriggerConfigTypeEnum.minSize,
@@ -240,7 +236,7 @@ export const rawText2Chunks = async ({
     }
   }
 
-  const { chunks } = await text2ChunksWorker({
+  const { chunks } = await text2Chunks({
     text: rawText,
     chunkSize,
     ...splitProps
