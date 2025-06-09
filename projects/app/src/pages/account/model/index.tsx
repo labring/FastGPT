@@ -15,7 +15,7 @@ const ChannelTable = dynamic(() => import('@/pageComponents/account/model/Channe
 const ChannelLog = dynamic(() => import('@/pageComponents/account/model/Log'));
 const ModelDashboard = dynamic(() => import('@/pageComponents/account/model/ModelDashboard'));
 
-type TabType = 'model' | 'config' | 'channel' | 'channel_log' | 'modal_dashboard';
+type TabType = 'model' | 'config' | 'channel' | 'channel_log' | 'account_model';
 
 const ModelProvider = () => {
   const { t } = useTranslation();
@@ -34,7 +34,7 @@ const ModelProvider = () => {
             ? [
                 { label: t('account:channel'), value: 'channel' },
                 { label: t('account_model:log'), value: 'channel_log' },
-                { label: t('account_usage:dashboard'), value: 'modal_dashboard' }
+                { label: t('account_usage:dashboard'), value: 'account_model' }
               ]
             : [])
         ]}
@@ -52,7 +52,7 @@ const ModelProvider = () => {
         {tab === 'config' && <ModelConfigTable Tab={Tab} />}
         {tab === 'channel' && <ChannelTable Tab={Tab} />}
         {tab === 'channel_log' && <ChannelLog Tab={Tab} />}
-        {tab === 'modal_dashboard' && <ModelDashboard Tab={Tab} />}
+        {tab === 'account_model' && <ModelDashboard Tab={Tab} />}
       </Flex>
     </AccountContainer>
   );

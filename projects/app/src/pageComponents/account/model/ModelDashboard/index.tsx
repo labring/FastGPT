@@ -1,22 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Flex, HStack } from '@chakra-ui/react';
+import { Box, Flex, HStack, useTheme } from '@chakra-ui/react';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { addDays } from 'date-fns';
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  type TooltipProps
-} from 'recharts';
-import { type NameType, type ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import dayjs from 'dayjs';
 import DateRangePicker, {
   type DateRangeType
@@ -26,6 +14,22 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import { getChannelList, getDashboardV2 } from '@/web/core/ai/channel';
 import { getSystemModelList } from '@/web/core/ai/config';
 import { getModelProvider } from '@fastgpt/global/core/ai/provider';
+import LineChartComponent from './LineChartComponent';
+
+export type ModelUsageData = {
+  model: string;
+  request_count: number;
+  used_amount: number;
+  exception_count: number;
+  input_tokens: number;
+  output_tokens?: number;
+  total_tokens: number;
+};
+
+export type DashboardDataEntry = {
+  timestamp: number;
+  models: Array<ModelUsageData>;
+};
 
 export type ModelDashboardData = {
   date: string;
@@ -38,249 +42,10 @@ export type ModelDashboardData = {
   totalCost: number;
 };
 
-const CallsTooltip = ({ active, payload }: TooltipProps<ValueType, NameType>) => {
-  const data = payload?.[0]?.payload as ModelDashboardData;
-
-  if (active && data) {
-    return (
-      <Box
-        bg={'white'}
-        p={3}
-        borderRadius={'md'}
-        border={'0.5px solid'}
-        borderColor={'myGray.200'}
-        boxShadow={
-          '0px 24px 48px -12px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.20)'
-        }
-      >
-        <Box fontSize={'mini'} color={'myGray.600'} mb={3}>
-          {data.date}
-        </Box>
-        <Box fontSize={'14px'} color={'#11B6FC'} fontWeight={'medium'} mb={1}>
-          {`成功次数: ${formatNumber(data.successCalls)}`}
-        </Box>
-        <Box fontSize={'14px'} color={'#FDB022'} fontWeight={'medium'}>
-          {`错误次数: ${formatNumber(data.errorCalls)}`}
-        </Box>
-      </Box>
-    );
-  }
-  return null;
-};
-
-const TokensTooltip = ({ active, payload }: TooltipProps<ValueType, NameType>) => {
-  const data = payload?.[0]?.payload as ModelDashboardData;
-
-  if (active && data) {
-    return (
-      <Box
-        bg={'white'}
-        p={3}
-        borderRadius={'md'}
-        border={'0.5px solid'}
-        borderColor={'myGray.200'}
-        boxShadow={
-          '0px 24px 48px -12px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.20)'
-        }
-      >
-        <Box fontSize={'mini'} color={'myGray.600'} mb={3}>
-          {data.date}
-        </Box>
-        <Box fontSize={'14px'} color={'#11B6FC'} fontWeight={'medium'} mb={1}>
-          {`输入Tokens: ${formatNumber(data.inputTokens)}`}
-        </Box>
-        <Box fontSize={'14px'} color={'#FDB022'} fontWeight={'medium'} mb={1}>
-          {`输出Tokens: ${formatNumber(data.outputTokens)}`}
-        </Box>
-      </Box>
-    );
-  }
-  return null;
-};
-
-const CostTooltip = ({ active, payload }: TooltipProps<ValueType, NameType>) => {
-  const data = payload?.[0]?.payload as ModelDashboardData;
-
-  if (active && data) {
-    return (
-      <Box
-        bg={'white'}
-        p={3}
-        borderRadius={'md'}
-        border={'0.5px solid'}
-        borderColor={'myGray.200'}
-        boxShadow={
-          '0px 24px 48px -12px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.20)'
-        }
-      >
-        <Box fontSize={'mini'} color={'myGray.600'} mb={3}>
-          {data.date}
-        </Box>
-        <Box fontSize={'14px'} color={'#11B6FC'} fontWeight={'medium'} mb={1}>
-          {`输入成本: ${data.inputCost.toFixed(0)} 积分`}
-        </Box>
-        <Box fontSize={'14px'} color={'#FDB022'} fontWeight={'medium'} mb={1}>
-          {`输出成本: ${data.outputCost.toFixed(0)} 积分`}
-        </Box>
-        <Box fontSize={'14px'} color={'#8B5CF6'} fontWeight={'medium'}>
-          {`总成本: ${data.totalCost.toFixed(0)} 积分`}
-        </Box>
-      </Box>
-    );
-  }
-  return null;
-};
-
-const processDashboardV2DataToChart = (
-  dashboardData: Array<{
-    timestamp: number;
-    models: Array<{
-      model: string;
-      request_count: number;
-      used_amount: number;
-      exception_count: number;
-      input_tokens: number;
-      output_tokens?: number;
-      total_tokens: number;
-    }>;
-  }>,
-  dateRange: DateRangeType,
-  selectedModel?: string,
-  systemModelList: Array<{
-    model: string;
-    inputPrice?: number;
-    outputPrice?: number;
-    charsPointsPrice?: number;
-  }> = []
-): ModelDashboardData[] => {
-  if (!dashboardData || dashboardData.length === 0) {
-    return [];
-  }
-
-  const modelPriceMap = new Map<
-    string,
-    {
-      inputPrice?: number;
-      outputPrice?: number;
-      charsPointsPrice?: number;
-    }
-  >();
-
-  systemModelList.forEach((model) => {
-    modelPriceMap.set(model.model, {
-      inputPrice: model.inputPrice,
-      outputPrice: model.outputPrice,
-      charsPointsPrice: model.charsPointsPrice
-    });
-  });
-
-  const dailyStats = new Map<
-    string,
-    {
-      errorCalls: number;
-      successCalls: number;
-      inputTokens: number;
-      outputTokens: number;
-      inputCost: number;
-      outputCost: number;
-      timestamp: number;
-    }
-  >();
-
-  dashboardData.forEach((dayData) => {
-    let timestamp = dayData.timestamp;
-
-    const now = Date.now();
-    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
-
-    if (timestamp < 10000000000) {
-      timestamp = timestamp * 1000;
-    }
-
-    if (timestamp > now || timestamp < thirtyDaysAgo) {
-      timestamp = now;
-    }
-
-    const date = dayjs(timestamp).format('MM-DD');
-
-    if (!dailyStats.has(date)) {
-      dailyStats.set(date, {
-        errorCalls: 0,
-        successCalls: 0,
-        inputTokens: 0,
-        outputTokens: 0,
-        inputCost: 0,
-        outputCost: 0,
-        timestamp: timestamp
-      });
-    }
-
-    const existing = dailyStats.get(date)!;
-
-    const modelsToProcess = selectedModel
-      ? dayData.models.filter((model) => model.model === selectedModel)
-      : dayData.models;
-
-    modelsToProcess.forEach((model) => {
-      const successCalls = model.request_count - model.exception_count;
-      existing.successCalls += successCalls;
-      existing.errorCalls += model.exception_count;
-      existing.inputTokens += model.input_tokens || 0;
-      existing.outputTokens += model.output_tokens || 0;
-
-      const modelPricing = modelPriceMap.get(model.model);
-      if (modelPricing) {
-        const inputTokens = model.input_tokens || 0;
-        const outputTokens = model.output_tokens || 0;
-
-        const isIOPriceType =
-          typeof modelPricing.inputPrice === 'number' && modelPricing.inputPrice > 0;
-
-        if (isIOPriceType) {
-          existing.inputCost += (modelPricing.inputPrice || 0) * (inputTokens / 1000);
-          existing.outputCost += (modelPricing.outputPrice || 0) * (outputTokens / 1000);
-        } else if (modelPricing.charsPointsPrice) {
-          const totalTokens = inputTokens + outputTokens;
-          const totalCost = (modelPricing.charsPointsPrice || 0) * (totalTokens / 1000);
-
-          const totalUsedTokens = inputTokens + outputTokens;
-          if (totalUsedTokens > 0) {
-            existing.inputCost += totalCost * (inputTokens / totalUsedTokens);
-            existing.outputCost += totalCost * (outputTokens / totalUsedTokens);
-          }
-        }
-      }
-    });
-  });
-
-  const result = Array.from(dailyStats.entries())
-    .map(([date, stats]) => ({
-      date,
-      errorCalls: stats.errorCalls,
-      successCalls: stats.successCalls,
-      inputTokens: stats.inputTokens,
-      outputTokens: stats.outputTokens,
-      inputCost: stats.inputCost,
-      outputCost: stats.outputCost,
-      totalCost: stats.inputCost + stats.outputCost
-    }))
-    .sort((a, b) => {
-      const currentYear = new Date().getFullYear();
-      const dateA = dayjs(`${currentYear}-${a.date}`, 'YYYY-MM-DD');
-      const dateB = dayjs(`${currentYear}-${b.date}`, 'YYYY-MM-DD');
-
-      if (!dateA.isValid() || !dateB.isValid()) {
-        return a.date.localeCompare(b.date);
-      }
-
-      return dateA.isBefore(dateB) ? -1 : dateA.isAfter(dateB) ? 1 : 0;
-    });
-
-  return result;
-};
-
+// Displays model usage statistics, token consumption and cost visualization
 const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   const { t } = useTranslation();
+  const theme = useTheme();
 
   const [filterProps, setFilterProps] = useState<{
     channelId?: string;
@@ -303,8 +68,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
     }
   });
 
-  const [hiddenLines, setHiddenLines] = useState<Record<string, boolean>>({});
-
+  // Fetch channel list with "All" option
   const { data: channelList = [] } = useRequest2(
     async () => {
       const res = await getChannelList().then((res) =>
@@ -328,18 +92,41 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
     }
   );
 
-  const { data: systemModelList = [] } = useRequest2(getSystemModelList, {
-    manual: false
-  });
+  // Get model list filtered by selected channel
+  const { data: modelList = [] } = useRequest2(
+    async () => {
+      const systemModelList = await getSystemModelList();
 
-  const modelList = useMemo(() => {
-    if (filterProps.channelId) {
-      const selectedChannel = channelList.find(
-        (channel) => channel.value === filterProps.channelId
-      );
-      if (selectedChannel && selectedChannel.models.length > 0) {
-        const channelModels = systemModelList
-          .filter((item) => selectedChannel.models.includes(item.model))
+      const formatModelList = () => {
+        if (filterProps.channelId) {
+          const selectedChannel = channelList.find(
+            (channel) => channel.value === filterProps.channelId
+          );
+          if (selectedChannel && selectedChannel.models.length > 0) {
+            const channelModels = systemModelList
+              .filter((item) => selectedChannel.models.includes(item.model))
+              .map((item) => {
+                const provider = getModelProvider(item.provider);
+                return {
+                  order: provider.order,
+                  icon: provider.avatar,
+                  label: item.model,
+                  value: item.model
+                };
+              })
+              .sort((a, b) => a.order - b.order);
+
+            return [
+              {
+                label: t('common:All'),
+                value: undefined
+              },
+              ...channelModels
+            ];
+          }
+        }
+
+        const res = systemModelList
           .map((item) => {
             const provider = getModelProvider(item.provider);
             return {
@@ -350,52 +137,41 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
             };
           })
           .sort((a, b) => a.order - b.order);
-
         return [
           {
             label: t('common:All'),
             value: undefined
           },
-          ...channelModels
+          ...res
         ];
-      }
+      };
+
+      return formatModelList();
+    },
+    {
+      manual: false,
+      refreshDeps: [filterProps.channelId, channelList, t]
     }
+  );
 
-    const res = systemModelList
-      .map((item) => {
-        const provider = getModelProvider(item.provider);
-        return {
-          order: provider.order,
-          icon: provider.avatar,
-          label: item.model,
-          value: item.model
-        };
-      })
-      .sort((a, b) => a.order - b.order);
-    return [
-      {
-        label: t('common:All'),
-        value: undefined
-      },
-      ...res
-    ];
-  }, [systemModelList, t, filterProps.channelId, channelList]);
-
-  const { data: channelData, loading: isLoadingChannel } = useRequest2(
+  // Fetch dashboard data with date range and channel filters
+  const { data: dashboardData, loading: isLoading } = useRequest2(
     async () => {
-      if (!filterProps.channelId) {
-        return null;
-      }
-
       const params = {
-        channel: parseInt(filterProps.channelId)
+        channel: filterProps.channelId ? parseInt(filterProps.channelId) : 0,
+        start_timestamp: filterProps.dateRange.from
+          ? Math.floor(filterProps.dateRange.from.getTime())
+          : undefined,
+        end_timestamp: filterProps.dateRange.to
+          ? Math.floor(filterProps.dateRange.to.getTime())
+          : undefined,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timespan: 'day' as const
       };
 
       const result = await getDashboardV2(params);
 
-      if (result && result.data) {
-        return result.data;
-      } else if (Array.isArray(result)) {
+      if (result && Array.isArray(result)) {
         return result;
       }
 
@@ -403,80 +179,159 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
     },
     {
       manual: false,
-      refreshDeps: [filterProps.channelId]
+      refreshDeps: [filterProps.channelId, filterProps.dateRange]
     }
   );
 
-  const { data: dashboardData, loading: isLoadingDashboard } = useRequest2(
-    async () => {
-      if (filterProps.channelId && channelData) {
-        return channelData;
-      }
+  // Get system model list for price calculation
+  const { data: systemModelList = [] } = useRequest2(getSystemModelList, {
+    manual: false
+  });
 
-      const params = {
-        channel: 0
-      };
-
-      const result = await getDashboardV2(params);
-
-      if (result && result.data) {
-        return result.data;
-      } else if (Array.isArray(result)) {
-        return result;
-      }
-
-      return [];
-    },
-    {
-      manual: false,
-      refreshDeps: [filterProps.channelId, filterProps.model, channelData]
-    }
-  );
-
-  const isLoading = isLoadingChannel || isLoadingDashboard;
-
+  // Process chart data - aggregate daily model calls, token usage and cost data
   const chartData = useMemo(() => {
     if (!dashboardData || !Array.isArray(dashboardData) || dashboardData.length === 0) {
       return [];
     }
 
-    const allProcessedData = processDashboardV2DataToChart(
-      dashboardData,
-      filterProps.dateRange,
-      filterProps.model,
-      systemModelList
+    // model price
+    const modelPriceMap = new Map<
+      string,
+      {
+        inputPrice?: number;
+        outputPrice?: number;
+        charsPointsPrice?: number;
+      }
+    >();
+
+    systemModelList.forEach(
+      (model: {
+        model: string;
+        inputPrice?: number;
+        outputPrice?: number;
+        charsPointsPrice?: number;
+      }) => {
+        modelPriceMap.set(model.model, {
+          inputPrice: model.inputPrice,
+          outputPrice: model.outputPrice,
+          charsPointsPrice: model.charsPointsPrice
+        });
+      }
     );
 
-    const filteredData = allProcessedData.filter((item) => {
-      try {
-        const currentYear = new Date().getFullYear();
-        const itemDate = dayjs(`${currentYear}-${item.date}`, 'YYYY-MM-DD');
-        const fromDate = dayjs(filterProps.dateRange.from);
-        const toDate = dayjs(filterProps.dateRange.to);
-
-        if (!itemDate.isValid() || !fromDate.isValid() || !toDate.isValid()) {
-          return false;
-        }
-
-        return (
-          (itemDate.isAfter(fromDate, 'day') || itemDate.isSame(fromDate, 'day')) &&
-          (itemDate.isBefore(toDate, 'day') || itemDate.isSame(toDate, 'day'))
-        );
-      } catch (error) {
-        return false;
+    const dailyStats = new Map<
+      string,
+      {
+        errorCalls: number;
+        successCalls: number;
+        inputTokens: number;
+        outputTokens: number;
+        inputCost: number;
+        outputCost: number;
+        timestamp: number;
       }
+    >();
+
+    dashboardData.forEach((dayData) => {
+      let timestamp = dayData.timestamp;
+
+      const now = Date.now();
+      const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+
+      if (timestamp < 10000000000) {
+        timestamp = timestamp * 1000;
+      }
+
+      if (timestamp > now || timestamp < thirtyDaysAgo) {
+        timestamp = now;
+      }
+
+      const date = dayjs(timestamp).format('MM-DD');
+
+      if (!dailyStats.has(date)) {
+        dailyStats.set(date, {
+          errorCalls: 0,
+          successCalls: 0,
+          inputTokens: 0,
+          outputTokens: 0,
+          inputCost: 0,
+          outputCost: 0,
+          timestamp: timestamp
+        });
+      }
+
+      const existing = dailyStats.get(date)!;
+
+      const modelsToProcess = filterProps.model
+        ? dayData.models.filter((model: ModelUsageData) => model.model === filterProps.model)
+        : dayData.models;
+
+      modelsToProcess.forEach((model: ModelUsageData) => {
+        const successCalls = model.request_count - model.exception_count;
+        existing.successCalls += successCalls;
+        existing.errorCalls += model.exception_count;
+        existing.inputTokens += model.input_tokens || 0;
+        existing.outputTokens += model.output_tokens || 0;
+
+        const modelPricing = modelPriceMap.get(model.model);
+        if (modelPricing) {
+          const inputTokens = model.input_tokens || 0;
+          const outputTokens = model.output_tokens || 0;
+
+          const isIOPriceType =
+            typeof modelPricing.inputPrice === 'number' && modelPricing.inputPrice > 0;
+
+          if (isIOPriceType) {
+            existing.inputCost += (modelPricing.inputPrice || 0) * (inputTokens / 1000);
+            existing.outputCost += (modelPricing.outputPrice || 0) * (outputTokens / 1000);
+          } else if (modelPricing.charsPointsPrice) {
+            const totalTokens = inputTokens + outputTokens;
+            const totalCost = (modelPricing.charsPointsPrice || 0) * (totalTokens / 1000);
+
+            const totalUsedTokens = inputTokens + outputTokens;
+            if (totalUsedTokens > 0) {
+              existing.inputCost += totalCost * (inputTokens / totalUsedTokens);
+              existing.outputCost += totalCost * (outputTokens / totalUsedTokens);
+            }
+          }
+        }
+      });
     });
 
-    return filteredData;
+    // Convert to an array and sort it
+    const processedData = Array.from(dailyStats.entries())
+      .map(([date, stats]) => ({
+        date,
+        errorCalls: stats.errorCalls,
+        successCalls: stats.successCalls,
+        inputTokens: stats.inputTokens,
+        outputTokens: stats.outputTokens,
+        inputCost: stats.inputCost,
+        outputCost: stats.outputCost,
+        totalCost: stats.inputCost + stats.outputCost
+      }))
+      .sort((a, b) => {
+        const currentYear = new Date().getFullYear();
+        const dateA = dayjs(`${currentYear}-${a.date}`, 'YYYY-MM-DD');
+        const dateB = dayjs(`${currentYear}-${b.date}`, 'YYYY-MM-DD');
+
+        if (!dateA.isValid() || !dateB.isValid()) {
+          return a.date.localeCompare(b.date);
+        }
+
+        return dateA.isBefore(dateB) ? -1 : dateA.isAfter(dateB) ? 1 : 0;
+      });
+
+    return processedData;
   }, [
     dashboardData,
     filterProps.dateRange,
     filterProps.model,
     filterProps.channelId,
-    channelData,
     systemModelList
   ]);
 
+  // Calculate total statistics
   const totalStats = useMemo(() => {
     return chartData.reduce(
       (acc, curr) => ({
@@ -517,7 +372,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
           </Box>
         </HStack>
         <HStack>
-          <FormLabel>渠道</FormLabel>
+          <FormLabel>{t('account_model:dashboard_channel')}</FormLabel>
           <Box flex={'1 0 0'}>
             <MySelect<string | undefined>
               bg={'myGray.50'}
@@ -536,7 +391,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
           </Box>
         </HStack>
         <HStack>
-          <FormLabel>模型</FormLabel>
+          <FormLabel>{t('account_model:dashboard_model')}</FormLabel>
           <Box flex={'1 0 0'}>
             <MySelect<string | undefined>
               bg={'myGray.50'}
@@ -559,191 +414,143 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
           my={6}
         >
           <Flex>
-            <Box color={'black'}>{`总调用次数:`}</Box>
+            <Box color={'black'}>{t('account_model:dashboard_total_calls')}</Box>
             <Box color={'primary.600'} ml={2}>
               {`${formatNumber(totalStats.successCalls + totalStats.errorCalls)}`}
             </Box>
           </Flex>
           <Flex>
-            <Box color={'black'}>{`总成本:`}</Box>
+            <Box color={'black'}>{t('account_model:dashboard_total_cost_label')}</Box>
             <Box color={'purple.600'} ml={2}>
-              {`${totalStats.totalCost.toFixed(0)} 积分`}
+              {`${totalStats.totalCost.toFixed(0)} ${t('account_model:dashboard_points')}`}
             </Box>
           </Flex>
         </Flex>
 
         {!isLoading && (!dashboardData || dashboardData.length === 0) && (
           <Box textAlign="center" py={12} color="myGray.500" fontSize="md">
-            <Box mb={2}>暂无数据</Box>
-            <Box fontSize="sm" color="myGray.400">
-              请尝试调整筛选条件或时间范围
-            </Box>
+            <Box mb={2}>{t('account_model:dashboard_no_data')}</Box>
           </Box>
         )}
 
         {!isLoading && dashboardData && dashboardData.length > 0 && (
           <>
-            <Flex mb={4} fontSize={'mini'} color={'myGray.500'} fontWeight={'medium'}>
-              模型调用次数趋势
-            </Flex>
-            <ResponsiveContainer width="100%" height={424} className="mt-4">
-              <LineChart data={chartData} margin={{ top: 10, right: 30, left: -12, bottom: 0 }}>
-                <XAxis
-                  dataKey="date"
-                  padding={{ left: 40, right: 40 }}
-                  tickMargin={10}
-                  tickSize={0}
-                  tick={{ fontSize: '12px', color: '#667085', fontWeight: '500' }}
-                  interval={Math.max(Math.floor(chartData.length / 7), 0)}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickSize={0}
-                  tickMargin={12}
-                  tick={{ fontSize: '12px', color: '#667085', fontWeight: '500' }}
-                />
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                <Tooltip content={<CallsTooltip />} />
-                <Legend
-                  onClick={(e) => {
-                    setHiddenLines((prev) => ({
-                      ...prev,
-                      // @ts-ignore
-                      [e.dataKey]: !prev[e.dataKey]
-                    }));
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  name="成功次数"
-                  dataKey="successCalls"
-                  stroke="#11B6FC"
-                  strokeWidth={2.5}
-                  dot={false}
-                  hide={hiddenLines['successCalls']}
-                />
-                <Line
-                  type="monotone"
-                  name="错误次数"
-                  dataKey="errorCalls"
-                  stroke="#FDB022"
-                  strokeWidth={2.5}
-                  dot={false}
-                  hide={hiddenLines['errorCalls']}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <LineChartComponent
+              data={chartData}
+              title={t('account_model:dashboard_call_trend')}
+              xAxisConfig={{
+                dataKey: 'date',
+                padding: { left: 40, right: 40 },
+                tickMargin: 10,
+                tickSize: 0,
+                tick: { fontSize: '12px', color: theme.colors.myGray['500'], fontWeight: '500' }
+              }}
+              lines={[
+                {
+                  dataKey: 'successCalls',
+                  name: t('account_model:dashboard_success_calls'),
+                  color: theme.colors.primary['600']
+                },
+                {
+                  dataKey: 'errorCalls',
+                  name: t('account_model:dashboard_error_calls'),
+                  color: theme.colors.yellow['400']
+                }
+              ]}
+              tooltipItems={[
+                {
+                  label: t('account_model:dashboard_success_calls'),
+                  dataKey: 'successCalls',
+                  color: theme.colors.primary['600']
+                },
+                {
+                  label: t('account_model:dashboard_error_calls'),
+                  dataKey: 'errorCalls',
+                  color: theme.colors.yellow['400']
+                }
+              ]}
+            />
 
-            <Flex mb={4} fontSize={'mini'} color={'myGray.500'} fontWeight={'medium'} mt={8}>
-              Tokens使用趋势
-            </Flex>
-            <ResponsiveContainer width="100%" height={424} className="mt-4">
-              <LineChart data={chartData} margin={{ top: 10, right: 30, left: -12, bottom: 0 }}>
-                <XAxis
-                  dataKey="date"
-                  padding={{ left: 40, right: 40 }}
-                  tickMargin={10}
-                  tickSize={0}
-                  tick={{ fontSize: '12px', color: '#667085', fontWeight: '500' }}
-                  interval={Math.max(Math.floor(chartData.length / 7), 0)}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickSize={0}
-                  tickMargin={12}
-                  tick={{ fontSize: '12px', color: '#667085', fontWeight: '500' }}
-                />
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                <Tooltip content={<TokensTooltip />} />
-                <Legend
-                  onClick={(e) => {
-                    setHiddenLines((prev) => ({
-                      ...prev,
-                      // @ts-ignore
-                      [e.dataKey]: !prev[e.dataKey]
-                    }));
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  name="输入Tokens"
-                  dataKey="inputTokens"
-                  stroke="#11B6FC"
-                  strokeWidth={2.5}
-                  dot={false}
-                  hide={hiddenLines['inputTokens']}
-                />
-                <Line
-                  type="monotone"
-                  name="输出Tokens"
-                  dataKey="outputTokens"
-                  stroke="#FDB022"
-                  strokeWidth={2.5}
-                  dot={false}
-                  hide={hiddenLines['outputTokens']}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <Box mt={8}>
+              <LineChartComponent
+                data={chartData}
+                title={t('account_model:dashboard_token_trend')}
+                xAxisConfig={{
+                  dataKey: 'date',
+                  padding: { left: 40, right: 40 },
+                  tickMargin: 10,
+                  tickSize: 0,
+                  tick: { fontSize: '12px', color: theme.colors.myGray['500'], fontWeight: '500' }
+                }}
+                lines={[
+                  {
+                    dataKey: 'inputTokens',
+                    name: t('account_model:dashboard_input_tokens'),
+                    color: theme.colors.primary['600']
+                  },
+                  {
+                    dataKey: 'outputTokens',
+                    name: t('account_model:dashboard_output_tokens'),
+                    color: theme.colors.yellow['400']
+                  },
+                  {
+                    dataKey: (data: ModelDashboardData) => data.inputTokens + data.outputTokens,
+                    name: t('account_model:dashboard_total_tokens'),
+                    color: theme.colors.adora['600']
+                  }
+                ]}
+                tooltipItems={[
+                  {
+                    label: t('account_model:dashboard_input_tokens'),
+                    dataKey: 'inputTokens',
+                    color: theme.colors.primary['600'],
+                    formatter: (value) => formatNumber(value).toString()
+                  },
+                  {
+                    label: t('account_model:dashboard_output_tokens'),
+                    dataKey: 'outputTokens',
+                    color: theme.colors.yellow['400'],
+                    formatter: (value) => formatNumber(value).toString()
+                  },
+                  {
+                    label: t('account_model:dashboard_total_tokens'),
+                    color: theme.colors.adora['600'],
+                    customValue: (data: ModelDashboardData) => data.inputTokens + data.outputTokens,
+                    formatter: (value) => formatNumber(value).toString()
+                  }
+                ]}
+              />
+            </Box>
 
-            <Flex mb={4} fontSize={'mini'} color={'myGray.500'} fontWeight={'medium'} mt={8}>
-              成本趋势（积分）
-            </Flex>
-            <ResponsiveContainer width="100%" height={424} className="mt-4">
-              <LineChart data={chartData} margin={{ top: 10, right: 30, left: -12, bottom: 0 }}>
-                <XAxis
-                  dataKey="date"
-                  padding={{ left: 40, right: 40 }}
-                  tickMargin={10}
-                  tickSize={0}
-                  tick={{ fontSize: '12px', color: '#667085', fontWeight: '500' }}
-                  interval={Math.max(Math.floor(chartData.length / 7), 0)}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickSize={0}
-                  tickMargin={12}
-                  tick={{ fontSize: '12px', color: '#667085', fontWeight: '500' }}
-                />
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                <Tooltip content={<CostTooltip />} />
-                <Legend
-                  onClick={(e) => {
-                    setHiddenLines((prev) => ({
-                      ...prev,
-                      // @ts-ignore
-                      [e.dataKey]: !prev[e.dataKey]
-                    }));
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  name="输入成本"
-                  dataKey="inputCost"
-                  stroke="#11B6FC"
-                  strokeWidth={2.5}
-                  dot={false}
-                  hide={hiddenLines['inputCost']}
-                />
-                <Line
-                  type="monotone"
-                  name="输出成本"
-                  dataKey="outputCost"
-                  stroke="#FDB022"
-                  strokeWidth={2.5}
-                  dot={false}
-                  hide={hiddenLines['outputCost']}
-                />
-                <Line
-                  type="monotone"
-                  name="总成本"
-                  dataKey="totalCost"
-                  stroke="#8B5CF6"
-                  strokeWidth={2.5}
-                  dot={false}
-                  hide={hiddenLines['totalCost']}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <Box mt={8}>
+              <LineChartComponent
+                data={chartData}
+                title={t('account_model:dashboard_cost_trend')}
+                xAxisConfig={{
+                  dataKey: 'date',
+                  padding: { left: 40, right: 40 },
+                  tickMargin: 10,
+                  tickSize: 0,
+                  tick: { fontSize: '12px', color: theme.colors.myGray['500'], fontWeight: '500' }
+                }}
+                lines={[
+                  {
+                    dataKey: 'totalCost',
+                    name: t('account_model:dashboard_total_cost'),
+                    color: theme.colors.adora['600']
+                  }
+                ]}
+                tooltipItems={[
+                  {
+                    label: t('account_model:dashboard_total_cost'),
+                    dataKey: 'totalCost',
+                    color: theme.colors.adora['600'],
+                    formatter: (value) =>
+                      `${value.toFixed(1)} ${t('account_model:dashboard_points')}`
+                  }
+                ]}
+              />
+            </Box>
           </>
         )}
       </MyBox>

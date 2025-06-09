@@ -50,5 +50,20 @@
   "test_failed": "有{{num}}个模型报错",
   "vlm_model": "图片理解模型",
   "vlm_model_tip": "用于知识库中对文档中的图片进行额外的索引生成",
-  "waiting_test": "等待测试"
+  "waiting_test": "等待测试",
+  "dashboard_success_calls": "成功次数",
+  "dashboard_error_calls": "错误次数",
+  "dashboard_input_tokens": "输入Tokens",
+  "dashboard_output_tokens": "输出Tokens",
+  "dashboard_total_tokens": "总Tokens",
+  "dashboard_total_cost": "总成本",
+  "dashboard_call_trend": "模型调用次数趋势",
+  "dashboard_token_trend": "Tokens使用趋势",
+  "dashboard_cost_trend": "积分消耗",
+  "dashboard_total_calls": "总调用次数:",
+  "dashboard_total_cost_label": "总成本:",
+  "dashboard_no_data": "暂无数据",
+  "dashboard_channel": "渠道",
+  "dashboard_model": "模型",
+  "dashboard_points": "积分"
 }
