@@ -104,6 +104,15 @@ const AuthValueDisplay = ({
   );
 };
 
+export const defaultHeaderAuthConfig: HeaderAuthConfigType = {
+  enableAuth: false,
+  authType: HeaderAuthTypeEnum.Bearer,
+  BearerValue: {
+    secretId: '',
+    value: ''
+  }
+};
+
 const HeaderAuthConfig = ({
   headerAuthConfig,
   onSave
@@ -118,11 +127,11 @@ const HeaderAuthConfig = ({
 
   const { control, register, watch, handleSubmit } = useForm<HeaderAuthConfigType>({
     defaultValues: {
-      enableAuth: headerAuthConfig?.enableAuth || false,
-      authType: headerAuthConfig?.authType || HeaderAuthTypeEnum.Bearer,
-      BearerValue: headerAuthConfig?.BearerValue,
-      BasicValue: headerAuthConfig?.BasicValue,
-      customHeaders: headerAuthConfig?.customHeaders
+      enableAuth: headerAuthConfig?.enableAuth || defaultHeaderAuthConfig.enableAuth,
+      authType: headerAuthConfig?.authType || defaultHeaderAuthConfig.authType,
+      BearerValue: headerAuthConfig?.BearerValue || defaultHeaderAuthConfig.BearerValue,
+      BasicValue: headerAuthConfig?.BasicValue || defaultHeaderAuthConfig.BasicValue,
+      customHeaders: headerAuthConfig?.customHeaders || defaultHeaderAuthConfig.customHeaders
     }
   });
 

@@ -164,11 +164,18 @@ export const rewriteRuntimeWorkFlow = (
     const toolList =
       toolSetNode.inputs.find((input) => input.key === 'toolSetData')?.value?.toolList || [];
     const url = toolSetNode.inputs.find((input) => input.key === 'toolSetData')?.value?.url;
+    const headerAuth = toolSetNode.inputs.find((input) => input.key === 'toolSetData')?.value
+      ?.headerAuth;
 
     const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
 
     for (const tool of toolList) {
-      const newToolNode = getMCPToolRuntimeNode({ avatar: toolSetNode.avatar, tool, url });
+      const newToolNode = getMCPToolRuntimeNode({
+        avatar: toolSetNode.avatar,
+        tool,
+        url,
+        headerAuth
+      });
 
       nodes.push({ ...newToolNode, name: `${toolSetNode.name} / ${tool.name}` });
 

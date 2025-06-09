@@ -14,6 +14,11 @@ import {
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { type HeaderAuthConfigType } from '@fastgpt/global/common/teamSecret/type';
+import { formatAuthData } from '@/components/support/teamSecrets/utils';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { upsertTeamSecrets } from '@fastgpt/service/support/teamSecret/controller';
+import { TeamSecretTypeEnum } from '@fastgpt/global/common/teamSecret/constants';
 
 export type createMCPToolsQuery = {};
 
@@ -22,6 +27,7 @@ export type createMCPToolsBody = Omit<
   'type' | 'modules' | 'edges' | 'chatConfig'
 > & {
   url: string;
+  headerAuth: HeaderAuthConfigType;
   toolList: McpToolConfigType[];
 };
 
@@ -31,7 +37,7 @@ async function handler(
   req: ApiRequestProps<createMCPToolsBody, createMCPToolsQuery>,
   res: ApiResponseType<createMCPToolsResponse>
 ): Promise<createMCPToolsResponse> {
-  const { name, avatar, toolList, url, parentId } = req.body;
+  const { name, avatar, toolList, url, headerAuth, parentId } = req.body;
 
   const { teamId, tmbId, userId } = parentId
     ? await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true })
@@ -47,9 +53,34 @@ async function handler(
       teamId,
       tmbId,
       type: AppTypeEnum.toolSet,
-      modules: [getMCPToolSetRuntimeNode({ url, toolList, name, avatar })],
+      modules: [],
       session
     });
+
+    await upsertTeamSecrets({
+      teamSecret: [formatAuthData({ data: headerAuth, prefix: `${mcpToolsId}-` })],
+      type: TeamSecretTypeEnum.headersAuth,
+      appId: mcpToolsId
+    });
+
+    await MongoApp.findByIdAndUpdate(
+      mcpToolsId,
+      {
+        modules: [
+          getMCPToolSetRuntimeNode({
+            url,
+            toolList,
+            name,
+            avatar,
+            headerAuth: formatAuthData({
+              data: headerAuth,
+              prefix: `${mcpToolsId}-`
+            })
+          })
+        ]
+      },
+      { session }
+    );
 
     for (const tool of toolList) {
       await onCreateApp({
@@ -60,7 +91,16 @@ async function handler(
         tmbId,
         type: AppTypeEnum.tool,
         intro: tool.description,
-        modules: [getMCPToolRuntimeNode({ tool, url })],
+        modules: [
+          getMCPToolRuntimeNode({
+            tool,
+            url,
+            headerAuth: formatAuthData({
+              data: headerAuth,
+              prefix: `${mcpToolsId}-`
+            })
+          })
+        ],
         session
       });
     }

@@ -11,6 +11,10 @@ export type HeaderAuthValueType = {
   value: string;
 };
 
+export type StoreHeaderAuthValueType = {
+  [key: string]: HeaderAuthValueType;
+};
+
 export type HeaderAuthConfigType = {
   enableAuth: boolean;
   authType: HeaderAuthTypeEnum;

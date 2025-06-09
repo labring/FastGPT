@@ -18,12 +18,16 @@ import {
 } from '@fastgpt/global/core/app/mcpTools/utils';
 import { type MCPToolSetData } from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { type StoreHeaderAuthValueType } from '@fastgpt/global/common/teamSecret/type';
+import { upsertTeamSecrets } from '@fastgpt/service/support/teamSecret/controller';
+import { TeamSecretTypeEnum } from '@fastgpt/global/common/teamSecret/constants';
 
 export type updateMCPToolsQuery = {};
 
 export type updateMCPToolsBody = {
   appId: string;
   url: string;
+  headerAuth: StoreHeaderAuthValueType;
   toolList: McpToolConfigType[];
 };
 
@@ -33,7 +37,7 @@ async function handler(
   req: ApiRequestProps<updateMCPToolsBody, updateMCPToolsQuery>,
   res: ApiResponseType<updateMCPToolsResponse>
 ): Promise<updateMCPToolsResponse> {
-  const { appId, url, toolList } = req.body;
+  const { appId, url, toolList, headerAuth } = req.body;
   const { app } = await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
 
   const toolSetNode = app.modules.find((item) => item.flowNodeType === FlowNodeTypeEnum.toolSet);
@@ -50,16 +54,31 @@ async function handler(
         parentApp: app,
         toolSetData: {
           url,
-          toolList
+          toolList,
+          headerAuth
         },
         session
       });
     }
 
+    await upsertTeamSecrets({
+      teamSecret: [headerAuth],
+      type: TeamSecretTypeEnum.headersAuth,
+      appId
+    });
+
     await MongoApp.updateOne(
       { _id: appId },
       {
-        modules: [getMCPToolSetRuntimeNode({ url, toolList, name: app.name, avatar: app.avatar })],
+        modules: [
+          getMCPToolSetRuntimeNode({
+            url,
+            toolList,
+            headerAuth,
+            name: app.name,
+            avatar: app.avatar
+          })
+        ],
         updateTime: new Date()
       },
       { session }
@@ -71,7 +90,15 @@ async function handler(
       },
       {
         $set: {
-          nodes: [getMCPToolSetRuntimeNode({ url, toolList, name: app.name, avatar: app.avatar })]
+          nodes: [
+            getMCPToolSetRuntimeNode({
+              url,
+              toolList,
+              headerAuth,
+              name: app.name,
+              avatar: app.avatar
+            })
+          ]
         }
       },
       { session }
@@ -89,7 +116,11 @@ const updateMCPChildrenTool = async ({
   session
 }: {
   parentApp: AppDetailType;
-  toolSetData: MCPToolSetData;
+  toolSetData: {
+    url: string;
+    toolList: McpToolConfigType[];
+    headerAuth: StoreHeaderAuthValueType;
+  };
   session: ClientSession;
 }) => {
   const { teamId, tmbId } = parentApp;
@@ -120,7 +151,9 @@ const updateMCPChildrenTool = async ({
         tmbId,
         type: AppTypeEnum.tool,
         intro: tool.description,
-        modules: [getMCPToolRuntimeNode({ tool, url: toolSetData.url })],
+        modules: [
+          getMCPToolRuntimeNode({ tool, url: toolSetData.url, headerAuth: toolSetData.headerAuth })
+        ],
         session
       });
     }
@@ -133,7 +166,26 @@ const updateMCPChildrenTool = async ({
       await MongoApp.updateOne(
         { _id: dbTool._id },
         {
-          modules: [getMCPToolRuntimeNode({ tool, url: toolSetData.url })]
+          modules: [
+            getMCPToolRuntimeNode({
+              tool,
+              url: toolSetData.url,
+              headerAuth: toolSetData.headerAuth
+            })
+          ]
+        },
+        { session }
+      );
+      await MongoAppVersion.updateOne(
+        { appId: dbTool._id },
+        {
+          nodes: [
+            getMCPToolRuntimeNode({
+              tool,
+              url: toolSetData.url,
+              headerAuth: toolSetData.headerAuth
+            })
+          ]
         },
         { session }
       );

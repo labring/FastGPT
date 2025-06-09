@@ -13,6 +13,9 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
 import { getMCPTools } from '@/web/core/app/api/plugin';
+import HeaderAuthConfig from '@/components/support/teamSecrets/HeaderAuthConfig';
+import { type StoreHeaderAuthValueType } from '@fastgpt/global/common/teamSecret/type';
+import { formatAuthData, parseAuthData } from '@/components/support/teamSecrets/utils';
 
 const EditForm = ({
   url,
@@ -20,7 +23,9 @@ const EditForm = ({
   toolList,
   setToolList,
   currentTool,
-  setCurrentTool
+  setCurrentTool,
+  headerAuth,
+  setHeaderAuth
 }: {
   url: string;
   setUrl: (url: string) => void;
@@ -28,9 +33,12 @@ const EditForm = ({
   setToolList: (toolList: McpToolConfigType[]) => void;
   currentTool: McpToolConfigType | null;
   setCurrentTool: (tool: McpToolConfigType) => void;
+  headerAuth: StoreHeaderAuthValueType;
+  setHeaderAuth: (headerAuth: StoreHeaderAuthValueType) => void;
 }) => {
   const { t } = useTranslation();
 
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const [toolDetail, setToolDetail] = useState<McpToolConfigType | null>(null);
 
   const { runAsync: runGetMCPTools, loading: isGettingTools } = useRequest2(
@@ -52,6 +60,12 @@ const EditForm = ({
           <FormLabel ml={2} flex={1}>
             {t('app:MCP_tools_url')}
           </FormLabel>
+          <HeaderAuthConfig
+            headerAuthConfig={parseAuthData({ data: headerAuth })}
+            onSave={(data) => {
+              setHeaderAuth(formatAuthData({ data, prefix: `${appDetail._id}-` }));
+            }}
+          />
         </Flex>
         <Flex alignItems={'center'} gap={2} mt={3}>
           <Input
@@ -66,7 +80,7 @@ const EditForm = ({
             h={8}
             isLoading={isGettingTools}
             onClick={() => {
-              runGetMCPTools({ url });
+              runGetMCPTools({ url, headerAuth });
             }}
           >
             {t('common:Parse')}

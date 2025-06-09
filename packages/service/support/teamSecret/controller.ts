@@ -1,13 +1,13 @@
 import { type TeamSecretTypeEnum } from '@fastgpt/global/common/teamSecret/constants';
 import { MongoTeamSecret } from './schema';
-import type { HeaderAuthValueType } from '@fastgpt/global/common/teamSecret/type';
+import type { StoreHeaderAuthValueType } from '@fastgpt/global/common/teamSecret/type';
 
 export async function upsertTeamSecrets({
   teamSecret,
   type,
   appId
 }: {
-  teamSecret: { [key: string]: HeaderAuthValueType }[];
+  teamSecret: StoreHeaderAuthValueType[];
   type: TeamSecretTypeEnum;
   appId: string;
 }) {

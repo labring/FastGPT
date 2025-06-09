@@ -1,5 +1,8 @@
 import { HeaderAuthTypeEnum } from '@fastgpt/global/common/teamSecret/constants';
-import { type HeaderAuthConfigType } from '@fastgpt/global/common/teamSecret/type';
+import {
+  type StoreHeaderAuthValueType,
+  type HeaderAuthConfigType
+} from '@fastgpt/global/common/teamSecret/type';
 
 export const formatAuthData = ({
   data,
@@ -7,7 +10,7 @@ export const formatAuthData = ({
 }: {
   data: HeaderAuthConfigType;
   prefix?: string;
-}) => {
+}): StoreHeaderAuthValueType => {
   if (!data?.enableAuth) return {};
 
   const authEntries =

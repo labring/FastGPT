@@ -13,7 +13,7 @@ import {
   HeaderAuthTypeEnum,
   TeamSecretTypeEnum
 } from '@fastgpt/global/common/teamSecret/constants';
-import type { HeaderAuthValueType, TeamSecretType } from '@fastgpt/global/common/teamSecret/type';
+import type { StoreHeaderAuthValueType } from '@fastgpt/global/common/teamSecret/type';
 import { upsertTeamSecrets } from '../../support/teamSecret/controller';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
@@ -235,7 +235,7 @@ export async function secureHttpAuth(nodes: StoreNodeItemType[], appId: string) 
   });
 }
 
-export const formatHeaderAuth = async (headerAuth: { [key: string]: HeaderAuthValueType }) => {
+export const formatHeaderAuth = async (headerAuth: StoreHeaderAuthValueType) => {
   if (!headerAuth || Object.keys(headerAuth).length === 0) return [];
 
   const secretIds = Object.values(headerAuth)
