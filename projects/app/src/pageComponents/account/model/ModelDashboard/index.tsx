@@ -141,6 +141,41 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
         });
       }
 
+      // Auto-fill missing days
+      if (filterProps.dateRange.from && filterProps.dateRange.to) {
+        const startDate = dayjs(filterProps.dateRange.from);
+        const endDate = dayjs(filterProps.dateRange.to);
+        const daysDiff = endDate.diff(startDate, 'day') + 1;
+
+        // Create complete date list
+        const completeDateList = Array.from({ length: daysDiff }, (_, i) =>
+          startDate.add(i, 'day')
+        );
+
+        // Create a map of existing data by timestamp
+        const existingDataMap = new Map(
+          data.map((item) => [dayjs(item.timestamp * 1000).format('YYYY-MM-DD'), item])
+        );
+
+        // Fill missing days with empty data
+        const completeData = completeDateList.map((date) => {
+          const dateKey = date.format('YYYY-MM-DD');
+          const existingItem = existingDataMap.get(dateKey);
+
+          if (existingItem) {
+            return existingItem;
+          } else {
+            // Create empty data structure for missing days
+            return {
+              timestamp: Math.floor(date.valueOf() / 1000),
+              models: []
+            };
+          }
+        });
+
+        data = completeData;
+      }
+
       return data;
     },
     {
@@ -176,7 +211,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       const date = dayjs(item.timestamp * 1000).format('MM-DD');
       const totalCalls = item.models.reduce((acc, model) => acc + model.request_count, 0);
       const errorCalls = item.models.reduce((acc, model) => acc + model.exception_count, 0);
-      const errorRate = Number((errorCalls / totalCalls).toFixed(2));
+      const errorRate = totalCalls === 0 ? 0 : Number((errorCalls / totalCalls).toFixed(2));
 
       const inputTokens = item.models.reduce((acc, model) => acc + (model?.input_tokens || 0), 0);
       const outputTokens = item.models.reduce((acc, model) => acc + (model?.output_tokens || 0), 0);
