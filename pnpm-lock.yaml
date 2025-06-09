@@ -741,8 +741,8 @@ importers:
         specifier: ^1.11.7
         version: 1.11.13
       fastify:
-        specifier: ^4.27.0
-        version: 4.29.0
+        specifier: ^4.29.1
+        version: 4.29.1
       isolated-vm:
         specifier: ^4.7.2
         version: 4.7.2
@@ -5496,8 +5496,8 @@ packages:
   fastify@4.28.1:
     resolution: {integrity: sha512-kFWUtpNr4i7t5vY2EJPCN2KgMVpuqfU4NjnJNCgiNB900oiDeYqaNDRcAfeBbOF5hGixixxcKnOU4KN9z6QncQ==}
 
-  fastify@4.29.0:
-    resolution: {integrity: sha512-MaaUHUGcCgC8fXQDsDtioaCcag1fmPJ9j64vAKunqZF4aSub040ZGi/ag8NGE2714yREPOKZuHCfpPzuUD3UQQ==}
+  fastify@4.29.1:
+    resolution: {integrity: sha512-m2kMNHIG92tSNWv+Z3UeTR9AWLLuo7KctC7mlFPtMEVrfjIhmQhkQnT9v15qA/BfVq3vvj134Y0jl9SBje3jXQ==}
 
   fastq@1.19.1:
     resolution: {integrity: sha512-GwLTyxkCXjXbxqIhTsMI2Nui8huMPtnxg7krajPJAjnEG/iiOS7i+zCtWGZR9G0NBKbXKh6X9m9UIsYX/N6vvQ==}
@@ -7895,8 +7895,8 @@ packages:
   pino-std-serializers@7.0.0:
     resolution: {integrity: sha512-e906FRY0+tV27iq4juKzSYPbUj2do2X2JX4EzSca1631EB2QJQUqGbDuERal7LCtOpxl6x3+nvo9NPZcmjkiFA==}
 
-  pino@9.6.0:
-    resolution: {integrity: sha512-i85pKRCt4qMjZ1+L7sy2Ag4t1atFcdbEt76+7iRJn1g2BvsnRMGu9p8pivl9fs63M2kF/A0OacFZhTub+m/qMg==}
+  pino@9.7.0:
+    resolution: {integrity: sha512-vnMCM6xZTb1WDmLvtG2lE/2p+t9hDEIvTWJsu6FejkE62vB7gDhvzrpFR4Cw2to+9JNQxVnkAKVPA1KPB98vWg==}
     hasBin: true
 
   pirates@4.0.6:
@@ -8007,6 +8007,9 @@ packages:
 
   process-warning@4.0.1:
     resolution: {integrity: sha512-3c2LzQ3rY9d0hc1emcsHhfT9Jwz0cChib/QN89oME2R451w5fy3f0afAhERFZAwrbDU43wk12d0ORBpDVME50Q==}
+
+  process-warning@5.0.0:
+    resolution: {integrity: sha512-a39t9ApHNx2L4+HBnQKqxxHNs1r7KF+Intd8Q/g1bUh6q0WIp9voPXJ/x0j+ZL45KF1pJd9+q2jLIRMfvEshkA==}
 
   process@0.11.10:
     resolution: {integrity: sha512-cdGef/drWFoydD1JsMzuFf8100nZl+GT+yacc2bEced5f9Rjk4z+WtFUTBu9PhOi9j/jfmBPu0mMEY4wIdAF8A==}
@@ -8577,6 +8580,11 @@ packages:
 
   semver@7.7.1:
     resolution: {integrity: sha512-hlq8tAfn0m/61p4BVRcPzIGr6LKiMwo4VM6dGi6pt4qcRkmNzTcWq6eCEjEh+qXjkMDvPlOFFSGwQjoEa6gyMA==}
+    engines: {node: '>=10'}
+    hasBin: true
+
+  semver@7.7.2:
+    resolution: {integrity: sha512-RF0Fw+rO5AMf9MAyaRXI4AV0Ulj5lMHqVxxdSgiVbixSCXoEmmX/jk0CuJw4+3SqroYO9VoUh+HcuJivvtJemA==}
     engines: {node: '>=10'}
     hasBin: true
 
@@ -12186,7 +12194,7 @@ snapshots:
 
   '@npmcli/fs@3.1.1':
     dependencies:
-      semver: 7.7.1
+      semver: 7.7.2
 
   '@nuxtjs/opencollective@0.3.2(encoding@0.1.13)':
     dependencies:
@@ -15647,15 +15655,15 @@ snapshots:
       fast-json-stringify: 5.16.1
       find-my-way: 8.2.2
       light-my-request: 5.14.0
-      pino: 9.6.0
+      pino: 9.7.0
       process-warning: 3.0.0
       proxy-addr: 2.0.7
       rfdc: 1.4.1
       secure-json-parse: 2.7.0
-      semver: 7.7.1
+      semver: 7.7.2
       toad-cache: 3.7.0
 
-  fastify@4.29.0:
+  fastify@4.29.1:
     dependencies:
       '@fastify/ajv-compiler': 3.6.0
       '@fastify/error': 3.4.1
@@ -15666,12 +15674,12 @@ snapshots:
       fast-json-stringify: 5.16.1
       find-my-way: 8.2.2
       light-my-request: 5.14.0
-      pino: 9.6.0
+      pino: 9.7.0
       process-warning: 3.0.0
       proxy-addr: 2.0.7
       rfdc: 1.4.1
       secure-json-parse: 2.7.0
-      semver: 7.7.1
+      semver: 7.7.2
       toad-cache: 3.7.0
 
   fastq@1.19.1:
@@ -15811,7 +15819,7 @@ snapshots:
       minimatch: 3.1.2
       node-abort-controller: 3.1.1
       schema-utils: 3.3.0
-      semver: 7.7.1
+      semver: 7.7.2
       tapable: 2.2.1
       typescript: 5.7.2
       webpack: 5.97.1
@@ -16408,7 +16416,7 @@ snapshots:
 
   is-bun-module@1.3.0:
     dependencies:
-      semver: 7.7.1
+      semver: 7.7.2
 
   is-callable@1.2.7: {}
 
@@ -16599,7 +16607,7 @@ snapshots:
       '@babel/parser': 7.26.10
       '@istanbuljs/schema': 0.1.3
       istanbul-lib-coverage: 3.2.2
-      semver: 7.7.1
+      semver: 7.7.2
     transitivePeerDependencies:
       - supports-color
 
@@ -16917,7 +16925,7 @@ snapshots:
       jest-util: 29.7.0
       natural-compare: 1.4.0
       pretty-format: 29.7.0
-      semver: 7.7.1
+      semver: 7.7.2
     transitivePeerDependencies:
       - supports-color
 
@@ -17336,7 +17344,7 @@ snapshots:
 
   make-dir@4.0.0:
     dependencies:
-      semver: 7.7.1
+      semver: 7.7.2
 
   make-error@1.3.6: {}
 
@@ -18081,7 +18089,7 @@ snapshots:
       https-proxy-agent: 7.0.6
       mongodb: 6.14.2(socks@2.8.4)
       new-find-package-json: 2.0.0
-      semver: 7.7.1
+      semver: 7.7.2
       tar-stream: 3.1.7
       tslib: 2.8.1
       yauzl: 3.2.0
@@ -18283,7 +18291,7 @@ snapshots:
 
   node-abi@3.74.0:
     dependencies:
-      semver: 7.7.1
+      semver: 7.7.2
 
   node-abort-controller@3.1.1: {}
 
@@ -18576,7 +18584,7 @@ snapshots:
       got: 12.6.1
       registry-auth-token: 5.1.0
       registry-url: 6.0.1
-      semver: 7.7.1
+      semver: 7.7.2
 
   pako@1.0.11: {}
 
@@ -18746,14 +18754,14 @@ snapshots:
 
   pino-std-serializers@7.0.0: {}
 
-  pino@9.6.0:
+  pino@9.7.0:
     dependencies:
       atomic-sleep: 1.0.0
       fast-redact: 3.5.0
       on-exit-leak-free: 2.1.2
       pino-abstract-transport: 2.0.0
       pino-std-serializers: 7.0.0
-      process-warning: 4.0.1
+      process-warning: 5.0.0
       quick-format-unescaped: 4.0.4
       real-require: 0.2.0
       safe-stable-stringify: 2.5.0
@@ -18850,6 +18858,8 @@ snapshots:
   process-warning@3.0.0: {}
 
   process-warning@4.0.1: {}
+
+  process-warning@5.0.0: {}
 
   process@0.11.10: {}
 
@@ -19557,11 +19567,13 @@ snapshots:
 
   semver-diff@4.0.0:
     dependencies:
-      semver: 7.7.1
+      semver: 7.7.2
 
   semver@6.3.1: {}
 
   semver@7.7.1: {}
+
+  semver@7.7.2: {}
 
   send@0.19.0:
     dependencies:
@@ -19974,7 +19986,7 @@ snapshots:
       methods: 1.1.2
       mime: 2.6.0
       qs: 6.14.0
-      semver: 7.7.1
+      semver: 7.7.2
     transitivePeerDependencies:
       - supports-color
 
@@ -20498,7 +20510,7 @@ snapshots:
       is-yarn-global: 0.4.1
       latest-version: 7.0.0
       pupa: 3.1.0
-      semver: 7.7.1
+      semver: 7.7.2
       semver-diff: 4.0.0
       xdg-basedir: 5.1.0
 
