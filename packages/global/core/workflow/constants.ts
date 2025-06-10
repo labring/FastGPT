@@ -187,6 +187,7 @@ export enum NodeInputKeyEnum {
   httpFormBody = 'system_httpFormBody',
   httpContentType = 'system_httpContentType',
   httpTimeout = 'system_httpTimeout',
+  httpAuth = 'system_httpAuth',
   abandon_httpUrl = 'url',
 
   // app

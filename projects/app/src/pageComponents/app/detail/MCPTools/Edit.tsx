@@ -8,6 +8,7 @@ import ChatTest from './ChatTest';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import EditForm from './EditForm';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
+import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 
 const Edit = ({
   url,
@@ -15,7 +16,9 @@ const Edit = ({
   toolList,
   setToolList,
   currentTool,
-  setCurrentTool
+  setCurrentTool,
+  headerAuth,
+  setHeaderAuth
 }: {
   url: string;
   setUrl: (url: string) => void;
@@ -23,6 +26,8 @@ const Edit = ({
   setToolList: (toolList: McpToolConfigType[]) => void;
   currentTool: McpToolConfigType | null;
   setCurrentTool: (tool: McpToolConfigType) => void;
+  headerAuth: StoreSecretValueType;
+  setHeaderAuth: (headerAuth: StoreSecretValueType) => void;
 }) => {
   const { isPc } = useSystem();
 
@@ -56,12 +61,14 @@ const Edit = ({
             setCurrentTool={setCurrentTool}
             url={url}
             setUrl={setUrl}
+            headerAuth={headerAuth}
+            setHeaderAuth={setHeaderAuth}
           />
         </Box>
       </Flex>
       {isPc && (
         <Box flex={'2 0 0'} w={0} mb={3}>
-          <ChatTest currentTool={currentTool} url={url} />
+          <ChatTest currentTool={currentTool} url={url} headerAuth={headerAuth} />
         </Box>
       )}
     </MyBox>

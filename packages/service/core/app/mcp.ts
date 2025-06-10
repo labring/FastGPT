@@ -8,9 +8,11 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 export class MCPClient {
   private client: Client;
   private url: string;
+  private headerAuth: { key: string; value: string }[];
 
-  constructor(config: { url: string }) {
+  constructor(config: { url: string; headerAuth: { key: string; value: string }[] }) {
     this.url = config.url;
+    this.headerAuth = config.headerAuth;
     this.client = new Client({
       name: 'FastGPT-MCP-client',
       version: '1.0.0'
@@ -19,11 +21,33 @@ export class MCPClient {
 
   private async getConnection(): Promise<Client> {
     try {
-      const transport = new StreamableHTTPClientTransport(new URL(this.url));
+      const transport = new StreamableHTTPClientTransport(new URL(this.url), {
+        requestInit: {
+          headers: Object.fromEntries(this.headerAuth.map(({ key, value }) => [key, value]))
+        }
+      });
       await this.client.connect(transport);
       return this.client;
     } catch (error) {
-      await this.client.connect(new SSEClientTransport(new URL(this.url)));
+      await this.client.connect(
+        new SSEClientTransport(new URL(this.url), {
+          requestInit: {
+            headers: Object.fromEntries(this.headerAuth.map(({ key, value }) => [key, value]))
+          },
+          eventSourceInit: {
+            fetch: (url, init) => {
+              const headers = new Headers(init?.headers || {});
+              this.headerAuth.forEach(({ key, value }) => {
+                headers.set(key, value);
+              });
+              return fetch(url, {
+                ...init,
+                headers
+              });
+            }
+          }
+        })
+      );
       return this.client;
     }
   }
