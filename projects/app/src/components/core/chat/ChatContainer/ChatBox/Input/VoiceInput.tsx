@@ -80,7 +80,15 @@ const PCVoiceInput = ({
       {/* Action Buttons - Right Bottom */}
       <Flex position="absolute" right="16px" bottom="14px" alignItems="center" gap="8px" h="36px">
         {/* Time Display */}
-        <Box fontSize="sm" color="myGray.500" mr="8px">
+        <Box
+          fontSize="sm"
+          color="myGray.500"
+          mr="8px"
+          fontFamily={'pingFang SC'}
+          fontWeight={400}
+          lineHeight={'20px'}
+          letterSpacing={'0.25px'}
+        >
           {speakingTimeString}
         </Box>
 
