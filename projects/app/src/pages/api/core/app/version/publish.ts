@@ -14,7 +14,7 @@ import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperat
 import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
 import { getI18nAppType } from '@fastgpt/service/support/operationLog/util';
 import { i18nT } from '@fastgpt/web/i18n/utils';
-import { secureHttpAuth, rewriteAppWorkflowToSimple } from '@fastgpt/service/core/app/utils';
+import { saveAndClearHttpAuth, rewriteAppWorkflowToSimple } from '@fastgpt/service/core/app/utils';
 
 async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
@@ -32,7 +32,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
     isPlugin: app.type === AppTypeEnum.plugin
   });
 
-  await secureHttpAuth(formatNodes, appId);
+  await saveAndClearHttpAuth(formatNodes, appId);
   await rewriteAppWorkflowToSimple(formatNodes);
 
   if (autoSave) {

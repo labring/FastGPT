@@ -29,7 +29,7 @@ import { createFileToken } from '../../../../support/permission/controller';
 import { JSONPath } from 'jsonpath-plus';
 import type { SystemPluginSpecialResponse } from '../../../../../plugins/type';
 import json5 from 'json5';
-import { formatHeaderAuth } from '../../../app/utils';
+import { getHeaderAuthValue } from '../../../../support/secret/controller';
 
 type PropsArrType = {
   key: string;
@@ -323,11 +323,11 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       }
 
       if (httpAuth && Object.keys(httpAuth).length > 0) {
-        const authHeaders = await formatHeaderAuth(httpAuth);
+        const authHeaders = await getHeaderAuthValue(httpAuth);
         httpHeader = [...authHeaders, ...httpHeader];
       }
 
-      return [...(httpHeader || [])].reduce((acc: Record<string, string>, item) => {
+      return httpHeader.reduce((acc: Record<string, string>, item) => {
         const key = replaceStringVariables(item.key);
         const value = replaceStringVariables(item.value);
         acc[key] = valueTypeFormat(value, WorkflowIOValueTypeEnum.string);

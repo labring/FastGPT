@@ -7,7 +7,7 @@ import { AppContext } from '../context';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import { type MCPToolSetData } from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
-import { type StoreHeaderAuthValueType } from '@fastgpt/global/common/teamSecret/type';
+import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 
 const MCPTools = () => {
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
@@ -20,9 +20,7 @@ const MCPTools = () => {
 
   const [url, setUrl] = useState(toolSetData?.url || '');
   const [toolList, setToolList] = useState<McpToolConfigType[]>(toolSetData?.toolList || []);
-
-  const [headerAuth, setHeaderAuth] = useState<StoreHeaderAuthValueType>(toolSetData?.headerAuth);
-
+  const [headerAuth, setHeaderAuth] = useState<StoreSecretValueType>(toolSetData?.headerAuth);
   const [currentTool, setCurrentTool] = useState<McpToolConfigType | null>(
     toolSetData?.toolList[0] || null
   );

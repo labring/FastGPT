@@ -14,11 +14,35 @@ import {
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { type HeaderAuthConfigType } from '@fastgpt/global/common/teamSecret/type';
-import { formatAuthData } from '@/components/support/teamSecrets/utils';
+import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { upsertTeamSecrets } from '@fastgpt/service/support/teamSecret/controller';
-import { TeamSecretTypeEnum } from '@fastgpt/global/common/teamSecret/constants';
+import { upsertSecrets } from '@fastgpt/service/support/secret/controller';
+import { SecretTypeEnum } from '@fastgpt/global/common/secret/constants';
+
+// add prefix to secretIds in headerAuth
+const addPrefixToSecretIds = ({
+  headerAuth,
+  prefix
+}: {
+  headerAuth: StoreSecretValueType;
+  prefix: string;
+}): StoreSecretValueType => {
+  if (!headerAuth || Object.keys(headerAuth).length === 0) return {};
+
+  // create a new object to avoid modifying the original object
+  const result: StoreSecretValueType = {};
+
+  // iterate over each key-value pair in headerAuth
+  Object.entries(headerAuth).forEach(([key, authValue]) => {
+    // copy authValue and add prefix to secretId
+    result[key] = {
+      ...authValue,
+      secretId: authValue.secretId ? `${prefix}${authValue.secretId}` : ''
+    };
+  });
+
+  return result;
+};
 
 export type createMCPToolsQuery = {};
 
@@ -27,7 +51,7 @@ export type createMCPToolsBody = Omit<
   'type' | 'modules' | 'edges' | 'chatConfig'
 > & {
   url: string;
-  headerAuth: HeaderAuthConfigType;
+  headerAuth: StoreSecretValueType;
   toolList: McpToolConfigType[];
 };
 
@@ -57,9 +81,14 @@ async function handler(
       session
     });
 
-    await upsertTeamSecrets({
-      teamSecret: [formatAuthData({ data: headerAuth, prefix: `${mcpToolsId}-` })],
-      type: TeamSecretTypeEnum.headersAuth,
+    const headerAuthWithPrefix = addPrefixToSecretIds({
+      headerAuth,
+      prefix: `${mcpToolsId}-mcpTools-`
+    });
+
+    await upsertSecrets({
+      secrets: [headerAuthWithPrefix],
+      type: SecretTypeEnum.headersAuth,
       appId: mcpToolsId
     });
 
@@ -72,10 +101,7 @@ async function handler(
             toolList,
             name,
             avatar,
-            headerAuth: formatAuthData({
-              data: headerAuth,
-              prefix: `${mcpToolsId}-`
-            })
+            headerAuth: headerAuthWithPrefix
           })
         ]
       },
@@ -95,10 +121,7 @@ async function handler(
           getMCPToolRuntimeNode({
             tool,
             url,
-            headerAuth: formatAuthData({
-              data: headerAuth,
-              prefix: `${mcpToolsId}-`
-            })
+            headerAuth: headerAuthWithPrefix
           })
         ],
         session

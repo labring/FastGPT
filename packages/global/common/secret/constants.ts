@@ -1,6 +1,6 @@
 import { i18nT } from '../../../web/i18n/utils';
 
-export enum TeamSecretTypeEnum {
+export enum SecretTypeEnum {
   headersAuth = 'headersAuth'
 }
 

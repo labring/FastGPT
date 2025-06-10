@@ -26,29 +26,19 @@ import { AppListContext } from './context';
 import { useContextSelector } from 'use-context-selector';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
-import HeaderAuthConfig, {
-  defaultHeaderAuthConfig
-} from '@/components/support/teamSecrets/HeaderAuthConfig';
-import {
-  type HeaderAuthConfigType,
-  type StoreHeaderAuthValueType
-} from '@fastgpt/global/common/teamSecret/type';
-import { formatAuthData } from '@/components/support/teamSecrets/utils';
+import HeaderAuthConfig from '@/components/common/secret/HeaderAuthConfig';
+import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 
 export type MCPToolSetData = {
   url: string;
   toolList: McpToolConfigType[];
-  headerAuth: StoreHeaderAuthValueType;
+  headerAuth: StoreSecretValueType;
 };
 
 export type EditMCPToolsProps = {
   avatar: string;
   name: string;
-  mcpData: {
-    url: string;
-    toolList: McpToolConfigType[];
-    headerAuth: HeaderAuthConfigType;
-  };
+  mcpData: MCPToolSetData;
 };
 
 const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
@@ -62,7 +52,7 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
       name: '',
       mcpData: {
         url: '',
-        headerAuth: defaultHeaderAuthConfig,
+        headerAuth: {},
         toolList: []
       }
     }
@@ -156,7 +146,7 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
             <Box>{t('app:MCP_tools_url')}</Box>
             <Box flex={1} />
             <HeaderAuthConfig
-              headerAuthConfig={defaultHeaderAuthConfig}
+              storeHeaderAuthConfig={mcpData.headerAuth}
               onSave={(data) => {
                 setValue('mcpData.headerAuth', data);
               }}
@@ -180,7 +170,7 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
               onClick={() => {
                 runGetMCPTools({
                   url: mcpData.url,
-                  headerAuth: formatAuthData({ data: mcpData.headerAuth })
+                  headerAuth: mcpData.headerAuth
                 });
               }}
             >

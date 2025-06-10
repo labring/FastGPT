@@ -49,10 +49,9 @@ import { getEditorVariables } from '../../../utils';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { WorkflowNodeEdgeContext } from '../../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { formatAuthData, parseAuthData } from '@/components/support/teamSecrets/utils';
 
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
-const HeaderAuthConfig = dynamic(() => import('@/components/support/teamSecrets/HeaderAuthConfig'));
+const HeaderAuthConfig = dynamic(() => import('@/components/common/secret/HeaderAuthConfig'));
 
 const defaultFormBody = {
   key: NodeInputKeyEnum.httpFormBody,
@@ -287,8 +286,6 @@ export function RenderHttpProps({
   const httpAuth = inputs.find((item) => item.key === NodeInputKeyEnum.httpAuth);
   const contentType = inputs.find((item) => item.key === NodeInputKeyEnum.httpContentType);
 
-  const prefix = appDetail?._id && nodeId ? `${appDetail._id}-${nodeId}-` : '';
-
   const paramsLength = params?.value?.length || 0;
   const headersLength = headers?.value?.length || 0;
 
@@ -343,25 +340,19 @@ export function RenderHttpProps({
           />
           <Flex flex={1} />
           <HeaderAuthConfig
-            headerAuthConfig={parseAuthData({
-              data: httpAuth?.value,
-              prefix
-            })}
+            storeHeaderAuthConfig={httpAuth?.value}
             onSave={(data) => {
-              const formatedData = formatAuthData({
-                data,
-                prefix
-              });
               onChangeNode({
                 nodeId,
                 type: 'updateInput',
                 key: NodeInputKeyEnum.httpAuth,
                 value: {
                   ...(httpAuth as FlowNodeInputItemType),
-                  value: formatedData
+                  value: data
                 }
               });
             }}
+            prefix={appDetail?._id && nodeId ? `${appDetail._id}-${nodeId}-` : ''}
           />
         </Flex>
         <LightRowTabs<TabEnum>
@@ -428,6 +419,7 @@ export function RenderHttpProps({
       </Box>
     );
   }, [
+    appDetail._id,
     contentType,
     formBody,
     headersLength,
@@ -435,7 +427,6 @@ export function RenderHttpProps({
     nodeId,
     onChangeNode,
     paramsLength,
-    prefix,
     requestMethods,
     selectedTab,
     stringifyVariables,

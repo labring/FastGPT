@@ -10,7 +10,7 @@ import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import { postUpdateMCPTools } from '@/web/core/app/api/plugin';
-import { type StoreHeaderAuthValueType } from '@fastgpt/global/common/teamSecret/type';
+import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 
 const Header = ({
   url,
@@ -19,7 +19,7 @@ const Header = ({
 }: {
   url: string;
   toolList: McpToolConfigType[];
-  headerAuth: StoreHeaderAuthValueType;
+  headerAuth: StoreSecretValueType;
 }) => {
   const { t } = useTranslation();
   const appId = useContextSelector(AppContext, (v) => v.appId);

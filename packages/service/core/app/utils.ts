@@ -8,13 +8,8 @@ import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { getTeamSecretsByIds } from '../../support/teamSecret/controller';
-import {
-  HeaderAuthTypeEnum,
-  TeamSecretTypeEnum
-} from '@fastgpt/global/common/teamSecret/constants';
-import type { StoreHeaderAuthValueType } from '@fastgpt/global/common/teamSecret/type';
-import { upsertTeamSecrets } from '../../support/teamSecret/controller';
+import { SecretTypeEnum } from '@fastgpt/global/common/secret/constants';
+import { upsertSecrets } from '../../support/secret/controller';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
   teamId,
@@ -207,22 +202,19 @@ export async function rewriteAppWorkflowToSimple(formatNodes: StoreNodeItemType[
   });
 }
 
-export async function secureHttpAuth(nodes: StoreNodeItemType[], appId: string) {
+export async function saveAndClearHttpAuth(nodes: StoreNodeItemType[], appId: string) {
   const getNodeHttpAuth = (node: StoreNodeItemType) =>
-    node.flowNodeType === FlowNodeTypeEnum.httpRequest468
-      ? node.inputs.find((item) => item.key === NodeInputKeyEnum.httpAuth)?.value
-      : undefined;
-
+    node.inputs.find((item) => [NodeInputKeyEnum.httpAuth].includes(item.key as NodeInputKeyEnum))
+      ?.value;
   const authConfigs = nodes.map(getNodeHttpAuth).filter(Boolean);
 
-  if (authConfigs.length > 0) {
-    await upsertTeamSecrets({
-      teamSecret: authConfigs,
-      type: TeamSecretTypeEnum.headersAuth,
-      appId
-    });
-  }
+  await upsertSecrets({
+    secrets: authConfigs,
+    type: SecretTypeEnum.headersAuth,
+    appId
+  });
 
+  // Clear all authentication values in nodes to prevent leakage
   nodes.forEach((node) => {
     const httpAuth = getNodeHttpAuth(node);
     if (!httpAuth) return;
@@ -234,35 +226,3 @@ export async function secureHttpAuth(nodes: StoreNodeItemType[], appId: string) 
     });
   });
 }
-
-export const formatHeaderAuth = async (headerAuth: StoreHeaderAuthValueType) => {
-  if (!headerAuth || Object.keys(headerAuth).length === 0) return [];
-
-  const secretIds = Object.values(headerAuth)
-    .map((value) => value.secretId)
-    .filter(Boolean);
-
-  const secrets = secretIds.length > 0 ? await getTeamSecretsByIds(secretIds) : [];
-  const secretsMap = new Map(secrets.map((secret) => [secret.sourceId, secret.value]));
-
-  return Object.entries(headerAuth).map(([key, { secretId, value: defaultValue }]) => {
-    const secretValue = secretId ? secretsMap.get(secretId) : undefined;
-    const actualValue = secretValue || defaultValue || '';
-
-    const isAuthHeader = [HeaderAuthTypeEnum.Bearer, HeaderAuthTypeEnum.Basic].includes(
-      key as HeaderAuthTypeEnum
-    );
-    const formatKey = isAuthHeader ? 'Authorization' : key;
-    const formatValue = (() => {
-      if (key === HeaderAuthTypeEnum.Bearer) {
-        return `Bearer ${actualValue}`;
-      }
-      if (key === HeaderAuthTypeEnum.Basic) {
-        return `Basic ${actualValue}`;
-      }
-      return actualValue;
-    })();
-
-    return { key: formatKey, value: formatValue, type: 'string' };
-  });
-};

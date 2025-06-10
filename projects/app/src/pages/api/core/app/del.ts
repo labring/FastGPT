@@ -22,7 +22,8 @@ import { removeImageByPath } from '@fastgpt/service/common/file/image/controller
 import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
 import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
 import { getI18nAppType } from '@fastgpt/service/support/operationLog/util';
-import { MongoTeamSecret } from '@fastgpt/service/support/teamSecret/schema';
+import { MongoSecret } from '@fastgpt/service/support/secret/schema';
+
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
 
@@ -117,7 +118,7 @@ export const onDelOneApp = async ({
         resourceId: appId
       }).session(session);
 
-      await MongoTeamSecret.deleteMany({
+      await MongoSecret.deleteMany({
         sourceId: { $regex: `^${appId}` }
       }).session(session);
 

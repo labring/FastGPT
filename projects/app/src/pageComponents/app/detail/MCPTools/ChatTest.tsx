@@ -16,7 +16,7 @@ import dynamic from 'next/dynamic';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import Markdown from '@/components/Markdown';
 import { postRunMCPTool } from '@/web/core/app/api/plugin';
-import { type StoreHeaderAuthValueType } from '@fastgpt/global/common/teamSecret/type';
+import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 
 const JsonEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/JsonEditor'));
 
@@ -27,7 +27,7 @@ const ChatTest = ({
 }: {
   currentTool: McpToolConfigType | null;
   url: string;
-  headerAuth: StoreHeaderAuthValueType;
+  headerAuth: StoreSecretValueType;
 }) => {
   const { t } = useTranslation();
 
@@ -152,7 +152,7 @@ const Render = ({
 }: {
   currentTool: McpToolConfigType | null;
   url: string;
-  headerAuth: StoreHeaderAuthValueType;
+  headerAuth: StoreSecretValueType;
 }) => {
   const { chatId } = useChatStore();
   const { appDetail } = useContextSelector(AppContext, (v) => v);

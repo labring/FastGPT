@@ -10,16 +10,14 @@ import {
   Switch,
   useDisclosure
 } from '@chakra-ui/react';
-import {
-  headerAuthTypeArray,
-  HeaderAuthTypeEnum
-} from '@fastgpt/global/common/teamSecret/constants';
+import { headerAuthTypeArray, HeaderAuthTypeEnum } from '@fastgpt/global/common/secret/constants';
 import type {
-  HeaderAuthValueType,
+  SecretValueType,
+  StoreSecretValueType,
   HeaderAuthConfigType
-} from '@fastgpt/global/common/teamSecret/type';
-import React, { useEffect, useState } from 'react';
-import { Controller, useFieldArray, useForm, type UseFormRegister } from 'react-hook-form';
+} from '@fastgpt/global/common/secret/type';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useFieldArray, useForm, type UseFormRegister } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -30,7 +28,7 @@ const getShowInput = ({
   editingIndex,
   index
 }: {
-  authValue?: HeaderAuthValueType;
+  authValue?: SecretValueType;
   editingIndex: number | null;
   index: number;
 }) => {
@@ -39,6 +37,98 @@ const getShowInput = ({
   const isEditing = editingIndex === index;
 
   return !hasAuthId || hasAuthValue || isEditing;
+};
+
+const formatAuthData = ({
+  data,
+  prefix = ''
+}: {
+  data: HeaderAuthConfigType;
+  prefix?: string;
+}): StoreSecretValueType => {
+  if (!data?.enableAuth) return {};
+
+  // 判断认证类型
+  const hasCustomHeaders = Array.isArray(data.customHeaders) && data.customHeaders.length > 0;
+  const hasBearer = !!data.BearerValue?.secretId || !!data.BearerValue?.value;
+  const hasBasic = !!data.BasicValue?.secretId || !!data.BasicValue?.value;
+
+  // 根据字段值判断使用哪种认证类型
+  if (hasCustomHeaders && data.customHeaders) {
+    // 使用自定义头部认证
+    return Object.fromEntries(
+      data.customHeaders
+        .filter(({ key }) => key)
+        .map(({ key, value }) => [
+          key,
+          {
+            value: value?.value || '',
+            secretId: prefix + (value?.secretId || '')
+          }
+        ])
+    );
+  } else if (hasBearer) {
+    // 使用Bearer认证
+    return {
+      Bearer: {
+        value: data.BearerValue?.value || '',
+        secretId: prefix + (data.BearerValue?.secretId || '')
+      }
+    };
+  } else if (hasBasic) {
+    // 使用Basic认证
+    return {
+      Basic: {
+        value: data.BasicValue?.value || '',
+        secretId: prefix + (data.BasicValue?.secretId || '')
+      }
+    };
+  }
+
+  return {};
+};
+
+const parseAuthData = ({
+  data,
+  prefix = ''
+}: {
+  data: Record<string, { value: string; secretId: string }>;
+  prefix?: string;
+}): HeaderAuthConfigType => {
+  if (!data || Object.keys(data).length === 0) {
+    return { enableAuth: false };
+  }
+
+  const removePrefix = (secretId: string) => {
+    return secretId?.startsWith(prefix) ? secretId.substring(prefix.length) : secretId;
+  };
+
+  const entries = Object.entries(data);
+
+  if (entries.length === 1) {
+    const [key, value] = entries[0];
+
+    if (key === HeaderAuthTypeEnum.Bearer || key === HeaderAuthTypeEnum.Basic) {
+      return {
+        enableAuth: true,
+        [key === HeaderAuthTypeEnum.Bearer ? 'BearerValue' : 'BasicValue']: {
+          secretId: removePrefix(value.secretId),
+          value: value.value
+        }
+      };
+    }
+  }
+
+  return {
+    enableAuth: true,
+    customHeaders: entries.map(([key, value]) => ({
+      key,
+      value: {
+        secretId: removePrefix(value.secretId),
+        value: value.value
+      }
+    }))
+  };
 };
 
 const AuthValueDisplay = ({
@@ -104,40 +194,59 @@ const AuthValueDisplay = ({
   );
 };
 
-export const defaultHeaderAuthConfig: HeaderAuthConfigType = {
-  enableAuth: false,
-  authType: HeaderAuthTypeEnum.Bearer,
-  BearerValue: {
-    secretId: '',
-    value: ''
+const getDefaultAuthType = (config: HeaderAuthConfigType): HeaderAuthTypeEnum => {
+  if (config.BearerValue?.secretId) {
+    return HeaderAuthTypeEnum.Bearer;
+  } else if (config.BasicValue?.secretId) {
+    return HeaderAuthTypeEnum.Basic;
+  } else if (config.customHeaders?.length) {
+    return HeaderAuthTypeEnum.Custom;
   }
+  return HeaderAuthTypeEnum.Bearer;
 };
 
 const HeaderAuthConfig = ({
-  headerAuthConfig,
+  storeHeaderAuthConfig,
   onSave,
   size = 'md',
-  variant = 'whiteBase'
+  variant = 'whiteBase',
+  prefix = ''
 }: {
-  headerAuthConfig: HeaderAuthConfigType;
-  onSave: (data: HeaderAuthConfigType) => void;
+  storeHeaderAuthConfig: StoreSecretValueType;
+  onSave: (data: StoreSecretValueType) => void;
   size?: string;
   variant?: string;
+  prefix?: string;
 }) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const headerAuthConfig = useMemo(() => {
+    return parseAuthData({ data: storeHeaderAuthConfig, prefix });
+  }, [prefix, storeHeaderAuthConfig]);
 
-  const { control, register, watch, handleSubmit } = useForm<HeaderAuthConfigType>({
-    defaultValues: {
-      enableAuth: headerAuthConfig?.enableAuth || defaultHeaderAuthConfig.enableAuth,
-      authType: headerAuthConfig?.authType || defaultHeaderAuthConfig.authType,
-      BearerValue: headerAuthConfig?.BearerValue || defaultHeaderAuthConfig.BearerValue,
-      BasicValue: headerAuthConfig?.BasicValue || defaultHeaderAuthConfig.BasicValue,
-      customHeaders: headerAuthConfig?.customHeaders || defaultHeaderAuthConfig.customHeaders
-    }
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [currentAuthType, setCurrentAuthType] = useState<HeaderAuthTypeEnum>(
+    getDefaultAuthType(headerAuthConfig)
+  );
+
+  const defaultHeaderAuthConfig: HeaderAuthConfigType = {
+    enableAuth: headerAuthConfig?.enableAuth || false,
+    BearerValue: headerAuthConfig?.BearerValue || { secretId: '', value: '' },
+    BasicValue: headerAuthConfig?.BasicValue || { secretId: '', value: '' },
+    customHeaders: headerAuthConfig?.customHeaders || []
+  };
+
+  const { control, register, watch, handleSubmit, reset } = useForm<HeaderAuthConfigType>({
+    defaultValues: defaultHeaderAuthConfig
   });
+
+  const handleOpen = () => {
+    reset(defaultHeaderAuthConfig);
+    setCurrentAuthType(getDefaultAuthType(headerAuthConfig));
+
+    onOpen();
+  };
 
   const {
     fields: customHeaders,
@@ -149,51 +258,42 @@ const HeaderAuthConfig = ({
   });
 
   const enableAuth = watch('enableAuth');
-  const authType = watch('authType');
   const BearerValue = watch('BearerValue');
   const BasicValue = watch('BasicValue');
 
   useEffect(() => {
-    if (authType === HeaderAuthTypeEnum.Custom && customHeaders.length === 0) {
+    if (currentAuthType === HeaderAuthTypeEnum.Custom && customHeaders.length === 0) {
       appendHeader({ key: '', value: { secretId: '', value: '' } });
     }
-  }, [authType, customHeaders.length, appendHeader]);
+  }, [currentAuthType, customHeaders.length, appendHeader]);
 
   const onSubmit = async (data: HeaderAuthConfigType) => {
     if (!headerAuthConfig) return;
-    const baseData = {
-      enableAuth: data.enableAuth,
-      authType: data.authType
+
+    const submitData: HeaderAuthConfigType = {
+      enableAuth: data.enableAuth
     };
 
-    const submitData = (() => {
-      if (
-        data.authType === HeaderAuthTypeEnum.Bearer ||
-        data.authType === HeaderAuthTypeEnum.Basic
-      ) {
-        const valueKey = `${data.authType}Value`;
-        return {
-          ...baseData,
-          [valueKey]: {
-            secretId: data.authType,
-            value: data[valueKey as keyof HeaderAuthConfigType]?.value || ''
-          }
-        };
-      } else if (data.authType === HeaderAuthTypeEnum.Custom) {
-        return {
-          ...baseData,
-          customHeaders: data.customHeaders?.map((item) => ({
-            key: item.key,
-            value: { secretId: item.key, value: item.value?.value }
-          }))
-        };
-      }
-    })();
-
-    if (submitData) {
-      onSave(submitData);
-      onClose();
+    if (currentAuthType === HeaderAuthTypeEnum.Bearer) {
+      submitData.BearerValue = {
+        secretId: 'Bearer',
+        value: data.BearerValue?.value || ''
+      };
+    } else if (currentAuthType === HeaderAuthTypeEnum.Basic) {
+      submitData.BasicValue = {
+        secretId: 'Basic',
+        value: data.BasicValue?.value || ''
+      };
+    } else if (currentAuthType === HeaderAuthTypeEnum.Custom) {
+      submitData.customHeaders = data.customHeaders?.map((item) => ({
+        key: item.key,
+        value: { secretId: item.key, value: item.value?.value }
+      }));
     }
+
+    const storeData = formatAuthData({ data: submitData, prefix });
+    onSave(storeData);
+    onClose();
   };
 
   return (
@@ -202,7 +302,7 @@ const HeaderAuthConfig = ({
         variant={variant}
         size={size}
         leftIcon={<MyIcon name={'common/setting'} w={4} />}
-        onClick={onOpen}
+        onClick={handleOpen}
       >
         {t('common:auth_config')}
       </Button>
@@ -236,38 +336,34 @@ const HeaderAuthConfig = ({
                   <Box fontSize={'14px'} fontWeight={'medium'} color={'myGray.900'} mb={2}>
                     {t('common:auth_type')}
                   </Box>
-                  <Controller
-                    name="authType"
-                    control={control}
-                    render={({ field: { onChange, value } }) => (
-                      <LeftRadio
-                        list={headerAuthTypeArray}
-                        value={value}
-                        onChange={onChange}
-                        py={'4.5px'}
-                        fontWeight={'medium'}
-                        templateColumns={'repeat(3, 1fr)'}
-                        gridGap={2}
-                        defaultBg={'white'}
-                        activeBg={'white'}
-                        activeBorderColor={'myGray.200'}
-                        hoverBorderColor={'myGray.200'}
-                        activeShadow={'none'}
-                        dotGap={2}
-                      />
-                    )}
+                  <LeftRadio
+                    list={headerAuthTypeArray}
+                    value={currentAuthType}
+                    onChange={setCurrentAuthType}
+                    py={'4.5px'}
+                    fontWeight={'medium'}
+                    templateColumns={'repeat(3, 1fr)'}
+                    gridGap={2}
+                    defaultBg={'white'}
+                    activeBg={'white'}
+                    activeBorderColor={'myGray.200'}
+                    hoverBorderColor={'myGray.200'}
+                    activeShadow={'none'}
+                    dotGap={2}
                   />
                 </FormControl>
 
-                {authType === HeaderAuthTypeEnum.Bearer || authType === HeaderAuthTypeEnum.Basic ? (
+                {currentAuthType === HeaderAuthTypeEnum.Bearer ||
+                currentAuthType === HeaderAuthTypeEnum.Basic ? (
                   <AuthValueDisplay
-                    key={authType}
+                    key={currentAuthType}
                     showInput={getShowInput({
-                      authValue: authType === HeaderAuthTypeEnum.Bearer ? BearerValue : BasicValue,
+                      authValue:
+                        currentAuthType === HeaderAuthTypeEnum.Bearer ? BearerValue : BasicValue,
                       editingIndex,
                       index: 0
                     })}
-                    fieldName={`${authType}Value.value` as any}
+                    fieldName={`${currentAuthType}Value.value` as any}
                     onEdit={setEditingIndex}
                     register={register}
                   />
