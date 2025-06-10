@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
-import { Box, Flex, Grid, HStack, useTheme } from '@chakra-ui/react';
-import { formatNumber } from '@fastgpt/global/common/math/tools';
+import { Box, Grid, HStack, useTheme } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
@@ -18,6 +17,7 @@ import { getModelProvider } from '@fastgpt/global/core/ai/provider';
 import LineChartComponent from './LineChartComponent';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import DataTableComponent from './DataTableComponent';
 
 export type ModelDashboardData = {
   x: string;
@@ -28,6 +28,10 @@ export type ModelDashboardData = {
   outputTokens: number;
   totalTokens: number;
   totalCost: number;
+  avgResponseTime: number;
+  avgTtfb: number;
+  maxRpm: number;
+  maxTpm: number;
 };
 
 const ChartsBoxStyles: BoxProps = {
@@ -40,34 +44,56 @@ const ChartsBoxStyles: BoxProps = {
   overflow: 'hidden'
 };
 
-// Displays model usage statistics, token consumption and cost visualization
+// Default date range: Past 7 days
+const getDefaultDateRange = (): DateRangeType => {
+  const from = addDays(new Date(), -7);
+  from.setHours(0, 0, 0, 0);
+
+  const to = new Date();
+  to.setHours(23, 59, 59, 999);
+
+  return { from, to };
+};
+
+const calculateTimeDiffs = (from: Date, to: Date) => {
+  const startDate = dayjs(from);
+  const endDate = dayjs(to);
+  return {
+    daysDiff: endDate.diff(startDate, 'day'),
+    hoursDiff: endDate.diff(startDate, 'hour')
+  };
+};
+
 const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { feConfigs } = useSystemStore();
 
+  const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
+  const [userHasManuallySelectedTimespan, setUserHasManuallySelectedTimespan] = useState(false);
+
+  // view detail handler
+  const handleViewDetail = (channelId: string, model: string) => {
+    setFilterProps({
+      ...filterProps,
+      channelId,
+      model
+    });
+    setViewMode('chart');
+  };
+
   const [filterProps, setFilterProps] = useState<{
     channelId?: string;
     model?: string;
     dateRange: DateRangeType;
+    timespan?: 'minute' | 'hour' | 'day';
   }>({
     channelId: undefined,
     model: undefined,
-    dateRange: {
-      from: (() => {
-        const today = addDays(new Date(), -7);
-        today.setHours(0, 0, 0, 0);
-        return today;
-      })(),
-      to: (() => {
-        const today = new Date();
-        today.setHours(23, 59, 59, 999);
-        return today;
-      })()
-    }
+    timespan: 'day',
+    dateRange: getDefaultDateRange()
   });
 
-  // Fetch channel list with "All" option
   // Fetch channel list with "All" option
   const { data: channelList = [] } = useRequest2(
     async () => {
@@ -115,6 +141,68 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
     ];
   }, [systemModelList, t]);
 
+  const timespanConfig = useMemo(() => {
+    if (!filterProps.dateRange.from || !filterProps.dateRange.to) {
+      return { options: [], defaultTimespan: 'day' as const };
+    }
+
+    const { daysDiff, hoursDiff } = calculateTimeDiffs(
+      filterProps.dateRange.from,
+      filterProps.dateRange.to
+    );
+
+    // show available timespan
+    const options = [];
+    if (hoursDiff < 24) {
+      options.push({ label: t('account_model:timespan_minute'), value: 'minute' as const });
+    }
+    if (daysDiff <= 30) {
+      options.push({ label: t('account_model:timespan_hour'), value: 'hour' as const });
+    }
+    options.push({ label: t('account_model:timespan_day'), value: 'day' as const });
+
+    let defaultTimespan: 'minute' | 'hour' | 'day';
+    if (hoursDiff < 6) {
+      defaultTimespan = 'minute';
+    } else if (daysDiff <= 30) {
+      defaultTimespan = 'hour';
+    } else {
+      defaultTimespan = 'day';
+    }
+
+    return { options, defaultTimespan };
+  }, [filterProps.dateRange]);
+
+  const { options: timespanOptions, defaultTimespan: getDefaultTimespan } = timespanConfig;
+
+  // automatically switch timespan
+  React.useEffect(() => {
+    const newTimespan = getDefaultTimespan;
+    const availableTimespans = timespanOptions.map((opt) => opt.value);
+    const isCurrentTimespanAvailable = availableTimespans.includes(filterProps.timespan || 'day');
+
+    if (!isCurrentTimespanAvailable) {
+      const targetTimespan = availableTimespans.includes(newTimespan)
+        ? newTimespan
+        : availableTimespans[0] || 'day';
+
+      setFilterProps((prev) => ({
+        ...prev,
+        timespan: targetTimespan
+      }));
+      setUserHasManuallySelectedTimespan(false);
+    } else if (
+      !userHasManuallySelectedTimespan &&
+      filterProps.timespan !== newTimespan &&
+      availableTimespans.includes(newTimespan)
+    ) {
+      setFilterProps((prev) => ({
+        ...prev,
+        timespan: newTimespan
+      }));
+    }
+  }, [getDefaultTimespan, timespanOptions, filterProps.timespan, userHasManuallySelectedTimespan]);
+
   // Fetch dashboard data with date range and channel filters
   const { data: dashboardData = [], loading: isLoading } = useRequest2(
     async () => {
@@ -127,49 +215,75 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
           ? Math.floor(filterProps.dateRange.to.getTime())
           : undefined,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        timespan: 'day' as const
+        timespan: filterProps.timespan || 'day'
       };
 
       let data = await getDashboardV2(params);
 
       if (filterProps.model) {
         data = data.map((item) => {
-          const filterModels = item.models.filter((model) => model.model === filterProps.model);
+          const filterModels = item.summary.filter((model) => model.model === filterProps.model);
           return {
             ...item,
-            models: filterModels
+            summary: filterModels
           };
         });
       }
 
-      // Auto-fill missing days
+      // Auto-fill missing periods based on timespan
       if (filterProps.dateRange.from && filterProps.dateRange.to) {
         const startDate = dayjs(filterProps.dateRange.from);
         const endDate = dayjs(filterProps.dateRange.to);
-        const daysDiff = endDate.diff(startDate, 'day') + 1;
+        const timespan = filterProps.timespan || 'day';
 
-        // Create complete date list
-        const completeDateList = Array.from({ length: daysDiff }, (_, i) =>
-          startDate.add(i, 'day')
+        let periodCount: number;
+        let periodUnit: dayjs.ManipulateType;
+        let formatString: string;
+
+        switch (timespan) {
+          case 'minute':
+            periodCount = endDate.diff(startDate, 'minute') + 1;
+            periodUnit = 'minute';
+            formatString = 'YYYY-MM-DD HH:mm';
+            break;
+          case 'hour':
+            periodCount = endDate.diff(startDate, 'hour') + 1;
+            periodUnit = 'hour';
+            formatString = 'YYYY-MM-DD HH';
+            break;
+          case 'day':
+            periodCount = endDate.diff(startDate, 'day') + 1;
+            periodUnit = 'day';
+            formatString = 'YYYY-MM-DD';
+            break;
+          default:
+            periodCount = endDate.diff(startDate, 'day') + 1;
+            periodUnit = 'day';
+            formatString = 'YYYY-MM-DD';
+        }
+
+        // Create complete period list
+        const completePeriodList = Array.from({ length: periodCount }, (_, i) =>
+          startDate.add(i, periodUnit)
         );
 
         // Create a map of existing data by timestamp
         const existingDataMap = new Map(
-          data.map((item) => [dayjs(item.timestamp * 1000).format('YYYY-MM-DD'), item])
+          data.map((item) => [dayjs(item.timestamp * 1000).format(formatString), item])
         );
 
-        // Fill missing days with empty data
-        const completeData = completeDateList.map((date) => {
-          const dateKey = date.format('YYYY-MM-DD');
-          const existingItem = existingDataMap.get(dateKey);
+        // Fill missing periods with empty data
+        const completeData = completePeriodList.map((period) => {
+          const periodKey = period.format(formatString);
+          const existingItem = existingDataMap.get(periodKey);
 
           if (existingItem) {
             return existingItem;
           } else {
-            // Create empty data structure for missing days
+            // Create empty data structure for missing periods
             return {
-              timestamp: Math.floor(date.valueOf() / 1000),
-              models: []
+              timestamp: Math.floor(period.valueOf() / 1000),
+              summary: []
             };
           }
         });
@@ -181,11 +295,16 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
     },
     {
       manual: false,
-      refreshDeps: [filterProps.channelId, filterProps.dateRange, filterProps.model]
+      refreshDeps: [
+        filterProps.channelId,
+        filterProps.dateRange,
+        filterProps.model,
+        filterProps.timespan
+      ]
     }
   );
 
-  // Process chart data - aggregate daily model calls, token usage and cost data
+  // Process chart data - aggregate model calls, token usage and cost data based on timespan
   const chartData: ModelDashboardData[] = useMemo(() => {
     if (dashboardData.length === 0) {
       return [];
@@ -209,16 +328,51 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
     });
 
     return dashboardData.map((item) => {
-      const date = dayjs(item.timestamp * 1000).format('MM-DD');
-      const totalCalls = item.models.reduce((acc, model) => acc + model.request_count, 0);
-      const errorCalls = item.models.reduce((acc, model) => acc + model.exception_count, 0);
+      // Format date based on timespan
+      let dateFormat: string;
+      switch (filterProps.timespan) {
+        case 'minute':
+          dateFormat = 'MM-DD HH:mm';
+          break;
+        case 'hour':
+          dateFormat = 'MM-DD HH:00';
+          break;
+        case 'day':
+          dateFormat = 'MM-DD';
+          break;
+        default:
+          dateFormat = 'MM-DD';
+      }
+
+      const date = dayjs(item.timestamp * 1000).format(dateFormat);
+      const summary = item.summary || [];
+      const totalCalls = summary.reduce((acc, model) => acc + model.request_count, 0);
+      const errorCalls = summary.reduce((acc, model) => acc + model.exception_count, 0);
       const errorRate = totalCalls === 0 ? 0 : Number((errorCalls / totalCalls).toFixed(2));
 
-      const inputTokens = item.models.reduce((acc, model) => acc + (model?.input_tokens || 0), 0);
-      const outputTokens = item.models.reduce((acc, model) => acc + (model?.output_tokens || 0), 0);
-      const totalTokens = item.models.reduce((acc, model) => acc + (model?.total_tokens || 0), 0);
+      const inputTokens = summary.reduce((acc, model) => acc + (model.input_tokens || 0), 0);
+      const outputTokens = summary.reduce((acc, model) => acc + (model?.output_tokens || 0), 0);
+      const totalTokens = summary.reduce((acc, model) => acc + (model.total_tokens || 0), 0);
 
-      const totalCost = item.models.reduce((acc, model) => {
+      const avgResponseTime =
+        summary.length > 0
+          ? summary.reduce((acc, model) => acc + (model.total_time_milliseconds || 0), 0) /
+            summary.length
+          : 0;
+      const avgTtfb =
+        summary.length > 0
+          ? summary.reduce((acc, model) => acc + (model.total_ttfb_milliseconds || 0), 0) /
+            summary.length
+          : 0;
+
+      const maxRpm = filterProps.model
+        ? summary.reduce((acc, model) => Math.max(acc, model.max_rpm || 0), 0)
+        : 0;
+      const maxTpm = filterProps.model
+        ? summary.reduce((acc, model) => Math.max(acc, model.max_tpm || 0), 0)
+        : 0;
+
+      const totalCost = summary.reduce((acc, model) => {
         const modelPricing = modelPriceMap.get(model.model);
 
         if (modelPricing) {
@@ -246,192 +400,334 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
         inputTokens,
         outputTokens,
         totalTokens,
-        totalCost
+        totalCost,
+        avgResponseTime: Math.round(avgResponseTime),
+        avgTtfb: Math.round(avgTtfb),
+        maxRpm,
+        maxTpm
       };
     });
-  }, [dashboardData, systemModelList]);
+  }, [dashboardData, systemModelList, filterProps.timespan]);
 
   const [tokensUsageType, setTokensUsageType] = useState<
     'inputTokens' | 'outputTokens' | 'totalTokens'
   >('totalTokens');
-  console.log(chartData);
+
   return (
     <>
       <Box>{Tab}</Box>
 
-      <HStack spacing={4}>
-        <HStack>
-          <FormLabel>{t('common:user.Time')}</FormLabel>
-          <Box>
-            <DateRangePicker
-              defaultDate={filterProps.dateRange}
-              dateRange={filterProps.dateRange}
-              position="bottom"
-              onSuccess={(e) => setFilterProps({ ...filterProps, dateRange: e })}
-            />
-          </Box>
+      <HStack spacing={4} justifyContent="space-between" w="full">
+        <HStack spacing={4}>
+          <HStack>
+            <FormLabel>{t('common:user.Time')}</FormLabel>
+            <Box>
+              <DateRangePicker
+                defaultDate={filterProps.dateRange}
+                dateRange={filterProps.dateRange}
+                position="bottom"
+                onSuccess={(e) => setFilterProps({ ...filterProps, dateRange: e })}
+              />
+            </Box>
+          </HStack>
+          <HStack>
+            <FormLabel>{t('account_model:channel_name')}</FormLabel>
+            <Box flex={'1 0 0'}>
+              <MySelect<string>
+                bg={'myGray.50'}
+                isSearch
+                list={channelList}
+                placeholder={t('account_model:select_channel')}
+                value={filterProps.channelId}
+                onChange={(val) => setFilterProps({ ...filterProps, channelId: val })}
+              />
+            </Box>
+          </HStack>
+          <HStack>
+            <FormLabel>{t('account_model:model_name')}</FormLabel>
+            <Box flex={'1 0 0'}>
+              <MySelect<string>
+                bg={'myGray.50'}
+                isSearch
+                list={modelList}
+                placeholder={t('account_model:select_model')}
+                value={filterProps.model}
+                onChange={(val) => setFilterProps({ ...filterProps, model: val })}
+              />
+            </Box>
+          </HStack>
+          <HStack>
+            <FormLabel>{t('account_model:timespan_label')}</FormLabel>
+            <Box flex={'1 0 0'}>
+              <MySelect<'minute' | 'hour' | 'day'>
+                bg={'myGray.50'}
+                list={timespanOptions}
+                value={filterProps.timespan}
+                onChange={(val) => {
+                  setFilterProps({ ...filterProps, timespan: val });
+                  setUserHasManuallySelectedTimespan(true);
+                }}
+              />
+            </Box>
+          </HStack>
         </HStack>
-        <HStack>
-          <FormLabel>{t('account_model:channel_name')}</FormLabel>
-          <Box flex={'1 0 0'}>
-            <MySelect<string>
-              bg={'myGray.50'}
-              isSearch
-              list={channelList}
-              placeholder={t('account_model:select_channel')}
-              value={filterProps.channelId}
-              onChange={(val) => setFilterProps({ ...filterProps, channelId: val })}
-            />
-          </Box>
-        </HStack>
-        <HStack>
-          <FormLabel>{t('account_model:model_name')}</FormLabel>
-          <Box flex={'1 0 0'}>
-            <MySelect<string>
-              bg={'myGray.50'}
-              isSearch
-              list={modelList}
-              placeholder={t('account_model:select_model')}
-              value={filterProps.model}
-              onChange={(val) => setFilterProps({ ...filterProps, model: val })}
-            />
-          </Box>
-        </HStack>
+
+        <FillRowTabs<'chart' | 'table'>
+          list={[
+            {
+              label: t('account_model:view_chart'),
+              value: 'chart'
+            },
+            {
+              label: t('account_model:view_table'),
+              value: 'table'
+            }
+          ]}
+          py={1.5}
+          px={4}
+          value={viewMode}
+          onChange={(val) => setViewMode(val)}
+        />
       </HStack>
 
       <MyBox flex={'1 0 0'} h={0} overflowY={'auto'} isLoading={isLoading}>
-        {dashboardData && dashboardData.length > 0 && (
-          <>
-            <Box {...ChartsBoxStyles}>
-              <LineChartComponent
-                data={chartData}
-                title={t('account_model:model_request_times')}
-                lines={[
-                  {
-                    dataKey: 'totalCalls',
-                    name: t('account_model:model_request_times'),
-                    color: theme.colors.primary['600']
-                  }
-                ]}
-                tooltipItems={[
-                  {
-                    label: t('account_model:model_request_times'),
-                    dataKey: 'totalCalls',
-                    color: theme.colors.primary['600']
-                  }
-                ]}
-              />
-            </Box>
-
-            <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5}>
+        {viewMode === 'chart' ? (
+          dashboardData &&
+          dashboardData.length > 0 && (
+            <>
               <Box {...ChartsBoxStyles}>
                 <LineChartComponent
                   data={chartData}
-                  title={t('account_model:model_error_request_times')}
+                  title={t('account_model:model_request_times')}
+                  enableCumulative={true}
                   lines={[
                     {
-                      dataKey: 'errorCalls',
-                      name: t('account_model:model_error_request_times'),
-                      color: '#f98e1a'
+                      dataKey: 'totalCalls',
+                      name: t('account_model:model_request_times'),
+                      color: theme.colors.primary['600']
                     }
                   ]}
                   tooltipItems={[
                     {
-                      label: t('account_model:model_error_request_times'),
-                      dataKey: 'errorCalls',
-                      color: '#f98e1a'
+                      label: t('account_model:model_request_times'),
+                      dataKey: 'totalCalls',
+                      color: theme.colors.primary['600']
                     }
                   ]}
                 />
               </Box>
-              <Box {...ChartsBoxStyles}>
-                <LineChartComponent
-                  data={chartData}
-                  title={t('account_model:model_error_rate')}
-                  lines={[
-                    {
-                      dataKey: 'errorRate',
-                      name: t('account_model:model_error_rate'),
-                      color: '#e84738'
-                    }
-                  ]}
-                  tooltipItems={[
-                    {
-                      label: t('account_model:model_error_rate'),
-                      dataKey: 'errorRate',
-                      color: '#e84738'
-                    }
-                  ]}
-                />
-              </Box>
-            </Grid>
 
-            <Box mt={5} {...ChartsBoxStyles}>
-              <LineChartComponent
-                data={chartData}
-                title={t('account_model:dashboard_token_usage')}
-                lines={[
-                  {
-                    dataKey: tokensUsageType,
-                    name: t('account_model:dashboard_token_usage'),
-                    color: theme.colors.primary['600']
-                  }
-                ]}
-                tooltipItems={[
-                  {
-                    label: t('account_model:dashboard_token_usage'),
-                    dataKey: tokensUsageType,
-                    color: theme.colors.primary['600']
-                  }
-                ]}
-                HeaderRightChildren={
-                  <FillRowTabs<'inputTokens' | 'outputTokens' | 'totalTokens'>
-                    list={[
+              <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5}>
+                <Box {...ChartsBoxStyles}>
+                  <LineChartComponent
+                    data={chartData}
+                    title={t('account_model:model_error_request_times')}
+                    enableCumulative={false}
+                    lines={[
                       {
-                        label: t('account_model:all'),
-                        value: 'totalTokens'
-                      },
-                      {
-                        label: t('account_model:input'),
-                        value: 'inputTokens'
-                      },
-                      {
-                        label: t('account_model:output'),
-                        value: 'outputTokens'
+                        dataKey: 'errorCalls',
+                        name: t('account_model:model_error_request_times'),
+                        color: '#f98e1a'
                       }
                     ]}
-                    py={1}
-                    px={5}
-                    value={tokensUsageType}
-                    onChange={(val) => setTokensUsageType(val)}
+                    tooltipItems={[
+                      {
+                        label: t('account_model:model_error_request_times'),
+                        dataKey: 'errorCalls',
+                        color: '#f98e1a'
+                      }
+                    ]}
                   />
-                }
-              />
-            </Box>
+                </Box>
+                <Box {...ChartsBoxStyles}>
+                  <LineChartComponent
+                    data={chartData}
+                    title={t('account_model:model_error_rate')}
+                    enableCumulative={false}
+                    lines={[
+                      {
+                        dataKey: 'errorRate',
+                        name: t('account_model:model_error_rate'),
+                        color: '#e84738'
+                      }
+                    ]}
+                    tooltipItems={[
+                      {
+                        label: t('account_model:model_error_rate'),
+                        dataKey: 'errorRate',
+                        color: '#e84738'
+                      }
+                    ]}
+                  />
+                </Box>
+              </Grid>
 
-            {feConfigs?.isPlus && (
               <Box mt={5} {...ChartsBoxStyles}>
                 <LineChartComponent
                   data={chartData}
-                  title={t('account_model:aipoint_usage')}
+                  title={t('account_model:dashboard_token_usage')}
+                  enableCumulative={true}
                   lines={[
                     {
-                      dataKey: 'totalCost',
-                      name: t('account_model:aipoint_usage'),
-                      color: '#8774EE'
+                      dataKey: tokensUsageType,
+                      name: t('account_model:dashboard_token_usage'),
+                      color: theme.colors.primary['600']
                     }
                   ]}
                   tooltipItems={[
                     {
-                      label: t('account_model:aipoint_usage'),
-                      dataKey: 'totalCost',
-                      color: '#8774EE'
+                      label: t('account_model:dashboard_token_usage'),
+                      dataKey: tokensUsageType,
+                      color: theme.colors.primary['600']
                     }
                   ]}
+                  HeaderRightChildren={
+                    <FillRowTabs<'inputTokens' | 'outputTokens' | 'totalTokens'>
+                      list={[
+                        {
+                          label: t('account_model:all'),
+                          value: 'totalTokens'
+                        },
+                        {
+                          label: t('account_model:input'),
+                          value: 'inputTokens'
+                        },
+                        {
+                          label: t('account_model:output'),
+                          value: 'outputTokens'
+                        }
+                      ]}
+                      py={1}
+                      px={5}
+                      value={tokensUsageType}
+                      onChange={(val) => setTokensUsageType(val)}
+                    />
+                  }
                 />
               </Box>
-            )}
-          </>
+
+              {feConfigs?.isPlus && (
+                <Box mt={5} {...ChartsBoxStyles}>
+                  <LineChartComponent
+                    data={chartData}
+                    title={t('account_model:aipoint_usage')}
+                    enableCumulative={true}
+                    lines={[
+                      {
+                        dataKey: 'totalCost',
+                        name: t('account_model:aipoint_usage'),
+                        color: '#8774EE'
+                      }
+                    ]}
+                    tooltipItems={[
+                      {
+                        label: t('account_model:aipoint_usage'),
+                        dataKey: 'totalCost',
+                        color: '#8774EE'
+                      }
+                    ]}
+                  />
+                </Box>
+              )}
+
+              <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5}>
+                <Box {...ChartsBoxStyles}>
+                  <LineChartComponent
+                    data={chartData}
+                    title={t('account_model:avg_response_time')}
+                    enableCumulative={false}
+                    lines={[
+                      {
+                        dataKey: 'avgResponseTime',
+                        name: t('account_model:avg_response_time'),
+                        color: '#36B37E'
+                      }
+                    ]}
+                    tooltipItems={[
+                      {
+                        label: t('account_model:avg_response_time'),
+                        dataKey: 'avgResponseTime',
+                        color: '#36B37E'
+                      }
+                    ]}
+                  />
+                </Box>
+                <Box {...ChartsBoxStyles}>
+                  <LineChartComponent
+                    data={chartData}
+                    title={t('account_model:avg_ttfb')}
+                    enableCumulative={false}
+                    lines={[
+                      {
+                        dataKey: 'avgTtfb',
+                        name: t('account_model:avg_ttfb'),
+                        color: '#FF5630'
+                      }
+                    ]}
+                    tooltipItems={[
+                      {
+                        label: t('account_model:avg_ttfb'),
+                        dataKey: 'avgTtfb',
+                        color: '#FF5630'
+                      }
+                    ]}
+                  />
+                </Box>
+              </Grid>
+
+              <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5}>
+                <Box {...ChartsBoxStyles}>
+                  <LineChartComponent
+                    data={chartData}
+                    title={`${t('account_model:max_rpm')}${!filterProps.model ? t('account_model:select_single_model_tip') : ''}`}
+                    enableCumulative={false}
+                    lines={[
+                      {
+                        dataKey: 'maxRpm',
+                        name: t('account_model:max_rpm'),
+                        color: '#6554C0'
+                      }
+                    ]}
+                    tooltipItems={[
+                      {
+                        label: t('account_model:max_rpm'),
+                        dataKey: 'maxRpm',
+                        color: '#6554C0'
+                      }
+                    ]}
+                  />
+                </Box>
+                <Box {...ChartsBoxStyles}>
+                  <LineChartComponent
+                    data={chartData}
+                    title={`${t('account_model:max_tpm')}${!filterProps.model ? t('account_model:select_single_model_tip') : ''}`}
+                    enableCumulative={false}
+                    lines={[
+                      {
+                        dataKey: 'maxTpm',
+                        name: t('account_model:max_tpm'),
+                        color: '#FF8B00'
+                      }
+                    ]}
+                    tooltipItems={[
+                      {
+                        label: t('account_model:max_tpm'),
+                        dataKey: 'maxTpm',
+                        color: '#FF8B00'
+                      }
+                    ]}
+                  />
+                </Box>
+              </Grid>
+            </>
+          )
+        ) : (
+          <DataTableComponent
+            data={dashboardData}
+            filterProps={filterProps}
+            systemModelList={systemModelList}
+            onViewDetail={handleViewDetail}
+          />
         )}
       </MyBox>
     </>

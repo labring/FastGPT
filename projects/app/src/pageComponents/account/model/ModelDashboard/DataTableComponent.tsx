@@ -1,17 +1,29 @@
 import React, { useMemo } from 'react';
-import {
-  Table,
-  TableContainer,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td
-} from '@chakra-ui/react';
+import { Table, TableContainer, Thead, Tbody, Tr, Th, Td, Button } from '@chakra-ui/react';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { ModelDashboardData, DashboardDataEntry, ModelUsageData } from './index';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+
+export type ModelUsageData = {
+  channel_id: number;
+  model: string;
+  request_count: number;
+  used_amount: number;
+  exception_count: number;
+  total_time_milliseconds: number;
+  total_ttfb_milliseconds: number;
+  input_tokens: number;
+  output_tokens?: number;
+  total_tokens: number;
+  max_rpm: number;
+  max_tpm: number;
+};
+
+export type DashboardDataEntry = {
+  timestamp: number;
+  summary: ModelUsageData[];
+};
 
 interface DataTableComponentProps {
   data: DashboardDataEntry[];
@@ -25,9 +37,15 @@ interface DataTableComponentProps {
     outputPrice?: number;
     charsPointsPrice?: number;
   }>;
+  onViewDetail?: (channelId: string, model: string) => void;
 }
 
-const DataTableComponent = ({ data, filterProps, systemModelList }: DataTableComponentProps) => {
+const DataTableComponent = ({
+  data,
+  filterProps,
+  systemModelList,
+  onViewDetail
+}: DataTableComponentProps) => {
   const { t } = useTranslation();
 
   // 将数据转换为表格行格式
@@ -39,6 +57,7 @@ const DataTableComponent = ({ data, filterProps, systemModelList }: DataTableCom
     const rows: Array<{
       model: string;
       channel: string;
+      channelId: number;
       totalCalls: number;
       errorCalls: number;
       errorRate: number;
@@ -48,17 +67,22 @@ const DataTableComponent = ({ data, filterProps, systemModelList }: DataTableCom
 
     // 遍历所有数据，展开为行
     data.forEach((dayData) => {
+      const summary = dayData.summary || [];
       const modelsToProcess = filterProps.model
-        ? dayData.models.filter((model: ModelUsageData) => model.model === filterProps.model)
-        : dayData.models;
+        ? summary.filter((model: ModelUsageData) => model.model === filterProps.model)
+        : summary;
 
       modelsToProcess.forEach((model: ModelUsageData) => {
         rows.push({
-          model: model.model,
-          channel: '默认渠道', // 如果有渠道信息可以从数据中获取
-          totalCalls: model.request_count,
-          errorCalls: model.exception_count,
-          errorRate: model.request_count > 0 ? (model.exception_count / model.request_count) * 100 : 0,
+          model: model.model || '-',
+          channel: `${model.channel_id}`,
+          channelId: model.channel_id,
+          totalCalls: model.request_count || 0,
+          errorCalls: model.exception_count || 0,
+          errorRate:
+            (model.request_count || 0) > 0
+              ? ((model.exception_count || 0) / (model.request_count || 0)) * 100
+              : 0,
           avgResponseTime: model.total_time_milliseconds || 0,
           avgTtfb: model.total_ttfb_milliseconds || 0
         });
@@ -95,10 +119,17 @@ const DataTableComponent = ({ data, filterProps, systemModelList }: DataTableCom
                 <Td color={item.avgResponseTime > 10000 ? 'red.600' : ''}>
                   {item.avgResponseTime > 0 ? `${Math.round(item.avgResponseTime)}ms` : '-'}
                 </Td>
+                <Td>{item.avgTtfb > 0 ? `${Math.round(item.avgTtfb)}ms` : '-'}</Td>
                 <Td>
-                  {item.avgTtfb > 0 ? `${Math.round(item.avgTtfb)}ms` : '-'}
+                  <Button
+                    leftIcon={<MyIcon name={'menu'} w={'1rem'} />}
+                    size={'sm'}
+                    variant={'outline'}
+                    onClick={() => onViewDetail?.(item.channelId.toString(), item.model)}
+                  >
+                    {t('account_model:detail')}
+                  </Button>
                 </Td>
-                <Td>-</Td>
               </Tr>
             ))}
             {tableData.length === 0 && (

@@ -64,7 +64,6 @@
   "vlm_model_tip": "用于知识库中对文档中的图片进行额外的索引生成",
   "waiting_test": "等待测试",
   "dashboard_success_calls": "成功次数",
-  "dashboard_error_calls": "错误次数",
   "dashboard_input_tokens": "输入Tokens",
   "dashboard_output_tokens": "输出Tokens",
   "dashboard_total_tokens": "总Tokens",
@@ -76,6 +75,17 @@
   "dashboard_total_cost_label": "总成本:",
   "dashboard_no_data": "暂无数据",
   "dashboard_channel": "渠道",
-  "dashboard_model": "模型",
-  "dashboard_points": "积分"
+  "timespan_minute": "分钟",
+  "timespan_hour": "小时",
+  "timespan_day": "天",
+  "timespan_label": "时间颗粒度",
+  "view_chart": "图表",
+  "view_table": "表格",
+  "avg_response_time": "平均调用时长 (毫秒)",
+  "avg_ttfb": "平均首Token延时 (毫秒)",
+  "max_rpm": "最大RPM (每分钟请求数)",
+  "max_tpm": "最大TPM (每分钟Token数)",
+  "select_single_model_tip": " - 请选择单个模型",
+  "chart_mode_independent": "离散",
+  "chart_mode_cumulative": "累积"
 }
