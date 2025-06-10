@@ -3,7 +3,7 @@
   "intro": "Kolors 是由快手 Kolors 团队开发的基于潜在扩散的大规模文本到图像生成模型。该模型通过数十亿文本-图像对的训练，在视觉质量、复杂语义准确性以及中英文字符渲染方面展现出显著优势。它不仅支持中英文输入，在理解和生成中文特定内容方面也表现出色。",
   "author": "FastGPT",
   "avatar": "./Kwai-Kolors.png",
-  "tags": ["图片生成"], 
+  "tags": ["image-generation"], 
   "type": "plugin",  
   "workflow": {
   "nodes": [
