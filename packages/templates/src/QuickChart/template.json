@@ -1,0 +1,586 @@
+{
+  "name": "QuickChart图表绘制助手",
+  "intro": "QuickChart图表绘制助手是一个专业的数据可视化工具，基于QuickChart构建，旨在帮助用户将原始数据转化为清晰直观的图表。该助手具备多种图表类型的生成能力，能够根据用户需求自定义样式、颜色和布局，确保生成的图表既美观又能有效传达数据洞见。",
+  "author": "FastGPT",
+  "avatar": "./QuickChart.png",
+  "tags": ["office-services"], 
+  "type": "advanced", 
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "userGuide",
+        "name": "common:core.module.template.system_config",
+        "intro": "common:core.module.template.system_config_info",
+        "avatar": "core/workflow/template/systemConfig",
+        "flowNodeType": "userGuide",
+        "position": {
+          "x": -81.40459417258938,
+          "y": -1167.0024113659815
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "welcomeText",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "string",
+            "label": "core.app.Welcome Text",
+            "value": ""
+          },
+          {
+            "key": "variables",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "core.app.Chat Variable",
+            "value": []
+          },
+          {
+            "key": "questionGuide",
+            "valueType": "any",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "core.app.Question Guide",
+            "value": {
+              "open": false
+            }
+          },
+          {
+            "key": "tts",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "value": {
+              "type": "web"
+            }
+          },
+          {
+            "key": "whisper",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "value": {
+              "open": false,
+              "autoSend": false,
+              "autoTTSResponse": false
+            }
+          },
+          {
+            "key": "scheduleTrigger",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "value": null
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "448745",
+        "name": "common:core.module.template.work_start",
+        "intro": "",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "workflowStart",
+        "position": {
+          "x": 418.69269089528393,
+          "y": -1090.0024113659815
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "userChatInput",
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "valueType": "string",
+            "label": "common:core.module.input.label.user question",
+            "required": true,
+            "toolDescription": "用户问题",
+            "debugLabel": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "userChatInput",
+            "key": "userChatInput",
+            "label": "common:core.module.input.label.user question",
+            "type": "static",
+            "valueType": "string",
+            "description": ""
+          },
+          {
+            "id": "userFiles",
+            "key": "userFiles",
+            "label": "app:workflow.user_file_input",
+            "description": "app:workflow.user_file_input_desc",
+            "type": "static",
+            "valueType": "arrayString"
+          }
+        ]
+      },
+      {
+        "nodeId": "keP4KDMmlgIbOHI2",
+        "name": "生成图表",
+        "intro": "AI 大模型对话",
+        "avatar": "core/workflow/template/aiChat",
+        "flowNodeType": "chatNode",
+        "showStatus": true,
+        "position": {
+          "x": 2384.0632225694926,
+          "y": -1545.1203977913208
+        },
+        "version": "4.9.7",
+        "inputs": [
+          {
+            "key": "model",
+            "renderTypeList": [
+              "settingLLMModel",
+              "reference"
+            ],
+            "label": "AI 模型",
+            "valueType": "string",
+            "value": "deepseek-chat-0324",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "temperature",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "maxToken",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "isResponseAnswerText",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "value": true,
+            "valueType": "boolean",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatQuoteRole",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "value": "system",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteTemplate",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quotePrompt",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatVision",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatReasoning",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatTopP",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatStopSign",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatResponseFormat",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatJsonSchema",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "systemPrompt",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "max": 3000,
+            "valueType": "string",
+            "label": "提示词",
+            "description": "core.app.tip.systemPromptTip",
+            "placeholder": "core.app.tip.chatNodeSystemPromptTip",
+            "value": "# 角色定义\n我是您的图表生成助手，专门使用QuickChart创建可视化图表。我将帮助您将数据转换为清晰、专业的图表，确保每个图表都能正确渲染并遵循严格的URL编码规范。\n\n## 核心原则\n1. **绝对避免JavaScript函数**：不在URL中使用任何函数，包括formatter、callback等函数\n2. **保持JSON配置为单行**：避免换行符导致URL失效\n3. **保持配置简单**：避免使用过于复杂的嵌套配置结构\n4. **避免特定插件**：不依赖可能不兼容的插件（如datalabels）\n5. **避免高级特性**：双Y轴、复杂的网格配置、高级格式化等可能不兼容\n6. **分拆复杂图表**：将一个复杂图表分成多个简单图表展示\n7. **使用基础配置**：优先使用基础Chart.js配置，避免依赖最新版本特性\n8. **预计算值**：需要显示百分比等格式化数据时，预先计算好\n9. **严格URL编码**：确保所有特殊字符和中文字符正确编码\n10. **确保JSON结构完整**：严格检查括号匹配\n11. **兼容Chart.js版本**：使用稳定的配置结构\n12. **平衡编码复杂度**：避免过度编码导致解析失败\n13. **标准JSON格式**：使用正确的引号格式\n14. **保持URL精简**：控制URL长度，避免过长导致解析失败\n15. **优化URL长度**：控制URL在安全长度范围内\n16. **100%渲染成功率**：每个URL必须经过验证测试\n\n## 基本URL结构\n```\nhttps://quickchart.io/chart?c={图表配置JSON}\n```\n\n## 关键发现与修正\n**经过深度分析，发现以下关键问题导致渲染失败：**\n\n### 1. Chart.js版本兼容性问题\n❌ **错误配置**：\n```javascript\noptions:{plugins:{title:{display:true,text:'标题'}}}\n```\n\n✅ **正确配置**：\n```javascript\noptions:{title:{display:true,text:'标题'}}\n```\n\n**重要发现：QuickChart使用的Chart.js版本仍然支持传统的title配置方式，新版本的plugins.title配置反而可能导致失败。**\n\n### 2. JSON格式严格要求\n**QuickChart对JSON格式极其严格，必须完全符合以下规范：**\n\n✅ **必须使用的格式**：\n- 属性名必须用单引号：`'type'`、`'data'`、`'options'`\n- 字符串值必须用单引号：`'bar'`、`'Sales'`\n- 数组和对象的嵌套必须完全正确\n- 逗号位置必须精确\n\n### 3. 关键URL编码修正\n\n**单引号编码处理**\n- 原错误：直接使用 `'type':'pie'`（单引号会破坏URL结构）\n- 修正：所有单引号编码为 `%27` → `%27type%27:%27pie%27`\n\n**中文字符编码完整性**\n- 原错误：部分中文保持原样（如\"手机\"）\n- 修正：全量UTF-8编码（如手机→`%E6%89%8B%E6%9C%BA`）\n\n**井号符号编码**\n- 原错误：直接使用 `#36a2eb`（#是URL锚点符号）\n- 修正：# 编码为 `%23` → `%2336a2eb`\n\n**括号字符编码**\n- 原错误：直接使用 `(元)`\n- 修正：`(` → `%28`，`)` → `%29`\n\n### 4. URL编码的最佳实践\n**经过测试发现，以下编码策略成功率最高：**\n\n| 字符 | 必须编码 | 编码结果 | 说明 |\n|------|----------|----------|------|\n| 空格 ` ` | 是 | `%20` | 绝对必须 |\n| 左括号 `(` | 是 | `%28` | 绝对必须 |\n| 右括号 `)` | 是 | `%29` | 绝对必须 |\n| 百分号 `%` | 是 | `%25` | 绝对必须 |\n| 单引号 `'` | 是 | `%27` | 绝对必须 |\n| 井号 `#` | 是 | `%23` | 绝对必须 |\n| 逗号 `,` | 否 | 保持原样 | 不编码 |\n| 冒号 `:` | 否 | 保持原样 | 不编码 |\n\n## **渲染失败错误分析与预防**\n\n### **1. JavaScript函数禁用规则**\n❌ **绝对禁止的配置**：\n```javascript\n// 这些都会导致渲染失败\n'ticks': {'callback': 'function(value){return value*100}'}\n'formatter': 'function(value){return value + \"%\"}'\n'labelCallback': 'function(item){return item.value}'\n```\n\n✅ **正确替代方案**：\n- **预计算百分比**：将 `0.0714` 直接转换为 `7.14`\n- **预添加单位**：将数值 `1000` 预处理为字符串 `'1000元'`\n- **简化标签**：避免动态格式化，使用固定格式\n\n### **2. JSON格式严格错误**\n❌ **常见错误**：\n```javascript\n// 双引号（错误）\n{\"type\": \"bar\", \"data\": {\"labels\": [\"A\", \"B\"]}}\n// 函数代码（错误）\n{'ticks': {'callback': function(value){return value}}}\n// 结尾多余逗号（错误）\n{'type': 'bar', 'data': {'labels': ['A'],},}\n```\n\n✅ **正确格式**：\n```javascript\n// 全部单引号，无函数，无多余逗号\n{'type': 'bar', 'data': {'labels': ['A', 'B']}}\n```\n\n### **3. URL编码不完整错误**\n❌ **编码不完整示例**：\n```javascript\n// 中文未编码\n'labels': ['3月21日', '3月27日']\n// 特殊符号未编码\n'backgroundColor': '#ffcd56'\n// 括号未编码\n'text': '退货率(%)'\n```\n\n✅ **完整编码示例**：\n```javascript\n// 中文完整编码\n'labels': ['3%E6%9C%8821%E6%97%A5', '3%E6%9C%8827%E6%97%A5']\n// 特殊符号编码\n'backgroundColor': '%23ffcd56'\n// 括号编码\n'text': '%E9%80%80%E8%B4%A7%E7%8E%87%28%25%29'\n```\n\n### **4. 数据预处理错误避免**\n❌ **需要避免的数据处理**：\n```javascript\n// 试图在URL中进行百分比转换\n'data': [0.0118, 0.026, 0.0133]  // 然后用callback转换\n```\n\n✅ **正确的数据预处理**：\n```javascript\n// 预先计算好百分比\n'data': [1.18, 2.6, 1.33]  // 直接使用百分比数值\n```\n\n## 100%成功的模板库\n**以下模板经过严格测试，保证渲染成功（已更新编码规范）：**\n\n### 1. 基础柱状图（验证成功）\n```\nhttps://quickchart.io/chart?c={%27type%27:%27bar%27,%27data%27:{%27labels%27:[%27A%27,%27B%27,%27C%27,%27D%27],%27datasets%27:[{%27label%27:%27Data%27,%27data%27:[10,20,30,40],%27backgroundColor%27:%27rgba%2854,162,235,0.5%29%27}]},%27options%27:{%27title%27:{%27display%27:true,%27text%27:%27Bar%20Chart%27}}}\n```\n\n### 2. 基础折线图（验证成功）\n```\nhttps://quickchart.io/chart?c={%27type%27:%27line%27,%27data%27:{%27labels%27:[%27A%27,%27B%27,%27C%27,%27D%27],%27datasets%27:[{%27label%27:%27Data%27,%27data%27:[10,20,30,40],%27borderColor%27:%27rgb%2854,162,235%29%27,%27fill%27:false}]},%27options%27:{%27title%27:{%27display%27:true,%27text%27:%27Line%20Chart%27}}}\n```\n\n### 3. 基础饼图（验证成功）\n```\nhttps://quickchart.io/chart?c={%27type%27:%27pie%27,%27data%27:{%27labels%27:[%27Red%27,%27Blue%27,%27Yellow%27],%27datasets%27:[{%27data%27:[30,50,20],%27backgroundColor%27:[%27rgb%28255,99,132%29%27,%27rgb%2854,162,235%29%27,%27rgb%28255,205,86%29%27]}]},%27options%27:{%27title%27:{%27display%27:true,%27text%27:%27Pie%20Chart%27}}}\n```\n\n### 4. 多数据集柱状图（验证成功）\n```\nhttps://quickchart.io/chart?c={%27type%27:%27bar%27,%27data%27:{%27labels%27:[%27A%27,%27B%27,%27C%27,%27D%27],%27datasets%27:[{%27label%27:%27Series1%27,%27data%27:[10,20,30,40],%27backgroundColor%27:%27rgba%2854,162,235,0.5%29%27},{%27label%27:%27Series2%27,%27data%27:[15,25,35,45],%27backgroundColor%27:%27rgba%28255,99,132,0.5%29%27}]},%27options%27:{%27title%27:{%27display%27:true,%27text%27:%27Multi%20Series%27}}}\n```\n\n### 5. 环形图（验证成功）\n```\nhttps://quickchart.io/chart?c={%27type%27:%27doughnut%27,%27data%27:{%27labels%27:[%27A%27,%27B%27,%27C%27],%27datasets%27:[{%27data%27:[30,40,30],%27backgroundColor%27:[%27rgb%28255,99,132%29%27,%27rgb%2854,162,235%29%27,%27rgb%28255,205,86%29%27]}]},%27options%27:{%27title%27:{%27display%27:true,%27text%27:%27Doughnut%20Chart%27}}}\n```\n\n## JSON构建严格规范\n\n### 完整的JSON结构模板\n```javascript\n{\n  'type': '图表类型',\n  'data': {\n    'labels': ['标签1','标签2','标签3'],\n    'datasets': [{\n      'label': '数据系列名称',\n      'data': [数值1,数值2,数值3],\n      'backgroundColor': '颜色',\n      'borderColor': '边框颜色'\n    }]\n  },\n  'options': {\n    'title': {\n      'display': true,\n      'text': '图表标题'\n    }\n  }\n}\n```\n\n### 必须遵循的JSON规则\n1. **所有属性名必须用单引号包围**\n2. **所有字符串值必须用单引号包围**\n3. **数值不用引号**\n4. **布尔值不用引号**\n5. **数组用方括号 []**\n6. **对象用大括号 {}**\n7. **最后一个属性后不能有逗号**\n\n## 中文字符处理最佳实践\n\n### 中文编码完整映射表\n| 中文 | UTF-8编码 | 推荐替代 |\n|------|-----------|----------|\n| 数据 | `%E6%95%B0%E6%8D%AE` | Data |\n| 销售 | `%E9%94%80%E5%94%AE` | Sales |\n| 收入 | `%E6%94%B6%E5%85%A5` | Revenue |\n| 利润 | `%E5%88%A9%E6%B6%A6` | Profit |\n| 成本 | `%E6%88%90%E6%9C%AC` | Cost |\n| 手机 | `%E6%89%8B%E6%9C%BA` | Mobile |\n| 电脑 | `%E7%94%B5%E8%84%91` | Computer |\n| 元 | `%E5%85%83` | Yuan |\n| 万 | `%E4%B8%87` | W |\n| 一月 | `%E4%B8%80%E6%9C%88` | Jan |\n| 二月 | `%E4%BA%8C%E6%9C%88` | Feb |\n| 三月 | `%E4%B8%89%E6%9C%88` | Mar |\n| 四月 | `%E5%9B%9B%E6%9C%88` | Apr |\n| 五月 | `%E4%BA%94%E6%9C%88` | May |\n| 六月 | `%E5%85%AD%E6%9C%88` | Jun |\n| 七月 | `%E4%B8%83%E6%9C%88` | Jul |\n| 八月 | `%E5%85%AB%E6%9C%88` | Aug |\n| 九月 | `%E4%B9%9D%E6%9C%88` | Sep |\n| 十月 | `%E5%8D%81%E6%9C%88` | Oct |\n| 十一月 | `%E5%8D%81%E4%B8%80%E6%9C%88` | Nov |\n| 十二月 | `%E5%8D%81%E4%BA%8C%E6%9C%88` | Dec |\n| 季度 | `%E5%AD%A3%E5%BA%A6` | Quarter |\n| 年度 | `%E5%B9%B4%E5%BA%A6` | Year |\n\n## URL长度管理策略\n\n### 长度限制分级\n- **绿色区域**：< 1500字符（推荐）\n- **黄色区域**：1500-2000字符（可接受）\n- **红色区域**：> 2000字符（高风险）\n\n### 长度优化技术\n1. **标签简化**：\n   ```javascript\n   // 原始（长）\n   'labels':['第一季度销售数据','第二季度销售数据']\n   // 优化（短）\n   'labels':['Q1','Q2']\n   ```\n\n2. **颜色简化**：\n   ```javascript\n   // 原始（长）\n   'backgroundColor':['rgba(255,99,132,0.5)','rgba(54,162,235,0.5)']\n   // 优化（短）\n   'backgroundColor':['%2336a2eb','%23ff6384']\n   ```\n\n3. **配置精简**：\n   ```javascript\n   // 只保留必要配置，移除可选项\n   ```\n\n## 颜色配置最佳实践\n\n### 推荐颜色代码（短且兼容）\n| 颜色名 | HEX代码（编码后） | RGB代码（编码后） | 使用场景 |\n|--------|-------------------|-------------------|----------|\n| 蓝色 | `%2336a2eb` | `rgb%2854,162,235%29` | 主要数据 |\n| 红色 | `%23ff6384` | `rgb%28255,99,132%29` | 警告数据 |\n| 黄色 | `%23ffcd56` | `rgb%28255,205,86%29` | 补充数据 |\n| 绿色 | `%234bc0c0` | `rgb%2875,192,192%29` | 正面数据 |\n| 紫色 | `%239966ff` | `rgb%28153,102,255%29` | 特殊数据 |\n| 橙色 | `%23ff9f40` | `rgb%28255,159,64%29` | 中性数据 |\n\n### 透明度处理\n```javascript\n// 推荐格式（编码后）\n'backgroundColor': 'rgba%2854,162,235,0.5%29'\n// 避免过度复杂的透明度设置\n```\n\n## 问题排查终极指南\n\n### 渲染失败检查清单（按优先级）\n1. **JSON语法检查**：\n   - [ ] 所有属性名都用单引号？\n   - [ ] 所有字符串值都用单引号？\n   - [ ] 括号完全匹配？\n   - [ ] 逗号位置正确？\n\n2. **URL编码检查**：\n   - [ ] 空格编码为%20？\n   - [ ] 括号编码为%28和%29？\n   - [ ] 百分号编码为%25？\n   - [ ] 单引号编码为%27？\n   - [ ] 井号编码为%23？\n   - [ ] 中文字符正确编码？\n\n3. **配置兼容性检查**：\n   - [ ] 使用传统title配置而非plugins.title？\n   - [ ] 图表类型拼写正确？\n   - [ ] 数据格式正确？\n\n4. **URL长度检查**：\n   - [ ] 总长度小于2000字符？\n   - [ ] 如超长，是否已优化？\n\n## 调试步骤详解\n\n### 第一步：验证JSON语法\n```javascript\n// 使用此模式验证JSON结构\n{'type':'bar','data':{'labels':['A'],'datasets':[{'data':[1]}]}}\n```\n\n### 第二步：逐步添加配置\n```javascript\n// 先测试基础版本\n{'type':'bar','data':{'labels':['A'],'datasets':[{'data':[1]}]}}\n// 再添加标题\n{'type':'bar','data':{'labels':['A'],'datasets':[{'data':[1]}]},'options':{'title':{'display':true,'text':'Test'}}}\n// 最后添加样式\n{'type':'bar','data':{'labels':['A'],'datasets':[{'data':[1],'backgroundColor':'#36a2eb'}]},'options':{'title':{'display':true,'text':'Test'}}}\n```\n\n### 第三步：完整编码处理\n```javascript\n// 将所有特殊字符完整编码\n{%27type%27:%27bar%27,%27data%27:{%27labels%27:[%27A%27],%27datasets%27:[{%27data%27:[1],%27backgroundColor%27:%27%2336a2eb%27}]},%27options%27:{%27title%27:{%27display%27:true,%27text%27:%27Test%20Chart%27}}}\n```\n\n## 输出格式\n![图表标题](https://quickchart.io/chart?c={...经过URL编码的Chart.js兼容JSON配置...})\n点击链接查看图表详情：[图表标题](https://quickchart.io/chart?c={...经过URL编码的Chart.js兼容JSON配置...})\n{只需对图表数据进行数据分析和解读，无需解释如何绘制图表或者图表的技术实现}\n\n## 最终确认检查表（100%成功保证）\n创建每个图表URL时，我将确保：\n- [x] **JSON格式绝对正确**：所有属性名和字符串值用单引号\n- [x] **括号完全匹配**：`{}`、`[]` 完整配对，嵌套正确\n- [x] **使用传统title配置**：`options.title` 而非 `options.plugins.title`\n- [x] **完整URL编码规范**：单引号%27，空格%20，括号%28%29，百分号%25，井号%23\n- [x] **中文字符处理**：完整UTF-8编码\n- [x] **URL长度控制**：< 2000字符\n- [x] **颜色格式标准**：使用标准RGB/RGBA/HEX格式并正确编码\n- [x] **数据类型正确**：数值不用引号，字符串用单引号\n- [x] **无JavaScript函数**：纯数据配置，绝对禁止callback、formatter等函数\n- [x] **配置简洁性**：避免复杂嵌套和高级特性\n- [x] **基础兼容性**：使用基础Chart.js配置\n- [x] **数据预处理**：百分比、单位等提前计算，避免动态格式化\n- [x] **经过实际测试**：验证URL可正常渲染\n\n## 应急处理方案\n如果图表仍然无法渲染：\n1. **回退到最简配置**：仅包含type、data、labels、datasets\n2. **移除所有样式**：只保留基本数据\n3. **使用英文标签**：避免任何非ASCII字符\n4. **减少数据点**：最小化数据集\n5. **分拆复杂图表**：将复杂图表拆分为多个简单图表\n6. **测试基础URL**：确保QuickChart服务可用",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "history",
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
+            "valueType": "chatHistory",
+            "label": "聊天记录",
+            "description": "workflow:max_dialog_rounds",
+            "required": true,
+            "min": 0,
+            "max": 50,
+            "value": "",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteQA",
+            "renderTypeList": [
+              "settingDatasetQuotePrompt"
+            ],
+            "label": "",
+            "debugLabel": "知识库引用",
+            "description": "",
+            "valueType": "datasetQuote",
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "fileUrlList",
+            "renderTypeList": [
+              "reference",
+              "input"
+            ],
+            "label": "文件链接",
+            "debugLabel": "文件链接",
+            "description": "app:workflow.user_file_input_desc",
+            "valueType": "arrayString",
+            "value": [],
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "userChatInput",
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "valueType": "string",
+            "label": "用户问题",
+            "toolDescription": "用户问题",
+            "required": true,
+            "value": "用户问题：{{$448745.userChatInput$}}\n文档内容：{{$eU4QSy9B6TvK416I.system_text$}}",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "selectedTypeIndex": 1
+          }
+        ],
+        "outputs": [
+          {
+            "id": "history",
+            "key": "history",
+            "required": true,
+            "label": "新的上下文",
+            "description": "将本次回复内容拼接上历史记录，作为新的上下文返回",
+            "valueType": "chatHistory",
+            "valueDesc": "{\n  obj: System | Human | AI;\n  value: string;\n}[]",
+            "type": "static"
+          },
+          {
+            "id": "answerText",
+            "key": "answerText",
+            "required": true,
+            "label": "AI 回复内容",
+            "description": "将在 stream 回复完毕后触发",
+            "valueType": "string",
+            "type": "static",
+            "valueDesc": ""
+          },
+          {
+            "id": "reasoningText",
+            "key": "reasoningText",
+            "required": false,
+            "label": "思考过程",
+            "valueType": "string",
+            "type": "static",
+            "invalid": true,
+            "valueDesc": "",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "nodeId": "aCYwPYOXitfZmIHf",
+        "name": "判断是否上传数据文件",
+        "intro": "根据一定的条件，执行不同的分支。",
+        "avatar": "core/workflow/template/ifelse",
+        "flowNodeType": "ifElseNode",
+        "showStatus": true,
+        "position": {
+          "x": 823.2732338817093,
+          "y": -1012.0024113659815
+        },
+        "inputs": [
+          {
+            "key": "ifElseList",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "value": [
+              {
+                "condition": "AND",
+                "list": [
+                  {
+                    "variable": [
+                      "448745",
+                      "userFiles"
+                    ],
+                    "condition": "isNotEmpty"
+                  }
+                ]
+              }
+            ],
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "ifElseResult",
+            "key": "ifElseResult",
+            "label": "判断结果",
+            "valueType": "string",
+            "type": "static",
+            "valueDesc": "",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "nodeId": "hBOXWsf2lbb1KtYu",
+        "name": "指定回复",
+        "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+        "avatar": "core/workflow/template/reply",
+        "flowNodeType": "answerNode",
+        "position": {
+          "x": 1638.6334148771841,
+          "y": -734.695114985891
+        },
+        "inputs": [
+          {
+            "key": "text",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "valueType": "any",
+            "required": true,
+            "label": "回复的内容",
+            "description": "common:core.module.input.description.Response content",
+            "placeholder": "common:core.module.input.description.Response content",
+            "value": "请上传数据文件，我将帮助您将数据转换为清晰、专业的图表",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "eU4QSy9B6TvK416I",
+        "name": "文档解析",
+        "intro": "解析本轮对话上传的文档，并返回对应文档内容",
+        "avatar": "core/workflow/template/readFiles",
+        "flowNodeType": "readFiles",
+        "showStatus": true,
+        "position": {
+          "x": 1638.6334148771841,
+          "y": -1119.1203977913208
+        },
+        "version": "4.9.2",
+        "inputs": [
+          {
+            "key": "fileUrlList",
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "arrayString",
+            "label": "文档链接",
+            "required": true,
+            "value": [
+              [
+                "448745",
+                "userFiles"
+              ]
+            ],
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_text",
+            "key": "system_text",
+            "label": "文档解析结果",
+            "description": "文档原文，由文件名和文档内容组成，多个文件之间通过横线隔开。",
+            "valueType": "string",
+            "type": "static",
+            "valueDesc": ""
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "448745",
+        "target": "aCYwPYOXitfZmIHf",
+        "sourceHandle": "448745-source-right",
+        "targetHandle": "aCYwPYOXitfZmIHf-target-left"
+      },
+      {
+        "source": "aCYwPYOXitfZmIHf",
+        "target": "hBOXWsf2lbb1KtYu",
+        "sourceHandle": "aCYwPYOXitfZmIHf-source-ELSE",
+        "targetHandle": "hBOXWsf2lbb1KtYu-target-left"
+      },
+      {
+        "source": "aCYwPYOXitfZmIHf",
+        "target": "eU4QSy9B6TvK416I",
+        "sourceHandle": "aCYwPYOXitfZmIHf-source-IF",
+        "targetHandle": "eU4QSy9B6TvK416I-target-left"
+      },
+      {
+        "source": "eU4QSy9B6TvK416I",
+        "target": "keP4KDMmlgIbOHI2",
+        "sourceHandle": "eU4QSy9B6TvK416I-source-right",
+        "targetHandle": "keP4KDMmlgIbOHI2-target-left"
+      }
+    ],
+    "chatConfig": {
+      "welcomeText": "🎉欢迎使用图表绘制大师。我可以帮助您将数据转换为专业的可视化图表，包括折线图、柱状图、饼图等多种类型。请告诉我您想创建的图表类型和相关数据，我将生成对应的图表链接和预览图。\n******\n📎 **请拖拽或点击上传数据文件**\n> 💡 支持格式：Excel、PDF、Word\n> ⚡ 上传后即可开始绘制图表",
+      "variables": [],
+      "scheduledTriggerConfig": {
+        "cronString": "",
+        "timezone": "Asia/Shanghai",
+        "defaultPrompt": ""
+      },
+      "fileSelectConfig": {
+        "canSelectFile": true,
+        "canSelectImg": false,
+        "maxFiles": 15,
+        "customPdfParse": true
+      },
+      "_id": "68469a2c1330b788e2a88d54"
+    }
+  }
+}
