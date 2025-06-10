@@ -157,8 +157,8 @@ const LineChartComponent = ({
 
   return (
     <>
-      <HStack mb={4} justifyContent={'space-between'} alignItems={'flex-start'}>
-        <Box fontSize={'sm'} color={'myGray.900'} fontWeight={'medium'}>
+      <HStack mb={4} justifyContent="space-between" alignItems="flex-start">
+        <Box fontSize="sm" color="myGray.900" fontWeight="medium">
           {title}
         </Box>
         <HStack spacing={2}>
