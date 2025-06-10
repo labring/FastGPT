@@ -2,7 +2,7 @@
 import type { NextApiResponse } from 'next';
 import type { PushDatasetDataProps } from '@fastgpt/global/core/dataset/api.d';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
-import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { NextAPI } from '@/service/middleware/entry';
@@ -35,7 +35,7 @@ async function handler(req: ApiRequestProps<PushDatasetDataProps>, res: NextApiR
   });
 
   // auth dataset limit
-  await checkDatasetLimit({
+  await checkDatasetIndexLimit({
     teamId,
     insertLen: predictDataLimitLength(getTrainingModeByCollection(collection), data)
   });

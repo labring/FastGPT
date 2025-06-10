@@ -20,7 +20,7 @@ import { delay } from '@fastgpt/service/common/bullmq';
 import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
 import { getLLMModel } from '@fastgpt/service/core/ai/model';
 import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
-import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
@@ -258,7 +258,7 @@ export const datasetParseQueue = async (): Promise<any> => {
 
     // Check dataset limit
     try {
-      await checkDatasetLimit({
+      await checkDatasetIndexLimit({
         teamId: data.teamId,
         insertLen: predictDataLimitLength(trainingMode, chunks)
       });

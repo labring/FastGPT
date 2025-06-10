@@ -18,7 +18,7 @@ import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import type { ClientSession } from '../../../common/mongo';
 import { createOrGetCollectionTags } from './utils';
 import { rawText2Chunks } from '../read';
-import { checkDatasetLimit } from '../../../support/permission/teamLimit';
+import { checkDatasetIndexLimit } from '../../../support/permission/teamLimit';
 import { predictDataLimitLength } from '../../../../global/core/dataset/utils';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { createTrainingUsage } from '../../../support/wallet/usage/controller';
@@ -166,7 +166,7 @@ export const createCollectionAndInsertData = async ({
   })();
 
   // 2. auth limit
-  await checkDatasetLimit({
+  await checkDatasetIndexLimit({
     teamId,
     insertLen: predictDataLimitLength(trainingMode, chunks)
   });
