@@ -1,0 +1,401 @@
+{
+  "name": "JD生成助手",
+  "intro": "JD生成助手是一个专业化的人才招聘文案优化AI智能体，它专门为企业和招聘团队提供职位描述JD生成服务。它善于将企业的业务需求和职位要求转化为结构清晰、专业准确且富有吸引力的招聘文案，能够精准捕捉岗位核心技能需求、工作职责以及理想候选人画像，从而帮助企业吸引最合适的人才。",
+  "author": "FastGPT",
+  "avatar": "./JD-Generation.png",
+  "tags": ["办公服务"], 
+  "type": "advanced", 
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "userGuide",
+        "name": "common:core.module.template.system_config",
+        "intro": "common:core.module.template.system_config_info",
+        "avatar": "core/workflow/template/systemConfig",
+        "flowNodeType": "userGuide",
+        "position": {
+          "x": 262.2732338817093,
+          "y": -476.00241136598146
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "welcomeText",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "string",
+            "label": "core.app.Welcome Text",
+            "value": ""
+          },
+          {
+            "key": "variables",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "core.app.Chat Variable",
+            "value": []
+          },
+          {
+            "key": "questionGuide",
+            "valueType": "any",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "core.app.Question Guide",
+            "value": {
+              "open": false
+            }
+          },
+          {
+            "key": "tts",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "value": {
+              "type": "web"
+            }
+          },
+          {
+            "key": "whisper",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "value": {
+              "open": false,
+              "autoSend": false,
+              "autoTTSResponse": false
+            }
+          },
+          {
+            "key": "scheduleTrigger",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "value": null
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "448745",
+        "name": "common:core.module.template.work_start",
+        "intro": "",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "workflowStart",
+        "position": {
+          "x": 767.5406482216721,
+          "y": -329.00241136598146
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "userChatInput",
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "valueType": "string",
+            "label": "common:core.module.input.label.user question",
+            "required": true,
+            "toolDescription": "用户问题",
+            "debugLabel": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "userChatInput",
+            "key": "userChatInput",
+            "label": "common:core.module.input.label.user question",
+            "type": "static",
+            "valueType": "string",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "nodeId": "hPeBdgiQtsFyoQGG",
+        "name": "JD生成",
+        "intro": "workflow:template.ai_chat_intro",
+        "avatar": "core/workflow/template/aiChat",
+        "flowNodeType": "chatNode",
+        "showStatus": true,
+        "position": {
+          "x": 1223.5723230344674,
+          "y": -649.0024113659815
+        },
+        "version": "4.9.7",
+        "inputs": [
+          {
+            "key": "model",
+            "renderTypeList": [
+              "settingLLMModel",
+              "reference"
+            ],
+            "label": "common:core.module.input.label.aiModel",
+            "valueType": "string",
+            "value": "deepseek-chat-0324",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "temperature",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "maxToken",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "isResponseAnswerText",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "value": true,
+            "valueType": "boolean",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatQuoteRole",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "value": "system",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteTemplate",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quotePrompt",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatVision",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatReasoning",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatTopP",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatStopSign",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatResponseFormat",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatJsonSchema",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "systemPrompt",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "max": 3000,
+            "valueType": "string",
+            "label": "common:core.ai.Prompt",
+            "description": "core.app.tip.systemPromptTip",
+            "placeholder": "core.app.tip.chatNodeSystemPromptTip",
+            "value": "# 角色\n你是专业的招聘JD优化专家，拥有丰富的人力资源和行业经验，精通将企业需求转化为高质量、具有竞争力的职位描述，能够准确匹配企业文化与人才期望。\n\n## 专业背景\n在当今高度竞争的人才市场中，优质的职位描述(Job Description)是企业获得优秀人才的核心武器。一份专业的JD需要做到：准确传达职位价值、清晰界定能力边界、有效展示发展前景，并在专业性与吸引力之间达到最佳平衡。\n\n## 核心能力\n\n### 能力1：战略性岗位设计与职责架构\n- **精准定位**：基于行业标准和企业战略，设计符合市场认知的岗位名称\n- **职责拆解**：将复杂工作内容分解为3-5个核心职责模块，每个职责以行动动词开头（\"负责\"、\"主导\"、\"协调\"、\"优化\"等）\n- **价值链接**：确保每项职责都能清晰体现对公司业务目标的贡献价值\n- **成果导向**：职责描述中融入可衡量的工作成果和影响范围\n\n### 能力2：多维度能力要求体系构建\n- **分层设计**：区分\"必备条件\"和\"优先条件\"，避免过度筛选优质候选人\n- **三维评估**：按技术硬技能、业务软实力、个人综合素质三个维度系统化描述\n- **熟练度标准**：为每项能力要求标注清晰的熟练程度期望（\"精通/熟练/了解/接触过\"）\n- **场景化表达**：提供具体的技能应用场景，帮助候选人准确自我评估\n\n### 能力3：平衡性内容优化与表达策略\n- **专业化表达**：使用行业标准术语，确保专业性的同时保持易读性\n- **文化融合**：将企业文化特色和价值观自然融入职位描述中\n- **发展吸引力**：根据不同职位特点，突出相应的职业发展路径和成长机会\n- **差异化定位**：体现该职位相比同行的独特优势和发展空间\n\n## 质量标准\n\n### 内容要求\n- ✅ 严格按照提供的职位信息框架，确保所有关键要素完整覆盖\n- ✅ 使用具体、可量化的表述，避免\"顶尖\"、\"卓越\"等空泛形容词\n- ✅ 确保技术术语和专业表达的准确性，避免误导专业候选人\n- ✅ 内容篇幅控制在合理范围内，突出重点，避免信息冗余\n\n### 合规要求\n- ❌ 严禁包含任何性别、年龄、种族、地域等歧视性表述\n- ❌ 避免设置不合理的能力壁垒或过于苛刻的条件要求\n- ❌ 不使用可能误导候选人期望的夸大性描述\n\n## 结构化输出模板\n\n### 撰写指导原则\n**岗位名称设计**：体现职位层级、专业领域和核心职责的精准命名\n**职位描述构建**：\n- 核心职责：阐述职位的主要工作内容和责任范围\n- 技能应用：说明关键技能在实际工作中的具体运用方式  \n- 业务价值：明确职位对公司业务目标达成的支撑作用\n- 协作关系：描述与内外部团队的合作模式和沟通要求\n\n**职位要求框架**：\n- 经验门槛：明确最低工作年限和相关行业背景要求\n- 技术栈：列举必备和优先的技术工具、平台、方法论\n- 思维模式：强调逻辑分析、问题解决、创新思维等认知能力\n- 协作能力：突出团队合作、跨部门沟通、项目管理等软技能\n- 综合素质：包含学历背景、专业资质、个人特质等其他要求\n\n**学历规格**：\n- 基础标准：设定最低学历门槛和专业方向要求\n- 优先条件：标明更高学历层次的加分项和专业优势领域\n\n## 严格按照下面的输出格式（请勿输出任何无关内容）\n\n**岗位名称**：[精准的职位名称]\n\n**职位描述**：\n1. [核心职责描述1]\n2. [核心职责描述2] \n3. [核心职责描述3]\n...\nn. [核心职责描述n]\n\n**职位要求**：\n1. [关键要求1]\n2. [关键要求2]\n3. [关键要求3]\n...\nn. [关键要求n]\n\n**学历要求**：\n[具体学历和专业要求描述]",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "history",
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
+            "valueType": "chatHistory",
+            "label": "common:core.module.input.label.chat history",
+            "description": "workflow:max_dialog_rounds",
+            "required": true,
+            "min": 0,
+            "max": 50,
+            "value": 6,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteQA",
+            "renderTypeList": [
+              "settingDatasetQuotePrompt"
+            ],
+            "label": "",
+            "debugLabel": "知识库引用",
+            "description": "",
+            "valueType": "datasetQuote",
+            "toolDescription": ""
+          },
+          {
+            "key": "fileUrlList",
+            "renderTypeList": [
+              "reference",
+              "input"
+            ],
+            "label": "app:workflow.user_file_input",
+            "debugLabel": "文件链接",
+            "description": "app:workflow.user_file_input_desc",
+            "valueType": "arrayString",
+            "value": [
+              [
+                "448745",
+                "userFiles"
+              ]
+            ],
+            "toolDescription": ""
+          },
+          {
+            "key": "userChatInput",
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "valueType": "string",
+            "label": "workflow:user_question",
+            "toolDescription": "用户问题",
+            "required": true,
+            "value": [
+              "448745",
+              "userChatInput"
+            ],
+            "debugLabel": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "history",
+            "key": "history",
+            "required": true,
+            "label": "common:core.module.output.label.New context",
+            "description": "将本次回复内容拼接上历史记录，作为新的上下文返回",
+            "valueType": "chatHistory",
+            "valueDesc": "{\n  obj: System | Human | AI;\n  value: string;\n}[]",
+            "type": "static"
+          },
+          {
+            "id": "answerText",
+            "key": "answerText",
+            "required": true,
+            "label": "common:core.module.output.label.Ai response content",
+            "description": "将在 stream 回复完毕后触发",
+            "valueType": "string",
+            "type": "static"
+          },
+          {
+            "id": "reasoningText",
+            "key": "reasoningText",
+            "required": false,
+            "label": "workflow:reasoning_text",
+            "valueType": "string",
+            "type": "static",
+            "invalid": true,
+            "description": ""
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "448745",
+        "target": "hPeBdgiQtsFyoQGG",
+        "sourceHandle": "448745-source-right",
+        "targetHandle": "hPeBdgiQtsFyoQGG-target-left"
+      }
+    ],
+    "chatConfig": {
+      "welcomeText": "欢迎使用岗位JD生成大师。我是您的招聘文案优化专家，致力于帮助您创建专业且具有吸引力的职位描述。请告诉我您需要制作JD的岗位名称、所在行业、关键职责及技能要求，我将为您量身打造一份能够吸引合适人才的精准招聘文案。无论是技术岗位、管理职位还是创意角色，我都能将您的需求转化为清晰有效的招聘JD。\n[数据分析师：我们是一家处于高速成长期的科技创新企业，现诚聘资深数据分析师加入我们的团队。该职位需要熟练掌握SQL、Excel及Python等数据分析工具，具备独立完成数据清洗、深度分析和可视化呈现的能力。理想的候选人将帮助我们挖掘数据价值，驱动业务决策。]\n[产品经理：我们是一家创新驱动的科技公司，诚聘一名经验丰富的产品经理，负责产品全生命周期管理，需具备市场洞察力、用户研究能力和跨团队协作经验，熟练使用Axure、Figma等工具，能通过数据驱动产品决策。]\n[前端开发工程师：我们是一家快速成长的科技公司，急需一名熟悉React/Vue的前端开发工程师，能够构建高性能、响应式的用户界面，具备良好的代码规范和团队协作能力，有移动端开发经验者优先。]\n[UX/UI设计师：我们是一家注重用户体验的科技公司，正在寻找一名创意十足的UX/UI设计师，擅长用户研究、交互设计和视觉呈现，熟练使用Figma、Sketch等工具，能独立完成从原型到高保真设计的工作。]",
+      "variables": [],
+      "scheduledTriggerConfig": {
+        "cronString": "",
+        "timezone": "Asia/Shanghai",
+        "defaultPrompt": ""
+      },
+      "_id": "681031a8a332659d9021d2d0"
+    }
+  }
+}
