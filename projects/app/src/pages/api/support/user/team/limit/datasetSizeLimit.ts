@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -19,7 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const numberSize = Number(size);
 
-    await checkDatasetLimit({
+    await checkDatasetIndexLimit({
       teamId,
       insertLen: numberSize
     });
