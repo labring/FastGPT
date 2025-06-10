@@ -26,10 +26,13 @@ import { AppListContext } from './context';
 import { useContextSelector } from 'use-context-selector';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
+import HeaderAuthConfig from '@/components/common/secret/HeaderAuthConfig';
+import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 
 export type MCPToolSetData = {
   url: string;
   toolList: McpToolConfigType[];
+  headerAuth: StoreSecretValueType;
 };
 
 export type EditMCPToolsProps = {
@@ -49,6 +52,7 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
       name: '',
       mcpData: {
         url: '',
+        headerAuth: {},
         toolList: []
       }
     }
@@ -63,6 +67,7 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
         avatar: data.avatar,
         toolList: data.mcpData.toolList,
         url: data.mcpData.url,
+        headerAuth: data.mcpData.headerAuth,
         parentId
       });
     },
@@ -131,9 +136,24 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
             />
           </Flex>
 
-          <Box color={'myGray.900'} fontSize={'14px'} fontWeight={'medium'} mt={6}>
-            {t('app:MCP_tools_url')}
-          </Box>
+          <Flex
+            color={'myGray.900'}
+            fontSize={'14px'}
+            fontWeight={'medium'}
+            mt={6}
+            alignItems={'center'}
+          >
+            <Box>{t('app:MCP_tools_url')}</Box>
+            <Box flex={1} />
+            <HeaderAuthConfig
+              storeHeaderAuthConfig={mcpData.headerAuth}
+              onSave={(data) => {
+                setValue('mcpData.headerAuth', data);
+              }}
+              size={'xs'}
+              variant={'grayGhost'}
+            />
+          </Flex>
           <Flex alignItems={'center'} gap={2} mt={2}>
             <Input
               h={8}
@@ -148,7 +168,10 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
               h={8}
               isLoading={isGettingTools}
               onClick={() => {
-                runGetMCPTools({ url: mcpData.url });
+                runGetMCPTools({
+                  url: mcpData.url,
+                  headerAuth: mcpData.headerAuth
+                });
               }}
             >
               {t('common:Parse')}

@@ -15,7 +15,11 @@ type Props<T> = Omit<GridProps, 'onChange'> & {
   value: T;
   defaultBg?: string;
   activeBg?: string;
+  activeBorderColor?: string;
+  activeShadow?: string;
+  hoverBorderColor?: string;
   onChange: (e: T) => void;
+  dotGap?: number;
 };
 
 const LeftRadio = <T = any,>({
@@ -26,7 +30,12 @@ const LeftRadio = <T = any,>({
   py = 4,
   defaultBg = 'myGray.50',
   activeBg = 'primary.50',
+  activeBorderColor = 'primary.400',
+  activeShadow = 'focus',
+  hoverBorderColor = 'primary.300',
+  fontWeight = 'normal',
   onChange,
+  dotGap = 3,
   ...props
 }: Props<T>) => {
   const { t } = useTranslation();
@@ -48,14 +57,14 @@ const LeftRadio = <T = any,>({
           position={'relative'}
           {...(value === item.value
             ? {
-                borderColor: 'primary.400',
+                borderColor: activeBorderColor,
                 bg: activeBg,
-                boxShadow: 'focus'
+                boxShadow: activeShadow
               }
             : {
                 bg: defaultBg,
                 _hover: {
-                  borderColor: 'primary.300'
+                  borderColor: hoverBorderColor
                 }
               })}
           onClick={() => onChange(item.value)}
@@ -66,7 +75,7 @@ const LeftRadio = <T = any,>({
             borderWidth={'2.4px'}
             borderColor={value === item.value ? 'primary.015' : 'transparent'}
             borderRadius={'50%'}
-            mr={3}
+            mr={dotGap}
           >
             <Flex
               w={'100%'}
@@ -79,8 +88,8 @@ const LeftRadio = <T = any,>({
               justifyContent={'center'}
             >
               <Box
-                w={'5px'}
-                h={'5px'}
+                w={'4px'}
+                h={'4px'}
                 borderRadius={'50%'}
                 bg={value === item.value ? 'primary.600' : 'transparent'}
               ></Box>
@@ -91,7 +100,7 @@ const LeftRadio = <T = any,>({
               <HStack
                 spacing={1}
                 color={'myGray.900'}
-                fontWeight={item.desc ? '500' : 'normal'}
+                fontWeight={fontWeight}
                 whiteSpace={'nowrap'}
                 fontSize={'sm'}
               >

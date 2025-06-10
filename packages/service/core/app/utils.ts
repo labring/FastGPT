@@ -8,6 +8,8 @@ import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { SecretTypeEnum } from '@fastgpt/global/common/secret/constants';
+import { upsertSecrets } from '../../support/secret/controller';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
   teamId,
@@ -82,8 +84,6 @@ export async function rewriteAppWorkflowToDetail({
       }
     })
   );
-
-  /* Add node(App Type) versionlabel and latest sign ==== */
 
   // Get all dataset ids from nodes
   nodes.forEach((node) => {
@@ -197,6 +197,40 @@ export async function rewriteAppWorkflowToSimple(formatNodes: StoreNodeItemType[
             }
           ];
         }
+      }
+    });
+  });
+}
+
+export async function saveAndClearHttpAuth({
+  nodes,
+  appId,
+  teamId
+}: {
+  nodes: StoreNodeItemType[];
+  appId: string;
+  teamId: string;
+}) {
+  const getNodeHttpAuth = (node: StoreNodeItemType) =>
+    node.inputs.find((item) => [NodeInputKeyEnum.httpAuth].includes(item.key as NodeInputKeyEnum))
+      ?.value;
+  const authConfigs = nodes.map(getNodeHttpAuth).filter(Boolean);
+
+  await upsertSecrets({
+    secrets: authConfigs,
+    type: SecretTypeEnum.headersAuth,
+    appId,
+    teamId
+  });
+
+  // Clear all authentication values in nodes to prevent leakage
+  nodes.forEach((node) => {
+    const httpAuth = getNodeHttpAuth(node);
+    if (!httpAuth) return;
+
+    Object.keys(httpAuth).forEach((key) => {
+      if (httpAuth[key]?.value) {
+        httpAuth[key].value = '';
       }
     });
   });
