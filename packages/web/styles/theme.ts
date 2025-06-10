@@ -9,6 +9,7 @@ import {
   radioAnatomy
 } from '@chakra-ui/anatomy';
 import { createMultiStyleConfigHelpers, defineStyle } from '@chakra-ui/styled-system';
+import { getWebReqUrl } from './../common/system/utils';
 
 const { definePartsStyle: modalPart, defineMultiStyleConfig: modalMultiStyle } =
   createMultiStyleConfigHelpers(modalAnatomy.keys);
@@ -426,7 +427,7 @@ const Textarea: ComponentStyleConfig = {
         bg: 'white'
       },
       '&::-webkit-resizer': {
-        background: "url('/icon/resizer.svg') no-repeat",
+        background: `url(${getWebReqUrl('/icon/resizer.svg')}) no-repeat`,
         backgroundSize: '11px',
         backgroundPosition: 'right bottom',
         backgroundPositionX: 'right 12px',
