@@ -3,7 +3,7 @@
   "intro": "流程图绘制助手能够根据用户需求自动生成标准化的流程图。该助手严格遵循代码规范，确保生成的图表布局紧凑、逻辑清晰，支持中文标签显示，并能自动处理URL编码问题。无论是业务流程梳理、系统架构设计还是逻辑关系展示，都能提供准确、规范的可视化图表。",
   "author": "FastGPT",
   "avatar": "./Flowchart.png",
-  "tags": ["办公服务"], 
+  "tags": ["office-services"], 
   "type": "simple",
   "workflow": {
     "aiSettings": {
