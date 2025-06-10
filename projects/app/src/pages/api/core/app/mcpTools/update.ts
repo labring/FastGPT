@@ -38,7 +38,7 @@ async function handler(
   res: ApiResponseType<updateMCPToolsResponse>
 ): Promise<updateMCPToolsResponse> {
   const { appId, url, toolList, headerAuth } = req.body;
-  const { app } = await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
+  const { app, teamId } = await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
 
   const toolSetNode = app.modules.find((item) => item.flowNodeType === FlowNodeTypeEnum.toolSet);
   const toolSetData = toolSetNode?.inputs[0].value as MCPToolSetData;
@@ -64,7 +64,8 @@ async function handler(
     await upsertSecrets({
       secrets: [headerAuth],
       type: SecretTypeEnum.headersAuth,
-      appId
+      appId,
+      teamId
     });
 
     // create tool set node

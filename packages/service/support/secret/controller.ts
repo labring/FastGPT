@@ -5,11 +5,13 @@ import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 export const upsertSecrets = async ({
   secrets,
   type,
-  appId
+  appId,
+  teamId
 }: {
   secrets: StoreSecretValueType[];
   type: SecretTypeEnum;
   appId: string;
+  teamId: string;
 }) => {
   // get all valid secret items
   const secretItems = (secrets || []).flatMap((item) =>
@@ -18,7 +20,8 @@ export const upsertSecrets = async ({
       .map((value) => ({
         sourceId: value.secretId,
         type,
-        value: value.value
+        value: value.value,
+        teamId
       }))
   );
 

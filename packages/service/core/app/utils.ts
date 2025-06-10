@@ -202,7 +202,15 @@ export async function rewriteAppWorkflowToSimple(formatNodes: StoreNodeItemType[
   });
 }
 
-export async function saveAndClearHttpAuth(nodes: StoreNodeItemType[], appId: string) {
+export async function saveAndClearHttpAuth({
+  nodes,
+  appId,
+  teamId
+}: {
+  nodes: StoreNodeItemType[];
+  appId: string;
+  teamId: string;
+}) {
   const getNodeHttpAuth = (node: StoreNodeItemType) =>
     node.inputs.find((item) => [NodeInputKeyEnum.httpAuth].includes(item.key as NodeInputKeyEnum))
       ?.value;
@@ -211,7 +219,8 @@ export async function saveAndClearHttpAuth(nodes: StoreNodeItemType[], appId: st
   await upsertSecrets({
     secrets: authConfigs,
     type: SecretTypeEnum.headersAuth,
-    appId
+    appId,
+    teamId
   });
 
   // Clear all authentication values in nodes to prevent leakage

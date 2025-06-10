@@ -89,7 +89,8 @@ async function handler(
     await upsertSecrets({
       secrets: [headerAuthWithPrefix],
       type: SecretTypeEnum.headersAuth,
-      appId: mcpToolsId
+      appId: mcpToolsId,
+      teamId
     });
 
     await MongoApp.findByIdAndUpdate(

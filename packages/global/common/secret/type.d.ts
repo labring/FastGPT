@@ -3,6 +3,7 @@ import type { SecretTypeEnum } from './constants';
 export type SecretType = {
   sourceId: string;
   type: SecretTypeEnum;
+  teamId: string;
   value: string;
 };
 
