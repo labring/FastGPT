@@ -3,7 +3,7 @@
   "intro": "JD生成助手是一个专业化的人才招聘文案优化AI智能体，它专门为企业和招聘团队提供职位描述JD生成服务。它善于将企业的业务需求和职位要求转化为结构清晰、专业准确且富有吸引力的招聘文案，能够精准捕捉岗位核心技能需求、工作职责以及理想候选人画像，从而帮助企业吸引最合适的人才。",
   "author": "FastGPT",
   "avatar": "./JD-Generation.png",
-  "tags": ["办公服务"], 
+  "tags": ["office-services"], 
   "type": "advanced", 
   "workflow": {
     "nodes": [
