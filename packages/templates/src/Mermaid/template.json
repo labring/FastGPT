@@ -3,7 +3,7 @@
   "intro": "Mermaid图表生成助手是一个帮助用户将想法转化为清晰、专业可视化图表的AI助手。它能根据需求智能匹配最适合的图表类型，提供符合Mermaid最新规范的标准化语法，应用专业图表设计最佳实践，并提供样式和结构优化建议。支持流程图、时序图、甘特图、类图等多种图表类型，适用于项目管理、系统设计、数据库关系等多种场景。",
   "author": "FastGPT",
   "avatar": "./Mermaind.png",
-  "tags": ["办公服务"], 
+  "tags": ["office-services"], 
   "type": "simple",  
   "workflow": {
     "aiSettings": {
