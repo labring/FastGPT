@@ -73,13 +73,11 @@ const formatIndexes = async ({
   };
 
   // If index not type, set it to custom
-  indexes = indexes
-    .map((item) => ({
-      text: typeof item.text === 'string' ? item.text : String(item.text),
-      type: item.type || DatasetDataIndexTypeEnum.custom,
-      dataId: item.dataId
-    }))
-    .filter((item) => !!item.text.trim());
+  indexes = indexes.map((item) => ({
+    text: typeof item.text === 'string' ? item.text : String(item.text),
+    type: item.type || DatasetDataIndexTypeEnum.custom,
+    dataId: item.dataId
+  }));
 
   // Recompute default indexes, Merge ids of the same index, reduce the number of rebuilds
   const defaultIndexes = await getDefaultIndex({ q, a, indexSize });
@@ -134,7 +132,7 @@ const formatIndexes = async ({
     )
   ).flat();
 
-  return chekcIndexes;
+  return chekcIndexes.filter((item) => !!item.text.trim());
 };
 /* insert data.
  * 1. create data id

@@ -12,7 +12,7 @@ import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controll
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import type { InsertOneDatasetDataProps } from '@/global/core/dataset/api';
 import { simpleText } from '@fastgpt/global/common/string/tools';
-import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -41,9 +41,9 @@ async function handler(req: NextApiRequest) {
     per: WritePermissionVal
   });
 
-  await checkDatasetLimit({
+  await checkDatasetIndexLimit({
     teamId,
-    insertLen: 1
+    insertLen: 1 + (indexes?.length || 0)
   });
 
   const [
