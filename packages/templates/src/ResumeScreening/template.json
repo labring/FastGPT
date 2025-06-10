@@ -3,7 +3,7 @@
   "intro": "简历筛选助手能够根据预设的职位要求和评分标准，自动识别简历中的关键信息，包括教育背景、工作经验、技能匹配度等要素，生成客观的评分报告，并将筛选结果无缝导入飞书多维表格，实现招聘流程的自动化与标准化，大幅提升HR工作效率。",
   "author": "FastGPT",
   "avatar": "./ResumeScreening.png",
-  "tags": ["办公服务"],
+  "tags": ["office-services"],
   "type": "advanced", 
   "workflow": {
     "nodes": [
