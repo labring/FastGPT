@@ -54,13 +54,15 @@ const PCVoiceInput = ({
       {/* Center Waveform Area */}
       <Flex
         position="absolute"
-        left="50%"
         top="50%"
-        transform="translate(-50%, -50%)"
+        left="0"
+        right="0"
+        transform="translateY(-50%)"
         alignItems="center"
         justifyContent="center"
         direction="column"
         gap={2}
+        w="100%"
       >
         <Box fontSize="sm" color="myGray.500">
           {t('common:core.chat.Speaking')}
@@ -68,8 +70,8 @@ const PCVoiceInput = ({
         <canvas
           ref={canvasRef}
           style={{
-            height: '16px',
-            width: '294px',
+            height: '32px',
+            width: '90%',
             background: 'transparent'
           }}
         />

@@ -21,6 +21,10 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
 
   const startTimestamp = useRef(0);
 
+  // 添加波形数据缓存和动画控制
+  const waveformDataRef = useRef<number[]>([]);
+  const lastUpdateTimeRef = useRef(0);
+
   const [audioSecond, setAudioSecond] = useState(0);
   const speakingTimeString = useMemo(() => {
     const minutes: number = Math.floor(audioSecond / 60);
@@ -35,22 +39,158 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
     const dataArray = new Uint8Array(bufferLength);
     analyser.getByteTimeDomainData(dataArray);
     const canvasCtx = canvas?.getContext('2d');
-    const width = canvas.width;
-    const height = canvas.height;
     if (!canvasCtx) return;
-    canvasCtx.clearRect(0, 0, width, height);
-    canvasCtx.fillStyle = 'white';
-    canvasCtx.fillRect(0, 0, width, height);
-    const barWidth = (width / bufferLength) * 2.5;
-    let x = 0;
 
-    canvasCtx.moveTo(x, height / 2);
-    for (let i = 0; i < bufferLength; i += 10) {
-      const barHeight = (dataArray[i] / 256) * height - height * 0.15;
-      canvasCtx.fillStyle = '#3370FF';
-      const adjustedBarHeight = Math.max(0, barHeight);
-      canvasCtx.fillRect(x, height - adjustedBarHeight, barWidth, adjustedBarHeight);
-      x += barWidth + 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * window.devicePixelRatio;
+    canvas.height = rect.height * window.devicePixelRatio;
+    canvasCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+    const width = canvas.width / window.devicePixelRatio;
+    const height = canvas.height / window.devicePixelRatio;
+
+    canvasCtx.clearRect(0, 0, width, height);
+
+    canvasCtx.beginPath();
+    canvasCtx.moveTo(0, height / 2);
+    canvasCtx.lineTo(width, height / 2);
+    canvasCtx.strokeStyle = '#E5E7EB';
+    canvasCtx.lineWidth = 0.5;
+    canvasCtx.stroke();
+    canvasCtx.closePath();
+
+    // 波形参数
+    const centerY = height / 2;
+    const dataPoints = 300;
+    const maxBarHeight = height * 0.35;
+
+    // 更敏感的音频数据处理 - 多次采样并平均
+    let intensitySum = 0;
+    const sampleCount = 8;
+
+    for (let sample = 0; sample < sampleCount; sample++) {
+      let sum = 0;
+      let maxVal = 0;
+      const startIndex = Math.floor((sample * bufferLength) / sampleCount);
+      const endIndex = Math.floor(((sample + 1) * bufferLength) / sampleCount);
+
+      for (let i = startIndex; i < endIndex; i++) {
+        sum += dataArray[i];
+        maxVal = Math.max(maxVal, Math.abs(dataArray[i] - 128));
+      }
+
+      const sampleIntensity = maxVal > 5 ? (maxVal / 128) * 1.5 : 0.05; // 更敏感的阈值和放大
+      intensitySum += sampleIntensity;
+    }
+
+    const currentIntensity = intensitySum / sampleCount;
+
+    const currentTime = Date.now();
+    if (currentTime - lastUpdateTimeRef.current > 16) {
+      if (waveformDataRef.current.length !== dataPoints) {
+        waveformDataRef.current = new Array(dataPoints).fill(0.05);
+      }
+
+      const smoothingFactor = 0.3;
+      const smoothedIntensity =
+        (waveformDataRef.current[dataPoints - 1] || 0.05) * (1 - smoothingFactor) +
+        currentIntensity * smoothingFactor;
+
+      waveformDataRef.current.shift(); // 移除最左侧的数据
+      waveformDataRef.current.push(smoothedIntensity); // 在右侧添加新数据
+
+      lastUpdateTimeRef.current = currentTime;
+    }
+
+    // 绘制平滑的波形曲线
+    if (waveformDataRef.current.length > 0) {
+      // 创建渐变效果
+      const gradient = canvasCtx.createLinearGradient(
+        0,
+        centerY - maxBarHeight,
+        0,
+        centerY + maxBarHeight
+      );
+      gradient.addColorStop(0, 'rgba(59, 130, 246, 0.8)'); // 蓝色，更透明
+      gradient.addColorStop(0.5, 'rgba(59, 130, 246, 0.4)');
+      gradient.addColorStop(1, 'rgba(59, 130, 246, 0.1)');
+
+      // 绘制上半部分波形曲线
+      canvasCtx.beginPath();
+      canvasCtx.moveTo(0, centerY);
+
+      for (let i = 0; i < dataPoints; i++) {
+        const x = (i / (dataPoints - 1)) * width;
+        const intensity = waveformDataRef.current[i] || 0.05;
+        const y = centerY - intensity * maxBarHeight * 1.2;
+
+        if (i === 0) {
+          canvasCtx.moveTo(x, y);
+        } else {
+          const prevX = ((i - 1) / (dataPoints - 1)) * width;
+          const prevIntensity = waveformDataRef.current[i - 1] || 0.05;
+          const prevY = centerY - prevIntensity * maxBarHeight * 1.2;
+          const cpX = (prevX + x) / 2;
+          const cpY = (prevY + y) / 2;
+          canvasCtx.quadraticCurveTo(cpX, cpY, x, y);
+        }
+      }
+
+      canvasCtx.lineTo(width, centerY);
+      canvasCtx.lineTo(0, centerY);
+      canvasCtx.closePath();
+      canvasCtx.fillStyle = gradient;
+      canvasCtx.fill();
+
+      canvasCtx.beginPath();
+      canvasCtx.moveTo(0, centerY);
+
+      for (let i = 0; i < dataPoints; i++) {
+        const x = (i / (dataPoints - 1)) * width;
+        const intensity = waveformDataRef.current[i] || 0.05;
+        const y = centerY + intensity * maxBarHeight * 1.2;
+
+        if (i === 0) {
+          canvasCtx.moveTo(x, y);
+        } else {
+          const prevX = ((i - 1) / (dataPoints - 1)) * width;
+          const prevIntensity = waveformDataRef.current[i - 1] || 0.05;
+          const prevY = centerY + prevIntensity * maxBarHeight * 1.2;
+          const cpX = (prevX + x) / 2;
+          const cpY = (prevY + y) / 2;
+          canvasCtx.quadraticCurveTo(cpX, cpY, x, y);
+        }
+      }
+
+      canvasCtx.lineTo(width, centerY);
+      canvasCtx.lineTo(0, centerY);
+      canvasCtx.closePath();
+      canvasCtx.fillStyle = gradient;
+      canvasCtx.fill();
+
+      canvasCtx.beginPath();
+      canvasCtx.moveTo(0, centerY);
+
+      for (let i = 0; i < dataPoints; i++) {
+        const x = (i / (dataPoints - 1)) * width;
+        const intensity = waveformDataRef.current[i] || 0.05;
+        const y = centerY - intensity * maxBarHeight * 1.2;
+
+        if (i === 0) {
+          canvasCtx.moveTo(x, y);
+        } else {
+          const prevX = ((i - 1) / (dataPoints - 1)) * width;
+          const prevIntensity = waveformDataRef.current[i - 1] || 0.05;
+          const prevY = centerY - prevIntensity * maxBarHeight * 1.2;
+          const cpX = (prevX + x) / 2;
+          const cpY = (prevY + y) / 2;
+          canvasCtx.quadraticCurveTo(cpX, cpY, x, y);
+        }
+      }
+
+      canvasCtx.strokeStyle = 'rgba(59, 130, 246, 0.6)';
+      canvasCtx.lineWidth = 1.5;
+      canvasCtx.stroke();
     }
   }, []);
   const renderAudioGraphMobile = useCallback(
@@ -134,6 +274,10 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       setIsSpeaking(true);
       setAudioSecond(0);
 
+      // 清空波形历史记录
+      waveformDataRef.current = [];
+      lastUpdateTimeRef.current = 0;
+
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         setMediaStream(stream);
@@ -156,6 +300,10 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
           // close media stream
           stream.getTracks().forEach((track) => track.stop());
           setIsSpeaking(false);
+
+          // 清空波形历史记录
+          waveformDataRef.current = [];
+          lastUpdateTimeRef.current = 0;
 
           if (timeIntervalRef.current) {
             clearInterval(timeIntervalRef.current);
@@ -240,6 +388,9 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
           if (timeIntervalRef.current) {
             clearInterval(timeIntervalRef.current);
           }
+          // 清空波形历史记录
+          waveformDataRef.current = [];
+          lastUpdateTimeRef.current = 0;
           console.log('error', e);
           setIsSpeaking(false);
         };
@@ -269,6 +420,10 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       clearInterval(timeIntervalRef.current);
     }
 
+    // 清空波形历史记录
+    waveformDataRef.current = [];
+    lastUpdateTimeRef.current = 0;
+
     if (mediaRecorder.current && mediaRecorder.current.state !== 'inactive') {
       mediaRecorder.current.stop();
     }
@@ -281,9 +436,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       if (mediaRecorder.current && mediaRecorder.current.state !== 'inactive') {
         mediaRecorder.current.stop();
       }
-      if (mediaStream) {
-        mediaStream.getTracks().forEach((track) => track.stop());
-      }
+      // Note: mediaStream cleanup is handled in the mediaRecorder.current.onstop callback
     };
   }, []);
 
