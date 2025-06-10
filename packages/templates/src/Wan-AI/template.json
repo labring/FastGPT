@@ -1,0 +1,1045 @@
+{
+  "name": "Wan-AI/Wan2.1-T2V-14B-Turbo文生视频",
+  "intro": "Wan2.1-T2V-14B-T 是 Wan2.1-T2V-14B 模型的 TeaCache 加速版，单个视频生成时间压缩 30%。Wan2.1-T2V-14B 模型在开源和闭源模型中均创造了最先进的性能基准，能够生成具有显著动态效果的高质量视觉内容。它是唯一一个能够同时生成中英文文本的视频模型，并支持 480P 和 720P 分辨率的视频生成。模型采用扩散变换器架构，并通过创新的时空变分自编码器（VAE）、可扩展的训练策略和大规模数据构建来提升生成能力。",
+  "author": "FastGPT",
+  "avatar": "./Wan-AI.png",
+  "tags": ["图片生成"], 
+  "type": "plugin", 
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "pluginInput",
+        "name": "workflow:template.plugin_start",
+        "intro": "workflow:intro_plugin_input",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "pluginInput",
+        "showStatus": false,
+        "position": {
+          "x": 277.9807053916114,
+          "y": -290.98852685634085
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "input",
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "正向提示词",
+            "label": "正向提示词",
+            "description": "正向提示词是用户输入的描述性文本指令，明确告知 AI 模型应该在生成图像中包含的元素、风格、场景等特征。它们是引导 AI 生成符合用户期望输出的核心指令集，通过精确的描述和修饰词增强生成结果的质量和准确性。",
+            "defaultValue": "",
+            "required": true,
+            "toolDescription": "正向提示词是用户输入的描述性文本指令，明确告知 AI 模型应该在生成图像中包含的元素、风格、场景等特征。它们是引导 AI 生成符合用户期望输出的核心指令集，通过精确的描述和修饰词增强生成结果的质量和准确性。",
+            "list": []
+          },
+          {
+            "renderTypeList": [
+              "input",
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "负向提示词（非必填）",
+            "label": "负向提示词（非必填）",
+            "description": "负向提示词是用于指示模型应避免出现的元素或特征的指令集。它通过明确告知 AI 不希望在最终图像中出现的内容（如低质量特征、不需要的物体或风格），帮助优化生成结果，减少不良构图或不需要的细节，从而提高最终图像的质量和符合预期的程度。",
+            "defaultValue": "",
+            "required": false,
+            "toolDescription": "负向提示词是用于指示模型应避免出现的元素或特征的指令集。它通过明确告知 AI 不希望在最终图像中出现的内容（如低质量特征、不需要的物体或风格），帮助优化生成结果，减少不良构图或不需要的细节，从而提高最终图像的质量和符合预期的程度。",
+            "list": []
+          },
+          {
+            "renderTypeList": [
+              "select",
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "视频比例",
+            "label": "视频比例",
+            "description": "横向长度x竖向长度",
+            "defaultValue": "1280x720",
+            "required": true,
+            "list": [
+              {
+                "label": "720x1280",
+                "value": "720x1280"
+              },
+              {
+                "label": "960x960",
+                "value": "960x960"
+              },
+              {
+                "label": "1280x720",
+                "value": "1280x720"
+              }
+            ]
+          },
+          {
+            "renderTypeList": [
+              "input",
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "API密钥",
+            "label": "API密钥",
+            "description": "sk-xxxxxxxxxxxxxxxxxxxxx\n请前往硅基流动官网获取API密钥",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true
+          }
+        ],
+        "outputs": [
+          {
+            "id": "prompt",
+            "key": "正向提示词",
+            "label": "正向提示词",
+            "valueType": "string",
+            "type": "hidden"
+          },
+          {
+            "id": "negative_prompt",
+            "key": "负向提示词（非必填）",
+            "label": "负向提示词（非必填）",
+            "valueType": "string",
+            "type": "hidden"
+          },
+          {
+            "id": "image_size",
+            "key": "视频比例",
+            "label": "视频比例",
+            "valueType": "string",
+            "type": "hidden"
+          },
+          {
+            "id": "API密钥",
+            "valueType": "string",
+            "key": "API密钥",
+            "label": "API密钥",
+            "type": "hidden"
+          }
+        ]
+      },
+      {
+        "nodeId": "pluginOutput",
+        "name": "输出视频链接",
+        "intro": "workflow:intro_custom_plugin_output",
+        "avatar": "core/workflow/template/pluginOutput",
+        "flowNodeType": "pluginOutput",
+        "showStatus": false,
+        "position": {
+          "x": 3954.4991425924095,
+          "y": -15.725342370619984
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "any",
+            "canEdit": true,
+            "key": "视频链接",
+            "label": "视频链接",
+            "isToolOutput": true,
+            "description": "最终生成的视频链接",
+            "required": true,
+            "value": [
+              "dcsPuEQSyn2D",
+              "vhz02SceYSPR"
+            ]
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "vumlECDQTjeC",
+        "name": "创建视频生成请求",
+        "intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
+        "avatar": "core/workflow/template/httpRequest",
+        "flowNodeType": "httpRequest468",
+        "showStatus": true,
+        "position": {
+          "x": 829.0403666342047,
+          "y": -622.9885268563409
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": [
+              "addInputParam"
+            ],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "common:core.module.input.description.HTTP Dynamic Input",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectDataset",
+                "selectApp"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpMethod",
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "string",
+            "label": "",
+            "value": "POST",
+            "required": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpTimeout",
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "number",
+            "label": "",
+            "value": 30,
+            "min": 5,
+            "max": 600,
+            "required": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpReqUrl",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "string",
+            "label": "",
+            "description": "common:core.module.input.description.Http Request Url",
+            "placeholder": "https://api.ai.com/getInventory",
+            "required": false,
+            "value": "https://api.siliconflow.cn/v1/video/submit",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpHeader",
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "any",
+            "value": [
+              {
+                "key": "Authorization",
+                "value": "Bearer sk-ileicvwvfsqdcivzmismgthmakmdhxmlpbekravfgoghcccy",
+                "type": "string"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "string"
+              }
+            ],
+            "label": "",
+            "description": "common:core.module.input.description.Http Request Header",
+            "placeholder": "common:core.module.input.description.Http Request Header",
+            "required": false,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpParams",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "value": [],
+            "description": "新的 HTTP 请求地址。如果出现两个“请求地址”，可以删除该模块重新加入，会拉取最新的模块配置。",
+            "label": "",
+            "required": false,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpJsonBody",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "value": "{\n \"model\": \"Wan-AI/Wan2.1-T2V-14B-Turbo\",\n \"prompt\": \"{{$pluginInput.prompt$}}\",\n \"negative_prompt\": \"{{$pluginInput.negative_prompt$}}\",\n \"image_size\": \"{{$pluginInput.image_size$}}\",\n \"seed\": 123\n}",
+            "label": "",
+            "required": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpFormBody",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpContentType",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "string",
+            "value": "json",
+            "label": "",
+            "required": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "error",
+            "key": "error",
+            "label": "workflow:request_error",
+            "description": "HTTP请求错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "httpRawResponse",
+            "key": "httpRawResponse",
+            "required": true,
+            "label": "workflow:raw_response",
+            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
+            "valueType": "any",
+            "type": "static"
+          },
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "输出字段提取",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "description": "可以通过 JSONPath 语法来提取响应值中的指定字段",
+            "valueDesc": ""
+          },
+          {
+            "id": "pIPMjOaQVp49",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "requestId",
+            "label": "requestId"
+          }
+        ]
+      },
+      {
+        "nodeId": "pluginConfig",
+        "name": "common:core.module.template.system_config",
+        "intro": "",
+        "avatar": "core/workflow/template/systemConfig",
+        "flowNodeType": "pluginConfig",
+        "position": {
+          "x": -133.06691639799715,
+          "y": -254.6551935230075
+        },
+        "version": "4811",
+        "inputs": [],
+        "outputs": []
+      },
+      {
+        "nodeId": "dcsPuEQSyn2D",
+        "name": "获取视频生成链接请求",
+        "intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
+        "avatar": "core/workflow/template/httpRequest",
+        "flowNodeType": "httpRequest468",
+        "showStatus": true,
+        "position": {
+          "x": 1677.6986420951625,
+          "y": -435.4955961506954
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": [
+              "addInputParam"
+            ],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "common:core.module.input.description.HTTP Dynamic Input",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectDataset",
+                "selectApp"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpMethod",
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "string",
+            "label": "",
+            "value": "POST",
+            "required": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpTimeout",
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "number",
+            "label": "",
+            "value": 30,
+            "min": 5,
+            "max": 600,
+            "required": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpReqUrl",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "string",
+            "label": "",
+            "description": "common:core.module.input.description.Http Request Url",
+            "placeholder": "https://api.ai.com/getInventory",
+            "required": false,
+            "value": "https://api.siliconflow.cn/v1/video/status",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpHeader",
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "any",
+            "value": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{$pluginInput.API密钥$}}",
+                "type": "string"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "string"
+              }
+            ],
+            "label": "",
+            "description": "common:core.module.input.description.Http Request Header",
+            "placeholder": "common:core.module.input.description.Http Request Header",
+            "required": false,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpParams",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpJsonBody",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "value": "{\n \"requestId\": \"{{$vumlECDQTjeC.pIPMjOaQVp49$}}\"\n}",
+            "label": "",
+            "required": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpFormBody",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpContentType",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "string",
+            "value": "json",
+            "label": "",
+            "required": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "error",
+            "key": "error",
+            "label": "workflow:request_error",
+            "description": "HTTP请求错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "httpRawResponse",
+            "key": "httpRawResponse",
+            "required": true,
+            "label": "workflow:raw_response",
+            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
+            "valueType": "any",
+            "type": "static"
+          },
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "输出字段提取",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectDataset",
+                "selectApp"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "description": "可以通过 JSONPath 语法来提取响应值中的指定字段",
+            "valueDesc": ""
+          },
+          {
+            "id": "scQmqvtfSRgU",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "status",
+            "label": "status"
+          },
+          {
+            "id": "vhz02SceYSPR",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "results.videos[0].url",
+            "label": "results.videos[0].url"
+          }
+        ]
+      },
+      {
+        "nodeId": "lxRuOSPuCkgY",
+        "name": "判断器",
+        "intro": "根据一定的条件，执行不同的分支。",
+        "avatar": "core/workflow/template/ifelse",
+        "flowNodeType": "ifElseNode",
+        "showStatus": true,
+        "position": {
+          "x": 2473.2733568597673,
+          "y": -54.988526856340854
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "ifElseList",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "value": [
+              {
+                "condition": "AND",
+                "list": [
+                  {
+                    "variable": [
+                      "dcsPuEQSyn2D",
+                      "scQmqvtfSRgU"
+                    ],
+                    "condition": "equalTo",
+                    "value": "Succeed"
+                  }
+                ]
+              }
+            ],
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "ifElseResult",
+            "key": "ifElseResult",
+            "label": "workflow:judgment_result",
+            "valueType": "string",
+            "type": "static",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "nodeId": "aOThq1DxCefz",
+        "name": "指定回复",
+        "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+        "avatar": "core/workflow/template/reply",
+        "flowNodeType": "answerNode",
+        "position": {
+          "x": 3217.8219417996756,
+          "y": -39.225342370619984
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "text",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "valueType": "any",
+            "required": true,
+            "label": "回复的内容",
+            "description": "common:core.module.input.description.Response content",
+            "placeholder": "common:core.module.input.description.Response content",
+            "value": "***\n点击链接下载视频：\n{{$dcsPuEQSyn2D.vhz02SceYSPR$}}",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "m39LTuYbbQF5vmDA",
+        "name": "每隔60s查询一次视频生成结果",
+        "intro": "让工作流等待指定时间后运行",
+        "avatar": "core/workflow/template/sleep",
+        "flowNodeType": "pluginModule",
+        "showStatus": true,
+        "position": {
+          "x": 2473.2733568597673,
+          "y": -506.25727223084607
+        },
+        "inputs": [
+          {
+            "key": "system_forbid_stream",
+            "renderTypeList": [
+              "switch"
+            ],
+            "valueType": "boolean",
+            "label": "禁用流输出",
+            "description": "强制设置嵌套运行的应用，均以非流模式运行",
+            "value": false,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "number",
+            "canEdit": false,
+            "key": "延迟时长",
+            "label": "延迟时长",
+            "description": "需要暂停的时间，单位毫秒",
+            "defaultValue": 1000,
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true,
+            "toolDescription": "需要暂停的时间，单位毫秒",
+            "max": 300000,
+            "min": 1,
+            "value": 60000,
+            "valueDesc": "",
+            "debugLabel": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "result",
+            "type": "static",
+            "key": "result",
+            "valueType": "any",
+            "label": "result",
+            "description": "",
+            "valueDesc": ""
+          }
+        ],
+        "pluginId": "community-delay"
+      },
+      {
+        "nodeId": "rvpvkN6RymoSUBIc",
+        "name": "判断器#2",
+        "intro": "根据一定的条件，执行不同的分支。",
+        "avatar": "core/workflow/template/ifelse",
+        "flowNodeType": "ifElseNode",
+        "showStatus": true,
+        "position": {
+          "x": 829.0403666342047,
+          "y": 444.8741144013694
+        },
+        "inputs": [
+          {
+            "key": "ifElseList",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "value": [
+              {
+                "condition": "AND",
+                "list": [
+                  {
+                    "variable": [
+                      "vumlECDQTjeC",
+                      "pIPMjOaQVp49"
+                    ],
+                    "condition": "isNotEmpty"
+                  }
+                ]
+              }
+            ],
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "ifElseResult",
+            "key": "ifElseResult",
+            "label": "判断结果",
+            "valueType": "string",
+            "type": "static",
+            "valueDesc": "",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "nodeId": "keB3l4NYadpciqJ5",
+        "name": "指定回复#2",
+        "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+        "avatar": "core/workflow/template/reply",
+        "flowNodeType": "answerNode",
+        "position": {
+          "x": 1677.6986420951625,
+          "y": 595.5367776606198
+        },
+        "inputs": [
+          {
+            "key": "text",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "valueType": "any",
+            "required": true,
+            "label": "回复的内容",
+            "description": "common:core.module.input.description.Response content",
+            "placeholder": "common:core.module.input.description.Response content",
+            "value": "视频生成失败，请检查余额~",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "qLbcjQIluiUCKLbH",
+        "name": "指定回复#3",
+        "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+        "avatar": "core/workflow/template/reply",
+        "flowNodeType": "answerNode",
+        "position": {
+          "x": 1677.6986420951625,
+          "y": -763.5326258602354
+        },
+        "inputs": [
+          {
+            "key": "text",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "valueType": "any",
+            "required": true,
+            "label": "回复的内容",
+            "description": "common:core.module.input.description.Response content",
+            "placeholder": "common:core.module.input.description.Response content",
+            "value": "成功创建视频生成请求！\n视频生成中......（预计时间10分钟）\n",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "lWWDlSQROKdmhEAm",
+        "name": "指定回复#4",
+        "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+        "avatar": "core/workflow/template/reply",
+        "flowNodeType": "answerNode",
+        "position": {
+          "x": 2473.2733568597673,
+          "y": 378.3667974130075
+        },
+        "inputs": [
+          {
+            "key": "text",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "valueType": "any",
+            "required": true,
+            "label": "回复的内容",
+            "description": "common:core.module.input.description.Response content",
+            "placeholder": "common:core.module.input.description.Response content",
+            "value": "视频加速生成中......\n\n",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": []
+      }
+    ],
+    "edges": [
+      {
+        "source": "pluginInput",
+        "target": "vumlECDQTjeC",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "vumlECDQTjeC-target-left"
+      },
+      {
+        "source": "lxRuOSPuCkgY",
+        "target": "aOThq1DxCefz",
+        "sourceHandle": "lxRuOSPuCkgY-source-IF",
+        "targetHandle": "aOThq1DxCefz-target-left"
+      },
+      {
+        "source": "aOThq1DxCefz",
+        "target": "pluginOutput",
+        "sourceHandle": "aOThq1DxCefz-source-right",
+        "targetHandle": "pluginOutput-target-left"
+      },
+      {
+        "source": "dcsPuEQSyn2D",
+        "target": "m39LTuYbbQF5vmDA",
+        "sourceHandle": "dcsPuEQSyn2D-source-right",
+        "targetHandle": "m39LTuYbbQF5vmDA-target-left"
+      },
+      {
+        "source": "m39LTuYbbQF5vmDA",
+        "target": "lxRuOSPuCkgY",
+        "sourceHandle": "m39LTuYbbQF5vmDA-source-right",
+        "targetHandle": "lxRuOSPuCkgY-target-left"
+      },
+      {
+        "source": "vumlECDQTjeC",
+        "target": "rvpvkN6RymoSUBIc",
+        "sourceHandle": "vumlECDQTjeC-source-right",
+        "targetHandle": "rvpvkN6RymoSUBIc-target-left"
+      },
+      {
+        "source": "rvpvkN6RymoSUBIc",
+        "target": "keB3l4NYadpciqJ5",
+        "sourceHandle": "rvpvkN6RymoSUBIc-source-ELSE",
+        "targetHandle": "keB3l4NYadpciqJ5-target-left"
+      },
+      {
+        "source": "rvpvkN6RymoSUBIc",
+        "target": "qLbcjQIluiUCKLbH",
+        "sourceHandle": "rvpvkN6RymoSUBIc-source-IF",
+        "targetHandle": "qLbcjQIluiUCKLbH-target-left"
+      },
+      {
+        "source": "qLbcjQIluiUCKLbH",
+        "target": "dcsPuEQSyn2D",
+        "sourceHandle": "qLbcjQIluiUCKLbH-source-right",
+        "targetHandle": "dcsPuEQSyn2D-target-left"
+      },
+      {
+        "source": "lxRuOSPuCkgY",
+        "target": "lWWDlSQROKdmhEAm",
+        "sourceHandle": "lxRuOSPuCkgY-source-ELSE",
+        "targetHandle": "lWWDlSQROKdmhEAm-target-left"
+      },
+      {
+        "source": "lWWDlSQROKdmhEAm",
+        "target": "dcsPuEQSyn2D",
+        "sourceHandle": "lWWDlSQROKdmhEAm-source-right",
+        "targetHandle": "dcsPuEQSyn2D-target-left"
+      }
+    ],
+    "chatConfig": {
+      "welcomeText": "",
+      "variables": [],
+      "questionGuide": {
+        "open": false,
+        "model": "gpt-4o-mini",
+        "customPrompt": ""
+      },
+      "ttsConfig": {
+        "type": "web"
+      },
+      "whisperConfig": {
+        "open": false,
+        "autoSend": false,
+        "autoTTSResponse": false
+      },
+      "chatInputGuide": {
+        "open": false,
+        "textList": [],
+        "customUrl": ""
+      },
+      "instruction": "本插件仅需要提供硅基流动的API密钥，在视频生成过程中，无需消耗FastGPT积分，每生成1个视频将扣除硅基流动账户1.5元余额。新注册用户或邀请新用户可获赠14元平台余额。视频生成服务采用排队处理机制，预计每个订单的处理时长为10分钟。",
+      "autoExecute": {
+        "open": false,
+        "defaultPrompt": ""
+      },
+      "_id": "682ae4b4e334c475dc15ef66"
+    }
+  }
+}
