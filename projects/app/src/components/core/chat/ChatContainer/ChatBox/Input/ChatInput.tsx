@@ -391,7 +391,7 @@ const ChatInput = ({
     >
       {/* Real Chat Input */}
       <Box
-        minH={['132px', '150px']}
+        minH={'132px'}
         pt={fileList.length > 0 ? '0' : ['14px', '18px']}
         pb={['14px', '18px']}
         position={'relative'}
