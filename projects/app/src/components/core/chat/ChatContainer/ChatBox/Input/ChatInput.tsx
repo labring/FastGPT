@@ -130,6 +130,7 @@ const ChatInput = ({
           height={'24px'}
           lineHeight={'24px'}
           maxHeight={'50vh'}
+          mb={'32px'}
           maxLength={-1}
           overflowY={'hidden'}
           whiteSpace={'pre-wrap'}
@@ -154,11 +155,12 @@ const ChatInput = ({
           onChange={(e) => {
             const textarea = e.target;
             textarea.style.height = textareaMinH;
-            const newHeight = Math.min(textarea.scrollHeight, window.innerHeight * 0.5);
+            const maxViewportHeight = window.innerHeight * 0.5; // 恢复原来的 50vh
+            const newHeight = Math.min(textarea.scrollHeight, maxViewportHeight);
             textarea.style.height = `${newHeight}px`;
 
             // 只有当内容超过最大高度时才显示滚动条
-            if (textarea.scrollHeight > window.innerHeight * 0.5) {
+            if (textarea.scrollHeight > maxViewportHeight) {
               textarea.style.overflowY = 'auto';
             } else {
               textarea.style.overflowY = 'hidden';

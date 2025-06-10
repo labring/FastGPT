@@ -57,11 +57,11 @@ const PCVoiceInput = ({
         top="50%"
         left="0"
         right="0"
-        transform="translateY(-50%)"
+        transform="translateY(-80%)"
         alignItems="center"
         justifyContent="center"
         direction="column"
-        gap={2}
+        gap={1}
         w="100%"
       >
         <Box fontSize="sm" color="myGray.500">
@@ -75,21 +75,15 @@ const PCVoiceInput = ({
             background: 'transparent'
           }}
         />
-        <Box fontSize="sm" color="myGray.500">
-          {speakingTimeString}
-        </Box>
       </Flex>
 
       {/* Action Buttons - Right Bottom */}
-      <Flex
-        position="absolute"
-        right="16px"
-        bottom="14px"
-        alignItems="center"
-        gap="8px"
-        w="80px"
-        h="36px"
-      >
+      <Flex position="absolute" right="16px" bottom="14px" alignItems="center" gap="8px" h="36px">
+        {/* Time Display */}
+        <Box fontSize="sm" color="myGray.500" mr="8px">
+          {speakingTimeString}
+        </Box>
+
         {/* Cancel Button */}
         <MyTooltip label={t('common:core.chat.Cancel Speak')}>
           <Flex
