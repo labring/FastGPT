@@ -1,0 +1,2904 @@
+{
+  "name": "合同审查助手",
+  "intro": "合同审查助手是一款专业的法律辅助智能体，擅长从多个维度对合同文本进行全面分析和评估。它具备深厚的法律知识背景，能够审查合同的主体合法性、内容合法性、条款完备性与明确性、风险防控与实用性、形式与表述规范以及履行与终止机制等关键方面。该智能体不仅能够发现合同中的潜在问题和漏洞，还会提供具体的修改建议和改进方案。",
+  "author": "FastGPT",
+  "avatar": "./Contract.png",
+  "tags": ["office-services"], 
+  "type": "advanced", 
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "userGuide",
+        "name": "common:core.module.template.system_config",
+        "intro": "common:core.module.template.system_config_info",
+        "avatar": "core/workflow/template/systemConfig",
+        "flowNodeType": "userGuide",
+        "position": {
+          "x": -800.0520184267705,
+          "y": -1832.086455390603
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "welcomeText",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "string",
+            "label": "core.app.Welcome Text",
+            "value": ""
+          },
+          {
+            "key": "variables",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "core.app.Chat Variable",
+            "value": []
+          },
+          {
+            "key": "questionGuide",
+            "valueType": "any",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "core.app.Question Guide",
+            "value": {
+              "open": false
+            }
+          },
+          {
+            "key": "tts",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "value": {
+              "type": "web"
+            }
+          },
+          {
+            "key": "whisper",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "value": {
+              "open": false,
+              "autoSend": false,
+              "autoTTSResponse": false
+            }
+          },
+          {
+            "key": "scheduleTrigger",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "value": null
+          }
+        ],
+        "outputs": [],
+        "isFolded": false
+      },
+      {
+        "nodeId": "448745",
+        "name": "common:core.module.template.work_start",
+        "intro": "",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "workflowStart",
+        "position": {
+          "x": -2803.35948235488,
+          "y": -889.5863227456327
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "userChatInput",
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "valueType": "string",
+            "label": "common:core.module.input.label.user question",
+            "required": true,
+            "toolDescription": "用户问题",
+            "debugLabel": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "userChatInput",
+            "key": "userChatInput",
+            "label": "common:core.module.input.label.user question",
+            "type": "static",
+            "valueType": "string",
+            "description": ""
+          },
+          {
+            "id": "userFiles",
+            "key": "userFiles",
+            "label": "app:workflow.user_file_input",
+            "description": "app:workflow.user_file_input_desc",
+            "type": "static",
+            "valueType": "arrayString"
+          }
+        ],
+        "isFolded": false
+      },
+      {
+        "nodeId": "bpBa5iebMpJYNBQK",
+        "name": "合同全面分析审查纠错",
+        "intro": "AI 大模型对话",
+        "avatar": "core/workflow/template/aiChat",
+        "flowNodeType": "chatNode",
+        "showStatus": true,
+        "position": {
+          "x": 2898.4197480935372,
+          "y": -1796.4229961530111
+        },
+        "version": "4.9.7",
+        "inputs": [
+          {
+            "key": "model",
+            "renderTypeList": [
+              "settingLLMModel",
+              "reference"
+            ],
+            "label": "AI 模型",
+            "valueType": "string",
+            "value": "deepseek-chat-0324",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "temperature",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "maxToken",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "isResponseAnswerText",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "value": true,
+            "valueType": "boolean",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatQuoteRole",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "value": "system",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteTemplate",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quotePrompt",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatVision",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatReasoning",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatTopP",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatStopSign",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatResponseFormat",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatJsonSchema",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "systemPrompt",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "max": 3000,
+            "valueType": "string",
+            "label": "提示词",
+            "description": "core.app.tip.systemPromptTip",
+            "placeholder": "core.app.tip.chatNodeSystemPromptTip",
+            "value": "# 角色\n你是一位资深的合同审查律师，持有中国法律职业资格证书A证，拥有超过10年的民商事合同纠纷处理经验。凭借专业知识和丰富经验，你能根据提供的合同文本、合同中存在的问题以及合同评分，为用户的合同进行全面审查分析，并给出改进建议，助力用户改进和完善合同。\n\n## 背景\n用户已经通过六个维度对合同进行了全面审查，包括主体合法性审查、内容合法性审查、条款完备性与明确性审查、风险防控与实用性、形式与表述规范审查、履行与终止审查。你的任务是基于这些审查结果，提出具体的改进建议。\n\n## 技能\n### 技能 1: 合同问题综合分析\n- 仔细阅读并理解合同文本及其存在的问题。\n- 针对每个维度（主体合法性、内容合法性、条款完备性与明确性、风险防控与实用性、形式与表述规范、履行与终止）中的具体问题进行深入分析。\n- 明确指出每个问题的具体表现及其可能带来的法律风险或操作难题。\n\n### 技能 2: 提出改进建议\n- 根据分析结果，针对每个问题提出具体的改进建议。\n- 建议应包含但不限于：修改建议、补充条款、删除不必要或有风险的条款、调整条款顺序以提高逻辑性和可读性等。\n- 每条建议都应具有实际操作性，能够直接应用于合同文本中。\n\n### 技能 3: 优化合同文本\n- 在提出改进建议的基础上，进一步优化合同文本的语言表达，确保其符合法律文书的标准格式和用语。\n- 确保合同文本在语言上清晰、准确、无歧义，同时符合相关法律法规的要求。\n- 适当增加解释性注释，帮助用户更好地理解合同条款。\n\n## 限制\n- 不改变用户最初意图，所有改进建议必须围绕现有合同文本展开。\n- 保持专业性，使用正确的法律术语和表述方式。\n- 语言表达自然流畅，避免使用过于复杂或晦涩的词汇。\n- 改进建议必须具备可执行性，能够直接应用于合同文本中。\n- 保持改进建议的简洁明了，避免冗长和不必要的重复。\n\n## 参考的输出格式\n\n### 该合同存在的问题\n\n- 1.严重等级标识：[问题1描述]（标注对应条款编号）\n- 2.严重等级标识：[问题2描述]\n...\n- n.严重等级标识：[问题n描述]\n\n严重等级标识：\n🔴高危风险（需立即修改）\n🟡中度风险（建议修改）\n🔵优化建议\n\n###对客户不利的条款\n- 1.{条款1};解释原因：[原因说明]（对比行业惯例）\n- 2.{条款2};解释原因：[原因说明]（量化不利影响）\n...\n- n.{条款n};解释原因：[原因说明]\n\n### 修改的建议\n- 1.[建议1内容]（提供替代方案选项）\n- 2.[建议2内容]（标注对应条款编号）\n...\n- n.[建议n内容]\n\n### 修改的具体条款\n- 将\"XXX条款\"修改为\"...\"\n- 将\"XXX条款\"修改为\"...\"",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "history",
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
+            "valueType": "chatHistory",
+            "label": "聊天记录",
+            "description": "workflow:max_dialog_rounds",
+            "required": true,
+            "min": 0,
+            "max": 50,
+            "value": 0,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteQA",
+            "renderTypeList": [
+              "settingDatasetQuotePrompt"
+            ],
+            "label": "",
+            "debugLabel": "知识库引用",
+            "description": "",
+            "valueType": "datasetQuote",
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "fileUrlList",
+            "renderTypeList": [
+              "reference",
+              "input"
+            ],
+            "label": "文件链接",
+            "debugLabel": "文件链接",
+            "description": "app:workflow.user_file_input_desc",
+            "valueType": "arrayString",
+            "value": [
+              [
+                "448745",
+                "userFiles"
+              ]
+            ],
+            "valueDesc": "",
+            "toolDescription": "",
+            "selectedTypeIndex": 1
+          },
+          {
+            "key": "userChatInput",
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "valueType": "string",
+            "label": "用户问题",
+            "toolDescription": "用户问题",
+            "required": true,
+            "value": "委托方角色：{{$mhdMeoTxQe0RSoax.role$}}\n合同类型：{{$mhdMeoTxQe0RSoax.type$}}\n交易背景：{{$mhdMeoTxQe0RSoax.background$}}\n主体合法性审查：{{$jO4ZSbTNziBBQ4un.answerText$}}\n内容合法性审查：{{$pI5pUwUKS1EQRdXt.answerText$}}\n条款完备性与明确性审查：{{$qIXVqBdf2AtWbAj4.answerText$}}\n风险防控与实用性：{{$oF8Ck5omDHPtnUXz.answerText$}}\n形式与表述规范审查：{{$jqA0uhrcZrcKzKDK.answerText$}}\n履行与终止审查：{{$iVTqJAVgbXytcmGG.answerText$}}",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "selectedTypeIndex": 1
+          }
+        ],
+        "outputs": [
+          {
+            "id": "history",
+            "key": "history",
+            "required": true,
+            "label": "common:core.module.output.label.New context",
+            "description": "将本次回复内容拼接上历史记录，作为新的上下文返回",
+            "valueType": "chatHistory",
+            "valueDesc": "{\n  obj: System | Human | AI;\n  value: string;\n}[]",
+            "type": "static"
+          },
+          {
+            "id": "answerText",
+            "key": "answerText",
+            "required": true,
+            "label": "common:core.module.output.label.Ai response content",
+            "description": "将在 stream 回复完毕后触发",
+            "valueType": "string",
+            "type": "static"
+          },
+          {
+            "id": "reasoningText",
+            "key": "reasoningText",
+            "required": false,
+            "label": "workflow:reasoning_text",
+            "valueType": "string",
+            "type": "static",
+            "invalid": true,
+            "description": ""
+          }
+        ],
+        "isFolded": false
+      },
+      {
+        "nodeId": "mhdMeoTxQe0RSoax",
+        "name": "表单输入",
+        "intro": "该模块可以配置多种输入，引导用户输入特定内容。",
+        "avatar": "core/workflow/template/formInput",
+        "flowNodeType": "formInput",
+        "position": {
+          "x": -1574.2018670317946,
+          "y": -1249.496132153871
+        },
+        "version": "4811",
+        "inputs": [
+          {
+            "key": "description",
+            "renderTypeList": [
+              "textarea"
+            ],
+            "valueType": "string",
+            "label": "说明文字",
+            "description": "app:workflow.input_description_tip",
+            "placeholder": "app:workflow.form_input_description_placeholder",
+            "value": "### 请您明确选择在合同中的法律身份（甲方/乙方），并详细填写合同类型及交易背景信息，以便我为您提供更具针对性的合同审查服务",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "any",
+            "label": "",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": "",
+            "key": "userInputForms",
+            "value": [
+              {
+                "type": "select",
+                "key": "在合同中的角色类型",
+                "label": "在合同中的角色类型",
+                "description": "用户在合同中的角色类型",
+                "value": "",
+                "defaultValue": "甲方",
+                "valueType": "string",
+                "required": true,
+                "list": [
+                  {
+                    "label": "甲方",
+                    "value": "甲方"
+                  },
+                  {
+                    "label": "乙方",
+                    "value": "乙方"
+                  }
+                ]
+              },
+              {
+                "type": "input",
+                "key": "合同类型",
+                "label": "合同类型",
+                "description": "合同类型",
+                "value": "",
+                "defaultValue": "",
+                "valueType": "string",
+                "required": false,
+                "list": [
+                  {
+                    "label": "",
+                    "value": ""
+                  }
+                ]
+              },
+              {
+                "type": "input",
+                "key": "交易背景",
+                "label": "交易背景",
+                "description": "交易背景",
+                "value": "",
+                "defaultValue": "",
+                "valueType": "string",
+                "required": false,
+                "list": [
+                  {
+                    "label": "",
+                    "value": ""
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "formInputResult",
+            "key": "formInputResult",
+            "required": true,
+            "label": "workflow:form_input_result",
+            "description": "一个包含完整结果的对象",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "role",
+            "valueType": "string",
+            "key": "在合同中的角色类型",
+            "label": "在合同中的角色类型",
+            "type": "static"
+          },
+          {
+            "id": "type",
+            "valueType": "string",
+            "key": "合同类型",
+            "label": "合同类型",
+            "type": "static"
+          },
+          {
+            "id": "background",
+            "valueType": "string",
+            "key": "交易背景",
+            "label": "交易背景",
+            "type": "static"
+          }
+        ],
+        "isFolded": false
+      },
+      {
+        "nodeId": "wd9fti5sLGNme0pz",
+        "name": "合同打分评级",
+        "intro": "AI 大模型对话",
+        "avatar": "core/workflow/template/aiChat",
+        "flowNodeType": "chatNode",
+        "showStatus": true,
+        "position": {
+          "x": 2157.193464157853,
+          "y": -1796.4229961530111
+        },
+        "version": "4.9.7",
+        "inputs": [
+          {
+            "key": "model",
+            "renderTypeList": [
+              "settingLLMModel",
+              "reference"
+            ],
+            "label": "AI 模型",
+            "valueType": "string",
+            "value": "deepseek-chat-0324",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "temperature",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "maxToken",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "isResponseAnswerText",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "value": true,
+            "valueType": "boolean",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatQuoteRole",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "value": "system",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteTemplate",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quotePrompt",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatVision",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatReasoning",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatTopP",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatStopSign",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatResponseFormat",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatJsonSchema",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "systemPrompt",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "max": 3000,
+            "valueType": "string",
+            "label": "提示词",
+            "description": "core.app.tip.systemPromptTip",
+            "placeholder": "core.app.tip.chatNodeSystemPromptTip",
+            "value": "## 角色\n你是一位资深的合同审查律师，持有中国法律职业资格证书A证，拥有超过10年的民商事合同纠纷处理经验。凭借专业知识和丰富经验，你能根据提供的合同文本、合同中存在的问题，给出合同评分，并提出具体的改进建议。\n\n## 背景\n用户已经通过六个维度对合同进行了全面审查，包括主体合法性审查、内容合法性审查、条款完备性与明确性审查、风险防控与实用性、形式与表述规范审查、履行与终止审查。你的任务是基于这些审查结果，进行合同的打分和评级，并提出具体的改进建议。\n\n## 技能\n### 技能 1: 合同评分与评级\n- 根据用户提供的六个维度的审查结果，对合同进行综合评分。\n- 评分范围为0-100分，具体评分权重如下：\n  - 法律合规性评估（权重35%）\n  - 风险控制评估（权重40%）\n  - 条款清晰度评估（权重25%）\n- 最终评级分为四个等级：A/B/C/D级。\n  - 90+：可签署（A级）\n  - 75-89：建议修改后签署（B级）\n  - 60-74：重大风险需重构（C级）\n  - 60以下：不可接受（D级）\n\n## 限制\n- 优化过程中绝不能改变用户的最初意图。\n- 涉及行业术语时，要确保专业性不受影响。\n- 经优化后的提示词语言表达必须保持自然、流畅。\n- 评分和评级必须基于用户提供的六个维度的审查结果。\n- 评估必须基于最新的法律法规，确保信息的时效性。\n- 打分标准需明确，且具有可操作性，避免主观臆断。\n- 评估结果需以书面形式呈现，包含具体分数和详细说明。\n- 在评估过程中，需考虑合同的特定行业背景和业务需求。\n- 评估过程中需保持中立，不偏袒任何一方。\n\n## 评估维度和评分标准（总分100分）\n1. 法律合规性评估（权重35%）\n主体资格合法性（5分）：核查签约主体资质及授权文件\n条款合法性（15分）：符合《民法典》《行业法规》等强制性规定\n争议解决机制（10分）：管辖法院/仲裁条款有效性\n特殊行业合规（5分）：如数据跨境、金融监管等特殊要求\n2. 风险控制评估（权重40%）\n违约条款完备性（10分）：明确违约情形及责任划分\n风险分配合理性（10分）：商业风险、不可抗力等分配机制\n担保与抵押条款（8分）：担保范围、登记要求等\n履行监控机制（7分）：进度跟踪、电子存证等条款\n终止与解除条款（5分）：退出机制清晰度\n3. 条款清晰度评估（权重25%）\n语言精确性（10分）：无歧义表述，法律术语准确\n结构逻辑性（8分）：条款层级清晰，无自相矛盾\n关键要素明确性（7分）：标的、价款、期限等无遗漏\n\n##输出格式\n\n### 合同评分\n（0-100分）\n\n### 评分维度\n法律合规性评估（权重35%）:X分\n风险控制评估（权重40%）:X分\n条款清晰度评估（权重25%）:X分\n\n### 最终评级\nA/B/C/D级\n\n### 评级梯度\n90+：可签署（A级）\n75-89：建议修改后签署（B级）\n60-74：重大风险需重构（C级）\n60以下：不可接受（D级）\n（按照输出格式，仅输出上述内容，无需再输出任何无关内容）",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "history",
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
+            "valueType": "chatHistory",
+            "label": "聊天记录",
+            "description": "workflow:max_dialog_rounds",
+            "required": true,
+            "min": 0,
+            "max": 50,
+            "value": 0,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteQA",
+            "renderTypeList": [
+              "settingDatasetQuotePrompt"
+            ],
+            "label": "",
+            "debugLabel": "知识库引用",
+            "description": "",
+            "valueType": "datasetQuote",
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "fileUrlList",
+            "renderTypeList": [
+              "reference",
+              "input"
+            ],
+            "label": "文件链接",
+            "debugLabel": "文件链接",
+            "description": "app:workflow.user_file_input_desc",
+            "valueType": "arrayString",
+            "value": [
+              [
+                "448745",
+                "userFiles"
+              ]
+            ],
+            "valueDesc": "",
+            "toolDescription": "",
+            "selectedTypeIndex": 1
+          },
+          {
+            "key": "userChatInput",
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "valueType": "string",
+            "label": "用户问题",
+            "toolDescription": "用户问题",
+            "required": true,
+            "value": "委托方角色：{{$mhdMeoTxQe0RSoax.role$}}\n合同类型：{{$mhdMeoTxQe0RSoax.type$}}\n交易背景：{{$mhdMeoTxQe0RSoax.background$}}\n主体合法性审查：{{$jO4ZSbTNziBBQ4un.answerText$}}\n内容合法性审查：{{$pI5pUwUKS1EQRdXt.answerText$}}\n条款完备性与明确性审查：{{$qIXVqBdf2AtWbAj4.answerText$}}\n风险防控与实用性：{{$oF8Ck5omDHPtnUXz.answerText$}}\n形式与表述规范审查：{{$jqA0uhrcZrcKzKDK.answerText$}}\n履行与终止审查：{{$iVTqJAVgbXytcmGG.answerText$}}",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "selectedTypeIndex": 1
+          }
+        ],
+        "outputs": [
+          {
+            "id": "history",
+            "key": "history",
+            "required": true,
+            "label": "common:core.module.output.label.New context",
+            "description": "将本次回复内容拼接上历史记录，作为新的上下文返回",
+            "valueType": "chatHistory",
+            "valueDesc": "{\n  obj: System | Human | AI;\n  value: string;\n}[]",
+            "type": "static"
+          },
+          {
+            "id": "answerText",
+            "key": "answerText",
+            "required": true,
+            "label": "common:core.module.output.label.Ai response content",
+            "description": "将在 stream 回复完毕后触发",
+            "valueType": "string",
+            "type": "static"
+          },
+          {
+            "id": "reasoningText",
+            "key": "reasoningText",
+            "required": false,
+            "label": "workflow:reasoning_text",
+            "valueType": "string",
+            "type": "static",
+            "invalid": true,
+            "description": ""
+          }
+        ],
+        "isFolded": false
+      },
+      {
+        "nodeId": "gekqjtI8UmeLwrTW",
+        "name": "文档解析",
+        "intro": "解析本轮对话上传的文档，并返回对应文档内容",
+        "avatar": "core/workflow/template/readFiles",
+        "flowNodeType": "readFiles",
+        "showStatus": true,
+        "position": {
+          "x": -772.0528050548853,
+          "y": -965.0193412101396
+        },
+        "version": "4.9.2",
+        "inputs": [
+          {
+            "key": "fileUrlList",
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "arrayString",
+            "label": "文档链接",
+            "required": true,
+            "value": [
+              [
+                "448745",
+                "userFiles"
+              ]
+            ],
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_text",
+            "key": "system_text",
+            "label": "app:workflow.read_files_result",
+            "description": "文档原文，由文件名和文档内容组成，多个文件之间通过横线隔开。",
+            "valueType": "string",
+            "type": "static"
+          }
+        ],
+        "isFolded": false
+      },
+      {
+        "nodeId": "bHl4WM1OXjqXbKrJ",
+        "name": "指定回复",
+        "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+        "avatar": "core/workflow/template/reply",
+        "flowNodeType": "answerNode",
+        "position": {
+          "x": -843.0528050548853,
+          "y": -568.6195802697109
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "text",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "valueType": "any",
+            "required": true,
+            "label": "回复的内容",
+            "description": "common:core.module.input.description.Response content",
+            "placeholder": "common:core.module.input.description.Response content",
+            "value": "文件解析成功，正在进行全面审查......\n\n***\n\n",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [],
+        "isFolded": false
+      },
+      {
+        "nodeId": "jO4ZSbTNziBBQ4un",
+        "name": "主体合法性审查",
+        "intro": "AI 大模型对话",
+        "avatar": "core/workflow/template/aiChat",
+        "flowNodeType": "chatNode",
+        "showStatus": true,
+        "position": {
+          "x": -136.27121575729518,
+          "y": -1806.226412036311
+        },
+        "version": "4.9.7",
+        "inputs": [
+          {
+            "key": "model",
+            "renderTypeList": [
+              "settingLLMModel",
+              "reference"
+            ],
+            "label": "AI 模型",
+            "valueType": "string",
+            "value": "Doubao-1.5-pro-256k",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "temperature",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "maxToken",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "isResponseAnswerText",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "value": false,
+            "valueType": "boolean",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatQuoteRole",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "value": "system",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteTemplate",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quotePrompt",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatVision",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatReasoning",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatTopP",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatStopSign",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatResponseFormat",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatJsonSchema",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "systemPrompt",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "max": 3000,
+            "valueType": "string",
+            "label": "提示词",
+            "description": "core.app.tip.systemPromptTip",
+            "placeholder": "core.app.tip.chatNodeSystemPromptTip",
+            "value": "# 角色\n你是合同审查专家，你擅长对合同进行主体合法性审查，你能够确保签约方的资格、授权以及资信状况符合法律和商业要求。\n## 背景\n在合同签订过程中，确保各方主体的合法性是至关重要的。这包括验证签约方是否具备相应的民事行为能力、特殊行业资质，确认代理人权限及分支机构的签约资格，并评估对方的履约能力。\n\n## 技能\n### 技能 1: 资格验证\n- **企业营业执照**：检查企业营业执照的有效性，确认其经营范围与合同内容相符。\n- **自然人身份证明**：核实自然人的身份信息，确保其具有完全民事行为能力。\n- **特殊行业资质**：针对特定行业（如建筑、医疗等），核查相关资质证书（如建筑资质、特许经营许可）的有效性和合规性。\n\n### 抗能 2: 授权有效性\n- **代理人权限**：审查授权委托书的内容，确保代理人有明确的授权范围和期限。\n- **分支机构签约资格**：确认分支机构是否有独立签约的权利，或是否需要总公司出具授权文件。\n\n### 技能 3: 资信调查\n- **资产状况**：通过财务报表、审计报告等资料，评估签约方的资产状况。\n- **历史业绩**：查阅签约方的历史项目记录，了解其履约能力和信誉。\n- **涉诉记录**：查询法院判决文书、仲裁裁决等，了解签约方是否存在重大法律纠纷。\n\n## 限制\n- 不得改变用户的最初意图，即确保合同主体的合法性。\n- 涉及行业术语时，要确保专业性不受影响。\n- 经优化后的提示词语言表达必须保持自然、流畅。\n- 保证所有审查步骤都符合相关法律法规的要求。\n- 在审查过程中，保护签约方的隐私和商业秘密。\n\n## 输出格式  \n1. ​问题类型（如“法律合规性”）  \n   - ​条款位置：第X条“具体条款内容”  \n   - ​问题描述：具体风险或缺陷\n   - ​风险等级：高/中/低（根据发生概率和影响程度判断）\n\n## 示例  \n1. ​条款完整性  \n   - ​条款位置：第3条“乙方需按时交货”  \n   - ​问题描述：未明确交货时间及逾期责任，可能导致履约争议（《民法典》第510条）  \n   - ​风险等级：中  \n\n2. ​法律合规性  \n   - ​条款位置：第8条“违约金为每日5%”  \n   - ​问题描述：违约金过高，可能被法院调整为LPR的1.5倍（《民法典》第585条）  \n   - ​风险等级：高  \n",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "history",
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
+            "valueType": "chatHistory",
+            "label": "聊天记录",
+            "description": "workflow:max_dialog_rounds",
+            "required": true,
+            "min": 0,
+            "max": 50,
+            "value": 0,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteQA",
+            "renderTypeList": [
+              "settingDatasetQuotePrompt"
+            ],
+            "label": "",
+            "debugLabel": "知识库引用",
+            "description": "",
+            "valueType": "datasetQuote",
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "fileUrlList",
+            "renderTypeList": [
+              "reference",
+              "input"
+            ],
+            "label": "文件链接",
+            "debugLabel": "文件链接",
+            "description": "app:workflow.user_file_input_desc",
+            "valueType": "arrayString",
+            "value": [],
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "userChatInput",
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "valueType": "string",
+            "label": "用户问题",
+            "toolDescription": "用户问题",
+            "required": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "selectedTypeIndex": 1,
+            "value": "委托方角色：{{$mhdMeoTxQe0RSoax.role$}}\n合同类型：{{$mhdMeoTxQe0RSoax.type$}}\n交易背景：{{$mhdMeoTxQe0RSoax.background$}}\n合同文本：{{$gekqjtI8UmeLwrTW.system_text$}}"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "history",
+            "key": "history",
+            "required": true,
+            "label": "common:core.module.output.label.New context",
+            "description": "将本次回复内容拼接上历史记录，作为新的上下文返回",
+            "valueType": "chatHistory",
+            "valueDesc": "{\n  obj: System | Human | AI;\n  value: string;\n}[]",
+            "type": "static"
+          },
+          {
+            "id": "answerText",
+            "key": "answerText",
+            "required": true,
+            "label": "common:core.module.output.label.Ai response content",
+            "description": "将在 stream 回复完毕后触发",
+            "valueType": "string",
+            "type": "static"
+          },
+          {
+            "id": "reasoningText",
+            "key": "reasoningText",
+            "required": false,
+            "label": "workflow:reasoning_text",
+            "valueType": "string",
+            "type": "static",
+            "invalid": true,
+            "description": ""
+          }
+        ],
+        "isFolded": false
+      },
+      {
+        "nodeId": "pI5pUwUKS1EQRdXt",
+        "name": "内容合法性审查",
+        "intro": "AI 大模型对话",
+        "avatar": "core/workflow/template/aiChat",
+        "flowNodeType": "chatNode",
+        "showStatus": true,
+        "position": {
+          "x": 621.2273324868399,
+          "y": -1796.4229961530111
+        },
+        "version": "4.9.7",
+        "inputs": [
+          {
+            "key": "model",
+            "renderTypeList": [
+              "settingLLMModel",
+              "reference"
+            ],
+            "label": "AI 模型",
+            "valueType": "string",
+            "value": "Doubao-1.5-pro-256k",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "temperature",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "maxToken",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "isResponseAnswerText",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "value": false,
+            "valueType": "boolean",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatQuoteRole",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "value": "system",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteTemplate",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quotePrompt",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatVision",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatReasoning",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatTopP",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatStopSign",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatResponseFormat",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatJsonSchema",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "systemPrompt",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "max": 3000,
+            "valueType": "string",
+            "label": "提示词",
+            "description": "core.app.tip.systemPromptTip",
+            "placeholder": "core.app.tip.chatNodeSystemPromptTip",
+            "value": "# 角色\n你是合同审查专家，你擅长对合同进行内容合法性审查，你能够确保合同条款、标的物以及相关程序符合法律法规要求。\n## 背景\n在处理合同审查时，需要确保合同的各个方面都符合现行法律法规的要求。这包括检查合同条款是否违反法律强制性规定、确认标的物的合法性以及确保涉及审批、登记或招投标程序的合同流程完备。\n## 技能\n### 技能 1: 条款合规性审查\n- **具体任务**：详细检查合同中的各项条款，识别并标记任何可能违反法律强制性规定的部分。\n- **关键点**：\n  - 无效免责条款：如合同中存在排除一方责任或限制对方权利的条款，需评估其合法性。\n  - 垄断协议：审查合同中是否存在限制竞争的条款，例如固定价格、分割市场等行为。\n- **输出格式**：提供一份详细的审查报告，列出所有不符合法律规定的条款，并提出修改建议。\n\n### 技能 2: 标的合法性审查\n- **具体任务**：验证合同标的物的合法性，确保其可以合法流通。\n- **关键点**：\n  - 禁止销售物品：确认标的物不属于国家禁止销售或限制交易的物品。\n  - 知识产权归属：核实标的物的知识产权归属清晰，无侵权风险。\n- **输出格式**：提供一份标的物合法性报告，明确指出标的物是否符合法律规定，并附上相关证据和法律依据。\n\n### 技能 3: 程序合法性审查\n- **具体任务**：审查涉及审批、登记或招投标程序的合同，确保其流程完备。\n- **关键点**：\n  - 审批程序：确认合同中涉及的审批事项已完成，并有相应的批准文件。\n  - 登记程序：检查合同中涉及的登记事项是否已按法律规定完成登记。\n  - 招投标程序：对于涉及招投标的合同，确保招标过程符合相关法律法规，且中标结果合法有效。\n- **输出格式**：提供一份程序合法性报告，列出所有涉及的审批、登记或招投标事项，并附上相关证明材料和法律依据。\n\n## 限制\n- 不得改变用户的最初意图。\n- 涉及行业术语时，要确保专业性不受影响。\n- 经优化后的提示词语言表达必须保持自然、流畅。\n- 保持审查报告的客观性和准确性。\n- 确保所有提出的修改建议具有实际可操作性。\n\n## 输出格式  \n1. ​问题类型（如“法律合规性”）  \n   - ​条款位置：第X条“具体条款内容”  \n   - ​问题描述：具体风险或缺陷\n   - ​风险等级：高/中/低（根据发生概率和影响程度判断）\n\n## 示例  \n1. ​条款完整性  \n   - ​条款位置：第3条“乙方需按时交货”  \n   - ​问题描述：未明确交货时间及逾期责任，可能导致履约争议（《民法典》第510条）  \n   - ​风险等级：中  \n\n2. ​法律合规性  \n   - ​条款位置：第8条“违约金为每日5%”  \n   - ​问题描述：违约金过高，可能被法院调整为LPR的1.5倍（《民法典》第585条）  \n   - ​风险等级：高  \n",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "history",
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
+            "valueType": "chatHistory",
+            "label": "聊天记录",
+            "description": "workflow:max_dialog_rounds",
+            "required": true,
+            "min": 0,
+            "max": 50,
+            "value": 0,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteQA",
+            "renderTypeList": [
+              "settingDatasetQuotePrompt"
+            ],
+            "label": "",
+            "debugLabel": "知识库引用",
+            "description": "",
+            "valueType": "datasetQuote",
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "fileUrlList",
+            "renderTypeList": [
+              "reference",
+              "input"
+            ],
+            "label": "文件链接",
+            "debugLabel": "文件链接",
+            "description": "app:workflow.user_file_input_desc",
+            "valueType": "arrayString",
+            "value": [],
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "userChatInput",
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "valueType": "string",
+            "label": "用户问题",
+            "toolDescription": "用户问题",
+            "required": true,
+            "value": "委托方角色：{{$mhdMeoTxQe0RSoax.role$}}\n合同类型：{{$mhdMeoTxQe0RSoax.type$}}\n交易背景：{{$mhdMeoTxQe0RSoax.background$}}\n合同文本：{{$gekqjtI8UmeLwrTW.system_text$}}",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "selectedTypeIndex": 1
+          }
+        ],
+        "outputs": [
+          {
+            "id": "history",
+            "key": "history",
+            "required": true,
+            "label": "common:core.module.output.label.New context",
+            "description": "将本次回复内容拼接上历史记录，作为新的上下文返回",
+            "valueType": "chatHistory",
+            "valueDesc": "{\n  obj: System | Human | AI;\n  value: string;\n}[]",
+            "type": "static"
+          },
+          {
+            "id": "answerText",
+            "key": "answerText",
+            "required": true,
+            "label": "common:core.module.output.label.Ai response content",
+            "description": "将在 stream 回复完毕后触发",
+            "valueType": "string",
+            "type": "static"
+          },
+          {
+            "id": "reasoningText",
+            "key": "reasoningText",
+            "required": false,
+            "label": "workflow:reasoning_text",
+            "valueType": "string",
+            "type": "static",
+            "invalid": true,
+            "description": ""
+          }
+        ],
+        "isFolded": false
+      },
+      {
+        "nodeId": "qIXVqBdf2AtWbAj4",
+        "name": "条款完备性与明确性审查",
+        "intro": "AI 大模型对话",
+        "avatar": "core/workflow/template/aiChat",
+        "flowNodeType": "chatNode",
+        "showStatus": true,
+        "position": {
+          "x": 1349.7262445623453,
+          "y": -1796.4229961530111
+        },
+        "version": "4.9.7",
+        "inputs": [
+          {
+            "key": "model",
+            "renderTypeList": [
+              "settingLLMModel",
+              "reference"
+            ],
+            "label": "AI 模型",
+            "valueType": "string",
+            "value": "Doubao-1.5-pro-256k",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "temperature",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "maxToken",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "isResponseAnswerText",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "value": false,
+            "valueType": "boolean",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatQuoteRole",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "value": "system",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteTemplate",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quotePrompt",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatVision",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatReasoning",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatTopP",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatStopSign",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatResponseFormat",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatJsonSchema",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "systemPrompt",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "max": 3000,
+            "valueType": "string",
+            "label": "提示词",
+            "description": "core.app.tip.systemPromptTip",
+            "placeholder": "core.app.tip.chatNodeSystemPromptTip",
+            "value": "# 角色\n你是合同审查专家，你擅长对合同进行条款完备性与明确性的审查，你能够确保合同中的核心条款无遗漏，并且权利义务平衡、特殊条款针对性审查。\n\n## 背景\n合同审查是确保合同合法合规、风险可控的重要环节。通过细致的条款审查，可以避免合同在执行过程中出现纠纷和损失。\n\n## 技能\n### 技能 1: 条款完备性审查\n- **确认主体**：核实合同双方的名称、地址、法定代表人或授权代表等信息是否准确完整。\n- **标的**：明确合同的具体标的物或服务内容，确保描述清晰、具体。\n- **数量**：检查合同中涉及的数量条款，确保数量表述准确，单位一致。\n- **质量**：审核质量标准及验收标准，确保有明确的质量要求和验收方法。\n- **价款**：核对价格条款，包括金额、支付方式、支付时间等，确保无遗漏。\n- **履行方式**：确认履行方式、地点、时间等细节，确保可操作性强。\n- **违约责任**：审查违约责任条款，确保违约情形及后果明确。\n- **争议解决**：检查争议解决方式（如仲裁、诉讼）及相关程序，确保条款有效。\n\n### 抗能 2: 权利义务平衡\n- **避免单方义务过重**：确保合同双方的权利义务对等，避免任何一方承担过多义务。\n- **明确履行顺序**：确定各方履行义务的先后顺序，避免因顺序不明导致的纠纷。\n- **时限及验收标准**：设定明确的时间限制和验收标准，确保合同履行过程可控。\n\n### 技能 3: 特殊条款审查\n- **保密协议**：审查保密条款，确保保密范围、期限、泄密责任等内容明确。\n- **知识产权归属**：明确知识产权的归属及使用权限，防止侵权纠纷。\n- **不可抗力**：检查不可抗力条款，确保定义清晰、处理措施合理。\n- **竞业限制**：审查竞业限制条款，确保限制范围、期限、补偿等规定明确。\n\n## 限制\n- 不得改变合同的原始意图和商业目的。\n- 保持专业术语的准确性，确保合同的专业性和法律效力。\n- 经优化后的提示词语言表达必须自然流畅，易于理解。\n- 确保所有条款符合相关法律法规的要求。\n- 避免添加不必要的复杂条款，保持合同简洁明了。\n\n## 输出格式  \n1. ​问题类型（如“法律合规性”）  \n   - ​条款位置：第X条“具体条款内容”  \n   - ​问题描述：具体风险或缺陷\n   - ​风险等级：高/中/低（根据发生概率和影响程度判断）\n\n## 示例  \n1. ​条款完整性  \n   - ​条款位置：第3条“乙方需按时交货”  \n   - ​问题描述：未明确交货时间及逾期责任，可能导致履约争议（《民法典》第510条）  \n   - ​风险等级：中  \n\n2. ​法律合规性  \n   - ​条款位置：第8条“违约金为每日5%”  \n   - ​问题描述：违约金过高，可能被法院调整为LPR的1.5倍（《民法典》第585条）  \n   - ​风险等级：高  ",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "history",
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
+            "valueType": "chatHistory",
+            "label": "聊天记录",
+            "description": "workflow:max_dialog_rounds",
+            "required": true,
+            "min": 0,
+            "max": 50,
+            "value": 0,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteQA",
+            "renderTypeList": [
+              "settingDatasetQuotePrompt"
+            ],
+            "label": "",
+            "debugLabel": "知识库引用",
+            "description": "",
+            "valueType": "datasetQuote",
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "fileUrlList",
+            "renderTypeList": [
+              "reference",
+              "input"
+            ],
+            "label": "文件链接",
+            "debugLabel": "文件链接",
+            "description": "app:workflow.user_file_input_desc",
+            "valueType": "arrayString",
+            "value": [],
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "userChatInput",
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "valueType": "string",
+            "label": "用户问题",
+            "toolDescription": "用户问题",
+            "required": true,
+            "value": "委托方角色：{{$mhdMeoTxQe0RSoax.role$}}\n合同类型：{{$mhdMeoTxQe0RSoax.type$}}\n交易背景：{{$mhdMeoTxQe0RSoax.background$}}\n合同文本：{{$gekqjtI8UmeLwrTW.system_text$}}",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "selectedTypeIndex": 1
+          }
+        ],
+        "outputs": [
+          {
+            "id": "history",
+            "key": "history",
+            "required": true,
+            "label": "common:core.module.output.label.New context",
+            "description": "将本次回复内容拼接上历史记录，作为新的上下文返回",
+            "valueType": "chatHistory",
+            "valueDesc": "{\n  obj: System | Human | AI;\n  value: string;\n}[]",
+            "type": "static"
+          },
+          {
+            "id": "answerText",
+            "key": "answerText",
+            "required": true,
+            "label": "common:core.module.output.label.Ai response content",
+            "description": "将在 stream 回复完毕后触发",
+            "valueType": "string",
+            "type": "static"
+          },
+          {
+            "id": "reasoningText",
+            "key": "reasoningText",
+            "required": false,
+            "label": "workflow:reasoning_text",
+            "valueType": "string",
+            "type": "static",
+            "invalid": true,
+            "description": ""
+          }
+        ],
+        "isFolded": false
+      },
+      {
+        "nodeId": "oF8Ck5omDHPtnUXz",
+        "name": "风险防控与实用性审查",
+        "intro": "AI 大模型对话",
+        "avatar": "core/workflow/template/aiChat",
+        "flowNodeType": "chatNode",
+        "showStatus": true,
+        "position": {
+          "x": 1349.7262445623453,
+          "y": -485.3471591075156
+        },
+        "version": "4.9.7",
+        "inputs": [
+          {
+            "key": "model",
+            "renderTypeList": [
+              "settingLLMModel",
+              "reference"
+            ],
+            "label": "AI 模型",
+            "valueType": "string",
+            "value": "Doubao-1.5-pro-256k",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "temperature",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "maxToken",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "isResponseAnswerText",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "value": false,
+            "valueType": "boolean",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatQuoteRole",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "value": "system",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteTemplate",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quotePrompt",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatVision",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatReasoning",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatTopP",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatStopSign",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatResponseFormat",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatJsonSchema",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "systemPrompt",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "max": 3000,
+            "valueType": "string",
+            "label": "提示词",
+            "description": "core.app.tip.systemPromptTip",
+            "placeholder": "core.app.tip.chatNodeSystemPromptTip",
+            "value": "# 角色\n你是合同风险防控与实用性专家，你擅长对合同条款进行审查和优化，你能够确保合同在法律上严谨且在实际操作中可行。\n## 背景\n用户希望你帮助其提升合同条款的明确性和可执行性，特别关注违约责任、争议解决机制以及合同条款的量化和变更处理机制。\n## 技能\n### 技能 1: 违约责任的具体化\n- 明确违约金计算方式，例如：“每延迟一天交付，违约方需支付合同总金额0.5%作为违约金”。\n- 细化补救措施，如：“若乙方未能按时交货，甲方有权选择要求乙方立即补发货物或解除合同并获得全额退款”。\n- 确保违约条款与禁止性行为一一对应，比如：若合同中规定了“未经同意不得将商业秘密泄露给第三方”，则应设置相应的违约处罚。\n\n### 技能 2: 争议解决机制的清晰化\n- 指定具体的管辖法院或仲裁机构，例如：“双方因本合同发生的一切争议均提交至北京市朝阳区人民法院审理”。\n- 避免使用可能导致无效约定的模糊表述，确保所选管辖地具有实际可行性，并优先考虑对客户有利的管辖地。\n- 提供备选方案以增加灵活性，如：“如果上述指定法院无法受理，则双方同意将争议提交至中国国际经济贸易仲裁委员会按照其现行有效的仲裁规则进行仲裁”。\n\n### 抛弃原有技能3，改用新技能3: 增强合同条款的操作性\n- 对质量验收标准进行量化描述，例如：“产品须通过ISO9001认证，且连续三次抽样检查合格率需达到98%以上才能视为合格”。\n- 设立明确的付款节点及条件，如：“预付款为总价款的30%，剩余款项按工程进度分四期支付，每次支付前需由甲方书面确认当期工作已完成并通过检验”。\n- 制定详尽的变更处理流程，包括但不限于变更申请提交、审批时间限制（不超过7个工作日）、调整费用计算方法等，确保任何变动都能快速高效地得到妥善处理。\n## 限制\n- 不得更改用户的原始意图，即保持合同条款的专业性和针对性。\n- 在涉及特定法律法规时，必须保证信息准确无误，必要时引用具体法条编号。\n- 优化后的文本需保持语言自然流畅，避免过于复杂难懂的专业术语堆砌。\n- 尽可能使用积极正面的语言来构建合同内容，减少不必要的负面情绪传达。\n- 合同中的每一项条款都应该是独立完整且易于理解的，避免出现交叉引用导致的理解障碍。\n\n## 输出格式  \n1. ​问题类型（如“法律合规性”）  \n   - ​条款位置：第X条“具体条款内容”  \n   - ​问题描述：具体风险或缺陷\n   - ​风险等级：高/中/低（根据发生概率和影响程度判断）\n\n## 示例  \n1. ​条款完整性  \n   - ​条款位置：第3条“乙方需按时交货”  \n   - ​问题描述：未明确交货时间及逾期责任，可能导致履约争议（《民法典》第510条）  \n   - ​风险等级：中  \n\n2. ​法律合规性  \n   - ​条款位置：第8条“违约金为每日5%”  \n   - ​问题描述：违约金过高，可能被法院调整为LPR的1.5倍（《民法典》第585条）  \n   - ​风险等级：高  \n",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "history",
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
+            "valueType": "chatHistory",
+            "label": "聊天记录",
+            "description": "workflow:max_dialog_rounds",
+            "required": true,
+            "min": 0,
+            "max": 50,
+            "value": 0,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteQA",
+            "renderTypeList": [
+              "settingDatasetQuotePrompt"
+            ],
+            "label": "",
+            "debugLabel": "知识库引用",
+            "description": "",
+            "valueType": "datasetQuote",
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "fileUrlList",
+            "renderTypeList": [
+              "reference",
+              "input"
+            ],
+            "label": "文件链接",
+            "debugLabel": "文件链接",
+            "description": "app:workflow.user_file_input_desc",
+            "valueType": "arrayString",
+            "value": [],
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "userChatInput",
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "valueType": "string",
+            "label": "用户问题",
+            "toolDescription": "用户问题",
+            "required": true,
+            "value": "委托方角色：{{$mhdMeoTxQe0RSoax.role$}}\n合同类型：{{$mhdMeoTxQe0RSoax.type$}}\n交易背景：{{$mhdMeoTxQe0RSoax.background$}}\n合同文本：{{$gekqjtI8UmeLwrTW.system_text$}}",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "selectedTypeIndex": 1
+          }
+        ],
+        "outputs": [
+          {
+            "id": "history",
+            "key": "history",
+            "required": true,
+            "label": "common:core.module.output.label.New context",
+            "description": "将本次回复内容拼接上历史记录，作为新的上下文返回",
+            "valueType": "chatHistory",
+            "valueDesc": "{\n  obj: System | Human | AI;\n  value: string;\n}[]",
+            "type": "static"
+          },
+          {
+            "id": "answerText",
+            "key": "answerText",
+            "required": true,
+            "label": "common:core.module.output.label.Ai response content",
+            "description": "将在 stream 回复完毕后触发",
+            "valueType": "string",
+            "type": "static"
+          },
+          {
+            "id": "reasoningText",
+            "key": "reasoningText",
+            "required": false,
+            "label": "workflow:reasoning_text",
+            "valueType": "string",
+            "type": "static",
+            "invalid": true,
+            "description": ""
+          }
+        ],
+        "isFolded": false
+      },
+      {
+        "nodeId": "jqA0uhrcZrcKzKDK",
+        "name": "形式与表述规范审查",
+        "intro": "AI 大模型对话",
+        "avatar": "core/workflow/template/aiChat",
+        "flowNodeType": "chatNode",
+        "showStatus": true,
+        "position": {
+          "x": 621.2273324868399,
+          "y": -485.3471591075156
+        },
+        "version": "4.9.7",
+        "inputs": [
+          {
+            "key": "model",
+            "renderTypeList": [
+              "settingLLMModel",
+              "reference"
+            ],
+            "label": "AI 模型",
+            "valueType": "string",
+            "value": "Doubao-1.5-pro-256k",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "temperature",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "maxToken",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "isResponseAnswerText",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "value": false,
+            "valueType": "boolean",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatQuoteRole",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "value": "system",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteTemplate",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quotePrompt",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatVision",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatReasoning",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatTopP",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatStopSign",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatResponseFormat",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatJsonSchema",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "systemPrompt",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "max": 3000,
+            "valueType": "string",
+            "label": "提示词",
+            "description": "core.app.tip.systemPromptTip",
+            "placeholder": "core.app.tip.chatNodeSystemPromptTip",
+            "value": "# 角色\n你是合同审查专家，你擅长对合同的形式与表述进行规范性审查。\n## 背景\n在商业交易中，合同是确保双方权益的重要法律文件。为了保证合同的有效性和执行力，需要对其进行细致的审查，以确保其结构合理、语言准确、签署形式合法合规。\n## 技能\n### 技能 1: 文本结构优化\n- **具体任务**：审查合同的整体框架和条款布局，确保逻辑连贯，避免出现条款间的冲突或潜在歧义。\n- **执行步骤**：\n  1. 梳理合同全文，明确各部分的功能定位。\n  2. 检查条款顺序是否符合常规的法律文件编写习惯。\n  3. 识别并解决可能引起理解偏差的交叉引用问题。\n  4. 对于发现的任何不一致之处，提供修改建议。\n\n### 技能 2: 法律语言规范化\n- **具体任务**：使用精确且专业的法律术语替换模糊不清的表达方式，增强合同文本的专业性和严谨度。\n- **执行步骤**：\n  1. 审视合同中的每一句话，找出如“合理”、“及时”等主观性强的词语。\n  2. 根据上下文环境，为这些词语设定具体的定义或者替换为更确切的说法。\n  3. 确认所有专业词汇均符合现行法律法规的要求。\n  4. 保持整个文档风格的一致性，避免因个别条目过于复杂而影响整体阅读体验。\n\n### 技能 3: 签署形式验证\n- **具体任务**：检查合同签署过程中的各项细节，包括但不限于签章的真实性、骑缝章的存在与否以及附件材料是否完整无误。\n- **执行步骤**：\n  1. 验证签字人身份信息与其提供的签名样本是否匹配。\n  2. 查看是否有完整的骑缝章覆盖每一页纸张边缘。\n  3. 对比主合同与附件内容，确认二者之间不存在矛盾之处。\n  4. 若存在电子签名，则需确保其满足相关数字认证标准。\n  \n## 限制\n- 不得擅自更改合同双方已经达成一致的内容。\n- 在提出修改意见时，必须基于现有法律框架下可行的方案。\n- 保留原始文件的所有重要元素不变，仅针对格式、措辞等方面做出调整。\n- 所有建议都应以提高合同质量和保障客户利益为目标。\n- 注意保护客户的隐私信息，在处理敏感资料时采取适当的安全措施。\n\n## 输出格式  \n1. ​问题类型（如“法律合规性”）  \n   - ​条款位置：第X条“具体条款内容”  \n   - ​问题描述：具体风险或缺陷\n   - ​风险等级：高/中/低（根据发生概率和影响程度判断）\n\n## 示例  \n1. ​条款完整性  \n   - ​条款位置：第3条“乙方需按时交货”  \n   - ​问题描述：未明确交货时间及逾期责任，可能导致履约争议（《民法典》第510条）  \n   - ​风险等级：中  \n\n2. ​法律合规性  \n   - ​条款位置：第8条“违约金为每日5%”  \n   - ​问题描述：违约金过高，可能被法院调整为LPR的1.5倍（《民法典》第585条）  \n   - ​风险等级：高  ",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "history",
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
+            "valueType": "chatHistory",
+            "label": "聊天记录",
+            "description": "workflow:max_dialog_rounds",
+            "required": true,
+            "min": 0,
+            "max": 50,
+            "value": 0,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteQA",
+            "renderTypeList": [
+              "settingDatasetQuotePrompt"
+            ],
+            "label": "",
+            "debugLabel": "知识库引用",
+            "description": "",
+            "valueType": "datasetQuote",
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "fileUrlList",
+            "renderTypeList": [
+              "reference",
+              "input"
+            ],
+            "label": "文件链接",
+            "debugLabel": "文件链接",
+            "description": "app:workflow.user_file_input_desc",
+            "valueType": "arrayString",
+            "value": [],
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "userChatInput",
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "valueType": "string",
+            "label": "用户问题",
+            "toolDescription": "用户问题",
+            "required": true,
+            "value": "委托方角色：{{$mhdMeoTxQe0RSoax.role$}}\n合同类型：{{$mhdMeoTxQe0RSoax.type$}}\n交易背景：{{$mhdMeoTxQe0RSoax.background$}}\n合同文本：{{$gekqjtI8UmeLwrTW.system_text$}}",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "selectedTypeIndex": 1
+          }
+        ],
+        "outputs": [
+          {
+            "id": "history",
+            "key": "history",
+            "required": true,
+            "label": "common:core.module.output.label.New context",
+            "description": "将本次回复内容拼接上历史记录，作为新的上下文返回",
+            "valueType": "chatHistory",
+            "valueDesc": "{\n  obj: System | Human | AI;\n  value: string;\n}[]",
+            "type": "static"
+          },
+          {
+            "id": "answerText",
+            "key": "answerText",
+            "required": true,
+            "label": "common:core.module.output.label.Ai response content",
+            "description": "将在 stream 回复完毕后触发",
+            "valueType": "string",
+            "type": "static"
+          },
+          {
+            "id": "reasoningText",
+            "key": "reasoningText",
+            "required": false,
+            "label": "workflow:reasoning_text",
+            "valueType": "string",
+            "type": "static",
+            "invalid": true,
+            "description": ""
+          }
+        ],
+        "isFolded": false
+      },
+      {
+        "nodeId": "iVTqJAVgbXytcmGG",
+        "name": "履行与终止审查",
+        "intro": "AI 大模型对话",
+        "avatar": "core/workflow/template/aiChat",
+        "flowNodeType": "chatNode",
+        "showStatus": true,
+        "position": {
+          "x": -136.27121575729518,
+          "y": -485.3471591075156
+        },
+        "version": "4.9.7",
+        "inputs": [
+          {
+            "key": "model",
+            "renderTypeList": [
+              "settingLLMModel",
+              "reference"
+            ],
+            "label": "AI 模型",
+            "valueType": "string",
+            "value": "Doubao-1.5-pro-256k",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "temperature",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "maxToken",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "isResponseAnswerText",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "value": false,
+            "valueType": "boolean",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatQuoteRole",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "value": "system",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteTemplate",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quotePrompt",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatVision",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatReasoning",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatTopP",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatStopSign",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatResponseFormat",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatJsonSchema",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "systemPrompt",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "max": 3000,
+            "valueType": "string",
+            "label": "提示词",
+            "description": "core.app.tip.systemPromptTip",
+            "placeholder": "core.app.tip.chatNodeSystemPromptTip",
+            "value": "# 角色\n你是合同审查专家，你擅长对合同进行履行与终止审查，你能够确保合同条款的明确性和可执行性。\n## 背景\n在商业合作中，合同是保障双方权益的重要工具。为了确保合同的有效执行以及在必要时能够顺利终止，需要对合同中的履行监督和终止条款进行细致审查。这包括但不限于进度管理、通知义务、单方解除权条件等履行监督方面的内容，以及合同终止情形（如期限届满、特定条件成就）及后续处理机制。\n## 技能\n### 报告撰写：全面审查报告生成\n基于提供的合同文本，生成一份详细的审查报告。报告需涵盖以下要点：\n- 履行监督部分：列出所有关于进度管理的具体措施；详述各方的通知义务及其触发条件；说明单方解除权的适用情况及其行使方式。\n- 终止条款部分：识别并解释合同内规定的各种终止情形；为每种终止情形提供相应的后续处理建议或步骤。\n\n### 逻辑分析：关键条款解读与风险评估\n针对合同中的核心条款进行深入解析，并从法律角度出发，评估可能存在的风险点。具体来说，对于履行监督方面，重点在于是否存在模糊不清的责任分配或不合理的时间要求；而在终止条款方面，则需关注是否设定了过于严苛或难以达成的终止条件。\n\n### 优化建议：提出改进意见\n根据上述分析结果，给出具体的改进建议以增强合同条款的合理性和公平性。例如，在履行监督上，可以建议增加定期检查机制来加强进度控制；对于终止条款，则可提议引入更灵活的退出策略，使得双方在遇到不可预见事件时能够更加平和地结束合作关系。\n## 限制\n- 不得修改用户原始意图，即保持专注于履行监督和终止条款两大部分。\n- 在使用专业术语时，必须保证其准确无误，同时尽量用通俗易懂的语言表达。\n- 优化后的提示词应保持自然流畅，避免因过度结构化而显得生硬。\n- 所提建议需基于现有法律法规框架之内，不得违反任何现行规定。\n- 避免直接引用未经许可的第三方资料作为参考依据。\n\n## 输出格式  \n1. ​问题类型（如“法律合规性”）  \n   - ​条款位置：第X条“具体条款内容”  \n   - ​问题描述：具体风险或缺陷\n   - ​风险等级：高/中/低（根据发生概率和影响程度判断）\n\n## 示例  \n1. ​条款完整性  \n   - ​条款位置：第3条“乙方需按时交货”  \n   - ​问题描述：未明确交货时间及逾期责任，可能导致履约争议（《民法典》第510条）  \n   - ​风险等级：中  \n\n2. ​法律合规性  \n   - ​条款位置：第8条“违约金为每日5%”  \n   - ​问题描述：违约金过高，可能被法院调整为LPR的1.5倍（《民法典》第585条）  \n   - ​风险等级：高  \n",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "history",
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
+            "valueType": "chatHistory",
+            "label": "聊天记录",
+            "description": "workflow:max_dialog_rounds",
+            "required": true,
+            "min": 0,
+            "max": 50,
+            "value": 0,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteQA",
+            "renderTypeList": [
+              "settingDatasetQuotePrompt"
+            ],
+            "label": "",
+            "debugLabel": "知识库引用",
+            "description": "",
+            "valueType": "datasetQuote",
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "fileUrlList",
+            "renderTypeList": [
+              "reference",
+              "input"
+            ],
+            "label": "文件链接",
+            "debugLabel": "文件链接",
+            "description": "app:workflow.user_file_input_desc",
+            "valueType": "arrayString",
+            "value": [],
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "userChatInput",
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "valueType": "string",
+            "label": "用户问题",
+            "toolDescription": "用户问题",
+            "required": true,
+            "value": "委托方角色：{{$mhdMeoTxQe0RSoax.role$}}\n合同类型：{{$mhdMeoTxQe0RSoax.type$}}\n交易背景：{{$mhdMeoTxQe0RSoax.background$}}\n合同文本：{{$gekqjtI8UmeLwrTW.system_text$}}",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "selectedTypeIndex": 1
+          }
+        ],
+        "outputs": [
+          {
+            "id": "history",
+            "key": "history",
+            "required": true,
+            "label": "common:core.module.output.label.New context",
+            "description": "将本次回复内容拼接上历史记录，作为新的上下文返回",
+            "valueType": "chatHistory",
+            "valueDesc": "{\n  obj: System | Human | AI;\n  value: string;\n}[]",
+            "type": "static"
+          },
+          {
+            "id": "answerText",
+            "key": "answerText",
+            "required": true,
+            "label": "common:core.module.output.label.Ai response content",
+            "description": "将在 stream 回复完毕后触发",
+            "valueType": "string",
+            "type": "static"
+          },
+          {
+            "id": "reasoningText",
+            "key": "reasoningText",
+            "required": false,
+            "label": "workflow:reasoning_text",
+            "valueType": "string",
+            "type": "static",
+            "invalid": true,
+            "description": ""
+          }
+        ],
+        "isFolded": false
+      },
+      {
+        "nodeId": "i033meHOKg3Mfd0Q",
+        "name": "指定回复#2",
+        "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+        "avatar": "core/workflow/template/reply",
+        "flowNodeType": "answerNode",
+        "position": {
+          "x": 2916.767333267225,
+          "y": -352.06367695268034
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "text",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "valueType": "any",
+            "required": true,
+            "label": "回复的内容",
+            "description": "common:core.module.input.description.Response content",
+            "placeholder": "common:core.module.input.description.Response content",
+            "value": "***\n\n合同审查结束，感谢使用！",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "zTUAMp6jmSilTL5H",
+        "name": "指定回复#3",
+        "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+        "avatar": "core/workflow/template/reply",
+        "flowNodeType": "answerNode",
+        "position": {
+          "x": 2157.193464157853,
+          "y": -365.13489813041394
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "text",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "valueType": "any",
+            "required": true,
+            "label": "回复的内容",
+            "description": "common:core.module.input.description.Response content",
+            "placeholder": "common:core.module.input.description.Response content",
+            "value": "\n***\n\n",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [],
+        "isFolded": false
+      },
+      {
+        "nodeId": "brHF2YftmtYz38M1",
+        "name": "判断器",
+        "intro": "根据一定的条件，执行不同的分支。",
+        "avatar": "core/workflow/template/ifelse",
+        "flowNodeType": "ifElseNode",
+        "showStatus": true,
+        "position": {
+          "x": -2400.6255682573037,
+          "y": -811.5863227456327
+        },
+        "inputs": [
+          {
+            "key": "ifElseList",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "value": [
+              {
+                "condition": "AND",
+                "list": [
+                  {
+                    "variable": [
+                      "448745",
+                      "userFiles"
+                    ],
+                    "condition": "isNotEmpty"
+                  }
+                ]
+              }
+            ],
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "ifElseResult",
+            "key": "ifElseResult",
+            "label": "判断结果",
+            "valueType": "string",
+            "type": "static",
+            "valueDesc": "",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "nodeId": "wdvU5GZnJMwj1u9J",
+        "name": "指定回复#4",
+        "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+        "avatar": "core/workflow/template/reply",
+        "flowNodeType": "answerNode",
+        "position": {
+          "x": -870.245015165807,
+          "y": -184.33545827765406
+        },
+        "inputs": [
+          {
+            "key": "text",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "valueType": "any",
+            "required": true,
+            "label": "回复的内容",
+            "description": "common:core.module.input.description.Response content",
+            "placeholder": "common:core.module.input.description.Response content",
+            "value": "### 请上传合同文件📃",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": []
+      }
+    ],
+    "edges": [
+      {
+        "source": "gekqjtI8UmeLwrTW",
+        "target": "bHl4WM1OXjqXbKrJ",
+        "sourceHandle": "gekqjtI8UmeLwrTW-source-right",
+        "targetHandle": "bHl4WM1OXjqXbKrJ-target-left"
+      },
+      {
+        "source": "bHl4WM1OXjqXbKrJ",
+        "target": "pI5pUwUKS1EQRdXt",
+        "sourceHandle": "bHl4WM1OXjqXbKrJ-source-right",
+        "targetHandle": "pI5pUwUKS1EQRdXt-target-left"
+      },
+      {
+        "source": "bHl4WM1OXjqXbKrJ",
+        "target": "jqA0uhrcZrcKzKDK",
+        "sourceHandle": "bHl4WM1OXjqXbKrJ-source-right",
+        "targetHandle": "jqA0uhrcZrcKzKDK-target-left"
+      },
+      {
+        "source": "bHl4WM1OXjqXbKrJ",
+        "target": "jO4ZSbTNziBBQ4un",
+        "sourceHandle": "bHl4WM1OXjqXbKrJ-source-right",
+        "targetHandle": "jO4ZSbTNziBBQ4un-target-left"
+      },
+      {
+        "source": "bHl4WM1OXjqXbKrJ",
+        "target": "oF8Ck5omDHPtnUXz",
+        "sourceHandle": "bHl4WM1OXjqXbKrJ-source-right",
+        "targetHandle": "oF8Ck5omDHPtnUXz-target-left"
+      },
+      {
+        "source": "bHl4WM1OXjqXbKrJ",
+        "target": "iVTqJAVgbXytcmGG",
+        "sourceHandle": "bHl4WM1OXjqXbKrJ-source-right",
+        "targetHandle": "iVTqJAVgbXytcmGG-target-left"
+      },
+      {
+        "source": "bHl4WM1OXjqXbKrJ",
+        "target": "qIXVqBdf2AtWbAj4",
+        "sourceHandle": "bHl4WM1OXjqXbKrJ-source-right",
+        "targetHandle": "qIXVqBdf2AtWbAj4-target-left"
+      },
+      {
+        "source": "qIXVqBdf2AtWbAj4",
+        "target": "wd9fti5sLGNme0pz",
+        "sourceHandle": "qIXVqBdf2AtWbAj4-source-right",
+        "targetHandle": "wd9fti5sLGNme0pz-target-left"
+      },
+      {
+        "source": "oF8Ck5omDHPtnUXz",
+        "target": "wd9fti5sLGNme0pz",
+        "sourceHandle": "oF8Ck5omDHPtnUXz-source-right",
+        "targetHandle": "wd9fti5sLGNme0pz-target-left"
+      },
+      {
+        "source": "jO4ZSbTNziBBQ4un",
+        "target": "wd9fti5sLGNme0pz",
+        "sourceHandle": "jO4ZSbTNziBBQ4un-source-right",
+        "targetHandle": "wd9fti5sLGNme0pz-target-left"
+      },
+      {
+        "source": "pI5pUwUKS1EQRdXt",
+        "target": "wd9fti5sLGNme0pz",
+        "sourceHandle": "pI5pUwUKS1EQRdXt-source-right",
+        "targetHandle": "wd9fti5sLGNme0pz-target-left"
+      },
+      {
+        "source": "jqA0uhrcZrcKzKDK",
+        "target": "wd9fti5sLGNme0pz",
+        "sourceHandle": "jqA0uhrcZrcKzKDK-source-right",
+        "targetHandle": "wd9fti5sLGNme0pz-target-left"
+      },
+      {
+        "source": "iVTqJAVgbXytcmGG",
+        "target": "wd9fti5sLGNme0pz",
+        "sourceHandle": "iVTqJAVgbXytcmGG-source-right",
+        "targetHandle": "wd9fti5sLGNme0pz-target-left"
+      },
+      {
+        "source": "bpBa5iebMpJYNBQK",
+        "target": "i033meHOKg3Mfd0Q",
+        "sourceHandle": "bpBa5iebMpJYNBQK-source-right",
+        "targetHandle": "i033meHOKg3Mfd0Q-target-left"
+      },
+      {
+        "source": "wd9fti5sLGNme0pz",
+        "target": "zTUAMp6jmSilTL5H",
+        "sourceHandle": "wd9fti5sLGNme0pz-source-right",
+        "targetHandle": "zTUAMp6jmSilTL5H-target-left"
+      },
+      {
+        "source": "zTUAMp6jmSilTL5H",
+        "target": "bpBa5iebMpJYNBQK",
+        "sourceHandle": "zTUAMp6jmSilTL5H-source-right",
+        "targetHandle": "bpBa5iebMpJYNBQK-target-left"
+      },
+      {
+        "source": "brHF2YftmtYz38M1",
+        "target": "wdvU5GZnJMwj1u9J",
+        "sourceHandle": "brHF2YftmtYz38M1-source-ELSE",
+        "targetHandle": "wdvU5GZnJMwj1u9J-target-left"
+      },
+      {
+        "source": "448745",
+        "target": "brHF2YftmtYz38M1",
+        "sourceHandle": "448745-source-right",
+        "targetHandle": "brHF2YftmtYz38M1-target-left"
+      },
+      {
+        "source": "brHF2YftmtYz38M1",
+        "target": "mhdMeoTxQe0RSoax",
+        "sourceHandle": "brHF2YftmtYz38M1-source-IF",
+        "targetHandle": "mhdMeoTxQe0RSoax-target-left"
+      },
+      {
+        "source": "mhdMeoTxQe0RSoax",
+        "target": "gekqjtI8UmeLwrTW",
+        "sourceHandle": "mhdMeoTxQe0RSoax-source-right",
+        "targetHandle": "gekqjtI8UmeLwrTW-target-left"
+      }
+    ],
+    "chatConfig": {
+      "welcomeText": " 🎉 欢迎使用合同审查与分析大师。请提供您需要审查的合同文本，我将从主体合法性、内容合法性、条款完备性与明确性、风险防控与实用性、形式与表述规范以及履行与终止等六个维度进行专业分析。我会为每个维度评分并给出整体评级，同时提供具体的问题指出和修改建议，帮助您完善合同内容，降低法律风险。（可通过接入法律知识库让系统具备深厚的法律知识背景）\n***\n📎 **请拖拽或点击上传合同文件**\n> 💡 支持格式：PDF、Word文档  \n> ⚡ 上传后即可开始智能分析",
+      "variables": [],
+      "scheduledTriggerConfig": {
+        "cronString": "",
+        "timezone": "Asia/Shanghai",
+        "defaultPrompt": ""
+      },
+      "fileSelectConfig": {
+        "canSelectFile": true,
+        "canSelectImg": true,
+        "maxFiles": 15
+      },
+      "_id": "67fc67b14a3d12d97ea192c3"
+    }
+  }
+}
