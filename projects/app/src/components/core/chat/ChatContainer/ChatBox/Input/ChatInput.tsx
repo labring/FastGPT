@@ -423,9 +423,13 @@ const ChatInput = ({
           />
         )}
         {/* file preview */}
-        <Box px={[1, 3]}>
-          <FilePreview fileList={fileList} removeFiles={removeFiles} />
-        </Box>
+        {!isVoiceInputActive && (
+          <Box px={[1, 3]}>
+            <FilePreview fileList={fileList} removeFiles={removeFiles} />
+          </Box>
+        )}
+
+        {/* loading spinner */}
 
         {/* voice input and loading container */}
         {!inputValue && (
