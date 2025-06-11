@@ -8,11 +8,11 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 export class MCPClient {
   private client: Client;
   private url: string;
-  private headerAuth: { key: string; value: string }[];
+  private headers: Record<string, any> = {};
 
-  constructor(config: { url: string; headerAuth: { key: string; value: string }[] }) {
+  constructor(config: { url: string; headers: Record<string, any> }) {
     this.url = config.url;
-    this.headerAuth = config.headerAuth;
+    this.headers = config.headers;
     this.client = new Client({
       name: 'FastGPT-MCP-client',
       version: '1.0.0'
@@ -23,7 +23,7 @@ export class MCPClient {
     try {
       const transport = new StreamableHTTPClientTransport(new URL(this.url), {
         requestInit: {
-          headers: Object.fromEntries(this.headerAuth.map(({ key, value }) => [key, value]))
+          headers: this.headers
         }
       });
       await this.client.connect(transport);
@@ -32,14 +32,15 @@ export class MCPClient {
       await this.client.connect(
         new SSEClientTransport(new URL(this.url), {
           requestInit: {
-            headers: Object.fromEntries(this.headerAuth.map(({ key, value }) => [key, value]))
+            headers: this.headers
           },
           eventSourceInit: {
             fetch: (url, init) => {
-              const headers = new Headers(init?.headers || {});
-              this.headerAuth.forEach(({ key, value }) => {
-                headers.set(key, value);
+              const headers = new Headers({
+                ...init?.headers,
+                ...this.headers
               });
+
               return fetch(url, {
                 ...init,
                 headers

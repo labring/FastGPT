@@ -8,7 +8,6 @@ import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { encryptSecret } from '@fastgpt/global/common/secret/utils';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
   teamId,
@@ -168,57 +167,4 @@ export async function rewriteAppWorkflowToDetail({
   }
 
   return nodes;
-}
-
-export async function rewriteAppWorkflowToSimple(formatNodes: StoreNodeItemType[]) {
-  formatNodes.forEach((node) => {
-    if (node.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) return;
-
-    node.inputs.forEach((input) => {
-      if (input.key === NodeInputKeyEnum.datasetSelectList) {
-        const val = input.value as undefined | { datasetId: string }[] | { datasetId: string };
-        if (!val) {
-          input.value = [];
-        } else if (Array.isArray(val)) {
-          // Not rewrite reference value
-          if (val.length === 2 && val.every((item) => typeof item === 'string')) {
-            return;
-          }
-          input.value = val
-            .map((dataset: { datasetId: string }) => ({
-              datasetId: dataset.datasetId
-            }))
-            .filter((item) => !!item.datasetId);
-        } else if (typeof val === 'object' && val !== null) {
-          input.value = [
-            {
-              datasetId: val.datasetId
-            }
-          ];
-        }
-      }
-    });
-  });
-}
-
-export async function saveAndClearHttpAuth(nodes: StoreNodeItemType[]) {
-  const secretKey = process.env.AES256_SECRET_KEY;
-  if (!secretKey) return;
-
-  // Clear all authentication values in nodes to prevent leakage
-  nodes.forEach((node) => {
-    const httpAuth = node.inputs.find((item) =>
-      [NodeInputKeyEnum.httpAuth].includes(item.key as NodeInputKeyEnum)
-    )?.value;
-    if (!httpAuth) return;
-
-    Object.keys(httpAuth).forEach((key) => {
-      if (httpAuth[key]?.value) {
-        const value = httpAuth[key]?.value;
-        const secret = encryptSecret(value, secretKey);
-        httpAuth[key].value = '';
-        httpAuth[key].secret = secret;
-      }
-    });
-  });
 }

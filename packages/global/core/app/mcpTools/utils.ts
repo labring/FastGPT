@@ -13,13 +13,13 @@ import { type StoreSecretValueType } from '../../../common/secret/type';
 export const getMCPToolSetRuntimeNode = ({
   url,
   toolList,
-  headerAuth,
+  headerSecret,
   name,
   avatar
 }: {
   url: string;
   toolList: McpToolConfigType[];
-  headerAuth: StoreSecretValueType;
+  headerSecret?: StoreSecretValueType;
   name?: string;
   avatar?: string;
 }): RuntimeNodeItemType => {
@@ -37,7 +37,7 @@ export const getMCPToolSetRuntimeNode = ({
         value: {
           url,
           toolList,
-          headerAuth
+          headerSecret
         }
       }
     ],
@@ -50,12 +50,12 @@ export const getMCPToolSetRuntimeNode = ({
 export const getMCPToolRuntimeNode = ({
   tool,
   url,
-  headerAuth,
+  headerSecret,
   avatar = 'core/app/type/mcpToolsFill'
 }: {
   tool: McpToolConfigType;
   url: string;
-  headerAuth: StoreSecretValueType;
+  headerSecret?: StoreSecretValueType;
   avatar?: string;
 }): RuntimeNodeItemType => {
   return {
@@ -72,7 +72,7 @@ export const getMCPToolRuntimeNode = ({
         value: {
           ...tool,
           url,
-          headerAuth
+          headerSecret
         }
       },
       ...Object.entries(tool.inputSchema?.properties || {}).map(([key, value]) => ({

@@ -255,7 +255,6 @@ const Button = defineStyleConfig({
     grayGhost: {
       color: 'myGray.500',
       fontWeight: '500',
-      p: 0,
       bg: 'transparent',
       transition: 'background 0.1s',
       _hover: {

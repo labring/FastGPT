@@ -98,8 +98,6 @@
   "app_not_version": " 该应用未发布过，请先发布应用",
   "auth_config": "鉴权配置",
   "auth_type": "鉴权类型",
-  "auth_type.Basic": "Basic",
-  "auth_type.Bearer": "Bearer",
   "auth_type.Custom": "自定义",
   "back": "返回",
   "base_config": "基础配置",

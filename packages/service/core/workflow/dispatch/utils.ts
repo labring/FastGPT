@@ -164,8 +164,8 @@ export const rewriteRuntimeWorkFlow = (
     const toolList =
       toolSetNode.inputs.find((input) => input.key === 'toolSetData')?.value?.toolList || [];
     const url = toolSetNode.inputs.find((input) => input.key === 'toolSetData')?.value?.url;
-    const headerAuth = toolSetNode.inputs.find((input) => input.key === 'toolSetData')?.value
-      ?.headerAuth;
+    const headerSecret = toolSetNode.inputs.find((input) => input.key === 'toolSetData')?.value
+      ?.headerSecret;
 
     const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
 
@@ -174,7 +174,7 @@ export const rewriteRuntimeWorkFlow = (
         avatar: toolSetNode.avatar,
         tool,
         url,
-        headerAuth
+        headerSecret
       });
 
       nodes.push({ ...newToolNode, name: `${toolSetNode.name} / ${tool.name}` });

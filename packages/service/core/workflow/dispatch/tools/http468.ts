@@ -29,7 +29,7 @@ import { createFileToken } from '../../../../support/permission/controller';
 import { JSONPath } from 'jsonpath-plus';
 import type { SystemPluginSpecialResponse } from '../../../../../plugins/type';
 import json5 from 'json5';
-import { getSecretValue } from '@fastgpt/global/common/secret/utils';
+import { getSecretValue } from '../../../../common/secret/utils';
 
 type PropsArrType = {
   key: string;
@@ -84,7 +84,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       system_httpFormBody: httpFormBody = [],
       system_httpContentType: httpContentType = ContentTypes.json,
       system_httpTimeout: httpTimeout = 60,
-      system_httpAuth: httpAuth,
+      system_header_secret: headerSecret,
       [NodeInputKeyEnum.addInputParam]: dynamicInput,
       ...body
     }
@@ -158,110 +158,6 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
 
       return String(val);
     };
-    // Test cases for variable replacement in JSON body
-    // const bodyTest = () => {
-    //   const testData = [
-    //     // 基本字符串替换
-    //     {
-    //       body: `{"name":"{{name}}","age":"18"}`,
-    //       variables: [{ key: '{{name}}', value: '测试' }],
-    //       result: `{"name":"测试","age":"18"}`
-    //     },
-    //     // 特殊字符处理
-    //     {
-    //       body: `{"text":"{{text}}"}`,
-    //       variables: [{ key: '{{text}}', value: '包含"引号"和\\反斜杠' }],
-    //       result: `{"text":"包含\\"引号\\"和\\反斜杠"}`
-    //     },
-    //     // 数字类型处理
-    //     {
-    //       body: `{"count":{{count}},"price":{{price}}}`,
-    //       variables: [
-    //         { key: '{{count}}', value: '42' },
-    //         { key: '{{price}}', value: '99.99' }
-    //       ],
-    //       result: `{"count":42,"price":99.99}`
-    //     },
-    //     // 布尔值处理
-    //     {
-    //       body: `{"isActive":{{isActive}},"hasData":{{hasData}}}`,
-    //       variables: [
-    //         { key: '{{isActive}}', value: 'true' },
-    //         { key: '{{hasData}}', value: 'false' }
-    //       ],
-    //       result: `{"isActive":true,"hasData":false}`
-    //     },
-    //     // 对象类型处理
-    //     {
-    //       body: `{"user":{{user}},"user2":"{{user2}}"}`,
-    //       variables: [
-    //         { key: '{{user}}', value: `{"id":1,"name":"张三"}` },
-    //         { key: '{{user2}}', value: `{"id":1,"name":"张三"}` }
-    //       ],
-    //       result: `{"user":{"id":1,"name":"张三"},"user2":"{\\"id\\":1,\\"name\\":\\"张三\\"}"}`
-    //     },
-    //     // 数组类型处理
-    //     {
-    //       body: `{"items":{{items}}}`,
-    //       variables: [{ key: '{{items}}', value: '[1, 2, 3]' }],
-    //       result: `{"items":[1,2,3]}`
-    //     },
-    //     // null 和 undefined 处理
-    //     {
-    //       body: `{"nullValue":{{nullValue}},"undefinedValue":{{undefinedValue}}}`,
-    //       variables: [
-    //         { key: '{{nullValue}}', value: 'null' },
-    //         { key: '{{undefinedValue}}', value: 'undefined' }
-    //       ],
-    //       result: `{"nullValue":null,"undefinedValue":null}`
-    //     },
-    //     // 嵌套JSON结构
-    //     {
-    //       body: `{"data":{"nested":{"value":"{{nestedValue}}"}}}`,
-    //       variables: [{ key: '{{nestedValue}}', value: '嵌套值' }],
-    //       result: `{"data":{"nested":{"value":"嵌套值"}}}`
-    //     },
-    //     // 多变量替换
-    //     {
-    //       body: `{"first":"{{first}}","second":"{{second}}","third":{{third}}}`,
-    //       variables: [
-    //         { key: '{{first}}', value: '第一' },
-    //         { key: '{{second}}', value: '第二' },
-    //         { key: '{{third}}', value: '3' }
-    //       ],
-    //       result: `{"first":"第一","second":"第二","third":3}`
-    //     },
-    //     // JSON字符串作为变量值
-    //     {
-    //       body: `{"config":{{config}}}`,
-    //       variables: [{ key: '{{config}}', value: '{"setting":"enabled","mode":"advanced"}' }],
-    //       result: `{"config":{"setting":"enabled","mode":"advanced"}}`
-    //     }
-    //   ];
-
-    //   for (let i = 0; i < testData.length; i++) {
-    //     const item = testData[i];
-    //     let bodyStr = item.body;
-    //     for (const variable of item.variables) {
-    //       const isQuote = isVariableInQuotes(bodyStr, variable.key);
-    //       bodyStr = bodyStr.replace(variable.key, valToStr(variable.value, isQuote));
-    //     }
-    //     bodyStr = bodyStr.replace(/(".*?")\s*:\s*undefined\b/g, '$1:null');
-
-    //     console.log(bodyStr === item.result, i);
-    //     if (bodyStr !== item.result) {
-    //       console.log(bodyStr);
-    //       console.log(item.result);
-    //     } else {
-    //       try {
-    //         JSON.parse(item.result);
-    //       } catch (error) {
-    //         console.log('反序列化异常', i, item.result);
-    //       }
-    //     }
-    //   }
-    // };
-    // bodyTest();
 
     // 1. Replace {{key.key}} variables
     const regex1 = /\{\{\$([^.]+)\.([^$]+)\$\}\}/g;
@@ -332,16 +228,9 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       return Promise.reject('Header 为非法 JSON 格式');
     }
   })();
-
-  const sensitiveHeaders = (
-    await getSecretValue({
-      storeSecret: httpAuth,
-      secretKey: process.env.AES256_SECRET_KEY
-    })
-  ).reduce((acc: Record<string, string>, item) => {
-    acc[item.key] = item.value;
-    return acc;
-  }, {});
+  const sensitiveHeaders = getSecretValue({
+    storeSecret: headerSecret
+  });
 
   const params = httpParams.reduce((acc: Record<string, string>, item) => {
     const key = replaceStringVariables(item.key);

@@ -32,7 +32,7 @@ import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 export type MCPToolSetData = {
   url: string;
   toolList: McpToolConfigType[];
-  headerAuth: StoreSecretValueType;
+  headerSecret: StoreSecretValueType;
 };
 
 export type EditMCPToolsProps = {
@@ -52,7 +52,7 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
       name: '',
       mcpData: {
         url: '',
-        headerAuth: {},
+        headerSecret: {},
         toolList: []
       }
     }
@@ -67,7 +67,7 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
         avatar: data.avatar,
         toolList: data.mcpData.toolList,
         url: data.mcpData.url,
-        headerAuth: data.mcpData.headerAuth,
+        headerSecret: data.mcpData.headerSecret,
         parentId
       });
     },
@@ -146,12 +146,14 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
             <Box>{t('app:MCP_tools_url')}</Box>
             <Box flex={1} />
             <HeaderAuthConfig
-              storeHeaderAuthConfig={mcpData.headerAuth}
-              onSave={(data) => {
-                setValue('mcpData.headerAuth', data);
+              storeHeaderSecretConfig={mcpData.headerSecret}
+              onUpdate={(data) => {
+                setValue('mcpData.headerSecret', data);
               }}
-              size={'xs'}
-              variant={'grayGhost'}
+              buttonProps={{
+                size: 'sm',
+                variant: 'grayGhost'
+              }}
             />
           </Flex>
           <Flex alignItems={'center'} gap={2} mt={2}>
@@ -170,7 +172,7 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
               onClick={() => {
                 runGetMCPTools({
                   url: mcpData.url,
-                  headerAuth: mcpData.headerAuth
+                  headerSecret: mcpData.headerSecret
                 });
               }}
             >
