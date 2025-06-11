@@ -139,6 +139,25 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       ...res
     ];
   }, [systemModelList, t]);
+  // Model price map
+  const modelPriceMap = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        inputPrice?: number;
+        outputPrice?: number;
+        charsPointsPrice?: number;
+      }
+    >();
+    systemModelList.forEach((model) => {
+      map.set(model.model, {
+        inputPrice: model.inputPrice,
+        outputPrice: model.outputPrice,
+        charsPointsPrice: model.charsPointsPrice
+      });
+    });
+    return map;
+  }, [systemModelList]);
 
   const computeTimespan = (daysDiff: number, hoursDiff: number) => {
     const options: { label: string; value: 'minute' | 'hour' | 'day' }[] = [];
@@ -270,23 +289,6 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       return [];
     }
 
-    // Model price map
-    const modelPriceMap = new Map<
-      string,
-      {
-        inputPrice?: number;
-        outputPrice?: number;
-        charsPointsPrice?: number;
-      }
-    >();
-    systemModelList.forEach((model) => {
-      modelPriceMap.set(model.model, {
-        inputPrice: model.inputPrice,
-        outputPrice: model.outputPrice,
-        charsPointsPrice: model.charsPointsPrice
-      });
-    });
-
     return dashboardData.map((item) => {
       // Format date based on timespan
       const dateFormat = (() => {
@@ -365,7 +367,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
         maxTpm
       };
     });
-  }, [dashboardData, systemModelList, filterProps.model, filterProps.timespan]);
+  }, [dashboardData, filterProps.model, filterProps.timespan, modelPriceMap]);
 
   const [tokensUsageType, setTokensUsageType] = useState<
     'inputTokens' | 'outputTokens' | 'totalTokens'
@@ -688,6 +690,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
             data={dashboardData}
             filterProps={filterProps}
             channelList={channelList}
+            modelPriceMap={modelPriceMap}
             onViewDetail={handleViewDetail}
           />
         )}

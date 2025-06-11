@@ -22,17 +22,28 @@ export type DataTableComponentProps = {
     label: string;
     value: string;
   }[];
+  modelPriceMap: Map<
+    string,
+    {
+      inputPrice?: number;
+      outputPrice?: number;
+      charsPointsPrice?: number;
+    }
+  >;
   onViewDetail: (model: string) => void;
 };
+
+type SortFieldType = 'totalCalls' | 'errorCalls' | 'totalCost';
 
 const DataTableComponent = ({
   data,
   filterProps,
   onViewDetail,
-  channelList
+  channelList,
+  modelPriceMap
 }: DataTableComponentProps) => {
   const { t } = useTranslation();
-  const [sortField, setSortField] = useState<'totalCalls' | 'errorCalls'>('totalCalls');
+  const [sortField, setSortField] = useState<SortFieldType>('totalCalls');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Create a mapping from channel ID to channel name
@@ -62,6 +73,7 @@ const DataTableComponent = ({
       channelName?: string;
       totalCalls: number;
       errorCalls: number;
+      totalCost: number;
       avgResponseTime: number;
       avgTtfb: number;
     }[] = [];
@@ -74,6 +86,7 @@ const DataTableComponent = ({
           model: string;
           totalCalls: number;
           errorCalls: number;
+          totalCost: number;
           totalResponseTime: number;
           totalTtfb: number;
         }
@@ -88,6 +101,7 @@ const DataTableComponent = ({
             model: item.model || '-',
             totalCalls: 0,
             errorCalls: 0,
+            totalCost: 0,
             totalResponseTime: 0,
             totalTtfb: 0
           };
@@ -97,17 +111,34 @@ const DataTableComponent = ({
           existing.totalResponseTime += item.total_time_milliseconds || 0;
           existing.totalTtfb += item.total_ttfb_milliseconds || 0;
 
+          const modelPricing = modelPriceMap.get(item.model);
+          if (modelPricing) {
+            const inputTokens = item.input_tokens || 0;
+            const outputTokens = item.output_tokens || 0;
+            const isIOPriceType =
+              typeof modelPricing.inputPrice === 'number' && modelPricing.inputPrice > 0;
+
+            const totalPoints = isIOPriceType
+              ? (modelPricing.inputPrice || 0) * (inputTokens / 1000) +
+                (modelPricing.outputPrice || 0) * (outputTokens / 1000)
+              : ((modelPricing.charsPointsPrice || 0) * (inputTokens + outputTokens)) / 1000;
+
+            existing.totalCost += totalPoints;
+          }
+
           channelMap.set(channelId, existing);
         });
       });
 
       channelMap.forEach((item, channelId) => {
         const successCalls = item.totalCalls - item.errorCalls;
+
         rows.push({
           channelName: channelIdToNameMap.get(parseInt(channelId)) || '',
           model: item.model,
           totalCalls: item.totalCalls,
           errorCalls: item.errorCalls,
+          totalCost: item.totalCost,
           avgResponseTime: successCalls > 0 ? item.totalResponseTime / successCalls / 1000 : 0,
           avgTtfb: successCalls > 0 ? item.totalTtfb / successCalls / 1000 : 0
         });
@@ -119,6 +150,7 @@ const DataTableComponent = ({
         {
           totalCalls: number;
           errorCalls: number;
+          totalCost: number;
           totalResponseTime: number;
           totalTtfb: number;
         }
@@ -132,6 +164,7 @@ const DataTableComponent = ({
           const existing = modelMap.get(modelName) || {
             totalCalls: 0,
             errorCalls: 0,
+            totalCost: 0,
             totalResponseTime: 0,
             totalTtfb: 0
           };
@@ -140,6 +173,21 @@ const DataTableComponent = ({
           existing.errorCalls += item.exception_count || 0;
           existing.totalResponseTime += item.total_time_milliseconds || 0;
           existing.totalTtfb += item.total_ttfb_milliseconds || 0;
+
+          const modelPricing = modelPriceMap.get(item.model);
+          if (modelPricing) {
+            const inputTokens = item.input_tokens || 0;
+            const outputTokens = item.output_tokens || 0;
+            const isIOPriceType =
+              typeof modelPricing.inputPrice === 'number' && modelPricing.inputPrice > 0;
+
+            const totalPoints = isIOPriceType
+              ? (modelPricing.inputPrice || 0) * (inputTokens / 1000) +
+                (modelPricing.outputPrice || 0) * (outputTokens / 1000)
+              : ((modelPricing.charsPointsPrice || 0) * (inputTokens + outputTokens)) / 1000;
+
+            existing.totalCost += totalPoints;
+          }
 
           modelMap.set(modelName, existing);
         });
@@ -151,6 +199,7 @@ const DataTableComponent = ({
           model: modelName,
           totalCalls: item.totalCalls,
           errorCalls: item.errorCalls,
+          totalCost: item.totalCost,
           avgResponseTime: successCalls > 0 ? item.totalResponseTime / successCalls / 1000 : 0,
           avgTtfb: successCalls > 0 ? item.totalTtfb / successCalls / 1000 : 0
         });
@@ -167,9 +216,9 @@ const DataTableComponent = ({
     }
 
     return rows;
-  }, [data, showChannelColumn, sortField, sortDirection]);
+  }, [data, showChannelColumn, sortField, modelPriceMap, channelIdToNameMap, sortDirection]);
 
-  const handleSort = (field: 'totalCalls' | 'errorCalls') => {
+  const handleSort = (field: SortFieldType) => {
     if (sortField === field) {
       // Toggle between desc and asc
       setSortDirection(sortDirection === 'desc' ? 'asc' : 'desc');
@@ -180,7 +229,7 @@ const DataTableComponent = ({
     }
   };
 
-  const getSortIcon = (field: 'totalCalls' | 'errorCalls') => {
+  const getSortIcon = (field: SortFieldType) => {
     if (sortField !== field) return null;
     return sortDirection === 'desc' ? '↓' : '↑';
   };
@@ -190,7 +239,7 @@ const DataTableComponent = ({
       <TableContainer fontSize={'sm'}>
         <Table>
           <Thead>
-            <Tr>
+            <Tr userSelect={'none'}>
               <Th>{t('account_model:dashboard_model')}</Th>
               {showChannelColumn && <Th>{t('account_model:dashboard_channel')}</Th>}
               <Th
@@ -207,6 +256,13 @@ const DataTableComponent = ({
               >
                 {t('account_model:volunme_of_failed_calls')} {getSortIcon('errorCalls')}
               </Th>
+              <Th
+                cursor="pointer"
+                onClick={() => handleSort('totalCost')}
+                _hover={{ color: 'primary.600' }}
+              >
+                {t('account_model:aipoint_usage')} {getSortIcon('totalCost')}
+              </Th>
               <Th>{t('account_model:avg_response_time')}</Th>
               <Th>{t('account_model:avg_ttfb')}</Th>
               <Th></Th>
@@ -219,6 +275,7 @@ const DataTableComponent = ({
                 {showChannelColumn && <Td>{item.channelName}</Td>}
                 <Td color={'primary.700'}>{formatNumber(item.totalCalls).toLocaleString()}</Td>
                 <Td color={'red.700'}>{formatNumber(item.errorCalls)}</Td>
+                <Td>{formatNumber(item.totalCost).toLocaleString()}</Td>
                 <Td color={item.avgResponseTime > 10 ? 'yellow.700' : ''}>
                   {item.avgResponseTime > 0 ? `${item.avgResponseTime.toFixed(2)}` : '-'}
                 </Td>
