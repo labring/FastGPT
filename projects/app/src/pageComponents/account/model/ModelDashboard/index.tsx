@@ -121,13 +121,15 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       const res = await getChannelList().then((res) =>
         res.map((item) => ({
           label: item.name,
-          value: `${item.id}`
+          value: `${item.id}`,
+          name: item.name
         }))
       );
       return [
         {
           label: t('common:All'),
-          value: ''
+          value: '',
+          name: t('common:All')
         },
         ...res
       ];
@@ -746,6 +748,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
             data={dashboardData}
             filterProps={filterProps}
             systemModelList={systemModelList}
+            channelList={channelList}
             onViewDetail={handleViewDetail}
           />
         )}

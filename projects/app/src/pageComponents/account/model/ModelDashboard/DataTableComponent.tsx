@@ -24,6 +24,11 @@ export type DataTableComponentProps = {
     outputPrice?: number;
     charsPointsPrice?: number;
   }[];
+  channelList: {
+    label: string;
+    value: string;
+    name: string;
+  }[];
   onViewDetail: (model: string) => void;
 };
 
@@ -31,11 +36,26 @@ const DataTableComponent = ({
   data,
   filterProps,
   systemModelList,
+  channelList,
   onViewDetail
 }: DataTableComponentProps) => {
   const { t } = useTranslation();
   const [sortField, setSortField] = useState<'totalCalls' | 'errorCalls' | null>('totalCalls');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Create a mapping from channel ID to channel name
+  const channelIdToNameMap = useMemo(() => {
+    const map = new Map<number, string>();
+    channelList.forEach((channel) => {
+      if (channel.value && channel.value !== '') {
+        const channelId = parseInt(channel.value);
+        if (!isNaN(channelId)) {
+          map.set(channelId, channel.name);
+        }
+      }
+    });
+    return map;
+  }, [channelList]);
 
   // display the channel column
   const showChannelColumn = !!filterProps.model;
@@ -48,6 +68,7 @@ const DataTableComponent = ({
     const rows: {
       model: string;
       channel_id?: string;
+      channel_name?: string;
       totalCalls: number;
       errorCalls: number;
       avgResponseTime: number;
@@ -62,15 +83,19 @@ const DataTableComponent = ({
         );
 
         modelsToProcess.forEach((model: DashboardDataItemType) => {
+          const channelId = model.channel_id ?? 0;
+          const channelName = channelIdToNameMap.get(channelId);
+
           rows.push({
             model: model.model || '-',
-            channel_id: `${model.channel_id ?? 0}`,
+            channel_id: `${channelId}`,
+            channel_name: channelName,
             totalCalls: model.request_count || 0,
             errorCalls: model.exception_count || 0,
             avgResponseTime: model.total_time_milliseconds
               ? model.total_time_milliseconds / 1000
-              : 0, // 转换为秒
-            avgTtfb: model.total_ttfb_milliseconds ? model.total_ttfb_milliseconds / 1000 : 0 // 转换为秒
+              : 0,
+            avgTtfb: model.total_ttfb_milliseconds ? model.total_ttfb_milliseconds / 1000 : 0
           });
         });
       });
@@ -116,8 +141,8 @@ const DataTableComponent = ({
           totalCalls: aggregated.totalCalls,
           errorCalls: aggregated.errorCalls,
           avgResponseTime:
-            aggregated.count > 0 ? aggregated.totalResponseTime / aggregated.count / 1000 : 0, // 转换为秒
-          avgTtfb: aggregated.count > 0 ? aggregated.totalTtfb / aggregated.count / 1000 : 0 // 转换为秒
+            aggregated.count > 0 ? aggregated.totalResponseTime / aggregated.count / 1000 : 0,
+          avgTtfb: aggregated.count > 0 ? aggregated.totalTtfb / aggregated.count / 1000 : 0
         });
       });
     }
@@ -132,7 +157,7 @@ const DataTableComponent = ({
     }
 
     return rows;
-  }, [data, filterProps.model, showChannelColumn, sortField, sortDirection]);
+  }, [data, filterProps.model, showChannelColumn, sortField, sortDirection, channelIdToNameMap]);
 
   const handleSort = (field: 'totalCalls' | 'errorCalls') => {
     if (sortField === field) {
@@ -180,7 +205,7 @@ const DataTableComponent = ({
             {tableData.map((item, index) => (
               <Tr key={index}>
                 <Td>{item.model}</Td>
-                {showChannelColumn && <Td>{item.channel_id}</Td>}
+                {showChannelColumn && <Td>{item.channel_name || item.channel_id}</Td>}
                 <Td color={'primary.600'}>{formatNumber(item.totalCalls)}</Td>
                 <Td color={'yellow.600'}>{formatNumber(item.errorCalls)}</Td>
                 <Td color={item.avgResponseTime > 10 ? 'red.600' : ''}>
