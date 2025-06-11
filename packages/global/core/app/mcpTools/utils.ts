@@ -37,15 +37,7 @@ export const getMCPToolSetRuntimeNode = ({
         value: {
           url,
           toolList,
-          headerAuth: Object.fromEntries(
-            Object.entries(headerAuth || {}).map(([key, value]) => [
-              key,
-              {
-                secretId: value.secretId,
-                value: ''
-              }
-            ])
-          )
+          headerAuth
         }
       }
     ],
@@ -80,15 +72,7 @@ export const getMCPToolRuntimeNode = ({
         value: {
           ...tool,
           url,
-          headerAuth: Object.fromEntries(
-            Object.entries(headerAuth || {}).map(([key, value]) => [
-              key,
-              {
-                secretId: value.secretId,
-                value: ''
-              }
-            ])
-          )
+          headerAuth
         }
       },
       ...Object.entries(tool.inputSchema?.properties || {}).map(([key, value]) => ({

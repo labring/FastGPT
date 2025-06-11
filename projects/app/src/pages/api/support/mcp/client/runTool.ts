@@ -2,7 +2,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { MCPClient } from '@fastgpt/service/core/app/mcp';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import { getHeaderAuthValue } from '@fastgpt/service/support/secret/controller';
+import { getSecretValue } from '@fastgpt/global/common/secret/utils';
 
 export type RunMCPToolQuery = {};
 
@@ -21,7 +21,13 @@ async function handler(
 ): Promise<RunMCPToolResponse> {
   const { url, toolName, headerAuth, params } = req.body;
 
-  const mcpClient = new MCPClient({ url, headerAuth: await getHeaderAuthValue(headerAuth) });
+  const mcpClient = new MCPClient({
+    url,
+    headerAuth: await getSecretValue({
+      storeSecret: headerAuth,
+      secretKey: process.env.AES256_SECRET_KEY
+    })
+  });
 
   return mcpClient.toolCall(toolName, params);
 }

@@ -29,7 +29,7 @@ import { createFileToken } from '../../../../support/permission/controller';
 import { JSONPath } from 'jsonpath-plus';
 import type { SystemPluginSpecialResponse } from '../../../../../plugins/type';
 import json5 from 'json5';
-import { getHeaderAuthValue } from '../../../../support/secret/controller';
+import { getSecretValue } from '@fastgpt/global/common/secret/utils';
 
 type PropsArrType = {
   key: string;
@@ -315,16 +315,11 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
 
   httpReqUrl = replaceStringVariables(httpReqUrl);
 
-  const headers = await (async () => {
+  const publicHeaders = await (async () => {
     try {
       const contentType = contentTypeMap[httpContentType];
       if (contentType) {
         httpHeader = [{ key: 'Content-Type', value: contentType, type: 'string' }, ...httpHeader];
-      }
-
-      if (httpAuth && Object.keys(httpAuth).length > 0) {
-        const authHeaders = await getHeaderAuthValue(httpAuth);
-        httpHeader = [...authHeaders, ...httpHeader];
       }
 
       return httpHeader.reduce((acc: Record<string, string>, item) => {
@@ -337,6 +332,16 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       return Promise.reject('Header 为非法 JSON 格式');
     }
   })();
+
+  const sensitiveHeaders = (
+    await getSecretValue({
+      storeSecret: httpAuth,
+      secretKey: process.env.AES256_SECRET_KEY
+    })
+  ).reduce((acc: Record<string, string>, item) => {
+    acc[item.key] = item.value;
+    return acc;
+  }, {});
 
   const params = httpParams.reduce((acc: Record<string, string>, item) => {
     const key = replaceStringVariables(item.key);
@@ -422,7 +427,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       return fetchData({
         method: httpMethod,
         url: httpReqUrl,
-        headers,
+        headers: { ...publicHeaders, ...sensitiveHeaders },
         body: requestBody,
         params,
         timeout: httpTimeout
@@ -475,7 +480,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         totalPoints: 0,
         params: Object.keys(params).length > 0 ? params : undefined,
         body: Object.keys(formattedRequestBody).length > 0 ? formattedRequestBody : undefined,
-        headers: Object.keys(headers).length > 0 ? headers : undefined,
+        headers: Object.keys(publicHeaders).length > 0 ? publicHeaders : undefined,
         httpResult: rawResponse
       },
       [DispatchNodeResponseKeyEnum.toolResponses]:
@@ -490,7 +495,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         params: Object.keys(params).length > 0 ? params : undefined,
         body: Object.keys(formattedRequestBody).length > 0 ? formattedRequestBody : undefined,
-        headers: Object.keys(headers).length > 0 ? headers : undefined,
+        headers: Object.keys(publicHeaders).length > 0 ? publicHeaders : undefined,
         httpResult: { error: formatHttpError(error) }
       },
       [NodeOutputKeyEnum.httpRawResponse]: getErrText(error)

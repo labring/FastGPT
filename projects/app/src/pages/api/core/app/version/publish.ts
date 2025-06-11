@@ -32,11 +32,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
     isPlugin: app.type === AppTypeEnum.plugin
   });
 
-  await saveAndClearHttpAuth({
-    nodes: formatNodes,
-    appId,
-    teamId
-  });
+  await saveAndClearHttpAuth(formatNodes);
   await rewriteAppWorkflowToSimple(formatNodes);
 
   if (autoSave) {
