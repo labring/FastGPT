@@ -24,38 +24,29 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 
 const getShowInput = ({
-  authValue,
+  secretValue,
   editingIndex,
   index
 }: {
-  authValue?: SecretValueType;
+  secretValue?: SecretValueType;
   editingIndex: number | null;
   index: number;
 }) => {
-  const hasAuthId = !!authValue?.secretId;
-  const hasAuthValue = !!authValue?.value;
+  const hasSecret = !!secretValue?.secret;
+  const hasValue = !!secretValue?.value;
   const isEditing = editingIndex === index;
 
-  return !hasAuthId || hasAuthValue || isEditing;
+  return !hasSecret || hasValue || isEditing;
 };
 
-const formatAuthData = ({
-  data,
-  prefix = ''
-}: {
-  data: HeaderAuthConfigType;
-  prefix?: string;
-}): StoreSecretValueType => {
+const formatAuthData = ({ data }: { data: HeaderAuthConfigType }): StoreSecretValueType => {
   if (!data?.enableAuth) return {};
 
-  // 判断认证类型
   const hasCustomHeaders = Array.isArray(data.customHeaders) && data.customHeaders.length > 0;
-  const hasBearer = !!data.BearerValue?.secretId || !!data.BearerValue?.value;
-  const hasBasic = !!data.BasicValue?.secretId || !!data.BasicValue?.value;
+  const hasBearer = !!data.BearerValue?.secret || !!data.BearerValue?.value;
+  const hasBasic = !!data.BasicValue?.secret || !!data.BasicValue?.value;
 
-  // 根据字段值判断使用哪种认证类型
   if (hasCustomHeaders && data.customHeaders) {
-    // 使用自定义头部认证
     return Object.fromEntries(
       data.customHeaders
         .filter(({ key }) => key)
@@ -63,24 +54,22 @@ const formatAuthData = ({
           key,
           {
             value: value?.value || '',
-            secretId: prefix + (value?.secretId || '')
+            secret: value?.secret || ''
           }
         ])
     );
   } else if (hasBearer) {
-    // 使用Bearer认证
     return {
       Bearer: {
         value: data.BearerValue?.value || '',
-        secretId: prefix + (data.BearerValue?.secretId || '')
+        secret: data.BearerValue?.secret || ''
       }
     };
   } else if (hasBasic) {
-    // 使用Basic认证
     return {
       Basic: {
         value: data.BasicValue?.value || '',
-        secretId: prefix + (data.BasicValue?.secretId || '')
+        secret: data.BasicValue?.secret || ''
       }
     };
   }
@@ -89,19 +78,13 @@ const formatAuthData = ({
 };
 
 const parseAuthData = ({
-  data,
-  prefix = ''
+  data
 }: {
-  data: Record<string, { value: string; secretId: string }>;
-  prefix?: string;
+  data: Record<string, SecretValueType>;
 }): HeaderAuthConfigType => {
   if (!data || Object.keys(data).length === 0) {
     return { enableAuth: false };
   }
-
-  const removePrefix = (secretId: string) => {
-    return secretId?.startsWith(prefix) ? secretId.substring(prefix.length) : secretId;
-  };
 
   const entries = Object.entries(data);
 
@@ -112,7 +95,7 @@ const parseAuthData = ({
       return {
         enableAuth: true,
         [key === HeaderAuthTypeEnum.Bearer ? 'BearerValue' : 'BasicValue']: {
-          secretId: removePrefix(value.secretId),
+          secret: value.secret,
           value: value.value
         }
       };
@@ -124,7 +107,7 @@ const parseAuthData = ({
     customHeaders: entries.map(([key, value]) => ({
       key,
       value: {
-        secretId: removePrefix(value.secretId),
+        secret: value.secret,
         value: value.value
       }
     }))
@@ -195,11 +178,11 @@ const AuthValueDisplay = ({
 };
 
 const getDefaultAuthType = (config: HeaderAuthConfigType): HeaderAuthTypeEnum => {
-  if (config.BearerValue?.secretId) {
+  if (config.BearerValue) {
     return HeaderAuthTypeEnum.Bearer;
-  } else if (config.BasicValue?.secretId) {
+  } else if (config.BasicValue) {
     return HeaderAuthTypeEnum.Basic;
-  } else if (config.customHeaders?.length) {
+  } else if (config.customHeaders) {
     return HeaderAuthTypeEnum.Custom;
   }
   return HeaderAuthTypeEnum.Bearer;
@@ -209,21 +192,19 @@ const HeaderAuthConfig = ({
   storeHeaderAuthConfig,
   onSave,
   size = 'md',
-  variant = 'whiteBase',
-  prefix = ''
+  variant = 'whiteBase'
 }: {
   storeHeaderAuthConfig: StoreSecretValueType;
   onSave: (data: StoreSecretValueType) => void;
   size?: string;
   variant?: string;
-  prefix?: string;
 }) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const headerAuthConfig = useMemo(() => {
-    return parseAuthData({ data: storeHeaderAuthConfig, prefix });
-  }, [prefix, storeHeaderAuthConfig]);
+    return parseAuthData({ data: storeHeaderAuthConfig });
+  }, [storeHeaderAuthConfig]);
 
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [currentAuthType, setCurrentAuthType] = useState<HeaderAuthTypeEnum>(
@@ -232,8 +213,8 @@ const HeaderAuthConfig = ({
 
   const defaultHeaderAuthConfig: HeaderAuthConfigType = {
     enableAuth: headerAuthConfig?.enableAuth || false,
-    BearerValue: headerAuthConfig?.BearerValue || { secretId: '', value: '' },
-    BasicValue: headerAuthConfig?.BasicValue || { secretId: '', value: '' },
+    BearerValue: headerAuthConfig?.BearerValue || { secret: '', value: '' },
+    BasicValue: headerAuthConfig?.BasicValue || { secret: '', value: '' },
     customHeaders: headerAuthConfig?.customHeaders || []
   };
 
@@ -263,7 +244,7 @@ const HeaderAuthConfig = ({
 
   useEffect(() => {
     if (currentAuthType === HeaderAuthTypeEnum.Custom && customHeaders.length === 0) {
-      appendHeader({ key: '', value: { secretId: '', value: '' } });
+      appendHeader({ key: '', value: { secret: '', value: '' } });
     }
   }, [currentAuthType, customHeaders.length, appendHeader]);
 
@@ -276,22 +257,22 @@ const HeaderAuthConfig = ({
 
     if (currentAuthType === HeaderAuthTypeEnum.Bearer) {
       submitData.BearerValue = {
-        secretId: 'Bearer',
-        value: data.BearerValue?.value || ''
+        value: data.BearerValue?.value || '',
+        secret: data.BearerValue?.secret || ''
       };
     } else if (currentAuthType === HeaderAuthTypeEnum.Basic) {
       submitData.BasicValue = {
-        secretId: 'Basic',
-        value: data.BasicValue?.value || ''
+        value: data.BasicValue?.value || '',
+        secret: data.BasicValue?.secret || ''
       };
     } else if (currentAuthType === HeaderAuthTypeEnum.Custom) {
       submitData.customHeaders = data.customHeaders?.map((item) => ({
         key: item.key,
-        value: { secretId: item.key, value: item.value?.value }
+        value: { secret: item.value.secret, value: item.value.value }
       }));
     }
 
-    const storeData = formatAuthData({ data: submitData, prefix });
+    const storeData = formatAuthData({ data: submitData });
     onSave(storeData);
     onClose();
   };
@@ -358,7 +339,7 @@ const HeaderAuthConfig = ({
                   <AuthValueDisplay
                     key={currentAuthType}
                     showInput={getShowInput({
-                      authValue:
+                      secretValue:
                         currentAuthType === HeaderAuthTypeEnum.Bearer ? BearerValue : BasicValue,
                       editingIndex,
                       index: 0
@@ -397,7 +378,7 @@ const HeaderAuthConfig = ({
                           <Box w={2 / 3} ml={2}>
                             <AuthValueDisplay
                               showInput={getShowInput({
-                                authValue: headerValue,
+                                secretValue: headerValue,
                                 editingIndex,
                                 index
                               })}
@@ -428,7 +409,7 @@ const HeaderAuthConfig = ({
                       variant="whiteBase"
                       minH={8}
                       h={8}
-                      onClick={() => appendHeader({ key: '', value: { secretId: '', value: '' } })}
+                      onClick={() => appendHeader({ key: '', value: { secret: '', value: '' } })}
                     >
                       {t('common:add_new')}
                     </Button>

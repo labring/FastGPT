@@ -8,8 +8,7 @@ import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { SecretTypeEnum } from '@fastgpt/global/common/secret/constants';
-import { upsertSecrets } from '../../support/secret/controller';
+import { encryptSecret } from '@fastgpt/global/common/secret/utils';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
   teamId,
@@ -202,35 +201,23 @@ export async function rewriteAppWorkflowToSimple(formatNodes: StoreNodeItemType[
   });
 }
 
-export async function saveAndClearHttpAuth({
-  nodes,
-  appId,
-  teamId
-}: {
-  nodes: StoreNodeItemType[];
-  appId: string;
-  teamId: string;
-}) {
-  const getNodeHttpAuth = (node: StoreNodeItemType) =>
-    node.inputs.find((item) => [NodeInputKeyEnum.httpAuth].includes(item.key as NodeInputKeyEnum))
-      ?.value;
-  const authConfigs = nodes.map(getNodeHttpAuth).filter(Boolean);
-
-  await upsertSecrets({
-    secrets: authConfigs,
-    type: SecretTypeEnum.headersAuth,
-    appId,
-    teamId
-  });
+export async function saveAndClearHttpAuth(nodes: StoreNodeItemType[]) {
+  const secretKey = process.env.AES256_SECRET_KEY;
+  if (!secretKey) return;
 
   // Clear all authentication values in nodes to prevent leakage
   nodes.forEach((node) => {
-    const httpAuth = getNodeHttpAuth(node);
+    const httpAuth = node.inputs.find((item) =>
+      [NodeInputKeyEnum.httpAuth].includes(item.key as NodeInputKeyEnum)
+    )?.value;
     if (!httpAuth) return;
 
     Object.keys(httpAuth).forEach((key) => {
       if (httpAuth[key]?.value) {
+        const value = httpAuth[key]?.value;
+        const secret = encryptSecret(value, secretKey);
         httpAuth[key].value = '';
+        httpAuth[key].secret = secret;
       }
     });
   });

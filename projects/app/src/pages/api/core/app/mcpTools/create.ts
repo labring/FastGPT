@@ -16,33 +16,8 @@ import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { upsertSecrets } from '@fastgpt/service/support/secret/controller';
 import { SecretTypeEnum } from '@fastgpt/global/common/secret/constants';
-
-// add prefix to secretIds in headerAuth
-const addPrefixToSecretIds = ({
-  headerAuth,
-  prefix
-}: {
-  headerAuth: StoreSecretValueType;
-  prefix: string;
-}): StoreSecretValueType => {
-  if (!headerAuth || Object.keys(headerAuth).length === 0) return {};
-
-  // create a new object to avoid modifying the original object
-  const result: StoreSecretValueType = {};
-
-  // iterate over each key-value pair in headerAuth
-  Object.entries(headerAuth).forEach(([key, authValue]) => {
-    // copy authValue and add prefix to secretId
-    result[key] = {
-      ...authValue,
-      secretId: authValue.secretId ? `${prefix}${authValue.secretId}` : ''
-    };
-  });
-
-  return result;
-};
+import { encryptSecret } from '@fastgpt/global/common/secret/utils';
 
 export type createMCPToolsQuery = {};
 
@@ -69,6 +44,17 @@ async function handler(
 
   await checkTeamAppLimit(teamId);
 
+  const secretKey = process.env.AES256_SECRET_KEY;
+  const formatedHeaderAuth = Object.fromEntries(
+    Object.entries(headerAuth || {}).map(([key, value]) => [
+      key,
+      {
+        secret: encryptSecret(value.value, secretKey),
+        value: ''
+      }
+    ])
+  );
+
   const mcpToolsId = await mongoSessionRun(async (session) => {
     const mcpToolsId = await onCreateApp({
       name,
@@ -77,37 +63,17 @@ async function handler(
       teamId,
       tmbId,
       type: AppTypeEnum.toolSet,
-      modules: [],
+      modules: [
+        getMCPToolSetRuntimeNode({
+          url,
+          toolList,
+          name,
+          avatar,
+          headerAuth: formatedHeaderAuth
+        })
+      ],
       session
     });
-
-    const headerAuthWithPrefix = addPrefixToSecretIds({
-      headerAuth,
-      prefix: `${mcpToolsId}-mcpTools-`
-    });
-
-    await upsertSecrets({
-      secrets: [headerAuthWithPrefix],
-      type: SecretTypeEnum.headersAuth,
-      appId: mcpToolsId,
-      teamId
-    });
-
-    await MongoApp.findByIdAndUpdate(
-      mcpToolsId,
-      {
-        modules: [
-          getMCPToolSetRuntimeNode({
-            url,
-            toolList,
-            name,
-            avatar,
-            headerAuth: headerAuthWithPrefix
-          })
-        ]
-      },
-      { session }
-    );
 
     for (const tool of toolList) {
       await onCreateApp({
@@ -122,7 +88,7 @@ async function handler(
           getMCPToolRuntimeNode({
             tool,
             url,
-            headerAuth: headerAuthWithPrefix
+            headerAuth: formatedHeaderAuth
           })
         ],
         session
