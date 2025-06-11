@@ -254,7 +254,7 @@ describe('channel api', () => {
         data: [
           {
             timestamp: 1000,
-            models: []
+            summary: []
           }
         ]
       }
@@ -262,13 +262,14 @@ describe('channel api', () => {
 
     const result = await getDashboardV2({
       start_timestamp: 0,
-      end_timestamp: 1000
+      end_timestamp: 1000,
+      timespan: 'minute'
     });
 
     expect(result).toEqual([
       {
         timestamp: 1000,
-        models: []
+        summary: []
       }
     ]);
   });
