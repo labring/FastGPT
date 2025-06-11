@@ -23,11 +23,11 @@ const JsonEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea
 const ChatTest = ({
   currentTool,
   url,
-  headerAuth
+  headerSecret
 }: {
-  currentTool: McpToolConfigType | null;
+  currentTool?: McpToolConfigType;
   url: string;
-  headerAuth: StoreSecretValueType;
+  headerSecret: StoreSecretValueType;
 }) => {
   const { t } = useTranslation();
 
@@ -51,7 +51,7 @@ const ChatTest = ({
       return await postRunMCPTool({
         params: data,
         url,
-        headerAuth,
+        headerSecret,
         toolName: currentTool.name
       });
     },
@@ -148,11 +148,11 @@ const ChatTest = ({
 const Render = ({
   currentTool,
   url,
-  headerAuth
+  headerSecret
 }: {
-  currentTool: McpToolConfigType | null;
+  currentTool?: McpToolConfigType;
   url: string;
-  headerAuth: StoreSecretValueType;
+  headerSecret: StoreSecretValueType;
 }) => {
   const { chatId } = useChatStore();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
@@ -175,7 +175,7 @@ const Render = ({
       showNodeStatus
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>
-        <ChatTest currentTool={currentTool} url={url} headerAuth={headerAuth} />
+        <ChatTest currentTool={currentTool} url={url} headerSecret={headerSecret} />
       </ChatRecordContextProvider>
     </ChatItemContextProvider>
   );
@@ -196,7 +196,7 @@ const RenderToolInput = ({
     type: string;
     description?: string;
   };
-  toolData: McpToolConfigType | null;
+  toolData?: McpToolConfigType;
   value: any;
   onChange: (value: any) => void;
   isInvalid: boolean;

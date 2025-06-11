@@ -283,7 +283,7 @@ export function RenderHttpProps({
   const jsonBody = inputs.find((item) => item.key === NodeInputKeyEnum.httpJsonBody);
   const formBody =
     inputs.find((item) => item.key === NodeInputKeyEnum.httpFormBody) || defaultFormBody;
-  const httpAuth = inputs.find((item) => item.key === NodeInputKeyEnum.httpAuth);
+  const headerSecret = inputs.find((item) => item.key === NodeInputKeyEnum.headerSecret)!;
   const contentType = inputs.find((item) => item.key === NodeInputKeyEnum.httpContentType);
 
   const paramsLength = params?.value?.length || 0;
@@ -340,14 +340,14 @@ export function RenderHttpProps({
           />
           <Flex flex={1} />
           <HeaderAuthConfig
-            storeHeaderAuthConfig={httpAuth?.value}
-            onSave={(data) => {
+            storeHeaderSecretConfig={headerSecret?.value}
+            onUpdate={(data) => {
               onChangeNode({
                 nodeId,
                 type: 'updateInput',
-                key: NodeInputKeyEnum.httpAuth,
+                key: NodeInputKeyEnum.headerSecret,
                 value: {
-                  ...(httpAuth as FlowNodeInputItemType),
+                  ...headerSecret,
                   value: data
                 }
               });
@@ -421,7 +421,7 @@ export function RenderHttpProps({
     contentType,
     formBody,
     headersLength,
-    httpAuth,
+    headerSecret,
     nodeId,
     onChangeNode,
     paramsLength,

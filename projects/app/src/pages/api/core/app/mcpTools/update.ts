@@ -19,14 +19,14 @@ import {
 import { type MCPToolSetData } from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import { encryptSecret } from '@fastgpt/global/common/secret/utils';
+import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
 
 export type updateMCPToolsQuery = {};
 
 export type updateMCPToolsBody = {
   appId: string;
   url: string;
-  headerAuth: StoreSecretValueType;
+  headerSecret: StoreSecretValueType;
   toolList: McpToolConfigType[];
 };
 
@@ -36,22 +36,13 @@ async function handler(
   req: ApiRequestProps<updateMCPToolsBody, updateMCPToolsQuery>,
   res: ApiResponseType<updateMCPToolsResponse>
 ): Promise<updateMCPToolsResponse> {
-  const { appId, url, toolList, headerAuth } = req.body;
-  const { app, teamId } = await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
+  const { appId, url, toolList, headerSecret } = req.body;
+  const { app } = await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
 
   const toolSetNode = app.modules.find((item) => item.flowNodeType === FlowNodeTypeEnum.toolSet);
   const toolSetData = toolSetNode?.inputs[0].value as MCPToolSetData;
 
-  const secretKey = process.env.AES256_SECRET_KEY;
-  const formatedHeaderAuth = Object.fromEntries(
-    Object.entries(headerAuth || {}).map(([key, value]) => [
-      key,
-      {
-        secret: encryptSecret(value.value, secretKey),
-        value: ''
-      }
-    ])
-  );
+  const formatedHeaderAuth = storeSecretValue(headerSecret);
 
   await mongoSessionRun(async (session) => {
     if (
@@ -65,7 +56,7 @@ async function handler(
         toolSetData: {
           url,
           toolList,
-          headerAuth: formatedHeaderAuth
+          headerSecret: formatedHeaderAuth
         },
         session
       });
@@ -75,7 +66,7 @@ async function handler(
     const toolSetRuntimeNode = getMCPToolSetRuntimeNode({
       url,
       toolList,
-      headerAuth: formatedHeaderAuth,
+      headerSecret: formatedHeaderAuth,
       name: app.name,
       avatar: app.avatar
     });
@@ -117,7 +108,7 @@ const updateMCPChildrenTool = async ({
   toolSetData: {
     url: string;
     toolList: McpToolConfigType[];
-    headerAuth: StoreSecretValueType;
+    headerSecret: StoreSecretValueType;
   };
   session: ClientSession;
 }) => {
@@ -150,7 +141,11 @@ const updateMCPChildrenTool = async ({
         type: AppTypeEnum.tool,
         intro: tool.description,
         modules: [
-          getMCPToolRuntimeNode({ tool, url: toolSetData.url, headerAuth: toolSetData.headerAuth })
+          getMCPToolRuntimeNode({
+            tool,
+            url: toolSetData.url,
+            headerSecret: toolSetData.headerSecret
+          })
         ],
         session
       });
@@ -168,7 +163,7 @@ const updateMCPChildrenTool = async ({
             getMCPToolRuntimeNode({
               tool,
               url: toolSetData.url,
-              headerAuth: toolSetData.headerAuth
+              headerSecret: toolSetData.headerSecret
             })
           ]
         },
@@ -181,7 +176,7 @@ const updateMCPChildrenTool = async ({
             getMCPToolRuntimeNode({
               tool,
               url: toolSetData.url,
-              headerAuth: toolSetData.headerAuth
+              headerSecret: toolSetData.headerSecret
             })
           ]
         },

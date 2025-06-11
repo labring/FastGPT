@@ -129,6 +129,7 @@ export enum NodeInputKeyEnum {
   textareaInput = 'system_textareaInput',
   addInputParam = 'system_addInputParam',
   forbidStream = 'system_forbid_stream',
+  headerSecret = 'system_header_secret',
 
   // history
   historyMaxAmount = 'maxContext',
@@ -187,7 +188,6 @@ export enum NodeInputKeyEnum {
   httpFormBody = 'system_httpFormBody',
   httpContentType = 'system_httpContentType',
   httpTimeout = 'system_httpTimeout',
-  httpAuth = 'system_httpAuth',
   abandon_httpUrl = 'url',
 
   // app

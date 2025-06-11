@@ -98,8 +98,6 @@
   "app_not_version": "該應用未發布過，請先發布應用",
   "auth_config": "鑑權配置",
   "auth_type": "鑑權類型",
-  "auth_type.Basic": "Basic",
-  "auth_type.Bearer": "Bearer",
   "auth_type.Custom": "自定義",
   "back": "返回",
   "base_config": "基本設定",

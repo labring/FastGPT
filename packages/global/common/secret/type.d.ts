@@ -1,12 +1,3 @@
-import type { SecretTypeEnum } from './constants';
-
-export type SecretType = {
-  sourceId: string;
-  type: SecretTypeEnum;
-  teamId: string;
-  value: string;
-};
-
 export type SecretValueType = {
   value: string;
   secret: string;
@@ -14,14 +5,4 @@ export type SecretValueType = {
 
 export type StoreSecretValueType = {
   [key: string]: SecretValueType;
-};
-
-export type HeaderAuthConfigType = {
-  enableAuth: boolean;
-  BearerValue?: SecretValueType;
-  BasicValue?: SecretValueType;
-  customHeaders?: {
-    key: string;
-    value: SecretValueType;
-  }[];
 };

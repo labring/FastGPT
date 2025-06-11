@@ -17,17 +17,17 @@ const Edit = ({
   setToolList,
   currentTool,
   setCurrentTool,
-  headerAuth,
-  setHeaderAuth
+  headerSecret,
+  setHeaderSecret
 }: {
   url: string;
   setUrl: (url: string) => void;
   toolList: McpToolConfigType[];
   setToolList: (toolList: McpToolConfigType[]) => void;
-  currentTool: McpToolConfigType | null;
+  currentTool?: McpToolConfigType;
   setCurrentTool: (tool: McpToolConfigType) => void;
-  headerAuth: StoreSecretValueType;
-  setHeaderAuth: (headerAuth: StoreSecretValueType) => void;
+  headerSecret: StoreSecretValueType;
+  setHeaderSecret: (headerSecret: StoreSecretValueType) => void;
 }) => {
   const { isPc } = useSystem();
 
@@ -61,14 +61,14 @@ const Edit = ({
             setCurrentTool={setCurrentTool}
             url={url}
             setUrl={setUrl}
-            headerAuth={headerAuth}
-            setHeaderAuth={setHeaderAuth}
+            headerSecret={headerSecret}
+            setHeaderSecret={setHeaderSecret}
           />
         </Box>
       </Flex>
       {isPc && (
         <Box flex={'2 0 0'} w={0} mb={3}>
-          <ChatTest currentTool={currentTool} url={url} headerAuth={headerAuth} />
+          <ChatTest currentTool={currentTool} url={url} headerSecret={headerSecret} />
         </Box>
       )}
     </MyBox>

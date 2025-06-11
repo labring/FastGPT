@@ -20,14 +20,12 @@ const MCPTools = () => {
 
   const [url, setUrl] = useState(toolSetData?.url || '');
   const [toolList, setToolList] = useState<McpToolConfigType[]>(toolSetData?.toolList || []);
-  const [headerAuth, setHeaderAuth] = useState<StoreSecretValueType>(toolSetData?.headerAuth);
-  const [currentTool, setCurrentTool] = useState<McpToolConfigType | null>(
-    toolSetData?.toolList[0] || null
-  );
+  const [headerSecret, setHeaderSecret] = useState<StoreSecretValueType>(toolSetData?.headerSecret);
+  const [currentTool, setCurrentTool] = useState<McpToolConfigType>(toolSetData?.toolList[0]);
 
   return (
     <Flex h={'100%'} flexDirection={'column'} px={[3, 0]} pr={[3, 3]}>
-      <Header url={url} toolList={toolList} headerAuth={headerAuth} />
+      <Header url={url} toolList={toolList} headerSecret={headerSecret} />
       <Edit
         url={url}
         setUrl={setUrl}
@@ -35,8 +33,8 @@ const MCPTools = () => {
         setToolList={setToolList}
         currentTool={currentTool}
         setCurrentTool={setCurrentTool}
-        headerAuth={headerAuth}
-        setHeaderAuth={setHeaderAuth}
+        headerSecret={headerSecret}
+        setHeaderSecret={setHeaderSecret}
       />
     </Flex>
   );

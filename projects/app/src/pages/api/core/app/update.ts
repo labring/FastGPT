@@ -108,9 +108,8 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
   const onUpdate = async (session?: ClientSession) => {
     // format nodes data
     // 1. dataset search limit, less than model quoteMaxToken
-    const { nodes: formatNodes } = beforeUpdateAppFormat({
-      nodes,
-      isPlugin: app.type === AppTypeEnum.plugin
+    beforeUpdateAppFormat({
+      nodes
     });
 
     await refreshSourceAvatar(avatar, app.avatar, session);
@@ -134,8 +133,8 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
         ...(avatar && { avatar }),
         ...(intro !== undefined && { intro }),
         ...(teamTags && { teamTags }),
-        ...(formatNodes && {
-          modules: formatNodes
+        ...(nodes && {
+          modules: nodes
         }),
         ...(edges && {
           edges

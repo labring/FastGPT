@@ -23,17 +23,17 @@ const EditForm = ({
   setToolList,
   currentTool,
   setCurrentTool,
-  headerAuth,
-  setHeaderAuth
+  headerSecret,
+  setHeaderSecret
 }: {
   url: string;
   setUrl: (url: string) => void;
   toolList: McpToolConfigType[];
   setToolList: (toolList: McpToolConfigType[]) => void;
-  currentTool: McpToolConfigType | null;
+  currentTool?: McpToolConfigType;
   setCurrentTool: (tool: McpToolConfigType) => void;
-  headerAuth: StoreSecretValueType;
-  setHeaderAuth: (headerAuth: StoreSecretValueType) => void;
+  headerSecret: StoreSecretValueType;
+  setHeaderSecret: (headerSecret: StoreSecretValueType) => void;
 }) => {
   const { t } = useTranslation();
 
@@ -59,12 +59,12 @@ const EditForm = ({
             {t('app:MCP_tools_url')}
           </FormLabel>
           <HeaderAuthConfig
-            storeHeaderAuthConfig={headerAuth}
-            onSave={(data) => {
-              setHeaderAuth(data);
+            storeHeaderSecretConfig={headerSecret}
+            onUpdate={setHeaderSecret}
+            buttonProps={{
+              size: 'sm',
+              variant: 'grayGhost'
             }}
-            size={'sm'}
-            variant={'grayGhost'}
           />
         </Flex>
         <Flex alignItems={'center'} gap={2} mt={3}>
@@ -80,7 +80,7 @@ const EditForm = ({
             h={8}
             isLoading={isGettingTools}
             onClick={() => {
-              runGetMCPTools({ url, headerAuth });
+              runGetMCPTools({ url, headerSecret });
             }}
           >
             {t('common:Parse')}

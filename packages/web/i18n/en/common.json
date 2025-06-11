@@ -98,8 +98,6 @@
   "app_not_version": "This application has not been published, please publish it first",
   "auth_config": "Authentication",
   "auth_type": "Authentication type",
-  "auth_type.Basic": "Basic",
-  "auth_type.Bearer": "Bearer",
   "auth_type.Custom": "Customize",
   "back": "Back",
   "base_config": "Basic Configuration",
