@@ -6,6 +6,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import type { DashboardDataItemType } from '@/global/aiproxy/type.d';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 export type DashboardDataEntry = {
   timestamp: number;
@@ -43,6 +44,7 @@ const DataTableComponent = ({
   modelPriceMap
 }: DataTableComponentProps) => {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
   const [sortField, setSortField] = useState<SortFieldType>('totalCalls');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
@@ -256,13 +258,15 @@ const DataTableComponent = ({
               >
                 {t('account_model:volunme_of_failed_calls')} {getSortIcon('errorCalls')}
               </Th>
-              <Th
-                cursor="pointer"
-                onClick={() => handleSort('totalCost')}
-                _hover={{ color: 'primary.600' }}
-              >
-                {t('account_model:aipoint_usage')} {getSortIcon('totalCost')}
-              </Th>
+              {feConfigs?.isPlus && (
+                <Th
+                  cursor="pointer"
+                  onClick={() => handleSort('totalCost')}
+                  _hover={{ color: 'primary.600' }}
+                >
+                  {t('account_model:aipoint_usage')} {getSortIcon('totalCost')}
+                </Th>
+              )}
               <Th>{t('account_model:avg_response_time')}</Th>
               <Th>{t('account_model:avg_ttfb')}</Th>
               <Th></Th>
@@ -275,7 +279,7 @@ const DataTableComponent = ({
                 {showChannelColumn && <Td>{item.channelName}</Td>}
                 <Td color={'primary.700'}>{formatNumber(item.totalCalls).toLocaleString()}</Td>
                 <Td color={'red.700'}>{formatNumber(item.errorCalls)}</Td>
-                <Td>{formatNumber(item.totalCost).toLocaleString()}</Td>
+                {feConfigs?.isPlus && <Td>{formatNumber(item.totalCost).toLocaleString()}</Td>}
                 <Td color={item.avgResponseTime > 10 ? 'yellow.700' : ''}>
                   {item.avgResponseTime > 0 ? `${item.avgResponseTime.toFixed(2)}` : '-'}
                 </Td>
