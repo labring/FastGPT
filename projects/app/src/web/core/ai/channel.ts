@@ -191,22 +191,17 @@ export const getLogDetail = (id: number) =>
 
 export const getDashboardV2 = (params: {
   channel?: number;
+  model?: string;
   start_timestamp?: number;
   end_timestamp?: number;
-  timezone?: string;
-  timespan?: 'day' | 'hour';
+  timezone: string;
+  timespan: 'day' | 'hour' | 'minute';
 }) =>
   GET<
     {
       timestamp: number;
-      models: DashboardDataItemType[];
+      summary: DashboardDataItemType[];
     }[]
-  >('/dashboardv2/', {
-    channel: params.channel,
-    start_timestamp: params.start_timestamp,
-    end_timestamp: params.end_timestamp,
-    timezone: params.timezone || 'Local',
-    timespan: params.timespan || 'day'
-  });
+  >('/dashboardv2/', params);
 
 export { responseSuccess, checkRes, responseError, instance, request };
