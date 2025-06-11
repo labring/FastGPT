@@ -6,8 +6,6 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import type { DashboardDataItemType } from '@/global/aiproxy/type.d';
-import { getChannelList } from '@/web/core/ai/channel';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 export type DashboardDataEntry = {
   timestamp: number;
@@ -26,6 +24,7 @@ export type DataTableComponentProps = {
     outputPrice?: number;
     charsPointsPrice?: number;
   }[];
+  channelIdToNameMap: Map<number, string>;
   onViewDetail: (model: string) => void;
 };
 
@@ -33,36 +32,12 @@ const DataTableComponent = ({
   data,
   filterProps,
   systemModelList,
+  channelIdToNameMap,
   onViewDetail
 }: DataTableComponentProps) => {
   const { t } = useTranslation();
   const [sortField, setSortField] = useState<'totalCalls' | 'errorCalls' | null>('totalCalls');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-
-  // Get channel list to map channel IDs to names
-  const { data: channelList = [] } = useRequest2(
-    async () => {
-      const res = await getChannelList({ perPage: 100 }).then((res) =>
-        res.map((item) => ({
-          id: item.id,
-          name: item.name
-        }))
-      );
-      return res;
-    },
-    {
-      manual: false
-    }
-  );
-
-  // Create a mapping from channel ID to channel name
-  const channelIdToNameMap = useMemo(() => {
-    const map = new Map<number, string>();
-    channelList.forEach((channel) => {
-      map.set(channel.id, channel.name);
-    });
-    return map;
-  }, [channelList]);
 
   // display the channel column
   const showChannelColumn = !!filterProps.model;
@@ -101,8 +76,8 @@ const DataTableComponent = ({
             errorCalls: model.exception_count || 0,
             avgResponseTime: model.total_time_milliseconds
               ? model.total_time_milliseconds / 1000
-              : 0, 
-            avgTtfb: model.total_ttfb_milliseconds ? model.total_ttfb_milliseconds / 1000 : 0 
+              : 0,
+            avgTtfb: model.total_ttfb_milliseconds ? model.total_ttfb_milliseconds / 1000 : 0
           });
         });
       });
@@ -149,7 +124,7 @@ const DataTableComponent = ({
           errorCalls: aggregated.errorCalls,
           avgResponseTime:
             aggregated.count > 0 ? aggregated.totalResponseTime / aggregated.count / 1000 : 0,
-          avgTtfb: aggregated.count > 0 ? aggregated.totalTtfb / aggregated.count / 1000 : 0 
+          avgTtfb: aggregated.count > 0 ? aggregated.totalTtfb / aggregated.count / 1000 : 0
         });
       });
     }

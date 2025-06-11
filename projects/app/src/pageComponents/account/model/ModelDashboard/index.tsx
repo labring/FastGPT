@@ -121,13 +121,17 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       const res = await getChannelList().then((res) =>
         res.map((item) => ({
           label: item.name,
-          value: `${item.id}`
+          value: `${item.id}`,
+          id: item.id,
+          name: item.name
         }))
       );
       return [
         {
           label: t('common:All'),
-          value: ''
+          value: '',
+          id: 0,
+          name: t('common:All')
         },
         ...res
       ];
@@ -136,6 +140,17 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       manual: false
     }
   );
+
+  // Create a mapping from channel ID to channel name
+  const channelIdToNameMap = useMemo(() => {
+    const map = new Map<number, string>();
+    channelList.forEach((channel) => {
+      if (channel.id) {
+        map.set(channel.id, channel.name);
+      }
+    });
+    return map;
+  }, [channelList]);
 
   // Get model list filtered by selected channel
   const { data: systemModelList = [] } = useRequest2(getSystemModelList, {
@@ -746,6 +761,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
             data={dashboardData}
             filterProps={filterProps}
             systemModelList={systemModelList}
+            channelIdToNameMap={channelIdToNameMap}
             onViewDetail={handleViewDetail}
           />
         )}
