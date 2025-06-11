@@ -157,7 +157,7 @@ const ChatInput = ({
           fontSize={'16px'}
           letterSpacing={'0.5px'}
           _placeholder={{
-            color: '#A4A4A4',
+            color: '#707070',
             fontSize: '14px'
           }}
           value={inputValue}
@@ -406,7 +406,7 @@ const ChatInput = ({
         borderRadius={'xxl'}
         bg={'white'}
         overflow={'display'}
-        border={'0.5px solid rgba(0, 0, 0, 0.13)'}
+        border={'0.5px solid rgba(0, 0, 0, 0.15)'}
         borderColor={'rgba(0,0,0,0.12)'}
       >
         {/* Chat input guide box */}
