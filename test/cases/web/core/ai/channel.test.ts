@@ -254,22 +254,39 @@ describe('channel api', () => {
         data: [
           {
             timestamp: 1000,
-            summary: []
+            summary: [
+              {
+                model: 'gpt-3.5',
+                total_tokens: 100,
+                request_count: 10,
+                total_price: 0.002
+              }
+            ]
           }
         ]
       }
     });
 
     const result = await getDashboardV2({
+      channel: 1,
+      model: 'gpt-3.5',
       start_timestamp: 0,
       end_timestamp: 1000,
+      timezone: 'UTC',
       timespan: 'minute'
     });
 
     expect(result).toEqual([
       {
         timestamp: 1000,
-        summary: []
+        summary: [
+          {
+            model: 'gpt-3.5',
+            total_tokens: 100,
+            request_count: 10,
+            total_price: 0.002
+          }
+        ]
       }
     ]);
   });
