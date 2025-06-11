@@ -21,6 +21,7 @@ import DataTableComponent from './DataTableComponent';
 
 export type ModelDashboardData = {
   x: string;
+  xLabel?: string;
   totalCalls: number;
   errorCalls: number;
   errorRate: number;
@@ -64,35 +65,12 @@ const calculateTimeDiffs = (from: Date, to: Date) => {
   };
 };
 
-const getTimespanConfig = (daysDiff: number, hoursDiff: number) => {
-  const options = [];
-  if (daysDiff < 1) {
-    options.push('minute' as const);
-  }
-  if (daysDiff <= 30) {
-    options.push('hour' as const);
-  }
-  options.push('day' as const);
-
-  let defaultTimespan: 'minute' | 'hour' | 'day';
-  if (hoursDiff < 6) {
-    defaultTimespan = 'minute';
-  } else if (daysDiff <= 30) {
-    defaultTimespan = 'hour';
-  } else {
-    defaultTimespan = 'day';
-  }
-
-  return { options, defaultTimespan };
-};
-
 const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { feConfigs } = useSystemStore();
 
   const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
-  const [userHasManuallySelectedTimespan, setUserHasManuallySelectedTimespan] = useState(false);
 
   // view detail handler
   const handleViewDetail = (model: string) => {
@@ -107,7 +85,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
     channelId?: string;
     model?: string;
     dateRange: DateRangeType;
-    timespan?: 'minute' | 'hour' | 'day';
+    timespan: 'minute' | 'hour' | 'day';
   }>({
     channelId: undefined,
     model: undefined,
@@ -121,15 +99,13 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       const res = await getChannelList().then((res) =>
         res.map((item) => ({
           label: item.name,
-          value: `${item.id}`,
-          name: item.name
+          value: `${item.id}`
         }))
       );
       return [
         {
           label: t('common:All'),
-          value: '',
-          name: t('common:All')
+          value: ''
         },
         ...res
       ];
@@ -164,67 +140,46 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
     ];
   }, [systemModelList, t]);
 
-  const timespanConfig = useMemo(() => {
-    if (!filterProps.dateRange.from || !filterProps.dateRange.to) {
-      return { options: [], defaultTimespan: 'day' as const };
+  const computeTimespan = (daysDiff: number, hoursDiff: number) => {
+    const options: { label: string; value: 'minute' | 'hour' | 'day' }[] = [];
+    if (daysDiff <= 1) {
+      options.push({ label: t('account_model:timespan_minute'), value: 'minute' });
+    }
+    if (daysDiff < 7) {
+      options.push({ label: t('account_model:timespan_hour'), value: 'hour' });
+    }
+    if (daysDiff >= 1) {
+      options.push({ label: t('account_model:timespan_day'), value: 'day' });
     }
 
-    const { daysDiff, hoursDiff } = calculateTimeDiffs(
-      filterProps.dateRange.from,
-      filterProps.dateRange.to
-    );
+    const defaultTimespan: 'minute' | 'hour' | 'day' = (() => {
+      if (hoursDiff < 1) {
+        return 'minute';
+      } else if (daysDiff < 2) {
+        return 'hour';
+      } else {
+        return 'day';
+      }
+    })();
 
-    const { options, defaultTimespan } = getTimespanConfig(daysDiff, hoursDiff);
-
-    return {
-      options: options.map((value) => {
-        const labelKey = (() => {
-          if (value === 'minute') {
-            return 'account_model:timespan_minute';
-          } else if (value === 'hour') {
-            return 'account_model:timespan_hour';
-          } else {
-            return 'account_model:timespan_day';
-          }
-        })();
-
-        return {
-          label: t(labelKey as any) as React.ReactNode,
-          value: value as 'minute' | 'hour' | 'day'
-        };
-      }),
-      defaultTimespan
-    };
-  }, [filterProps.dateRange, t]);
-
-  const { options: timespanOptions, defaultTimespan: getDefaultTimespan } = timespanConfig;
+    return { options, defaultTimespan };
+  };
+  const [timespanOptions, setTimespanOptions] = useState(computeTimespan(30, 60).options);
 
   // Handle date range change with automatic timespan adjustment
   const handleDateRangeChange = (dateRange: DateRangeType) => {
     const newFilterProps = { ...filterProps, dateRange };
 
+    // Computed timespan
     if (dateRange.from && dateRange.to) {
       const { daysDiff, hoursDiff } = calculateTimeDiffs(dateRange.from, dateRange.to);
-      const { options: newTimespanOptions, defaultTimespan: newDefaultTimespan } =
-        getTimespanConfig(daysDiff, hoursDiff);
+      const { options: newTimespanOptions, defaultTimespan: newDefaultTimespan } = computeTimespan(
+        daysDiff,
+        hoursDiff
+      );
 
-      const isCurrentTimespanAvailable = newTimespanOptions.includes(filterProps.timespan || 'day');
-
-      if (!isCurrentTimespanAvailable) {
-        // Current timespan not available, switch to best available
-        const targetTimespan = (
-          newTimespanOptions.includes(newDefaultTimespan)
-            ? newDefaultTimespan
-            : newTimespanOptions[0] || 'day'
-        ) as 'minute' | 'hour' | 'day';
-        newFilterProps.timespan = targetTimespan;
-        setUserHasManuallySelectedTimespan(false);
-      } else if (
-        !userHasManuallySelectedTimespan &&
-        newTimespanOptions.includes(newDefaultTimespan)
-      ) {
-        newFilterProps.timespan = newDefaultTimespan;
-      }
+      setTimespanOptions(newTimespanOptions);
+      newFilterProps.timespan = newDefaultTimespan;
     }
 
     setFilterProps(newFilterProps);
@@ -234,7 +189,8 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   const { data: dashboardData = [], loading: isLoading } = useRequest2(
     async () => {
       const params = {
-        channel: filterProps.channelId ? parseInt(filterProps.channelId) : 0,
+        channel: filterProps.channelId ? parseInt(filterProps.channelId) : undefined,
+        model: filterProps.model,
         start_timestamp: filterProps.dateRange.from
           ? Math.floor(filterProps.dateRange.from.getTime())
           : undefined,
@@ -242,79 +198,60 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
           ? Math.floor(filterProps.dateRange.to.getTime())
           : undefined,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        timespan: filterProps.timespan || 'day'
+        timespan: filterProps.timespan
       };
 
-      let data = await getDashboardV2(params);
-
-      if (filterProps.model) {
-        data = data.map((item) => {
-          const filterModels = item.summary.filter((model) => model.model === filterProps.model);
-          return {
-            ...item,
-            summary: filterModels
-          };
-        });
-      }
+      const data = await getDashboardV2(params);
 
       // Auto-fill missing periods based on timespan
-      if (filterProps.dateRange.from && filterProps.dateRange.to) {
-        const startDate = dayjs(filterProps.dateRange.from);
-        const endDate = dayjs(filterProps.dateRange.to);
-        const timespan = filterProps.timespan || 'day';
+      const startDate = dayjs(filterProps.dateRange.from);
+      const currentTime = dayjs();
+      const endDate = dayjs(filterProps.dateRange.to).isBefore(currentTime)
+        ? dayjs(filterProps.dateRange.to)
+        : currentTime;
+      const timespan = filterProps.timespan;
 
-        const { periodCount, periodUnit, formatString } = (() => {
-          if (timespan === 'minute') {
-            return {
-              periodCount: endDate.diff(startDate, 'minute') + 1,
-              periodUnit: 'minute' as dayjs.ManipulateType,
-              formatString: 'YYYY-MM-DD HH:mm'
-            };
-          } else if (timespan === 'hour') {
-            return {
-              periodCount: endDate.diff(startDate, 'hour') + 1,
-              periodUnit: 'hour' as dayjs.ManipulateType,
-              formatString: 'YYYY-MM-DD HH'
-            };
-          } else {
-            return {
-              periodCount: endDate.diff(startDate, 'day') + 1,
-              periodUnit: 'day' as dayjs.ManipulateType,
-              formatString: 'YYYY-MM-DD'
-            };
-          }
-        })();
+      const { periodCount } = (() => {
+        if (timespan === 'minute') {
+          return {
+            periodCount: endDate.diff(startDate, 'minute') + 1
+          };
+        } else if (timespan === 'hour') {
+          return {
+            periodCount: endDate.diff(startDate, 'hour') + 1
+          };
+        } else {
+          return {
+            periodCount: endDate.diff(startDate, 'day') + 1
+          };
+        }
+      })();
 
-        // Create complete period list
-        const completePeriodList = Array.from({ length: periodCount }, (_, i) =>
-          startDate.add(i, periodUnit)
-        );
+      // Create complete period list
+      const completePeriodList = Array.from({ length: periodCount }, (_, i) =>
+        startDate.add(i, timespan)
+      );
 
-        // Create a map of existing data by timestamp
-        const existingDataMap = new Map(
-          data.map((item) => [dayjs(item.timestamp * 1000).format(formatString), item])
-        );
+      // Create a map of existing data by timestamp
+      const existingDataMap = new Map(
+        data.map((item) => [dayjs(item.timestamp * 1000).format('YYYY-MM-DD HH:mm'), item])
+      );
 
-        // Fill missing periods with empty data
-        const completeData = completePeriodList.map((period) => {
-          const periodKey = period.format(formatString);
-          const existingItem = existingDataMap.get(periodKey);
+      // Fill missing periods with empty data
+      return completePeriodList.map((period) => {
+        const periodKey = period.format('YYYY-MM-DD HH:mm');
+        const existingItem = existingDataMap.get(periodKey);
 
-          if (existingItem) {
-            return existingItem;
-          } else {
-            // Create empty data structure for missing periods
-            return {
-              timestamp: Math.floor(period.valueOf() / 1000),
-              summary: []
-            };
-          }
-        });
-
-        data = completeData;
-      }
-
-      return data;
+        if (existingItem) {
+          return existingItem;
+        } else {
+          // Create empty data structure for missing periods
+          return {
+            timestamp: Math.floor(period.valueOf() / 1000),
+            summary: []
+          };
+        }
+      });
     },
     {
       manual: false,
@@ -354,15 +291,16 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       // Format date based on timespan
       const dateFormat = (() => {
         if (filterProps.timespan === 'minute') {
-          return 'MM-DD HH:mm';
+          return 'HH:mm';
         } else if (filterProps.timespan === 'hour') {
-          return 'MM-DD HH:00';
+          return 'HH:00';
         } else {
           return 'MM-DD';
         }
       })();
 
       const date = dayjs(item.timestamp * 1000).format(dateFormat);
+      const xLabel = dayjs(item.timestamp * 1000).format('YYYY-MM-DD HH:mm');
       const summary = item.summary || [];
       const totalCalls = summary.reduce((acc, model) => acc + (model.request_count || 0), 0);
       const errorCalls = summary.reduce((acc, model) => acc + (model.exception_count || 0), 0);
@@ -372,18 +310,17 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       const outputTokens = summary.reduce((acc, model) => acc + (model?.output_tokens || 0), 0);
       const totalTokens = summary.reduce((acc, model) => acc + (model.total_tokens || 0), 0);
 
-      const avgResponseTime =
-        summary.length > 0
-          ? summary.reduce((acc, model) => acc + (model.total_time_milliseconds || 0), 0) /
-            summary.length /
-            1000
-          : 0;
-      const avgTtfb =
-        summary.length > 0
-          ? summary.reduce((acc, model) => acc + (model.total_ttfb_milliseconds || 0), 0) /
-            summary.length /
-            1000
-          : 0;
+      const successCalls = totalCalls - errorCalls;
+      const avgResponseTime = successCalls
+        ? summary.reduce((acc, model) => acc + (model.total_time_milliseconds || 0), 0) /
+          successCalls /
+          1000
+        : 0;
+      const avgTtfb = successCalls
+        ? summary.reduce((acc, model) => acc + (model.total_ttfb_milliseconds || 0), 0) /
+          successCalls /
+          1000
+        : 0;
 
       const maxRpm = filterProps.model
         ? summary.reduce((acc, model) => Math.max(acc, model.max_rpm || 0), 0)
@@ -414,6 +351,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
 
       return {
         x: date,
+        xLabel: xLabel,
         totalCalls,
         errorCalls,
         errorRate,
@@ -427,7 +365,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
         maxTpm
       };
     });
-  }, [dashboardData, systemModelList, filterProps.timespan]);
+  }, [dashboardData, systemModelList, filterProps.model, filterProps.timespan]);
 
   const [tokensUsageType, setTokensUsageType] = useState<
     'inputTokens' | 'outputTokens' | 'totalTokens'
@@ -476,20 +414,21 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
               />
             </Box>
           </HStack>
-          <HStack>
-            <FormLabel>{t('account_model:timespan_label')}</FormLabel>
-            <Box flex={'1 0 0'}>
-              <MySelect<'minute' | 'hour' | 'day'>
-                bg={'myGray.50'}
-                list={timespanOptions}
-                value={filterProps.timespan}
-                onChange={(val) => {
-                  setFilterProps({ ...filterProps, timespan: val });
-                  setUserHasManuallySelectedTimespan(true);
-                }}
-              />
-            </Box>
-          </HStack>
+          {viewMode === 'chart' && (
+            <HStack>
+              <FormLabel>{t('account_model:timespan_label')}</FormLabel>
+              <Box flex={'1 0 0'}>
+                <MySelect<'minute' | 'hour' | 'day'>
+                  bg={'myGray.50'}
+                  list={timespanOptions}
+                  value={filterProps.timespan}
+                  onChange={(val) => {
+                    setFilterProps({ ...filterProps, timespan: val });
+                  }}
+                />
+              </Box>
+            </HStack>
+          )}
         </HStack>
 
         <FillRowTabs<'chart' | 'table'>
@@ -512,7 +451,6 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
 
       <MyBox flex={'1 0 0'} h={0} overflowY={'auto'} isLoading={isLoading}>
         {viewMode === 'chart' ? (
-          dashboardData &&
           dashboardData.length > 0 && (
             <>
               <Box {...ChartsBoxStyles}>
@@ -697,57 +635,58 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
                 </Box>
               </Grid>
 
-              <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5}>
-                <Box {...ChartsBoxStyles}>
-                  <LineChartComponent
-                    data={chartData}
-                    title={`${t('account_model:max_rpm')}${!filterProps.model ? t('account_model:select_single_model_tip') : ''}`}
-                    enableCumulative={false}
-                    lines={[
-                      {
-                        dataKey: 'maxRpm',
-                        name: t('account_model:max_rpm'),
-                        color: '#6554C0'
-                      }
-                    ]}
-                    tooltipItems={[
-                      {
-                        label: t('account_model:max_rpm'),
-                        dataKey: 'maxRpm',
-                        color: '#6554C0'
-                      }
-                    ]}
-                  />
-                </Box>
-                <Box {...ChartsBoxStyles}>
-                  <LineChartComponent
-                    data={chartData}
-                    title={`${t('account_model:max_tpm')}${!filterProps.model ? t('account_model:select_single_model_tip') : ''}`}
-                    enableCumulative={false}
-                    lines={[
-                      {
-                        dataKey: 'maxTpm',
-                        name: t('account_model:max_tpm'),
-                        color: '#FF8B00'
-                      }
-                    ]}
-                    tooltipItems={[
-                      {
-                        label: t('account_model:max_tpm'),
-                        dataKey: 'maxTpm',
-                        color: '#FF8B00'
-                      }
-                    ]}
-                  />
-                </Box>
-              </Grid>
+              {filterProps?.model && (
+                <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5}>
+                  <Box {...ChartsBoxStyles}>
+                    <LineChartComponent
+                      data={chartData}
+                      title={t('account_model:max_rpm')}
+                      enableCumulative={false}
+                      lines={[
+                        {
+                          dataKey: 'maxRpm',
+                          name: t('account_model:max_rpm'),
+                          color: '#6554C0'
+                        }
+                      ]}
+                      tooltipItems={[
+                        {
+                          label: t('account_model:max_rpm'),
+                          dataKey: 'maxRpm',
+                          color: '#6554C0'
+                        }
+                      ]}
+                    />
+                  </Box>
+                  <Box {...ChartsBoxStyles}>
+                    <LineChartComponent
+                      data={chartData}
+                      title={t('account_model:max_tpm')}
+                      enableCumulative={false}
+                      lines={[
+                        {
+                          dataKey: 'maxTpm',
+                          name: t('account_model:max_tpm'),
+                          color: '#FF8B00'
+                        }
+                      ]}
+                      tooltipItems={[
+                        {
+                          label: t('account_model:max_tpm'),
+                          dataKey: 'maxTpm',
+                          color: '#FF8B00'
+                        }
+                      ]}
+                    />
+                  </Box>
+                </Grid>
+              )}
             </>
           )
         ) : (
           <DataTableComponent
             data={dashboardData}
             filterProps={filterProps}
-            systemModelList={systemModelList}
             channelList={channelList}
             onViewDetail={handleViewDetail}
           />

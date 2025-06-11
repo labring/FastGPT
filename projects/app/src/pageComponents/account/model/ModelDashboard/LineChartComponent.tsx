@@ -14,10 +14,7 @@ import { type NameType, type ValueType } from 'recharts/types/component/DefaultT
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useTranslation } from 'next-i18next';
-
-type XAxisConfig = {
-  dataKey: string;
-};
+import { cloneDeep } from 'lodash';
 
 type LineConfig = {
   dataKey: string;
@@ -57,7 +54,7 @@ const CustomTooltip = ({
   return (
     <Box bg="white" p={3} borderRadius="md" border="base" boxShadow="sm">
       <Box fontSize="sm" color="myGray.900" mb={2}>
-        {data.x}
+        {data.xLabel || data.x}
       </Box>
       {tooltipItems.map((item, index) => {
         const value = item.customValue ? item.customValue(data) : data[item.dataKey];
@@ -85,12 +82,12 @@ const LineChartComponent = ({
 }: LineChartComponentProps) => {
   const theme = useTheme();
   const { t } = useTranslation();
-  const [displayMode, setDisplayMode] = useState<'independent' | 'cumulative'>('independent');
+  const [displayMode, setDisplayMode] = useState<'incremental' | 'cumulative'>('incremental');
 
   // Tab list constant
   const tabList = useMemo(
     () => [
-      { label: t('account_model:chart_mode_independent'), value: 'independent' as const },
+      { label: t('account_model:chart_mode_incremental'), value: 'incremental' as const },
       { label: t('account_model:chart_mode_cumulative'), value: 'cumulative' as const }
     ],
     [t]
@@ -108,28 +105,25 @@ const LineChartComponent = ({
 
   // Process data based on display mode
   const processedData = useMemo(() => {
-    if (displayMode === 'independent' || !enableCumulative) {
+    if (displayMode === 'incremental' || !enableCumulative) {
       return data;
     }
 
     // Cumulative mode: accumulate values for each line's dataKey
-    const dataKeys = lines.map((line) => line.dataKey);
-    const cumulativeValues: Record<string, number> = {};
+    const cloneData = cloneDeep(data);
 
-    // Initialize cumulative values
-    dataKeys.forEach((dataKey) => {
-      cumulativeValues[dataKey] = 0;
-    });
+    const dataKeys = lines.map((item) => item.dataKey);
 
-    return data.map((item) => {
-      const newItem = { ...item };
+    return cloneData.map((item, index) => {
+      if (index === 0) return item;
 
-      dataKeys.forEach((dataKey) => {
-        cumulativeValues[dataKey] += item[dataKey] || 0;
-        newItem[dataKey] = cumulativeValues[dataKey];
+      dataKeys.forEach((key) => {
+        if (typeof item[key] === 'number') {
+          item[key] += cloneData[index - 1][key];
+        }
       });
 
-      return newItem;
+      return item;
     });
   }, [data, displayMode, lines, enableCumulative]);
 
@@ -164,7 +158,7 @@ const LineChartComponent = ({
         <HStack spacing={2}>
           {HeaderLeftChildren}
           {enableCumulative && (
-            <FillRowTabs<'independent' | 'cumulative'>
+            <FillRowTabs<'incremental' | 'cumulative'>
               list={tabList}
               py={0.5}
               px={2}

@@ -18,16 +18,9 @@ export type DataTableComponentProps = {
     channelId?: string;
     model?: string;
   };
-  systemModelList: {
-    model: string;
-    inputPrice?: number;
-    outputPrice?: number;
-    charsPointsPrice?: number;
-  }[];
   channelList: {
     label: string;
     value: string;
-    name: string;
   }[];
   onViewDetail: (model: string) => void;
 };
@@ -35,12 +28,11 @@ export type DataTableComponentProps = {
 const DataTableComponent = ({
   data,
   filterProps,
-  systemModelList,
-  channelList,
-  onViewDetail
+  onViewDetail,
+  channelList
 }: DataTableComponentProps) => {
   const { t } = useTranslation();
-  const [sortField, setSortField] = useState<'totalCalls' | 'errorCalls' | null>('totalCalls');
+  const [sortField, setSortField] = useState<'totalCalls' | 'errorCalls'>('totalCalls');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Create a mapping from channel ID to channel name
@@ -50,7 +42,7 @@ const DataTableComponent = ({
       if (channel.value && channel.value !== '') {
         const channelId = parseInt(channel.value);
         if (!isNaN(channelId)) {
-          map.set(channelId, channel.name);
+          map.set(channelId, channel.label);
         }
       }
     });
@@ -61,14 +53,13 @@ const DataTableComponent = ({
   const showChannelColumn = !!filterProps.model;
 
   const tableData = useMemo(() => {
-    if (!data || data.length === 0) {
+    if (data.length === 0) {
       return [];
     }
 
     const rows: {
       model: string;
-      channel_id?: string;
-      channel_name?: string;
+      channelName?: string;
       totalCalls: number;
       errorCalls: number;
       avgResponseTime: number;
@@ -76,27 +67,49 @@ const DataTableComponent = ({
     }[] = [];
 
     if (showChannelColumn) {
+      // When a specific model is selected, aggregate the data by channel_id
+      const channelMap = new Map<
+        string,
+        {
+          model: string;
+          totalCalls: number;
+          errorCalls: number;
+          totalResponseTime: number;
+          totalTtfb: number;
+        }
+      >();
+
       data.forEach((dayData) => {
-        const summary = dayData.summary || [];
-        const modelsToProcess = summary.filter(
-          (model: DashboardDataItemType) => model.model === filterProps.model
-        );
+        const summary = dayData.summary;
 
-        modelsToProcess.forEach((model: DashboardDataItemType) => {
-          const channelId = model.channel_id ?? 0;
-          const channelName = channelIdToNameMap.get(channelId);
+        summary.forEach((item: DashboardDataItemType) => {
+          const channelId = `${item.channel_id!}`;
+          const existing = channelMap.get(channelId) || {
+            model: item.model || '-',
+            totalCalls: 0,
+            errorCalls: 0,
+            totalResponseTime: 0,
+            totalTtfb: 0
+          };
 
-          rows.push({
-            model: model.model || '-',
-            channel_id: `${channelId}`,
-            channel_name: channelName,
-            totalCalls: model.request_count || 0,
-            errorCalls: model.exception_count || 0,
-            avgResponseTime: model.total_time_milliseconds
-              ? model.total_time_milliseconds / 1000
-              : 0,
-            avgTtfb: model.total_ttfb_milliseconds ? model.total_ttfb_milliseconds / 1000 : 0
-          });
+          existing.totalCalls += item.request_count || 0;
+          existing.errorCalls += item.exception_count || 0;
+          existing.totalResponseTime += item.total_time_milliseconds || 0;
+          existing.totalTtfb += item.total_ttfb_milliseconds || 0;
+
+          channelMap.set(channelId, existing);
+        });
+      });
+
+      channelMap.forEach((item, channelId) => {
+        const successCalls = item.totalCalls - item.errorCalls;
+        rows.push({
+          channelName: channelIdToNameMap.get(parseInt(channelId)) || '',
+          model: item.model,
+          totalCalls: item.totalCalls,
+          errorCalls: item.errorCalls,
+          avgResponseTime: successCalls > 0 ? item.totalResponseTime / successCalls / 1000 : 0,
+          avgTtfb: successCalls > 0 ? item.totalTtfb / successCalls / 1000 : 0
         });
       });
     } else {
@@ -108,41 +121,38 @@ const DataTableComponent = ({
           errorCalls: number;
           totalResponseTime: number;
           totalTtfb: number;
-          count: number;
         }
       >();
 
       data.forEach((dayData) => {
-        const summary = dayData.summary || [];
+        const summary = dayData.summary;
 
-        summary.forEach((model: DashboardDataItemType) => {
-          const modelName = model.model || '-';
+        summary.forEach((item: DashboardDataItemType) => {
+          const modelName = item.model || '-';
           const existing = modelMap.get(modelName) || {
             totalCalls: 0,
             errorCalls: 0,
             totalResponseTime: 0,
-            totalTtfb: 0,
-            count: 0
+            totalTtfb: 0
           };
 
-          existing.totalCalls += model.request_count || 0;
-          existing.errorCalls += model.exception_count || 0;
-          existing.totalResponseTime += model.total_time_milliseconds || 0;
-          existing.totalTtfb += model.total_ttfb_milliseconds || 0;
-          existing.count += 1;
+          existing.totalCalls += item.request_count || 0;
+          existing.errorCalls += item.exception_count || 0;
+          existing.totalResponseTime += item.total_time_milliseconds || 0;
+          existing.totalTtfb += item.total_ttfb_milliseconds || 0;
 
           modelMap.set(modelName, existing);
         });
       });
 
-      modelMap.forEach((aggregated, modelName) => {
+      modelMap.forEach((item, modelName) => {
+        const successCalls = item.totalCalls - item.errorCalls;
         rows.push({
           model: modelName,
-          totalCalls: aggregated.totalCalls,
-          errorCalls: aggregated.errorCalls,
-          avgResponseTime:
-            aggregated.count > 0 ? aggregated.totalResponseTime / aggregated.count / 1000 : 0,
-          avgTtfb: aggregated.count > 0 ? aggregated.totalTtfb / aggregated.count / 1000 : 0
+          totalCalls: item.totalCalls,
+          errorCalls: item.errorCalls,
+          avgResponseTime: successCalls > 0 ? item.totalResponseTime / successCalls / 1000 : 0,
+          avgTtfb: successCalls > 0 ? item.totalTtfb / successCalls / 1000 : 0
         });
       });
     }
@@ -157,7 +167,7 @@ const DataTableComponent = ({
     }
 
     return rows;
-  }, [data, filterProps.model, showChannelColumn, sortField, sortDirection, channelIdToNameMap]);
+  }, [data, showChannelColumn, sortField, sortDirection]);
 
   const handleSort = (field: 'totalCalls' | 'errorCalls') => {
     if (sortField === field) {
@@ -186,32 +196,33 @@ const DataTableComponent = ({
               <Th
                 cursor="pointer"
                 onClick={() => handleSort('totalCalls')}
-                _hover={{ bg: 'gray.50' }}
+                _hover={{ color: 'primary.600' }}
               >
                 {t('account_model:total_call_volume')} {getSortIcon('totalCalls')}
               </Th>
               <Th
                 cursor="pointer"
                 onClick={() => handleSort('errorCalls')}
-                _hover={{ bg: 'gray.50' }}
+                _hover={{ color: 'primary.600' }}
               >
                 {t('account_model:volunme_of_failed_calls')} {getSortIcon('errorCalls')}
               </Th>
               <Th>{t('account_model:avg_response_time')}</Th>
               <Th>{t('account_model:avg_ttfb')}</Th>
+              <Th></Th>
             </Tr>
           </Thead>
           <Tbody>
             {tableData.map((item, index) => (
               <Tr key={index}>
                 <Td>{item.model}</Td>
-                {showChannelColumn && <Td>{item.channel_name || item.channel_id}</Td>}
-                <Td color={'primary.600'}>{formatNumber(item.totalCalls)}</Td>
-                <Td color={'yellow.600'}>{formatNumber(item.errorCalls)}</Td>
-                <Td color={item.avgResponseTime > 10 ? 'red.600' : ''}>
-                  {item.avgResponseTime > 0 ? `${item.avgResponseTime.toFixed(2)}s` : '-'}
+                {showChannelColumn && <Td>{item.channelName}</Td>}
+                <Td color={'primary.700'}>{formatNumber(item.totalCalls).toLocaleString()}</Td>
+                <Td color={'red.700'}>{formatNumber(item.errorCalls)}</Td>
+                <Td color={item.avgResponseTime > 10 ? 'yellow.700' : ''}>
+                  {item.avgResponseTime > 0 ? `${item.avgResponseTime.toFixed(2)}` : '-'}
                 </Td>
-                <Td>{item.avgTtfb > 0 ? `${item.avgTtfb.toFixed(2)}s` : '-'}</Td>
+                <Td>{item.avgTtfb > 0 ? `${item.avgTtfb.toFixed(2)}` : '-'}</Td>
                 <Td>
                   <Button
                     leftIcon={<MyIcon name={'menu'} w={'1rem'} />}
