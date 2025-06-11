@@ -352,7 +352,6 @@ export function RenderHttpProps({
                 }
               });
             }}
-            prefix={appDetail?._id && nodeId ? `${appDetail._id}-${nodeId}-` : ''}
           />
         </Flex>
         <LightRowTabs<TabEnum>
@@ -419,7 +418,6 @@ export function RenderHttpProps({
       </Box>
     );
   }, [
-    appDetail._id,
     contentType,
     formBody,
     headersLength,

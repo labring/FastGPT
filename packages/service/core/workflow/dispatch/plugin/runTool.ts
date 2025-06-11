@@ -7,7 +7,7 @@ import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { MCPClient } from '../../../app/mcp';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import { getHeaderAuthValue } from '../../../../support/secret/controller';
+import { getSecretValue } from '@fastgpt/global/common/secret/utils';
 
 type RunToolProps = ModuleDispatchProps<{
   toolData: {
@@ -32,7 +32,10 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
   const mcpClient = new MCPClient({
     url,
-    headerAuth: await getHeaderAuthValue(toolData.headerAuth)
+    headerAuth: await getSecretValue({
+      storeSecret: toolData.headerAuth,
+      secretKey: process.env.AES256_SECRET_KEY
+    })
   });
 
   try {

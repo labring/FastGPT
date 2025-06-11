@@ -69,7 +69,7 @@ export const HttpNode468: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.httpAuth,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       valueType: WorkflowIOValueTypeEnum.any,
-      value: [],
+      value: {},
       label: '',
       required: false
     },

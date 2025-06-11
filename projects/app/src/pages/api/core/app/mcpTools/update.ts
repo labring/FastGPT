@@ -19,8 +19,7 @@ import {
 import { type MCPToolSetData } from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import { upsertSecrets } from '@fastgpt/service/support/secret/controller';
-import { SecretTypeEnum } from '@fastgpt/global/common/secret/constants';
+import { encryptSecret } from '@fastgpt/global/common/secret/utils';
 
 export type updateMCPToolsQuery = {};
 
@@ -43,6 +42,17 @@ async function handler(
   const toolSetNode = app.modules.find((item) => item.flowNodeType === FlowNodeTypeEnum.toolSet);
   const toolSetData = toolSetNode?.inputs[0].value as MCPToolSetData;
 
+  const secretKey = process.env.AES256_SECRET_KEY;
+  const formatedHeaderAuth = Object.fromEntries(
+    Object.entries(headerAuth || {}).map(([key, value]) => [
+      key,
+      {
+        secret: encryptSecret(value.value, secretKey),
+        value: ''
+      }
+    ])
+  );
+
   await mongoSessionRun(async (session) => {
     if (
       !isEqual(toolSetData, {
@@ -55,24 +65,17 @@ async function handler(
         toolSetData: {
           url,
           toolList,
-          headerAuth
+          headerAuth: formatedHeaderAuth
         },
         session
       });
     }
 
-    await upsertSecrets({
-      secrets: [headerAuth],
-      type: SecretTypeEnum.headersAuth,
-      appId,
-      teamId
-    });
-
     // create tool set node
     const toolSetRuntimeNode = getMCPToolSetRuntimeNode({
       url,
       toolList,
-      headerAuth,
+      headerAuth: formatedHeaderAuth,
       name: app.name,
       avatar: app.avatar
     });

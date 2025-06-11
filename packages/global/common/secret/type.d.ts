@@ -8,8 +8,8 @@ export type SecretType = {
 };
 
 export type SecretValueType = {
-  secretId: string;
   value: string;
+  secret: string;
 };
 
 export type StoreSecretValueType = {
