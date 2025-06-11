@@ -69,8 +69,8 @@ const DataTableComponent = ({
             errorCalls: model.exception_count || 0,
             avgResponseTime: model.total_time_milliseconds
               ? model.total_time_milliseconds / 1000
-              : 0, // 转换为秒
-            avgTtfb: model.total_ttfb_milliseconds ? model.total_ttfb_milliseconds / 1000 : 0 // 转换为秒
+              : 0, 
+            avgTtfb: model.total_ttfb_milliseconds ? model.total_ttfb_milliseconds / 1000 : 0 
           });
         });
       });
@@ -116,8 +116,8 @@ const DataTableComponent = ({
           totalCalls: aggregated.totalCalls,
           errorCalls: aggregated.errorCalls,
           avgResponseTime:
-            aggregated.count > 0 ? aggregated.totalResponseTime / aggregated.count / 1000 : 0, // 转换为秒
-          avgTtfb: aggregated.count > 0 ? aggregated.totalTtfb / aggregated.count / 1000 : 0 // 转换为秒
+            aggregated.count > 0 ? aggregated.totalResponseTime / aggregated.count / 1000 : 0,
+          avgTtfb: aggregated.count > 0 ? aggregated.totalTtfb / aggregated.count / 1000 : 0 
         });
       });
     }
