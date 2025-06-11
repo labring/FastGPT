@@ -34,7 +34,7 @@ const DataTableComponent = ({
   onViewDetail
 }: DataTableComponentProps) => {
   const { t } = useTranslation();
-  const [sortField, setSortField] = useState<'totalCalls' | 'errorCalls' | null>(null);
+  const [sortField, setSortField] = useState<'totalCalls' | 'errorCalls' | null>('totalCalls');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // display the channel column
@@ -67,8 +67,10 @@ const DataTableComponent = ({
             channel_id: `${model.channel_id ?? 0}`,
             totalCalls: model.request_count || 0,
             errorCalls: model.exception_count || 0,
-            avgResponseTime: model.total_time_milliseconds || 0,
-            avgTtfb: model.total_ttfb_milliseconds || 0
+            avgResponseTime: model.total_time_milliseconds
+              ? model.total_time_milliseconds / 1000
+              : 0, // 转换为秒
+            avgTtfb: model.total_ttfb_milliseconds ? model.total_ttfb_milliseconds / 1000 : 0 // 转换为秒
           });
         });
       });
@@ -114,8 +116,8 @@ const DataTableComponent = ({
           totalCalls: aggregated.totalCalls,
           errorCalls: aggregated.errorCalls,
           avgResponseTime:
-            aggregated.count > 0 ? aggregated.totalResponseTime / aggregated.count : 0,
-          avgTtfb: aggregated.count > 0 ? aggregated.totalTtfb / aggregated.count : 0
+            aggregated.count > 0 ? aggregated.totalResponseTime / aggregated.count / 1000 : 0, // 转换为秒
+          avgTtfb: aggregated.count > 0 ? aggregated.totalTtfb / aggregated.count / 1000 : 0 // 转换为秒
         });
       });
     }
@@ -127,8 +129,6 @@ const DataTableComponent = ({
         const bVal = b[sortField];
         return sortDirection === 'desc' ? bVal - aVal : aVal - bVal;
       });
-    } else {
-      rows.sort((a, b) => a.model.localeCompare(b.model));
     }
 
     return rows;
@@ -136,14 +136,10 @@ const DataTableComponent = ({
 
   const handleSort = (field: 'totalCalls' | 'errorCalls') => {
     if (sortField === field) {
-      if (sortDirection === 'desc') {
-        setSortDirection('asc');
-      } else {
-        // The third click returns to the original state (sorted by model name)
-        setSortField(null);
-        setSortDirection('desc');
-      }
+      // Toggle between desc and asc
+      setSortDirection(sortDirection === 'desc' ? 'asc' : 'desc');
     } else {
+      // Switch to new field, default to desc
       setSortField(field);
       setSortDirection('desc');
     }
@@ -178,7 +174,6 @@ const DataTableComponent = ({
               </Th>
               <Th>{t('account_model:avg_response_time')}</Th>
               <Th>{t('account_model:avg_ttfb')}</Th>
-              <Th>{t('common:Action')}</Th>
             </Tr>
           </Thead>
           <Tbody>
@@ -188,15 +183,15 @@ const DataTableComponent = ({
                 {showChannelColumn && <Td>{item.channel_id}</Td>}
                 <Td color={'primary.600'}>{formatNumber(item.totalCalls)}</Td>
                 <Td color={'yellow.600'}>{formatNumber(item.errorCalls)}</Td>
-                <Td color={item.avgResponseTime > 10000 ? 'red.600' : ''}>
-                  {item.avgResponseTime > 0 ? `${Math.round(item.avgResponseTime)}ms` : '-'}
+                <Td color={item.avgResponseTime > 10 ? 'red.600' : ''}>
+                  {item.avgResponseTime > 0 ? `${item.avgResponseTime.toFixed(2)}s` : '-'}
                 </Td>
-                <Td>{item.avgTtfb > 0 ? `${Math.round(item.avgTtfb)}ms` : '-'}</Td>
+                <Td>{item.avgTtfb > 0 ? `${item.avgTtfb.toFixed(2)}s` : '-'}</Td>
                 <Td>
                   <Button
                     leftIcon={<MyIcon name={'menu'} w={'1rem'} />}
                     size={'sm'}
-                    variant={'outline'}
+                    variant={'whiteBase'}
                     onClick={() => onViewDetail(item.model)}
                   >
                     {t('account_model:detail')}

@@ -373,12 +373,14 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       const avgResponseTime =
         summary.length > 0
           ? summary.reduce((acc, model) => acc + (model.total_time_milliseconds || 0), 0) /
-            summary.length
+            summary.length /
+            1000
           : 0;
       const avgTtfb =
         summary.length > 0
           ? summary.reduce((acc, model) => acc + (model.total_ttfb_milliseconds || 0), 0) /
-            summary.length
+            summary.length /
+            1000
           : 0;
 
       const maxRpm = filterProps.model
@@ -417,8 +419,8 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
         outputTokens,
         totalTokens,
         totalCost,
-        avgResponseTime: Math.round(avgResponseTime),
-        avgTtfb: Math.round(avgTtfb),
+        avgResponseTime: Math.round(avgResponseTime * 100) / 100,
+        avgTtfb: Math.round(avgTtfb * 100) / 100,
         maxRpm,
         maxTpm
       };
@@ -663,7 +665,8 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
                       {
                         label: t('account_model:avg_response_time'),
                         dataKey: 'avgResponseTime',
-                        color: '#36B37E'
+                        color: '#36B37E',
+                        formatter: (value: number) => `${value.toFixed(2)}s`
                       }
                     ]}
                   />
@@ -684,7 +687,8 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
                       {
                         label: t('account_model:avg_ttfb'),
                         dataKey: 'avgTtfb',
-                        color: '#FF5630'
+                        color: '#FF5630',
+                        formatter: (value: number) => `${value.toFixed(2)}s`
                       }
                     ]}
                   />
