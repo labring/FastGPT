@@ -240,7 +240,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       const currentTime = Date.now();
 
       // Control update frequency, reduce to similar speed as PC (60ms interval)
-      if (currentTime - mobileLastUpdateTimeRef.current > 60) {
+      if (currentTime - mobileLastUpdateTimeRef.current > 45) {
         const intensities: number[] = [];
 
         // Multiple sampling and averaging, consistent algorithm with PC
@@ -278,7 +278,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
           mobileWaveformDataRef.current = new Array(barCount).fill(0.1);
         }
 
-        const smoothingFactor = 0.3; // Consistent smoothing factor with PC
+        const smoothingFactor = 0.3; // 与PC保持一致的平滑系数
         for (let i = 0; i < barCount; i++) {
           const smoothedIntensity =
             (mobileWaveformDataRef.current[i] || 0.1) * (1 - smoothingFactor) +
