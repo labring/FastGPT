@@ -21,11 +21,11 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
 
   const startTimestamp = useRef(0);
 
-  // 添加波形数据缓存和动画控制
+  // Add waveform data caching and animation control
   const waveformDataRef = useRef<number[]>([]);
   const lastUpdateTimeRef = useRef(0);
 
-  // 移动端波形数据缓存
+  // Mobile waveform data cache
   const mobileWaveformDataRef = useRef<number[]>([]);
   const mobileLastUpdateTimeRef = useRef(0);
 
@@ -63,12 +63,12 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
     canvasCtx.stroke();
     canvasCtx.closePath();
 
-    // 波形参数
+    // Waveform parameters
     const centerY = height / 2;
     const dataPoints = 300;
     const maxBarHeight = height * 0.35;
 
-    // 更敏感的音频数据处理 - 多次采样并平均
+    // More sensitive audio data processing - multiple sampling and averaging
     let intensitySum = 0;
     const sampleCount = 8;
 
@@ -83,7 +83,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
         maxVal = Math.max(maxVal, Math.abs(dataArray[i] - 128));
       }
 
-      const sampleIntensity = maxVal > 2 ? (maxVal / 128) * 2.5 : 0.03; // 提高敏感度：阈值从5降到2，放大倍数从1.5提升到2.5
+      const sampleIntensity = maxVal > 2 ? (maxVal / 128) * 2.5 : 0.03; // Increase sensitivity: threshold reduced from 5 to 2, amplification factor increased from 1.5 to 2.5
       intensitySum += sampleIntensity;
     }
 
@@ -95,38 +95,38 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
         waveformDataRef.current = new Array(dataPoints).fill(0.03);
       }
 
-      const smoothingFactor = 0.4; // 提高响应速度：从0.3提升到0.4
+      const smoothingFactor = 0.4; // Improve response speed: increased from 0.3 to 0.4
       const smoothedIntensity =
         (waveformDataRef.current[dataPoints - 1] || 0.03) * (1 - smoothingFactor) +
         currentIntensity * smoothingFactor;
 
-      waveformDataRef.current.shift(); // 移除最左侧的数据
-      waveformDataRef.current.push(smoothedIntensity); // 在右侧添加新数据
+      waveformDataRef.current.shift(); // Remove leftmost data
+      waveformDataRef.current.push(smoothedIntensity); // Add new data on the right
 
       lastUpdateTimeRef.current = currentTime;
     }
 
-    // 绘制平滑的波形曲线
+    // Draw smooth waveform curves
     if (waveformDataRef.current.length > 0) {
-      // 创建渐变效果
+      // Create gradient effect
       const gradient = canvasCtx.createLinearGradient(
         0,
         centerY - maxBarHeight,
         0,
         centerY + maxBarHeight
       );
-      gradient.addColorStop(0, 'rgba(59, 130, 246, 0.8)'); // 蓝色，更透明
+      gradient.addColorStop(0, 'rgba(59, 130, 246, 0.8)'); // Blue, more transparent
       gradient.addColorStop(0.5, 'rgba(59, 130, 246, 0.4)');
       gradient.addColorStop(1, 'rgba(59, 130, 246, 0.1)');
 
-      // 绘制上半部分波形曲线
+      // Draw upper half waveform curve
       canvasCtx.beginPath();
       canvasCtx.moveTo(0, centerY);
 
       for (let i = 0; i < dataPoints; i++) {
         const x = (i / (dataPoints - 1)) * width;
         const intensity = waveformDataRef.current[i] || 0.03;
-        const y = centerY - intensity * maxBarHeight * 1.5; // 提高波形幅度
+        const y = centerY - intensity * maxBarHeight * 1.5; // Increase waveform amplitude
 
         if (i === 0) {
           canvasCtx.moveTo(x, y);
@@ -152,7 +152,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       for (let i = 0; i < dataPoints; i++) {
         const x = (i / (dataPoints - 1)) * width;
         const intensity = waveformDataRef.current[i] || 0.03;
-        const y = centerY + intensity * maxBarHeight * 1.5; // 提高波形幅度
+        const y = centerY + intensity * maxBarHeight * 1.5; // Increase waveform amplitude
 
         if (i === 0) {
           canvasCtx.moveTo(x, y);
@@ -178,7 +178,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       for (let i = 0; i < dataPoints; i++) {
         const x = (i / (dataPoints - 1)) * width;
         const intensity = waveformDataRef.current[i] || 0.03;
-        const y = centerY - intensity * maxBarHeight * 1.5; // 提高波形幅度
+        const y = centerY - intensity * maxBarHeight * 1.5; // Increase waveform amplitude
 
         if (i === 0) {
           canvasCtx.moveTo(x, y);
@@ -206,7 +206,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       const dataArray = new Uint8Array(bufferLength);
       analyser.getByteTimeDomainData(dataArray);
 
-      // 处理设备像素比，确保清晰度
+      // Handle device pixel ratio for clarity
       const rect = canvas.getBoundingClientRect();
       const pixelRatio = window.devicePixelRatio || 1;
 
@@ -217,7 +217,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
 
       canvasCtx.scale(pixelRatio, pixelRatio);
 
-      // 关闭抗锯齿以获得清晰的像素级渲染
+      // Disable anti-aliasing for crisp pixel-level rendering
       canvasCtx.imageSmoothingEnabled = false;
 
       const width = rect.width;
@@ -226,24 +226,24 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       canvasCtx.clearRect(0, 0, width, height);
 
       const centerY = height / 2;
-      const widthRatio = 0.8; // 条形总宽度占画布宽度的比例（80%）
+      const widthRatio = 0.8; // Total bar width ratio to canvas width (80%)
       const totalUsedWidth = width * widthRatio;
-      const barWidth = 4; // 每个条形的宽度
-      const gap = 4; // 条形之间的间隙
+      const barWidth = 4; // Width of each bar
+      const gap = 4; // Gap between bars
 
-      // 根据总宽度计算能容纳的条形数量
+      // Calculate the number of bars that can fit based on total width
       const barCount = Math.floor((totalUsedWidth + gap) / (barWidth + gap));
       const actualTotalWidth = barCount * barWidth + (barCount - 1) * gap;
       const startX = (width - actualTotalWidth) / 2;
 
-      // 音频数据处理 - 采用与PC端类似的采样频率控制
+      // Audio data processing - use similar sampling frequency control as PC
       const currentTime = Date.now();
 
-      // 控制更新频率，降低到与PC端类似的速度（60ms间隔）
+      // Control update frequency, reduce to similar speed as PC (60ms interval)
       if (currentTime - mobileLastUpdateTimeRef.current > 60) {
         const intensities: number[] = [];
 
-        // 多次采样并平均，与PC端保持一致的算法
+        // Multiple sampling and averaging, consistent algorithm with PC
         const sampleCount = 5;
 
         for (let i = 0; i < barCount; i++) {
@@ -263,22 +263,22 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
               maxVal = Math.max(maxVal, Math.abs(dataArray[j] - 128));
             }
 
-            const sampleIntensity = maxVal > 1 ? (maxVal / 128) * 3.0 : 0.05; // 提高敏感度：阈值从2降到1，放大倍数从1.8提升到3.0
+            const sampleIntensity = maxVal > 1 ? (maxVal / 128) * 3.0 : 0.05; // Increase sensitivity: threshold reduced from 2 to 1, amplification factor increased from 1.8 to 3.0
             intensitySum += sampleIntensity;
           }
 
           const avgIntensity = intensitySum / sampleCount;
-          // 限制范围并增强，保持最小高度
-          const normalizedIntensity = Math.max(0.1, Math.min(1.0, avgIntensity * 1.5)); // 进一步放大音频强度
+          // Limit range and enhance, maintain minimum height
+          const normalizedIntensity = Math.max(0.1, Math.min(1.0, avgIntensity * 1.5)); // Further amplify audio intensity
           intensities.push(normalizedIntensity);
         }
 
-        // 平滑处理 - 与PC端类似的平滑算法
+        // Smoothing processing - similar smoothing algorithm as PC
         if (mobileWaveformDataRef.current.length !== barCount) {
           mobileWaveformDataRef.current = new Array(barCount).fill(0.1);
         }
 
-        const smoothingFactor = 0.3; // 与PC端保持一致的平滑因子
+        const smoothingFactor = 0.3; // Consistent smoothing factor with PC
         for (let i = 0; i < barCount; i++) {
           const smoothedIntensity =
             (mobileWaveformDataRef.current[i] || 0.1) * (1 - smoothingFactor) +
@@ -289,30 +289,30 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
         mobileLastUpdateTimeRef.current = currentTime;
       }
 
-      // 使用缓存的数据绘制
+      // Use cached data for rendering
       const cachedIntensities = mobileWaveformDataRef.current;
       if (!cachedIntensities || cachedIntensities.length === 0) {
         return;
       }
 
-      // 直接绘制动态药丸波形条，不要背景
+      // Directly draw dynamic pill-shaped waveform bars, no background
       for (let i = 0; i < barCount; i++) {
-        // 像素对齐，确保清晰渲染
+        // Pixel alignment to ensure crisp rendering
         const x = Math.round(startX + i * (barWidth + gap));
         const intensity = cachedIntensities[i] || 0.1;
 
-        // 设置最小高度和最大高度，药丸条更短
+        // Set minimum and maximum height, pill bars are shorter
         const minBarHeight = height * 0.08;
-        const maxBarHeight = height * 0.55; // 增加最大高度到55%，让波形更明显
+        const maxBarHeight = height * 0.55; // Increase maximum height to 55%, make waveform more visible
         const barHeight = Math.round(minBarHeight + intensity * (maxBarHeight - minBarHeight));
 
-        // 确保圆角半径不会超过宽度或高度的一半，并像素对齐
+        // Ensure border radius doesn't exceed half of width or height, and pixel aligned
         const radius = Math.min(barWidth / 2, barHeight / 2);
 
-        // 纯白色填充，完全不透明
+        // Pure white fill, completely opaque
         canvasCtx.fillStyle = '#FFFFFF';
 
-        // 绘制完整的竖直药丸形状，坐标像素对齐
+        // Draw complete vertical pill shape, coordinates pixel aligned
         canvasCtx.beginPath();
         canvasCtx.roundRect(
           x,
@@ -346,7 +346,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       setIsSpeaking(true);
       setAudioSecond(0);
 
-      // 清空波形历史记录
+      // Clear waveform history records
       waveformDataRef.current = [];
       lastUpdateTimeRef.current = 0;
       mobileWaveformDataRef.current = [];
@@ -375,7 +375,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
           stream.getTracks().forEach((track) => track.stop());
           setIsSpeaking(false);
 
-          // 清空波形历史记录
+          // Clear waveform history records
           waveformDataRef.current = [];
           lastUpdateTimeRef.current = 0;
           mobileWaveformDataRef.current = [];
@@ -424,7 +424,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
                   filename: 'recording.mp3'
                 };
               }
-              // 默认回退选项
+              // Default fallback option
               return {
                 options: { type: 'audio/webm' },
                 filename: 'recording.webm'
@@ -464,7 +464,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
           if (timeIntervalRef.current) {
             clearInterval(timeIntervalRef.current);
           }
-          // 清空波形历史记录
+          // Clear waveform history records
           waveformDataRef.current = [];
           lastUpdateTimeRef.current = 0;
           mobileWaveformDataRef.current = [];
@@ -498,7 +498,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       clearInterval(timeIntervalRef.current);
     }
 
-    // 清空波形历史记录
+    // Clear waveform history records
     waveformDataRef.current = [];
     lastUpdateTimeRef.current = 0;
     mobileWaveformDataRef.current = [];
