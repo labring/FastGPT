@@ -194,12 +194,12 @@ export const getDashboardV2 = (params: {
   start_timestamp?: number;
   end_timestamp?: number;
   timezone?: string;
-  timespan?: 'day' | 'hour';
+  timespan?: 'day' | 'hour' | 'minute';
 }) =>
   GET<
     {
       timestamp: number;
-      models: DashboardDataItemType[];
+      summary: DashboardDataItemType[];
     }[]
   >('/dashboardv2/', {
     channel: params.channel,
