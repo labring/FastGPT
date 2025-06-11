@@ -64,6 +64,28 @@ const calculateTimeDiffs = (from: Date, to: Date) => {
   };
 };
 
+const getTimespanConfig = (daysDiff: number, hoursDiff: number) => {
+  const options = [];
+  if (daysDiff < 1) {
+    options.push('minute' as const);
+  }
+  if (daysDiff <= 30) {
+    options.push('hour' as const);
+  }
+  options.push('day' as const);
+
+  let defaultTimespan: 'minute' | 'hour' | 'day';
+  if (hoursDiff < 6) {
+    defaultTimespan = 'minute';
+  } else if (daysDiff <= 30) {
+    defaultTimespan = 'hour';
+  } else {
+    defaultTimespan = 'day';
+  }
+
+  return { options, defaultTimespan };
+};
+
 const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -73,10 +95,9 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   const [userHasManuallySelectedTimespan, setUserHasManuallySelectedTimespan] = useState(false);
 
   // view detail handler
-  const handleViewDetail = (channelId: string, model: string) => {
+  const handleViewDetail = (model: string) => {
     setFilterProps({
       ...filterProps,
-      channelId,
       model
     });
     setViewMode('chart');
@@ -151,57 +172,61 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       filterProps.dateRange.to
     );
 
-    // show available timespan
-    const options = [];
-    if (hoursDiff < 24) {
-      options.push({ label: t('account_model:timespan_minute'), value: 'minute' as const });
-    }
-    if (daysDiff <= 30) {
-      options.push({ label: t('account_model:timespan_hour'), value: 'hour' as const });
-    }
-    options.push({ label: t('account_model:timespan_day'), value: 'day' as const });
+    const { options, defaultTimespan } = getTimespanConfig(daysDiff, hoursDiff);
 
-    let defaultTimespan: 'minute' | 'hour' | 'day';
-    if (hoursDiff < 6) {
-      defaultTimespan = 'minute';
-    } else if (daysDiff <= 30) {
-      defaultTimespan = 'hour';
-    } else {
-      defaultTimespan = 'day';
-    }
+    return {
+      options: options.map((value) => {
+        const labelKey = (() => {
+          if (value === 'minute') {
+            return 'account_model:timespan_minute';
+          } else if (value === 'hour') {
+            return 'account_model:timespan_hour';
+          } else {
+            return 'account_model:timespan_day';
+          }
+        })();
 
-    return { options, defaultTimespan };
-  }, [filterProps.dateRange]);
+        return {
+          label: t(labelKey as any) as React.ReactNode,
+          value: value as 'minute' | 'hour' | 'day'
+        };
+      }),
+      defaultTimespan
+    };
+  }, [filterProps.dateRange, t]);
 
   const { options: timespanOptions, defaultTimespan: getDefaultTimespan } = timespanConfig;
 
-  // automatically switch timespan
-  React.useEffect(() => {
-    const newTimespan = getDefaultTimespan;
-    const availableTimespans = timespanOptions.map((opt) => opt.value);
-    const isCurrentTimespanAvailable = availableTimespans.includes(filterProps.timespan || 'day');
+  // Handle date range change with automatic timespan adjustment
+  const handleDateRangeChange = (dateRange: DateRangeType) => {
+    const newFilterProps = { ...filterProps, dateRange };
 
-    if (!isCurrentTimespanAvailable) {
-      const targetTimespan = availableTimespans.includes(newTimespan)
-        ? newTimespan
-        : availableTimespans[0] || 'day';
+    if (dateRange.from && dateRange.to) {
+      const { daysDiff, hoursDiff } = calculateTimeDiffs(dateRange.from, dateRange.to);
+      const { options: newTimespanOptions, defaultTimespan: newDefaultTimespan } =
+        getTimespanConfig(daysDiff, hoursDiff);
 
-      setFilterProps((prev) => ({
-        ...prev,
-        timespan: targetTimespan
-      }));
-      setUserHasManuallySelectedTimespan(false);
-    } else if (
-      !userHasManuallySelectedTimespan &&
-      filterProps.timespan !== newTimespan &&
-      availableTimespans.includes(newTimespan)
-    ) {
-      setFilterProps((prev) => ({
-        ...prev,
-        timespan: newTimespan
-      }));
+      const isCurrentTimespanAvailable = newTimespanOptions.includes(filterProps.timespan || 'day');
+
+      if (!isCurrentTimespanAvailable) {
+        // Current timespan not available, switch to best available
+        const targetTimespan = (
+          newTimespanOptions.includes(newDefaultTimespan)
+            ? newDefaultTimespan
+            : newTimespanOptions[0] || 'day'
+        ) as 'minute' | 'hour' | 'day';
+        newFilterProps.timespan = targetTimespan;
+        setUserHasManuallySelectedTimespan(false);
+      } else if (
+        !userHasManuallySelectedTimespan &&
+        newTimespanOptions.includes(newDefaultTimespan)
+      ) {
+        newFilterProps.timespan = newDefaultTimespan;
+      }
     }
-  }, [getDefaultTimespan, timespanOptions, filterProps.timespan, userHasManuallySelectedTimespan]);
+
+    setFilterProps(newFilterProps);
+  };
 
   // Fetch dashboard data with date range and channel filters
   const { data: dashboardData = [], loading: isLoading } = useRequest2(
@@ -236,31 +261,27 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
         const endDate = dayjs(filterProps.dateRange.to);
         const timespan = filterProps.timespan || 'day';
 
-        let periodCount: number;
-        let periodUnit: dayjs.ManipulateType;
-        let formatString: string;
-
-        switch (timespan) {
-          case 'minute':
-            periodCount = endDate.diff(startDate, 'minute') + 1;
-            periodUnit = 'minute';
-            formatString = 'YYYY-MM-DD HH:mm';
-            break;
-          case 'hour':
-            periodCount = endDate.diff(startDate, 'hour') + 1;
-            periodUnit = 'hour';
-            formatString = 'YYYY-MM-DD HH';
-            break;
-          case 'day':
-            periodCount = endDate.diff(startDate, 'day') + 1;
-            periodUnit = 'day';
-            formatString = 'YYYY-MM-DD';
-            break;
-          default:
-            periodCount = endDate.diff(startDate, 'day') + 1;
-            periodUnit = 'day';
-            formatString = 'YYYY-MM-DD';
-        }
+        const { periodCount, periodUnit, formatString } = (() => {
+          if (timespan === 'minute') {
+            return {
+              periodCount: endDate.diff(startDate, 'minute') + 1,
+              periodUnit: 'minute' as dayjs.ManipulateType,
+              formatString: 'YYYY-MM-DD HH:mm'
+            };
+          } else if (timespan === 'hour') {
+            return {
+              periodCount: endDate.diff(startDate, 'hour') + 1,
+              periodUnit: 'hour' as dayjs.ManipulateType,
+              formatString: 'YYYY-MM-DD HH'
+            };
+          } else {
+            return {
+              periodCount: endDate.diff(startDate, 'day') + 1,
+              periodUnit: 'day' as dayjs.ManipulateType,
+              formatString: 'YYYY-MM-DD'
+            };
+          }
+        })();
 
         // Create complete period list
         const completePeriodList = Array.from({ length: periodCount }, (_, i) =>
@@ -329,25 +350,20 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
 
     return dashboardData.map((item) => {
       // Format date based on timespan
-      let dateFormat: string;
-      switch (filterProps.timespan) {
-        case 'minute':
-          dateFormat = 'MM-DD HH:mm';
-          break;
-        case 'hour':
-          dateFormat = 'MM-DD HH:00';
-          break;
-        case 'day':
-          dateFormat = 'MM-DD';
-          break;
-        default:
-          dateFormat = 'MM-DD';
-      }
+      const dateFormat = (() => {
+        if (filterProps.timespan === 'minute') {
+          return 'MM-DD HH:mm';
+        } else if (filterProps.timespan === 'hour') {
+          return 'MM-DD HH:00';
+        } else {
+          return 'MM-DD';
+        }
+      })();
 
       const date = dayjs(item.timestamp * 1000).format(dateFormat);
       const summary = item.summary || [];
-      const totalCalls = summary.reduce((acc, model) => acc + model.request_count, 0);
-      const errorCalls = summary.reduce((acc, model) => acc + model.exception_count, 0);
+      const totalCalls = summary.reduce((acc, model) => acc + (model.request_count || 0), 0);
+      const errorCalls = summary.reduce((acc, model) => acc + (model.exception_count || 0), 0);
       const errorRate = totalCalls === 0 ? 0 : Number((errorCalls / totalCalls).toFixed(2));
 
       const inputTokens = summary.reduce((acc, model) => acc + (model.input_tokens || 0), 0);
@@ -417,7 +433,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
     <>
       <Box>{Tab}</Box>
 
-      <HStack spacing={4} justifyContent="space-between" w="full">
+      <HStack spacing={4} justifyContent="space-between">
         <HStack spacing={4}>
           <HStack>
             <FormLabel>{t('common:user.Time')}</FormLabel>
@@ -426,7 +442,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
                 defaultDate={filterProps.dateRange}
                 dateRange={filterProps.dateRange}
                 position="bottom"
-                onSuccess={(e) => setFilterProps({ ...filterProps, dateRange: e })}
+                onSuccess={handleDateRangeChange}
               />
             </Box>
           </HStack>
@@ -581,7 +597,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
                       color: theme.colors.primary['600']
                     }
                   ]}
-                  HeaderRightChildren={
+                  HeaderLeftChildren={
                     <FillRowTabs<'inputTokens' | 'outputTokens' | 'totalTokens'>
                       list={[
                         {
@@ -597,8 +613,8 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
                           value: 'outputTokens'
                         }
                       ]}
-                      py={1}
-                      px={5}
+                      py={0.5}
+                      px={2}
                       value={tokensUsageType}
                       onChange={(val) => setTokensUsageType(val)}
                     />

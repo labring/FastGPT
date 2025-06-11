@@ -37,7 +37,7 @@ type TooltipItem = {
 type LineChartComponentProps = {
   data: Record<string, any>[];
   title: string;
-  HeaderRightChildren?: React.ReactNode;
+  HeaderLeftChildren?: React.ReactNode;
   lines: LineConfig[];
   tooltipItems?: TooltipItem[];
   enableCumulative?: boolean;
@@ -78,7 +78,7 @@ const CustomTooltip = ({
 const LineChartComponent = ({
   data,
   title,
-  HeaderRightChildren,
+  HeaderLeftChildren,
   lines,
   tooltipItems,
   enableCumulative = true
@@ -157,11 +157,12 @@ const LineChartComponent = ({
 
   return (
     <>
-      <HStack mb={4} justifyContent="space-between" alignItems="flex-start">
-        <Box fontSize="sm" color="myGray.900" fontWeight="medium">
+      <HStack mb={4} justifyContent={'space-between'} alignItems={'flex-start'}>
+        <Box fontSize={'sm'} color={'myGray.900'} fontWeight={'medium'}>
           {title}
         </Box>
         <HStack spacing={2}>
+          {HeaderLeftChildren}
           {enableCumulative && (
             <FillRowTabs<'independent' | 'cumulative'>
               list={tabList}
@@ -171,13 +172,12 @@ const LineChartComponent = ({
               onChange={setDisplayMode}
             />
           )}
-          {HeaderRightChildren}
         </HStack>
       </HStack>
       <ResponsiveContainer width="100%" height={'100%'}>
         <AreaChart
           data={processedData}
-          margin={{ top: 5, right: 30, left: 0, bottom: HeaderRightChildren ? 30 : 15 }}
+          margin={{ top: 5, right: 30, left: 0, bottom: HeaderLeftChildren ? 20 : 15 }}
         >
           {gradientDefs}
           <XAxis
