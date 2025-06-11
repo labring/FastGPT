@@ -815,7 +815,8 @@ export const theme = extendTheme({
     md: '0.5rem',
     semilg: '0.625rem',
     lg: '0.75rem',
-    xl: '1rem'
+    xl: '1rem',
+    xxl: '1.25rem'
   },
   shadows: {
     1: '0px 1px 2px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)',
