@@ -24,7 +24,11 @@ export type DataTableComponentProps = {
     outputPrice?: number;
     charsPointsPrice?: number;
   }[];
-  channelIdToNameMap: Map<number, string>;
+  channelList: {
+    label: string;
+    value: string;
+    name: string;
+  }[];
   onViewDetail: (model: string) => void;
 };
 
@@ -32,12 +36,26 @@ const DataTableComponent = ({
   data,
   filterProps,
   systemModelList,
-  channelIdToNameMap,
+  channelList,
   onViewDetail
 }: DataTableComponentProps) => {
   const { t } = useTranslation();
   const [sortField, setSortField] = useState<'totalCalls' | 'errorCalls' | null>('totalCalls');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Create a mapping from channel ID to channel name
+  const channelIdToNameMap = useMemo(() => {
+    const map = new Map<number, string>();
+    channelList.forEach((channel) => {
+      if (channel.value && channel.value !== '') {
+        const channelId = parseInt(channel.value);
+        if (!isNaN(channelId)) {
+          map.set(channelId, channel.name);
+        }
+      }
+    });
+    return map;
+  }, [channelList]);
 
   // display the channel column
   const showChannelColumn = !!filterProps.model;

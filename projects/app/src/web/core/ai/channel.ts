@@ -106,10 +106,10 @@ export function DELETE<T = undefined>(url: string, data = {}): Promise<T> {
 }
 
 // ====== API ======
-export const getChannelList = (options?: { perPage?: number }) =>
+export const getChannelList = () =>
   GET<ChannelListResponseType>('/channels/all', {
     page: 1,
-    perPage: options?.perPage || 10
+    perPage: 10
   });
 
 export const getChannelProviders = () =>
