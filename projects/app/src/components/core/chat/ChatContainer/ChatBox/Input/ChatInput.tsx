@@ -222,7 +222,7 @@ const ChatInput = ({
           }}
         />
         {/* Button Group */}
-        {!isVoiceInputActive && (
+        {(!isVoiceInputActive || inputValue) && (
           <Flex
             alignItems={'center'}
             position={'absolute'}
@@ -423,7 +423,7 @@ const ChatInput = ({
           />
         )}
         {/* file preview */}
-        {!isVoiceInputActive && (
+        {(!isVoiceInputActive || inputValue) && (
           <Box px={[1, 3]}>
             <FilePreview fileList={fileList} removeFiles={removeFiles} />
           </Box>
@@ -437,6 +437,7 @@ const ChatInput = ({
             ref={VoiceInputRef}
             onSendMessage={onSendMessage}
             resetInputVal={resetInputVal}
+            fileList={fileList}
           />
         )}
 
