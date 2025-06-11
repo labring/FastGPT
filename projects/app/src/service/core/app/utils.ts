@@ -63,8 +63,8 @@ export const getScheduleTriggerApp = async () => {
           }
         ];
 
-        const { flowUsages, assistantResponses, flowResponses, durationSeconds } = await retryFn(
-          () => {
+        const { flowUsages, assistantResponses, flowResponses, durationSeconds, system_memories } =
+          await retryFn(() => {
             return dispatchWorkFlow({
               chatId,
               timezone,
@@ -89,8 +89,7 @@ export const getScheduleTriggerApp = async () => {
               stream: false,
               maxRunTimes: WORKFLOW_MAX_RUN_TIMES
             });
-          }
-        );
+          });
 
         // Save chat
         await saveChat({
@@ -112,7 +111,8 @@ export const getScheduleTriggerApp = async () => {
             {
               obj: ChatRoleEnum.AI,
               value: assistantResponses,
-              [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
+              [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
+              memories: system_memories
             }
           ],
           durationSeconds
