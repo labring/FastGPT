@@ -79,7 +79,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
         maxVal = Math.max(maxVal, Math.abs(dataArray[i] - 128));
       }
 
-      const sampleIntensity = maxVal > 5 ? (maxVal / 128) * 1.5 : 0.05; // 更敏感的阈值和放大
+      const sampleIntensity = maxVal > 2 ? (maxVal / 128) * 2.5 : 0.03; // 提高敏感度：阈值从5降到2，放大倍数从1.5提升到2.5
       intensitySum += sampleIntensity;
     }
 
@@ -88,12 +88,12 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
     const currentTime = Date.now();
     if (currentTime - lastUpdateTimeRef.current > 16) {
       if (waveformDataRef.current.length !== dataPoints) {
-        waveformDataRef.current = new Array(dataPoints).fill(0.05);
+        waveformDataRef.current = new Array(dataPoints).fill(0.03);
       }
 
-      const smoothingFactor = 0.3;
+      const smoothingFactor = 0.4; // 提高响应速度：从0.3提升到0.4
       const smoothedIntensity =
-        (waveformDataRef.current[dataPoints - 1] || 0.05) * (1 - smoothingFactor) +
+        (waveformDataRef.current[dataPoints - 1] || 0.03) * (1 - smoothingFactor) +
         currentIntensity * smoothingFactor;
 
       waveformDataRef.current.shift(); // 移除最左侧的数据
@@ -121,15 +121,15 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
 
       for (let i = 0; i < dataPoints; i++) {
         const x = (i / (dataPoints - 1)) * width;
-        const intensity = waveformDataRef.current[i] || 0.05;
-        const y = centerY - intensity * maxBarHeight * 1.2;
+        const intensity = waveformDataRef.current[i] || 0.03;
+        const y = centerY - intensity * maxBarHeight * 1.5; // 提高波形幅度
 
         if (i === 0) {
           canvasCtx.moveTo(x, y);
         } else {
           const prevX = ((i - 1) / (dataPoints - 1)) * width;
-          const prevIntensity = waveformDataRef.current[i - 1] || 0.05;
-          const prevY = centerY - prevIntensity * maxBarHeight * 1.2;
+          const prevIntensity = waveformDataRef.current[i - 1] || 0.03;
+          const prevY = centerY - prevIntensity * maxBarHeight * 1.5;
           const cpX = (prevX + x) / 2;
           const cpY = (prevY + y) / 2;
           canvasCtx.quadraticCurveTo(cpX, cpY, x, y);
@@ -147,15 +147,15 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
 
       for (let i = 0; i < dataPoints; i++) {
         const x = (i / (dataPoints - 1)) * width;
-        const intensity = waveformDataRef.current[i] || 0.05;
-        const y = centerY + intensity * maxBarHeight * 1.2;
+        const intensity = waveformDataRef.current[i] || 0.03;
+        const y = centerY + intensity * maxBarHeight * 1.5; // 提高波形幅度
 
         if (i === 0) {
           canvasCtx.moveTo(x, y);
         } else {
           const prevX = ((i - 1) / (dataPoints - 1)) * width;
-          const prevIntensity = waveformDataRef.current[i - 1] || 0.05;
-          const prevY = centerY + prevIntensity * maxBarHeight * 1.2;
+          const prevIntensity = waveformDataRef.current[i - 1] || 0.03;
+          const prevY = centerY + prevIntensity * maxBarHeight * 1.5;
           const cpX = (prevX + x) / 2;
           const cpY = (prevY + y) / 2;
           canvasCtx.quadraticCurveTo(cpX, cpY, x, y);
@@ -173,15 +173,15 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
 
       for (let i = 0; i < dataPoints; i++) {
         const x = (i / (dataPoints - 1)) * width;
-        const intensity = waveformDataRef.current[i] || 0.05;
-        const y = centerY - intensity * maxBarHeight * 1.2;
+        const intensity = waveformDataRef.current[i] || 0.03;
+        const y = centerY - intensity * maxBarHeight * 1.5; // 提高波形幅度
 
         if (i === 0) {
           canvasCtx.moveTo(x, y);
         } else {
           const prevX = ((i - 1) / (dataPoints - 1)) * width;
-          const prevIntensity = waveformDataRef.current[i - 1] || 0.05;
-          const prevY = centerY - prevIntensity * maxBarHeight * 1.2;
+          const prevIntensity = waveformDataRef.current[i - 1] || 0.03;
+          const prevY = centerY - prevIntensity * maxBarHeight * 1.5;
           const cpX = (prevX + x) / 2;
           const cpY = (prevY + y) / 2;
           canvasCtx.quadraticCurveTo(cpX, cpY, x, y);

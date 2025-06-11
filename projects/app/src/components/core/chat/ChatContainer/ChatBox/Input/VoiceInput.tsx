@@ -6,8 +6,7 @@ import React, {
   useCallback,
   useState,
   forwardRef,
-  useImperativeHandle,
-  useMemo
+  useImperativeHandle
 } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -20,6 +19,7 @@ import { isMobile } from '@fastgpt/web/common/system/utils';
 
 export interface VoiceInputComponentRef {
   onSpeak: () => void;
+  getVoiceInputState: () => { isSpeaking: boolean; isTransCription: boolean };
 }
 
 type VoiceInputProps = {
@@ -41,16 +41,20 @@ const PCVoiceInput = ({
 
   return (
     <Box
-      position="relative"
-      w="100%"
-      h="100%"
-      bg="white"
-      border="0.5px solid rgba(0, 0, 0, 0.2)"
-      boxShadow="0px 5px 20px -4px rgba(19, 51, 107, 0.13)"
-      borderRadius="20px"
+      position="absolute"
+      top={0}
+      left={0}
+      right={0}
+      bottom={0}
+      bg="rgba(255, 255, 255, 0.3)"
+      backdropFilter="blur(8px)"
+      borderRadius="xxl"
+      zIndex={10}
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      flexDirection="column"
     >
-      {/* Tool Selection Area - Left Bottom */}
-
       {/* Center Waveform Area */}
       <Flex
         position="absolute"
@@ -64,7 +68,7 @@ const PCVoiceInput = ({
         gap={1}
         w="100%"
       >
-        <Box fontSize="sm" color="myGray.500">
+        <Box fontSize="sm" color="myGray.600" fontWeight="500">
           {t('common:core.chat.Speaking')}
         </Box>
         <canvas
@@ -77,17 +81,18 @@ const PCVoiceInput = ({
         />
       </Flex>
 
-      {/* Action Buttons - Right Bottom */}
-      <Flex position="absolute" right="16px" bottom="14px" alignItems="center" gap="8px" h="36px">
+      {/* Action Buttons - Bottom */}
+      <Flex position="absolute" right={4} bottom={3.5} alignItems="center" gap={2} h={9}>
         {/* Time Display */}
         <Box
           fontSize="sm"
-          color="myGray.500"
-          mr="8px"
-          fontFamily={'pingFang SC'}
-          fontWeight={400}
-          lineHeight={'20px'}
-          letterSpacing={'0.25px'}
+          color="myGray.600"
+          mr={2}
+          bg="rgba(255, 255, 255, 0.9)"
+          px={2}
+          py={1}
+          borderRadius="md"
+          fontWeight="500"
         >
           {speakingTimeString}
         </Box>
@@ -95,34 +100,40 @@ const PCVoiceInput = ({
         {/* Cancel Button */}
         <MyTooltip label={t('common:core.chat.Cancel Speak')}>
           <Flex
-            w="36px"
-            h="36px"
+            w={9}
+            h={9}
             alignItems="center"
             justifyContent="center"
-            border="1px solid #E8EBF0"
-            borderRadius="12px"
+            border="sm"
+            borderRadius="lg"
             cursor="pointer"
-            _hover={{ bg: 'rgba(0, 0, 0, 0.04)' }}
+            bg="rgba(255, 255, 255, 0.95)"
+            boxShadow="0 2px 8px rgba(0, 0, 0, 0.1)"
+            _hover={{ bg: 'white', transform: 'scale(1.05)' }}
+            transition="all 0.2s"
             onClick={() => stopSpeak(true)}
           >
-            <MyIcon name={'close'} w={'20px'} h={'20px'} color={'#667085'} />
+            <MyIcon name={'close'} w={5} h={5} color={'myGray.500'} />
           </Flex>
         </MyTooltip>
 
         {/* Confirm Button */}
         <MyTooltip label={t('common:core.chat.Finish Speak')}>
           <Flex
-            w="36px"
-            h="36px"
+            w={9}
+            h={9}
             alignItems="center"
             justifyContent="center"
-            border="1px solid #E8EBF0"
-            borderRadius="12px"
+            border="sm"
+            borderRadius="lg"
             cursor="pointer"
-            _hover={{ bg: 'rgba(0, 0, 0, 0.04)' }}
+            bg="rgba(255, 255, 255, 0.95)"
+            boxShadow="0 2px 8px rgba(0, 0, 0, 0.1)"
+            _hover={{ bg: 'white', transform: 'scale(1.05)' }}
+            transition="all 0.2s"
             onClick={() => stopSpeak(false)}
           >
-            <MyIcon name={'check'} w={'20px'} h={'20px'} color={'#667085'} />
+            <MyIcon name={'check'} w={5} h={5} color={'myGray.500'} />
           </Flex>
         </MyTooltip>
       </Flex>
@@ -212,8 +223,8 @@ const MobileVoiceInput = ({
             transform={'translateY(-50%)'}
             zIndex={5}
             name={'core/chat/backText'}
-            h={'22px'}
-            w={'22px'}
+            h={5}
+            w={5}
             onClick={onCloseSpeak}
           />
         </MyTooltip>
@@ -223,7 +234,9 @@ const MobileVoiceInput = ({
         justifyContent={'center'}
         h="100%"
         flex="1 0 0"
-        bg={isSpeaking ? (isCancel ? 'red.500' : 'primary.500') : 'white'}
+        bg={isSpeaking ? (isCancel ? 'red.500' : 'primary.500') : 'rgba(255, 255, 255, 0.95)'}
+        backdropFilter={!isSpeaking ? 'blur(4px)' : 'none'}
+        borderRadius="xxl"
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onTouchStart={handleTouchStart}
@@ -254,10 +267,10 @@ const MobileVoiceInput = ({
           left={0}
           right={0}
           bottom={maskBottom}
-          h={'200px'}
+          h={50}
           bg="linear-gradient(to top, white, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0))"
         >
-          <Box fontSize="sm" color="myGray.500" position="absolute" bottom={'10px'}>
+          <Box fontSize="sm" color="myGray.500" position="absolute" bottom={2.5}>
             {isCancel ? t('chat:release_cancel') : t('chat:release_send')}
           </Box>
         </Flex>
@@ -364,7 +377,8 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
       }
     }, [isMobileDevice, onStartSpeak]);
     useImperativeHandle(ref, () => ({
-      onSpeak: onSpeach
+      onSpeak: onSpeach,
+      getVoiceInputState: () => ({ isSpeaking: isSpeaking || mobilePreSpeak, isTransCription })
     }));
 
     if (!whisperConfig?.open) return null;
@@ -379,7 +393,7 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
         left={0}
         right={0}
         bottom={0}
-        bg="white"
+        bg="transparent"
         zIndex={5}
         borderRadius={isPc ? 'md' : ''}
         onContextMenu={(e) => e.preventDefault()}
@@ -403,17 +417,17 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
         {isTransCription && (
           <Flex
             position={'absolute'}
-            border="0.5px solid rgba(0, 0, 0, 0.2)"
-            borderRadius="20px"
+            borderRadius="xxl"
             top={0}
             bottom={0}
             left={0}
             right={0}
             pl={5}
             alignItems={'center'}
-            bg={'white'}
+            bg={'rgba(255, 255, 255, 0.95)'}
+            backdropFilter="blur(4px)"
             color={'primary.500'}
-            zIndex={6}
+            zIndex={15}
           >
             <Spinner size={'sm'} mr={4} />
             {t('common:core.chat.Converting to text')}
