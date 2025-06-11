@@ -146,8 +146,6 @@ curl --location --request POST 'https://<oneapi_url>/v1/chat/completions' \
       "usedInToolCall": true, // 是否用于工具调用（务必保证至少有一个为true）
       "toolChoice": true, // 是否支持工具选择（分类，内容提取，工具调用会用到。）
       "functionCall": false, // 是否支持函数调用（分类，内容提取，工具调用会用到。会优先使用 toolChoice，如果为false，则使用 functionCall，如果仍为 false，则使用提示词模式）
-      "customCQPrompt": "", // 自定义文本分类提示词（不支持工具和函数调用的模型
-      "customExtractPrompt": "", // 自定义内容提取提示词
       "defaultSystemChatPrompt": "", // 对话默认携带的系统提示词
       "defaultConfig": {} // 请求API时，挟带一些默认配置（比如 GLM4 的 top_p）
     }

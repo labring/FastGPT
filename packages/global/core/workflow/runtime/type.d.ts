@@ -246,6 +246,7 @@ export type DispatchNodeResultType<T = {}> = {
   [DispatchNodeResponseKeyEnum.rewriteHistories]?: ChatItemType[];
   [DispatchNodeResponseKeyEnum.runTimes]?: number;
   [DispatchNodeResponseKeyEnum.newVariables]?: Record<string, any>;
+  [DispatchNodeResponseKeyEnum.memories]?: Record<string, any>;
 } & T;
 
 /* Single node props */
