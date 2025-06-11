@@ -6,6 +6,8 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import type { DashboardDataItemType } from '@/global/aiproxy/type.d';
+import { getChannelList } from '@/web/core/ai/channel';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 export type DashboardDataEntry = {
   timestamp: number;
@@ -37,6 +39,31 @@ const DataTableComponent = ({
   const [sortField, setSortField] = useState<'totalCalls' | 'errorCalls' | null>('totalCalls');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
+  // Get channel list to map channel IDs to names
+  const { data: channelList = [] } = useRequest2(
+    async () => {
+      const res = await getChannelList({ perPage: 100 }).then((res) =>
+        res.map((item) => ({
+          id: item.id,
+          name: item.name
+        }))
+      );
+      return res;
+    },
+    {
+      manual: false
+    }
+  );
+
+  // Create a mapping from channel ID to channel name
+  const channelIdToNameMap = useMemo(() => {
+    const map = new Map<number, string>();
+    channelList.forEach((channel) => {
+      map.set(channel.id, channel.name);
+    });
+    return map;
+  }, [channelList]);
+
   // display the channel column
   const showChannelColumn = !!filterProps.model;
 
@@ -48,6 +75,7 @@ const DataTableComponent = ({
     const rows: {
       model: string;
       channel_id?: string;
+      channel_name?: string;
       totalCalls: number;
       errorCalls: number;
       avgResponseTime: number;
@@ -62,9 +90,13 @@ const DataTableComponent = ({
         );
 
         modelsToProcess.forEach((model: DashboardDataItemType) => {
+          const channelId = model.channel_id ?? 0;
+          const channelName = channelIdToNameMap.get(channelId);
+
           rows.push({
             model: model.model || '-',
-            channel_id: `${model.channel_id ?? 0}`,
+            channel_id: `${channelId}`,
+            channel_name: channelName,
             totalCalls: model.request_count || 0,
             errorCalls: model.exception_count || 0,
             avgResponseTime: model.total_time_milliseconds
@@ -132,7 +164,7 @@ const DataTableComponent = ({
     }
 
     return rows;
-  }, [data, filterProps.model, showChannelColumn, sortField, sortDirection]);
+  }, [data, filterProps.model, showChannelColumn, sortField, sortDirection, channelIdToNameMap]);
 
   const handleSort = (field: 'totalCalls' | 'errorCalls') => {
     if (sortField === field) {
@@ -180,7 +212,7 @@ const DataTableComponent = ({
             {tableData.map((item, index) => (
               <Tr key={index}>
                 <Td>{item.model}</Td>
-                {showChannelColumn && <Td>{item.channel_id}</Td>}
+                {showChannelColumn && <Td>{item.channel_name || item.channel_id}</Td>}
                 <Td color={'primary.600'}>{formatNumber(item.totalCalls)}</Td>
                 <Td color={'yellow.600'}>{formatNumber(item.errorCalls)}</Td>
                 <Td color={item.avgResponseTime > 10 ? 'red.600' : ''}>
