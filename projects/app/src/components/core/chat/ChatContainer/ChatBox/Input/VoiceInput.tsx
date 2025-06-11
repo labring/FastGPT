@@ -16,6 +16,7 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
 import MyIconButton from '@/pageComponents/account/team/OrgManage/IconButton';
 import { isMobile } from '@fastgpt/web/common/system/utils';
+import type { UserInputFileItemType } from '../type';
 
 export interface VoiceInputComponentRef {
   onSpeak: () => void;
@@ -24,7 +25,8 @@ export interface VoiceInputComponentRef {
 
 type VoiceInputProps = {
   onSendMessage: (params: { text: string; files?: any[]; autoTTSResponse?: boolean }) => void;
-  resetInputVal: (val: { text: string }) => void;
+  resetInputVal: (val: { text: string; files?: UserInputFileItemType[] }) => void;
+  fileList?: UserInputFileItemType[];
 };
 
 // PC voice input
@@ -280,7 +282,7 @@ const MobileVoiceInput = ({
 };
 
 const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
-  ({ onSendMessage, resetInputVal }, ref) => {
+  ({ onSendMessage, resetInputVal, fileList = [] }, ref) => {
     const { t } = useTranslation();
     const isMobileDevice = isMobile();
     const { isPc } = useSystem();
@@ -360,14 +362,22 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
         if (whisperConfig?.autoSend) {
           onSendMessage({
             text,
+            files: fileList,
             autoTTSResponse
           });
         } else {
-          resetInputVal({ text });
+          resetInputVal({ text, files: fileList });
         }
       };
       startSpeak(finishWhisperTranscription);
-    }, [autoTTSResponse, onSendMessage, resetInputVal, startSpeak, whisperConfig?.autoSend]);
+    }, [
+      autoTTSResponse,
+      onSendMessage,
+      resetInputVal,
+      startSpeak,
+      whisperConfig?.autoSend,
+      fileList
+    ]);
 
     const onSpeach = useCallback(() => {
       if (isMobileDevice) {
