@@ -59,25 +59,27 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const chatHistories = getHistories(history, histories);
   const { files } = chatValue2RuntimePrompt(query);
 
-  const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
-    ...props,
-    runningAppInfo: {
-      id: String(appData._id),
-      teamId: String(appData.teamId),
-      tmbId: String(appData.tmbId)
-    },
-    runtimeNodes: storeNodes2RuntimeNodes(
-      appData.modules,
-      getWorkflowEntryNodeIds(appData.modules)
-    ),
-    runtimeEdges: storeEdges2RuntimeEdges(appData.edges),
-    histories: chatHistories,
-    query: runtimePrompt2ChatsValue({
-      files,
-      text: userChatInput
-    }),
-    variables: props.variables
-  });
+  const { flowResponses, flowUsages, assistantResponses, system_memories } = await dispatchWorkFlow(
+    {
+      ...props,
+      runningAppInfo: {
+        id: String(appData._id),
+        teamId: String(appData.teamId),
+        tmbId: String(appData.tmbId)
+      },
+      runtimeNodes: storeNodes2RuntimeNodes(
+        appData.modules,
+        getWorkflowEntryNodeIds(appData.modules)
+      ),
+      runtimeEdges: storeEdges2RuntimeEdges(appData.edges),
+      histories: chatHistories,
+      query: runtimePrompt2ChatsValue({
+        files,
+        text: userChatInput
+      }),
+      variables: props.variables
+    }
+  );
 
   const completeMessages = chatHistories.concat([
     {
@@ -94,6 +96,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
 
   return {
     assistantResponses,
+    system_memories,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       moduleLogo: appData.avatar,
       query: userChatInput,

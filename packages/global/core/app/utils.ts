@@ -7,9 +7,6 @@ import { type StoreNodeItemType } from '../workflow/type/node';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 import { type WorkflowTemplateBasicType } from '../workflow/type';
 import { AppTypeEnum } from './constants';
-import { AppErrEnum } from '../../common/error/code/app';
-import { PluginErrEnum } from '../../common/error/code/plugin';
-import { i18nT } from '../../../web/i18n/utils';
 import appErrList from '../../common/error/code/app';
 import pluginErrList from '../../common/error/code/plugin';
 

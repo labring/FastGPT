@@ -52,7 +52,7 @@ const WorkflowVariableModal = ({
         <Box h={'1px'} bg={'myGray.150'} my={4}></Box>
         <Flex alignItems={'center'}>
           <Box fontSize={'14px'} color={'myGray.900'} fontWeight={'medium'}>
-            {t('common:core.workflow.value')}
+            {t('common:value')}
           </Box>
           <Input
             ml={8}

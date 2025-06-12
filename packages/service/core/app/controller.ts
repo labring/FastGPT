@@ -1,19 +1,49 @@
 import { type AppSchema } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getLLMModel } from '../ai/model';
 import { MongoApp } from './schema';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { storeSecretValue } from '../../common/secret/utils';
 
-export const beforeUpdateAppFormat = <T extends AppSchema['modules'] | undefined>({
-  nodes,
-  isPlugin
-}: {
-  nodes: T;
-  isPlugin: boolean;
-}) => {
-  return {
-    nodes
-  };
+export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }) => {
+  if (!nodes) return;
+
+  nodes.forEach((node) => {
+    // Format header secret
+    node.inputs.forEach((input) => {
+      if (input.key === NodeInputKeyEnum.headerSecret && typeof input.value === 'object') {
+        input.value = storeSecretValue(input.value);
+      }
+    });
+
+    // Format dataset search
+    if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
+      node.inputs.forEach((input) => {
+        if (input.key === NodeInputKeyEnum.datasetSelectList) {
+          const val = input.value as undefined | { datasetId: string }[] | { datasetId: string };
+          if (!val) {
+            input.value = [];
+          } else if (Array.isArray(val)) {
+            // Not rewrite reference value
+            if (val.length === 2 && val.every((item) => typeof item === 'string')) {
+              return;
+            }
+            input.value = val
+              .map((dataset: { datasetId: string }) => ({
+                datasetId: dataset.datasetId
+              }))
+              .filter((item) => !!item.datasetId);
+          } else if (typeof val === 'object' && val !== null) {
+            input.value = [
+              {
+                datasetId: val.datasetId
+              }
+            ];
+          }
+        }
+      });
+    }
+  });
 };
 
 /* Get apps */
