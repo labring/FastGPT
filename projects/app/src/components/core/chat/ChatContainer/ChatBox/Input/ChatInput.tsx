@@ -1,5 +1,4 @@
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { Box, Flex, Spinner, Textarea } from '@chakra-ui/react';
+import { Box, Flex, Textarea } from '@chakra-ui/react';
 import React, { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -124,240 +123,241 @@ const ChatInput = ({
 
   const RenderTextarea = useMemo(
     () => (
-      <Flex alignItems={'center'} mt={fileList.length > 0 ? 1 : 0} pl={[2, 4]}>
-        {/* file selector */}
-
-        {/* Prompt Container */}
-        <Textarea
-          ref={TextareaDom}
-          py={0}
-          display={'inline-flex'}
-          pl={2}
-          pr={['30px', '48px']}
-          border={'none'}
-          _focusVisible={{
-            border: 'none'
-          }}
-          placeholder={
-            isPc ? t('common:core.chat.Type a message') : t('chat:input_placeholder_phone')
-          }
-          resize={'none'}
-          rows={1}
-          height={6}
-          lineHeight={6}
-          maxHeight={'50vh'}
-          mb={isVoiceInputActive && !isPc ? 2 : 8}
-          maxLength={-1}
-          overflowY={'hidden'}
-          whiteSpace={'pre-wrap'}
-          wordBreak={'break-all'}
-          boxShadow={'none !important'}
-          color={'myGray.900'}
-          fontWeight={400}
-          fontSize={'16px'}
-          letterSpacing={'0.5px'}
-          _placeholder={{
-            color: '#707070',
-            fontSize: '14px'
-          }}
-          value={inputValue}
-          onChange={(e) => {
-            const textarea = e.target;
-            textarea.style.height = textareaMinH;
-            const maxViewportHeight = window.innerHeight * 0.5; // Restore original 50vh
-            const newHeight = Math.min(textarea.scrollHeight, maxViewportHeight);
-            textarea.style.height = `${newHeight}px`;
-
-            // Only show scrollbar when content exceeds max height
-            if (textarea.scrollHeight > maxViewportHeight) {
-              textarea.style.overflowY = 'auto';
-            } else {
-              textarea.style.overflowY = 'hidden';
+      <Flex direction={'column'} mt={fileList.length > 0 ? 1 : 0}>
+        {/* Textarea */}
+        <Flex w={'100%'}>
+          {/* Prompt Container */}
+          <Textarea
+            ref={TextareaDom}
+            py={0}
+            ml={[2, 4]}
+            mr={[2, 4]}
+            pl={2}
+            pr={2}
+            border={'none'}
+            _focusVisible={{
+              border: 'none'
+            }}
+            placeholder={
+              isPc ? t('common:core.chat.Type a message') : t('chat:input_placeholder_phone')
             }
+            resize={'none'}
+            rows={1}
+            height={6}
+            lineHeight={6}
+            maxHeight={32}
+            mb={0}
+            maxLength={-1}
+            overflowY={'hidden'}
+            overflowX={'hidden'}
+            whiteSpace={'pre-wrap'}
+            wordBreak={'break-word'}
+            boxShadow={'none !important'}
+            color={'myGray.900'}
+            fontWeight={400}
+            fontSize={'16px'}
+            letterSpacing={'0.5px'}
+            w={'100%'}
+            _placeholder={{
+              color: '#707070',
+              fontSize: '14px'
+            }}
+            value={inputValue}
+            onChange={(e) => {
+              const textarea = e.target;
+              textarea.style.height = textareaMinH;
+              const maxHeight = 128;
+              const newHeight = Math.min(textarea.scrollHeight, maxHeight);
+              textarea.style.height = `${newHeight}px`;
 
-            setValue('input', textarea.value);
-          }}
-          onKeyDown={(e) => {
-            // enter send.(pc or iframe && enter and unPress shift)
-            const isEnter = e.key === 'Enter';
-            if (isEnter && TextareaDom.current && (e.ctrlKey || e.altKey)) {
-              // Add a new line
-              const index = TextareaDom.current.selectionStart;
-              const val = TextareaDom.current.value;
-              TextareaDom.current.value = `${val.slice(0, index)}\n${val.slice(index)}`;
-              TextareaDom.current.selectionStart = index + 1;
-              TextareaDom.current.selectionEnd = index + 1;
-
-              TextareaDom.current.style.height = textareaMinH;
-              TextareaDom.current.style.height = `${TextareaDom.current.scrollHeight}px`;
-
-              return;
-            }
-
-            // Select all content
-            // @ts-ignore
-            e.key === 'a' && e.ctrlKey && e.target?.select();
-
-            if ((isPc || window !== parent) && e.keyCode === 13 && !e.shiftKey) {
-              handleSend();
-              e.preventDefault();
-            }
-          }}
-          onPaste={(e) => {
-            const clipboardData = e.clipboardData;
-            if (clipboardData && (showSelectFile || showSelectImg)) {
-              const items = clipboardData.items;
-              const files = Array.from(items)
-                .map((item) => (item.kind === 'file' ? item.getAsFile() : undefined))
-                .filter((file) => {
-                  return file && fileTypeFilter(file);
-                }) as File[];
-              onSelectFile({ files });
-
-              if (files.length > 0) {
-                e.preventDefault();
-                e.stopPropagation();
+              // Only show scrollbar when content exceeds max height
+              if (textarea.scrollHeight > maxHeight) {
+                textarea.style.overflowY = 'auto';
+              } else {
+                textarea.style.overflowY = 'hidden';
               }
-            }
-          }}
-        />
-        {/* Button Group */}
-        {(!isVoiceInputActive || inputValue) && (
-          <Flex
-            alignItems={'center'}
-            position={'absolute'}
-            right={4}
-            bottom={3.5}
-            w={'134px'}
-            h={9}
-            gap={2}
-            zIndex={3}
-          >
-            {/* Attachment and Voice Group */}
-            <Flex alignItems={'center'} gap={2} w={'74px'} h={9} flex={'none'} order={0}>
-              {/* file selector button */}
-              {(showSelectFile || showSelectImg) && (
-                <Flex
-                  alignItems={'center'}
-                  justifyContent={'center'}
-                  w={9}
-                  h={9}
-                  p={2}
-                  borderRadius={'sm'}
-                  cursor={'pointer'}
-                  flex={'none'}
-                  order={0}
-                  _hover={{ bg: 'rgba(0, 0, 0, 0.04)' }}
-                  onClick={() => {
-                    onOpenSelectFile();
-                  }}
-                >
-                  <MyTooltip label={selectFileLabel}>
-                    <MyIcon name={selectFileIcon as any} w={5} h={5} color={'#707070'} />
-                  </MyTooltip>
-                  <File onSelect={(files) => onSelectFile({ files })} />
-                </Flex>
-              )}
 
-              {/* Voice input button */}
-              {whisperConfig?.open && !inputValue && (
-                <Flex
-                  alignItems={'center'}
-                  justifyContent={'center'}
-                  w={9}
-                  h={9}
-                  p={2}
-                  borderRadius={'sm'}
-                  cursor={'pointer'}
-                  flex={'none'}
-                  order={1}
-                  _hover={{ bg: 'rgba(0, 0, 0, 0.04)' }}
-                  onClick={() => {
-                    VoiceInputRef.current?.onSpeak?.();
-                  }}
-                >
-                  <MyTooltip label={t('common:core.chat.Record')}>
-                    <MyIcon name={'core/chat/recordFill'} w={5} h={5} color={'#707070'} />
-                  </MyTooltip>
-                </Flex>
-              )}
-            </Flex>
+              setValue('input', textarea.value);
+            }}
+            onKeyDown={(e) => {
+              // enter send.(pc or iframe && enter and unPress shift)
+              const isEnter = e.key === 'Enter';
+              if (isEnter && TextareaDom.current && (e.ctrlKey || e.altKey)) {
+                // Add a new line
+                const index = TextareaDom.current.selectionStart;
+                const val = TextareaDom.current.value;
+                TextareaDom.current.value = `${val.slice(0, index)}\n${val.slice(index)}`;
+                TextareaDom.current.selectionStart = index + 1;
+                TextareaDom.current.selectionEnd = index + 1;
 
-            {/* Divider Container */}
-            <Flex alignItems={'center'} pr={2} w={'8px'} h={4} flex={'none'} order={1}>
-              <Box
-                w={1}
-                h={'2px'}
-                bg={'myGray.150'}
-                transform={'rotate(90deg)'}
-                flex={'none'}
-                order={0}
-              />
-            </Flex>
+                TextareaDom.current.style.height = textareaMinH;
+                TextareaDom.current.style.height = `${TextareaDom.current.scrollHeight}px`;
 
-            {/* Send Button Container */}
-            <Flex alignItems={'center'} w={9} h={9} borderRadius={'lg'} flex={'none'} order={2}>
-              <Flex
-                alignItems={'center'}
-                justifyContent={'center'}
-                w={9}
-                h={9}
-                p={2}
-                bg={
-                  isChatting
-                    ? 'rgba(17, 24, 36, 0.1)'
-                    : !havInput || hasFileUploading
-                      ? 'rgba(17, 24, 36, 0.1)'
-                      : 'primary.500'
+                return;
+              }
+
+              // Select all content
+              // @ts-ignore
+              e.key === 'a' && e.ctrlKey && e.target?.select();
+
+              if ((isPc || window !== parent) && e.keyCode === 13 && !e.shiftKey) {
+                handleSend();
+                e.preventDefault();
+              }
+            }}
+            onPaste={(e) => {
+              const clipboardData = e.clipboardData;
+              if (clipboardData && (showSelectFile || showSelectImg)) {
+                const items = clipboardData.items;
+                const files = Array.from(items)
+                  .map((item) => (item.kind === 'file' ? item.getAsFile() : undefined))
+                  .filter((file) => {
+                    return file && fileTypeFilter(file);
+                  }) as File[];
+                onSelectFile({ files });
+
+                if (files.length > 0) {
+                  e.preventDefault();
+                  e.stopPropagation();
                 }
-                borderRadius="lg"
-                cursor={havInput ? 'pointer' : 'not-allowed'}
-                flex={'none'}
-                order={0}
-                onClick={() => {
-                  if (isChatting) {
-                    return onStop();
-                  }
-                  return handleSend();
-                }}
-              >
-                {isChatting ? (
-                  <MyIcon
-                    animation={'zoomStopIcon 0.4s infinite alternate'}
-                    w={5}
-                    h={5}
-                    cursor={'pointer'}
-                    name={'stop'}
-                    color={'white'}
-                  />
-                ) : (
-                  <MyTooltip label={t('common:core.chat.Send Message')}>
-                    <MyIcon name={'core/chat/sendFill'} w={5} h={5} color={'white'} />
-                  </MyTooltip>
-                )}
-              </Flex>
+              }
+            }}
+          />
+        </Flex>
+      </Flex>
+    ),
+    [
+      TextareaDom,
+      fileList.length,
+      handleSend,
+      inputValue,
+      isPc,
+      onSelectFile,
+      setValue,
+      showSelectFile,
+      showSelectImg,
+      t
+    ]
+  );
+
+  const RenderButtonGroup = useMemo(
+    () => (
+      <Flex
+        alignItems={'center'}
+        justifyContent={'flex-end'}
+        w={'100%'}
+        mt={0}
+        pr={4}
+        h={9}
+        gap={2}
+      >
+        {/* Attachment and Voice Group */}
+        <Flex alignItems={'center'} gap={2} h={9}>
+          {/* file selector button */}
+          {(showSelectFile || showSelectImg) && (
+            <Flex
+              alignItems={'center'}
+              justifyContent={'center'}
+              w={9}
+              h={9}
+              p={2}
+              borderRadius={'sm'}
+              cursor={'pointer'}
+              _hover={{ bg: 'rgba(0, 0, 0, 0.04)' }}
+              onClick={() => {
+                onOpenSelectFile();
+              }}
+            >
+              <MyTooltip label={selectFileLabel}>
+                <MyIcon name={selectFileIcon as any} w={5} h={5} color={'#707070'} />
+              </MyTooltip>
+              <File onSelect={(files) => onSelectFile({ files })} />
             </Flex>
+          )}
+
+          {/* Voice input button */}
+          {whisperConfig?.open && !inputValue && (
+            <Flex
+              alignItems={'center'}
+              justifyContent={'center'}
+              w={9}
+              h={9}
+              p={2}
+              borderRadius={'sm'}
+              cursor={'pointer'}
+              _hover={{ bg: 'rgba(0, 0, 0, 0.04)' }}
+              onClick={() => {
+                VoiceInputRef.current?.onSpeak?.();
+              }}
+            >
+              <MyTooltip label={t('common:core.chat.Record')}>
+                <MyIcon name={'core/chat/recordFill'} w={5} h={5} color={'#707070'} />
+              </MyTooltip>
+            </Flex>
+          )}
+        </Flex>
+
+        {/* Divider Container */}
+        {((whisperConfig?.open && !inputValue) || showSelectFile || showSelectImg) && (
+          <Flex alignItems={'center'} justifyContent={'center'} w={2} h={4}>
+            <Box w={'2px'} h={5} bg={'myGray.200'} />
           </Flex>
         )}
+
+        {/* Send Button Container */}
+        <Flex alignItems={'center'} w={9} h={9} borderRadius={'lg'}>
+          <Flex
+            alignItems={'center'}
+            justifyContent={'center'}
+            w={9}
+            h={9}
+            p={2}
+            bg={
+              isChatting
+                ? 'rgba(17, 24, 36, 0.1)'
+                : !havInput || hasFileUploading
+                  ? 'rgba(17, 24, 36, 0.1)'
+                  : 'primary.500'
+            }
+            borderRadius="lg"
+            cursor={havInput ? 'pointer' : 'not-allowed'}
+            onClick={() => {
+              if (isChatting) {
+                return onStop();
+              }
+              return handleSend();
+            }}
+          >
+            {isChatting ? (
+              <MyIcon
+                animation={'zoomStopIcon 0.4s infinite alternate'}
+                w={5}
+                h={5}
+                cursor={'pointer'}
+                name={'stop'}
+                color={'white'}
+              />
+            ) : (
+              <MyTooltip label={t('common:core.chat.Send Message')}>
+                <MyIcon name={'core/chat/sendFill'} w={5} h={5} color={'white'} />
+              </MyTooltip>
+            )}
+          </Flex>
+        </Flex>
       </Flex>
     ),
     [
       File,
-      TextareaDom,
-      fileList.length,
-      handleSend,
       hasFileUploading,
       havInput,
+      handleSend,
       inputValue,
       isChatting,
-      isPc,
-      isVoiceInputActive,
       onOpenSelectFile,
       onSelectFile,
       onStop,
       selectFileIcon,
       selectFileLabel,
-      setValue,
       showSelectFile,
       showSelectImg,
       t,
@@ -397,7 +397,8 @@ const ChatInput = ({
       }}
     >
       {/* Real Chat Input */}
-      <Box
+      <Flex
+        direction={'column'}
         minH={isVoiceInputActive && !isPc ? 12 : 32}
         pt={fileList.length > 0 ? '0' : isVoiceInputActive && !isPc ? [0, 5] : [3.5, 5]}
         pb={isVoiceInputActive && !isPc ? [0, 5] : [3.5, 5]}
@@ -409,40 +410,46 @@ const ChatInput = ({
         border={'0.5px solid rgba(0, 0, 0, 0.15)'}
         borderColor={'rgba(0,0,0,0.12)'}
       >
-        {/* Chat input guide box */}
-        {chatInputGuide.open && (
-          <InputGuideBox
-            appId={appId}
-            text={inputValue}
-            onSelect={(e) => {
-              setValue('input', e);
-            }}
-            onSend={(e) => {
-              handleSend(e);
-            }}
-          />
-        )}
-        {/* file preview */}
-        {(!isVoiceInputActive || inputValue) && (
-          <Box px={[1, 3]}>
-            <FilePreview fileList={fileList} removeFiles={removeFiles} />
-          </Box>
-        )}
+        <Box flex={1}>
+          {/* Chat input guide box */}
+          {chatInputGuide.open && (
+            <InputGuideBox
+              appId={appId}
+              text={inputValue}
+              onSelect={(e) => {
+                setValue('input', e);
+              }}
+              onSend={(e) => {
+                handleSend(e);
+              }}
+            />
+          )}
+          {/* file preview */}
+          {(!isVoiceInputActive || isPc || inputValue) && (
+            <Box px={[1, 3]}>
+              <FilePreview fileList={fileList} removeFiles={removeFiles} />
+            </Box>
+          )}
 
-        {/* loading spinner */}
+          {/* loading spinner */}
 
-        {/* voice input and loading container */}
-        {!inputValue && (
-          <VoiceInput
-            ref={VoiceInputRef}
-            onSendMessage={onSendMessage}
-            resetInputVal={resetInputVal}
-            fileList={fileList}
-          />
-        )}
+          {/* voice input and loading container */}
+          {!inputValue && (
+            <VoiceInput
+              ref={VoiceInputRef}
+              onSendMessage={onSendMessage}
+              resetInputVal={resetInputVal}
+              fileList={fileList}
+            />
+          )}
 
-        {RenderTextarea}
-      </Box>
+          {RenderTextarea}
+        </Box>
+
+        <Box visibility={!isVoiceInputActive || inputValue ? 'visible' : 'hidden'}>
+          {RenderButtonGroup}
+        </Box>
+      </Flex>
       <ComplianceTip type={'chat'} />
     </Box>
   );
