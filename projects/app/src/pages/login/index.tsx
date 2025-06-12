@@ -65,9 +65,10 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
       const decodeLastRoute = decodeURIComponent(lastRoute);
 
       const navigateTo =
-        decodeLastRoute && !decodeLastRoute.includes('/login')
-          ? decodeLastRoute
+        decodeLastRoute && !decodeLastRoute.includes('/login') && lastRoute.startsWith('/')
+          ? lastRoute
           : '/dashboard/apps';
+
       router.push(navigateTo);
     },
     [setUserInfo, lastRoute, router]
