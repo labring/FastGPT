@@ -11,6 +11,7 @@ import { ChatBoxContext } from '../Provider';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { documentFileType } from '@fastgpt/global/common/file/constants';
 import FilePreview from '../../components/FilePreview';
 import { useFileUpload } from '../hooks/useFileUpload';
@@ -43,6 +44,7 @@ const ChatInput = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const { isPc } = useSystem();
+  const { feConfigs } = useSystemStore();
   const VoiceInputRef = useRef<VoiceInputComponentRef>(null);
 
   const { setValue, watch, control } = chatForm;
@@ -143,9 +145,9 @@ const ChatInput = ({
             }
             resize={'none'}
             rows={1}
-            height={6}
-            lineHeight={6}
-            maxHeight={32}
+            height={[5, 6]}
+            lineHeight={[5, 6]}
+            maxHeight={[24, 32]}
             mb={0}
             maxLength={-1}
             overflowY={'hidden'}
@@ -247,20 +249,20 @@ const ChatInput = ({
         justifyContent={'flex-end'}
         w={'100%'}
         mt={0}
-        pr={4}
-        h={9}
-        gap={2}
+        pr={[3, 4]}
+        h={[8, 9]}
+        gap={[1, 2]}
       >
         {/* Attachment and Voice Group */}
-        <Flex alignItems={'center'} gap={2} h={9}>
+        <Flex alignItems={'center'} gap={[1, 2]} h={[8, 9]}>
           {/* file selector button */}
           {(showSelectFile || showSelectImg) && (
             <Flex
               alignItems={'center'}
               justifyContent={'center'}
-              w={9}
-              h={9}
-              p={2}
+              w={[8, 9]}
+              h={[8, 9]}
+              p={[1, 2]}
               borderRadius={'sm'}
               cursor={'pointer'}
               _hover={{ bg: 'rgba(0, 0, 0, 0.04)' }}
@@ -269,7 +271,7 @@ const ChatInput = ({
               }}
             >
               <MyTooltip label={selectFileLabel}>
-                <MyIcon name={selectFileIcon as any} w={5} h={5} color={'#707070'} />
+                <MyIcon name={selectFileIcon as any} w={[4, 5]} h={[4, 5]} color={'#707070'} />
               </MyTooltip>
               <File onSelect={(files) => onSelectFile({ files })} />
             </Flex>
@@ -280,9 +282,9 @@ const ChatInput = ({
             <Flex
               alignItems={'center'}
               justifyContent={'center'}
-              w={9}
-              h={9}
-              p={2}
+              w={[8, 9]}
+              h={[8, 9]}
+              p={[1, 2]}
               borderRadius={'sm'}
               cursor={'pointer'}
               _hover={{ bg: 'rgba(0, 0, 0, 0.04)' }}
@@ -291,7 +293,7 @@ const ChatInput = ({
               }}
             >
               <MyTooltip label={t('common:core.chat.Record')}>
-                <MyIcon name={'core/chat/recordFill'} w={5} h={5} color={'#707070'} />
+                <MyIcon name={'core/chat/recordFill'} w={[4, 5]} h={[4, 5]} color={'#707070'} />
               </MyTooltip>
             </Flex>
           )}
@@ -305,13 +307,13 @@ const ChatInput = ({
         )}
 
         {/* Send Button Container */}
-        <Flex alignItems={'center'} w={9} h={9} borderRadius={'lg'}>
+        <Flex alignItems={'center'} w={[8, 9]} h={[8, 9]} borderRadius={'lg'}>
           <Flex
             alignItems={'center'}
             justifyContent={'center'}
-            w={9}
-            h={9}
-            p={2}
+            w={[8, 9]}
+            h={[8, 9]}
+            p={[1, 2]}
             bg={
               isChatting
                 ? 'rgba(17, 24, 36, 0.1)'
@@ -399,7 +401,7 @@ const ChatInput = ({
       {/* Real Chat Input */}
       <Flex
         direction={'column'}
-        minH={isVoiceInputActive && !isPc ? 12 : 32}
+        minH={!isPc ? 12 : 32}
         pt={fileList.length > 0 ? '0' : isVoiceInputActive && !isPc ? [0, 5] : [3.5, 5]}
         pb={isVoiceInputActive && !isPc ? [0, 5] : [3.5, 5]}
         position={'relative'}
@@ -409,6 +411,7 @@ const ChatInput = ({
         overflow={'display'}
         border={'0.5px solid rgba(0, 0, 0, 0.15)'}
         borderColor={'rgba(0,0,0,0.12)'}
+        mb={feConfigs.show_compliance_copywriting ? 0 : 4}
       >
         <Box flex={1}>
           {/* Chat input guide box */}
