@@ -1,5 +1,4 @@
-import type {
-  ButtonProps} from '@chakra-ui/react';
+import type { ButtonProps } from '@chakra-ui/react';
 import {
   Box,
   Button,
@@ -9,20 +8,19 @@ import {
   Input,
   ModalBody,
   ModalFooter,
-  Switch,
+  Slider,
   useDisclosure
 } from '@chakra-ui/react';
-import { headerSecretList, HeaderSecretTypeEnum } from '@fastgpt/global/common/secret/constants';
+import { HeaderSecretTypeEnum } from '@fastgpt/global/common/secret/constants';
 import type { SecretValueType, StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm, type UseFormRegister } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 
 type HeaderSecretConfigType = {
-  enableAuth: boolean;
   Bearer?: SecretValueType;
   Basic?: SecretValueType;
   customs?: {
@@ -116,10 +114,10 @@ const getSecretType = (config: HeaderSecretConfigType): HeaderSecretTypeEnum => 
     return HeaderSecretTypeEnum.Bearer;
   } else if (config.Basic) {
     return HeaderSecretTypeEnum.Basic;
-  } else if (config.customs) {
+  } else if (config.customs && config.customs.length > 0) {
     return HeaderSecretTypeEnum.Custom;
   }
-  return HeaderSecretTypeEnum.Bearer;
+  return HeaderSecretTypeEnum.None;
 };
 
 const HeaderAuthConfig = ({
@@ -132,11 +130,30 @@ const HeaderAuthConfig = ({
   buttonProps?: ButtonProps;
 }) => {
   const { t } = useTranslation();
+  const headerSecretList = [
+    {
+      label: t('common:auth_type.None'),
+      value: HeaderSecretTypeEnum.None
+    },
+    {
+      label: 'Bearer',
+      value: HeaderSecretTypeEnum.Bearer
+    },
+    {
+      label: 'Basic',
+      value: HeaderSecretTypeEnum.Basic
+    },
+    {
+      label: t('common:auth_type.Custom'),
+      value: HeaderSecretTypeEnum.Custom
+    }
+  ];
+
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const headerSecretValue: HeaderSecretConfigType = useMemo(() => {
     if (!storeHeaderSecretConfig || Object.keys(storeHeaderSecretConfig).length === 0) {
-      return { enableAuth: false };
+      return {};
     }
 
     const entries = Object.entries(storeHeaderSecretConfig);
@@ -147,7 +164,6 @@ const HeaderAuthConfig = ({
       (key === HeaderSecretTypeEnum.Bearer || key === HeaderSecretTypeEnum.Basic)
     ) {
       return {
-        enableAuth: true,
         [key]: {
           secret: value.secret,
           value: value.value
@@ -156,7 +172,6 @@ const HeaderAuthConfig = ({
     }
 
     return {
-      enableAuth: true,
       customs: entries.map(([key, value]) => ({
         key,
         value: {
@@ -174,7 +189,6 @@ const HeaderAuthConfig = ({
   const [editingIndex, setEditingIndex] = useState<number>();
   const { control, register, watch, handleSubmit, reset } = useForm<HeaderSecretConfigType>({
     defaultValues: {
-      enableAuth: headerSecretValue?.enableAuth || false,
       Basic: headerSecretValue?.Basic || { secret: '', value: '' },
       Bearer: headerSecretValue?.Bearer || { secret: '', value: '' },
       customs: headerSecretValue?.customs || []
@@ -188,7 +202,6 @@ const HeaderAuthConfig = ({
     control,
     name: 'customs'
   });
-  const enableAuth = watch('enableAuth');
   const BearerValue = watch('Bearer');
   const BasicValue = watch('Basic');
 
@@ -204,22 +217,20 @@ const HeaderAuthConfig = ({
 
     const storeData: StoreSecretValueType = {};
 
-    if (data.enableAuth) {
-      if (currentAuthType === HeaderSecretTypeEnum.Bearer) {
-        storeData.Bearer = {
-          value: data.Bearer?.value || '',
-          secret: data.Bearer?.secret || ''
-        };
-      } else if (currentAuthType === HeaderSecretTypeEnum.Basic) {
-        storeData.Basic = {
-          value: data.Basic?.value || '',
-          secret: data.Basic?.secret || ''
-        };
-      } else if (currentAuthType === HeaderSecretTypeEnum.Custom) {
-        data.customs?.forEach((item) => {
-          storeData[item.key] = item.value;
-        });
-      }
+    if (currentAuthType === HeaderSecretTypeEnum.Bearer) {
+      storeData.Bearer = {
+        value: data.Bearer?.value || '',
+        secret: data.Bearer?.secret || ''
+      };
+    } else if (currentAuthType === HeaderSecretTypeEnum.Basic) {
+      storeData.Basic = {
+        value: data.Basic?.value || '',
+        secret: data.Basic?.secret || ''
+      };
+    } else if (currentAuthType === HeaderSecretTypeEnum.Custom) {
+      data.customs?.forEach((item) => {
+        storeData[item.key] = item.value;
+      });
     }
 
     onUpdate(storeData);
@@ -248,42 +259,29 @@ const HeaderAuthConfig = ({
           w={480}
         >
           <ModalBody px={9} pt={6}>
-            <FormControl
-              display={'flex'}
-              alignItems={'center'}
-              gap={6}
-              color={'myGray.900'}
-              fontWeight={'medium'}
-              fontSize={'14px'}
-              mb={6}
-            >
-              {t('common:enable_auth')}
-              <Switch {...register('enableAuth')} />
+            <FormControl mb={2}>
+              <Box fontSize={'14px'} fontWeight={'medium'} color={'myGray.900'} mb={2}>
+                {t('common:auth_type')}
+              </Box>
+              <MySelect
+                bg={'myGray.50'}
+                value={currentAuthType}
+                onChange={setCurrentAuthType}
+                list={headerSecretList}
+              />
             </FormControl>
 
-            {enableAuth && (
-              <>
-                <FormControl mb={2}>
-                  <Box fontSize={'14px'} fontWeight={'medium'} color={'myGray.900'} mb={2}>
-                    {t('common:auth_type')}
-                  </Box>
-                  <LeftRadio
-                    list={headerSecretList}
-                    value={currentAuthType}
-                    onChange={setCurrentAuthType}
-                    py={'4.5px'}
-                    fontWeight={'medium'}
-                    templateColumns={'repeat(3, 1fr)'}
-                    gridGap={2}
-                    defaultBg={'white'}
-                    activeBg={'white'}
-                    activeBorderColor={'myGray.200'}
-                    hoverBorderColor={'myGray.200'}
-                    activeShadow={'none'}
-                    dotGap={2}
-                  />
-                </FormControl>
+            {currentAuthType !== HeaderSecretTypeEnum.None && (
+              <Flex mb={2} gap={2} color={'myGray.900'} fontWeight={'medium'} fontSize={'14px'}>
+                {currentAuthType === HeaderSecretTypeEnum.Custom && (
+                  <Box w={1 / 3}>{t('common:key')}</Box>
+                )}
+                <Box w={2 / 3}>{t('common:value')}</Box>
+              </Flex>
+            )}
 
+            {currentAuthType !== HeaderSecretTypeEnum.None && (
+              <>
                 {currentAuthType === HeaderSecretTypeEnum.Bearer ||
                 currentAuthType === HeaderSecretTypeEnum.Basic ? (
                   <AuthValueDisplay
@@ -294,23 +292,12 @@ const HeaderAuthConfig = ({
                       editingIndex,
                       index: 0
                     })}
-                    fieldName={`${currentAuthType}Value.value` as any}
+                    fieldName={`${currentAuthType}.value` as any}
                     onEdit={setEditingIndex}
                     register={register}
                   />
                 ) : (
                   <Box>
-                    <Flex
-                      mb={2}
-                      gap={2}
-                      color={'myGray.500'}
-                      fontWeight={'medium'}
-                      fontSize={'14px'}
-                    >
-                      <Box w={1 / 3}>key</Box>
-                      <Box w={2 / 3}>value</Box>
-                    </Flex>
-
                     {customHeaders.map((item, index) => {
                       const headerValue = watch(`customs.${index}.value`);
 
@@ -369,8 +356,13 @@ const HeaderAuthConfig = ({
               </>
             )}
           </ModalBody>
-          <ModalFooter px={9} pb={6}>
-            <Button onClick={handleSubmit(onSubmit)}>{t('common:Save')}</Button>
+          <ModalFooter px={9} pb={6} display={'flex'} flexDirection={'column'}>
+            <Flex justifyContent={'end'} w={'full'}>
+              <Button onClick={handleSubmit(onSubmit)}>{t('common:Save')}</Button>
+            </Flex>
+            <Box color={'myGray.500'} fontSize={'12px'} mt={4}>
+              {t('common:secret_tips')}
+            </Box>
           </ModalFooter>
         </MyModal>
       )}

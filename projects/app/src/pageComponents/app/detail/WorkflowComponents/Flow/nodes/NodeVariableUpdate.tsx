@@ -182,7 +182,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
           </Flex>
           <Flex mt={2} w={'full'} alignItems={'center'} className="nodrag">
             <Flex w={'80px'}>
-              <Box>{t('common:core.workflow.value')}</Box>
+              <Box>{t('common:value')}</Box>
               <MyTooltip
                 label={
                   menuList.current.find((item) => item.renderType === updateItem.renderType)?.label

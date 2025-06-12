@@ -30,12 +30,7 @@ const LeftRadio = <T = any,>({
   py = 4,
   defaultBg = 'myGray.50',
   activeBg = 'primary.50',
-  activeBorderColor = 'primary.400',
-  activeShadow = 'focus',
-  hoverBorderColor = 'primary.300',
-  fontWeight = 'normal',
   onChange,
-  dotGap = 3,
   ...props
 }: Props<T>) => {
   const { t } = useTranslation();
@@ -57,14 +52,14 @@ const LeftRadio = <T = any,>({
           position={'relative'}
           {...(value === item.value
             ? {
-                borderColor: activeBorderColor,
+                borderColor: 'primary.400',
                 bg: activeBg,
-                boxShadow: activeShadow
+                boxShadow: 'focus'
               }
             : {
                 bg: defaultBg,
                 _hover: {
-                  borderColor: hoverBorderColor
+                  borderColor: 'primary.300'
                 }
               })}
           onClick={() => onChange(item.value)}
@@ -75,7 +70,7 @@ const LeftRadio = <T = any,>({
             borderWidth={'2.4px'}
             borderColor={value === item.value ? 'primary.015' : 'transparent'}
             borderRadius={'50%'}
-            mr={dotGap}
+            mr={3}
           >
             <Flex
               w={'100%'}
@@ -100,7 +95,7 @@ const LeftRadio = <T = any,>({
               <HStack
                 spacing={1}
                 color={'myGray.900'}
-                fontWeight={fontWeight}
+                fontWeight={item.desc ? '500' : 'normal'}
                 whiteSpace={'nowrap'}
                 fontSize={'sm'}
               >
