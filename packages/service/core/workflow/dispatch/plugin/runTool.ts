@@ -32,7 +32,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
   const mcpClient = new MCPClient({
     url,
-    headers: await getSecretValue({
+    headers: getSecretValue({
       storeSecret: toolData.headerSecret
     })
   });

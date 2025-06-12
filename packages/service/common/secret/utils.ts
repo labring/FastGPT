@@ -1,6 +1,7 @@
 import { decryptSecret, encryptSecret } from './aes256gcm';
-import type { SecretValueType} from '@fastgpt/global/common/secret/type';
+import type { SecretValueType } from '@fastgpt/global/common/secret/type';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import { HeaderSecretTypeEnum } from '@fastgpt/global/common/secret/constants';
 
 export const storeSecretValue = (
   storeSecret: StoreSecretValueType
@@ -23,15 +24,20 @@ export const getSecretValue = ({
 }): Record<string, string> => {
   if (!storeSecret) return {};
 
-  try {
-    return Object.entries(storeSecret).reduce(
-      (acc: Record<string, string>, [key, { secret, value }]) => {
-        acc[key] = value || decryptSecret(secret);
-        return acc;
-      },
-      {}
-    );
-  } catch (error) {
-    return {};
-  }
+  return Object.entries(storeSecret).reduce(
+    (acc: Record<string, string>, [key, { secret, value }]) => {
+      const actualValue = value || decryptSecret(secret);
+
+      if (key === HeaderSecretTypeEnum.Bearer) {
+        acc['Authorization'] = `Bearer ${actualValue}`;
+      } else if (key === HeaderSecretTypeEnum.Basic) {
+        acc['Authorization'] = `Basic ${actualValue}`;
+      } else {
+        acc[key] = actualValue;
+      }
+
+      return acc;
+    },
+    {}
+  );
 };

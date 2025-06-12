@@ -175,7 +175,6 @@ const DatasetParamsModal = ({
             <LeftRadio<`${DatasetSearchModeEnum}`>
               py={2.5}
               gridGap={4}
-              fontWeight={'medium'}
               list={[
                 {
                   title: t('common:core.dataset.search.mode.embedding'),
