@@ -30,6 +30,7 @@ import { JSONPath } from 'jsonpath-plus';
 import type { SystemPluginSpecialResponse } from '../../../../../plugins/type';
 import json5 from 'json5';
 import { getSecretValue } from '../../../../common/secret/utils';
+import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 
 type PropsArrType = {
   key: string;
@@ -38,6 +39,7 @@ type PropsArrType = {
 };
 type HttpRequestProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.abandon_httpUrl]: string;
+  [NodeInputKeyEnum.headerSecret]?: StoreSecretValueType;
   [NodeInputKeyEnum.httpMethod]: string;
   [NodeInputKeyEnum.httpReqUrl]: string;
   [NodeInputKeyEnum.httpHeaders]?: PropsArrType[];
@@ -316,7 +318,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       return fetchData({
         method: httpMethod,
         url: httpReqUrl,
-        headers: { ...publicHeaders, ...sensitiveHeaders },
+        headers: { ...sensitiveHeaders, ...publicHeaders },
         body: requestBody,
         params,
         timeout: httpTimeout

@@ -20,7 +20,7 @@ export const storeSecretValue = (
 export const getSecretValue = ({
   storeSecret
 }: {
-  storeSecret: StoreSecretValueType;
+  storeSecret?: StoreSecretValueType;
 }): Record<string, string> => {
   if (!storeSecret) return {};
 
