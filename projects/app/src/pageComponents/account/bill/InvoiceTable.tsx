@@ -187,7 +187,7 @@ function InvoiceDetailModal({
           <LabelItem label={t('account_bill:email_address')} value={invoice.emailAddress} />
           {invoice.status === 2 && (
             <Flex alignItems={'center'} justify={'space-between'}>
-              <FormLabel flex={'0 0 120px'}>发票文件</FormLabel>
+              <FormLabel flex={'0 0 120px'}>{t('account_bill:Invoice_document')}</FormLabel>
               <Box cursor={'pointer'} onClick={() => handleDownloadInvoice(invoice._id)}>
                 {t('account_bill:click_to_download')}
               </Box>
