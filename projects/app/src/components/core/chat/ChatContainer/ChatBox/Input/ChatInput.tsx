@@ -1,5 +1,5 @@
 import { Box, Flex, Textarea } from '@chakra-ui/react';
-import React, { useRef, useEffect, useCallback, useMemo, useState } from 'react';
+import React, { useRef, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -11,7 +11,6 @@ import { ChatBoxContext } from '../Provider';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { documentFileType } from '@fastgpt/global/common/file/constants';
 import FilePreview from '../../components/FilePreview';
 import { useFileUpload } from '../hooks/useFileUpload';
@@ -50,20 +49,7 @@ const ChatInput = ({
   const inputValue = watch('input');
 
   // Check voice input state
-  const [isVoiceInputActive, setIsVoiceInputActive] = useState(false);
-
-  // Poll voice input state
-  useEffect(() => {
-    const checkVoiceState = () => {
-      if (VoiceInputRef.current) {
-        const { isSpeaking, isTransCription } = VoiceInputRef.current.getVoiceInputState();
-        setIsVoiceInputActive(isSpeaking || isTransCription);
-      }
-    };
-
-    const interval = setInterval(checkVoiceState, 100); // Check every 100ms
-    return () => clearInterval(interval);
-  }, []);
+  const [mobilePreSpeak, setMobilePreSpeak] = useState(false);
 
   const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
   const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
@@ -402,8 +388,8 @@ const ChatInput = ({
       {/* Real Chat Input */}
       <Flex
         direction={'column'}
-        minH={!isPc && isVoiceInputActive ? '48px' : ['96px', '120px']}
-        pt={fileList.length > 0 ? '0' : isVoiceInputActive && !isPc ? [0, 4] : [3, 4]}
+        minH={mobilePreSpeak ? '48px' : ['96px', '120px']}
+        pt={fileList.length > 0 ? '0' : mobilePreSpeak ? [0, 4] : [3, 4]}
         pb={[2, 4]}
         position={'relative'}
         boxShadow={`0px 5px 16px -4px rgba(19, 51, 107, 0.08)`}
@@ -428,7 +414,7 @@ const ChatInput = ({
             />
           )}
           {/* file preview */}
-          {(!isVoiceInputActive || isPc || inputValue) && (
+          {(!mobilePreSpeak || isPc || inputValue) && (
             <Box px={[2, 3]}>
               <FilePreview fileList={fileList} removeFiles={removeFiles} />
             </Box>
@@ -440,16 +426,29 @@ const ChatInput = ({
           {!inputValue && (
             <VoiceInput
               ref={VoiceInputRef}
-              onSendMessage={onSendMessage}
-              resetInputVal={resetInputVal}
-              fileList={fileList}
+              handleSend={(text) => {
+                onSendMessage({
+                  text: text.trim(),
+                  files: fileList
+                });
+                replaceFiles([]);
+              }}
+              resetInputVal={(val) => {
+                setMobilePreSpeak(false);
+                resetInputVal({
+                  text: val,
+                  files: fileList
+                });
+              }}
+              mobilePreSpeak={mobilePreSpeak}
+              setMobilePreSpeak={setMobilePreSpeak}
             />
           )}
 
           {RenderTextarea}
         </Box>
 
-        {!isVoiceInputActive && <Box>{RenderButtonGroup}</Box>}
+        {!mobilePreSpeak && <Box>{RenderButtonGroup}</Box>}
       </Flex>
       <ComplianceTip type={'chat'} />
     </Box>

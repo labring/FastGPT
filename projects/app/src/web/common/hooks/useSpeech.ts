@@ -303,7 +303,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
 
         // Set minimum and maximum height, pill bars are shorter
         const minBarHeight = height * 0.08;
-        const maxBarHeight = height * 0.55; // Increase maximum height to 55%, make waveform more visible
+        const maxBarHeight = height * 0.4; // Increase maximum height to 55%, make waveform more visible
         const barHeight = Math.round(minBarHeight + intensity * (maxBarHeight - minBarHeight));
 
         // Ensure border radius doesn't exceed half of width or height, and pixel aligned

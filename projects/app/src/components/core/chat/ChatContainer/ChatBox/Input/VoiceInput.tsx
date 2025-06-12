@@ -16,7 +16,6 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
 import MyIconButton from '@/pageComponents/account/team/OrgManage/IconButton';
 import { isMobile } from '@fastgpt/web/common/system/utils';
-import type { UserInputFileItemType } from '../type';
 
 export interface VoiceInputComponentRef {
   onSpeak: () => void;
@@ -24,9 +23,10 @@ export interface VoiceInputComponentRef {
 }
 
 type VoiceInputProps = {
-  onSendMessage: (params: { text: string; files?: any[]; autoTTSResponse?: boolean }) => void;
-  resetInputVal: (val: { text: string; files?: UserInputFileItemType[] }) => void;
-  fileList?: UserInputFileItemType[];
+  handleSend: (val: string) => void;
+  resetInputVal: (val: string) => void;
+  mobilePreSpeak: boolean;
+  setMobilePreSpeak: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 // PC voice input
@@ -281,7 +281,7 @@ const MobileVoiceInput = ({
 };
 
 const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
-  ({ onSendMessage, resetInputVal, fileList = [] }, ref) => {
+  ({ handleSend, resetInputVal, mobilePreSpeak, setMobilePreSpeak }, ref) => {
     const { t } = useTranslation();
     const isMobileDevice = isMobile();
     const { isPc } = useSystem();
@@ -289,7 +289,6 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
     const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
     const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
     const whisperConfig = useContextSelector(ChatBoxContext, (v) => v.whisperConfig);
-    const autoTTSResponse = useContextSelector(ChatBoxContext, (v) => v.autoTTSResponse);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     const {
@@ -302,8 +301,6 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
       renderAudioGraphMobile,
       stream
     } = useSpeech({ appId, ...outLinkAuthData });
-
-    const [mobilePreSpeak, setMobilePreSpeak] = useState(false);
 
     // Canvas render
     useEffect(() => {
@@ -359,24 +356,13 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
       const finishWhisperTranscription = (text: string) => {
         if (!text) return;
         if (whisperConfig?.autoSend) {
-          onSendMessage({
-            text,
-            files: fileList,
-            autoTTSResponse
-          });
+          handleSend(text);
         } else {
-          resetInputVal({ text, files: fileList });
+          resetInputVal(text);
         }
       };
       startSpeak(finishWhisperTranscription);
-    }, [
-      autoTTSResponse,
-      onSendMessage,
-      resetInputVal,
-      startSpeak,
-      whisperConfig?.autoSend,
-      fileList
-    ]);
+    }, [handleSend, resetInputVal, startSpeak, whisperConfig?.autoSend]);
 
     const onSpeach = useCallback(() => {
       if (isMobileDevice) {
@@ -384,7 +370,7 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
       } else {
         onStartSpeak();
       }
-    }, [isMobileDevice, onStartSpeak]);
+    }, [isMobileDevice, onStartSpeak, setMobilePreSpeak]);
     useImperativeHandle(ref, () => ({
       onSpeak: onSpeach,
       getVoiceInputState: () => ({ isSpeaking: isSpeaking || mobilePreSpeak, isTransCription })
