@@ -21,6 +21,7 @@ import {
   booleanConditionList,
   numberConditionList,
   objectConditionList,
+  renderNumberConditionList,
   stringConditionList
 } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { useContextSelector } from 'use-context-selector';
@@ -74,11 +75,15 @@ const ListItem = ({
             </Box>
             {conditionItem.list?.length > 1 && (
               <Flex
-                px={'2.5'}
+                ml={1.5}
+                px={1}
                 color={'primary.600'}
                 fontWeight={'medium'}
                 alignItems={'center'}
                 cursor={'pointer'}
+                _hover={{
+                  bg: 'myGray.200'
+                }}
                 rounded={'md'}
                 onClick={() => {
                   onUpdateIfElseList(
@@ -98,7 +103,7 @@ const ListItem = ({
                 <MyIcon ml={1} boxSize={5} name="change" />
               </Flex>
             )}
-            <Box flex={1}></Box>
+            <Box flex={1} />
             {ifElseList.length > 1 && (
               <MyIcon
                 ml={2}
@@ -408,11 +413,6 @@ const ConditionSelect = ({
   );
 };
 
-/* 
-  Different condition can be entered differently
-  empty, notEmpty: forbid input
-  boolean type: select true/false
-*/
 const ConditionValueInput = ({
   value: inputValue,
   variable,
@@ -462,8 +462,24 @@ const ConditionValueInput = ({
     valueType
   });
 
+  const showBooleanSelect = useMemo(() => {
+    return (
+      valueType === WorkflowIOValueTypeEnum.boolean ||
+      (valueType === WorkflowIOValueTypeEnum.arrayBoolean &&
+        condition &&
+        !renderNumberConditionList.includes(condition))
+    );
+  }, [condition, valueType]);
+  const showNumberInput = useMemo(() => {
+    return (
+      valueType === WorkflowIOValueTypeEnum.number ||
+      valueType === WorkflowIOValueTypeEnum.arrayNumber ||
+      (valueType?.includes('array') && condition && renderNumberConditionList.includes(condition))
+    );
+  }, [condition, valueType]);
+
   const RenderInput = useMemo(() => {
-    if (valueType === WorkflowIOValueTypeEnum.boolean) {
+    if (showBooleanSelect) {
       return (
         <MySelect
           list={[
@@ -487,7 +503,7 @@ const ConditionValueInput = ({
           borderColor={'myGray.200'}
         />
       );
-    } else if (valueType === WorkflowIOValueTypeEnum.number) {
+    } else if (showNumberInput) {
       return (
         <MyNumberInput
           step={1}
@@ -530,7 +546,7 @@ const ConditionValueInput = ({
         />
       );
     }
-  }, [valueType, value, t, condition, onChange]);
+  }, [showBooleanSelect, showNumberInput, value, t, condition, onChange]);
 
   const RenderReference = useMemo(() => {
     return (
@@ -569,6 +585,9 @@ const ConditionValueInput = ({
         alignItems={'center'}
         justifyContent={'space-between'}
         cursor={'pointer'}
+        _hover={{
+          bg: 'myGray.50'
+        }}
         onClick={() => {
           if (type === 'reference') {
             onChange({
