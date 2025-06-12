@@ -12,6 +12,11 @@ export const encryptSecret = (text: string) => {
 
 export const decryptSecret = (encryptedText: string) => {
   const [ivHex, encryptedHex, authTagHex] = encryptedText.split(':');
+
+  if (!ivHex || !encryptedHex || !authTagHex) {
+    return '';
+  }
+
   const iv = Buffer.from(ivHex, 'hex');
   const encrypted = Buffer.from(encryptedHex, 'hex');
   const authTag = Buffer.from(authTagHex, 'hex');
