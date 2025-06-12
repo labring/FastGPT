@@ -4,13 +4,6 @@ import type { InvoiceType } from '@fastgpt/global/support/wallet/bill/type';
 import type { InvoiceSchemaType } from '@fastgpt/global/support/wallet/bill/type';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
-export type InvoiceFileResponse = {
-  data: string; // base64 encoded file data
-  mimeType: string;
-  filename: string;
-  size: number;
-};
-
 export type invoiceBillDataType = {
   type: BillTypeEnum;
   price: number;
@@ -27,5 +20,9 @@ export const submitInvoice = (data: InvoiceType) =>
 export const getInvoiceRecords = (data: PaginationProps) =>
   POST<PaginationResponse<InvoiceSchemaType>>(`/proApi/support/wallet/bill/invoice/records`, data);
 
-export const getInvoiceFile = (id: string) =>
-  GET<InvoiceFileResponse>(`/proApi/support/wallet/bill/invoice/file/read`, { id });
+export const readInvoiceFile = (id: string) =>
+  GET<Blob>(`/proApi/support/wallet/bill/invoice/file/read`, { id }).then((res) => {
+    const blob = new Blob([res], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    return url;
+  });
