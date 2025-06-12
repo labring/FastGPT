@@ -113,7 +113,7 @@ export const allConditionList = [
     value: VariableConditionEnum.lengthLessThanOrEqualTo
   }
 ];
-export const renderNumberConditionList = [
+export const renderNumberConditionList = new Set<VariableConditionEnum>([
   VariableConditionEnum.greaterThan,
   VariableConditionEnum.greaterThanOrEqualTo,
   VariableConditionEnum.lessThan,
@@ -124,4 +124,4 @@ export const renderNumberConditionList = [
   VariableConditionEnum.lengthGreaterThanOrEqualTo,
   VariableConditionEnum.lengthLessThan,
   VariableConditionEnum.lengthLessThanOrEqualTo
-];
+]);

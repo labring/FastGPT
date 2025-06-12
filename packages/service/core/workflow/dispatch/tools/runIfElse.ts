@@ -105,7 +105,7 @@ function getResult(
   runtimeNodes: any[]
 ) {
   const listResult = list.map((item) => {
-    const { variable, condition: variableCondition, value } = item;
+    const { variable, condition: variableCondition, value, valueType } = item;
 
     const conditionLeftValue = getReferenceVariableValue({
       value: variable,
@@ -113,17 +113,14 @@ function getResult(
       nodes: runtimeNodes
     });
 
-    const conditionValue =
-      typeof value === 'string' ? { type: 'input', value: value || '' } : value;
-
     const conditionRightValue =
-      conditionValue?.type === 'reference'
+      valueType === 'reference'
         ? getReferenceVariableValue({
-            value: conditionValue.value as ReferenceItemValueType,
+            value: value as ReferenceItemValueType,
             variables,
             nodes: runtimeNodes
           })
-        : conditionValue?.value;
+        : value;
 
     return checkCondition(
       variableCondition as VariableConditionEnum,

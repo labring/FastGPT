@@ -5,10 +5,7 @@ import {
 } from '@fastgpt/web/components/common/DndDrag/index';
 import Container from '../../components/Container';
 import { MinusIcon } from '@chakra-ui/icons';
-import {
-  type ConditionValueType,
-  type IfElseListItemType
-} from '@fastgpt/global/core/workflow/template/system/ifElse/type';
+import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { type ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
 import { useTranslation } from 'next-i18next';
@@ -184,10 +181,11 @@ const ListItem = ({
                     {/* value */}
                     <ConditionValueInput
                       value={item.value}
+                      valueType={item.valueType}
                       condition={item.condition}
                       variable={item.variable}
                       nodeId={nodeId}
-                      onChange={(e) => {
+                      updateValue={(value, valueType) => {
                         onUpdateIfElseList(
                           ifElseList.map((ifElse, index) => {
                             return {
@@ -198,7 +196,8 @@ const ListItem = ({
                                       if (index === i) {
                                         return {
                                           ...item,
-                                          value: e
+                                          value,
+                                          valueType
                                         };
                                       }
                                       return item;
@@ -414,33 +413,23 @@ const ConditionSelect = ({
 };
 
 const ConditionValueInput = ({
-  value: inputValue,
+  value,
+  valueType: type,
   variable,
   condition,
-  onChange,
+  updateValue,
   nodeId
 }: {
-  value?: ConditionValueType;
+  value?: string | ReferenceItemValueType;
+  valueType?: 'input' | 'reference';
   variable?: ReferenceItemValueType;
   condition?: VariableConditionEnum;
-  onChange: (e: ConditionValueType) => void;
+  updateValue: (value: string | ReferenceItemValueType, valueType: 'input' | 'reference') => void;
   nodeId: string;
 }) => {
   const { t } = useTranslation();
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-
-  const { type, value } = useMemo((): ConditionValueType => {
-    if (typeof inputValue === 'string') {
-      return { type: 'input', value: inputValue };
-    }
-
-    if (!inputValue) {
-      return { type: 'input', value: '' };
-    }
-
-    return inputValue;
-  }, [inputValue]);
 
   const globalVariables = getWorkflowGlobalVariables({
     nodes: nodeList,
@@ -467,14 +456,14 @@ const ConditionValueInput = ({
       valueType === WorkflowIOValueTypeEnum.boolean ||
       (valueType === WorkflowIOValueTypeEnum.arrayBoolean &&
         condition &&
-        !renderNumberConditionList.includes(condition))
+        !renderNumberConditionList.has(condition))
     );
   }, [condition, valueType]);
   const showNumberInput = useMemo(() => {
     return (
       valueType === WorkflowIOValueTypeEnum.number ||
       valueType === WorkflowIOValueTypeEnum.arrayNumber ||
-      (valueType?.includes('array') && condition && renderNumberConditionList.includes(condition))
+      (valueType?.includes('array') && condition && renderNumberConditionList.has(condition))
     );
   }, [condition, valueType]);
 
@@ -486,18 +475,9 @@ const ConditionValueInput = ({
             { label: 'True', value: 'true' },
             { label: 'False', value: 'false' }
           ]}
-          onChange={(e) =>
-            onChange({
-              type: 'input',
-              value: e
-            })
-          }
+          onChange={(e) => updateValue(e, 'input')}
           value={value as string}
           placeholder={t('workflow:ifelse.Select value')}
-          isDisabled={
-            condition === VariableConditionEnum.isEmpty ||
-            condition === VariableConditionEnum.isNotEmpty
-          }
           borderLeftRadius={0}
           h={10}
           borderColor={'myGray.200'}
@@ -512,12 +492,7 @@ const ConditionValueInput = ({
             borderLeftRadius: 'none'
           }}
           value={Number(value as string)}
-          onChange={(e) =>
-            onChange({
-              type: 'input',
-              value: String(e)
-            })
-          }
+          onChange={(e) => updateValue(String(e), 'input')}
         />
       );
     } else {
@@ -532,33 +507,21 @@ const ConditionValueInput = ({
           w={'full'}
           h={'full'}
           bg={'white'}
-          isDisabled={
-            condition === VariableConditionEnum.isEmpty ||
-            condition === VariableConditionEnum.isNotEmpty
-          }
           borderLeftRadius={0}
-          onChange={(e) =>
-            onChange({
-              type: 'input',
-              value: e.target.value
-            })
-          }
+          onChange={(e) => updateValue(e.target.value, 'input')}
         />
       );
     }
-  }, [showBooleanSelect, showNumberInput, value, t, condition, onChange]);
+  }, [showBooleanSelect, showNumberInput, value, t, condition, updateValue]);
 
   const RenderReference = useMemo(() => {
     return (
       <ReferSelector
         placeholder={t('common:select_reference_variable')}
         list={referenceList}
-        value={type === 'reference' ? value : undefined}
+        value={type === 'reference' ? (value as ReferenceItemValueType) : undefined}
         onSelect={(e) => {
-          onChange({
-            type: 'reference',
-            value: e as ReferenceItemValueType
-          });
+          updateValue(e as ReferenceItemValueType, 'reference');
         }}
         isArray={false}
         ButtonProps={{
@@ -569,47 +532,62 @@ const ConditionValueInput = ({
         }}
       />
     );
-  }, [t, referenceList, type, value, onChange]);
+  }, [t, referenceList, type, value, updateValue]);
+
+  const isDisabled =
+    condition === VariableConditionEnum.isEmpty || condition === VariableConditionEnum.isNotEmpty;
 
   return (
-    <Flex>
-      <Flex
-        w={16}
-        h={10}
-        border={'1px solid'}
-        borderRight={'none'}
-        borderColor={'myGray.200'}
-        borderLeftRadius={'sm'}
-        bg={'white'}
-        px={3}
-        alignItems={'center'}
-        justifyContent={'space-between'}
-        cursor={'pointer'}
-        _hover={{
-          bg: 'myGray.50'
-        }}
-        onClick={() => {
-          if (type === 'reference') {
-            onChange({
-              type: 'input',
-              value: ''
-            });
-          } else {
-            onChange({
-              type: 'reference',
-              value: ['', undefined]
-            });
-          }
-        }}
-      >
-        {type === 'reference' ? (
-          <MyIcon name={'core/workflow/inputType/reference'} w={4} color={'primary.600'} />
-        ) : (
-          <MyIcon name={'core/app/variable/input'} w={4} color={'primary.600'} />
-        )}
-        <MyIcon name={'common/lineChange'} w={'14px'} color={'myGray.500'} />
+    <Flex position="relative">
+      <Flex>
+        <Flex
+          w={16}
+          h={10}
+          border={'1px solid'}
+          borderRight={'none'}
+          borderColor={'myGray.200'}
+          borderLeftRadius={'sm'}
+          bg={'white'}
+          px={3}
+          alignItems={'center'}
+          justifyContent={'space-between'}
+          cursor={'pointer'}
+          _hover={{
+            bg: 'myGray.50'
+          }}
+          onClick={() => {
+            if (isDisabled) return;
+
+            if (type === 'reference') {
+              updateValue('', 'input');
+            } else {
+              updateValue(['', undefined] as ReferenceItemValueType, 'reference');
+            }
+          }}
+        >
+          {type === 'reference' ? (
+            <MyIcon name={'core/workflow/inputType/reference'} w={4} color={'primary.600'} />
+          ) : (
+            <MyIcon name={'core/app/variable/input'} w={4} color={'primary.600'} />
+          )}
+          <MyIcon name={'common/lineChange'} w={'14px'} color={'myGray.500'} />
+        </Flex>
+        <Box w={'220px'}>{type === 'reference' ? RenderReference : RenderInput}</Box>
       </Flex>
-      <Box w={'220px'}>{type === 'reference' ? RenderReference : RenderInput}</Box>
+
+      {isDisabled && (
+        <Box
+          position="absolute"
+          top={0}
+          left={0}
+          right={0}
+          bottom={0}
+          bg="whiteAlpha.700"
+          zIndex={1}
+          borderRadius="sm"
+          cursor="not-allowed"
+        />
+      )}
     </Flex>
   );
 };
