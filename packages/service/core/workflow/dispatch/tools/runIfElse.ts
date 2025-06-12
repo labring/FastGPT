@@ -14,6 +14,7 @@ import {
 import { type ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { getElseIFLabel, getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { type ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.condition]: IfElseConditionType;
@@ -106,13 +107,29 @@ function getResult(
   const listResult = list.map((item) => {
     const { variable, condition: variableCondition, value } = item;
 
-    const inputValue = getReferenceVariableValue({
+    const conditionLeftValue = getReferenceVariableValue({
       value: variable,
       variables,
       nodes: runtimeNodes
     });
 
-    return checkCondition(variableCondition as VariableConditionEnum, inputValue, value || '');
+    const conditionValue =
+      typeof value === 'string' ? { type: 'input', value: value || '' } : value;
+
+    const conditionRightValue =
+      conditionValue?.type === 'reference'
+        ? getReferenceVariableValue({
+            value: conditionValue.value as ReferenceItemValueType,
+            variables,
+            nodes: runtimeNodes
+          })
+        : conditionValue?.value;
+
+    return checkCondition(
+      variableCondition as VariableConditionEnum,
+      conditionLeftValue,
+      conditionRightValue
+    );
   });
 
   return condition === 'AND' ? listResult.every(Boolean) : listResult.some(Boolean);

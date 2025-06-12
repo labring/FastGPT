@@ -269,7 +269,7 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
               <Box flex={'1 0 0'}>
                 <MyNumberInput
                   h={'34px'}
-                  bg={'white'}
+                  inputFieldProps={{ bg: 'white' }}
                   min={100}
                   max={100000}
                   register={register}

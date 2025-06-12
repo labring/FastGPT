@@ -37,7 +37,7 @@ export const IfElseNode: FlowNodeTemplateType = {
             {
               variable: undefined,
               condition: undefined,
-              value: undefined
+              value: { type: 'input', value: '' }
             }
           ]
         }

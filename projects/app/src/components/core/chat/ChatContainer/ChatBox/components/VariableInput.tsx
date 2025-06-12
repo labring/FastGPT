@@ -94,7 +94,7 @@ export const VariableInputItem = ({
                 step={1}
                 min={item.min}
                 max={item.max}
-                bg={'white'}
+                inputFieldProps={{ bg: 'white' }}
                 value={value}
                 onChange={onChange}
                 isInvalid={errors?.variables && Object.keys(errors.variables).includes(item.key)}
@@ -250,18 +250,16 @@ const VariableInput = ({
               <ExternalVariableInputItem key={item.id} item={item} variablesForm={variablesForm} />
             ))}
             {variableList.length === 0 && !chatStarted && (
-              <Box>
-                <Button
-                  leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
-                  size={'sm'}
-                  maxW={'100px'}
-                  onClick={handleSubmitChat(() => {
-                    chatForm.setValue('chatStarted', true);
-                  })}
-                >
-                  {t('common:core.chat.Start Chat')}
-                </Button>
-              </Box>
+              <Button
+                leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
+                size={'sm'}
+                maxW={'100px'}
+                onClick={handleSubmitChat(() => {
+                  chatForm.setValue('chatStarted', true);
+                })}
+              >
+                {t('common:core.chat.Start Chat')}
+              </Button>
             )}
           </Card>
         </Box>
@@ -287,7 +285,6 @@ const VariableInput = ({
                   size={'sm'}
                   maxW={'100px'}
                   onClick={handleSubmitChat(() => {
-                    console.log('start chat');
                     chatForm.setValue('chatStarted', true);
                   })}
                 >

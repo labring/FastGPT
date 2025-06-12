@@ -47,7 +47,7 @@ type CommonSelectProps = {
     }[];
   }[];
   popDirection?: 'top' | 'bottom';
-  styles?: ButtonProps;
+  ButtonProps?: ButtonProps;
 };
 type SelectProps<T extends boolean> = CommonSelectProps & {
   isArray?: T;
@@ -168,7 +168,8 @@ const SingleReferenceSelector = ({
   value,
   list = [],
   onSelect,
-  popDirection
+  popDirection,
+  ButtonProps
 }: SelectProps<false>) => {
   const getSelectValue = useCallback(
     (value: ReferenceValueType) => {
@@ -213,9 +214,10 @@ const SingleReferenceSelector = ({
         list={list}
         onSelect={onSelect as any}
         popDirection={popDirection}
+        ButtonProps={ButtonProps}
       />
     );
-  }, [getSelectValue, list, onSelect, placeholder, popDirection, value]);
+  }, [ButtonProps, getSelectValue, list, onSelect, placeholder, popDirection, value]);
 
   return ItemSelector;
 };
@@ -226,8 +228,6 @@ const MultipleReferenceSelector = ({
   onSelect,
   popDirection
 }: SelectProps<true>) => {
-  const { t } = useTranslation();
-
   const getSelectValue = useCallback(
     (value: ReferenceValueType) => {
       if (!value) return [];
