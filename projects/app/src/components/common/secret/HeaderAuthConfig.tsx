@@ -258,7 +258,7 @@ const HeaderAuthConfig = ({
           title={t('common:auth_config')}
           w={480}
         >
-          <ModalBody px={9} pt={6}>
+          <ModalBody px={9}>
             <FormControl mb={2}>
               <Box fontSize={'14px'} fontWeight={'medium'} color={'myGray.900'} mb={2}>
                 {t('common:auth_type')}
@@ -356,14 +356,22 @@ const HeaderAuthConfig = ({
               </>
             )}
           </ModalBody>
-          <ModalFooter px={9} pb={6} display={'flex'} flexDirection={'column'}>
+          <ModalFooter px={9} display={'flex'} flexDirection={'column'}>
             <Flex justifyContent={'end'} w={'full'}>
               <Button onClick={handleSubmit(onSubmit)}>{t('common:Save')}</Button>
             </Flex>
-            <Box color={'myGray.500'} fontSize={'12px'} mt={4}>
-              {t('common:secret_tips')}
-            </Box>
           </ModalFooter>
+          <Box
+            borderTop={'sm'}
+            color={'myGray.500'}
+            bg={'myGray.50'}
+            fontSize={'xs'}
+            textAlign={'center'}
+            py={2}
+            borderBottomRadius={'md'}
+          >
+            {t('common:secret_tips')}
+          </Box>
         </MyModal>
       )}
     </>
