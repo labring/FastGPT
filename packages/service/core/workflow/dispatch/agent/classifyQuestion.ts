@@ -11,19 +11,17 @@ import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { getCQPrompt } from '@fastgpt/global/core/ai/prompt/agent';
+import { getCQSystemPrompt } from '@fastgpt/global/core/ai/prompt/agent';
 import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getLLMModel } from '../../../ai/model';
 import { getHistories } from '../utils';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { loadRequestMessages } from '../../../chat/utils';
 import { llmCompletionsBodyFormat, formatLLMResponse } from '../../../ai/utils';
 import { addLog } from '../../../../common/system/log';
 import { ModelTypeEnum } from '../../../../../global/core/ai/model';
-import { replaceVariable } from '@fastgpt/global/common/string/tools';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;
@@ -35,12 +33,16 @@ type Props = ModuleDispatchProps<{
 type CQResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.cqResult]: string;
 }>;
-type ActionProps = Props & { cqModel: LLMModelItemType };
+type ActionProps = Props & {
+  cqModel: LLMModelItemType;
+  lastMemory?: ClassifyQuestionAgentItemType;
+};
 
 /* request openai chat */
 export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse> => {
   const {
     externalProvider,
+    runningAppInfo,
     node: { nodeId, name },
     histories,
     params: { model, history = 6, agents, userChatInput }
@@ -52,10 +54,16 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   const cqModel = getLLMModel(model);
 
+  const memoryKey = `${runningAppInfo.id}-${nodeId}`;
   const chatHistories = getHistories(history, histories);
+  // @ts-ignore
+  const lastMemory = chatHistories[chatHistories.length - 1]?.memories?.[
+    memoryKey
+  ] as ClassifyQuestionAgentItemType;
 
   const { arg, inputTokens, outputTokens } = await completions({
     ...props,
+    lastMemory,
     histories: chatHistories,
     cqModel
   });
@@ -74,6 +82,9 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
     [DispatchNodeResponseKeyEnum.skipHandleId]: agents
       .filter((item) => item.key !== result.key)
       .map((item) => getHandleId(nodeId, 'source', item.key)),
+    [DispatchNodeResponseKeyEnum.memories]: {
+      [memoryKey]: result
+    },
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
@@ -100,26 +111,35 @@ const completions = async ({
   cqModel,
   externalProvider,
   histories,
-  params: { agents, systemPrompt = '', userChatInput },
-  node: { version }
+  lastMemory,
+  params: { agents, systemPrompt = '', userChatInput }
 }: ActionProps) => {
   const messages: ChatItemType[] = [
+    {
+      obj: ChatRoleEnum.System,
+      value: [
+        {
+          type: ChatItemValueTypeEnum.text,
+          text: {
+            content: getCQSystemPrompt({
+              systemPrompt,
+              memory: lastMemory ? JSON.stringify(lastMemory) : '',
+              typeList: JSON.stringify(
+                agents.map((item) => ({ id: item.key, description: item.value }))
+              )
+            })
+          }
+        }
+      ]
+    },
+    ...histories,
     {
       obj: ChatRoleEnum.Human,
       value: [
         {
           type: ChatItemValueTypeEnum.text,
           text: {
-            content: replaceVariable(cqModel.customCQPrompt || getCQPrompt(version), {
-              systemPrompt: systemPrompt || 'null',
-              typeList: agents
-                .map((item) => `{"类型ID":"${item.key}", "问题类型":"${item.value}"}`)
-                .join('\n------\n'),
-              history: histories
-                .map((item) => `${item.obj}:${chatValue2RuntimePrompt(item.value).text}`)
-                .join('\n------\n'),
-              question: userChatInput
-            })
+            content: userChatInput
           }
         }
       ]
@@ -145,7 +165,6 @@ const completions = async ({
   const { text: answer, usage } = await formatLLMResponse(response);
 
   // console.log(JSON.stringify(chats2GPTMessages({ messages, reserveId: false }), null, 2));
-  // console.log(answer, '----');
 
   const id =
     agents.find((item) => answer.includes(item.key))?.key ||
