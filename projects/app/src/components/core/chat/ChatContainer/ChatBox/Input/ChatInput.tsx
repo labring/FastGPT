@@ -303,14 +303,10 @@ const ChatInput = ({
             h={[7, 9]}
             p={[1, 2]}
             bg={
-              isChatting
-                ? 'rgba(17, 24, 36, 0.1)'
-                : !havInput || hasFileUploading
-                  ? 'rgba(17, 24, 36, 0.1)'
-                  : 'primary.500'
+              isChatting ? 'primary.50' : canSendMessage ? 'primary.500' : 'rgba(17, 24, 36, 0.1)'
             }
             borderRadius={['md', 'lg']}
-            cursor={havInput ? 'pointer' : 'not-allowed'}
+            cursor={canSendMessage ? 'pointer' : 'not-allowed'}
             onClick={() => {
               if (isChatting) {
                 return onStop();
@@ -319,13 +315,7 @@ const ChatInput = ({
             }}
           >
             {isChatting ? (
-              <MyIcon
-                animation={'zoomStopIcon 0.4s infinite alternate'}
-                {...iconSize}
-                cursor={'pointer'}
-                name={'stop'}
-                color={'white'}
-              />
+              <MyIcon {...iconSize} name={'stop'} color={'primary.600'} />
             ) : (
               <MyTooltip label={t('common:core.chat.Send Message')}>
                 <MyIcon name={'core/chat/sendFill'} {...iconSize} color={'white'} />
@@ -336,6 +326,7 @@ const ChatInput = ({
       </Flex>
     );
   }, [
+    isPc,
     showSelectFile,
     showSelectImg,
     selectFileLabel,
@@ -345,9 +336,7 @@ const ChatInput = ({
     inputValue,
     t,
     isChatting,
-    havInput,
-    hasFileUploading,
-    isPc,
+    canSendMessage,
     onOpenSelectFile,
     onSelectFile,
     handleSend,

@@ -22,6 +22,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import dayjs from 'dayjs';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import MyModal from '@fastgpt/web/components/common/MyModal';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 const InvoiceTable = () => {
   const { t } = useTranslation();
@@ -136,31 +137,27 @@ function InvoiceDetailModal({
 }) {
   const { t } = useTranslation();
 
-  const handleDownloadInvoice = async (id: string) => {
-    try {
-      const fileInfo = await readInvoiceFile(id);
+  const { runAsync: handleDownloadInvoice } = useRequest2(async (id: string) => {
+    const fileInfo = await readInvoiceFile(id);
 
-      // Blob
-      const byteCharacters = atob(fileInfo.data);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: fileInfo.mimeType });
-      const fileUrl = URL.createObjectURL(blob);
-
-      // preview
-      window.open(fileUrl, '_blank');
-
-      // clean
-      setTimeout(() => {
-        URL.revokeObjectURL(fileUrl);
-      }, 1000);
-    } catch (error) {
-      Promise.reject(error);
+    // Blob
+    const byteCharacters = atob(fileInfo.data);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
     }
-  };
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: fileInfo.mimeType });
+    const fileUrl = URL.createObjectURL(blob);
+
+    // preview
+    window.open(fileUrl, '_blank');
+
+    // clean
+    setTimeout(() => {
+      URL.revokeObjectURL(fileUrl);
+    }, 1000);
+  });
 
   return (
     <MyModal

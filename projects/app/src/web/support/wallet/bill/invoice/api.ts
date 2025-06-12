@@ -1,5 +1,6 @@
 import { GET, POST } from '@/web/common/api/request';
 import type { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
+import type { InvoiceFileInfo } from '@fastgpt/global/support/wallet/bill/invoice/type';
 import type { InvoiceType } from '@fastgpt/global/support/wallet/bill/type';
 import type { InvoiceSchemaType } from '@fastgpt/global/support/wallet/bill/type';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
@@ -9,13 +10,6 @@ export type invoiceBillDataType = {
   price: number;
   createTime: Date;
   _id: string;
-};
-
-export type InvoiceFileInfo = {
-  data: string; // base64 encoded file data
-  mimeType: string;
-  filename: string;
-  size: number;
 };
 
 export const getInvoiceBillsList = () =>
