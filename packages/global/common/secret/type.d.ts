@@ -3,6 +3,4 @@ export type SecretValueType = {
   secret: string;
 };
 
-export type StoreSecretValueType = {
-  [key: string]: SecretValueType;
-};
+export type StoreSecretValueType = Record<string, SecretValueType>;
