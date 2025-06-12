@@ -274,9 +274,9 @@ const HeaderAuthConfig = ({
             {currentAuthType !== HeaderSecretTypeEnum.None && (
               <Flex mb={2} gap={2} color={'myGray.900'} fontWeight={'medium'} fontSize={'14px'}>
                 {currentAuthType === HeaderSecretTypeEnum.Custom && (
-                  <Box w={1 / 3}>{t('common:core.workflow.key')}</Box>
+                  <Box w={1 / 3}>{t('common:key')}</Box>
                 )}
-                <Box w={2 / 3}>{t('common:core.workflow.value')}</Box>
+                <Box w={2 / 3}>{t('common:value')}</Box>
               </Flex>
             )}
 
@@ -361,7 +361,7 @@ const HeaderAuthConfig = ({
               <Button onClick={handleSubmit(onSubmit)}>{t('common:Save')}</Button>
             </Flex>
             <Box color={'myGray.500'} fontSize={'12px'} mt={4}>
-              {t('common:secret.tips')}
+              {t('common:secret_tips')}
             </Box>
           </ModalFooter>
         </MyModal>

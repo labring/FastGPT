@@ -234,7 +234,7 @@ const logAppUpdate = ({
     const values: string[] = [];
 
     if (name !== undefined) {
-      names.push(i18nT('common:core.app.name'));
+      names.push(i18nT('common:name'));
       values.push(name);
     }
 
