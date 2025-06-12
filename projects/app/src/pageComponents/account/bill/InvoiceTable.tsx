@@ -1,4 +1,4 @@
-import { getInvoiceRecords, getInvoiceFile } from '@/web/support/wallet/bill/invoice/api';
+import { getInvoiceRecords, readInvoiceFile } from '@/web/support/wallet/bill/invoice/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useTranslation } from 'next-i18next';
 import { useState } from 'react';
@@ -138,17 +138,19 @@ function InvoiceDetailModal({
 
   const handleDownloadInvoice = async (id: string) => {
     try {
-      const response = await getInvoiceFile(id);
+      const fileUrl = await readInvoiceFile(id);
 
-      // data URL
-      const dataUrl = `data:${response.mimeType};base64,${response.data}`;
-
+      // download
       const link = document.createElement('a');
-      link.href = dataUrl;
-      link.download = response.filename;
+      link.href = fileUrl;
+      link.download = `${invoice.teamName}.pdf`;
+      link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+
+      // Release the URL object
+      URL.revokeObjectURL(fileUrl);
     } catch (error) {
       Promise.reject(error);
     }
@@ -187,11 +189,12 @@ function InvoiceDetailModal({
             <Flex alignItems={'center'} justify={'space-between'}>
               <FormLabel flex={'0 0 120px'}>发票文件</FormLabel>
               <Box cursor={'pointer'} onClick={() => handleDownloadInvoice(invoice._id)}>
-                点击下载
+                {t('account_bill:click_to_download')}
               </Box>
             </Flex>
           )}
         </Flex>
+        xw
       </ModalBody>
     </MyModal>
   );
