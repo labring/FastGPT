@@ -59,11 +59,10 @@ images: []
 
 可以。需要准备好向量模型和LLM模型。
 
-### 其他模型没法进行问题分类/内容提取
+### 其他模型没法进行内容提取
 
-1. 看日志。如果提示 JSON invalid，not support tool 之类的，说明该模型不支持工具调用或函数调用，需要设置`toolChoice=false`和`functionCall=false`，就会默认走提示词模式。目前内置提示词仅针对了商业模型API进行测试。问题分类基本可用，内容提取不太行。
-2. 如果已经配置正常，并且没有错误日志，则说明可能提示词不太适合该模型，可以通过修改`customCQPrompt`来自定义提示词。
-   
+看日志。如果提示 JSON invalid，not support tool 之类的，说明该模型不支持工具调用或函数调用，需要设置`toolChoice=false`和`functionCall=false`，就会默认走提示词模式。目前内置提示词仅针对了商业模型API进行测试。问题分类基本可用，内容提取不太行。
+
 ### 页面崩溃
 
 1. 关闭翻译

@@ -211,37 +211,44 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
 
     const chatId = getNanoid();
 
-    const { flowUsages, assistantResponses, newVariables, flowResponses, durationSeconds } =
-      await dispatchWorkFlow({
-        chatId,
-        timezone,
-        externalProvider,
-        mode: 'chat',
-        runningAppInfo: {
-          id: String(app._id),
-          teamId: String(app.teamId),
-          tmbId: String(app.tmbId)
-        },
-        runningUserInfo: {
-          teamId: String(app.teamId),
-          tmbId: String(app.tmbId)
-        },
-        uid: String(app.tmbId),
-        runtimeNodes,
-        runtimeEdges: storeEdges2RuntimeEdges(edges),
-        variables,
-        query: removeEmptyUserInput(userQuestion.value),
-        chatConfig,
-        histories: [],
-        stream: false,
-        maxRunTimes: WORKFLOW_MAX_RUN_TIMES
-      });
+    const {
+      flowUsages,
+      assistantResponses,
+      newVariables,
+      flowResponses,
+      durationSeconds,
+      system_memories
+    } = await dispatchWorkFlow({
+      chatId,
+      timezone,
+      externalProvider,
+      mode: 'chat',
+      runningAppInfo: {
+        id: String(app._id),
+        teamId: String(app.teamId),
+        tmbId: String(app.tmbId)
+      },
+      runningUserInfo: {
+        teamId: String(app.teamId),
+        tmbId: String(app.tmbId)
+      },
+      uid: String(app.tmbId),
+      runtimeNodes,
+      runtimeEdges: storeEdges2RuntimeEdges(edges),
+      variables,
+      query: removeEmptyUserInput(userQuestion.value),
+      chatConfig,
+      histories: [],
+      stream: false,
+      maxRunTimes: WORKFLOW_MAX_RUN_TIMES
+    });
 
     // Save chat
     const aiResponse: AIChatItemType & { dataId?: string } = {
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
+      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
+      memories: system_memories
     };
     const newTitle = isPlugin ? 'Mcp call' : getChatTitleFromChatMessage(userQuestion);
     await saveChat({
