@@ -16,10 +16,19 @@ import dynamic from 'next/dynamic';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import Markdown from '@/components/Markdown';
 import { postRunMCPTool } from '@/web/core/app/api/plugin';
+import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 
 const JsonEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/JsonEditor'));
 
-const ChatTest = ({ currentTool, url }: { currentTool: McpToolConfigType | null; url: string }) => {
+const ChatTest = ({
+  currentTool,
+  url,
+  headerSecret
+}: {
+  currentTool?: McpToolConfigType;
+  url: string;
+  headerSecret: StoreSecretValueType;
+}) => {
   const { t } = useTranslation();
 
   const [output, setOutput] = useState<string>('');
@@ -42,6 +51,7 @@ const ChatTest = ({ currentTool, url }: { currentTool: McpToolConfigType | null;
       return await postRunMCPTool({
         params: data,
         url,
+        headerSecret,
         toolName: currentTool.name
       });
     },
@@ -135,7 +145,15 @@ const ChatTest = ({ currentTool, url }: { currentTool: McpToolConfigType | null;
   );
 };
 
-const Render = ({ currentTool, url }: { currentTool: McpToolConfigType | null; url: string }) => {
+const Render = ({
+  currentTool,
+  url,
+  headerSecret
+}: {
+  currentTool?: McpToolConfigType;
+  url: string;
+  headerSecret: StoreSecretValueType;
+}) => {
   const { chatId } = useChatStore();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
@@ -157,7 +175,7 @@ const Render = ({ currentTool, url }: { currentTool: McpToolConfigType | null; u
       showNodeStatus
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>
-        <ChatTest currentTool={currentTool} url={url} />
+        <ChatTest currentTool={currentTool} url={url} headerSecret={headerSecret} />
       </ChatRecordContextProvider>
     </ChatItemContextProvider>
   );
@@ -178,7 +196,7 @@ const RenderToolInput = ({
     type: string;
     description?: string;
   };
-  toolData: McpToolConfigType | null;
+  toolData?: McpToolConfigType;
   value: any;
   onChange: (value: any) => void;
   isInvalid: boolean;
