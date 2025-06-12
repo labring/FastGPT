@@ -1,4 +1,4 @@
-import { getInvoiceRecords } from '@/web/support/wallet/bill/invoice/api';
+import { getInvoiceRecords, readInvoiceFile } from '@/web/support/wallet/bill/invoice/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useTranslation } from 'next-i18next';
 import { useState } from 'react';
@@ -135,6 +135,26 @@ function InvoiceDetailModal({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+
+  const handleDownloadInvoice = async (id: string) => {
+    try {
+      const fileUrl = await readInvoiceFile(id);
+
+      // download
+      const link = document.createElement('a');
+      link.href = fileUrl;
+      link.download = `${invoice.teamName}.pdf`;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Release the URL object
+      URL.revokeObjectURL(fileUrl);
+    } catch (error) {
+      Promise.reject(error);
+    }
+  };
   return (
     <MyModal
       maxW={['90vw', '700px']}
@@ -165,7 +185,16 @@ function InvoiceDetailModal({
           />
           <LabelItem label={t('account_bill:contact_phone')} value={invoice.contactPhone} />
           <LabelItem label={t('account_bill:email_address')} value={invoice.emailAddress} />
+          {invoice.status === 2 && (
+            <Flex alignItems={'center'} justify={'space-between'}>
+              <FormLabel flex={'0 0 120px'}>{t('account_bill:Invoice_document')}</FormLabel>
+              <Box cursor={'pointer'} onClick={() => handleDownloadInvoice(invoice._id)}>
+                {t('account_bill:click_to_download')}
+              </Box>
+            </Flex>
+          )}
         </Flex>
+        xw
       </ModalBody>
     </MyModal>
   );
