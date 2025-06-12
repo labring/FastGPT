@@ -10,8 +10,17 @@ import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import { postUpdateMCPTools } from '@/web/core/app/api/plugin';
+import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 
-const Header = ({ url, toolList }: { url: string; toolList: McpToolConfigType[] }) => {
+const Header = ({
+  url,
+  toolList,
+  headerSecret
+}: {
+  url: string;
+  toolList: McpToolConfigType[];
+  headerSecret: StoreSecretValueType;
+}) => {
   const { t } = useTranslation();
   const appId = useContextSelector(AppContext, (v) => v.appId);
   const router = useRouter();
@@ -41,7 +50,7 @@ const Header = ({ url, toolList }: { url: string; toolList: McpToolConfigType[] 
 
   const { runAsync: saveMCPTools, loading: isSavingMCPTools } = useRequest2(
     async () => {
-      return await postUpdateMCPTools({ appId, url, toolList });
+      return await postUpdateMCPTools({ appId, url, toolList, headerSecret });
     },
     {
       successToast: t('common:update_success')

@@ -83,8 +83,6 @@ export async function rewriteAppWorkflowToDetail({
     })
   );
 
-  /* Add node(App Type) versionlabel and latest sign ==== */
-
   // Get all dataset ids from nodes
   nodes.forEach((node) => {
     if (node.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) return;
@@ -169,35 +167,4 @@ export async function rewriteAppWorkflowToDetail({
   }
 
   return nodes;
-}
-
-export async function rewriteAppWorkflowToSimple(formatNodes: StoreNodeItemType[]) {
-  formatNodes.forEach((node) => {
-    if (node.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) return;
-
-    node.inputs.forEach((input) => {
-      if (input.key === NodeInputKeyEnum.datasetSelectList) {
-        const val = input.value as undefined | { datasetId: string }[] | { datasetId: string };
-        if (!val) {
-          input.value = [];
-        } else if (Array.isArray(val)) {
-          // Not rewrite reference value
-          if (val.length === 2 && val.every((item) => typeof item === 'string')) {
-            return;
-          }
-          input.value = val
-            .map((dataset: { datasetId: string }) => ({
-              datasetId: dataset.datasetId
-            }))
-            .filter((item) => !!item.datasetId);
-        } else if (typeof val === 'object' && val !== null) {
-          input.value = [
-            {
-              datasetId: val.datasetId
-            }
-          ];
-        }
-      }
-    });
-  });
 }
