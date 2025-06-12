@@ -188,9 +188,9 @@ const MobileVoiceInput = ({
       const currentY = touch.pageY;
       const deltaY = startYRef.current - currentY;
 
-      if (deltaY > 90) {
+      if (deltaY > 60) {
         setIsCancel(true);
-      } else if (deltaY <= 90) {
+      } else if (deltaY <= 60) {
         setIsCancel(false);
       }
     },
@@ -225,8 +225,8 @@ const MobileVoiceInput = ({
             transform={'translateY(-50%)'}
             zIndex={5}
             name={'core/chat/backText'}
-            h={5}
-            w={5}
+            h={6}
+            w={6}
             onClick={onCloseSpeak}
           />
         </MyTooltip>
@@ -234,7 +234,6 @@ const MobileVoiceInput = ({
       <Flex
         alignItems={'center'}
         justifyContent={'center'}
-        h="100%"
         flex="1 0 0"
         bg={isSpeaking ? (isCancel ? 'red.500' : 'primary.500') : 'rgba(255, 255, 255, 0.95)'}
         backdropFilter={!isSpeaking ? 'blur(4px)' : 'none'}
@@ -269,7 +268,7 @@ const MobileVoiceInput = ({
           left={0}
           right={0}
           bottom={maskBottom}
-          h={50}
+          h={'48px'}
           bg="linear-gradient(to top, white, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0))"
         >
           <Box fontSize="sm" color="myGray.500" position="absolute" bottom={2.5}>

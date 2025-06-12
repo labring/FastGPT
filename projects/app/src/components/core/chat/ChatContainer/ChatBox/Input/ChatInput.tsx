@@ -44,7 +44,6 @@ const ChatInput = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const { isPc } = useSystem();
-  const { feConfigs } = useSystemStore();
   const VoiceInputRef = useRef<VoiceInputComponentRef>(null);
 
   const { setValue, watch, control } = chatForm;
@@ -132,10 +131,8 @@ const ChatInput = ({
           <Textarea
             ref={TextareaDom}
             py={0}
-            ml={[2, 4]}
-            mr={[2, 4]}
-            pl={2}
-            pr={2}
+            mx={[2, 4]}
+            px={2}
             border={'none'}
             _focusVisible={{
               border: 'none'
@@ -157,12 +154,12 @@ const ChatInput = ({
             boxShadow={'none !important'}
             color={'myGray.900'}
             fontWeight={400}
-            fontSize={'16px'}
+            fontSize={'1rem'}
             letterSpacing={'0.5px'}
             w={'100%'}
             _placeholder={{
               color: '#707070',
-              fontSize: '14px'
+              fontSize: 'sm'
             }}
             value={inputValue}
             onChange={(e) => {
@@ -242,8 +239,13 @@ const ChatInput = ({
     ]
   );
 
-  const RenderButtonGroup = useMemo(
-    () => (
+  const RenderButtonGroup = useMemo(() => {
+    const iconSize = {
+      w: isPc ? '20px' : '16px',
+      h: isPc ? '20px' : '16px'
+    };
+
+    return (
       <Flex
         alignItems={'center'}
         justifyContent={'flex-end'}
@@ -251,10 +253,10 @@ const ChatInput = ({
         mt={0}
         pr={[3, 4]}
         h={[8, 9]}
-        gap={[1, 2]}
+        gap={[0, 1]}
       >
         {/* Attachment and Voice Group */}
-        <Flex alignItems={'center'} gap={[1, 2]} h={[8, 9]}>
+        <Flex alignItems={'center'} h={[8, 9]}>
           {/* file selector button */}
           {(showSelectFile || showSelectImg) && (
             <Flex
@@ -271,7 +273,7 @@ const ChatInput = ({
               }}
             >
               <MyTooltip label={selectFileLabel}>
-                <MyIcon name={selectFileIcon as any} w={[4, 5]} h={[4, 5]} color={'#707070'} />
+                <MyIcon name={selectFileIcon as any} {...iconSize} color={'#707070'} />
               </MyTooltip>
               <File onSelect={(files) => onSelectFile({ files })} />
             </Flex>
@@ -293,7 +295,7 @@ const ChatInput = ({
               }}
             >
               <MyTooltip label={t('common:core.chat.Record')}>
-                <MyIcon name={'core/chat/recordFill'} w={[4, 5]} h={[4, 5]} color={'#707070'} />
+                <MyIcon name={'core/chat/recordFill'} {...iconSize} color={'#707070'} />
               </MyTooltip>
             </Flex>
           )}
@@ -301,7 +303,7 @@ const ChatInput = ({
 
         {/* Divider Container */}
         {((whisperConfig?.open && !inputValue) || showSelectFile || showSelectImg) && (
-          <Flex alignItems={'center'} justifyContent={'center'} w={2} h={4}>
+          <Flex alignItems={'center'} justifyContent={'center'} w={2} h={4} mr={2}>
             <Box w={'2px'} h={5} bg={'myGray.200'} />
           </Flex>
         )}
@@ -311,8 +313,8 @@ const ChatInput = ({
           <Flex
             alignItems={'center'}
             justifyContent={'center'}
-            w={[8, 9]}
-            h={[8, 9]}
+            w={[7, 9]}
+            h={[7, 9]}
             p={[1, 2]}
             bg={
               isChatting
@@ -321,7 +323,7 @@ const ChatInput = ({
                   ? 'rgba(17, 24, 36, 0.1)'
                   : 'primary.500'
             }
-            borderRadius="lg"
+            borderRadius={['md', 'lg']}
             cursor={havInput ? 'pointer' : 'not-allowed'}
             onClick={() => {
               if (isChatting) {
@@ -333,46 +335,45 @@ const ChatInput = ({
             {isChatting ? (
               <MyIcon
                 animation={'zoomStopIcon 0.4s infinite alternate'}
-                w={5}
-                h={5}
+                {...iconSize}
                 cursor={'pointer'}
                 name={'stop'}
                 color={'white'}
               />
             ) : (
               <MyTooltip label={t('common:core.chat.Send Message')}>
-                <MyIcon name={'core/chat/sendFill'} w={5} h={5} color={'white'} />
+                <MyIcon name={'core/chat/sendFill'} {...iconSize} color={'white'} />
               </MyTooltip>
             )}
           </Flex>
         </Flex>
       </Flex>
-    ),
-    [
-      File,
-      hasFileUploading,
-      havInput,
-      handleSend,
-      inputValue,
-      isChatting,
-      onOpenSelectFile,
-      onSelectFile,
-      onStop,
-      selectFileIcon,
-      selectFileLabel,
-      showSelectFile,
-      showSelectImg,
-      t,
-      whisperConfig?.open
-    ]
-  );
+    );
+  }, [
+    showSelectFile,
+    showSelectImg,
+    selectFileLabel,
+    selectFileIcon,
+    File,
+    whisperConfig?.open,
+    inputValue,
+    t,
+    isChatting,
+    havInput,
+    hasFileUploading,
+    isPc,
+    onOpenSelectFile,
+    onSelectFile,
+    handleSend,
+    onStop
+  ]);
 
   return (
     <Box
-      m={['0 auto', '10px auto']}
+      m={['0 auto 10px', '10px auto']}
       w={'100%'}
       maxW={['auto', 'min(820px, 100%)']}
-      px={[4, 5]}
+      px={[3, 5]}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
@@ -401,17 +402,16 @@ const ChatInput = ({
       {/* Real Chat Input */}
       <Flex
         direction={'column'}
-        minH={!isPc ? 12 : 32}
-        pt={fileList.length > 0 ? '0' : isVoiceInputActive && !isPc ? [0, 5] : [3.5, 5]}
-        pb={isVoiceInputActive && !isPc ? [0, 5] : [3.5, 5]}
+        minH={!isPc && isVoiceInputActive ? '48px' : ['96px', '120px']}
+        pt={fileList.length > 0 ? '0' : isVoiceInputActive && !isPc ? [0, 4] : [3, 4]}
+        pb={[2, 4]}
         position={'relative'}
         boxShadow={`0px 5px 16px -4px rgba(19, 51, 107, 0.08)`}
-        borderRadius={'xxl'}
+        borderRadius={['xl', 'xxl']}
         bg={'white'}
         overflow={'display'}
         border={'0.5px solid rgba(0, 0, 0, 0.15)'}
         borderColor={'rgba(0,0,0,0.12)'}
-        mb={feConfigs.show_compliance_copywriting ? 0 : 4}
       >
         <Box flex={1}>
           {/* Chat input guide box */}
@@ -429,7 +429,7 @@ const ChatInput = ({
           )}
           {/* file preview */}
           {(!isVoiceInputActive || isPc || inputValue) && (
-            <Box px={[1, 3]}>
+            <Box px={[2, 3]}>
               <FilePreview fileList={fileList} removeFiles={removeFiles} />
             </Box>
           )}
@@ -449,9 +449,7 @@ const ChatInput = ({
           {RenderTextarea}
         </Box>
 
-        <Box visibility={!isVoiceInputActive || inputValue ? 'visible' : 'hidden'}>
-          {RenderButtonGroup}
-        </Box>
+        {!isVoiceInputActive && <Box>{RenderButtonGroup}</Box>}
       </Flex>
       <ComplianceTip type={'chat'} />
     </Box>

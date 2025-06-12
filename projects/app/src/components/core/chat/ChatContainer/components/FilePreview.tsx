@@ -22,7 +22,7 @@ const RenderFilePreview = ({
     <Flex
       overflow={'visible'}
       wrap={'wrap'}
-      pt={3}
+      pt={[2, 3]}
       userSelect={'none'}
       mb={fileList.length > 0 ? 2 : 0}
       gap={'6px'}
