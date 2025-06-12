@@ -11,6 +11,13 @@ export type invoiceBillDataType = {
   _id: string;
 };
 
+export type InvoiceFileInfo = {
+  data: string; // base64 encoded file data
+  mimeType: string;
+  filename: string;
+  size: number;
+};
+
 export const getInvoiceBillsList = () =>
   GET<invoiceBillDataType[]>(`/proApi/support/wallet/bill/invoice/unInvoiceList`);
 
@@ -21,8 +28,4 @@ export const getInvoiceRecords = (data: PaginationProps) =>
   POST<PaginationResponse<InvoiceSchemaType>>(`/proApi/support/wallet/bill/invoice/records`, data);
 
 export const readInvoiceFile = (id: string) =>
-  GET<Blob>(`/proApi/support/wallet/bill/invoice/file/read`, { id }).then((res) => {
-    const blob = new Blob([res], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
-    return url;
-  });
+  GET<InvoiceFileInfo>(`/proApi/support/wallet/bill/invoice/file/read`, { id });

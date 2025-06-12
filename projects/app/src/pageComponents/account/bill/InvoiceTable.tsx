@@ -138,23 +138,30 @@ function InvoiceDetailModal({
 
   const handleDownloadInvoice = async (id: string) => {
     try {
-      const fileUrl = await readInvoiceFile(id);
+      const fileInfo = await readInvoiceFile(id);
 
-      // download
-      const link = document.createElement('a');
-      link.href = fileUrl;
-      link.download = `${invoice.teamName}.pdf`;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Blob
+      const byteCharacters = atob(fileInfo.data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: fileInfo.mimeType });
+      const fileUrl = URL.createObjectURL(blob);
 
-      // Release the URL object
-      URL.revokeObjectURL(fileUrl);
+      // preview
+      window.open(fileUrl, '_blank');
+
+      // clean
+      setTimeout(() => {
+        URL.revokeObjectURL(fileUrl);
+      }, 1000);
     } catch (error) {
       Promise.reject(error);
     }
   };
+
   return (
     <MyModal
       maxW={['90vw', '700px']}
@@ -194,7 +201,6 @@ function InvoiceDetailModal({
             </Flex>
           )}
         </Flex>
-        xw
       </ModalBody>
     </MyModal>
   );
