@@ -15,11 +15,7 @@ type Props<T> = Omit<GridProps, 'onChange'> & {
   value: T;
   defaultBg?: string;
   activeBg?: string;
-  activeBorderColor?: string;
-  activeShadow?: string;
-  hoverBorderColor?: string;
   onChange: (e: T) => void;
-  dotGap?: number;
 };
 
 const LeftRadio = <T = any,>({
@@ -83,8 +79,8 @@ const LeftRadio = <T = any,>({
               justifyContent={'center'}
             >
               <Box
-                w={'4px'}
-                h={'4px'}
+                w={'5px'}
+                h={'5px'}
                 borderRadius={'50%'}
                 bg={value === item.value ? 'primary.600' : 'transparent'}
               ></Box>
