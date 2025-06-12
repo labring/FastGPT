@@ -46,7 +46,6 @@ async function handler(
 
   const { collectionId, insertResults } = await createCollectionAndInsertData({
     dataset,
-    relatedId: apiFileId,
     createCollectionParams: {
       ...body,
       teamId,
