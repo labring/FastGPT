@@ -83,8 +83,7 @@ const TrainingDataSchema = new Schema({
           enum: Object.values(DatasetDataIndexTypeEnum)
         },
         text: {
-          type: String,
-          required: true
+          type: String
         }
       }
     ],

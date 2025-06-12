@@ -12,10 +12,9 @@ import {
 } from 'recharts';
 import { type NameType, type ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
-
-type XAxisConfig = {
-  dataKey: string;
-};
+import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
+import { useTranslation } from 'next-i18next';
+import { cloneDeep } from 'lodash';
 
 type LineConfig = {
   dataKey: string;
@@ -29,15 +28,16 @@ type TooltipItem = {
   dataKey: string;
   color: string;
   formatter?: (value: number) => string;
-  customValue?: (data: any) => number;
+  customValue?: (data: Record<string, any>) => number;
 };
 
 type LineChartComponentProps = {
   data: Record<string, any>[];
   title: string;
-  HeaderRightChildren?: React.ReactNode;
+  HeaderLeftChildren?: React.ReactNode;
   lines: LineConfig[];
   tooltipItems?: TooltipItem[];
+  enableCumulative?: boolean;
 };
 
 const CustomTooltip = ({
@@ -47,48 +47,51 @@ const CustomTooltip = ({
 }: TooltipProps<ValueType, NameType> & { tooltipItems?: TooltipItem[] }) => {
   const data = payload?.[0]?.payload;
 
-  if (active && data && tooltipItems) {
-    return (
-      <Box bg={'white'} p={3} borderRadius={'md'} border={'base'} boxShadow={'sm'}>
-        <Box fontSize={'sm'} color={'myGray.900'} mb={2}>
-          {data.x}
-        </Box>
-        {tooltipItems.map((item, index) => {
-          const value = (() => {
-            if (item.customValue) {
-              return item.customValue(data);
-            } else {
-              return data[item.dataKey];
-            }
-          })();
-
-          const displayValue = (() => {
-            const val = item.formatter ? item.formatter(value) : formatNumber(value);
-            return val.toLocaleString();
-          })();
-
-          return (
-            <HStack key={index} fontSize={'sm'} _notLast={{ mb: 1 }}>
-              <Box w={2} h={2} borderRadius={'full'} bg={item.color} />
-              <Box>{item.label}</Box>
-              <Box>{displayValue}</Box>
-            </HStack>
-          );
-        })}
-      </Box>
-    );
+  if (!active || !data || !tooltipItems) {
+    return null;
   }
-  return null;
+
+  return (
+    <Box bg="white" p={3} borderRadius="md" border="base" boxShadow="sm">
+      <Box fontSize="sm" color="myGray.900" mb={2}>
+        {data.xLabel || data.x}
+      </Box>
+      {tooltipItems.map((item, index) => {
+        const value = item.customValue ? item.customValue(data) : data[item.dataKey];
+        const displayValue = item.formatter ? item.formatter(value) : formatNumber(value);
+
+        return (
+          <HStack key={index} fontSize="sm" _notLast={{ mb: 1 }}>
+            <Box w={2} h={2} borderRadius="full" bg={item.color} />
+            <Box>{item.label}</Box>
+            <Box>{displayValue.toLocaleString()}</Box>
+          </HStack>
+        );
+      })}
+    </Box>
+  );
 };
 
 const LineChartComponent = ({
   data,
   title,
-  HeaderRightChildren,
+  HeaderLeftChildren,
   lines,
-  tooltipItems
+  tooltipItems,
+  enableCumulative = true
 }: LineChartComponentProps) => {
   const theme = useTheme();
+  const { t } = useTranslation();
+  const [displayMode, setDisplayMode] = useState<'incremental' | 'cumulative'>('incremental');
+
+  // Tab list constant
+  const tabList = useMemo(
+    () => [
+      { label: t('account_model:chart_mode_incremental'), value: 'incremental' as const },
+      { label: t('account_model:chart_mode_cumulative'), value: 'cumulative' as const }
+    ],
+    [t]
+  );
 
   // Y-axis number formatter function
   const formatYAxisNumber = useCallback((value: number): string => {
@@ -100,11 +103,35 @@ const LineChartComponent = ({
     return value.toString();
   }, []);
 
+  // Process data based on display mode
+  const processedData = useMemo(() => {
+    if (displayMode === 'incremental' || !enableCumulative) {
+      return data;
+    }
+
+    // Cumulative mode: accumulate values for each line's dataKey
+    const cloneData = cloneDeep(data);
+
+    const dataKeys = lines.map((item) => item.dataKey);
+
+    return cloneData.map((item, index) => {
+      if (index === 0) return item;
+
+      dataKeys.forEach((key) => {
+        if (typeof item[key] === 'number') {
+          item[key] += cloneData[index - 1][key];
+        }
+      });
+
+      return item;
+    });
+  }, [data, displayMode, lines, enableCumulative]);
+
   // Generate gradient definitions
-  const gradientDefs = useMemo(() => {
-    return (
+  const gradientDefs = useMemo(
+    () => (
       <defs>
-        {lines.map((line, index) => (
+        {lines.map((line) => (
           <linearGradient
             key={`gradient-${line.color}`}
             id={`gradient-${line.color}`}
@@ -118,8 +145,9 @@ const LineChartComponent = ({
           </linearGradient>
         ))}
       </defs>
-    );
-  }, [lines]);
+    ),
+    [lines]
+  );
 
   return (
     <>
@@ -127,33 +155,44 @@ const LineChartComponent = ({
         <Box fontSize={'sm'} color={'myGray.900'} fontWeight={'medium'}>
           {title}
         </Box>
-        {HeaderRightChildren && HeaderRightChildren}
+        <HStack spacing={2}>
+          {HeaderLeftChildren}
+          {enableCumulative && (
+            <FillRowTabs<'incremental' | 'cumulative'>
+              list={tabList}
+              py={0.5}
+              px={2}
+              value={displayMode}
+              onChange={setDisplayMode}
+            />
+          )}
+        </HStack>
       </HStack>
       <ResponsiveContainer width="100%" height={'100%'}>
         <AreaChart
-          data={data}
-          margin={{ top: 5, right: 30, left: 0, bottom: HeaderRightChildren ? 30 : 15 }}
+          data={processedData}
+          margin={{ top: 5, right: 30, left: 0, bottom: HeaderLeftChildren ? 20 : 15 }}
         >
           {gradientDefs}
           <XAxis
-            dataKey={'x'}
+            dataKey="x"
             tickMargin={10}
             tick={{ fontSize: '12px', color: theme.colors.myGray['500'], fontWeight: '500' }}
-            interval={'preserveStartEnd'}
+            interval="preserveStartEnd"
           />
           <YAxis
             axisLine={false}
             tickSize={0}
             tickMargin={10}
             tick={{ fontSize: '12px', color: theme.colors.myGray['500'], fontWeight: '500' }}
-            interval={'preserveStartEnd'}
+            interval="preserveStartEnd"
             tickFormatter={formatYAxisNumber}
           />
           <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
           {tooltipItems && <Tooltip content={<CustomTooltip tooltipItems={tooltipItems} />} />}
           {lines.map((line, index) => (
             <Area
-              key={index}
+              key={line.dataKey}
               type="monotone"
               name={line.name}
               dataKey={line.dataKey}

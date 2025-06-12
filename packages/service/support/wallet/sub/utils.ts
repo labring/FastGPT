@@ -6,10 +6,9 @@ import {
 } from '@fastgpt/global/support/wallet/sub/constants';
 import { MongoTeamSub } from './schema';
 import {
-  type FeTeamPlanStatusType,
+  type TeamPlanStatusType,
   type TeamSubSchema
 } from '@fastgpt/global/support/wallet/sub/type.d';
-import { getVectorCountByTeamId } from '../../../common/vectorDB/controller';
 import dayjs from 'dayjs';
 import { type ClientSession } from '../../../common/mongo';
 import { addMonths } from 'date-fns';
@@ -44,12 +43,21 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
   const standardPlans = global.subPlans?.standard;
   const standard = plans[0];
 
+  const standardConstants =
+    standard?.currentSubLevel && standardPlans
+      ? standardPlans[standard.currentSubLevel]
+      : undefined;
+
   return {
     [SubTypeEnum.standard]: standard,
-    standardConstants:
-      standard?.currentSubLevel && standardPlans
-        ? standardPlans[standard.currentSubLevel]
-        : undefined
+    standardConstants: standardConstants
+      ? {
+          ...standardConstants,
+          maxTeamMember: standard?.maxTeamMember || standardConstants.maxTeamMember,
+          maxAppAmount: standard?.maxApp || standardConstants.maxAppAmount,
+          maxDatasetAmount: standard?.maxDataset || standardConstants.maxDatasetAmount
+        }
+      : undefined
   };
 };
 
@@ -111,14 +119,11 @@ export const getTeamPlanStatus = async ({
   teamId
 }: {
   teamId: string;
-}): Promise<FeTeamPlanStatusType> => {
+}): Promise<TeamPlanStatusType> => {
   const standardPlans = global.subPlans?.standard;
 
   /* Get all plans and datasetSize */
-  const [plans, usedDatasetSize] = await Promise.all([
-    MongoTeamSub.find({ teamId }).lean(),
-    getVectorCountByTeamId(teamId)
-  ]);
+  const plans = await MongoTeamSub.find({ teamId }).lean();
 
   /* Get all standardPlans and active standardPlan */
   const teamStandardPlans = sortStandPlans(
@@ -158,17 +163,25 @@ export const getTeamPlanStatus = async ({
     standardMaxDatasetSize +
     extraDatasetSize.reduce((acc, cur) => acc + (cur.currentExtraDatasetSize || 0), 0);
 
+  const standardConstants =
+    standardPlan?.currentSubLevel && standardPlans
+      ? standardPlans[standardPlan.currentSubLevel]
+      : undefined;
+
   return {
     [SubTypeEnum.standard]: standardPlan,
-    standardConstants:
-      standardPlan?.currentSubLevel && standardPlans
-        ? standardPlans[standardPlan.currentSubLevel]
-        : undefined,
+    standardConstants: standardConstants
+      ? {
+          ...standardConstants,
+          maxTeamMember: standardPlan?.maxTeamMember || standardConstants.maxTeamMember,
+          maxAppAmount: standardPlan?.maxApp || standardConstants.maxAppAmount,
+          maxDatasetAmount: standardPlan?.maxDataset || standardConstants.maxDatasetAmount
+        }
+      : undefined,
 
     totalPoints,
     usedPoints: totalPoints - surplusPoints,
 
-    datasetMaxSize: totalDatasetSize,
-    usedDatasetSize
+    datasetMaxSize: totalDatasetSize
   };
 };
