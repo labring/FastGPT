@@ -93,6 +93,7 @@ export type AIChatItemValueItemType = {
 export type AIChatItemType = {
   obj: ChatRoleEnum.AI;
   value: AIChatItemValueItemType[];
+  memories?: Record<string, any>;
   userGoodFeedback?: string;
   userBadFeedback?: string;
   customFeedbacks?: string[];

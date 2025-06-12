@@ -51,9 +51,6 @@ export type LLMModelItemType = PriceType &
     functionCall: boolean;
     toolChoice: boolean;
 
-    customCQPrompt: string;
-    customExtractPrompt: string;
-
     defaultSystemChatPrompt?: string;
     defaultConfig?: Record<string, any>;
     fieldMap?: Record<string, string>;

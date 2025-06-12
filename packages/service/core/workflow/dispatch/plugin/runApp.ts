@@ -124,30 +124,36 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     ? query
     : runtimePrompt2ChatsValue({ files: userInputFiles, text: userChatInput });
 
-  const { flowResponses, flowUsages, assistantResponses, runTimes, workflowInteractiveResponse } =
-    await dispatchWorkFlow({
-      ...props,
-      lastInteractive: childrenInteractive,
-      // Rewrite stream mode
-      ...(system_forbid_stream
-        ? {
-            stream: false,
-            workflowStreamResponse: undefined
-          }
-        : {}),
-      runningAppInfo: {
-        id: String(appData._id),
-        teamId: String(appData.teamId),
-        tmbId: String(appData.tmbId),
-        isChildApp: true
-      },
-      runtimeNodes,
-      runtimeEdges,
-      histories: chatHistories,
-      variables: childrenRunVariables,
-      query: theQuery,
-      chatConfig
-    });
+  const {
+    flowResponses,
+    flowUsages,
+    assistantResponses,
+    runTimes,
+    workflowInteractiveResponse,
+    system_memories
+  } = await dispatchWorkFlow({
+    ...props,
+    lastInteractive: childrenInteractive,
+    // Rewrite stream mode
+    ...(system_forbid_stream
+      ? {
+          stream: false,
+          workflowStreamResponse: undefined
+        }
+      : {}),
+    runningAppInfo: {
+      id: String(appData._id),
+      teamId: String(appData.teamId),
+      tmbId: String(appData.tmbId),
+      isChildApp: true
+    },
+    runtimeNodes,
+    runtimeEdges,
+    histories: chatHistories,
+    variables: childrenRunVariables,
+    query: theQuery,
+    chatConfig
+  });
 
   const completeMessages = chatHistories.concat([
     {
@@ -165,6 +171,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   const usagePoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
 
   return {
+    system_memories,
     [DispatchNodeResponseKeyEnum.interactive]: workflowInteractiveResponse
       ? {
           type: 'childrenInteractive',
