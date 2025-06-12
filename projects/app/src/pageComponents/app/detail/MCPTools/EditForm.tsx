@@ -13,6 +13,8 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
 import { getMCPTools } from '@/web/core/app/api/plugin';
+import HeaderAuthConfig from '@/components/common/secret/HeaderAuthConfig';
+import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 
 const EditForm = ({
   url,
@@ -20,14 +22,18 @@ const EditForm = ({
   toolList,
   setToolList,
   currentTool,
-  setCurrentTool
+  setCurrentTool,
+  headerSecret,
+  setHeaderSecret
 }: {
   url: string;
   setUrl: (url: string) => void;
   toolList: McpToolConfigType[];
   setToolList: (toolList: McpToolConfigType[]) => void;
-  currentTool: McpToolConfigType | null;
+  currentTool?: McpToolConfigType;
   setCurrentTool: (tool: McpToolConfigType) => void;
+  headerSecret: StoreSecretValueType;
+  setHeaderSecret: (headerSecret: StoreSecretValueType) => void;
 }) => {
   const { t } = useTranslation();
 
@@ -52,6 +58,14 @@ const EditForm = ({
           <FormLabel ml={2} flex={1}>
             {t('app:MCP_tools_url')}
           </FormLabel>
+          <HeaderAuthConfig
+            storeHeaderSecretConfig={headerSecret}
+            onUpdate={setHeaderSecret}
+            buttonProps={{
+              size: 'sm',
+              variant: 'grayGhost'
+            }}
+          />
         </Flex>
         <Flex alignItems={'center'} gap={2} mt={3}>
           <Input
@@ -66,7 +80,7 @@ const EditForm = ({
             h={8}
             isLoading={isGettingTools}
             onClick={() => {
-              runGetMCPTools({ url });
+              runGetMCPTools({ url, headerSecret });
             }}
           >
             {t('common:Parse')}

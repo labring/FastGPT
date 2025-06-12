@@ -25,10 +25,10 @@ export enum DispatchNodeResponseKeyEnum {
   toolResponses = 'toolResponses', // The result is passed back to the tool node for use
   assistantResponses = 'assistantResponses', // assistant response
   rewriteHistories = 'rewriteHistories', // If have the response, workflow histories will be rewrite
-
   interactive = 'INTERACTIVE', // is interactive
   runTimes = 'runTimes', // run times
-  newVariables = 'newVariables' // new variables
+  newVariables = 'newVariables', // new variables
+  memories = 'system_memories' // memories
 }
 
 export const needReplaceReferenceInputTypeList = [

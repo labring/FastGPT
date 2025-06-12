@@ -37,6 +37,7 @@ async function handler(
           }
         }),
         MongoDataset.countDocuments({
+          teamId,
           type: { $ne: DatasetTypeEnum.folder }
         }),
         getVectorCountByTeamId(teamId)

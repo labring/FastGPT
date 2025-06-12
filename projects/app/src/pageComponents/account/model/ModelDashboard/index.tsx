@@ -4,7 +4,7 @@ import { Box, Grid, HStack, useTheme } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { addDays } from 'date-fns';
+import { addDays, addHours } from 'date-fns';
 import dayjs from 'dayjs';
 import DateRangePicker, {
   type DateRangeType
@@ -47,22 +47,13 @@ const ChartsBoxStyles: BoxProps = {
 
 // Default date range: Past 7 days
 const getDefaultDateRange = (): DateRangeType => {
-  const from = addDays(new Date(), -7);
-  from.setHours(0, 0, 0, 0);
+  const from = addHours(new Date(), -24);
+  from.setMinutes(0, 0, 0); // Set minutes to 0
 
-  const to = new Date();
-  to.setHours(23, 59, 59, 999);
+  const to = addHours(new Date(), 1);
+  to.setMinutes(0, 0, 0); // Set minutes to 0
 
   return { from, to };
-};
-
-const calculateTimeDiffs = (from: Date, to: Date) => {
-  const startDate = dayjs(from);
-  const endDate = dayjs(to);
-  return {
-    daysDiff: endDate.diff(startDate, 'day'),
-    hoursDiff: endDate.diff(startDate, 'hour')
-  };
 };
 
 const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
@@ -89,7 +80,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   }>({
     channelId: undefined,
     model: undefined,
-    timespan: 'day',
+    timespan: 'hour',
     dateRange: getDefaultDateRange()
   });
 
@@ -159,22 +150,22 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
     return map;
   }, [systemModelList]);
 
-  const computeTimespan = (daysDiff: number, hoursDiff: number) => {
+  const computeTimespan = (hoursDiff: number) => {
     const options: { label: string; value: 'minute' | 'hour' | 'day' }[] = [];
-    if (daysDiff <= 1) {
+    if (hoursDiff <= 1 * 24) {
       options.push({ label: t('account_model:timespan_minute'), value: 'minute' });
     }
-    if (daysDiff < 7) {
+    if (hoursDiff < 7 * 24) {
       options.push({ label: t('account_model:timespan_hour'), value: 'hour' });
     }
-    if (daysDiff >= 1) {
+    if (hoursDiff >= 1 * 24) {
       options.push({ label: t('account_model:timespan_day'), value: 'day' });
     }
 
     const defaultTimespan: 'minute' | 'hour' | 'day' = (() => {
       if (hoursDiff < 1) {
         return 'minute';
-      } else if (daysDiff < 2) {
+      } else if (hoursDiff < 2 * 24) {
         return 'hour';
       } else {
         return 'day';
@@ -183,7 +174,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
 
     return { options, defaultTimespan };
   };
-  const [timespanOptions, setTimespanOptions] = useState(computeTimespan(30, 60).options);
+  const [timespanOptions, setTimespanOptions] = useState(computeTimespan(48).options);
 
   // Handle date range change with automatic timespan adjustment
   const handleDateRangeChange = (dateRange: DateRangeType) => {
@@ -191,11 +182,9 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
 
     // Computed timespan
     if (dateRange.from && dateRange.to) {
-      const { daysDiff, hoursDiff } = calculateTimeDiffs(dateRange.from, dateRange.to);
-      const { options: newTimespanOptions, defaultTimespan: newDefaultTimespan } = computeTimespan(
-        daysDiff,
-        hoursDiff
-      );
+      const hoursDiff = dayjs(dateRange.to).diff(dayjs(dateRange.from), 'hour');
+      const { options: newTimespanOptions, defaultTimespan: newDefaultTimespan } =
+        computeTimespan(hoursDiff);
 
       setTimespanOptions(newTimespanOptions);
       newFilterProps.timespan = newDefaultTimespan;
