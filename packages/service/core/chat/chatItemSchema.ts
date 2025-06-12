@@ -1,5 +1,5 @@
-import { connectionMongo, getMongoModel, type Model } from '../../common/mongo';
-const { Schema, model, models } = connectionMongo;
+import { connectionMongo, getMongoModel } from '../../common/mongo';
+const { Schema } = connectionMongo;
 import { type ChatItemSchema as ChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleMap } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -61,16 +61,13 @@ const ChatItemSchema = new Schema({
     type: Array,
     default: []
   },
+  memories: Object,
   errorMsg: String,
-  userGoodFeedback: {
-    type: String
-  },
+  userGoodFeedback: String,
   userBadFeedback: {
     type: String
   },
-  customFeedbacks: {
-    type: [String]
-  },
+  customFeedbacks: [String],
   adminFeedback: {
     type: {
       datasetId: String,

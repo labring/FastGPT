@@ -1,5 +1,3 @@
-import { getPromptByVersion } from './utils';
-
 export const Prompt_AgentQA = {
   description: `<Context></Context> 标记中是一段文本，学习和分析它，并整理学习成果：
 - 提出问题并给出每个问题的答案。
@@ -27,73 +25,140 @@ A2:
 `
 };
 
-export const getExtractJsonPrompt = (version?: string) => {
-  const promptMap: Record<string, string> = {
-    ['4.9.2']: `你可以从 <对话记录></对话记录> 中提取指定 Json 信息，你仅需返回 Json 字符串，无需回答问题。
-<提取要求>
-{{description}}
-</提取要求>
+export const getExtractJsonPrompt = ({
+  schema,
+  systemPrompt,
+  memory
+}: {
+  schema?: string;
+  systemPrompt?: string;
+  memory?: string;
+}) => {
+  const list = [
+    '【历史记录】',
+    '【用户输入】',
+    systemPrompt ? '【背景知识】' : '',
+    memory ? '【历史提取结果】' : ''
+  ].filter(Boolean);
+  const prompt = `## 背景
+用户需要执行一个函数，该函数需要一些参数，需要你结合${list.join('、')}，来生成对应的参数
 
-<提取规则>
-- 本次需提取的 json 字符串，需符合 JsonSchema 的规则。
-- type 代表数据类型; key 代表字段名; description 代表字段的描述; enum 是枚举值，代表可选的 value。
-- 如果没有可提取的内容，忽略该字段。
-</提取规则>
+## 基本要求
 
-<JsonSchema>
-{{json}}
-</JsonSchema>
-
-<对话记录>
-{{text}}
-</对话记录>
-
-提取的 json 字符串:`
-  };
-
-  return getPromptByVersion(version, promptMap);
-};
-
-export const getExtractJsonToolPrompt = (version?: string) => {
-  const promptMap: Record<string, string> = {
-    ['4.9.2']: `我正在执行一个函数，需要你提供一些参数，请以 JSON 字符串格式返回这些参数，要求：
-"""
-- {{description}}
+- 严格根据 JSON Schema 的描述来生成参数。
 - 不是每个参数都是必须生成的，如果没有合适的参数值，不要生成该参数，或返回空字符串。
 - 需要结合历史记录，一起生成合适的参数。
-"""
 
-本次输入内容: """{{content}}"""
-  `
-  };
+${
+  systemPrompt
+    ? `## 特定要求
+${systemPrompt}`
+    : ''
+}
 
-  return getPromptByVersion(version, promptMap);
+${
+  memory
+    ? `## 历史提取结果
+${memory}`
+    : ''
+}
+
+## JSON Schema
+
+${schema}
+
+## 输出要求
+
+- 严格输出 json 字符串。
+- 不要回答问题。`.replace(/\n{3,}/g, '\n\n');
+
+  return prompt;
+};
+export const getExtractJsonToolPrompt = ({
+  systemPrompt,
+  memory
+}: {
+  systemPrompt?: string;
+  memory?: string;
+}) => {
+  const list = [
+    '【历史记录】',
+    '【用户输入】',
+    systemPrompt ? '【背景知识】' : '',
+    memory ? '【历史提取结果】' : ''
+  ].filter(Boolean);
+  const prompt = `## 背景
+用户需要执行一个叫 "request_function" 的函数，该函数需要你结合${list.join('、')}，来生成对应的参数
+
+## 基本要求
+
+- 不是每个参数都是必须生成的，如果没有合适的参数值，不要生成该参数，或返回空字符串。
+- 需要结合历史记录，一起生成合适的参数。最新的记录优先级更高。
+- 即使无法调用函数，也要返回一个 JSON 字符串，而不是回答问题。
+
+${
+  systemPrompt
+    ? `## 特定要求
+${systemPrompt}`
+    : ''
+}
+
+${
+  memory
+    ? `## 历史提取结果
+${memory}`
+    : ''
+}`.replace(/\n{3,}/g, '\n\n');
+
+  return prompt;
 };
 
-export const getCQPrompt = (version?: string) => {
-  const promptMap: Record<string, string> = {
-    ['4.9.2']: `请帮我执行一个"问题分类"任务，将问题分类为以下几种类型之一：
+export const getCQSystemPrompt = ({
+  systemPrompt,
+  memory,
+  typeList
+}: {
+  systemPrompt?: string;
+  memory?: string;
+  typeList: string;
+}) => {
+  const list = [
+    systemPrompt ? '【背景知识】' : '',
+    '【历史记录】',
+    memory ? '【上一轮分类结果】' : ''
+  ].filter(Boolean);
+  const CLASSIFY_QUESTION_SYSTEM_PROMPT = `## 角色
+你是一个"分类助手"，可以结合${list.join('、')}，来判断用户当前问题属于哪一个分类，并输出分类标记。
 
-"""
-{{typeList}}
-"""
+${
+  systemPrompt
+    ? `## 背景知识
+${systemPrompt}`
+    : ''
+}
 
-## 背景知识
-{{systemPrompt}}
+${
+  memory
+    ? `## 上一轮分类结果
+${memory}`
+    : ''
+}
 
-## 对话记录
-{{history}}
+## 分类清单
 
-## 开始任务
+${typeList}
 
-现在，我们开始分类，我会给你一个"问题"，请结合背景知识和对话记录，将问题分类到对应的类型中，并返回类型ID。
+## 分类要求
 
-问题："{{question}}"
-类型ID=
-`
-  };
+1. 分类结果必须从分类清单中选择。
+2. 连续对话时，如果分类不明确，且用户未变更话题，则保持上一轮分类结果不变。
+3. 存在分类冲突或模糊分类时， 主语指向的分类优先级更高。
 
-  return getPromptByVersion(version, promptMap);
+## 输出格式
+
+只需要输出分类的 id 即可，无需输出额外内容。`.replace(/\n{3,}/g, '\n\n');
+
+  return CLASSIFY_QUESTION_SYSTEM_PROMPT;
 };
 
 export const QuestionGuidePrompt = `You are an AI assistant tasked with predicting the user's next question based on the conversation history. Your goal is to generate 3 potential questions that will guide the user to continue the conversation. When generating these questions, adhere to the following rules:
