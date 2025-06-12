@@ -30,6 +30,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
+import { MongoImage } from '@fastgpt/service/common/file/image/schema';
 
 const requestLLMPargraph = async ({
   rawText,
@@ -321,6 +322,26 @@ export const datasetParseQueue = async (): Promise<any> => {
           session
         }
       );
+
+      // 8. Remove image ttl
+      const relatedImgId = collection.metadata?.relatedImgId;
+      if (relatedImgId) {
+        await MongoImage.updateMany(
+          {
+            teamId: collection.teamId,
+            'metadata.relatedId': relatedImgId
+          },
+          {
+            // Remove expiredTime to avoid ttl expiration
+            $unset: {
+              expiredTime: 1
+            }
+          },
+          {
+            session
+          }
+        );
+      }
     });
 
     addLog.debug(`[Parse Queue] Finish`, {

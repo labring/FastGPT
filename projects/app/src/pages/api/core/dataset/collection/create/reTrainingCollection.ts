@@ -44,7 +44,6 @@ async function handler(
 
     const { collectionId } = await createCollectionAndInsertData({
       dataset: collection.dataset,
-      relatedId: collection.metadata?.relatedImgId,
       createCollectionParams: {
         ...collection,
         ...data,
