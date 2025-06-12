@@ -5,6 +5,7 @@ declare global {
       DEFAULT_ROOT_PSW: string;
       DB_MAX_LINK: string;
       FILE_TOKEN_KEY: string;
+      AES256_SECRET_KEY: string;
       ROOT_KEY: string;
       OPENAI_BASE_URL: string;
       CHAT_API_KEY: string;
