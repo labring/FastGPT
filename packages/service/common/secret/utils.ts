@@ -4,10 +4,10 @@ import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { HeaderSecretTypeEnum } from '@fastgpt/global/common/secret/constants';
 
 export const storeSecretValue = (
-  storeSecret: StoreSecretValueType
+  storeSecret: StoreSecretValueType = {}
 ): Record<string, SecretValueType> => {
   return Object.fromEntries(
-    Object.entries(storeSecret || {}).map(([key, value]) => [
+    Object.entries(storeSecret).map(([key, value]) => [
       key,
       {
         secret: encryptSecret(value.value),

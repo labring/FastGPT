@@ -110,6 +110,15 @@ export const getChannelList = () =>
   GET<ChannelListResponseType>('/channels/all', {
     page: 1,
     perPage: 10
+  }).then((res) => {
+    res.sort((a, b) => {
+      if (a.status !== b.status) {
+        return a.status - b.status;
+      }
+      return b.priority - a.priority;
+    });
+    console.log(res);
+    return res;
   });
 
 export const getChannelProviders = () =>

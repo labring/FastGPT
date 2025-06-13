@@ -16,6 +16,7 @@ import { ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
+import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 
 export type DispatchToolModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -51,4 +52,5 @@ export type RunToolResponse = {
 };
 export type ToolNodeItemType = RuntimeNodeItemType & {
   toolParams: RuntimeNodeItemType['inputs'];
+  jsonSchema?: JSONSchemaInputType;
 };

@@ -3,18 +3,16 @@ import {
   type ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { MCPClient } from '../../../app/mcp';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { getSecretValue } from '../../../../common/secret/utils';
+import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
 
 type RunToolProps = ModuleDispatchProps<{
-  toolData: {
-    name: string;
-    url: string;
-    headerSecret: StoreSecretValueType;
-  };
+  toolData?: McpToolDataType;
+  [NodeInputKeyEnum.toolData]: McpToolDataType;
 }>;
 
 type RunToolResponse = DispatchNodeResultType<{
@@ -27,13 +25,13 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     node: { avatar }
   } = props;
 
-  const { toolData, ...restParams } = params;
-  const { name: toolName, url } = toolData;
+  const { toolData, system_toolData, ...restParams } = params;
+  const { name: toolName, url, headerSecret } = toolData || system_toolData;
 
   const mcpClient = new MCPClient({
     url,
     headers: getSecretValue({
-      storeSecret: toolData.headerSecret
+      storeSecret: headerSecret
     })
   });
 
