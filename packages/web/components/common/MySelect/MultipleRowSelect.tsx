@@ -188,7 +188,7 @@ export const MultipleRowSelect = ({
             : {})}
           {...ButtonProps}
         >
-          <Flex>
+          <Flex alignItems={'center'}>
             <Box flex="1" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
               {label ?? placeholder}
             </Box>
