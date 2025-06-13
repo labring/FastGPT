@@ -33,6 +33,8 @@ import { getRefData, getWorkflowGlobalVariables } from '@/web/core/workflow/util
 import DragIcon from '@fastgpt/web/components/common/DndDrag/DragIcon';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
 const ListItem = ({
   provided,
@@ -210,13 +212,9 @@ const ListItem = ({
                     />
                     {/* delete */}
                     {conditionItem.list.length > 1 && (
-                      <MinusIcon
-                        ml={2}
-                        boxSize={3}
-                        name="delete"
-                        cursor={'pointer'}
-                        _hover={{ color: 'red.600' }}
-                        color={'myGray.400'}
+                      <MyIconButton
+                        icon="minus"
+                        hoverColor={'red.500'}
                         onClick={() => {
                           onUpdateIfElseList(
                             ifElseList.map((ifElse, index) => {
@@ -431,6 +429,8 @@ const ConditionValueInput = ({
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
+  const isReference = useMemo(() => type === 'reference', [type]);
+
   const globalVariables = getWorkflowGlobalVariables({
     nodes: nodeList,
     chatConfig: appDetail.chatConfig
@@ -519,7 +519,7 @@ const ConditionValueInput = ({
       <ReferSelector
         placeholder={t('common:select_reference_variable')}
         list={referenceList}
-        value={type === 'reference' ? (value as ReferenceItemValueType) : undefined}
+        value={isReference ? (value as ReferenceItemValueType) : undefined}
         onSelect={(e) => {
           updateValue(e as ReferenceItemValueType, 'reference');
         }}
@@ -532,7 +532,7 @@ const ConditionValueInput = ({
         }}
       />
     );
-  }, [t, referenceList, type, value, updateValue]);
+  }, [t, referenceList, isReference, value, updateValue]);
 
   const isDisabled =
     condition === VariableConditionEnum.isEmpty || condition === VariableConditionEnum.isNotEmpty;
@@ -540,39 +540,47 @@ const ConditionValueInput = ({
   return (
     <Flex position="relative">
       <Flex>
-        <Flex
-          w={16}
-          h={10}
-          border={'1px solid'}
-          borderRight={'none'}
-          borderColor={'myGray.200'}
-          borderLeftRadius={'sm'}
-          bg={'white'}
-          px={3}
-          alignItems={'center'}
-          justifyContent={'space-between'}
-          cursor={'pointer'}
-          _hover={{
-            bg: 'myGray.50'
-          }}
-          onClick={() => {
-            if (isDisabled) return;
-
-            if (type === 'reference') {
-              updateValue('', 'input');
-            } else {
-              updateValue(['', undefined] as ReferenceItemValueType, 'reference');
-            }
-          }}
+        <MyTooltip
+          label={
+            isReference
+              ? t('workflow:click_to_change_reference')
+              : t('workflow:click_to_change_value')
+          }
         >
-          {type === 'reference' ? (
-            <MyIcon name={'core/workflow/inputType/reference'} w={4} color={'primary.600'} />
-          ) : (
-            <MyIcon name={'core/app/variable/input'} w={4} color={'primary.600'} />
-          )}
-          <MyIcon name={'common/lineChange'} w={'14px'} color={'myGray.500'} />
-        </Flex>
-        <Box w={'220px'}>{type === 'reference' ? RenderReference : RenderInput}</Box>
+          <Flex
+            w={16}
+            h={10}
+            border={'1px solid'}
+            borderRight={'none'}
+            borderColor={'myGray.200'}
+            borderLeftRadius={'sm'}
+            bg={'white'}
+            px={3}
+            alignItems={'center'}
+            justifyContent={'space-between'}
+            cursor={'pointer'}
+            _hover={{
+              bg: 'myGray.50'
+            }}
+            onClick={() => {
+              if (isDisabled) return;
+
+              if (isReference) {
+                updateValue('', 'input');
+              } else {
+                updateValue(['', undefined] as ReferenceItemValueType, 'reference');
+              }
+            }}
+          >
+            {isReference ? (
+              <MyIcon name={'core/workflow/inputType/reference'} w={4} color={'primary.600'} />
+            ) : (
+              <MyIcon name={'core/app/variable/input'} w={4} color={'primary.600'} />
+            )}
+            <MyIcon name={'common/lineChange'} w={'14px'} color={'myGray.500'} />
+          </Flex>
+        </MyTooltip>
+        <Box w={'220px'}>{isReference ? RenderReference : RenderInput}</Box>
       </Flex>
 
       {isDisabled && (

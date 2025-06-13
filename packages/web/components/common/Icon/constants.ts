@@ -8,6 +8,7 @@ export const iconPaths = {
   chatSend: () => import('./icons/chatSend.svg'),
   check: () => import('./icons/check.svg'),
   checkCircle: () => import('./icons/checkCircle.svg'),
+  circleMinus: () => import('./icons/circleMinus.svg'),
   close: () => import('./icons/close.svg'),
   closeSolid: () => import('./icons/closeSolid.svg'),
   code: () => import('./icons/code.svg'),

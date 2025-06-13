@@ -39,7 +39,7 @@ const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                     <MyIcon
                       mt={1}
                       mr={2}
-                      name={'minus'}
+                      name={'circleMinus'}
                       w={'12px'}
                       cursor={'pointer'}
                       color={'myGray.600'}
