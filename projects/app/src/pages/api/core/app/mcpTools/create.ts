@@ -15,7 +15,6 @@ import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import { encryptSecret } from '@fastgpt/service/common/secret/aes256gcm';
 import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
 
 export type createMCPToolsQuery = {};

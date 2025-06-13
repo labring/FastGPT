@@ -137,7 +137,10 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                     <Td>{item.name}</Td>
                     <Td>
                       <HStack>
-                        <MyIcon name={provider?.avatar as any} w={'1rem'} />
+                        <MyIcon
+                          name={(providerData?.avatar || provider?.avatar) as any}
+                          w={'1rem'}
+                        />
                         <Box>{t(providerData?.label as any)}</Box>
                       </HStack>
                     </Td>

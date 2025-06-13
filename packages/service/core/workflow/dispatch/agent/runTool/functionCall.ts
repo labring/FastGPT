@@ -37,7 +37,7 @@ import {
   removeDatasetCiteText,
   parseLLMStreamResponse
 } from '../../../../ai/utils';
-import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
+import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
 import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 
@@ -162,6 +162,14 @@ export const runToolWithFunctionCall = async (
   const assistantResponses = response?.assistantResponses || [];
 
   const functions: ChatCompletionCreateParams.Function[] = toolNodes.map((item) => {
+    if (item.jsonSchema) {
+      return {
+        name: item.nodeId,
+        description: item.intro,
+        parameters: item.jsonSchema
+      };
+    }
+
     const properties: Record<
       string,
       {
@@ -172,9 +180,9 @@ export const runToolWithFunctionCall = async (
       }
     > = {};
     item.toolParams.forEach((item) => {
-      const jsonSchema = (
-        toolValueTypeList.find((type) => type.value === item.valueType) || toolValueTypeList[0]
-      ).jsonSchema;
+      const jsonSchema = item.valueType
+        ? valueTypeJsonSchemaMap[item.valueType] || toolValueTypeList[0].jsonSchema
+        : toolValueTypeList[0].jsonSchema;
 
       properties[item.key] = {
         ...jsonSchema,
