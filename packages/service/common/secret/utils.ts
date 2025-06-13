@@ -7,7 +7,7 @@ export const storeSecretValue = (
   storeSecret: StoreSecretValueType
 ): Record<string, SecretValueType> => {
   return Object.fromEntries(
-    Object.entries(storeSecret).map(([key, value]) => [
+    Object.entries(storeSecret || {}).map(([key, value]) => [
       key,
       {
         secret: encryptSecret(value.value),
