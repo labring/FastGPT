@@ -1,7 +1,10 @@
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import {
+  type RuntimeNodeItemType,
+  type DispatchNodeResultType
+} from '@fastgpt/global/core/workflow/runtime/type';
 import {
   IfElseResultEnum,
   VariableConditionEnum
@@ -50,7 +53,7 @@ function isInclude(value: any, target: any) {
   }
 }
 
-function checkCondition(condition: VariableConditionEnum, inputValue: any, value: string) {
+function checkCondition(condition: VariableConditionEnum, inputValue: any, value: any) {
   const operations: Record<VariableConditionEnum, () => boolean> = {
     [VariableConditionEnum.isEmpty]: () => isEmpty(inputValue),
     [VariableConditionEnum.isNotEmpty]: () => !isEmpty(inputValue),
@@ -101,11 +104,12 @@ function checkCondition(condition: VariableConditionEnum, inputValue: any, value
 function getResult(
   condition: IfElseConditionType,
   list: ConditionListItemType[],
-  variables: any,
-  runtimeNodes: any[]
+  variables: Record<string, any>,
+  runtimeNodes: RuntimeNodeItemType[]
 ) {
   const listResult = list.map((item) => {
     const { variable, condition: variableCondition, value, valueType } = item;
+    if (!variableCondition) return;
 
     const conditionLeftValue = getReferenceVariableValue({
       value: variable,
@@ -122,11 +126,7 @@ function getResult(
           })
         : value;
 
-    return checkCondition(
-      variableCondition as VariableConditionEnum,
-      conditionLeftValue,
-      conditionRightValue
-    );
+    return checkCondition(variableCondition, conditionLeftValue, conditionRightValue);
   });
 
   return condition === 'AND' ? listResult.every(Boolean) : listResult.some(Boolean);

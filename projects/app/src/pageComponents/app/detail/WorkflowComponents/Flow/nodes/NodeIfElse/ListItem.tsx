@@ -569,7 +569,7 @@ const ConditionValueInput = ({
               if (isReference) {
                 updateValue('', 'input');
               } else {
-                updateValue(['', undefined] as ReferenceItemValueType, 'reference');
+                updateValue(['', undefined], 'reference');
               }
             }}
           >
