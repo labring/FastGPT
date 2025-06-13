@@ -1,4 +1,4 @@
-import { Box, Button, Flex } from '@chakra-ui/react';
+import { Box, Button, Flex, HStack } from '@chakra-ui/react';
 import {
   type DraggableProvided,
   type DraggableStateSnapshot
@@ -126,7 +126,7 @@ const ListItem = ({
               return (
                 <Box key={i}>
                   {/* condition list */}
-                  <Flex gap={2} mb={2} alignItems={'center'}>
+                  <Flex gap={1.5} mb={2} alignItems={'center'}>
                     {/* variable reference */}
                     <VariableSelector
                       nodeId={nodeId}
@@ -214,7 +214,8 @@ const ListItem = ({
                     {conditionItem.list.length > 1 && (
                       <MyIconButton
                         icon="minus"
-                        hoverColor={'red.500'}
+                        hoverColor={'red.600'}
+                        hoverBg="red.100"
                         onClick={() => {
                           onUpdateIfElseList(
                             ifElseList.map((ifElse, index) => {
@@ -327,7 +328,7 @@ const VariableSelector = ({
       onSelect={onSelect}
       isArray={false}
       ButtonProps={{
-        w: 220,
+        w: '14rem',
         borderColor: 'myGray.200',
         borderRadius: 'sm'
       }}
@@ -528,7 +529,7 @@ const ConditionValueInput = ({
           borderRadius: 'sm',
           borderLeftRadius: 'none',
           borderColor: 'myGray.200',
-          w: 220
+          w: '100%'
         }}
       />
     );
@@ -547,17 +548,17 @@ const ConditionValueInput = ({
               : t('workflow:click_to_change_value')
           }
         >
-          <Flex
-            w={16}
+          <HStack
+            w={'4rem'}
             h={10}
             border={'1px solid'}
             borderRight={'none'}
             borderColor={'myGray.200'}
             borderLeftRadius={'sm'}
+            justifyContent={'center'}
             bg={'white'}
-            px={3}
-            alignItems={'center'}
-            justifyContent={'space-between'}
+            px={2}
+            spacing={2}
             cursor={'pointer'}
             _hover={{
               bg: 'myGray.50'
@@ -578,9 +579,9 @@ const ConditionValueInput = ({
               <MyIcon name={'core/app/variable/input'} w={4} color={'primary.600'} />
             )}
             <MyIcon name={'common/lineChange'} w={'14px'} color={'myGray.500'} />
-          </Flex>
+          </HStack>
         </MyTooltip>
-        <Box w={'220px'}>{isReference ? RenderReference : RenderInput}</Box>
+        <Box w={'14rem'}>{isReference ? RenderReference : RenderInput}</Box>
       </Flex>
 
       {isDisabled && (
