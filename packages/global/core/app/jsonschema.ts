@@ -4,9 +4,11 @@ import type { FlowNodeInputItemType } from '../workflow/type/io';
 
 type SchemaInputValueType = 'string' | 'number' | 'integer' | 'boolean' | 'array' | 'object';
 export type JsonSchemaPropertiesItemType = {
+  description?: string;
   type: SchemaInputValueType;
   enum?: string[];
-  description?: string;
+  minimum?: number;
+  maximum?: number;
   items?: { type: SchemaInputValueType };
 };
 export type JSONSchemaInputType = {
@@ -31,23 +33,25 @@ const getNodeInputTypeFromSchemaInputType = ({
   if (!arrayItems) return WorkflowIOValueTypeEnum.arrayAny;
 
   const itemType = arrayItems.type;
-  if (itemType === 'string') return WorkflowIOValueTypeEnum.string;
-  if (itemType === 'number') return WorkflowIOValueTypeEnum.number;
-  if (itemType === 'integer') return WorkflowIOValueTypeEnum.number;
-  if (itemType === 'boolean') return WorkflowIOValueTypeEnum.boolean;
-  if (itemType === 'object') return WorkflowIOValueTypeEnum.object;
+  if (itemType === 'string') return WorkflowIOValueTypeEnum.arrayString;
+  if (itemType === 'number') return WorkflowIOValueTypeEnum.arrayNumber;
+  if (itemType === 'integer') return WorkflowIOValueTypeEnum.arrayNumber;
+  if (itemType === 'boolean') return WorkflowIOValueTypeEnum.arrayBoolean;
+  if (itemType === 'object') return WorkflowIOValueTypeEnum.arrayObject;
 
   return WorkflowIOValueTypeEnum.arrayAny;
 };
 const getNodeInputRenderTypeFromSchemaInputType = ({
   type,
-  enum: enumList
+  enum: enumList,
+  minimum,
+  maximum
 }: JsonSchemaPropertiesItemType) => {
   if (enumList && enumList.length > 0) {
     return {
       value: enumList[0],
       renderTypeList: [FlowNodeInputTypeEnum.select],
-      enum: enumList.join('\n')
+      list: enumList.map((item) => ({ label: item, value: item }))
     };
   }
   if (type === 'string') {
@@ -57,7 +61,9 @@ const getNodeInputRenderTypeFromSchemaInputType = ({
   }
   if (type === 'number') {
     return {
-      renderTypeList: [FlowNodeInputTypeEnum.numberInput]
+      renderTypeList: [FlowNodeInputTypeEnum.numberInput],
+      max: maximum,
+      min: minimum
     };
   }
   if (type === 'boolean') {
@@ -71,7 +77,7 @@ export const jsonSchema2NodeInput = (jsonSchema: JSONSchemaInputType): FlowNodeI
   return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => ({
     key,
     label: key,
-    valueType: getNodeInputTypeFromSchemaInputType({ type: value.type }), // TODO: 这里需要做一个映射
+    valueType: getNodeInputTypeFromSchemaInputType({ type: value.type, arrayItems: value.items }),
     description: value.description,
     toolDescription: value.description || key,
     required: jsonSchema?.required?.includes(key),
