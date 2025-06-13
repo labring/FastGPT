@@ -49,9 +49,7 @@ async function handler(
         relatedImgId: fileId
       },
       customPdfParse
-    },
-
-    relatedId: fileId
+    }
   });
 
   // remove buffer

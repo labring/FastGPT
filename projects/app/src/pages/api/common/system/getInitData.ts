@@ -13,8 +13,6 @@ async function handler(
 
   const activeModelList = global.systemActiveModelList.map((model) => ({
     ...model,
-    customCQPrompt: undefined,
-    customExtractPrompt: undefined,
     defaultSystemChatPrompt: undefined,
     fieldMap: undefined,
     defaultConfig: undefined,

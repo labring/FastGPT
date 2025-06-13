@@ -26,8 +26,6 @@ export const defaultQAModels: LLMModelItemType[] = [
     datasetProcess: true,
     toolChoice: true,
     functionCall: false,
-    customCQPrompt: '',
-    customExtractPrompt: '',
     defaultSystemChatPrompt: '',
     defaultConfig: {}
   }

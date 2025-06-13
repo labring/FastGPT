@@ -31,9 +31,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
         webPageSelector: body?.metadata?.webPageSelector
       },
       rawLink: link
-    },
-
-    relatedId: link
+    }
   });
 
   return {

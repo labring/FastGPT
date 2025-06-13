@@ -41,7 +41,6 @@ import { clearCollectionImages, removeDatasetImageExpiredTime } from '../image/u
 export const createCollectionAndInsertData = async ({
   dataset,
   rawText,
-  relatedId,
   imageIds,
   createCollectionParams,
   backupParse = false,
@@ -50,7 +49,6 @@ export const createCollectionAndInsertData = async ({
 }: {
   dataset: DatasetSchemaType;
   rawText?: string;
-  relatedId?: string;
   imageIds?: string[];
   createCollectionParams: CreateOneCollectionParams;
 
@@ -258,23 +256,6 @@ export const createCollectionAndInsertData = async ({
       collectionId,
       session
     });
-    if (relatedId) {
-      await MongoImage.updateMany(
-        {
-          teamId,
-          'metadata.relatedId': relatedId
-        },
-        {
-          // Remove expiredTime to avoid ttl expiration
-          $unset: {
-            expiredTime: 1
-          }
-        },
-        {
-          session
-        }
-      );
-    }
 
     return {
       collectionId: String(collectionId),
