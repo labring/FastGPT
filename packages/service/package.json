@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "dependencies": {
     "@fastgpt/global": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.10.2",
+    "@modelcontextprotocol/sdk": "^1.12.1",
     "@node-rs/jieba": "2.0.1",
     "@xmldom/xmldom": "^0.8.10",
     "@zilliz/milvus2-sdk-node": "2.4.2",
