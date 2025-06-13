@@ -1,4 +1,4 @@
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type {
   ChatDispatchProps,
@@ -22,7 +22,7 @@ import { formatModelChars2Points } from '../../../../../support/wallet/usage/uti
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { runToolWithFunctionCall } from './functionCall';
 import { runToolWithPromptCall } from './promptCall';
-import { getNanoid, replaceVariable } from '@fastgpt/global/common/string/tools';
+import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getMultiplePrompt, Prompt_Tool_Call } from './constants';
 import { filterToolResponseToPreview } from './utils';
 import { type InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -32,6 +32,9 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { getDocumentQuotePrompt } from '@fastgpt/global/core/ai/prompt/AIChat';
 import { postTextCensor } from '../../../../chat/postTextCensor';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
+import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -78,10 +81,24 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     })
     .filter(Boolean)
     .map<ToolNodeItemType>((tool) => {
-      const toolParams = tool?.inputs.filter((input) => !!input.toolDescription) || [];
+      const toolParams: FlowNodeInputItemType[] = [];
+      // Raw json schema(MCP tool)
+      let jsonSchema: JSONSchemaInputType | undefined = undefined;
+      tool?.inputs.forEach((input) => {
+        if (input.toolDescription) {
+          toolParams.push(input);
+        }
+
+        if (input.key === NodeInputKeyEnum.toolData || input.key === 'toolData') {
+          const value = input.value as McpToolDataType;
+          jsonSchema = value.inputSchema;
+        }
+      });
+
       return {
         ...(tool as RuntimeNodeItemType),
-        toolParams
+        toolParams,
+        jsonSchema
       };
     });
 
@@ -172,28 +189,26 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       reserveId: false
       // reserveTool: !!toolModel.toolChoice
     });
+    const requestParams = {
+      runtimeNodes,
+      runtimeEdges,
+      toolNodes,
+      toolModel,
+      messages: adaptMessages,
+      interactiveEntryToolParams: lastInteractive?.toolParams
+    };
 
     if (toolModel.toolChoice) {
       return runToolWithToolChoice({
         ...props,
-        runtimeNodes,
-        runtimeEdges,
-        toolNodes,
-        toolModel,
-        maxRunToolTimes: 30,
-        messages: adaptMessages,
-        interactiveEntryToolParams: lastInteractive?.toolParams
+        ...requestParams,
+        maxRunToolTimes: 30
       });
     }
     if (toolModel.functionCall) {
       return runToolWithFunctionCall({
         ...props,
-        runtimeNodes,
-        runtimeEdges,
-        toolNodes,
-        toolModel,
-        messages: adaptMessages,
-        interactiveEntryToolParams: lastInteractive?.toolParams
+        ...requestParams
       });
     }
 
@@ -218,12 +233,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
     return runToolWithPromptCall({
       ...props,
-      runtimeNodes,
-      runtimeEdges,
-      toolNodes,
-      toolModel,
-      messages: adaptMessages,
-      interactiveEntryToolParams: lastInteractive?.toolParams
+      ...requestParams
     });
   })();
 

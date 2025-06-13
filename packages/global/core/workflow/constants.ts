@@ -1,4 +1,5 @@
 import { i18nT } from '../../../web/i18n/utils';
+import type { JsonSchemaPropertiesItemType } from '../app/jsonschema';
 
 export enum FlowNodeTemplateTypeEnum {
   systemInput = 'systemInput',
@@ -40,7 +41,11 @@ export enum WorkflowIOValueTypeEnum {
   selectApp = 'selectApp'
 }
 
-export const toolValueTypeList = [
+export const toolValueTypeList: {
+  label: string;
+  value: WorkflowIOValueTypeEnum;
+  jsonSchema: JsonSchemaPropertiesItemType;
+}[] = [
   {
     label: WorkflowIOValueTypeEnum.string,
     value: WorkflowIOValueTypeEnum.string,
@@ -93,6 +98,14 @@ export const toolValueTypeList = [
     }
   }
 ];
+export const valueTypeJsonSchemaMap: Record<string, JsonSchemaPropertiesItemType> =
+  toolValueTypeList.reduce(
+    (acc, item) => {
+      acc[item.value] = item.jsonSchema;
+      return acc;
+    },
+    {} as Record<string, JsonSchemaPropertiesItemType>
+  );
 
 /* reg: modulename key */
 export enum NodeInputKeyEnum {
@@ -231,7 +244,11 @@ export enum NodeInputKeyEnum {
 
   // comment
   commentText = 'commentText',
-  commentSize = 'commentSize'
+  commentSize = 'commentSize',
+
+  // Tool
+  toolData = 'system_toolData',
+  toolSetData = 'system_toolSetData'
 }
 
 export enum NodeOutputKeyEnum {

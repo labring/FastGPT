@@ -167,7 +167,15 @@ export async function delFileByFileIdList({
     const bucket = getGridBucket(bucketName);
 
     for await (const fileId of fileIdList) {
-      await bucket.delete(new Types.ObjectId(fileId));
+      try {
+        await bucket.delete(new Types.ObjectId(String(fileId)));
+      } catch (error: any) {
+        if (typeof error?.message === 'string' && error.message.includes('File not found')) {
+          addLog.warn('File not found', { fileId });
+          return;
+        }
+        return Promise.reject(error);
+      }
     }
   });
 }

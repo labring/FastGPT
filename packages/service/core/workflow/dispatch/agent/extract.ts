@@ -10,7 +10,11 @@ import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/c
 import { createChatCompletion } from '../../../ai/config';
 import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/template/system/contextExtract/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeOutputKeyEnum, toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeOutputKeyEnum,
+  toolValueTypeList,
+  valueTypeJsonSchemaMap
+} from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { sliceJsonStr } from '@fastgpt/global/common/string/tools';
@@ -164,9 +168,10 @@ const getJsonSchema = ({ params: { extractKeys } }: ActionProps) => {
     }
   > = {};
   extractKeys.forEach((item) => {
-    const jsonSchema = (
-      toolValueTypeList.find((type) => type.value === item.valueType) || toolValueTypeList[0]
-    )?.jsonSchema;
+    const jsonSchema = item.valueType
+      ? valueTypeJsonSchemaMap[item.valueType] || toolValueTypeList[0].jsonSchema
+      : toolValueTypeList[0].jsonSchema;
+
     properties[item.key] = {
       ...jsonSchema,
       description: item.desc,
