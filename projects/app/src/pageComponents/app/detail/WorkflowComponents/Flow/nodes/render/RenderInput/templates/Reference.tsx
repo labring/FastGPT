@@ -47,7 +47,7 @@ type CommonSelectProps = {
     }[];
   }[];
   popDirection?: 'top' | 'bottom';
-  styles?: ButtonProps;
+  ButtonProps?: ButtonProps;
 };
 type SelectProps<T extends boolean> = CommonSelectProps & {
   isArray?: T;
@@ -87,7 +87,7 @@ export const useReference = ({
         return {
           label: (
             <Flex alignItems={'center'}>
-              <Avatar src={node.avatar} w={isArray ? '1rem' : '1.25rem'} borderRadius={'xs'} />
+              <Avatar src={node.avatar} w={isArray ? '1rem' : '1.05rem'} borderRadius={'xs'} />
               <Box ml={1}>{t(node.name as any)}</Box>
             </Flex>
           ),
@@ -168,7 +168,8 @@ const SingleReferenceSelector = ({
   value,
   list = [],
   onSelect,
-  popDirection
+  popDirection,
+  ButtonProps
 }: SelectProps<false>) => {
   const getSelectValue = useCallback(
     (value: ReferenceValueType) => {
@@ -196,12 +197,10 @@ const SingleReferenceSelector = ({
       <MultipleRowSelect
         label={
           isValidSelect ? (
-            <Flex gap={2} alignItems={'center'} fontSize={'sm'}>
-              <Flex py={1} pl={1} alignItems={'center'}>
-                {nodeName}
-                <MyIcon name={'common/rightArrowLight'} mx={1} w={'12px'} color={'myGray.500'} />
-                {outputName}
-              </Flex>
+            <Flex py={1} pl={1} alignItems={'center'} fontSize={'sm'}>
+              {nodeName}
+              <MyIcon name={'common/rightArrowLight'} mx={0.5} w={'12px'} color={'myGray.500'} />
+              {outputName}
             </Flex>
           ) : (
             <Box fontSize={'sm'} color={'myGray.400'}>
@@ -213,9 +212,10 @@ const SingleReferenceSelector = ({
         list={list}
         onSelect={onSelect as any}
         popDirection={popDirection}
+        ButtonProps={ButtonProps}
       />
     );
-  }, [getSelectValue, list, onSelect, placeholder, popDirection, value]);
+  }, [ButtonProps, getSelectValue, list, onSelect, placeholder, popDirection, value]);
 
   return ItemSelector;
 };
@@ -226,8 +226,6 @@ const MultipleReferenceSelector = ({
   onSelect,
   popDirection
 }: SelectProps<true>) => {
-  const { t } = useTranslation();
-
   const getSelectValue = useCallback(
     (value: ReferenceValueType) => {
       if (!value) return [];

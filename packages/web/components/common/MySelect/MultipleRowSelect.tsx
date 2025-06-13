@@ -26,7 +26,7 @@ export const MultipleRowSelect = ({
   onSelect,
   ButtonProps,
   changeOnEverySelect = false,
-  rowMinWidth = 'autp'
+  rowMinWidth = 'auto'
 }: MultipleSelectProps & {
   rowMinWidth?: string;
 }) => {
@@ -66,7 +66,7 @@ export const MultipleRowSelect = ({
         if (currentScrollTop !== undefined && MenuRef.current[index]) {
           MenuRef.current[index]!.scrollTop = currentScrollTop;
         }
-      }, [cloneValue, currentScrollTop]);
+      }, [currentScrollTop, index]);
 
       return (
         <>
@@ -143,7 +143,7 @@ export const MultipleRowSelect = ({
         </>
       );
     },
-    [cloneValue]
+    [changeOnEverySelect, cloneValue, emptyTip, maxH, minWidth, onClose, onSelect, rowMinWidth, t]
   );
 
   const onOpenSelect = useCallback(() => {
@@ -172,7 +172,6 @@ export const MultipleRowSelect = ({
           ref={ButtonRef}
           width={'100%'}
           px={3}
-          rightIcon={<MyIcon name={'core/chat/chevronDown'} w={4} color={'myGray.500'} />}
           variant={'whitePrimaryOutline'}
           size={'lg'}
           fontSize={'sm'}
@@ -189,7 +188,12 @@ export const MultipleRowSelect = ({
             : {})}
           {...ButtonProps}
         >
-          <Box>{label ?? placeholder}</Box>
+          <Flex alignItems={'center'}>
+            <Box flex="1" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+              {label ?? placeholder}
+            </Box>
+            <MyIcon name={'core/chat/chevronDown'} w={4} flexShrink={0} color={'myGray.500'} />
+          </Flex>
         </MenuButton>
         <MenuList
           className={ButtonProps?.className}
@@ -260,7 +264,7 @@ export const MultipleRowArraySelect = ({
       });
       onSelect(validList);
     },
-    [onSelect]
+    [list, onSelect]
   );
 
   const RenderList = useCallback(
@@ -334,13 +338,13 @@ export const MultipleRowArraySelect = ({
         </>
       );
     },
-    [navigationPath, formatValue, onSelect]
+    [navigationPath, maxH, emptyTip, t, formatValue, onChange]
   );
 
   const onOpenSelect = useCallback(() => {
     setNavigationPath([]);
     onOpen();
-  }, []);
+  }, [onOpen]);
 
   return (
     <Box ref={ref} position={'relative'}>

@@ -85,7 +85,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             step={100}
             value={item.value}
             name={NodeInputKeyEnum.datasetMaxTokens}
-            bg={'white'}
+            inputFieldProps={{ bg: 'white' }}
             onChange={(e) => {
               onChangeNode({
                 nodeId,
