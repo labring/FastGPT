@@ -21,6 +21,8 @@
   "can_not_loop": "這個節點不能迴圈。",
   "choose_another_application_to_call": "選擇另一個應用程式來呼叫",
   "classification_result": "分類結果",
+  "click_to_change_reference": "點擊切換輸入模式",
+  "click_to_change_value": "點擊切換變量引用模式",
   "code.Reset template": "重設範本",
   "code.Reset template confirm": "確定要重設程式碼範本嗎？這將會把所有輸入和輸出重設為範本值。請儲存您目前的程式碼。",
   "code.Switch language confirm": "切換語言將重設代碼，是否繼續？",

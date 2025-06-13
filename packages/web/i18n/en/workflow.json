@@ -21,6 +21,8 @@
   "can_not_loop": "This node can't loop.",
   "choose_another_application_to_call": "Select another application to call",
   "classification_result": "Classification Result",
+  "click_to_change_reference": "Click to switch input mode",
+  "click_to_change_value": "Click to switch reference mode",
   "code.Reset template": "Reset Template",
   "code.Reset template confirm": "Confirm reset code template? This will reset all inputs and outputs to template values. Please save your current code.",
   "code.Switch language confirm": "Switching the language will reset the code, will it continue?",
