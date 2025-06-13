@@ -20,6 +20,3 @@ export const submitInvoice = (data: InvoiceType) =>
 
 export const getInvoiceRecords = (data: PaginationProps) =>
   POST<PaginationResponse<InvoiceSchemaType>>(`/proApi/support/wallet/bill/invoice/records`, data);
-
-export const readInvoiceFile = (id: string) =>
-  GET<InvoiceFileInfo>(`/proApi/support/wallet/bill/invoice/file/read`, { id });
