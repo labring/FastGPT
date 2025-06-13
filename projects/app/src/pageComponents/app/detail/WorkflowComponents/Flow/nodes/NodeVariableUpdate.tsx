@@ -249,7 +249,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
               if (valueType === WorkflowIOValueTypeEnum.number) {
                 return (
                   <MyNumberInput
-                    bg={'white'}
+                    inputFieldProps={{ bg: 'white' }}
                     value={Number(inputValue) || 0}
                     onChange={(e) => onUpdateNewValue(String(e || 0))}
                   />

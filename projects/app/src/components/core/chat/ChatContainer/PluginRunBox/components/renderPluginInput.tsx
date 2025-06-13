@@ -198,7 +198,6 @@ const RenderPluginInput = ({
           step={1}
           min={input.min}
           max={input.max}
-          bg={'myGray.50'}
           isDisabled={isDisabled}
           isInvalid={isInvalid}
           value={value}

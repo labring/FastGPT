@@ -25,31 +25,6 @@
   }
 }
 
-.contentEditable_isFlow {
-  position: relative;
-  height: 100%;
-  width: 100%;
-  border: 1px solid var(--chakra-colors-myGray-200);
-  border-radius: var(--chakra-radii-sm);
-  padding: 6px 8px;
-  font-size: var(--chakra-fontSizes-sm);
-  overflow-y: auto;
-
-  &:hover {
-    border-color: var(--chakra-colors-primary-300);
-  }
-  &::-webkit-scrollbar {
-    color: var(--chakra-colors-myGray-100);
-  }
-  &::-webkit-scrollbar-thumb {
-    background-color: var(--chakra-colors-myGray-200) !important;
-    cursor: pointer;
-  }
-  &::-webkit-scrollbar-thumb:hover {
-    background-color: var(--chakra-colors-myGray-250) !important;
-  }
-}
-
 .contentEditable:focus {
   outline: none;
   border: 1px solid;
