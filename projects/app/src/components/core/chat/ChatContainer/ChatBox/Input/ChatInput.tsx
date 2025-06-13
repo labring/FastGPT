@@ -324,29 +324,24 @@ const ChatInput = ({
           </Flex>
         </Flex>
       </Flex>
-    ),
-    [
-      File,
-      TextareaDom,
-      fileList.length,
-      handleSend,
-      hasFileUploading,
-      havInput,
-      inputValue,
-      isChatting,
-      isPc,
-      onOpenSelectFile,
-      onSelectFile,
-      onStop,
-      selectFileIcon,
-      selectFileLabel,
-      setValue,
-      showSelectFile,
-      showSelectImg,
-      t,
-      whisperConfig?.open
-    ]
-  );
+    );
+  }, [
+    isPc,
+    showSelectFile,
+    showSelectImg,
+    selectFileLabel,
+    selectFileIcon,
+    File,
+    whisperConfig?.open,
+    inputValue,
+    t,
+    isChatting,
+    canSendMessage,
+    onOpenSelectFile,
+    onSelectFile,
+    handleSend,
+    onStop
+  ]);
 
   return (
     <Box
