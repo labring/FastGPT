@@ -214,15 +214,7 @@ const RenderToolInput = ({
       );
     }
     if (paramInfo.type === 'number') {
-      return (
-        <MyNumberInput
-          step={1}
-          bg={'myGray.50'}
-          isInvalid={isInvalid}
-          value={value}
-          onChange={onChange}
-        />
-      );
+      return <MyNumberInput step={1} isInvalid={isInvalid} value={value} onChange={onChange} />;
     }
     if (paramInfo.type === 'boolean') {
       return <Switch isChecked={value} onChange={onChange} isInvalid={isInvalid} />;
