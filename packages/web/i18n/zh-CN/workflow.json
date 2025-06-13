@@ -21,6 +21,8 @@
   "can_not_loop": "该节点不支持循环嵌套",
   "choose_another_application_to_call": "选择一个其他应用进行调用",
   "classification_result": "分类结果",
+  "click_to_change_reference": "点击切换输入模式",
+  "click_to_change_value": "点击切换变量引用模式",
   "code.Reset template": "还原模板",
   "code.Reset template confirm": "确认还原代码模板？将会重置所有输入和输出至模板值，请注意保存当前代码。",
   "code.Switch language confirm": "切换语言将重置代码，是否继续？",

@@ -146,10 +146,10 @@ export const FormInputComponent = React.memo(function FormInputComponent({
               max={max}
               defaultValue={defaultValue}
               isDisabled={submitted}
-              bg={'white'}
               register={register}
               name={label}
               isRequired={required}
+              inputFieldProps={{ bg: 'white' }}
             />
           );
         case FlowNodeInputTypeEnum.select:

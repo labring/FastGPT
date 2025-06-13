@@ -1,4 +1,4 @@
-import { getInvoiceRecords, readInvoiceFile } from '@/web/support/wallet/bill/invoice/api';
+import { getInvoiceRecords } from '@/web/support/wallet/bill/invoice/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useTranslation } from 'next-i18next';
 import { useState } from 'react';
@@ -23,6 +23,7 @@ import dayjs from 'dayjs';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { downloadFetch } from '@/web/common/system/utils';
 
 const InvoiceTable = () => {
   const { t } = useTranslation();
@@ -138,25 +139,10 @@ function InvoiceDetailModal({
   const { t } = useTranslation();
 
   const { runAsync: handleDownloadInvoice } = useRequest2(async (id: string) => {
-    const fileInfo = await readInvoiceFile(id);
-
-    // Blob
-    const byteCharacters = atob(fileInfo.data);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: fileInfo.mimeType });
-    const fileUrl = URL.createObjectURL(blob);
-
-    // preview
-    window.open(fileUrl, '_blank');
-
-    // clean
-    setTimeout(() => {
-      URL.revokeObjectURL(fileUrl);
-    }, 1000);
+    await downloadFetch({
+      url: `/api/proApi/support/wallet/bill/invoice/downloadFile?id=${id}`,
+      filename: `${invoice.teamName}.pdf`
+    });
   });
 
   return (
