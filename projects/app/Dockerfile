@@ -77,6 +77,10 @@ COPY --from=maindeps /app/node_modules/@zilliz/milvus2-sdk-node ./node_modules/@
 # copy package.json to version file
 COPY --from=builder /app/projects/app/package.json ./package.json 
 
+# copy nodejs-websocket-bridge
+COPY ./plugins/nodejs-websocket-bridge /app/plugins/nodejs-websocket-bridge
+RUN cd /app/plugins/nodejs-websocket-bridge && npm install
+
 # copy config
 COPY ./projects/app/data /app/data
 RUN chown -R nextjs:nodejs /app/data
@@ -86,12 +90,17 @@ RUN chown -R nextjs:nodejs /app/data
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
+ENV WS_PORT=3003
 ENV NEXT_PUBLIC_BASE_URL=$base_url
+ENV serverPath=./projects/app/server.js
 
 EXPOSE 3000
+EXPOSE 3003
+
+# Copy the start script
+COPY ./projects/app/start.sh /app/start.sh
+RUN chmod +x /app/start.sh
 
 USER nextjs
 
-ENV serverPath=./projects/app/server.js
-
-ENTRYPOINT ["sh","-c","node --max-old-space-size=4096 ${serverPath}"]
+ENTRYPOINT ["/app/start.sh"]
