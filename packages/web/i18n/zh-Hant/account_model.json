@@ -16,8 +16,6 @@
   "channel_status_enabled": "啟用",
   "channel_status_unknown": "未知",
   "channel_type": "協議類型",
-  "chart_mode_cumulative": "累積",
-  "chart_mode_incremental": "分時",
   "clear_model": "清空模型",
   "confirm_delete_channel": "確認刪除【{{name}}】管道？",
   "copy_model_id_success": "已復制模型 id",
