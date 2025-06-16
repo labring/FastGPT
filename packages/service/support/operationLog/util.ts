@@ -34,3 +34,10 @@ export function getI18nDatasetType(type: DatasetTypeEnum | string): string {
   if (type === DatasetTypeEnum.yuque) return i18nT('account_team:dataset.yuque_dataset');
   return i18nT('common:UnKnow');
 }
+
+export function getI18nInformLevel(level: string): string {
+  if (level === 'common') return i18nT('account_team:inform_level_common');
+  if (level === 'important') return i18nT('account_team:inform_level_important');
+  if (level === 'emergency') return i18nT('account_team:inform_level_emergency');
+  return i18nT('common:UnKnow');
+}

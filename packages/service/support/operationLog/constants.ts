@@ -370,6 +370,123 @@ export const operationLogMap = {
     content: i18nT('account_team:log_delete_api_key'),
     typeLabel: i18nT('account_team:delete_api_key'),
     params: {} as { name?: string; keyName: string }
+  },
+  //ADMIN
+  [OperationLogEventEnum.ADMIN_LOGIN]: {
+    content: i18nT('account_team:log_admin_login'),
+    typeLabel: i18nT('account_team:admin_login'),
+    params: {} as { name?: string }
+  },
+  [OperationLogEventEnum.ADMIN_CHANGE_LICENSE]: {
+    content: i18nT('account_team:log_admin_change_license'),
+    typeLabel: i18nT('account_team:admin_change_license'),
+    params: {} as { name?: string }
+  },
+  [OperationLogEventEnum.ADMIN_UPDATE_SYSTEM_MODAL]: {
+    content: i18nT('account_team:log_admin_update_system_modal'),
+    typeLabel: i18nT('account_team:admin_update_system_modal'),
+    params: {} as { name?: string }
+  },
+  [OperationLogEventEnum.ADMIN_SEND_SYSTEM_INFORM]: {
+    content: i18nT('account_team:log_admin_send_system_inform'),
+    typeLabel: i18nT('account_team:admin_send_system_inform'),
+    params: {} as { name?: string; informTitle?: string; level?: string }
+  },
+  [OperationLogEventEnum.ADMIN_ADD_USER]: {
+    content: i18nT('account_team:log_admin_add_user'),
+    typeLabel: i18nT('account_team:admin_add_user'),
+    params: {} as { name?: string; userName: string }
+  },
+  [OperationLogEventEnum.ADMIN_UPDATE_USER]: {
+    content: i18nT('account_team:log_admin_update_user'),
+    typeLabel: i18nT('account_team:admin_update_user'),
+    params: {} as {
+      name?: string;
+      userName: string;
+      newUserName: string;
+      newPassword: string;
+      newStatus: string;
+    }
+  },
+  [OperationLogEventEnum.ADMIN_UPDATE_TEAM]: {
+    content: i18nT('account_team:log_admin_update_team'),
+    typeLabel: i18nT('account_team:admin_update_team'),
+    params: {} as { name?: string; teamName: string; newTeamName: string; newBalance: string }
+  },
+  [OperationLogEventEnum.ADMIN_ADD_PLAN]: {
+    content: i18nT('account_team:log_admin_add_plan'),
+    typeLabel: i18nT('account_team:admin_add_plan'),
+    params: {} as { name?: string; teamId: string }
+  },
+  [OperationLogEventEnum.ADMIN_UPDATE_PLAN]: {
+    content: i18nT('account_team:log_admin_update_plan'),
+    typeLabel: i18nT('account_team:admin_update_plan'),
+    params: {} as { name?: string; teamId: string }
+  },
+  [OperationLogEventEnum.ADMIN_FINISH_INVOICE]: {
+    content: i18nT('account_team:log_admin_finish_invoice'),
+    typeLabel: i18nT('account_team:admin_finish_invoice'),
+    params: {} as { name?: string; teamName: string }
+  },
+  [OperationLogEventEnum.ADMIN_UPDATE_SYSTEM_CONFIG]: {
+    content: i18nT('account_team:log_admin_update_system_config'),
+    typeLabel: i18nT('account_team:admin_update_system_config'),
+    params: {} as { name?: string }
+  },
+  [OperationLogEventEnum.ADMIN_CREATE_APP_TEMPLATE]: {
+    content: i18nT('account_team:log_admin_create_app_template'),
+    typeLabel: i18nT('account_team:admin_create_app_template'),
+    params: {} as { name?: string; templateName: string }
+  },
+  [OperationLogEventEnum.ADMIN_UPDATE_APP_TEMPLATE]: {
+    content: i18nT('account_team:log_admin_update_app_template'),
+    typeLabel: i18nT('account_team:admin_update_app_template'),
+    params: {} as { name?: string; templateName: string }
+  },
+  [OperationLogEventEnum.ADMIN_DELETE_APP_TEMPLATE]: {
+    content: i18nT('account_team:log_admin_delete_app_template'),
+    typeLabel: i18nT('account_team:admin_delete_app_template'),
+    params: {} as { name?: string; templateName: string }
+  },
+  [OperationLogEventEnum.ADMIN_SAVE_TEMPLATE_TYPE]: {
+    content: i18nT('account_team:log_admin_save_template_type'),
+    typeLabel: i18nT('account_team:admin_save_template_type'),
+    params: {} as { name?: string; typeName: string }
+  },
+  [OperationLogEventEnum.ADMIN_DELETE_TEMPLATE_TYPE]: {
+    content: i18nT('account_team:log_admin_delete_template_type'),
+    typeLabel: i18nT('account_team:admin_delete_template_type'),
+    params: {} as { name?: string; typeName: string }
+  },
+  [OperationLogEventEnum.ADMIN_CREATE_PLUGIN]: {
+    content: i18nT('account_team:log_admin_create_plugin'),
+    typeLabel: i18nT('account_team:admin_create_plugin'),
+    params: {} as { name?: string; pluginName: string }
+  },
+  [OperationLogEventEnum.ADMIN_UPDATE_PLUGIN]: {
+    content: i18nT('account_team:log_admin_update_plugin'),
+    typeLabel: i18nT('account_team:admin_update_plugin'),
+    params: {} as { name?: string; pluginName: string }
+  },
+  [OperationLogEventEnum.ADMIN_DELETE_PLUGIN]: {
+    content: i18nT('account_team:log_admin_delete_plugin'),
+    typeLabel: i18nT('account_team:admin_delete_plugin'),
+    params: {} as { name?: string; pluginName: string }
+  },
+  [OperationLogEventEnum.ADMIN_CREATE_PLUGIN_GROUP]: {
+    content: i18nT('account_team:log_admin_create_plugin_group'),
+    typeLabel: i18nT('account_team:admin_create_plugin_group'),
+    params: {} as { name?: string; groupName: string }
+  },
+  [OperationLogEventEnum.ADMIN_UPDATE_PLUGIN_GROUP]: {
+    content: i18nT('account_team:log_admin_update_plugin_group'),
+    typeLabel: i18nT('account_team:admin_update_plugin_group'),
+    params: {} as { name?: string; groupName: string }
+  },
+  [OperationLogEventEnum.ADMIN_DELETE_PLUGIN_GROUP]: {
+    content: i18nT('account_team:log_admin_delete_plugin_group'),
+    typeLabel: i18nT('account_team:admin_delete_plugin_group'),
+    params: {} as { name?: string; groupName: string }
   }
 } as const;
 
