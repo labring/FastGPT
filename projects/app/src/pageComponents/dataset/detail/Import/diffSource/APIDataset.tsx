@@ -70,8 +70,10 @@ const CustomAPIFileInput = () => {
     }
   );
 
-  const { data: existIdList = [] } = useRequest2(
-    () => getApiDatasetFileListExistId({ datasetId: datasetDetail._id }),
+  const { data: existIdList = new Set() } = useRequest2(
+    async () => {
+      return new Set<string>(await getApiDatasetFileListExistId({ datasetId: datasetDetail._id }));
+    },
     {
       manual: false
     }
@@ -89,7 +91,12 @@ const CustomAPIFileInput = () => {
         const allFiles: APIFileItem[] = [];
 
         for (const file of files) {
-          if (file.type === 'folder') {
+          if (sources.some((item) => item.apiFileId === file.id)) {
+            allFiles.push(file);
+            continue;
+          }
+
+          if (file.hasChild) {
             const folderFiles = await getApiDatasetFileList({
               datasetId: datasetDetail._id,
               parentId: file?.id
@@ -97,27 +104,28 @@ const CustomAPIFileInput = () => {
 
             const subFiles = await getFilesRecursively(folderFiles);
             allFiles.push(...subFiles);
-          } else {
-            allFiles.push(file);
           }
+          allFiles.push(file);
         }
 
         return allFiles;
       };
 
       const allFiles = await getFilesRecursively(selectFiles);
+      const uniqueFiles = allFiles.filter(
+        (item, index, array) =>
+          !existIdList.has(item.id) && array.findIndex((file) => file.id === item.id) === index
+      );
 
       setSources(
-        allFiles
-          .filter((item) => !existIdList.includes(item.id))
-          .map((item) => ({
-            id: item.id,
-            apiFileId: item.id,
-            apiFile: item,
-            createStatus: 'waiting',
-            sourceName: item.name,
-            icon: getSourceNameIcon({ sourceName: item.name }) as any
-          }))
+        uniqueFiles.map((item) => ({
+          id: item.id,
+          apiFileId: item.id,
+          apiFile: item,
+          createStatus: 'waiting',
+          sourceName: item.name,
+          icon: getSourceNameIcon({ sourceName: item.name }) as any
+        }))
       );
     },
     {
@@ -147,15 +155,24 @@ const CustomAPIFileInput = () => {
     [selectFiles]
   );
 
-  const handleSelectAll = useCallback(() => {
-    const isAllSelected = fileList.length === selectFiles.length;
+  const isAllSelected = useMemo(() => {
+    return fileList.every(
+      (item) => existIdList.has(item.id) || selectFiles.some((file) => file.id === item.id)
+    );
+  }, [fileList, selectFiles, existIdList]);
 
+  const handleSelectAll = useCallback(() => {
     if (isAllSelected) {
-      setSelectFiles([]);
+      setSelectFiles((state) =>
+        state.filter((file) => !fileList.find((item) => item.id === file.id))
+      );
     } else {
-      setSelectFiles(fileList);
+      setSelectFiles((state) => [
+        ...state.filter((file) => !fileList.find((item) => item.id === file.id)),
+        ...fileList.filter((item) => !existIdList.has(item.id))
+      ]);
     }
-  }, [fileList, selectFiles]);
+  }, [isAllSelected, fileList, existIdList]);
 
   return (
     <MyBox isLoading={loading} position="relative" h="full">
@@ -193,23 +210,22 @@ const CustomAPIFileInput = () => {
               fontSize={'sm'}
               fontWeight={'medium'}
               color={'myGray.900'}
-              onClick={(e) => {
-                if (!(e.target as HTMLElement).closest('.checkbox')) {
-                  handleSelectAll();
-                }
-              }}
+              // onClick={(e) => {
+              //   if (!(e.target as HTMLElement).closest('.checkbox')) {
+              //     handleSelectAll();
+              //   }
+              // }}
             >
               <Checkbox
                 className="checkbox"
                 mr={2}
-                isChecked={fileList.length === selectFiles.length}
+                isChecked={isAllSelected}
                 onChange={handleSelectAll}
               />
               {t('common:Select_all')}
             </Flex>
             {fileList.map((item) => {
-              const isFolder = item.type === 'folder';
-              const isExists = existIdList.includes(item.id);
+              const isExists = existIdList.has(item.id);
               const isChecked = isExists || selectFiles.some((file) => file.id === item.id);
 
               return (
@@ -243,9 +259,9 @@ const CustomAPIFileInput = () => {
                   />
                   <MyIcon
                     name={
-                      !isFolder
-                        ? (getSourceNameIcon({ sourceName: item.name }) as any)
-                        : 'common/folderFill'
+                      item.type === 'folder'
+                        ? 'common/folderFill'
+                        : (getSourceNameIcon({ sourceName: item.name }) as any)
                     }
                     w={'18px'}
                     mr={1.5}

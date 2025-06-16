@@ -140,7 +140,7 @@ const DataTableComponent = ({
           model: item.model,
           totalCalls: item.totalCalls,
           errorCalls: item.errorCalls,
-          totalCost: item.totalCost,
+          totalCost: Math.floor(item.totalCost),
           avgResponseTime: successCalls > 0 ? item.totalResponseTime / successCalls / 1000 : 0,
           avgTtfb: successCalls > 0 ? item.totalTtfb / successCalls / 1000 : 0
         });
@@ -201,7 +201,7 @@ const DataTableComponent = ({
           model: modelName,
           totalCalls: item.totalCalls,
           errorCalls: item.errorCalls,
-          totalCost: item.totalCost,
+          totalCost: Math.floor(item.totalCost),
           avgResponseTime: successCalls > 0 ? item.totalResponseTime / successCalls / 1000 : 0,
           avgTtfb: successCalls > 0 ? item.totalTtfb / successCalls / 1000 : 0
         });
