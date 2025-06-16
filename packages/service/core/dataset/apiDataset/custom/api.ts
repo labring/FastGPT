@@ -106,7 +106,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
 
     const formattedFiles = files.map((file) => ({
       ...file,
-      hasChild: file.type === 'folder'
+      hasChild: file.hasChild ?? file.type === 'folder'
     }));
 
     return formattedFiles;
