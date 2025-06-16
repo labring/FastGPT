@@ -41,6 +41,11 @@ export const defaultFeishuOutLinkForm: OutLinkEditType<FeishuAppType> = {
   limit: {
     QPM: 100,
     maxUsagePoints: -1
+  },
+  auth: {
+    requireAuth: false,
+    authUrl: '',
+    authKey: ''
   }
 };
 

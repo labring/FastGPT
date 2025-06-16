@@ -42,6 +42,7 @@ async function handler(
       req,
       authToken: true,
       authApiKey: true,
+
       ...req.body
     })
   ]);

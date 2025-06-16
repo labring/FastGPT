@@ -2,7 +2,8 @@ import axios, {
   Method,
   InternalAxiosRequestConfig,
   AxiosResponse,
-  AxiosProgressEvent
+  AxiosProgressEvent,
+  AxiosRequestConfig
 } from 'axios';
 import { clearToken } from '@/web/support/user/auth';
 import { TOKEN_ERROR_CODE } from '@fastgpt/global/common/error/errorCode';
@@ -11,6 +12,7 @@ import { useSystemStore } from '../system/useSystemStore';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 
 interface ConfigType {
   headers?: { [key: string]: string };
@@ -22,7 +24,7 @@ interface ConfigType {
 }
 interface ResponseDataType {
   code: number;
-  message: string;
+  message?: string;
   data: any;
 }
 
@@ -79,9 +81,13 @@ function requestFinish({ signId, url }: { signId?: string; url: string }) {
  * 请求开始
  */
 function startInterceptors(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
-  if (config.headers) {
-  }
-
+  // Token is now primarily handled by HttpOnly cookie (fastgpt_token)
+  // and withCredentials: true in axios requests.
+  // The Authorization header from localStorage might not be needed for standard user sessions.
+  // const token = localStorage.getItem('token');
+  // if (token && config.headers) {
+  //   config.headers['Authorization'] = `Bearer ${token}`;
+  // }
   return config;
 }
 
@@ -89,7 +95,10 @@ function startInterceptors(config: InternalAxiosRequestConfig): InternalAxiosReq
  * 请求成功,检查请求头
  */
 function responseSuccess(response: AxiosResponse<ResponseDataType>) {
-  return response;
+  if (response?.data?.code !== 200) {
+    return Promise.reject(response?.data);
+  }
+  return response?.data?.data;
 }
 /**
  * 响应数据检查
@@ -107,15 +116,15 @@ function checkRes(data: ResponseDataType) {
 /**
  * 响应错误
  */
-function responseError(err: any) {
-  console.log('error->', '请求错误', err);
-  const data = err?.response?.data || err;
+function responseError(error: any) {
+  console.log('error->', '请求错误', error);
+  const data = error?.response?.data || error;
 
-  if (!err) {
+  if (!error) {
     return Promise.reject({ message: '未知错误' });
   }
-  if (typeof err === 'string') {
-    return Promise.reject({ message: err });
+  if (typeof error === 'string') {
+    return Promise.reject({ message: error });
   }
   if (typeof data === 'string') {
     return Promise.reject(data);
@@ -138,7 +147,7 @@ function responseError(err: any) {
     data?.statusText === TeamErrEnum.datasetAmountNotEnough ||
     data?.statusText === TeamErrEnum.appAmountNotEnough ||
     data?.statusText === TeamErrEnum.pluginAmountNotEnough ||
-    data?.statusText === TeamErrEnum.websiteSyncNotEnough ||
+    // data?.statusText === TeamErrEnum.websiteSyncNotEnough || // 已移除网站同步的商业版限制
     data?.statusText === TeamErrEnum.reRankNotEnough
   ) {
     useSystemStore.getState().setNotSufficientModalType(data.statusText);
@@ -151,14 +160,14 @@ function responseError(err: any) {
 const instance = axios.create({
   timeout: 60000, // 超时时间
   headers: {
-    'content-type': 'application/json'
+    'Content-Type': 'application/json'
   }
 });
 
 /* 请求拦截 */
-instance.interceptors.request.use(startInterceptors, (err) => Promise.reject(err));
+instance.interceptors.request.use(startInterceptors, (error: Error) => Promise.reject(error));
 /* 响应拦截 */
-instance.interceptors.response.use(responseSuccess, (err) => Promise.reject(err));
+instance.interceptors.response.use(responseSuccess, (error: Error) => Promise.reject(error));
 
 function request(
   url: string,
@@ -198,18 +207,50 @@ function request(
  * @param {Object} config
  * @returns
  */
-export function GET<T = undefined>(url: string, params = {}, config: ConfigType = {}): Promise<T> {
-  return request(url, params, config, 'GET');
-}
+export const GET = <T>(
+  url: string,
+  params?: Record<string, any>,
+  config?: AxiosRequestConfig
+): Promise<T> =>
+  instance.get(url, {
+    params,
+    withCredentials: true,
+    ...config
+  });
 
-export function POST<T = undefined>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
-  return request(url, data, config, 'POST');
-}
+export const POST = <T>(
+  url: string,
+  data?: Record<string, any>,
+  config: AxiosRequestConfig = {}
+): Promise<T> => {
+  const finalConfig: AxiosRequestConfig = {
+    withCredentials: true,
+    ...config,
+    headers: {
+      ...(instance.defaults.headers.post as any),
+      ...config.headers
+    }
+  };
+  return instance.post(url, data, finalConfig);
+};
 
-export function PUT<T = undefined>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
-  return request(url, data, config, 'PUT');
-}
+export const PUT = <T>(
+  url: string,
+  data?: Record<string, any>,
+  config?: AxiosRequestConfig
+): Promise<T> =>
+  instance.put(url, data, {
+    withCredentials: true,
+    ...config
+  });
 
-export function DELETE<T = undefined>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
-  return request(url, data, config, 'DELETE');
-}
+export const DELETE = <T>(
+  url: string,
+  data?: Record<string, any>,
+  config?: AxiosRequestConfig
+): Promise<T> =>
+  instance.delete(url, {
+    data,
+    withCredentials: true,
+    ...config
+  });

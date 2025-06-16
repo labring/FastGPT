@@ -14,6 +14,9 @@ import { BoxProps, useDisclosure } from '@chakra-ui/react';
 import { useChatStore } from './useChatStore';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { useMount } from 'ahooks';
+import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 type UpdateHistoryParams = {
   chatId: UpdateHistoryProps['chatId'];
@@ -103,7 +106,7 @@ const ChatContextProvider = ({
   const router = useRouter();
 
   const forbidLoadChat = useRef(false);
-  const { chatId, appId, setChatId, outLinkAuthData } = useChatStore();
+  const { chatId, appId, setChatId } = useChatStore();
 
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
 
@@ -115,7 +118,7 @@ const ChatContextProvider = ({
     data: histories
   } = useScrollPagination(getChatHistories, {
     pageSize: 20,
-    params,
+    params: params,
     refreshDeps: [params],
     showErrorToast: false
   });
@@ -144,12 +147,12 @@ const ChatContextProvider = ({
     [onCloseSlider, router]
   );
 
-  const { runAsync: onUpdateHistory } = useRequest2(
+  const { runAsync: _onUpdateHistoryAsync } = useRequest2(
     (data: UpdateHistoryParams) =>
       putChatHistory({
         appId,
         ...data,
-        ...outLinkAuthData
+        ...params
       }),
     {
       onBefore(params) {
@@ -172,35 +175,35 @@ const ChatContextProvider = ({
             : updatedHistories;
         });
       },
-      refreshDeps: [outLinkAuthData, appId],
+      refreshDeps: [params, appId],
       errorToast: undefined
     }
   );
 
-  const { runAsync: onDelHistory, loading: isDeletingHistory } = useRequest2(
+  const { runAsync: _onDelHistory, loading: isDeletingHistory } = useRequest2(
     (chatId: string) =>
       delChatHistoryById({
         appId: appId,
         chatId,
-        ...outLinkAuthData
+        ...params
       }),
     {
       onSuccess(data, params) {
         const chatId = params[0];
         setHistories((old) => old.filter((i) => i.chatId !== chatId));
       },
-      refreshDeps: [outLinkAuthData, appId]
+      refreshDeps: [params, appId]
     }
   );
 
-  const { runAsync: onClearHistories, loading: isClearingHistory } = useRequest2(
+  const { runAsync: _onClearHistories, loading: isClearingHistory } = useRequest2(
     () =>
       delClearChatHistories({
         appId: appId,
-        ...outLinkAuthData
+        ...params
       }),
     {
-      refreshDeps: [outLinkAuthData, appId],
+      refreshDeps: [params, appId],
       onSuccess() {
         setHistories([]);
       },
@@ -212,13 +215,11 @@ const ChatContextProvider = ({
 
   const onUpdateHistoryTitle = useCallback(
     ({ chatId, newTitle }: { chatId: string; newTitle: string }) => {
-      // Chat history exists
       if (histories.find((item) => item.chatId === chatId)) {
         setHistories((state) =>
           state.map((item) => (item.chatId === chatId ? { ...item, title: newTitle } : item))
         );
       } else {
-        // Chat history not exists
         loadHistories(true);
       }
     },
@@ -229,9 +230,17 @@ const ChatContextProvider = ({
 
   const contextValue = useMemo(
     () => ({
-      onUpdateHistory,
-      onDelHistory,
-      onClearHistories,
+      onUpdateHistory: (data: UpdateHistoryParams) => {
+        _onUpdateHistoryAsync(data);
+      },
+      onDelHistory: async (chatId: string): Promise<undefined> => {
+        await _onDelHistory(chatId);
+        return undefined;
+      },
+      onClearHistories: async (): Promise<undefined> => {
+        await _onClearHistories();
+        return undefined;
+      },
       isOpenSlider,
       onCloseSlider,
       onOpenSlider,
@@ -253,11 +262,11 @@ const ChatContextProvider = ({
       loadHistories,
       onChangeAppId,
       onChangeChatId,
-      onClearHistories,
+      _onClearHistories,
       onCloseSlider,
-      onDelHistory,
+      _onDelHistory,
       onOpenSlider,
-      onUpdateHistory,
+      _onUpdateHistoryAsync,
       onUpdateHistoryTitle,
       setHistories
     ]

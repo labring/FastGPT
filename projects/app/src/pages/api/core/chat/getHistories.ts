@@ -1,6 +1,7 @@
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { authOutLink } from '@/service/support/permission/auth/outLink';
+//import { authOutLink } from '@/service/support/permission/auth/outLink';
+import { authOutLink, getTokenFromRequest } from '@/service/support/permission/auth/outLink';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import { NextAPI } from '@/service/middleware/entry';
@@ -25,7 +26,8 @@ async function handler(
 
   const match = await (async () => {
     if (shareId && outLinkUid) {
-      const { uid } = await authOutLink({ shareId, outLinkUid });
+      const token = getTokenFromRequest(req) || undefined; // 修改这一行
+      const { uid } = await authOutLink({ shareId, outLinkUid, token });
 
       return {
         shareId,

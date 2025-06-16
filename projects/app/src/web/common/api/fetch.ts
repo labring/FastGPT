@@ -120,15 +120,25 @@ export const streamFetch = ({
       // auto complete variables
       const variables = data?.variables || {};
       variables.cTime = formatTime2YMDHMW();
+      // Extract token from data for header
+      const { token, ...requestBodyData } = data;
+
+      // Prepare request headers
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+
+      // Add token to headers if available
+      if (token) {
+        headers['auth-token'] = token;
+      }
 
       const requestData = {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         signal: abortCtrl.signal,
         body: JSON.stringify({
-          ...data,
+          ...requestBodyData,
           variables,
           detail: true,
           stream: true,

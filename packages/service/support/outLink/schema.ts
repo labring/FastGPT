@@ -1,6 +1,8 @@
 import { connectionMongo, getMongoModel } from '../../common/mongo';
 const { Schema } = connectionMongo;
 import { OutLinkSchema as SchemaType } from '@fastgpt/global/support/outLink/type';
+//import { AuthTypeEnum } from '@fastgpt/global/support/outLink/constant';
+import { AuthTypeEnum } from '../../../global/support/outLink/constant';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -10,7 +12,9 @@ import { AppCollectionName } from '../../core/app/schema';
 const OutLinkSchema = new Schema({
   shareId: {
     type: String,
-    required: true
+    required: true,
+    unique: true,
+    index: true
   },
   teamId: {
     type: Schema.Types.ObjectId,
@@ -70,6 +74,35 @@ const OutLinkSchema = new Schema({
       default: 1000
     },
     hookUrl: {
+      type: String
+    }
+  },
+
+  // 鉴权配置
+  auth: {
+    requireAuth: {
+      type: Boolean,
+      default: false
+    },
+    authType: {
+      type: String,
+      enum: Object.values(AuthTypeEnum)
+    },
+    authUrl: {
+      type: String
+    },
+    authKey: {
+      type: String
+    }
+  },
+
+  // 添加简单鉴权配置
+  simpleAuth: {
+    enabled: {
+      type: Boolean,
+      default: false
+    },
+    secretKey: {
       type: String
     }
   },

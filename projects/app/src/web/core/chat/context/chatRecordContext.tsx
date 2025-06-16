@@ -9,6 +9,7 @@ import { getChatRecords } from '../api';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { BoxProps } from '@chakra-ui/react';
+import { useChatStore } from './useChatStore';
 
 type ChatRecordContextType = {
   chatRecords: ChatSiteItemType[];
@@ -51,11 +52,19 @@ const ChatRecordContextProvider = ({
   params
 }: {
   children: ReactNode;
-  params: Record<string, any>;
+  params: { token?: string; [key: string]: any };
 }) => {
   const ChatBoxRef = useContextSelector(ChatItemContext, (v) => v.ChatBoxRef);
   const [isChatRecordsLoaded, setIsChatRecordsLoaded] = useState(false);
+  const { outLinkAuthData } = useChatStore();
 
+  const paginationParams = useMemo(
+    () => ({
+      ...params,
+      ...outLinkAuthData
+    }),
+    [params, outLinkAuthData]
+  );
   const {
     data: chatRecords,
     ScrollData,
@@ -65,7 +74,10 @@ const ChatRecordContextProvider = ({
     async (data: getPaginationRecordsBody): Promise<PaginationResponse<ChatSiteItemType>> => {
       setIsChatRecordsLoaded(false);
 
-      const res = await getChatRecords(data);
+      const res = await getChatRecords({
+        ...data,
+        token: params.token
+      });
 
       // First load scroll to bottom
       if (Number(data.offset) === 0) {
@@ -90,8 +102,8 @@ const ChatRecordContextProvider = ({
     },
     {
       pageSize: 10,
-      refreshDeps: [params],
-      params,
+      refreshDeps: [paginationParams],
+      params: paginationParams,
       scrollLoadType: 'top',
       showErrorToast: false
     }

@@ -1,0 +1,94 @@
+import type { NextApiRequest, NextApiResponse } from 'next';
+import { ChatItemType } from '@fastgpt/global/core/chat/type';
+import { connectionMongo } from '@fastgpt/service/common/mongo';
+import { authOutLinkReq } from '@fastgpt/service/support/permission/publish/authLink';
+import { outLinkChatCB } from '@fastgpt/service/support/outLink/chat';
+import { sseErrRes } from '@fastgpt/service/common/response';
+import { ChatProcessorComponent } from '@fastgpt/service/core/chat/utils';
+import { withNextCors } from '@fastgpt/service/common/middleware/cors';
+import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { checkKeys } from '@fastgpt/service/core/app/utils';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+
+const handler = async (req: NextApiRequest, res: NextApiResponse) => {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', ['POST']);
+    return res.status(405).end(`Method ${req.method} Not Allowed`);
+  }
+
+  const { shareId, chatId } = req.query as { shareId?: string; chatId?: string };
+  const { prompt } = req.body as { prompt: string };
+
+  try {
+   // await connectToDatabase();
+
+    if (!prompt) {
+      throw new Error('Prompt is required');
+    }
+
+    // auth link and get appId
+    const { appId, outLinkConfig, teamId, tmbId, responseDetail, authData, showRawSource } =
+      await authOutLinkReq({
+        shareId,
+        query: req.query, // 传递完整的查询参数，用于简单鉴权
+        req // 传递HTTP请求对象，用于从Headers和Cookies获取token
+      });
+
+    const app = await MongoApp.findById(appId).lean();
+    if (!app) {
+      throw new Error('App not found');
+    }
+
+    // check if model key is valid
+    const { models = [] } = app.chatConfig || {};
+    await checkKeys({
+      models,
+      teamId,
+      chatId
+    });
+
+    // core
+    const { responseItemList, responseData, stream } = await ChatProcessorComponent.chatProcess({
+      appId,
+      teamId,
+      tmbId,
+      chatId,
+      outLinkUid: `${shareId}_${Date.now()}`,
+      content: prompt,
+      res,
+      showDetail: responseDetail,
+      // @ts-ignore
+      outLinkModel: outLinkConfig,
+      source: 'share',
+      showRawSource
+    });
+
+    if (!stream) {
+      const { responseData } = outLinkChatCB({
+        res,
+        responseData: responseData as ChatItemType,
+        detail: responseDetail,
+        messages: responseItemList
+      });
+
+      res.json(responseData);
+    }
+  } catch (err: any) {
+    res.status(500);
+    if (err?.source === 'model' || err?.code === ModelErrEnum.qpsExceed) {
+      sseErrRes(res, err?.message || 'Model error');
+    } else if (err?.code === OutLinkErrEnum.outLinkOverFrequency) {
+      sseErrRes(
+        res,
+        `请求太频繁了，请稍后再试. [${outLinkChatCB.name}]: ${err?.message ?? err}`
+      );
+    } else if (err?.code === OutLinkErrEnum.unAuthUser) {
+      sseErrRes(res, `需要鉴权. [${outLinkChatCB.name}]: ${err?.message ?? err}`);
+    } else {
+      sseErrRes(res, `[${outLinkChatCB.name}]: ${err?.message ?? err}`);
+    }
+  }
+};
+
+export default withNextCors(handler); 

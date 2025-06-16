@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import type { InitOutLinkChatProps } from '@/global/core/chat/api.d';
 import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
-import { authOutLink } from '@/service/support/permission/auth/outLink';
+import { authOutLink, getTokenFromRequest } from '@/service/support/permission/auth/outLink';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -14,51 +14,56 @@ import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let { chatId, shareId, outLinkUid } = req.query as InitOutLinkChatProps;
 
-  // auth link permission
-  const { uid, appId } = await authOutLink({ shareId, outLinkUid });
+  if (req.method === 'GET') {
+    // 从HTTP请求中获取token，并处理可能的null值
+    const token = getTokenFromRequest(req) || undefined;
 
-  // auth app permission
-  const [chat, app] = await Promise.all([
-    MongoChat.findOne({ appId, chatId, shareId }).lean(),
-    MongoApp.findById(appId).lean()
-  ]);
+    // auth link permission
+    const { uid, appId } = await authOutLink({ shareId, outLinkUid, token });
 
-  if (!app) {
-    throw new Error(AppErrEnum.unExist);
-  }
+    // auth app permission
+    const [chat, app] = await Promise.all([
+      MongoChat.findOne({ appId, chatId, shareId }).lean(),
+      MongoApp.findById(appId).lean()
+    ]);
 
-  // auth chat permission
-  if (chat && chat.outLinkUid !== uid) {
-    return Promise.reject(ChatErrEnum.unAuthChat);
-  }
-
-  const { nodes, chatConfig } = await getAppLatestVersion(app._id, app);
-  const pluginInputs =
-    chat?.pluginInputs ??
-    nodes?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs ??
-    [];
-
-  return {
-    chatId,
-    appId: app._id,
-    title: chat?.title,
-    userAvatar: getRandomUserAvatar(),
-    variables: chat?.variables,
-    app: {
-      chatConfig: getAppChatConfig({
-        chatConfig,
-        systemConfigNode: getGuideModule(nodes),
-        storeVariables: chat?.variableList,
-        storeWelcomeText: chat?.welcomeText,
-        isPublicFetch: false
-      }),
-      name: app.name,
-      avatar: app.avatar,
-      intro: app.intro,
-      type: app.type,
-      pluginInputs
+    if (!app) {
+      throw new Error(AppErrEnum.unExist);
     }
-  };
+
+    // auth chat permission
+    if (chat && chat.outLinkUid !== uid) {
+      return Promise.reject(ChatErrEnum.unAuthChat);
+    }
+
+    const { nodes, chatConfig } = await getAppLatestVersion(app._id, app);
+    const pluginInputs =
+      chat?.pluginInputs ??
+      nodes?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs ??
+      [];
+
+    return {
+      chatId,
+      appId: app._id,
+      title: chat?.title,
+      userAvatar: getRandomUserAvatar(),
+      variables: chat?.variables,
+      app: {
+        chatConfig: getAppChatConfig({
+          chatConfig,
+          systemConfigNode: getGuideModule(nodes),
+          storeVariables: chat?.variableList,
+          storeWelcomeText: chat?.welcomeText,
+          isPublicFetch: false
+        }),
+        name: app.name,
+        avatar: app.avatar,
+        intro: app.intro,
+        type: app.type,
+        pluginInputs
+      }
+    };
+  }
 }
 
 export default NextAPI(handler);

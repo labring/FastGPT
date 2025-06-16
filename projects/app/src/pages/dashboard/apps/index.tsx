@@ -266,7 +266,9 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           <Box pt={[4, 6]} pr={[4, 6]}>
             <FolderSlideCard
               refetchResource={() => Promise.all([refetchFolderDetail(), loadMyApps()])}
-              resumeInheritPermission={() => resumeInheritPer(folderDetail._id)}
+              resumeInheritPermission={async () => {
+                await resumeInheritPer(folderDetail._id);
+              }}
               isInheritPermission={folderDetail.inheritPermission}
               hasParent={!!folderDetail.parentId}
               refreshDeps={[folderDetail._id, folderDetail.inheritPermission]}

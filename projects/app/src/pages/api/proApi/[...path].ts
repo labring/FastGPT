@@ -7,13 +7,18 @@ import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { path = [], ...query } = req.query as any;
+    if (!FastGPTProUrl) {
+      // If Pro URL is not configured, return a success response indicating the feature is not available
+      return jsonRes(res, {
+        code: 200,
+        data: null,
+        message: 'Pro features are not configured or disabled.'
+      });
+    }
     const requestPath = `/api/${path?.join('/')}?${new URLSearchParams(query).toString()}`;
 
     if (!requestPath) {
-      throw new Error('url is empty');
-    }
-    if (!FastGPTProUrl) {
-      throw new Error(`未配置商业版链接: ${path}`);
+      return jsonRes(res, { code: 400, error: 'Request path is empty' });
     }
 
     const parsedUrl = new URL(FastGPTProUrl);
@@ -39,13 +44,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     requestResult.on('error', (e) => {
-      res.send(e);
-      res.end();
+      // Log the proxy error on the server side for debugging
+      console.error('Pro API proxy error:', e);
+      // Send a generic error to the client
+      jsonRes(res, { code: 502, error: 'Error proxying to Pro service.' });
     });
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Error in proApi handler:', error);
     jsonRes(res, {
       code: 500,
-      error
+      error: error?.message || 'Internal server error in proApi handler.'
     });
   }
 }

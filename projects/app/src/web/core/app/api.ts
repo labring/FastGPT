@@ -11,10 +11,7 @@ import type { getBasicInfoResponse } from '@/pages/api/core/app/getBasicInfo';
 /**
  * 获取应用列表
  */
-export const getMyApps = (data?: ListAppBody) =>
-  POST<AppListItemType[]>('/core/app/list', data, {
-    maxQuantity: 1
-  });
+export const getMyApps = (data?: ListAppBody) => POST<AppListItemType[]>('/core/app/list', data);
 
 /**
  * 创建一个应用
@@ -46,7 +43,7 @@ export const getAppBasicInfoByIds = (ids: string[]) =>
 
 // =================== chat logs
 export const getAppChatLogs = (data: GetAppChatLogsParams) =>
-  POST<PaginationResponse<AppLogsListItemType>>(`/core/app/getChatLogs`, data, { maxQuantity: 1 });
+  POST<PaginationResponse<AppLogsListItemType>>(`/core/app/getChatLogs`, data);
 
 export const resumeInheritPer = (appId: string) =>
   GET(`/core/app/resumeInheritPermission`, { appId });

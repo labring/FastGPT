@@ -9,10 +9,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 凭证校验
     const { teamId } = await authCert({ req, authToken: true });
 
-    await checkWebSyncLimit({
-      teamId,
-      limitMinutes: global.feConfigs?.limit?.websiteSyncLimitMinuted
-    });
+    //  await checkWebSyncLimit({
+    //    teamId,
+    //    limitMinutes: global.feConfigs?.limit?.websiteSyncLimitMinuted
+    //  });
 
     jsonRes(res);
   } catch (err) {

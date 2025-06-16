@@ -1,5 +1,5 @@
 import { AppSchema } from '../../core/app/type';
-import { PublishChannelEnum } from './constant';
+import { PublishChannelEnum, AuthTypeEnum } from './constant';
 import { RequireOnlyOne } from '../../common/type/utils';
 
 // Feishu Config interface
@@ -82,6 +82,28 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
     hookUrl?: string;
   };
 
+  // 访问鉴权配置
+  auth?: {
+    // 是否需要鉴权
+    requireAuth?: boolean;
+    // 鉴权URL
+    authUrl?: string;
+
+    authType?: AuthTypeEnum;
+    // 鉴权密钥
+    authKey?: string;
+  };
+
+  // 简单鉴权配置（基于URL签名）
+  simpleAuth?: {
+    // 是否启用简单鉴权
+    enabled?: boolean;
+    // 签名密钥
+    secretKey?: string;
+    // 链接有效期（毫秒），默认24小时
+    expirationMs?: number;
+  };
+
   app: T;
 };
 
@@ -99,6 +121,8 @@ export type OutLinkEditType<T = undefined> = {
   defaultResponse?: string;
   limit?: OutLinkSchema<T>['limit'];
 
+  auth?: OutLinkSchema<T>['auth'];
   // config for specific platform
+  simpleAuth?: OutLinkSchema<T>['simpleAuth'];
   app?: T;
 };

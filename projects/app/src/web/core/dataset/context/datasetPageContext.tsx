@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, UseQueryResult } from '@tanstack/react-query';
 import { Dispatch, ReactNode, SetStateAction, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext } from 'use-context-selector';
@@ -18,6 +18,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getWebLLMModel } from '@/web/common/system/utils';
+import { getDatasetTrainingQueueResponse } from '@/pages/api/core/dataset/training/getDatasetTrainingQueue';
 
 type DatasetPageContextType = {
   datasetId: string;
@@ -159,27 +160,36 @@ export const DatasetPageContextProvider = ({
       refreshDeps: [datasetDetail._id, searchTagKey, allDatasetTags]
     }
   );
-  const { runAsync: onCreateCollectionTag, loading: isCreateCollectionTagLoading } = useRequest2(
-    (tag: string) =>
-      postCreateDatasetCollectionTag({
-        datasetId: datasetDetail._id,
-        tag
-      }),
-    {
-      refreshDeps: [datasetDetail._id],
-      onSuccess() {
-        loadAllDatasetTags();
-      },
-      successToast: t('common:common.Create Success'),
-      errorToast: t('common:common.Create Failed')
-    }
-  );
+  const { runAsync: _onCreateCollectionTagAsync, loading: isCreateCollectionTagLoading } =
+    useRequest2(
+      (tag: string) =>
+        postCreateDatasetCollectionTag({
+          datasetId: datasetDetail._id,
+          tag
+        }),
+      {
+        refreshDeps: [datasetDetail._id],
+        onSuccess() {
+          loadAllDatasetTags();
+        },
+        successToast: t('common:common.Create Success'),
+        errorToast: t('common:common.Create Failed')
+      }
+    );
 
   // training and rebuild queue
-  const { data: { rebuildingCount = 0, trainingCount = 0 } = {}, refetch: refetchDatasetTraining } =
-    useQuery(['getDatasetTrainingQueue'], () => getDatasetTrainingQueue(datasetId), {
-      refetchInterval: 10000
-    });
+  const {
+    data: queryData,
+    refetch: refetchDatasetTraining
+  }: UseQueryResult<getDatasetTrainingQueueResponse> = useQuery({
+    queryKey: ['getDatasetTrainingQueue', datasetId],
+    queryFn: () => getDatasetTrainingQueue(datasetId),
+    refetchInterval: 10000
+  } as any);
+  const { rebuildingCount = 0, trainingCount = 0 } = queryData || {
+    rebuildingCount: 0,
+    trainingCount: 0
+  };
 
   const { data: paths = [], runAsync: refetchPaths } = useRequest2(
     () =>
@@ -216,7 +226,9 @@ export const DatasetPageContextProvider = ({
     setCheckedDatasetTag,
     allDatasetTags,
     loadAllDatasetTags,
-    onCreateCollectionTag,
+    onCreateCollectionTag: async (tag: string) => {
+      await _onCreateCollectionTagAsync(tag);
+    },
     isCreateCollectionTagLoading,
     searchTagKey,
     setSearchTagKey

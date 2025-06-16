@@ -4,6 +4,7 @@ import { authFileToken } from '@fastgpt/service/support/permission/controller';
 import { getDownloadStream, getFileById } from '@fastgpt/service/common/file/gridfs/controller';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { stream2Encoding } from '@fastgpt/service/common/file/gridfs/utils';
+import { withTokenValidation } from '@/service/auth/tokenValidation';
 
 const previewableExtensions = [
   'jpg',
@@ -20,7 +21,7 @@ const previewableExtensions = [
 ];
 
 // Abandoned, use: file/read/[filename].ts
-export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+async function originalHandler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     const { token } = req.query as { token: string };
 
@@ -75,6 +76,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
   }
 }
+
+export default withTokenValidation(originalHandler);
+
 export const config = {
   api: {
     responseLimit: '100mb'

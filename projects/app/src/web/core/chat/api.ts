@@ -37,7 +37,11 @@ import type {
 export const getInitChatInfo = (data: InitChatProps) =>
   GET<InitChatResponse>(`/core/chat/init`, data);
 export const getInitOutLinkChatInfo = (data: InitOutLinkChatProps) =>
-  GET<InitChatResponse>(`/core/chat/outLink/init`, data);
+  GET<InitChatResponse>(`/core/chat/outLink/init`, data, {
+    headers: {
+      'auth-token': data.token || ''
+    }
+  });
 export const getTeamChatInfo = (data: InitTeamChatProps) =>
   GET<InitChatResponse>(`/core/chat/team/init`, data);
 
@@ -45,7 +49,11 @@ export const getTeamChatInfo = (data: InitTeamChatProps) =>
  * get current window history(appid or shareId)
  */
 export const getChatHistories = (data: PaginationProps<GetHistoriesProps>) =>
-  POST<PaginationResponse<ChatHistoryItemType>>('/core/chat/getHistories', data);
+  POST<PaginationResponse<ChatHistoryItemType>>('/core/chat/getHistories', data, {
+    headers: {
+      'auth-token': data.token || ''
+    }
+  });
 /**
  * get detail responseData by dataId appId chatId
  */
@@ -53,7 +61,11 @@ export const getChatResData = (data: getResDataQuery) =>
   GET<ChatHistoryItemResType[]>(`/core/chat/getResData`, data);
 
 export const getChatRecords = (data: getPaginationRecordsBody) =>
-  POST<getPaginationRecordsResponse>('core/chat/getPaginationRecords', data);
+  POST<getPaginationRecordsResponse>('core/chat/getPaginationRecords', data, {
+    headers: {
+      'auth-token': data.token || ''
+    }
+  });
 
 /**
  * delete one history

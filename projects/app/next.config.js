@@ -11,6 +11,26 @@ const nextConfig = {
   output: 'standalone',
   reactStrictMode: isDev ? false : true,
   compress: true,
+    async rewrites() {
+    return [
+      {
+        source: '/common/:path*',
+        destination: '/api/common/:path*',
+      },
+      {
+        source: '/support/:path*',
+        destination: '/api/support/:path*',
+      },
+        {
+        source: '/proApi/:path*',
+           destination: '/api/proApi/:path*',
+      },
+      {
+        source: '/core/:path*',
+        destination: '/api/core/:path*',
+      }
+    ];
+  },
   webpack(config, { isServer, nextRuntime }) {
     Object.assign(config.resolve.alias, {
       '@mongodb-js/zstd': false,

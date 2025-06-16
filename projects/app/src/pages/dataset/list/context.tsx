@@ -135,12 +135,12 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
 
-  const { runAsync: onDelDataset } = useRequest2(delDatasetById, {
+  const { runAsync: _onDelDataset } = useRequest2(delDatasetById, {
     successToast: t('common:common.Delete Success'),
     errorToast: t('common:dataset.Delete Dataset Error')
   });
 
-  const contextValue = {
+  const contextValue: DatasetContextType = {
     isFetchingDatasets,
     setMoveDatasetId,
     paths,
@@ -149,7 +149,9 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     folderDetail,
     editedDataset,
     setEditedDataset,
-    onDelDataset,
+    onDelDataset: async (id: string) => {
+      await _onDelDataset(id);
+    },
     onUpdateDataset,
     myDatasets,
     loadMyDatasets,

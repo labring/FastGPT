@@ -30,6 +30,9 @@ import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { PluginDataType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { getAIApi } from '@fastgpt/service/core/ai/config';
+import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 
 export const getScheduleTriggerApp = async () => {
   // 1. Find all the app
@@ -179,3 +182,51 @@ export const checkNode = async ({
     };
   }
 };
+
+export async function checkKeys({
+  models,
+  teamId,
+  chatId
+}: {
+  models: { model: string }[];
+  teamId: string;
+  chatId?: string;
+}) {
+  if (!models?.length) return;
+
+  try {
+    // get team info
+    const team = await MongoTeam.findById(teamId).lean();
+    if (!team) {
+      return Promise.reject(ChatErrEnum.unAuthChat);
+    }
+
+    // check openai key if using openai models
+    if (models.some((item) => item.model?.toLowerCase().includes('gpt'))) {
+      if (!team.openaiAccount?.key) {
+        return Promise.reject('OpenAI key not found');
+      }
+
+      // verify key
+      const ai = getAIApi({
+        userKey: team.openaiAccount
+      });
+
+      try {
+        await ai.chat.completions.create({
+          model: 'gpt-3.5-turbo',
+          max_tokens: 1,
+          messages: [{ role: 'user', content: 'hi' }]
+        });
+      } catch (err) {
+        console.log('OpenAI key verify error:', err);
+        return Promise.reject('Invalid OpenAI key');
+      }
+    }
+
+    // Add other model key checks here if needed
+  } catch (err) {
+    console.log('Check keys error:', err);
+    return Promise.reject(err);
+  }
+}

@@ -5,7 +5,7 @@ import { createContext, useContextSelector } from 'use-context-selector';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useDisclosure } from '@chakra-ui/react';
-import { checkTeamWebSyncLimit } from '@/web/support/user/team/api';
+//import { checkTeamWebSyncLimit } from '@/web/support/user/team/api';
 import { getDatasetCollections, postWebsiteSync } from '@/web/core/dataset/api';
 import dynamic from 'next/dynamic';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
@@ -75,7 +75,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     content: t('dataset:start_sync_website_tip')
   });
   const syncWebsite = async () => {
-    await checkTeamWebSyncLimit();
+    //    await checkTeamWebSyncLimit();
     postWebsiteSync({ datasetId: datasetId }).then(() => {
       loadDatasetDetail(datasetId);
     });

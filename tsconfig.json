@@ -18,6 +18,7 @@
     "paths": {
       "@/*": ["projects/app/src/*"],
       "@fastgpt/*": ["packages/*"],
+      "@fastgpt/service/*": ["packages/service/*"],
       "@test": ["test/*"]
     }
   },

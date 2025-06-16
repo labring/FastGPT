@@ -67,7 +67,8 @@ const Dataset = () => {
     (e: CreateDatasetType) => {
       if (
         !feConfigs?.isPlus &&
-        [DatasetTypeEnum.websiteDataset, DatasetTypeEnum.feishu, DatasetTypeEnum.yuque].includes(e)
+        [DatasetTypeEnum.feishu, DatasetTypeEnum.yuque].includes(e) &&
+        e !== DatasetTypeEnum.websiteDataset
       ) {
         return toast({
           status: 'warning',
@@ -212,7 +213,9 @@ const Dataset = () => {
         {!!folderDetail && isPc && (
           <Box ml="6">
             <FolderSlideCard
-              resumeInheritPermission={() => resumeInheritPer(folderDetail._id)}
+              resumeInheritPermission={async () => {
+                await resumeInheritPer(folderDetail._id);
+              }}
               isInheritPermission={folderDetail.inheritPermission}
               hasParent={!!folderDetail.parentId}
               refetchResource={() => Promise.all([refetchFolderDetail(), loadMyDatasets()])}

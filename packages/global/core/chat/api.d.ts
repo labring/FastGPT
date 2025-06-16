@@ -7,3 +7,9 @@ export type UpdateChatFeedbackProps = OutLinkChatAuthProps & {
   userBadFeedback?: string;
   userGoodFeedback?: string;
 };
+export type InitOutLinkChatProps = {
+  chatId?: string;
+  shareId: string;
+  outLinkUid: string;
+  token?: string;
+};

@@ -67,7 +67,7 @@ export const getResourcePermission = async ({
   // If there is no personal permission, get the group permission
   const [groupPers, orgPers] = await Promise.all([
     getGroupsByTmbId({ tmbId, teamId })
-      .then((res) => res.map((item) => item._id))
+      .then((res) => res.map((item: { _id: string }) => item._id))
       .then((groupIdList) =>
         MongoResourcePermission.find(
           {
@@ -81,7 +81,7 @@ export const getResourcePermission = async ({
           'permission'
         ).lean()
       )
-      .then((perList) => perList.map((item) => item.permission)),
+      .then((perList) => perList.map((item: { permission: number }) => item.permission)),
     getOrgIdSetWithParentByTmbId({ tmbId, teamId })
       .then((item) => Array.from(item))
       .then((orgIds) =>
@@ -97,7 +97,7 @@ export const getResourcePermission = async ({
           'permission'
         ).lean()
       )
-      .then((perList) => perList.map((item) => item.permission))
+      .then((perList) => perList.map((item: { permission: number }) => item.permission))
   ]);
 
   return concatPer([...groupPers, ...orgPers]);
@@ -266,9 +266,14 @@ export async function parseHeaderCert({
 }: AuthModeType) {
   // parse jwt
   async function authCookieToken(cookie?: string, token?: string) {
+    const headerToken = token || (req.headers['auth-token'] as string);
+    if (headerToken) {
+      return authJWT(headerToken);
+    }
+
     // 获取 cookie
     const cookies = Cookie.parse(cookie || '');
-    const cookieToken = token || cookies[TokenName];
+    const cookieToken = cookies[TokenName];
 
     if (!cookieToken) {
       return Promise.reject(ERROR_ENUM.unAuthorization);
@@ -343,7 +348,8 @@ export async function parseHeaderCert({
       }
       if (authToken && (token || cookie)) {
         // user token(from fastgpt web)
-        const res = await authCookieToken(cookie, token);
+        const headerToken = (req.headers['auth-token'] as string) || token;
+        const res = await authCookieToken(cookie, headerToken);
         return {
           uid: res.userId,
           teamId: res.teamId,

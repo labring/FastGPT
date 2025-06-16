@@ -225,29 +225,17 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
           </Box>
           <HStack gap={[3, 7]}>
             <HStack flex={'1'} spacing={1}>
-              <MyTooltip label={!feConfigs?.isPlus ? t('common:commercial_function_tip') : ''}>
-                <Checkbox
-                  isDisabled={!feConfigs?.isPlus}
-                  isChecked={autoIndexes}
-                  {...register('autoIndexes')}
-                >
+              <MyTooltip label={''}>
+                <Checkbox isChecked={autoIndexes} {...register('autoIndexes')}>
                   <FormLabel>{t('dataset:auto_indexes')}</FormLabel>
                 </Checkbox>
               </MyTooltip>
               <QuestionTip label={t('dataset:auto_indexes_tips')} />
             </HStack>
             <HStack flex={'1'} spacing={1}>
-              <MyTooltip
-                label={
-                  !feConfigs?.isPlus
-                    ? t('common:commercial_function_tip')
-                    : !datasetDetail?.vlmModel
-                      ? t('common:error_vlm_not_config')
-                      : ''
-                }
-              >
+              <MyTooltip label={!datasetDetail?.vlmModel ? t('common:error_vlm_not_config') : ''}>
                 <Checkbox
-                  isDisabled={!feConfigs?.isPlus || !datasetDetail?.vlmModel}
+                  isDisabled={!datasetDetail?.vlmModel}
                   isChecked={imageIndex}
                   {...register('imageIndex')}
                 >

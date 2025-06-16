@@ -21,7 +21,7 @@ type State = {
 };
 
 const createCustomStorage = () => {
-  const sessionKeys = ['source', 'chatId', 'appId'];
+  const sessionKeys = ['source', 'chatId', 'appId', 'outLinkAuthData'];
 
   return {
     getItem: (name: string) => {
@@ -119,7 +119,8 @@ export const useChatStore = create<State>()(
           chatId: state.chatId,
           appId: state.appId,
           lastChatId: state.lastChatId,
-          lastChatAppId: state.lastChatAppId
+          lastChatAppId: state.lastChatAppId,
+          outLinkAuthData: state.outLinkAuthData
         })
       }
     )

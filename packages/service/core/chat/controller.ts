@@ -117,3 +117,24 @@ export const deleteChatFiles = async ({
     fileIdList: files.map((item) => String(item._id))
   });
 };
+
+/* Get chat requests count for rate limiting */
+export async function getChatReqsByUserId({
+  outLinkId,
+  dateStart
+}: {
+  outLinkId: string;
+  dateStart: Date;
+}): Promise<{ total: number }> {
+  try {
+    const total = await MongoChat.countDocuments({
+      shareId: outLinkId,
+      updateTime: { $gte: dateStart }
+    });
+
+    return { total };
+  } catch (error) {
+    addLog.error('getChatReqsByUserId error', error);
+    return { total: 0 };
+  }
+}

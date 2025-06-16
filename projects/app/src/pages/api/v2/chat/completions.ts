@@ -21,7 +21,12 @@ import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { createChatUsage } from '@fastgpt/service/support/wallet/usage/controller';
-import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
+//import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
+import {
+  authOutLinkChatStart,
+  authOutLink,
+  getTokenFromRequest
+} from '@/service/support/permission/auth/outLink';
 import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import requestIp from 'request-ip';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
@@ -59,6 +64,7 @@ import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatc
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
 import { ExternalProviderType } from '@fastgpt/global/core/workflow/runtime/type';
+import { withTokenValidation } from '@/service/auth/tokenValidation';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -162,12 +168,27 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     } = await (async () => {
       // share chat
       if (shareId && outLinkUid) {
+        const token = getTokenFromRequest(req);
+        console.log('[DEBUG] Share chat token extraction:', {
+          shareId,
+          outLinkUid,
+          tokenFromRequest: token ? `${token.substring(0, 20)}...` : 'none',
+          hasQueryToken: !!req.query?.token,
+          hasBodyToken: !!req.body?.token,
+          hasHeaderToken: !!(
+            req.headers?.['auth-token'] ||
+            req.headers?.['x-token'] ||
+            req.headers?.authorization
+          )
+        });
         return authShareChat({
           shareId,
           outLinkUid,
           chatId,
           ip: originIp,
-          question: startHookText
+          question: startHookText,
+          // token
+          token: token || req.body?.token || req.query?.token || undefined
         });
       }
       // team space chat
@@ -454,7 +475,23 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   }
 }
-export default NextAPI(handler);
+
+// 条件鉴权函数：只对分享聊天进行token验证
+function conditionalAuth(handler: any) {
+  return async (req: NextApiRequest, res: NextApiResponse) => {
+    const { shareId, outLinkUid } = req.body as Props;
+
+    // 如果是分享聊天，需要进行token验证
+    if (shareId && outLinkUid) {
+      return withTokenValidation(handler)(req, res);
+    }
+
+    // 对于正常聊天，直接调用原始handler
+    return handler(req, res);
+  };
+}
+
+export default NextAPI(conditionalAuth(handler));
 
 const authShareChat = async ({
   chatId,
@@ -462,6 +499,8 @@ const authShareChat = async ({
 }: AuthOutLinkChatProps & {
   shareId: string;
   chatId?: string;
+  //  token?: string;
+  token?: string | null;
 }): Promise<AuthResponseType> => {
   const {
     teamId,
@@ -474,7 +513,10 @@ const authShareChat = async ({
     showNodeStatus,
     uid,
     sourceName
-  } = await authOutLinkChatStart(data);
+  } = await authOutLinkChatStart({
+    ...data,
+    token: data.token || undefined
+  });
   const app = await MongoApp.findById(appId).lean();
 
   if (!app) {

@@ -14,7 +14,7 @@ import type {
   AccountRegisterBody,
   GetWXLoginQRResponse
 } from '@fastgpt/global/support/user/login/api.d';
-
+import type { BillSchemaType } from '@fastgpt/global/support/wallet/bill/type.d';
 export const sendAuthCode = (data: {
   username: string;
   type: `${UserAuthTypeEnum}`;
@@ -22,8 +22,7 @@ export const sendAuthCode = (data: {
   captcha: string;
 }) => POST(`/proApi/support/user/inform/sendAuthCode`, data);
 
-export const getTokenLogin = () =>
-  GET<UserType>('/support/user/account/tokenLogin', {}, { maxQuantity: 1 });
+export const getTokenLogin = () => GET<UserType>('/support/user/account/tokenLogin', {});
 export const oauthLogin = (params: OauthLoginProps) =>
   POST<ResLogin>('/proApi/support/user/account/login/oauth', params);
 export const postFastLogin = (params: FastLoginProps) =>
@@ -105,7 +104,8 @@ export const GetSearchUserGroupOrg = (
     orgs?: boolean;
     groups?: boolean;
   }
-) =>
-  GET<SearchResult>('/proApi/support/user/search', { searchKey, ...options }, { maxQuantity: 1 });
+) => GET<SearchResult>('/proApi/support/user/search', { searchKey, ...options });
 
 export const ExportMembers = () => GET<{ csv: string }>('/proApi/support/user/team/member/export');
+
+export const getPushedBills = () => GET<BillSchemaType[]>('/support/user/bill/getPushed');

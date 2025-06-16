@@ -3,6 +3,7 @@ import { OutLinkSchema } from './type.d';
 
 export type AuthOutLinkInitProps = {
   outLinkUid: string;
+  shareId: string;
   tokenUrl?: string;
 };
 export type AuthOutLinkChatProps = { ip?: string | null; outLinkUid: string; question: string };

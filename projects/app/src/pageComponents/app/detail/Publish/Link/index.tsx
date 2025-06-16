@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+//import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import {
   Flex,
   Box,
@@ -16,7 +17,11 @@ import {
   Switch,
   Link,
   IconButton,
-  HStack
+  HStack,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
@@ -47,6 +52,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+//import CopyUrl from '@fastgpt/web/components/common/CopyUrl';
 
 const SelectUsingWayModal = dynamic(() => import('./SelectUsingWayModal'));
 
@@ -332,6 +338,37 @@ function EditLinkModal({
               })}
             />
           </Flex>
+
+          {/* 访问鉴权设置 - 确保在非Plus版本也能显示 */}
+          <Box borderTopWidth={'1px'} mt={6} pt={4}>
+            <Flex alignItems={'center'}>
+              <FormLabel flex={'0 0 90px'} mb={0}>
+                访问鉴权
+              </FormLabel>
+              <Switch {...register('auth.requireAuth')} colorScheme="primary" />
+            </Flex>
+            <Box fontSize={'xs'} color={'myGray.500'} mt={1} mb={3}>
+              启用后，用户访问分享链接时需要通过接口鉴权才能使用应用
+            </Box>
+
+            {watch('auth.requireAuth') && (
+              <>
+                <Flex alignItems={'center'} mt={4}>
+                  <FormLabel flex={'0 0 90px'}>鉴权URL</FormLabel>
+                  <Input
+                    placeholder="https://your-auth-api.com/verify"
+                    {...register('auth.authUrl', {
+                      required: watch('auth.requireAuth') ? '鉴权URL不能为空' : false
+                    })}
+                  />
+                </Flex>
+                <Flex alignItems={'center'} mt={4}>
+                  <FormLabel flex={'0 0 90px'}>鉴权密钥</FormLabel>
+                  <Input placeholder="可选，用于验证请求来源" {...register('auth.authKey')} />
+                </Flex>
+              </>
+            )}
+          </Box>
           {feConfigs?.isPlus && (
             <>
               <Flex alignItems={'center'} mt={4}>

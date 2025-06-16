@@ -10,7 +10,6 @@ import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { AuthModeType } from '@fastgpt/service/support/permission/type';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { authOutLinkValid } from '@fastgpt/service/support/permission/publish/authLink';
-import { authOutLinkInit } from '@/service/support/permission/auth/outLink';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
@@ -84,10 +83,6 @@ async function authChatCert(props: AuthModeType): Promise<{
 
   if (shareId && outLinkUid) {
     const { outLinkConfig } = await authOutLinkValid({ shareId });
-    const { uid } = await authOutLinkInit({
-      outLinkUid,
-      tokenUrl: outLinkConfig.limit?.hookUrl
-    });
 
     return {
       teamId: String(outLinkConfig.teamId),
@@ -96,7 +91,7 @@ async function authChatCert(props: AuthModeType): Promise<{
       apikey: '',
       isOwner: false,
       canWrite: false,
-      outLinkUid: uid
+      outLinkUid
     };
   }
   if (teamId && teamToken) {

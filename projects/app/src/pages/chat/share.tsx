@@ -48,7 +48,7 @@ type Props = {
   appIntro: string;
   appAvatar: string;
   shareId: string;
-  authToken: string;
+  token: string;
   customUid: string;
   showRawSource: boolean;
   responseDetail: boolean;
@@ -63,14 +63,14 @@ const OutLink = (props: Props) => {
     shareId = '',
     showHistory = '1',
     showHead = '1',
-    authToken,
+    token,
     customUid,
     ...customVariables
   } = router.query as {
     shareId: string;
     showHistory: '0' | '1';
     showHead: '0' | '1';
-    authToken: string;
+    token: string;
     [key: string]: string;
   };
   const { isPc } = useSystem();
@@ -102,7 +102,8 @@ const OutLink = (props: Props) => {
       const res = await getInitOutLinkChatInfo({
         chatId,
         shareId,
-        outLinkUid
+        outLinkUid,
+        token: outLinkAuthData.token
       });
 
       setChatBoxData(res);
@@ -116,6 +117,7 @@ const OutLink = (props: Props) => {
     },
     {
       manual: false,
+      ready: !!outLinkAuthData.token,
       refreshDeps: [shareId, outLinkAuthData, chatId],
       onFinally() {
         forbidLoadChat.current = false;
@@ -317,23 +319,30 @@ const OutLink = (props: Props) => {
 const Render = (props: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { shareId, authToken, customUid, appId } = props;
+  const router = useRouter();
+  const { shareId, token: urlToken, customUid, appId } = props;
+
+  // Get token from URL query if props.token is undefined
+  const token = props.token || (router.query.token as string) || '';
   const { localUId, setLocalUId, loaded } = useShareChatStore();
   const { source, chatId, setSource, setAppId, setOutLinkAuthData } = useChatStore();
   const { setUserDefaultLng } = useI18nLng();
 
   const chatHistoryProviderParams = useMemo(() => {
-    return { shareId, outLinkUid: authToken || customUid || localUId || '' };
-  }, [authToken, customUid, localUId, shareId]);
+    const params = { shareId, outLinkUid: customUid || localUId || '', token };
+    console.log('[DEBUG] chatHistoryProviderParams:', params);
+    return params;
+  }, [token, customUid, localUId, shareId]);
   const chatRecordProviderParams = useMemo(() => {
     return {
       appId,
       shareId,
       outLinkUid: chatHistoryProviderParams.outLinkUid,
       chatId,
-      type: GetChatTypeEnum.outLink
+      type: GetChatTypeEnum.outLink,
+      token: chatHistoryProviderParams.token
     };
-  }, [appId, chatHistoryProviderParams.outLinkUid, chatId, shareId]);
+  }, [appId, chatHistoryProviderParams.outLinkUid, chatId, shareId, token]);
 
   useMount(() => {
     setSource('share');
@@ -351,16 +360,18 @@ const Render = (props: Props) => {
 
   // Init outLinkAuthData
   useEffect(() => {
-    if (chatHistoryProviderParams.outLinkUid) {
+    const initialUid = customUid || localUId || '';
+    if (initialUid) {
       setOutLinkAuthData({
         shareId,
-        outLinkUid: chatHistoryProviderParams.outLinkUid
+        outLinkUid: initialUid,
+        token: token
       });
     }
     return () => {
       setOutLinkAuthData({});
     };
-  }, [chatHistoryProviderParams.outLinkUid, setOutLinkAuthData, shareId]);
+  }, [customUid, localUId, token, setOutLinkAuthData, shareId]);
 
   // Watch appId
   useEffect(() => {
@@ -399,7 +410,7 @@ export default React.memo(Render);
 
 export async function getServerSideProps(context: any) {
   const shareId = context?.query?.shareId || '';
-  const authToken = context?.query?.authToken || '';
+  const token = context?.query?.token || '';
   const customUid = context?.query?.customUid || '';
 
   const app = await (async () => {
@@ -429,7 +440,7 @@ export async function getServerSideProps(context: any) {
       // showFullText: app?.showFullText ?? false,
       showNodeStatus: app?.showNodeStatus ?? false,
       shareId: shareId ?? '',
-      authToken: authToken ?? '',
+      Token: token ?? '',
       customUid,
       ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow']))
     }

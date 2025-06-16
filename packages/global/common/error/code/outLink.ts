@@ -5,8 +5,25 @@ export enum OutLinkErrEnum {
   unExist = 'outlinkUnExist',
   unAuthLink = 'unAuthLink',
   linkUnInvalid = 'linkUnInvalid',
-  unAuthUser = 'unAuthUser'
+  unAuthUser = 'unAuthUser',
+  appUnInvalid = 'appUnInvalid',
+  linkExpired = 'linkExpired',
+  unAuthTeam = 'unAuthTeam',
+  outLinkUsedPointsExceed = 'outLinkUsedPointsExceed',
+  outLinkOverFrequency = 'outLinkOverFrequency'
 }
+
+export enum UnAuthReason {
+  unauthorized = 'unauthorized',
+  forbidden = 'forbidden',
+  expired = 'expired'
+}
+
+export const authFailToUnAuthReason = {
+  [UnAuthReason.unauthorized]: OutLinkErrEnum.unAuthUser,
+  [UnAuthReason.forbidden]: OutLinkErrEnum.unAuthLink,
+  [UnAuthReason.expired]: OutLinkErrEnum.linkExpired
+};
 
 const errList = [
   {
@@ -24,6 +41,26 @@ const errList = [
   },
   {
     statusText: OutLinkErrEnum.unAuthUser,
+    message: i18nT('common:code_error.outlink_error.un_auth_user')
+  },
+  {
+    statusText: OutLinkErrEnum.appUnInvalid,
+    message: i18nT('common:code_error.outlink_error.invalid_link')
+  },
+  {
+    statusText: OutLinkErrEnum.linkExpired,
+    message: i18nT('common:code_error.outlink_error.invalid_link')
+  },
+  {
+    statusText: OutLinkErrEnum.unAuthTeam,
+    message: i18nT('common:code_error.outlink_error.un_auth_user')
+  },
+  {
+    statusText: OutLinkErrEnum.outLinkUsedPointsExceed,
+    message: i18nT('common:code_error.outlink_error.un_auth_user')
+  },
+  {
+    statusText: OutLinkErrEnum.outLinkOverFrequency,
     message: i18nT('common:code_error.outlink_error.un_auth_user')
   }
 ];

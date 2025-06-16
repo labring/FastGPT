@@ -148,7 +148,7 @@ export const postCreateDatasetCsvTableCollection = (data: CsvTableCreateDatasetC
 export const postCreateDatasetExternalFileCollection = (
   data: ExternalFileCreateDatasetCollectionParams
 ) =>
-  POST<{ collectionId: string }>(`/proApi/core/dataset/collection/create/externalFileUrl`, data, {
+  POST<{ collectionId: string }>(`/core/dataset/collection/create/externalFileUrl`, data, {
     timeout: 360000
   });
 export const postCreateDatasetApiDatasetCollection = (
@@ -234,7 +234,6 @@ export const getDatasetTrainingQueue = (datasetId: string) =>
 
 export const getPreviewChunks = (data: PostPreviewFilesChunksProps) =>
   POST<PreviewChunksResponse>('/core/dataset/file/getPreviewChunks', data, {
-    maxQuantity: 1,
     timeout: 600000
   });
 
