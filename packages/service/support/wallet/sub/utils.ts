@@ -283,3 +283,10 @@ export const onDelTeamCurrentSubLevelCache = throttle(
   CacheKeyEnumTime.team_current_sub_level,
   { leading: true, trailing: true }
 );
+
+export const onClearTeamCaches = (teamId: string) => {
+  onDelTeamMemberCountCache(teamId);
+  onDelTeamAppCountCache(teamId);
+  onDelTeamDatasetCountCache(teamId);
+  onDelTeamCurrentSubLevelCache(teamId);
+};
