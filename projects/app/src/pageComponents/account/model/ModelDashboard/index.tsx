@@ -349,7 +349,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
         inputTokens,
         outputTokens,
         totalTokens,
-        totalCost,
+        totalCost: Math.floor(totalCost),
         avgResponseTime: Math.round(avgResponseTime * 100) / 100,
         avgTtfb: Math.round(avgTtfb * 100) / 100,
         maxRpm,

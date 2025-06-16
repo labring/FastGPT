@@ -167,7 +167,7 @@ export const readApiServerFileContent = async ({
 };
 
 export const rawText2Chunks = async ({
-  rawText,
+  rawText = '',
   chunkTriggerType = ChunkTriggerConfigTypeEnum.minSize,
   chunkTriggerMinSize = 1000,
   backupParse,
