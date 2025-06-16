@@ -117,7 +117,6 @@ export const getChannelList = () =>
       }
       return b.priority - a.priority;
     });
-    console.log(res);
     return res;
   });
 

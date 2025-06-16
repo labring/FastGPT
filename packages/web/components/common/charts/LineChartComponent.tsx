@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import { type NameType, type ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
-import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
+import FillRowTabs from '../Tabs/FillRowTabs';
 import { useTranslation } from 'next-i18next';
 import { cloneDeep } from 'lodash';
 
@@ -37,7 +37,12 @@ type LineChartComponentProps = {
   HeaderLeftChildren?: React.ReactNode;
   lines: LineConfig[];
   tooltipItems?: TooltipItem[];
+
+  defaultDisplayMode?: 'incremental' | 'cumulative';
+  enableIncremental?: boolean;
   enableCumulative?: boolean;
+  enableTooltip?: boolean;
+  startDateValue?: number;
 };
 
 const CustomTooltip = ({
@@ -78,19 +83,26 @@ const LineChartComponent = ({
   HeaderLeftChildren,
   lines,
   tooltipItems,
-  enableCumulative = true
+  defaultDisplayMode = 'incremental',
+  enableIncremental = true,
+  enableCumulative = true,
+  startDateValue = 0
 }: LineChartComponentProps) => {
   const theme = useTheme();
   const { t } = useTranslation();
-  const [displayMode, setDisplayMode] = useState<'incremental' | 'cumulative'>('incremental');
+  const [displayMode, setDisplayMode] = useState<'incremental' | 'cumulative'>(defaultDisplayMode);
 
   // Tab list constant
   const tabList = useMemo(
     () => [
-      { label: t('account_model:chart_mode_incremental'), value: 'incremental' as const },
-      { label: t('account_model:chart_mode_cumulative'), value: 'cumulative' as const }
+      ...(enableIncremental
+        ? [{ label: t('common:chart_mode_incremental'), value: 'incremental' as const }]
+        : []),
+      ...(enableCumulative
+        ? [{ label: t('common:chart_mode_cumulative'), value: 'cumulative' as const }]
+        : [])
     ],
-    [t]
+    [enableCumulative, enableIncremental, t]
   );
 
   // Y-axis number formatter function
@@ -105,7 +117,7 @@ const LineChartComponent = ({
 
   // Process data based on display mode
   const processedData = useMemo(() => {
-    if (displayMode === 'incremental' || !enableCumulative) {
+    if (displayMode === 'incremental') {
       return data;
     }
 
@@ -115,7 +127,10 @@ const LineChartComponent = ({
     const dataKeys = lines.map((item) => item.dataKey);
 
     return cloneData.map((item, index) => {
-      if (index === 0) return item;
+      if (index === 0) {
+        item[dataKeys[0]] = startDateValue + item[dataKeys[0]];
+        return item;
+      }
 
       dataKeys.forEach((key) => {
         if (typeof item[key] === 'number') {
@@ -125,7 +140,7 @@ const LineChartComponent = ({
 
       return item;
     });
-  }, [data, displayMode, lines, enableCumulative]);
+  }, [displayMode, data, lines, startDateValue]);
 
   // Generate gradient definitions
   const gradientDefs = useMemo(
@@ -157,7 +172,7 @@ const LineChartComponent = ({
         </Box>
         <HStack spacing={2}>
           {HeaderLeftChildren}
-          {enableCumulative && (
+          {tabList.length > 1 && (
             <FillRowTabs<'incremental' | 'cumulative'>
               list={tabList}
               py={0.5}
@@ -177,14 +192,14 @@ const LineChartComponent = ({
           <XAxis
             dataKey="x"
             tickMargin={10}
-            tick={{ fontSize: '12px', color: theme.colors.myGray['500'], fontWeight: '500' }}
+            tick={{ fontSize: '12px', color: theme?.colors?.myGray['500'], fontWeight: '500' }}
             interval="preserveStartEnd"
           />
           <YAxis
             axisLine={false}
             tickSize={0}
             tickMargin={10}
-            tick={{ fontSize: '12px', color: theme.colors.myGray['500'], fontWeight: '500' }}
+            tick={{ fontSize: '12px', color: theme?.colors?.myGray['500'], fontWeight: '500' }}
             interval="preserveStartEnd"
             tickFormatter={formatYAxisNumber}
           />
