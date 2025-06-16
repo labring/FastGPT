@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import { type NameType, type ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
-import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
+import FillRowTabs from '../Tabs/FillRowTabs';
 import { useTranslation } from 'next-i18next';
 import { cloneDeep } from 'lodash';
 
