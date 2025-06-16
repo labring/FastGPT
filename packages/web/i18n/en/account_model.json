@@ -16,8 +16,6 @@
   "channel_status_enabled": "Enable",
   "channel_status_unknown": "unknown",
   "channel_type": "Protocol Type",
-  "chart_mode_cumulative": "Cumulative",
-  "chart_mode_incremental": "Incremental",
   "clear_model": "Clear the model",
   "confirm_delete_channel": "Confirm the deletion of the [{{name}}] channel?",
   "copy_model_id_success": "Copyed model id",
