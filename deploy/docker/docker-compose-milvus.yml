@@ -67,7 +67,8 @@ services:
       - 'minio'
 
   mongo:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # 阿里云
+    image: mongo:5.0.18 # dockerhub
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # 阿里云
     container_name: mongo
     restart: always
     ports:
