@@ -42,8 +42,8 @@ type Response = DispatchNodeResultType<{
 }>;
 
 export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
-  const {
-    node: { nodeId, name, isEntry, version },
+  let {
+    node: { nodeId, name, isEntry, version, inputs },
     runtimeNodes,
     runtimeEdges,
     histories,
@@ -70,6 +70,11 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
   props.params.aiChatVision = aiChatVision && toolModel.vision;
   props.params.aiChatReasoning = aiChatReasoning && toolModel.reasoning;
+  const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
+  if (!fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0) {
+    fileLinks = undefined;
+  }
+  console.log(fileLinks, 22);
 
   const toolNodeIds = filterToolNodeIdByEdges({ nodeId, edges: runtimeEdges });
 

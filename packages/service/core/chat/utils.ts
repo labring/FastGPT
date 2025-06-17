@@ -105,8 +105,9 @@ export const loadRequestMessages = async ({
 
     const arrayContent = content
       .filter((item) => item.text)
-      .map((item) => ({ ...item, text: addEndpointToImageUrl(item.text) }));
-    if (arrayContent.length === 0) return;
+      .map((item) => addEndpointToImageUrl(item.text))
+      .join('\n');
+
     return arrayContent;
   };
   // Parse user content(text and img) Store history => api messages

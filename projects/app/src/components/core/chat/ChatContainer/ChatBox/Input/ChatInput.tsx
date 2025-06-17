@@ -306,7 +306,7 @@ const ChatInput = ({
               isChatting ? 'primary.50' : canSendMessage ? 'primary.500' : 'rgba(17, 24, 36, 0.1)'
             }
             borderRadius={['md', 'lg']}
-            cursor={canSendMessage ? 'pointer' : 'not-allowed'}
+            cursor={isChatting ? 'pointer' : canSendMessage ? 'pointer' : 'not-allowed'}
             onClick={() => {
               if (isChatting) {
                 return onStop();

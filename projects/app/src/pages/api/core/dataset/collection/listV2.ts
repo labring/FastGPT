@@ -43,13 +43,14 @@ async function handler(
   const match = {
     teamId: new Types.ObjectId(teamId),
     datasetId: new Types.ObjectId(datasetId),
-    parentId: parentId ? new Types.ObjectId(parentId) : null,
     ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
     ...(searchText
       ? {
           name: new RegExp(searchText, 'i')
         }
-      : {}),
+      : {
+          parentId: parentId ? new Types.ObjectId(parentId) : null
+        }),
     ...(filterTags.length ? { tags: { $in: filterTags } } : {})
   };
 

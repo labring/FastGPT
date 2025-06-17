@@ -13,7 +13,6 @@ import { createChatCompletion } from '../../../ai/config';
 import type {
   ChatCompletionMessageParam,
   CompletionFinishReason,
-  CompletionUsage,
   StreamChatType
 } from '@fastgpt/global/core/ai/type.d';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
@@ -45,7 +44,8 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/
 import { responseWriteController } from '../../../../common/response';
 import { getLLMModel } from '../../../ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { checkQuoteQAValue, getHistories } from '../utils';
 import { filterSearchResultsByMaxChars } from '../../utils';
@@ -82,7 +82,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     retainDatasetCite = true,
     externalProvider,
     histories,
-    node: { name, version },
+    node: { name, version, inputs },
     query,
     runningUserInfo,
     workflowStreamResponse,
@@ -119,6 +119,11 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
   aiChatVision = modelConstantsData.vision && aiChatVision;
   aiChatReasoning = !!aiChatReasoning && !!modelConstantsData.reasoning;
+  // Check fileLinks is reference variable
+  const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
+  if (!fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0) {
+    fileLinks = undefined;
+  }
 
   const chatHistories = getHistories(history, histories);
   quoteQA = checkQuoteQAValue(quoteQA);
