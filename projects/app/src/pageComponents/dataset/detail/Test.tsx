@@ -121,12 +121,6 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         };
         pushDatasetTestItem(testItem);
         setDatasetTestItem(testItem);
-      },
-      onError(err) {
-        toast({
-          title: getErrText(err),
-          status: 'error'
-        });
       }
     }
   );
