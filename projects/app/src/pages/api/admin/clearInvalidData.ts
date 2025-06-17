@@ -93,6 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           console.log(`Chunk ${i + 1}/${chunks} completed`);
         }
+
         console.log('执行脏数据清理任务完毕');
       } catch (error) {
         console.log('执行脏数据清理任务出错了');
