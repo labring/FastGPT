@@ -318,6 +318,11 @@ export async function updateData2Dataset({
     }
   }
 
+  const deleteVectorIdList = patchResult
+    .filter((item) => item.type === 'delete' || item.type === 'update')
+    .map((item) => item.index.dataId)
+    .filter(Boolean) as string[];
+
   // 4. Update mongo updateTime(便于脏数据检查器识别)
   const updateTime = mongoData.updateTime;
   mongoData.updateTime = new Date();
@@ -377,14 +382,10 @@ export async function updateData2Dataset({
     );
 
     // Delete vector
-    const deleteIdList = patchResult
-      .filter((item) => item.type === 'delete' || item.type === 'update')
-      .map((item) => item.index.dataId)
-      .filter(Boolean) as string[];
-    if (deleteIdList.length > 0) {
+    if (deleteVectorIdList.length > 0) {
       await deleteDatasetDataVector({
         teamId: mongoData.teamId,
-        idList: deleteIdList
+        idList: deleteVectorIdList
       });
     }
   });
