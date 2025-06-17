@@ -43,22 +43,11 @@ export const getRedisCache = async (key: string) => {
   return value;
 };
 
-export const incrRedisCache = async (
-  key: string,
-  increment: number = 1,
-  expireSeconds?: number
-) => {
+export const incrRedisCache = async (key: string, increment: number = 1) => {
   const redis = getGlobalRedisConnection();
-  await retryFn(() => redis.incrby(getCacheKey(key), increment));
-
-  if (expireSeconds) {
-    await retryFn(async () => {
-      const ttl = await redis.ttl(getCacheKey(key));
-      if (ttl === -1) {
-        await redis.expire(getCacheKey(key), expireSeconds);
-      }
-    });
-  }
+  try {
+    await retryFn(() => redis.incrby(getCacheKey(key), increment));
+  } catch (error) {}
 };
 
 export const delRedisCache = async (key: string) => {

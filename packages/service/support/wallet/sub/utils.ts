@@ -129,75 +129,6 @@ export const getTeamPlanStatus = async ({
 }): Promise<TeamPlanStatusType> => {
   const standardPlans = global.subPlans?.standard;
 
-  const getPointsFromCacheOrDB = async () => {
-    const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
-    const totalCacheKey = `${CacheKeyEnum.team_point_total}:${teamId}`;
-
-    const [surplusCacheStr, totalCacheStr] = await Promise.all([
-      getRedisCache(surplusCacheKey),
-      getRedisCache(totalCacheKey)
-    ]);
-
-    if (surplusCacheStr && totalCacheStr) {
-      const totalPoints = Number(totalCacheStr);
-      const surplusPoints = Number(surplusCacheStr);
-      return {
-        totalPoints,
-        surplusPoints,
-        usedPoints: totalPoints - surplusPoints
-      };
-    }
-
-    const pointsAggregation = await MongoTeamSub.aggregate([
-      {
-        $match: { teamId }
-      },
-      {
-        $group: {
-          _id: null,
-          totalPoints: {
-            $sum: {
-              $cond: [
-                { $in: ['$type', [SubTypeEnum.standard, SubTypeEnum.extraPoints]] },
-                { $ifNull: ['$totalPoints', 0] },
-                0
-              ]
-            }
-          },
-          surplusPoints: {
-            $sum: {
-              $cond: [
-                { $in: ['$type', [SubTypeEnum.standard, SubTypeEnum.extraPoints]] },
-                { $ifNull: ['$surplusPoints', 0] },
-                0
-              ]
-            }
-          }
-        }
-      },
-      {
-        $project: {
-          _id: 0,
-          totalPoints: {
-            $cond: [{ $eq: [{ $type: '$totalPoints' }, 'missing'] }, Infinity, '$totalPoints']
-          },
-          surplusPoints: '$surplusPoints'
-        }
-      }
-    ]);
-
-    const result = pointsAggregation[0] || { totalPoints: 0, surplusPoints: 0 };
-
-    // 处理无订阅计划的情况
-    if (!standardPlans) {
-      return { totalPoints: Infinity, surplusPoints: 0, usedPoints: 0 };
-    }
-    return {
-      ...result,
-      usedPoints: result.totalPoints - result.surplusPoints
-    };
-  };
-
   /* Get all plans and datasetSize */
   const plans = await MongoTeamSub.find({ teamId }).lean();
 
@@ -208,6 +139,7 @@ export const getTeamPlanStatus = async ({
   const standardPlan = teamStandardPlans[0];
 
   const extraDatasetSize = plans.filter((plan) => plan.type === SubTypeEnum.extraDatasetSize);
+  const extraPoints = plans.filter((plan) => plan.type === SubTypeEnum.extraPoints);
 
   // Free user, first login after expiration. The free subscription plan will be reset
   if (
@@ -222,7 +154,13 @@ export const getTeamPlanStatus = async ({
     return getTeamPlanStatus({ teamId });
   }
 
-  const { totalPoints, surplusPoints, usedPoints } = await getPointsFromCacheOrDB();
+  const totalPoints = standardPlans
+    ? (standardPlan?.totalPoints || 0) +
+      extraPoints.reduce((acc, cur) => acc + (cur.totalPoints || 0), 0)
+    : Infinity;
+  const surplusPoints =
+    (standardPlan?.surplusPoints || 0) +
+    extraPoints.reduce((acc, cur) => acc + (cur.surplusPoints || 0), 0);
 
   const standardMaxDatasetSize =
     standardPlan?.currentSubLevel && standardPlans
@@ -249,7 +187,7 @@ export const getTeamPlanStatus = async ({
       : undefined,
 
     totalPoints,
-    usedPoints,
+    usedPoints: totalPoints - surplusPoints,
 
     datasetMaxSize: totalDatasetSize
   };
@@ -286,4 +224,35 @@ export const updateTeamPointsCache = async (
     setRedisCache(surplusCacheKey, surplusPoints, CacheKeyEnumTime.team_point_surplus),
     setRedisCache(totalCacheKey, totalPoints, CacheKeyEnumTime.team_point_total)
   ]);
+};
+
+export const getTeamPoints = async ({
+  teamId
+}: {
+  teamId: string;
+}): Promise<{ totalPoints: number; surplusPoints: number; usedPoints: number }> => {
+  const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
+  const totalCacheKey = `${CacheKeyEnum.team_point_total}:${teamId}`;
+
+  const [surplusCacheStr, totalCacheStr] = await Promise.all([
+    getRedisCache(surplusCacheKey),
+    getRedisCache(totalCacheKey)
+  ]);
+
+  if (surplusCacheStr && totalCacheStr) {
+    const totalPoints = Number(totalCacheStr);
+    const surplusPoints = Number(surplusCacheStr);
+    return {
+      totalPoints,
+      surplusPoints,
+      usedPoints: totalPoints - surplusPoints
+    };
+  }
+
+  const planStatus = await getTeamPlanStatus({ teamId });
+  return {
+    totalPoints: planStatus.totalPoints,
+    surplusPoints: planStatus.totalPoints - planStatus.usedPoints,
+    usedPoints: planStatus.usedPoints
+  };
 };
