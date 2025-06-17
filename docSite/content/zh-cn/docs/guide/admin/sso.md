@@ -136,10 +136,9 @@ fastgpt-sso:
     networks:
       - fastgpt
     environment:
-      - SSO_PROVIDER=example
-      - AUTH_TOKEN=xxxxx
       # 飞书 - feishu -如果是私有化部署，这里的配置前缀可能会有变化
       - SSO_PROVIDER=feishu
+      - AUTH_TOKEN=xxxxx
       # oauth 接口（公开的飞书不用改）
       - SSO_TARGET_URL=https://accounts.feishu.cn/open-apis/authen/v1/authorize
       # 获取token 接口（公开的飞书不用改）
@@ -268,8 +267,8 @@ fastgpt-sso:
    networks:
       - fastgpt
    environment:
-      - AUTH_TOKEN=xxxxx
       - SSO_PROVIDER=wecom
+      - AUTH_TOKEN=xxxxx
       # oauth 接口，在企微终端使用
       - WECOM_TARGET_URL_OAUTH=https://open.weixin.qq.com/connect/oauth2/authorize
       # sso 接口，扫码
@@ -347,6 +346,8 @@ fastgpt-sso:
     networks:
         - fastgpt
     environment:
+        - SSO_PROVIDER=oauth2
+        - AUTH_TOKEN=xxxxx
         # OAuth2.0
         # === 请求地址 ===
         # 1. OAuth2 登陆鉴权地址 (必填)
