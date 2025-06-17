@@ -21,7 +21,6 @@ import {
 import type { VariableItemType } from '@fastgpt/global/core/app/type.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useForm, type UseFormReset } from 'react-hook-form';
-import { customAlphabet } from 'nanoid';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -36,11 +35,10 @@ import DndDrag, {
   type DraggableProvided,
   type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag';
-
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export const defaultVariable: VariableItemType = {
-  id: nanoid(),
+  id: getNanoid(6),
   key: '',
   label: '',
   type: VariableInputEnum.input,
@@ -136,7 +134,7 @@ const VariableEdit = ({
       } else {
         onChangeVariable.push({
           ...data,
-          id: nanoid()
+          id: getNanoid(6)
         });
       }
 

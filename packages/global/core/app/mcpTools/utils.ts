@@ -8,12 +8,12 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../workflow/node/constant';
-import { nanoid } from 'nanoid';
 import { type McpToolConfigType } from '../type';
 import { i18nT } from '../../../../web/i18n/utils';
 import { type RuntimeNodeItemType } from '../../workflow/runtime/type';
 import { type StoreSecretValueType } from '../../../common/secret/type';
 import { jsonSchema2NodeInput } from '../jsonschema';
+import { getNanoid } from '../../../common/string/tools';
 
 export const getMCPToolSetRuntimeNode = ({
   url,
@@ -29,7 +29,7 @@ export const getMCPToolSetRuntimeNode = ({
   avatar?: string;
 }): RuntimeNodeItemType => {
   return {
-    nodeId: nanoid(16),
+    nodeId: getNanoid(16),
     flowNodeType: FlowNodeTypeEnum.toolSet,
     avatar,
     intro: 'MCP Tools',
@@ -64,7 +64,7 @@ export const getMCPToolRuntimeNode = ({
   avatar?: string;
 }): RuntimeNodeItemType => {
   return {
-    nodeId: nanoid(16),
+    nodeId: getNanoid(16),
     flowNodeType: FlowNodeTypeEnum.tool,
     avatar,
     intro: tool.description,

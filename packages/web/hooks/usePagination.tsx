@@ -258,6 +258,7 @@ export function usePagination<DataT, ResT = {}>(
 
   return {
     pageNum,
+    setPageNum,
     pageSize,
     total: totalDataLength,
     data,
