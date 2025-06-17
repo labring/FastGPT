@@ -6,7 +6,14 @@ import { type DelDatasetVectorCtrlProps, type InsertVectorProps } from './contro
 import { type EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { MILVUS_ADDRESS, PG_ADDRESS, OCEANBASE_ADDRESS } from './constants';
 import { MilvusCtrl } from './milvus';
-import { setRedisCache, getRedisCache, delRedisCache, CacheKeyEnum } from '../redis/cache';
+import {
+  setRedisCache,
+  getRedisCache,
+  delRedisCache,
+  incrValueToCache,
+  CacheKeyEnum,
+  CacheKeyEnumTime
+} from '../redis/cache';
 import { throttle } from 'lodash';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 
@@ -23,6 +30,7 @@ const onDelCache = throttle((teamId: string) => delRedisCache(getChcheKey(teamId
   leading: true,
   trailing: true
 });
+const onIncrCache = (teamId: string) => incrValueToCache(getChcheKey(teamId), 1);
 
 const Vector = getVectorObj();
 
@@ -40,7 +48,7 @@ export const getVectorCountByTeamId = async (teamId: string) => {
 
   const count = await Vector.getVectorCountByTeamId(teamId);
 
-  await setRedisCache(key, count, 30 * 60);
+  await setRedisCache(key, count, CacheKeyEnumTime.team_vector_count);
 
   return count;
 };
@@ -67,7 +75,7 @@ export const insertDatasetDataVector = async ({
       vector: vectors[0]
     });
 
-    onDelCache(props.teamId);
+    onIncrCache(props.teamId);
 
     return {
       tokens,
