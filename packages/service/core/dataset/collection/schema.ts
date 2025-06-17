@@ -132,6 +132,12 @@ try {
       }
     }
   );
+
+  // Clear invalid image
+  DatasetCollectionSchema.index({
+    teamId: 1,
+    'metadata.relatedImgId': 1
+  });
 } catch (error) {
   console.log(error);
 }

@@ -2,8 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { addHours } from 'date-fns';
-import { MongoImage } from '@fastgpt/service/common/file/image/schema';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import {
   checkInvalidDatasetFiles,
   checkInvalidDatasetData,
@@ -11,9 +9,13 @@ import {
 } from '@/service/common/system/cronTask';
 import dayjs from 'dayjs';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+import { NextAPI } from '@/service/middleware/entry';
+import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
+import { MongoImage } from '@fastgpt/service/common/file/image/schema';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 
 let deleteImageAmount = 0;
-async function checkInvalidImg(start: Date, end: Date, limit = 50) {
+async function checkInvalidImg(start: Date, end: Date) {
   const images = await MongoImage.find(
     {
       createTime: {
@@ -54,8 +56,8 @@ async function checkInvalidImg(start: Date, end: Date, limit = 50) {
   console.log(`检测完成，共删除 ${deleteImageAmount} 个无效图片`);
 }
 
-/* pg 中的数据搬到 mongo dataset.datas 中，并做映射 */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
+  deleteImageAmount = 0;
   try {
     await authCert({ req, authRoot: true });
     const { start = -2, end = -360 * 24 } = req.body as { start: number; end: number };
@@ -112,3 +114,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 }
+
+export default NextAPI(useIPFrequencyLimit({ id: 'admin-api', seconds: 60, limit: 1 }), handler);
