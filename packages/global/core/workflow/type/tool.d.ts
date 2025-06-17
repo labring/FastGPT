@@ -1,4 +1,5 @@
 export type ToolType = {
+  isToolSet: boolean;
   type: string;
   toolId: string;
   isFolder?: boolean;
@@ -27,4 +28,10 @@ export type ToolType = {
   };
   inputs?: Array<any>;
   outputs?: Array<any>;
+  cb?: (e: any) => Promise<any>;
+};
+
+export type ToolSetType = Omit<ToolType, 'cb' | 'isToolSet'> & {
+  isToolSet: true;
+  children: Array<ToolType>;
 };

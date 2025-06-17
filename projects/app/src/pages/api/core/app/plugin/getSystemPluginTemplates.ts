@@ -1,6 +1,6 @@
 import { type NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { NextAPI } from '@/service/middleware/entry';
-import { getSystemPlugins } from '@/service/core/app/plugin';
+import { getSystemTools } from '@/service/core/app/plugin';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
@@ -30,7 +30,7 @@ async function handler(
   // if (!global.systemPluginCb || Object.keys(global.systemPluginCb).length === 0)
   //   await getSystemPluginCb();
 
-  const plugins = await getSystemPlugins();
+  const plugins = await getSystemTools();
   return plugins // Just show the active plugins
     .filter((item) => item.isActive)
     .map<NodeTemplateListItemType>((plugin) => ({

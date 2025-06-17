@@ -17,9 +17,9 @@ import { filterSystemVariables } from '../utils';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getChildAppRuntimeById, splitCombineToolId } from '../../../app/plugin/controller';
-import { runTool } from '../../../app/tool/api';
 import { dispatchWorkFlow } from '../index';
-import { getUserChatInfoAndAuthTeamPoints } from 'support/permission/auth/team';
+import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
+import { runTool } from '@fastgpt/service/core/app/tool';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;

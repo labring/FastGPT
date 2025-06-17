@@ -42,6 +42,15 @@ const nextConfig = {
 
     if (isServer) {
       config.externals.push('@node-rs/jieba');
+
+      const toolsDir = path.resolve((process.cwd(), 'tools'));
+
+      config.externals.push(({ request }, callback) => {
+        if (request && request.startsWith(toolsDir)) {
+          return callback(null, `commonjs ${request}`);
+        }
+        callback();
+      });
       if (nextRuntime === 'nodejs') {
         const oldEntry = config.entry;
         config = {
@@ -50,11 +59,11 @@ const nextConfig = {
             const entries = await oldEntry(...args);
             return {
               ...entries,
-              ...getWorkerConfig(),
-              'worker/systemPluginRun': path.resolve(
-                process.cwd(),
-                '../../packages/plugins/runtime/worker.ts'
-              )
+              ...getWorkerConfig()
+              // 'worker/systemPluginRun': path.resolve(
+              //   process.cwd(),
+              //   '../../packages/service/core/app/tool/runtime/worker.ts'
+              // )
             };
           }
         };
@@ -85,7 +94,7 @@ const nextConfig = {
       'pg',
       'bullmq',
       '@zilliz/milvus2-sdk-node',
-      "tiktoken",
+      'tiktoken'
     ],
     outputFileTracingRoot: path.join(__dirname, '../../'),
     instrumentationHook: true

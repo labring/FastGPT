@@ -4,7 +4,7 @@ import {
   type GetPathProps,
   type ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
-import { getSystemPlugins } from '@/service/core/app/plugin';
+import { getSystemTools } from '@/service/core/app/plugin';
 import { parseI18nString } from '@fastgpt/global/core/workflow/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 
@@ -23,7 +23,7 @@ async function handler(
 
   if (!pluginId) return [];
 
-  const plugins = await getSystemPlugins();
+  const plugins = await getSystemTools();
   const plugin = plugins.find((item) => item.id === pluginId);
 
   if (!plugin) return [];

@@ -11,7 +11,6 @@ import { cloneDeep } from 'lodash';
 import { MongoApp } from '../schema';
 import type { localeType } from '@fastgpt/global/core/workflow/type';
 import { type SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
-import { getSystemPluginTemplates } from '../../../../plugins/register';
 import {
   checkIsLatestVersion,
   getAppLatestVersion,
@@ -28,7 +27,8 @@ import type {
 } from '@fastgpt/global/core/workflow/type/io';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { getHandleConfig } from '@fastgpt/global/core/workflow/template/utils';
+import { getTool } from '../tool/api';
+import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
 
 /*
   plugin id rule:
@@ -66,10 +66,17 @@ const getSystemPluginTemplateById = async (
   pluginId: string,
   versionId?: string
 ): Promise<ChildAppType> => {
-  const item = getSystemPluginTemplates().find((plugin) => plugin.id === pluginId);
-  if (!item) return Promise.reject(PluginErrEnum.unExist);
+  const plugin = await (async () => {
+    if (FastGPTProUrl) {
+      return await getTool(pluginId);
+    } else {
+      const tool = await getTool(pluginId);
+    }
+  })();
+  // const item = getSystemPluginTemplates().find((plugin) => plugin.id === pluginId);
+  // if (!item) return Promise.reject(PluginErrEnum.unExist);
 
-  const plugin = cloneDeep(item);
+  // const plugin = cloneDeep(item);
 
   if (plugin.associatedPluginId) {
     // The verification plugin is set as a system plugin
@@ -172,6 +179,7 @@ export async function getChildAppPreviewNode({
       return getSystemPluginTemplateById(pluginId, versionId);
     }
   })();
+  console.log(app);
 
   const isSystemTool = source === PluginSourceEnum.systemTool;
 

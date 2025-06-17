@@ -14,7 +14,9 @@ export async function register() {
         { initGlobalVariables, getInitConfig, initSystemPluginGroups, initAppTemplateTypes },
         { initVectorStore },
         { initRootUser },
-        { getSystemPlugins },
+        {
+          // getSystemPlugins
+        },
         { startMongoWatch },
         { startCron },
         { startTrainingQueue },
@@ -55,7 +57,7 @@ export async function register() {
       // 异步加载
       initSystemPluginGroups();
       initAppTemplateTypes();
-      getSystemPlugins(true);
+      // getSystemPlugins(true);
       startMongoWatch();
       startCron();
       startTrainingQueue(true);

@@ -12,5 +12,4 @@ export type SystemPluginSpecialResponse = {
 
 declare global {
   var pluginGroups: PluginGroupSchemaType[];
-  var systemPlugins: SystemPluginTemplateItemType[] | undefined;
 }

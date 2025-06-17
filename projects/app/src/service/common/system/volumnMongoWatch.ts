@@ -7,7 +7,7 @@ import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSc
 import { getAppTemplatesAndLoadThem } from '@fastgpt/templates/register';
 import { watchSystemModelUpdate } from '@fastgpt/service/core/ai/config/utils';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
-import { getSystemPlugins } from '@/service/core/app/plugin';
+import { getSystemTools } from '@/service/core/app/plugin';
 
 export const startMongoWatch = async () => {
   reloadConfigWatch();
@@ -44,7 +44,7 @@ const refetchSystemPlugins = () => {
     debounce(async (change) => {
       setTimeout(() => {
         try {
-          getSystemPlugins(true);
+          getSystemTools(true);
         } catch (error) {}
       }, 5000);
     }, 500)

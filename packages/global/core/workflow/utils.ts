@@ -86,7 +86,7 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
   const questionGuide: AppQGConfigType =
     typeof questionGuideVal === 'boolean'
       ? { ...defaultQGConfig, open: questionGuideVal }
-      : (questionGuideVal ?? defaultQGConfig);
+      : questionGuideVal ?? defaultQGConfig;
 
   const ttsConfig: AppTTSConfigType =
     guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.tts)?.value ??
@@ -448,7 +448,7 @@ export const getPluginRunUserQuery = ({
   };
 };
 
-export const parseI18nString = (str: I18nStringType = '', lang: localeType = 'zh-CN') => {
+export const parseI18nString = (str: I18nStringType = '', lang: localeType = 'en') => {
   if (typeof str === 'string') return str;
   return str[lang] ?? str['zh-CN'];
 };

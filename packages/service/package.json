@@ -1,7 +1,9 @@
 {
   "name": "@fastgpt/service",
   "version": "1.0.0",
+  "type": "module",
   "dependencies": {
+    "@fastgpt-plugins/sdk": "file:~/Projects/fastgpt-plugins/sdk/",
     "@fastgpt/global": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.12.1",
     "@node-rs/jieba": "2.0.1",
@@ -11,6 +13,7 @@
     "bullmq": "^5.52.2",
     "chalk": "^5.3.0",
     "cheerio": "1.0.0-rc.12",
+    "comlink": "^4.4.2",
     "cookie": "^0.7.1",
     "date-fns": "2.30.0",
     "dayjs": "^1.11.7",
@@ -40,8 +43,7 @@
     "request-ip": "^3.3.0",
     "tiktoken": "1.0.17",
     "tunnel": "^0.0.6",
-    "turndown": "^7.1.2",
-    "fastgpt-tools": "workspace:*"
+    "turndown": "^7.1.2"
   },
   "devDependencies": {
     "@types/cookie": "^0.5.2",
