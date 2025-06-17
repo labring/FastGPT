@@ -10,7 +10,7 @@ import {
   setRedisCache,
   getRedisCache,
   delRedisCache,
-  incrRedisCache,
+  incrValueToCache,
   CacheKeyEnum,
   CacheKeyEnumTime
 } from '../redis/cache';
@@ -30,7 +30,7 @@ const onDelCache = throttle((teamId: string) => delRedisCache(getChcheKey(teamId
   leading: true,
   trailing: true
 });
-const onIncrCache = (teamId: string) => incrRedisCache(getChcheKey(teamId), 1);
+const onIncrCache = (teamId: string) => incrValueToCache(getChcheKey(teamId), 1);
 
 const Vector = getVectorObj();
 

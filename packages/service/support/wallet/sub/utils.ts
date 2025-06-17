@@ -18,7 +18,8 @@ import {
   getRedisCache,
   delRedisCache,
   CacheKeyEnum,
-  CacheKeyEnumTime
+  CacheKeyEnumTime,
+  incrValueToCache
 } from '../../../common/redis/cache';
 
 export const getStandardPlansConfig = () => {
@@ -175,7 +176,9 @@ export const getTeamPlanStatus = async ({
       ? standardPlans[standardPlan.currentSubLevel]
       : undefined;
 
-  const result = {
+  updateTeamPointsCache({ teamId, totalPoints, surplusPoints });
+
+  return {
     [SubTypeEnum.standard]: standardPlan,
     standardConstants: standardConstants
       ? {
@@ -191,18 +194,6 @@ export const getTeamPlanStatus = async ({
 
     datasetMaxSize: totalDatasetSize
   };
-
-  (async () => {
-    const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
-    const totalCacheKey = `${CacheKeyEnum.team_point_total}:${teamId}`;
-
-    await Promise.all([
-      setRedisCache(surplusCacheKey, surplusPoints, CacheKeyEnumTime.team_point_surplus),
-      setRedisCache(totalCacheKey, totalPoints, CacheKeyEnumTime.team_point_total)
-    ]);
-  })();
-
-  return result;
 };
 
 export const clearTeamPointsCache = async (teamId: string) => {
@@ -212,11 +203,19 @@ export const clearTeamPointsCache = async (teamId: string) => {
   await Promise.all([delRedisCache(surplusCacheKey), delRedisCache(totalCacheKey)]);
 };
 
-export const updateTeamPointsCache = async (
-  teamId: string,
-  totalPoints: number,
-  surplusPoints: number
-) => {
+export const incrTeamPointsCache = async ({ teamId, value }: { teamId: string; value: number }) => {
+  const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
+  await incrValueToCache(surplusCacheKey, value);
+};
+export const updateTeamPointsCache = async ({
+  teamId,
+  totalPoints,
+  surplusPoints
+}: {
+  teamId: string;
+  totalPoints: number;
+  surplusPoints: number;
+}) => {
   const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
   const totalCacheKey = `${CacheKeyEnum.team_point_total}:${teamId}`;
 
@@ -226,11 +225,7 @@ export const updateTeamPointsCache = async (
   ]);
 };
 
-export const getTeamPoints = async ({
-  teamId
-}: {
-  teamId: string;
-}): Promise<{ totalPoints: number; surplusPoints: number; usedPoints: number }> => {
+export const getTeamPoints = async ({ teamId }: { teamId: string }) => {
   const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
   const totalCacheKey = `${CacheKeyEnum.team_point_total}:${teamId}`;
 

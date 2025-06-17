@@ -11,6 +11,7 @@ export enum CacheKeyEnum {
   team_point_total = 'team_point_total'
 }
 
+// Seconds
 export enum CacheKeyEnumTime {
   team_vector_count = 30 * 60,
   team_point_surplus = 1 * 60,
@@ -39,14 +40,18 @@ export const setRedisCache = async (
 
 export const getRedisCache = async (key: string) => {
   const redis = getGlobalRedisConnection();
-  const value = await retryFn(() => redis.get(getCacheKey(key)));
-  return value;
+  return retryFn(() => redis.get(getCacheKey(key)));
 };
 
-export const incrRedisCache = async (key: string, increment: number = 1) => {
+// Add value to cache
+export const incrValueToCache = async (key: string, increment: number) => {
+  if (!increment || increment === 0) return;
   const redis = getGlobalRedisConnection();
   try {
-    await retryFn(() => redis.incrby(getCacheKey(key), increment));
+    const exists = await redis.exists(getCacheKey(key));
+    if (!exists) return;
+
+    await retryFn(() => redis.incrbyfloat(getCacheKey(key), increment));
   } catch (error) {}
 };
 

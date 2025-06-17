@@ -10,12 +10,9 @@ import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant
 import { getVectorCountByTeamId } from '../../common/vectorDB/controller';
 
 export const checkTeamAIPoints = async (teamId: string) => {
-  const [{ standardConstants }, { totalPoints, usedPoints }] = await Promise.all([
-    getTeamStandPlan({ teamId }),
-    getTeamPoints({ teamId })
-  ]);
+  if (!global.subPlans?.standard) return;
 
-  if (!standardConstants) return;
+  const { totalPoints, usedPoints } = await getTeamPoints({ teamId });
 
   if (usedPoints >= totalPoints) {
     return Promise.reject(TeamErrEnum.aiPointsNotEnough);
