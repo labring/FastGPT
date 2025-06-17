@@ -145,6 +145,7 @@
   "pleaseFillUserIdAndToken": "请填写 User ID 和 Token",
   "preview_chunk": "分块预览",
   "preview_chunk_empty": "文件内容为空",
+  "preview_chunk_folder_warning": "目录不支持预览",
   "preview_chunk_intro": "共 {{total}} 个分块，最多展示 10 个",
   "preview_chunk_not_selected": "点击左侧文件后进行预览",
   "process.Auto_Index": "自动索引生成",

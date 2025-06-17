@@ -46,6 +46,7 @@ type FileListItem = {
   parentId: string  //也可能为 null 或者 undefined 类型;
   name: string;
   type: 'file' | 'folder';
+  hasChild?: boolean; // 是否有子文档（folder 强制为 true）
   updateTime: Date;
   createTime: Date;
 }
@@ -89,6 +90,7 @@ curl --location --request POST '{{baseURL}}/v1/file/list' \
             "id": "xxxx",
             "parentId": "xxxx",
             "type": "file",  // file | folder
+            "hasChild": true, // 是否有子文档（folder 会强制为 true）
             "name":"test.json",
             "updateTime":"2024-11-26T03:05:24.759Z",
             "createTime":"2024-11-26T03:05:24.759Z"
@@ -210,9 +212,13 @@ curl --location --request GET '{{baseURL}}/v1/file/detail?id=xx' \
     "success": true,
     "message": "",
     "data": {
-        "id": "docs",
-        "parentId": "",
-        "name": "docs"
+        "id": "xxxx",
+        "parentId": "xxxx",
+        "type": "file",  // file | folder
+        "hasChild": true, // 是否有子文档（folder 会强制为 true）
+        "name":"test.json",
+        "updateTime":"2024-11-26T03:05:24.759Z",
+        "createTime":"2024-11-26T03:05:24.759Z"
     }
 }
 ```

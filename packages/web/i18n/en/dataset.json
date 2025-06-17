@@ -145,6 +145,7 @@
   "pleaseFillUserIdAndToken": "Please fill in User ID and Token",
   "preview_chunk": "Preview chunks",
   "preview_chunk_empty": "File content is empty",
+  "preview_chunk_folder_warning": "Directory does not support preview",
   "preview_chunk_intro": "A total of {{total}} blocks, up to 10",
   "preview_chunk_not_selected": "Click on the file on the left to preview",
   "process.Auto_Index": "Automatic index generation",

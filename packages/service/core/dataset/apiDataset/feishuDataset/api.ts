@@ -1,5 +1,5 @@
 import type {
-  APIFileItem,
+  APIFileItemType,
   ApiFileReadContentResponse,
   ApiDatasetDetailResponse,
   FeishuServer
@@ -104,7 +104,11 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
       .catch((err) => responseError(err));
   };
 
-  const listFiles = async ({ parentId }: { parentId?: ParentIdType }): Promise<APIFileItem[]> => {
+  const listFiles = async ({
+    parentId
+  }: {
+    parentId?: ParentIdType;
+  }): Promise<APIFileItemType[]> => {
     const fetchFiles = async (pageToken?: string): Promise<FeishuFileListResponse['files']> => {
       const data = await request<FeishuFileListResponse>(
         `/open-apis/drive/v1/files`,
@@ -186,7 +190,7 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
   }: {
     apiFileId: string;
   }): Promise<ApiDatasetDetailResponse> => {
-    const { document } = await request<{ document: { title: string } }>(
+    const { document } = await request<{ document: { title: string; type: string } }>(
       `/open-apis/docx/v1/documents/${apiFileId}`,
       {},
       'GET'
@@ -195,7 +199,11 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
     return {
       name: document?.title,
       parentId: null,
-      id: apiFileId
+      id: apiFileId,
+      type: document.type === 'folder' ? ('folder' as const) : ('file' as const),
+      hasChild: document.type === 'folder',
+      updateTime: new Date(),
+      createTime: new Date()
     };
   };
 

@@ -356,9 +356,11 @@ export const datasetParseQueue = async (): Promise<any> => {
       },
       {
         errorMsg: getErrText(err, 'unknown error'),
-        lockTime: addMinutes(new Date(), -1)
+        lockTime: addMinutes(new Date(), -20)
       }
     );
+
+    await delay(100);
 
     return datasetParseQueue();
   }
