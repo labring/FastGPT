@@ -1,4 +1,4 @@
-import { getTeamPlanStatus, getTeamStandPlan } from '../../support/wallet/sub/utils';
+import { getTeamPlanStatus, getTeamStandPlan, getTeamPoints } from '../../support/wallet/sub/utils';
 import { MongoApp } from '../../core/app/schema';
 import { MongoDataset } from '../../core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -10,9 +10,10 @@ import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant
 import { getVectorCountByTeamId } from '../../common/vectorDB/controller';
 
 export const checkTeamAIPoints = async (teamId: string) => {
-  const { standardConstants, totalPoints, usedPoints } = await getTeamPlanStatus({
-    teamId
-  });
+  const [{ standardConstants }, { totalPoints, usedPoints }] = await Promise.all([
+    getTeamStandPlan({ teamId }),
+    getTeamPoints({ teamId })
+  ]);
 
   if (!standardConstants) return;
 

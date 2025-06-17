@@ -13,6 +13,13 @@ import dayjs from 'dayjs';
 import { type ClientSession } from '../../../common/mongo';
 import { addMonths } from 'date-fns';
 import { readFromSecondary } from '../../../common/mongo/utils';
+import {
+  setRedisCache,
+  getRedisCache,
+  delRedisCache,
+  CacheKeyEnum,
+  CacheKeyEnumTime
+} from '../../../common/redis/cache';
 
 export const getStandardPlansConfig = () => {
   return global?.subPlans?.standard;
@@ -168,7 +175,7 @@ export const getTeamPlanStatus = async ({
       ? standardPlans[standardPlan.currentSubLevel]
       : undefined;
 
-  return {
+  const result = {
     [SubTypeEnum.standard]: standardPlan,
     standardConstants: standardConstants
       ? {
@@ -183,5 +190,69 @@ export const getTeamPlanStatus = async ({
     usedPoints: totalPoints - surplusPoints,
 
     datasetMaxSize: totalDatasetSize
+  };
+
+  (async () => {
+    const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
+    const totalCacheKey = `${CacheKeyEnum.team_point_total}:${teamId}`;
+
+    await Promise.all([
+      setRedisCache(surplusCacheKey, surplusPoints, CacheKeyEnumTime.team_point_surplus),
+      setRedisCache(totalCacheKey, totalPoints, CacheKeyEnumTime.team_point_total)
+    ]);
+  })();
+
+  return result;
+};
+
+export const clearTeamPointsCache = async (teamId: string) => {
+  const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
+  const totalCacheKey = `${CacheKeyEnum.team_point_total}:${teamId}`;
+
+  await Promise.all([delRedisCache(surplusCacheKey), delRedisCache(totalCacheKey)]);
+};
+
+export const updateTeamPointsCache = async (
+  teamId: string,
+  totalPoints: number,
+  surplusPoints: number
+) => {
+  const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
+  const totalCacheKey = `${CacheKeyEnum.team_point_total}:${teamId}`;
+
+  await Promise.all([
+    setRedisCache(surplusCacheKey, surplusPoints, CacheKeyEnumTime.team_point_surplus),
+    setRedisCache(totalCacheKey, totalPoints, CacheKeyEnumTime.team_point_total)
+  ]);
+};
+
+export const getTeamPoints = async ({
+  teamId
+}: {
+  teamId: string;
+}): Promise<{ totalPoints: number; surplusPoints: number; usedPoints: number }> => {
+  const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
+  const totalCacheKey = `${CacheKeyEnum.team_point_total}:${teamId}`;
+
+  const [surplusCacheStr, totalCacheStr] = await Promise.all([
+    getRedisCache(surplusCacheKey),
+    getRedisCache(totalCacheKey)
+  ]);
+
+  if (surplusCacheStr && totalCacheStr) {
+    const totalPoints = Number(totalCacheStr);
+    const surplusPoints = Number(surplusCacheStr);
+    return {
+      totalPoints,
+      surplusPoints,
+      usedPoints: totalPoints - surplusPoints
+    };
+  }
+
+  const planStatus = await getTeamPlanStatus({ teamId });
+  return {
+    totalPoints: planStatus.totalPoints,
+    surplusPoints: planStatus.totalPoints - planStatus.usedPoints,
+    usedPoints: planStatus.usedPoints
   };
 };
