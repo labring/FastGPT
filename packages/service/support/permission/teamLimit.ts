@@ -1,13 +1,4 @@
-import {
-  getTeamPlanStatus,
-  getTeamStandardConstantsByTeamId,
-  getTeamPointsByTeamId,
-  getTeamMaxTeamMemberByTeamId,
-  getTeamMaxAppAmountByTeamId,
-  getTeamMaxDatasetAmountByTeamId,
-  getTeamDatasetMaxSizeByTeamId,
-  getTeamPermissionWebsiteSyncByTeamId
-} from '../../support/wallet/sub/utils';
+import { getTeamPlanStatus, getTeamStandPlan } from '../../support/wallet/sub/utils';
 import { MongoApp } from '../../core/app/schema';
 import { MongoDataset } from '../../core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -19,10 +10,16 @@ import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant
 import { getVectorCountByTeamId } from '../../common/vectorDB/controller';
 
 export const checkTeamAIPoints = async (teamId: string) => {
-  const { totalPoints, surplusPoints, usedPoints } = await getTeamPointsByTeamId(teamId);
+  const { standardConstants, totalPoints, usedPoints } = await getTeamPlanStatus({
+    teamId
+  });
+
+  if (!standardConstants) return;
+
   if (usedPoints >= totalPoints) {
     return Promise.reject(TeamErrEnum.aiPointsNotEnough);
   }
+
   return {
     totalPoints,
     usedPoints
@@ -30,22 +27,24 @@ export const checkTeamAIPoints = async (teamId: string) => {
 };
 
 export const checkTeamMemberLimit = async (teamId: string, newCount: number) => {
-  const [maxTeamMember, memberCount] = await Promise.all([
-    getTeamMaxTeamMemberByTeamId(teamId),
+  const [{ standardConstants }, memberCount] = await Promise.all([
+    getTeamStandPlan({
+      teamId
+    }),
     MongoTeamMember.countDocuments({
       teamId,
       status: { $ne: TeamMemberStatusEnum.leave }
     })
   ]);
 
-  if (maxTeamMember != null && newCount + memberCount > maxTeamMember) {
+  if (standardConstants && newCount + memberCount > standardConstants.maxTeamMember) {
     return Promise.reject(TeamErrEnum.teamOverSize);
   }
 };
 
 export const checkTeamAppLimit = async (teamId: string, amount = 1) => {
-  const [maxAppAmount, appCount] = await Promise.all([
-    getTeamMaxAppAmountByTeamId(teamId),
+  const [{ standardConstants }, appCount] = await Promise.all([
+    getTeamStandPlan({ teamId }),
     MongoApp.countDocuments({
       teamId,
       type: {
@@ -54,7 +53,7 @@ export const checkTeamAppLimit = async (teamId: string, amount = 1) => {
     })
   ]);
 
-  if (maxAppAmount != null && appCount + amount >= maxAppAmount) {
+  if (standardConstants && appCount + amount >= standardConstants.maxAppAmount) {
     return Promise.reject(TeamErrEnum.appAmountNotEnough);
   }
 
@@ -78,23 +77,24 @@ export const checkDatasetIndexLimit = async ({
   teamId: string;
   insertLen?: number;
 }) => {
-  const [datasetMaxSize, points, usedDatasetIndexSize] = await Promise.all([
-    getTeamDatasetMaxSizeByTeamId(teamId),
-    getTeamPointsByTeamId(teamId),
-    getVectorCountByTeamId(teamId)
-  ]);
-  if (usedDatasetIndexSize + insertLen >= (datasetMaxSize ?? Infinity)) {
+  const [{ standardConstants, totalPoints, usedPoints, datasetMaxSize }, usedDatasetIndexSize] =
+    await Promise.all([getTeamPlanStatus({ teamId }), getVectorCountByTeamId(teamId)]);
+
+  if (!standardConstants) return;
+
+  if (usedDatasetIndexSize + insertLen >= datasetMaxSize) {
     return Promise.reject(TeamErrEnum.datasetSizeNotEnough);
   }
-  if (points.usedPoints >= points.totalPoints) {
+
+  if (usedPoints >= totalPoints) {
     return Promise.reject(TeamErrEnum.aiPointsNotEnough);
   }
   return;
 };
 
 export const checkTeamDatasetLimit = async (teamId: string) => {
-  const [maxDatasetAmount, datasetCount] = await Promise.all([
-    getTeamMaxDatasetAmountByTeamId(teamId),
+  const [{ standardConstants }, datasetCount] = await Promise.all([
+    getTeamStandPlan({ teamId }),
     MongoDataset.countDocuments({
       teamId,
       type: { $ne: DatasetTypeEnum.folder }
@@ -102,7 +102,7 @@ export const checkTeamDatasetLimit = async (teamId: string) => {
   ]);
 
   // User check
-  if (maxDatasetAmount != null && datasetCount >= maxDatasetAmount) {
+  if (standardConstants && datasetCount >= standardConstants.maxDatasetAmount) {
     return Promise.reject(TeamErrEnum.datasetAmountNotEnough);
   }
 
@@ -122,8 +122,11 @@ export const checkTeamDatasetLimit = async (teamId: string) => {
 };
 
 export const checkTeamWebSyncPermission = async (teamId: string) => {
-  const permissionWebsiteSync = await getTeamPermissionWebsiteSyncByTeamId(teamId);
-  if (!permissionWebsiteSync) {
+  const { standardConstants } = await getTeamStandPlan({
+    teamId
+  });
+
+  if (standardConstants && !standardConstants?.permissionWebsiteSync) {
     return Promise.reject(TeamErrEnum.websiteSyncNotEnough);
   }
 };

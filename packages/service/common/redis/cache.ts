@@ -7,18 +7,14 @@ const getCacheKey = (key: string) => `${redisPrefix}${key}`;
 
 export enum CacheKeyEnum {
   team_vector_count = 'team_vector_count',
-  team_dataset_count_max = 'team_dataset_count_max',
-  team_app_count_max = 'team_app_count_max',
-  team_member_count_max = 'team_member_count_max',
-  team_current_sub_level = 'team_current_sub_level'
+  team_point_surplus = 'team_point_surplus',
+  team_point_total = 'team_point_total'
 }
 
 export enum CacheKeyEnumTime {
   team_vector_count = 30 * 60,
-  team_dataset_count_max = 30 * 60,
-  team_app_count_max = 30 * 60,
-  team_member_count_max = 30 * 60,
-  team_current_sub_level = 30 * 60
+  team_point_surplus = 1 * 60,
+  team_point_total = 1 * 60
 }
 
 export const setRedisCache = async (
@@ -45,6 +41,24 @@ export const getRedisCache = async (key: string) => {
   const redis = getGlobalRedisConnection();
   const value = await retryFn(() => redis.get(getCacheKey(key)));
   return value;
+};
+
+export const incrRedisCache = async (
+  key: string,
+  increment: number = 1,
+  expireSeconds?: number
+) => {
+  const redis = getGlobalRedisConnection();
+  await retryFn(() => redis.incrby(getCacheKey(key), increment));
+
+  if (expireSeconds) {
+    await retryFn(async () => {
+      const ttl = await redis.ttl(getCacheKey(key));
+      if (ttl === -1) {
+        await redis.expire(getCacheKey(key), expireSeconds);
+      }
+    });
+  }
 };
 
 export const delRedisCache = async (key: string) => {

@@ -10,6 +10,7 @@ import {
   setRedisCache,
   getRedisCache,
   delRedisCache,
+  incrRedisCache,
   CacheKeyEnum,
   CacheKeyEnumTime
 } from '../redis/cache';
@@ -29,6 +30,14 @@ const onDelCache = throttle((teamId: string) => delRedisCache(getChcheKey(teamId
   leading: true,
   trailing: true
 });
+const onIncrCache = throttle(
+  (teamId: string) => incrRedisCache(getChcheKey(teamId), 1, CacheKeyEnumTime.team_vector_count),
+  30000,
+  {
+    leading: true,
+    trailing: true
+  }
+);
 
 const Vector = getVectorObj();
 
@@ -73,7 +82,7 @@ export const insertDatasetDataVector = async ({
       vector: vectors[0]
     });
 
-    onDelCache(props.teamId);
+    onIncrCache(props.teamId);
 
     return {
       tokens,
