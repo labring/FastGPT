@@ -30,8 +30,7 @@ import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
 
@@ -108,7 +107,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         }
 
         const testItem: SearchTestStoreItemType = {
-          id: nanoid(),
+          id: getNanoid(),
           datasetId,
           text: getValues('inputText').trim(),
           time: new Date(),
