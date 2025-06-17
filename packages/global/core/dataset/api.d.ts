@@ -13,6 +13,7 @@ import type {
   ParagraphChunkAIModeEnum
 } from './constants';
 import type { ParentIdType } from '../../common/parentFolder/type';
+import type { APIFileItemType } from './apiDataset/type';
 
 /* ================= dataset ===================== */
 export type DatasetUpdateBody = {
@@ -82,6 +83,9 @@ export type LinkCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams
 export type ApiDatasetCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   name: string;
   apiFileId: string;
+};
+export type ApiDatasetCreateDatasetCollectionV2Params = ApiCreateDatasetCollectionParams & {
+  apiFiles: APIFileItemType[];
 };
 export type FileIdCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   fileId: string;

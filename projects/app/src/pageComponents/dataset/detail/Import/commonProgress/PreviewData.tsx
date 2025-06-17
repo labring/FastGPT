@@ -34,7 +34,7 @@ const PreviewData = () => {
 
   const { data = { chunks: [], total: 0 }, loading: isLoading } = useRequest2(
     async () => {
-      if (!previewFile) return { chunks: [], total: 0 };
+      if (!previewFile || previewFile.apiFile?.type === 'folder') return { chunks: [], total: 0 };
 
       const chunkData = processParamsForm.getValues();
 
@@ -113,7 +113,18 @@ const PreviewData = () => {
                   bg: 'primary.50 !important'
                 })}
                 _notLast={{ mb: 3 }}
-                onClick={() => setPreviewFile(source)}
+                onClick={() => {
+                  const isFolder = source.apiFile?.type === 'folder';
+                  if (isFolder) {
+                    toast({
+                      status: 'warning',
+                      title: t('dataset:preview_chunk_folder_warning')
+                    });
+                    return;
+                  } else {
+                    setPreviewFile(source);
+                  }
+                }}
               >
                 <MyIcon name={source.icon as any} w={'1.25rem'} />
                 <Box ml={1} flex={'1 0 0'} wordBreak={'break-all'} fontSize={'sm'}>

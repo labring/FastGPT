@@ -41,7 +41,7 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
       errorMsg: undefined
     };
   })();
-  console.log(filterApiDatasetServerPublicData(dataset.apiDatasetServer));
+
   return {
     ...dataset,
     status,

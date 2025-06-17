@@ -1,7 +1,7 @@
 import { RequireOnlyOne } from '../../../common/type/utils';
 import type { ParentIdType } from '../../../common/parentFolder/type';
 
-export type APIFileItem = {
+export type APIFileItemType = {
   id: string;
   parentId: ParentIdType;
   name: string;
@@ -35,8 +35,7 @@ export type ApiDatasetServerType = {
 };
 
 // Api dataset api
-
-export type APIFileListResponse = APIFileItem[];
+export type APIFileListResponse = APIFileItemType[];
 
 export type ApiFileReadContentResponse = {
   title?: string;
@@ -47,8 +46,4 @@ export type APIFileReadResponse = {
   url: string;
 };
 
-export type ApiDatasetDetailResponse = {
-  id: string;
-  name: string;
-  parentId: ParentIdType;
-};
+export type ApiDatasetDetailResponse = APIFileItemType;
