@@ -5,7 +5,7 @@ import { type NextApiRequest } from 'next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type {
   ApiDatasetServerType,
-  APIFileItem
+  APIFileItemType
 } from '@fastgpt/global/core/dataset/apiDataset/type';
 
 export type GetApiDatasetCataLogProps = {
@@ -13,7 +13,7 @@ export type GetApiDatasetCataLogProps = {
   apiDatasetServer?: ApiDatasetServerType;
 };
 
-export type GetApiDatasetCataLogResponse = APIFileItem[];
+export type GetApiDatasetCataLogResponse = APIFileItemType[];
 
 async function handler(req: NextApiRequest) {
   let { searchKey = '', parentId = null, apiDatasetServer } = req.body;
@@ -31,7 +31,7 @@ async function handler(req: NextApiRequest) {
     await getApiDatasetRequest(apiDatasetServer)
   ).listFiles({ parentId, searchKey });
 
-  return data?.filter((item: APIFileItem) => item.hasChild === true) || [];
+  return data?.filter((item: APIFileItemType) => item.hasChild === true) || [];
 }
 
 export default NextAPI(handler);
