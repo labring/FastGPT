@@ -13,7 +13,7 @@ import { i18nT } from '../../../../web/i18n/utils';
 import { type RuntimeNodeItemType } from '../../workflow/runtime/type';
 import { type StoreSecretValueType } from '../../../common/secret/type';
 import { jsonSchema2NodeInput } from '../jsonschema';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { getNanoid } from '../../../common/string/tools';
 
 export const getMCPToolSetRuntimeNode = ({
   url,
