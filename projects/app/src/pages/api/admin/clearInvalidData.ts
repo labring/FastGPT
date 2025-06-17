@@ -9,6 +9,8 @@ import {
   checkInvalidDatasetData,
   checkInvalidVector
 } from '@/service/common/system/cronTask';
+import dayjs from 'dayjs';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 
 let deleteImageAmount = 0;
 async function checkInvalidImg(start: Date, end: Date, limit = 50) {
@@ -61,13 +63,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     (async () => {
       try {
         console.log('执行脏数据清理任务');
-        // 360天 ~ 2小时前
-        const endTime = addHours(new Date(), start);
-        const startTime = addHours(new Date(), end);
-        await checkInvalidDatasetFiles(startTime, endTime);
-        await checkInvalidImg(startTime, endTime);
-        await checkInvalidDatasetData(startTime, endTime);
-        await checkInvalidVector(startTime, endTime);
+
+        // Split time range into 6-hour chunks to avoid processing too much data at once
+        const totalHours = Math.abs(start - end);
+        const chunkHours = 6;
+        const chunks = Math.ceil(totalHours / chunkHours);
+
+        console.log(
+          `Total time range: ${totalHours} hours, split into ${chunks} chunks of ${chunkHours} hours each`
+        );
+
+        for (let i = 0; i < chunks; i++) {
+          const chunkStart = start - i * chunkHours;
+          const chunkEnd = Math.max(start - (i + 1) * chunkHours, end);
+
+          const chunkEndTime = addHours(new Date(), chunkStart);
+          const chunkStartTime = addHours(new Date(), chunkEnd);
+
+          console.log(
+            `Processing chunk ${i + 1}/${chunks}: ${dayjs(chunkStartTime).format(
+              'YYYY-MM-DD HH:mm'
+            )} to ${dayjs(chunkEndTime).format('YYYY-MM-DD HH:mm')}`
+          );
+
+          await retryFn(() => checkInvalidDatasetFiles(chunkStartTime, chunkEndTime));
+          await retryFn(() => checkInvalidImg(chunkStartTime, chunkEndTime));
+          await retryFn(() => checkInvalidDatasetData(chunkStartTime, chunkEndTime));
+          await retryFn(() => checkInvalidVector(chunkStartTime, chunkEndTime));
+
+          console.log(`Chunk ${i + 1}/${chunks} completed`);
+        }
         console.log('执行脏数据清理任务完毕');
       } catch (error) {
         console.log('执行脏数据清理任务出错了');
