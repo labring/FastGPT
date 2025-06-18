@@ -68,7 +68,7 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
   );
 
   const {
-    data: operationLogs = [],
+    data: auditLog = [],
     isLoading: loadingLogs,
     ScrollData: LogScrollData
   } = useScrollPagination(getOperationLogs, {
@@ -166,7 +166,7 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                 </Tr>
               </Thead>
               <Tbody>
-                {operationLogs?.map((log) => {
+                {auditLog?.map((log) => {
                   const i18nData = auditLogMap[log.event];
                   const metadata = processMetadataByEvent(log.event, { ...log.metadata });
 
