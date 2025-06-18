@@ -1,9 +1,9 @@
-// import type { ToolType } from '@fastgpt/global/core/workflow/type/tool';
-// import axios from 'axios';
-import createClient from '@fastgpt-plugins/sdk';
+import createClient from '@fastgpt-sdk/plugin';
 
 const ToolBaseURL = process.env.TOOL_BASE_URL || '';
-const client = createClient(ToolBaseURL);
+const client = createClient({
+  baseUrl: ToolBaseURL
+});
 
 export async function getSystemToolList() {
   const res = await client.tool.list();
