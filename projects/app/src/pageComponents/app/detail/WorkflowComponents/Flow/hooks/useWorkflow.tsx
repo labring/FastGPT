@@ -302,8 +302,12 @@ export const useWorkflow = () => {
   const [helperLineVertical, setHelperLineVertical] = useState<THelperLine>();
 
   const checkNodeHelpLine = useMemoizedFn((change: NodeChange, nodes: Node[]) => {
-    const positionChange = change.type === 'position' && change.dragging ? change : undefined;
+    let positionChange: NodePositionChange | undefined
 
+    if(change.type === 'position'){
+      positionChange = change.dragging ? change :undefined
+    }
+    
     if (positionChange?.position) {
       // 只判断，3000px 内的 nodes，并按从近到远的顺序排序
       const filterNodes = nodes
