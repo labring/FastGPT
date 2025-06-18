@@ -31,13 +31,14 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
   if (toolConfig && toolConfig.systemTool) {
     // run system tool
     const { error, output } = await runTool(toolConfig.systemTool.toolId, params);
-    console.log('runTool', output);
     if (error) {
       return Promise.reject(error);
     }
-    return {
-      [NodeOutputKeyEnum.rawResponse]: output
-    };
+    return output as any;
+    // return {
+    //   ...(output as any),
+    //   [NodeOutputKeyEnum.rawResponse]: output
+    // };
   } else {
     // mcp tool
     const { toolData, system_toolData, ...restParams } = params;

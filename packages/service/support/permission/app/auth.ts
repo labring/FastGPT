@@ -34,8 +34,6 @@ export const authPluginByTmbId = async ({
 
     return app;
   }
-
-  // commercial custom plugin already checked in "getSystemPluginTemplateById"
 };
 
 export const authAppByTmbId = async ({

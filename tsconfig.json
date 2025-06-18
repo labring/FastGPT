@@ -17,6 +17,7 @@
     "baseUrl": ".",
     "paths": {
       "@fastgpt/*": ["packages/*"],
+      "@fastgpt/service/*": ["packages/service/*"],
       "@test": ["test/*"]
     }
   },

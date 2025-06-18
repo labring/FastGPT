@@ -7,7 +7,6 @@ import {
   toolData2FlowNodeIO,
   toolSetData2FlowNodeIO
 } from '@fastgpt/global/core/workflow/utils';
-import { cloneDeep } from 'lodash';
 import { MongoApp } from '../schema';
 import type { localeType } from '@fastgpt/global/core/workflow/type';
 import { type SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
@@ -19,7 +18,6 @@ import {
 import { type PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
 import { MongoSystemPlugin } from './systemPluginSchema';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
-import { Types } from 'mongoose';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import type {
   FlowNodeInputItemType,
@@ -27,10 +25,12 @@ import type {
 } from '@fastgpt/global/core/workflow/type/io';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { getTool } from '../tool/api';
-import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
+import { getSystemTool } from '../tool/api';
+import { FastGPTProUrl } from '../../../common/system/constants';
+import { GET } from '../../../common/api/plusRequest';
+import { Types } from '../../../common/mongo';
 
-/*
+/**
   plugin id rule:
   - personal: id
   - commercial: commercial-id
@@ -62,62 +62,61 @@ type ChildAppType = SystemPluginTemplateItemType & {
   outputs?: FlowNodeOutputItemType[];
 };
 
-const getSystemPluginTemplateById = async (
+export const getCommercialPluginsAPI = (toolId?: string) => {
+  return GET<SystemPluginTemplateItemType[]>('/core/app/plugin/getSystemPlugins', { toolId });
+};
+
+export const getSystemPluginTemplateById = async (
   pluginId: string,
   versionId?: string
 ): Promise<ChildAppType> => {
-  const plugin = await (async () => {
-    if (FastGPTProUrl) {
-      return await getTool(pluginId);
-    } else {
-      const tool = await getTool(pluginId);
-    }
-  })();
-  // const item = getSystemPluginTemplates().find((plugin) => plugin.id === pluginId);
-  // if (!item) return Promise.reject(PluginErrEnum.unExist);
+  const plugin = FastGPTProUrl
+    ? (async () => {
+        const plugins = await getCommercialPluginsAPI(pluginId);
+        const plugin = plugins[0];
+        if (plugin.associatedPluginId) {
+          // The verification plugin is set as a system plugin
+          const systemPlugin = await MongoSystemPlugin.findOne(
+            { pluginId: plugin.id, 'customConfig.associatedPluginId': plugin.associatedPluginId },
+            'associatedPluginId'
+          ).lean();
+          if (!systemPlugin) return Promise.reject(PluginErrEnum.unExist);
 
-  // const plugin = cloneDeep(item);
+          const app = await MongoApp.findById(plugin.associatedPluginId).lean();
+          if (!app) return Promise.reject(PluginErrEnum.unExist);
 
-  if (plugin.associatedPluginId) {
-    // The verification plugin is set as a system plugin
-    const systemPlugin = await MongoSystemPlugin.findOne(
-      { pluginId: plugin.id, 'customConfig.associatedPluginId': plugin.associatedPluginId },
-      'associatedPluginId'
-    ).lean();
-    if (!systemPlugin) return Promise.reject(PluginErrEnum.unExist);
+          const version = versionId
+            ? await getAppVersionById({
+                appId: plugin.associatedPluginId,
+                versionId,
+                app
+              })
+            : await getAppLatestVersion(plugin.associatedPluginId, app);
+          if (!version.versionId) return Promise.reject('App version not found');
+          const isLatest = version.versionId
+            ? await checkIsLatestVersion({
+                appId: plugin.associatedPluginId,
+                versionId: version.versionId
+              })
+            : true;
 
-    const app = await MongoApp.findById(plugin.associatedPluginId).lean();
-    if (!app) return Promise.reject(PluginErrEnum.unExist);
-
-    const version = versionId
-      ? await getAppVersionById({
-          appId: plugin.associatedPluginId,
-          versionId,
-          app
-        })
-      : await getAppLatestVersion(plugin.associatedPluginId, app);
-    if (!version.versionId) return Promise.reject('App version not found');
-    const isLatest = version.versionId
-      ? await checkIsLatestVersion({
-          appId: plugin.associatedPluginId,
-          versionId: version.versionId
-        })
-      : true;
-
-    return {
-      ...plugin,
-      workflow: {
-        nodes: version.nodes,
-        edges: version.edges,
-        chatConfig: version.chatConfig
-      },
-      version: versionId ? version?.versionId : '',
-      versionLabel: version?.versionName,
-      isLatestVersion: isLatest,
-      teamId: String(app.teamId),
-      tmbId: String(app.tmbId)
-    };
-  }
+          return {
+            ...plugin,
+            workflow: {
+              nodes: version.nodes,
+              edges: version.edges,
+              chatConfig: version.chatConfig
+            },
+            version: versionId ? version?.versionId : '',
+            versionLabel: version?.versionName,
+            isLatestVersion: isLatest,
+            teamId: String(app.teamId),
+            tmbId: String(app.tmbId)
+          };
+        }
+        return plugin;
+      })()
+    : await getSystemTool(pluginId);
 
   return {
     ...plugin,

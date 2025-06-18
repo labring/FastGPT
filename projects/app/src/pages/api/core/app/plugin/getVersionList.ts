@@ -6,11 +6,14 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
-import { splitCombineToolId } from '@fastgpt/service/core/app/plugin/controller';
+import {
+  getSystemPluginTemplateById,
+  splitCombineToolId
+} from '@fastgpt/service/core/app/plugin/controller';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { Types } from '@fastgpt/service/common/mongo';
-import { getTool } from '@fastgpt/service/core/app/tool/api';
+import getSystemPluginTemplates from './getSystemPluginTemplates';
 import { getSystemTools } from '@/service/core/app/plugin';
 
 export type getToolVersionListProps = PaginationProps<{
@@ -49,10 +52,9 @@ async function handler(
       });
       return app._id;
     } else {
-      const item = getSystemPluginTemplates().find((plugin) => plugin.id === formatToolId);
+      const item = await getSystemPluginTemplateById(formatToolId);
       // const item = getSystemTools
       if (!item) return Promise.reject(PluginErrEnum.unAuth);
-      if (!item.associatedAppId) return Promise.reject(PluginErrEnum.unAuth);
       return item.associatedPluginId;
     }
   })();

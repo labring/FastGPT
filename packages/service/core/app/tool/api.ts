@@ -33,7 +33,7 @@ export async function runTool(toolId: string, input: object) {
   }
 }
 
-export async function getTool(toolId: string) {
+export async function getSystemTool(toolId: string) {
   const res = await client.tool.getTool({
     query: {
       toolId

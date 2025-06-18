@@ -10,7 +10,6 @@ import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { NextApiResponse } from 'next';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { filterWorkflowNodeOutputsByType } from '@/web/core/workflow/utils';
 
 export type GetSystemPluginTemplatesBody = {
   searchKey?: string;
@@ -26,29 +25,17 @@ async function handler(
   const formatParentId = parentId || null;
   const lang = getLocale(req);
 
-  // Make sure system plugin callbacks are loaded
-  // if (!global.systemPluginCb || Object.keys(global.systemPluginCb).length === 0)
-  //   await getSystemPluginCb();
-
   const plugins = await getSystemTools();
   return plugins // Just show the active plugins
     .filter((item) => item.isActive)
     .map<NodeTemplateListItemType>((plugin) => ({
-      id: plugin.id,
-      isFolder: plugin.isFolder,
+      ...plugin,
       parentId: plugin.parentId === undefined ? null : plugin.parentId,
       templateType: plugin.templateType ?? FlowNodeTemplateTypeEnum.other,
       // flowNodeType: plugin.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
       flowNodeType: FlowNodeTypeEnum.tool,
-      avatar: plugin.avatar,
       name: parseI18nString(plugin.name, lang),
-      intro: parseI18nString(plugin.intro ?? '', lang),
-      isTool: plugin.isTool,
-      currentCost: plugin.currentCost,
-      hasTokenFee: plugin.hasTokenFee,
-      author: plugin.author,
-      instructions: plugin.userGuide,
-      courseUrl: plugin.courseUrl
+      intro: parseI18nString(plugin.intro ?? '', lang)
     }))
     .filter((item) => {
       if (searchKey) {

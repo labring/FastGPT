@@ -73,7 +73,6 @@ export function initGlobalVariables() {
     };
   }
 
-  global.systemPlugins = [];
   global.qaQueueLen = global.qaQueueLen ?? 0;
   global.vectorQueueLen = global.vectorQueueLen ?? 0;
   initHttpAgent();
