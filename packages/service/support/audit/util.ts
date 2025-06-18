@@ -1,6 +1,14 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { i18nT } from '../../../web/i18n/utils';
+import { MongoOperationLog } from './schema';
+import type {
+  AdminAuditEventEnum,
+  AuditEventEnum,
+  AdminAuditEventParamsType,
+  AuditEventParamsType
+} from '@fastgpt/global/support/audit/constants';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 
 export function getI18nAppType(type: AppTypeEnum): string {
   if (type === AppTypeEnum.folder) return i18nT('account_team:type.Folder');
@@ -40,4 +48,48 @@ export function getI18nInformLevel(level: string): string {
   if (level === 'important') return i18nT('account_team:inform_level_important');
   if (level === 'emergency') return i18nT('account_team:inform_level_emergency');
   return i18nT('common:UnKnow');
+}
+
+export function addAuditLog<T extends AuditEventEnum>({
+  teamId,
+  tmbId,
+  event,
+  params
+}: {
+  tmbId: string;
+  teamId: string;
+  event: T;
+  params?: AuditEventParamsType[T];
+}): void;
+
+export function addAuditLog<T extends AdminAuditEventEnum>({
+  teamId,
+  tmbId,
+  event,
+  params
+}: {
+  tmbId: string;
+  teamId: string;
+  event: T;
+  params?: AdminAuditEventParamsType[T];
+}): void;
+export function addAuditLog<T extends AuditEventEnum | AdminAuditEventEnum>({
+  teamId,
+  tmbId,
+  event,
+  params
+}: {
+  tmbId: string;
+  teamId: string;
+  event: T;
+  params?: any;
+}) {
+  retryFn(() =>
+    MongoOperationLog.create({
+      tmbId: tmbId,
+      teamId: teamId,
+      event,
+      metadata: params
+    })
+  );
 }

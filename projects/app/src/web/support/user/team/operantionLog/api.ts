@@ -1,12 +1,12 @@
 import { GET, POST, PUT } from '@/web/common/api/request';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import type { OperationListItemType } from '@fastgpt/global/support/operationLog/type';
-import type { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import type { OperationListItemType } from '@fastgpt/global/support/audit/type';
+import type { AuditEventEnum } from '@fastgpt/global/support/audit/constants';
 
 export const getOperationLogs = (
   props: PaginationProps & {
     tmbIds?: string[];
-    events?: OperationLogEventEnum[];
+    events?: AuditEventEnum[];
   }
 ) =>
   POST<PaginationResponse<OperationListItemType>>(
