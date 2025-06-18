@@ -19,9 +19,9 @@ import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
-import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
-import { getI18nAppType } from '@fastgpt/service/support/operationLog/util';
+import { addAuditLog } from '@fastgpt/service/support/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/audit/constants';
+import { getI18nAppType } from '@fastgpt/service/support/audit/util';
 
 export type CreateAppBody = {
   parentId?: ParentIdType;
@@ -152,10 +152,10 @@ export const onCreateApp = async ({
       );
     }
     (async () => {
-      addOperationLog({
+      addAuditLog({
         tmbId,
         teamId,
-        event: OperationLogEventEnum.CREATE_APP,
+        event: AuditEventEnum.CREATE_APP,
         params: {
           appName: name!,
           appType: getI18nAppType(type!)

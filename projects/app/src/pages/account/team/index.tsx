@@ -21,7 +21,7 @@ const MemberTable = dynamic(() => import('@/pageComponents/account/team/MemberTa
 const PermissionManage = dynamic(
   () => import('@/pageComponents/account/team/PermissionManage/index')
 );
-const OperationLogTable = dynamic(() => import('@/pageComponents/account/team/OperationLog/index'));
+const AuditLog = dynamic(() => import('@/pageComponents/account/team/Audit/index'));
 const GroupManage = dynamic(() => import('@/pageComponents/account/team/GroupManage/index'));
 const OrgManage = dynamic(() => import('@/pageComponents/account/team/OrgManage/index'));
 const HandleInviteModal = dynamic(
@@ -96,7 +96,7 @@ const Team = () => {
         }}
       />
     ),
-    [router, t, teamTab]
+    [planContent?.permissionTeamOperationLog, router, t, teamTab, toast]
   );
 
   return (
@@ -175,7 +175,7 @@ const Team = () => {
           {teamTab === TeamTabEnum.org && <OrgManage Tabs={Tabs} />}
           {teamTab === TeamTabEnum.group && <GroupManage Tabs={Tabs} />}
           {teamTab === TeamTabEnum.permission && <PermissionManage Tabs={Tabs} />}
-          {teamTab === TeamTabEnum.audit && <OperationLogTable Tabs={Tabs} />}
+          {teamTab === TeamTabEnum.audit && <AuditLog Tabs={Tabs} />}
         </Box>
       </Flex>
       {invitelinkid && <HandleInviteModal invitelinkid={invitelinkid} />}
