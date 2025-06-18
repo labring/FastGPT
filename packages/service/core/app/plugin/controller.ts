@@ -1,5 +1,6 @@
 import { type FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { getHandleConfig } from '@fastgpt/global/core/workflow/template/utils';
 import {
   appData2FlowNodeIO,
   parseI18nString,
@@ -49,7 +50,8 @@ export function splitCombineToolId(id: string) {
 
   const [source, pluginId] = id.split('-') as [PluginSourceEnum, string | undefined];
   if (!source || !pluginId) throw new Error('pluginId not found');
-  if (source === 'community') {
+  if (source === 'community' || id === 'commercial-dalle3') {
+    // HINT: 兼容性问题 commercial-dalle3
     return { source: PluginSourceEnum.systemTool, pluginId: id };
   }
   return { source, pluginId: id };
@@ -71,7 +73,7 @@ export const getSystemPluginTemplateById = async (
   versionId?: string
 ): Promise<ChildAppType> => {
   const plugin = FastGPTProUrl
-    ? (async () => {
+    ? await (async () => {
         const plugins = await getCommercialPluginsAPI(pluginId);
         const plugin = plugins[0];
         if (plugin.associatedPluginId) {
@@ -178,21 +180,30 @@ export async function getChildAppPreviewNode({
       return getSystemPluginTemplateById(pluginId, versionId);
     }
   })();
-  console.log(app);
+  console.log('app', app);
 
-  const isSystemTool = source === PluginSourceEnum.systemTool;
+  const { isSystemTool, isPlugin, isTool, isToolSet } = (() => {
+    const isSystemTool = source === PluginSourceEnum.systemTool;
+    if (isSystemTool) {
+      return { isSystemTool };
+    }
 
-  const isPlugin = !!app.workflow.nodes.find(
-    (node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput
-  );
+    const isPlugin = !!app.workflow.nodes.find(
+      (node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput
+    );
 
-  const isTool =
-    !!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.tool) &&
-    app.workflow.nodes.length === 1;
+    const isTool =
+      !!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.tool) &&
+      app.workflow.nodes.length === 1;
 
-  const isToolSet =
-    !!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet) &&
-    app.workflow.nodes.length === 1;
+    const isToolSet =
+      !!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet) &&
+      app.workflow.nodes.length === 1;
+
+    return { isSystemTool, isPlugin, isTool, isToolSet };
+  })();
+
+  console.log('isSystemTool', source, isSystemTool, isPlugin, isTool, isToolSet);
 
   const { flowNodeType, nodeIOConfig } = (() => {
     if (isToolSet)
@@ -230,8 +241,6 @@ export async function getChildAppPreviewNode({
     };
   })();
 
-  console.log('app', nodeIOConfig, flowNodeType);
-
   return {
     id: getNanoid(),
     pluginId: app.id,
@@ -248,6 +257,8 @@ export async function getChildAppPreviewNode({
     version: app.version,
     versionLabel: app.versionLabel,
     isLatestVersion: app.isLatestVersion,
+    sourceHandle: getHandleConfig(true, true, true, true),
+    targetHandle: getHandleConfig(true, true, true, true),
 
     ...nodeIOConfig
   };

@@ -99,6 +99,14 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   }[];
 };
 
+export type SystemPluginTemplateListItemType = Omit<
+  SystemPluginTemplateItemType,
+  'name' | 'intro'
+> & {
+  name: string;
+  intro: string;
+};
+
 export type THelperLine = {
   position: number;
   nodes: {

@@ -19,9 +19,9 @@ export const pluginTypeMap = {
 };
 
 export enum PluginSourceEnum {
-  personal = 'personal', // APP
-  systemTool = 'systemTool', // FastGPT-Tool
-  commercial = 'commercial', // pro 后台配置的，有 associatedPluginId
+  personal = 'personal', // this is a app.
+  systemTool = 'systemTool', // FastGPT-plugin tools, pure code.
+  commercial = 'commercial', // configured in Pro, with associatedPluginId. Specially, commercial-dalle3 is a systemTool
   // @deprecated
-  community = 'community'
+  community = 'community' // this is deprecated, will be replaced by systemTool
 }
