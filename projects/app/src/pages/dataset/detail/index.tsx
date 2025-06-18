@@ -41,7 +41,7 @@ type Props = { datasetId: string; currentTab: TabEnum };
 const sliderStyles: FlexProps = {
   bg: 'white',
   borderRadius: 'md',
-  overflowY: 'scroll',
+  overflowY: 'auto',
   boxShadow: 2
 };
 

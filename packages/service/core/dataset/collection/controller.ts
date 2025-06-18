@@ -103,6 +103,7 @@ export const createCollectionAndInsertData = async ({
       delete formatCreateCollectionParams.chunkSize;
       delete formatCreateCollectionParams.chunkSplitter;
       delete formatCreateCollectionParams.indexSize;
+      delete formatCreateCollectionParams.indexPrefixTitle;
     }
   }
   if (trainingType !== DatasetCollectionDataProcessModeEnum.qa) {
@@ -223,7 +224,6 @@ export const createCollectionAndInsertData = async ({
           vlmModel: dataset.vlmModel,
           indexSize,
           mode: trainingMode,
-          prompt: formatCreateCollectionParams.qaPrompt,
           billId: traingBillId,
           data: chunks.map((item, index) => ({
             ...item,

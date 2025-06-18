@@ -14,7 +14,6 @@ import {
   countGptMessagesTokens,
   countPromptTokens
 } from '@fastgpt/service/common/string/tiktoken/index';
-import { pushDataListToTrainingQueueByCollectionId } from '@fastgpt/service/core/dataset/training/controller';
 import { loadRequestMessages } from '@fastgpt/service/core/chat/utils';
 import { llmCompletionsBodyFormat, formatLLMResponse } from '@fastgpt/service/core/ai/utils';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
@@ -24,6 +23,7 @@ import {
 } from '@fastgpt/global/core/dataset/training/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { text2Chunks } from '@fastgpt/service/worker/function';
+import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -39,6 +39,11 @@ const reduceQueueAndReturn = (delay = 0) => {
   } else {
     generateQA();
   }
+};
+
+type PopulateType = {
+  dataset: { vectorModel: string; agentModel: string; vlmModel: string };
+  collection: { qaPrompt?: string };
 };
 
 export async function generateQA(): Promise<any> {
@@ -68,18 +73,16 @@ export async function generateQA(): Promise<any> {
           $inc: { retryCount: -1 }
         }
       )
-        .select({
-          _id: 1,
-          teamId: 1,
-          tmbId: 1,
-          datasetId: 1,
-          collectionId: 1,
-          q: 1,
-          model: 1,
-          chunkIndex: 1,
-          billId: 1,
-          prompt: 1
-        })
+        .populate<PopulateType>([
+          {
+            path: 'dataset',
+            select: 'agentModel vectorModel vlmModel'
+          },
+          {
+            path: 'collection',
+            select: 'qaPrompt'
+          }
+        ])
         .lean();
 
       // task preemption
@@ -110,6 +113,13 @@ export async function generateQA(): Promise<any> {
     return reduceQueueAndReturn();
   }
 
+  if (!data.dataset || !data.collection) {
+    addLog.info(`[QA Queue] Dataset or collection not found`, data);
+    // Delete data
+    await MongoDatasetTraining.deleteOne({ _id: data._id });
+    return reduceQueueAndReturn();
+  }
+
   // auth balance
   if (!(await checkTeamAiPointsAndLock(data.teamId))) {
     return reduceQueueAndReturn();
@@ -117,8 +127,8 @@ export async function generateQA(): Promise<any> {
   addLog.info(`[QA Queue] Start`);
 
   try {
-    const modelData = getLLMModel(data.model);
-    const prompt = `${data.prompt || Prompt_AgentQA.description}
+    const modelData = getLLMModel(data.dataset.agentModel);
+    const prompt = `${data.collection.qaPrompt || Prompt_AgentQA.description}
 ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
 
     // request LLM to get QA
@@ -147,16 +157,20 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     const qaArr = await formatSplitText({ answer, rawText: text, llmModel: modelData }); // 格式化后的QA对
 
     // get vector and insert
-    await pushDataListToTrainingQueueByCollectionId({
+    await pushDataListToTrainingQueue({
       teamId: data.teamId,
       tmbId: data.tmbId,
+      datasetId: data.datasetId,
       collectionId: data.collectionId,
       mode: TrainingModeEnum.chunk,
       data: qaArr.map((item) => ({
         ...item,
         chunkIndex: data.chunkIndex
       })),
-      billId: data.billId
+      billId: data.billId,
+      vectorModel: data.dataset.vectorModel,
+      agentModel: data.dataset.agentModel,
+      vlmModel: data.dataset.vlmModel
     });
 
     // delete data from training
@@ -192,7 +206,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       }
     );
 
-    return reduceQueueAndReturn(1000);
+    return reduceQueueAndReturn(500);
   }
 }
 

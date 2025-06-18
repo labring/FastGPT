@@ -84,15 +84,13 @@ const InputDataModal = ({
       onSuccess(res) {
         if (res.type === DatasetCollectionTypeEnum.images) {
           setCurrentTab(TabEnum.image);
-        } else {
-          setCurrentTab(TabEnum.chunk);
         }
       }
     }
   );
 
   // Get data
-  const { loading: isFetchingData } = useRequest2(
+  const { data: dataItem, loading: isFetchingData } = useRequest2(
     async () => {
       if (dataId) return getDatasetDataItemById(dataId);
       return null;
@@ -124,6 +122,11 @@ const InputDataModal = ({
       }
     }
   );
+
+  useEffect(() => {
+    if (currentTab || !dataItem) return;
+    setCurrentTab(dataItem.a ? TabEnum.qa : TabEnum.chunk);
+  }, [collection, dataItem, currentTab]);
 
   // Import new data
   const { runAsync: sureImportData, loading: isImporting } = useRequest2(

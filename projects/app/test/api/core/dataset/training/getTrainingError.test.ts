@@ -35,7 +35,6 @@ describe('training error list test', () => {
         datasetId: dataset._id,
         collectionId: collection._id,
         mode: TrainingModeEnum.chunk,
-        model: 'test',
         errorMsg: 'test'
       }))
     );
