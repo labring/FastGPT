@@ -111,6 +111,8 @@
   "import_param_setting": "Parameter settings",
   "import_select_file": "Select a file",
   "import_select_link": "Enter link",
+  "index_prefix_title": "Index add title",
+  "index_prefix_title_tips": "Automatically add title names to all indexes",
   "index_size": "Index size",
   "index_size_tips": "When vectorized, the system will automatically further segment the blocks according to this size.",
   "input_required_field_to_select_baseurl": "Please enter the required information first",

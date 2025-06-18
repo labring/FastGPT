@@ -32,6 +32,7 @@ export const ChunkSettings = {
 
   imageIndex: Boolean,
   autoIndexes: Boolean,
+  indexPrefixTitle: Boolean,
 
   chunkSettingMode: {
     type: String,
@@ -100,8 +101,7 @@ const DatasetSchema = new Schema({
   },
   agentModel: {
     type: String,
-    required: true,
-    default: 'gpt-4o-mini'
+    required: true
   },
   vlmModel: String,
   intro: {

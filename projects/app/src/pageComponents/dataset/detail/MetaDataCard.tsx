@@ -47,6 +47,10 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
 
     return [
       {
+        label: t('common:core.dataset.collection.id'),
+        value: collection?._id
+      },
+      {
         label: t('common:core.dataset.collection.metadata.source'),
         value: t(DatasetCollectionTypeMap[collection.type]?.name as any)
       },
@@ -91,6 +95,14 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
             {
               label: t('dataset:collection.training_type'),
               value: t(DatasetCollectionDataProcessModeMap[collection.trainingType]?.label as any)
+            }
+          ]
+        : []),
+      ...(collection.indexPrefixTitle !== undefined
+        ? [
+            {
+              label: t('dataset:index_prefix_title'),
+              value: collection.indexPrefixTitle ? 'Yes' : 'No'
             }
           ]
         : []),
@@ -146,26 +158,22 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
   }, [collection, t]);
 
   return (
-    <MyBox isLoading={isLoading} w={'100%'} h={'100%'} p={6}>
-      <Box fontSize={'md'} pb={4}>
+    <MyBox isLoading={isLoading} w={'100%'} h={'100%'} p={6} overflow={'auto'}>
+      <Box fontSize={'md'} fontWeight={'bold'} color={'myGray.900'} pb={4}>
         {t('common:core.dataset.collection.metadata.metadata')}
       </Box>
-      <Flex mb={3} wordBreak={'break-all'} fontSize={'sm'}>
-        <Box color={'myGray.500'} flex={'0 0 90px'}>
-          {t('common:core.dataset.collection.id')}:
-        </Box>
-        <Box>{collection?._id}</Box>
-      </Flex>
       {metadataList.map(
         (item, i) =>
           item.label &&
           item.value && (
-            <Flex key={i} alignItems={'center'} mb={3} wordBreak={'break-all'} fontSize={'sm'}>
-              <Box color={'myGray.500'} flex={'0 0 90px'}>
+            <Box key={i} mb={3} wordBreak={'break-all'}>
+              <Box color={'myGray.500'} fontSize={'xs'}>
                 {item.label}
               </Box>
-              <Box>{item.value}</Box>
-            </Flex>
+              <Box color={'myGray.900'} fontSize={'sm'}>
+                {item.value}
+              </Box>
+            </Box>
           )
       )}
       {collection?.sourceId && (

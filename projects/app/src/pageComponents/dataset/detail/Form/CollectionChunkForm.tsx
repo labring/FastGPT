@@ -13,7 +13,8 @@ import {
   Textarea,
   useDisclosure,
   Checkbox,
-  HStack
+  HStack,
+  Grid
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
@@ -35,7 +36,6 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import {
   chunkAutoChunkSize,
-  getAutoIndexSize,
   getIndexSizeSelectList,
   getLLMDefaultChunkSize,
   getLLMMaxChunkSize,
@@ -44,7 +44,6 @@ import {
   minChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
 import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
-import type { LLMModelItemType, EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 const PromptTextarea = ({
   defaultValue = '',
@@ -98,6 +97,7 @@ export type CollectionChunkFormType = {
   // Index enhance
   imageIndex: boolean;
   autoIndexes: boolean;
+  indexPrefixTitle: boolean;
 
   // Chunk setting
   chunkSettingMode: ChunkSettingModeEnum; // 系统参数/自定义参数
@@ -133,6 +133,7 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
   const autoIndexes = watch('autoIndexes');
   const indexSize = watch('indexSize');
   const imageIndex = watch('imageIndex');
+  const indexPrefixTitle = watch('indexPrefixTitle');
   const paragraphChunkAIMode = watch('paragraphChunkAIMode');
 
   const trainingModeList = useMemo(() => {
@@ -282,48 +283,56 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
         </Box>
       )}
 
-      {trainingType === DatasetCollectionDataProcessModeEnum.chunk &&
-        feConfigs?.show_dataset_enhance !== false && (
-          <Box mt={6}>
-            <Box fontSize={'sm'} mb={2} color={'myGray.600'}>
-              {t('dataset:enhanced_indexes')}
-            </Box>
-            <HStack gap={[3, 7]}>
-              <HStack flex={'1'} spacing={1}>
-                <MyTooltip label={!feConfigs?.isPlus ? t('common:commercial_function_tip') : ''}>
-                  <Checkbox
-                    isDisabled={!feConfigs?.isPlus}
-                    isChecked={autoIndexes}
-                    {...register('autoIndexes')}
+      <Box mt={6}>
+        <Box fontSize={'sm'} mb={2} color={'myGray.600'}>
+          {t('dataset:enhanced_indexes')}
+        </Box>
+        <Grid gridTemplateColumns={'1fr 1fr'} rowGap={[2, 4]} columnGap={[3, 7]}>
+          <HStack flex={'1'} spacing={1}>
+            <Checkbox isChecked={indexPrefixTitle} {...register('indexPrefixTitle')}>
+              <FormLabel>{t('dataset:index_prefix_title')}</FormLabel>
+            </Checkbox>
+            <QuestionTip label={t('dataset:index_prefix_title_tips')} />
+          </HStack>
+          {trainingType === DatasetCollectionDataProcessModeEnum.chunk &&
+            feConfigs?.show_dataset_enhance !== false && (
+              <>
+                <HStack flex={'1'} spacing={1}>
+                  <MyTooltip label={!feConfigs?.isPlus ? t('common:commercial_function_tip') : ''}>
+                    <Checkbox
+                      isDisabled={!feConfigs?.isPlus}
+                      isChecked={autoIndexes}
+                      {...register('autoIndexes')}
+                    >
+                      <FormLabel>{t('dataset:auto_indexes')}</FormLabel>
+                    </Checkbox>
+                  </MyTooltip>
+                  <QuestionTip label={t('dataset:auto_indexes_tips')} />
+                </HStack>
+                <HStack flex={'1'} spacing={1}>
+                  <MyTooltip
+                    label={
+                      !feConfigs?.isPlus
+                        ? t('common:commercial_function_tip')
+                        : !datasetDetail?.vlmModel
+                          ? t('common:error_vlm_not_config')
+                          : ''
+                    }
                   >
-                    <FormLabel>{t('dataset:auto_indexes')}</FormLabel>
-                  </Checkbox>
-                </MyTooltip>
-                <QuestionTip label={t('dataset:auto_indexes_tips')} />
-              </HStack>
-              <HStack flex={'1'} spacing={1}>
-                <MyTooltip
-                  label={
-                    !feConfigs?.isPlus
-                      ? t('common:commercial_function_tip')
-                      : !datasetDetail?.vlmModel
-                        ? t('common:error_vlm_not_config')
-                        : ''
-                  }
-                >
-                  <Checkbox
-                    isDisabled={!feConfigs?.isPlus || !datasetDetail?.vlmModel}
-                    isChecked={imageIndex}
-                    {...register('imageIndex')}
-                  >
-                    <FormLabel>{t('dataset:image_auto_parse')}</FormLabel>
-                  </Checkbox>
-                </MyTooltip>
-                <QuestionTip label={t('dataset:image_auto_parse_tips')} />
-              </HStack>
-            </HStack>
-          </Box>
-        )}
+                    <Checkbox
+                      isDisabled={!feConfigs?.isPlus || !datasetDetail?.vlmModel}
+                      isChecked={imageIndex}
+                      {...register('imageIndex')}
+                    >
+                      <FormLabel>{t('dataset:image_auto_parse')}</FormLabel>
+                    </Checkbox>
+                  </MyTooltip>
+                  <QuestionTip label={t('dataset:image_auto_parse_tips')} />
+                </HStack>
+              </>
+            )}
+        </Grid>
+      </Box>
       <Box mt={6}>
         <Box fontSize={'sm'} mb={2} color={'myGray.600'}>
           {t('dataset:chunk_process_params')}
