@@ -101,21 +101,13 @@ export const datasetParseQueue = async (): Promise<any> => {
           $inc: { retryCount: -1 }
         }
       )
-        .select({
-          _id: 1,
-          teamId: 1,
-          tmbId: 1,
-          datasetId: 1,
-          collectionId: 1,
-          billId: 1,
-          q: 1
-        })
         .populate<{
           dataset: DatasetSchemaType;
           collection: DatasetCollectionSchemaType;
         }>([
           {
-            path: 'collection'
+            path: 'collection',
+            select: '-qaPrompt'
           },
           {
             path: 'dataset'
@@ -300,7 +292,6 @@ export const datasetParseQueue = async (): Promise<any> => {
         vlmModel: dataset.vlmModel,
         indexSize: collection.indexSize,
         mode: trainingMode,
-        prompt: collection.qaPrompt,
         billId: data.billId,
         data: chunks.map((item, index) => ({
           ...item,

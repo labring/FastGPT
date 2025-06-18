@@ -27,23 +27,6 @@ export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => 
   } catch (error) {}
 };
 
-export const pushDataListToTrainingQueueByCollectionId = async ({
-  collectionId,
-  ...props
-}: Omit<PushDataToTrainingQueueProps, 'datasetId' | 'agentModel' | 'vectorModel' | 'vlmModel'>) => {
-  const {
-    dataset: { _id: datasetId, agentModel, vectorModel, vlmModel }
-  } = await getCollectionWithDataset(collectionId);
-  return pushDataListToTrainingQueue({
-    ...props,
-    datasetId,
-    collectionId,
-    vectorModel,
-    agentModel,
-    vlmModel
-  });
-};
-
 export async function pushDataListToTrainingQueue({
   teamId,
   tmbId,
@@ -53,7 +36,6 @@ export async function pushDataListToTrainingQueue({
   vectorModel,
   vlmModel,
   data,
-  prompt,
   billId,
   mode = TrainingModeEnum.chunk,
   indexSize,
@@ -149,8 +131,6 @@ export async function pushDataListToTrainingQueue({
           collectionId: collectionId,
           billId,
           mode: formatTrainingMode(item, mode),
-          prompt,
-          model,
           ...(item.q && { q: item.q }),
           ...(item.a && { a: item.a }),
           ...(item.imageId && { imageId: item.imageId }),

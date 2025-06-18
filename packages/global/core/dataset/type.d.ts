@@ -36,6 +36,7 @@ export type ChunkSettingsType = {
   // Index enhance
   imageIndex?: boolean;
   autoIndexes?: boolean;
+  indexPrefixTitle?: boolean;
 
   // Chunk setting
   chunkSettingMode?: ChunkSettingModeEnum; // 系统参数/自定义参数
@@ -184,8 +185,6 @@ export type DatasetTrainingSchemaType = {
   expireAt: Date;
   lockTime: Date;
   mode: TrainingModeEnum;
-  model?: string;
-  prompt?: string;
   dataId?: string;
   q: string;
   a: string;

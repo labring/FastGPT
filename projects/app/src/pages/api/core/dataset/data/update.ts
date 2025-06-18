@@ -8,13 +8,16 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
 import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/operationLog/util';
+
 async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
   const { dataId, q, a, indexes = [] } = req.body;
 
   // auth data permission
   const {
     collection: {
-      dataset: { vectorModel }
+      dataset: { vectorModel },
+      name,
+      indexPrefixTitle
     },
     teamId,
     tmbId,
@@ -33,7 +36,8 @@ async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
       q,
       a,
       indexes,
-      model: vectorModel
+      model: vectorModel,
+      indexPrefix: indexPrefixTitle ? `# ${name}` : undefined
     });
 
     pushGenerateVectorUsage({

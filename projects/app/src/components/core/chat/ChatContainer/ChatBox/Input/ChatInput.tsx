@@ -1,4 +1,5 @@
-import { Box, Flex, Textarea } from '@chakra-ui/react';
+import type { FlexProps} from '@chakra-ui/react';
+import { Box, Flex, Textarea, useBoolean } from '@chakra-ui/react';
 import React, { useRef, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -47,6 +48,8 @@ const ChatInput = ({
 
   const { setValue, watch, control } = chatForm;
   const inputValue = watch('input');
+
+  const [focusing, { on: onFocus, off: offFocus }] = useBoolean();
 
   // Check voice input state
   const [mobilePreSpeak, setMobilePreSpeak] = useState(false);
@@ -207,6 +210,8 @@ const ChatInput = ({
                 }
               }
             }}
+            onFocus={onFocus}
+            onBlur={offFocus}
           />
         </Flex>
       </Flex>
@@ -254,7 +259,8 @@ const ChatInput = ({
               borderRadius={'sm'}
               cursor={'pointer'}
               _hover={{ bg: 'rgba(0, 0, 0, 0.04)' }}
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 onOpenSelectFile();
               }}
             >
@@ -276,7 +282,8 @@ const ChatInput = ({
               borderRadius={'sm'}
               cursor={'pointer'}
               _hover={{ bg: 'rgba(0, 0, 0, 0.04)' }}
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 VoiceInputRef.current?.onSpeak?.();
               }}
             >
@@ -307,7 +314,8 @@ const ChatInput = ({
             }
             borderRadius={['md', 'lg']}
             cursor={isChatting ? 'pointer' : canSendMessage ? 'pointer' : 'not-allowed'}
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               if (isChatting) {
                 return onStop();
               }
@@ -342,6 +350,11 @@ const ChatInput = ({
     handleSend,
     onStop
   ]);
+
+  const activeStyles: FlexProps = {
+    boxShadow: '0px 5px 20px -4px rgba(19, 51, 107, 0.13)',
+    border: '0.5px solid rgba(0, 0, 0, 0.24)'
+  };
 
   return (
     <Box
@@ -381,12 +394,17 @@ const ChatInput = ({
         pt={fileList.length > 0 ? '0' : mobilePreSpeak ? [0, 4] : [3, 4]}
         pb={[2, 4]}
         position={'relative'}
-        boxShadow={`0px 5px 16px -4px rgba(19, 51, 107, 0.08)`}
         borderRadius={['xl', 'xxl']}
         bg={'white'}
         overflow={'display'}
-        border={'0.5px solid rgba(0, 0, 0, 0.15)'}
-        borderColor={'rgba(0,0,0,0.12)'}
+        {...(focusing
+          ? activeStyles
+          : {
+              _hover: activeStyles,
+              border: '0.5px solid rgba(0, 0, 0, 0.18)',
+              boxShadow: `0px 5px 16px -4px rgba(19, 51, 107, 0.08)`
+            })}
+        onClick={() => TextareaDom?.current?.focus()}
       >
         <Box flex={1}>
           {/* Chat input guide box */}

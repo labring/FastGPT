@@ -25,13 +25,15 @@ const formatIndexes = async ({
   q,
   a = '',
   indexSize,
-  maxIndexSize
+  maxIndexSize,
+  indexPrefix
 }: {
   indexes?: (Omit<DatasetDataIndexItemType, 'dataId'> & { dataId?: string })[];
   q: string;
   a?: string;
   indexSize: number;
   maxIndexSize: number;
+  indexPrefix?: string;
 }): Promise<
   {
     type: `${DatasetDataIndexTypeEnum}`;
@@ -39,6 +41,12 @@ const formatIndexes = async ({
     dataId?: string;
   }[]
 > => {
+  const formatText = (text: string) => {
+    if (indexPrefix && !text.startsWith(indexPrefix)) {
+      return `${indexPrefix}\n${text}`;
+    }
+    return text;
+  };
   /* get dataset data default index */
   const getDefaultIndex = async ({
     q = '',
@@ -62,11 +70,11 @@ const formatIndexes = async ({
 
     return [
       ...qChunks.map((text) => ({
-        text,
+        text: formatText(text),
         type: DatasetDataIndexTypeEnum.default
       })),
       ...aChunks.map((text) => ({
-        text,
+        text: formatText(text),
         type: DatasetDataIndexTypeEnum.default
       }))
     ];
@@ -130,9 +138,22 @@ const formatIndexes = async ({
         return item;
       })
     )
-  ).flat();
+  )
+    .flat()
+    .filter((item) => !!item.text.trim());
 
-  return chekcIndexes.filter((item) => !!item.text.trim());
+  // Add prefix
+  const prefixIndexes = indexPrefix
+    ? chekcIndexes.map((index) => {
+        if (index.type === DatasetDataIndexTypeEnum.custom) return index;
+        return {
+          ...index,
+          text: formatText(index.text)
+        };
+      })
+    : chekcIndexes;
+
+  return prefixIndexes;
 };
 /* insert data.
  * 1. create data id
@@ -150,6 +171,7 @@ export async function insertData2Dataset({
   chunkIndex = 0,
   indexSize = 512,
   indexes,
+  indexPrefix,
   embeddingModel,
   session
 }: CreateDatasetDataProps & {
@@ -174,7 +196,8 @@ export async function insertData2Dataset({
     q,
     a,
     indexSize,
-    maxIndexSize: embModel.maxToken
+    maxIndexSize: embModel.maxToken,
+    indexPrefix
   });
 
   // insert to vector store
@@ -255,7 +278,8 @@ export async function updateData2Dataset({
   a,
   indexes,
   model,
-  indexSize = 512
+  indexSize = 512,
+  indexPrefix
 }: UpdateDatasetDataProps & { model: string; indexSize?: number }) {
   if (!Array.isArray(indexes)) {
     return Promise.reject('indexes is required');
@@ -271,7 +295,8 @@ export async function updateData2Dataset({
     q,
     a,
     indexSize,
-    maxIndexSize: getEmbeddingModel(model).maxToken
+    maxIndexSize: getEmbeddingModel(model).maxToken,
+    indexPrefix
   });
 
   // 3. Patch indexes, create, update, delete

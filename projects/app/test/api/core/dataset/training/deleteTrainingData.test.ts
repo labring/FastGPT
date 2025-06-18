@@ -33,8 +33,7 @@ describe('delete training data test', () => {
       tmbId: root.tmbId,
       datasetId: dataset._id,
       collectionId: collection._id,
-      mode: TrainingModeEnum.chunk,
-      model: 'test'
+      mode: TrainingModeEnum.chunk
     });
 
     const res = await Call<deleteTrainingDataBody, {}, deleteTrainingDataResponse>(handler, {

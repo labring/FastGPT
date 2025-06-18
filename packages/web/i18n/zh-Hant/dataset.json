@@ -110,6 +110,8 @@
   "import_param_setting": "參數設定",
   "import_select_file": "選擇文件",
   "import_select_link": "輸入連結",
+  "index_prefix_title": "將標題加入索引",
+  "index_prefix_title_tips": "自動給索引所有索引加標題名",
   "index_size": "索引大小",
   "index_size_tips": "向量化時內容的長度，系統會自動按該大小對分塊進行進一步的分割。",
   "input_required_field_to_select_baseurl": "請先輸入必填信息",

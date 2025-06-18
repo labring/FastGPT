@@ -48,7 +48,9 @@ async function handler(req: NextApiRequest) {
 
   const [
     {
-      dataset: { _id: datasetId, vectorModel, agentModel }
+      dataset: { _id: datasetId, vectorModel, agentModel },
+      indexPrefixTitle,
+      name
     }
   ] = await Promise.all([getCollectionWithDataset(collectionId)]);
 
@@ -84,6 +86,7 @@ async function handler(req: NextApiRequest) {
     q: formatQ,
     a: formatA,
     chunkIndex: 0,
+    indexPrefix: indexPrefixTitle ? `# ${name}` : undefined,
     embeddingModel: vectorModelData.model,
     indexes: formatIndexes
   });
