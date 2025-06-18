@@ -101,7 +101,8 @@ const DatasetSchema = new Schema({
   },
   agentModel: {
     type: String,
-    required: true
+    required: true,
+    default: 'gpt-4o-mini'
   },
   vlmModel: String,
   intro: {
