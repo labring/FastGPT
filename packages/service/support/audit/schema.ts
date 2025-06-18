@@ -1,12 +1,12 @@
 import { Schema, getMongoLogModel } from '../../common/mongo';
-import { type OperationLogSchema } from '@fastgpt/global/support/operationLog/type';
-import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import { type OperationLogSchema } from '@fastgpt/global/support/audit/type';
+import { AuditEventEnum } from '@fastgpt/global/support/audit/constants';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 
-export const OperationLogCollectionName = 'operationLog';
+export const OperationLogCollectionName = 'operationLogs';
 
 const OperationLogSchema = new Schema({
   tmbId: {
@@ -25,7 +25,7 @@ const OperationLogSchema = new Schema({
   },
   event: {
     type: String,
-    enum: Object.values(OperationLogEventEnum),
+    enum: Object.values(AuditEventEnum),
     required: true
   },
   metadata: {
@@ -33,6 +33,9 @@ const OperationLogSchema = new Schema({
     default: {}
   }
 });
+
+OperationLogSchema.index({ teamId: 1, tmbId: 1, event: 1 });
+OperationLogSchema.index({ timestamp: 1 }, { expireAfterSeconds: 14 * 24 * 60 * 60 }); // Auto delete after 14 days
 
 export const MongoOperationLog = getMongoLogModel<OperationLogSchema>(
   OperationLogCollectionName,
