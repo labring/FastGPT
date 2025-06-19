@@ -28,9 +28,7 @@ async function handler(
     await authApp({ req, authToken: true, appId, per: ReadPermissionVal });
   }
 
-  const lang = getLocale(req);
-
-  return getChildAppPreviewNode({ appId, versionId, lang });
+  return getChildAppPreviewNode({ appId, versionId, lang: getLocale(req) });
 }
 
 export default NextAPI(handler);

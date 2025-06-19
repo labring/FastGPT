@@ -1,6 +1,5 @@
 import { type NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { NextAPI } from '@/service/middleware/entry';
-import { getSystemTools } from '@/service/core/app/plugin';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
@@ -10,6 +9,7 @@ import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { NextApiResponse } from 'next';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { getSystemPlugins } from '@fastgpt/service/core/app/plugin/controller';
 
 export type GetSystemPluginTemplatesBody = {
   searchKey?: string;
@@ -25,7 +25,7 @@ async function handler(
   const formatParentId = parentId || null;
   const lang = getLocale(req);
 
-  const plugins = await getSystemTools();
+  const plugins = await getSystemPlugins();
   return plugins // Just show the active plugins
     .filter((item) => item.isActive)
     .map<NodeTemplateListItemType>((plugin) => ({

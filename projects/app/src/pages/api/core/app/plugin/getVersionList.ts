@@ -7,7 +7,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import {
-  getSystemPluginTemplateById,
+  getSystemPluginByIdAndVersionId,
   splitCombineToolId
 } from '@fastgpt/service/core/app/plugin/controller';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
@@ -52,7 +52,7 @@ async function handler(
       });
       return app._id;
     } else {
-      const item = await getSystemPluginTemplateById(formatToolId);
+      const item = await getSystemPluginByIdAndVersionId(formatToolId);
       // const item = getSystemTools
       if (!item) return Promise.reject(PluginErrEnum.unAuth);
       return item.associatedPluginId;

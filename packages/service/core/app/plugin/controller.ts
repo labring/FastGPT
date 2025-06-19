@@ -25,11 +25,10 @@ import type {
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { getSystemTool } from '../tool/api';
-import { FastGPTProUrl } from '../../../common/system/constants';
-import { GET } from '../../../common/api/plusRequest';
+import { getNanoid, replaceVariable } from '@fastgpt/global/common/string/tools';
+import { getSystemTool, getSystemToolList } from '../tool/api';
 import { Types } from '../../../common/mongo';
+import type { SystemPluginConfigSchemaType } from './type';
 
 /**
   plugin id rule:
@@ -64,61 +63,58 @@ type ChildAppType = SystemPluginTemplateItemType & {
   outputs?: FlowNodeOutputItemType[];
 };
 
-export const getCommercialPluginsAPI = (toolId?: string) => {
-  return GET<SystemPluginTemplateItemType[]>('/core/app/plugin/getSystemPlugins', { toolId });
-};
+// export const getCommercialPluginsAPI = (toolId?: string) => {
+//   return GET<SystemPluginTemplateItemType[]>('/core/app/plugin/getSystemPlugins', { toolId });
+// };
 
-export const getSystemPluginTemplateById = async (
+export const getSystemPluginByIdAndVersionId = async (
   pluginId: string,
   versionId?: string
 ): Promise<ChildAppType> => {
-  const plugin = FastGPTProUrl
-    ? await (async () => {
-        const plugins = await getCommercialPluginsAPI(pluginId);
-        const plugin = plugins[0];
-        if (plugin.associatedPluginId) {
-          // The verification plugin is set as a system plugin
-          const systemPlugin = await MongoSystemPlugin.findOne(
-            { pluginId: plugin.id, 'customConfig.associatedPluginId': plugin.associatedPluginId },
-            'associatedPluginId'
-          ).lean();
-          if (!systemPlugin) return Promise.reject(PluginErrEnum.unExist);
+  const plugin = await (async () => {
+    const plugin = await getSystemPluginById(pluginId);
+    if (plugin.associatedPluginId) {
+      // The verification plugin is set as a system plugin
+      const systemPlugin = await MongoSystemPlugin.findOne(
+        { pluginId: plugin.id, 'customConfig.associatedPluginId': plugin.associatedPluginId },
+        'associatedPluginId'
+      ).lean();
+      if (!systemPlugin) return Promise.reject(PluginErrEnum.unExist);
 
-          const app = await MongoApp.findById(plugin.associatedPluginId).lean();
-          if (!app) return Promise.reject(PluginErrEnum.unExist);
+      const app = await MongoApp.findById(plugin.associatedPluginId).lean();
+      if (!app) return Promise.reject(PluginErrEnum.unExist);
 
-          const version = versionId
-            ? await getAppVersionById({
-                appId: plugin.associatedPluginId,
-                versionId,
-                app
-              })
-            : await getAppLatestVersion(plugin.associatedPluginId, app);
-          if (!version.versionId) return Promise.reject('App version not found');
-          const isLatest = version.versionId
-            ? await checkIsLatestVersion({
-                appId: plugin.associatedPluginId,
-                versionId: version.versionId
-              })
-            : true;
+      const version = versionId
+        ? await getAppVersionById({
+            appId: plugin.associatedPluginId,
+            versionId,
+            app
+          })
+        : await getAppLatestVersion(plugin.associatedPluginId, app);
+      if (!version.versionId) return Promise.reject('App version not found');
+      const isLatest = version.versionId
+        ? await checkIsLatestVersion({
+            appId: plugin.associatedPluginId,
+            versionId: version.versionId
+          })
+        : true;
 
-          return {
-            ...plugin,
-            workflow: {
-              nodes: version.nodes,
-              edges: version.edges,
-              chatConfig: version.chatConfig
-            },
-            version: versionId ? version?.versionId : '',
-            versionLabel: version?.versionName,
-            isLatestVersion: isLatest,
-            teamId: String(app.teamId),
-            tmbId: String(app.tmbId)
-          };
-        }
-        return plugin;
-      })()
-    : await getSystemTool(pluginId);
+      return {
+        ...plugin,
+        workflow: {
+          nodes: version.nodes,
+          edges: version.edges,
+          chatConfig: version.chatConfig
+        },
+        version: versionId ? version?.versionId : '',
+        versionLabel: version?.versionName,
+        isLatestVersion: isLatest,
+        teamId: String(app.teamId),
+        tmbId: String(app.tmbId)
+      };
+    }
+    return plugin;
+  })();
 
   return {
     ...plugin,
@@ -177,7 +173,7 @@ export async function getChildAppPreviewNode({
         pluginOrder: 0
       } as ChildAppType;
     } else {
-      return getSystemPluginTemplateById(pluginId, versionId);
+      return getSystemPluginByIdAndVersionId(pluginId, versionId);
     }
   })();
   console.log('app', app);
@@ -309,7 +305,7 @@ export async function getChildAppRuntimeById(
       };
     } else {
       // System
-      return getSystemPluginTemplateById(pluginId, versionId);
+      return getSystemPluginByIdAndVersionId(pluginId, versionId);
     }
   })();
 
@@ -326,3 +322,113 @@ export async function getChildAppRuntimeById(
     hasTokenFee: app.hasTokenFee
   };
 }
+
+function overridePluginConfig(
+  item: SystemPluginTemplateItemType,
+  pluginConfig: SystemPluginConfigSchemaType
+) {
+  // 修改自身以及 children 的属性
+  item.isActive =
+    pluginConfig.isActive ?? pluginConfig.pluginId.startsWith(PluginSourceEnum.community)
+      ? true
+      : false;
+  // 合并配置项值
+  item.originCost = pluginConfig.originCost ?? 0;
+  item.currentCost = pluginConfig.currentCost ?? 0;
+  item.hasTokenFee = pluginConfig.hasTokenFee ?? false;
+  item.pluginOrder = pluginConfig.pluginOrder ?? 0;
+  // @ts-ignore
+  item.customWorkflow = pluginConfig.customConfig;
+
+  // 使用 inputConfig 的内容，替换插件的 nodes
+  if (pluginConfig.inputConfig && item.workflow?.nodes) {
+    try {
+      let nodeString = JSON.stringify(item.workflow.nodes);
+      pluginConfig.inputConfig.forEach((inputConfig) => {
+        nodeString = replaceVariable(nodeString, {
+          [inputConfig.key]: inputConfig.value
+        });
+      });
+
+      item.workflow.nodes = JSON.parse(nodeString);
+    } catch (error) {}
+  }
+}
+
+const dbPluginFormat = (item: SystemPluginConfigSchemaType) => {
+  const {
+    name,
+    avatar,
+    intro,
+    version,
+    weight,
+    workflow,
+    templateType,
+    associatedPluginId,
+    userGuide
+  } = item.customConfig!;
+  return {
+    id: item.pluginId,
+    isActive: item.isActive,
+    isFolder: false,
+    parentId: null,
+    author: item.customConfig?.author || '',
+    version,
+    name,
+    avatar,
+    intro,
+    showStatus: true,
+    weight,
+    isTool: true,
+    templateType,
+    inputConfig: item.inputConfig,
+    workflow,
+    originCost: item.originCost,
+    currentCost: item.currentCost,
+    hasTokenFee: item.hasTokenFee,
+    pluginOrder: item.pluginOrder,
+    associatedPluginId,
+    userGuide
+  };
+};
+
+export const getSystemPlugins = async (): Promise<SystemPluginTemplateItemType[]> => {
+  const tools = await getSystemToolList();
+
+  // 从数据库里加载插件配置进行替换
+  const systemPlugins = await MongoSystemPlugin.find({}).lean();
+  tools.forEach((plugin) => {
+    // 如果有插件的配置信息，则需要进行替换
+    const pluginConfig = systemPlugins.find((config) => config.pluginId === plugin.id);
+
+    if (pluginConfig) {
+      const children = tools.filter((item) => item.parentId === plugin.id);
+      const list = [plugin, ...children];
+      list.forEach((item) => {
+        overridePluginConfig(item, pluginConfig);
+      });
+    }
+  });
+  const dbPlugins = systemPlugins
+    .filter((item) => item.customConfig)
+    .map((item) => dbPluginFormat(item));
+
+  const plugins = [...tools, ...dbPlugins];
+  plugins.sort((a, b) => (a.pluginOrder ?? 0) - (b.pluginOrder ?? 0));
+  return plugins as SystemPluginTemplateItemType[];
+};
+
+export const getSystemPluginById = async (
+  pluginId: string
+): Promise<SystemPluginTemplateItemType> => {
+  const { source } = splitCombineToolId(pluginId);
+  const dbPlugin = await MongoSystemPlugin.findOne({ pluginId }).lean();
+  if (source === PluginSourceEnum.systemTool) {
+    const tool = await getSystemTool(pluginId);
+    if (tool && dbPlugin) {
+      overridePluginConfig(tool, dbPlugin);
+      return tool;
+    }
+  }
+  return dbPluginFormat(dbPlugin!);
+};
