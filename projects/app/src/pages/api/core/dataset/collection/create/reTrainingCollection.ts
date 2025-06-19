@@ -7,9 +7,9 @@ import { delCollection } from '@fastgpt/service/core/dataset/collection/controll
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
-import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
-import { getI18nDatasetType } from '@fastgpt/service/support/operationLog/util';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 
 type RetrainingCollectionResponse = {
   collectionId: string;
@@ -52,10 +52,10 @@ async function handler(
     });
 
     (async () => {
-      addOperationLog({
+      addAuditLog({
         tmbId,
         teamId,
-        event: OperationLogEventEnum.RETRAIN_COLLECTION,
+        event: AuditEventEnum.RETRAIN_COLLECTION,
         params: {
           collectionName: collection.name,
           datasetName: collection.dataset?.name || '',

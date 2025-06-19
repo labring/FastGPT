@@ -78,7 +78,7 @@ export type YuqueServer = {
 
 ![](/imgs/thirddataset-5.png)
 
-`FastGPT\packages\service\support\operationLog\util.ts`文件下添加如下内容，以支持获取 I18n 翻译。
+`FastGPT\packages\service\support\user/audit\util.ts`文件下添加如下内容，以支持获取 I18n 翻译。
 
 ![](/imgs/thirddataset-6.png)
 

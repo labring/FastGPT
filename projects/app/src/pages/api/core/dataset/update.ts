@@ -37,9 +37,9 @@ import {
 } from '@fastgpt/service/core/dataset/websiteSync';
 import { delDatasetRelevantData } from '@fastgpt/service/core/dataset/controller';
 import { isEqual } from 'lodash';
-import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
-import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
-import { getI18nDatasetType } from '@fastgpt/service/support/operationLog/util';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/training/utils';
 
@@ -368,10 +368,10 @@ const logDatasetMove = ({
   targetName: string;
 }) => {
   (async () => {
-    addOperationLog({
+    addAuditLog({
       tmbId,
       teamId,
-      event: OperationLogEventEnum.MOVE_DATASET,
+      event: AuditEventEnum.MOVE_DATASET,
       params: {
         datasetName: dataset.name,
         targetFolderName: targetName,
@@ -391,10 +391,10 @@ const logDatasetUpdate = ({
   dataset: any;
 }) => {
   (async () => {
-    addOperationLog({
+    addAuditLog({
       tmbId,
       teamId,
-      event: OperationLogEventEnum.UPDATE_DATASET,
+      event: AuditEventEnum.UPDATE_DATASET,
       params: {
         datasetName: dataset.name,
         datasetType: getI18nDatasetType(dataset.type)

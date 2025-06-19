@@ -19,9 +19,9 @@ import { deleteChatFiles } from '@fastgpt/service/core/chat/controller';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { removeImageByPath } from '@fastgpt/service/common/file/image/controller';
-import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
-import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
-import { getI18nAppType } from '@fastgpt/service/support/operationLog/util';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
@@ -43,10 +43,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     appId
   });
   (async () => {
-    addOperationLog({
+    addAuditLog({
       tmbId,
       teamId,
-      event: OperationLogEventEnum.DELETE_APP,
+      event: AuditEventEnum.DELETE_APP,
       params: {
         appName: app.name,
         appType: getI18nAppType(app.type)

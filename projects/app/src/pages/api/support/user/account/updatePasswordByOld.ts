@@ -5,8 +5,8 @@ import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { NextAPI } from '@/service/middleware/entry';
-import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
-import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { oldPsw, newPsw } = req.body as { oldPsw: string; newPsw: string };
 
@@ -41,10 +41,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   });
 
   (async () => {
-    addOperationLog({
+    addAuditLog({
       tmbId,
       teamId,
-      event: OperationLogEventEnum.CHANGE_PASSWORD,
+      event: AuditEventEnum.CHANGE_PASSWORD,
       params: {}
     });
   })();

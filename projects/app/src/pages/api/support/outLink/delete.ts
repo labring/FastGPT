@@ -3,9 +3,9 @@ import { authOutLinkCrud } from '@fastgpt/service/support/permission/publish/aut
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
-import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
-import { getI18nAppType } from '@fastgpt/service/support/operationLog/util';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 
 export type OutLinkDeleteQuery = {
   id: string;
@@ -28,10 +28,10 @@ async function handler(
   await MongoOutLink.findByIdAndDelete(id);
 
   (async () => {
-    addOperationLog({
+    addAuditLog({
       tmbId,
       teamId,
-      event: OperationLogEventEnum.DELETE_APP_PUBLISH_CHANNEL,
+      event: AuditEventEnum.DELETE_APP_PUBLISH_CHANNEL,
       params: {
         appName: app.name,
         channelName: outLink.name,
