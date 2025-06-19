@@ -1,4 +1,4 @@
-import type { FlexProps} from '@chakra-ui/react';
+import type { FlexProps } from '@chakra-ui/react';
 import { Box, Flex, Textarea, useBoolean } from '@chakra-ui/react';
 import React, { useRef, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
