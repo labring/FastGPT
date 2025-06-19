@@ -33,7 +33,7 @@ export const formatDatasetDataValue = ({
   });
 
   return {
-    q: `![${q.replaceAll('\n', '\\n')}](${previewUrl})`,
+    q: `![${q.replaceAll('\n', '')}](${previewUrl})`,
     a,
     imagePreivewUrl: previewUrl
   };
