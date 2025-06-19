@@ -1,5 +1,4 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
 import {
   ContentTypes,
   NodeInputKeyEnum,
@@ -23,13 +22,10 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import json5 from 'json5';
 import { JSONPath } from 'jsonpath-plus';
-import type { SystemPluginSpecialResponse } from '../../../../../plugins/type';
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import { uploadFileFromBase64Img } from '../../../../common/file/gridfs/controller';
 import { addLog } from '../../../../common/system/log';
 import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
-import { createFileToken } from '../../../../support/permission/controller';
 import { formatHttpError } from '../utils';
 
 type PropsArrType = {
@@ -412,39 +408,4 @@ async function fetchData({
     formatResponse: typeof response === 'object' ? response : {},
     rawResponse: response
   };
-}
-
-// Replace some special response from system plugin
-async function replaceSystemPluginResponse({
-  response,
-  teamId,
-  tmbId
-}: {
-  response: Record<string, any>;
-  teamId: string;
-  tmbId: string;
-}) {
-  for await (const key of Object.keys(response)) {
-    if (typeof response[key] === 'object' && response[key].type === 'SYSTEM_PLUGIN_BASE64') {
-      const fileObj = response[key] as SystemPluginSpecialResponse;
-      const filename = `${tmbId}-${Date.now()}.${fileObj.extension}`;
-      try {
-        const fileId = await uploadFileFromBase64Img({
-          teamId,
-          tmbId,
-          bucketName: 'chat',
-          base64: fileObj.value,
-          filename,
-          metadata: {}
-        });
-        response[key] = `${ReadFileBaseUrl}/${filename}?token=${await createFileToken({
-          bucketName: 'chat',
-          teamId,
-          uid: tmbId,
-          fileId
-        })}`;
-      } catch (error) {}
-    }
-  }
-  return response;
 }
