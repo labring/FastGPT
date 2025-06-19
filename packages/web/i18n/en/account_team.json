@@ -131,7 +131,7 @@
   "log_admin_update_system_config": "【{{name}}】Updated system configuration",
   "log_admin_update_system_modal": "【{{name}}】The system announcement configuration was carried out",
   "log_admin_update_team": "[{{name}}] Replace the team editing information named [{{teamName}}] to the team name: [{{newTeamName}}], balance: [{{newBalance}}]",
-  "log_admin_update_user": "[{{name}}] Replace the user editing information named [{{userName}}] as user name: [{{newUserName}}], password: [{{newPassword}}], user status: [{{newStatus}}]",
+  "log_admin_update_user": "Modify the user information of 【{{userName}}】",
   "log_assign_permission": "[{{name}}] Updated the permissions of [{{objectName}}]: [Application creation: [{{appCreate}}], Knowledge Base: [{{datasetCreate}}], API Key: [{{apiKeyCreate}}], Management: [{{manage}}]]",
   "log_change_department": "【{{name}}】Updated department【{{departmentName}}】",
   "log_change_member_name": "【{{name}}】Rename member [{{memberName}}] to 【{{newName}}】",

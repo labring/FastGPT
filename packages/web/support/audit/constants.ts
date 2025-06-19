@@ -26,11 +26,7 @@ export const adminAuditLogMap = {
     content: i18nT('account_team:log_admin_update_user'),
     typeLabel: i18nT('account_team:admin_update_user'),
     params: {} as {
-      name?: string;
-      userName: string;
-      newUserName: string;
-      newPassword: string;
-      newStatus: string;
+      userName?: string;
     }
   },
   [AdminAuditEventEnum.ADMIN_UPDATE_TEAM]: {
