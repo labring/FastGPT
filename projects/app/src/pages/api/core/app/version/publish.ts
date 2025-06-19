@@ -9,9 +9,9 @@ import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/strin
 import { type PostPublishAppProps } from '@/global/core/app/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { addAuditLog } from '@fastgpt/service/support/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/audit/constants';
-import { getI18nAppType } from '@fastgpt/service/support/audit/util';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 
 async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiResponse<any>) {

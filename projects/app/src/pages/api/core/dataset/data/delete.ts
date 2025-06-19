@@ -4,9 +4,9 @@ import { deleteDatasetData } from '@/service/core/dataset/data/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { addAuditLog } from '@fastgpt/service/support/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/audit/constants';
-import { getI18nDatasetType } from '@fastgpt/service/support/audit/util';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 async function handler(req: NextApiRequest) {
   const { id: dataId } = req.query as {
     id: string;

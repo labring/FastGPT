@@ -11,9 +11,9 @@ import { MongoDatasetCollectionTags } from '@fastgpt/service/core/dataset/tag/sc
 import { removeImageByPath } from '@fastgpt/service/common/file/image/controller';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { removeWebsiteSyncJobScheduler } from '@fastgpt/service/core/dataset/websiteSync';
-import { addAuditLog } from '@fastgpt/service/support/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/audit/constants';
-import { getI18nDatasetType } from '@fastgpt/service/support/audit/util';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 
 async function handler(req: NextApiRequest) {
   const { id: datasetId } = req.query as {

@@ -12,9 +12,9 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { type CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { addAuditLog } from '@fastgpt/service/support/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/audit/constants';
-import { getI18nDatasetType } from '@fastgpt/service/support/audit/util';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 export type UpdateDatasetCollectionParams = {
   id?: string;
   parentId?: string;

@@ -19,9 +19,9 @@ import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { addAuditLog } from '@fastgpt/service/support/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/audit/constants';
-import { getI18nAppType } from '@fastgpt/service/support/audit/util';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 
 export type CreateAppBody = {
   parentId?: ParentIdType;

@@ -1,6 +1,6 @@
-import { Schema, getMongoLogModel } from '../../common/mongo';
-import { type OperationLogSchema } from '@fastgpt/global/support/audit/type';
-import { AdminAuditEventEnum, AuditEventEnum } from '@fastgpt/global/support/audit/constants';
+import { Schema, getMongoLogModel } from '../../../common/mongo';
+import { type OperationLogSchema } from '@fastgpt/global/support/user/audit/type';
+import { AdminAuditEventEnum, AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import {
   TeamCollectionName,
   TeamMemberCollectionName

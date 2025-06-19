@@ -13,9 +13,9 @@ import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { type PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
-import { addAuditLog } from '@fastgpt/service/support/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/audit/constants';
-import { getI18nAppType } from '@fastgpt/service/support/audit/util';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 
 async function handler(
   req: NextApiRequest,

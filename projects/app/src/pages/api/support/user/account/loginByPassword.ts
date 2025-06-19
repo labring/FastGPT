@@ -9,8 +9,8 @@ import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequency
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
-import { addAuditLog } from '@fastgpt/service/support/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/audit/constants';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { authCode } from '@fastgpt/service/support/user/auth/controller';
 import { createUserSession } from '@fastgpt/service/support/user/session';

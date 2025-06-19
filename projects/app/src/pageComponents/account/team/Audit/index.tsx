@@ -15,8 +15,8 @@ import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getOperationLogs } from '@/web/support/user/team/operantionLog/api';
-import { auditLogMap } from '@fastgpt/web/support/audit/constants';
-import { AuditEventEnum } from '@fastgpt/global/support/audit/constants';
+import { auditLogMap } from '@fastgpt/web/support/user/audit/constants';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import MultipleSelect, {

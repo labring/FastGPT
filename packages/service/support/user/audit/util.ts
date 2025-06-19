@@ -1,13 +1,13 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { i18nT } from '../../../web/i18n/utils';
+import { i18nT } from '../../../../web/i18n/utils';
 import { MongoOperationLog } from './schema';
 import type {
   AdminAuditEventEnum,
   AuditEventEnum,
   AdminAuditEventParamsType,
   AuditEventParamsType
-} from '@fastgpt/global/support/audit/constants';
+} from '@fastgpt/global/support/user/audit/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 
 export function getI18nAppType(type: AppTypeEnum): string {

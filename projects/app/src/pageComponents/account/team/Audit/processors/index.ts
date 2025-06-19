@@ -1,4 +1,4 @@
-import type { AuditEventEnum } from '@fastgpt/global/support/audit/constants';
+import type { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { createTeamProcessors } from './teamProcessors';
 import { createAppProcessors } from './appProcessors';
 import { createDatasetProcessors } from './datasetProcessors';

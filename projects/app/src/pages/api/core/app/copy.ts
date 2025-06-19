@@ -5,9 +5,9 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { onCreateApp } from './create';
-import { AuditEventEnum } from '@fastgpt/global/support/audit/constants';
-import { addAuditLog } from '@fastgpt/service/support/audit/util';
-import { getI18nAppType } from '@fastgpt/service/support/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 
 export type copyAppQuery = {};
 

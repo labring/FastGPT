@@ -4,8 +4,8 @@ import { authOpenApiKeyCrud } from '@fastgpt/service/support/permission/auth/ope
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { addAuditLog } from '@fastgpt/service/support/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/audit/constants';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 async function handler(req: ApiRequestProps<EditApiKeyProps & { _id: string }>): Promise<void> {
   const { _id, name, limit } = req.body;
 

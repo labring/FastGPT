@@ -37,9 +37,9 @@ import {
 } from '@fastgpt/service/core/dataset/websiteSync';
 import { delDatasetRelevantData } from '@fastgpt/service/core/dataset/controller';
 import { isEqual } from 'lodash';
-import { addAuditLog } from '@fastgpt/service/support/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/audit/constants';
-import { getI18nDatasetType } from '@fastgpt/service/support/audit/util';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/training/utils';
 

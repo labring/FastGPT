@@ -4,8 +4,8 @@ import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant'
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { addAuditLog } from '@fastgpt/service/support/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/audit/constants';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 export type OpenAPIDeleteQuery = { id: string };
 export type OpenAPIDeleteBody = {};
 export type OpenAPIDeleteResponse = {};

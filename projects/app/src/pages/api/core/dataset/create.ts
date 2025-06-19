@@ -18,9 +18,9 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
-import { addAuditLog } from '@fastgpt/service/support/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/audit/constants';
-import { getI18nDatasetType } from '@fastgpt/service/support/audit/util';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 
 export type DatasetCreateQuery = {};
 export type DatasetCreateBody = CreateDatasetParams;
