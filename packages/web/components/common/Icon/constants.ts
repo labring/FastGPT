@@ -20,6 +20,7 @@ export const iconPaths = {
   'common/addLight': () => import('./icons/common/addLight.svg'),
   'common/addUser': () => import('./icons/common/addUser.svg'),
   'common/administrator': () => import('./icons/common/administrator.svg'),
+  'common/audit': () => import('./icons/common/audit.svg'),
   'common/alipay': () => import('./icons/common/alipay.svg'),
   'common/app': () => import('./icons/common/app.svg'),
   'common/arrowLeft': () => import('./icons/common/arrowLeft.svg'),

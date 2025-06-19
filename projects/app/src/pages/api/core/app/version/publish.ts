@@ -9,9 +9,9 @@ import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/strin
 import { type PostPublishAppProps } from '@/global/core/app/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
-import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
-import { getI18nAppType } from '@fastgpt/service/support/operationLog/util';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 
 async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiResponse<any>) {
@@ -37,10 +37,10 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
       updateTime: new Date()
     });
 
-    addOperationLog({
+    addAuditLog({
       tmbId,
       teamId,
-      event: OperationLogEventEnum.UPDATE_PUBLISH_APP,
+      event: AuditEventEnum.UPDATE_PUBLISH_APP,
       params: {
         appName: app.name,
         operationName: i18nT('account_team:update'),
@@ -99,10 +99,10 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
   });
 
   (async () => {
-    addOperationLog({
+    addAuditLog({
       tmbId,
       teamId,
-      event: OperationLogEventEnum.UPDATE_PUBLISH_APP,
+      event: AuditEventEnum.UPDATE_PUBLISH_APP,
       params: {
         appName: app.name,
         operationName: isPublish

@@ -4,9 +4,9 @@ import { deleteDatasetData } from '@/service/core/dataset/data/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
-import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
-import { getI18nDatasetType } from '@fastgpt/service/support/operationLog/util';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 async function handler(req: NextApiRequest) {
   const { id: dataId } = req.query as {
     id: string;
@@ -27,10 +27,10 @@ async function handler(req: NextApiRequest) {
 
   await deleteDatasetData(datasetData);
   (async () => {
-    addOperationLog({
+    addAuditLog({
       tmbId,
       teamId,
-      event: OperationLogEventEnum.DELETE_DATA,
+      event: AuditEventEnum.DELETE_DATA,
       params: {
         collectionName: collection.name,
         datasetName: collection.dataset?.name || '',

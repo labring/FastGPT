@@ -5,9 +5,9 @@ import type { PublishChannelEnum } from '@fastgpt/global/support/outLink/constan
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
-import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
-import { getI18nAppType } from '@fastgpt/service/support/operationLog/util';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export type OutLinkCreateQuery = {};
@@ -40,10 +40,10 @@ async function handler(
   });
 
   (async () => {
-    addOperationLog({
+    addAuditLog({
       tmbId,
       teamId,
-      event: OperationLogEventEnum.CREATE_APP_PUBLISH_CHANNEL,
+      event: AuditEventEnum.CREATE_APP_PUBLISH_CHANNEL,
       params: {
         appName: app.name,
         channelName: props.name,

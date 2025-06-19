@@ -5,10 +5,10 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { onCreateApp } from './create';
-import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
-import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { getI18nAppType } from '@fastgpt/service/support/operationLog/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+
 export type copyAppQuery = {};
 
 export type copyAppBody = { appId: string };
@@ -46,10 +46,10 @@ async function handler(
     pluginData: app.pluginData
   });
   (async () => {
-    addOperationLog({
+    addAuditLog({
       tmbId,
       teamId,
-      event: OperationLogEventEnum.CREATE_APP_COPY,
+      event: AuditEventEnum.CREATE_APP_COPY,
       params: {
         appName: app.name,
         appType: getI18nAppType(app.type)

@@ -1,6 +1,6 @@
-import { Schema, getMongoLogModel } from '../../common/mongo';
-import { type OperationLogSchema } from '@fastgpt/global/support/operationLog/type';
-import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import { Schema, getMongoLogModel } from '../../../common/mongo';
+import { type OperationLogSchema } from '@fastgpt/global/support/user/audit/type';
+import { AdminAuditEventEnum, AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -25,7 +25,7 @@ const OperationLogSchema = new Schema({
   },
   event: {
     type: String,
-    enum: Object.values(OperationLogEventEnum),
+    enum: [...Object.values(AuditEventEnum), ...Object.values(AdminAuditEventEnum)],
     required: true
   },
   metadata: {

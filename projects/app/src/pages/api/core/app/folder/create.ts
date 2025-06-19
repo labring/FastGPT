@@ -18,8 +18,8 @@ import { syncCollaborators } from '@fastgpt/service/support/permission/inheritPe
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
-import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 export type CreateAppFolderBody = {
   parentId?: ParentIdType;
   name: string;
@@ -85,10 +85,10 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
     }
   });
   (async () => {
-    addOperationLog({
+    addAuditLog({
       tmbId,
       teamId,
-      event: OperationLogEventEnum.CREATE_APP_FOLDER,
+      event: AuditEventEnum.CREATE_APP_FOLDER,
       params: {
         folderName: name
       }

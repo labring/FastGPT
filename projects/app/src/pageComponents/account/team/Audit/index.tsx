@@ -15,8 +15,8 @@ import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getOperationLogs } from '@/web/support/user/team/operantionLog/api';
-import { operationLogMap } from '@fastgpt/service/support/operationLog/constants';
-import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import { auditLogMap } from '@fastgpt/web/support/user/audit/constants';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import MultipleSelect, {
@@ -27,11 +27,11 @@ import { getTeamMembers } from '@/web/support/user/team/api';
 import { specialProcessors } from './processors';
 import { defaultMetadataProcessor } from './processors/commonProcessor';
 
-function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
+function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useState<{
     tmbIds?: string[];
-    events?: OperationLogEventEnum[];
+    events?: AuditEventEnum[];
   }>({});
 
   const { data: members, ScrollData } = useScrollPagination(getTeamMembers, {});
@@ -51,8 +51,8 @@ function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
 
   const eventOptions = useMemo(
     () =>
-      Object.values(OperationLogEventEnum).map((event) => ({
-        label: t(operationLogMap[event].typeLabel),
+      Object.values(AuditEventEnum).map((event) => ({
+        label: t(auditLogMap[event].typeLabel),
         value: event
       })),
     [t]
@@ -61,14 +61,14 @@ function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
   const processMetadataByEvent = useCallback(
     (event: string, metadata: any) => {
       const defaultFormat = defaultMetadataProcessor(metadata, t);
-      const specialFormat = specialProcessors[event as OperationLogEventEnum]?.(defaultFormat, t);
+      const specialFormat = specialProcessors[event as AuditEventEnum]?.(defaultFormat, t);
       return specialFormat || defaultFormat;
     },
     [t]
   );
 
   const {
-    data: operationLogs = [],
+    data: auditLog = [],
     isLoading: loadingLogs,
     ScrollData: LogScrollData
   } = useScrollPagination(getOperationLogs, {
@@ -92,7 +92,7 @@ function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
     setValue: setSelectedEvents,
     isSelectAll: isSelectAllEvent,
     setIsSelectAll: setIsSelectAllEvent
-  } = useMultipleSelect<OperationLogEventEnum>(
+  } = useMultipleSelect<AuditEventEnum>(
     eventOptions.map((item) => item.value),
     true
   );
@@ -166,8 +166,8 @@ function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
                 </Tr>
               </Thead>
               <Tbody>
-                {operationLogs?.map((log) => {
-                  const i18nData = operationLogMap[log.event];
+                {auditLog?.map((log) => {
+                  const i18nData = auditLogMap[log.event];
                   const metadata = processMetadataByEvent(log.event, { ...log.metadata });
 
                   return i18nData ? (
@@ -195,4 +195,4 @@ function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
   );
 }
 
-export default OperationLogTable;
+export default AuditLog;

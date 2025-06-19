@@ -12,9 +12,9 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { type CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
-import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
-import { getI18nDatasetType } from '@fastgpt/service/support/operationLog/util';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 export type UpdateDatasetCollectionParams = {
   id?: string;
   parentId?: string;
@@ -135,10 +135,10 @@ async function handler(req: ApiRequestProps<UpdateDatasetCollectionParams>) {
   });
 
   (async () => {
-    addOperationLog({
+    addAuditLog({
       tmbId,
       teamId,
-      event: OperationLogEventEnum.UPDATE_COLLECTION,
+      event: AuditEventEnum.UPDATE_COLLECTION,
       params: {
         collectionName: collection.name,
         datasetName: collection.dataset?.name || '',
