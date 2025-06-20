@@ -26,7 +26,7 @@ import type {
 } from '@fastgpt/global/core/workflow/type/io';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { getSystemTool, getSystemToolList } from '../tool/api';
+import { getSystemToolList } from '../tool/api';
 import { Types } from '../../../common/mongo';
 import type { SystemPluginConfigSchemaType } from './type';
 
@@ -404,14 +404,33 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType) => {
   };
 };
 
-const systemPlugins_cache = {
-  expires: 0,
-  data: [] as SystemPluginTemplateItemType[]
+function getCachedSystemPlugins() {
+  if (!global.systemPlugins_cache) {
+    global.systemPlugins_cache = {
+      expires: 0,
+      data: [] as SystemPluginTemplateItemType[]
+    };
+  }
+  return global.systemPlugins_cache;
+}
+
+const cleanSystemPluginCache = () => {
+  global.systemPlugins_cache = undefined;
+};
+
+export const refetchSystemPlugins = () => {
+  const changeStream = MongoSystemPlugin.watch();
+
+  changeStream.on('change', () => {
+    try {
+      cleanSystemPluginCache();
+    } catch (error) {}
+  });
 };
 
 export const getSystemPlugins = async (): Promise<SystemPluginTemplateItemType[]> => {
-  if (systemPlugins_cache.expires > Date.now() && process.env.NODE_ENV === 'production') {
-    return systemPlugins_cache.data;
+  if (getCachedSystemPlugins().expires > Date.now() && process.env.NODE_ENV === 'production') {
+    return getCachedSystemPlugins().data;
   } else {
     const tools = await getSystemToolList();
 
@@ -455,8 +474,10 @@ export const getSystemPlugins = async (): Promise<SystemPluginTemplateItemType[]
 
     const plugins = [...tools, ...dbPlugins];
     plugins.sort((a, b) => (a.pluginOrder ?? 0) - (b.pluginOrder ?? 0));
-    systemPlugins_cache.data = plugins;
-    systemPlugins_cache.expires = Date.now() + 30 * 60 * 1000; // 30 minutes
+    global.systemPlugins_cache = {
+      expires: Date.now() + 30 * 60 * 1000, // 30 minutes
+      data: plugins
+    };
     return plugins as SystemPluginTemplateItemType[];
   }
 };
@@ -475,3 +496,12 @@ export const getSystemPluginById = async (
   const dbPlugin = await MongoSystemPlugin.findOne({ pluginId }).lean();
   return dbPluginFormat(dbPlugin!);
 };
+
+declare global {
+  var systemPlugins_cache:
+    | {
+        expires: number;
+        data: SystemPluginTemplateItemType[];
+      }
+    | undefined;
+}
