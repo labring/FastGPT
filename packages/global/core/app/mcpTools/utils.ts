@@ -3,7 +3,6 @@ import {
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '../../workflow/constants';
-import { nanoid } from 'nanoid';
 import { i18nT } from '../../../../web/i18n/utils';
 import {
   FlowNodeInputTypeEnum,

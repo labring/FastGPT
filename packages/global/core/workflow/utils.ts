@@ -51,7 +51,6 @@ import { getNanoid } from '../../common/string/tools';
 import { ChatRoleEnum } from '../../core/chat/constants';
 import { runtimePrompt2ChatsValue } from '../../core/chat/adapt';
 import { getPluginRunContent } from '../../core/app/plugin/utils';
-import type { I18nStringType, localeType } from './type';
 
 export const getHandleId = (nodeId: string, type: 'source' | 'target', key: string) => {
   return `${nodeId}-${type}-${key}`;
@@ -446,9 +445,4 @@ export const getPluginRunUserQuery = ({
       files
     })
   };
-};
-
-export const parseI18nString = (str: I18nStringType = '', lang: localeType = 'en') => {
-  if (typeof str === 'string') return str;
-  return str[lang] ?? str['zh-CN'];
 };

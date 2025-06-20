@@ -4,7 +4,7 @@ import {
   type GetPathProps,
   type ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
-import { parseI18nString } from '@fastgpt/global/core/workflow/utils';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { getSystemPlugins } from '@fastgpt/service/core/app/plugin/controller';
 

@@ -1,4 +1,5 @@
 import createClient from '@fastgpt-sdk/plugin';
+import { localeType } from '@fastgpt/global/common/i18n/type';
 
 const ToolBaseURL = process.env.TOOL_BASE_URL || '';
 const client = createClient({
@@ -33,7 +34,7 @@ export async function runTool(toolId: string, input: object) {
   }
 }
 
-export async function getSystemTool(toolId: string) {
+export async function getSystemTool({ toolId }: { toolId: string }) {
   const res = await client.tool.getTool({
     query: {
       toolId

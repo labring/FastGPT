@@ -21,16 +21,8 @@ import type { ParentIdType } from 'common/parentFolder/type';
 import type { AppTypeEnum } from 'core/app/constants';
 import type { StoreNodeItemType } from './node';
 import { FlowNodeTemplateType } from './node';
-import type { SecretValueType } from 'common/secret/type';
-
-export type localeType = 'en' | 'zh-CN' | 'zh-Hant';
-export type I18nStringType =
-  | {
-      'zh-CN': string;
-      'zh-Hant'?: string;
-      en?: string;
-    }
-  | string;
+import type { SecretValueType } from './../../../common/secret/type';
+import type { I18nStringType } from '../../../common/i18n/type';
 
 export type WorkflowTemplateBasicType = {
   nodes: StoreNodeItemType[];
@@ -42,9 +34,9 @@ export type WorkflowTemplateType = {
   parentId?: ParentIdType;
   isFolder?: boolean;
 
-  name: I18nStringType;
+  name: I18nStringType | string;
   avatar: string;
-  intro?: I18nStringType;
+  intro?: I18nStringType | string;
   author?: string;
   courseUrl?: string;
 

@@ -1,18 +1,15 @@
 import { type FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getHandleConfig } from '@fastgpt/global/core/workflow/template/utils';
 import {
   appData2FlowNodeIO,
-  parseI18nString,
   pluginData2FlowNodeIO,
   toolData2FlowNodeIO,
   toolSetData2FlowNodeIO
 } from '@fastgpt/global/core/workflow/utils';
 import { MongoApp } from '../schema';
-import type { localeType } from '@fastgpt/global/core/workflow/type';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { type SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
 import {
   checkIsLatestVersion,
@@ -27,11 +24,8 @@ import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
-import {
-  FlowNodeTemplateTypeEnum,
-  WorkflowIOValueTypeEnum
-} from '@fastgpt/global/core/workflow/constants';
-import { getNanoid, replaceVariable } from '@fastgpt/global/common/string/tools';
+import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getSystemTool, getSystemToolList } from '../tool/api';
 import { Types } from '../../../common/mongo';
 import type { SystemPluginConfigSchemaType } from './type';
@@ -117,7 +111,6 @@ export const getSystemPluginByIdAndVersionId = async (
     }
     return plugin;
   })();
-  console.log('getSystemPluginByIdAndVersionId', plugin);
 
   return {
     ...plugin,
@@ -200,8 +193,6 @@ export async function getChildAppPreviewNode({
 
     return { isSystemTool, isPlugin, isTool, isToolSet };
   })();
-
-  console.log('isSystemTool', source, isSystemTool, isPlugin, isTool, isToolSet);
 
   const { flowNodeType, nodeIOConfig } = (() => {
     if (isToolSet)
@@ -316,7 +307,7 @@ export async function getChildAppRuntimeById(
     teamId: app.teamId,
     tmbId: app.tmbId,
     name: parseI18nString(app.name, lang),
-    avatar: parseI18nString(app.avatar, lang),
+    avatar: app.avatar || '',
     showStatus: app.showStatus,
     currentCost: app.currentCost,
     nodes: app.workflow.nodes,
@@ -325,7 +316,7 @@ export async function getChildAppRuntimeById(
   };
 }
 
-function overridePluginConfig(
+export function overridePluginConfig(
   item: Awaited<ReturnType<typeof getSystemToolList>>[0],
   dbPluginConfig: SystemPluginConfigSchemaType
 ) {
@@ -355,7 +346,7 @@ function overridePluginConfig(
   // item.inputs.find((item) => item.key === 'system_input_config').value = dbPluginConfig.inputConfig?.map(()=> {})
 
   //@ts-ignore
-  // item.inputConfig = dbPluginConfig.inputConfig;
+  item.inputConfig = dbPluginConfig.inputConfig;
 
   // return {
   //   ...item,
@@ -474,13 +465,13 @@ export const getSystemPluginById = async (
   pluginId: string
 ): Promise<SystemPluginTemplateItemType> => {
   const { source } = splitCombineToolId(pluginId);
-  const dbPlugin = await MongoSystemPlugin.findOne({ pluginId }).lean();
   if (source === PluginSourceEnum.systemTool) {
-    const tool = await getSystemTool(pluginId);
-    if (tool && dbPlugin) {
-      overridePluginConfig(tool, dbPlugin);
+    const tools = await getSystemPlugins();
+    const tool = tools.find((item) => item.id === pluginId);
+    if (tool) {
       return tool;
     }
   }
+  const dbPlugin = await MongoSystemPlugin.findOne({ pluginId }).lean();
   return dbPluginFormat(dbPlugin!);
 };
