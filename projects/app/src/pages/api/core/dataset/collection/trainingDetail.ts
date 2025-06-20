@@ -43,9 +43,10 @@ async function handler(
 
   const { collection } = await authDatasetCollection({
     req,
+    collectionId,
+    per: ReadPermissionVal,
     authToken: true,
-    collectionId: collectionId as string,
-    per: ReadPermissionVal
+    authApiKey: true
   });
 
   const match = {

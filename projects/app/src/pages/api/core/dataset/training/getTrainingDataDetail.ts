@@ -32,6 +32,7 @@ async function handler(
   const { teamId } = await authDatasetCollection({
     req,
     authToken: true,
+    authApiKey: true,
     collectionId,
     per: ReadPermissionVal
   });
