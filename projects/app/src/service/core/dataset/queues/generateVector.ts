@@ -279,6 +279,7 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
       q: trainingData.q,
       a: trainingData.a,
       imageId: trainingData.imageId,
+      imageDescMap: trainingData.imageDescMap,
       chunkIndex: trainingData.chunkIndex,
       indexSize:
         trainingData.indexSize ||
