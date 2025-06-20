@@ -46,9 +46,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-${{ matrix.sub_routes.repo }}-buildx-${{ github.sha }}
+          key: ${{ runner.os }}-${{ matrix.archs.arch }}-${{ matrix.sub_routes.repo }}-buildx-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.sub_routes.repo }}-buildx-
+            ${{ runner.os }}-${{ matrix.archs.arch }}-${{ matrix.sub_routes.repo }}-buildx-
 
       # login docker
       - name: Login to GitHub Container Registry
