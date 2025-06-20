@@ -20,7 +20,7 @@ import {
   JS_TEMPLATE,
   PY_TEMPLATE,
   SandboxCodeTypeEnum,
-  SNADBOX_CODE_TEMPLATE
+  SANDBOX_CODE_TEMPLATE
 } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
@@ -71,7 +71,7 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       key: item.key,
                       value: {
                         ...item,
-                        value: SNADBOX_CODE_TEMPLATE[newLang]
+                        value: SANDBOX_CODE_TEMPLATE[newLang]
                       }
                     });
                   })();
