@@ -23,13 +23,25 @@ type State = {
 const createCustomStorage = () => {
   const sessionKeys = ['source', 'chatId', 'appId'];
 
+  // 从 URL 中获取 appId 作为存储键的一部分
+  const getStorageKey = (name: string) => {
+    let appId = '';
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      appId = urlParams.get('appId') || '';
+    }
+    return appId ? `${name}_${appId}` : name;
+  };
+
   return {
     getItem: (name: string) => {
-      const sessionData = JSON.parse(sessionStorage.getItem(name) || '{}');
-      const localData = JSON.parse(localStorage.getItem(name) || '{}');
+      const storageKey = getStorageKey(name);
+      const sessionData = JSON.parse(sessionStorage.getItem(storageKey) || '{}');
+      const localData = JSON.parse(localStorage.getItem(storageKey) || '{}');
       return JSON.stringify({ ...localData, ...sessionData });
     },
     setItem: (name: string, value: string) => {
+      const storageKey = getStorageKey(name);
       const data = JSON.parse(value);
 
       // 分离 session 和 local 数据
@@ -42,15 +54,16 @@ const createCustomStorage = () => {
 
       // 分别存储
       if (Object.keys(sessionData).length > 0) {
-        sessionStorage.setItem(name, JSON.stringify({ state: sessionData, version: 0 }));
+        sessionStorage.setItem(storageKey, JSON.stringify({ state: sessionData, version: 0 }));
       }
       if (Object.keys(localData).length > 0) {
-        localStorage.setItem(name, JSON.stringify({ state: localData, version: 0 }));
+        localStorage.setItem(storageKey, JSON.stringify({ state: localData, version: 0 }));
       }
     },
     removeItem: (name: string) => {
-      sessionStorage.removeItem(name);
-      localStorage.removeItem(name);
+      const storageKey = getStorageKey(name);
+      sessionStorage.removeItem(storageKey);
+      localStorage.removeItem(storageKey);
     }
   };
 };
