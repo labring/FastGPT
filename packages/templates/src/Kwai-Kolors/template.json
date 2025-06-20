@@ -1,0 +1,844 @@
+{
+  "name": "Kwai-Kolors/Kolors绘图",
+  "intro": "Kolors 是由快手 Kolors 团队开发的基于潜在扩散的大规模文本到图像生成模型。该模型通过数十亿文本-图像对的训练，在视觉质量、复杂语义准确性以及中英文字符渲染方面展现出显著优势。它不仅支持中英文输入，在理解和生成中文特定内容方面也表现出色",
+  "author": "",
+  "avatar": "core/app/templates/Kwai-Kolors",
+  "tags": ["image-generation"],
+  "type": "plugin", 
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "pluginInput",
+        "name": "输入文生图相关参数",
+        "intro": "workflow:intro_plugin_input",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "pluginInput",
+        "showStatus": false,
+        "position": {
+          "x": 649.5788667687244,
+          "y": -779
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "number",
+            "canEdit": true,
+            "key": "匹配程度",
+            "label": "匹配程度",
+            "description": "此值用于控制生成的图像与给定提示之间的匹配程度。值越高，生成的图像就越倾向于与文本提示严格匹配。值越低，生成的图像就越有创意和多样性，可能包含更多意想不到的元素。\n\n所需范围：0 <= x <= 20",
+            "defaultValue": 2,
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true,
+            "max": 20,
+            "min": 0
+          },
+          {
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "number",
+            "canEdit": true,
+            "key": "推理步骤数",
+            "label": "推理步骤数",
+            "description": "推理步骤数参数控制从随机噪声逐步精炼到最终图像的迭代次数。更高的步骤数通常会产生更精细、细节更丰富的图像，但也需要更多的计算资源和处理时间。这一参数允许用户在图像质量和生成速度之间找到平衡点，是影响最终渲染质量的关键技术参数。\n\n范围：1 <= x <= 100",
+            "defaultValue": 30,
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true,
+            "max": 100,
+            "min": 1
+          },
+          {
+            "renderTypeList": [
+              "select",
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "图像比例",
+            "label": "图像比例",
+            "description": "横向长度x竖向长度",
+            "defaultValue": "1024x1024",
+            "list": [
+              {
+                "label": "512x512",
+                "value": "512x512"
+              },
+              {
+                "label": "1024x1024",
+                "value": "1024x1024"
+              },
+              {
+                "label": "1024x2048",
+                "value": "1024x2048"
+              },
+              {
+                "label": "1152x2048",
+                "value": "1152x2048"
+              },
+              {
+                "label": "1536x1024",
+                "value": "1536x1024"
+              },
+              {
+                "label": "1536x2024",
+                "value": "1536x2024"
+              },
+              {
+                "label": "2048x1152",
+                "value": "2048x1152"
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true
+          },
+          {
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "number",
+            "canEdit": true,
+            "key": "随机数种子",
+            "label": "随机数种子",
+            "description": "控制生成的随机性，使用相同的seed和其他参数可以精确复现相同的图像结果。\n\n所需范围：0 <= x <= 9999999999",
+            "defaultValue": 4999999999,
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true,
+            "min": 0,
+            "max": 9999999999
+          },
+          {
+            "renderTypeList": [
+              "input",
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "正向提示词",
+            "label": "正向提示词",
+            "description": "正向提示词是用户输入的描述性文本指令，明确告知 AI 模型应该在生成图像中包含的元素、风格、场景等特征。它们是引导 AI 生成符合用户期望输出的核心指令集，通过精确的描述和修饰词增强生成结果的质量和准确性。",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true,
+            "toolDescription": "正向提示词是用户输入的描述性文本指令，明确告知 AI 模型应该在生成图像中包含的元素、风格、场景等特征。它们是引导 AI 生成符合用户期望输出的核心指令集，通过精确的描述和修饰词增强生成结果的质量和准确性。"
+          },
+          {
+            "renderTypeList": [
+              "input",
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "负向提示词（非必填）",
+            "label": "负向提示词（非必填）",
+            "description": "负向提示词是用于指示模型应避免出现的元素或特征的指令集。它通过明确告知 AI 不希望在最终图像中出现的内容（如低质量特征、不需要的物体或风格），帮助优化生成结果，减少不良构图或不需要的细节，从而提高最终图像的质量和符合预期的程度。",
+            "defaultValue": "ugly, blurry, pixelated, low quality, low resolution, poor quality, artifacts, jpeg artifacts, distorted, deformed, mutated, out of frame, cropped, bad proportions, amateur, bad art, worst quality, extra limbs, missing limbs, extra fingers, fused fingers, too many fingers, mutated hands, poorly drawn hands, poorly drawn face, mutation, deformed, disfigured, bad anatomy, disproportioned, malformed limbs, extra arms, extra legs, cross-eyed, poorly drawn, bad composition, unbalanced, asymmetric, oversaturated, undersaturated, grainy, noise, watermark, signature, text, typography, logo, nsfw, nude, violence, gore, blood, scary, horror, disgusting, gross",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": false,
+            "toolDescription": "负向提示词是用于指示模型应避免出现的元素或特征的指令集。它通过明确告知 AI 不希望在最终图像中出现的内容（如低质量特征、不需要的物体或风格），帮助优化生成结果，减少不良构图或不需要的细节，从而提高最终图像的质量和符合预期的程度。"
+          },
+          {
+            "renderTypeList": [
+              "input",
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "API密钥",
+            "label": "API密钥",
+            "description": "sk-xxxxxxxxxxxxxxxxxxxxx\n请前往硅基流动官网获取API密钥",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true
+          },
+          {
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "number",
+            "canEdit": true,
+            "key": "输出图像数量",
+            "label": "输出图像数量",
+            "description": "范围：1 <= x <= 4",
+            "defaultValue": 1,
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true,
+            "max": 4,
+            "min": 1
+          }
+        ],
+        "outputs": [
+          {
+            "id": "guidance_scale",
+            "valueType": "number",
+            "key": "匹配程度",
+            "label": "匹配程度",
+            "type": "hidden"
+          },
+          {
+            "id": "num_inference_steps",
+            "valueType": "number",
+            "key": "推理步骤数",
+            "label": "推理步骤数",
+            "type": "hidden"
+          },
+          {
+            "id": "image_size",
+            "valueType": "string",
+            "key": "图像比例",
+            "label": "图像比例",
+            "type": "hidden"
+          },
+          {
+            "id": "seed",
+            "valueType": "number",
+            "key": "随机数种子",
+            "label": "随机数种子",
+            "type": "hidden"
+          },
+          {
+            "id": "正向提示词",
+            "valueType": "string",
+            "key": "正向提示词",
+            "label": "正向提示词",
+            "type": "hidden"
+          },
+          {
+            "id": "负向提示词",
+            "valueType": "string",
+            "key": "负向提示词（非必填）",
+            "label": "负向提示词（非必填）",
+            "type": "hidden"
+          },
+          {
+            "id": "API密钥",
+            "valueType": "string",
+            "key": "API密钥",
+            "label": "API密钥",
+            "type": "hidden"
+          },
+          {
+            "id": "输出图像数量",
+            "valueType": "number",
+            "key": "输出图像数量",
+            "label": "输出图像数量",
+            "type": "hidden"
+          }
+        ]
+      },
+      {
+        "nodeId": "pluginOutput",
+        "name": "输出图像URL",
+        "intro": "workflow:intro_custom_plugin_output",
+        "avatar": "core/workflow/template/pluginOutput",
+        "flowNodeType": "pluginOutput",
+        "showStatus": false,
+        "position": {
+          "x": 3185.316498341221,
+          "y": -634.400880179634
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "any",
+            "canEdit": true,
+            "key": "url",
+            "label": "url",
+            "isToolOutput": true,
+            "description": "图片地址",
+            "required": true,
+            "value": [
+              "plZvsFlTvYhXR4Yj",
+              "loopArray"
+            ]
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "vumlECDQTjeC",
+        "name": "创建图片生成请求",
+        "intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
+        "avatar": "core/workflow/template/httpRequest",
+        "flowNodeType": "httpRequest468",
+        "showStatus": true,
+        "position": {
+          "x": 1179.8621716499558,
+          "y": -1054.400880179634
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": [
+              "addInputParam"
+            ],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "common:core.module.input.description.HTTP Dynamic Input",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectDataset",
+                "selectApp"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpMethod",
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "string",
+            "label": "",
+            "value": "POST",
+            "required": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpTimeout",
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "number",
+            "label": "",
+            "value": 30,
+            "min": 5,
+            "max": 600,
+            "required": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpReqUrl",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "string",
+            "label": "",
+            "description": "common:core.module.input.description.Http Request Url",
+            "placeholder": "https://api.ai.com/getInventory",
+            "required": false,
+            "value": "https://api.siliconflow.cn/v1/images/generations",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpHeader",
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "any",
+            "value": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{$pluginInput.API密钥$}}",
+                "type": "string"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "string"
+              }
+            ],
+            "label": "",
+            "description": "common:core.module.input.description.Http Request Header",
+            "placeholder": "common:core.module.input.description.Http Request Header",
+            "required": false,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpParams",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "value": [],
+            "description": "新的 HTTP 请求地址。如果出现两个“请求地址”，可以删除该模块重新加入，会拉取最新的模块配置。",
+            "label": "",
+            "required": false,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpJsonBody",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "value": "{\n \"model\": \"Kwai-Kolors/Kolors\",\n \"prompt\": \"{{$pluginInput.正向提示词$}}\",\n \"negative_prompt\": \"{{$pluginInput.负向提示词$}}\",\n \"image_size\": \"{{$pluginInput.image_size$}}\",\n \"batch_size\": {{$pluginInput.输出图像数量$}},\n \"seed\":{{$pluginInput.seed$}},\n \"num_inference_steps\": {{$pluginInput.num_inference_steps$}},\n \"guidance_scale\": {{$pluginInput.guidance_scale$}}\n}",
+            "label": "",
+            "required": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpFormBody",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpContentType",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "string",
+            "value": "json",
+            "label": "",
+            "required": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "error",
+            "key": "error",
+            "label": "workflow:request_error",
+            "description": "HTTP请求错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "httpRawResponse",
+            "key": "httpRawResponse",
+            "required": true,
+            "label": "workflow:raw_response",
+            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
+            "valueType": "any",
+            "type": "static"
+          },
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "输出字段提取",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "description": "可以通过 JSONPath 语法来提取响应值中的指定字段",
+            "valueDesc": ""
+          },
+          {
+            "id": "kEQMA4tSAPwy",
+            "valueType": "arrayString",
+            "type": "dynamic",
+            "key": "$.images[*].url",
+            "label": "$.images[*].url"
+          }
+        ],
+        "isFolded": false
+      },
+      {
+        "nodeId": "pluginConfig",
+        "name": "common:core.module.template.system_config",
+        "intro": "",
+        "avatar": "core/workflow/template/systemConfig",
+        "flowNodeType": "pluginConfig",
+        "position": {
+          "x": 649.5788667687244,
+          "y": -1054.400880179634
+        },
+        "version": "4811",
+        "inputs": [],
+        "outputs": []
+      },
+      {
+        "nodeId": "plZvsFlTvYhXR4Yj",
+        "name": "Markdown格式输出图像",
+        "intro": "输入一个数组，遍历数组并将每一个数组元素作为输入元素，执行工作流。",
+        "avatar": "core/workflow/template/loop",
+        "flowNodeType": "loop",
+        "showStatus": true,
+        "position": {
+          "x": 1886,
+          "y": -1061
+        },
+        "inputs": [
+          {
+            "key": "loopInputArray",
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "arrayString",
+            "required": true,
+            "label": "数组",
+            "value": [
+              [
+                "vumlECDQTjeC",
+                "kEQMA4tSAPwy"
+              ]
+            ],
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "childrenNodeIdList",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "arrayString",
+            "label": "",
+            "value": [
+              "mnVlgXxWD7lKiK11",
+              "hb5l2GBzOhTQgUdd",
+              "zNY8zeCMAcHxpjzD"
+            ]
+          },
+          {
+            "key": "nodeWidth",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "number",
+            "label": "",
+            "value": 1189.3312773247426
+          },
+          {
+            "key": "nodeHeight",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "number",
+            "label": "",
+            "value": 718.8737654197325
+          },
+          {
+            "key": "loopNodeInputHeight",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "number",
+            "label": "",
+            "value": 82,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "loopArray",
+            "key": "loopArray",
+            "label": "数组执行结果",
+            "type": "static",
+            "valueType": "arrayString",
+            "valueDesc": "",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "nodeId": "mnVlgXxWD7lKiK11",
+        "parentNodeId": "plZvsFlTvYhXR4Yj",
+        "name": "开始",
+        "avatar": "core/workflow/template/loopStart",
+        "flowNodeType": "loopStart",
+        "showStatus": false,
+        "position": {
+          "x": 1956.4334009894592,
+          "y": -738.6701802169191
+        },
+        "inputs": [
+          {
+            "key": "loopStartInput",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "required": true,
+            "value": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "loopStartIndex",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "number",
+            "label": "workflow:Array_element_index",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "loopStartIndex",
+            "key": "loopStartIndex",
+            "label": "workflow:Array_element_index",
+            "type": "static",
+            "valueType": "number",
+            "description": ""
+          },
+          {
+            "id": "loopStartInput",
+            "key": "loopStartInput",
+            "label": "数组元素",
+            "type": "static",
+            "valueType": "string"
+          }
+        ]
+      },
+      {
+        "nodeId": "hb5l2GBzOhTQgUdd",
+        "parentNodeId": "plZvsFlTvYhXR4Yj",
+        "name": "结束",
+        "avatar": "core/workflow/template/loopEnd",
+        "flowNodeType": "loopEnd",
+        "showStatus": false,
+        "position": {
+          "x": 2620.8676413068442,
+          "y": -255.79641479718651
+        },
+        "inputs": [
+          {
+            "key": "loopEndInput",
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "any",
+            "label": "",
+            "required": true,
+            "value": [
+              "mnVlgXxWD7lKiK11",
+              "loopStartInput"
+            ],
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "zNY8zeCMAcHxpjzD",
+        "parentNodeId": "plZvsFlTvYhXR4Yj",
+        "name": "指定回复",
+        "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+        "avatar": "core/workflow/template/reply",
+        "flowNodeType": "answerNode",
+        "position": {
+          "x": 2399.764678314202,
+          "y": -656.7316945062503
+        },
+        "inputs": [
+          {
+            "key": "text",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "valueType": "any",
+            "required": true,
+            "label": "回复的内容",
+            "description": "common:core.module.input.description.Response content",
+            "placeholder": "common:core.module.input.description.Response content",
+            "value": "![]({{$mnVlgXxWD7lKiK11.loopStartInput$}})",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": []
+      }
+    ],
+    "edges": [
+      {
+        "source": "pluginInput",
+        "target": "vumlECDQTjeC",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "vumlECDQTjeC-target-left"
+      },
+      {
+        "source": "vumlECDQTjeC",
+        "target": "plZvsFlTvYhXR4Yj",
+        "sourceHandle": "vumlECDQTjeC-source-right",
+        "targetHandle": "plZvsFlTvYhXR4Yj-target-left"
+      },
+      {
+        "source": "plZvsFlTvYhXR4Yj",
+        "target": "pluginOutput",
+        "sourceHandle": "plZvsFlTvYhXR4Yj-source-right",
+        "targetHandle": "pluginOutput-target-left"
+      },
+      {
+        "source": "mnVlgXxWD7lKiK11",
+        "target": "zNY8zeCMAcHxpjzD",
+        "sourceHandle": "mnVlgXxWD7lKiK11-source-right",
+        "targetHandle": "zNY8zeCMAcHxpjzD-target-left"
+      },
+      {
+        "source": "zNY8zeCMAcHxpjzD",
+        "target": "hb5l2GBzOhTQgUdd",
+        "sourceHandle": "zNY8zeCMAcHxpjzD-source-right",
+        "targetHandle": "hb5l2GBzOhTQgUdd-target-left"
+      }
+    ],
+    "chatConfig": {
+      "welcomeText": "",
+      "variables": [],
+      "questionGuide": {
+        "open": false,
+        "model": "gpt-4o-mini",
+        "customPrompt": ""
+      },
+      "ttsConfig": {
+        "type": "web"
+      },
+      "whisperConfig": {
+        "open": false,
+        "autoSend": false,
+        "autoTTSResponse": false
+      },
+      "chatInputGuide": {
+        "open": false,
+        "textList": [],
+        "customUrl": ""
+      },
+      "instruction": "使用本插件需提供硅基流动平台的API密钥，不消耗FastGPT积分与硅基流动余额，完全免费，请放心使用。",
+      "autoExecute": {
+        "open": false,
+        "defaultPrompt": ""
+      },
+      "_id": "682a9a56a62633d03c96195a"
+    }
+  }
+}
