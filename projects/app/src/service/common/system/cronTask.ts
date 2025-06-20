@@ -1,4 +1,3 @@
-import { getSystemTools } from '@/service/core/app/plugin';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import {

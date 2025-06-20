@@ -97,7 +97,6 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
     label: string;
     description: string;
     value?: string | SecretValueType;
-    valueType: 'string' | 'secret';
   }[];
 };
 
