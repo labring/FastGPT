@@ -34,9 +34,9 @@ const DatasetDataTextSchema = new Schema({
 
 try {
   DatasetDataTextSchema.index(
-    { teamId: 1, fullTextToken: 'text' },
+    { teamId: 1, datasetId: 1, fullTextToken: 'text' },
     {
-      name: 'teamId_1_fullTextToken_text',
+      name: 'teamId_1_datasetId_1_fullTextToken_text',
       default_language: 'none'
     }
   );
