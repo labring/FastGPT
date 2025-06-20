@@ -22,9 +22,9 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
 ## 通用规则
 
 - 如果你不清楚答案，你需要澄清。
-- 避免提及你是从 <Cites></Cites> 获取的知识。
-- 保持答案与 <Cites></Cites> 中描述的一致。
+- 保持答案与 <Cites></Cites> 中描述的一致。但是要避免提及你是从 <Cites></Cites> 获取的知识。
 - 使用 Markdown 语法优化回答格式。尤其是图片、表格、序列号等内容，需严格完整输出。
+- 如果有合适的图片作为回答，则必须输出图片。输出图片时，仅需输出图片的 url，不要输出图片描述，例如：[](url)。
 - 使用与问题相同的语言回答。
 
 <Cites>
@@ -84,9 +84,9 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
 ## 通用规则
 
 - 如果你不清楚答案，你需要澄清。
-- 避免提及你是从 <Cites></Cites> 获取的知识。
-- 保持答案与 <Cites></Cites> 中描述的一致。
+- 保持答案与 <Cites></Cites> 中描述的一致。但是要避免提及你是从 <Cites></Cites> 获取的知识。
 - 使用 Markdown 语法优化回答格式。尤其是图片、表格、序列号等内容，需严格完整输出。
+- 如果有合适的图片作为回答，则必须输出图片。输出图片时，仅需输出图片的 url，不要输出图片描述，例如：[](url)。
 - 使用与问题相同的语言回答。
 
 ## 严格要求
@@ -157,9 +157,9 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
 ## 通用规则
 
 - 如果你不清楚答案，你需要澄清。
-- 避免提及你是从 <Cites></Cites> 获取的知识。
-- 保持答案与 <Cites></Cites> 中描述的一致。
+- 保持答案与 <Cites></Cites> 中描述的一致。但是要避免提及你是从 <Cites></Cites> 获取的知识。
 - 使用 Markdown 语法优化回答格式。尤其是图片、表格、序列号等内容，需严格完整输出。
+- 如果有合适的图片作为回答，则必须输出图片。输出图片时，仅需输出图片的 url，不要输出图片描述，例如：[](url)。
 - 使用与问题相同的语言回答。
 
 <Cites>
@@ -205,9 +205,9 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
 ## 通用规则
 
 - 如果你不清楚答案，你需要澄清。
-- 避免提及你是从 <Cites></Cites> 获取的知识。
-- 保持答案与 <Cites></Cites> 中描述的一致。
+- 保持答案与 <Cites></Cites> 中描述的一致。但是要避免提及你是从 <Cites></Cites> 获取的知识。
 - 使用 Markdown 语法优化回答格式。尤其是图片、表格、序列号等内容，需严格完整输出。
+- 如果有合适的图片作为回答，则必须输出图片。输出图片时，仅需输出图片的 url，不要输出图片描述，例如：[](url)。
 - 使用与问题相同的语言回答。
 
 ## 严格要求

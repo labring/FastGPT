@@ -163,6 +163,7 @@ export type DatasetDataSchemaType = DatasetDataFieldType & {
   fullTextToken: string;
   indexes: DatasetDataIndexItemType[];
   rebuilding?: boolean;
+  imageDescMap?: Record<string, string>;
 };
 
 export type DatasetDataTextSchemaType = {
@@ -189,6 +190,7 @@ export type DatasetTrainingSchemaType = {
   q: string;
   a: string;
   imageId?: string;
+  imageDescMap?: Record<string, string>;
   chunkIndex: number;
   indexSize?: number;
   weight: number;

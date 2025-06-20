@@ -8,24 +8,25 @@ export default async function handler(
   req: ApiRequestProps<
     {},
     {
-      imageId: string;
       token: string;
     }
   >,
   res: NextApiResponse<any>
 ) {
   try {
-    const { imageId, token } = req.query;
+    const { token } = req.query;
 
-    if (!imageId || !token) {
+    if (!token) {
       return jsonRes(res, {
         code: 401,
         error: 'ImageId not found'
       });
     }
 
+    const formatToken = token.replace(/\.jpeg$/, '');
+
     // Verify token and permissions
-    await authDatasetImagePreviewUrl(token);
+    const { imageId } = await authDatasetImagePreviewUrl(formatToken);
 
     const { fileInfo, stream } = await getDatasetImageReadData(imageId);
 

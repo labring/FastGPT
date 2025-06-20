@@ -4,6 +4,7 @@ import { deleteDatasetImage } from './controller';
 import { MongoDatasetImageSchema } from './schema';
 import { addMinutes } from 'date-fns';
 import jwt from 'jsonwebtoken';
+import { EndpointUrl } from '@fastgpt/global/common/file/constants';
 
 export const removeDatasetImageExpiredTime = async ({
   ids = [],
@@ -51,17 +52,19 @@ export const getDatasetImagePreviewUrl = ({
     {
       teamId: String(teamId),
       datasetId: String(datasetId),
+      imageId: String(imageId),
       exp: expiredTime
     },
     key
   );
 
-  return `/api/core/dataset/image/${imageId}?token=${token}`;
+  return `${EndpointUrl}/api/file/datasetImg/${token}.jpeg`;
 };
 export const authDatasetImagePreviewUrl = (token?: string) =>
   new Promise<{
     teamId: string;
     datasetId: string;
+    imageId: string;
   }>((resolve, reject) => {
     if (!token) {
       return reject(ERROR_ENUM.unAuthFile);
@@ -75,7 +78,8 @@ export const authDatasetImagePreviewUrl = (token?: string) =>
       }
       resolve({
         teamId: decoded.teamId,
-        datasetId: decoded.datasetId
+        datasetId: decoded.datasetId,
+        imageId: decoded.imageId
       });
     });
   });

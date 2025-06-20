@@ -9,6 +9,7 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { i18nT } from '@fastgpt/web/i18n/utils';
+import { formatDatasetDataValue } from '@fastgpt/service/core/dataset/data/controller';
 
 export type GetQuoteDataResponse = {
   collection: DatasetCollectionSchemaType;
@@ -78,8 +79,13 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
 
       return {
         collection,
-        q: datasetData.q,
-        a: datasetData.a
+        ...formatDatasetDataValue({
+          teamId: datasetData.teamId,
+          datasetId: datasetData.datasetId,
+          q: datasetData.q,
+          a: datasetData.a,
+          imageId: datasetData.imageId
+        })
       };
     } else {
       const { datasetData, collection } = await authDatasetData({
@@ -91,8 +97,13 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
       });
       return {
         collection,
-        q: datasetData.q,
-        a: datasetData.a
+        ...formatDatasetDataValue({
+          teamId: datasetData.teamId,
+          datasetId: datasetData.datasetId,
+          q: datasetData.q,
+          a: datasetData.a,
+          imageId: datasetData.imageId
+        })
       };
     }
   })();

@@ -173,10 +173,12 @@ export async function insertData2Dataset({
   indexes,
   indexPrefix,
   embeddingModel,
+  imageDescMap,
   session
 }: CreateDatasetDataProps & {
   embeddingModel: string;
   indexSize?: number;
+  imageDescMap?: Record<string, string>;
   session?: ClientSession;
 }) {
   if (!q || !datasetId || !collectionId || !embeddingModel) {
@@ -234,9 +236,10 @@ export async function insertData2Dataset({
         tmbId,
         datasetId,
         collectionId,
-        imageId,
         q,
         a,
+        imageId,
+        imageDescMap,
         chunkIndex,
         indexes: results.map((item) => item.index)
       }

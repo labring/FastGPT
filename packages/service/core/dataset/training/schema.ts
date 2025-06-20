@@ -64,6 +64,7 @@ const TrainingDataSchema = new Schema({
     default: ''
   },
   imageId: String,
+  imageDescMap: Object,
   chunkIndex: {
     type: Number,
     default: 0
