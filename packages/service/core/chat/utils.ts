@@ -11,7 +11,7 @@ import axios from 'axios';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { i18nT } from '../../../web/i18n/utils';
 import { addLog } from '../../common/system/log';
-import { addEndpointToImageUrl, getImageBase64 } from '../../common/file/image/utils';
+import { getImageBase64 } from '../../common/file/image/utils';
 
 export const filterGPTMessageByMaxContext = async ({
   messages = [],
@@ -100,12 +100,12 @@ export const loadRequestMessages = async ({
   ): string | ChatCompletionContentPartText[] | undefined => {
     if (typeof content === 'string') {
       if (!content) return;
-      return addEndpointToImageUrl(content);
+      return content;
     }
 
     const arrayContent = content
       .filter((item) => item.text)
-      .map((item) => addEndpointToImageUrl(item.text))
+      .map((item) => item.text)
       .join('\n');
 
     return arrayContent;

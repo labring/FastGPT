@@ -58,12 +58,13 @@ export const getDatasetImagePreviewUrl = ({
     key
   );
 
-  return `${EndpointUrl}/api/core/dataset/image/${imageId}?token=${token}`;
+  return `${EndpointUrl}/api/file/datasetImg/${token}.jpeg`;
 };
 export const authDatasetImagePreviewUrl = (token?: string) =>
   new Promise<{
     teamId: string;
     datasetId: string;
+    imageId: string;
   }>((resolve, reject) => {
     if (!token) {
       return reject(ERROR_ENUM.unAuthFile);
@@ -77,7 +78,8 @@ export const authDatasetImagePreviewUrl = (token?: string) =>
       }
       resolve({
         teamId: decoded.teamId,
-        datasetId: decoded.datasetId
+        datasetId: decoded.datasetId,
+        imageId: decoded.imageId
       });
     });
   });
