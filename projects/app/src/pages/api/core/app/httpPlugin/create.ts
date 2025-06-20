@@ -1,7 +1,6 @@
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { httpApiSchema2Plugins } from '@fastgpt/global/core/app/httpPlugin/utils';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';

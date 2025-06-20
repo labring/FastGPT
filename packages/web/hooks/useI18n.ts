@@ -1,6 +1,6 @@
+import { LangEnum } from '@fastgpt/global/common/i18n/type';
 import Cookies from 'js-cookie';
 import { useTranslation } from 'next-i18next';
-import { LangEnum } from '../../../projects/app/src/web/common/utils/i18n';
 
 const LANG_KEY = 'NEXT_LOCALE';
 const isInIframe = () => {

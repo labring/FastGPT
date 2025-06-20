@@ -37,6 +37,7 @@ export type InputComponentPropsType = {
   // dynamic input
   customInputConfig?: CustomFieldConfigType;
 };
+export type InputConfigType = Omit<InputType, 'renderTypeList' | 'inputList'>;
 
 export type FlowNodeInputItemType = InputComponentPropsType & {
   selectedTypeIndex?: number;
@@ -51,6 +52,8 @@ export type FlowNodeInputItemType = InputComponentPropsType & {
   description?: string; // field desc
   required?: boolean;
   enum?: string;
+
+  inputList?: InputConfigType[]; // when key === 'system_input_config', this field is used
 
   toolDescription?: string; // If this field is not empty, it is entered as a tool
 

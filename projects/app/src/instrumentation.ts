@@ -14,7 +14,6 @@ export async function register() {
         { initGlobalVariables, getInitConfig, initSystemPluginGroups, initAppTemplateTypes },
         { initVectorStore },
         { initRootUser },
-        { getSystemPluginCb },
         { startMongoWatch },
         { startCron },
         { startTrainingQueue },
@@ -27,7 +26,6 @@ export async function register() {
         import('@/service/common/system'),
         import('@fastgpt/service/common/vectorDB/controller'),
         import('@/service/mongo'),
-        import('@/service/core/app/plugin'),
         import('@/service/common/system/volumnMongoWatch'),
         import('@/service/common/system/cron'),
         import('@/service/core/dataset/training/utils'),
@@ -55,7 +53,7 @@ export async function register() {
       // 异步加载
       initSystemPluginGroups();
       initAppTemplateTypes();
-      getSystemPluginCb();
+      // getSystemPlugins(true);
       startMongoWatch();
       startCron();
       startTrainingQueue(true);

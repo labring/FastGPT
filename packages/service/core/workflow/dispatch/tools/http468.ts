@@ -1,5 +1,6 @@
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
+  ContentTypes,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
   VARIABLE_NODE_ID,
@@ -10,27 +11,22 @@ import {
   SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import axios from 'axios';
-import { formatHttpError } from '../utils';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
-import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
-import { addLog } from '../../../../common/system/log';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import {
-  textAdaptGptResponse,
-  replaceEditorVariable,
   formatVariableValByType,
-  getReferenceVariableValue
+  getReferenceVariableValue,
+  replaceEditorVariable,
+  textAdaptGptResponse
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { ContentTypes } from '@fastgpt/global/core/workflow/constants';
-import { uploadFileFromBase64Img } from '../../../../common/file/gridfs/controller';
-import { ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
-import { createFileToken } from '../../../../support/permission/controller';
-import { JSONPath } from 'jsonpath-plus';
-import type { SystemPluginSpecialResponse } from '../../../../../plugins/type';
 import json5 from 'json5';
+import { JSONPath } from 'jsonpath-plus';
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import { addLog } from '../../../../common/system/log';
+import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
+import { formatHttpError } from '../utils';
 
 type PropsArrType = {
   key: string;
@@ -302,19 +298,6 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
 
   try {
     const { formatResponse, rawResponse } = await (async () => {
-      const systemPluginCb = global.systemPluginCb;
-      if (systemPluginCb[httpReqUrl]) {
-        const pluginResult = await replaceSystemPluginResponse({
-          response: await systemPluginCb[httpReqUrl](requestBody),
-          teamId,
-          tmbId
-        });
-
-        return {
-          formatResponse: pluginResult,
-          rawResponse: pluginResult
-        };
-      }
       return fetchData({
         method: httpMethod,
         url: httpReqUrl,
@@ -425,39 +408,4 @@ async function fetchData({
     formatResponse: typeof response === 'object' ? response : {},
     rawResponse: response
   };
-}
-
-// Replace some special response from system plugin
-async function replaceSystemPluginResponse({
-  response,
-  teamId,
-  tmbId
-}: {
-  response: Record<string, any>;
-  teamId: string;
-  tmbId: string;
-}) {
-  for await (const key of Object.keys(response)) {
-    if (typeof response[key] === 'object' && response[key].type === 'SYSTEM_PLUGIN_BASE64') {
-      const fileObj = response[key] as SystemPluginSpecialResponse;
-      const filename = `${tmbId}-${Date.now()}.${fileObj.extension}`;
-      try {
-        const fileId = await uploadFileFromBase64Img({
-          teamId,
-          tmbId,
-          bucketName: 'chat',
-          base64: fileObj.value,
-          filename,
-          metadata: {}
-        });
-        response[key] = `${ReadFileBaseUrl}/${filename}?token=${await createFileToken({
-          bucketName: 'chat',
-          teamId,
-          uid: tmbId,
-          fileId
-        })}`;
-      } catch (error) {}
-    }
-  }
-  return response;
 }

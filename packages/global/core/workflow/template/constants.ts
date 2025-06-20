@@ -1,41 +1,41 @@
-import { SystemConfigNode } from './system/systemConfig';
-import { PluginConfigNode } from './system/pluginConfig';
-import { EmptyNode } from './system/emptyNode';
-import { WorkflowStart } from './system/workflowStart';
 import { AiChatModule } from './system/aiChat';
-import { DatasetSearchModule } from './system/datasetSearch';
-import { DatasetConcatModule } from './system/datasetConcat';
 import { AssignedAnswerModule } from './system/assignedAnswer';
 import { ClassifyQuestionModule } from './system/classifyQuestion/index';
 import { ContextExtractModule } from './system/contextExtract/index';
+import { DatasetConcatModule } from './system/datasetConcat';
+import { DatasetSearchModule } from './system/datasetSearch';
+import { EmptyNode } from './system/emptyNode';
 import { HttpNode468 } from './system/http468';
+import { PluginConfigNode } from './system/pluginConfig';
+import { SystemConfigNode } from './system/systemConfig';
+import { WorkflowStart } from './system/workflowStart';
 
-import { ToolModule } from './system/tools';
 import { StopToolNode } from './system/stopTool';
+import { ToolModule } from './system/tools';
 
 import { RunAppModule } from './system/abandoned/runApp/index';
 import { PluginInputModule } from './system/pluginInput';
 import { PluginOutputModule } from './system/pluginOutput';
-import { RunPluginModule } from './system/runPlugin';
-import { RunAppNode } from './system/runApp';
 import { AiQueryExtension } from './system/queryExtension';
+import { RunAppNode } from './system/runApp';
+import { RunPluginModule } from './system/runPlugin';
 
 import type { FlowNodeTemplateType } from '../type/node';
-import { LafModule } from './system/laf';
-import { IfElseNode } from './system/ifElse/index';
-import { VariableUpdateNode } from './system/variableUpdate';
-import { CodeNode } from './system/sandbox';
-import { TextEditorNode } from './system/textEditor';
 import { CustomFeedbackNode } from './system/customFeedback';
-import { ReadFilesNode } from './system/readFiles';
-import { UserSelectNode } from './system/interactive/userSelect';
-import { LoopNode } from './system/loop/loop';
-import { LoopStartNode } from './system/loop/loopStart';
-import { LoopEndNode } from './system/loop/loopEnd';
+import { IfElseNode } from './system/ifElse/index';
 import { FormInputNode } from './system/interactive/formInput';
-import { ToolParamsNode } from './system/toolParams';
+import { UserSelectNode } from './system/interactive/userSelect';
+import { LafModule } from './system/laf';
+import { LoopNode } from './system/loop/loop';
+import { LoopEndNode } from './system/loop/loopEnd';
+import { LoopStartNode } from './system/loop/loopStart';
+import { ReadFilesNode } from './system/readFiles';
 import { RunToolNode } from './system/runTool';
 import { RunToolSetNode } from './system/runToolSet';
+import { CodeNode } from './system/sandbox';
+import { TextEditorNode } from './system/textEditor';
+import { ToolParamsNode } from './system/toolParams';
+import { VariableUpdateNode } from './system/variableUpdate';
 
 const systemNodes: FlowNodeTemplateType[] = [
   AiChatModule,

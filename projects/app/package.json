@@ -19,7 +19,6 @@
     "@emotion/react": "11.11.1",
     "@emotion/styled": "11.11.0",
     "@fastgpt/global": "workspace:*",
-    "@fastgpt/plugins": "workspace:*",
     "@fastgpt/service": "workspace:*",
     "@fastgpt/templates": "workspace:*",
     "@fastgpt/web": "workspace:*",

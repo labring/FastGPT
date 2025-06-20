@@ -1,20 +1,19 @@
-import { getSystemPluginCb } from '@/service/core/app/plugin';
 import { initSystemConfig } from '.';
 import { createDatasetTrainingMongoWatch } from '@/service/core/dataset/training/utils';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
-import { MongoSystemPlugin } from '@fastgpt/service/core/app/plugin/systemPluginSchema';
 import { debounce } from 'lodash';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { getAppTemplatesAndLoadThem } from '@fastgpt/templates/register';
 import { watchSystemModelUpdate } from '@fastgpt/service/core/ai/config/utils';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
+import { refetchSystemPlugins } from '@fastgpt/service/core/app/plugin/controller';
 
 export const startMongoWatch = async () => {
   reloadConfigWatch();
-  refetchSystemPlugins();
   createDatasetTrainingMongoWatch();
   refetchAppTemplates();
   watchSystemModelUpdate();
+  refetchSystemPlugins();
 };
 
 const reloadConfigWatch = () => {
@@ -34,21 +33,6 @@ const reloadConfigWatch = () => {
       }
     } catch (error) {}
   });
-};
-
-const refetchSystemPlugins = () => {
-  const changeStream = MongoSystemPlugin.watch();
-
-  changeStream.on(
-    'change',
-    debounce(async (change) => {
-      setTimeout(() => {
-        try {
-          getSystemPluginCb(true);
-        } catch (error) {}
-      }, 5000);
-    }, 500)
-  );
 };
 
 const refetchAppTemplates = () => {
