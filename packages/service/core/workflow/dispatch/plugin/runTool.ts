@@ -44,7 +44,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     node: { avatar, toolConfig }
   } = props;
 
-  if (toolConfig && toolConfig.systemTool?.toolId) {
+  if (toolConfig?.systemTool?.toolId) {
     // run system tool
     try {
       const inputConfigParams = await (async () => {
@@ -79,7 +79,14 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       if (error) {
         return Promise.reject(error);
       }
-      return output ?? {};
+      const toolResult = (async () => {
+        if (output) {
+          return output;
+        } else {
+          return Promise.reject(new Error('Tool output is empty'));
+        }
+      })();
+      return toolResult;
     } catch (error) {
       return Promise.reject(error);
     }
