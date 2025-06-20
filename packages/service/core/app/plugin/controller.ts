@@ -1,5 +1,8 @@
 import { type FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { getHandleConfig } from '@fastgpt/global/core/workflow/template/utils';
 import {
   appData2FlowNodeIO,
@@ -24,7 +27,10 @@ import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
-import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeTemplateTypeEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { getNanoid, replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getSystemTool, getSystemToolList } from '../tool/api';
 import { Types } from '../../../common/mongo';
@@ -62,10 +68,6 @@ type ChildAppType = SystemPluginTemplateItemType & {
   inputs?: FlowNodeInputItemType[];
   outputs?: FlowNodeOutputItemType[];
 };
-
-// export const getCommercialPluginsAPI = (toolId?: string) => {
-//   return GET<SystemPluginTemplateItemType[]>('/core/app/plugin/getSystemPlugins', { toolId });
-// };
 
 export const getSystemPluginByIdAndVersionId = async (
   pluginId: string,
@@ -115,6 +117,7 @@ export const getSystemPluginByIdAndVersionId = async (
     }
     return plugin;
   })();
+  console.log('getSystemPluginByIdAndVersionId', plugin);
 
   return {
     ...plugin,
@@ -176,7 +179,6 @@ export async function getChildAppPreviewNode({
       return getSystemPluginByIdAndVersionId(pluginId, versionId);
     }
   })();
-  console.log('app', app);
 
   const { isSystemTool, isPlugin, isTool, isToolSet } = (() => {
     const isSystemTool = source === PluginSourceEnum.systemTool;
@@ -268,7 +270,7 @@ export async function getChildAppPreviewNode({
 export async function getChildAppRuntimeById(
   id: string,
   versionId?: string,
-  lang: localeType = 'zh-CN'
+  lang: localeType = 'en'
 ): Promise<PluginRuntimeType> {
   const app = await (async () => {
     const { source, pluginId } = splitCombineToolId(id);
@@ -324,35 +326,54 @@ export async function getChildAppRuntimeById(
 }
 
 function overridePluginConfig(
-  item: SystemPluginTemplateItemType,
-  pluginConfig: SystemPluginConfigSchemaType
+  item: Awaited<ReturnType<typeof getSystemToolList>>[0],
+  dbPluginConfig: SystemPluginConfigSchemaType
 ) {
-  // 修改自身以及 children 的属性
-  item.isActive =
-    pluginConfig.isActive ?? pluginConfig.pluginId.startsWith(PluginSourceEnum.community)
-      ? true
-      : false;
-  // 合并配置项值
-  item.originCost = pluginConfig.originCost ?? 0;
-  item.currentCost = pluginConfig.currentCost ?? 0;
-  item.hasTokenFee = pluginConfig.hasTokenFee ?? false;
-  item.pluginOrder = pluginConfig.pluginOrder ?? 0;
+  item.isActive = dbPluginConfig.isActive ?? item.isActive ?? true;
+  item.originCost = dbPluginConfig.originCost ?? 0;
+  item.currentCost = dbPluginConfig.currentCost ?? 0;
+  item.hasTokenFee = dbPluginConfig.hasTokenFee ?? false;
+  item.pluginOrder = dbPluginConfig.pluginOrder ?? 0;
+  // !dueprecated
   // @ts-ignore
-  item.customWorkflow = pluginConfig.customConfig;
+  item.customWorkflow = dbPluginConfig.customConfig;
 
-  // 使用 inputConfig 的内容，替换插件的 nodes
-  if (pluginConfig.inputConfig && item.workflow?.nodes) {
-    try {
-      let nodeString = JSON.stringify(item.workflow.nodes);
-      pluginConfig.inputConfig.forEach((inputConfig) => {
-        nodeString = replaceVariable(nodeString, {
-          [inputConfig.key]: inputConfig.value
-        });
-      });
+  // item.inputs = [
+  //   ...item.inputs,
+  //   ...(dbPluginConfig.inputConfig?.map((item) => ({
+  //     key: item.key,
+  //     label: item.label,
+  //     description: item.description,
+  //     value: item.value,
+  //     renderTypeList: [FlowNodeInputTypeEnum.hidden],
+  //     valueType:
+  //       item.valueType === 'string'
+  //         ? WorkflowIOValueTypeEnum.string
+  //         : WorkflowIOValueTypeEnum.object
+  //   })) ?? [])
+  // ];
+  // item.inputs.find((item) => item.key === 'system_input_config').value = dbPluginConfig.inputConfig?.map(()=> {})
 
-      item.workflow.nodes = JSON.parse(nodeString);
-    } catch (error) {}
-  }
+  //@ts-ignore
+  // item.inputConfig = dbPluginConfig.inputConfig;
+
+  // return {
+  //   ...item,
+  //   isActive: pluginConfig.isActive ?? false,
+  //   originCost: pluginConfig.originCost ?? 0,
+  //   currentCost: pluginConfig.currentCost ?? 0,
+  //   hasTokenFee: pluginConfig.hasTokenFee ?? false,
+  //   pluginOrder: pluginConfig.pluginOrder ?? 0,
+  //   customWorkflow: pluginConfig.customConfig,
+  //   inputs: [
+  //     ...(pluginConfig.inputConfig?.map((item) => ({
+  //       key: item.key,
+  //       label: item.label,
+  //       description: item.description,
+  //       value: item.value
+  //     })) ?? [])
+  //   ]
+  // };
 }
 
 const dbPluginFormat = (item: SystemPluginConfigSchemaType) => {
@@ -392,30 +413,61 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType) => {
   };
 };
 
+const systemPlugins_cache = {
+  expires: 0,
+  data: [] as SystemPluginTemplateItemType[]
+};
+
 export const getSystemPlugins = async (): Promise<SystemPluginTemplateItemType[]> => {
-  const tools = await getSystemToolList();
+  if (systemPlugins_cache.expires > Date.now() && process.env.NODE_ENV === 'production') {
+    return systemPlugins_cache.data;
+  } else {
+    const tools = await getSystemToolList();
 
-  // 从数据库里加载插件配置进行替换
-  const systemPlugins = await MongoSystemPlugin.find({}).lean();
-  tools.forEach((plugin) => {
-    // 如果有插件的配置信息，则需要进行替换
-    const pluginConfig = systemPlugins.find((config) => config.pluginId === plugin.id);
+    // 从数据库里加载插件配置进行替换
+    const systemPlugins = await MongoSystemPlugin.find({}).lean();
+    tools.forEach((tool) => {
+      // 如果有插件的配置信息，则需要进行替换
 
-    if (pluginConfig) {
-      const children = tools.filter((item) => item.parentId === plugin.id);
-      const list = [plugin, ...children];
-      list.forEach((item) => {
-        overridePluginConfig(item, pluginConfig);
-      });
-    }
-  });
-  const dbPlugins = systemPlugins
-    .filter((item) => item.customConfig)
-    .map((item) => dbPluginFormat(item));
+      // if tools.inputs has system_input_config, covert it into inputConfig
+      const inputConfig = tool.inputs.find((item) => item.key === 'system_input_config');
+      if (inputConfig) {
+        // inputConfig?: {
+        //   // Render config input form. Find the corresponding node and replace the variable directly
+        //   key: string;
+        //   label: string;
+        //   description: string;
+        //   value?: any;
+        // }[];
+        // @ts-ignore
+        tool.inputConfig = inputConfig.inputList?.map((item) => ({
+          key: item.key,
+          label: item.label,
+          description: item.description,
+          valueType: item.inputType
+        }));
+      }
 
-  const plugins = [...tools, ...dbPlugins];
-  plugins.sort((a, b) => (a.pluginOrder ?? 0) - (b.pluginOrder ?? 0));
-  return plugins as SystemPluginTemplateItemType[];
+      const dbPluginConfig = systemPlugins.find((config) => config.pluginId === tool.id);
+
+      if (dbPluginConfig) {
+        const children = tools.filter((item) => item.parentId === tool.id);
+        const list = [tool, ...children];
+        list.forEach((item) => {
+          overridePluginConfig(item, dbPluginConfig);
+        });
+      }
+    });
+    const dbPlugins = systemPlugins
+      .filter((item) => item.customConfig)
+      .map((item) => dbPluginFormat(item));
+
+    const plugins = [...tools, ...dbPlugins];
+    plugins.sort((a, b) => (a.pluginOrder ?? 0) - (b.pluginOrder ?? 0));
+    systemPlugins_cache.data = plugins;
+    systemPlugins_cache.expires = Date.now() + 30 * 60 * 1000; // 30 minutes
+    return plugins as SystemPluginTemplateItemType[];
+  }
 };
 
 export const getSystemPluginById = async (

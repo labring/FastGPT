@@ -10,11 +10,27 @@ import { MCPClient } from '../../../app/mcp';
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
 import { runTool } from '../../../app/tool/api';
+import { MongoSystemPlugin } from '../../../app/plugin/systemPluginSchema';
 
-type RunToolProps = ModuleDispatchProps<{
-  toolData?: McpToolDataType;
-  [NodeInputKeyEnum.toolData]: McpToolDataType;
-}>;
+type SystemInputConfigType = {
+  type: 'system' | 'team' | 'manual';
+  value: object;
+};
+
+type RunToolProps = ModuleDispatchProps<
+  {
+    /**
+     * Mcp Tool Data
+     */
+    toolData?: McpToolDataType;
+    [NodeInputKeyEnum.toolData]: McpToolDataType;
+
+    /**
+     * System Tool Config data
+     */
+    [NodeInputKeyEnum.systemInputConfig]: SystemInputConfigType;
+  } & Record<string, any>
+>;
 
 type RunToolResponse = DispatchNodeResultType<
   {
@@ -28,17 +44,45 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     node: { avatar, toolConfig }
   } = props;
 
-  if (toolConfig && toolConfig.systemTool) {
+  if (toolConfig && toolConfig.systemTool?.toolId) {
     // run system tool
-    const { error, output } = await runTool(toolConfig.systemTool.toolId, params);
-    if (error) {
+    try {
+      const inputConfigParams = await (async () => {
+        switch (params['system_input_config']?.type ?? 'system') {
+          case 'team':
+            return Promise.reject(new Error('This is not supported yet'));
+          case 'manual':
+            return Promise.reject(new Error('This is not supported yet'));
+          case 'system':
+          default:
+            // read from mongo
+            const dbPlugin = await MongoSystemPlugin.findOne({
+              pluginId: toolConfig.systemTool?.toolId
+            }).lean();
+            const inputConfigMap = dbPlugin?.inputConfig?.reduce(
+              (acc, item) => {
+                acc[item.key] = item.value;
+                return acc;
+              },
+              {} as Record<string, any>
+            );
+            return inputConfigMap;
+        }
+      })();
+      const inputs = {
+        ...Object.fromEntries(
+          Object.entries(params).filter(([key]) => key !== 'system_input_config')
+        ),
+        ...inputConfigParams
+      };
+      const { error, output } = await runTool(toolConfig.systemTool.toolId, inputs);
+      if (error) {
+        return Promise.reject(error);
+      }
+      return output ?? {};
+    } catch (error) {
       return Promise.reject(error);
     }
-    return output as any;
-    // return {
-    //   ...(output as any),
-    //   [NodeOutputKeyEnum.rawResponse]: output
-    // };
   } else {
     // mcp tool
     const { toolData, system_toolData, ...restParams } = params;

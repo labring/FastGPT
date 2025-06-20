@@ -21,6 +21,7 @@ import type { ParentIdType } from 'common/parentFolder/type';
 import type { AppTypeEnum } from 'core/app/constants';
 import type { StoreNodeItemType } from './node';
 import { FlowNodeTemplateType } from './node';
+import type { SecretValueType } from 'common/secret/type';
 
 export type localeType = 'en' | 'zh-CN' | 'zh-Hant';
 export type I18nStringType =
@@ -95,7 +96,8 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
     key: string;
     label: string;
     description: string;
-    value?: any;
+    value?: string | SecretValueType;
+    valueType: 'string' | 'secret';
   }[];
 };
 
