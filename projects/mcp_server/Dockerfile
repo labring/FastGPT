@@ -34,6 +34,9 @@ COPY --from=install /app/projects/mcp_server/node_modules /app/projects/mcp_serv
 
 RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
 RUN apk add --no-cache libc6-compat curl bash && npm install -g pnpm@9.4.0
+
+# Install curl and bash, then install bun
+RUN curl -fsSL https://bun.sh/install | bash
 ENV PATH="/root/.bun/bin:$PATH"
 
 RUN pnpm --filter=mcp_server build
