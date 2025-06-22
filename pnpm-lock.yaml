@@ -17706,17 +17706,6 @@ snapshots:
     optionalDependencies:
       msgpackr-extract: 3.0.3
 
-  mssql@11.0.1:
-    dependencies:
-      '@tediousjs/connection-string': 0.5.0
-      commander: 11.1.0
-      debug: 4.4.0
-      rfdc: 1.4.1
-      tarn: 3.0.2
-      tedious: 18.6.1
-    transitivePeerDependencies:
-      - supports-color
-
   multer@2.0.1:
     dependencies:
       append-field: 1.0.0
@@ -17869,7 +17858,18 @@ snapshots:
     dependencies:
       xlsx: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
 
-  nodemailer@6.10.0: {}
+  nodemon@3.1.9:
+    dependencies:
+      chokidar: 3.6.0
+      debug: 4.4.0(supports-color@5.5.0)
+      ignore-by-default: 1.0.1
+      minimatch: 3.1.2
+      pstree.remy: 1.1.8
+      semver: 7.7.1
+      simple-update-notifier: 2.0.0
+      supports-color: 5.5.0
+      touch: 3.1.1
+      undefsafe: 2.0.5
 
   non-layered-tidy-tree-layout@2.0.2: {}
 
