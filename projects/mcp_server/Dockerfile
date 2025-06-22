@@ -22,8 +22,8 @@ FROM node:20.14.0-alpine AS builder
 WORKDIR /app
 
 COPY package.json pnpm-workspace.yaml /app/
-COPY ./packages/global /app/packages/global
 COPY ./projects/mcp_server /app/projects/mcp_server
+COPY --from=maindeps /app/packages/global /app/packages/global
 COPY --from=install /app/node_modules /app/node_modules
 COPY --from=install /app/projects/mcp_server/node_modules /app/projects/mcp_server/node_modules
 
