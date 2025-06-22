@@ -7317,10 +7317,9 @@ packages:
     engines: {node: '>=10.0.0'}
     hasBin: true
 
-  nodemon@3.1.9:
-    resolution: {integrity: sha512-hdr1oIb2p6ZSxu3PB2JWWYS7ZQ0qvaZsc3hK8DR8f02kRzc8rjYmxAIvdz+aYC+8F2IjNaB7HMcSDg8nQpJxyg==}
-    engines: {node: '>=10'}
-    hasBin: true
+  nodemailer@6.10.0:
+    resolution: {integrity: sha512-SQ3wZCExjeSatLE/HBaXS5vqUOQk6GtBdIIKxiFdmm01mOQZX/POJkO3SUX1wDiYcwUOJwT23scFSC9fY2H8IA==}
+    engines: {node: '>=6.0.0'}
 
   non-layered-tidy-tree-layout@2.0.2:
     resolution: {integrity: sha512-gkXMxRzUH+PB0ax9dUN0yYF0S25BqeAYqhgMaLUFmpXLEk7Fcu8f4emJuOAY0V8kjDICxROIKsTAKsV/v355xw==}
@@ -17707,6 +17706,17 @@ snapshots:
     optionalDependencies:
       msgpackr-extract: 3.0.3
 
+  mssql@11.0.1:
+    dependencies:
+      '@tediousjs/connection-string': 0.5.0
+      commander: 11.1.0
+      debug: 4.4.0
+      rfdc: 1.4.1
+      tarn: 3.0.2
+      tedious: 18.6.1
+    transitivePeerDependencies:
+      - supports-color
+
   multer@2.0.1:
     dependencies:
       append-field: 1.0.0
@@ -17859,18 +17869,7 @@ snapshots:
     dependencies:
       xlsx: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
 
-  nodemon@3.1.9:
-    dependencies:
-      chokidar: 3.6.0
-      debug: 4.4.0(supports-color@5.5.0)
-      ignore-by-default: 1.0.1
-      minimatch: 3.1.2
-      pstree.remy: 1.1.8
-      semver: 7.7.1
-      simple-update-notifier: 2.0.0
-      supports-color: 5.5.0
-      touch: 3.1.1
-      undefsafe: 2.0.5
+  nodemailer@6.10.0: {}
 
   non-layered-tidy-tree-layout@2.0.2: {}
 
