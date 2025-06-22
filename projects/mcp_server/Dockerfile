@@ -28,6 +28,9 @@ COPY --from=install /app/node_modules /app/node_modules
 COPY --from=install /app/projects/mcp_server/node_modules /app/projects/mcp_server/node_modules
 
 RUN npm install -g pnpm@9.4.0
+
+# Install curl and bash, then install bun
+RUN apk add --no-cache curl bash
 RUN curl -fsSL https://bun.sh/install | bash
 ENV PATH="/root/.bun/bin:$PATH"
 
