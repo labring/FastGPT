@@ -17,7 +17,7 @@ export enum SandboxCodeTypeEnum {
   js = 'js',
   py = 'py'
 }
-export const SNADBOX_CODE_TEMPLATE = {
+export const SANDBOX_CODE_TEMPLATE = {
   [SandboxCodeTypeEnum.js]: JS_TEMPLATE,
   [SandboxCodeTypeEnum.py]: PY_TEMPLATE
 };
