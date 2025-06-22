@@ -1,5 +1,5 @@
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
-import { GET, POST } from './request.js';
+import { GET, POST } from './request';
 
 export const getTools = (key: string) => GET<Tool[]>('/support/mcp/server/toolList', { key });
 
