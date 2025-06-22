@@ -6,6 +6,7 @@ RUN npm install -g pnpm@9.4.0
 
 # 复制package.json
 COPY pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/global/package.json ./packages/global/package.json
 COPY projects/mcp_server/package.json ./projects/mcp_server/package.json
 
 RUN apk add --no-cache\
@@ -21,6 +22,7 @@ FROM node:20.14.0-alpine AS builder
 WORKDIR /app
 
 COPY package.json pnpm-workspace.yaml /app/
+COPY ./packages/global /app/packages/global
 COPY ./projects/mcp_server /app/projects/mcp_server
 COPY --from=install /app/node_modules /app/node_modules
 COPY --from=install /app/projects/mcp_server/node_modules /app/projects/mcp_server/node_modules
