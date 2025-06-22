@@ -21,6 +21,8 @@ import type { ParentIdType } from 'common/parentFolder/type';
 import type { AppTypeEnum } from 'core/app/constants';
 import type { StoreNodeItemType } from './node';
 import { FlowNodeTemplateType } from './node';
+import type { SecretValueType } from './../../../common/secret/type';
+import type { I18nStringType } from '../../../common/i18n/type';
 
 export type WorkflowTemplateBasicType = {
   nodes: StoreNodeItemType[];
@@ -32,9 +34,9 @@ export type WorkflowTemplateType = {
   parentId?: ParentIdType;
   isFolder?: boolean;
 
-  name: string;
+  name: I18nStringType | string;
   avatar: string;
-  intro?: string;
+  intro?: I18nStringType | string;
   author?: string;
   courseUrl?: string;
 
@@ -86,8 +88,16 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
     key: string;
     label: string;
     description: string;
-    value?: any;
+    value?: string | SecretValueType;
   }[];
+};
+
+export type SystemPluginTemplateListItemType = Omit<
+  SystemPluginTemplateItemType,
+  'name' | 'intro'
+> & {
+  name: string;
+  intro: string;
 };
 
 export type THelperLine = {

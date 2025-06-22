@@ -42,6 +42,7 @@ const nextConfig = {
 
     if (isServer) {
       config.externals.push('@node-rs/jieba');
+
       if (nextRuntime === 'nodejs') {
         const oldEntry = config.entry;
         config = {
@@ -50,11 +51,7 @@ const nextConfig = {
             const entries = await oldEntry(...args);
             return {
               ...entries,
-              ...getWorkerConfig(),
-              'worker/systemPluginRun': path.resolve(
-                process.cwd(),
-                '../../packages/plugins/runtime/worker.ts'
-              )
+              ...getWorkerConfig()
             };
           }
         };
@@ -85,7 +82,7 @@ const nextConfig = {
       'pg',
       'bullmq',
       '@zilliz/milvus2-sdk-node',
-      "tiktoken",
+      'tiktoken'
     ],
     outputFileTracingRoot: path.join(__dirname, '../../'),
     instrumentationHook: true
