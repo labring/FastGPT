@@ -143,6 +143,7 @@ export enum NodeInputKeyEnum {
   addInputParam = 'system_addInputParam',
   forbidStream = 'system_forbid_stream',
   headerSecret = 'system_header_secret',
+  systemInputConfig = 'system_input_config',
 
   // history
   historyMaxAmount = 'maxContext',

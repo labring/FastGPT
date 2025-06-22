@@ -1,11 +1,18 @@
-import { type I18nNsType } from '@fastgpt/web/types/i18next';
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+export type I18nStringType = {
+  'zh-CN'?: string;
+  'zh-Hant'?: string;
+  en: string;
+};
 
 export enum LangEnum {
   'zh_CN' = 'zh-CN',
   'zh_Hant' = 'zh-Hant',
   'en' = 'en'
 }
+
+export type localeType = `${LangEnum}`;
+export const LocaleList = ['en', 'zh-CN', 'zh-Hant'] as const;
+
 export const langMap = {
   [LangEnum.en]: {
     label: 'English(US)',
