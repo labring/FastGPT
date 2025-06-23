@@ -1,37 +1,14 @@
-import createClient from '@fastgpt-sdk/plugin';
-import { localeType } from '@fastgpt/global/common/i18n/type';
+import createClient, { type SystemVarType } from '@fastgpt-sdk/plugin';
 
-const ToolBaseURL = process.env.TOOL_BASE_URL || '';
 const client = createClient({
-  baseUrl: ToolBaseURL
+  baseUrl: process.env.PLUGIN_BASE_URL || '',
+  token: process.env.PLUGIN_TOKEN || ''
 });
 
 export async function getSystemToolList() {
   const res = await client.tool.list();
-  if (res.status !== 200) return [];
-  return res.body;
-}
-
-export async function runTool(toolId: string, input: object) {
-  const res = await client.tool.run({
-    body: {
-      toolId,
-      input
-    }
-  });
-  if (res.status === 400 || res.status === 404)
-    return {
-      error: res.body
-    };
-  else if (res.status === 200) {
-    return {
-      output: res.body.output
-    };
-  } else {
-    return {
-      error: 'Unknown error'
-    };
-  }
+  if (res.status === 200) return res.body;
+  return Promise.reject(res.body);
 }
 
 export async function getSystemTool({ toolId }: { toolId: string }) {
@@ -40,10 +17,33 @@ export async function getSystemTool({ toolId }: { toolId: string }) {
       toolId
     }
   });
-  if (res.status === 400) return Promise.reject(res.body);
-  else if (res.status === 200) {
+  if (res.status === 200) {
     return res.body;
   } else {
-    return Promise.reject('Unknown error');
+    return Promise.reject(res.body);
+  }
+}
+
+export async function runTool({
+  toolId,
+  inputs,
+  systemVar
+}: {
+  toolId: string;
+  inputs: Record<string, any>;
+  systemVar: SystemVarType;
+}) {
+  const res = await client.tool.run({
+    body: {
+      toolId,
+      inputs,
+      systemVar
+    }
+  });
+
+  if (res.status === 200 && res.body.output) {
+    return res.body.output;
+  } else {
+    return Promise.reject(res.body);
   }
 }
