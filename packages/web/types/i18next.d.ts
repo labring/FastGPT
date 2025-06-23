@@ -20,6 +20,7 @@ import type chat from '../i18n/zh-CN/chat.json';
 import type login from '../i18n/zh-CN/login.json';
 import type account_model from '../i18n/zh-CN/account_model.json';
 import type dashboard_mcp from '../i18n/zh-CN/dashboard_mcp.json';
+import type dashboard_evaluation from '../i18n/zh-CN/dashboard_evaluation.json';
 
 export interface I18nNamespaces {
   common: typeof common;
@@ -43,6 +44,7 @@ export interface I18nNamespaces {
   account_thirdParty: typeof account_thirdParty;
   account_model: typeof account_model;
   dashboard_mcp: typeof dashboard_mcp;
+  dashboard_evaluation: typeof dashboard_evaluation;
 }
 
 export type I18nNsType = (keyof I18nNamespaces)[];
@@ -79,7 +81,8 @@ declare module 'i18next' {
       'account',
       'account_team',
       'account_model',
-      'dashboard_mcp'
+      'dashboard_mcp',
+      'dashboard_evaluation'
     ];
     resources: I18nNamespaces;
   }
