@@ -91,7 +91,7 @@ const ToolParamConfigModal = ({
         {inputList.map((item, i) => {
           const inputKey = `value.${item.key}.value`;
           const value = getValues(`value.${item.key}`);
-          const showInput = !!value?.value || editIndex === i;
+          const showInput = !!value?.value || !value?.secret || editIndex === i;
 
           return (
             <Box key={item.key} _notLast={{ mb: 5 }}>
