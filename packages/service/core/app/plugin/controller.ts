@@ -442,13 +442,6 @@ export const getSystemPlugins = async (): Promise<SystemPluginTemplateItemType[]
       // if tools.inputs has system_input_config, covert it into inputConfig
       const inputConfig = tool.inputs.find((item) => item.key === 'system_input_config');
       if (inputConfig) {
-        // inputConfig?: {
-        //   // Render config input form. Find the corresponding node and replace the variable directly
-        //   key: string;
-        //   label: string;
-        //   description: string;
-        //   value?: any;
-        // }[];
         // @ts-ignore
         tool.inputConfig = inputConfig.inputList?.map((item) => ({
           key: item.key,
