@@ -120,9 +120,9 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                   <SelectOneResource
                     maxH={'60vh'}
                     value={activeAppId}
-                    onSelect={(id) => {
-                      if (!id) return;
-                      onChangeApp(id);
+                    onSelect={(item) => {
+                      if (!item) return;
+                      onChangeApp(item.id);
                       onClose();
                     }}
                     server={getAppList}

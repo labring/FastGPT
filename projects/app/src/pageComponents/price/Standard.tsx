@@ -55,7 +55,8 @@ const Standard = ({
             trainingWeight: value.trainingWeight,
             totalPoints: value.totalPoints * (selectSubMode === SubModeEnum.month ? 1 : 12),
             permissionWebsiteSync: value.permissionWebsiteSync,
-            permissionTeamOperationLog: value.permissionTeamOperationLog
+            permissionTeamOperationLog: value.permissionTeamOperationLog,
+            evalItemsCount: value.evalItemsCount
           };
         })
       : [];
