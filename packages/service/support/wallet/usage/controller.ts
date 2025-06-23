@@ -235,3 +235,89 @@ export const pushLLMTrainingUsage = async ({
 
   return { totalPoints };
 };
+
+export const createEvaluationUsage = async ({
+  teamId,
+  tmbId,
+  appName,
+  agentModel,
+  evalItemCount,
+  session
+}: {
+  teamId: string;
+  tmbId: string;
+  appName: string;
+  agentModel: string;
+  evalItemCount: number;
+  session?: ClientSession;
+}) => {
+  const list = Array.from({ length: evalItemCount }).flatMap(() => [
+    {
+      moduleName: i18nT('account_usage:generate_answer'),
+      model: agentModel,
+      amount: 0
+    },
+    {
+      moduleName: i18nT('account_usage:answer_accuracy'),
+      model: agentModel,
+      amount: 0,
+      inputTokens: 0,
+      outputTokens: 0
+    }
+  ]);
+
+  const [{ _id }] = await MongoUsage.create(
+    [
+      {
+        teamId,
+        tmbId,
+        appName,
+        source: UsageSourceEnum.evaluation,
+        totalPoints: 0,
+        list
+      }
+    ],
+    { session, ordered: true }
+  );
+
+  return { billId: String(_id) };
+};
+
+export const pushEvaluationUsage = async ({
+  teamId,
+  tmbId,
+  model,
+  inputTokens,
+  outputTokens,
+  totalPoints,
+  billId,
+  listIndex
+}: {
+  teamId: string;
+  tmbId: string;
+  model: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  totalPoints?: number;
+  billId: string;
+  listIndex: number;
+}) => {
+  const { totalPoints: computedPoints } = formatModelChars2Points({
+    model,
+    modelType: ModelTypeEnum.llm,
+    inputTokens,
+    outputTokens
+  });
+
+  concatUsage({
+    billId,
+    teamId,
+    tmbId,
+    totalPoints: totalPoints || computedPoints,
+    inputTokens,
+    outputTokens,
+    listIndex
+  });
+
+  return { totalPoints };
+};

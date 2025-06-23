@@ -3,7 +3,8 @@ import { i18nT } from '../../../web/i18n/utils';
 /* mongo fs bucket */
 export enum BucketNameEnum {
   dataset = 'dataset',
-  chat = 'chat'
+  chat = 'chat',
+  evaluation = 'evaluation'
 }
 export const bucketNameMap = {
   [BucketNameEnum.dataset]: {

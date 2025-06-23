@@ -12,7 +12,8 @@ export enum UsageSourceEnum {
   dingtalk = 'dingtalk',
   official_account = 'official_account',
   pdfParse = 'pdfParse',
-  mcp = 'mcp'
+  mcp = 'mcp',
+  evaluation = 'evaluation'
 }
 
 export const UsageSourceMap = {
@@ -51,5 +52,8 @@ export const UsageSourceMap = {
   },
   [UsageSourceEnum.mcp]: {
     label: i18nT('account_usage:mcp')
+  },
+  [UsageSourceEnum.evaluation]: {
+    label: i18nT('account_usage:evaluation')
   }
 };

@@ -191,6 +191,8 @@ export function useScrollPagination<
     EmptyTip,
     showErrorToast = true,
     disalbed = false,
+
+    pollingInterval,
     ...props
   }: {
     scrollLoadType?: 'top' | 'bottom';
@@ -200,6 +202,8 @@ export function useScrollPagination<
     EmptyTip?: React.JSX.Element;
     showErrorToast?: boolean;
     disalbed?: boolean;
+
+    pollingInterval?: number;
   } & Parameters<typeof useRequest2>[1]
 ) {
   const { t } = useTranslation();
@@ -213,30 +217,42 @@ export function useScrollPagination<
   const noMore = data.length >= total;
 
   const loadData = useLockFn(
-    async (init = false, ScrollContainerRef?: RefObject<HTMLDivElement>) => {
-      if (noMore && !init) return;
-      setTrue();
+    async (init = false, ScrollContainerRef?: RefObject<HTMLDivElement>, isPolling = false) => {
+      if (noMore && !init && !isPolling) return;
 
-      if (init) {
+      if (!isPolling) {
+        setTrue();
+      }
+
+      if (init && !isPolling) {
         setData([]);
         setTotal(0);
       }
 
-      const offset = init ? 0 : data.length;
+      const offset = init ? 0 : isPolling ? 0 : data.length;
+      const requestPageSize = isPolling && data.length > 0 ? data.length : pageSize;
 
       try {
         const res = await api({
           offset,
-          pageSize,
+          pageSize: requestPageSize,
           ...params
         } as TParams);
 
         setTotal(res.total);
 
-        if (scrollLoadType === 'top') {
+        if (isPolling && data.length > 0) {
+          const prevScrollTop = ScrollContainerRef?.current?.scrollTop || 0;
+          setData(res.list);
+          requestAnimationFrame(() => {
+            if (ScrollContainerRef?.current) {
+              ScrollContainerRef.current.scrollTop = prevScrollTop;
+            }
+          });
+        } else if (scrollLoadType === 'top') {
           const prevHeight = ScrollContainerRef?.current?.scrollHeight || 0;
           const prevScrollTop = ScrollContainerRef?.current?.scrollTop || 0;
-          // 使用 requestAnimationFrame 来调整滚动位置
+
           function adjustScrollPosition() {
             requestAnimationFrame(
               ScrollContainerRef?.current
@@ -251,10 +267,14 @@ export function useScrollPagination<
             );
           }
 
-          setData((prevData) => (offset === 0 ? res.list : [...res.list, ...prevData]));
-          adjustScrollPosition();
+          const newData = offset === 0 ? res.list : [...res.list, ...data];
+          setData(newData);
+          if (!isPolling) {
+            adjustScrollPosition();
+          }
         } else {
-          setData((prevData) => (offset === 0 ? res.list : [...prevData, ...res.list]));
+          const newData = offset === 0 ? res.list : [...data, ...res.list];
+          setData(newData);
         }
       } catch (error: any) {
         if (showErrorToast) {
@@ -351,6 +371,19 @@ export function useScrollPagination<
       loadData(true);
     },
     {
+      manual: false,
+      ...props
+    }
+  );
+
+  useRequest2(
+    async () => {
+      if (disalbed || !pollingInterval) return;
+      await loadData(false, ScrollRef, true);
+    },
+    {
+      pollingInterval,
+      pollingWhenHidden: false,
       manual: false,
       ...props
     }
