@@ -6,7 +6,8 @@ import {
   VariableInputEnum
 } from '../constants';
 import { DispatchNodeResponseKeyEnum } from '../runtime/constants';
-import { CustomInputItemType, FlowNodeInputItemType, FlowNodeOutputItemType } from './io.d';
+import type { FlowNodeInputItemType } from './io.d';
+import { CustomInputItemType, FlowNodeOutputItemType } from './io.d';
 import {
   ChatHistoryItemResType,
   ChatItemType,
@@ -68,28 +69,23 @@ export type TemplateMarketListItemType = {
 
 // system plugin
 export type SystemPluginTemplateItemType = WorkflowTemplateType & {
-  customWorkflow?: string;
   associatedPluginId?: string;
   userGuide?: string;
 
   templateType: string;
-  isTool?: boolean;
 
   // commercial plugin config
-  originCost: number; // n points/one time
-  currentCost: number;
-  hasTokenFee: boolean;
-  pluginOrder: number;
+  originCost?: number; // n points/one time
+  currentCost?: number;
+  hasTokenFee?: boolean;
+  pluginOrder?: number;
 
   isActive?: boolean;
   isOfficial?: boolean;
-  inputConfig?: {
-    // Render config input form. Find the corresponding node and replace the variable directly
-    key: string;
-    label: string;
-    description: string;
-    value?: string | SecretValueType;
-  }[];
+
+  // Admin config
+  inputList?: FlowNodeInputItemType['inputList'];
+  hasSystemSecret?: boolean;
 };
 
 export type SystemPluginTemplateListItemType = Omit<

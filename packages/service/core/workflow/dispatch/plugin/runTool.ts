@@ -5,29 +5,23 @@ import {
   type DispatchNodeResultType,
   type ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { MCPClient } from '../../../app/mcp';
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
 import { runTool } from '../../../app/tool/api';
 import { MongoSystemPlugin } from '../../../app/plugin/systemPluginSchema';
+import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
+import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 
 type SystemInputConfigType = {
-  type: 'system' | 'team' | 'manual';
-  value: object;
+  type: SystemToolInputTypeEnum;
+  value: StoreSecretValueType;
 };
 
 type RunToolProps = ModuleDispatchProps<
   {
-    /**
-     * Mcp Tool Data
-     */
-    toolData?: McpToolDataType;
     [NodeInputKeyEnum.toolData]: McpToolDataType;
-
-    /**
-     * System Tool Config data
-     */
     [NodeInputKeyEnum.systemInputConfig]: SystemInputConfigType;
   } & Record<string, any>
 >;
@@ -52,30 +46,26 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       // run system tool
       if (toolConfig?.systemTool?.toolId) {
         const inputConfigParams = await (async () => {
-          switch (params['system_input_config']?.type ?? 'system') {
-            case 'team':
+          switch (params.system_input_config?.type) {
+            case SystemToolInputTypeEnum.team:
               return Promise.reject(new Error('This is not supported yet'));
-            case 'manual':
-              return Promise.reject(new Error('This is not supported yet'));
-            case 'system':
+            case SystemToolInputTypeEnum.manual:
+              const val = params.system_input_config.value || {};
+              return getSecretValue({
+                storeSecret: val
+              });
+            case SystemToolInputTypeEnum.system:
             default:
               // read from mongo
               const dbPlugin = await MongoSystemPlugin.findOne({
                 pluginId: toolConfig.systemTool?.toolId
               }).lean();
-              const inputConfigMap = dbPlugin?.inputConfig?.reduce(
-                (acc, item) => {
-                  acc[item.key] = item.value;
-                  return acc;
-                },
-                {} as Record<string, any>
-              );
-              return inputConfigMap;
+              return dbPlugin?.inputListVal || {};
           }
         })();
         const inputs = {
           ...Object.fromEntries(
-            Object.entries(params).filter(([key]) => key !== 'system_input_config')
+            Object.entries(params).filter(([key]) => key !== NodeInputKeyEnum.systemInputConfig)
           ),
           ...inputConfigParams
         };

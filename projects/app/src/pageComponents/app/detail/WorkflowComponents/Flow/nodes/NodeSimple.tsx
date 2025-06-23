@@ -38,7 +38,7 @@ const NodeSimple = ({
         {filterHiddenInputs.length > 0 && (
           <>
             <Container>
-              <IOTitle text={t('common:Input')} />
+              <IOTitle text={t('common:Input')} nodeId={nodeId} inputs={inputs} />
               <RenderInput nodeId={nodeId} flowInputList={commonInputs} />
             </Container>
           </>

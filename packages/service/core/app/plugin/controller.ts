@@ -24,11 +24,15 @@ import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
-import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeTemplateTypeEnum,
+  NodeInputKeyEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getSystemToolList } from '../tool/api';
 import { Types } from '../../../common/mongo';
 import type { SystemPluginConfigSchemaType } from './type';
+import { InputConfigType } from '@fastgpt-sdk/plugin';
 
 /**
   plugin id rule:
@@ -316,58 +320,7 @@ export async function getChildAppRuntimeById(
   };
 }
 
-export function overridePluginConfig(
-  item: Awaited<ReturnType<typeof getSystemToolList>>[0],
-  dbPluginConfig: SystemPluginConfigSchemaType
-) {
-  item.isActive = dbPluginConfig.isActive ?? item.isActive ?? true;
-  item.originCost = dbPluginConfig.originCost ?? 0;
-  item.currentCost = dbPluginConfig.currentCost ?? 0;
-  item.hasTokenFee = dbPluginConfig.hasTokenFee ?? false;
-  item.pluginOrder = dbPluginConfig.pluginOrder ?? 0;
-  // !dueprecated
-  // @ts-ignore
-  item.customWorkflow = dbPluginConfig.customConfig;
-
-  // item.inputs = [
-  //   ...item.inputs,
-  //   ...(dbPluginConfig.inputConfig?.map((item) => ({
-  //     key: item.key,
-  //     label: item.label,
-  //     description: item.description,
-  //     value: item.value,
-  //     renderTypeList: [FlowNodeInputTypeEnum.hidden],
-  //     valueType:
-  //       item.valueType === 'string'
-  //         ? WorkflowIOValueTypeEnum.string
-  //         : WorkflowIOValueTypeEnum.object
-  //   })) ?? [])
-  // ];
-  // item.inputs.find((item) => item.key === 'system_input_config').value = dbPluginConfig.inputConfig?.map(()=> {})
-
-  //@ts-ignore
-  item.inputConfig = dbPluginConfig.inputConfig;
-
-  // return {
-  //   ...item,
-  //   isActive: pluginConfig.isActive ?? false,
-  //   originCost: pluginConfig.originCost ?? 0,
-  //   currentCost: pluginConfig.currentCost ?? 0,
-  //   hasTokenFee: pluginConfig.hasTokenFee ?? false,
-  //   pluginOrder: pluginConfig.pluginOrder ?? 0,
-  //   customWorkflow: pluginConfig.customConfig,
-  //   inputs: [
-  //     ...(pluginConfig.inputConfig?.map((item) => ({
-  //       key: item.key,
-  //       label: item.label,
-  //       description: item.description,
-  //       value: item.value
-  //     })) ?? [])
-  //   ]
-  // };
-}
-
-const dbPluginFormat = (item: SystemPluginConfigSchemaType) => {
+const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplateItemType => {
   const {
     name,
     avatar,
@@ -379,6 +332,7 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType) => {
     associatedPluginId,
     userGuide
   } = item.customConfig!;
+
   return {
     id: item.pluginId,
     isActive: item.isActive,
@@ -391,9 +345,7 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType) => {
     intro,
     showStatus: true,
     weight,
-    isTool: true,
     templateType,
-    inputConfig: item.inputConfig,
     workflow,
     originCost: item.originCost,
     currentCost: item.currentCost,
@@ -435,43 +387,67 @@ export const getSystemPlugins = async (): Promise<SystemPluginTemplateItemType[]
     const tools = await getSystemToolList();
 
     // 从数据库里加载插件配置进行替换
-    const systemPlugins = await MongoSystemPlugin.find({}).lean();
+    const systemPluginsArray = await MongoSystemPlugin.find({}).lean();
+    const systemPlugins = new Map(systemPluginsArray.map((plugin) => [plugin.pluginId, plugin]));
+
     tools.forEach((tool) => {
       // 如果有插件的配置信息，则需要进行替换
-
-      // if tools.inputs has system_input_config, covert it into inputConfig
-      const inputConfig = tool.inputs.find((item) => item.key === 'system_input_config');
-      if (inputConfig) {
-        // @ts-ignore
-        tool.inputConfig = inputConfig.inputList?.map((item) => ({
-          key: item.key,
-          label: item.label,
-          description: item.description,
-          valueType: item.inputType
-        }));
-      }
-
-      const dbPluginConfig = systemPlugins.find((config) => config.pluginId === tool.id);
+      const dbPluginConfig = systemPlugins.get(tool.id);
 
       if (dbPluginConfig) {
         const children = tools.filter((item) => item.parentId === tool.id);
         const list = [tool, ...children];
         list.forEach((item) => {
-          overridePluginConfig(item, dbPluginConfig);
+          item.isActive = dbPluginConfig.isActive ?? item.isActive ?? true;
+          item.originCost = dbPluginConfig.originCost ?? 0;
+          item.currentCost = dbPluginConfig.currentCost ?? 0;
+          item.hasTokenFee = dbPluginConfig.hasTokenFee ?? false;
+          item.pluginOrder = dbPluginConfig.pluginOrder ?? 0;
         });
       }
     });
-    const dbPlugins = systemPlugins
+
+    const formatTools = tools.map<SystemPluginTemplateItemType>((item) => {
+      const dbPluginConfig = systemPlugins.get(item.id);
+
+      return {
+        isActive: item.isActive,
+        id: item.id,
+        parentId: item.parentId,
+        isFolder: !!item.parentId,
+        name: item.name,
+        avatar: item.avatar,
+        intro: item.intro,
+        author: item.author,
+        courseUrl: item.courseUrl,
+
+        showStatus: true,
+        weight: item.weight,
+        workflow: item.workflow,
+        templateType: item.templateType,
+        originCost: item.originCost,
+        currentCost: item.currentCost,
+        hasTokenFee: item.hasTokenFee,
+        pluginOrder: item.pluginOrder,
+
+        inputList: item.inputs?.find((input) => input.key === NodeInputKeyEnum.systemInputConfig)
+          ?.inputList as any,
+        hasSystemSecret: !!dbPluginConfig?.inputListVal
+      };
+    });
+    const dbPlugins = systemPluginsArray
       .filter((item) => item.customConfig)
       .map((item) => dbPluginFormat(item));
 
-    const plugins = [...tools, ...dbPlugins];
+    const plugins = [...formatTools, ...dbPlugins];
     plugins.sort((a, b) => (a.pluginOrder ?? 0) - (b.pluginOrder ?? 0));
+
     global.systemPlugins_cache = {
       expires: Date.now() + 30 * 60 * 1000, // 30 minutes
       data: plugins
     };
-    return plugins as SystemPluginTemplateItemType[];
+
+    return plugins;
   }
 };
 
@@ -479,13 +455,17 @@ export const getSystemPluginById = async (
   pluginId: string
 ): Promise<SystemPluginTemplateItemType> => {
   const { source } = splitCombineToolId(pluginId);
+
   if (source === PluginSourceEnum.systemTool) {
     const tools = await getSystemPlugins();
     const tool = tools.find((item) => item.id === pluginId);
     if (tool) {
       return tool;
+    } else {
+      return Promise.reject(PluginErrEnum.unExist);
     }
   }
+
   const dbPlugin = await MongoSystemPlugin.findOne({ pluginId }).lean();
   return dbPluginFormat(dbPlugin!);
 };
