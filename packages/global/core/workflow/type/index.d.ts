@@ -6,8 +6,8 @@ import {
   VariableInputEnum
 } from '../constants';
 import { DispatchNodeResponseKeyEnum } from '../runtime/constants';
-import type { FlowNodeInputItemType } from './io.d';
-import { CustomInputItemType, FlowNodeOutputItemType } from './io.d';
+import type { FlowNodeInputItemType, FlowNodeOutputItemType } from './io.d';
+import { CustomInputItemType } from './io.d';
 import {
   ChatHistoryItemResType,
   ChatItemType,
@@ -49,6 +49,8 @@ export type WorkflowTemplateType = {
   weight?: number;
 
   workflow: WorkflowTemplateBasicType;
+  inputs?: FlowNodeInputItemType[];
+  outputs?: FlowNodeOutputItemType[];
 };
 
 // template market

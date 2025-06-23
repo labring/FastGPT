@@ -20,10 +20,6 @@ import { type PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
 import { MongoSystemPlugin } from './systemPluginSchema';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
-import type {
-  FlowNodeInputItemType,
-  FlowNodeOutputItemType
-} from '@fastgpt/global/core/workflow/type/io';
 import {
   FlowNodeTemplateTypeEnum,
   NodeInputKeyEnum
@@ -32,7 +28,6 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getSystemToolList } from '../tool/api';
 import { Types } from '../../../common/mongo';
 import type { SystemPluginConfigSchemaType } from './type';
-import { InputConfigType } from '@fastgpt-sdk/plugin';
 
 /**
   plugin id rule:
@@ -63,8 +58,6 @@ export function splitCombineToolId(id: string) {
 type ChildAppType = SystemPluginTemplateItemType & {
   teamId?: string;
   tmbId?: string;
-  inputs?: FlowNodeInputItemType[];
-  outputs?: FlowNodeOutputItemType[];
 };
 
 export const getSystemPluginByIdAndVersionId = async (
@@ -73,6 +66,7 @@ export const getSystemPluginByIdAndVersionId = async (
 ): Promise<ChildAppType> => {
   const plugin = await (async () => {
     const plugin = await getSystemPluginById(pluginId);
+
     if (plugin.associatedPluginId) {
       // The verification plugin is set as a system plugin
       const systemPlugin = await MongoSystemPlugin.findOne(
@@ -113,6 +107,7 @@ export const getSystemPluginByIdAndVersionId = async (
         tmbId: String(app.tmbId)
       };
     }
+
     return plugin;
   })();
 
@@ -177,44 +172,8 @@ export async function getChildAppPreviewNode({
     }
   })();
 
-  const { isSystemTool, isPlugin, isTool, isToolSet } = (() => {
-    const isSystemTool = source === PluginSourceEnum.systemTool;
-    if (isSystemTool) {
-      return { isSystemTool };
-    }
-
-    const isPlugin = !!app.workflow.nodes.find(
-      (node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput
-    );
-
-    const isTool =
-      !!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.tool) &&
-      app.workflow.nodes.length === 1;
-
-    const isToolSet =
-      !!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet) &&
-      app.workflow.nodes.length === 1;
-
-    return { isSystemTool, isPlugin, isTool, isToolSet };
-  })();
-
   const { flowNodeType, nodeIOConfig } = (() => {
-    if (isToolSet)
-      return {
-        flowNodeType: FlowNodeTypeEnum.toolSet,
-        nodeIOConfig: toolSetData2FlowNodeIO({ nodes: app.workflow.nodes })
-      };
-    if (isTool)
-      return {
-        flowNodeType: FlowNodeTypeEnum.tool,
-        nodeIOConfig: toolData2FlowNodeIO({ nodes: app.workflow.nodes })
-      };
-    if (isPlugin)
-      return {
-        flowNodeType: FlowNodeTypeEnum.pluginModule,
-        nodeIOConfig: pluginData2FlowNodeIO({ nodes: app.workflow.nodes })
-      };
-    if (isSystemTool) {
+    if (source === PluginSourceEnum.systemTool) {
       return {
         flowNodeType: FlowNodeTypeEnum.tool,
         nodeIOConfig: {
@@ -228,6 +187,34 @@ export async function getChildAppPreviewNode({
         }
       };
     }
+
+    if (!!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)) {
+      return {
+        flowNodeType: FlowNodeTypeEnum.pluginModule,
+        nodeIOConfig: pluginData2FlowNodeIO({ nodes: app.workflow.nodes })
+      };
+    }
+
+    if (
+      !!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet) &&
+      app.workflow.nodes.length === 1
+    ) {
+      return {
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        nodeIOConfig: toolSetData2FlowNodeIO({ nodes: app.workflow.nodes })
+      };
+    }
+
+    if (
+      !!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.tool) &&
+      app.workflow.nodes.length === 1
+    ) {
+      return {
+        flowNodeType: FlowNodeTypeEnum.tool,
+        nodeIOConfig: toolData2FlowNodeIO({ nodes: app.workflow.nodes })
+      };
+    }
+
     return {
       flowNodeType: FlowNodeTypeEnum.appModule,
       nodeIOConfig: appData2FlowNodeIO({ chatConfig: app.workflow.chatConfig })
@@ -420,15 +407,19 @@ export const getSystemPlugins = async (): Promise<SystemPluginTemplateItemType[]
         intro: item.intro,
         author: item.author,
         courseUrl: item.courseUrl,
-
         showStatus: true,
         weight: item.weight,
-        workflow: item.workflow,
         templateType: item.templateType,
         originCost: item.originCost,
         currentCost: item.currentCost,
         hasTokenFee: item.hasTokenFee,
         pluginOrder: item.pluginOrder,
+        workflow: {
+          nodes: [],
+          edges: []
+        },
+        inputs: item.inputs as any,
+        outputs: item.outputs as any,
 
         inputList: item.inputs?.find((input) => input.key === NodeInputKeyEnum.systemInputConfig)
           ?.inputList as any,

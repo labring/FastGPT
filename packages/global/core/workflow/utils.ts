@@ -274,9 +274,6 @@ export const appData2FlowNodeIO = ({
         };
       });
 
-  // const showFileLink =
-  //   chatConfig?.fileSelectConfig?.canSelectFile || chatConfig?.fileSelectConfig?.canSelectImg;
-
   return {
     inputs: [
       Input_Template_Stream_MODE,
