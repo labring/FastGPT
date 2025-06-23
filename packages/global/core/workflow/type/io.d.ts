@@ -2,6 +2,7 @@ import type { LLMModelItemType } from '../../ai/model.d';
 import type { LLMModelTypeEnum } from '../../ai/constants';
 import type { WorkflowIOValueTypeEnum, NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
 import type { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../node/constant';
+import type { SecretValueType } from '../../../common/secret/type';
 
 // Dynamic input field configuration
 export type CustomFieldConfigType = {
@@ -37,7 +38,14 @@ export type InputComponentPropsType = {
   // dynamic input
   customInputConfig?: CustomFieldConfigType;
 };
-export type InputConfigType = Omit<InputType, 'renderTypeList' | 'inputList'>;
+export type InputConfigType = {
+  key: string;
+  label: string;
+  description?: string;
+  required?: boolean;
+  inputType: 'string' | 'secret';
+  value?: SecretValueType;
+};
 
 export type FlowNodeInputItemType = InputComponentPropsType & {
   selectedTypeIndex?: number;

@@ -13,7 +13,6 @@ export type SystemPluginConfigSchemaType = {
   hasTokenFee: boolean;
   isActive: boolean;
   pluginOrder: number;
-  inputConfig?: SystemPluginTemplateItemType['inputConfig'];
 
   customConfig?: {
     name: string;
@@ -27,6 +26,16 @@ export type SystemPluginConfigSchemaType = {
     userGuide: string;
     author?: string;
   };
+  inputListVal?: Record<string, any>;
+
+  // @deprecated
+  inputConfig?: {
+    // Render config input form. Find the corresponding node and replace the variable directly
+    key: string;
+    label: string;
+    description: string;
+    value?: string;
+  }[];
 };
 
 export type TGroupType = {

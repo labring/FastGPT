@@ -3,7 +3,8 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoApp } from './schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { storeSecretValue } from '../../common/secret/utils';
+import { encryptSecretValue, storeSecretValue } from '../../common/secret/utils';
+import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
 
 export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }) => {
   if (!nodes) return;
@@ -13,6 +14,17 @@ export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }
     node.inputs.forEach((input) => {
       if (input.key === NodeInputKeyEnum.headerSecret && typeof input.value === 'object') {
         input.value = storeSecretValue(input.value);
+      }
+      if (input.key === NodeInputKeyEnum.systemInputConfig && typeof input.value === 'object') {
+        input.inputList?.forEach((inputItem) => {
+          if (
+            inputItem.inputType === 'secret' &&
+            input.value?.type === SystemToolInputTypeEnum.manual &&
+            input.value?.value
+          ) {
+            input.value.value[inputItem.key] = encryptSecretValue(input.value.value[inputItem.key]);
+          }
+        });
       }
     });
 
