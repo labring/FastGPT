@@ -1,7 +1,6 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { MongoEvalItem } from '@fastgpt/service/core/app/evaluation/evalItemSchema';
@@ -15,7 +14,9 @@ export type listEvalItemsBody = PaginationProps<{
   appId: string;
 }>;
 
-export type listEvalItemsResponse = PaginationResponse<{
+export type listEvalItemsResponse = PaginationResponse<listEvalItemsItem>;
+
+export type listEvalItemsItem = {
   evalItemId: string;
   question: string;
   expectedResponse: string;
@@ -27,7 +28,7 @@ export type listEvalItemsResponse = PaginationResponse<{
   relevance: number;
   semanticAccuracy: number;
   score: number;
-}>;
+};
 
 async function handler(
   req: ApiRequestProps<listEvalItemsBody, listEvalItemsQuery>,

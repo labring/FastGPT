@@ -23,6 +23,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { type rerunEvalItemBody } from '@/pages/api/core/app/evaluation/rerunItem';
 import type { updateEvalItemBody } from '@/pages/api/core/app/evaluation/updateItem';
 import { useForm } from 'react-hook-form';
+import { EvaluationStatusMap } from '@fastgpt/global/core/app/evaluation/constants';
 
 const formatEvaluationStatus = (item: { status: number; errorMessage?: string }, t: TFunction) => {
   const statusConfig = {
@@ -80,7 +81,18 @@ const EvaluationDetailModal = ({
   const { runAsync: exportEval, loading: isDownloading } = useRequest2(async () => {
     await downloadFetch({
       url: `/api/core/app/evaluation/exportItems?evalId=${evalDetail._id}&appId=${evalDetail.appId}`,
-      filename: `${evalDetail.name}.csv`
+      filename: `${evalDetail.name}.csv`,
+      body: {
+        title: t('dashboard_evaluation:evaluation_export_title'),
+        statusMap: Object.fromEntries(
+          Object.entries(EvaluationStatusMap).map(([key, config]) => [
+            key,
+            {
+              label: t(config.name as any)
+            }
+          ])
+        )
+      }
     });
   });
 

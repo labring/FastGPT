@@ -5,7 +5,8 @@ import { Types } from 'mongoose';
 import { MongoEvalItem } from '@fastgpt/service/core/app/evaluation/evalItemSchema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
-// import { removeEvaluationJob } from '@fastgpt/service/core/app/evaluation';
+import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 export type deleteEvaluationQuery = {
   evalId: string;
@@ -24,7 +25,7 @@ async function handler(
   const evaluation = await MongoEvaluation.findById(evalId);
   if (!evaluation) return Promise.reject('Evaluation not found');
 
-  await authApp({
+  const { tmbId, teamId, app } = await authApp({
     req,
     authToken: true,
     authApiKey: true,
@@ -32,14 +33,22 @@ async function handler(
     appId: evaluation?.appId
   });
 
-  // await removeEvaluationJob(evalId);
-
   await MongoEvaluation.deleteOne({
     _id: new Types.ObjectId(evalId)
   });
 
   await MongoEvalItem.deleteMany({
     evalId
+  });
+
+  addAuditLog({
+    tmbId,
+    teamId,
+    event: AuditEventEnum.EXPORT_EVALUATION,
+    params: {
+      appName: app.name,
+      appType: getI18nAppType(app.type)
+    }
   });
 
   return {};

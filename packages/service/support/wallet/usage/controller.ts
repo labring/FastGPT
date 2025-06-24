@@ -203,7 +203,9 @@ export const createEvaluationRerunUsage = async ({
   model,
   inputTokens = 0,
   outputTokens = 0,
-  workflowTotalPoints = 0
+  workflowTotalPoints = 0,
+  workflowInputTokens = 0,
+  workflowOutputTokens = 0
 }: {
   teamId: string;
   tmbId: string;
@@ -212,6 +214,8 @@ export const createEvaluationRerunUsage = async ({
   inputTokens?: number;
   outputTokens?: number;
   workflowTotalPoints?: number;
+  workflowInputTokens?: number;
+  workflowOutputTokens?: number;
 }) => {
   const { totalPoints: computedPoints } = formatModelChars2Points({
     model,
@@ -223,7 +227,9 @@ export const createEvaluationRerunUsage = async ({
     {
       moduleName: i18nT('account_usage:generate_answer'),
       amount: workflowTotalPoints,
-      model
+      model,
+      inputTokens: workflowInputTokens,
+      outputTokens: workflowOutputTokens
     },
     {
       moduleName: i18nT('account_usage:answer_accuracy'),
@@ -288,32 +294,13 @@ export const createEvaluationUsage = async ({
   teamId,
   tmbId,
   appName,
-  agentModel,
-  evalItemCount,
   session
 }: {
   teamId: string;
   tmbId: string;
   appName: string;
-  agentModel: string;
-  evalItemCount: number;
   session?: ClientSession;
 }) => {
-  const list = Array.from({ length: evalItemCount }).flatMap(() => [
-    {
-      moduleName: i18nT('account_usage:generate_answer'),
-      model: agentModel,
-      amount: 0
-    },
-    {
-      moduleName: i18nT('account_usage:answer_accuracy'),
-      model: agentModel,
-      amount: 0,
-      inputTokens: 0,
-      outputTokens: 0
-    }
-  ]);
-
   const [{ _id }] = await MongoUsage.create(
     [
       {
@@ -322,7 +309,7 @@ export const createEvaluationUsage = async ({
         appName,
         source: UsageSourceEnum.evaluation,
         totalPoints: 0,
-        list
+        list: []
       }
     ],
     { session, ordered: true }
@@ -339,7 +326,7 @@ export const pushEvaluationUsage = async ({
   outputTokens,
   totalPoints,
   billId,
-  listIndex
+  moduleName
 }: {
   teamId: string;
   tmbId: string;
@@ -348,7 +335,7 @@ export const pushEvaluationUsage = async ({
   outputTokens?: number;
   totalPoints?: number;
   billId: string;
-  listIndex: number;
+  moduleName: string;
 }) => {
   const { totalPoints: computedPoints } = formatModelChars2Points({
     model,
@@ -364,8 +351,9 @@ export const pushEvaluationUsage = async ({
     totalPoints: totalPoints || computedPoints,
     inputTokens,
     outputTokens,
-    listIndex
+    moduleName,
+    model
   });
 
-  return { totalPoints };
+  return { totalPoints: totalPoints || computedPoints };
 };
