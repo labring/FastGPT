@@ -26,7 +26,7 @@ const EvalItemSchema = new Schema({
 
   status: {
     type: Number,
-    enum: [0, 1, 2], // 0: unprocessed, 1: processing, 2: completed
+    enum: [0, 1, 2], // 0: queueing, 1: processing, 2: completed
     default: 0
   },
   retry: {

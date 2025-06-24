@@ -6,7 +6,7 @@ import { MongoEvalItem } from '@fastgpt/service/core/app/evaluation/evalItemSche
 import { MongoEvaluation } from '@fastgpt/service/core/app/evaluation/evalSchema';
 import { checkEvaluationJobActive } from '@fastgpt/service/core/app/evaluation';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { executeEvalItemWithRetry } from '@fastgpt/service/core/app/evaluation/utils';
+import { executeEvalItem } from '@fastgpt/service/core/app/evaluation/utils';
 
 export type rerunEvalItemQuery = {};
 
@@ -65,7 +65,7 @@ async function handler(
         status: 'queued'
       };
     } else {
-      executeEvalItemWithRetry({ evalItem: evaluationItem, evaluation, appName: app.name }).catch(
+      executeEvalItem({ evalItem: evaluationItem, evaluation, appName: app.name }).catch(
         (error) => {
           addLog.error('Background rerun failed', {
             evalItemId,
