@@ -1,6 +1,5 @@
 import { type FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getHandleConfig } from '@fastgpt/global/core/workflow/template/utils';
 import {
   appData2FlowNodeIO,
   pluginData2FlowNodeIO,
@@ -10,16 +9,17 @@ import {
 import { MongoApp } from '../schema';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import { type SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
+import type { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
+import { type SystemPluginTemplateItemType } from '@fastgpt/global/core/app/plugin/type';
 import {
   checkIsLatestVersion,
   getAppLatestVersion,
   getAppVersionById
 } from '../version/controller';
-import { type PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
+import { type PluginRuntimeType } from '@fastgpt/global/core/app/plugin/type';
 import { MongoSystemPlugin } from './systemPluginSchema';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
-import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
+import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import {
   FlowNodeTemplateTypeEnum,
   NodeInputKeyEnum
@@ -58,6 +58,9 @@ export function splitCombineToolId(id: string) {
 type ChildAppType = SystemPluginTemplateItemType & {
   teamId?: string;
   tmbId?: string;
+  workflow?: WorkflowTemplateBasicType;
+  versionLabel?: string; // Auto computed
+  isLatestVersion?: boolean; // Auto computed
 };
 
 export const getSystemPluginByIdAndVersionId = async (
@@ -67,6 +70,7 @@ export const getSystemPluginByIdAndVersionId = async (
   const plugin = await (async () => {
     const plugin = await getSystemPluginById(pluginId);
 
+    // Admin selected system tool
     if (plugin.associatedPluginId) {
       // The verification plugin is set as a system plugin
       const systemPlugin = await MongoSystemPlugin.findOne(
@@ -166,13 +170,13 @@ export async function getChildAppPreviewNode({
         currentCost: 0,
         hasTokenFee: false,
         pluginOrder: 0
-      } as ChildAppType;
+      };
     } else {
       return getSystemPluginByIdAndVersionId(pluginId, versionId);
     }
   })();
 
-  const { flowNodeType, nodeIOConfig } = (() => {
+  const { flowNodeType, nodeIOConfig } = await (async () => {
     if (source === PluginSourceEnum.systemTool) {
       return {
         flowNodeType: FlowNodeTypeEnum.tool,
@@ -231,14 +235,14 @@ export async function getChildAppPreviewNode({
     intro: parseI18nString(app.intro, lang),
     courseUrl: app.courseUrl,
     userGuide: app.userGuide,
-    showStatus: app.showStatus,
+    showStatus: true,
     isTool: true,
 
     version: app.version,
     versionLabel: app.versionLabel,
     isLatestVersion: app.isLatestVersion,
-    sourceHandle: getHandleConfig(true, true, true, true),
-    targetHandle: getHandleConfig(true, true, true, true),
+    showSourceHandle: true,
+    showTargetHandle: true,
 
     currentCost: app.currentCost,
     hasTokenFee: app.hasTokenFee,
@@ -292,7 +296,6 @@ export async function getChildAppRuntimeById(
         pluginOrder: 0
       };
     } else {
-      // System
       return getSystemPluginByIdAndVersionId(pluginId, versionId);
     }
   })();
@@ -303,7 +306,7 @@ export async function getChildAppRuntimeById(
     tmbId: app.tmbId,
     name: parseI18nString(app.name, lang),
     avatar: app.avatar || '',
-    showStatus: app.showStatus,
+    showStatus: true,
     currentCost: app.currentCost,
     nodes: app.workflow.nodes,
     edges: app.workflow.edges,
@@ -312,17 +315,8 @@ export async function getChildAppRuntimeById(
 }
 
 const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplateItemType => {
-  const {
-    name,
-    avatar,
-    intro,
-    version,
-    weight,
-    workflow,
-    templateType,
-    associatedPluginId,
-    userGuide
-  } = item.customConfig!;
+  const { name, avatar, intro, version, weight, templateType, associatedPluginId, userGuide } =
+    item.customConfig!;
 
   return {
     id: item.pluginId,
@@ -334,16 +328,18 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplat
     name,
     avatar,
     intro,
-    showStatus: true,
     weight,
     templateType,
-    workflow,
     originCost: item.originCost,
     currentCost: item.currentCost,
     hasTokenFee: item.hasTokenFee,
     pluginOrder: item.pluginOrder,
     associatedPluginId,
-    userGuide
+    userGuide,
+    workflow: {
+      nodes: [],
+      edges: []
+    }
   };
 };
 
@@ -456,9 +452,8 @@ export const getSystemPluginById = async (
     const tool = tools.find((item) => item.id === pluginId);
     if (tool) {
       return tool;
-    } else {
-      return Promise.reject(PluginErrEnum.unExist);
     }
+    return Promise.reject(PluginErrEnum.unExist);
   }
 
   const dbPlugin = await MongoSystemPlugin.findOne({ pluginId }).lean();

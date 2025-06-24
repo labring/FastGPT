@@ -1,7 +1,7 @@
 /*
   get plugin preview modules
  */
-import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
+import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import {
   getChildAppPreviewNode,

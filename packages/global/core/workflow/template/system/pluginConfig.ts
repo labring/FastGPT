@@ -1,15 +1,14 @@
 import { FlowNodeTypeEnum } from '../../node/constant';
 import { type FlowNodeTemplateType } from '../../type/node.d';
 import { FlowNodeTemplateTypeEnum } from '../../constants';
-import { getHandleConfig } from '../utils';
 import { i18nT } from '../../../../../web/i18n/utils';
 
 export const PluginConfigNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.pluginConfig,
   templateType: FlowNodeTemplateTypeEnum.systemInput,
   flowNodeType: FlowNodeTypeEnum.pluginConfig,
-  sourceHandle: getHandleConfig(false, false, false, false),
-  targetHandle: getHandleConfig(false, false, false, false),
+  showSourceHandle: false,
+  showTargetHandle: false,
   avatar: 'core/workflow/template/systemConfig',
   name: i18nT('workflow:template.system_config'),
   intro: '',

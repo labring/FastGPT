@@ -15,7 +15,6 @@ import {
   ToolRunResponseItemType
 } from '../../chat/type';
 import { ChatNodeUsageType } from '../../../support/wallet/bill/type';
-import { PluginTypeEnum } from '../../plugin/constants';
 import type { StoreEdgeItemType } from './edge';
 import type { AppChatConfigType } from '../../app/type';
 import type { ParentIdType } from 'common/parentFolder/type';
@@ -35,22 +34,16 @@ export type WorkflowTemplateType = {
   parentId?: ParentIdType;
   isFolder?: boolean;
 
-  name: I18nStringType | string;
   avatar: string;
+  name: I18nStringType | string;
   intro?: I18nStringType | string;
+
   author?: string;
   courseUrl?: string;
-
-  version?: string;
-  versionLabel?: string;
-  isLatestVersion?: boolean;
-
-  showStatus?: boolean;
   weight?: number;
 
+  version?: string;
   workflow: WorkflowTemplateBasicType;
-  inputs?: FlowNodeInputItemType[];
-  outputs?: FlowNodeOutputItemType[];
 };
 
 // template market
@@ -67,47 +60,4 @@ export type TemplateMarketListItemType = {
   tags: string[];
   type: AppTypeEnum.simple | AppTypeEnum.workflow | AppTypeEnum.plugin;
   avatar: string;
-};
-
-// system plugin
-export type SystemPluginTemplateItemType = WorkflowTemplateType & {
-  associatedPluginId?: string;
-  userGuide?: string;
-
-  templateType: string;
-
-  // commercial plugin config
-  originCost?: number; // n points/one time
-  currentCost?: number;
-  hasTokenFee?: boolean;
-  pluginOrder?: number;
-
-  isActive?: boolean;
-  isOfficial?: boolean;
-
-  // Admin config
-  inputList?: FlowNodeInputItemType['inputList'];
-  hasSystemSecret?: boolean;
-};
-
-export type SystemPluginTemplateListItemType = Omit<
-  SystemPluginTemplateItemType,
-  'name' | 'intro'
-> & {
-  name: string;
-  intro: string;
-};
-
-export type THelperLine = {
-  position: number;
-  nodes: {
-    left: number;
-    right: number;
-    top: number;
-    bottom: number;
-    width: number;
-    height: number;
-    centerX: number;
-    centerY: number;
-  }[];
 };

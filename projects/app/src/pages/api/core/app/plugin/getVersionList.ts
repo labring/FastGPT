@@ -10,7 +10,7 @@ import {
   getSystemPluginByIdAndVersionId,
   splitCombineToolId
 } from '@fastgpt/service/core/app/plugin/controller';
-import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
+import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { Types } from '@fastgpt/service/common/mongo';
 

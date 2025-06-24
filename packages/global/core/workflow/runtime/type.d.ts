@@ -94,17 +94,16 @@ export type RuntimeNodeItemType = {
   intro?: StoreNodeItemType['intro'];
   flowNodeType: StoreNodeItemType['flowNodeType'];
   showStatus?: StoreNodeItemType['showStatus'];
-  toolConfig?: StoreNodeItemType['toolConfig'];
   isEntry?: boolean;
+  version?: string;
 
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
 
   pluginId?: string; // workflow id / plugin id
-  version?: string;
 
-  // tool
-  toolConfig?: NodeToolConfigType;
+  // Tool
+  toolConfig?: StoreNodeItemType['toolConfig'];
 };
 
 export type RuntimeEdgeItemType = StoreEdgeItemType & {

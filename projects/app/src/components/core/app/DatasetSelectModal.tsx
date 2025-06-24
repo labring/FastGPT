@@ -11,7 +11,7 @@ import {
   Divider
 } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/api.d';
+import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
