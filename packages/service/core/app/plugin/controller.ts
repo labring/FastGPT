@@ -240,6 +240,10 @@ export async function getChildAppPreviewNode({
     sourceHandle: getHandleConfig(true, true, true, true),
     targetHandle: getHandleConfig(true, true, true, true),
 
+    currentCost: app.currentCost,
+    hasTokenFee: app.hasTokenFee,
+    hasSystemSecret: app.hasSystemSecret,
+
     ...nodeIOConfig
   };
 }

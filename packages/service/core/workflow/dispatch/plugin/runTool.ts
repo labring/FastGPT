@@ -13,6 +13,7 @@ import { runTool } from '../../../app/tool/api';
 import { MongoSystemPlugin } from '../../../app/plugin/systemPluginSchema';
 import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import { getSystemPluginById } from '../../../app/plugin/controller';
 
 type SystemInputConfigType = {
   type: SystemToolInputTypeEnum;
@@ -21,8 +22,8 @@ type SystemInputConfigType = {
 
 type RunToolProps = ModuleDispatchProps<
   {
-    [NodeInputKeyEnum.toolData]: McpToolDataType;
-    [NodeInputKeyEnum.systemInputConfig]: SystemInputConfigType;
+    [NodeInputKeyEnum.toolData]?: McpToolDataType;
+    [NodeInputKeyEnum.systemInputConfig]?: SystemInputConfigType;
   } & Record<string, any>
 >;
 
@@ -38,85 +39,103 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     runningUserInfo,
     runningAppInfo,
     variables,
-    node: { avatar, toolConfig, version }
+    node: { name, avatar, toolConfig, version }
   } = props;
 
   try {
-    const result = await (async () => {
-      // run system tool
-      if (toolConfig?.systemTool?.toolId) {
-        const inputConfigParams = await (async () => {
-          switch (params.system_input_config?.type) {
-            case SystemToolInputTypeEnum.team:
-              return Promise.reject(new Error('This is not supported yet'));
-            case SystemToolInputTypeEnum.manual:
-              const val = params.system_input_config.value || {};
-              return getSecretValue({
-                storeSecret: val
-              });
-            case SystemToolInputTypeEnum.system:
-            default:
-              // read from mongo
-              const dbPlugin = await MongoSystemPlugin.findOne({
-                pluginId: toolConfig.systemTool?.toolId
-              }).lean();
-              return dbPlugin?.inputListVal || {};
+    // run system tool
+    if (toolConfig?.systemTool?.toolId) {
+      const inputConfigParams = await (async () => {
+        switch (params.system_input_config?.type) {
+          case SystemToolInputTypeEnum.team:
+            return Promise.reject(new Error('This is not supported yet'));
+          case SystemToolInputTypeEnum.manual:
+            const val = params.system_input_config.value || {};
+            return getSecretValue({
+              storeSecret: val
+            });
+          case SystemToolInputTypeEnum.system:
+          default:
+            // read from mongo
+            const dbPlugin = await MongoSystemPlugin.findOne({
+              pluginId: toolConfig.systemTool?.toolId
+            }).lean();
+            return dbPlugin?.inputListVal || {};
+        }
+      })();
+      const inputs = {
+        ...Object.fromEntries(
+          Object.entries(params).filter(([key]) => key !== NodeInputKeyEnum.systemInputConfig)
+        ),
+        ...inputConfigParams
+      };
+
+      const result = await runTool({
+        toolId: toolConfig.systemTool.toolId,
+        inputs,
+        systemVar: {
+          user: {
+            id: variables.userId,
+            teamId: runningUserInfo.teamId,
+            name: runningUserInfo.tmbId
+          },
+          app: {
+            id: runningAppInfo.id,
+            name: runningAppInfo.id
+          },
+          tool: {
+            id: toolConfig.systemTool.toolId,
+            version
+          },
+          time: variables.cTime
+        }
+      });
+
+      const usagePoints = await (async () => {
+        if (params.system_input_config?.type !== SystemToolInputTypeEnum.system) {
+          return 0;
+        }
+        const tool = await getSystemPluginById(toolConfig.systemTool!.toolId);
+        return tool.currentCost ?? 0;
+      })();
+
+      return {
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          toolRes: result,
+          moduleLogo: avatar,
+          totalPoints: usagePoints
+        },
+        [DispatchNodeResponseKeyEnum.toolResponses]: result,
+        [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
+          {
+            moduleName: name,
+            totalPoints: usagePoints
           }
-        })();
-        const inputs = {
-          ...Object.fromEntries(
-            Object.entries(params).filter(([key]) => key !== NodeInputKeyEnum.systemInputConfig)
-          ),
-          ...inputConfigParams
-        };
+        ],
+        ...result
+      };
+    } else {
+      // mcp tool
+      const { toolData, system_toolData, ...restParams } = params;
+      const { name: toolName, url, headerSecret } = toolData || system_toolData;
 
-        const result = await runTool({
-          toolId: toolConfig.systemTool.toolId,
-          inputs,
-          systemVar: {
-            user: {
-              id: variables.userId,
-              teamId: runningUserInfo.teamId,
-              name: runningUserInfo.tmbId
-            },
-            app: {
-              id: runningAppInfo.id,
-              name: runningAppInfo.id
-            },
-            tool: {
-              id: toolConfig.systemTool.toolId,
-              version
-            },
-            time: variables.cTime
-          }
-        });
-        return result;
-      } else {
-        // mcp tool
-        const { toolData, system_toolData, ...restParams } = params;
-        const { name: toolName, url, headerSecret } = toolData || system_toolData;
+      const mcpClient = new MCPClient({
+        url,
+        headers: getSecretValue({
+          storeSecret: headerSecret
+        })
+      });
+      const result = await mcpClient.toolCall(toolName, restParams);
 
-        const mcpClient = new MCPClient({
-          url,
-          headers: getSecretValue({
-            storeSecret: headerSecret
-          })
-        });
-        const result = await mcpClient.toolCall(toolName, restParams);
-        return {
-          [NodeOutputKeyEnum.rawResponse]: result
-        };
-      }
-    })();
-
-    return {
-      [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        toolRes: result,
-        moduleLogo: avatar
-      },
-      [DispatchNodeResponseKeyEnum.toolResponses]: result,
-      ...result
-    };
+      return {
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          toolRes: result,
+          moduleLogo: avatar
+        },
+        [DispatchNodeResponseKeyEnum.toolResponses]: result,
+        [NodeOutputKeyEnum.rawResponse]: result
+      };
+    }
   } catch (error) {
     return {
       [DispatchNodeResponseKeyEnum.nodeResponse]: {

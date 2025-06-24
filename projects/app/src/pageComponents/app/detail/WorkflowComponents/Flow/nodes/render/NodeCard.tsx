@@ -30,13 +30,14 @@ import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
 import NodeDebugResponse from './RenderDebug/NodeDebugResponse';
-import { getAppVersionList } from '@/web/core/app/api/version';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { useCreation } from 'ahooks';
+import { useBoolean, useCreation } from 'ahooks';
 import { formatToolError } from '@fastgpt/global/core/app/utils';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { ToolParamConfigModal } from '../../components/ToolParamConfig';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -78,12 +79,19 @@ const NodeCard = (props: Props) => {
     isError = false,
     debugResult,
     isFolded,
-    customStyle
+    customStyle,
+    inputs
   } = props;
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const setHoverNodeId = useContextSelector(WorkflowEventContext, (v) => v.setHoverNodeId);
+
+  const inputConfig = inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig);
+  const [
+    isOpenToolParamConfigModal,
+    { setTrue: onOpenToolParamConfigModal, setFalse: onCloseToolParamConfigModal }
+  ] = useBoolean(false);
 
   // custom title edit
   const { onOpenModal: onOpenCustomTitleModal, EditModal: EditTitleModal } = useEditTitle({
@@ -361,13 +369,43 @@ const NodeCard = (props: Props) => {
     >
       {debugResult && <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />}
       {Header}
-      <Flex flexDirection={'column'} flex={1} my={!isFolded ? 3 : 0} gap={2}>
-        {!isFolded ? children : <Box h={4} />}
+      <Flex flexDirection={'column'} flex={1} py={!isFolded ? 3 : 0} gap={2} position={'relative'}>
+        {!isFolded ? (
+          <>
+            {children}
+            {inputConfig && !inputConfig?.value && (
+              <Flex
+                alignItems={'center'}
+                justifyContent={'center'}
+                borderBottomRadius={'lg'}
+                position={'absolute'}
+                top={0}
+                left={0}
+                right={0}
+                bottom={0}
+                bg={'rgba(255, 255, 255, 0.5)'}
+              >
+                <Button variant={'whiteBase'} size={'lg'} onClick={onOpenToolParamConfigModal}>
+                  激活工具
+                </Button>
+              </Flex>
+            )}
+          </>
+        ) : (
+          <Box h={4} />
+        )}
       </Flex>
       {RenderHandle}
       {RenderToolHandle}
 
       <EditTitleModal maxLength={100} />
+      {inputConfig && isOpenToolParamConfigModal && (
+        <ToolParamConfigModal
+          nodeId={nodeId}
+          onClose={onCloseToolParamConfigModal}
+          inputConfig={inputConfig}
+        />
+      )}
     </Flex>
   );
 };

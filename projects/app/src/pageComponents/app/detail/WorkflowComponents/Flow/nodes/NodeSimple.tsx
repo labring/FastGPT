@@ -24,7 +24,6 @@ const NodeSimple = ({
 
   const Render = useMemo(() => {
     const { isTool, commonInputs } = splitToolInputs(inputs, nodeId);
-    const filterHiddenInputs = commonInputs.filter((item) => true);
 
     return (
       <NodeCard minW={minW} maxW={maxW} selected={selected} {...data}>
@@ -35,7 +34,7 @@ const NodeSimple = ({
             </Container>
           </>
         )}
-        {filterHiddenInputs.length > 0 && (
+        {commonInputs.length > 0 && (
           <>
             <Container>
               <IOTitle text={t('common:Input')} nodeId={nodeId} inputs={inputs} />

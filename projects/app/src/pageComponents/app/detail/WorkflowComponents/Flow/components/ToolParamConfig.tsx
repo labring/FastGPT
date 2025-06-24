@@ -13,6 +13,8 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import IconButton from '@/pageComponents/account/team/OrgManage/IconButton';
 import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
+import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
+import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 
 const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInputItemType[] }) => {
   const { t } = useTranslation();
@@ -38,7 +40,11 @@ const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInpu
 
 export default React.memo(ToolConfig);
 
-const ToolParamConfigModal = ({
+type ToolParamsFormType = {
+  type: SystemToolInputTypeEnum;
+  value: StoreSecretValueType;
+};
+export const ToolParamConfigModal = ({
   nodeId,
   onClose,
   inputConfig
@@ -49,11 +55,14 @@ const ToolParamConfigModal = ({
 }) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const node = useContextSelector(WorkflowContext, (v) =>
+    v.nodeList.find((item) => item.nodeId === nodeId)
+  );
   const inputList = inputConfig.inputList || [];
 
   const [editIndex, setEditIndex] = useState<number>();
 
-  const { getValues, register, handleSubmit } = useForm({
+  const { getValues, setValue, watch, register, handleSubmit } = useForm<ToolParamsFormType>({
     defaultValues: inputConfig.value || {
       type: SystemToolInputTypeEnum.manual,
       value: inputList.reduce(
@@ -65,8 +74,9 @@ const ToolParamConfigModal = ({
       )
     }
   });
+  const configType = watch('type');
 
-  const onSubmit = (data: Record<string, InputConfigType['value']>) => {
+  const onSubmit = (data: ToolParamsFormType) => {
     onChangeNode({
       nodeId,
       type: 'updateInput',
@@ -88,63 +98,86 @@ const ToolParamConfigModal = ({
       onClose={onClose}
     >
       <ModalBody pt={6}>
-        {inputList.map((item, i) => {
-          const inputKey = `value.${item.key}.value`;
-          const value = getValues(`value.${item.key}`);
-          const showInput = !!value?.value || !value?.secret || editIndex === i;
+        <Box mb={5}>
+          <LeftRadio
+            gridTemplateColumns={'1fr 1fr'}
+            list={[
+              {
+                title: '系统密钥',
+                value: SystemToolInputTypeEnum.system
+              },
+              {
+                title: '手动密钥',
+                value: SystemToolInputTypeEnum.manual
+              }
+            ]}
+            value={configType}
+            onChange={(e) => setValue('type', e)}
+          />
+        </Box>
 
-          return (
-            <Box key={item.key} _notLast={{ mb: 5 }}>
-              <Flex alignItems={'center'}>
-                <FormLabel required={item.required} color={'myGray.600'}>
-                  {t(item.label as any)}
-                </FormLabel>
-                {item.description && <QuestionTip label={item.description} />}
-              </Flex>
-              {item.inputType === 'string' && (
-                <Input
-                  bg={'myGray.50'}
-                  {...register(inputKey, {
-                    required: item.required
-                  })}
-                />
-              )}
-              {item.inputType === 'secret' && (
-                <Flex alignItems={'center'}>
-                  {showInput ? (
+        {configType === SystemToolInputTypeEnum.system && <>调用需要 {node?.currentCost}积分/次</>}
+        {configType === SystemToolInputTypeEnum.manual && (
+          <>
+            {inputList.map((item, i) => {
+              const inputKey = `value.${item.key}.value` as any;
+              const value = getValues(`value.${item.key}`);
+              const showInput = !!value?.value || !value?.secret || editIndex === i;
+
+              return (
+                <Box key={item.key} _notLast={{ mb: 5 }}>
+                  <Flex alignItems={'center'}>
+                    <FormLabel required={item.required} color={'myGray.600'}>
+                      {t(item.label as any)}
+                    </FormLabel>
+                    {item.description && <QuestionTip label={item.description} />}
+                  </Flex>
+                  {item.inputType === 'string' && (
                     <Input
                       bg={'myGray.50'}
                       {...register(inputKey, {
                         required: item.required
                       })}
                     />
-                  ) : (
-                    <>
-                      <Flex
-                        flex={1}
-                        borderRadius={'6px'}
-                        border={'0.5px solid'}
-                        borderColor={'primary.200'}
-                        bg={'primary.50'}
-                        h={8}
-                        px={3}
-                        alignItems={'center'}
-                        gap={1}
-                        mr={1}
-                      >
-                        <MyIcon name="checkCircle" w={'16px'} color={'primary.600'} />
-                        <Box fontSize={'sm'} fontWeight={'medium'} color={'primary.600'}>
-                          {t('common:had_auth_value')}
-                        </Box>
-                      </Flex>
-                      <IconButton name="edit" onClick={() => setEditIndex(i)} />
-                    </>
                   )}
-                </Flex>
-              )}
-            </Box>
-          );
-        })}
+                  {item.inputType === 'secret' && (
+                    <Flex alignItems={'center'}>
+                      {showInput ? (
+                        <Input
+                          bg={'myGray.50'}
+                          {...register(inputKey, {
+                            required: item.required
+                          })}
+                        />
+                      ) : (
+                        <>
+                          <Flex
+                            flex={1}
+                            borderRadius={'6px'}
+                            border={'0.5px solid'}
+                            borderColor={'primary.200'}
+                            bg={'primary.50'}
+                            h={8}
+                            px={3}
+                            alignItems={'center'}
+                            gap={1}
+                            mr={1}
+                          >
+                            <MyIcon name="checkCircle" w={'16px'} color={'primary.600'} />
+                            <Box fontSize={'sm'} fontWeight={'medium'} color={'primary.600'}>
+                              {t('common:had_auth_value')}
+                            </Box>
+                          </Flex>
+                          <IconButton name="edit" onClick={() => setEditIndex(i)} />
+                        </>
+                      )}
+                    </Flex>
+                  )}
+                </Box>
+              );
+            })}
+          </>
+        )}
       </ModalBody>
       <ModalFooter>
         <Button mr={4} variant={'whiteBase'} onClick={onClose}>
