@@ -85,6 +85,11 @@ export type FlowNodeTemplateType = FlowNodeCommonType & {
   sourceHandle?: HandleType;
   targetHandle?: HandleType;
 
+  // tool config
+  currentCost?: number;
+  hasTokenFee?: boolean;
+  hasSystemSecret?: boolean;
+
   // info
   isTool?: boolean; // can be connected by tool
 

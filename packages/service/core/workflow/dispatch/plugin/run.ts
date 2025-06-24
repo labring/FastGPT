@@ -19,7 +19,7 @@ import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getChildAppRuntimeById, splitCombineToolId } from '../../../app/plugin/controller';
 import { dispatchWorkFlow } from '../index';
 import { getUserChatInfoAndAuthTeamPoints } from '../../../../support/permission/auth/team';
-import { runTool } from '../../../../core/app/tool/api';
+import { dispatchRunTool } from './runTool';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
@@ -48,9 +48,17 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
 
   const { source } = splitCombineToolId(pluginId);
   if (source === PluginSourceEnum.systemTool) {
-    const { error, output } = await runTool(pluginId, data);
-    if (error) return Promise.reject(error);
-    return output as any;
+    return dispatchRunTool({
+      ...props,
+      node: {
+        ...props.node,
+        toolConfig: {
+          systemTool: {
+            toolId: pluginId
+          }
+        }
+      }
+    });
   }
 
   const plugin = await getChildAppRuntimeById(pluginId, version);
