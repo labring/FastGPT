@@ -14,6 +14,7 @@ export type EvalItemSchemaType = {
   question: string;
   expectedResponse: string;
   globalVariales?: Record<string, any>;
+  history?: string;
   response?: string;
   status: 0 | 1 | 2;
   retry: number;

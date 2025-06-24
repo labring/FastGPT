@@ -36,5 +36,6 @@
   "start_evaluation": "開始評測",
   "task_creating": "正在創建任務",
   "task_detail": "任務詳情",
-  "template_csv_file_select_tip": "僅支持<highlight>嚴格按照模板格式</highlight>的 {{fileType}} 文件"
+  "template_csv_file_select_tip": "僅支持<highlight>嚴格按照模板格式</highlight>的 {{fileType}} 文件",
+  "variables": "全局變量"
 }

@@ -14,6 +14,7 @@ export type updateEvalItemBody = {
   evalItemId: string;
   question: string;
   expectedResponse: string;
+  variables: Record<string, string>;
 };
 
 export type updateEvalItemResponse = {
@@ -25,7 +26,7 @@ async function handler(
   req: ApiRequestProps<updateEvalItemBody, updateEvalItemQuery>,
   res: ApiResponseType<any>
 ): Promise<updateEvalItemResponse> {
-  const { evalItemId, question, expectedResponse } = req.body;
+  const { evalItemId, question, expectedResponse, variables } = req.body;
 
   const evaluationItem = await MongoEvalItem.findById(evalItemId);
   if (!evaluationItem) return Promise.reject('evaluationItem not found');
@@ -59,7 +60,8 @@ async function handler(
             relevance: null,
             semanticAccuracy: null,
             score: null,
-            retry: 3
+            retry: 3,
+            globalVariales: variables
           }
         }
       );
@@ -74,7 +76,8 @@ async function handler(
         {
           $set: {
             question,
-            expectedResponse
+            expectedResponse,
+            globalVariales: variables
           }
         }
       );
