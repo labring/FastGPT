@@ -397,7 +397,7 @@ const EvaluationDetailModal = ({
                   flexDirection={'column'}
                   overflow={'auto'}
                 >
-                  {evalItem?.errorMessage && (
+                  {!editing && evalItem?.errorMessage && (
                     <Box
                       p={4}
                       bg={'red.50'}
@@ -477,12 +477,14 @@ const EvaluationDetailModal = ({
                     )}
                   </Box>
 
-                  <Box borderBottom={'1px solid'} borderColor={'myGray.200'} py={5}>
-                    <Box>{t('dashboard_evaluation:app_response')}</Box>
-                    <Box color={'myGray.900'} mt={3}>
-                      {evalItem?.response}
+                  {!editing && (
+                    <Box borderBottom={'1px solid'} borderColor={'myGray.200'} py={5}>
+                      <Box>{t('dashboard_evaluation:app_response')}</Box>
+                      <Box color={'myGray.900'} mt={3}>
+                        {evalItem?.response}
+                      </Box>
                     </Box>
-                  </Box>
+                  )}
                 </Flex>
               ) : (
                 <EmptyTip w={1 / 3} h={'full'} />
