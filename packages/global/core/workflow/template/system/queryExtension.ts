@@ -15,16 +15,14 @@ import {
   Input_Template_UserChatInput,
   Input_Template_SelectAIModel
 } from '../input';
-import { LLMModelTypeEnum } from '../../../ai/constants';
-import { getHandleConfig } from '../utils';
 import { i18nT } from '../../../../../web/i18n/utils';
 
 export const AiQueryExtension: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.queryExtension,
   templateType: FlowNodeTemplateTypeEnum.other,
   flowNodeType: FlowNodeTypeEnum.queryExtension,
-  sourceHandle: getHandleConfig(true, true, true, true),
-  targetHandle: getHandleConfig(true, true, true, true),
+  showSourceHandle: true,
+  showTargetHandle: true,
   avatar: 'core/workflow/template/queryExtension',
   name: i18nT('workflow:question_optimization'),
   intro: i18nT('workflow:intro_question_optimization'),

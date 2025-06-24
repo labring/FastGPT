@@ -17,8 +17,7 @@ import {
   nodeTemplate2FlowNode,
   storeNode2FlowNode,
   filterWorkflowNodeOutputsByType,
-  checkWorkflowNodeAndConnection,
-  getLatestNodeTemplate
+  checkWorkflowNodeAndConnection
 } from '@/web/core/workflow/utils';
 import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 
@@ -236,104 +235,5 @@ describe('checkWorkflowNodeAndConnection', () => {
   it('should handle empty nodes and edges', () => {
     const result = checkWorkflowNodeAndConnection({ nodes: [], edges: [] });
     expect(result).toBeUndefined();
-  });
-});
-
-describe('getLatestNodeTemplate', () => {
-  it('should update node to latest template version', () => {
-    const node: FlowNodeItemType = {
-      id: 'node1',
-      nodeId: 'node1',
-      templateType: 'formInput',
-      flowNodeType: FlowNodeTypeEnum.formInput,
-      inputs: [
-        {
-          key: 'input1',
-          value: 'test',
-          renderTypeList: [FlowNodeInputTypeEnum.input],
-          label: 'Input 1'
-        }
-      ],
-      outputs: [
-        {
-          key: 'output1',
-          value: 'test',
-          type: FlowNodeOutputTypeEnum.static,
-          label: 'Output 1',
-          id: 'output1'
-        }
-      ],
-      name: 'Old Name',
-      intro: 'Old Intro'
-    };
-
-    const template: FlowNodeTemplateType = {
-      name: 'Template 1',
-      id: 'template1',
-      templateType: 'formInput',
-      flowNodeType: FlowNodeTypeEnum.formInput,
-      inputs: [
-        { key: 'input1', renderTypeList: [FlowNodeInputTypeEnum.input], label: 'Input 1' },
-        { key: 'input2', renderTypeList: [FlowNodeInputTypeEnum.input], label: 'Input 2' }
-      ],
-      outputs: [
-        { id: 'output1', key: 'output1', type: FlowNodeOutputTypeEnum.static, label: 'Output 1' },
-        { id: 'output2', key: 'output2', type: FlowNodeOutputTypeEnum.static, label: 'Output 2' }
-      ]
-    };
-
-    const result = getLatestNodeTemplate(node, template);
-
-    expect(result.inputs).toHaveLength(2);
-    expect(result.outputs).toHaveLength(2);
-    expect(result.name).toBe('Old Name');
-  });
-
-  it('should preserve existing values when updating template', () => {
-    const node: FlowNodeItemType = {
-      id: 'node1',
-      nodeId: 'node1',
-      templateType: 'formInput',
-      flowNodeType: FlowNodeTypeEnum.formInput,
-      inputs: [
-        {
-          key: 'input1',
-          value: 'existingValue',
-          renderTypeList: [FlowNodeInputTypeEnum.input],
-          label: 'Input 1'
-        }
-      ],
-      outputs: [
-        {
-          key: 'output1',
-          value: 'existingOutput',
-          type: FlowNodeOutputTypeEnum.static,
-          label: 'Output 1',
-          id: 'output1'
-        }
-      ],
-      name: 'Node Name',
-      intro: 'Node Intro'
-    };
-
-    const template: FlowNodeTemplateType = {
-      name: 'Template 1',
-      id: 'template1',
-      templateType: 'formInput',
-      flowNodeType: FlowNodeTypeEnum.formInput,
-      inputs: [
-        { key: 'input1', renderTypeList: [FlowNodeInputTypeEnum.input], label: 'Input 1' },
-        { key: 'input2', renderTypeList: [FlowNodeInputTypeEnum.input], label: 'Input 2' }
-      ],
-      outputs: [
-        { id: 'output1', key: 'output1', type: FlowNodeOutputTypeEnum.static, label: 'Output 1' },
-        { id: 'output2', key: 'output2', type: FlowNodeOutputTypeEnum.static, label: 'Output 2' }
-      ]
-    };
-
-    const result = getLatestNodeTemplate(node, template);
-
-    expect(result.inputs[0].value).toBe('existingValue');
-    expect(result.outputs[0].value).toBe('existingOutput');
   });
 });

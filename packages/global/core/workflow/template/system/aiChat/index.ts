@@ -19,7 +19,6 @@ import {
   Input_Template_UserChatInput,
   Input_Template_File_Link
 } from '../../input';
-import { getHandleConfig } from '../../utils';
 import { i18nT } from '../../../../../../web/i18n/utils';
 
 export const AiChatQuoteRole = {
@@ -46,8 +45,8 @@ export const AiChatModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.chatNode,
   templateType: FlowNodeTemplateTypeEnum.ai,
   flowNodeType: FlowNodeTypeEnum.chatNode,
-  sourceHandle: getHandleConfig(true, true, true, true),
-  targetHandle: getHandleConfig(true, true, true, true),
+  showSourceHandle: true,
+  showTargetHandle: true,
   avatar: 'core/workflow/template/aiChat',
   name: i18nT('workflow:template.ai_chat'),
   intro: i18nT('workflow:template.ai_chat_intro'),

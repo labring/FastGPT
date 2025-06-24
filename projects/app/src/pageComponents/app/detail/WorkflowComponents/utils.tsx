@@ -29,8 +29,8 @@ export const uiWorkflow2StoreWorkflow = ({
     version: item.data.version,
     inputs: item.data.inputs,
     outputs: item.data.outputs,
-    pluginId: item.data.pluginId,
     isFolded: item.data.isFolded,
+    pluginId: item.data.pluginId,
     toolConfig: item.data.toolConfig
   }));
 

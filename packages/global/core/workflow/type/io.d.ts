@@ -1,4 +1,4 @@
-import type { LLMModelItemType } from '../../ai/model.d';
+import type { EmbeddingModelItemType, LLMModelItemType } from '../../ai/model.d';
 import type { LLMModelTypeEnum } from '../../ai/constants';
 import type { WorkflowIOValueTypeEnum, NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
 import type { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../node/constant';
@@ -10,11 +10,6 @@ export type CustomFieldConfigType = {
 
   // reference
   selectValueTypeList?: WorkflowIOValueTypeEnum[]; // 可以选哪个数据类型, 只有1个的话,则默认选择
-
-  // showIsToolParam?: boolean; // 是否作为工具参数
-
-  // showRequired?: boolean;
-  // defaultRequired?: boolean;
 
   showDefaultValue?: boolean;
   showDescription?: boolean;
@@ -103,6 +98,21 @@ export type FlowNodeOutputItemType = {
   deprecated?: boolean;
 };
 
+// Field value type
 export type ReferenceItemValueType = [string, string | undefined];
 export type ReferenceArrayValueType = ReferenceItemValueType[];
 export type ReferenceValueType = ReferenceItemValueType | ReferenceArrayValueType;
+
+export type SelectedDatasetType = {
+  datasetId: string;
+  avatar: string;
+  name: string;
+  vectorModel: EmbeddingModelItemType;
+}[];
+
+/* http node */
+export type HttpParamAndHeaderItemType = {
+  key: string;
+  type: string;
+  value: string;
+};

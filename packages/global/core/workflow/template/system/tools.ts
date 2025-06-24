@@ -18,7 +18,6 @@ import {
 } from '../input';
 import { chatNodeSystemPromptTip, systemPromptTip } from '../tip';
 import { LLMModelTypeEnum } from '../../../ai/constants';
-import { getHandleConfig } from '../utils';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { Input_Template_File_Link } from '../input';
 
@@ -26,8 +25,8 @@ export const ToolModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.tools,
   templateType: FlowNodeTemplateTypeEnum.ai,
-  sourceHandle: getHandleConfig(true, true, false, true),
-  targetHandle: getHandleConfig(true, true, false, true),
+  showSourceHandle: true,
+  showTargetHandle: true,
   avatar: 'core/workflow/template/toolCall',
   name: i18nT('workflow:template.tool_call'),
   intro: i18nT('workflow:template.tool_call_intro'),

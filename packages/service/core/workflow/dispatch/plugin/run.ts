@@ -1,6 +1,6 @@
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
-import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
+import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
@@ -37,15 +37,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     return Promise.reject('pluginId can not find');
   }
 
-  const { files } = chatValue2RuntimePrompt(query);
-
-  // auth plugin
-  const pluginData = await authPluginByTmbId({
-    appId: pluginId,
-    tmbId: runningAppInfo.tmbId,
-    per: ReadPermissionVal
-  });
-
+  // Adapt <= 4.10 system tool
   const { source } = splitCombineToolId(pluginId);
   if (source === PluginSourceEnum.systemTool) {
     return dispatchRunTool({
@@ -60,6 +52,19 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       }
     });
   }
+
+  /* 
+    1. Team app
+    2. Admin selected system tool
+  */
+  const { files } = chatValue2RuntimePrompt(query);
+
+  // auth plugin
+  const pluginData = await authPluginByTmbId({
+    appId: pluginId,
+    tmbId: runningAppInfo.tmbId,
+    per: ReadPermissionVal
+  });
 
   const plugin = await getChildAppRuntimeById(pluginId, version);
 

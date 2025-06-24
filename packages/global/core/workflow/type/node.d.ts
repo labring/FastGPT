@@ -17,7 +17,6 @@ import {
 } from '../../chat/type';
 import { ChatNodeUsageType } from '../../../support/wallet/bill/type';
 import { RuntimeNodeItemType } from '../runtime/type';
-import { PluginTypeEnum } from '../../plugin/constants';
 import { RuntimeEdgeItemType, StoreEdgeItemType } from './edge';
 import { NextApiResponse } from 'next';
 import type { AppDetailType, AppSchema, McpToolConfigType } from '../../app/type';
@@ -81,9 +80,8 @@ export type FlowNodeTemplateType = FlowNodeCommonType & {
   id: string; // node id, unique
   templateType: string;
 
-  // show handle
-  sourceHandle?: HandleType;
-  targetHandle?: HandleType;
+  showSourceHandle?: boolean;
+  showTargetHandle?: boolean;
 
   // tool config
   currentCost?: number;
@@ -100,6 +98,11 @@ export type FlowNodeTemplateType = FlowNodeCommonType & {
   diagram?: string; // diagram url
   courseUrl?: string; // course url
   userGuide?: string; // user guide
+
+  // @deprecated
+  // show handle
+  sourceHandle?: HandleType;
+  targetHandle?: HandleType;
 };
 
 export type NodeTemplateListItemType = {
