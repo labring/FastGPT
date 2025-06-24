@@ -1,5 +1,18 @@
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { Box, Button, Center, Flex, IconButton, ModalBody, Textarea } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Center,
+  Flex,
+  IconButton,
+  ModalBody,
+  Textarea,
+  Accordion,
+  AccordionItem,
+  AccordionButton,
+  AccordionPanel,
+  AccordionIcon
+} from '@chakra-ui/react';
 import { getModelFromList } from '@fastgpt/global/core/ai/model';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -397,6 +410,43 @@ const EvaluationDetailModal = ({
                       {evalItem?.errorMessage}
                     </Box>
                   )}
+                  {Object.keys(evalItem?.variables || {}).length > 0 && (
+                    <Box borderBottom={'1px solid'} borderColor={'myGray.200'} mb={5}>
+                      <Accordion allowToggle>
+                        <AccordionItem border={'none'}>
+                          <AccordionButton
+                            px={0}
+                            py={2}
+                            _hover={{ bg: 'transparent' }}
+                            justifyContent={'flex-start'}
+                          >
+                            <Box flex="1" textAlign="left" fontSize={14}>
+                              {t('dashboard_evaluation:variables')}
+                            </Box>
+                            <AccordionIcon />
+                          </AccordionButton>
+                          <AccordionPanel px={0} py={3}>
+                            {Object.entries(evalItem?.variables || {}).map(([key, value]) => (
+                              <Box pb={2} key={key}>
+                                <Box>{key}</Box>
+                                {editing ? (
+                                  <Textarea
+                                    {...register(`variables.${key}`)}
+                                    bg={'myGray.25'}
+                                    defaultValue={value}
+                                  />
+                                ) : (
+                                  <Box color={'myGray.900'} mt={3}>
+                                    {value}
+                                  </Box>
+                                )}
+                              </Box>
+                            ))}
+                          </AccordionPanel>
+                        </AccordionItem>
+                      </Accordion>
+                    </Box>
+                  )}
                   <Box borderBottom={'1px solid'} borderColor={'myGray.200'} pb={5}>
                     <Box>{t('dashboard_evaluation:question')}</Box>
                     {editing ? (
@@ -404,7 +454,6 @@ const EvaluationDetailModal = ({
                         {...register('question')}
                         bg={'myGray.25'}
                         defaultValue={evalItem?.question}
-                        autoFocus
                       />
                     ) : (
                       <Box color={'myGray.900'} mt={3}>

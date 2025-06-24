@@ -166,145 +166,123 @@ export const executeEvalItem = async ({
   evaluation: Document<unknown, {}, EvaluationSchemaType> & EvaluationSchemaType;
   appName: string;
 }) => {
-  const executeWithRetry = async (): Promise<void> => {
-    try {
-      await MongoEvalItem.updateOne(
-        { _id: evalItem._id },
-        {
-          $set: {
-            status: 1,
-            errorMessage: null,
-            response: null,
-            accuracy: null,
-            relevance: null,
-            semanticAccuracy: null,
-            score: null,
-            retry: 3
-          }
-        }
-      );
-
-      const { timezone, externalProvider } = await getUserChatInfoAndAuthTeamPoints(
-        evaluation.tmbId
-      );
-      const { nodes, edges, chatConfig } = await getAppLatestVersion(evaluation.appId);
-
-      const query: UserChatItemValueItemType[] = [
-        {
-          type: ChatItemValueTypeEnum.text,
-          text: {
-            content: evalItem?.question || ''
-          }
-        }
-      ];
-
-      const { assistantResponses, flowUsages } = await dispatchWorkFlow({
-        chatId: getNanoid(),
-        timezone,
-        externalProvider,
-        mode: 'chat',
-        runningAppInfo: {
-          id: String(evaluation.appId),
-          teamId: String(evaluation.teamId),
-          tmbId: String(evaluation.tmbId)
-        },
-        runningUserInfo: {
-          teamId: String(evaluation.teamId),
-          tmbId: String(evaluation.tmbId)
-        },
-        uid: String(evaluation.tmbId),
-        runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
-        runtimeEdges: storeEdges2RuntimeEdges(edges),
-        variables: evalItem?.globalVariales || {},
-        query,
-        chatConfig,
-        histories: [],
-        stream: false,
-        maxRunTimes: WORKFLOW_MAX_RUN_TIMES
-      });
-
-      const workflowTotalPoints = flowUsages.reduce(
-        (sum, item) => sum + (item.totalPoints || 0),
-        0
-      );
-      const workflowInputTokens = flowUsages.reduce(
-        (sum, item) => sum + (item.inputTokens || 0),
-        0
-      );
-      const workflowOutputTokens = flowUsages.reduce(
-        (sum, item) => sum + (item.outputTokens || 0),
-        0
-      );
-
-      const appAnswer = assistantResponses[0]?.text?.content || '';
-      const { evalRes, evalUsages } = await getAppEvaluationScore({
-        question: evalItem?.question || '',
-        appAnswer,
-        standardAnswer: evalItem?.expectedResponse || '',
-        model: evaluation.agentModel
-      });
-
-      await MongoEvalItem.updateOne(
-        { _id: evalItem._id },
-        {
-          $set: {
-            status: 2,
-            response: appAnswer,
-            accuracy: evalRes,
-            relevance: null,
-            semanticAccuracy: null,
-            score: evalRes,
-            errorMessage: null
-          }
-        }
-      );
-
-      await createEvaluationRerunUsage({
-        teamId: String(evaluation.teamId),
-        tmbId: String(evaluation.tmbId),
-        appName,
-        model: evaluation.agentModel,
-        inputTokens: evalUsages.totalInputTokens,
-        outputTokens: evalUsages.totalOutputTokens,
-        workflowTotalPoints,
-        workflowInputTokens,
-        workflowOutputTokens
-      });
-    } catch (error: any) {
-      const errorMessage = error.message || String(error);
-
-      const updatedEvalItem = await MongoEvalItem.findById(evalItem._id);
-      const remainingRetries = updatedEvalItem?.retry || 0;
-
-      if (remainingRetries > 0) {
-        await MongoEvalItem.updateOne(
-          { _id: evalItem._id },
-          {
-            $set: {
-              status: 0
-            },
-            $inc: { retry: -1 }
-          }
-        );
-
-        return await executeWithRetry();
-      } else {
-        await MongoEvalItem.updateOne(
-          { _id: evalItem._id },
-          {
-            $set: {
-              status: 2,
-              errorMessage,
-              retry: 0
-            }
-          }
-        );
-        throw error;
+  await MongoEvalItem.updateOne(
+    { _id: evalItem._id },
+    {
+      $set: {
+        status: 1,
+        errorMessage: null,
+        response: null,
+        accuracy: null,
+        relevance: null,
+        semanticAccuracy: null,
+        score: null
       }
     }
-  };
+  );
 
-  await executeWithRetry();
+  try {
+    const { timezone, externalProvider } = await getUserChatInfoAndAuthTeamPoints(evaluation.tmbId);
+    const { nodes, edges, chatConfig } = await getAppLatestVersion(evaluation.appId);
+
+    const query: UserChatItemValueItemType[] = [
+      {
+        type: ChatItemValueTypeEnum.text,
+        text: {
+          content: evalItem?.question || ''
+        }
+      }
+    ];
+
+    const histories = (() => {
+      try {
+        return evalItem?.history ? JSON.parse(evalItem.history) : [];
+      } catch (error) {
+        return [];
+      }
+    })();
+
+    const { assistantResponses, flowUsages } = await dispatchWorkFlow({
+      chatId: getNanoid(),
+      timezone,
+      externalProvider,
+      mode: 'chat',
+      runningAppInfo: {
+        id: String(evaluation.appId),
+        teamId: String(evaluation.teamId),
+        tmbId: String(evaluation.tmbId)
+      },
+      runningUserInfo: {
+        teamId: String(evaluation.teamId),
+        tmbId: String(evaluation.tmbId)
+      },
+      uid: String(evaluation.tmbId),
+      runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
+      runtimeEdges: storeEdges2RuntimeEdges(edges),
+      variables: evalItem?.globalVariales || {},
+      query,
+      chatConfig,
+      histories,
+      stream: false,
+      maxRunTimes: WORKFLOW_MAX_RUN_TIMES
+    });
+
+    const workflowTotalPoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
+    const workflowInputTokens = flowUsages.reduce((sum, item) => sum + (item.inputTokens || 0), 0);
+    const workflowOutputTokens = flowUsages.reduce(
+      (sum, item) => sum + (item.outputTokens || 0),
+      0
+    );
+
+    const appAnswer = assistantResponses[0]?.text?.content || '';
+    const { evalRes, evalUsages } = await getAppEvaluationScore({
+      question: evalItem?.question || '',
+      appAnswer,
+      standardAnswer: evalItem?.expectedResponse || '',
+      model: evaluation.agentModel
+    });
+
+    await MongoEvalItem.updateOne(
+      { _id: evalItem._id },
+      {
+        $set: {
+          status: 2,
+          response: appAnswer,
+          accuracy: evalRes,
+          relevance: null,
+          semanticAccuracy: null,
+          score: evalRes,
+          errorMessage: null
+        }
+      }
+    );
+
+    await createEvaluationRerunUsage({
+      teamId: String(evaluation.teamId),
+      tmbId: String(evaluation.tmbId),
+      appName,
+      model: evaluation.agentModel,
+      inputTokens: evalUsages.totalInputTokens,
+      outputTokens: evalUsages.totalOutputTokens,
+      workflowTotalPoints,
+      workflowInputTokens,
+      workflowOutputTokens
+    });
+  } catch (error: any) {
+    const errorMessage = error.message || String(error);
+
+    await MongoEvalItem.updateOne(
+      { _id: evalItem._id },
+      {
+        $set: {
+          status: 2,
+          errorMessage
+        }
+      }
+    );
+
+    throw error;
+  }
 };
 
 export const validateEvaluationFile = async (
