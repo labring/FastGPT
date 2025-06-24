@@ -29,7 +29,7 @@
   "evaluating": "评估中",
   "evaluation": "应用评测",
   "evaluation_created": "评测任务创建成功",
-  "evaluation_export_title": "问题,标准答案,实际回答,状态,准确度,相关度,语义准确度,总分",
+  "evaluation_export_title": "问题,标准答案,实际回答,状态,综合得分",
   "evaluation_file_max_size": "{{count}} 条数据",
   "export": "导出数据",
   "file_required": "请选择评测文件",

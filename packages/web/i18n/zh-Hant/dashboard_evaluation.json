@@ -23,7 +23,7 @@
   "error": "異常",
   "evaluating": "評估中",
   "evaluation": "應用評測",
-  "evaluation_export_title": "問題,標準答案,實際回答,狀態,準確度,相關度,語義準確度,總分",
+  "evaluation_export_title": "問題,標準答案,實際回答,狀態,綜合得分",
   "evaluation_file_max_size": "{{count}} 條數據",
   "export": "導出數據",
   "file_required": "請選擇評測文件",

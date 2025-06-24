@@ -2,7 +2,6 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
   Box,
   Button,
-  Center,
   Flex,
   IconButton,
   ModalBody,
@@ -11,7 +10,8 @@ import {
   AccordionItem,
   AccordionButton,
   AccordionPanel,
-  AccordionIcon
+  AccordionIcon,
+  Input
 } from '@chakra-ui/react';
 import { getModelFromList } from '@fastgpt/global/core/ai/model';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -36,14 +36,26 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { type rerunEvalItemBody } from '@/pages/api/core/app/evaluation/rerunItem';
 import type { updateEvalItemBody } from '@/pages/api/core/app/evaluation/updateItem';
 import { useForm } from 'react-hook-form';
-import { EvaluationStatusMap } from '@fastgpt/global/core/app/evaluation/constants';
+import {
+  EvaluationStatusMap,
+  EvaluationStatusEnum
+} from '@fastgpt/global/core/app/evaluation/constants';
 
 const formatEvaluationStatus = (item: { status: number; errorMessage?: string }, t: TFunction) => {
   const statusConfig = {
     error: { color: 'red.600', key: t('dashboard_evaluation:error') },
-    0: { color: 'myGray.500', key: t('dashboard_evaluation:queuing') },
-    1: { color: 'primary.600', key: t('dashboard_evaluation:evaluating') },
-    2: { color: 'green.600', key: t('dashboard_evaluation:completed') }
+    [EvaluationStatusEnum.queuing]: {
+      color: 'myGray.500',
+      key: t('dashboard_evaluation:queuing')
+    },
+    [EvaluationStatusEnum.evaluating]: {
+      color: 'primary.600',
+      key: t('dashboard_evaluation:evaluating')
+    },
+    [EvaluationStatusEnum.completed]: {
+      color: 'green.600',
+      key: t('dashboard_evaluation:completed')
+    }
   };
 
   const config = item.errorMessage
@@ -265,7 +277,8 @@ const EvaluationDetailModal = ({
                 </Flex>
                 {evalItem && (
                   <Flex gap={2}>
-                    {(evalItem.status === 0 || !!evalItem.errorMessage) && (
+                    {(evalItem.status === EvaluationStatusEnum.queuing ||
+                      !!evalItem.errorMessage) && (
                       <>
                         {editing ? (
                           <Button
@@ -290,7 +303,7 @@ const EvaluationDetailModal = ({
                         )}
                       </>
                     )}
-                    {evalItem.status === 2 && (
+                    {evalItem.status === EvaluationStatusEnum.completed && (
                       <IconButton
                         aria-label="restroe"
                         size={'mdSquare'}
@@ -412,7 +425,7 @@ const EvaluationDetailModal = ({
                   )}
                   {Object.keys(evalItem?.variables || {}).length > 0 && (
                     <Box borderBottom={'1px solid'} borderColor={'myGray.200'} mb={5}>
-                      <Accordion allowToggle>
+                      <Accordion allowToggle defaultIndex={[0]}>
                         <AccordionItem border={'none'}>
                           <AccordionButton
                             px={0}
@@ -426,22 +439,43 @@ const EvaluationDetailModal = ({
                             <AccordionIcon />
                           </AccordionButton>
                           <AccordionPanel px={0} py={3}>
-                            {Object.entries(evalItem?.variables || {}).map(([key, value]) => (
-                              <Box pb={2} key={key}>
-                                <Box>{key}</Box>
-                                {editing ? (
-                                  <Textarea
-                                    {...register(`variables.${key}`)}
-                                    bg={'myGray.25'}
-                                    defaultValue={value}
-                                  />
-                                ) : (
-                                  <Box color={'myGray.900'} mt={3}>
-                                    {value}
+                            {Object.entries(evalItem?.variables || {}).map(
+                              ([key, value], index, arr) => (
+                                <Flex
+                                  key={key}
+                                  border={'1px solid'}
+                                  borderColor={'myGray.200'}
+                                  borderTopLeftRadius={index === 0 ? 'sm' : 0}
+                                  borderTopRightRadius={index === 0 ? 'sm' : 0}
+                                  borderBottomLeftRadius={index === arr.length - 1 ? 'sm' : 0}
+                                  borderBottomRightRadius={index === arr.length - 1 ? 'sm' : 0}
+                                >
+                                  <Box
+                                    w={1 / 3}
+                                    borderRight={'1px solid'}
+                                    borderColor={'myGray.200'}
+                                    py={2}
+                                    px={3}
+                                  >
+                                    {key}
                                   </Box>
-                                )}
-                              </Box>
-                            ))}
+                                  <Box w={2 / 3}>
+                                    {editing ? (
+                                      <Input
+                                        {...register(`variables.${key}`)}
+                                        bg={'myGray.25'}
+                                        defaultValue={value}
+                                        border={'none'}
+                                      />
+                                    ) : (
+                                      <Box color={'myGray.900'} px={3} py={2}>
+                                        {value}
+                                      </Box>
+                                    )}
+                                  </Box>
+                                </Flex>
+                              )
+                            )}
                           </AccordionPanel>
                         </AccordionItem>
                       </Accordion>

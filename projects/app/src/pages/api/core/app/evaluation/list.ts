@@ -33,31 +33,6 @@ export type evaluationType = {
   agentModel: string;
 };
 
-const transformEvaluationData = (item: any): evaluationType => {
-  const { stats = {} } = item;
-  const { totalCount = 0, completedCount = 0, errorCount = 0, avgScore } = stats;
-
-  const isCompleted = totalCount === completedCount + errorCount;
-  const calculatedScore = isCompleted ? avgScore || 0 : null;
-
-  return {
-    _id: String(item._id),
-    name: item.name,
-    agentModel: item.agentModel,
-    executorAvatar: item.teamMember?.avatar,
-    executorName: item.teamMember?.name,
-    appId: String(item.appId),
-    appAvatar: item.app?.avatar,
-    appName: item.app?.name,
-    createTime: item.createTime,
-    finishTime: item.finishTime,
-    score: calculatedScore !== null ? (calculatedScore * 100).toFixed(2) : null,
-    completedCount,
-    errorCount,
-    totalCount
-  };
-};
-
 async function handler(
   req: ApiRequestProps<listEvaluationsBody, listEvaluationsQuery>,
   res: ApiResponseType<any>
@@ -89,11 +64,32 @@ async function handler(
     MongoEvaluation.countDocuments(match)
   ]);
 
-  const evaluationList = evaluations.map(transformEvaluationData);
-
   return {
     total,
-    list: evaluationList
+    list: evaluations.map((item) => {
+      const { stats = {} } = item;
+      const { totalCount = 0, completedCount = 0, errorCount = 0, avgScore } = stats;
+
+      const isCompleted = totalCount === completedCount + errorCount;
+      const calculatedScore = isCompleted ? avgScore || 0 : null;
+
+      return {
+        _id: String(item._id),
+        name: item.name,
+        agentModel: item.agentModel,
+        executorAvatar: item.teamMember?.avatar,
+        executorName: item.teamMember?.name,
+        appId: String(item.appId),
+        appAvatar: item.app?.avatar,
+        appName: item.app?.name,
+        createTime: item.createTime,
+        finishTime: item.finishTime,
+        score: calculatedScore !== null ? (calculatedScore * 100).toFixed(2) : null,
+        completedCount,
+        errorCount,
+        totalCount
+      };
+    })
   };
 }
 

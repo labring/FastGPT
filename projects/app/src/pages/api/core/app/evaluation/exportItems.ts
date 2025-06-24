@@ -78,14 +78,12 @@ async function handler(
       return statusMap[doc.status]?.label || 'Unknown';
     })();
 
-    const accuracy = !!doc.accuracy ? doc.accuracy.toFixed(2) : '0';
-    const relevance = !!doc.relevance ? doc.relevance.toFixed(2) : '0';
-    const semanticAccuracy = !!doc.semanticAccuracy ? doc.semanticAccuracy.toFixed(2) : '0';
+    // const accuracy = !!doc.accuracy ? doc.accuracy.toFixed(2) : '0';
+    // const relevance = !!doc.relevance ? doc.relevance.toFixed(2) : '0';
+    // const semanticAccuracy = !!doc.semanticAccuracy ? doc.semanticAccuracy.toFixed(2) : '0';
     const score = !!doc.score ? doc.score.toFixed(2) : '0';
 
-    write(
-      `\n"${question}","${expectedResponse}","${response}","${status}","${accuracy}","${relevance}","${semanticAccuracy}","${score}"`
-    );
+    write(`\n"${question}","${expectedResponse}","${response}","${status}","${score}"`);
   });
 
   cursor.on('end', () => {
