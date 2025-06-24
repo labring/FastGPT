@@ -137,7 +137,7 @@ const EvaluationCreating = () => {
             onClick={() => {
               router.push('/dashboard/evaluation');
             }}
-            variant={'whiteBase'}
+            variant={'whitePrimary'}
             leftIcon={<MyIcon name={'common/backFill'} w={4} />}
           >
             {t('dashboard_evaluation:back')}

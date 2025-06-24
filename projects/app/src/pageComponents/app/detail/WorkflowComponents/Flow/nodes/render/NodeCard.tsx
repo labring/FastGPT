@@ -629,7 +629,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
       toolId: node.pluginId
     },
     refreshDeps: [node.pluginId, isOpen],
-    disalbed: !isOpen,
+    disabled: !isOpen,
     manual: false
   });
 
