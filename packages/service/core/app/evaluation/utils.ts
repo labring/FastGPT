@@ -24,7 +24,10 @@ import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import { addLog } from '../../../common/system/log';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { getEvaluationFileHeader } from '@fastgpt/global/core/app/evaluation/utils';
-import { evaluationFileErrors } from '@fastgpt/global/core/app/evaluation/constants';
+import {
+  evaluationFileErrors,
+  EvaluationStatusEnum
+} from '@fastgpt/global/core/app/evaluation/constants';
 import { MongoResourcePermission } from '../../../support/permission/schema';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { getGroupsByTmbId } from '../../../support/permission/memberGroup/controllers';
@@ -34,6 +37,7 @@ import { concatPer } from '../../../support/permission/controller';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/constant';
 import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
+import { type TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 
 export const getAppEvaluationScore = async ({
   question,
@@ -170,7 +174,7 @@ export const executeEvalItem = async ({
     { _id: evalItem._id },
     {
       $set: {
-        status: 1,
+        status: EvaluationStatusEnum.evaluating,
         errorMessage: null,
         response: null,
         accuracy: null,
@@ -246,7 +250,7 @@ export const executeEvalItem = async ({
       { _id: evalItem._id },
       {
         $set: {
-          status: 2,
+          status: EvaluationStatusEnum.completed,
           response: appAnswer,
           accuracy: evalRes,
           relevance: null,
@@ -275,7 +279,7 @@ export const executeEvalItem = async ({
       { _id: evalItem._id },
       {
         $set: {
-          status: 2,
+          status: EvaluationStatusEnum.completed,
           errorMessage
         }
       }
@@ -410,7 +414,11 @@ const validateRowVariables = ({
   });
 };
 
-export const getAccessibleAppIds = async (teamId: string, tmbId: string, teamPer: any) => {
+export const getAccessibleAppIds = async (
+  teamId: string,
+  tmbId: string,
+  teamPer: TeamPermission
+) => {
   if (teamPer.isOwner) {
     return null;
   }
