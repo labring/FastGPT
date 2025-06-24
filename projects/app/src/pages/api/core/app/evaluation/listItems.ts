@@ -21,6 +21,7 @@ export type listEvalItemsItem = {
   question: string;
   expectedResponse: string;
   response: string;
+  variables: Record<string, string>;
   status: 0 | 1 | 2;
   errorMessage: string;
 
@@ -72,6 +73,7 @@ async function handler(
       question: item.question,
       expectedResponse: item.expectedResponse,
       response: item.response || '',
+      variables: item.globalVariales || {},
       status: item.status,
       errorMessage: item.errorMessage || '',
 
