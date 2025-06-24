@@ -20,9 +20,13 @@
   "create_task": "Create a task",
   "data": "data",
   "data_list": "Data list",
+  "detail": "Detail",
   "error": "abnormal",
+  "eval_file_check_error": "Evaluation file validation failed",
+  "export": "Export Data",
   "evaluating": "In evaluation",
   "evaluation": "Application Review",
+  "evaluation_export_title": "Question,Standard Answer,Actual Response,Status,Accuracy,Relevance,Semantic Accuracy,Total Score",
   "evaluation_file_max_size": "{{count}} data",
   "file_required": "Please select the evaluation file",
   "file_uploading": "File uploading: {{num}}%",
@@ -32,7 +36,9 @@
   "search_task": "Find tasks",
   "standard_response": "Standard output",
   "start_evaluation": "Start the evaluation",
+  "stauts": "Status",
   "task_creating": "Creating task",
   "task_detail": "Task Details",
+  "task_name": "Task Name",
   "template_csv_file_select_tip": "Only support {{fileType}} files that are strictly in accordance with template format</highlight>"
 }

@@ -17,7 +17,6 @@ import {
 } from '@fastgpt/global/core/app/type';
 import { getPluginGroups } from '@/web/core/app/api/plugin';
 import { type PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
-import { useUserStore } from '@/web/support/user/useUserStore';
 
 export enum TabEnum {
   apps = 'apps',
@@ -41,20 +40,6 @@ const DashboardContainer = ({
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
-  const standardPlan = teamPlanStatus?.standard;
-  const level = standardPlan?.currentSubLevel;
-  const { subPlans } = useSystemStore();
-  const planContent = useMemo(() => {
-    const plan = level !== undefined ? subPlans?.standard?.[level] : undefined;
-    console.log('plan', plan);
-
-    if (!plan) return;
-    return {
-      permissionTeamOperationLog: plan.permissionTeamOperationLog
-    };
-  }, [subPlans?.standard, level]);
-
   const { isOpen: isOpenSidebar, onOpen: onOpenSidebar, onClose: onCloseSidebar } = useDisclosure();
 
   // First tab

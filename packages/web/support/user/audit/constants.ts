@@ -291,6 +291,11 @@ export const auditLogMap = {
     typeLabel: i18nT('account_team:export_evaluation'),
     params: {} as { name?: string; appName: string; appType: string }
   },
+  [AuditEventEnum.DELETE_EVALUATION]: {
+    content: i18nT('account_team:log_delete_evaluation'),
+    typeLabel: i18nT('account_team:delete_evaluation'),
+    params: {} as { name?: string; appName: string; appType: string }
+  },
   //Dataset
   [AuditEventEnum.CREATE_DATASET]: {
     content: i18nT('account_team:log_create_dataset'),

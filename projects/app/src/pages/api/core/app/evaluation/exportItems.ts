@@ -16,7 +16,10 @@ export type exportItemsQuery = {
   appId: string;
 };
 
-export type exportItemsBody = {};
+export type exportItemsBody = {
+  title: string;
+  statusMap: Record<string, { label: string }>;
+};
 
 export type exportItemsResponse = {};
 
@@ -25,6 +28,7 @@ async function handler(
   res: ApiResponseType<any>
 ) {
   const { evalId, appId } = req.query;
+  const { title, statusMap } = req.body || {};
 
   const { teamId, tmbId, app } = await authApp({
     req,
@@ -34,10 +38,9 @@ async function handler(
     appId
   });
 
-  console.log(evalId);
   const evaluation = await MongoEvaluation.findById(evalId);
   if (!evaluation) {
-    return Promise.reject('评估任务不存在');
+    return Promise.reject('Evaluation task does not exist');
   }
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8;');
@@ -61,30 +64,19 @@ async function handler(
     readStream: cursor
   });
 
-  write(`\uFEFF问题,标准答案,实际回答,状态,准确度,相关度,语义准确度,总分`);
+  write(`\uFEFF${title}`);
 
-  // 处理每一条数据
   cursor.on('data', (doc) => {
-    // 处理CSV中的特殊字符，特别是双引号和逗号
     const question = doc.question?.replace(/"/g, '""') || '';
     const expectedResponse = doc.expectedResponse?.replace(/"/g, '""') || '';
     const response = doc.response?.replace(/"/g, '""') || '';
 
-    // 状态转换为可读文本
-    let status = '';
-    switch (doc.status) {
-      case 0:
-        status = '待处理';
-        break;
-      case 1:
-        status = '处理中';
-        break;
-      case 2:
-        status = '已完成';
-        break;
-      default:
-        status = '未知';
-    }
+    const status = (() => {
+      if (doc.errorMessage) {
+        return statusMap.error?.label || 'Error';
+      }
+      return statusMap[doc.status]?.label || 'Unknown';
+    })();
 
     const accuracy = !!doc.accuracy ? doc.accuracy.toFixed(2) : '0';
     const relevance = !!doc.relevance ? doc.relevance.toFixed(2) : '0';
@@ -96,7 +88,6 @@ async function handler(
     );
   });
 
-  // 数据读取完成时关闭游标和响应
   cursor.on('end', () => {
     addAuditLog({
       tmbId,
@@ -111,9 +102,8 @@ async function handler(
     res.end();
   });
 
-  // 处理错误
   cursor.on('error', (err) => {
-    addLog.error('导出评估项目错误', { error: err, evalId });
+    addLog.error('Error exporting evaluation items', { error: err, evalId });
     res.status(500);
     res.end();
   });

@@ -23,10 +23,10 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { fileDownload } from '@/web/common/file/utils';
 import { postCreateEvaluation } from '@/web/core/app/api/evaluation';
 import { useMemo, useState } from 'react';
-import { getEvaluationFileHeader } from '@fastgpt/global/core/app/evaluation/utils';
 import Markdown from '@/components/Markdown';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { evaluationFileErrors } from '@fastgpt/service/core/app/evaluation/constants';
+import { getEvaluationFileHeader } from '@fastgpt/global/core/app/evaluation/utils';
+import { evaluationFileErrors } from '@fastgpt/global/core/app/evaluation/constants';
 
 type EvaluationFormType = {
   name: string;

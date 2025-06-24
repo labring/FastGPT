@@ -6,7 +6,7 @@ import { MongoEvalItem } from '@fastgpt/service/core/app/evaluation/evalItemSche
 import { MongoEvaluation } from '@fastgpt/service/core/app/evaluation/evalSchema';
 import { checkEvaluationJobActive } from '@fastgpt/service/core/app/evaluation';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { executeEvalItemWithRetry } from '@fastgpt/service/core/app/evaluation/utils';
+import { executeEvalItem } from '@fastgpt/service/core/app/evaluation/utils';
 
 export type updateEvalItemQuery = {};
 
@@ -82,7 +82,7 @@ async function handler(
       const updatedEvalItem = await MongoEvalItem.findById(evalItemId);
       if (!updatedEvalItem) return Promise.reject('Updated evaluationItem not found');
 
-      executeEvalItemWithRetry({
+      executeEvalItem({
         evalItem: updatedEvalItem,
         evaluation,
         appName: app.name
