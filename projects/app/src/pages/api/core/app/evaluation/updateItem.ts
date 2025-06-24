@@ -7,6 +7,7 @@ import { MongoEvaluation } from '@fastgpt/service/core/app/evaluation/evalSchema
 import { checkEvaluationJobActive } from '@fastgpt/service/core/app/evaluation';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { executeEvalItem } from '@fastgpt/service/core/app/evaluation/utils';
+import { EvaluationStatusEnum } from '@fastgpt/global/core/app/evaluation/constants';
 
 export type updateEvalItemQuery = {};
 
@@ -53,7 +54,7 @@ async function handler(
           $set: {
             question,
             expectedResponse,
-            status: 0,
+            status: EvaluationStatusEnum.queuing,
             errorMessage: null,
             response: null,
             accuracy: null,

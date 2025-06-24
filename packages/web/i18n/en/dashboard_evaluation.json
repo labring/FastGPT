@@ -25,7 +25,7 @@
   "eval_file_check_error": "Evaluation file validation failed",
   "evaluating": "In evaluation",
   "evaluation": "Application Review",
-  "evaluation_export_title": "Question,Standard Answer,Actual Response,Status,Accuracy,Relevance,Semantic Accuracy,Total Score",
+  "evaluation_export_title": "Question,Standard Answer,Actual Response,Status,Average Score",
   "evaluation_file_max_size": "{{count}} data",
   "export": "Export Data",
   "file_required": "Please select the evaluation file",

@@ -1,5 +1,6 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
 import { EvaluationCollectionName } from './evalSchema';
+import { EvaluationStatusEnum } from '@fastgpt/global/core/app/evaluation/constants';
 import type { EvalItemSchemaType } from './type';
 
 const { Schema } = connectionMongo;
@@ -26,8 +27,8 @@ const EvalItemSchema = new Schema({
 
   status: {
     type: Number,
-    enum: [0, 1, 2], // 0: queueing, 1: processing, 2: completed
-    default: 0
+    enum: Object.values(EvaluationStatusEnum),
+    default: EvaluationStatusEnum.queuing
   },
   retry: {
     type: Number,

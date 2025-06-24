@@ -63,14 +63,13 @@ async function handler(
 
     const appVariables = app.chatConfig.variables;
 
-    let lines: string[], dataLength: number;
-    try {
-      const result = await validateEvaluationFile(rawText, appVariables, standardConstants);
-      lines = result.lines;
-      dataLength = result.dataLength;
-    } catch (error) {
-      return Promise.reject(error);
-    }
+    const { lines, dataLength } = await (async () => {
+      try {
+        return await validateEvaluationFile(rawText, appVariables, standardConstants);
+      } catch (error) {
+        return Promise.reject(error);
+      }
+    })();
 
     const headers = lines[0].split(',');
     const qIndex = headers.findIndex((h) => h.trim() === '*q');
@@ -121,7 +120,6 @@ async function handler(
     }
 
     if (evalItems.length > 0) {
-      console.log('evalItems', evalItems);
       await MongoEvalItem.create(evalItems);
     }
 
