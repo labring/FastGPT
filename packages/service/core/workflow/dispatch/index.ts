@@ -43,12 +43,12 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import { addLog } from '../../../common/system/log';
 import { surrenderProcess } from '../../../common/system/tools';
 import { dispatchAppRequest } from './abandoned/runApp';
-import { dispatchClassifyQuestion } from './agent/classifyQuestion';
-import { dispatchContentExtract } from './agent/extract';
-import { dispatchRunTools } from './agent/runTool/index';
-import { dispatchStopToolCall } from './agent/runTool/stopTool';
-import { dispatchToolParams } from './agent/runTool/toolParams';
-import { dispatchChatCompletion } from './chat/oneapi';
+import { dispatchClassifyQuestion } from './ai/classifyQuestion';
+import { dispatchContentExtract } from './ai/extract';
+import { dispatchRunTools } from './ai/agent/index';
+import { dispatchStopToolCall } from './ai/agent/stopTool';
+import { dispatchToolParams } from './ai/agent/toolParams';
+import { dispatchChatCompletion } from './ai/chat';
 import { dispatchRunCode } from './code/run';
 import { dispatchDatasetConcat } from './dataset/concat';
 import { dispatchDatasetSearch } from './dataset/search';
@@ -90,7 +90,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
   [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,
   [FlowNodeTypeEnum.queryExtension]: dispatchQueryExtension,
-  [FlowNodeTypeEnum.tools]: dispatchRunTools,
+  [FlowNodeTypeEnum.agent]: dispatchRunTools,
   [FlowNodeTypeEnum.stopTool]: dispatchStopToolCall,
   [FlowNodeTypeEnum.toolParams]: dispatchToolParams,
   [FlowNodeTypeEnum.lafModule]: dispatchLafRequest,
@@ -115,7 +115,8 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.comment]: () => Promise.resolve(),
   [FlowNodeTypeEnum.toolSet]: () => Promise.resolve(),
 
-  [FlowNodeTypeEnum.runApp]: dispatchAppRequest // abandoned
+  // @deprecated
+  [FlowNodeTypeEnum.runApp]: dispatchAppRequest
 };
 
 type Props = ChatDispatchProps & {
@@ -728,7 +729,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       if (
         item.flowNodeType !== FlowNodeTypeEnum.userSelect &&
         item.flowNodeType !== FlowNodeTypeEnum.formInput &&
-        item.flowNodeType !== FlowNodeTypeEnum.tools
+        item.flowNodeType !== FlowNodeTypeEnum.agent
       ) {
         item.isEntry = false;
       }

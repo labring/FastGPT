@@ -11,7 +11,7 @@ import { SystemConfigNode } from './system/systemConfig';
 import { WorkflowStart } from './system/workflowStart';
 
 import { StopToolNode } from './system/stopTool';
-import { ToolModule } from './system/tools';
+import { AgentNode } from './system/agent';
 
 import { RunAppModule } from './system/abandoned/runApp/index';
 import { PluginInputModule } from './system/pluginInput';
@@ -45,7 +45,7 @@ const systemNodes: FlowNodeTemplateType[] = [
   ClassifyQuestionModule,
   ContextExtractModule,
   DatasetConcatModule,
-  ToolModule,
+  AgentNode,
   ToolParamsNode,
   StopToolNode,
   ReadFilesNode,

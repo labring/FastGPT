@@ -112,14 +112,19 @@ export const getSystemPluginByIdAndVersionId = async (
       };
     }
 
-    return plugin;
+    const version = versionId
+      ? plugin.versionList?.find((item) => item.value === versionId)
+      : plugin.versionList?.[0];
+    const lastVersion = plugin.versionList?.[0];
+
+    return {
+      ...plugin,
+      version: version?.value,
+      isLatestVersion: !version || !lastVersion || version.value === lastVersion?.value
+    };
   })();
 
-  return {
-    ...plugin,
-    version: undefined,
-    isLatestVersion: true
-  };
+  return plugin;
 };
 
 /* Format plugin to workflow preview node data */
@@ -414,10 +419,12 @@ export const getSystemPlugins = async (): Promise<SystemPluginTemplateItemType[]
         currentCost: item.currentCost,
         hasTokenFee: item.hasTokenFee,
         pluginOrder: item.pluginOrder,
+
         workflow: {
           nodes: [],
           edges: []
         },
+        versionList: item.versionList,
         inputs: item.inputs as any,
         outputs: item.outputs as any,
 
@@ -457,7 +464,8 @@ export const getSystemPluginById = async (
   }
 
   const dbPlugin = await MongoSystemPlugin.findOne({ pluginId }).lean();
-  return dbPluginFormat(dbPlugin!);
+  if (!dbPlugin) return Promise.reject(PluginErrEnum.unExist);
+  return dbPluginFormat(dbPlugin);
 };
 
 declare global {

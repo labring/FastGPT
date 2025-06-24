@@ -1,7 +1,6 @@
 import type { StoreEdgeItemType } from 'core/workflow/type/edge';
 import { ModuleTemplateTypeEnum } from '../../workflow/constants';
 import type { StoreNodeItemType } from '../../workflow/type/node';
-import type { PluginSourceEnum } from './constants';
 import { MethodType } from './controller';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
 import type { WorkflowTemplateType } from '../../workflow/type';
@@ -29,6 +28,11 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   // FastGPT-plugin tool
   inputs?: FlowNodeInputItemType[];
   outputs?: FlowNodeOutputItemType[];
+  versionList?: {
+    value: string;
+    description?: string;
+  }[];
+
   // Admin workflow tool
   associatedPluginId?: string;
   userGuide?: string;

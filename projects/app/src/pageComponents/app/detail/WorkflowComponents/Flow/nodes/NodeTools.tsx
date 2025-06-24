@@ -16,7 +16,7 @@ const NodeTools = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs, outputs } = data;
 
   return (
-    <NodeCard minW={'350px'} selected={selected} {...data}>
+    <NodeCard minW={'480px'} selected={selected} {...data}>
       <Container>
         <IOTitle text={t('common:Input')} />
         <RenderInput nodeId={nodeId} flowInputList={inputs} />

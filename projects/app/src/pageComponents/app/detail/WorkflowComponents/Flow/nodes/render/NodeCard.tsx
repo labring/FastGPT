@@ -100,7 +100,7 @@ const NodeCard = (props: Props) => {
   });
 
   const showToolHandle = useMemo(
-    () => isTool && !!nodeList.find((item) => item?.flowNodeType === FlowNodeTypeEnum.tools),
+    () => isTool && !!nodeList.find((item) => item?.flowNodeType === FlowNodeTypeEnum.agent),
     [isTool, nodeList]
   );
 
@@ -115,9 +115,12 @@ const NodeCard = (props: Props) => {
   }, [nodeList, nodeId]);
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
   const showVersion = useMemo(() => {
-    if (!isAppNode || !node?.pluginId || node?.pluginData?.error) return false;
-    if ([FlowNodeTypeEnum.tool, FlowNodeTypeEnum.toolSet].includes(node.flowNodeType)) return false;
-    return typeof node.version === 'string';
+    // 1. Team app/System commercial plugin
+    if (isAppNode && node?.pluginId && !node?.pluginData?.error) return true;
+    // 2. System tool
+    if (isAppNode && node.toolConfig) return true;
+
+    return false;
   }, [isAppNode, node]);
 
   const { data: nodeTemplate } = useRequest2(
@@ -323,7 +326,7 @@ const NodeCard = (props: Props) => {
   }, [nodeId, isFolded]);
   const RenderToolHandle = useMemo(
     () =>
-      node?.flowNodeType === FlowNodeTypeEnum.tools ? <ToolSourceHandle nodeId={nodeId} /> : null,
+      node?.flowNodeType === FlowNodeTypeEnum.agent ? <ToolSourceHandle nodeId={nodeId} /> : null,
     [node?.flowNodeType, nodeId]
   );
 
@@ -664,7 +667,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
   const { ScrollData, data: versionList } = useScrollPagination(getToolVersionList, {
     pageSize: 20,
     params: {
-      toolId: node.pluginId
+      pluginId: node.pluginId
     },
     refreshDeps: [node.pluginId, isOpen],
     disalbed: !isOpen,

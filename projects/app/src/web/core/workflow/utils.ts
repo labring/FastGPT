@@ -503,7 +503,7 @@ export const checkWorkflowNodeAndConnection = ({
     const edgeFilted = edges.filter(
       (edge) =>
         !(
-          data.flowNodeType === FlowNodeTypeEnum.tools &&
+          data.flowNodeType === FlowNodeTypeEnum.agent &&
           edge.sourceHandle === NodeOutputKeyEnum.selectedTools
         )
     );

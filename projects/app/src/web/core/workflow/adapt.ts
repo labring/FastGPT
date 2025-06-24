@@ -264,7 +264,7 @@ export const v1Workflow2V2 = (
       [FlowTypeEnum.pluginInput]: FlowNodeTypeEnum.pluginInput,
       [FlowTypeEnum.pluginOutput]: FlowNodeTypeEnum.pluginOutput,
       [FlowTypeEnum.queryExtension]: FlowNodeTypeEnum.queryExtension,
-      [FlowTypeEnum.tools]: FlowNodeTypeEnum.tools,
+      [FlowTypeEnum.tools]: FlowNodeTypeEnum.agent,
       [FlowTypeEnum.stopTool]: FlowNodeTypeEnum.stopTool,
       [FlowTypeEnum.lafModule]: FlowNodeTypeEnum.lafModule
     };

@@ -3,7 +3,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../node/constant';
-import { type FlowNodeTemplateType } from '../../type/node.d';
+import { type FlowNodeTemplateType } from '../../type/node';
 import {
   WorkflowIOValueTypeEnum,
   NodeOutputKeyEnum,
@@ -21,15 +21,15 @@ import { LLMModelTypeEnum } from '../../../ai/constants';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { Input_Template_File_Link } from '../input';
 
-export const ToolModule: FlowNodeTemplateType = {
-  id: FlowNodeTypeEnum.tools,
-  flowNodeType: FlowNodeTypeEnum.tools,
+export const AgentNode: FlowNodeTemplateType = {
+  id: FlowNodeTypeEnum.agent,
+  flowNodeType: FlowNodeTypeEnum.agent,
   templateType: FlowNodeTemplateTypeEnum.ai,
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/toolCall',
-  name: i18nT('workflow:template.tool_call'),
-  intro: i18nT('workflow:template.tool_call_intro'),
+  name: i18nT('workflow:template.agent'),
+  intro: i18nT('workflow:template.agent_intro'),
   showStatus: true,
   courseUrl: '/docs/guide/dashboard/workflow/tool/',
   version: '4.9.2',

@@ -8,7 +8,7 @@ import type {
 import { getLLMModel } from '../../../../ai/model';
 import { filterToolNodeIdByEdges, getHistories } from '../../utils';
 import { runToolWithToolChoice } from './toolChoice';
-import { type DispatchToolModuleProps, type ToolNodeItemType } from './type.d';
+import { type DispatchToolModuleProps, type ToolNodeItemType } from './type';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
