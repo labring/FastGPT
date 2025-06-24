@@ -190,7 +190,7 @@ export function useScrollPagination<
     params,
     EmptyTip,
     showErrorToast = true,
-    disalbed = false,
+    disabled = false,
 
     pollingInterval,
     ...props
@@ -201,7 +201,7 @@ export function useScrollPagination<
     params?: Omit<TParams, 'offset' | 'pageSize'>;
     EmptyTip?: React.JSX.Element;
     showErrorToast?: boolean;
-    disalbed?: boolean;
+    disabled?: boolean;
 
     pollingInterval?: number;
   } & Parameters<typeof useRequest2>[1]
@@ -367,7 +367,7 @@ export function useScrollPagination<
   // Reload data
   useRequest2(
     async () => {
-      if (disalbed) return;
+      if (disabled) return;
       loadData(true);
     },
     {
@@ -378,7 +378,7 @@ export function useScrollPagination<
 
   useRequest2(
     async () => {
-      if (disalbed || !pollingInterval) return;
+      if (disabled || !pollingInterval) return;
       await loadData(false, ScrollRef, true);
     },
     {

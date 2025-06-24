@@ -30,6 +30,7 @@ import EvaluationDetailModal from '../../../pageComponents/app/evaluation/Detail
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import type { evaluationType } from '@/pages/api/core/app/evaluation/list';
 
 const Evaluation = () => {
   const router = useRouter();
@@ -47,7 +48,7 @@ const Evaluation = () => {
   const {
     data: evaluationList,
     ScrollData,
-    refreshList
+    fetchData
   } = useScrollPagination(getEvaluationList, {
     pageSize: 20,
     pollingInterval: 5000,
@@ -64,137 +65,133 @@ const Evaluation = () => {
     },
     {
       onSuccess: () => {
-        refreshList();
+        fetchData(false, undefined, true);
       }
     }
   );
+
+  const renderHeader = (MenuIcon?: React.ReactNode) => {
+    return isPc ? (
+      <Flex justifyContent={'space-between'} alignItems={'center'} mb={4}>
+        <Box fontSize={'20px'} fontWeight={'medium'} ml={2} color="black">
+          {t('dashboard_evaluation:evaluation')}
+        </Box>
+        <Flex gap={2}>
+          <SearchInput
+            h={9}
+            maxW={230}
+            placeholder={t('dashboard_evaluation:search_task')}
+            bg={'white'}
+            onChange={(e) => {
+              setSearchKey(e.target.value);
+            }}
+          />
+          <Button
+            onClick={() => {
+              router.push('/dashboard/evaluation/create');
+            }}
+            h={9}
+            px={4}
+            flexShrink={0}
+            leftIcon={<MyIcon name={'common/addLight'} w={4} />}
+          >
+            {t('dashboard_evaluation:create_task')}
+          </Button>
+        </Flex>
+      </Flex>
+    ) : (
+      <Flex justifyContent={'space-between'} alignItems={'center'} flexDirection={'column'} mb={4}>
+        <Flex alignItems={'center'} w={'full'} mb={2}>
+          <Box>{MenuIcon}</Box>
+          <Box fontSize={'20px'} fontWeight={'medium'} ml={2} color="black">
+            {t('dashboard_evaluation:evaluation')}
+          </Box>
+        </Flex>
+        <Flex gap={2}>
+          <SearchInput
+            h={9}
+            maxW={230}
+            bg={'white'}
+            placeholder={t('dashboard_evaluation:search_task')}
+            onChange={(e) => {
+              setSearchKey(e.target.value);
+            }}
+          />
+          <Button
+            onClick={() => {
+              router.push('/dashboard/evaluation/create');
+            }}
+            h={9}
+            px={4}
+            leftIcon={<MyIcon name={'common/addLight'} w={4} />}
+          >
+            {t('dashboard_evaluation:create_task')}
+          </Button>
+        </Flex>
+      </Flex>
+    );
+  };
+
+  const renderProgress = (item: evaluationType, index: number) => {
+    const { completedCount, totalCount, errorCount } = item;
+
+    if (completedCount === totalCount) {
+      return (
+        <Box color={'green.600'} fontWeight={'medium'}>
+          {t('dashboard_evaluation:completed')}
+        </Box>
+      );
+    }
+
+    return (
+      <Flex fontWeight={'medium'} alignItems={'center'}>
+        <Box color={'myGray.900'}>{completedCount}</Box>
+        <Box color={'myGray.600'}>{`/${totalCount}`}</Box>
+        {errorCount > 0 && (
+          <MyIcon
+            name={'common/error'}
+            color={'red.600'}
+            w={4}
+            ml={2}
+            cursor={'pointer'}
+            onClick={() => setEvalDetailIndex(index)}
+          />
+        )}
+      </Flex>
+    );
+  };
 
   return (
     <>
       <DashboardContainer>
         {({ MenuIcon }) => (
           <Flex h={'full'} bg={'white'} p={6} flexDirection="column">
-            {isPc ? (
-              <Flex justifyContent={'space-between'} alignItems={'center'} mb={4}>
-                <Box fontSize={'20px'} fontWeight={'medium'} ml={2} color="black">
-                  {t('dashboard_evaluation:evaluation')}
-                </Box>
-                <Flex gap={2}>
-                  <SearchInput
-                    h={9}
-                    w={230}
-                    placeholder={t('dashboard_evaluation:search_task')}
-                    onChange={(e) => {
-                      setSearchKey(e.target.value);
-                    }}
-                  />
-                  <Button
-                    onClick={() => {
-                      router.push('/dashboard/evaluation/create');
-                    }}
-                    h={9}
-                    px={4}
-                    leftIcon={<MyIcon name={'common/addLight'} w={4} />}
-                  >
-                    {t('dashboard_evaluation:create_task')}
-                  </Button>
-                </Flex>
-              </Flex>
-            ) : (
-              <Flex
-                justifyContent={'space-between'}
-                alignItems={'center'}
-                flexDirection={'column'}
-                mb={4}
-              >
-                <Flex alignItems={'center'} w={'full'} mb={2}>
-                  <Box>{MenuIcon}</Box>
-                  <Box fontSize={'20px'} fontWeight={'medium'} ml={2} color="black">
-                    {t('dashboard_evaluation:evaluation')}
-                  </Box>
-                </Flex>
-                <Flex gap={2}>
-                  <SearchInput h={9} w={230} />
-                  <Button
-                    onClick={() => {
-                      router.push('/dashboard/evaluation/create');
-                    }}
-                    h={9}
-                    px={4}
-                    leftIcon={<MyIcon name={'common/addLight'} w={4} />}
-                  >
-                    {t('dashboard_evaluation:create_task')}
-                  </Button>
-                </Flex>
-              </Flex>
-            )}
+            {renderHeader(MenuIcon)}
 
             <MyBox flex={'1 0 0'} overflow="hidden" isLoading={isLoadingDelete}>
               <ScrollData h={'100%'}>
                 <TableContainer mt={3} fontSize={'sm'}>
-                  <Table variant={'simple'} draggable={false}>
-                    <Thead draggable={false}>
-                      <Tr>
-                        <Th py={3} fontWeight={'400'} color={'myGray.600'}>
-                          {t('dashboard_evaluation:Task_name')}
-                        </Th>
-                        <Th py={3} fontWeight={'400'} color={'myGray.600'}>
-                          {t('dashboard_evaluation:Progress')}
-                        </Th>
-                        <Th py={3} fontWeight={'400'} color={'myGray.600'}>
-                          {t('dashboard_evaluation:Executor')}
-                        </Th>
-                        <Th py={3} fontWeight={'400'} color={'myGray.600'}>
-                          {t('dashboard_evaluation:Evaluation_app')}
-                        </Th>
-                        <Th py={3} fontWeight={'400'} color={'myGray.600'}>
-                          {t('dashboard_evaluation:Start_end_time')}
-                        </Th>
-                        <Th py={3} fontWeight={'400'} color={'myGray.600'}>
-                          {t('dashboard_evaluation:Overall_score')}
-                        </Th>
-                        <Th py={3} fontWeight={'400'} color={'myGray.600'}>
-                          {t('dashboard_evaluation:Action')}
-                        </Th>
+                  <Table variant={'simple'}>
+                    <Thead>
+                      <Tr color={'myGray.600'}>
+                        <Th fontWeight={'400'}>{t('dashboard_evaluation:Task_name')}</Th>
+                        <Th fontWeight={'400'}>{t('dashboard_evaluation:Progress')}</Th>
+                        <Th fontWeight={'400'}>{t('dashboard_evaluation:Executor')}</Th>
+                        <Th fontWeight={'400'}>{t('dashboard_evaluation:Evaluation_app')}</Th>
+                        <Th fontWeight={'400'}>{t('dashboard_evaluation:Start_end_time')}</Th>
+                        <Th fontWeight={'400'}>{t('dashboard_evaluation:Overall_score')}</Th>
+                        <Th fontWeight={'400'}>{t('dashboard_evaluation:Action')}</Th>
                       </Tr>
                     </Thead>
                     <Tbody>
                       <Tr h={'5px'} />
                       {evaluationList.map((item, index) => {
-                        const formattedProgress = (() => {
-                          if (item.completedCount < item.totalCount) {
-                            return (
-                              <Flex fontWeight={'medium'} alignItems={'center'}>
-                                <Box color={'myGray.900'}>{item.completedCount}</Box>
-                                <Box color={'myGray.600'}>{`/${item.totalCount}`}</Box>
-                                {!!item.errorCount && (
-                                  <MyIcon
-                                    name={'common/error'}
-                                    color={'red.600'}
-                                    w={4}
-                                    ml={2}
-                                    cursor={'pointer'}
-                                    onClick={() => setEvalDetailIndex(index)}
-                                  />
-                                )}
-                              </Flex>
-                            );
-                          }
-                          if (item.completedCount === item.totalCount) {
-                            return (
-                              <Box color={'green.600'} fontWeight={'medium'}>
-                                {t('dashboard_evaluation:completed')}
-                              </Box>
-                            );
-                          }
-                        })();
-
                         return (
                           <Tr key={item._id}>
                             <Td fontWeight={'medium'} color={'myGray.900'}>
                               {item.name}
                             </Td>
-                            <Td>{formattedProgress}</Td>
+                            <Td>{renderProgress(item, index)}</Td>
                             <Td>
                               <Flex alignItems={'center'} gap={1.5}>
                                 <Avatar
@@ -260,6 +257,7 @@ const Evaluation = () => {
         <EvaluationDetailModal
           evalDetail={evaluationList[evalDetailIndex]}
           onClose={() => setEvalDetailIndex(null)}
+          fetchEvalList={() => fetchData(false, undefined, true)}
         />
       )}
       <ConfirmModal />

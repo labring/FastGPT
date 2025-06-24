@@ -14,6 +14,7 @@
   "Please select the image to upload": "Please select the image to upload",
   "Please wait for all files to upload": "Please wait for all files to be uploaded to complete",
   "bucket_chat": "Conversation Files",
+  "bucket_evaluation": "Evaluation Files",
   "bucket_file": "Dataset Documents",
   "click_to_view_raw_source": "Click to View Original Source",
   "common.Some images failed to process": "Some images failed to process",

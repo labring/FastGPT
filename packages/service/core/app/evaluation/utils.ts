@@ -4,8 +4,22 @@ import { getLLMModel } from '../../ai/model';
 import { createChatCompletion } from '../../ai/config';
 import { formatLLMResponse, llmCompletionsBodyFormat } from '../../ai/utils';
 import { loadRequestMessages } from '../../chat/utils';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
-import { formatModelChars2Points } from '../../../support/wallet/usage/utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { getUserChatInfoAndAuthTeamPoints } from '../../../support/permission/auth/team';
+import { getAppLatestVersion } from '../version/controller';
+import {
+  getWorkflowEntryNodeIds,
+  storeEdges2RuntimeEdges,
+  storeNodes2RuntimeNodes
+} from '@fastgpt/global/core/workflow/runtime/utils';
+import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { WORKFLOW_MAX_RUN_TIMES } from '../../../core/workflow/constants';
+import { createEvaluationRerunUsage } from '../../../support/wallet/usage/controller';
+import { dispatchWorkFlow } from '../../../core/workflow/dispatch';
+import { MongoEvalItem } from './evalItemSchema';
+import type { EvalItemSchemaType, EvaluationSchemaType } from './type';
+import type { Document } from 'mongoose';
 
 export const getAppEvaluationScore = async ({
   question,
@@ -127,4 +141,144 @@ export const getAppEvaluationScore = async ({
       totalOutputTokens
     }
   };
+};
+
+export const executeEvalItemWithRetry = async ({
+  evalItem,
+  evaluation,
+  appName
+}: {
+  evalItem: Document<unknown, {}, EvalItemSchemaType> & EvalItemSchemaType;
+  evaluation: Document<unknown, {}, EvaluationSchemaType> & EvaluationSchemaType;
+  appName: string;
+}) => {
+  const executeWithRetry = async (): Promise<void> => {
+    try {
+      await MongoEvalItem.updateOne(
+        { _id: evalItem._id },
+        {
+          $set: {
+            status: 1,
+            errorMessage: null,
+            response: null,
+            accuracy: null,
+            relevance: null,
+            semanticAccuracy: null,
+            score: null,
+            retry: 3
+          }
+        }
+      );
+
+      const { timezone, externalProvider } = await getUserChatInfoAndAuthTeamPoints(
+        evaluation.tmbId
+      );
+      const { nodes, edges, chatConfig } = await getAppLatestVersion(evaluation.appId);
+
+      const query: UserChatItemValueItemType[] = [
+        {
+          type: ChatItemValueTypeEnum.text,
+          text: {
+            content: evalItem?.question || ''
+          }
+        }
+      ];
+
+      const { assistantResponses, flowUsages } = await dispatchWorkFlow({
+        chatId: getNanoid(),
+        timezone,
+        externalProvider,
+        mode: 'chat',
+        runningAppInfo: {
+          id: String(evaluation.appId),
+          teamId: String(evaluation.teamId),
+          tmbId: String(evaluation.tmbId)
+        },
+        runningUserInfo: {
+          teamId: String(evaluation.teamId),
+          tmbId: String(evaluation.tmbId)
+        },
+        uid: String(evaluation.tmbId),
+        runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
+        runtimeEdges: storeEdges2RuntimeEdges(edges),
+        variables: evalItem?.globalVariales || {},
+        query,
+        chatConfig,
+        histories: [],
+        stream: false,
+        maxRunTimes: WORKFLOW_MAX_RUN_TIMES
+      });
+
+      const workflowTotalPoints = flowUsages.reduce(
+        (sum, item) => sum + (item.totalPoints || 0),
+        0
+      );
+
+      const appAnswer = assistantResponses[0]?.text?.content || '';
+      const { evalRes, evalUsages } = await getAppEvaluationScore({
+        question: evalItem?.question || '',
+        appAnswer,
+        standardAnswer: evalItem?.expectedResponse || '',
+        model: evaluation.agentModel
+      });
+
+      await MongoEvalItem.updateOne(
+        { _id: evalItem._id },
+        {
+          $set: {
+            status: 2,
+            response: appAnswer,
+            accuracy: evalRes,
+            relevance: null,
+            semanticAccuracy: null,
+            score: evalRes,
+            errorMessage: null
+          }
+        }
+      );
+
+      await createEvaluationRerunUsage({
+        teamId: String(evaluation.teamId),
+        tmbId: String(evaluation.tmbId),
+        appName,
+        model: evaluation.agentModel,
+        inputTokens: evalUsages.totalInputTokens,
+        outputTokens: evalUsages.totalOutputTokens,
+        workflowTotalPoints
+      });
+    } catch (error: any) {
+      const errorMessage = error.message || String(error);
+
+      const updatedEvalItem = await MongoEvalItem.findById(evalItem._id);
+      const remainingRetries = updatedEvalItem?.retry || 0;
+
+      if (remainingRetries > 0) {
+        await MongoEvalItem.updateOne(
+          { _id: evalItem._id },
+          {
+            $set: {
+              status: 0
+            },
+            $inc: { retry: -1 }
+          }
+        );
+
+        return await executeWithRetry();
+      } else {
+        await MongoEvalItem.updateOne(
+          { _id: evalItem._id },
+          {
+            $set: {
+              status: 2,
+              errorMessage,
+              retry: 0
+            }
+          }
+        );
+        throw error;
+      }
+    }
+  };
+
+  await executeWithRetry();
 };
