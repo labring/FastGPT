@@ -14,6 +14,14 @@ import type {
   listEvalItemsBody,
   listEvalItemsResponse
 } from '@/pages/api/core/app/evaluation/listItems';
+import type {
+  rerunEvalItemBody,
+  rerunEvalItemResponse
+} from '@/pages/api/core/app/evaluation/rerunItem';
+import type {
+  updateEvalItemBody,
+  updateEvalItemResponse
+} from '@/pages/api/core/app/evaluation/updateItem';
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
 
 export const postCreateEvaluation = ({
@@ -58,3 +66,9 @@ export const getEvalItemsList = (data: listEvalItemsBody) =>
 
 export const deleteEvalItem = (data: deleteItemQuery) =>
   DELETE<deleteItemResponse>('/core/app/evaluation/deleteItem', data);
+
+export const rerunEvalItem = (data: rerunEvalItemBody) =>
+  POST<rerunEvalItemResponse>('/core/app/evaluation/rerunItem', data);
+
+export const updateEvalItem = (data: updateEvalItemBody) =>
+  POST<updateEvalItemResponse>('/core/app/evaluation/updateItem', data);

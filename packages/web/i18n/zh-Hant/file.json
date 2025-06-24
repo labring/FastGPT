@@ -14,6 +14,7 @@
   "Please select the image to upload": "請選擇要上傳的圖片",
   "Please wait for all files to upload": "請等待所有文件上傳完成",
   "bucket_chat": "對話檔案",
+  "bucket_evaluation": "評測文件",
   "bucket_file": "知識庫檔案",
   "click_to_view_raw_source": "點選檢視原始來源",
   "common.Some images failed to process": "部分圖片處理失敗",

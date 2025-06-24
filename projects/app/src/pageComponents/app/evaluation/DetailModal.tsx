@@ -1,5 +1,5 @@
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { Box, Button, Flex, IconButton, ModalBody } from '@chakra-ui/react';
+import { Box, Button, Center, Flex, IconButton, ModalBody, Textarea } from '@chakra-ui/react';
 import { getModelFromList } from '@fastgpt/global/core/ai/model';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -7,71 +7,66 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useMemo, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { deleteEvalItem, getEvalItemsList } from '@/web/core/app/api/evaluation';
+import {
+  deleteEvalItem,
+  getEvalItemsList,
+  rerunEvalItem,
+  updateEvalItem
+} from '@/web/core/app/api/evaluation';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { downloadFetch } from '@/web/common/system/utils';
 import type { deleteItemQuery } from '@/pages/api/core/app/evaluation/deleteItem';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { type evaluationType } from '@/pages/api/core/app/evaluation/list';
 import { type TFunction } from 'i18next';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { type rerunEvalItemBody } from '@/pages/api/core/app/evaluation/rerunItem';
+import type { updateEvalItemBody } from '@/pages/api/core/app/evaluation/updateItem';
+import { useForm } from 'react-hook-form';
 
 const formatEvaluationStatus = (item: { status: number; errorMessage?: string }, t: TFunction) => {
-  if (item.status === 0) {
-    return (
-      <Box color={'myGray.500'} fontWeight={'medium'}>
-        {t('dashboard_evaluation:queuing')}
-      </Box>
-    );
-  }
-  if (item.status === 1) {
-    return (
-      <Box color={'primary.600'} fontWeight={'medium'}>
-        {t('dashboard_evaluation:evaluating')}
-      </Box>
-    );
-  }
-  if (item.errorMessage) {
-    return (
-      <Box color={'red.600'} fontWeight={'medium'}>
-        {t('dashboard_evaluation:error')}
-      </Box>
-    );
-  }
-  if (item.status === 2) {
-    return (
-      <Box color={'green.600'} fontWeight={'medium'}>
-        {t('dashboard_evaluation:completed')}
-      </Box>
-    );
-  }
-  return null;
+  const statusConfig = {
+    error: { color: 'red.600', key: t('dashboard_evaluation:error') },
+    0: { color: 'myGray.500', key: t('dashboard_evaluation:queuing') },
+    1: { color: 'primary.600', key: t('dashboard_evaluation:evaluating') },
+    2: { color: 'green.600', key: t('dashboard_evaluation:completed') }
+  };
+
+  const config = item.errorMessage
+    ? statusConfig.error
+    : statusConfig[item.status as keyof typeof statusConfig] || null;
+  if (!config) return null;
+
+  return (
+    <Box color={config.color} fontWeight={'medium'}>
+      {config.key}
+    </Box>
+  );
 };
 
 const EvaluationDetailModal = ({
   evalDetail,
-  onClose
+  onClose,
+  fetchEvalList
 }: {
   evalDetail: evaluationType;
   onClose: () => void;
+  fetchEvalList: () => void;
 }) => {
   const { t } = useTranslation();
-  const { llmModelList } = useSystemStore();
   const [seletedIndex, setSelectedIndex] = useState(0);
+  const [editing, setEditing] = useState(false);
 
-  const modelData = useMemo(() => {
-    if (!evalDetail?.agentModel) {
-      return {
-        avatar: '',
-        name: ''
-      };
-    }
-    return getModelFromList(llmModelList, evalDetail?.agentModel);
-  }, [evalDetail?.agentModel]);
+  const { llmModelList } = useSystemStore();
+  const modelData = useMemo(
+    () => getModelFromList(llmModelList, evalDetail.agentModel),
+    [evalDetail.agentModel]
+  );
 
   const {
     data: evalItemsList,
     ScrollData,
-    refreshList
+    fetchData
   } = useScrollPagination(getEvalItemsList, {
     pageSize: 20,
     params: {
@@ -80,6 +75,7 @@ const EvaluationDetailModal = ({
     },
     pollingInterval: 5000
   });
+  const evalItem = evalItemsList[seletedIndex];
 
   const { runAsync: exportEval, loading: isDownloading } = useRequest2(async () => {
     await downloadFetch({
@@ -94,10 +90,37 @@ const EvaluationDetailModal = ({
     },
     {
       onSuccess: () => {
-        refreshList();
+        fetchData(false, undefined, true);
+        fetchEvalList();
       }
     }
   );
+
+  const { runAsync: rerunItem, loading: isLoadingRerun } = useRequest2(
+    async (data: rerunEvalItemBody) => {
+      await rerunEvalItem(data);
+    },
+    {
+      onSuccess: () => {
+        fetchData(false, undefined, true);
+        fetchEvalList();
+      }
+    }
+  );
+
+  const { runAsync: updateItem, loading: isLoadingUpdate } = useRequest2(
+    async (data: updateEvalItemBody) => {
+      await updateEvalItem({ ...data, evalItemId: evalItem.evalItemId });
+    },
+    {
+      onSuccess: () => {
+        fetchData(false, undefined, true);
+        fetchEvalList();
+      }
+    }
+  );
+
+  const { register, handleSubmit } = useForm<updateEvalItemBody>();
 
   return (
     <>
@@ -109,6 +132,7 @@ const EvaluationDetailModal = ({
         title={t('dashboard_evaluation:task_detail')}
         w={['90vw', '1200px']}
         maxW={['90vw', '1200px']}
+        isLoading={isLoadingUpdate || isLoadingRerun || isLoadingDelete}
       >
         <ModalBody py={6} px={9}>
           <Flex
@@ -191,7 +215,7 @@ const EvaluationDetailModal = ({
                 </Flex>
 
                 <Button
-                  variant={'whiteBase'}
+                  variant={'whitePrimary'}
                   leftIcon={<MyIcon name={'export'} w={4} />}
                   onClick={async () => {
                     await exportEval();
@@ -214,39 +238,61 @@ const EvaluationDetailModal = ({
                     {t('dashboard_evaluation:detail')}
                   </Box>
                 </Flex>
-                <Flex gap={2}>
-                  {/* <IconButton
-                    aria-label="edit"
-                    size={'mdSquare'}
-                    variant={'whiteBase'}
-                    icon={<MyIcon name={'edit'} w={4} />}
-                    onClick={() => {
-                      console.log(evalItemsList[seletedIndex]);
-                    }}
-                  />
-                  <IconButton
-                    aria-label="restroe"
-                    size={'mdSquare'}
-                    variant={'whiteBase'}
-                    icon={<MyIcon name={'common/confirm/restoreTip'} w={4} />}
-                  /> */}
-                  <PopoverConfirm
-                    Trigger={
+                {evalItem && (
+                  <Flex gap={2}>
+                    {(evalItem.status === 0 || !!evalItem.errorMessage) && (
+                      <>
+                        {editing ? (
+                          <Button
+                            fontSize={12}
+                            onClick={async () => {
+                              setEditing(false);
+                              handleSubmit(updateItem)();
+                            }}
+                          >
+                            {t('common:Save')}
+                          </Button>
+                        ) : (
+                          <IconButton
+                            aria-label="edit"
+                            size={'mdSquare'}
+                            variant={'whitePrimary'}
+                            icon={<MyIcon name={'edit'} w={4} />}
+                            onClick={() => {
+                              setEditing(true);
+                            }}
+                          />
+                        )}
+                      </>
+                    )}
+                    {evalItem.status === 2 && (
                       <IconButton
-                        aria-label="delete"
+                        aria-label="restroe"
                         size={'mdSquare'}
-                        variant={'whiteDanger'}
-                        isLoading={isLoadingDelete}
-                        icon={<MyIcon name={'delete'} w={4} />}
+                        variant={'whitePrimary'}
+                        icon={<MyIcon name={'common/confirm/restoreTip'} w={4} />}
+                        onClick={() => {
+                          rerunItem({
+                            evalItemId: evalItem.evalItemId
+                          });
+                        }}
                       />
-                    }
-                    type="delete"
-                    content={t('dashboard_evaluation:comfirm_delete_item')}
-                    onConfirm={() =>
-                      delEvalItem({ evalItemId: evalItemsList[seletedIndex].evalItemId })
-                    }
-                  />
-                </Flex>
+                    )}
+                    <PopoverConfirm
+                      Trigger={
+                        <IconButton
+                          aria-label="delete"
+                          size={'mdSquare'}
+                          variant={'whiteDanger'}
+                          icon={<MyIcon name={'delete'} w={4} />}
+                        />
+                      }
+                      type="delete"
+                      content={t('dashboard_evaluation:comfirm_delete_item')}
+                      onConfirm={() => delEvalItem({ evalItemId: evalItem.evalItemId })}
+                    />
+                  </Flex>
+                )}
               </Flex>
             </Flex>
             <Flex flex={1} h={'calc(100% - 64px)'} overflow={'hidden'}>
@@ -289,7 +335,10 @@ const EvaluationDetailModal = ({
                           _hover={{ borderRadius: '8px', borderColor: 'primary.600' }}
                           borderRadius={index === seletedIndex ? '8px' : '0'}
                           cursor={'pointer'}
-                          onClick={() => setSelectedIndex(index)}
+                          onClick={() => {
+                            setSelectedIndex(index);
+                            setEditing(false);
+                          }}
                         >
                           <Box flex={3} px={4}>
                             <Flex gap={2}>
@@ -314,48 +363,69 @@ const EvaluationDetailModal = ({
                   </ScrollData>
                 </Box>
               </Flex>
-              <Flex
-                fontSize={'14px'}
-                w={1 / 3}
-                px={6}
-                py={6}
-                flexDirection={'column'}
-                overflow={'auto'}
-              >
-                {evalItemsList[seletedIndex]?.errorMessage && (
-                  <Box
-                    p={4}
-                    bg={'red.50'}
-                    border={'1px solid'}
-                    borderColor={'red.200'}
-                    borderRadius={'12px'}
-                    color={'red.600'}
-                    mb={5}
-                  >
-                    {evalItemsList[seletedIndex]?.errorMessage}
+              {evalItem ? (
+                <Flex
+                  fontSize={'14px'}
+                  w={1 / 3}
+                  px={6}
+                  py={6}
+                  flexDirection={'column'}
+                  overflow={'auto'}
+                >
+                  {evalItem?.errorMessage && (
+                    <Box
+                      p={4}
+                      bg={'red.50'}
+                      border={'1px solid'}
+                      borderColor={'red.200'}
+                      borderRadius={'12px'}
+                      color={'red.600'}
+                      mb={5}
+                    >
+                      {evalItem?.errorMessage}
+                    </Box>
+                  )}
+                  <Box borderBottom={'1px solid'} borderColor={'myGray.200'} pb={5}>
+                    <Box>{t('dashboard_evaluation:question')}</Box>
+                    {editing ? (
+                      <Textarea
+                        {...register('question')}
+                        bg={'myGray.25'}
+                        defaultValue={evalItem?.question}
+                        autoFocus
+                      />
+                    ) : (
+                      <Box color={'myGray.900'} mt={3}>
+                        {evalItem?.question}
+                      </Box>
+                    )}
                   </Box>
-                )}
-                <Box borderBottom={'1px solid'} borderColor={'myGray.200'} pb={5}>
-                  <Box>{t('dashboard_evaluation:question')}</Box>
-                  <Box color={'myGray.900'} mt={3}>
-                    {evalItemsList[seletedIndex]?.question}
-                  </Box>
-                </Box>
 
-                <Box borderBottom={'1px solid'} borderColor={'myGray.200'} py={5}>
-                  <Box>{t('dashboard_evaluation:standard_response')}</Box>
-                  <Box color={'myGray.900'} mt={3}>
-                    {evalItemsList[seletedIndex]?.expectedResponse}
+                  <Box borderBottom={'1px solid'} borderColor={'myGray.200'} py={5}>
+                    <Box>{t('dashboard_evaluation:standard_response')}</Box>
+                    {editing ? (
+                      <Textarea
+                        {...register('expectedResponse')}
+                        bg={'myGray.25'}
+                        defaultValue={evalItem?.expectedResponse}
+                      />
+                    ) : (
+                      <Box color={'myGray.900'} mt={3}>
+                        {evalItem?.expectedResponse}
+                      </Box>
+                    )}
                   </Box>
-                </Box>
 
-                <Box borderBottom={'1px solid'} borderColor={'myGray.200'} py={5}>
-                  <Box>{t('dashboard_evaluation:app_response')}</Box>
-                  <Box color={'myGray.900'} mt={3}>
-                    {evalItemsList[seletedIndex]?.response}
+                  <Box borderBottom={'1px solid'} borderColor={'myGray.200'} py={5}>
+                    <Box>{t('dashboard_evaluation:app_response')}</Box>
+                    <Box color={'myGray.900'} mt={3}>
+                      {evalItem?.response}
+                    </Box>
                   </Box>
-                </Box>
-              </Flex>
+                </Flex>
+              ) : (
+                <EmptyTip w={1 / 3} h={'full'} />
+              )}
             </Flex>
           </Box>
         </ModalBody>

@@ -63,54 +63,70 @@ export const addEvaluationJob = (data: EvaluationJobData) => {
 //   }
 // };
 
-// export const getEvaluationJobStatus = async (evalId: string) => {
-//   const jobId = await evaluationQueue.getDeduplicationJobId(evalId);
-//   if (!jobId) {
-//     return {
-//       status: EvalStatusEnum.active,
-//       errorMsg: undefined
-//     };
-//   }
+export const getEvaluationJobStatus = async (evalId: string) => {
+  const jobId = await evaluationQueue.getDeduplicationJobId(evalId);
+  if (!jobId) {
+    return {
+      status: EvalStatusEnum.active,
+      errorMsg: undefined
+    };
+  }
 
-//   const job = await evaluationQueue.getJob(jobId);
-//   if (!job) {
-//     return {
-//       status: EvalStatusEnum.active,
-//       errorMsg: undefined
-//     };
-//   }
+  const job = await evaluationQueue.getJob(jobId);
+  if (!job) {
+    return {
+      status: EvalStatusEnum.active,
+      errorMsg: undefined
+    };
+  }
 
-//   const jobState = await job.getState();
+  const jobState = await job.getState();
 
-//   if (jobState === 'failed' || jobState === 'unknown') {
-//     return {
-//       status: EvalStatusEnum.error,
-//       errorMsg: undefined
-//     };
-//   }
-//   if (['waiting-children', 'waiting'].includes(jobState)) {
-//     return {
-//       status: EvalStatusEnum.waiting,
-//       errorMsg: undefined
-//     };
-//   }
-//   if (jobState === 'active') {
-//     return {
-//       status: EvalStatusEnum.evaluating,
-//       errorMsg: undefined
-//     };
-//   }
+  if (jobState === 'failed' || jobState === 'unknown') {
+    return {
+      status: EvalStatusEnum.error,
+      errorMsg: undefined
+    };
+  }
+  if (['waiting-children', 'waiting'].includes(jobState)) {
+    return {
+      status: EvalStatusEnum.waiting,
+      errorMsg: undefined
+    };
+  }
+  if (jobState === 'active') {
+    return {
+      status: EvalStatusEnum.evaluating,
+      errorMsg: undefined
+    };
+  }
 
-//   return {
-//     status: EvalStatusEnum.active,
-//     errorMsg: undefined
-//   };
-// };
+  return {
+    status: EvalStatusEnum.active,
+    errorMsg: undefined
+  };
+};
 
-// export const cancelEvaluationJob = async (evalId: string) => {
-//   const jobId = await evaluationQueue.getDeduplicationJobId(evalId);
-//   if (!jobId) {
-//     return;
-//   }
-//   await evaluationQueue.remove(jobId);
-// };
+export const checkEvaluationJobActive = async (evalId: string): Promise<boolean> => {
+  try {
+    const jobId = await evaluationQueue.getDeduplicationJobId(evalId);
+    if (!jobId) return false;
+
+    const job = await evaluationQueue.getJob(jobId);
+    if (!job) return false;
+
+    const jobState = await job.getState();
+    return ['waiting', 'delayed', 'prioritized', 'active'].includes(jobState);
+  } catch (error) {
+    addLog.error('Failed to check evaluation job status', { evalId, error });
+    return false;
+  }
+};
+
+export const cancelEvaluationJob = async (evalId: string) => {
+  const jobId = await evaluationQueue.getDeduplicationJobId(evalId);
+  if (!jobId) {
+    return;
+  }
+  await evaluationQueue.remove(jobId);
+};

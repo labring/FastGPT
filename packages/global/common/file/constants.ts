@@ -14,6 +14,10 @@ export const bucketNameMap = {
   [BucketNameEnum.chat]: {
     label: i18nT('file:bucket_chat'),
     previewExpireMinutes: 7 * 24 * 60 // 7 days
+  },
+  [BucketNameEnum.evaluation]: {
+    label: i18nT('file:bucket_evaluation'),
+    previewExpireMinutes: 30 // 30 minutes
   }
 };
 
