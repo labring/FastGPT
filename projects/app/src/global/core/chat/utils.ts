@@ -4,7 +4,7 @@ import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/ty
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export const isLLMNode = (item: ChatHistoryItemResType) =>
-  item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.tools;
+  item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.agent;
 
 export function transformPreviewHistories(
   histories: ChatItemType[],

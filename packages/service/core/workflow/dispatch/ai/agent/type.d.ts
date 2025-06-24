@@ -10,7 +10,7 @@ import type {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import type { DispatchFlowResponse } from '../../type.d';
+import type { DispatchFlowResponse } from '../../type';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';

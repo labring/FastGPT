@@ -19,11 +19,7 @@ import {
   getLLMDefaultUsage
 } from '@fastgpt/global/core/ai/constants';
 import { dispatchWorkFlow } from '../../index';
-import {
-  type DispatchToolModuleProps,
-  type RunToolResponse,
-  type ToolNodeItemType
-} from './type.d';
+import { type DispatchToolModuleProps, type RunToolResponse, type ToolNodeItemType } from './type';
 import json5 from 'json5';
 import { type DispatchFlowResponse, type WorkflowResponseType } from '../../type';
 import { countGptMessagesTokens } from '../../../../../common/string/tiktoken/index';
