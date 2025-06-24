@@ -26,13 +26,13 @@ async function handler(
   const lang = getLocale(req);
 
   const plugins = await getSystemPlugins();
+
   return plugins // Just show the active plugins
     .filter((item) => item.isActive)
     .map<NodeTemplateListItemType>((plugin) => ({
       ...plugin,
       parentId: plugin.parentId === undefined ? null : plugin.parentId,
       templateType: plugin.templateType ?? FlowNodeTemplateTypeEnum.other,
-      // flowNodeType: plugin.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
       flowNodeType: FlowNodeTypeEnum.tool,
       name: parseI18nString(plugin.name, lang),
       intro: parseI18nString(plugin.intro ?? '', lang)

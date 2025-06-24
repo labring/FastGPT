@@ -160,7 +160,7 @@ const NodeTemplateListItem = ({
         </Box>
 
         {/* Folder right arrow */}
-        {template.isFolder && templateType === TemplateTypeEnum.teamPlugin && (
+        {template.isFolder && (
           <Box
             color={'myGray.500'}
             _hover={{
@@ -227,8 +227,7 @@ const NodeTemplateList = ({
         const templateNode = await (async () => {
           try {
             if (AppNodeFlowNodeTypeMap[template.flowNodeType]) {
-              const res = await getPreviewPluginNode({ appId: template.id });
-              return res;
+              return await getPreviewPluginNode({ appId: template.id });
             }
 
             const baseTemplate = moduleTemplatesFlat.find((item) => item.id === template.id);

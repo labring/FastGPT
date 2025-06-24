@@ -5,6 +5,7 @@ import { MethodType } from './controller';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
 import type { WorkflowTemplateType } from '../../workflow/type';
 import type { FlowNodeInputItemType, FlowNodeOutputItemType } from '../../workflow/type/io';
+import type { ParentIdType } from 'common/parentFolder/type';
 
 export type PluginRuntimeType = {
   id: string;
@@ -23,6 +24,8 @@ export type PluginRuntimeType = {
 
 // system plugin
 export type SystemPluginTemplateItemType = WorkflowTemplateType & {
+  parentId?: ParentIdType;
+  isFolder?: boolean;
   templateType: string;
 
   // FastGPT-plugin tool

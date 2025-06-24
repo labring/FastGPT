@@ -67,7 +67,7 @@ export const getSystemPluginByIdAndVersionId = async (
   pluginId: string,
   versionId?: string
 ): Promise<ChildAppType> => {
-  const plugin = await (async () => {
+  const plugin = await (async (): Promise<ChildAppType> => {
     const plugin = await getSystemPluginById(pluginId);
 
     // Admin selected system tool
@@ -119,7 +119,8 @@ export const getSystemPluginByIdAndVersionId = async (
 
     return {
       ...plugin,
-      version: version?.value,
+      version: versionId ? version?.value : '',
+      versionLabel: version ? version?.value : '',
       isLatestVersion: !version || !lastVersion || version.value === lastVersion?.value
     };
   })();
@@ -406,7 +407,7 @@ export const getSystemPlugins = async (): Promise<SystemPluginTemplateItemType[]
         isActive: item.isActive,
         id: item.id,
         parentId: item.parentId,
-        isFolder: !!item.parentId,
+        isFolder: tools.some((tool) => tool.parentId === item.id),
         name: item.name,
         avatar: item.avatar,
         intro: item.intro,
@@ -425,14 +426,15 @@ export const getSystemPlugins = async (): Promise<SystemPluginTemplateItemType[]
           edges: []
         },
         versionList: item.versionList,
-        inputs: item.inputs as any,
-        outputs: item.outputs as any,
+        inputs: item.versionList[0]?.inputs as any,
+        outputs: item.versionList[0]?.outputs as any,
 
         inputList: item.inputs?.find((input) => input.key === NodeInputKeyEnum.systemInputConfig)
           ?.inputList as any,
         hasSystemSecret: !!dbPluginConfig?.inputListVal
       };
     });
+
     const dbPlugins = systemPluginsArray
       .filter((item) => item.customConfig)
       .map((item) => dbPluginFormat(item));
