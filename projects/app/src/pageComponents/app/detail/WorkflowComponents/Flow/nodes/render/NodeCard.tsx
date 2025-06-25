@@ -37,7 +37,7 @@ import { useBoolean, useCreation } from 'ahooks';
 import { formatToolError } from '@fastgpt/global/core/app/utils';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { ToolParamConfigModal } from '../../components/ToolParamConfig';
+import SecretInputModal from '@/pageComponents/app/plugin/SecretInputModal';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -406,10 +406,23 @@ const NodeCard = (props: Props) => {
 
       <EditTitleModal maxLength={100} />
       {inputConfig && isOpenToolParamConfigModal && (
-        <ToolParamConfigModal
-          nodeId={nodeId}
+        <SecretInputModal
           onClose={onCloseToolParamConfigModal}
+          onSubmit={(data) => {
+            onChangeNode({
+              nodeId: nodeId as string,
+              type: 'updateInput',
+              key: inputConfig.key,
+              value: {
+                ...inputConfig,
+                value: data
+              }
+            });
+            onCloseToolParamConfigModal();
+          }}
           inputConfig={inputConfig}
+          hasSystemSecret={node?.hasSystemSecret}
+          secretCose={node?.currentCost}
         />
       )}
     </Flex>
