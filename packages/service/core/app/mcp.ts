@@ -78,7 +78,10 @@ export class MCPClient {
       const tools = response.tools.map((tool) => ({
         name: tool.name,
         description: tool.description || '',
-        inputSchema: tool.inputSchema || {
+        input_schema: tool.inputSchema ? {
+          ...tool.inputSchema,
+          properties: tool.inputSchema.properties || {}
+        } : {
           type: 'object',
           properties: {}
         }
