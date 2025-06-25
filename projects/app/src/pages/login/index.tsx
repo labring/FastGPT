@@ -44,7 +44,7 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
   const { lastRoute = '' } = router.query as { lastRoute: string };
   const { feConfigs } = useSystemStore();
   const [pageType, setPageType] = useState<`${LoginPageTypeEnum}`>(LoginPageTypeEnum.passwordLogin);
-  const { setUserInfo } = useUserStore();
+  const { setUserInfo, initTeamPlanStatus } = useUserStore();
   const { setLastChatAppId } = useChatStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isPc } = useSystem();
@@ -61,6 +61,7 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
   const loginSuccess = useCallback(
     (res: ResLogin) => {
       setUserInfo(res.user);
+      initTeamPlanStatus();
 
       const decodeLastRoute = decodeURIComponent(lastRoute);
 
