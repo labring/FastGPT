@@ -264,6 +264,7 @@ export enum NodeOutputKeyEnum {
   text = 'system_text',
   addOutputParam = 'system_addOutputParam',
   rawResponse = 'system_rawResponse',
+  systemError = 'system_error',
 
   // start
   userFiles = 'userFiles',

@@ -92,7 +92,10 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       });
 
       const usagePoints = await (async () => {
-        if (params.system_input_config?.type !== SystemToolInputTypeEnum.system) {
+        if (
+          params.system_input_config?.type !== SystemToolInputTypeEnum.system ||
+          result[NodeOutputKeyEnum.systemError]
+        ) {
           return 0;
         }
         const tool = await getSystemPluginById(toolConfig.systemTool!.toolId);

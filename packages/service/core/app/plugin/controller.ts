@@ -28,6 +28,10 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getSystemToolList } from '../tool/api';
 import { Types } from '../../../common/mongo';
 import type { SystemPluginConfigSchemaType } from './type';
+import type {
+  FlowNodeInputItemType,
+  FlowNodeOutputItemType
+} from '@fastgpt/global/core/workflow/type/io';
 
 /**
   plugin id rule:
@@ -402,6 +406,8 @@ export const getSystemPlugins = async (): Promise<SystemPluginTemplateItemType[]
 
     const formatTools = tools.map<SystemPluginTemplateItemType>((item) => {
       const dbPluginConfig = systemPlugins.get(item.id);
+      const inputs = item.versionList[0]?.inputs as FlowNodeInputItemType[];
+      const outputs = item.versionList[0]?.outputs as FlowNodeOutputItemType[];
 
       return {
         isActive: item.isActive,
@@ -426,10 +432,10 @@ export const getSystemPlugins = async (): Promise<SystemPluginTemplateItemType[]
           edges: []
         },
         versionList: item.versionList,
-        inputs: item.versionList[0]?.inputs as any,
-        outputs: item.versionList[0]?.outputs as any,
+        inputs,
+        outputs,
 
-        inputList: item.inputs?.find((input) => input.key === NodeInputKeyEnum.systemInputConfig)
+        inputList: inputs?.find((input) => input.key === NodeInputKeyEnum.systemInputConfig)
           ?.inputList as any,
         hasSystemSecret: !!dbPluginConfig?.inputListVal
       };
