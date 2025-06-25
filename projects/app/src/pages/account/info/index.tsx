@@ -69,6 +69,10 @@ const Info = () => {
   const standardPlan = teamPlanStatus?.standardConstants;
   const { isOpen: isOpenContact, onClose: onCloseContact, onOpen: onOpenContact } = useDisclosure();
 
+  useMount(() => {
+    initUserInfo();
+  });
+
   return (
     <AccountContainer>
       <Box py={[3, '28px']} px={[5, 10]} mx={'auto'}>
