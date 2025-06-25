@@ -75,6 +75,10 @@ export async function rewriteAppWorkflowToDetail({
         node.versionLabel = preview.versionLabel;
         node.isLatestVersion = preview.isLatestVersion;
         node.version = preview.version;
+
+        node.currentCost = preview.currentCost;
+        node.hasTokenFee = preview.hasTokenFee;
+        node.hasSystemSecret = preview.hasSystemSecret;
       } catch (error) {
         node.pluginData = {
           error: getErrText(error)

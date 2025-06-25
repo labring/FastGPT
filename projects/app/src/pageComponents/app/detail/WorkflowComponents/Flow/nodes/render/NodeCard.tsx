@@ -372,32 +372,35 @@ const NodeCard = (props: Props) => {
     >
       {debugResult && <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />}
       {Header}
+
       <Flex flexDirection={'column'} flex={1} py={!isFolded ? 3 : 0} gap={2} position={'relative'}>
         {!isFolded ? (
           <>
-            {children}
-            {inputConfig && !inputConfig?.value && (
+            {inputConfig && !inputConfig?.value ? (
               <Flex
                 alignItems={'center'}
+                flexDirection={'column'}
                 justifyContent={'center'}
-                borderBottomRadius={'lg'}
-                position={'absolute'}
-                top={0}
-                left={0}
-                right={0}
-                bottom={0}
-                bg={'rgba(255, 255, 255, 0.5)'}
+                borderRadius={'lg'}
+                h={'200px'}
+                bg={'myGray.25'}
+                border={'base'}
+                mx={4}
               >
-                <Button variant={'whiteBase'} size={'lg'} onClick={onOpenToolParamConfigModal}>
-                  激活工具
+                <Box>{t('app:tool_not_active')}</Box>
+                <Button w={'83px'} mt={2} size={'lg'} onClick={onOpenToolParamConfigModal}>
+                  {t('app:too_to_active')}
                 </Button>
               </Flex>
+            ) : (
+              children
             )}
           </>
         ) : (
           <Box h={4} />
         )}
       </Flex>
+
       {RenderHandle}
       {RenderToolHandle}
 
