@@ -37,6 +37,7 @@ import {
 } from '@fastgpt/global/core/dataset/training/utils';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { clearCollectionImages, removeDatasetImageExpiredTime } from '../image/utils';
+import { MongoDatasetCollectionTags } from '../tag/schema';
 
 export const createCollectionAndInsertData = async ({
   dataset,
@@ -279,7 +280,7 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
     teamId,
     parentId,
     datasetId,
-    tags,
+    tags: tagIdList,
 
     fileId,
     rawLink,
@@ -288,7 +289,18 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
     apiFileId
   } = props;
   // Create collection tags
-  const collectionTags = await createOrGetCollectionTags({ tags, teamId, datasetId, session });
+  const tags = await MongoDatasetCollectionTags.find({
+    teamId,
+    datasetId,
+    _id: { $in: tagIdList }
+  });
+
+  const collectionTags = await createOrGetCollectionTags({
+    tags: tags.map((item) => item.tag),
+    teamId,
+    datasetId,
+    session
+  });
 
   // Create collection
   const [collection] = await MongoDatasetCollection.create(
