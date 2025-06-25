@@ -1,4 +1,4 @@
-import React, { type DragEvent, useCallback, useState, useRef } from 'react';
+import React, { type DragEvent, useCallback, useState } from 'react';
 import { Box, Button, Flex, Textarea } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -21,22 +21,14 @@ const ImportAppConfigEditor = ({ value, onChange, rows = 16 }: Props) => {
     multiple: false
   });
 
-  const dragCounter = useRef(0);
-
   const handleDragEnter = useCallback((e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    dragCounter.current++;
-    if (dragCounter.current === 1) {
-      setIsDragging(true);
-    }
+    setIsDragging(true);
   }, []);
 
   const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    dragCounter.current--;
-    if (dragCounter.current === 0) {
-      setIsDragging(false);
-    }
+    setIsDragging(false);
   }, []);
 
   const readJSONFile = useCallback(
@@ -78,7 +70,6 @@ const ImportAppConfigEditor = ({ value, onChange, rows = 16 }: Props) => {
   const handleDrop = useCallback(
     async (e: DragEvent<HTMLDivElement>) => {
       e.preventDefault();
-      dragCounter.current = 0;
       setIsDragging(false);
       const file = e.dataTransfer.files[0];
       console.log(file);
