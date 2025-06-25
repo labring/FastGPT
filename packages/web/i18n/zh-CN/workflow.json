@@ -190,6 +190,7 @@
   "to_connect_node": "连接节点",
   "tool.tool_result": "工具运行结果",
   "tool_active_config": "工具激活",
+  "tool_active_config_type": "工具激活: {{type}}",
   "tool_call_termination": "工具调用终止",
   "tool_custom_field": "自定义工具变量",
   "tool_field": "工具参数配置",

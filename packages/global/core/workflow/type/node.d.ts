@@ -58,6 +58,11 @@ export type FlowNodeCommonType = {
 
   // tool data
   toolConfig?: NodeToolConfigType;
+
+  // Not store, just computed
+  currentCost?: number;
+  hasTokenFee?: boolean;
+  hasSystemSecret?: boolean;
 };
 
 export type PluginDataType = {
@@ -82,11 +87,6 @@ export type FlowNodeTemplateType = FlowNodeCommonType & {
 
   showSourceHandle?: boolean;
   showTargetHandle?: boolean;
-
-  // tool config
-  currentCost?: number;
-  hasTokenFee?: boolean;
-  hasSystemSecret?: boolean;
 
   // info
   isTool?: boolean; // can be connected by tool

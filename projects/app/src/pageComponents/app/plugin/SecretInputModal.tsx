@@ -1,126 +1,58 @@
-import React, { useMemo, useState } from 'react';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { useTranslation } from 'next-i18next';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box, Button, Flex, HStack, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
-import { useBoolean } from 'ahooks';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { useForm } from 'react-hook-form';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
-import IconButton from '@/pageComponents/account/team/OrgManage/IconButton';
-import {
-  SystemToolInputTypeEnum,
-  SystemToolInputTypeMap
-} from '@fastgpt/global/core/app/systemTool/constants';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
-import SecretInputModal, {
-  type ToolParamsFormType
-} from '@/pageComponents/app/plugin/SecretInputModal';
+import { useTranslation } from 'next-i18next';
+import React, { useState } from 'react';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import type { FlowNodeInputItemType, InputConfigType } from '@fastgpt/global/core/workflow/type/io';
+import { useForm } from 'react-hook-form';
+import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import IconButton from '@/pageComponents/account/team/OrgManage/IconButton';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 
-const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInputItemType[] }) => {
-  const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const node = useContextSelector(WorkflowContext, (v) =>
-    v.nodeList.find((item) => item.nodeId === nodeId)
-  );
-
-  const inputConfig = inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig);
-  const inputList = inputConfig?.inputList;
-  const [isOpen, { setTrue, setFalse }] = useBoolean(false);
-
-  const activeButtonText = useMemo(() => {
-    const val = inputConfig?.value as ToolParamsFormType;
-    if (!val) {
-      return t('workflow:tool_active_config');
-    }
-
-    return t('workflow:tool_active_config_type', {
-      type: t(SystemToolInputTypeMap[val.type].text as any)
-    });
-  }, [inputConfig?.value, t]);
-
-  const onSubmit = (data: ToolParamsFormType) => {
-    if (!inputConfig) return;
-
-    onChangeNode({
-      nodeId: nodeId as string,
-      type: 'updateInput',
-      key: inputConfig.key,
-      value: {
-        ...inputConfig,
-        value: data
-      }
-    });
-    setFalse();
-  };
-
-  return nodeId && !!inputList && inputList.length > 0 ? (
-    <>
-      <Button
-        variant={'whiteBase'}
-        border={'base'}
-        borderRadius={'md'}
-        leftIcon={<Box w={'6px'} h={'6px'} bg={'primary.600'} borderRadius={'md'} />}
-        onClick={setTrue}
-      >
-        {activeButtonText}
-      </Button>
-      {isOpen && (
-        <SecretInputModal
-          inputConfig={inputConfig}
-          hasSystemSecret={node?.hasSystemSecret}
-          secretCose={node?.currentCost}
-          onClose={setFalse}
-          onSubmit={onSubmit}
-        />
-      )}
-    </>
-  ) : null;
+export type ToolParamsFormType = {
+  type: SystemToolInputTypeEnum;
+  value?: StoreSecretValueType;
 };
 
-export default React.memo(ToolConfig);
-
-export const ToolParamConfigModal = ({
-  nodeId,
+const SecretInputModal = ({
+  hasSystemSecret,
+  secretCose = 0,
+  inputConfig,
   onClose,
-  inputConfig
+  onSubmit
 }: {
-  nodeId: string;
-  onClose: () => void;
   inputConfig: FlowNodeInputItemType;
+  hasSystemSecret?: boolean;
+  secretCose?: number;
+  onClose: () => void;
+  onSubmit: (data: ToolParamsFormType) => void;
 }) => {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const node = useContextSelector(WorkflowContext, (v) =>
-    v.nodeList.find((item) => item.nodeId === nodeId)
-  );
-  const inputList = inputConfig.inputList || [];
-
   const [editIndex, setEditIndex] = useState<number>();
+  const inputList = inputConfig?.inputList || [];
 
-  const { getValues, setValue, watch, register, handleSubmit } = useForm<ToolParamsFormType>();
+  const { register, watch, setValue, getValues, handleSubmit } = useForm<ToolParamsFormType>({
+    defaultValues: (() => {
+      const defaultValue = inputConfig.value;
+      return (
+        defaultValue || {
+          type: hasSystemSecret ? SystemToolInputTypeEnum.system : SystemToolInputTypeEnum.manual,
+          value:
+            inputList?.reduce(
+              (acc, item) => {
+                acc[item.key] = { secret: '', value: '' };
+                return acc;
+              },
+              {} as Record<string, InputConfigType['value']>
+            ) || {}
+        }
+      );
+    })()
+  });
   const configType = watch('type');
-
-  const onSubmit = (data: ToolParamsFormType) => {
-    if (data.type !== SystemToolInputTypeEnum.manual) {
-      delete data.value;
-    }
-
-    onChangeNode({
-      nodeId,
-      type: 'updateInput',
-      key: inputConfig.key,
-      value: {
-        ...inputConfig,
-        value: data
-      }
-    });
-    onClose();
-  };
 
   return (
     <MyModal
@@ -140,7 +72,7 @@ export const ToolParamConfigModal = ({
             defaultBg="white"
             activeBg="white"
             list={[
-              ...(node?.hasSystemSecret
+              ...(hasSystemSecret
                 ? [
                     {
                       title: t('app:system_secret'),
@@ -152,7 +84,7 @@ export const ToolParamConfigModal = ({
                             <MyIcon name={'common/info'} w={'1.1rem'} color={'primary.600'} />
                             <Box fontSize={'sm'}>
                               {t('app:tool_active_system_config_price_desc', {
-                                price: node?.currentCost || 0
+                                price: secretCose || 0
                               })}
                             </Box>
                           </HStack>
@@ -248,3 +180,5 @@ export const ToolParamConfigModal = ({
     </MyModal>
   );
 };
+
+export default SecretInputModal;

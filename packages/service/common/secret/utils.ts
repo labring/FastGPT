@@ -4,7 +4,7 @@ import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { HeaderSecretTypeEnum } from '@fastgpt/global/common/secret/constants';
 
 export const encryptSecretValue = (value: SecretValueType): SecretValueType => {
-  if (!value.value || value.secret) {
+  if (!value.value) {
     return value;
   }
 

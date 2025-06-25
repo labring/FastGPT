@@ -49,7 +49,7 @@ const ConfigToolModal = ({
     >
       <ModalBody>
         <HStack mb={4} spacing={1} fontSize={'sm'}>
-          <MyIcon name={'common/info'} w={'1.25rem'} />
+          <MyIcon name={'common/info'} color={'primary.600'} w={'1.25rem'} />
           <Box flex={1}>{t('app:tool_input_param_tip')}</Box>
           {!!(configTool?.courseUrl || configTool?.userGuide) && (
             <UseGuideModal
@@ -96,6 +96,8 @@ const ConfigToolModal = ({
                       onChange={onChange}
                       input={input}
                       setUploading={() => {}}
+                      hasSystemSecret={configTool.hasSystemSecret}
+                      secretCose={configTool.currentCost}
                     />
                   );
                 }}
@@ -103,7 +105,7 @@ const ConfigToolModal = ({
             );
           })}
       </ModalBody>
-      <ModalFooter gap={6}>
+      <ModalFooter gap={3}>
         <Button onClick={onCloseConfigTool} variant={'whiteBase'}>
           {t('common:Cancel')}
         </Button>

@@ -93,9 +93,9 @@ const NodeTemplateListItem = ({
           <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
             {t(template.intro as any) || t('common:core.workflow.Not intro')}
           </Box>
-          {templateType === TemplateTypeEnum.systemPlugin && (
+          {/* {templateType === TemplateTypeEnum.systemPlugin && (
             <CostTooltip cost={template.currentCost} hasTokenFee={template.hasTokenFee} />
-          )}
+          )} */}
         </Box>
       }
       shouldWrapChildren={false}
