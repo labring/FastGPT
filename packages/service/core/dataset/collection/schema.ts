@@ -83,6 +83,7 @@ const DatasetCollectionSchema = new Schema({
 
   // Parse settings
   customPdfParse: Boolean,
+  apiFileParentId: String,
 
   // Chunk settings
   ...ChunkSettings
