@@ -38,7 +38,7 @@ export type InputConfigType = {
   label: string;
   description?: string;
   required?: boolean;
-  inputType: 'string' | 'secret';
+  inputType: 'input' | 'secret' | 'switch';
   value?: SecretValueType;
 };
 
