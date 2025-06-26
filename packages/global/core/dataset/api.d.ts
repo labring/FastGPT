@@ -58,6 +58,7 @@ export type CreateDatasetCollectionParams = DatasetCollectionStoreDataType & {
   externalFileId?: string;
   externalFileUrl?: string;
   apiFileId?: string;
+  apiFileParentId?: string;
 
   rawTextLength?: number;
   hashRawText?: string;

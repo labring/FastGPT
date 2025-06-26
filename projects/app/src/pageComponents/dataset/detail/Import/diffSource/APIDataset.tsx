@@ -86,8 +86,45 @@ const CustomAPIFileInput = () => {
 
   const { runAsync: onclickNext, loading: onNextLoading } = useRequest2(
     async () => {
+      // 检查是否当前目录下的文件被全选了
+      const currentDirectoryFiles = fileList.filter((item) => !existIdList.has(item.id));
+      const selectedCurrentDirectoryFiles = selectFiles.filter((file) =>
+        currentDirectoryFiles.some((item) => item.id === file.id)
+      );
+
+      // 如果当前目录下的所有文件都被选中了，则认为当前目录被选中
+      const isCurrentDirectoryFullySelected =
+        currentDirectoryFiles.length > 0 &&
+        selectedCurrentDirectoryFiles.length === currentDirectoryFiles.length;
+
+      let finalSelectedFiles: APIFileItemType[] = [];
+
+      if (isCurrentDirectoryFullySelected) {
+        // 当前目录全选，传递当前目录
+        const rootDirectoryId =
+          parent?.parentId ||
+          datasetDetail.apiDatasetServer?.apiServer?.basePath ||
+          datasetDetail.apiDatasetServer?.yuqueServer?.basePath ||
+          datasetDetail.apiDatasetServer?.feishuServer?.folderToken ||
+          '';
+
+        const currentDirectory: APIFileItemType = {
+          id: rootDirectoryId,
+          parentId: paths.length > 1 ? paths[paths.length - 2].parentId : '',
+          name: parent?.parentName || '根目录',
+          type: 'folder',
+          hasChild: true,
+          updateTime: new Date(),
+          createTime: new Date()
+        };
+        finalSelectedFiles = [currentDirectory];
+      } else {
+        // 正常传递选中的文件
+        finalSelectedFiles = selectFiles;
+      }
+
       setSources(
-        selectFiles.map((item) => ({
+        finalSelectedFiles.map((item) => ({
           id: item.id,
           apiFileId: item.id,
           apiFile: item,
