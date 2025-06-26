@@ -1,4 +1,4 @@
-import { Box, Button, Flex, HStack, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
+import { Box, Button, Flex, HStack, Input, ModalBody, ModalFooter, Switch } from '@chakra-ui/react';
 import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
@@ -132,7 +132,7 @@ const SecretInputModal = ({
                                 </HStack>
                               )}
                             </Flex>
-                            {item.inputType === 'string' && (
+                            {item.inputType === 'input' && (
                               <Input
                                 bg={'myGray.50'}
                                 {...register(inputKey, {
@@ -175,6 +175,16 @@ const SecretInputModal = ({
                                     <IconButton name="edit" onClick={() => setEditIndex(i)} />
                                   </>
                                 )}
+                              </Flex>
+                            )}
+                            {item.inputType === 'switch' && (
+                              <Flex alignItems={'center'}>
+                                <Switch
+                                  bg={'myGray.50'}
+                                  {...register(inputKey, {
+                                    required: item.required
+                                  })}
+                                />
                               </Flex>
                             )}
                           </Box>
