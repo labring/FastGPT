@@ -151,7 +151,8 @@ const RenderPluginInput = ({
   setUploading,
 
   hasSystemSecret,
-  secretCose
+  secretCost,
+  courseUrl
 }: {
   value: any;
   onChange: (...event: any[]) => void;
@@ -161,7 +162,8 @@ const RenderPluginInput = ({
   setUploading: React.Dispatch<React.SetStateAction<boolean>>;
 
   hasSystemSecret?: boolean;
-  secretCose?: number;
+  secretCost?: number;
+  courseUrl?: string;
 }) => {
   const { t } = useTranslation();
   const inputType = input.renderTypeList[0];
@@ -260,7 +262,8 @@ const RenderPluginInput = ({
                 value: value as ToolParamsFormType
               }}
               hasSystemSecret={hasSystemSecret}
-              secretCose={secretCose}
+              secretCost={secretCost}
+              courseUrl={courseUrl}
               onClose={setFalseSecretModal}
               onSubmit={(data) => {
                 onChange(data);

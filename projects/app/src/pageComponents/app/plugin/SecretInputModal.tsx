@@ -19,14 +19,16 @@ export type ToolParamsFormType = {
 
 const SecretInputModal = ({
   hasSystemSecret,
-  secretCose = 0,
+  secretCost = 0,
   inputConfig,
+  courseUrl,
   onClose,
   onSubmit
 }: {
   inputConfig: FlowNodeInputItemType;
   hasSystemSecret?: boolean;
-  secretCose?: number;
+  secretCost?: number;
+  courseUrl?: string;
   onClose: () => void;
   onSubmit: (data: ToolParamsFormType) => void;
 }) => {
@@ -64,8 +66,9 @@ const SecretInputModal = ({
       w={'500px'}
     >
       <ModalBody pt={6}>
-        <FormLabel mb={1}>{t('common:secret_key')}</FormLabel>
-
+        <FormLabel mb={1} fontSize={'md'}>
+          {t('common:secret_key')}
+        </FormLabel>
         <Box>
           <LeftRadio
             gap={2}
@@ -84,7 +87,7 @@ const SecretInputModal = ({
                             <MyIcon name={'common/info'} w={'1.1rem'} color={'primary.600'} />
                             <Box fontSize={'sm'}>
                               {t('app:tool_active_system_config_price_desc', {
-                                price: secretCose || 0
+                                price: secretCost || 0
                               })}
                             </Box>
                           </HStack>
@@ -105,12 +108,29 @@ const SecretInputModal = ({
                         const showInput = !!value?.value || !value?.secret || editIndex === i;
 
                         return (
-                          <Box key={item.key} _notLast={{ mb: 5 }}>
-                            <Flex alignItems={'center'}>
+                          <Box key={item.key} mb={inputList.length - 1 === i ? 2 : 5}>
+                            <Flex alignItems={'center'} mb={0.5}>
                               <FormLabel required={item.required} color={'myGray.600'}>
                                 {t(item.label as any)}
                               </FormLabel>
                               {item.description && <QuestionTip label={item.description} />}
+                              <Box flex={'1 0 0'} />
+                              {i === 0 && courseUrl && (
+                                <HStack
+                                  spacing={1}
+                                  color={'primary.600'}
+                                  justifyContent={'flex-end'}
+                                  mt={-3}
+                                  _hover={{
+                                    textDecoration: 'underline',
+                                    cursor: 'point'
+                                  }}
+                                  onClick={() => window.open(courseUrl, '_blank')}
+                                >
+                                  <MyIcon name={'book'} w={'14px'} />
+                                  <Box fontSize={'sm'}>{t('app:secret_get_course')}</Box>
+                                </HStack>
+                              )}
                             </Flex>
                             {item.inputType === 'string' && (
                               <Input

@@ -63,7 +63,8 @@ const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInpu
         <SecretInputModal
           inputConfig={inputConfig}
           hasSystemSecret={node?.hasSystemSecret}
-          secretCose={node?.currentCost}
+          secretCost={node?.currentCost}
+          courseUrl={node?.courseUrl}
           onClose={setFalse}
           onSubmit={onSubmit}
         />
