@@ -1,7 +1,7 @@
 import Cookie from 'cookie';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import jwt from 'jsonwebtoken';
-import { type NextApiResponse } from 'next';
+import { type NextApiResponse, type NextApiRequest } from 'next';
 import type { AuthModeType, ReqHeaderAuthType } from './type.d';
 import type { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
@@ -352,6 +352,20 @@ export const setCookie = (res: NextApiResponse, token: string) => {
     'Set-Cookie',
     `${TokenName}=${token}; Path=/; HttpOnly; Max-Age=604800; Samesite=Strict;`
   );
+};
+/* get cookie value */
+export const getCookie = (req: NextApiRequest): string => {
+  if (!req.headers.cookie) return '';
+
+  const cookies = req.headers.cookie.split(';');
+  for (const cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === TokenName) {
+      return value;
+    }
+  }
+
+  return '';
 };
 /* clear cookie */
 export const clearCookie = (res: NextApiResponse) => {

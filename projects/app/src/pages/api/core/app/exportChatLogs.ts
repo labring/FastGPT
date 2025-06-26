@@ -18,12 +18,12 @@ import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSc
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { escapeCsvField } from '@fastgpt/service/common/file/csv';
+import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 
 const formatJsonString = (data: any) => {
   if (data == null) return '';
   const jsonStr = JSON.stringify(data).replace(/"/g, '""').replace(/\n/g, '\\n');
-  return escapeCsvField(jsonStr);
+  return sanitizeCsvField(jsonStr);
 };
 
 export type ExportChatLogsBody = GetAppChatLogsProps & {
@@ -261,14 +261,14 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     const markItemsStr = formatJsonString(markItems);
     const chatDetailsStr = formatJsonString(chatDetails);
 
-    const escapedTime = escapeCsvField(time);
-    const escapedSource = escapeCsvField(source);
-    const escapedTmbName = escapeCsvField(tmbName);
-    const escapedTmbContact = escapeCsvField(tmbContact);
-    const escapedTitle = escapeCsvField(title);
-    const escapedMessageCount = escapeCsvField(messageCount);
+    const sanitizedTime = sanitizeCsvField(time);
+    const sanitizedSource = sanitizeCsvField(source);
+    const sanitizedTmbName = sanitizeCsvField(tmbName);
+    const sanitizedTmbContact = sanitizeCsvField(tmbContact);
+    const sanitizedTitle = sanitizeCsvField(title);
+    const sanitizedMessageCount = sanitizeCsvField(messageCount);
 
-    const res = `\n${escapedTime},${escapedSource},${escapedTmbName},${escapedTmbContact},${escapedTitle},${escapedMessageCount},${userGoodFeedbackItemsStr},${userBadFeedbackItemsStr},${customFeedbackItemsStr},${markItemsStr},${chatDetailsStr}`;
+    const res = `\n${sanitizedTime},${sanitizedSource},${sanitizedTmbName},${sanitizedTmbContact},${sanitizedTitle},${sanitizedMessageCount},${userGoodFeedbackItemsStr},${userBadFeedbackItemsStr},${customFeedbackItemsStr},${markItemsStr},${chatDetailsStr}`;
 
     write(res);
   });

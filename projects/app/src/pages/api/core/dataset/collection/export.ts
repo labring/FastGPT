@@ -12,7 +12,7 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { type NextApiResponse } from 'next';
-import { escapeCsvField } from '@fastgpt/service/common/file/csv';
+import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 
 export type ExportCollectionBody = {
   collectionId: string;
@@ -110,10 +110,10 @@ async function handler(req: ApiRequestProps<ExportCollectionBody, {}>, res: Next
   write(`\uFEFFindex,content`);
 
   cursor.on('data', (doc) => {
-    const escapedQ = escapeCsvField(doc.q || '');
-    const escapedA = escapeCsvField(doc.a || '');
+    const sanitizedQ = sanitizeCsvField(doc.q || '');
+    const sanitizedA = sanitizeCsvField(doc.a || '');
 
-    write(`\n${escapedQ},${escapedA}`);
+    write(`\n${sanitizedQ},${sanitizedA}`);
   });
 
   cursor.on('end', () => {

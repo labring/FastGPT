@@ -5,6 +5,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { checkPswExpired } from '@/service/support/user/account/password';
 import { delUserAllSession } from '@fastgpt/service/support/user/session';
+import { getCookie } from '@fastgpt/service/support/permission/controller';
 
 export type resetExpiredPswQuery = {};
 
@@ -44,7 +45,8 @@ async function resetExpiredPswHandler(
     }
   );
 
-  await delUserAllSession(userId);
+  const token = getCookie(req);
+  await delUserAllSession(userId, [token]);
 
   return {};
 }
