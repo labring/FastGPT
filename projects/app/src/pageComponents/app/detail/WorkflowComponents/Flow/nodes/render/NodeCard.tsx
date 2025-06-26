@@ -420,9 +420,10 @@ const NodeCard = (props: Props) => {
             });
             onCloseToolParamConfigModal();
           }}
+          courseUrl={node?.courseUrl}
           inputConfig={inputConfig}
           hasSystemSecret={node?.hasSystemSecret}
-          secretCose={node?.currentCost}
+          secretCost={node?.currentCost}
         />
       )}
     </Flex>

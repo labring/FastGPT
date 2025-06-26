@@ -137,6 +137,7 @@
   "saved_success": "Saved successfully! \nTo use this version externally, click Save and Publish",
   "search_app": "Search apps",
   "search_tool": "Search Tools",
+  "secret_get_course": "Secret course",
   "setting_app": "Workflow",
   "setting_plugin": "Workflow",
   "show_top_p_tip": "An alternative method of temperature sampling, called Nucleus sampling, the model considers the results of tokens with TOP_P probability mass quality. \nTherefore, 0.1 means that only tokens containing the highest probability quality are considered. \nThe default is 1.",

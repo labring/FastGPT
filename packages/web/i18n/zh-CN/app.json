@@ -137,6 +137,7 @@
   "saved_success": "保存成功！如需在外部使用该版本，请点击“保存并发布”",
   "search_app": "搜索应用",
   "search_tool": "搜索工具",
+  "secret_get_course": "获取教程",
   "setting_app": "应用配置",
   "setting_plugin": "插件配置",
   "show_top_p_tip": "用温度采样的替代方法，称为Nucleus采样，该模型考虑了具有TOP_P概率质量质量的令牌的结果。因此，0.1表示仅考虑包含最高概率质量的令牌。默认为 1。",

@@ -97,7 +97,8 @@ const ConfigToolModal = ({
                       input={input}
                       setUploading={() => {}}
                       hasSystemSecret={configTool.hasSystemSecret}
-                      secretCose={configTool.currentCost}
+                      secretCost={configTool.currentCost}
+                      courseUrl={configTool.courseUrl}
                     />
                   );
                 }}
