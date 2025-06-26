@@ -569,17 +569,18 @@ export async function searchDatasetData(
               ...(filterCollectionIdList
                 ? {
                     collectionId: {
-                      $in: filterCollectionIdList.map((id) => new Types.ObjectId(id))
+                      $in: filterCollectionIdList
+                        .filter((id) => !forbidCollectionIdList.includes(id))
+                        .map((id) => new Types.ObjectId(id))
                     }
                   }
-                : {}),
-              ...(forbidCollectionIdList && forbidCollectionIdList.length > 0
-                ? {
-                    collectionId: {
-                      $nin: forbidCollectionIdList.map((id) => new Types.ObjectId(id))
+                : forbidCollectionIdList?.length
+                  ? {
+                      collectionId: {
+                        $nin: forbidCollectionIdList.map((id) => new Types.ObjectId(id))
+                      }
                     }
-                  }
-                : {})
+                  : {})
             }
           },
           {

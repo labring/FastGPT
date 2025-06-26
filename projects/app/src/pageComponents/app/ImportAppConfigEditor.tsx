@@ -43,8 +43,15 @@ const ImportAppConfigEditor = ({ value, onChange, rows = 16 }: Props) => {
           return;
         }
         if (e.target) {
-          const res = JSON.parse(e.target.result as string);
-          onChange(JSON.stringify(res, null, 2));
+          try {
+            const res = JSON.parse(e.target.result as string);
+            onChange(JSON.stringify(res, null, 2));
+          } catch (error) {
+            toast({
+              title: t('app:invalid_json_format'),
+              status: 'error'
+            });
+          }
         }
       };
       reader.readAsText(file);
@@ -63,70 +70,75 @@ const ImportAppConfigEditor = ({ value, onChange, rows = 16 }: Props) => {
   const handleDrop = useCallback(
     async (e: DragEvent<HTMLDivElement>) => {
       e.preventDefault();
+      setIsDragging(false);
       const file = e.dataTransfer.files[0];
       console.log(file);
       readJSONFile(file);
-      setIsDragging(false);
     },
     [readJSONFile]
   );
 
   return (
     <>
-      <Box w={['100%', '31rem']}>
-        {isDragging ? (
-          <Flex
-            align={'center'}
-            justify={'center'}
-            w={'full'}
-            h={'17.5rem'}
-            borderRadius={'md'}
-            border={'1px dashed'}
-            borderColor={'myGray.400'}
-            onDragEnter={handleDragEnter}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={handleDrop}
-            onDragLeave={handleDragLeave}
-          >
-            <Flex align={'center'} justify={'center'} flexDir={'column'} gap={'0.62rem'}>
-              <MyIcon name={'configmap'} w={'2rem'} color={'primary.500'} />
-              <Box color={'primary.600'} fontSize={'sm'}>
-                {t('app:file_recover')}
-              </Box>
-            </Flex>
-          </Flex>
-        ) : (
-          <Box>
-            <Flex justify={'space-between'} align={'center'} pb={3}>
-              <Box fontSize={'sm'} color={'myGray.900'} fontWeight={'500'}>
-                {t('common:json_config')}
-              </Box>
-              <Button onClick={onOpen} variant={'whiteBase'} p={0}>
-                <Flex px={'0.88rem'} py={'0.44rem'} color={'myGray.600'} fontSize={'mini'}>
-                  <MyIcon name={'file/uploadFile'} w={'1rem'} mr={'0.38rem'} />
-                  {t('common:upload_file')}
-                </Flex>
-              </Button>
-            </Flex>
-            <Box
-              onDragEnter={handleDragEnter}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={handleDrop}
-              onDragLeave={handleDragLeave}
-            >
-              <Textarea
-                bg={'myGray.50'}
-                border={'1px solid'}
-                borderRadius={'md'}
-                borderColor={'myGray.200'}
-                value={value}
-                placeholder={t('app:or_drag_JSON')}
-                rows={rows}
-                onChange={(e) => onChange(e.target.value)}
-              />
-            </Box>
+      <Box w={['100%', '31rem']} h={'full'} display={'flex'} flexDir={'column'}>
+        <Flex justify={'space-between'} align={'center'} pb={3} flexShrink={0}>
+          <Box fontSize={'sm'} color={'myGray.900'} fontWeight={'500'}>
+            {t('common:json_config')}
           </Box>
-        )}
+          <Button onClick={onOpen} variant={'whiteBase'} p={0}>
+            <Flex px={'0.88rem'} py={'0.44rem'} color={'myGray.600'} fontSize={'mini'}>
+              <MyIcon name={'file/uploadFile'} w={'1rem'} mr={'0.38rem'} />
+              {t('common:upload_file')}
+            </Flex>
+          </Button>
+        </Flex>
+        <Box
+          flex={1}
+          position={'relative'}
+          onDragEnter={handleDragEnter}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={handleDrop}
+          onDragLeave={handleDragLeave}
+        >
+          <Textarea
+            bg={'myGray.50'}
+            border={'1px solid'}
+            borderRadius={'md'}
+            borderColor={'myGray.200'}
+            value={value}
+            placeholder={t('app:or_drag_JSON')}
+            rows={rows}
+            onChange={(e) => onChange(e.target.value)}
+            h={'full'}
+            resize={'none'}
+            opacity={isDragging ? 0.3 : 1}
+            transition={'opacity 0.2s'}
+          />
+          {isDragging && (
+            <Flex
+              position={'absolute'}
+              top={0}
+              left={0}
+              right={0}
+              bottom={0}
+              align={'center'}
+              justify={'center'}
+              bg={'rgba(255, 255, 255, 0.95)'}
+              borderRadius={'md'}
+              border={'2px dashed'}
+              borderColor={'primary.400'}
+              zIndex={1}
+              pointerEvents={'none'}
+            >
+              <Flex align={'center'} justify={'center'} flexDir={'column'} gap={'0.62rem'}>
+                <MyIcon name={'configmap'} w={'2rem'} color={'primary.500'} />
+                <Box color={'primary.600'} fontSize={'sm'} fontWeight={'medium'}>
+                  {t('app:file_recover')}
+                </Box>
+              </Flex>
+            </Flex>
+          )}
+        </Box>
       </Box>
       {File && <File onSelect={onSelectFile} />}
     </>
