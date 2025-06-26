@@ -400,7 +400,7 @@ export function form2AppWorkflow(
               x: 500 + 500 * (i + 1),
               y: 545
             },
-            // 这里不需要固定版本，给一个不存在的版本，每次都会用最新版
+            toolConfig: tool.toolConfig,
             pluginData: tool.pluginData,
             inputs: tool.inputs.map((input) => {
               // Special key value
@@ -449,7 +449,7 @@ export function form2AppWorkflow(
           version: AgentNode.version,
           inputs: [
             {
-              key: 'model',
+              key: NodeInputKeyEnum.aiModel,
               renderTypeList: [
                 FlowNodeInputTypeEnum.settingLLMModel,
                 FlowNodeInputTypeEnum.reference
