@@ -96,7 +96,13 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
         if (input.key === NodeInputKeyEnum.toolData || input.key === 'toolData') {
           const value = input.value as McpToolDataType;
-          jsonSchema = value.inputSchema;
+          jsonSchema = value.inputSchema && {
+            ...value.inputSchema,
+            ...(value.inputSchema.type === 'object' &&
+              !value.inputSchema.properties && {
+                properties: {}
+              })
+          };
         }
       });
 
