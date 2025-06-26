@@ -4,6 +4,7 @@ import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { NextAPI } from '@/service/middleware/entry';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { checkPswExpired } from '@/service/support/user/account/password';
+import { delUserAllSession } from '@fastgpt/service/support/user/session';
 
 export type resetExpiredPswQuery = {};
 
@@ -42,6 +43,8 @@ async function resetExpiredPswHandler(
       passwordUpdateTime: new Date()
     }
   );
+
+  await delUserAllSession(userId);
 
   return {};
 }
