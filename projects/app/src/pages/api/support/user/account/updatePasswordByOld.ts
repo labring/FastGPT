@@ -8,7 +8,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { delUserAllSession } from '@fastgpt/service/support/user/session';
-import { getCookie } from '@fastgpt/service/support/permission/controller';
+import { parseHeaderCert } from '@fastgpt/service/support/permission/controller';
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { oldPsw, newPsw } = req.body as { oldPsw: string; newPsw: string };
 
@@ -42,8 +42,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     passwordUpdateTime: new Date()
   });
 
-  const token = getCookie(req);
-  await delUserAllSession(userId, [token]);
+  const { sessionId } = await parseHeaderCert({ req, authToken: true });
+  await delUserAllSession(userId, [sessionId]);
 
   (async () => {
     addAuditLog({

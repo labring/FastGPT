@@ -333,6 +333,17 @@ export async function parseHeaderCert({
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 
+  const sessionId = (() => {
+    const cookies = cookie?.split(';') || [];
+    for (const cookie of cookies) {
+      const [name, value] = cookie.trim().split('=');
+      if (name === TokenName) {
+        return value;
+      }
+    }
+    return '';
+  })();
+
   return {
     userId: String(uid),
     teamId: String(teamId),
@@ -341,7 +352,8 @@ export async function parseHeaderCert({
     authType,
     sourceName,
     apikey: openApiKey,
-    isRoot: !!isRoot
+    isRoot: !!isRoot,
+    sessionId: sessionId
   };
 }
 
@@ -353,20 +365,7 @@ export const setCookie = (res: NextApiResponse, token: string) => {
     `${TokenName}=${token}; Path=/; HttpOnly; Max-Age=604800; Samesite=Strict;`
   );
 };
-/* get cookie value */
-export const getCookie = (req: NextApiRequest): string => {
-  if (!req.headers.cookie) return '';
 
-  const cookies = req.headers.cookie.split(';');
-  for (const cookie of cookies) {
-    const [name, value] = cookie.trim().split('=');
-    if (name === TokenName) {
-      return value;
-    }
-  }
-
-  return '';
-};
 /* clear cookie */
 export const clearCookie = (res: NextApiResponse) => {
   res.setHeader('Set-Cookie', `${TokenName}=; Path=/; Max-Age=0`);
