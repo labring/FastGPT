@@ -39,8 +39,11 @@ export type InputConfigType = {
   label: string;
   description?: string;
   required?: boolean;
-  inputType: 'input' | 'secret' | 'switch';
+  inputType: 'input' | 'numberInput' | 'secret' | 'switch' | 'select';
   value?: SecretValueType;
+
+  // Selector
+  list?: { label: string; value: string }[];
 };
 
 export type FlowNodeInputItemType = InputComponentPropsType & {
