@@ -190,6 +190,7 @@
   "to_connect_node": "to connect",
   "tool.tool_result": "Tool operation results",
   "tool_active_config": "Tool active",
+  "tool_active_config_type": "Tool activation: {{type}}",
   "tool_call_termination": "Stop ToolCall",
   "tool_custom_field": "Custom Tool",
   "tool_field": " Tool Field Parameter Configuration",

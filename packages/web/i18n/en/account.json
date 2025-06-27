@@ -1,4 +1,5 @@
 {
+  "account_team.delete_dataset": "Delete the knowledge base",
   "active_model": "Available models",
   "add_default_model": "Add a preset model",
   "api_key": "API key",
