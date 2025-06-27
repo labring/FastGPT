@@ -189,6 +189,8 @@
   "to_add_node": "添加節點",
   "to_connect_node": "連接節點",
   "tool.tool_result": "工具運行結果",
+  "tool_active_config": "工具激活",
+  "tool_active_config_type": "工具激活: {{type}}",
   "tool_call_termination": "工具呼叫終止",
   "tool_custom_field": "自訂工具變數",
   "tool_field": "工具參數設定",
