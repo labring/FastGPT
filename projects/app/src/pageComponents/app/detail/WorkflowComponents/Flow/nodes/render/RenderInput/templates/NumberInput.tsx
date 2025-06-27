@@ -13,6 +13,7 @@ const NumberInputRender = ({ item, nodeId }: RenderInputProps) => {
         value={item.value}
         min={item.min}
         max={item.max}
+        precision={item.precision}
         inputFieldProps={{ bg: 'white' }}
         rounded={'md'}
         onChange={(e) => {
