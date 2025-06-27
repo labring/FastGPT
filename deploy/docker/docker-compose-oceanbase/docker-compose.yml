@@ -179,8 +179,50 @@ services:
       - USE_IP_LIMIT=false
       # 对话文件过期天数
       - CHAT_FILE_EXPIRE_TIME=7
+      # FastGPT plugin
+      - PLUGIN_BASE_URL=http://fastgpt-plugin:3000
+      - PLUGIN_TOKEN=token
     volumes:
       - ./config.json:/app/data/config.json
+
+  # FastGPT plugin
+  fastgpt-plugin:
+    image: ghcr.io/labring/fastgpt-plugin:v0.0.2 # GitHub Container Registry
+    # image: registry.cn-hangzhou.aliyuncs.com/labring/fastgpt-plugin:v0.0.2 # China Mainland Mirror provided by Aliyun
+    # image: registry.hub.docker.com/labring/fastgpt-plugin:v0.0.2 # Docker Hub
+    container_name: fastgpt-plugin
+    restart: always
+    networks:
+      - fastgpt
+    # ports:
+    #   - '3010:3000' # If integrated with FastGPT, you have no need to expose the port
+    environment:
+      - AUTH_TOKEN=token # disable authentication token if you do not set this variable
+      # Minio configuration
+      - MINIO_HOST=fastgpt-minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=fastgpt-plugins
+      - MINIO_USE_SSL=false
+    depends_on:
+      - minio
+
+  fastgpt-minio:
+    image: minio/minio:latest
+    container_name: fastgpt-minio
+    restart: always
+    networks:
+      - fastgpt
+    ports: # comment out if you do not need to expose the port (in production environment, you should not expose the port)
+      - '9000:9000'
+      - '9001:9001'
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
 
   # AI Proxy
   aiproxy:
