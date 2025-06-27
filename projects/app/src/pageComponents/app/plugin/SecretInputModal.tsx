@@ -11,6 +11,8 @@ import { useForm } from 'react-hook-form';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import IconButton from '@/pageComponents/account/team/OrgManage/IconButton';
 import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 
 export type ToolParamsFormType = {
   type: SystemToolInputTypeEnum;
@@ -191,14 +193,27 @@ const SecretInputModal = ({
                               </Flex>
                             )}
                             {item.inputType === 'switch' && (
-                              <Flex alignItems={'center'}>
+                              <Box>
                                 <Switch
                                   bg={'myGray.50'}
                                   {...register(inputKey, {
                                     required: item.required
                                   })}
                                 />
-                              </Flex>
+                              </Box>
+                            )}
+                            {item.inputType === 'numberInput' && (
+                              <MyNumberInput bg={'myGray.50'} register={register} name={inputKey} />
+                            )}
+                            {item.inputType === 'select' && (
+                              <MySelect
+                                bg={'myGray.50'}
+                                value={value?.value}
+                                list={item.list || []}
+                                onChange={(e) => {
+                                  setValue(inputKey, e);
+                                }}
+                              />
                             )}
                           </Box>
                         );

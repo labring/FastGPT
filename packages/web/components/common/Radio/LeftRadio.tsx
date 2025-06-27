@@ -114,7 +114,7 @@ const LeftRadio = <T = any,>({
             </Box>
           </Flex>
           {item?.children && (
-            <Box mt={4} pt={4} borderTop={'base'}>
+            <Box mt={4} pt={4} borderTop={'base'} cursor={'default'}>
               {item?.children}
             </Box>
           )}
