@@ -276,7 +276,7 @@ const NodeTemplateList = ({
               .filter((input) => input.deprecated !== true)
               .map((input) => ({
                 ...input,
-                value: defaultValueMap[input.key] ?? input.value,
+                value: defaultValueMap[input.key] ?? input.value ?? input.defaultValue,
                 valueDesc: t(input.valueDesc as any),
                 label: t(input.label as any),
                 description: t(input.description as any),
