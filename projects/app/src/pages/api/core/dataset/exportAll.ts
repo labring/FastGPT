@@ -13,6 +13,7 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
+import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 
 type DataItemType = {
   _id: string;
@@ -76,11 +77,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   write(`\uFEFFq,a,indexes`);
 
   cursor.on('data', (doc: DataItemType) => {
-    const q = doc.q.replace(/"/g, '""') || '';
-    const a = doc.a.replace(/"/g, '""') || '';
-    const indexes = doc.indexes.map((i) => `"${i.text.replace(/"/g, '""')}"`).join(',');
+    const sanitizedQ = sanitizeCsvField(doc.q || '');
+    const sanitizedA = sanitizeCsvField(doc.a || '');
+    const sanitizedIndexes = doc.indexes.map((i) => sanitizeCsvField(i.text || '')).join(',');
 
-    write(`\n"${q}","${a}",${indexes}`);
+    write(`\n${sanitizedQ},${sanitizedA},${sanitizedIndexes}`);
   });
 
   cursor.on('end', () => {
