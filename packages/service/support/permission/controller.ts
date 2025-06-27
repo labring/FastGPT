@@ -231,7 +231,7 @@ export async function parseHeaderCert({
       return Promise.reject(ERROR_ENUM.unAuthorization);
     }
 
-    return authUserSession(cookieToken);
+    return { ...(await authUserSession(cookieToken)), sessionId: cookieToken };
   }
   // from authorization get apikey
   async function parseAuthorization(authorization?: string) {

@@ -42,7 +42,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     passwordUpdateTime: new Date()
   });
 
-  await delUserAllSession(userId, [sessionId || '']);
+  await delUserAllSession(userId, [sessionId]);
 
   (async () => {
     addAuditLog({

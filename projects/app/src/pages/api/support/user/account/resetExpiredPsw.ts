@@ -44,7 +44,7 @@ async function resetExpiredPswHandler(
     }
   );
 
-  await delUserAllSession(userId, [sessionId || '']);
+  await delUserAllSession(userId, [sessionId]);
 
   return {};
 }

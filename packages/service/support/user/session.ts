@@ -57,7 +57,7 @@ const delSession = (key: string) => {
   retryFn(() => redis.del(getSessionKey(key)));
 };
 
-const getSession = async (key: string): Promise<SessionType & { sessionId: string }> => {
+const getSession = async (key: string): Promise<SessionType> => {
   const formatKey = getSessionKey(key);
   const redis = getGlobalRedisConnection();
 
@@ -75,8 +75,7 @@ const getSession = async (key: string): Promise<SessionType & { sessionId: strin
       tmbId: data.tmbId,
       isRoot: data.isRoot === '1',
       createdAt: parseInt(data.createdAt),
-      ip: data.ip,
-      sessionId: key
+      ip: data.ip
     };
   } catch (error) {
     addLog.error('Parse session error:', error);
@@ -84,9 +83,8 @@ const getSession = async (key: string): Promise<SessionType & { sessionId: strin
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 };
-
-export const delUserAllSession = async (userId: string, whiteList?: string[]) => {
-  const formatWhiteList = whiteList?.map((item) => getSessionKey(item));
+export const delUserAllSession = async (userId: string, whiteList?: (string | undefined)[]) => {
+  const formatWhiteList = whiteList?.map((item) => item && getSessionKey(item));
   const redis = getGlobalRedisConnection();
   const keys = (await getAllKeysByPrefix(`${redisPrefix}${userId}`)).filter(
     (item) => !formatWhiteList?.includes(item)
@@ -174,9 +172,7 @@ export const createUserSession = async ({
   return key;
 };
 
-export const authUserSession = async (
-  key: string
-): Promise<SessionType & { sessionId: string }> => {
+export const authUserSession = async (key: string): Promise<SessionType> => {
   const data = await getSession(key);
   return data;
 };
