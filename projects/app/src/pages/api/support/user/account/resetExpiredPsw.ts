@@ -5,7 +5,6 @@ import { NextAPI } from '@/service/middleware/entry';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { checkPswExpired } from '@/service/support/user/account/password';
 import { delUserAllSession } from '@fastgpt/service/support/user/session';
-import { parseHeaderCert } from '@fastgpt/service/support/permission/controller';
 
 export type resetExpiredPswQuery = {};
 
@@ -20,7 +19,7 @@ async function resetExpiredPswHandler(
   res: ApiResponseType<resetExpiredPswResponse>
 ): Promise<resetExpiredPswResponse> {
   const newPsw = req.body.newPsw;
-  const { userId } = await authCert({ req, authToken: true });
+  const { userId, sessionId } = await authCert({ req, authToken: true });
   const user = await MongoUser.findById(userId, 'passwordUpdateTime').lean();
 
   if (!user) {
@@ -45,8 +44,7 @@ async function resetExpiredPswHandler(
     }
   );
 
-  const { sessionId } = await parseHeaderCert({ req, authToken: true });
-  await delUserAllSession(userId, [sessionId]);
+  await delUserAllSession(userId, [sessionId || '']);
 
   return {};
 }

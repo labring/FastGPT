@@ -283,7 +283,7 @@ export async function parseHeaderCert({
 
   const { cookie, token, rootkey, authorization } = (req.headers || {}) as ReqHeaderAuthType;
 
-  const { uid, teamId, tmbId, appId, openApiKey, authType, isRoot, sourceName } =
+  const { uid, teamId, tmbId, appId, openApiKey, authType, isRoot, sourceName, sessionId } =
     await (async () => {
       if (authApiKey && authorization) {
         // apikey from authorization
@@ -309,7 +309,8 @@ export async function parseHeaderCert({
           appId: '',
           openApiKey: '',
           authType: AuthUserTypeEnum.token,
-          isRoot: res.isRoot
+          isRoot: res.isRoot,
+          sessionId: res.sessionId
         };
       }
       if (authRoot && rootkey) {
@@ -333,17 +334,6 @@ export async function parseHeaderCert({
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 
-  const sessionId = (() => {
-    const cookies = cookie?.split(';') || [];
-    for (const cookie of cookies) {
-      const [name, value] = cookie.trim().split('=');
-      if (name === TokenName) {
-        return value;
-      }
-    }
-    return '';
-  })();
-
   return {
     userId: String(uid),
     teamId: String(teamId),
@@ -353,7 +343,7 @@ export async function parseHeaderCert({
     sourceName,
     apikey: openApiKey,
     isRoot: !!isRoot,
-    sessionId: sessionId
+    sessionId
   };
 }
 

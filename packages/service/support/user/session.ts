@@ -57,7 +57,7 @@ const delSession = (key: string) => {
   retryFn(() => redis.del(getSessionKey(key)));
 };
 
-const getSession = async (key: string): Promise<SessionType> => {
+const getSession = async (key: string): Promise<SessionType & { sessionId: string }> => {
   const formatKey = getSessionKey(key);
   const redis = getGlobalRedisConnection();
 
@@ -75,7 +75,8 @@ const getSession = async (key: string): Promise<SessionType> => {
       tmbId: data.tmbId,
       isRoot: data.isRoot === '1',
       createdAt: parseInt(data.createdAt),
-      ip: data.ip
+      ip: data.ip,
+      sessionId: key
     };
   } catch (error) {
     addLog.error('Parse session error:', error);
@@ -173,7 +174,9 @@ export const createUserSession = async ({
   return key;
 };
 
-export const authUserSession = async (key: string): Promise<SessionType> => {
+export const authUserSession = async (
+  key: string
+): Promise<SessionType & { sessionId: string }> => {
   const data = await getSession(key);
   return data;
 };

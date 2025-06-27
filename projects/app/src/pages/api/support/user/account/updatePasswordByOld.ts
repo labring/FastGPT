@@ -16,7 +16,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     return Promise.reject('Params is missing');
   }
 
-  const { tmbId, teamId } = await authCert({ req, authToken: true });
+  const { tmbId, teamId, sessionId } = await authCert({ req, authToken: true });
   const tmb = await MongoTeamMember.findById(tmbId);
   if (!tmb) {
     return Promise.reject('can not find it');
@@ -42,8 +42,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     passwordUpdateTime: new Date()
   });
 
-  const { sessionId } = await parseHeaderCert({ req, authToken: true });
-  await delUserAllSession(userId, [sessionId]);
+  await delUserAllSession(userId, [sessionId || '']);
 
   (async () => {
     addAuditLog({
