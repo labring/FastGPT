@@ -203,10 +203,16 @@ const SecretInputModal = ({
                               </Box>
                             )}
                             {item.inputType === 'numberInput' && (
-                              <MyNumberInput bg={'myGray.50'} register={register} name={inputKey} />
+                              <MyNumberInput
+                                bg={'myGray.50'}
+                                h={'36px'}
+                                register={register}
+                                name={inputKey}
+                              />
                             )}
                             {item.inputType === 'select' && (
                               <MySelect
+                                h={'36px'}
                                 bg={'myGray.50'}
                                 value={value?.value}
                                 list={item.list || []}
