@@ -32,6 +32,7 @@ import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
+import { isProduction } from '@fastgpt/global/common/system/constants';
 
 /**
   plugin id rule:
@@ -378,7 +379,7 @@ export const refetchSystemPlugins = () => {
 };
 
 export const getSystemPlugins = async (): Promise<SystemPluginTemplateItemType[]> => {
-  if (getCachedSystemPlugins().expires > Date.now() && process.env.NODE_ENV === 'production') {
+  if (getCachedSystemPlugins().expires > Date.now() && isProduction) {
     return getCachedSystemPlugins().data;
   } else {
     const tools = await getSystemToolList();
@@ -461,7 +462,6 @@ export const getSystemPluginById = async (
   pluginId: string
 ): Promise<SystemPluginTemplateItemType> => {
   const { source } = splitCombineToolId(pluginId);
-
   if (source === PluginSourceEnum.systemTool) {
     const tools = await getSystemPlugins();
     const tool = tools.find((item) => item.id === pluginId);

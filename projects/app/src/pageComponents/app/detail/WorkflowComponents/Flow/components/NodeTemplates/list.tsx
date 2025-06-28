@@ -9,8 +9,7 @@ import {
   Grid,
   Flex,
   HStack,
-  css,
-  useToast
+  css
 } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -45,6 +44,7 @@ import { useReactFlow, type Node } from 'reactflow';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { WorkflowEventContext } from '../../../context/workflowEventContext';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 export type TemplateListProps = {
   onAddNode: ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => void;
@@ -202,7 +202,7 @@ const NodeTemplateList = ({
   onUpdateParentId
 }: TemplateListProps) => {
   const { t } = useTranslation();
-  const toast = useToast();
+  const { toast } = useToast();
   const { computedNewNodeName } = useWorkflowUtils();
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const handleParams = useContextSelector(WorkflowEventContext, (v) => v.handleParams);
@@ -238,7 +238,7 @@ const NodeTemplateList = ({
           } catch (e) {
             toast({
               status: 'error',
-              title: getErrText(e, t('common:core.plugin.Get Plugin Module Detail Failed'))
+              title: t(getErrText(e, t('common:core.plugin.Get Plugin Module Detail Failed')))
             });
             return Promise.reject(e);
           }
