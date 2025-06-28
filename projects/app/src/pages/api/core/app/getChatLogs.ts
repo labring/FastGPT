@@ -86,14 +86,44 @@ async function handler(
                 $group: {
                   _id: null,
                   messageCount: { $sum: 1 },
-                  goodFeedback: { $sum: { $cond: [{ $eq: ['$userGoodFeedback', true] }, 1, 0] } },
-                  badFeedback: { $sum: { $cond: [{ $eq: ['$userBadFeedback', true] }, 1, 0] } },
+                  goodFeedback: {
+                    $sum: {
+                      $cond: [
+                        {
+                          $ifNull: ['$userGoodFeedback', false]
+                        },
+                        1,
+                        0
+                      ]
+                    }
+                  },
+                  badFeedback: {
+                    $sum: {
+                      $cond: [
+                        {
+                          $ifNull: ['$userBadFeedback', false]
+                        },
+                        1,
+                        0
+                      ]
+                    }
+                  },
                   customFeedback: {
                     $sum: {
                       $cond: [{ $gt: [{ $size: { $ifNull: ['$customFeedbacks', []] } }, 0] }, 1, 0]
                     }
                   },
-                  adminMark: { $sum: { $cond: [{ $eq: ['$adminFeedback', true] }, 1, 0] } }
+                  adminMark: {
+                    $sum: {
+                      $cond: [
+                        {
+                          $ifNull: ['$adminFeedback', false]
+                        },
+                        1,
+                        0
+                      ]
+                    }
+                  }
                 }
               }
             ],
@@ -140,9 +170,9 @@ async function handler(
     ),
     MongoChat.countDocuments(where, { ...readFromSecondary })
   ]);
-
+  console.log(list);
   const listWithSourceMember = await addSourceMember({
-    list: list
+    list
   });
 
   const listWithoutTmbId = list.filter((item) => !item.tmbId);
