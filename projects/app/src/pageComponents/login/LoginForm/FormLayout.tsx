@@ -127,6 +127,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
         router.replace(redirectUrl, '_self');
         return;
       }
+
       if (item.redirectUrl) {
         setLoginStore({
           provider: item.provider as OAuthEnum,
