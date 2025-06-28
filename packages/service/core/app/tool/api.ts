@@ -1,4 +1,5 @@
 import createClient, { type SystemVarType } from '@fastgpt-sdk/plugin';
+import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 
 const client = createClient({
   baseUrl: process.env.PLUGIN_BASE_URL || '',
@@ -7,21 +8,12 @@ const client = createClient({
 
 export async function getSystemToolList() {
   const res = await client.tool.list();
-  if (res.status === 200) return res.body;
-  return Promise.reject(res.body);
-}
 
-export async function getSystemTool({ toolId }: { toolId: string }) {
-  const res = await client.tool.getTool({
-    query: {
-      toolId
-    }
-  });
   if (res.status === 200) {
     return res.body;
-  } else {
-    return Promise.reject(res.body);
   }
+
+  return Promise.reject(res.body);
 }
 
 export async function runTool({
