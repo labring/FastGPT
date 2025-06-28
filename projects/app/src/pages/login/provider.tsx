@@ -33,7 +33,7 @@ const provider = () => {
     (res: ResLogin) => {
       setUserInfo(res.user);
 
-      router.push(
+      router.replace(
         loginStore?.lastRoute ? decodeURIComponent(loginStore?.lastRoute) : '/dashboard/apps'
       );
     },
