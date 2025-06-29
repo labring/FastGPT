@@ -11,6 +11,14 @@ const nextConfig = {
   output: 'standalone',
   reactStrictMode: isDev ? false : true,
   compress: true,
+  async rewrites() {
+    return [
+      {
+        source: '/imgs/tools/:path*',
+        destination: '/api/imgs/tools/:path*'
+      }
+    ];
+  },
   webpack(config, { isServer, nextRuntime }) {
     Object.assign(config.resolve.alias, {
       '@mongodb-js/zstd': false,
