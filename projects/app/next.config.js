@@ -36,7 +36,15 @@ const nextConfig = {
             key: 'Permissions-Policy',
             value: 'geolocation=(self), microphone=(self), camera=(self)'
           }
-        ]
+        ],
+      }
+    ];
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/imgs/tools/:path*',
+        destination: '/api/system/pluginImgs/:path*'
       }
     ];
   },
