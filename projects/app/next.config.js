@@ -15,7 +15,7 @@ const nextConfig = {
     return [
       {
         source: '/imgs/tools/:path*',
-        destination: '/api/imgs/tools/:path*'
+        destination: '/api/system/pluginImgs/:path*'
       }
     ];
   },
