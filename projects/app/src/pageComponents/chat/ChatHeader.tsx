@@ -201,9 +201,9 @@ const MobileDrawer = ({
         {currentTab === TabEnum.app && (
           <SelectOneResource
             value={appId}
-            onSelect={(id) => {
-              if (!id) return;
-              onclickApp(id);
+            onSelect={(item) => {
+              if (!item) return;
+              onclickApp(item.id);
             }}
             server={getAppList}
           />

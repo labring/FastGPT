@@ -66,6 +66,7 @@ export type AppListItemType = {
   inheritPermission?: boolean;
   private?: boolean;
   sourceMember: SourceMemberType;
+  hasInteractiveNode?: boolean;
 };
 
 export type AppDetailType = AppSchema & {
