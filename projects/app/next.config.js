@@ -40,14 +40,6 @@ const nextConfig = {
       }
     ];
   },
-  async rewrites() {
-    return [
-      {
-        source: '/imgs/tools/:path*',
-        destination: '/api/system/pluginImgs/:path*'
-      }
-    ];
-  },
   webpack(config, { isServer, nextRuntime }) {
     Object.assign(config.resolve.alias, {
       '@mongodb-js/zstd': false,
