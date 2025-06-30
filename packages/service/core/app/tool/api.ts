@@ -14,7 +14,11 @@ export async function getSystemToolList() {
       return {
         ...item,
         id: `${PluginSourceEnum.systemTool}-${item.id}`,
-        parentId: item.parentId ? `${PluginSourceEnum.systemTool}-${item.parentId}` : undefined
+        parentId: item.parentId ? `${PluginSourceEnum.systemTool}-${item.parentId}` : undefined,
+        avatar:
+          item.avatar && item.avatar.startsWith('/imgs/tools')
+            ? `/api/system/pluginImgs/${item.avatar.replace('/imgs/tools', '')}`
+            : item.avatar
       };
     });
   }
