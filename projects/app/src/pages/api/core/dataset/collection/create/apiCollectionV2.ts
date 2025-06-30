@@ -59,16 +59,15 @@ export const createApiDatasetCollection = async ({
   ).lean();
   const existApiFileIdSet = new Set(existCollections.map((item) => item.apiFileId).filter(Boolean));
 
-  // 检查是否传递的是目录（目录全选的情况）
-  const isDirectorySelected =
-    apiFiles.length === 1 && apiFiles[0].type === 'folder' && apiFiles[0].hasChild;
-
-  const rootDirectoryId = isDirectorySelected ? 'SYSTEM_ROOT' : undefined;
-
   const startId =
     dataset.apiDatasetServer?.apiServer?.basePath ||
     dataset.apiDatasetServer?.yuqueServer?.basePath ||
     dataset.apiDatasetServer?.feishuServer?.folderToken;
+
+  // 检查是否传递的是目录（目录全选的情况）
+  const isDirectorySelected = apiFiles.length === 1 && apiFiles[0].id === startId;
+
+  const rootDirectoryId = isDirectorySelected ? 'SYSTEM_ROOT' : undefined;
 
   // Get all apiFileId with top level parent ID
   const getFilesRecursively = async (
@@ -85,6 +84,7 @@ export const createApiDatasetCollection = async ({
         : topLevelParentId || (file.hasChild ? file.id : undefined);
 
       // 为文件添加顶级父目录ID
+      console.log('currentTopLevelParentId', currentTopLevelParentId);
       const fileWithParentId = {
         ...file,
         apiFileParentId: currentTopLevelParentId
@@ -112,7 +112,7 @@ export const createApiDatasetCollection = async ({
   return mongoSessionRun(async (session) => {
     for await (const file of createFiles) {
       // Create folder
-      if (file.hasChild) {
+      if (file.hasChild && file.type === 'folder') {
         await createOneCollection({
           teamId,
           tmbId,
@@ -120,7 +120,8 @@ export const createApiDatasetCollection = async ({
           name: file.name,
           type: DatasetCollectionTypeEnum.folder,
           datasetId: dataset._id,
-          apiFileId: file.id === startId ? 'SYSTEM_ROOT' : file.id
+          apiFileId: file.id === startId ? 'SYSTEM_ROOT' : file.id,
+          apiFileParentId: file.id === startId ? startId : undefined
         });
       }
 

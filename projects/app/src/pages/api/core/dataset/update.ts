@@ -35,6 +35,10 @@ import {
   removeWebsiteSyncJobScheduler,
   upsertWebsiteSyncJobScheduler
 } from '@fastgpt/service/core/dataset/websiteSync';
+import {
+  removeApiDatasetSyncJobScheduler,
+  upsertApiDatasetSyncJobScheduler
+} from '@fastgpt/service/core/dataset/apiDatasetSync';
 import { delDatasetRelevantData } from '@fastgpt/service/core/dataset/controller';
 import { isEqual } from 'lodash';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
@@ -322,6 +326,14 @@ const updateSyncSchedule = async ({
     } else {
       // remove Job Scheduler
       return removeWebsiteSyncJobScheduler(dataset._id);
+    }
+  } else if (dataset.type === DatasetTypeEnum.apiDataset) {
+    if (autoSync) {
+      // upsert Job Scheduler
+      return upsertApiDatasetSyncJobScheduler({ datasetId: dataset._id });
+    } else {
+      // remove Job Scheduler
+      return removeApiDatasetSyncJobScheduler(dataset._id);
     }
   } else {
     // Other dataset, update the collection sync
