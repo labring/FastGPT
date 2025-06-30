@@ -16,6 +16,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { type APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMount } from 'ahooks';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
   loading: () => <Loading fixed={false} />
@@ -47,6 +48,7 @@ const CustomAPIFileInput = () => {
   const setSources = useContextSelector(DatasetImportContext, (v) => v.setSources);
 
   const [selectFiles, setSelectFiles] = useState<APIFileItemType[]>([]);
+  const [isSelectRoot, setIsSelectRoot] = useState(false);
   const [parent, setParent] = useState<ParentTreePathItemType>({
     parentId: '',
     parentName: ''
@@ -86,47 +88,28 @@ const CustomAPIFileInput = () => {
 
   const { runAsync: onclickNext, loading: onNextLoading } = useRequest2(
     async () => {
-      // 只对根目录进行全选判断
-      const isRootDirectory = !parent?.parentId;
-
       let finalSelectedFiles: APIFileItemType[] = [];
 
-      if (isRootDirectory) {
-        // 检查是否根目录下的文件被全选了
-        const currentDirectoryFiles = fileList.filter((item) => !existIdList.has(item.id));
-        const selectedCurrentDirectoryFiles = selectFiles.filter((file) =>
-          currentDirectoryFiles.some((item) => item.id === file.id)
-        );
+      if (isSelectRoot) {
+        // 选择了根目录，传递根目录
+        const rootDirectoryId =
+          datasetDetail.apiDatasetServer?.apiServer?.basePath ||
+          datasetDetail.apiDatasetServer?.yuqueServer?.basePath ||
+          datasetDetail.apiDatasetServer?.feishuServer?.folderToken ||
+          '';
 
-        // 如果根目录下的所有文件都被选中了，则认为根目录被选中
-        const isRootDirectoryFullySelected =
-          currentDirectoryFiles.length > 0 &&
-          selectedCurrentDirectoryFiles.length === currentDirectoryFiles.length;
-
-        if (isRootDirectoryFullySelected) {
-          // 根目录全选，传递根目录
-          const rootDirectoryId =
-            datasetDetail.apiDatasetServer?.apiServer?.basePath ||
-            datasetDetail.apiDatasetServer?.yuqueServer?.basePath ||
-            datasetDetail.apiDatasetServer?.feishuServer?.folderToken ||
-            '';
-
-          const currentDirectory: APIFileItemType = {
-            id: rootDirectoryId,
-            parentId: '',
-            name: '根目录',
-            type: 'folder',
-            hasChild: true,
-            updateTime: new Date(),
-            createTime: new Date()
-          };
-          finalSelectedFiles = [currentDirectory];
-        } else {
-          // 正常传递选中的文件
-          finalSelectedFiles = selectFiles;
-        }
+        const currentDirectory: APIFileItemType = {
+          id: rootDirectoryId,
+          parentId: '',
+          name: '根目录',
+          type: 'folder',
+          hasChild: true,
+          updateTime: new Date(),
+          createTime: new Date()
+        };
+        finalSelectedFiles = [currentDirectory];
       } else {
-        // 非根目录，直接传递选中的文件，不做全选判断
+        // 正常传递选中的文件
         finalSelectedFiles = selectFiles;
       }
 
@@ -151,24 +134,21 @@ const CustomAPIFileInput = () => {
     }
   );
 
-  const isAllSelected = useMemo(() => {
-    return fileList.every(
-      (item) => existIdList.has(item.id) || selectFiles.some((file) => file.id === item.id)
-    );
-  }, [fileList, existIdList, selectFiles]);
+  const handleSelectRoot = useCallback(() => {
+    const isRootDirectory = !parent?.parentId;
 
-  const handleSelectAll = useCallback(() => {
-    if (isAllSelected) {
-      setSelectFiles((state) =>
-        state.filter((file) => !fileList.find((item) => item.id === file.id))
-      );
+    if (!isRootDirectory) return;
+
+    if (isSelectRoot) {
+      // 取消选择根目录
+      setIsSelectRoot(false);
+      setSelectFiles([]);
     } else {
-      setSelectFiles((state) => [
-        ...state.filter((file) => !fileList.find((item) => item.id === file.id)),
-        ...fileList.filter((item) => !existIdList.has(item.id))
-      ]);
+      // 选择根目录
+      setIsSelectRoot(true);
+      setSelectFiles([]);
     }
-  }, [isAllSelected, fileList, existIdList]);
+  }, [isSelectRoot, parent?.parentId]);
 
   return (
     <MyBox isLoading={loading} position="relative" h="full">
@@ -221,10 +201,11 @@ const CustomAPIFileInput = () => {
                   <Checkbox
                     className="checkbox"
                     mr={2}
-                    isChecked={isAllSelected}
-                    onChange={handleSelectAll}
+                    isChecked={isSelectRoot}
+                    onChange={handleSelectRoot}
                   />
-                  {t('common:Select_all')}
+                  {t('common:Select_root')}
+                  <QuestionTip ml={1} label={t('common:dataset.select_root_tip')} />
                 </>
               )}
             </Flex>
@@ -253,6 +234,8 @@ const CustomAPIFileInput = () => {
                         parentName: item.name
                       });
                     } else {
+                      // 选择单个文件时，取消根目录选择
+                      setIsSelectRoot(false);
                       if (isChecked) {
                         setSelectFiles((state) => state.filter((file) => file.id !== item.id));
                       } else {
@@ -268,6 +251,8 @@ const CustomAPIFileInput = () => {
                     isDisabled={isExists}
                     onChange={(e) => {
                       e.stopPropagation();
+                      // 选择单个文件时，取消根目录选择
+                      setIsSelectRoot(false);
                       if (isChecked) {
                         setSelectFiles((state) => state.filter((file) => file.id !== item.id));
                       } else {
@@ -304,7 +289,7 @@ const CustomAPIFileInput = () => {
           p={4}
         >
           <Button
-            isDisabled={selectFiles.length === 0}
+            isDisabled={selectFiles.length === 0 && !isSelectRoot}
             isLoading={onNextLoading}
             onClick={onclickNext}
           >

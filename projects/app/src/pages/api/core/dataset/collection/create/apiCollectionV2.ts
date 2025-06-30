@@ -120,8 +120,7 @@ export const createApiDatasetCollection = async ({
           name: file.name,
           type: DatasetCollectionTypeEnum.folder,
           datasetId: dataset._id,
-          apiFileId: file.id === startId ? 'SYSTEM_ROOT' : file.id,
-          apiFileParentId: file.id === startId ? startId : undefined
+          apiFileId: file.id === startId ? 'SYSTEM_ROOT' : file.id
         });
       }
 
