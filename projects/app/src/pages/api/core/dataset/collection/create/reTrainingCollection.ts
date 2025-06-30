@@ -10,6 +10,7 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
 
 type RetrainingCollectionResponse = {
   collectionId: string;
@@ -47,7 +48,11 @@ async function handler(
       createCollectionParams: {
         ...collection,
         ...data,
-        updateTime: new Date()
+        updateTime: new Date(),
+        tags: await collectionTagsToTagLabel({
+          datasetId: collection.datasetId,
+          tags: collection.tags
+        })
       }
     });
 
