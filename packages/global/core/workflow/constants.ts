@@ -192,6 +192,12 @@ export enum NodeInputKeyEnum {
   contextExtractInput = 'content',
   extractKeys = 'extractKeys',
 
+  // mcp call
+  mcpUrl = 'mcpUrl',
+  mcpTool = 'mcpTool',
+  mcpAuth = 'mcpAuth',
+  mcpParams = 'mcpParams',
+
   // http
   httpReqUrl = 'system_httpReqUrl',
   httpHeaders = 'system_httpHeader',
