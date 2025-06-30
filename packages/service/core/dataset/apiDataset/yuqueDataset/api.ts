@@ -313,9 +313,6 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
   };
 
   const getFileId = (fileId: string) => {
-    if (fileId === 'SYSTEM_ROOT') {
-      return 'SYSTEM_ROOT';
-    }
     const [repoId, parentUuid, fileUuid] = fileId.split(/-(.*?)-(.*)/);
     if (fileUuid) {
       return `${fileUuid}`;
