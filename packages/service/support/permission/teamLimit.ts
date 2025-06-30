@@ -90,7 +90,7 @@ export const checkDatasetIndexLimit = async ({
   return;
 };
 
-export const checkTeamDatasetLimit = async (teamId: string) => {
+export const checkTeamDatasetSyncLimit = async (teamId: string) => {
   const [{ standardConstants }, datasetCount] = await Promise.all([
     getTeamStandPlan({ teamId }),
     MongoDataset.countDocuments({

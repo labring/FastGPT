@@ -101,7 +101,7 @@ const CustomAPIFileInput = () => {
         const currentDirectory: APIFileItemType = {
           id: rootDirectoryId,
           parentId: '',
-          name: '根目录',
+          name: 'ROOT_FOLDER',
           type: 'folder',
           hasChild: true,
           updateTime: new Date(),
