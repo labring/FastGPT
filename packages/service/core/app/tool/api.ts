@@ -16,8 +16,8 @@ export async function getSystemToolList() {
         id: `${PluginSourceEnum.systemTool}-${item.id}`,
         parentId: item.parentId ? `${PluginSourceEnum.systemTool}-${item.parentId}` : undefined,
         avatar:
-          item.avatar && item.avatar.startsWith('/imgs/tools')
-            ? `/api/system/pluginImgs/${item.avatar.replace('/imgs/tools', '')}`
+          item.avatar && item.avatar.startsWith('/imgs/tools/')
+            ? `/api/system/pluginImgs/${item.avatar.replace('/imgs/tools/', '')}`
             : item.avatar
       };
     });
