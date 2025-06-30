@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 
-import { checkDatasetSyncLimit } from '@fastgpt/service/support/user/utils';
+import { checkApiDatasetSyncLimit } from '@fastgpt/service/support/user/utils';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -9,7 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 凭证校验
     const { teamId } = await authCert({ req, authToken: true });
 
-    await checkDatasetSyncLimit({
+    await checkApiDatasetSyncLimit({
       teamId,
       limitMinutes: global.feConfigs?.limit?.websiteSyncLimitMinuted
     });

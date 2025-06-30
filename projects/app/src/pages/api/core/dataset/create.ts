@@ -15,7 +15,7 @@ import {
 } from '@fastgpt/service/core/ai/model';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { checkTeamDatasetSyncLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
@@ -68,7 +68,7 @@ async function handler(
   }
 
   // check limit
-  await checkTeamDatasetLimit(teamId);
+  await checkTeamDatasetSyncLimit(teamId);
 
   const datasetId = await mongoSessionRun(async (session) => {
     const [{ _id }] = await MongoDataset.create(

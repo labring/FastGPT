@@ -72,14 +72,14 @@ export const checkWebSyncLimit = async ({
 };
 
 /* dataset sync limit */
-export const updateDatasetSyncLimit = async (teamId: string) => {
+export const updateApiDatasetSyncLimit = async (teamId: string) => {
   try {
     await MongoTeam.findByIdAndUpdate(teamId, {
       'limit.lastWebsiteSyncTime': new Date()
     });
   } catch (error) {}
 };
-export const checkDatasetSyncLimit = async ({
+export const checkApiDatasetSyncLimit = async ({
   teamId,
   limitMinutes = 0
 }: {
