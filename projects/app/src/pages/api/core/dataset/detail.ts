@@ -6,6 +6,7 @@ import { type DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getWebsiteSyncDatasetStatus } from '@fastgpt/service/core/dataset/websiteSync';
+import { getApiDatasetSyncDatasetStatus } from '@fastgpt/service/core/dataset/apiDatasetSync';
 import { DatasetStatusEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
 
@@ -34,6 +35,9 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
   const { status, errorMsg } = await (async () => {
     if (dataset.type === DatasetTypeEnum.websiteDataset) {
       return await getWebsiteSyncDatasetStatus(datasetId);
+    }
+    if (dataset.type === DatasetTypeEnum.apiDataset) {
+      return await getApiDatasetSyncDatasetStatus(datasetId);
     }
 
     return {

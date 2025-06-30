@@ -14,6 +14,7 @@ import { removeWebsiteSyncJobScheduler } from '@fastgpt/service/core/dataset/web
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { removeApiDatasetSyncJobScheduler } from '@fastgpt/service/core/dataset/apiDatasetSync';
 
 async function handler(req: NextApiRequest) {
   const { id: datasetId } = req.query as {
@@ -50,6 +51,8 @@ async function handler(req: NextApiRequest) {
     datasets.map((dataset) => {
       if (dataset.type === DatasetTypeEnum.websiteDataset)
         return removeWebsiteSyncJobScheduler(dataset._id);
+      if (dataset.type === DatasetTypeEnum.apiDataset)
+        return removeApiDatasetSyncJobScheduler(dataset._id);
     })
   );
 

@@ -144,7 +144,7 @@ export type PushDatasetDataChunkProps = {
   indexes?: Omit<DatasetDataIndexItemType, 'dataId'>[];
 };
 
-export type PostWebsiteSyncParams = {
+export type PostDatasetSyncParams = {
   datasetId: string;
 };
 
