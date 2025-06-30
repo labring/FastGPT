@@ -64,7 +64,7 @@ export const createApiDatasetCollection = async ({
     dataset.apiDatasetServer?.yuqueServer?.basePath ||
     dataset.apiDatasetServer?.feishuServer?.folderToken;
 
-  // 检查是否传递的是目录（目录全选的情况）
+  // check if the directory is selected
   const isDirectorySelected = apiFiles.length === 1 && apiFiles[0].id === startId;
 
   const rootDirectoryId = isDirectorySelected ? 'SYSTEM_ROOT' : undefined;
@@ -77,14 +77,13 @@ export const createApiDatasetCollection = async ({
     const allFiles: (APIFileItemType & { apiFileParentId?: string })[] = [];
 
     for (const file of files) {
-      // 如果目录是全选，则所有文件的顶级父目录ID都是该目录ID
-      // 否则按照原来的逻辑确定顶级父目录ID
+      // if the directory is selected, then the top level parent id of all files is the directory id
+      // otherwise, determine the top level parent id according to the original logic
       let currentTopLevelParentId = isDirectorySelected
         ? rootDirectoryId
         : topLevelParentId || (file.hasChild ? file.id : undefined);
 
       // 为文件添加顶级父目录ID
-      console.log('currentTopLevelParentId', currentTopLevelParentId);
       const fileWithParentId = {
         ...file,
         apiFileParentId: currentTopLevelParentId

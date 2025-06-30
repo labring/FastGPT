@@ -91,7 +91,7 @@ const CustomAPIFileInput = () => {
       let finalSelectedFiles: APIFileItemType[] = [];
 
       if (isSelectRoot) {
-        // 选择了根目录，传递根目录
+        // if the root directory is selected, pass the root directory
         const rootDirectoryId =
           datasetDetail.apiDatasetServer?.apiServer?.basePath ||
           datasetDetail.apiDatasetServer?.yuqueServer?.basePath ||
@@ -109,7 +109,7 @@ const CustomAPIFileInput = () => {
         };
         finalSelectedFiles = [currentDirectory];
       } else {
-        // 正常传递选中的文件
+        // pass the selected files
         finalSelectedFiles = selectFiles;
       }
 
@@ -140,11 +140,11 @@ const CustomAPIFileInput = () => {
     if (!isRootDirectory) return;
 
     if (isSelectRoot) {
-      // 取消选择根目录
+      // cancel the selection of the root directory
       setIsSelectRoot(false);
       setSelectFiles([]);
     } else {
-      // 选择根目录
+      // select the root directory
       setIsSelectRoot(true);
       setSelectFiles([]);
     }
