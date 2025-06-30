@@ -43,8 +43,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): CreateCo
     const { fileMetadata, collectionMetadata, ...collectionData } = data;
     const collectionName = file.originalname;
 
-    const relatedImgId = getNanoid();
-
     // 1. upload file
     const fileId = await uploadFile({
       teamId,
@@ -71,7 +69,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): CreateCo
         fileId,
         metadata: {
           ...collectionMetadata,
-          relatedImgId
+          relatedImgId: fileId
         }
       }
     });
