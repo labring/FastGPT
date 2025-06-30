@@ -207,10 +207,15 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
     };
   };
 
+  const getFileId = (fileId: string) => {
+    return fileId;
+  };
+
   return {
     getFileContent,
     listFiles,
     getFilePreviewUrl,
-    getFileDetail
+    getFileDetail,
+    getFileId
   };
 };

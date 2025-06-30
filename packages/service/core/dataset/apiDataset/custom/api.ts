@@ -212,10 +212,15 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     return Promise.reject('File not found');
   };
 
+  const getFileId = (fileId: string) => {
+    return fileId;
+  };
+
   return {
     getFileContent,
     listFiles,
     getFilePreviewUrl,
-    getFileDetail
+    getFileDetail,
+    getFileId
   };
 };

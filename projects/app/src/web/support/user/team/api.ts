@@ -98,6 +98,7 @@ export const loadTeamTagsByDomain = (domain: string) =>
 export const checkTeamExportDatasetLimit = (datasetId: string) =>
   GET(`/support/user/team/limit/exportDatasetLimit`, { datasetId });
 export const checkTeamWebSyncLimit = () => GET(`/support/user/team/limit/webSyncLimit`);
+export const checkTeamDatasetSyncLimit = () => GET(`/support/user/team/limit/apiDatasetSyncLimit`);
 export const checkTeamDatasetSizeLimit = (size: number) =>
   GET(`/support/user/team/limit/datasetSizeLimit`, { size });
 
