@@ -36,12 +36,12 @@ import { isProduction } from '@fastgpt/global/common/system/constants';
 
 /**
   plugin id rule:
-  - personal: id
-  - commercial: commercial-id
+  - personal: ObjectId
+  - commercial: commercial-ObjectId
   - systemtool: systemTool-id
   (deprecated) community: community-id
 */
-export function splitCombineToolId(id: string) {
+export function splitCombinePluginId(id: string) {
   const splitRes = id.split('-');
   if (splitRes.length === 1) {
     // app id
@@ -53,10 +53,15 @@ export function splitCombineToolId(id: string) {
 
   const [source, pluginId] = id.split('-') as [PluginSourceEnum, string | undefined];
   if (!source || !pluginId) throw new Error('pluginId not found');
+
+  // 兼容4.10.0 之前的插件
   if (source === 'community' || id === 'commercial-dalle3') {
-    // HINT: 兼容性问题 commercial-dalle3
-    return { source: PluginSourceEnum.systemTool, pluginId: id };
+    return {
+      source: PluginSourceEnum.systemTool,
+      pluginId: `${PluginSourceEnum.systemTool}-${pluginId}`
+    };
   }
+
   return { source, pluginId: id };
 }
 
@@ -143,18 +148,19 @@ export async function getChildAppPreviewNode({
   versionId?: string;
   lang?: localeType;
 }): Promise<FlowNodeTemplateType> {
-  const { source, pluginId } = splitCombineToolId(appId);
+  const { source, pluginId } = splitCombinePluginId(appId);
+
   const app: ChildAppType = await (async () => {
     if (source === PluginSourceEnum.personal) {
-      const item = await MongoApp.findById(appId).lean();
+      const item = await MongoApp.findById(pluginId).lean();
       if (!item) return Promise.reject(PluginErrEnum.unExist);
 
-      const version = await getAppVersionById({ appId, versionId, app: item });
+      const version = await getAppVersionById({ appId: pluginId, versionId, app: item });
 
       const isLatest =
         version.versionId && Types.ObjectId.isValid(version.versionId)
           ? await checkIsLatestVersion({
-              appId,
+              appId: pluginId,
               versionId: version.versionId
             })
           : true;
@@ -274,14 +280,14 @@ export async function getChildAppRuntimeById(
   lang: localeType = 'en'
 ): Promise<PluginRuntimeType> {
   const app = await (async () => {
-    const { source, pluginId } = splitCombineToolId(id);
+    const { source, pluginId } = splitCombinePluginId(id);
 
     if (source === PluginSourceEnum.personal) {
-      const item = await MongoApp.findById(id).lean();
+      const item = await MongoApp.findById(pluginId).lean();
       if (!item) return Promise.reject(PluginErrEnum.unExist);
 
       const version = await getAppVersionById({
-        appId: id,
+        appId: pluginId,
         versionId,
         app: item
       });
@@ -354,6 +360,7 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplat
   };
 };
 
+/* FastsGPT-Pluign api: */
 function getCachedSystemPlugins() {
   if (!global.systemPlugins_cache) {
     global.systemPlugins_cache = {
@@ -458,10 +465,8 @@ export const getSystemPlugins = async (): Promise<SystemPluginTemplateItemType[]
   }
 };
 
-export const getSystemPluginById = async (
-  pluginId: string
-): Promise<SystemPluginTemplateItemType> => {
-  const { source } = splitCombineToolId(pluginId);
+export const getSystemPluginById = async (id: string): Promise<SystemPluginTemplateItemType> => {
+  const { source, pluginId } = splitCombinePluginId(id);
   if (source === PluginSourceEnum.systemTool) {
     const tools = await getSystemPlugins();
     const tool = tools.find((item) => item.id === pluginId);

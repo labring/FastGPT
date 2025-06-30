@@ -10,7 +10,13 @@ export async function getSystemToolList() {
   const res = await client.tool.list();
 
   if (res.status === 200) {
-    return res.body;
+    return res.body.map((item) => {
+      return {
+        ...item,
+        id: `${PluginSourceEnum.systemTool}-${item.id}`,
+        parentId: item.parentId ? `${PluginSourceEnum.systemTool}-${item.parentId}` : undefined
+      };
+    });
   }
 
   return Promise.reject(res.body);

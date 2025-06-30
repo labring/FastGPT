@@ -8,7 +8,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import {
   getSystemPluginByIdAndVersionId,
-  splitCombineToolId
+  splitCombinePluginId
 } from '@fastgpt/service/core/app/plugin/controller';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
@@ -36,7 +36,7 @@ async function handler(
       list: []
     };
   }
-  const { source, pluginId: formatPluginId } = splitCombineToolId(pluginId);
+  const { source, pluginId: formatPluginId } = splitCombinePluginId(pluginId);
 
   // System tool plugin
   if (source === PluginSourceEnum.systemTool) {

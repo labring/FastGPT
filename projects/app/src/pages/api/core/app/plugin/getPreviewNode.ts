@@ -5,7 +5,7 @@ import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import {
   getChildAppPreviewNode,
-  splitCombineToolId
+  splitCombinePluginId
 } from '@fastgpt/service/core/app/plugin/controller';
 import { type FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
 import { NextAPI } from '@/service/middleware/entry';
@@ -22,13 +22,13 @@ async function handler(
 ): Promise<FlowNodeTemplateType> {
   const { appId, versionId } = req.query;
 
-  const { source } = splitCombineToolId(appId);
+  const { source, pluginId } = splitCombinePluginId(appId);
 
   if (source === PluginSourceEnum.personal) {
-    await authApp({ req, authToken: true, appId, per: ReadPermissionVal });
+    await authApp({ req, authToken: true, appId: pluginId, per: ReadPermissionVal });
   }
 
-  return getChildAppPreviewNode({ appId, versionId, lang: getLocale(req) });
+  return getChildAppPreviewNode({ appId: pluginId, versionId, lang: getLocale(req) });
 }
 
 export default NextAPI(handler);

@@ -3,7 +3,7 @@ import { getEmbeddingModel } from '../ai/model';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { getChildAppPreviewNode, splitCombineToolId } from './plugin/controller';
+import { getChildAppPreviewNode, splitCombinePluginId } from './plugin/controller';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -46,19 +46,19 @@ export async function rewriteAppWorkflowToDetail({
   await Promise.all(
     nodes.map(async (node) => {
       if (!node.pluginId) return;
-      const { source } = splitCombineToolId(node.pluginId);
+      const { source, pluginId } = splitCombinePluginId(node.pluginId);
 
       try {
         const [preview] = await Promise.all([
           getChildAppPreviewNode({
-            appId: node.pluginId,
+            appId: pluginId,
             versionId: node.version
           }),
           ...(source === PluginSourceEnum.personal
             ? [
                 authAppByTmbId({
                   tmbId: ownerTmbId,
-                  appId: node.pluginId,
+                  appId: pluginId,
                   per: ReadPermissionVal
                 })
               ]

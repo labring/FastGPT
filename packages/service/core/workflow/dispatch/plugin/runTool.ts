@@ -13,7 +13,7 @@ import { runTool } from '../../../app/tool/api';
 import { MongoSystemPlugin } from '../../../app/plugin/systemPluginSchema';
 import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import { getSystemPluginById } from '../../../app/plugin/controller';
+import { getSystemPluginById, splitCombinePluginId } from '../../../app/plugin/controller';
 
 type SystemInputConfigType = {
   type: SystemToolInputTypeEnum;
@@ -45,6 +45,8 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
   try {
     // run system tool
     if (toolConfig?.systemTool?.toolId) {
+      const tool = await getSystemPluginById(toolConfig.systemTool!.toolId);
+
       const inputConfigParams = await (async () => {
         switch (params.system_input_config?.type) {
           case SystemToolInputTypeEnum.team:
@@ -70,8 +72,9 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         ...inputConfigParams
       };
 
+      const formatToolId = tool.id.split('-')[1];
       const result = await runTool({
-        toolId: toolConfig.systemTool.toolId,
+        toolId: formatToolId,
         inputs,
         systemVar: {
           user: {
@@ -84,7 +87,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
             name: runningAppInfo.id
           },
           tool: {
-            id: toolConfig.systemTool.toolId,
+            id: formatToolId,
             version
           },
           time: variables.cTime
@@ -98,7 +101,6 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         ) {
           return 0;
         }
-        const tool = await getSystemPluginById(toolConfig.systemTool!.toolId);
         return tool.currentCost ?? 0;
       })();
 

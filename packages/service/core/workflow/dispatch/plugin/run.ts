@@ -16,7 +16,7 @@ import { computedPluginUsage } from '../../../app/plugin/utils';
 import { filterSystemVariables } from '../utils';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { getChildAppRuntimeById, splitCombineToolId } from '../../../app/plugin/controller';
+import { getChildAppRuntimeById, splitCombinePluginId } from '../../../app/plugin/controller';
 import { dispatchWorkFlow } from '../index';
 import { getUserChatInfoAndAuthTeamPoints } from '../../../../support/permission/auth/team';
 import { dispatchRunTool } from './runTool';
@@ -38,7 +38,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   }
 
   // Adapt <= 4.10 system tool
-  const { source } = splitCombineToolId(pluginId);
+  const { source, pluginId: formatPluginId } = splitCombinePluginId(pluginId);
   if (source === PluginSourceEnum.systemTool) {
     return dispatchRunTool({
       ...props,
@@ -46,7 +46,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         ...props.node,
         toolConfig: {
           systemTool: {
-            toolId: pluginId
+            toolId: formatPluginId
           }
         }
       }
