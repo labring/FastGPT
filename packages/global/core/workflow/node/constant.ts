@@ -115,6 +115,8 @@ export enum FlowNodeTypeEnum {
   datasetSearchNode = 'datasetSearchNode',
   datasetConcatNode = 'datasetConcatNode',
 
+  mcpCall = 'mcpCall',
+
   answerNode = 'answerNode',
   classifyQuestion = 'classifyQuestion',
   contentExtract = 'contentExtract',

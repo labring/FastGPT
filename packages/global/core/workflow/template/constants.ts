@@ -6,6 +6,7 @@ import { AiChatModule } from './system/aiChat';
 import { DatasetSearchModule } from './system/datasetSearch';
 import { DatasetConcatModule } from './system/datasetConcat';
 import { AssignedAnswerModule } from './system/assignedAnswer';
+import { McpCallModule } from './system/mcpCall';
 import { ClassifyQuestionModule } from './system/classifyQuestion/index';
 import { ContextExtractModule } from './system/contextExtract/index';
 import { HttpNode468 } from './system/http468';
@@ -41,6 +42,7 @@ const systemNodes: FlowNodeTemplateType[] = [
   AiChatModule,
   TextEditorNode,
   AssignedAnswerModule,
+  McpCallModule,
   DatasetSearchModule,
   ClassifyQuestionModule,
   ContextExtractModule,

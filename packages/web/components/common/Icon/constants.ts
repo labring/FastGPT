@@ -325,6 +325,7 @@ export const iconPaths = {
     import('./icons/core/workflow/template/questionClassify.svg'),
   'core/workflow/template/readFiles': () => import('./icons/core/workflow/template/readFiles.svg'),
   'core/workflow/template/reply': () => import('./icons/core/workflow/template/reply.svg'),
+  'core/workflow/template/mcpCall': () => import('./icons/core/workflow/template/mcpCall.svg'),
   'core/workflow/template/runApp': () => import('./icons/core/workflow/template/runApp.svg'),
   'core/workflow/template/searxng': () => import('./icons/core/workflow/template/searxng.svg'),
   'core/workflow/template/sleep': () => import('./icons/core/workflow/template/sleep.svg'),

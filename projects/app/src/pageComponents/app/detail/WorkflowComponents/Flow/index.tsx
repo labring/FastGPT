@@ -36,6 +36,7 @@ const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.datasetSearchNode]: NodeSimple,
   [FlowNodeTypeEnum.datasetConcatNode]: dynamic(() => import('./nodes/NodeDatasetConcat')),
   [FlowNodeTypeEnum.answerNode]: dynamic(() => import('./nodes/NodeAnswer')),
+  [FlowNodeTypeEnum.mcpCall]: dynamic(() => import('./nodes/NodeMcpCall')),
   [FlowNodeTypeEnum.classifyQuestion]: dynamic(() => import('./nodes/NodeCQNode')),
   [FlowNodeTypeEnum.contentExtract]: dynamic(() => import('./nodes/NodeExtract')),
   [FlowNodeTypeEnum.httpRequest468]: dynamic(() => import('./nodes/NodeHttp')),

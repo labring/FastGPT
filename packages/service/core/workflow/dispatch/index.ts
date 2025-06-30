@@ -29,6 +29,7 @@ import { dispatchChatCompletion } from './chat/oneapi';
 import { dispatchDatasetSearch } from './dataset/search';
 import { dispatchDatasetConcat } from './dataset/concat';
 import { dispatchAnswer } from './tools/answer';
+import { dispatchMcpCall } from './tools/mcpCall';
 import { dispatchClassifyQuestion } from './agent/classifyQuestion';
 import { dispatchContentExtract } from './agent/extract';
 import { dispatchHttp468Request } from './tools/http468';
@@ -80,6 +81,7 @@ import { dispatchRunTool } from './plugin/runTool';
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
   [FlowNodeTypeEnum.answerNode]: dispatchAnswer,
+  [FlowNodeTypeEnum.mcpCall]: dispatchMcpCall,
   [FlowNodeTypeEnum.chatNode]: dispatchChatCompletion,
   [FlowNodeTypeEnum.datasetSearchNode]: dispatchDatasetSearch,
   [FlowNodeTypeEnum.datasetConcatNode]: dispatchDatasetConcat,
