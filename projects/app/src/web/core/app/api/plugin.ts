@@ -88,7 +88,8 @@ export const postUpdateMCPTools = (data: updateMCPToolsBody) =>
 export const getMCPTools = (data: getMCPToolsBody) =>
   POST<McpToolConfigType[]>('/support/mcp/client/getTools', data);
 
-export const postRunMCPTool = (data: RunMCPToolBody) => POST('/support/mcp/client/runTool', data);
+export const postRunMCPTool = (data: RunMCPToolBody) =>
+  POST('/support/mcp/client/runTool', data, { timeout: 300000 });
 
 /* ============ http plugin ============== */
 export const postCreateHttpPlugin = (data: createHttpPluginBody) =>

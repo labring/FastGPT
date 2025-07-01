@@ -110,10 +110,16 @@ export class MCPClient {
       const client = await this.getConnection();
       addLog.debug(`[MCP Client] Call tool: ${toolName}`, params);
 
-      return await client.callTool({
-        name: toolName,
-        arguments: params
-      });
+      return await client.callTool(
+        {
+          name: toolName,
+          arguments: params
+        },
+        undefined,
+        {
+          timeout: 300000
+        }
+      );
     } catch (error) {
       addLog.error(`[MCP Client] Failed to call tool ${toolName}:`, error);
       return Promise.reject(error);
