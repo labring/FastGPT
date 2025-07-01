@@ -354,7 +354,10 @@ const NodeTemplateList = ({
           });
         }
 
-        const copy: NodeTemplateListType = cloneDeep(workflowNodeTemplateList);
+        const copy: NodeTemplateListType = cloneDeep(workflowNodeTemplateList).map((item) => ({
+          ...item,
+          list: []
+        }));
         templates.forEach((item) => {
           const index = copy.findIndex((template) => template.type === item.templateType);
           if (index === -1) return;

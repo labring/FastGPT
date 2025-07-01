@@ -5,14 +5,23 @@ export enum FlowNodeTemplateTypeEnum {
   systemInput = 'systemInput',
   ai = 'ai',
   function = 'function',
-  tools = 'tools',
   interactive = 'interactive',
 
+  // System tool type
+  tools = 'tools',
   search = 'search',
   multimodal = 'multimodal',
   communication = 'communication',
-
+  finance = 'finance',
+  design = 'design',
+  productivity = 'productivity',
+  news = 'news',
+  entertainment = 'entertainment',
+  social = 'social',
+  scientific = 'scientific',
   other = 'other',
+
+  // Team app type
   teamApp = 'teamApp'
 }
 
