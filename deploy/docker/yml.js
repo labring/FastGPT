@@ -1,4 +1,6 @@
-# 数据库的默认账号和密码仅首次运行时设置有效
+const fs = require('fs')
+
+const template = `# 数据库的默认账号和密码仅首次运行时设置有效
 # 如果修改了账号密码，记得改数据库和项目连接参数，别只改一处~
 # 该配置文件只是给快速启动，测试使用。正式使用，记得务必修改账号密码，以及调整合适的知识库参数，共享内存等。
 # 如何无法访问 dockerhub 和 git，可以用阿里云（阿里云没有arm包）
@@ -6,27 +8,7 @@
 version: '3.3'
 services:
   # Vector DB
-  pg:
-    image: pgvector/pgvector:0.8.0-pg15 # docker hub
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.8.0-pg15 # 阿里云
-    container_name: pg
-    restart: always
-    # ports: # 生产环境建议不要暴露
-    #   - 5432:5432
-    networks:
-      - fastgpt
-    environment:
-      # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
-      - POSTGRES_USER=username
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=postgres
-    volumes:
-      - ./pg/data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD', 'pg_isready', '-U', 'username', '-d', 'postgres']
-      interval: 5s
-      timeout: 5s
-      retries: 10
+  {{Vector_DB_Service}}
 
   # DB
   mongo:
@@ -124,7 +106,7 @@ services:
     depends_on:
       - mongo
       - sandbox
-      - pg
+      {{Vector_DB_Depends}}
     restart: always
     environment:
       # 前端外部可访问的地址，用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。这个值可以不填，不填则发给模型的图片会是一个相对路径，而不是全路径，模型可能伪造Host。
@@ -153,7 +135,7 @@ services:
       # Redis 连接参数
       - REDIS_URL=redis://default:mypassword@redis:6379
       # 向量库 连接参数
-      - PG_URL=postgresql://username:password@pg:5432/postgres
+      {{Vector_DB_ENV}}
       # 日志等级: debug, info, warn, error
       - LOG_LEVEL=info
       - STORE_LOG_LEVEL=warn
@@ -260,3 +242,153 @@ services:
       retries: 10
 networks:
   fastgpt:
+`
+
+const list = [
+    {
+        filename: "./docker-compose-pgvector.yml",
+        depends: `- pg`,
+        service: `pg:
+    image: pgvector/pgvector:0.8.0-pg15 # docker hub
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.8.0-pg15 # 阿里云
+    container_name: pg
+    restart: always
+    # ports: # 生产环境建议不要暴露
+    #   - 5432:5432
+    networks:
+      - fastgpt
+    environment:
+      # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
+      - POSTGRES_USER=username
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgres
+    volumes:
+      - ./pg/data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'username', '-d', 'postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10`,
+        env: `- PG_URL=postgresql://username:password@pg:5432/postgres`
+    },
+    {
+        filename: "./docker-compose-zilliz.yml",
+        depends: ``,
+        service: ``,
+        env: `# zilliz 连接参数
+      - MILVUS_ADDRESS=zilliz_cloud_address
+      - MILVUS_TOKEN=zilliz_cloud_token`
+    },
+    {
+        filename: "./docker-compose-milvus.yml",
+        depends: `- milvusStandalone`,
+        service: `milvus-minio:
+    container_name: milvus-minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    ports:
+      - '9001:9001'
+      - '9000:9000'
+    networks:
+      - fastgpt
+    volumes:
+      - ./milvus-minio:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 20s
+      retries: 3
+  # milvus
+  milvusEtcd:
+    container_name: milvusEtcd
+    image: quay.io/coreos/etcd:v3.5.5
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    networks:
+      - fastgpt
+    volumes:
+      - ./milvus/etcd:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ['CMD', 'etcdctl', 'endpoint', 'health']
+      interval: 30s
+      timeout: 20s
+      retries: 3
+  milvusStandalone:
+    container_name: milvusStandalone
+    image: milvusdb/milvus:v2.4.3
+    command: ['milvus', 'run', 'standalone']
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: milvusEtcd:2379
+      MINIO_ADDRESS: milvus-minio:9000
+    networks:
+      - fastgpt
+    volumes:
+      - ./milvus/data:/var/lib/milvus
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9091/healthz']
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    depends_on:
+      - 'milvusEtcd'
+      - 'milvus-minio'`,
+        env: `- MILVUS_ADDRESS=http://milvusStandalone:19530
+      - MILVUS_TOKEN=none`
+    },
+    {
+        filename: "./docker-compose-oceanbase/docker-compose.yml",
+        depends: `- ob`,
+        service: `ob:
+    image: oceanbase/oceanbase-ce:4.3.5-lts # docker hub
+    # image: quay.io/oceanbase/oceanbase-ce:4.3.5-lts # 镜像
+    container_name: ob
+    restart: always
+    # ports: # 生产环境建议不要暴露
+    #   - 2881:2881
+    networks:
+      - fastgpt
+    environment:
+      # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
+      - OB_SYS_PASSWORD=obsyspassword
+      # 不同于传统数据库，OceanBase 数据库的账号包含更多字段，包括用户名、租户名和集群名。经典格式为"用户名@租户名#集群名"
+      # 比如用mysql客户端连接时，根据本文件的默认配置，应该指定 "-uroot@tenantname"
+      - OB_TENANT_NAME=tenantname
+      - OB_TENANT_PASSWORD=tenantpassword
+      # MODE分为MINI和NORMAL， 后者会最大程度使用主机资源
+      - MODE=MINI
+      - OB_SERVER_IP=127.0.0.1
+      # 更多环境变量配置见oceanbase官方文档： https://www.oceanbase.com/docs/common-oceanbase-database-cn-1000000002013494
+    volumes:
+      - ./ob/data:/root/ob
+      - ./ob/config:/root/.obd/cluster
+      - ./init.sql:/root/boot/init.d/init.sql
+    healthcheck:
+      # obclient -h127.0.0.1 -P2881 -uroot@tenantname -ptenantpassword -e "SELECT 1;"
+      test:
+        [
+          'CMD-SHELL',
+          'obclient -h\$\$\$\${OB_SERVER_IP} -P2881 -uroot@\$\$\$\${OB_TENANT_NAME} -p\$\$\$\${OB_TENANT_PASSWORD} -e "SELECT 1;"'
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 1000
+      start_period: 10s`,
+        env: `- OCEANBASE_URL=mysql://root%40tenantname:tenantpassword@ob:2881/test`
+    }
+]
+
+list.forEach(item => {
+    const { filename, service, env, depends } = item
+    const content = template.replace("{{Vector_DB_Service}}", service).replace("{{Vector_DB_ENV}}", env).replace("{{Vector_DB_Depends}}", depends)
+    fs.writeFileSync(filename, content, 'utf-8')
+})
