@@ -1,118 +1,200 @@
 ---
-title: "如何提交系统插件"
-description: "FastGPT 系统插件提交指南"
+title: "如何开发系统工具"
+description: "FastGPT 系统工具开发指南"
 icon: "plugin_submission"
 draft: false
 toc: true
 weight: 302
 ---
 
-> 如何向 FastGPT 社区提交系统插件
+## 介绍
 
-## 系统插件原则
+FastGPT 系统工具项目从 4.10.0 版本后移动到独立的`fastgpt-plugin`项目中，采用纯代码的模式进行工具编写。你可以在`fastgpt-plugin`项目中进行独立开发和调试好插件后，直接向 FastGPT 官方提交 PR 即可，无需运行 FastGPT 主服务。
 
-- 尽可能的轻量简洁，以解决实际问题的工具为主
-- 不允许有密集 cpu 计算，不会占用大量内存占用或网络消耗
-- 不允许操作数据库
-- 不允许往固定的私人地址发送请求（不包含请求某些在线服务，例如 gapier, firecrawl等)
-- 不允许使用私人包，可使用主流的开源包
+## 概念
 
-## 什么插件可以合并
+- 工具(Tool)：最小的运行单元，每个工具都有唯一 ID 和特定的输入和输出。
+- 工具集(Toolset)：工具的集合，可以包含多个工具。
 
-由于目前未采用按需安装的模式，合并进仓库的插件会全部展示给用户使用。
+在`fastgpt-plugin`中，你可以每次创建一个工具/工具集，每次提交时，仅接收一个工具/工具集。如需开发多个，可以创建多个 PR 进行提交。
 
-为了控制插件的质量以及避免数量过多带来的繁琐，并不是所有的插件都会被合并到开源仓库中，你可以提前 PR 与我们沟通插件的内容。
+## 1. 准备工作
 
-后续实现插件按需安装后，我们会允许更多的社区插件合入。
+- Fork[fastgpt-plugin 项目](https://github.com/labring/fastgpt-plugin)
+- 安装[Bun](https://bun.sh/)
+- 本地拉取项目进行 Dev 开发。
+  - bun install
+  - bun run dev
 
-## 如何写一个系统插件 - 初步
+## 2. 初始化一个新的工具/攻击
 
-FastGPT 系统插件和用户工作台的插件效果是一致的，所以你需要提前了解“插件”的定义和功能。
+### 2.1 执行创建命令
 
-在 FastGPT 中，插件是一种特殊的工作流，它允许你将一个工作流封装起来，并自定义入口参数和出口参数，类似于代码里的 “子函数”。
+```bash
+bun run new:tool
+```
 
-1. ### 跑通 FastGPT dev 环境
+依据提示分别选择创建工具/工具集，以及目录名（小驼峰命名）。
 
-需要在 dev 环境下执行下面的操作。
+执行完后，系统会在 `packages/tool/packages/[your-tool-name]`下生成一个工具/工具集的目录。
 
-1. ### 在 FastGPT 工作台中，创建一个插件
+系统工具 (Tool) 文件结构如下:
 
-选择基础模板即可。
+```plaintext
+src // 源代码，处理逻辑
+└── index.ts
+test // 测试样例
+└── index.test.ts
+config.ts // 配置，配置工具的名称、描述、类型、图标等
+index.ts // 入口，不要改这个文件
+logo.svg // Logo，替换成你的工具的 Logo
+package.json // npm 包
+```
 
-![](/imgs/plugin_submission1.png)
+工具集(toolset) 的文件结构如下：
 
-1. ### 创建系统插件配置
+```plaintext
+children
+└── tool // 这个里面的结构就和上面的 tool 基本一致
+config.ts
+index.ts
+logo.svg
+package.json
+```
 
-系统插件配置以及自定义代码，都会在 **packages/plugins** 目录下。
+### 2.2 修改 config.ts
 
-1. 在 **packages/plugins/src** 下，复制一份 **template** 目录，并修改名字。
-2. 打开目录里面的 template.json 文件，配置如下：
-3. 目录还有一个 index.ts 文件，下文再提。
+- **name** 和 **description** 字段为中文和英文两种语言
+- **courseUrl** 密钥获取链接，或官网链接。
+- **author** 开发者名
+- **type** 为枚举类型，目前有:
+	- tools: 工具
+	- search: 搜索
+	- multimodal: 多模态
+	- communication: 通讯
+	- other: 其他
+- **versionList** (工具中配置)用于版本管理，是一个列表，其中的元素格式:
+	- value：版本号，建议使用 semver
+	- description: 描述
+	- inputs 入参
+	- outputs 返回值
+- **children**：（工具集 toolset 配置），需要将 tool import 后手动写入。
 
-```TypeScript
+对于 ToolSet 下的 tool 来说，无需填写 `type`、`courseUrl`、`author`，这几个字段会继承 ToolSet 的配置。
+
+#### inputs 参数格式
+
+一般格式:
+
+```ts
 {
-  "author": "填写你的名字", 
-  "version": "当前系统版本号",
-  "name": "插件名",
-  "avatar": "插件头像，需要配成 icon 格式。直接把 logo 图在 pr 评论区提交即可，我们会帮你加入。",
-  "intro": " 插件的描述，这个描述会影响工具调用",
-  "showStatus": false, // 是否在对话过程展示状态
-  "weight": 10, // 排序权重，均默认 10
-
-  "isTool": true, // 是否作为工具调用节点
-  "templateType": "tools", // 都填写 tools 即可，由官方来分类
-
-  "workflow": { // 这个对象先不管，待会直接粘贴导出的工作流即可
-    "nodes": [],
-    "edges": []
-  }
+  key: '本工具内唯一的 key，和 src/index.ts 中的 InputType 定义相同',
+  label: '前端显示的 label',
+  renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference], // 前端输入框的类型
+  valueType: WorkflowIOValueTypeEnum.string, // 数据类型
+  toolDescription: '工具调用时用到的描述' // 如果需要设置成工具调用参数，需要设置这个字段
 }
 ```
 
-1. 打开 **packages/plugins/register** 文件，注册你的插件。在 list 数组中，加入一个你插件目录的名字，如下图的例子。如需构建插件组（带目录），可参考 DuckDuckGo 插件。
+有一个特殊的 key `'system_input_config'`，其用于配置工具的`激活信息`,通常包含`密钥`、`Endpoint`、`Port`等。
 
-无需额外写代码的插件，直接放在 staticPluginList 内，需要在项目内额外写代码的，写在 packagePluginList 中。
+配置中`inputType=secret`的数据，将会通过对称加密的方式保存，以保证安全性。
 
-![](/imgs/plugin_submission2.png)
+**参考 dalle3**:
 
-1. ### 完成工作流编排并测试
+```
+"inputs": [
+  {
+    key: 'system_input_config', // 必须为这个值
+    label: '', // 为空即可
+    inputList: [
+    {
+      key: 'url',
+      label: 'Dalle3 接口基础地址',
+      description: '例如：https://api.openai.com',
+      required: true,
+      inputType: 'input'
+    },
+    {
+      key: 'authorization',
+      label: '接口凭证（不需要 Bearer）',
+      description: 'sk-xxxx',
+      required: true,
+      inputType: 'secret'
+    }
+    ],
+    renderTypeList: [FlowNodeInputTypeEnum.hidden], // 必须为这个值
+    valueType: WorkflowIOValueTypeEnum.object // 必须为这个值
+  },
+....
+]
+```
 
-完成工作流编排后，可以点击右上角的发布，并在其他工作流中引入进行测试（此时属于团队插件）。
+#### outputs 参数格式
+```
+{
+  key: 'link', // 唯一键值对
+  valueType: WorkflowIOValueTypeEnum.string, // 具体可以看这个 Enum 的类型定义
+  label: '图片访问链接', // 名字
+  description: '图片访问链接' // 描述，可选
+}
+```
 
-1. ### 复制配置到 template.json
+## 2. 编写处理逻辑
 
-鼠标放置在左上角插件的头像和名称上，会出现对于下拉框操作，可以导出工作流配置。
+在 `[your-tool-name]/src/index.ts` 为入口编写处理逻辑，需要注意：
 
-导出的配置，会自动到剪切板，可以直接到 template.json 文件中粘贴使用，替换步骤 2 中，**workflow** 的值。
+1. 使用 zod 进行类型定义，导出为 InputType 和 OutputType 两个 Schema。
+2. 入口函数为 `tool`，可以定义其他的函数。
 
-![](/imgs/plugin_submission3.png)
+```ts
+import { format } from 'date-fns';
+import { z } from 'zod';
 
-1. ### 验证插件是否加载成功
+export const InputType = z.object({
+  formatStr: z.string().optional()
+});
 
-刷新页面，打开系统插件，看其是否成功加载，并将其添加到工作流中使用。
+export const OutputType = z.object({
+  time: z.string()
+});
 
-![](/imgs/plugin_submission4.png)
+export async function tool(props: z.infer<typeof InputType>): Promise<z.infer<typeof OutputType>> {
+  const formatStr = props.formatStr || 'yyyy-MM-dd HH:mm:ss';
 
-1. ### 提交 PR
+  return {
+    time: format(new Date(), formatStr)
+  };
+}
+```
 
-如果你觉得你的插件需要提交到开源仓库，可以通过 PR 形式向我们提交。
+上述例子给出了一个传入 formatStr （格式化字符串）并且返回当前时间的简单样例，如需安装包，可以在`/packages/tools/packages/[your-tool-name]`路径下，使用`bun install PACKAGE` 进行安装。
 
-- 写清楚插件的介绍和功能
-- 配上插件运行的效果图
-- 插件参数填写说明，需要在 PR 中写清楚。例如，有些插件需要去某个提供商申请 key，需要附上对应的地址和教材，后续我们会加入到文档中。
+## 3. 调试
 
-## 写一个复杂的系统插件 - 进阶
+### 单测
 
-这一章会介绍如何增加一些无法单纯通过编排实现的插件。因为可能需要用到网络请求或第三方包。
+在 `test/index.test.ts` 中编写测试样例，使用 `bun run test index.test.ts完整路径` 即可运行测试。
 
-上一章提到，在插件的 **template** 目录下，还有一个 **index.ts** 文件，这个文件就是用来执行一些插件的代码的。你可以通过在 HTTP 节点中的 URL，填写插件的名字，即可触发该方法，下面以 **duckduckgo/search** 这个插件为例：
+### 从 OpenAPI 文件进行测试
 
-![](/imgs/plugin_submission5.png)
+浏览器打开`localhost:3000/openapi`可进入`fastgpt-plugin`的 OpenAPI 页面，进行 API 调试。
 
-![](/imgs/plugin_submission6.png)
+![](/imgs/plugin-openapi.png)
 
-![](/imgs/plugin_submission7.png)
+可以先通过`/tool/list`接口，获取工具列表，找到需要调试的工具的`toolId`。紧接着，通过`/tool/run`来运行工具获取实际结果。
 
-参考上面 3 张图片，当 HTTP 节点的 URL 为系统插件注册的名字时，该请求不会以 HTTP 形式发送，而是会请求到 index.ts 文件中的 main 方法。出入参则对应了 body 和自定义输出的字段名。
+![](/imgs/plugin-openapi2.png)
 
-由于目前插件会默认插件输出均作为“工具调用”的结果，无法单独指定某些字段作为工具输出，所以，请避免插件的自定义输出携带大量说明字段。
+### 从 FastGPT 主服务进行测试
+
+如果本地运行有`FastGPT`主服务，则可以直接添加对应的工具进行测试。
+
+### 可视化调试（TODO）
+
+## 4. 提交工具至官方目录
+
+完毕上述所有内容后，向官方仓库 `https://github.com/labring/fastgpt-plugin` 提交 PR。官方人员审核通过后即可收录为 FastGPT 的官方插件。
+
+如无需官方收录，可自行对该项目进行 Docker 打包，并替换官方镜像即可。
+
