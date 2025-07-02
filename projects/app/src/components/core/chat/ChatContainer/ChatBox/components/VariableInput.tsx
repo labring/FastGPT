@@ -34,6 +34,9 @@ export const VariableInputItem = ({
         key={`variables.${item.key}`}
         control={control}
         name={`variables.${item.key}`}
+        rules={{
+          required: item.required
+        }}
         render={({ field: { onChange, value } }) => {
           return (
             <Box>
