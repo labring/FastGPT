@@ -171,16 +171,6 @@ const RenderPluginInput = ({
 
   const [isOpenSecretModal, { setTrue: setTrueSecretModal, setFalse: setFalseSecretModal }] =
     useBoolean(false);
-  const activeButtonText = (() => {
-    const val = value as ToolParamsFormType;
-    if (!val) {
-      return t('workflow:tool_active_config');
-    }
-
-    return t('workflow:tool_active_config_type', {
-      type: t(SystemToolInputTypeMap[val.type].text as any)
-    });
-  })();
 
   const render = (() => {
     if (inputType === FlowNodeInputTypeEnum.select && input.list) {
@@ -252,7 +242,16 @@ const RenderPluginInput = ({
             leftIcon={<Box w={'6px'} h={'6px'} bg={'primary.600'} borderRadius={'md'} />}
             onClick={setTrueSecretModal}
           >
-            {activeButtonText}
+            {(() => {
+              const val = value as ToolParamsFormType;
+              if (!val) {
+                return t('workflow:tool_active_config');
+              }
+
+              return t('workflow:tool_active_config_type', {
+                type: t(SystemToolInputTypeMap[val.type].text as any)
+              });
+            })()}
           </Button>
 
           {isOpenSecretModal && (

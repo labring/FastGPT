@@ -29,7 +29,7 @@ const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInpu
     }
 
     return t('workflow:tool_active_config_type', {
-      type: t(SystemToolInputTypeMap[val.type].text as any)
+      type: t(SystemToolInputTypeMap[val.type]?.text as any)
     });
   }, [inputConfig?.value, t]);
 
