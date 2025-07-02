@@ -151,8 +151,8 @@ services:
 
   fastgpt:
     container_name: fastgpt
-    image: ghcr.io/labring/fastgpt:v4.9.14 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.9.14 # 阿里云
+    image: ghcr.io/labring/fastgpt:v4.10.0 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.10.0 # 阿里云
     ports:
       - 3000:3000
     networks:
@@ -207,18 +207,17 @@ services:
       - CHAT_FILE_EXPIRE_TIME=7
     volumes:
       - ./config.json:/app/data/config.json
-  # fastgpt
   sandbox:
     container_name: sandbox
-    image: ghcr.io/labring/fastgpt-sandbox:v4.9.14 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.9.14 # 阿里云
+    image: ghcr.io/labring/fastgpt-sandbox:v4.10.0 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.10.0 # 阿里云
     networks:
       - fastgpt
     restart: always
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: ghcr.io/labring/fastgpt-mcp_server:v4.9.14 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.9.14 # 阿里云
+    image: ghcr.io/labring/fastgpt-mcp_server:v4.10.0 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.10.0 # 阿里云
     ports:
       - 3005:3000
     networks:
@@ -226,10 +225,9 @@ services:
     restart: always
     environment:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
-  # fastgpt-plugin
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v0.1 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1 # 阿里云
+    image: ghcr.io/labring/fastgpt-plugin:v0.1.0 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1.0 # 阿里云
     container_name: fastgpt-plugin
     restart: always
     networks:
@@ -244,8 +242,8 @@ services:
       - MINIO_SECRET_KEY=minioadmin
       - MINIO_BUCKET=fastgpt-plugins
     depends_on:
-      - fastgpt-minio:
-          condition: service_healthy
+      fastgpt-minio:
+        condition: service_healthy
 
   # AI Proxy
   aiproxy:

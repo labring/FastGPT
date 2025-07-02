@@ -150,7 +150,6 @@ services:
       - CHAT_FILE_EXPIRE_TIME=7
     volumes:
       - ./config.json:/app/data/config.json
-  # fastgpt
   sandbox:
     container_name: sandbox
     image: ghcr.io/labring/fastgpt-sandbox:v4.10.0 # git
@@ -169,7 +168,6 @@ services:
     restart: always
     environment:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
-  # fastgpt-plugin
   fastgpt-plugin:
     image: ghcr.io/labring/fastgpt-plugin:v0.1.0 # git
     # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1.0 # 阿里云
