@@ -95,8 +95,8 @@ services:
 
   fastgpt:
     container_name: fastgpt
-    image: ghcr.io/labring/fastgpt:v4.10.0-alpha # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.9.14 # 阿里云
+    image: ghcr.io/labring/fastgpt:v4.10.0 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.10.0 # 阿里云
     ports:
       - 3000:3000
     networks:
@@ -153,15 +153,15 @@ services:
   # fastgpt
   sandbox:
     container_name: sandbox
-    image: ghcr.io/labring/fastgpt-sandbox:v4.9.14 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.9.14 # 阿里云
+    image: ghcr.io/labring/fastgpt-sandbox:v4.10.0 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.10.0 # 阿里云
     networks:
       - fastgpt
     restart: always
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: ghcr.io/labring/fastgpt-mcp_server:v4.9.14 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.9.14 # 阿里云
+    image: ghcr.io/labring/fastgpt-mcp_server:v4.10.0 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.10.0 # 阿里云
     ports:
       - 3005:3000
     networks:
@@ -171,8 +171,8 @@ services:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
   # fastgpt-plugin
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v0.0.1 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.0.1 # 阿里云
+    image: ghcr.io/labring/fastgpt-plugin:v0.1.0 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1.0 # 阿里云
     container_name: fastgpt-plugin
     restart: always
     networks:
