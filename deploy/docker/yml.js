@@ -78,9 +78,9 @@ services:
     restart: always
     networks:
       - fastgpt
-    # ports: # comment out if you do not need to expose the port (in production environment, you should not expose the port)
-    #   - '9000:9000'
-    #   - '9001:9001'
+    ports: # comment out if you do not need to expose the port (in production environment, you should not expose the port)
+      - '9000:9000'
+      - '9001:9001'
     environment:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
