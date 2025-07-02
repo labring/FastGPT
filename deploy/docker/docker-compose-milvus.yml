@@ -5,8 +5,9 @@
 
 version: '3.3'
 services:
-  minio:
-    container_name: minio
+  # Vector DB
+  milvus-minio:
+    container_name: milvus-minio
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
     environment:
       MINIO_ACCESS_KEY: minioadmin
@@ -17,7 +18,7 @@ services:
     networks:
       - fastgpt
     volumes:
-      - ./minio:/minio_data
+      - ./milvus-minio:/minio_data
     command: minio server /minio_data --console-address ":9001"
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
@@ -51,7 +52,7 @@ services:
       - seccomp:unconfined
     environment:
       ETCD_ENDPOINTS: milvusEtcd:2379
-      MINIO_ADDRESS: minio:9000
+      MINIO_ADDRESS: milvus-minio:9000
     networks:
       - fastgpt
     volumes:
@@ -64,15 +65,15 @@ services:
       retries: 3
     depends_on:
       - 'milvusEtcd'
-      - 'minio'
+      - 'milvus-minio'
 
+  # DB
   mongo:
     image: mongo:5.0.18 # dockerhub
     # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # 阿里云
+    # image: mongo:4.4.29 # cpu不支持AVX时候使用
     container_name: mongo
     restart: always
-    ports:
-      - 27017:27017
     networks:
       - fastgpt
     command: mongod --keyFile /data/mongodb.key --replSet rs0
@@ -114,8 +115,6 @@ services:
   redis:
     image: redis:7.2-alpine
     container_name: redis
-    # ports:
-    # - 6379:6379
     networks:
       - fastgpt
     restart: always
@@ -129,7 +128,85 @@ services:
       start_period: 30s
     volumes:
       - ./redis/data:/data
+  fastgpt-minio:
+    image: minio/minio:latest
+    container_name: fastgpt-minio
+    restart: always
+    networks:
+      - fastgpt
+    ports: # comment out if you do not need to expose the port (in production environment, you should not expose the port)
+      - '9000:9000'
+      - '9001:9001'
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - ./fastgpt-minio:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 20s
+      retries: 3
 
+  fastgpt:
+    container_name: fastgpt
+    image: ghcr.io/labring/fastgpt:v4.9.14 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.9.14 # 阿里云
+    ports:
+      - 3000:3000
+    networks:
+      - fastgpt
+    depends_on:
+      - mongo
+      - sandbox
+      - milvusStandalone
+    restart: always
+    environment:
+      # 前端外部可访问的地址，用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。这个值可以不填，不填则发给模型的图片会是一个相对路径，而不是全路径，模型可能伪造Host。
+      - FE_DOMAIN=
+      # root 密码，用户名为: root。如果需要修改 root 密码，直接修改这个环境变量，并重启即可。
+      - DEFAULT_ROOT_PSW=1234
+      # 登录凭证密钥
+      - TOKEN_KEY=any
+      # root的密钥，常用于升级时候的初始化请求
+      - ROOT_KEY=root_key
+      # 文件阅读加密
+      - FILE_TOKEN_KEY=filetoken
+      # 密钥加密key
+      - AES256_SECRET_KEY=fastgptkey
+
+      # plugin 地址
+      - PLUGIN_BASE_URL=http://fastgpt-plugin:3000
+      - PLUGIN_TOKEN=xxxxxx
+      # sandbox 地址
+      - SANDBOX_URL=http://sandbox:3000
+      # AI Proxy 的地址，如果配了该地址，优先使用
+      - AIPROXY_API_ENDPOINT=http://aiproxy:3000
+      # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
+      - AIPROXY_API_TOKEN=aiproxy
+      
+      # 数据库最大连接数
+      - DB_MAX_LINK=30
+      # MongoDB 连接参数. 用户名myusername,密码mypassword。
+      - MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
+      # Redis 连接参数
+      - REDIS_URL=redis://default:mypassword@redis:6379
+      # 向量库 连接参数
+      - MILVUS_ADDRESS=http://milvusStandalone:19530
+      - MILVUS_TOKEN=none
+
+      # 日志等级: debug, info, warn, error
+      - LOG_LEVEL=info
+      - STORE_LOG_LEVEL=warn
+      # 工作流最大运行次数
+      - WORKFLOW_MAX_RUN_TIMES=1000
+      # 批量执行节点，最大输入长度
+      - WORKFLOW_MAX_LOOP_TIMES=100
+      # 对话文件过期天数
+      - CHAT_FILE_EXPIRE_TIME=7
+    volumes:
+      - ./config.json:/app/data/config.json
   # fastgpt
   sandbox:
     container_name: sandbox
@@ -149,63 +226,26 @@ services:
     restart: always
     environment:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
-  fastgpt:
-    container_name: fastgpt
-    image: ghcr.io/labring/fastgpt:v4.9.14 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.9.14 # 阿里云
-    ports:
-      - 3000:3000
+  # fastgpt-plugin
+  fastgpt-plugin:
+    image: ghcr.io/labring/fastgpt-plugin:v0.1 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1 # 阿里云
+    container_name: fastgpt-plugin
+    restart: always
     networks:
       - fastgpt
-    depends_on:
-      - mongo
-      - milvusStandalone
-      - sandbox
-    restart: always
     environment:
-      # 前端外部可访问的地址，用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。这个值可以不填，不填则发给模型的图片会是一个相对路径，而不是全路径，模型可能伪造Host。
-      - FE_DOMAIN=
-      # root 密码，用户名为: root。如果需要修改 root 密码，直接修改这个环境变量，并重启即可。
-      - DEFAULT_ROOT_PSW=1234
-      # AI Proxy 的地址，如果配了该地址，优先使用
-      - AIPROXY_API_ENDPOINT=http://aiproxy:3000
-      # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
-      - AIPROXY_API_TOKEN=aiproxy
-      # 模型中转地址（如果用了 AI Proxy，下面 2 个就不需要了，旧版 OneAPI 用户，使用下面的变量）
-      # - OPENAI_BASE_URL=http://oneapi:3000/v1
-      # - CHAT_API_KEY=sk-fastgpt
-      # 数据库最大连接数
-      - DB_MAX_LINK=30
-      # 登录凭证密钥
-      - TOKEN_KEY=any
-      # root的密钥，常用于升级时候的初始化请求
-      - ROOT_KEY=root_key
-      # 文件阅读加密
-      - FILE_TOKEN_KEY=filetoken
-      # MongoDB 连接参数. 用户名myusername,密码mypassword。
-      - MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
-      # zilliz 连接参数
-      - MILVUS_ADDRESS=http://milvusStandalone:19530
-      - MILVUS_TOKEN=none
-      # Redis 地址
-      - REDIS_URL=redis://default:mypassword@redis:6379
-      # sandbox 地址
-      - SANDBOX_URL=http://sandbox:3000
-      # 日志等级: debug, info, warn, error
-      - LOG_LEVEL=info
-      - STORE_LOG_LEVEL=warn
-      # 工作流最大运行次数
-      - WORKFLOW_MAX_RUN_TIMES=1000
-      # 批量执行节点，最大输入长度
-      - WORKFLOW_MAX_LOOP_TIMES=100
-      # 自定义跨域，不配置时，默认都允许跨域（多个域名通过逗号分割）
-      - ALLOWED_ORIGINS=
-      # 是否开启IP限制，默认不开启
-      - USE_IP_LIMIT=false
-      # 对话文件过期天数
-      - CHAT_FILE_EXPIRE_TIME=7
-    volumes:
-      - ./config.json:/app/data/config.json
+      - AUTH_TOKEN=xxxxxx # disable authentication token if you do not set this variable
+      # 改成 minio 公网地址
+      - MINIO_HOST=ip:9000
+      - MINIO_PORT=9000
+      - MINIO_USE_SSL=false
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=fastgpt-plugins
+    depends_on:
+      - fastgpt-minio:
+          condition: service_healthy
 
   # AI Proxy
   aiproxy:
