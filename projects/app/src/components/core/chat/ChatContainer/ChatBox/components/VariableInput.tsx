@@ -1,122 +1,20 @@
 import React, { useEffect, useMemo } from 'react';
 import { Controller, type UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Card, Flex, Switch, Textarea } from '@chakra-ui/react';
+import { Box, Button, Card, Flex } from '@chakra-ui/react';
 import ChatAvatar from './ChatAvatar';
 import { MessageCardStyle } from '../constants';
-import {
-  VariableInputEnum,
-  WorkflowIOValueTypeEnum
-} from '@fastgpt/global/core/workflow/constants';
-import MySelect from '@fastgpt/web/components/common/MySelect';
+import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { type ChatBoxInputFormType } from '../type.d';
 import { useContextSelector } from 'use-context-selector';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { type VariableItemType } from '@fastgpt/global/core/app/type';
-import MyTextarea from '@/components/common/Textarea/MyTextarea';
-import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatBoxContext } from '../Provider';
-import dynamic from 'next/dynamic';
-
-const JsonEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/JsonEditor'));
+import InputRender from '@/components/InputRender';
+import { formatInputType, formatInputValueType } from '@/components/InputRender/utils';
 
 export const VariableInputItem = ({
-  item,
-  variablesForm
-}: {
-  item: VariableItemType;
-  variablesForm: UseFormReturn<any>;
-}) => {
-  const {
-    control,
-    setValue,
-    formState: { errors }
-  } = variablesForm;
-
-  return (
-    <Box key={item.id} mb={4} pl={1}>
-      <Box
-        as={'label'}
-        display={'flex'}
-        position={'relative'}
-        mb={1}
-        alignItems={'center'}
-        w={'full'}
-      >
-        {item.label}
-        {item.required && (
-          <Box position={'absolute'} top={'-2px'} left={'-8px'} color={'red.500'}>
-            *
-          </Box>
-        )}
-        {item.description && <QuestionTip ml={1} label={item.description} />}
-      </Box>
-
-      <Controller
-        key={`variables.${item.key}`}
-        control={control}
-        name={`variables.${item.key}`}
-        rules={{
-          required: item.required
-        }}
-        render={({ field: { onChange, value } }) => {
-          if (item.type === VariableInputEnum.input) {
-            return (
-              <MyTextarea
-                autoHeight
-                minH={40}
-                maxH={160}
-                bg={'myGray.50'}
-                value={value}
-                isInvalid={errors?.variables && Object.keys(errors.variables).includes(item.key)}
-                onChange={onChange}
-              />
-            );
-          }
-          if (item.type === VariableInputEnum.select) {
-            return (
-              <MySelect
-                width={'100%'}
-                list={(item.enums || []).map((item: { value: any }) => ({
-                  label: item.value,
-                  value: item.value
-                }))}
-                value={value}
-                onChange={(e) => setValue(`variables.${item.key}`, e)}
-              />
-            );
-          }
-          if (item.type === VariableInputEnum.numberInput) {
-            return (
-              <MyNumberInput
-                step={1}
-                min={item.min}
-                max={item.max}
-                inputFieldProps={{ bg: 'white' }}
-                value={value}
-                onChange={onChange}
-                isInvalid={errors?.variables && Object.keys(errors.variables).includes(item.key)}
-              />
-            );
-          }
-          return (
-            <Textarea
-              value={value}
-              onChange={onChange}
-              rows={5}
-              bg={'myGray.50'}
-              maxLength={item.maxLength || 4000}
-            />
-          );
-        }}
-      />
-    </Box>
-  );
-};
-
-export const ExternalVariableInputItem = ({
   item,
   variablesForm,
   showTag = false
@@ -125,60 +23,35 @@ export const ExternalVariableInputItem = ({
   variablesForm: UseFormReturn<any>;
   showTag?: boolean;
 }) => {
-  const { t } = useTranslation();
-  const { control } = variablesForm;
-
-  const Label = useMemo(() => {
-    return (
-      <Box display={'flex'} position={'relative'} mb={1} alignItems={'center'} w={'full'}>
-        {item.label}
-        {item.description && <QuestionTip ml={1} label={item.description} />}
-        {showTag && (
-          <Flex
-            color={'primary.600'}
-            bg={'primary.100'}
-            px={2}
-            py={1}
-            gap={1}
-            ml={2}
-            fontSize={'mini'}
-            rounded={'sm'}
-          >
-            <MyIcon name={'common/info'} color={'primary.600'} w={4} />
-            {t('chat:variable_invisable_in_share')}
-          </Flex>
-        )}
-      </Box>
-    );
-  }, [item.description, item.label, showTag, t]);
+  const {
+    control,
+    formState: { errors }
+  } = variablesForm;
 
   return (
     <Box key={item.id} mb={4} pl={1}>
-      {Label}
       <Controller
         key={`variables.${item.key}`}
         control={control}
         name={`variables.${item.key}`}
         render={({ field: { onChange, value } }) => {
-          if (item.valueType === WorkflowIOValueTypeEnum.string) {
-            return (
-              <MyTextarea
-                autoHeight
-                minH={40}
-                maxH={160}
-                bg={'myGray.50'}
+          return (
+            <Box>
+              <InputRender
+                input={{
+                  ...item,
+                  isInvalid: errors?.variables && Object.keys(errors.variables).includes(item.key)
+                }}
+                valueType={formatInputValueType(item.valueType)}
+                inputType={formatInputType(item.type)}
                 value={value}
                 onChange={onChange}
+                config={{
+                  showCustomVariableTag: showTag
+                }}
               />
-            );
-          }
-          if (item.valueType === WorkflowIOValueTypeEnum.number) {
-            return <MyNumberInput step={1} bg={'myGray.50'} value={value} onChange={onChange} />;
-          }
-          if (item.valueType === WorkflowIOValueTypeEnum.boolean) {
-            return <Switch isChecked={value} onChange={onChange} />;
-          }
-          return <JsonEditor bg={'myGray.50'} resize value={value} onChange={onChange} />;
+            </Box>
+          );
         }}
       />
     </Box>
@@ -247,7 +120,7 @@ const VariableInput = ({
               {t('chat:variable_invisable_in_share')}
             </Flex>
             {externalVariableList.map((item) => (
-              <ExternalVariableInputItem key={item.id} item={item} variablesForm={variablesForm} />
+              <VariableInputItem key={item.id} item={item} variablesForm={variablesForm} />
             ))}
             {variableList.length === 0 && !chatStarted && (
               <Button
