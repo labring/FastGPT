@@ -108,27 +108,23 @@ services:
       - FE_DOMAIN=
       # root 密码，用户名为: root。如果需要修改 root 密码，直接修改这个环境变量，并重启即可。
       - DEFAULT_ROOT_PSW=1234
+      # 数据库最大连接数
+      - DB_MAX_LINK=30
       # 登录凭证密钥
       - TOKEN_KEY=any
       # root的密钥，常用于升级时候的初始化请求
       - ROOT_KEY=root_key
-      # 文件阅读加密
-      - FILE_TOKEN_KEY=filetoken
-      # 密钥加密key
-      - AES256_SECRET_KEY=fastgptkey
-
+      # AI Proxy 的地址，如果配了该地址，优先使用
+      - AIPROXY_API_ENDPOINT=http://aiproxy:3000
+      # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
+      - AIPROXY_API_TOKEN=aiproxy
       # plugin 地址
       - PLUGIN_BASE_URL=http://fastgpt-plugin:3000
       - PLUGIN_TOKEN=xxxxxx
       # sandbox 地址
       - SANDBOX_URL=http://sandbox:3000
-      # AI Proxy 的地址，如果配了该地址，优先使用
-      - AIPROXY_API_ENDPOINT=http://aiproxy:3000
-      # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
-      - AIPROXY_API_TOKEN=aiproxy
-      
-      # 数据库最大连接数
-      - DB_MAX_LINK=30
+      # 文件阅读加密
+      - FILE_TOKEN_KEY=filetoken
       # MongoDB 连接参数. 用户名myusername,密码mypassword。
       - MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
       # Redis 连接参数
@@ -137,7 +133,6 @@ services:
       # zilliz 连接参数
       - MILVUS_ADDRESS=zilliz_cloud_address
       - MILVUS_TOKEN=zilliz_cloud_token
-
       # 日志等级: debug, info, warn, error
       - LOG_LEVEL=info
       - STORE_LOG_LEVEL=warn
@@ -145,6 +140,10 @@ services:
       - WORKFLOW_MAX_RUN_TIMES=1000
       # 批量执行节点，最大输入长度
       - WORKFLOW_MAX_LOOP_TIMES=100
+      # 自定义跨域，不配置时，默认都允许跨域（多个域名通过逗号分割）
+      - ALLOWED_ORIGINS=
+      # 是否开启IP限制，默认不开启
+      - USE_IP_LIMIT=false
       # 对话文件过期天数
       - CHAT_FILE_EXPIRE_TIME=7
     volumes:

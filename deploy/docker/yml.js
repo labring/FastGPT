@@ -1,4 +1,5 @@
 const fs = require('fs')
+const path = require('path')
 
 const template = `# 数据库的默认账号和密码仅首次运行时设置有效
 # 如果修改了账号密码，记得改数据库和项目连接参数，别只改一处~
@@ -71,6 +72,26 @@ services:
       start_period: 30s
     volumes:
       - ./redis/data:/data
+  fastgpt-minio:
+    image: minio/minio:latest
+    container_name: fastgpt-minio
+    restart: always
+    networks:
+      - fastgpt
+    ports: # comment out if you do not need to expose the port (in production environment, you should not expose the port)
+      - '9000:9000'
+      - '9001:9001'
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - ./fastgpt-minio:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 20s
+      retries: 3
 
   fastgpt:
     container_name: fastgpt
@@ -90,29 +111,34 @@ services:
       - FE_DOMAIN=
       # root 密码，用户名为: root。如果需要修改 root 密码，直接修改这个环境变量，并重启即可。
       - DEFAULT_ROOT_PSW=1234
-      # 数据库最大连接数
-      - DB_MAX_LINK=30
       # 登录凭证密钥
       - TOKEN_KEY=any
       # root的密钥，常用于升级时候的初始化请求
       - ROOT_KEY=root_key
-      # AI Proxy 的地址，如果配了该地址，优先使用
-      - AIPROXY_API_ENDPOINT=http://aiproxy:3000
-      # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
-      - AIPROXY_API_TOKEN=aiproxy
+      # 文件阅读加密
+      - FILE_TOKEN_KEY=filetoken
+      # 密钥加密key
+      - AES256_SECRET_KEY=fastgptkey
+
       # plugin 地址
       - PLUGIN_BASE_URL=http://fastgpt-plugin:3000
       - PLUGIN_TOKEN=xxxxxx
       # sandbox 地址
       - SANDBOX_URL=http://sandbox:3000
-      # 文件阅读加密
-      - FILE_TOKEN_KEY=filetoken
+      # AI Proxy 的地址，如果配了该地址，优先使用
+      - AIPROXY_API_ENDPOINT=http://aiproxy:3000
+      # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
+      - AIPROXY_API_TOKEN=aiproxy
+      
+      # 数据库最大连接数
+      - DB_MAX_LINK=30
       # MongoDB 连接参数. 用户名myusername,密码mypassword。
       - MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
       # Redis 连接参数
       - REDIS_URL=redis://default:mypassword@redis:6379
       # 向量库 连接参数
       {{Vector_DB_ENV}}
+
       # 日志等级: debug, info, warn, error
       - LOG_LEVEL=info
       - STORE_LOG_LEVEL=warn
@@ -120,10 +146,6 @@ services:
       - WORKFLOW_MAX_RUN_TIMES=1000
       # 批量执行节点，最大输入长度
       - WORKFLOW_MAX_LOOP_TIMES=100
-      # 自定义跨域，不配置时，默认都允许跨域（多个域名通过逗号分割）
-      - ALLOWED_ORIGINS=
-      # 是否开启IP限制，默认不开启
-      - USE_IP_LIMIT=false
       # 对话文件过期天数
       - CHAT_FILE_EXPIRE_TIME=7
     volumes:
@@ -165,28 +187,8 @@ services:
       - MINIO_SECRET_KEY=minioadmin
       - MINIO_BUCKET=fastgpt-plugins
     depends_on:
-      - fastgpt-plugin-minio:
+      - fastgpt-minio:
           condition: service_healthy
-  fastgpt-plugin-minio:
-    image: minio/minio:latest
-    container_name: fastgpt-plugin-minio
-    restart: always
-    networks:
-      - fastgpt
-    ports: # comment out if you do not need to expose the port (in production environment, you should not expose the port)
-      - '9000:9000'
-      - '9001:9001'
-    environment:
-      - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=minioadmin
-    volumes:
-      - ./fastgpt-plugin-minio:/data
-    command: server /data --console-address ":9001"
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
-      interval: 30s
-      timeout: 20s
-      retries: 3
 
   # AI Proxy
   aiproxy:
@@ -241,10 +243,10 @@ networks:
 `
 
 const list = [
-    {
-        filename: "./docker-compose-pgvector.yml",
-        depends: `- pg`,
-        service: `pg:
+  {
+    filename: "./docker-compose-pgvector.yml",
+    depends: `- pg`,
+    service: `pg:
     image: pgvector/pgvector:0.8.0-pg15 # docker hub
     # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.8.0-pg15 # 阿里云
     container_name: pg
@@ -265,20 +267,20 @@ const list = [
       interval: 5s
       timeout: 5s
       retries: 10`,
-        env: `- PG_URL=postgresql://username:password@pg:5432/postgres`
-    },
-    {
-        filename: "./docker-compose-zilliz.yml",
-        depends: ``,
-        service: ``,
-        env: `# zilliz 连接参数
+    env: `- PG_URL=postgresql://username:password@pg:5432/postgres`
+  },
+  {
+    filename: "./docker-compose-zilliz.yml",
+    depends: ``,
+    service: ``,
+    env: `# zilliz 连接参数
       - MILVUS_ADDRESS=zilliz_cloud_address
       - MILVUS_TOKEN=zilliz_cloud_token`
-    },
-    {
-        filename: "./docker-compose-milvus.yml",
-        depends: `- milvusStandalone`,
-        service: `milvus-minio:
+  },
+  {
+    filename: "./docker-compose-milvus.yml",
+    depends: `- milvusStandalone`,
+    service: `milvus-minio:
     container_name: milvus-minio
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
     environment:
@@ -338,13 +340,13 @@ const list = [
     depends_on:
       - 'milvusEtcd'
       - 'milvus-minio'`,
-        env: `- MILVUS_ADDRESS=http://milvusStandalone:19530
+    env: `- MILVUS_ADDRESS=http://milvusStandalone:19530
       - MILVUS_TOKEN=none`
-    },
-    {
-        filename: "./docker-compose-oceanbase/docker-compose.yml",
-        depends: `- ob`,
-        service: `ob:
+  },
+  {
+    filename: "./docker-compose-oceanbase/docker-compose.yml",
+    depends: `- ob`,
+    service: `ob:
     image: oceanbase/oceanbase-ce:4.3.5-lts # docker hub
     # image: quay.io/oceanbase/oceanbase-ce:4.3.5-lts # 镜像
     container_name: ob
@@ -379,12 +381,12 @@ const list = [
       timeout: 10s
       retries: 1000
       start_period: 10s`,
-        env: `- OCEANBASE_URL=mysql://root%40tenantname:tenantpassword@ob:2881/test`
-    }
+    env: `- OCEANBASE_URL=mysql://root%40tenantname:tenantpassword@ob:2881/test`
+  }
 ]
 
 list.forEach(item => {
-    const { filename, service, env, depends } = item
-    const content = template.replace("{{Vector_DB_Service}}", service).replace("{{Vector_DB_ENV}}", env).replace("{{Vector_DB_Depends}}", depends)
-    fs.writeFileSync(filename, content, 'utf-8')
+  const { filename, service, env, depends } = item
+  const content = template.replace("{{Vector_DB_Service}}", service).replace("{{Vector_DB_ENV}}", env).replace("{{Vector_DB_Depends}}", depends)
+  fs.writeFileSync(path.join(__dirname, filename), content, 'utf-8')
 })
