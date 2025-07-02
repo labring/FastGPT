@@ -95,7 +95,7 @@ services:
 
   fastgpt:
     container_name: fastgpt
-    image: ghcr.io/labring/fastgpt:v4.9.14 # git
+    image: ghcr.io/labring/fastgpt:v4.10.0-alpha # git
     # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.9.14 # 阿里云
     ports:
       - 3000:3000
@@ -171,8 +171,8 @@ services:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
   # fastgpt-plugin
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v0.1 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1 # 阿里云
+    image: ghcr.io/labring/fastgpt-plugin:v0.0.1 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1-alpha # 阿里云
     container_name: fastgpt-plugin
     restart: always
     networks:
@@ -180,15 +180,15 @@ services:
     environment:
       - AUTH_TOKEN=xxxxxx # disable authentication token if you do not set this variable
       # 改成 minio 公网地址
-      - MINIO_HOST=ip:9000
+      - MINIO_HOST=fastgpt-plugin-minio
       - MINIO_PORT=9000
       - MINIO_USE_SSL=false
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin
       - MINIO_BUCKET=fastgpt-plugins
     depends_on:
-      - fastgpt-minio:
-          condition: service_healthy
+      fastgpt-minio:
+        condition: service_healthy
 
   # AI Proxy
   aiproxy:
