@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Controller, useFieldArray } from 'react-hook-form';
-import RenderPluginInput from './renderPluginInput';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
@@ -19,6 +18,8 @@ import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import InputRender from '@/components/InputRender';
+import { formatInputType, formatInputValueType } from '@/components/InputRender/utils';
 
 const RenderInput = () => {
   const { t } = useTranslation();
@@ -238,13 +239,20 @@ const RenderInput = () => {
               }}
               render={({ field: { onChange, value } }) => {
                 return (
-                  <RenderPluginInput
+                  <InputRender
+                    input={{
+                      ...input,
+                      isDisabled: isDisabledInput,
+                      isInvalid: errors && Object.keys(errors).includes(input.key),
+                      setUploading
+                    }}
+                    inputType={formatInputType(input.renderTypeList[0])}
+                    valueType={formatInputValueType(input.valueType)}
                     value={value}
                     onChange={onChange}
-                    isDisabled={isDisabledInput}
-                    isInvalid={errors && Object.keys(errors).includes(input.key)}
-                    input={input}
-                    setUploading={setUploading}
+                    config={{
+                      showCustomVariableTag: true
+                    }}
                   />
                 );
               }}

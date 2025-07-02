@@ -3,17 +3,7 @@ import NodeCard from './render/NodeCard';
 import { type NodeProps } from 'reactflow';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
-import {
-  Box,
-  Button,
-  Flex,
-  NumberDecrementStepper,
-  NumberIncrementStepper,
-  NumberInput,
-  NumberInputField,
-  NumberInputStepper,
-  Switch
-} from '@chakra-ui/react';
+import { Box, Button, Flex, Switch } from '@chakra-ui/react';
 import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';

@@ -12,18 +12,8 @@ import { uiWorkflow2StoreWorkflow } from '../../utils';
 import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 
 import dynamic from 'next/dynamic';
-import {
-  Box,
-  Button,
-  Flex,
-  NumberDecrementStepper,
-  NumberIncrementStepper,
-  NumberInput,
-  NumberInputField,
-  NumberInputStepper,
-  Switch
-} from '@chakra-ui/react';
-import { type FieldErrors, useForm } from 'react-hook-form';
+import { Box, Button, Flex } from '@chakra-ui/react';
+import { type FieldErrors, useForm, Controller } from 'react-hook-form';
 import {
   VariableInputEnum,
   WorkflowIOValueTypeEnum
@@ -31,21 +21,17 @@ import {
 import { checkInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '../../../context';
-import {
-  ExternalVariableInputItem,
-  VariableInputItem
-} from '@/components/core/chat/ChatContainer/ChatBox/components/VariableInput';
+import { VariableInputItem } from '@/components/core/chat/ChatContainer/ChatBox/components/VariableInput';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
-import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import { WorkflowNodeEdgeContext } from '../../context/workflowInitContext';
+import InputRender from '@/components/InputRender';
+import { formatInputType, formatInputValueType } from '@/components/InputRender/utils';
 
 const MyRightDrawer = dynamic(
   () => import('@fastgpt/web/components/common/MyDrawer/MyRightDrawer')
 );
-const JsonEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/JsonEditor'));
 
 enum TabEnum {
   global = 'global',
@@ -176,7 +162,11 @@ export const useDebug = () => {
         variables: defaultGlobalVariables
       }
     });
-    const { register, getValues, setValue, handleSubmit } = variablesForm;
+    const {
+      handleSubmit,
+      control,
+      formState: { errors }
+    } = variablesForm;
 
     const onClose = () => {
       setRuntimeNodeId(undefined);
@@ -267,7 +257,7 @@ export const useDebug = () => {
           )}
           <Box display={currentTab === TabEnum.global ? 'block' : 'none'}>
             {customVar.map((item) => (
-              <ExternalVariableInputItem
+              <VariableInputItem
                 key={item.id}
                 item={{ ...item, key: item.key }}
                 variablesForm={variablesForm}
@@ -284,83 +274,35 @@ export const useDebug = () => {
           </Box>
           <Box display={currentTab === TabEnum.node ? 'block' : 'none'}>
             {renderInputs.map((input) => {
-              const required = input.required || false;
-
-              const RenderInput = (() => {
-                if (input.valueType === WorkflowIOValueTypeEnum.string) {
-                  return (
-                    <MyTextarea
-                      autoHeight
-                      minH={60}
-                      maxH={160}
-                      bg={'myGray.50'}
-                      placeholder={t(input.placeholder || ('' as any))}
-                      {...register(`nodeVariables.${input.key}`, {
-                        required: input.required
-                      })}
-                    />
-                  );
-                }
-                if (input.valueType === WorkflowIOValueTypeEnum.number) {
-                  return (
-                    <NumberInput step={input.step} min={input.min} max={input.max} bg={'myGray.50'}>
-                      <NumberInputField
-                        {...register(`nodeVariables.${input.key}`, {
-                          required: input.required,
-                          min: input.min,
-                          max: input.max,
-                          valueAsNumber: true
-                        })}
-                      />
-                      <NumberInputStepper>
-                        <NumberIncrementStepper />
-                        <NumberDecrementStepper />
-                      </NumberInputStepper>
-                    </NumberInput>
-                  );
-                }
-                if (input.valueType === WorkflowIOValueTypeEnum.boolean) {
-                  return (
-                    <Box>
-                      <Switch {...register(`nodeVariables.${input.key}`)} />
-                    </Box>
-                  );
-                }
-
-                let value = getValues(input.key) || '';
-                if (typeof value !== 'string') {
-                  value = JSON.stringify(value, null, 2);
-                }
-
-                return (
-                  <JsonEditor
-                    bg={'myGray.50'}
-                    placeholder={t(input.placeholder || ('' as any))}
-                    resize
-                    value={value}
-                    onChange={(e) => {
-                      setValue(`nodeVariables.${input.key}`, e);
+              return (
+                <Box key={input.key} px={1}>
+                  <Controller
+                    key={`nodeVariables.${input.key}`}
+                    control={control}
+                    name={`nodeVariables.${input.key}`}
+                    rules={{
+                      required: input.required
+                    }}
+                    render={({ field: { onChange, value } }) => {
+                      return (
+                        <InputRender
+                          input={{
+                            ...input,
+                            label: input.debugLabel || input.label,
+                            isInvalid:
+                              errors?.nodeVariables &&
+                              Object.keys(errors.nodeVariables).includes(input.key)
+                          }}
+                          valueType={formatInputValueType(input.valueType)}
+                          inputType={formatInputType(input.renderTypeList[0])}
+                          value={value}
+                          onChange={onChange}
+                        />
+                      );
                     }}
                   />
-                );
-              })();
-
-              return !!RenderInput ? (
-                <Box key={input.key} _notLast={{ mb: 4 }} px={1}>
-                  <Flex alignItems={'center'} mb={1}>
-                    <Box position={'relative'}>
-                      {required && (
-                        <Box position={'absolute'} left={'-8px'} top={'-2px'} color={'red.600'}>
-                          *
-                        </Box>
-                      )}
-                      {t(input.debugLabel || (input.label as any))}
-                    </Box>
-                    {input.description && <QuestionTip ml={2} label={input.description} />}
-                  </Flex>
-                  {RenderInput}
                 </Box>
-              ) : null;
+              );
             })}
           </Box>
         </Box>
