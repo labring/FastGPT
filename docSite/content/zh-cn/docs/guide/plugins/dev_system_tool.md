@@ -1,7 +1,7 @@
 ---
 title: "如何开发系统工具"
 description: "FastGPT 系统工具开发指南"
-icon: "plugin_submission"
+icon: "home_repair_service"
 draft: false
 toc: true
 weight: 302
