@@ -12,7 +12,7 @@ import {
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import { defaultInput } from '../../FieldEditModal';
-import { getInputComponentProps } from '@fastgpt/global/core/workflow/node/io/utils';
+import { getInputComponentProps } from '@/web/core/workflow/utils';
 import { ReferSelector, useReference } from '../Reference';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import ValueTypeLabel from '../../../ValueTypeLabel';

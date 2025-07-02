@@ -10,7 +10,6 @@ import {
   FlowNodeTypeEnum
 } from '../../../node/constant';
 import { type FlowNodeTemplateType } from '../../../type/node';
-import { getHandleConfig } from '../../utils';
 import { Input_Template_DynamicInput } from '../../input';
 import { Output_Template_AddOutput } from '../../output';
 import { JS_TEMPLATE } from './constants';
@@ -20,8 +19,8 @@ export const CodeNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.code,
   templateType: FlowNodeTemplateTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.code,
-  sourceHandle: getHandleConfig(true, true, true, true),
-  targetHandle: getHandleConfig(true, true, true, true),
+  showSourceHandle: true,
+  showTargetHandle: true,
   avatar: 'core/workflow/template/codeRun',
   name: i18nT('workflow:code_execution'),
   intro: i18nT('workflow:execute_a_simple_script_code_usually_for_complex_data_processing'),

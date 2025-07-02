@@ -30,13 +30,14 @@ import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
 import NodeDebugResponse from './RenderDebug/NodeDebugResponse';
-import { getAppVersionList } from '@/web/core/app/api/version';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { useCreation } from 'ahooks';
+import { useBoolean, useCreation } from 'ahooks';
 import { formatToolError } from '@fastgpt/global/core/app/utils';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import SecretInputModal from '@/pageComponents/app/plugin/SecretInputModal';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -78,12 +79,19 @@ const NodeCard = (props: Props) => {
     isError = false,
     debugResult,
     isFolded,
-    customStyle
+    customStyle,
+    inputs
   } = props;
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const setHoverNodeId = useContextSelector(WorkflowEventContext, (v) => v.setHoverNodeId);
+
+  const inputConfig = inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig);
+  const [
+    isOpenToolParamConfigModal,
+    { setTrue: onOpenToolParamConfigModal, setFalse: onCloseToolParamConfigModal }
+  ] = useBoolean(false);
 
   // custom title edit
   const { onOpenModal: onOpenCustomTitleModal, EditModal: EditTitleModal } = useEditTitle({
@@ -92,7 +100,7 @@ const NodeCard = (props: Props) => {
   });
 
   const showToolHandle = useMemo(
-    () => isTool && !!nodeList.find((item) => item?.flowNodeType === FlowNodeTypeEnum.tools),
+    () => isTool && !!nodeList.find((item) => item?.flowNodeType === FlowNodeTypeEnum.agent),
     [isTool, nodeList]
   );
 
@@ -107,9 +115,12 @@ const NodeCard = (props: Props) => {
   }, [nodeList, nodeId]);
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
   const showVersion = useMemo(() => {
-    if (!isAppNode || !node?.pluginId || node?.pluginData?.error) return false;
-    if ([FlowNodeTypeEnum.tool, FlowNodeTypeEnum.toolSet].includes(node.flowNodeType)) return false;
-    return typeof node.version === 'string';
+    // 1. Team app/System commercial plugin
+    if (isAppNode && node?.pluginId && !node?.pluginData?.error) return true;
+    // 2. System tool
+    if (isAppNode && node.toolConfig) return true;
+
+    return false;
   }, [isAppNode, node]);
 
   const { data: nodeTemplate } = useRequest2(
@@ -315,7 +326,7 @@ const NodeCard = (props: Props) => {
   }, [nodeId, isFolded]);
   const RenderToolHandle = useMemo(
     () =>
-      node?.flowNodeType === FlowNodeTypeEnum.tools ? <ToolSourceHandle nodeId={nodeId} /> : null,
+      node?.flowNodeType === FlowNodeTypeEnum.agent ? <ToolSourceHandle nodeId={nodeId} /> : null,
     [node?.flowNodeType, nodeId]
   );
 
@@ -361,13 +372,60 @@ const NodeCard = (props: Props) => {
     >
       {debugResult && <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />}
       {Header}
-      <Flex flexDirection={'column'} flex={1} my={!isFolded ? 3 : 0} gap={2}>
-        {!isFolded ? children : <Box h={4} />}
+
+      <Flex flexDirection={'column'} flex={1} py={!isFolded ? 3 : 0} gap={2} position={'relative'}>
+        {!isFolded ? (
+          <>
+            {inputConfig && !inputConfig?.value ? (
+              <Flex
+                alignItems={'center'}
+                flexDirection={'column'}
+                justifyContent={'center'}
+                borderRadius={'lg'}
+                h={'200px'}
+                bg={'myGray.25'}
+                border={'base'}
+                mx={4}
+              >
+                <Box>{t('app:tool_not_active')}</Box>
+                <Button w={'83px'} mt={2} size={'lg'} onClick={onOpenToolParamConfigModal}>
+                  {t('app:too_to_active')}
+                </Button>
+              </Flex>
+            ) : (
+              children
+            )}
+          </>
+        ) : (
+          <Box h={4} />
+        )}
       </Flex>
+
       {RenderHandle}
       {RenderToolHandle}
 
       <EditTitleModal maxLength={100} />
+      {inputConfig && isOpenToolParamConfigModal && (
+        <SecretInputModal
+          onClose={onCloseToolParamConfigModal}
+          onSubmit={(data) => {
+            onChangeNode({
+              nodeId: nodeId as string,
+              type: 'updateInput',
+              key: inputConfig.key,
+              value: {
+                ...inputConfig,
+                value: data
+              }
+            });
+            onCloseToolParamConfigModal();
+          }}
+          courseUrl={node?.courseUrl}
+          inputConfig={inputConfig}
+          hasSystemSecret={node?.hasSystemSecret}
+          secretCost={node?.currentCost}
+        />
+      )}
     </Flex>
   );
 };
@@ -626,7 +684,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
   const { ScrollData, data: versionList } = useScrollPagination(getToolVersionList, {
     pageSize: 20,
     params: {
-      toolId: node.pluginId
+      pluginId: node.pluginId
     },
     refreshDeps: [node.pluginId, isOpen],
     disalbed: !isOpen,

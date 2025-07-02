@@ -102,7 +102,6 @@
   "team.group.manage_tip": "可以管理成员、创建群组、管理所有群组、为群组和成员分配权限",
   "team.group.members": "成员",
   "team.group.name": "群组名称",
-  "team.group.permission.write": "",
   "team.group.permission_tip": "单独配置权限的成员，将遵循个人权限配置，不再受群组权限影响。\n若成员在多个权限组，则该成员的权限取并集。",
   "team.group.role.admin": "管理员",
   "team.group.role.member": "成员",

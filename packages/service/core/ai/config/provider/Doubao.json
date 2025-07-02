@@ -2,8 +2,8 @@
   "provider": "Doubao",
   "list": [
     {
-      "model": "Doubao-Seed-1.6",
-      "name": "Doubao-Seed-1.6",
+      "model": "doubao-seed-1-6-250615",
+      "name": "doubao-seed-1-6-250615",
       "maxContext": 220000,
       "maxResponse": 16000,
       "quoteMaxToken": 220000,
@@ -24,8 +24,8 @@
       "type": "llm"
     },
     {
-      "model": "Doubao-Seed-1.6-thinking",
-      "name": "Doubao-Seed-1.6-thinking",
+      "model": "doubao-seed-1-6-flash-250615",
+      "name": "doubao-seed-1-6-flash-250615",
       "maxContext": 220000,
       "maxResponse": 16000,
       "quoteMaxToken": 220000,
@@ -46,8 +46,8 @@
       "type": "llm"
     },
     {
-      "model": "Doubao-Seed-1.6-flash",
-      "name": "Doubao-Seed-1.6-flash",
+      "model": "doubao-seed-1-6-thinking-250615",
+      "name": "doubao-seed-1-6-thinking-250615",
       "maxContext": 220000,
       "maxResponse": 16000,
       "quoteMaxToken": 220000,

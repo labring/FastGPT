@@ -4,76 +4,85 @@ import type { PluginGroupSchemaType, TGroupType } from '../../../service/core/ap
 import { AppTemplateTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
 
-export const workflowNodeTemplateList = [
-  {
-    type: FlowNodeTemplateTypeEnum.systemInput,
-    label: i18nT('common:core.module.template.System input module'),
-    list: []
-  },
-  {
-    type: FlowNodeTemplateTypeEnum.ai,
-    label: i18nT('common:core.module.template.AI function'),
-    list: []
-  },
-  {
-    type: FlowNodeTemplateTypeEnum.search,
-    label: i18nT('common:core.workflow.template.Search'),
-    list: []
-  },
-  {
-    type: FlowNodeTemplateTypeEnum.interactive,
-    label: i18nT('common:core.workflow.template.Interactive'),
-    list: []
-  },
-  {
-    type: FlowNodeTemplateTypeEnum.multimodal,
-    label: i18nT('common:core.workflow.template.Multimodal'),
-    list: []
-  },
-  {
-    type: FlowNodeTemplateTypeEnum.tools,
-    label: i18nT('common:core.module.template.Tool module'),
-    list: []
-  },
-  {
-    type: FlowNodeTemplateTypeEnum.communication,
-    label: i18nT('common:workflow.template.communication'),
-    list: []
-  },
-  {
-    type: FlowNodeTemplateTypeEnum.other,
-    label: i18nT('common:Other'),
-    list: []
-  },
-  {
-    type: FlowNodeTemplateTypeEnum.teamApp,
-    label: '',
-    list: []
-  }
-];
-
 export const systemPluginTemplateList: TGroupType[] = [
   {
     typeId: FlowNodeTemplateTypeEnum.tools,
-    typeName: i18nT('common:navbar.Tools')
-  },
-  {
-    typeId: FlowNodeTemplateTypeEnum.search,
-    typeName: i18nT('common:Search')
+    typeName: i18nT('app:tool_type_tools')
   },
   {
     typeId: FlowNodeTemplateTypeEnum.multimodal,
-    typeName: i18nT('common:core.workflow.template.Multimodal')
+    typeName: i18nT('app:tool_type_multimodal')
+  },
+  {
+    typeId: FlowNodeTemplateTypeEnum.productivity,
+    typeName: i18nT('app:tool_type_productivity')
+  },
+  {
+    typeId: FlowNodeTemplateTypeEnum.scientific,
+    typeName: i18nT('app:tool_type_scientific')
+  },
+  {
+    typeId: FlowNodeTemplateTypeEnum.finance,
+    typeName: i18nT('app:tool_type_finance')
+  },
+  {
+    typeId: FlowNodeTemplateTypeEnum.design,
+    typeName: i18nT('app:tool_type_design')
+  },
+  {
+    typeId: FlowNodeTemplateTypeEnum.news,
+    typeName: i18nT('app:tool_type_news')
+  },
+  {
+    typeId: FlowNodeTemplateTypeEnum.entertainment,
+    typeName: i18nT('app:tool_type_entertainment')
   },
   {
     typeId: FlowNodeTemplateTypeEnum.communication,
-    typeName: i18nT('common:workflow.template.communication')
+    typeName: i18nT('app:tool_type_communication')
+  },
+  {
+    typeId: FlowNodeTemplateTypeEnum.social,
+    typeName: i18nT('app:tool_type_social')
   },
   {
     typeId: FlowNodeTemplateTypeEnum.other,
     typeName: i18nT('common:Other')
   }
 ];
+
+export const workflowNodeTemplateList: {
+  type: string;
+  label: string;
+}[] = [
+  {
+    type: FlowNodeTemplateTypeEnum.systemInput,
+    label: i18nT('common:core.module.template.System input module')
+  },
+  {
+    type: FlowNodeTemplateTypeEnum.ai,
+    label: i18nT('common:core.module.template.AI function')
+  },
+  {
+    type: FlowNodeTemplateTypeEnum.search,
+    label: i18nT('common:core.workflow.template.Search')
+  },
+  {
+    type: FlowNodeTemplateTypeEnum.interactive,
+    label: i18nT('common:core.workflow.template.Interactive')
+  },
+
+  ...systemPluginTemplateList.map((item) => ({
+    type: item.typeId,
+    label: item.typeName
+  })),
+
+  {
+    type: FlowNodeTemplateTypeEnum.teamApp,
+    label: ''
+  }
+];
+
 export const defaultGroup: PluginGroupSchemaType = {
   groupId: 'systemPlugin',
   groupAvatar: 'core/app/type/pluginLight',

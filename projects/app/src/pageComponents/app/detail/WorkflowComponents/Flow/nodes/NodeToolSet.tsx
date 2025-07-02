@@ -13,7 +13,6 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   const { inputs } = data;
   const toolList: McpToolConfigType[] = inputs[0]?.value?.toolList;
-
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>
       <Container>

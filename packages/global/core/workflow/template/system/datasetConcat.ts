@@ -12,7 +12,6 @@ import {
   FlowNodeTemplateTypeEnum
 } from '../../constants';
 import { getNanoid } from '../../../../common/string/tools';
-import { getHandleConfig } from '../utils';
 import { type FlowNodeInputItemType } from '../../type/io.d';
 import { i18nT } from '../../../../../web/i18n/utils';
 
@@ -35,8 +34,8 @@ export const DatasetConcatModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.datasetConcatNode,
   flowNodeType: FlowNodeTypeEnum.datasetConcatNode,
   templateType: FlowNodeTemplateTypeEnum.other,
-  sourceHandle: getHandleConfig(true, true, true, true),
-  targetHandle: getHandleConfig(true, true, true, true),
+  showSourceHandle: true,
+  showTargetHandle: true,
   avatar: 'core/workflow/template/datasetConcat',
   name: i18nT('workflow:knowledge_base_search_merge'),
   intro: i18nT('workflow:intro_knowledge_base_search_merge'),

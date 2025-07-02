@@ -1,8 +1,9 @@
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { dispatchWorkFlow } from '../index';
+import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
+import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
+import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getChildAppRuntimeById } from '../../../app/plugin/controller';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges,
@@ -13,11 +14,12 @@ import { authPluginByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { computedPluginUsage } from '../../../app/plugin/utils';
 import { filterSystemVariables } from '../utils';
-import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
-import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { getChildAppRuntimeById, splitCombinePluginId } from '../../../app/plugin/controller';
+import { dispatchWorkFlow } from '../index';
 import { getUserChatInfoAndAuthTeamPoints } from '../../../../support/permission/auth/team';
+import { dispatchRunTool } from './runTool';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
@@ -35,6 +37,26 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     return Promise.reject('pluginId can not find');
   }
 
+  // Adapt <= 4.10 system tool
+  const { source, pluginId: formatPluginId } = splitCombinePluginId(pluginId);
+  if (source === PluginSourceEnum.systemTool) {
+    return dispatchRunTool({
+      ...props,
+      node: {
+        ...props.node,
+        toolConfig: {
+          systemTool: {
+            toolId: formatPluginId
+          }
+        }
+      }
+    });
+  }
+
+  /* 
+    1. Team app
+    2. Admin selected system tool
+  */
   const { files } = chatValue2RuntimePrompt(query);
 
   // auth plugin

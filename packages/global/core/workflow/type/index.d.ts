@@ -6,7 +6,8 @@ import {
   VariableInputEnum
 } from '../constants';
 import { DispatchNodeResponseKeyEnum } from '../runtime/constants';
-import { CustomInputItemType, FlowNodeInputItemType, FlowNodeOutputItemType } from './io.d';
+import type { FlowNodeInputItemType, FlowNodeOutputItemType } from './io.d';
+import { CustomInputItemType } from './io.d';
 import {
   ChatHistoryItemResType,
   ChatItemType,
@@ -14,13 +15,14 @@ import {
   ToolRunResponseItemType
 } from '../../chat/type';
 import { ChatNodeUsageType } from '../../../support/wallet/bill/type';
-import { PluginTypeEnum } from '../../plugin/constants';
 import type { StoreEdgeItemType } from './edge';
 import type { AppChatConfigType } from '../../app/type';
 import type { ParentIdType } from 'common/parentFolder/type';
 import type { AppTypeEnum } from 'core/app/constants';
 import type { StoreNodeItemType } from './node';
 import { FlowNodeTemplateType } from './node';
+import type { SecretValueType } from './../../../common/secret/type';
+import type { I18nStringType } from '../../../common/i18n/type';
 
 export type WorkflowTemplateBasicType = {
   nodes: StoreNodeItemType[];
@@ -32,19 +34,15 @@ export type WorkflowTemplateType = {
   parentId?: ParentIdType;
   isFolder?: boolean;
 
-  name: string;
   avatar: string;
-  intro?: string;
+  name: I18nStringType | string;
+  intro?: I18nStringType | string;
+
   author?: string;
   courseUrl?: string;
-
-  version?: string;
-  versionLabel?: string;
-  isLatestVersion?: boolean;
-
-  showStatus?: boolean;
   weight?: number;
 
+  version?: string;
   workflow: WorkflowTemplateBasicType;
 };
 
@@ -62,44 +60,4 @@ export type TemplateMarketListItemType = {
   tags: string[];
   type: AppTypeEnum.simple | AppTypeEnum.workflow | AppTypeEnum.plugin;
   avatar: string;
-};
-
-// system plugin
-export type SystemPluginTemplateItemType = WorkflowTemplateType & {
-  customWorkflow?: string;
-  associatedPluginId?: string;
-  userGuide?: string;
-
-  templateType: string;
-  isTool?: boolean;
-
-  // commercial plugin config
-  originCost: number; // n points/one time
-  currentCost: number;
-  hasTokenFee: boolean;
-  pluginOrder: number;
-
-  isActive?: boolean;
-  isOfficial?: boolean;
-  inputConfig?: {
-    // Render config input form. Find the corresponding node and replace the variable directly
-    key: string;
-    label: string;
-    description: string;
-    value?: any;
-  }[];
-};
-
-export type THelperLine = {
-  position: number;
-  nodes: {
-    left: number;
-    right: number;
-    top: number;
-    bottom: number;
-    width: number;
-    height: number;
-    centerX: number;
-    centerY: number;
-  }[];
 };

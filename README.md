@@ -120,6 +120,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## 💪 相关项目
 
+- [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [Laf：3 分钟快速接入三方应用](https://github.com/labring/laf)
 - [Sealos：快速部署集群应用](https://github.com/labring/sealos)
 - [One API：多模型管理，支持 Azure、文心一言等](https://github.com/songquanpeng/one-api)

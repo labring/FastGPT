@@ -44,7 +44,7 @@ export const ConnectionSourceHandle = ({
       */
       if (
         !(isFoldNode && node?.outputs.length) &&
-        (!node || !node?.sourceHandle?.right || rightTargetConnected)
+        (!node || !node?.showSourceHandle || rightTargetConnected)
       )
         return null;
 
@@ -125,7 +125,7 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
     })();
 
     const LeftHandle = (() => {
-      if (!node || !node?.targetHandle?.left) return null;
+      if (!node || !node?.showTargetHandle) return null;
 
       const handleId = getHandleId(nodeId, 'target', Position.Left);
 

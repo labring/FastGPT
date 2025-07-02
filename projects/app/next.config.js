@@ -36,7 +36,7 @@ const nextConfig = {
             key: 'Permissions-Policy',
             value: 'geolocation=(self), microphone=(self), camera=(self)'
           }
-        ]
+        ],
       }
     ];
   },
@@ -71,6 +71,7 @@ const nextConfig = {
 
     if (isServer) {
       config.externals.push('@node-rs/jieba');
+
       if (nextRuntime === 'nodejs') {
         const oldEntry = config.entry;
         config = {
@@ -79,11 +80,7 @@ const nextConfig = {
             const entries = await oldEntry(...args);
             return {
               ...entries,
-              ...getWorkerConfig(),
-              'worker/systemPluginRun': path.resolve(
-                process.cwd(),
-                '../../packages/plugins/runtime/worker.ts'
-              )
+              ...getWorkerConfig()
             };
           }
         };
