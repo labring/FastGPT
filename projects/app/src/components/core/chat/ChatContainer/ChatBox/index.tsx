@@ -880,7 +880,7 @@ const ChatBox = ({
       eventBus.off(EventNameEnum.sendQuestion);
       eventBus.off(EventNameEnum.editQuestion);
     };
-  }, [isReady, resetInputVal, sendPrompt, chatStarted, active, isInteractive]);
+  }, [isReady, resetInputVal, sendPrompt, canSendPrompt]);
 
   // Auto send prompt
   useDebounceEffect(
