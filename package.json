@@ -13,8 +13,7 @@
     "previewIcon": "node ./scripts/icon/index.js",
     "api:gen": "tsc ./scripts/openapi/index.ts && node ./scripts/openapi/index.js && npx @redocly/cli build-docs ./scripts/openapi/openapi.json -o ./projects/app/public/openapi/index.html",
     "create:i18n": "node ./scripts/i18n/index.js",
-    "lint": "eslint \"**/*.{ts,tsx}\" --ignore-path .eslintignore",
-    "lint:fix": "eslint \"**/*.{ts,tsx}\" --fix --ignore-path .eslintignore",
+    "lint": "eslint \"**/*.{ts,tsx}\" --fix --ignore-path .eslintignore",
     "test": "vitest run",
     "test:workflow": "vitest run workflow"
   },
@@ -41,7 +40,7 @@
       "pnpm format-code"
     ],
     "./**/**/*.{ts,tsx}": [
-      "pnpm lint:fix"
+      "pnpm lint"
     ],
     "./docSite/**/**/*.md": "pnpm format-doc && pnpm gen:llms"
   },

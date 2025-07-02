@@ -13,15 +13,14 @@ import {
 } from '../../constants';
 import { Input_Template_DynamicInput } from '../input';
 import { Output_Template_AddOutput } from '../output';
-import { getHandleConfig } from '../utils';
 import { i18nT } from '../../../../../web/i18n/utils';
 
 export const HttpNode468: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.httpRequest468,
   templateType: FlowNodeTemplateTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.httpRequest468,
-  sourceHandle: getHandleConfig(true, true, true, true),
-  targetHandle: getHandleConfig(true, true, true, true),
+  showSourceHandle: true,
+  showTargetHandle: true,
   avatar: 'core/workflow/template/httpRequest',
   name: i18nT('workflow:http_request'),
   intro: i18nT('workflow:intro_http_request'),

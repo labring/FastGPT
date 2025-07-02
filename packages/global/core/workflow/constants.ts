@@ -5,14 +5,23 @@ export enum FlowNodeTemplateTypeEnum {
   systemInput = 'systemInput',
   ai = 'ai',
   function = 'function',
-  tools = 'tools',
   interactive = 'interactive',
 
+  // System tool type
+  tools = 'tools',
   search = 'search',
   multimodal = 'multimodal',
   communication = 'communication',
-
+  finance = 'finance',
+  design = 'design',
+  productivity = 'productivity',
+  news = 'news',
+  entertainment = 'entertainment',
+  social = 'social',
+  scientific = 'scientific',
   other = 'other',
+
+  // Team app type
   teamApp = 'teamApp'
 }
 
@@ -143,6 +152,7 @@ export enum NodeInputKeyEnum {
   addInputParam = 'system_addInputParam',
   forbidStream = 'system_forbid_stream',
   headerSecret = 'system_header_secret',
+  systemInputConfig = 'system_input_config',
 
   // history
   historyMaxAmount = 'maxContext',
@@ -263,6 +273,7 @@ export enum NodeOutputKeyEnum {
   text = 'system_text',
   addOutputParam = 'system_addOutputParam',
   rawResponse = 'system_rawResponse',
+  systemError = 'system_error',
 
   // start
   userFiles = 'userFiles',

@@ -1,5 +1,5 @@
-import { Box, Button, Flex, Switch, Textarea, useDisclosure } from '@chakra-ui/react';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { Box, Button, Flex, Switch, Textarea } from '@chakra-ui/react';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -12,7 +12,7 @@ import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FilePreview from '../../components/FilePreview';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useFieldArray } from 'react-hook-form';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
@@ -22,6 +22,11 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { PluginRunContext } from '../context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import AIModelSelector from '@/components/Select/AIModelSelector';
+import SecretInputModal, {
+  type ToolParamsFormType
+} from '@/pageComponents/app/plugin/SecretInputModal';
+import { SystemToolInputTypeMap } from '@fastgpt/global/core/app/systemTool/constants';
+import { useBoolean } from 'ahooks';
 
 const JsonEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/JsonEditor'));
 
@@ -143,7 +148,11 @@ const RenderPluginInput = ({
   isDisabled,
   isInvalid,
   input,
-  setUploading
+  setUploading,
+
+  hasSystemSecret,
+  secretCost,
+  courseUrl
 }: {
   value: any;
   onChange: (...event: any[]) => void;
@@ -151,10 +160,17 @@ const RenderPluginInput = ({
   isInvalid: boolean;
   input: FlowNodeInputItemType;
   setUploading: React.Dispatch<React.SetStateAction<boolean>>;
+
+  hasSystemSecret?: boolean;
+  secretCost?: number;
+  courseUrl?: string;
 }) => {
   const { t } = useTranslation();
   const inputType = input.renderTypeList[0];
   const { llmModelList } = useSystemStore();
+
+  const [isOpenSecretModal, { setTrue: setTrueSecretModal, setFalse: setFalseSecretModal }] =
+    useBoolean(false);
 
   const render = (() => {
     if (inputType === FlowNodeInputTypeEnum.select && input.list) {
@@ -213,6 +229,48 @@ const RenderPluginInput = ({
           isDisabled={isDisabled}
           isInvalid={isInvalid}
         />
+      );
+    }
+    if (input.key === NodeInputKeyEnum.systemInputConfig && input.inputList) {
+      return (
+        <Box>
+          <FormLabel mb={1}>{t('common:secret_key')}</FormLabel>
+          <Button
+            variant={'whiteBase'}
+            border={'base'}
+            borderRadius={'md'}
+            leftIcon={<Box w={'6px'} h={'6px'} bg={'primary.600'} borderRadius={'md'} />}
+            onClick={setTrueSecretModal}
+          >
+            {(() => {
+              const val = value as ToolParamsFormType;
+              if (!val) {
+                return t('workflow:tool_active_config');
+              }
+
+              return t('workflow:tool_active_config_type', {
+                type: t(SystemToolInputTypeMap[val.type].text as any)
+              });
+            })()}
+          </Button>
+
+          {isOpenSecretModal && (
+            <SecretInputModal
+              inputConfig={{
+                ...input,
+                value: value as ToolParamsFormType
+              }}
+              hasSystemSecret={hasSystemSecret}
+              secretCost={secretCost}
+              courseUrl={courseUrl}
+              onClose={setFalseSecretModal}
+              onSubmit={(data) => {
+                onChange(data);
+                setFalseSecretModal();
+              }}
+            />
+          )}
+        </Box>
       );
     }
 

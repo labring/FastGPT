@@ -18,7 +18,7 @@ export function checkChatSupportSelectFileByModules(modules: StoreNodeItemType[]
   const chatModules = modules.filter(
     (item) =>
       item.flowNodeType === FlowNodeTypeEnum.chatNode ||
-      item.flowNodeType === FlowNodeTypeEnum.tools
+      item.flowNodeType === FlowNodeTypeEnum.agent
   );
   const models: string[] = chatModules.map(
     (item) => item.inputs.find((item) => item.key === 'model')?.value || ''

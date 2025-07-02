@@ -7,7 +7,6 @@ import {
 } from '@/web/core/workflow/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   type FlowNodeItemType,
@@ -18,8 +17,10 @@ import {
   type RuntimeEdgeItemType,
   type StoreEdgeItemType
 } from '@fastgpt/global/core/workflow/type/edge';
-import { type FlowNodeChangeProps } from '@fastgpt/global/core/workflow/type/fe';
-import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import {
+  type FlowNodeOutputItemType,
+  type FlowNodeInputItemType
+} from '@fastgpt/global/core/workflow/type/io';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useMemoizedFn, useUpdateEffect } from 'ahooks';
 import React, {
@@ -97,6 +98,52 @@ export type WorkflowSnapshotsType = WorkflowStateType & {
   state?: WorkflowStateType;
   diff?: any;
 };
+
+type FlowNodeChangeProps = { nodeId: string } & (
+  | {
+      type: 'attr'; // key: attr, value: new value
+      key: string;
+      value: any;
+    }
+  | {
+      type: 'updateInput'; // key: update input key, value: new input value
+      key: string;
+      value: FlowNodeInputItemType;
+    }
+  | {
+      type: 'replaceInput'; // key: old input key, value: new input value
+      key: string;
+      value: FlowNodeInputItemType;
+    }
+  | {
+      type: 'addInput'; // key: null, value: new input value
+      value: FlowNodeInputItemType;
+      index?: number;
+    }
+  | {
+      type: 'delInput'; // key: delete input key, value: null
+      key: string;
+    }
+  | {
+      type: 'updateOutput'; // key: update output key, value: new output value
+      key: string;
+      value: FlowNodeOutputItemType;
+    }
+  | {
+      type: 'replaceOutput'; // key: old output key, value: new output value
+      key: string;
+      value: FlowNodeOutputItemType;
+    }
+  | {
+      type: 'addOutput'; // key: null, value: new output value
+      value: FlowNodeOutputItemType;
+      index?: number;
+    }
+  | {
+      type: 'delOutput'; // key: delete output key, value: null
+      key: string;
+    }
+);
 
 type WorkflowContextType = {
   appId?: string;

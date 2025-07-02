@@ -10,6 +10,7 @@ export const getErrText = (err: any, def = ''): any => {
         err?.response?.data?.msg ||
         err?.response?.msg ||
         err?.msg ||
+        err?.error ||
         def;
   // msg && console.log('error =>', msg);
   return replaceSensitiveText(msg);

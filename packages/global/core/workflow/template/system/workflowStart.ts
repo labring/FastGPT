@@ -5,7 +5,6 @@ import {
   NodeOutputKeyEnum,
   FlowNodeTemplateTypeEnum
 } from '../../constants';
-import { getHandleConfig } from '../utils';
 import { Input_Template_UserChatInput } from '../input';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { type FlowNodeOutputItemType } from '../../type/io';
@@ -23,8 +22,8 @@ export const WorkflowStart: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.workflowStart,
   templateType: FlowNodeTemplateTypeEnum.systemInput,
   flowNodeType: FlowNodeTypeEnum.workflowStart,
-  sourceHandle: getHandleConfig(false, true, false, false),
-  targetHandle: getHandleConfig(false, false, false, false),
+  showSourceHandle: true,
+  showTargetHandle: false,
   avatar: 'core/workflow/template/workflowStart',
   name: i18nT('workflow:template.workflow_start'),
   intro: '',
