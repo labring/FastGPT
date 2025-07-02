@@ -195,7 +195,6 @@ const SecretInputModal = ({
                             {item.inputType === 'switch' && (
                               <Box>
                                 <Switch
-                                  bg={'myGray.50'}
                                   {...register(inputKey, {
                                     required: item.required
                                   })}
