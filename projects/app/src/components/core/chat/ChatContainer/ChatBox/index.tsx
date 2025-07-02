@@ -851,6 +851,8 @@ const ChatBox = ({
     abortRequest('leave');
   }, [chatId, appId, abortRequest, setValue]);
 
+  const canSendPrompt = onStartChat && chatStarted && active && !isInteractive;
+
   // Add listener
   useEffect(() => {
     const windowMessage = ({ data }: MessageEvent<{ type: 'sendPrompt'; text: string }>) => {
@@ -863,7 +865,9 @@ const ChatBox = ({
     window.addEventListener('message', windowMessage);
 
     const fn: SendPromptFnType = (e) => {
-      sendPrompt(e);
+      if (canSendPrompt || e.isInteractivePrompt) {
+        sendPrompt(e);
+      }
     };
     eventBus.on(EventNameEnum.sendQuestion, fn);
     eventBus.on(EventNameEnum.editQuestion, ({ text }: { text: string }) => {
@@ -876,7 +880,7 @@ const ChatBox = ({
       eventBus.off(EventNameEnum.sendQuestion);
       eventBus.off(EventNameEnum.editQuestion);
     };
-  }, [isReady, resetInputVal, sendPrompt]);
+  }, [isReady, resetInputVal, sendPrompt, canSendPrompt]);
 
   // Auto send prompt
   useDebounceEffect(
@@ -1098,7 +1102,7 @@ const ChatBox = ({
       {/* chat box container */}
       {RenderRecords}
       {/* message input */}
-      {onStartChat && chatStarted && active && !isInteractive && (
+      {canSendPrompt && (
         <ChatInput
           onSendMessage={sendPrompt}
           onStop={() => chatController.current?.abort('stop')}
