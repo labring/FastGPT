@@ -172,7 +172,7 @@ services:
   # fastgpt-plugin
   fastgpt-plugin:
     image: ghcr.io/labring/fastgpt-plugin:v0.0.1 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1-alpha # 阿里云
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.0.1 # 阿里云
     container_name: fastgpt-plugin
     restart: always
     networks:
