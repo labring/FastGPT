@@ -95,8 +95,8 @@ services:
 
   fastgpt:
     container_name: fastgpt
-    image: ghcr.io/labring/fastgpt:v4.10.0 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.10.0 # 阿里云
+    image: ghcr.io/labring/fastgpt:v4.10.0-fix # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.10.0-fix # 阿里云
     ports:
       - 3000:3000
     networks:
@@ -152,15 +152,15 @@ services:
       - ./config.json:/app/data/config.json
   sandbox:
     container_name: sandbox
-    image: ghcr.io/labring/fastgpt-sandbox:v4.10.0 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.10.0 # 阿里云
+    image: ghcr.io/labring/fastgpt-sandbox:v4.10.0-fix # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.10.0-fix # 阿里云
     networks:
       - fastgpt
     restart: always
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: ghcr.io/labring/fastgpt-mcp_server:v4.10.0 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.10.0 # 阿里云
+    image: ghcr.io/labring/fastgpt-mcp_server:v4.10.0-fix # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.10.0-fix # 阿里云
     ports:
       - 3005:3000
     networks:
