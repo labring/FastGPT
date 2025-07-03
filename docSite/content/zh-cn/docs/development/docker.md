@@ -170,6 +170,14 @@ AES256_SECRET_KEY=密钥加密 key，尽量取复杂密钥，一旦使用后，�
 
 # fastgpt-plugin容器
 MINIO_HOST=minio 公网地址，用于给系统工具提供文件存储。例如 http://ip:9000
+AUTH_TOKEN=这里填写插件服务的token，用于插件的鉴权
+MINIO_CUSTOM_ENDPOINT=minio 公网地址，用于给系统工具提供文件存储。填写例如 minio.xxx.com 或者 ip 等
+MINIO_ENDPOINT=fastgpt-minio 这里填写的是 docker-compose.yml 中 fastgpt-minio 的服务名，因为这样 docker 的网络会解析到 minio 的地址
+MINIO_PORT=9000 这里填写的是 minio 的端口，如果使用的是 fastgpt-minio 的服务名,并且没有修改端口，则填写默认的9000
+MINIO_USE_SSL=false 这里填写的是 minio 的 ssl 配置，如果不用ssl，则填写false
+MINIO_ACCESS_KEY=minioadmin 这里填写的是 minio 的访问密钥，如果使用的是 fastgpt-minio 的服务名,并且没有修改访问密钥，则填写默认的minioadmin
+MINIO_SECRET_KEY=minioadmin 这里填写的是 minio 的密钥，如果使用的是 fastgpt-minio 的服务名,并且没有修改密钥，则填写默认的minioadmin
+MINIO_BUCKET=fastgpt-plugins 这里填写的是 minio 的桶名，如果使用的是 fastgpt-minio 的服务名,并且没有修改桶名，则填写默认的fastgpt-plugins
 ```
 
 {{< /markdownify >}}
