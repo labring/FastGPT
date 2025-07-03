@@ -41,12 +41,12 @@ jobs:
             ${{ runner.os }}-buildx-${{ github.sha }}-
             ${{ runner.os }}-buildx-
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
+      - name: Login to Aliyun Container Registry
+        uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.ALI_HUB_USERNAME }}
+          password: ${{ secrets.ALI_HUB_PASSWORD }}
 
       - name: Set image config
         id: config
@@ -54,15 +54,15 @@ jobs:
           if [[ "${{ matrix.image }}" == "fastgpt" ]]; then
             echo "DOCKERFILE=projects/app/Dockerfile" >> $GITHUB_OUTPUT
             echo "DESCRIPTION=fastgpt-pr image" >> $GITHUB_OUTPUT
-            echo "DOCKER_REPO_TAGGED=ghcr.io/${{ github.repository_owner }}/fastgpt-pr:fatsgpt_${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+            echo "DOCKER_REPO_TAGGED=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-pr:fatsgpt_${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
           elif [[ "${{ matrix.image }}" == "sandbox" ]]; then
             echo "DOCKERFILE=projects/sandbox/Dockerfile" >> $GITHUB_OUTPUT
             echo "DESCRIPTION=fastgpt-sandbox-pr image" >> $GITHUB_OUTPUT
-            echo "DOCKER_REPO_TAGGED=ghcr.io/${{ github.repository_owner }}/fastgpt-pr:fatsgpt_sandbox_${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+            echo "DOCKER_REPO_TAGGED=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-pr:fatsgpt_sandbox_${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
           elif [[ "${{ matrix.image }}" == "mcp_server" ]]; then
             echo "DOCKERFILE=projects/mcp_server/Dockerfile" >> $GITHUB_OUTPUT
             echo "DESCRIPTION=fastgpt-mcp_server-pr image" >> $GITHUB_OUTPUT
-            echo "DOCKER_REPO_TAGGED=ghcr.io/${{ github.repository_owner }}/fastgpt-pr:fatsgpt_mcp_server_${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+            echo "DOCKER_REPO_TAGGED=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-pr:fatsgpt_mcp_server_${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Build ${{ matrix.image }} image for PR
