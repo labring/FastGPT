@@ -26,7 +26,7 @@ FastGPT 系统工具项目从 4.10.0 版本后移动到独立的`fastgpt-plugin`
   - bun install
   - bun run dev
 
-## 2. 初始化一个新的工具/攻击
+## 2. 初始化一个新的工具/工具集
 
 ### 2.1 执行创建命令
 
