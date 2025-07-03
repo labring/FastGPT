@@ -178,7 +178,7 @@ services:
     environment:
       - AUTH_TOKEN=xxxxxx # disable authentication token if you do not set this variable
       # 改成 minio 公网地址
-      - MINIO_HOST=ip:9000
+      - MINIO_HOST=<ip or domain>
       - MINIO_PORT=9000
       - MINIO_USE_SSL=false
       - MINIO_ACCESS_KEY=minioadmin
@@ -284,9 +284,9 @@ const list = [
     environment:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
-    ports:
-      - '9001:9001'
-      - '9000:9000'
+    # ports:
+    #   - '9001:9001'
+    #   - '9000:9000'
     networks:
       - fastgpt
     volumes:
