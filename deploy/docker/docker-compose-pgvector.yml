@@ -186,16 +186,16 @@ services:
     environment:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v0.1.0 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1.0 # 阿里云
+    image: ghcr.io/labring/fastgpt-plugin:v0.1.1 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1.1 # 阿里云
     container_name: fastgpt-plugin
     restart: always
     networks:
       - fastgpt
     environment:
       - AUTH_TOKEN=xxxxxx # disable authentication token if you do not set this variable
-      # 改成 minio 公网地址
-      - MINIO_CUSTOM_ENDPOINT=
+      # 改成 minio 可访问地址，例如 https://192.168.2.2:9000
+      - MINIO_CUSTOM_ENDPOINT=https://192.168.2.2:9000
       - MINIO_ENDPOINT=fastgpt-minio
       - MINIO_PORT=9000
       - MINIO_USE_SSL=false
