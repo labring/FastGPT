@@ -3,7 +3,7 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { upsertWebsiteSyncJobScheduler } from '@fastgpt/service/core/dataset/websiteSync';
+import { upsertDatasetSyncJobScheduler } from '@fastgpt/service/core/dataset/datasetSync';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { addHours } from 'date-fns';
 import { type NextApiRequest, type NextApiResponse } from 'next';
@@ -20,7 +20,7 @@ const initWebsiteSyncData = async () => {
         // 随机生成一个往后 1～24 小时的时间
         const time = addHours(new Date(), Math.floor(Math.random() * 23) + 1);
         return retryFn(() =>
-          upsertWebsiteSyncJobScheduler({ datasetId: String(dataset._id) }, time.getTime())
+          upsertDatasetSyncJobScheduler({ datasetId: String(dataset._id) }, time.getTime())
         );
       }
     })

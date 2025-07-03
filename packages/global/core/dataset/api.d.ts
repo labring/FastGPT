@@ -67,7 +67,6 @@ export type CreateDatasetCollectionParams = DatasetCollectionStoreDataType & {
 
   createTime?: Date;
   updateTime?: Date;
-  nextSyncTime?: Date;
 };
 
 export type ApiCreateDatasetCollectionParams = DatasetCollectionStoreDataType & {

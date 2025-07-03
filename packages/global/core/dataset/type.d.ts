@@ -106,7 +106,6 @@ export type DatasetCollectionSchemaType = ChunkSettingsType & {
 
   // Status
   forbid?: boolean;
-  nextSyncTime?: Date;
 
   // Collection metadata
   fileId?: string; // local file id

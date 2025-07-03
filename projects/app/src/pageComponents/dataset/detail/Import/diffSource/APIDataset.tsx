@@ -100,6 +100,7 @@ const CustomAPIFileInput = () => {
 
         const currentDirectory: APIFileItemType = {
           id: rootDirectoryId,
+          trueId: rootDirectoryId,
           parentId: '',
           name: 'ROOT_FOLDER',
           type: 'folder',

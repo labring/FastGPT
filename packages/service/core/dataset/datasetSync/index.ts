@@ -6,7 +6,7 @@ export type DatasetSyncJobData = {
   datasetId: string;
 };
 
-export const apiDatasetSyncQueue = getQueue<DatasetSyncJobData>(QueueNames.apiDatasetSync, {
+export const datasetSyncQueue = getQueue<DatasetSyncJobData>(QueueNames.datasetSync, {
   defaultJobOptions: {
     attempts: 3, // retry 3 times
     backoff: {
@@ -15,8 +15,8 @@ export const apiDatasetSyncQueue = getQueue<DatasetSyncJobData>(QueueNames.apiDa
     }
   }
 });
-export const getApiDatasetSyncWorker = (processor: Processor<DatasetSyncJobData>) => {
-  return getWorker<DatasetSyncJobData>(QueueNames.apiDatasetSync, processor, {
+export const getDatasetSyncWorker = (processor: Processor<DatasetSyncJobData>) => {
+  return getWorker<DatasetSyncJobData>(QueueNames.datasetSync, processor, {
     removeOnFail: {
       age: 15 * 24 * 60 * 60, // Keep up to 15 days
       count: 1000 // Keep up to 1000 jobs
@@ -25,21 +25,21 @@ export const getApiDatasetSyncWorker = (processor: Processor<DatasetSyncJobData>
   });
 };
 
-export const addApiDatasetSyncJob = (data: DatasetSyncJobData) => {
+export const addDatasetSyncJob = (data: DatasetSyncJobData) => {
   const datasetId = String(data.datasetId);
   // deduplication: make sure only 1 job
-  return apiDatasetSyncQueue.add(datasetId, data, { deduplication: { id: datasetId } });
+  return datasetSyncQueue.add(datasetId, data, { deduplication: { id: datasetId } });
 };
 
-export const getApiDatasetSyncDatasetStatus = async (datasetId: string) => {
-  const jobId = await apiDatasetSyncQueue.getDeduplicationJobId(datasetId);
+export const getDatasetSyncDatasetStatus = async (datasetId: string) => {
+  const jobId = await datasetSyncQueue.getDeduplicationJobId(datasetId);
   if (!jobId) {
     return {
       status: DatasetStatusEnum.active,
       errorMsg: undefined
     };
   }
-  const job = await apiDatasetSyncQueue.getJob(jobId);
+  const job = await datasetSyncQueue.getJob(jobId);
   if (!job) {
     return {
       status: DatasetStatusEnum.active,
@@ -76,10 +76,10 @@ export const getApiDatasetSyncDatasetStatus = async (datasetId: string) => {
 
 // Scheduler setting
 const repeatDuration = 24 * 60 * 60 * 1000; // every day
-export const upsertApiDatasetSyncJobScheduler = (data: DatasetSyncJobData, startDate?: number) => {
+export const upsertDatasetSyncJobScheduler = (data: DatasetSyncJobData, startDate?: number) => {
   const datasetId = String(data.datasetId);
 
-  return apiDatasetSyncQueue.upsertJobScheduler(
+  return datasetSyncQueue.upsertJobScheduler(
     datasetId,
     {
       every: repeatDuration,
@@ -92,10 +92,10 @@ export const upsertApiDatasetSyncJobScheduler = (data: DatasetSyncJobData, start
   );
 };
 
-export const getApiDatasetSyncJobScheduler = (datasetId: string) => {
-  return apiDatasetSyncQueue.getJobScheduler(String(datasetId));
+export const getDatasetSyncJobScheduler = (datasetId: string) => {
+  return datasetSyncQueue.getJobScheduler(String(datasetId));
 };
 
-export const removeApiDatasetSyncJobScheduler = (datasetId: string) => {
-  return apiDatasetSyncQueue.removeJobScheduler(String(datasetId));
+export const removeDatasetSyncJobScheduler = (datasetId: string) => {
+  return datasetSyncQueue.removeJobScheduler(String(datasetId));
 };

@@ -5,8 +5,8 @@ import { createContext, useContextSelector } from 'use-context-selector';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useDisclosure } from '@chakra-ui/react';
-import { checkTeamWebSyncLimit, checkTeamDatasetSyncLimit } from '@/web/support/user/team/api';
-import { getDatasetCollections, postWebsiteSync, postApiDatasetSync } from '@/web/core/dataset/api';
+import { checkTeamWebSyncLimit } from '@/web/support/user/team/api';
+import { getDatasetCollections, postDatasetSync } from '@/web/core/dataset/api';
 import dynamic from 'next/dynamic';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { type DatasetCollectionsListItemType } from '@/global/core/dataset/type';
@@ -17,8 +17,7 @@ import { type WebsiteConfigFormType } from './WebsiteConfig';
 const WebSiteConfigModal = dynamic(() => import('./WebsiteConfig'));
 
 type CollectionPageContextType = {
-  openWebSyncConfirm: () => void;
-  openApiDatasetSyncConfirm: () => void;
+  openDatasetSyncConfirm: () => void;
   onOpenWebsiteModal: () => void;
   collections: DatasetCollectionsListItemType[];
   Pagination: () => JSX.Element;
@@ -34,10 +33,7 @@ type CollectionPageContextType = {
 };
 
 export const CollectionPageContext = createContext<CollectionPageContextType>({
-  openWebSyncConfirm: function (): () => void {
-    throw new Error('Function not implemented.');
-  },
-  openApiDatasetSyncConfirm: function (): () => void {
+  openDatasetSyncConfirm: function (): () => void {
     throw new Error('Function not implemented.');
   },
   onOpenWebsiteModal: function (): void {
@@ -74,25 +70,22 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     (v) => v
   );
 
-  // website config
-  const { openConfirm: openWebSyncConfirm, ConfirmModal: ConfirmWebSyncModal } = useConfirm({
-    content: t('dataset:start_sync_website_tip')
-  });
-  const syncWebsite = async () => {
-    await checkTeamWebSyncLimit();
-    postWebsiteSync({ datasetId: datasetId }).then(() => {
-      loadDatasetDetail(datasetId);
-    });
-  };
+  // dataset sync confirm
+  const { openConfirm: openDatasetSyncConfirm, ConfirmModal: ConfirmDatasetSyncModal } = useConfirm(
+    {
+      content: t(
+        datasetDetail.type === DatasetTypeEnum.websiteDataset
+          ? 'dataset:start_sync_website_tip'
+          : 'dataset:start_sync_api_dataset_tip'
+      )
+    }
+  );
 
-  // API dataset sync config
-  const { openConfirm: openApiDatasetSyncConfirm, ConfirmModal: ConfirmApiDatasetSyncModal } =
-    useConfirm({
-      content: t('dataset:start_sync_api_dataset_tip')
-    });
-  const syncApiDataset = async () => {
-    await checkTeamDatasetSyncLimit();
-    postApiDatasetSync({ datasetId: datasetId }).then(() => {
+  const syncDataset = async () => {
+    if (datasetDetail.type === DatasetTypeEnum.websiteDataset) {
+      await checkTeamWebSyncLimit();
+    }
+    postDatasetSync({ datasetId: datasetId }).then(() => {
       loadDatasetDetail(datasetId);
     });
   };
@@ -102,6 +95,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     onOpen: onOpenWebsiteModal,
     onClose: onCloseWebsiteModal
   } = useDisclosure();
+
   const { runAsync: onUpdateDatasetWebsiteConfig } = useRequest2(
     async (websiteConfig: WebsiteConfigFormType) => {
       await updateDataset({
@@ -109,7 +103,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
         websiteConfig: websiteConfig.websiteConfig,
         chunkSettings: websiteConfig.chunkSettings
       });
-      await syncWebsite();
+      await syncDataset();
     },
     {
       onSuccess() {
@@ -142,8 +136,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   });
 
   const contextValue: CollectionPageContextType = {
-    openWebSyncConfirm: openWebSyncConfirm(syncWebsite),
-    openApiDatasetSyncConfirm: openApiDatasetSyncConfirm(syncApiDataset),
+    openDatasetSyncConfirm: openDatasetSyncConfirm(syncDataset),
     onOpenWebsiteModal,
 
     searchText,
@@ -170,12 +163,12 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
               onSuccess={onUpdateDatasetWebsiteConfig}
             />
           )}
-          <ConfirmWebSyncModal />
+          <ConfirmDatasetSyncModal />
         </>
       )}
       {(datasetDetail.type === DatasetTypeEnum.apiDataset ||
         datasetDetail.type === DatasetTypeEnum.feishu ||
-        datasetDetail.type === DatasetTypeEnum.yuque) && <ConfirmApiDatasetSyncModal />}
+        datasetDetail.type === DatasetTypeEnum.yuque) && <ConfirmDatasetSyncModal />}
     </CollectionPageContext.Provider>
   );
 };
