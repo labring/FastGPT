@@ -87,5 +87,5 @@ jobs:
           title: 'Preview ${{ matrix.image }} Image:'
           body: |
             ```
-            ${{ steps.config.outputs.DOCKER_REPO_TAGGED }}`
+            ${{ steps.config.outputs.DOCKER_REPO_TAGGED }}
             ```
