@@ -80,7 +80,6 @@ jobs:
           tool: issue-comment
           title: 'Docs Preview:'
           body: |
-            Deployment Status: ${status}
             ```
-            ${success ? `🔗 Preview URL: ${deploymentUrl}` : ''}
+            🔗 Preview URL: ${{deploymentUrl}}
             ```
