@@ -10,6 +10,10 @@ export const systemPluginTemplateList: TGroupType[] = [
     typeName: i18nT('app:tool_type_tools')
   },
   {
+    typeId: FlowNodeTemplateTypeEnum.search,
+    typeName: i18nT('app:tool_type_search')
+  },
+  {
     typeId: FlowNodeTemplateTypeEnum.multimodal,
     typeName: i18nT('app:tool_type_multimodal')
   },
@@ -62,10 +66,6 @@ export const workflowNodeTemplateList: {
   {
     type: FlowNodeTemplateTypeEnum.ai,
     label: i18nT('common:core.module.template.AI function')
-  },
-  {
-    type: FlowNodeTemplateTypeEnum.search,
-    label: i18nT('common:core.workflow.template.Search')
   },
   {
     type: FlowNodeTemplateTypeEnum.interactive,
