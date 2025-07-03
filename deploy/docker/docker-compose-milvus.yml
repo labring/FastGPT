@@ -185,7 +185,7 @@ services:
       - AIPROXY_API_ENDPOINT=http://aiproxy:3000
       # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
       - AIPROXY_API_TOKEN=aiproxy
-
+      
       # 数据库最大连接数
       - DB_MAX_LINK=30
       # MongoDB 连接参数. 用户名myusername,密码mypassword。
@@ -235,7 +235,7 @@ services:
     environment:
       - AUTH_TOKEN=xxxxxx # disable authentication token if you do not set this variable
       # 改成 minio 公网地址
-      - CUSTOM_CUSTOM_ENDPOINT=
+      - MINIO_CUSTOM_ENDPOINT=
       - MINIO_ENDPOINT=fastgpt-minio
       - MINIO_PORT=9000
       - MINIO_USE_SSL=false
