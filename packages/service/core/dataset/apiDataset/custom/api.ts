@@ -106,6 +106,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
 
     const formattedFiles = files.map((file) => ({
       ...file,
+      trueId: file.id,
       hasChild: file.hasChild ?? file.type === 'folder'
     }));
 
@@ -201,6 +202,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     if (fileData) {
       return {
         id: fileData.id,
+        trueId: apiFileId,
         name: fileData.name,
         parentId: fileData.parentId === null ? '' : fileData.parentId,
         type: fileData.type,

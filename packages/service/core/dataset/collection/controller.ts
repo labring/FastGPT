@@ -180,18 +180,6 @@ export const createCollectionAndInsertData = async ({
 
       hashRawText: rawText ? hashStr(rawText) : undefined,
       rawTextLength: rawText?.length,
-      nextSyncTime: (() => {
-        // ignore auto collections sync for website datasets
-        if (!dataset.autoSync && dataset.type === DatasetTypeEnum.websiteDataset) return undefined;
-        if (
-          [DatasetCollectionTypeEnum.link, DatasetCollectionTypeEnum.apiFile].includes(
-            formatCreateCollectionParams.type
-          )
-        ) {
-          return addDays(new Date(), 1);
-        }
-        return undefined;
-      })(),
       session
     });
 

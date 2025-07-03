@@ -71,40 +71,6 @@ export const checkWebSyncLimit = async ({
   }
 };
 
-/* dataset sync limit */
-export const updateApiDatasetSyncLimit = async (teamId: string) => {
-  try {
-    await MongoTeam.findByIdAndUpdate(teamId, {
-      'limit.lastWebsiteSyncTime': new Date()
-    });
-  } catch (error) {}
-};
-export const checkApiDatasetSyncLimit = async ({
-  teamId,
-  limitMinutes = 0
-}: {
-  teamId: string;
-  limitMinutes?: number;
-}) => {
-  const limitMinutesAgo = new Date(Date.now() - limitMinutes * 60 * 1000);
-
-  // auth export times
-  const authTimes = await MongoTeam.findOne(
-    {
-      _id: teamId,
-      $or: [
-        { 'limit.lastDatasetSyncTime': { $exists: false } },
-        { 'limit.lastDatasetSyncTime': { $lte: limitMinutesAgo } }
-      ]
-    },
-    '_id limit'
-  );
-
-  if (!authTimes) {
-    return Promise.reject(`每个团队，每 ${limitMinutes} 分钟仅使用一次同步功能。`);
-  }
-};
-
 /**
  * This function will add a property named sourceMember to the list passed in.
  * @param list The list to add the sourceMember property to. [TmbId] property is required.

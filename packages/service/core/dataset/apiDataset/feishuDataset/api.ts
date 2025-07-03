@@ -134,6 +134,7 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
       .filter((file) => ['folder', 'docx'].includes(file.type))
       .map((file) => ({
         id: file.token,
+        trueId: file.token,
         parentId: file.parent_token,
         name: file.name,
         type: file.type === 'folder' ? ('folder' as const) : ('file' as const),
@@ -197,6 +198,7 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
     );
 
     return {
+      trueId: apiFileId,
       name: document?.title,
       parentId: null,
       id: apiFileId,

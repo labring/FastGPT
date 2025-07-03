@@ -31,9 +31,6 @@ const TeamSchema = new Schema({
     },
     lastWebsiteSyncTime: {
       type: Date
-    },
-    lastDatasetSyncTime: {
-      type: Date
     }
   },
   lafAccount: {

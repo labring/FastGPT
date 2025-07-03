@@ -19,8 +19,7 @@ const defaultWorkerOpts: Omit<ConnectionOptions, 'connection'> = {
 };
 
 export enum QueueNames {
-  websiteSync = 'websiteSync',
-  apiDatasetSync = 'apiDatasetSync'
+  datasetSync = 'datasetSync'
 }
 
 export const queues = (() => {

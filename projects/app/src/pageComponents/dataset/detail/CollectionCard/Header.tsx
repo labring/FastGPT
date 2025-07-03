@@ -57,8 +57,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
     getData,
     pageNum,
     onOpenWebsiteModal,
-    openWebSyncConfirm,
-    openApiDatasetSyncConfirm
+    openDatasetSyncConfirm
   } = useContextSelector(CollectionPageContext, (v) => v);
 
   const { data: paths = [] } = useRequest2(() => getDatasetCollectionPathById(parentId), {
@@ -329,7 +328,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                       {!hasTrainingData && (
                         <Button
                           variant={'whitePrimary'}
-                          onClick={openWebSyncConfirm}
+                          onClick={openDatasetSyncConfirm}
                           leftIcon={<Icon name="common/confirm/restoreTip" w={'1rem'} />}
                         >
                           {t('dataset:immediate_sync')}
@@ -492,7 +491,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                   {!hasTrainingData && (
                     <Button
                       variant={'whitePrimary'}
-                      onClick={openApiDatasetSyncConfirm}
+                      onClick={openDatasetSyncConfirm}
                       leftIcon={<Icon name="common/confirm/restoreTip" w={'1rem'} />}
                     >
                       {t('dataset:immediate_sync')}
