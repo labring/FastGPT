@@ -169,8 +169,7 @@ DEFAULT_ROOT_PSW=root 用户密码，每次重启root 都会修改成这个密�
 AES256_SECRET_KEY=密钥加密 key，尽量取复杂密钥，一旦使用后，不能随便修改，否则会导致系统加密的数据无法正常解密
 
 # fastgpt-plugin容器
-AUTH_TOKEN=这里填写插件服务的token，用于插件的鉴权
-MINIO_CUSTOM_ENDPOINT=minio 公网地址，用于给系统工具提供文件存储。填写例如 minio.xxx.com 或者 ip 等
+MINIO_CUSTOM_ENDPOINT=http://minio.xxx.com 公网地址，用于给系统工具提供文件存储。填写例如 http://minio.xxx.com 或者  http://<ip>:<port>
 MINIO_ENDPOINT=fastgpt-minio 这里填写的是 docker-compose.yml 中 fastgpt-minio 的服务名，因为这样 docker 的网络会解析到 minio 的地址
 ```
 
