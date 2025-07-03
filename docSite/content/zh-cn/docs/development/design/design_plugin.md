@@ -38,12 +38,6 @@ weight: 962
 2. 使用 zod 进行类型验证
 3. 用 bun 进行编译，每个工具编译为单一的 `.js` 文件，支持热插拔。
 
-```mermaid
-graph LR
-A[FastGPT] --> |RESTful API|B[FastGPT-plugin]
-B <--> C(Minio)
-```
-
 ## 项目结构
 
 - **modules**
