@@ -39,16 +39,19 @@ const FileSelector = ({
 
   const systemMaxSize = (feConfigs?.uploadFileMaxSize || 1024) * 1024 * 1024;
   const displayMaxSize = maxSize || formatFileSize(systemMaxSize);
+  const formatMaxCount = feConfigs.uploadFileMaxAmount
+    ? Math.min(maxCount, feConfigs.uploadFileMaxAmount)
+    : maxCount;
 
   const { File, onOpen } = useSelectFile({
     fileType,
-    multiple: maxCount > 1,
-    maxCount
+    multiple: formatMaxCount > 1,
+    maxCount: formatMaxCount
   });
   const [isDragging, setIsDragging] = useState(false);
   const isMaxSelected = useMemo(
-    () => selectFiles.length >= maxCount,
-    [maxCount, selectFiles.length]
+    () => selectFiles.length >= formatMaxCount,
+    [formatMaxCount, selectFiles.length]
   );
 
   const filterTypeReg = new RegExp(
@@ -68,10 +71,10 @@ const FileSelector = ({
         size: formatFileSize(file.size)
       }));
 
-      const newFiles = [...fileList, ...selectFiles].slice(0, maxCount);
+      const newFiles = [...fileList, ...selectFiles].slice(0, formatMaxCount);
       setSelectFiles(newFiles);
     },
-    [maxCount, selectFiles, setSelectFiles]
+    [formatMaxCount, selectFiles, setSelectFiles]
   );
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
@@ -206,7 +209,7 @@ const FileSelector = ({
             )}
             <Box color={'myGray.500'} fontSize={'xs'}>
               {/* max count */}
-              {maxCount && <>{t('file:support_max_count', { maxCount })}, </>}
+              {formatMaxCount && <>{t('file:support_max_count', { maxCount: formatMaxCount })}, </>}
               {/* max size */}
               {t('file:support_max_size', { maxSize: displayMaxSize })}
             </Box>
