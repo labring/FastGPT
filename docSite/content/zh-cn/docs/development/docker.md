@@ -34,11 +34,11 @@ weight: 707
 非常轻量，适合知识库索引量在 5000 万以下。
 
 {{< table "table-hover table-striped-columns" >}}
-| 环境 | 最低配置（单节点） | 推荐配置 |
-| ---- | ---- | ---- |
-| 测试（可以把计算进程设置少一些） | 2c4g  | 2c8g |
-| 100w 组向量 | 4c8g 50GB | 4c16g 50GB |
-| 500w 组向量 | 8c32g 200GB | 16c64g 200GB |
+| 环境                             | 最低配置（单节点） | 推荐配置     |
+| -------------------------------- | ------------------ | ------------ |
+| 测试（可以把计算进程设置少一些） | 2c4g               | 2c8g         |
+| 100w 组向量                      | 4c8g 50GB          | 4c16g 50GB   |
+| 500w 组向量                      | 8c32g 200GB        | 16c64g 200GB |
 {{< /table >}}
 
 ### Milvus版本
@@ -48,11 +48,11 @@ weight: 707
 [点击查看 Milvus 官方推荐配置](https://milvus.io/docs/prerequisite-docker.md)
 
 {{< table "table-hover table-striped-columns" >}}
-| 环境 | 最低配置（单节点） | 推荐配置 |
-| ---- | ---- | ---- |
-| 测试 | 2c8g  | 4c16g |
-| 100w 组向量 | 未测试 |  |
-| 500w 组向量 |  |  |
+| 环境        | 最低配置（单节点） | 推荐配置 |
+| ----------- | ------------------ | -------- |
+| 测试        | 2c8g               | 4c16g    |
+| 100w 组向量 | 未测试             |          |
+| 500w 组向量 |                    |          |
 {{< /table >}}
 
 ### zilliz cloud版本
@@ -169,15 +169,9 @@ DEFAULT_ROOT_PSW=root 用户密码，每次重启root 都会修改成这个密�
 AES256_SECRET_KEY=密钥加密 key，尽量取复杂密钥，一旦使用后，不能随便修改，否则会导致系统加密的数据无法正常解密
 
 # fastgpt-plugin容器
-MINIO_HOST=minio 公网地址，用于给系统工具提供文件存储。例如 http://ip:9000
 AUTH_TOKEN=这里填写插件服务的token，用于插件的鉴权
 MINIO_CUSTOM_ENDPOINT=minio 公网地址，用于给系统工具提供文件存储。填写例如 minio.xxx.com 或者 ip 等
 MINIO_ENDPOINT=fastgpt-minio 这里填写的是 docker-compose.yml 中 fastgpt-minio 的服务名，因为这样 docker 的网络会解析到 minio 的地址
-MINIO_PORT=9000 这里填写的是 minio 的端口，如果使用的是 fastgpt-minio 的服务名,并且没有修改端口，则填写默认的9000
-MINIO_USE_SSL=false 这里填写的是 minio 的 ssl 配置，如果不用ssl，则填写false
-MINIO_ACCESS_KEY=minioadmin 这里填写的是 minio 的访问密钥，如果使用的是 fastgpt-minio 的服务名,并且没有修改访问密钥，则填写默认的minioadmin
-MINIO_SECRET_KEY=minioadmin 这里填写的是 minio 的密钥，如果使用的是 fastgpt-minio 的服务名,并且没有修改密钥，则填写默认的minioadmin
-MINIO_BUCKET=fastgpt-plugins 这里填写的是 minio 的桶名，如果使用的是 fastgpt-minio 的服务名,并且没有修改桶名，则填写默认的fastgpt-plugins
 ```
 
 {{< /markdownify >}}
