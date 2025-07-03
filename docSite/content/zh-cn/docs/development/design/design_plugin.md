@@ -4,7 +4,7 @@ description: "FastGPT 系统插件设计方案"
 icon: "extension"
 draft: false
 toc: true
-weight: 301
+weight: 962
 ---
 
 ## 背景
