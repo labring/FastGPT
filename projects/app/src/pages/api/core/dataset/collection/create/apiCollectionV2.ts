@@ -65,8 +65,7 @@ export const createApiDatasetCollection = async ({
     dataset.apiDatasetServer?.feishuServer?.folderToken;
 
   // check if the directory is selected
-  const isDirectorySelected = apiFiles.length === 1 && apiFiles[0].id === startId;
-
+  const isDirectorySelected = apiFiles.length === 1 && apiFiles[0].id === 'SYSTEM_ROOT';
   const rootDirectoryId = isDirectorySelected ? 'SYSTEM_ROOT' : undefined;
 
   // Get all apiFileId with top level parent ID
@@ -94,7 +93,7 @@ export const createApiDatasetCollection = async ({
       if (file.hasChild) {
         const folderFiles = await (
           await getApiDatasetRequest(dataset.apiDatasetServer)
-        ).listFiles({ parentId: file.id });
+        ).listFiles({ parentId: file.id === 'SYSTEM_ROOT' ? startId : file.id });
         const subFiles = await getFilesRecursively(folderFiles, currentTopLevelParentId);
         allFiles.push(...subFiles.filter((f) => f.type === 'file'));
       }
@@ -119,7 +118,7 @@ export const createApiDatasetCollection = async ({
           name: file.name,
           type: DatasetCollectionTypeEnum.folder,
           datasetId: dataset._id,
-          apiFileId: file.id === startId ? 'SYSTEM_ROOT' : file.id
+          apiFileId: file.id
         });
       }
 

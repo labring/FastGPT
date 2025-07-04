@@ -315,20 +315,12 @@ const updateSyncSchedule = async ({
   if (typeof autoSync !== 'boolean') return;
 
   // Update all collection nextSyncTime
-  if (
-    dataset.type === DatasetTypeEnum.websiteDataset ||
-    dataset.type === DatasetTypeEnum.apiDataset ||
-    dataset.type === DatasetTypeEnum.feishu ||
-    dataset.type === DatasetTypeEnum.yuque ||
-    dataset.type === DatasetTypeEnum.dataset
-  ) {
-    if (autoSync) {
-      // upsert Job Scheduler
-      return upsertDatasetSyncJobScheduler({ datasetId: dataset._id });
-    } else {
-      // remove Job Scheduler
-      return removeDatasetSyncJobScheduler(dataset._id);
-    }
+  if (autoSync) {
+    // upsert Job Scheduler
+    return upsertDatasetSyncJobScheduler({ datasetId: dataset._id });
+  } else {
+    // remove Job Scheduler
+    return removeDatasetSyncJobScheduler(dataset._id);
   }
 };
 

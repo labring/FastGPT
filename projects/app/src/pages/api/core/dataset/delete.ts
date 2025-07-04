@@ -48,11 +48,7 @@ async function handler(req: NextApiRequest) {
   // Remove cron job
   await Promise.all(
     datasets.map((dataset) => {
-      if (
-        dataset.type === DatasetTypeEnum.websiteDataset ||
-        dataset.type === DatasetTypeEnum.apiDataset
-      )
-        return removeDatasetSyncJobScheduler(dataset._id);
+      return removeDatasetSyncJobScheduler(dataset._id);
     })
   );
 
