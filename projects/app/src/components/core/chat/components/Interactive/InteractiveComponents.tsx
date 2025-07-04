@@ -1,20 +1,16 @@
 import React, { useCallback } from 'react';
-import { Box, Button, Flex, Textarea } from '@chakra-ui/react';
+import { Box, Button, Flex } from '@chakra-ui/react';
 import { Controller, useForm, type UseFormHandleSubmit } from 'react-hook-form';
 import Markdown from '@/components/Markdown';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import MySelect from '@fastgpt/web/components/common/MySelect';
-import MyTextarea from '@/components/common/Textarea/MyTextarea';
-import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   type UserInputFormItemType,
   type UserInputInteractive,
   type UserSelectInteractive,
   type UserSelectOptionItemType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import InputRender from '@/components/InputRender';
+import { formatInputType, formatRenderProps } from '@/components/InputRender/utils';
 
 const DescriptionBox = React.memo(function DescriptionBox({
   description
@@ -83,126 +79,43 @@ export const FormInputComponent = React.memo(function FormInputComponent({
 }) {
   const { description, inputForm, submitted } = interactiveParams;
 
-  const { register, setValue, handleSubmit, control } = useForm({
+  const {
+    handleSubmit,
+    control,
+    formState: { errors }
+  } = useForm({
     defaultValues
   });
-
-  const FormItemLabel = useCallback(
-    ({
-      label,
-      required,
-      description
-    }: {
-      label: string;
-      required?: boolean;
-      description?: string;
-    }) => {
-      return (
-        <Flex mb={1} alignItems={'center'}>
-          <FormLabel required={required} mb={0} fontWeight="medium" color="gray.700">
-            {label}
-          </FormLabel>
-          {description && <QuestionTip ml={1} label={description} />}
-        </Flex>
-      );
-    },
-    []
-  );
+  console.log('interactive errors', errors);
 
   const RenderFormInput = useCallback(
     ({ input }: { input: UserInputFormItemType }) => {
-      const { type, label, required, maxLength, min, max, defaultValue, list } = input;
+      return (
+        <Controller
+          key={input.label}
+          control={control}
+          name={input.label}
+          rules={{ required: input.required }}
+          render={({ field: { onChange, value } }) => {
+            const inputType = formatInputType({
+              inputType: input.type,
+              valueType: input.valueType
+            });
+            const props = formatRenderProps({
+              ...input,
+              inputType,
+              value,
+              onChange,
+              isDisabled: submitted,
+              isInvalid: errors && Object.keys(errors).includes(input.label)
+            });
 
-      switch (type) {
-        case FlowNodeInputTypeEnum.input:
-          return (
-            <MyTextarea
-              isDisabled={submitted}
-              {...register(label, {
-                required: required
-              })}
-              bg={'white'}
-              autoHeight
-              minH={40}
-              maxH={100}
-            />
-          );
-        case FlowNodeInputTypeEnum.textarea:
-          return (
-            <Textarea
-              isDisabled={submitted}
-              bg={'white'}
-              {...register(label, {
-                required: required
-              })}
-              rows={5}
-              maxLength={maxLength || 4000}
-            />
-          );
-        case FlowNodeInputTypeEnum.numberInput:
-          return (
-            <MyNumberInput
-              min={min}
-              max={max}
-              defaultValue={defaultValue}
-              isDisabled={submitted}
-              register={register}
-              name={label}
-              isRequired={required}
-              inputFieldProps={{ bg: 'white' }}
-            />
-          );
-        case FlowNodeInputTypeEnum.select:
-          return (
-            <Controller
-              key={label}
-              control={control}
-              name={label}
-              rules={{ required: required }}
-              render={({ field: { ref, value } }) => {
-                if (!list) return <></>;
-                return (
-                  <MySelect
-                    ref={ref}
-                    width={'100%'}
-                    list={list}
-                    value={value}
-                    isDisabled={submitted}
-                    onChange={(e) => setValue(label, e)}
-                  />
-                );
-              }}
-            />
-          );
-        case FlowNodeInputTypeEnum.multipleSelect:
-          return (
-            <Controller
-              key={label}
-              control={control}
-              name={label}
-              rules={{ required: required }}
-              render={({ field: { ref, value } }) => {
-                if (!list) return <></>;
-                return (
-                  <MultipleSelect<string>
-                    width={'100%'}
-                    bg={'white'}
-                    py={2}
-                    list={list}
-                    value={value}
-                    isDisabled={submitted}
-                    onSelect={(e) => setValue(label, e)}
-                    isSelectAll={value.length === list.length}
-                  />
-                );
-              }}
-            />
-          );
-        default:
-          return null;
-      }
+            return <InputRender {...props} />;
+          }}
+        />
+      );
     },
-    [control, register, setValue, submitted]
+    [control, submitted, errors]
   );
 
   return (
@@ -211,11 +124,11 @@ export const FormInputComponent = React.memo(function FormInputComponent({
       <Flex flexDirection={'column'} gap={3}>
         {inputForm.map((input) => (
           <Box key={input.label}>
-            <FormItemLabel
-              label={input.label}
-              required={input.required}
-              description={input.description}
-            />
+            <Flex alignItems={'center'} mb={1}>
+              {input.required && <Box color={'red.500'}>*</Box>}
+              {input.label}
+              {input.description && <QuestionTip ml={1} label={input.description} />}
+            </Flex>
             <RenderFormInput input={input} />
           </Box>
         ))}

@@ -8,9 +8,10 @@ import { type AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { childAppSystemKey } from './ToolSelectModal';
 import { Controller, useForm } from 'react-hook-form';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import RenderPluginInput from '@/components/core/chat/ChatContainer/PluginRunBox/components/renderPluginInput';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
+import InputRender from '@/components/InputRender';
+import { formatInputType } from '@/components/InputRender/utils';
 
 const ConfigToolModal = ({
   configTool,
@@ -90,15 +91,15 @@ const ConfigToolModal = ({
                 }}
                 render={({ field: { onChange, value } }) => {
                   return (
-                    <RenderPluginInput
-                      value={value}
+                    <InputRender
+                      {...input}
                       isInvalid={errors && Object.keys(errors).includes(input.key)}
+                      inputType={formatInputType({
+                        inputType: input.renderTypeList[0],
+                        valueType: input.valueType
+                      })}
+                      value={value}
                       onChange={onChange}
-                      input={input}
-                      setUploading={() => {}}
-                      hasSystemSecret={configTool.hasSystemSecret}
-                      secretCost={configTool.currentCost}
-                      courseUrl={configTool.courseUrl}
                     />
                   );
                 }}

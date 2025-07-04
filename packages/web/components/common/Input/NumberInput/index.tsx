@@ -83,7 +83,6 @@ const MyNumberInput = (props: Props) => {
         defaultValue={restProps.defaultValue}
         {...(register && name
           ? register(name, {
-              required: props.isRequired,
               min: props.min,
               max: props.max,
               valueAsNumber: true
