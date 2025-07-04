@@ -226,8 +226,8 @@ services:
     environment:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v0.1.1 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1.1 # 阿里云
+    image: ghcr.io/labring/fastgpt-plugin:v0.1.2 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1.2 # 阿里云
     container_name: fastgpt-plugin
     restart: always
     networks:
@@ -248,8 +248,8 @@ services:
 
   # AI Proxy
   aiproxy:
-    image: ghcr.io/labring/aiproxy:v0.1.7
-    # image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.1.7 # 阿里云
+    image: ghcr.io/labring/aiproxy:v0.2.2
+    # image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.2.2 # 阿里云
     container_name: aiproxy
     restart: unless-stopped
     depends_on:
