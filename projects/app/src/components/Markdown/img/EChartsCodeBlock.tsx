@@ -56,8 +56,12 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
     if (!option) return;
 
     if (chartRef.current) {
-      eChart.current = echarts.init(chartRef.current);
-      eChart.current.setOption(option);
+      try {
+        eChart.current = echarts.init(chartRef.current);
+        eChart.current.setOption(option);
+      } catch (error) {
+        console.error('ECharts render failed:', error);
+      }
     }
 
     findMarkdownDom();
