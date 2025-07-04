@@ -119,7 +119,7 @@ export const checkTeamDatasetLimit = async (teamId: string) => {
   }
 };
 
-export const checkTeamWebSyncPermission = async (teamId: string) => {
+export const checkTeamDatasetSyncPermission = async (teamId: string) => {
   const { standardConstants } = await getTeamStandPlan({
     teamId
   });

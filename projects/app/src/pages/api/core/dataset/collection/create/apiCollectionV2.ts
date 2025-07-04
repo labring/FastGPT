@@ -59,25 +59,45 @@ export const createApiDatasetCollection = async ({
   ).lean();
   const existApiFileIdSet = new Set(existCollections.map((item) => item.apiFileId).filter(Boolean));
 
-  // Get all apiFileId
-  const getFilesRecursively = async (files: APIFileItemType[]): Promise<APIFileItemType[]> => {
-    const allFiles: APIFileItemType[] = [];
+  const startId =
+    dataset.apiDatasetServer?.apiServer?.basePath ||
+    dataset.apiDatasetServer?.yuqueServer?.basePath ||
+    dataset.apiDatasetServer?.feishuServer?.folderToken;
+
+  // check if the directory is selected
+  const isDirectorySelected = apiFiles.length === 1 && apiFiles[0].id === 'SYSTEM_ROOT';
+  const rootDirectoryId = isDirectorySelected ? 'SYSTEM_ROOT' : undefined;
+
+  // Get all apiFileId with top level parent ID
+  const getFilesRecursively = async (
+    files: APIFileItemType[],
+    topLevelParentId?: string
+  ): Promise<(APIFileItemType & { apiFileParentId?: string })[]> => {
+    const allFiles: (APIFileItemType & { apiFileParentId?: string })[] = [];
 
     for (const file of files) {
+      // if the directory is selected, then the top level parent id of all files is the directory id
+      // otherwise, determine the top level parent id according to the original logic
+      let currentTopLevelParentId = isDirectorySelected
+        ? rootDirectoryId
+        : topLevelParentId || (file.hasChild ? file.id : undefined);
+
+      // 为文件添加顶级父目录ID
+      const fileWithParentId = {
+        ...file,
+        apiFileParentId: currentTopLevelParentId
+      };
+
+      allFiles.push(fileWithParentId);
+
       if (file.hasChild) {
         const folderFiles = await (
           await getApiDatasetRequest(dataset.apiDatasetServer)
-        ).listFiles({
-          parentId: file.id
-        });
-
-        const subFiles = await getFilesRecursively(folderFiles);
-        allFiles.push(...subFiles);
+        ).listFiles({ parentId: file.id === 'SYSTEM_ROOT' ? startId : file.id });
+        const subFiles = await getFilesRecursively(folderFiles, currentTopLevelParentId);
+        allFiles.push(...subFiles.filter((f) => f.type === 'file'));
       }
-
-      allFiles.push(file);
     }
-
     return allFiles;
   };
   const allFiles = await getFilesRecursively(apiFiles);
@@ -90,7 +110,7 @@ export const createApiDatasetCollection = async ({
   return mongoSessionRun(async (session) => {
     for await (const file of createFiles) {
       // Create folder
-      if (file.hasChild) {
+      if (file.hasChild && file.type === 'folder') {
         await createOneCollection({
           teamId,
           tmbId,
@@ -112,6 +132,7 @@ export const createApiDatasetCollection = async ({
             type: DatasetCollectionTypeEnum.apiFile,
             name: file.name,
             apiFileId: file.id,
+            apiFileParentId: file.apiFileParentId,
             metadata: {
               relatedImgId: file.id
             },

@@ -3,6 +3,7 @@ import type { ParentIdType } from '../../../common/parentFolder/type';
 
 export type APIFileItemType = {
   id: string;
+  rawId: string;
   parentId: ParentIdType;
   name: string;
   type: 'file' | 'folder';
@@ -35,7 +36,6 @@ export type ApiDatasetServerType = {
 };
 
 // Api dataset api
-export type APIFileListResponse = APIFileItemType[];
 
 export type ApiFileReadContentResponse = {
   title?: string;

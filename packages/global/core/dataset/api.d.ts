@@ -58,6 +58,7 @@ export type CreateDatasetCollectionParams = DatasetCollectionStoreDataType & {
   externalFileId?: string;
   externalFileUrl?: string;
   apiFileId?: string;
+  apiFileParentId?: string; //when file is imported by folder, the parentId is the folderId
 
   rawTextLength?: number;
   hashRawText?: string;
@@ -66,7 +67,6 @@ export type CreateDatasetCollectionParams = DatasetCollectionStoreDataType & {
 
   createTime?: Date;
   updateTime?: Date;
-  nextSyncTime?: Date;
 };
 
 export type ApiCreateDatasetCollectionParams = DatasetCollectionStoreDataType & {
@@ -143,7 +143,7 @@ export type PushDatasetDataChunkProps = {
   indexes?: Omit<DatasetDataIndexItemType, 'dataId'>[];
 };
 
-export type PostWebsiteSyncParams = {
+export type PostDatasetSyncParams = {
   datasetId: string;
 };
 
