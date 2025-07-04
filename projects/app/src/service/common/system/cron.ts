@@ -78,6 +78,7 @@ const scheduleTriggerAppCron = () => {
       getScheduleTriggerApp();
     }
   });
+  getScheduleTriggerApp();
 };
 
 export const startCron = () => {

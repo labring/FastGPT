@@ -120,7 +120,7 @@ const Logs = () => {
       refreshDeps: [chatSources, logTitle]
     }
   );
-  console.log(dateRange, 111);
+
   return (
     <Flex
       flexDirection={'column'}
