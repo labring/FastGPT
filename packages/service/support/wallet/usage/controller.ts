@@ -196,6 +196,60 @@ export const createPdfParseUsage = async ({
   });
 };
 
+export const createEvaluationRerunUsage = async ({
+  teamId,
+  tmbId,
+  appName,
+  model,
+  inputTokens = 0,
+  outputTokens = 0,
+  workflowTotalPoints = 0,
+  workflowInputTokens = 0,
+  workflowOutputTokens = 0
+}: {
+  teamId: string;
+  tmbId: string;
+  appName: string;
+  model: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  workflowTotalPoints?: number;
+  workflowInputTokens?: number;
+  workflowOutputTokens?: number;
+}) => {
+  const { totalPoints: computedPoints } = formatModelChars2Points({
+    model,
+    modelType: ModelTypeEnum.llm,
+    inputTokens,
+    outputTokens
+  });
+  const usageList = [
+    {
+      moduleName: i18nT('account_usage:generate_answer'),
+      amount: workflowTotalPoints,
+      model,
+      inputTokens: workflowInputTokens,
+      outputTokens: workflowOutputTokens
+    },
+    {
+      moduleName: i18nT('account_usage:answer_accuracy'),
+      amount: computedPoints,
+      model,
+      inputTokens,
+      outputTokens
+    }
+  ];
+
+  createUsage({
+    teamId,
+    tmbId,
+    appName: `${appName} - Rerun`,
+    totalPoints: computedPoints + workflowTotalPoints,
+    source: UsageSourceEnum.evaluation,
+    list: usageList
+  });
+};
+
 export const pushLLMTrainingUsage = async ({
   teamId,
   tmbId,
@@ -234,4 +288,72 @@ export const pushLLMTrainingUsage = async ({
   });
 
   return { totalPoints };
+};
+
+export const createEvaluationUsage = async ({
+  teamId,
+  tmbId,
+  appName,
+  session
+}: {
+  teamId: string;
+  tmbId: string;
+  appName: string;
+  session?: ClientSession;
+}) => {
+  const [{ _id }] = await MongoUsage.create(
+    [
+      {
+        teamId,
+        tmbId,
+        appName,
+        source: UsageSourceEnum.evaluation,
+        totalPoints: 0,
+        list: []
+      }
+    ],
+    { session, ordered: true }
+  );
+
+  return { billId: String(_id) };
+};
+
+export const pushEvaluationUsage = async ({
+  teamId,
+  tmbId,
+  model,
+  inputTokens,
+  outputTokens,
+  totalPoints,
+  billId,
+  moduleName
+}: {
+  teamId: string;
+  tmbId: string;
+  model: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  totalPoints?: number;
+  billId: string;
+  moduleName: string;
+}) => {
+  const { totalPoints: computedPoints } = formatModelChars2Points({
+    model,
+    modelType: ModelTypeEnum.llm,
+    inputTokens,
+    outputTokens
+  });
+
+  concatUsage({
+    billId,
+    teamId,
+    tmbId,
+    totalPoints: totalPoints || computedPoints,
+    inputTokens,
+    outputTokens,
+    moduleName,
+    model
+  });
+
+  return { totalPoints: totalPoints || computedPoints };
 };
