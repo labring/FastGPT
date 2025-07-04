@@ -82,9 +82,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   );
 
   const syncDataset = async () => {
-    if (datasetDetail.type === DatasetTypeEnum.websiteDataset) {
-      await checkTeamWebSyncLimit();
-    }
+    datasetDetail.type === DatasetTypeEnum.websiteDataset && (await checkTeamWebSyncLimit());
     postDatasetSync({ datasetId: datasetId }).then(() => {
       loadDatasetDetail(datasetId);
     });

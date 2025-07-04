@@ -58,7 +58,7 @@ export type CreateDatasetCollectionParams = DatasetCollectionStoreDataType & {
   externalFileId?: string;
   externalFileUrl?: string;
   apiFileId?: string;
-  apiFileParentId?: string;
+  apiFileParentId?: string; //when file is imported by folder, the parentId is the folderId
 
   rawTextLength?: number;
   hashRawText?: string;

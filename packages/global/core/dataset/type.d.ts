@@ -112,10 +112,10 @@ export type DatasetCollectionSchemaType = ChunkSettingsType & {
   rawLink?: string; // link url
   externalFileId?: string; //external file id
   apiFileId?: string; // api file id
+  apiFileParentId?: string;
   externalFileUrl?: string; // external import url
 
   rawTextLength?: number;
-  apiFileParentId?: string;
   hashRawText?: string;
   metadata?: {
     webPageSelector?: string;

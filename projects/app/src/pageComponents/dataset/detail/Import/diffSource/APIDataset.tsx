@@ -88,31 +88,24 @@ const CustomAPIFileInput = () => {
 
   const { runAsync: onclickNext, loading: onNextLoading } = useRequest2(
     async () => {
-      let finalSelectedFiles: APIFileItemType[] = [];
+      const finalSelectedFiles: APIFileItemType[] = await (async () => {
+        if (isSelectRoot) {
+          return [
+            {
+              id: 'SYSTEM_ROOT',
+              rawId: 'SYSTEM_ROOT',
+              parentId: '',
+              name: 'ROOT_FOLDER',
+              type: 'folder',
+              hasChild: true,
+              updateTime: new Date(),
+              createTime: new Date()
+            }
+          ];
+        }
 
-      if (isSelectRoot) {
-        // if the root directory is selected, pass the root directory
-        const rootDirectoryId =
-          datasetDetail.apiDatasetServer?.apiServer?.basePath ||
-          datasetDetail.apiDatasetServer?.yuqueServer?.basePath ||
-          datasetDetail.apiDatasetServer?.feishuServer?.folderToken ||
-          '';
-
-        const currentDirectory: APIFileItemType = {
-          id: rootDirectoryId,
-          trueId: rootDirectoryId,
-          parentId: '',
-          name: 'ROOT_FOLDER',
-          type: 'folder',
-          hasChild: true,
-          updateTime: new Date(),
-          createTime: new Date()
-        };
-        finalSelectedFiles = [currentDirectory];
-      } else {
-        // pass the selected files
-        finalSelectedFiles = selectFiles;
-      }
+        return selectFiles;
+      })();
 
       setSources(
         finalSelectedFiles.map((item) => ({
@@ -235,7 +228,7 @@ const CustomAPIFileInput = () => {
                         parentName: item.name
                       });
                     } else {
-                      // 选择单个文件时，取消根目录选择
+                      // when choose single file, cancel the selection of the root directory
                       setIsSelectRoot(false);
                       if (isChecked) {
                         setSelectFiles((state) => state.filter((file) => file.id !== item.id));

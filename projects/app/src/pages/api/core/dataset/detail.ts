@@ -32,17 +32,7 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
   });
 
   const { status, errorMsg } = await (async () => {
-    if (dataset.type === DatasetTypeEnum.websiteDataset) {
-      return await getDatasetSyncDatasetStatus(datasetId);
-    }
-    if (dataset.type === DatasetTypeEnum.apiDataset) {
-      return await getDatasetSyncDatasetStatus(datasetId);
-    }
-
-    return {
-      status: DatasetStatusEnum.active,
-      errorMsg: undefined
-    };
+    return await getDatasetSyncDatasetStatus(datasetId);
   })();
 
   return {
