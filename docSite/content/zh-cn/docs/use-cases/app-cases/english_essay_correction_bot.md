@@ -42,7 +42,6 @@ FastGPT 提供了一种基于 LLM Model 搭建应用的简便方式。
 不要使用 Markdown 语法， 输入 JSON 格式的内容。
 输出的"reason"的内容使用中文。
 直接输出一个列表， 其成员为一个相同类型的对象， 定义如下
-您正在找回 FastGPT 账号
 ```
 {
 “raw”: string; // 表示原文
