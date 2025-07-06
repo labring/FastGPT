@@ -54,6 +54,9 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange'> & {
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
   customOnOpen?: () => void;
   customOnClose?: () => void;
+
+  isInvalid?: boolean;
+  isDisabled?: boolean;
 };
 
 export const menuItemStyles: MenuItemProps = {
@@ -82,6 +85,8 @@ const MySelect = <T = any,>(
     ScrollData,
     customOnOpen,
     customOnClose,
+    isInvalid,
+    isDisabled,
     ...props
   }: SelectProps<T>,
   ref: ForwardedRef<{
@@ -97,6 +102,7 @@ const MySelect = <T = any,>(
   const selectItem = useMemo(() => list.find((item) => item.value === value), [list, value]);
 
   const onOpen = () => {
+    if (isDisabled) return;
     defaultOnOpen();
     customOnOpen?.();
   };
@@ -157,9 +163,8 @@ const MySelect = <T = any,>(
                       color: 'myGray.900'
                     })}
                 onClick={() => {
-                  if (value !== item.value) {
-                    onClickChange(item.value);
-                  }
+                  if (isDisabled || value === item.value) return;
+                  onClickChange(item.value);
                 }}
                 whiteSpace={'pre-wrap'}
                 fontSize={'sm'}
@@ -194,7 +199,7 @@ const MySelect = <T = any,>(
     <Box>
       <Menu
         autoSelect={false}
-        isOpen={isOpen && !isSelecting}
+        isOpen={isOpen && !isSelecting && !isDisabled}
         onOpen={onOpen}
         onClose={onClose}
         strategy={'fixed'}
@@ -205,7 +210,13 @@ const MySelect = <T = any,>(
           ref={ButtonRef}
           width={width}
           px={3}
-          rightIcon={<MyIcon name={'core/chat/chevronDown'} w={4} color={'myGray.500'} />}
+          rightIcon={
+            <MyIcon
+              name={'core/chat/chevronDown'}
+              w={4}
+              color={isDisabled ? 'myGray.400' : 'myGray.500'}
+            />
+          }
           variant={'whitePrimaryOutline'}
           size={'md'}
           fontSize={'sm'}
@@ -213,13 +224,32 @@ const MySelect = <T = any,>(
           h={'auto'}
           whiteSpace={'pre-wrap'}
           wordBreak={'break-word'}
+          borderRadius={'sm'}
+          transition={'border-color 0.1s ease-in-out, box-shadow 0.1s ease-in-out'}
+          isDisabled={isDisabled}
           _active={{
             transform: 'none'
           }}
+          _hover={
+            isInvalid
+              ? {
+                  borderColor: 'red.400',
+                  boxShadow: '0px 0px 0px 2.4px rgba(255, 0, 0, 0.15)'
+                }
+              : {
+                  borderColor: 'primary.300',
+                  boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
+                }
+          }
+          {...(isInvalid
+            ? {
+                borderColor: 'red.500'
+              }
+            : {})}
           {...(isOpen
             ? {
-                boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
-                borderColor: 'primary.600',
+                boxShadow: isInvalid ? 'none' : '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
+                borderColor: isInvalid ? 'red.600' : 'primary.600',
                 color: 'primary.700'
               }
             : {})}

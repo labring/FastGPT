@@ -11,6 +11,7 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import InputRender from '@/components/InputRender';
 import { formatInputType, formatRenderProps } from '@/components/InputRender/utils';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const DescriptionBox = React.memo(function DescriptionBox({
   description
@@ -86,7 +87,6 @@ export const FormInputComponent = React.memo(function FormInputComponent({
   } = useForm({
     defaultValues
   });
-  console.log('interactive errors', errors);
 
   const RenderFormInput = useCallback(
     ({ input }: { input: UserInputFormItemType }) => {
@@ -126,7 +126,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
           <Box key={input.label}>
             <Flex alignItems={'center'} mb={1}>
               {input.required && <Box color={'red.500'}>*</Box>}
-              {input.label}
+              <FormLabel>{input.label}</FormLabel>
               {input.description && <QuestionTip ml={1} label={input.description} />}
             </Flex>
             <RenderFormInput input={input} />

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { type UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Card, Flex } from '@chakra-ui/react';
@@ -27,6 +27,8 @@ const VariableInput = ({
   const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
   const allVariableList = useContextSelector(ChatBoxContext, (v) => v.allVariableList);
+
+  const [forceUpdate, setForceUpdate] = useState(0);
 
   const externalVariableList = useMemo(
     () =>
@@ -111,9 +113,16 @@ const VariableInput = ({
                   leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
                   size={'sm'}
                   maxW={'100px'}
-                  onClick={handleSubmitChat(() => {
-                    chatForm.setValue('chatStarted', true);
-                  })}
+                  onClick={handleSubmitChat(
+                    () => {
+                      chatForm.setValue('chatStarted', true);
+                    },
+                    () => {
+                      setTimeout(() => {
+                        setForceUpdate((prev) => prev + 1);
+                      }, 0);
+                    }
+                  )}
                 >
                   {t('common:core.chat.Start Chat')}
                 </Button>

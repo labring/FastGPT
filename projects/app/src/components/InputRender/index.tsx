@@ -19,7 +19,7 @@ const InputRender = (props: InputRenderProps) => {
 
   const Render = (() => {
     if (inputType === InputTypeEnum.input) {
-      return <PromptEditor {...props} minH={30} maxH={120} />;
+      return <PromptEditor {...props} minH={40} maxH={120} />;
     }
     if (inputType === InputTypeEnum.textarea) {
       return <PromptEditor {...props} minH={100} maxH={300} />;

@@ -16,10 +16,9 @@ type BaseInputRenderProps = {
   customRender?: (props: any) => React.ReactNode;
 };
 
-// 按 inputType 分类的特定属性
 type InputSpecificProps =
   | {
-      // input & textarea 类型
+      // input & textarea
       inputType: InputTypeEnum.input | InputTypeEnum.textarea;
       variables?: EditorVariablePickerType[];
       variableLabels?: EditorVariableLabelPickerType[];
@@ -27,33 +26,31 @@ type InputSpecificProps =
       maxLength?: number;
     }
   | {
-      // numberInput 类型
+      // numberInput
       inputType: InputTypeEnum.numberInput;
       min?: number;
       max?: number;
     }
   | {
-      // switch 类型
+      // switch
       inputType: InputTypeEnum.switch;
-      // switch 只需要基础属性
     }
   | {
-      // select & multipleSelect 类型
+      // select & multipleSelect
       inputType: InputTypeEnum.select | InputTypeEnum.multipleSelect;
       list?: { label: string; value: string }[];
     }
   | {
-      // JSONEditor 类型
+      // JSONEditor
       inputType: InputTypeEnum.JSONEditor;
-      // JSONEditor 只需要基础属性
     }
   | {
-      // selectLLMModel 类型
+      // selectLLMModel
       inputType: InputTypeEnum.selectLLMModel;
       modelList?: { model: string; name: string }[];
     }
   | {
-      // fileSelect 类型
+      // fileSelect
       inputType: InputTypeEnum.fileSelect;
       canSelectFile?: boolean;
       canSelectImg?: boolean;

@@ -45,7 +45,6 @@ const RenderInput = () => {
     reset,
     formState: { errors }
   } = variablesForm;
-  console.log(errors);
 
   /* ===> Global files(abandon) */
   const fileCtrl = useFieldArray({
@@ -78,6 +77,7 @@ const RenderInput = () => {
   /* Global files(abandon) <=== */
 
   const [restartData, setRestartData] = useState<ChatBoxInputFormType>();
+  const [forceUpdate, setForceUpdate] = useState(0);
   const onClickNewChat = useCallback(
     (e: ChatBoxInputFormType) => {
       setRestartData(e);
@@ -230,15 +230,9 @@ const RenderInput = () => {
             <Box _notLast={{ mb: 4 }} key={inputKey}>
               {inputType !== FlowNodeInputTypeEnum.fileSelect && (
                 <Flex alignItems={'center'} mb={1}>
-                  <Box position={'relative'}>
-                    {input.required && (
-                      <Box position={'absolute'} left={-2} top={'-1px'} color={'red.600'}>
-                        *
-                      </Box>
-                    )}
-                    <FormLabel fontWeight={'500'}>{t(input.label as any)}</FormLabel>
-                  </Box>
-                  {input.description && <QuestionTip ml={2} label={t(input.description as any)} />}
+                  {input.required && <Box color={'red.500'}>*</Box>}
+                  <FormLabel>{input.label}</FormLabel>
+                  {input.description && <QuestionTip ml={1} label={input.description} />}
                   {inputType === FlowNodeInputTypeEnum.customVariable && (
                     <Flex
                       color={'primary.600'}
@@ -298,13 +292,20 @@ const RenderInput = () => {
             isLoading={isChatting}
             isDisabled={fileUploading}
             onClick={() => {
-              handleSubmit((e) => {
-                if (isDisabledInput) {
-                  onClickNewChat(e);
-                } else {
-                  onSubmit(e);
+              handleSubmit(
+                (e) => {
+                  if (isDisabledInput) {
+                    onClickNewChat(e);
+                  } else {
+                    onSubmit(e);
+                  }
+                },
+                () => {
+                  setTimeout(() => {
+                    setForceUpdate((prev) => prev + 1);
+                  }, 0);
                 }
-              })();
+              )();
             }}
           >
             {isDisabledInput ? t('common:Restart') : t('common:Run')}

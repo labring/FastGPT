@@ -6,6 +6,7 @@ import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import type { UseFormReturn } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 export const VariableInputItem = ({
   item,
@@ -20,10 +21,10 @@ export const VariableInputItem = ({
   } = variablesForm;
 
   return (
-    <Box mb={4} px={1}>
+    <Box _notLast={{ mb: 4 }} px={1}>
       <Flex alignItems={'center'} mb={1}>
         {item.required && <Box color={'red.500'}>*</Box>}
-        {item.label}
+        <FormLabel>{item.label}</FormLabel>
         {item.description && <QuestionTip ml={1} label={item.description} />}
       </Flex>
 
@@ -65,7 +66,7 @@ export const NodeVariableInputItem = ({
   } = variablesForm;
 
   return (
-    <Box mb={4} px={1}>
+    <Box _notLast={{ mb: 4 }} px={1}>
       <Flex alignItems={'center'} mb={1}>
         {item.required && <Box color={'red.500'}>*</Box>}
         {item.label}

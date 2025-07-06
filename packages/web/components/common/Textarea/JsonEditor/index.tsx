@@ -230,12 +230,19 @@ const JSONEditor = ({
 
   return (
     <Box
-      borderWidth={isInvalid ? '2px' : '1px'}
-      borderRadius={'md'}
+      borderWidth={'1px'}
+      borderRadius={'sm'}
       borderColor={isInvalid ? 'red.500' : 'myGray.200'}
       py={2}
       height={height}
       position={'relative'}
+      transition={'border-color 0.1s ease-in-out, box-shadow 0.1s ease-in-out'}
+      _focusWithin={{
+        borderColor: isInvalid ? 'red.500' : 'primary.600',
+        boxShadow: isInvalid
+          ? '0px 0px 0px 2.4px rgba(244, 69, 46, 0.15)'
+          : '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
+      }}
       {...props}
     >
       {resize && (

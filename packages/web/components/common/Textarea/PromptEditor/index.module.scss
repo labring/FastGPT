@@ -3,12 +3,16 @@
   height: 100%;
   width: 100%;
   border: 1px solid rgb(232, 235, 240);
-  border-radius: var(--chakra-radii-md);
+  border-radius: var(--chakra-radii-sm);
   padding: 8px 12px;
   // background: #fff;
 
   font-size: var(--chakra-fontSizes-sm);
   overflow-y: auto;
+
+  transition:
+    border-color 0.1s ease-in-out,
+    box-shadow 0.1s ease-in-out;
 
   &:hover {
     border-color: var(--chakra-colors-primary-300);
@@ -37,11 +41,15 @@
   height: 100%;
   width: 100%;
   border: 1px solid rgb(232, 235, 240);
-  border-radius: var(--chakra-radii-md);
+  border-radius: var(--chakra-radii-sm);
   padding: 8px 12px;
 
   font-size: var(--chakra-fontSizes-sm);
   overflow-y: auto;
+
+  transition:
+    border-color 0.1s ease-in-out,
+    box-shadow 0.1s ease-in-out;
 
   &::-webkit-scrollbar {
     color: var(--chakra-colors-myGray-100);

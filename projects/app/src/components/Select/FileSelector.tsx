@@ -29,7 +29,7 @@ const FileSelector = ({
   onChange: (...event: any[]) => void;
   value: any;
 
-  form: UseFormReturn<any, any>;
+  form: UseFormReturn<any>;
   fieldName: string;
 
   canSelectFile?: boolean;
