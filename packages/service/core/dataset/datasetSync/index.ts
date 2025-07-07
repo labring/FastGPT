@@ -2,11 +2,11 @@ import { type Processor } from 'bullmq';
 import { getQueue, getWorker, QueueNames } from '../../../common/bullmq';
 import { DatasetStatusEnum } from '@fastgpt/global/core/dataset/constants';
 
-export type WebsiteSyncJobData = {
+export type DatasetSyncJobData = {
   datasetId: string;
 };
 
-export const websiteSyncQueue = getQueue<WebsiteSyncJobData>(QueueNames.websiteSync, {
+export const datasetSyncQueue = getQueue<DatasetSyncJobData>(QueueNames.datasetSync, {
   defaultJobOptions: {
     attempts: 3, // retry 3 times
     backoff: {
@@ -15,8 +15,8 @@ export const websiteSyncQueue = getQueue<WebsiteSyncJobData>(QueueNames.websiteS
     }
   }
 });
-export const getWebsiteSyncWorker = (processor: Processor<WebsiteSyncJobData>) => {
-  return getWorker<WebsiteSyncJobData>(QueueNames.websiteSync, processor, {
+export const getDatasetSyncWorker = (processor: Processor<DatasetSyncJobData>) => {
+  return getWorker<DatasetSyncJobData>(QueueNames.datasetSync, processor, {
     removeOnFail: {
       age: 15 * 24 * 60 * 60, // Keep up to 15 days
       count: 1000 // Keep up to 1000 jobs
@@ -25,21 +25,21 @@ export const getWebsiteSyncWorker = (processor: Processor<WebsiteSyncJobData>) =
   });
 };
 
-export const addWebsiteSyncJob = (data: WebsiteSyncJobData) => {
+export const addDatasetSyncJob = (data: DatasetSyncJobData) => {
   const datasetId = String(data.datasetId);
   // deduplication: make sure only 1 job
-  return websiteSyncQueue.add(datasetId, data, { deduplication: { id: datasetId } });
+  return datasetSyncQueue.add(datasetId, data, { deduplication: { id: datasetId } });
 };
 
-export const getWebsiteSyncDatasetStatus = async (datasetId: string) => {
-  const jobId = await websiteSyncQueue.getDeduplicationJobId(datasetId);
+export const getDatasetSyncDatasetStatus = async (datasetId: string) => {
+  const jobId = await datasetSyncQueue.getDeduplicationJobId(datasetId);
   if (!jobId) {
     return {
       status: DatasetStatusEnum.active,
       errorMsg: undefined
     };
   }
-  const job = await websiteSyncQueue.getJob(jobId);
+  const job = await datasetSyncQueue.getJob(jobId);
   if (!job) {
     return {
       status: DatasetStatusEnum.active,
@@ -76,10 +76,10 @@ export const getWebsiteSyncDatasetStatus = async (datasetId: string) => {
 
 // Scheduler setting
 const repeatDuration = 24 * 60 * 60 * 1000; // every day
-export const upsertWebsiteSyncJobScheduler = (data: WebsiteSyncJobData, startDate?: number) => {
+export const upsertDatasetSyncJobScheduler = (data: DatasetSyncJobData, startDate?: number) => {
   const datasetId = String(data.datasetId);
 
-  return websiteSyncQueue.upsertJobScheduler(
+  return datasetSyncQueue.upsertJobScheduler(
     datasetId,
     {
       every: repeatDuration,
@@ -92,10 +92,10 @@ export const upsertWebsiteSyncJobScheduler = (data: WebsiteSyncJobData, startDat
   );
 };
 
-export const getWebsiteSyncJobScheduler = (datasetId: string) => {
-  return websiteSyncQueue.getJobScheduler(String(datasetId));
+export const getDatasetSyncJobScheduler = (datasetId: string) => {
+  return datasetSyncQueue.getJobScheduler(String(datasetId));
 };
 
-export const removeWebsiteSyncJobScheduler = (datasetId: string) => {
-  return websiteSyncQueue.removeJobScheduler(String(datasetId));
+export const removeDatasetSyncJobScheduler = (datasetId: string) => {
+  return datasetSyncQueue.removeJobScheduler(String(datasetId));
 };

@@ -13,9 +13,11 @@ import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder
 import FolderPath from '@/components/common/folder/Path';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import { type APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMount } from 'ahooks';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
   loading: () => <Loading fixed={false} />
@@ -47,6 +49,7 @@ const CustomAPIFileInput = () => {
   const setSources = useContextSelector(DatasetImportContext, (v) => v.setSources);
 
   const [selectFiles, setSelectFiles] = useState<APIFileItemType[]>([]);
+  const [isSelectRoot, setIsSelectRoot] = useState(false);
   const [parent, setParent] = useState<ParentTreePathItemType>({
     parentId: '',
     parentName: ''
@@ -86,8 +89,27 @@ const CustomAPIFileInput = () => {
 
   const { runAsync: onclickNext, loading: onNextLoading } = useRequest2(
     async () => {
+      const finalSelectedFiles: APIFileItemType[] = await (async () => {
+        if (isSelectRoot) {
+          return [
+            {
+              id: RootCollectionId,
+              rawId: RootCollectionId,
+              parentId: '',
+              name: 'ROOT_FOLDER',
+              type: 'folder',
+              hasChild: true,
+              updateTime: new Date(),
+              createTime: new Date()
+            }
+          ];
+        }
+
+        return selectFiles;
+      })();
+
       setSources(
-        selectFiles.map((item) => ({
+        finalSelectedFiles.map((item) => ({
           id: item.id,
           apiFileId: item.id,
           apiFile: item,
@@ -107,24 +129,21 @@ const CustomAPIFileInput = () => {
     }
   );
 
-  const isAllSelected = useMemo(() => {
-    return fileList.every(
-      (item) => existIdList.has(item.id) || selectFiles.some((file) => file.id === item.id)
-    );
-  }, [fileList, existIdList, selectFiles]);
+  const handleSelectRoot = useCallback(() => {
+    const isRootDirectory = !parent?.parentId;
 
-  const handleSelectAll = useCallback(() => {
-    if (isAllSelected) {
-      setSelectFiles((state) =>
-        state.filter((file) => !fileList.find((item) => item.id === file.id))
-      );
+    if (!isRootDirectory) return;
+
+    if (isSelectRoot) {
+      // cancel the selection of the root directory
+      setIsSelectRoot(false);
+      setSelectFiles([]);
     } else {
-      setSelectFiles((state) => [
-        ...state.filter((file) => !fileList.find((item) => item.id === file.id)),
-        ...fileList.filter((item) => !existIdList.has(item.id))
-      ]);
+      // select the root directory
+      setIsSelectRoot(true);
+      setSelectFiles([]);
     }
-  }, [isAllSelected, fileList, existIdList]);
+  }, [isSelectRoot, parent?.parentId]);
 
   return (
     <MyBox isLoading={loading} position="relative" h="full">
@@ -177,10 +196,11 @@ const CustomAPIFileInput = () => {
                   <Checkbox
                     className="checkbox"
                     mr={2}
-                    isChecked={isAllSelected}
-                    onChange={handleSelectAll}
+                    isChecked={isSelectRoot}
+                    onChange={handleSelectRoot}
                   />
-                  {t('common:Select_all')}
+                  {t('common:Select_root')}
+                  <QuestionTip ml={1} label={t('common:dataset.select_root_tip')} />
                 </>
               )}
             </Flex>
@@ -209,6 +229,8 @@ const CustomAPIFileInput = () => {
                         parentName: item.name
                       });
                     } else {
+                      // when choose single file, cancel the selection of the root directory
+                      setIsSelectRoot(false);
                       if (isChecked) {
                         setSelectFiles((state) => state.filter((file) => file.id !== item.id));
                       } else {
@@ -224,6 +246,8 @@ const CustomAPIFileInput = () => {
                     isDisabled={isExists}
                     onChange={(e) => {
                       e.stopPropagation();
+                      // 选择单个文件时，取消根目录选择
+                      setIsSelectRoot(false);
                       if (isChecked) {
                         setSelectFiles((state) => state.filter((file) => file.id !== item.id));
                       } else {
@@ -260,7 +284,7 @@ const CustomAPIFileInput = () => {
           p={4}
         >
           <Button
-            isDisabled={selectFiles.length === 0}
+            isDisabled={selectFiles.length === 0 && !isSelectRoot}
             isLoading={onNextLoading}
             onClick={onclickNext}
           >

@@ -21,7 +21,7 @@ import type {
   FileIdCreateDatasetCollectionParams,
   reTrainingDatasetFileCollectionParams,
   LinkCreateDatasetCollectionParams,
-  PostWebsiteSyncParams,
+  PostDatasetSyncParams,
   TextCreateDatasetCollectionParams,
   UpdateDatasetCollectionTagParams
 } from '@fastgpt/global/core/dataset/api.d';
@@ -104,8 +104,8 @@ export const putDatasetById = (data: DatasetUpdateBody) => PUT<void>(`/core/data
 
 export const delDatasetById = (id: string) => DELETE(`/core/dataset/delete?id=${id}`);
 
-export const postWebsiteSync = (data: PostWebsiteSyncParams) =>
-  POST(`/proApi/core/dataset/websiteSync`, data, {
+export const postDatasetSync = (data: PostDatasetSyncParams) =>
+  POST(`/proApi/core/dataset/datasetSync`, data, {
     timeout: 600000
   }).catch();
 

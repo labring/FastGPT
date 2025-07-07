@@ -106,13 +106,13 @@ export type DatasetCollectionSchemaType = ChunkSettingsType & {
 
   // Status
   forbid?: boolean;
-  nextSyncTime?: Date;
 
   // Collection metadata
   fileId?: string; // local file id
   rawLink?: string; // link url
   externalFileId?: string; //external file id
   apiFileId?: string; // api file id
+  apiFileParentId?: string;
   externalFileUrl?: string; // external import url
 
   rawTextLength?: number;
