@@ -173,7 +173,11 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
 
   // Check if the original text is the same: skip if same
   const hashRawText = hashStr(rawText);
-  if (collection.hashRawText && hashRawText === collection.hashRawText) {
+  if (
+    collection.hashRawText &&
+    hashRawText === collection.hashRawText &&
+    title === collection.name
+  ) {
     return DatasetCollectionSyncResultEnum.sameRaw;
   }
 

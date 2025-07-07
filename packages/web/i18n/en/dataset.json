@@ -180,6 +180,7 @@
   "split_sign_question": "question mark",
   "split_sign_semicolon": "semicolon",
   "start_sync_website_tip": "Confirm to start synchronizing data? \nThe old data will be deleted and retrieved again, please confirm!",
+  "start_sync_api_dataset_tip": "Confirm to start synchronizing API dataset data? \nThe old data will be deleted and retrieved again, please confirm!",
   "status_error": "Running exception",
   "sync_collection_failed": "Synchronization collection error, please check whether the source file can be accessed normally",
   "sync_schedule": "Timing synchronization",
