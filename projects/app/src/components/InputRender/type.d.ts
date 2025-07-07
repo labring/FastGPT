@@ -5,7 +5,7 @@ import type {
 import type { InputTypeEnum } from './constant';
 import type { UseFormReturn } from 'react-hook-form';
 
-type BaseInputRenderProps = {
+type CommonRenderProps = {
   value: any;
   onChange: (value: any) => void;
 
@@ -14,9 +14,11 @@ type BaseInputRenderProps = {
   placeholder?: string;
 
   customRender?: (props: any) => React.ReactNode;
+
+  bg?: string;
 };
 
-type InputSpecificProps =
+type SpecificProps =
   | {
       // input & textarea
       inputType: InputTypeEnum.input | InputTypeEnum.textarea;
@@ -61,4 +63,4 @@ type InputSpecificProps =
       fieldName?: string;
     };
 
-export type InputRenderProps = BaseInputRenderProps & InputSpecificProps;
+export type InputRenderProps = CommonRenderProps & SpecificProps;

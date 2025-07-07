@@ -10,7 +10,7 @@ import type { RenderInputProps } from './type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import InputRender from '@/components/InputRender';
-import { formatInputType, formatRenderProps } from '@/components/InputRender/utils';
+import { formatInputType } from '@/components/InputRender/utils';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import { useCreation } from 'ahooks';
 import { useCallback } from 'react';
@@ -61,23 +61,20 @@ const CommonInputRender = ({ inputs, item, nodeId }: RenderInputProps) => {
   const renderType = item.renderTypeList?.[item.selectedTypeIndex || 0];
   const inputType = formatInputType({ inputType: renderType, valueType: item.valueType });
 
-  const props = formatRenderProps({
-    inputType,
-    value: item.value,
-    onChange: handleChange,
-    placeholder: item.placeholder,
-
-    maxLength: item.maxLength,
-    variables: [...(editorVariables || []), ...(externalVariables || [])],
-    variableLabels: editorVariables,
-
-    min: item.min,
-    max: item.max,
-
-    list: item.list
-  });
-
-  return <InputRender {...props} />;
+  return (
+    <InputRender
+      inputType={inputType}
+      value={item.value}
+      onChange={handleChange}
+      placeholder={item.placeholder}
+      maxLength={item.maxLength}
+      variables={[...(editorVariables || []), ...(externalVariables || [])]}
+      variableLabels={editorVariables}
+      min={item.min}
+      max={item.max}
+      list={item.list}
+    />
+  );
 };
 
 const RenderList: Record<

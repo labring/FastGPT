@@ -1,5 +1,5 @@
 import InputRender from '@/components/InputRender';
-import { formatInputType, formatRenderProps } from '@/components/InputRender/utils';
+import { formatInputType } from '@/components/InputRender/utils';
 import { Box, Flex } from '@chakra-ui/react';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
@@ -37,16 +37,21 @@ export const VariableInputItem = ({
         }}
         render={({ field: { onChange, value } }) => {
           const inputType = formatInputType({ inputType: item.type, valueType: item.valueType });
-          const props = formatRenderProps({
-            ...item,
-            inputType,
-            value,
-            onChange,
-            list: item.enums,
-            isInvalid: errors?.variables && Object.keys(errors.variables).includes(item.key)
-          });
 
-          return <InputRender {...props} />;
+          return (
+            <InputRender
+              inputType={inputType}
+              value={value}
+              onChange={onChange}
+              placeholder={item.description}
+              isInvalid={errors?.variables && Object.keys(errors.variables).includes(item.key)}
+              isDisabled={false}
+              maxLength={item.maxLength}
+              min={item.min}
+              max={item.max}
+              list={item.enums}
+            />
+          );
         }}
       />
     </Box>
@@ -85,17 +90,30 @@ export const NodeVariableInputItem = ({
             inputType: item.renderTypeList[0],
             valueType: item.valueType
           });
-          const props = formatRenderProps({
-            ...item,
-            inputType,
-            value,
-            onChange,
-            isInvalid: errors?.nodeVariables && Object.keys(errors.nodeVariables).includes(item.key)
-          });
 
-          return <InputRender {...props} />;
+          return (
+            <InputRender
+              inputType={inputType}
+              value={value}
+              onChange={onChange}
+              placeholder={item.placeholder || item.description}
+              isInvalid={
+                errors?.nodeVariables && Object.keys(errors.nodeVariables).includes(item.key)
+              }
+              isDisabled={false}
+              maxLength={item.maxLength}
+              min={item.min}
+              max={item.max}
+              list={item.list}
+              canSelectFile={item.canSelectFile}
+              canSelectImg={item.canSelectImg}
+              maxFiles={item.maxFiles}
+            />
+          );
         }}
       />
     </Box>
   );
 };
+
+export default { VariableInputItem, NodeVariableInputItem };

@@ -9,58 +9,112 @@ import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSele
 import JSONEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import AIModelSelector from '../Select/AIModelSelector';
 import FileSelector from '../Select/FileSelector';
+import { useTranslation } from 'next-i18next';
 
 const InputRender = (props: InputRenderProps) => {
-  const { inputType, customRender } = props;
+  const {
+    inputType,
+    customRender,
+    value,
+    onChange,
+    isDisabled,
+    isInvalid,
+    placeholder,
+    bg = 'white'
+  } = props;
+  const { t } = useTranslation();
 
   if (customRender) {
     return <>{customRender(props)}</>;
   }
 
-  const Render = (() => {
+  const commonProps = {
+    value,
+    onChange,
+    isDisabled,
+    isInvalid,
+    placeholder: t(placeholder as any),
+    bg
+  };
+
+  const renderInput = () => {
     if (inputType === InputTypeEnum.input) {
-      return <PromptEditor {...props} minH={40} maxH={120} />;
+      return (
+        <PromptEditor
+          {...commonProps}
+          variables={props.variables}
+          variableLabels={props.variableLabels}
+          title={props.title}
+          maxLength={props.maxLength}
+          minH={40}
+          maxH={120}
+        />
+      );
     }
+
     if (inputType === InputTypeEnum.textarea) {
-      return <PromptEditor {...props} minH={100} maxH={300} />;
+      return (
+        <PromptEditor
+          {...commonProps}
+          variables={props.variables}
+          variableLabels={props.variableLabels}
+          title={props.title}
+          maxLength={props.maxLength}
+          minH={100}
+          maxH={300}
+        />
+      );
     }
+
     if (inputType === InputTypeEnum.numberInput) {
-      return <MyNumberInput {...props} inputFieldProps={{ bg: 'white' }} />;
+      return (
+        <MyNumberInput
+          {...commonProps}
+          min={props.min}
+          max={props.max}
+          inputFieldProps={{ bg: bg }}
+        />
+      );
     }
+
     if (inputType === InputTypeEnum.switch) {
-      const { value, ...rest } = props;
-      return <Switch {...rest} isChecked={value} />;
+      return (
+        <Switch
+          isChecked={value}
+          onChange={(e) => onChange(e.target.checked)}
+          isDisabled={isDisabled}
+        />
+      );
     }
+
     if (inputType === InputTypeEnum.select) {
-      return <MySelect {...props} list={props.list || []} h={10} />;
+      return <MySelect {...commonProps} list={props.list || []} h={10} />;
     }
+
     if (inputType === InputTypeEnum.multipleSelect) {
-      const { onChange, value, list } = props;
+      const { list = [] } = props;
       return (
         <MultipleSelect<string>
-          {...props}
+          {...commonProps}
           h={10}
-          bg={'white'}
-          list={list || []}
+          list={list}
           onSelect={onChange}
-          isSelectAll={value.length === list?.length}
+          isSelectAll={value?.length === list.length}
           setIsSelectAll={(all) => {
-            if (all) {
-              onChange(list?.map((item) => item.value));
-            } else {
-              onChange([]);
-            }
+            onChange(all ? list.map((item) => item.value) : []);
           }}
         />
       );
     }
+
     if (inputType === InputTypeEnum.JSONEditor) {
-      return <JSONEditor {...props} />;
+      return <JSONEditor {...commonProps} />;
     }
+
     if (inputType === InputTypeEnum.selectLLMModel) {
       return (
         <AIModelSelector
-          {...props}
+          {...commonProps}
           list={
             props.modelList?.map((item) => ({
               value: item.model,
@@ -70,13 +124,25 @@ const InputRender = (props: InputRenderProps) => {
         />
       );
     }
-    if (inputType === InputTypeEnum.fileSelect) {
-      return <FileSelector {...props} form={props.form!} fieldName={props.fieldName!} />;
-    }
-    return null;
-  })();
 
-  return <Box>{Render}</Box>;
+    if (inputType === InputTypeEnum.fileSelect) {
+      return (
+        <FileSelector
+          {...commonProps}
+          canSelectFile={props.canSelectFile}
+          canSelectImg={props.canSelectImg}
+          maxFiles={props.maxFiles}
+          setUploading={props.setUploading}
+          form={props.form}
+          fieldName={props.fieldName}
+        />
+      );
+    }
+
+    return null;
+  };
+
+  return <Box>{renderInput()}</Box>;
 };
 
 export default InputRender;

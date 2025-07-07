@@ -10,7 +10,7 @@ import {
   type UserSelectOptionItemType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import InputRender from '@/components/InputRender';
-import { formatInputType, formatRenderProps } from '@/components/InputRender/utils';
+import { formatInputType } from '@/components/InputRender/utils';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const DescriptionBox = React.memo(function DescriptionBox({
@@ -101,16 +101,21 @@ export const FormInputComponent = React.memo(function FormInputComponent({
               inputType: input.type,
               valueType: input.valueType
             });
-            const props = formatRenderProps({
-              ...input,
-              inputType,
-              value,
-              onChange,
-              isDisabled: submitted,
-              isInvalid: errors && Object.keys(errors).includes(input.label)
-            });
 
-            return <InputRender {...props} />;
+            return (
+              <InputRender
+                inputType={inputType}
+                value={value}
+                onChange={onChange}
+                placeholder={input.description}
+                isDisabled={submitted}
+                isInvalid={errors && Object.keys(errors).includes(input.label)}
+                maxLength={input.maxLength}
+                min={input.min}
+                max={input.max}
+                list={input.list}
+              />
+            );
           }}
         />
       );

@@ -16,7 +16,7 @@ import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import InputRender from '@/components/InputRender';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { formatInputType, formatRenderProps } from '@/components/InputRender/utils';
+import { formatInputType } from '@/components/InputRender/utils';
 import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 const ChatTest = ({
@@ -110,13 +110,6 @@ const ChatTest = ({
                           inputType: undefined,
                           valueType: paramInfo.type as WorkflowIOValueTypeEnum
                         });
-                        const props = formatRenderProps({
-                          inputType,
-                          value,
-                          onChange,
-                          placeholder: paramInfo.description,
-                          isInvalid: errors && Object.keys(errors).includes(paramName)
-                        });
 
                         return (
                           <Box _notLast={{ mb: 4 }}>
@@ -132,7 +125,13 @@ const ChatTest = ({
                               </FormLabel>
                             </Flex>
 
-                            <InputRender {...props} />
+                            <InputRender
+                              inputType={inputType}
+                              value={value}
+                              onChange={onChange}
+                              placeholder={paramInfo.description}
+                              isInvalid={errors && Object.keys(errors).includes(paramName)}
+                            />
                           </Box>
                         );
                       }}

@@ -20,6 +20,7 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import InputRender from '@/components/InputRender';
 import { formatInputType } from '@/components/InputRender/utils';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const RenderInput = () => {
   const { t } = useTranslation();
@@ -38,6 +39,8 @@ const RenderInput = () => {
   const appId = useContextSelector(PluginRunContext, (v) => v.appId);
   const chatId = useContextSelector(PluginRunContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(PluginRunContext, (v) => v.outLinkAuthData);
+
+  const { llmModelList } = useSystemStore();
 
   const {
     control,
@@ -267,6 +270,7 @@ const RenderInput = () => {
                   return (
                     <InputRender
                       {...input}
+                      key={inputKey}
                       value={value}
                       onChange={onChange}
                       isDisabled={isDisabledInput}
@@ -278,6 +282,7 @@ const RenderInput = () => {
                       })}
                       form={variablesForm}
                       fieldName={inputKey}
+                      modelList={llmModelList}
                     />
                   );
                 }}

@@ -59,8 +59,6 @@ const PromptEditor = ({
     [onBlur]
   );
 
-  console.log(isDisabled);
-
   return (
     <>
       <Box position="relative">

@@ -1,6 +1,4 @@
 import { useTranslation } from 'react-i18next';
-import { useContextSelector } from 'use-context-selector';
-import { PluginRunContext } from '../core/chat/ChatContainer/PluginRunBox/context';
 import type { UseFormReturn } from 'react-hook-form';
 import { useFieldArray } from 'react-hook-form';
 import { useFileUpload } from '../core/chat/ChatContainer/ChatBox/hooks/useFileUpload';
@@ -11,6 +9,7 @@ import { Button, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FilePreview from '../core/chat/ChatContainer/components/FilePreview';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
 
 const FileSelector = ({
   onChange,
@@ -29,8 +28,8 @@ const FileSelector = ({
   onChange: (...event: any[]) => void;
   value: any;
 
-  form: UseFormReturn<any>;
-  fieldName: string;
+  form?: UseFormReturn<any>;
+  fieldName?: string;
 
   canSelectFile?: boolean;
   canSelectImg?: boolean;
@@ -41,12 +40,9 @@ const FileSelector = ({
 }) => {
   const { t } = useTranslation();
 
-  const appId = useContextSelector(PluginRunContext, (v) => v.appId);
-  const chatId = useContextSelector(PluginRunContext, (v) => v.chatId);
-  const outLinkAuthData = useContextSelector(PluginRunContext, (v) => v.outLinkAuthData);
-
+  const { appId, chatId, outLinkAuthData } = useChatStore();
   const fileCtrl = useFieldArray({
-    control: form.control,
+    control: form?.control,
     name: fieldName as any
   });
   const {
