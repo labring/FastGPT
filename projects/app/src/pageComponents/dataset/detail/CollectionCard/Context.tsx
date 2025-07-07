@@ -73,16 +73,15 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   // dataset sync confirm
   const { openConfirm: openDatasetSyncConfirm, ConfirmModal: ConfirmDatasetSyncModal } = useConfirm(
     {
-      content: t(
-        datasetDetail.type === DatasetTypeEnum.websiteDataset
-          ? 'dataset:start_sync_website_tip'
-          : 'dataset:start_sync_api_dataset_tip'
-      )
+      content: t('dataset:start_sync_dataset_tip')
     }
   );
 
   const syncDataset = async () => {
-    datasetDetail.type === DatasetTypeEnum.websiteDataset && (await checkTeamWebSyncLimit());
+    if (datasetDetail.type === DatasetTypeEnum.websiteDataset) {
+      await checkTeamWebSyncLimit();
+    }
+
     postDatasetSync({ datasetId: datasetId }).then(() => {
       loadDatasetDetail(datasetId);
     });
@@ -153,20 +152,13 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   return (
     <CollectionPageContext.Provider value={contextValue}>
       {children}
-      {datasetDetail.type === DatasetTypeEnum.websiteDataset && (
-        <>
-          {isOpenWebsiteModal && (
-            <WebSiteConfigModal
-              onClose={onCloseWebsiteModal}
-              onSuccess={onUpdateDatasetWebsiteConfig}
-            />
-          )}
-        </>
+      {datasetDetail.type === DatasetTypeEnum.websiteDataset && isOpenWebsiteModal && (
+        <WebSiteConfigModal
+          onClose={onCloseWebsiteModal}
+          onSuccess={onUpdateDatasetWebsiteConfig}
+        />
       )}
-      {(datasetDetail.type === DatasetTypeEnum.websiteDataset ||
-        datasetDetail.type === DatasetTypeEnum.apiDataset ||
-        datasetDetail.type === DatasetTypeEnum.feishu ||
-        datasetDetail.type === DatasetTypeEnum.yuque) && <ConfirmDatasetSyncModal />}
+      <ConfirmDatasetSyncModal />
     </CollectionPageContext.Provider>
   );
 };

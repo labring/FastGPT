@@ -79,11 +79,14 @@ export const createApiDatasetCollection = async ({
     for (const file of files) {
       // if the directory is selected, then the top level parent id of all files is the directory id
       // otherwise, determine the top level parent id according to the original logic
-      let currentTopLevelParentId = isDirectorySelected
-        ? rootDirectoryId
-        : topLevelParentId || (file.hasChild ? file.id : undefined);
+      const currentTopLevelParentId = (() => {
+        if (topLevelParentId) return topLevelParentId;
+        if (isDirectorySelected) return rootDirectoryId;
+        if (file.hasChild) return file.id;
+        return undefined;
+      })();
 
-      // 为文件添加顶级父目录ID
+      // Add parentId to file
       const fileWithParentId = {
         ...file,
         apiFileParentId: currentTopLevelParentId
@@ -92,10 +95,12 @@ export const createApiDatasetCollection = async ({
       allFiles.push(fileWithParentId);
 
       if (file.hasChild) {
-        const folderFiles = await (
+        const childFiles = await (
           await getApiDatasetRequest(dataset.apiDatasetServer)
         ).listFiles({ parentId: file.id === RootCollectionId ? startId : file.id });
-        const subFiles = await getFilesRecursively(folderFiles, currentTopLevelParentId);
+
+        const subFiles = await getFilesRecursively(childFiles, currentTopLevelParentId);
+
         allFiles.push(...subFiles.filter((f) => f.type === 'file'));
       }
     }
