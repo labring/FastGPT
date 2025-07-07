@@ -225,8 +225,7 @@ async function handler(
     );
     await updateSyncSchedule({
       dataset,
-      autoSync,
-      session
+      autoSync
     });
 
     await refreshSourceAvatar(avatar, dataset.avatar, session);
@@ -305,12 +304,10 @@ const updateTraining = async ({
 
 const updateSyncSchedule = async ({
   dataset,
-  autoSync,
-  session
+  autoSync
 }: {
   dataset: DatasetSchemaType;
   autoSync?: boolean;
-  session: ClientSession;
 }) => {
   if (typeof autoSync !== 'boolean') return;
 

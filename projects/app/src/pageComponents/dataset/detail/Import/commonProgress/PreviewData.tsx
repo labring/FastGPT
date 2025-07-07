@@ -34,7 +34,7 @@ const PreviewData = () => {
 
   const { data = { chunks: [], total: 0 }, loading: isLoading } = useRequest2(
     async () => {
-      if (!previewFile || previewFile.apiFile?.type === 'folder') return { chunks: [], total: 0 };
+      if (!previewFile) return { chunks: [], total: 0 };
 
       const chunkData = processParamsForm.getValues();
 
@@ -114,8 +114,7 @@ const PreviewData = () => {
                 })}
                 _notLast={{ mb: 3 }}
                 onClick={() => {
-                  const isFolder = source.apiFile?.type === 'folder';
-                  if (isFolder) {
+                  if (source.apiFile?.type === 'folder') {
                     toast({
                       status: 'warning',
                       title: t('dataset:preview_chunk_folder_warning')
