@@ -161,10 +161,10 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
               onSuccess={onUpdateDatasetWebsiteConfig}
             />
           )}
-          <ConfirmDatasetSyncModal />
         </>
       )}
-      {(datasetDetail.type === DatasetTypeEnum.apiDataset ||
+      {(datasetDetail.type === DatasetTypeEnum.websiteDataset ||
+        datasetDetail.type === DatasetTypeEnum.apiDataset ||
         datasetDetail.type === DatasetTypeEnum.feishu ||
         datasetDetail.type === DatasetTypeEnum.yuque) && <ConfirmDatasetSyncModal />}
     </CollectionPageContext.Provider>

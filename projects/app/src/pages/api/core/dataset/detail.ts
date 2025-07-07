@@ -31,9 +31,7 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
     per: ReadPermissionVal
   });
 
-  const { status, errorMsg } = await (async () => {
-    return await getDatasetSyncDatasetStatus(datasetId);
-  })();
+  const { status, errorMsg } = await getDatasetSyncDatasetStatus(datasetId);
 
   return {
     ...dataset,

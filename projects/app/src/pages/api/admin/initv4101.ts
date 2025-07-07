@@ -9,88 +9,8 @@ import {
   addDatasetSyncJob
 } from '@fastgpt/service/core/dataset/datasetSync';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { getGlobalRedisConnection } from '@fastgpt/service/common/redis';
 import { addHours } from 'date-fns';
 import { type NextApiRequest, type NextApiResponse } from 'next';
-
-const clearAllWebsiteSyncRedisData = async () => {
-  const redis = getGlobalRedisConnection();
-
-  console.log('开始清理Redis中所有websiteSync相关数据');
-
-  let totalDeletedKeys = 0;
-
-  // find all websiteSync related keys
-  const patterns = [
-    '*websiteSync*',
-    '*websitesync*',
-    'bull:websiteSync*',
-    'bull:websiteSync:*',
-    'fastgpt:websiteSync*',
-    'fastgpt:bull:websiteSync*'
-  ];
-  console.log('patterns', patterns);
-
-  for (const pattern of patterns) {
-    try {
-      const keys = await redis.keys(pattern);
-      if (keys.length > 0) {
-        console.log(`pattern "${pattern}" found ${keys.length} keys:`);
-        keys.forEach((key) => console.log(`  - ${key}`));
-
-        // delete keys
-        let successCount = 0;
-        for (const key of keys) {
-          try {
-            const result = await redis.del(key);
-            if (result > 0) {
-              successCount++;
-              console.log(`✅ success delete key: ${key}`);
-            } else {
-              console.log(`❌ delete key failed (return 0): ${key}`);
-            }
-          } catch (deleteError) {
-            console.error(`❌ delete key failed "${key}":`, deleteError);
-          }
-        }
-
-        totalDeletedKeys += successCount;
-        console.log(`pattern "${pattern}" success delete ${successCount}/${keys.length} keys`);
-      } else {
-        console.log(`pattern "${pattern}" not found keys`);
-      }
-    } catch (error) {
-      console.error(`error when processing pattern "${pattern}":`, error);
-    }
-  }
-
-  // extra clear specific BullMQ related keys
-  const specificKeys = [
-    'bull:websiteSync:id',
-    'bull:websiteSync:events',
-    'bull:websiteSync:meta',
-    'fastgpt:bull:websiteSync:id',
-    'fastgpt:bull:websiteSync:events',
-    'fastgpt:bull:websiteSync:meta'
-  ];
-
-  console.log('check specific BullMQ keys...');
-  for (const key of specificKeys) {
-    try {
-      const exists = await redis.exists(key);
-      if (exists) {
-        await redis.del(key);
-        totalDeletedKeys++;
-        console.log(`delete specific key: ${key}`);
-      }
-    } catch (error) {
-      console.error(`error when deleting key "${key}":`, error);
-    }
-  }
-
-  console.log(`Redis clear completed, total deleted ${totalDeletedKeys} keys`);
-  return totalDeletedKeys;
-};
 
 const clearAllWebsiteSyncJobs = async () => {
   console.log('start clear all websiteSync jobs');
@@ -162,10 +82,7 @@ const initDatasetSyncData = async () => {
   // 3. clear all websiteSync jobs
   const clearJobsResult = await clearAllWebsiteSyncJobs();
 
-  // 4. clear all websiteSync related data in Redis
-  const deletedRedisKeys = await clearAllWebsiteSyncRedisData();
-
-  // 5. remove nextSyncTime field in database
+  // 4. remove nextSyncTime field in database
   console.log('remove nextSyncTime field in database');
   await retryFn(() =>
     MongoDatasetCollection.updateMany(
@@ -185,7 +102,6 @@ const initDatasetSyncData = async () => {
     autoSyncDatasets: datasets.length,
     addedJobs: addedJobsCount,
     addedSchedulers: addedSchedulersCount,
-    deletedRedisKeys,
     ...clearJobsResult
   };
 

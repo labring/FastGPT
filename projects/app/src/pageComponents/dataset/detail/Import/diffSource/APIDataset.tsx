@@ -23,6 +23,7 @@ const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
 });
 const Upload = dynamic(() => import('../commonProgress/Upload'));
 const PreviewData = dynamic(() => import('../commonProgress/PreviewData'));
+const rootId = 'SYSTEM_ROOT';
 
 const APIDatasetCollection = () => {
   const activeStep = useContextSelector(DatasetImportContext, (v) => v.activeStep);
@@ -92,8 +93,8 @@ const CustomAPIFileInput = () => {
         if (isSelectRoot) {
           return [
             {
-              id: 'SYSTEM_ROOT',
-              rawId: 'SYSTEM_ROOT',
+              id: rootId,
+              rawId: rootId,
               parentId: '',
               name: 'ROOT_FOLDER',
               type: 'folder',
