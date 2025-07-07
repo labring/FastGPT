@@ -13,6 +13,7 @@ import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder
 import FolderPath from '@/components/common/folder/Path';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import { type APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMount } from 'ahooks';
@@ -23,7 +24,6 @@ const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
 });
 const Upload = dynamic(() => import('../commonProgress/Upload'));
 const PreviewData = dynamic(() => import('../commonProgress/PreviewData'));
-const rootId = 'SYSTEM_ROOT';
 
 const APIDatasetCollection = () => {
   const activeStep = useContextSelector(DatasetImportContext, (v) => v.activeStep);
@@ -93,8 +93,8 @@ const CustomAPIFileInput = () => {
         if (isSelectRoot) {
           return [
             {
-              id: rootId,
-              rawId: rootId,
+              id: RootCollectionId,
+              rawId: RootCollectionId,
               parentId: '',
               name: 'ROOT_FOLDER',
               type: 'folder',

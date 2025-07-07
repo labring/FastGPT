@@ -13,7 +13,8 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import type { APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 
 async function handler(req: ApiRequestProps<ApiDatasetCreateDatasetCollectionV2Params>) {
@@ -65,8 +66,8 @@ export const createApiDatasetCollection = async ({
     dataset.apiDatasetServer?.feishuServer?.folderToken;
 
   // check if the directory is selected
-  const isDirectorySelected = apiFiles.length === 1 && apiFiles[0].id === 'SYSTEM_ROOT';
-  const rootDirectoryId = isDirectorySelected ? 'SYSTEM_ROOT' : undefined;
+  const isDirectorySelected = apiFiles.length === 1 && apiFiles[0].id === RootCollectionId;
+  const rootDirectoryId = isDirectorySelected ? RootCollectionId : undefined;
 
   // Get all apiFileId with top level parent ID
   const getFilesRecursively = async (
@@ -93,7 +94,7 @@ export const createApiDatasetCollection = async ({
       if (file.hasChild) {
         const folderFiles = await (
           await getApiDatasetRequest(dataset.apiDatasetServer)
-        ).listFiles({ parentId: file.id === 'SYSTEM_ROOT' ? startId : file.id });
+        ).listFiles({ parentId: file.id === RootCollectionId ? startId : file.id });
         const subFiles = await getFilesRecursively(folderFiles, currentTopLevelParentId);
         allFiles.push(...subFiles.filter((f) => f.type === 'file'));
       }
