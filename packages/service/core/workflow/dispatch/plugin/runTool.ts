@@ -9,12 +9,13 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { MCPClient } from '../../../app/mcp';
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
-import { runTool } from '../../../app/tool/api';
+import { runToolStream } from '@fastgpt-sdk/plugin';
 import { MongoSystemPlugin } from '../../../app/plugin/systemPluginSchema';
 import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { getSystemPluginById, splitCombinePluginId } from '../../../app/plugin/controller';
-
+import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
+const { SseResponseEventEnum } = await import('@fastgpt/global/core/workflow/runtime/constants');
 type SystemInputConfigType = {
   type: SystemToolInputTypeEnum;
   value: StoreSecretValueType;
@@ -73,7 +74,12 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       };
 
       const formatToolId = tool.id.split('-')[1];
-      const result = await runTool({
+
+      const { workflowStreamResponse } = props;
+
+      const result: any = await runToolStream({
+        baseUrl: process.env.PLUGIN_BASE_URL || '',
+        authtoken: process.env.PLUGIN_TOKEN || '',
         toolId: formatToolId,
         inputs,
         systemVar: {
@@ -91,6 +97,21 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
             version
           },
           time: variables.cTime
+        },
+        onStreamData: (data: any) => {
+          if (workflowStreamResponse && data.type === 'data' && data.data?.content) {
+            workflowStreamResponse({
+              event: SseResponseEventEnum.answer,
+              data: textAdaptGptResponse({
+                text: data.data.content
+              })
+            });
+          } else if (workflowStreamResponse && data.type === 'error') {
+            workflowStreamResponse({
+              event: SseResponseEventEnum.error,
+              data: data.data
+            });
+          }
         }
       });
 

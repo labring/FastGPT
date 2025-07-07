@@ -25,27 +25,3 @@ export async function getSystemToolList() {
 
   return Promise.reject(res.body);
 }
-
-export async function runTool({
-  toolId,
-  inputs,
-  systemVar
-}: {
-  toolId: string;
-  inputs: Record<string, any>;
-  systemVar: SystemVarType;
-}) {
-  const res = await client.tool.run({
-    body: {
-      toolId,
-      inputs,
-      systemVar
-    }
-  });
-
-  if (res.status === 200 && res.body.output) {
-    return res.body.output;
-  } else {
-    return Promise.reject(res.body);
-  }
-}
