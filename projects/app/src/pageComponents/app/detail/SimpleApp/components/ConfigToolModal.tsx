@@ -34,12 +34,9 @@ const ConfigToolModal = ({
   const [isOpenSecretModal, { setTrue: setTrueSecretModal, setFalse: setFalseSecretModal }] =
     useBoolean(false);
 
-  console.log('configTool', configTool.inputs);
-
   const {
     handleSubmit,
     control,
-    setValue,
     formState: { errors }
   } = useForm({
     defaultValues: configTool
