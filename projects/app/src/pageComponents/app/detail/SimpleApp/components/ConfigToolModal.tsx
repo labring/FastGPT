@@ -34,11 +34,7 @@ const ConfigToolModal = ({
   const [isOpenSecretModal, { setTrue: setTrueSecretModal, setFalse: setFalseSecretModal }] =
     useBoolean(false);
 
-  const {
-    handleSubmit,
-    control,
-    formState: { errors }
-  } = useForm({
+  const { handleSubmit, control } = useForm({
     defaultValues: configTool
       ? configTool.inputs.reduce(
           (acc, input) => {
@@ -156,11 +152,11 @@ const ConfigToolModal = ({
                         return true;
                       }
                     }}
-                    render={({ field: { onChange, value } }) => {
+                    render={({ field: { onChange, value }, fieldState: { error } }) => {
                       return (
                         <InputRender
                           {...input}
-                          isInvalid={errors && Object.keys(errors).includes(input.key)}
+                          isInvalid={!!error}
                           inputType={nodeInputTypeToInputType(input.renderTypeList)}
                           value={value}
                           onChange={onChange}

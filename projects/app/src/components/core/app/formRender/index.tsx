@@ -5,10 +5,13 @@ import { InputTypeEnum } from './constant';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import MultipleSelect, {
+  useMultipleSelect
+} from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import JSONEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import AIModelSelector from '../../../Select/AIModelSelector';
 import FileSelector from '../../../Select/FileSelector';
+import { useTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const InputRender = (props: InputRenderProps) => {
   const {
@@ -25,12 +28,23 @@ const InputRender = (props: InputRenderProps) => {
     return <>{customRender(props)}</>;
   }
 
+  const { t } = useTranslation();
+  const {
+    value: selectedValue,
+    setValue,
+    isSelectAll,
+    setIsSelectAll
+  } = useMultipleSelect<string>(
+    value,
+    inputType === InputTypeEnum.multipleSelect && value.length === (props.list?.length || 0)
+  );
+
   const commonProps = {
     value,
     onChange,
     isDisabled,
     isInvalid,
-    placeholder,
+    placeholder: t(placeholder as any),
     bg
   };
 
@@ -96,9 +110,14 @@ const InputRender = (props: InputRenderProps) => {
           {...commonProps}
           h={10}
           list={list}
-          onSelect={onChange}
-          isSelectAll={value?.length === list.length}
+          value={selectedValue}
+          onSelect={(val) => {
+            setValue(val);
+            onChange(val);
+          }}
+          isSelectAll={isSelectAll}
           setIsSelectAll={(all) => {
+            setIsSelectAll(all);
             onChange(all ? list.map((item) => item.value) : []);
           }}
         />

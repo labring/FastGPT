@@ -38,32 +38,25 @@ const SecretInputModal = ({
   const [editIndex, setEditIndex] = useState<number>();
   const inputList = inputConfig?.inputList || [];
 
-  const {
-    register,
-    watch,
-    setValue,
-    getValues,
-    handleSubmit,
-    control,
-    formState: { errors }
-  } = useForm<ToolParamsFormType>({
-    defaultValues: (() => {
-      const defaultValue = inputConfig.value;
-      return (
-        defaultValue || {
-          type: hasSystemSecret ? SystemToolInputTypeEnum.system : SystemToolInputTypeEnum.manual,
-          value:
-            inputList?.reduce(
-              (acc, item) => {
-                acc[item.key] = { secret: '', value: '' };
-                return acc;
-              },
-              {} as Record<string, InputConfigType['value']>
-            ) || {}
-        }
-      );
-    })()
-  });
+  const { register, watch, setValue, getValues, handleSubmit, control } =
+    useForm<ToolParamsFormType>({
+      defaultValues: (() => {
+        const defaultValue = inputConfig.value;
+        return (
+          defaultValue || {
+            type: hasSystemSecret ? SystemToolInputTypeEnum.system : SystemToolInputTypeEnum.manual,
+            value:
+              inputList?.reduce(
+                (acc, item) => {
+                  acc[item.key] = { secret: '', value: '' };
+                  return acc;
+                },
+                {} as Record<string, InputConfigType['value']>
+              ) || {}
+          }
+        );
+      })()
+    });
   const configType = watch('type');
 
   return (
@@ -196,7 +189,7 @@ const SecretInputModal = ({
                                 control={control}
                                 name={inputKey}
                                 rules={{ required: item.required }}
-                                render={({ field: { onChange, value } }) => (
+                                render={({ field: { onChange, value }, fieldState: { error } }) => (
                                   <InputRender
                                     inputType={secretInputTypeToInputType(item.inputType)}
                                     value={value}
@@ -204,7 +197,7 @@ const SecretInputModal = ({
                                     placeholder={item.description}
                                     bg={'myGray.50'}
                                     list={item.list}
-                                    isInvalid={!!errors?.value?.[item.key]?.value}
+                                    isInvalid={!!error}
                                   />
                                 )}
                               />

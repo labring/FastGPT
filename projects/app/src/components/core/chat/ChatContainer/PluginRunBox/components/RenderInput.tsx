@@ -42,12 +42,7 @@ const RenderInput = () => {
 
   const { llmModelList } = useSystemStore();
 
-  const {
-    control,
-    handleSubmit,
-    reset,
-    formState: { errors }
-  } = variablesForm;
+  const { control, handleSubmit, reset } = variablesForm;
 
   /* ===> Global files(abandon) */
   const fileCtrl = useFieldArray({
@@ -80,7 +75,6 @@ const RenderInput = () => {
   /* Global files(abandon) <=== */
 
   const [restartData, setRestartData] = useState<ChatBoxInputFormType>();
-  const [forceUpdate, setForceUpdate] = useState(0);
   const onClickNewChat = useCallback(
     (e: ChatBoxInputFormType) => {
       setRestartData(e);
@@ -266,7 +260,7 @@ const RenderInput = () => {
                     return !!value;
                   }
                 }}
-                render={({ field: { onChange, value } }) => {
+                render={({ field: { onChange, value }, fieldState: { error } }) => {
                   return (
                     <InputRender
                       {...input}
@@ -274,7 +268,7 @@ const RenderInput = () => {
                       value={value}
                       onChange={onChange}
                       isDisabled={isDisabledInput}
-                      isInvalid={errors && errors.variables && !!errors.variables[input.key]}
+                      isInvalid={!!error}
                       setUploading={setUploading}
                       inputType={nodeInputTypeToInputType(input.renderTypeList)}
                       form={variablesForm}
@@ -294,20 +288,13 @@ const RenderInput = () => {
             isLoading={isChatting}
             isDisabled={fileUploading}
             onClick={() => {
-              handleSubmit(
-                (e) => {
-                  if (isDisabledInput) {
-                    onClickNewChat(e);
-                  } else {
-                    onSubmit(e);
-                  }
-                },
-                () => {
-                  setTimeout(() => {
-                    setForceUpdate((prev) => prev + 1);
-                  }, 0);
+              handleSubmit((e) => {
+                if (isDisabledInput) {
+                  onClickNewChat(e);
+                } else {
+                  onSubmit(e);
                 }
-              )();
+              })();
             }}
           >
             {isDisabledInput ? t('common:Restart') : t('common:Run')}

@@ -80,11 +80,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
 }) {
   const { description, inputForm, submitted } = interactiveParams;
 
-  const {
-    handleSubmit,
-    control,
-    formState: { errors }
-  } = useForm({
+  const { handleSubmit, control } = useForm({
     defaultValues
   });
 
@@ -96,7 +92,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
           control={control}
           name={input.label}
           rules={{ required: input.required }}
-          render={({ field: { onChange, value } }) => {
+          render={({ field: { onChange, value }, fieldState: { error } }) => {
             const inputType = nodeInputTypeToInputType([input.type]);
 
             return (
@@ -106,7 +102,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
                 onChange={onChange}
                 placeholder={input.description}
                 isDisabled={submitted}
-                isInvalid={errors && Object.keys(errors).includes(input.label)}
+                isInvalid={!!error}
                 maxLength={input.maxLength}
                 min={input.min}
                 max={input.max}
@@ -117,7 +113,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
         />
       );
     },
-    [control, submitted, errors]
+    [control, submitted]
   );
 
   return (

@@ -21,6 +21,8 @@ import type login from '../i18n/zh-CN/login.json';
 import type account_model from '../i18n/zh-CN/account_model.json';
 import type dashboard_mcp from '../i18n/zh-CN/dashboard_mcp.json';
 
+import type { I18N_NAMESPACES } from '../i18n/constant';
+
 export interface I18nNamespaces {
   common: typeof common;
   dataset: typeof dataset;
@@ -58,29 +60,7 @@ export type I18nKeyFunction = {
 declare module 'i18next' {
   interface CustomTypeOptions {
     returnNull: false;
-    defaultNS: [
-      'common',
-      'dataset',
-      'app',
-      'file',
-      'publish',
-      'workflow',
-      'user',
-      'chat',
-      'login',
-      'account_info',
-      'account_usage',
-      'account_bill',
-      'account_apikey',
-      'account_setting',
-      'account_inform',
-      'account_promotion',
-      'account_thirdParty',
-      'account',
-      'account_team',
-      'account_model',
-      'dashboard_mcp'
-    ];
+    defaultNS: I18N_NAMESPACES;
     resources: I18nNamespaces;
   }
 }
