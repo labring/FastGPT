@@ -32,12 +32,7 @@ const ChatTest = ({
 
   const [output, setOutput] = useState<string>('');
 
-  const {
-    control,
-    handleSubmit,
-    reset,
-    formState: { errors }
-  } = useForm();
+  const { control, handleSubmit, reset } = useForm();
 
   useEffect(() => {
     reset({});
@@ -105,7 +100,7 @@ const ChatTest = ({
                           return !!value;
                         }
                       }}
-                      render={({ field: { onChange, value } }) => {
+                      render={({ field: { onChange, value }, fieldState: { error } }) => {
                         const inputType = valueTypeToInputType(
                           getNodeInputTypeFromSchemaInputType({ type: paramInfo.type })
                         );
@@ -129,7 +124,7 @@ const ChatTest = ({
                               value={value}
                               onChange={onChange}
                               placeholder={paramInfo.description}
-                              isInvalid={errors && Object.keys(errors).includes(paramName)}
+                              isInvalid={!!error}
                             />
                           </Box>
                         );

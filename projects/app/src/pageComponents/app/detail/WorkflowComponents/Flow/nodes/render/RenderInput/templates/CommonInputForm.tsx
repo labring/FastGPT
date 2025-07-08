@@ -10,6 +10,9 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useCreation } from 'ahooks';
 import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponents/utils';
+import { InputTypeEnum } from '@/components/core/app/formRender/constant';
+import { llmModelTypeFilterMap } from '@fastgpt/global/core/ai/constants';
+import { getWebDefaultLLMModel } from '@/web/common/system/utils';
 
 const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
@@ -17,7 +20,23 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
-  const { feConfigs } = useSystemStore();
+  const { feConfigs, llmModelList } = useSystemStore();
+
+  const modelList = useMemo(
+    () =>
+      llmModelList.filter((model) => {
+        if (!item.llmModelType) return true;
+        const filterField = llmModelTypeFilterMap[item.llmModelType];
+        if (!filterField) return true;
+        //@ts-ignore
+        return !!model[filterField];
+      }),
+    [llmModelList, item.llmModelType]
+  );
+
+  const defaultModel = useMemo(() => {
+    return getWebDefaultLLMModel(modelList).model;
+  }, [modelList]);
 
   const editorVariables = useCreation(() => {
     return getEditorVariables({
@@ -51,11 +70,17 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   );
 
   const inputType = nodeInputTypeToInputType(item.renderTypeList);
+  const value = useMemo(() => {
+    if (inputType === InputTypeEnum.selectLLMModel) {
+      return item.value || defaultModel;
+    }
+    return item.value;
+  }, [inputType, item.value, defaultModel]);
 
   return (
     <InputRender
       inputType={inputType}
-      value={item.value}
+      value={value}
       onChange={handleChange}
       placeholder={item.placeholder}
       maxLength={item.maxLength}
@@ -64,6 +89,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
       min={item.min}
       max={item.max}
       list={item.list}
+      modelList={modelList}
     />
   );
 };
