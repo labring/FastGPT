@@ -69,6 +69,7 @@ const InputRender = (props: InputRenderProps) => {
           {...commonProps}
           min={props.min}
           max={props.max}
+          bg={undefined}
           inputFieldProps={{ bg: bg }}
         />
       );
