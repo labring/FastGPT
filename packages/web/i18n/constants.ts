@@ -21,3 +21,11 @@ export const I18N_NAMESPACES = [
   'account_model',
   'dashboard_mcp'
 ];
+
+export const I18N_NAMESPACES_MAP = I18N_NAMESPACES.reduce(
+  (acc, namespace) => {
+    acc[namespace] = true;
+    return acc;
+  },
+  {} as Record<string, boolean>
+);
