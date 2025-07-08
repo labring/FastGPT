@@ -9,7 +9,6 @@ import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSele
 import JSONEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import AIModelSelector from '../../../Select/AIModelSelector';
 import FileSelector from '../../../Select/FileSelector';
-import { useTranslation } from 'next-i18next';
 
 const InputRender = (props: InputRenderProps) => {
   const {
