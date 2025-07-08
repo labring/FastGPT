@@ -17,7 +17,6 @@ import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/consta
 import { type APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMount } from 'ahooks';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
   loading: () => <Loading fixed={false} />
@@ -49,7 +48,7 @@ const CustomAPIFileInput = () => {
   const setSources = useContextSelector(DatasetImportContext, (v) => v.setSources);
 
   const [selectFiles, setSelectFiles] = useState<APIFileItemType[]>([]);
-  const [isSelectRoot, setIsSelectRoot] = useState(false);
+  const [isSelectAll, setIsSelectAll] = useState(false);
   const [parent, setParent] = useState<ParentTreePathItemType>({
     parentId: '',
     parentName: ''
@@ -84,13 +83,19 @@ const CustomAPIFileInput = () => {
 
   // Init selected files
   useMount(() => {
-    setSelectFiles(sources.map((item) => item.apiFile).filter(Boolean) as APIFileItemType[]);
+    const hasRootFolder = sources.some((item) => item.apiFile?.id === RootCollectionId);
+    if (hasRootFolder) {
+      setIsSelectAll(true);
+      setSelectFiles([]);
+    } else {
+      setSelectFiles(sources.map((item) => item.apiFile).filter(Boolean) as APIFileItemType[]);
+    }
   });
 
   const { runAsync: onclickNext, loading: onNextLoading } = useRequest2(
     async () => {
       const finalSelectedFiles: APIFileItemType[] = await (async () => {
-        if (isSelectRoot) {
+        if (isSelectAll) {
           return [
             {
               id: RootCollectionId,
@@ -129,21 +134,19 @@ const CustomAPIFileInput = () => {
     }
   );
 
-  const handleSelectRoot = useCallback(() => {
-    const isRootDirectory = !parent?.parentId;
+  const handleSelectAll = useCallback(() => {
+    if (parent?.parentId) return;
 
-    if (!isRootDirectory) return;
-
-    if (isSelectRoot) {
+    if (isSelectAll) {
       // cancel the selection of the root directory
-      setIsSelectRoot(false);
+      setIsSelectAll(false);
       setSelectFiles([]);
     } else {
       // select the root directory
-      setIsSelectRoot(true);
+      setIsSelectAll(true);
       setSelectFiles([]);
     }
-  }, [isSelectRoot, parent?.parentId]);
+  }, [isSelectAll, parent?.parentId]);
 
   return (
     <MyBox isLoading={loading} position="relative" h="full">
@@ -196,18 +199,18 @@ const CustomAPIFileInput = () => {
                   <Checkbox
                     className="checkbox"
                     mr={2}
-                    isChecked={isSelectRoot}
-                    onChange={handleSelectRoot}
+                    isChecked={isSelectAll}
+                    onChange={handleSelectAll}
                   />
-                  {t('common:Select_root')}
-                  <QuestionTip ml={1} label={t('common:dataset.select_root_tip')} />
+                  {t('dataset:Select_all')}
                 </>
               )}
             </Flex>
 
             {fileList.map((item) => {
               const isExists = existIdList.has(item.id);
-              const isChecked = isExists || selectFiles.some((file) => file.id === item.id);
+              const isChecked =
+                isExists || selectFiles.some((file) => file.id === item.id) || isSelectAll;
               const canEnter = item.hasChild && !isChecked;
 
               return (
@@ -230,11 +233,17 @@ const CustomAPIFileInput = () => {
                       });
                     } else {
                       // when choose single file, cancel the selection of the root directory
-                      setIsSelectRoot(false);
-                      if (isChecked) {
-                        setSelectFiles((state) => state.filter((file) => file.id !== item.id));
+                      if (isSelectAll) {
+                        // if in root selection mode, select all files except the clicked one
+                        setIsSelectAll(false);
+                        setSelectFiles(fileList.filter((file) => file.id !== item.id));
                       } else {
-                        setSelectFiles((state) => [...state, item]);
+                        // normal selection mode
+                        if (isChecked) {
+                          setSelectFiles((state) => state.filter((file) => file.id !== item.id));
+                        } else {
+                          setSelectFiles((state) => [...state, item]);
+                        }
                       }
                     }
                   }}
@@ -246,12 +255,18 @@ const CustomAPIFileInput = () => {
                     isDisabled={isExists}
                     onChange={(e) => {
                       e.stopPropagation();
-                      // 选择单个文件时，取消根目录选择
-                      setIsSelectRoot(false);
-                      if (isChecked) {
-                        setSelectFiles((state) => state.filter((file) => file.id !== item.id));
+                      // when choose single file, cancel the selection of the root directory
+                      if (isSelectAll) {
+                        // if in root selection mode, select all files except the clicked one
+                        setIsSelectAll(false);
+                        setSelectFiles(fileList.filter((file) => file.id !== item.id));
                       } else {
-                        setSelectFiles((state) => [...state, item]);
+                        // normal selection mode
+                        if (isChecked) {
+                          setSelectFiles((state) => state.filter((file) => file.id !== item.id));
+                        } else {
+                          setSelectFiles((state) => [...state, item]);
+                        }
                       }
                     }}
                   />
@@ -284,7 +299,7 @@ const CustomAPIFileInput = () => {
           p={4}
         >
           <Button
-            isDisabled={selectFiles.length === 0 && !isSelectRoot}
+            isDisabled={selectFiles.length === 0 && !isSelectAll}
             isLoading={onNextLoading}
             onClick={onclickNext}
           >

@@ -89,18 +89,16 @@ export const createApiDatasetCollection = async ({
       // Add parentId to file
       const fileWithParentId = {
         ...file,
-        apiFileParentId: currentTopLevelParentId
+        apiFileParentId: topLevelParentId
       };
 
       allFiles.push(fileWithParentId);
 
       if (file.hasChild) {
-        const childFiles = await (
+        const folderFiles = await (
           await getApiDatasetRequest(dataset.apiDatasetServer)
         ).listFiles({ parentId: file.id === RootCollectionId ? startId : file.id });
-
-        const subFiles = await getFilesRecursively(childFiles, currentTopLevelParentId);
-
+        const subFiles = await getFilesRecursively(folderFiles, currentTopLevelParentId);
         allFiles.push(...subFiles.filter((f) => f.type === 'file'));
       }
     }

@@ -5,6 +5,7 @@ import { createContext, useContextSelector } from 'use-context-selector';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useDisclosure } from '@chakra-ui/react';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { checkTeamWebSyncLimit } from '@/web/support/user/team/api';
 import { getDatasetCollections, postDatasetSync } from '@/web/core/dataset/api';
 import dynamic from 'next/dynamic';
@@ -62,6 +63,7 @@ export const CollectionPageContext = createContext<CollectionPageContextType>({
 
 const CollectionPageContextProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const router = useRouter();
   const { parentId = '' } = router.query as { parentId: string };
 
@@ -82,8 +84,13 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       await checkTeamWebSyncLimit();
     }
 
-    postDatasetSync({ datasetId: datasetId }).then(() => {
-      loadDatasetDetail(datasetId);
+    await postDatasetSync({ datasetId: datasetId });
+    loadDatasetDetail(datasetId);
+
+    // Show success message
+    toast({
+      status: 'success',
+      title: t('dataset:collection.sync.submit')
     });
   };
 
