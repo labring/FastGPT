@@ -1,3 +1,4 @@
+import type { BoxProps } from '@chakra-ui/react';
 import { Box, Button, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
 import React from 'react';
 import { editorStateToText } from './utils';
@@ -5,6 +6,7 @@ import Editor from './Editor';
 import MyModal from '../../MyModal';
 import { useTranslation } from 'next-i18next';
 import type { EditorState, LexicalEditor } from 'lexical';
+import type { FormPropsType } from './type.d';
 import { type EditorVariableLabelPickerType, type EditorVariablePickerType } from './type.d';
 import { useCallback } from 'react';
 
@@ -20,10 +22,9 @@ const PromptEditor = ({
   maxLength,
   placeholder,
   title,
-  bg = 'white',
-
   isInvalid,
-  isDisabled
+  isDisabled,
+  ...props
 }: {
   showOpenModal?: boolean;
   variables?: EditorVariablePickerType[];
@@ -36,11 +37,10 @@ const PromptEditor = ({
   maxLength?: number;
   placeholder?: string;
   title?: string;
-  bg?: string;
 
   isInvalid?: boolean;
   isDisabled?: boolean;
-}) => {
+} & FormPropsType) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { t } = useTranslation();
 
@@ -74,8 +74,8 @@ const PromptEditor = ({
           onChange={onChangeInput}
           onBlur={onBlurInput}
           placeholder={placeholder}
-          bg={bg}
           isInvalid={isInvalid}
+          {...props}
         />
         {isDisabled && (
           <Box

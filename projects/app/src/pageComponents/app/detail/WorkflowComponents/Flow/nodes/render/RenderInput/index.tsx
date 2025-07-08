@@ -3,79 +3,11 @@ import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import { Box } from '@chakra-ui/react';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import dynamic from 'next/dynamic';
-import { useContextSelector } from 'use-context-selector';
-
 import InputLabel from './Label';
 import type { RenderInputProps } from './type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
-import InputRender from '@/components/InputRender';
-import { formatInputType } from '@/components/InputRender/utils';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
-import { useCreation } from 'ahooks';
-import { useCallback } from 'react';
-import { getEditorVariables } from '../../../../utils';
-import { WorkflowNodeEdgeContext } from '../../../../context/workflowInitContext';
-import { useTranslation } from 'next-i18next';
-import { AppContext } from '@/pageComponents/app/detail/context';
-
-const CommonInputRender = ({ inputs, item, nodeId }: RenderInputProps) => {
-  const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const { appDetail } = useContextSelector(AppContext, (v) => v);
-  const { feConfigs } = useSystemStore();
-
-  const editorVariables = useCreation(() => {
-    return getEditorVariables({
-      nodeId,
-      nodeList,
-      edges,
-      appDetail,
-      t
-    });
-  }, [nodeId, nodeList, edges, appDetail, t]);
-
-  const externalVariables = useMemo(() => {
-    return (
-      feConfigs?.externalProviderWorkflowVariables?.map((item) => ({
-        key: item.key,
-        label: item.name
-      })) || []
-    );
-  }, [feConfigs?.externalProviderWorkflowVariables]);
-
-  const handleChange = useCallback(
-    (value: any) => {
-      onChangeNode({
-        nodeId,
-        type: 'updateInput',
-        key: item.key,
-        value: { ...item, value }
-      });
-    },
-    [item, nodeId, onChangeNode]
-  );
-
-  const renderType = item.renderTypeList?.[item.selectedTypeIndex || 0];
-  const inputType = formatInputType({ inputType: renderType, valueType: item.valueType });
-
-  return (
-    <InputRender
-      inputType={inputType}
-      value={item.value}
-      onChange={handleChange}
-      placeholder={item.placeholder}
-      maxLength={item.maxLength}
-      variables={[...(editorVariables || []), ...(externalVariables || [])]}
-      variableLabels={editorVariables}
-      min={item.min}
-      max={item.max}
-      list={item.list}
-    />
-  );
-};
+import CommonInputForm from './templates/CommonInputForm';
 
 const RenderList: Record<
   FlowNodeInputTypeEnum,
@@ -116,31 +48,31 @@ const RenderList: Record<
   },
 
   [FlowNodeInputTypeEnum.input]: {
-    Component: CommonInputRender
+    Component: CommonInputForm
   },
   [FlowNodeInputTypeEnum.textarea]: {
-    Component: CommonInputRender,
+    Component: CommonInputForm,
     LableRightComponent: dynamic(() =>
       Promise.resolve(() => <VariableTip transform={'translateY(2px)'} />)
     )
   },
   [FlowNodeInputTypeEnum.numberInput]: {
-    Component: CommonInputRender
+    Component: CommonInputForm
   },
   [FlowNodeInputTypeEnum.switch]: {
-    Component: CommonInputRender
+    Component: CommonInputForm
   },
   [FlowNodeInputTypeEnum.select]: {
-    Component: CommonInputRender
+    Component: CommonInputForm
   },
   [FlowNodeInputTypeEnum.multipleSelect]: {
-    Component: CommonInputRender
+    Component: CommonInputForm
   },
   [FlowNodeInputTypeEnum.JSONEditor]: {
-    Component: CommonInputRender
+    Component: CommonInputForm
   },
   [FlowNodeInputTypeEnum.selectLLMModel]: {
-    Component: CommonInputRender
+    Component: CommonInputForm
   },
 
   [FlowNodeInputTypeEnum.customVariable]: undefined,

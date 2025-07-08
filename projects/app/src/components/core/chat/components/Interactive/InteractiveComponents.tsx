@@ -9,8 +9,8 @@ import {
   type UserSelectInteractive,
   type UserSelectOptionItemType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import InputRender from '@/components/InputRender';
-import { formatInputType } from '@/components/InputRender/utils';
+import InputRender from '@/components/core/app/formRender';
+import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const DescriptionBox = React.memo(function DescriptionBox({
@@ -97,10 +97,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
           name={input.label}
           rules={{ required: input.required }}
           render={({ field: { onChange, value } }) => {
-            const inputType = formatInputType({
-              inputType: input.type,
-              valueType: input.valueType
-            });
+            const inputType = nodeInputTypeToInputType([input.type]);
 
             return (
               <InputRender

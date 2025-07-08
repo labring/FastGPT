@@ -29,9 +29,8 @@ import { getEditorVariables } from '../../utils';
 import { isArray } from 'lodash';
 import { WorkflowNodeEdgeContext } from '../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import InputRender from '@/components/InputRender';
-import { formatInputType } from '@/components/InputRender/utils';
-import { InputTypeEnum } from '@/components/InputRender/constant';
+import InputRender from '@/components/core/app/formRender';
+import { valueTypeToInputType } from '@/components/core/app/formRender/utils';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs = [], nodeId } = data;
@@ -227,10 +226,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
               return (
                 <Box w={'300px'} bg={'white'} borderRadius={'sm'}>
                   <InputRender
-                    inputType={formatInputType({
-                      inputType: undefined,
-                      valueType
-                    })}
+                    inputType={valueTypeToInputType(valueType)}
                     value={inputValue || ''}
                     onChange={onUpdateNewValue}
                     variables={[...variables, ...externalProviderWorkflowVariables]}

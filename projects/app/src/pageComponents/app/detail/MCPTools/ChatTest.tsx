@@ -13,11 +13,11 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import Markdown from '@/components/Markdown';
 import { postRunMCPTool } from '@/web/core/app/api/plugin';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import InputRender from '@/components/InputRender';
+import InputRender from '@/components/core/app/formRender';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { formatInputType } from '@/components/InputRender/utils';
-import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { valueTypeToInputType } from '@/components/core/app/formRender/utils';
+import { getNodeInputTypeFromSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 
 const ChatTest = ({
   currentTool,
@@ -106,10 +106,9 @@ const ChatTest = ({
                         }
                       }}
                       render={({ field: { onChange, value } }) => {
-                        const inputType = formatInputType({
-                          inputType: undefined,
-                          valueType: paramInfo.type as WorkflowIOValueTypeEnum
-                        });
+                        const inputType = valueTypeToInputType(
+                          getNodeInputTypeFromSchemaInputType({ type: paramInfo.type })
+                        );
 
                         return (
                           <Box _notLast={{ mb: 4 }}>

@@ -4,19 +4,18 @@ import type {
 } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import type { InputTypeEnum } from './constant';
 import type { UseFormReturn } from 'react-hook-form';
+import type { BoxProps } from '@chakra-ui/react';
 
 type CommonRenderProps = {
+  placeholder?: string;
   value: any;
   onChange: (value: any) => void;
 
   isDisabled?: boolean;
   isInvalid?: boolean;
-  placeholder?: string;
 
   customRender?: (props: any) => React.ReactNode;
-
-  bg?: string;
-};
+} & Omit<BoxProps, 'onChange' | 'list' | 'value'>;
 
 type SpecificProps =
   | {

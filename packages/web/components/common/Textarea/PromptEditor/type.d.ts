@@ -21,3 +21,5 @@ export type EditorVariableLabelPickerType = {
     avatar?: string;
   };
 };
+
+export type FormPropsType = Omit<BoxProps, 'onChange' | 'onBlur'>;

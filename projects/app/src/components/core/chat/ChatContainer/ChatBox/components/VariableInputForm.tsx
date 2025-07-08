@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { type UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Card, Flex } from '@chakra-ui/react';
@@ -10,7 +10,9 @@ import { type ChatBoxInputFormType } from '../type';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatBoxContext } from '../Provider';
-import { VariableInputItem } from './VariableInputItem';
+import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
+import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
+import { useRefresh } from '@fastgpt/web/hooks/useRefresh';
 
 const VariableInput = ({
   chatForm,
@@ -28,8 +30,6 @@ const VariableInput = ({
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
   const allVariableList = useContextSelector(ChatBoxContext, (v) => v.allVariableList);
 
-  const [forceUpdate, setForceUpdate] = useState(0);
-
   const externalVariableList = useMemo(
     () =>
       allVariableList.filter((item) =>
@@ -38,6 +38,7 @@ const VariableInput = ({
     [allVariableList, showExternalVariables]
   );
 
+  const { refresh } = useRefresh();
   const { getValues, setValue, handleSubmit: handleSubmitChat } = variablesForm;
 
   useEffect(() => {
@@ -76,7 +77,15 @@ const VariableInput = ({
               {t('chat:variable_invisable_in_share')}
             </Flex>
             {externalVariableList.map((item) => (
-              <VariableInputItem key={item.id} item={item} variablesForm={variablesForm} />
+              <LabelAndFormRender
+                {...item}
+                key={item.key}
+                formKey={`variables.${item.key}`}
+                placeholder={item.description}
+                inputType={variableInputTypeToInputType(item.type)}
+                variablesForm={variablesForm}
+                bg={'myGray.50'}
+              />
             ))}
             {variableList.length === 0 && !chatStarted && (
               <Button
@@ -87,7 +96,7 @@ const VariableInput = ({
                   chatForm.setValue('chatStarted', true);
                 })}
               >
-                {t('common:core.chat.Start Chat')}
+                {t('chat:start_chat')}
               </Button>
             )}
           </Card>
@@ -105,7 +114,15 @@ const VariableInput = ({
             boxShadow={'0 0 8px rgba(0,0,0,0.15)'}
           >
             {variableList.map((item) => (
-              <VariableInputItem key={item.id} item={item} variablesForm={variablesForm} />
+              <LabelAndFormRender
+                {...item}
+                key={item.key}
+                formKey={`variables.${item.key}`}
+                placeholder={item.description}
+                inputType={variableInputTypeToInputType(item.type)}
+                variablesForm={variablesForm}
+                bg={'myGray.50'}
+              />
             ))}
             {!chatStarted && (
               <Box>
@@ -117,14 +134,12 @@ const VariableInput = ({
                     () => {
                       chatForm.setValue('chatStarted', true);
                     },
-                    () => {
-                      setTimeout(() => {
-                        setForceUpdate((prev) => prev + 1);
-                      }, 0);
+                    (errors) => {
+                      refresh();
                     }
                   )}
                 >
-                  {t('common:core.chat.Start Chat')}
+                  {t('chat:start_chat')}
                 </Button>
               </Box>
             )}

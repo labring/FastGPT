@@ -11,7 +11,8 @@ import { useForm, Controller } from 'react-hook-form';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import IconButton from '@/pageComponents/account/team/OrgManage/IconButton';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import InputRender from '@/components/InputRender';
+import InputRender from '@/components/core/app/formRender';
+import { secretInputTypeToInputType } from '@/components/core/app/formRender/utils';
 
 export type ToolParamsFormType = {
   type: SystemToolInputTypeEnum;
@@ -197,8 +198,8 @@ const SecretInputModal = ({
                                 rules={{ required: item.required }}
                                 render={({ field: { onChange, value } }) => (
                                   <InputRender
-                                    inputType={item.inputType as any}
-                                    value={value || ''}
+                                    inputType={secretInputTypeToInputType(item.inputType)}
+                                    value={value}
                                     onChange={onChange}
                                     placeholder={item.description}
                                     bg={'myGray.50'}
