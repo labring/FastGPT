@@ -134,7 +134,7 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
       files = allData.map((item) => {
         return {
           id: String(item.id),
-          rawId: item.id,
+          rawId: String(item.id),
           name: item.name,
           parentId: null,
           type: 'folder',
@@ -157,7 +157,7 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
           .filter((item) => !item.parent_uuid && item.type !== 'LINK')
           .map((item) => ({
             id: `${parentId}-${item.id}-${item.uuid}`,
-            trueId: item.uuid,
+            rawId: String(item.uuid),
             name: item.title,
             parentId: item.parent_uuid,
             type: item.type === 'TITLE' ? ('folder' as const) : ('file' as const),
@@ -174,7 +174,7 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
           .filter((item) => item.parent_uuid === parentUuid)
           .map((item) => ({
             id: `${repoId}-${item.id}-${item.uuid}`,
-            trueId: item.uuid,
+            rawId: String(item.uuid),
             name: item.title,
             parentId: item.parent_uuid,
             type: item.type === 'TITLE' ? ('folder' as const) : ('file' as const),
