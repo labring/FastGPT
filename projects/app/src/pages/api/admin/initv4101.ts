@@ -17,10 +17,6 @@ const clearAllWebsiteSyncJobs = async () => {
 
   try {
     // 1. get all job status statistics
-    const waitingJobs = await websiteSyncQueue.getJobs(['waiting', 'delayed']);
-    const activeJobs = await websiteSyncQueue.getJobs(['active']);
-    const completedJobs = await websiteSyncQueue.getJobs(['completed']);
-    const failedJobs = await websiteSyncQueue.getJobs(['failed']);
     const repeatableJobs = await websiteSyncQueue.getJobSchedulers();
 
     // 2. delete all schedulers
@@ -37,12 +33,6 @@ const clearAllWebsiteSyncJobs = async () => {
     await websiteSyncQueue.drain(true); // true parameter means delete delayed jobs
 
     console.log('websiteSync queue clear completed');
-
-    return {
-      clearedJobs:
-        waitingJobs.length + activeJobs.length + completedJobs.length + failedJobs.length,
-      clearedSchedulers: repeatableJobs.length
-    };
   } catch (error) {
     console.error('error when clearing websiteSync queue:', error);
     throw error;
@@ -58,8 +48,6 @@ const initDatasetSyncData = async () => {
   let addedSchedulersCount = 0;
 
   // 2. add autoSync datasets to DatasetSync queue
-  console.log('add autoSync datasets to DatasetSync queue');
-
   for (const dataset of datasets) {
     try {
       const datasetId = String(dataset._id);
@@ -67,10 +55,9 @@ const initDatasetSyncData = async () => {
       // add immediate execution task
       await addDatasetSyncJob({ datasetId });
       addedJobsCount++;
-      console.log(`add DatasetSync job: ${datasetId}`);
 
       // add scheduler
-      const time = addHours(new Date(), Math.floor(Math.random() * 23) + 1);
+      const time = addHours(new Date(), Math.floor(Math.random() * 5) + 1);
       await retryFn(() => upsertDatasetSyncJobScheduler({ datasetId }, time.getTime()));
       addedSchedulersCount++;
       console.log(`add DatasetSync scheduler: ${datasetId}`);
@@ -101,8 +88,7 @@ const initDatasetSyncData = async () => {
   const result = {
     autoSyncDatasets: datasets.length,
     addedJobs: addedJobsCount,
-    addedSchedulers: addedSchedulersCount,
-    ...clearJobsResult
+    addedSchedulers: addedSchedulersCount
   };
 
   console.log('migrate completed statistics:', result);
