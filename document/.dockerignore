@@ -1,0 +1,24 @@
+# 开发环境文件
+.git
+.gitignore
+.env*
+.next
+node_modules
+
+# Docker 相关
+Dockerfile
+.dockerignore
+
+# 其他
+README.md
+*.log
+.DS_Store
+
+# 缓存文件
+.cache
+.npm
+.pnpm-store
+
+# IDE 配置
+.vscode
+.idea 
