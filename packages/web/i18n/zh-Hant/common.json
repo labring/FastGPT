@@ -814,6 +814,7 @@
   "error.upload_file_error_filename": "{{name}} 上傳失敗",
   "error.upload_image_error": "上傳文件失敗",
   "error.username_empty": "帳號不能為空",
+  "error.connection_error": "連線錯誤",
   "error_collection_not_exist": "集合不存在",
   "error_embedding_not_config": "未設定索引模型",
   "error_invalid_resource": "無效的資源",

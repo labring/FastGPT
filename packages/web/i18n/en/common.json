@@ -814,6 +814,7 @@
   "error.upload_file_error_filename": "{{name}} Upload Failed",
   "error.upload_image_error": "File upload failed",
   "error.username_empty": "Account cannot be empty",
+  "error.connection_error": "Connection error",
   "error_collection_not_exist": "The collection does not exist",
   "error_embedding_not_config": "Unconfigured index model",
   "error_invalid_resource": "Invalid resources",
