@@ -1,6 +1,11 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import type {
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  DispatchNodeResponseKeyEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   type DispatchNodeResultType,
   type ModuleDispatchProps
@@ -15,7 +20,7 @@ import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/con
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { getSystemPluginById, splitCombinePluginId } from '../../../app/plugin/controller';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
-const { SseResponseEventEnum } = await import('@fastgpt/global/core/workflow/runtime/constants');
+
 type SystemInputConfigType = {
   type: SystemToolInputTypeEnum;
   value: StoreSecretValueType;
@@ -77,7 +82,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
       const { workflowStreamResponse } = props;
 
-      const result: any = await runToolStream({
+      const result = await runToolStream({
         baseUrl: process.env.PLUGIN_BASE_URL || '',
         authtoken: process.env.PLUGIN_TOKEN || '',
         toolId: formatToolId,
@@ -98,29 +103,13 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           },
           time: variables.cTime
         },
-        onStreamData: (data: any) => {
-          if (workflowStreamResponse && data.data.type === 'answer' && data.data?.content) {
+        onStreamData: (type: string, data: string) => {
+          if (workflowStreamResponse && data) {
             workflowStreamResponse({
-              event: SseResponseEventEnum.answer,
+              event: type as SseResponseEventEnum,
               data: textAdaptGptResponse({
-                text: data.data.content
+                text: data
               })
-            });
-          } else if (
-            workflowStreamResponse &&
-            data.data.type === 'fastAnswer' &&
-            data.data?.content
-          ) {
-            workflowStreamResponse({
-              event: SseResponseEventEnum.fastAnswer,
-              data: textAdaptGptResponse({
-                text: data.data.content
-              })
-            });
-          } else if (workflowStreamResponse && data.type === 'error') {
-            workflowStreamResponse({
-              event: SseResponseEventEnum.error,
-              data: data.data
             });
           }
         }
