@@ -325,7 +325,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                       >
                         {t('dataset:params_config')}
                       </Button>
-                      {!hasTrainingData && (
+                      {!hasTrainingData && feConfigs?.isPlus && (
                         <Button
                           variant={'whitePrimary'}
                           onClick={openDatasetSyncConfirm}
@@ -488,7 +488,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                       {t('dataset:add_file')}
                     </Box>
                   </Flex>
-                  {!hasTrainingData && (
+                  {!hasTrainingData && feConfigs?.isPlus && (
                     <Button
                       variant={'whitePrimary'}
                       onClick={openDatasetSyncConfirm}

@@ -1,5 +1,6 @@
 {
   "Enable": "启用",
+  "Select_all": "选择所有文件",
   "add_file": "添加文件",
   "api_file": "API 文件库",
   "api_url": "接口地址",
@@ -24,6 +25,7 @@
   "close_auto_sync": "确认关闭自动同步功能？",
   "collection.Create update time": "创建/更新时间",
   "collection.Training type": "训练模式",
+  "collection.sync.submit": "已提交同步任务",
   "collection.training_type": "处理模式",
   "collection_data_count": "数据量",
   "collection_metadata_custom_pdf_parse": "PDF增强解析",
