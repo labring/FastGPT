@@ -12,7 +12,6 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatBoxContext } from '../Provider';
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
-import { useRefresh } from '@fastgpt/web/hooks/useRefresh';
 
 const VariableInput = ({
   chatForm,
@@ -38,8 +37,7 @@ const VariableInput = ({
     [allVariableList, showExternalVariables]
   );
 
-  const { refresh } = useRefresh();
-  const { getValues, setValue, handleSubmit: handleSubmitChat } = variablesForm;
+  const { getValues, setValue } = variablesForm;
 
   useEffect(() => {
     allVariableList.forEach((item) => {
@@ -92,7 +90,7 @@ const VariableInput = ({
                 leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
                 size={'sm'}
                 maxW={'100px'}
-                onClick={handleSubmitChat(() => {
+                onClick={variablesForm.handleSubmit(() => {
                   chatForm.setValue('chatStarted', true);
                 })}
               >
@@ -130,14 +128,9 @@ const VariableInput = ({
                   leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
                   size={'sm'}
                   maxW={'100px'}
-                  onClick={handleSubmitChat(
-                    () => {
-                      chatForm.setValue('chatStarted', true);
-                    },
-                    (errors) => {
-                      refresh();
-                    }
-                  )}
+                  onClick={variablesForm.handleSubmit(() => {
+                    chatForm.setValue('chatStarted', true);
+                  })}
                 >
                   {t('chat:start_chat')}
                 </Button>

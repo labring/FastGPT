@@ -43,33 +43,7 @@ const LabelAndFormRender = ({
   variablesForm: UseFormReturn<any>;
 } & SpecificProps &
   BoxProps) => {
-  const {
-    control,
-    formState: { errors }
-  } = variablesForm;
-
-  // Extract all ref.name values from errors for validation checking
-  const flattenedErrorKeys = useMemo(() => {
-    const keys: Record<string, boolean> = {};
-
-    // Helper function to extract ref.name from nested error structure
-    const extractRefNames = (errorObj: any): void => {
-      if (!errorObj || typeof errorObj !== 'object') return;
-
-      Object.values(errorObj).forEach((error: any) => {
-        if (error?.ref?.name) {
-          keys[error.ref.name] = true;
-        }
-        // Recursively check nested objects
-        if (error && typeof error === 'object' && !error.ref) {
-          extractRefNames(error);
-        }
-      });
-    };
-
-    extractRefNames(errors);
-    return keys;
-  }, [errors]);
+  const { control } = variablesForm;
 
   return (
     <Box _notLast={{ mb: 4 }} px={1}>
@@ -85,14 +59,14 @@ const LabelAndFormRender = ({
         rules={{
           required
         }}
-        render={({ field: { onChange, value } }) => {
+        render={({ field: { onChange, value }, fieldState: { error } }) => {
           return (
             <InputRender
               inputType={inputType}
               value={value}
               onChange={onChange}
               placeholder={placeholder}
-              isInvalid={flattenedErrorKeys[formKey]}
+              isInvalid={!!error}
               {...props}
             />
           );
