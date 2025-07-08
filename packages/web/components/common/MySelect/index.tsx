@@ -54,6 +54,9 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange'> & {
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
   customOnOpen?: () => void;
   customOnClose?: () => void;
+
+  isInvalid?: boolean;
+  isDisabled?: boolean;
 };
 
 export const menuItemStyles: MenuItemProps = {
@@ -82,6 +85,8 @@ const MySelect = <T = any,>(
     ScrollData,
     customOnOpen,
     customOnClose,
+    isInvalid,
+    isDisabled,
     ...props
   }: SelectProps<T>,
   ref: ForwardedRef<{
@@ -213,16 +218,31 @@ const MySelect = <T = any,>(
           h={'auto'}
           whiteSpace={'pre-wrap'}
           wordBreak={'break-word'}
+          transition={'border-color 0.1s ease-in-out, box-shadow 0.1s ease-in-out'}
+          isDisabled={isDisabled}
           _active={{
             transform: 'none'
           }}
-          {...(isOpen
-            ? {
-                boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
-                borderColor: 'primary.600',
-                color: 'primary.700'
-              }
-            : {})}
+          color={isOpen ? 'primary.700' : 'myGray.700'}
+          borderColor={isInvalid ? 'red.500' : isOpen ? 'primary.300' : 'myGray.200'}
+          boxShadow={
+            isOpen
+              ? isInvalid
+                ? '0px 0px 0px 2.4px rgba(255, 0, 0, 0.15)'
+                : '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
+              : 'none'
+          }
+          _hover={
+            isInvalid
+              ? {
+                  borderColor: 'red.400',
+                  boxShadow: '0px 0px 0px 2.4px rgba(255, 0, 0, 0.15)'
+                }
+              : {
+                  borderColor: 'primary.300',
+                  boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
+                }
+          }
           {...props}
         >
           <Flex alignItems={'center'} justifyContent="space-between" w="100%">
