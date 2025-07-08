@@ -520,12 +520,13 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
     };
   }, []);
 
-  // listen minuted. over 60 seconds, stop speak
+  // listen minuted. control the recording duration through environment variables, with a default of 60 seconds, stop speak
+  const maxDuration = Number(process.env.MAX_AUDIO_DURATION) || 60;
   useEffect(() => {
-    if (audioSecond >= 60) {
+    if (audioSecond >= maxDuration) {
       stopSpeak();
     }
-  }, [audioSecond, stopSpeak]);
+  }, [audioSecond, stopSpeak, maxDuration]);
 
   return {
     startSpeak,

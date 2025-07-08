@@ -12,7 +12,7 @@ import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequency
 import { getDefaultSTTModel } from '@fastgpt/service/core/ai/model';
 
 const upload = getUploadModel({
-  maxSize: 5
+  maxSize: Number(process.env.MAX_FILE_SIZE) || 5
 });
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
