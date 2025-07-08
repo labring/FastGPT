@@ -21,8 +21,9 @@ weight: 707
 {{% alert icon="🤖" context="success" %}}
 
 - MongoDB：用于存储除了向量外的各类数据
-- PostgreSQL/Milvus：存储向量数据
-- OneAPI: 聚合各类 AI API，支持多模型调用 （任何模型问题，先自行通过 OneAPI 测试校验）
+- MinIO: 用于存储插件的文件数据
+- PostgreSQL/Milvus/Oceanbase：存储向量数据
+- AIProxy: 聚合各类 AI API，支持多模型调用
 
 {{% /alert %}}
 
@@ -33,11 +34,11 @@ weight: 707
 非常轻量，适合知识库索引量在 5000 万以下。
 
 {{< table "table-hover table-striped-columns" >}}
-| 环境 | 最低配置（单节点） | 推荐配置 |
-| ---- | ---- | ---- |
-| 测试（可以把计算进程设置少一些） | 2c4g  | 2c8g |
-| 100w 组向量 | 4c8g 50GB | 4c16g 50GB |
-| 500w 组向量 | 8c32g 200GB | 16c64g 200GB |
+| 环境                             | 最低配置（单节点） | 推荐配置     |
+| -------------------------------- | ------------------ | ------------ |
+| 测试（可以把计算进程设置少一些） | 2c4g               | 2c8g         |
+| 100w 组向量                      | 4c8g 50GB          | 4c16g 50GB   |
+| 500w 组向量                      | 8c32g 200GB        | 16c64g 200GB |
 {{< /table >}}
 
 ### Milvus版本
@@ -47,11 +48,11 @@ weight: 707
 [点击查看 Milvus 官方推荐配置](https://milvus.io/docs/prerequisite-docker.md)
 
 {{< table "table-hover table-striped-columns" >}}
-| 环境 | 最低配置（单节点） | 推荐配置 |
-| ---- | ---- | ---- |
-| 测试 | 2c8g  | 4c16g |
-| 100w 组向量 | 未测试 |  |
-| 500w 组向量 |  |  |
+| 环境        | 最低配置（单节点） | 推荐配置 |
+| ----------- | ------------------ | -------- |
+| 测试        | 2c8g               | 4c16g    |
+| 100w 组向量 | 未测试             |          |
+| 500w 组向量 |                    |          |
 {{< /table >}}
 
 ### zilliz cloud版本
@@ -66,7 +67,14 @@ Zilliz Cloud 由 Milvus 原厂打造，是全托管的 SaaS 向量数据库服�
 
 如果使用`OpenAI`等国外模型接口，请确保可以正常访问，否则会报错：`Connection error` 等。 方案可以参考：[代理方案](/docs/development/proxy/)
 
-### 2. 准备 Docker 环境
+### 2. 开放防火墙端口
+
+1. 3000: fastgpt 主服务端口
+2. 3005: mcp server 端口
+3. 9000: minio 端口
+4. 9001: minio web控制台端口
+
+### 3. 准备 Docker 环境
 
 {{< tabs tabTotal="3" >}}
 {{< tab tabName="Linux" >}}
@@ -148,29 +156,26 @@ curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/mai
 
 找到 yml 文件中，fastgpt 容器的环境变量进行下面操作：
 
-{{< tabs tabTotal="3" >}}
-{{< tab tabName="PgVector版本" >}}
+{{< tabs tabTotal="2" >}}
+{{< tab tabName="所有版本通用操作" >}}
 {{< markdownify >}}
 
-无需操作
+修改环境变量: 
+
+```
+# fastgpt 容器
+FE_DOMAIN=前端外部可访问的地址。用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。
+DEFAULT_ROOT_PSW=root 用户密码，每次重启root 都会修改成这个密码
+AES256_SECRET_KEY=密钥加密 key，尽量取复杂密钥，一旦使用后，不能随便修改，否则会导致系统加密的数据无法正常解密
+
+# fastgpt-plugin容器
+MINIO_CUSTOM_ENDPOINT=http://minio.xxx.com 用户可访问的地址，用于给系统工具提供文件存储。填写例如 http://minio.xxx.com 或者  http://<ip>:<port>
+```
 
 {{< /markdownify >}}
 {{< /tab >}}
-{{< tab tabName="Oceanbase版本" >}}
-{{< markdownify >}}
 
-无需操作
-
-{{< /markdownify >}}
-{{< /tab >}}
-{{< tab tabName="Milvus版本" >}}
-{{< markdownify >}}
-
-无需操作
-
-{{< /markdownify >}}
-{{< /tab >}}
-{{< tab tabName="Zilliz版本" >}}
+{{< tab tabName="Zilliz版本特有" >}}
 {{< markdownify >}}
 
 打开 [Zilliz Cloud](https://zilliz.com.cn/), 创建实例并获取相关秘钥。
@@ -189,7 +194,7 @@ curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/mai
 
 ### 3. 修改 config.json 配置文件
 
-修改`config.json`文件中的`mcpServerProxyEndpoint`值，设置成`mcp server`的公网可访问地址，yml 文件中默认给出了映射到 3005 端口，如通过 IP 访问，则可能是：`120.172.2.10:3005`。
+修改`config.json`文件中的`mcpServerProxyEndpoint`值，设置成`mcp server`的公网可访问地址，yml 文件中默认给出了映射到 3005 端口，如通过 IP 访问，则可能是：`ip:3005`。
 
 ### 4. 启动容器
 

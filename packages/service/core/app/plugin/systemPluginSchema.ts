@@ -12,10 +12,6 @@ const SystemPluginSchema = new Schema({
   isActive: {
     type: Boolean
   },
-  inputConfig: {
-    type: Array,
-    default: []
-  },
   originCost: {
     type: Number,
     default: 0
@@ -32,7 +28,11 @@ const SystemPluginSchema = new Schema({
     type: Number,
     default: 0
   },
-  customConfig: Object
+  customConfig: Object,
+  inputListVal: Object,
+
+  // @deprecated
+  inputConfig: Array
 });
 
 SystemPluginSchema.index({ pluginId: 1 });

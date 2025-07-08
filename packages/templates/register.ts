@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { isProduction } from '@fastgpt/global/common/system/constants';
-import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
+import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 

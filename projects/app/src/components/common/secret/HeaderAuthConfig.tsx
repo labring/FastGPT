@@ -8,7 +8,6 @@ import {
   Input,
   ModalBody,
   ModalFooter,
-  Slider,
   useDisclosure
 } from '@chakra-ui/react';
 import { HeaderSecretTypeEnum } from '@fastgpt/global/common/secret/constants';

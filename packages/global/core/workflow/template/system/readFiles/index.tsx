@@ -11,14 +11,13 @@ import {
   FlowNodeTypeEnum
 } from '../../../node/constant';
 import { type FlowNodeTemplateType } from '../../../type/node';
-import { getHandleConfig } from '../../utils';
 
 export const ReadFilesNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.readFiles,
   templateType: FlowNodeTemplateTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.readFiles,
-  sourceHandle: getHandleConfig(true, true, true, true),
-  targetHandle: getHandleConfig(true, true, true, true),
+  showSourceHandle: true,
+  showTargetHandle: true,
   avatar: 'core/workflow/template/readFiles',
   name: i18nT('app:workflow.read_files'),
   intro: i18nT('app:workflow.read_files_tip'),

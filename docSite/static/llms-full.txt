@@ -153,7 +153,7 @@ FastGPT 服务协议是您与珠海环界云计算有限公司（以下简称“
 
 FastGPT 是一个由用户和贡献者参与推动的开源项目，如果您对产品使用存在疑问和建议，可尝试以下方式寻求支持。我们的团队与社区会竭尽所能为您提供帮助。
 
-+ 📱 扫码加入社区微信交流群👇
++ 📱 扫码加入社区飞书交流群👇
 
    <img width="400px" src="https://oss.laf.run/otnvvf-imgs/fastgpt-feishu1.png" class="medium-zoom-image" />
 
@@ -11333,7 +11333,7 @@ ${content}
 
 ![](/imgs/create-app3.png)
 
-然后我们就可以愉快的开始聊天啦。
+然后我们就可以愉快地开始聊天啦。
 
 ![](/imgs/create-app4.png)
 
@@ -14993,7 +14993,6 @@ FastGPT 提供了一种基于 LLM Model 搭建应用的简便方式。
 不要使用 Markdown 语法， 输入 JSON 格式的内容。
 输出的"reason"的内容使用中文。
 直接输出一个列表， 其成员为一个相同类型的对象， 定义如下
-您正在找回 FastGPT 账号
 ```
 {
 “raw”: string; // 表示原文

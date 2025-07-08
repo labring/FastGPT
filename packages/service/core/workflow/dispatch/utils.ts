@@ -83,16 +83,14 @@ export const filterToolNodeIdByEdges = ({
 
 export const getHistories = (history?: ChatItemType[] | number, histories: ChatItemType[] = []) => {
   if (!history) return [];
+  // Select reference history
+  if (Array.isArray(history)) return history;
 
+  // history is number
   const systemHistoryIndex = histories.findIndex((item) => item.obj !== ChatRoleEnum.System);
   const systemHistories = histories.slice(0, systemHistoryIndex);
   const chatHistories = histories.slice(systemHistoryIndex);
-
-  const filterHistories = (() => {
-    if (typeof history === 'number') return chatHistories.slice(-(history * 2));
-    if (Array.isArray(history)) return history;
-    return [];
-  })();
+  const filterHistories = chatHistories.slice(-(history * 2));
 
   return [...systemHistories, ...filterHistories];
 };

@@ -10,15 +10,14 @@ import {
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '../../../constants';
-import { getHandleConfig } from '../../utils';
 import { i18nT } from '../../../../../../web/i18n/utils';
 
 export const LoopStartNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.loopStart,
   templateType: FlowNodeTemplateTypeEnum.systemInput,
   flowNodeType: FlowNodeTypeEnum.loopStart,
-  sourceHandle: getHandleConfig(false, true, false, false),
-  targetHandle: getHandleConfig(false, false, false, false),
+  showSourceHandle: true,
+  showTargetHandle: false,
   avatar: 'core/workflow/template/loopStart',
   name: i18nT('workflow:loop_start'),
   unique: true,

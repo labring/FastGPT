@@ -49,6 +49,6 @@ weight: 102
 
 ![](/imgs/create-app3.png)
 
-然后我们就可以愉快的开始聊天啦。
+然后我们就可以愉快地开始聊天啦。
 
 ![](/imgs/create-app4.png)

@@ -5,15 +5,14 @@ import {
   NodeInputKeyEnum,
   FlowNodeTemplateTypeEnum
 } from '../../constants';
-import { getHandleConfig } from '../utils';
 import { i18nT } from '../../../../../web/i18n/utils';
 
 export const AssignedAnswerModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.answerNode,
   templateType: FlowNodeTemplateTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.answerNode,
-  sourceHandle: getHandleConfig(true, true, true, true),
-  targetHandle: getHandleConfig(true, true, true, true),
+  showSourceHandle: true,
+  showTargetHandle: true,
   avatar: 'core/workflow/template/reply',
   name: i18nT('workflow:assigned_reply'),
   intro: i18nT('workflow:intro_assigned_reply'),

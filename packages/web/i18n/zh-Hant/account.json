@@ -1,4 +1,5 @@
 {
+  "account_team.delete_dataset": "刪除知識庫",
   "active_model": "可用模型",
   "add_default_model": "新增預設模型",
   "api_key": "API 金鑰",

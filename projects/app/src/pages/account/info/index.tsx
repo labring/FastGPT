@@ -17,7 +17,6 @@ import { type UserUpdateParams } from '@/types/user';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { UserType } from '@fastgpt/global/support/user/type.d';
-import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -26,7 +25,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
-import { putUpdateMemberName, redeemCoupon } from '@/web/support/user/team/api';
+import { putUpdateMemberName } from '@/web/support/user/team/api';
 import { getDocPath } from '@/web/common/system/doc';
 import {
   StandardSubLevelEnum,
@@ -69,6 +68,10 @@ const Info = () => {
   const { teamPlanStatus, initUserInfo } = useUserStore();
   const standardPlan = teamPlanStatus?.standardConstants;
   const { isOpen: isOpenContact, onClose: onCloseContact, onOpen: onOpenContact } = useDisclosure();
+
+  useMount(() => {
+    initUserInfo();
+  });
 
   return (
     <AccountContainer>
@@ -353,12 +356,8 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
 const PlanUsage = () => {
   const router = useRouter();
   const { t } = useTranslation();
-  const { userInfo, initUserInfo, teamPlanStatus, initTeamPlanStatus } = useUserStore();
+  const { userInfo, teamPlanStatus, initTeamPlanStatus } = useUserStore();
   const { subPlans, feConfigs } = useSystemStore();
-  const { reset } = useForm<UserUpdateParams>({
-    defaultValues: userInfo as UserType
-  });
-
   const {
     isOpen: isOpenStandardModal,
     onClose: onCloseStandardModal,
@@ -376,6 +375,7 @@ const PlanUsage = () => {
     return standardSubLevelMap[teamPlanStatus.standard.currentSubLevel].label;
   }, [teamPlanStatus?.standard?.currentSubLevel]);
   const standardPlan = teamPlanStatus?.standard;
+
   const isFreeTeam = useMemo(() => {
     if (!teamPlanStatus || !teamPlanStatus?.standardConstants) return false;
     const hasExtraDatasetSize =
@@ -391,12 +391,6 @@ const PlanUsage = () => {
     }
     return false;
   }, [teamPlanStatus]);
-
-  useQuery(['init'], initUserInfo, {
-    onSuccess(res) {
-      reset(res);
-    }
-  });
 
   const valueColorSchema = useCallback((val: number) => {
     if (val < 50) return 'green';

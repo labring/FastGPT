@@ -287,8 +287,13 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
     externalFileUrl,
     apiFileId
   } = props;
-  // Create collection tags
-  const collectionTags = await createOrGetCollectionTags({ tags, teamId, datasetId, session });
+
+  const collectionTags = await createOrGetCollectionTags({
+    tags,
+    teamId,
+    datasetId,
+    session
+  });
 
   // Create collection
   const [collection] = await MongoDatasetCollection.create(

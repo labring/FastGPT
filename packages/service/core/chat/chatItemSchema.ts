@@ -64,9 +64,7 @@ const ChatItemSchema = new Schema({
   memories: Object,
   errorMsg: String,
   userGoodFeedback: String,
-  userBadFeedback: {
-    type: String
-  },
+  userBadFeedback: String,
   customFeedbacks: [String],
   adminFeedback: {
     type: {

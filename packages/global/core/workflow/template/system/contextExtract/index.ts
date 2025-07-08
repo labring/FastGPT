@@ -12,15 +12,14 @@ import {
 } from '../../../constants';
 import { Input_Template_SelectAIModel, Input_Template_History } from '../../input';
 import { LLMModelTypeEnum } from '../../../../ai/constants';
-import { getHandleConfig } from '../../utils';
 import { i18nT } from '../../../../../../web/i18n/utils';
 
 export const ContextExtractModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.contentExtract,
   templateType: FlowNodeTemplateTypeEnum.ai,
   flowNodeType: FlowNodeTypeEnum.contentExtract,
-  sourceHandle: getHandleConfig(true, true, true, true),
-  targetHandle: getHandleConfig(true, true, true, true),
+  showSourceHandle: true,
+  showTargetHandle: true,
   avatar: 'core/workflow/template/extractJson',
   name: i18nT('workflow:text_content_extraction'),
   intro: i18nT('workflow:intro_text_content_extraction'),

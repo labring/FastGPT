@@ -6,14 +6,16 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
-import { splitCombineToolId } from '@fastgpt/service/core/app/plugin/controller';
-import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
-import { getSystemPluginTemplates } from '@fastgpt/plugins/register';
+import {
+  getSystemPluginByIdAndVersionId,
+  splitCombinePluginId
+} from '@fastgpt/service/core/app/plugin/controller';
+import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { Types } from '@fastgpt/service/common/mongo';
 
 export type getToolVersionListProps = PaginationProps<{
-  toolId?: string;
+  pluginId?: string;
 }>;
 
 export type getToolVersionResponse = PaginationResponse<{
@@ -25,30 +27,44 @@ async function handler(
   req: ApiRequestProps<getToolVersionListProps>,
   _res: NextApiResponse<any>
 ): Promise<getToolVersionResponse> {
-  const { toolId } = req.body;
+  const { pluginId } = req.body;
   const { offset, pageSize } = parsePaginationRequest(req);
 
-  if (!toolId) {
+  if (!pluginId) {
     return {
       total: 0,
       list: []
     };
   }
+  const { source, pluginId: formatPluginId } = splitCombinePluginId(pluginId);
 
-  const { source, pluginId: formatToolId } = splitCombineToolId(toolId);
+  // System tool plugin
+  if (source === PluginSourceEnum.systemTool) {
+    const item = await getSystemPluginByIdAndVersionId(formatPluginId);
 
-  // Auth
+    return {
+      total: 0,
+      list:
+        item.versionList?.map((item) => ({
+          _id: item.value,
+          versionName: item.value
+        })) || []
+    };
+  }
+
+  // Workflow plugin
   const appId = await (async () => {
     if (source === PluginSourceEnum.personal) {
       const { app } = await authApp({
-        appId: formatToolId,
+        appId: formatPluginId,
         req,
         per: ReadPermissionVal,
         authToken: true
       });
       return app._id;
     } else {
-      const item = getSystemPluginTemplates().find((plugin) => plugin.id === formatToolId);
+      const item = await getSystemPluginByIdAndVersionId(formatPluginId);
+      // const item = getSystemTools
       if (!item) return Promise.reject(PluginErrEnum.unAuth);
       return item.associatedPluginId;
     }
