@@ -49,6 +49,7 @@ const CustomAPIFileInput = () => {
 
   const [selectFiles, setSelectFiles] = useState<APIFileItemType[]>([]);
   const [isSelectAll, setIsSelectAll] = useState(false);
+  const [isSelectAll, setIsSelectAll] = useState(false);
   const [parent, setParent] = useState<ParentTreePathItemType>({
     parentId: '',
     parentName: ''
@@ -90,11 +91,19 @@ const CustomAPIFileInput = () => {
     } else {
       setSelectFiles(sources.map((item) => item.apiFile).filter(Boolean) as APIFileItemType[]);
     }
+    const hasRootFolder = sources.some((item) => item.apiFile?.id === RootCollectionId);
+    if (hasRootFolder) {
+      setIsSelectAll(true);
+      setSelectFiles([]);
+    } else {
+      setSelectFiles(sources.map((item) => item.apiFile).filter(Boolean) as APIFileItemType[]);
+    }
   });
 
   const { runAsync: onclickNext, loading: onNextLoading } = useRequest2(
     async () => {
       const finalSelectedFiles: APIFileItemType[] = await (async () => {
+        if (isSelectAll) {
         if (isSelectAll) {
           return [
             {
@@ -136,16 +145,22 @@ const CustomAPIFileInput = () => {
 
   const handleSelectAll = useCallback(() => {
     if (parent?.parentId) return;
+  const handleSelectAll = useCallback(() => {
+    if (parent?.parentId) return;
 
     if (isSelectAll) {
+    if (isSelectAll) {
       // cancel the selection of the root directory
+      setIsSelectAll(false);
       setIsSelectAll(false);
       setSelectFiles([]);
     } else {
       // select the root directory
       setIsSelectAll(true);
+      setIsSelectAll(true);
       setSelectFiles([]);
     }
+  }, [isSelectAll, parent?.parentId]);
   }, [isSelectAll, parent?.parentId]);
 
   return (
@@ -195,20 +210,22 @@ const CustomAPIFileInput = () => {
               {parent?.parentId ? (
                 <>{t('dataset:filename')}</>
               ) : (
-                <Checkbox
-                  className="checkbox"
-                  isChecked={isSelectAll}
-                  onChange={(e) => {
-                    handleSelectAll();
-                  }}
-                >
-                  <Box>{t('dataset:Select_all')}</Box>
-                </Checkbox>
+                <>
+                  <Checkbox
+                    className="checkbox"
+                    mr={2}
+                    isChecked={isSelectAll}
+                    onChange={handleSelectAll}
+                  />
+                  {t('dataset:Select_all')}
+                </>
               )}
             </Flex>
 
             {fileList.map((item) => {
               const isExists = existIdList.has(item.id);
+              const isChecked =
+                isExists || selectFiles.some((file) => file.id === item.id) || isSelectAll;
               const isChecked =
                 isExists || selectFiles.some((file) => file.id === item.id) || isSelectAll;
               const canEnter = item.hasChild && !isChecked;
@@ -244,6 +261,17 @@ const CustomAPIFileInput = () => {
                         } else {
                           setSelectFiles((state) => [...state, item]);
                         }
+                      if (isSelectAll) {
+                        // if in root selection mode, select all files except the clicked one
+                        setIsSelectAll(false);
+                        setSelectFiles(fileList.filter((file) => file.id !== item.id));
+                      } else {
+                        // normal selection mode
+                        if (isChecked) {
+                          setSelectFiles((state) => state.filter((file) => file.id !== item.id));
+                        } else {
+                          setSelectFiles((state) => [...state, item]);
+                        }
                       }
                     }
                   }}
@@ -255,6 +283,18 @@ const CustomAPIFileInput = () => {
                     isDisabled={isExists}
                     onChange={(e) => {
                       e.stopPropagation();
+                      // when choose single file, cancel the selection of the root directory
+                      if (isSelectAll) {
+                        // if in root selection mode, select all files except the clicked one
+                        setIsSelectAll(false);
+                        setSelectFiles(fileList.filter((file) => file.id !== item.id));
+                      } else {
+                        // normal selection mode
+                        if (isChecked) {
+                          setSelectFiles((state) => state.filter((file) => file.id !== item.id));
+                        } else {
+                          setSelectFiles((state) => [...state, item]);
+                        }
                       // when choose single file, cancel the selection of the root directory
                       if (isSelectAll) {
                         // if in root selection mode, select all files except the clicked one
@@ -299,6 +339,7 @@ const CustomAPIFileInput = () => {
           p={4}
         >
           <Button
+            isDisabled={selectFiles.length === 0 && !isSelectAll}
             isDisabled={selectFiles.length === 0 && !isSelectAll}
             isLoading={onNextLoading}
             onClick={onclickNext}
