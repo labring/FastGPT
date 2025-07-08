@@ -11,14 +11,13 @@ import {
   FlowNodeTypeEnum
 } from '../../../node/constant';
 import { type FlowNodeTemplateType } from '../../../type/node.d';
-import { getHandleConfig } from '../../utils';
 
 export const UserSelectNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.userSelect,
   templateType: FlowNodeTemplateTypeEnum.interactive,
   flowNodeType: FlowNodeTypeEnum.userSelect,
-  sourceHandle: getHandleConfig(false, false, false, false),
-  targetHandle: getHandleConfig(true, false, true, true),
+  showSourceHandle: false,
+  showTargetHandle: true,
   avatar: 'core/workflow/template/userSelect',
   diagram: '/imgs/app/userSelect.svg',
   name: i18nT('app:workflow.user_select'),

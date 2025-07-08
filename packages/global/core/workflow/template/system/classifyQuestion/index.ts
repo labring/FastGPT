@@ -17,15 +17,14 @@ import {
 } from '../../input';
 import { Input_Template_System_Prompt } from '../../input';
 import { LLMModelTypeEnum } from '../../../../ai/constants';
-import { getHandleConfig } from '../../utils';
 import { i18nT } from '../../../../../../web/i18n/utils';
 
 export const ClassifyQuestionModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.classifyQuestion,
   templateType: FlowNodeTemplateTypeEnum.ai,
   flowNodeType: FlowNodeTypeEnum.classifyQuestion,
-  sourceHandle: getHandleConfig(false, false, false, false),
-  targetHandle: getHandleConfig(true, false, true, true),
+  showSourceHandle: false,
+  showTargetHandle: true,
   avatar: 'core/workflow/template/questionClassify',
   name: i18nT('workflow:question_classification'),
   intro: i18nT('workflow:intro_question_classification'),

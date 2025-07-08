@@ -21,7 +21,7 @@ import { useTranslation } from 'next-i18next';
 import { useKeyboard } from './useKeyboard';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
-import { type THelperLine } from '@fastgpt/global/core/workflow/type';
+import { type THelperLine } from '@/web/core/workflow/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useDebounceEffect, useMemoizedFn } from 'ahooks';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -662,7 +662,7 @@ export const useWorkflow = () => {
       // 1. Add file input
       if (
         node.flowNodeType === FlowNodeTypeEnum.chatNode ||
-        node.flowNodeType === FlowNodeTypeEnum.tools ||
+        node.flowNodeType === FlowNodeTypeEnum.agent ||
         node.flowNodeType === FlowNodeTypeEnum.appModule
       ) {
         const input = node.inputs.find((i) => i.key === NodeInputKeyEnum.fileUrlList);

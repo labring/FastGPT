@@ -53,7 +53,7 @@ export const appWorkflow2Form = ({
   nodes.forEach((node) => {
     if (
       node.flowNodeType === FlowNodeTypeEnum.chatNode ||
-      node.flowNodeType === FlowNodeTypeEnum.tools
+      node.flowNodeType === FlowNodeTypeEnum.agent
     ) {
       defaultAppForm.aiSettings.model = findInputValueByKey(node.inputs, NodeInputKeyEnum.aiModel);
       defaultAppForm.aiSettings.systemPrompt = findInputValueByKey(

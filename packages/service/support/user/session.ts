@@ -83,12 +83,11 @@ const getSession = async (key: string): Promise<SessionType> => {
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 };
-
-export const delUserAllSession = async (userId: string, whileList?: string[]) => {
-  const formatWhileList = whileList?.map((item) => getSessionKey(item));
+export const delUserAllSession = async (userId: string, whiteList?: (string | undefined)[]) => {
+  const formatWhiteList = whiteList?.map((item) => item && getSessionKey(item));
   const redis = getGlobalRedisConnection();
   const keys = (await getAllKeysByPrefix(`${redisPrefix}${userId}`)).filter(
-    (item) => !formatWhileList?.includes(item)
+    (item) => !formatWhiteList?.includes(item)
   );
 
   if (keys.length > 0) {

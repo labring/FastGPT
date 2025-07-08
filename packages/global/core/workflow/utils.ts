@@ -274,9 +274,6 @@ export const appData2FlowNodeIO = ({
         };
       });
 
-  // const showFileLink =
-  //   chatConfig?.fileSelectConfig?.canSelectFile || chatConfig?.fileSelectConfig?.canSelectImg;
-
   return {
     inputs: [
       Input_Template_Stream_MODE,
@@ -356,7 +353,7 @@ export const formatEditorVariablePickerIcon = (
 export const isValidReferenceValueFormat = (value: any): value is ReferenceItemValueType => {
   return Array.isArray(value) && value.length === 2 && typeof value[0] === 'string';
 };
-/* 
+/*
   Check whether the value([variableId, outputId]) value is a valid reference value:
   1. The value must be an array of length 2
   2. The first item of the array must be one of VARIABLE_NODE_ID or nodeIds
@@ -370,7 +367,7 @@ export const isValidReferenceValue = (
   const validIdSet = new Set([VARIABLE_NODE_ID, ...nodeIds]);
   return validIdSet.has(value[0]);
 };
-/* 
+/*
   Check whether the value([variableId, outputId][]) value is a valid reference value array:
   1. The value must be an array
   2. The array must contain at least one element

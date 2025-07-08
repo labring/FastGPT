@@ -71,25 +71,15 @@ jobs:
           command: pages deploy ./docSite/public --project-name=fastgpt-doc
           packageManager: npm
 
-      - name: Create deployment status comment
-        if: always()
-        env:
-          JOB_STATUS: ${{ job.status }}
-          PREVIEW_URL: ${{ steps.deploy.outputs.deployment-url }}
-        uses: actions/github-script@v6
+      - name: '@finleyge/github-tools'
+        uses: FinleyGe/github-tools@0.0.1
+        id: print-image-label
+        if: success()
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const success = process.env.JOB_STATUS === 'success';
-            const deploymentUrl = `${process.env.PREVIEW_URL}`;
-            const status = success ? '✅ Success' : '❌ Failed';
-            console.log(process.env.JOB_STATUS);
-
-            const commentBody = `**Deployment Status: ${status}**
-            ${success ? `🔗 Preview URL: ${deploymentUrl}` : ''}`;
-
-            await github.rest.issues.createComment({
-              ...context.repo,
-              issue_number: context.payload.pull_request.number,
-              body: commentBody
-            });
+          tool: issue-comment
+          title: 'Docs Preview:'
+          body: |
+            ```
+            🔗 Preview URL: ${{deploymentUrl}}
+            ```

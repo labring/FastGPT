@@ -38,7 +38,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     let maxTokens = 0;
 
     nodeList.forEach((item) => {
-      if ([FlowNodeTypeEnum.chatNode, FlowNodeTypeEnum.tools].includes(item.flowNodeType)) {
+      if ([FlowNodeTypeEnum.chatNode, FlowNodeTypeEnum.agent].includes(item.flowNodeType)) {
         const model =
           item.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
         const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken ?? 0;

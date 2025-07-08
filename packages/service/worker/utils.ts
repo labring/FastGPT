@@ -21,7 +21,7 @@ export const getSafeEnv = () => {
   };
 };
 
-export const getWorker = (name: WorkerNameEnum) => {
+export const getWorker = (name: `${WorkerNameEnum}`) => {
   const workerPath = path.join(process.cwd(), '.next', 'server', 'worker', `${name}.js`);
   return new Worker(workerPath, {
     env: getSafeEnv()
@@ -73,7 +73,7 @@ type WorkerResponse<T = any> = {
   data: T;
 };
 
-/* 
+/*
   多线程任务管理
   * 全局只需要创建一个示例
   * 可以设置最大常驻线程（不会被销毁），线程满了后，后续任务会等待执行。
@@ -133,7 +133,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     // addLog.debug(`${this.name} worker queueLength: ${this.workerQueue.length}`);
 
     return new Promise<Response>((resolve, reject) => {
-      /* 
+      /*
         Whether the task is executed immediately or delayed, the promise callback will dispatch after task complete.
       */
       this.runTask({

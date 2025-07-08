@@ -194,7 +194,11 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
       createCollectionParams: {
         ...collection,
         name: title || collection.name,
-        updateTime: new Date()
+        updateTime: new Date(),
+        tags: await collectionTagsToTagLabel({
+          datasetId: collection.datasetId,
+          tags: collection.tags
+        })
       }
     });
   });

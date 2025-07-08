@@ -76,57 +76,46 @@ const InputDataModal = ({
   });
   const imagePreivewUrl = watch('imagePreivewUrl');
 
-  const { data: collection = defaultCollectionDetail } = useRequest2(
-    () => getDatasetCollectionById(collectionId),
-    {
-      manual: false,
-      refreshDeps: [collectionId],
-      onSuccess(res) {
-        if (res.type === DatasetCollectionTypeEnum.images) {
-          setCurrentTab(TabEnum.image);
-        }
-      }
-    }
-  );
-
-  // Get data
-  const { data: dataItem, loading: isFetchingData } = useRequest2(
+  const { data: collection = defaultCollectionDetail, loading: initLoading } = useRequest2(
     async () => {
-      if (dataId) return getDatasetDataItemById(dataId);
-      return null;
+      const [collection, dataItem] = await Promise.all([
+        getDatasetCollectionById(collectionId),
+        ...(dataId ? [getDatasetDataItemById(dataId)] : [])
+      ]);
+
+      if (dataItem) {
+        setCurrentTab(dataItem?.a ? TabEnum.qa : TabEnum.chunk);
+        reset({
+          q: dataItem.q || '',
+          a: dataItem.a || '',
+          imagePreivewUrl: dataItem.imagePreivewUrl,
+          indexes: dataItem.indexes.map((item) => ({
+            ...item,
+            fold: true
+          }))
+        });
+      } else if (defaultValue) {
+        setCurrentTab(defaultValue?.a ? TabEnum.qa : TabEnum.chunk);
+        reset({
+          q: defaultValue.q || '',
+          a: defaultValue.a || '',
+          imagePreivewUrl: defaultValue.imagePreivewUrl
+        });
+      } else {
+        setCurrentTab(TabEnum.chunk);
+      }
+
+      // Forcus reset to image tab
+      if (collection.type === DatasetCollectionTypeEnum.images) {
+        setCurrentTab(TabEnum.image);
+      }
+      return collection;
     },
     {
       manual: false,
-      refreshDeps: [dataId],
-      onSuccess(res) {
-        if (res) {
-          reset({
-            q: res.q || '',
-            a: res.a || '',
-            imagePreivewUrl: res.imagePreivewUrl,
-            indexes: res.indexes.map((item) => ({
-              ...item,
-              fold: true
-            }))
-          });
-        } else if (defaultValue) {
-          reset({
-            q: defaultValue.q || '',
-            a: defaultValue.a || '',
-            imagePreivewUrl: defaultValue.imagePreivewUrl
-          });
-        }
-      },
-      onError(err) {
-        onClose();
-      }
+      refreshDeps: [collectionId, dataId, defaultValue]
     }
   );
-
-  useEffect(() => {
-    if (currentTab || !dataItem) return;
-    setCurrentTab(dataItem.a ? TabEnum.qa : TabEnum.chunk);
-  }, [collection, dataItem, currentTab]);
 
   // Import new data
   const { runAsync: sureImportData, loading: isImporting } = useRequest2(
@@ -138,7 +127,7 @@ const InputDataModal = ({
         q: e.q,
         a: currentTab === TabEnum.qa ? e.a : '',
         // Contains no default index
-        indexes: e.indexes.filter((item) => !!item.text?.trim())
+        indexes: e.indexes?.filter((item) => !!item.text?.trim()) || []
       };
 
       const dataId = await postInsertData2Dataset(postData);
@@ -194,8 +183,6 @@ const InputDataModal = ({
     }
   );
 
-  const isLoading = isFetchingData;
-
   const icon = useMemo(
     () => getCollectionIcon({ type: collection.type, name: collection.sourceName }),
     [collection]
@@ -240,7 +227,7 @@ const InputDataModal = ({
       <MyBox
         display={'flex'}
         flexDir={'column'}
-        isLoading={isLoading}
+        isLoading={initLoading}
         h={'100%'}
         py={[6, '1.5rem']}
       >

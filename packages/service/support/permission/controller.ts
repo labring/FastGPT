@@ -1,7 +1,7 @@
 import Cookie from 'cookie';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import jwt from 'jsonwebtoken';
-import { type NextApiResponse } from 'next';
+import { type NextApiResponse, type NextApiRequest } from 'next';
 import type { AuthModeType, ReqHeaderAuthType } from './type.d';
 import type { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
@@ -231,7 +231,7 @@ export async function parseHeaderCert({
       return Promise.reject(ERROR_ENUM.unAuthorization);
     }
 
-    return authUserSession(cookieToken);
+    return { ...(await authUserSession(cookieToken)), sessionId: cookieToken };
   }
   // from authorization get apikey
   async function parseAuthorization(authorization?: string) {
@@ -283,7 +283,7 @@ export async function parseHeaderCert({
 
   const { cookie, token, rootkey, authorization } = (req.headers || {}) as ReqHeaderAuthType;
 
-  const { uid, teamId, tmbId, appId, openApiKey, authType, isRoot, sourceName } =
+  const { uid, teamId, tmbId, appId, openApiKey, authType, isRoot, sourceName, sessionId } =
     await (async () => {
       if (authApiKey && authorization) {
         // apikey from authorization
@@ -309,7 +309,8 @@ export async function parseHeaderCert({
           appId: '',
           openApiKey: '',
           authType: AuthUserTypeEnum.token,
-          isRoot: res.isRoot
+          isRoot: res.isRoot,
+          sessionId: res.sessionId
         };
       }
       if (authRoot && rootkey) {
@@ -341,7 +342,8 @@ export async function parseHeaderCert({
     authType,
     sourceName,
     apikey: openApiKey,
-    isRoot: !!isRoot
+    isRoot: !!isRoot,
+    sessionId
   };
 }
 
@@ -353,6 +355,7 @@ export const setCookie = (res: NextApiResponse, token: string) => {
     `${TokenName}=${token}; Path=/; HttpOnly; Max-Age=604800; Samesite=Strict;`
   );
 };
+
 /* clear cookie */
 export const clearCookie = (res: NextApiResponse) => {
   res.setHeader('Set-Cookie', `${TokenName}=; Path=/; Max-Age=0`);

@@ -36,6 +36,14 @@ const MyNumberInput = (props: Props) => {
             onBlur(numE);
           }
         }
+        if (onChange) {
+          if (numE === '') {
+            // @ts-ignore
+            onChange('');
+          } else {
+            onChange(numE);
+          }
+        }
         if (register && name) {
           const event = {
             target: {
@@ -47,12 +55,13 @@ const MyNumberInput = (props: Props) => {
         }
       }}
       onChange={(e) => {
-        const numE = e === '' ? '' : Number(e);
+        const numE = e === '' ? '' : e.endsWith('.') ? e : Number(e);
         if (onChange) {
           if (numE === '') {
             // @ts-ignore
             onChange('');
           } else {
+            // @ts-ignore
             onChange(numE);
           }
         }

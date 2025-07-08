@@ -18,9 +18,12 @@ import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSc
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 
 const formatJsonString = (data: any) => {
-  return JSON.stringify(data).replace(/"/g, '""').replace(/\n/g, '\\n');
+  if (data == null) return '';
+  const jsonStr = JSON.stringify(data).replace(/"/g, '""').replace(/\n/g, '\\n');
+  return sanitizeCsvField(jsonStr);
 };
 
 export type ExportChatLogsBody = GetAppChatLogsProps & {
@@ -258,7 +261,14 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     const markItemsStr = formatJsonString(markItems);
     const chatDetailsStr = formatJsonString(chatDetails);
 
-    const res = `\n"${time}","${source}","${tmbName}","${tmbContact}","${title}","${messageCount}","${userGoodFeedbackItemsStr}","${userBadFeedbackItemsStr}","${customFeedbackItemsStr}","${markItemsStr}","${chatDetailsStr}"`;
+    const sanitizedTime = sanitizeCsvField(time);
+    const sanitizedSource = sanitizeCsvField(source);
+    const sanitizedTmbName = sanitizeCsvField(tmbName);
+    const sanitizedTmbContact = sanitizeCsvField(tmbContact);
+    const sanitizedTitle = sanitizeCsvField(title);
+    const sanitizedMessageCount = sanitizeCsvField(messageCount);
+
+    const res = `\n${sanitizedTime},${sanitizedSource},${sanitizedTmbName},${sanitizedTmbContact},${sanitizedTitle},${sanitizedMessageCount},${userGoodFeedbackItemsStr},${userBadFeedbackItemsStr},${customFeedbackItemsStr},${markItemsStr},${chatDetailsStr}`;
 
     write(res);
   });
