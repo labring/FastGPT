@@ -355,7 +355,6 @@
   "core.chat.Select dataset Desc": "選擇一個知識庫來儲存預期回答",
   "core.chat.Send Message": "傳送",
   "core.chat.Speaking": "我在聽，請說...",
-  "core.chat.Start Chat": "開始對話",
   "core.chat.Type a message": "輸入問題，按 [Enter] 傳送 / 按 [Ctrl(Alt/Shift) + Enter] 換行",
   "core.chat.Unpin": "取消釘選",
   "core.chat.You need to a chat app": "您沒有可用的應用程式",

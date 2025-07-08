@@ -25,10 +25,11 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '../../../context';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { WorkflowNodeEdgeContext } from '../../context/workflowInitContext';
+import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import {
-  VariableInputItem,
-  NodeVariableInputItem
-} from '@/components/core/chat/ChatContainer/ChatBox/components/VariableInputItem';
+  nodeInputTypeToInputType,
+  variableInputTypeToInputType
+} from '@/components/core/app/formRender/utils';
 
 const MyRightDrawer = dynamic(
   () => import('@fastgpt/web/components/common/MyDrawer/MyRightDrawer')
@@ -254,15 +255,39 @@ export const useDebug = () => {
           )}
           <Box display={currentTab === TabEnum.global ? 'block' : 'none'}>
             {customVar.map((item) => (
-              <VariableInputItem key={item.id} item={item} variablesForm={variablesForm} />
+              <LabelAndFormRender
+                {...item}
+                key={item.key}
+                formKey={`variables.${item.key}`}
+                placeholder={item.description}
+                inputType={variableInputTypeToInputType(item.type)}
+                variablesForm={variablesForm}
+                bg={'myGray.50'}
+              />
             ))}
             {filteredVar.map((item) => (
-              <VariableInputItem key={item.id} item={item} variablesForm={variablesForm} />
+              <LabelAndFormRender
+                {...item}
+                key={item.key}
+                formKey={`variables.${item.key}`}
+                placeholder={item.description}
+                inputType={variableInputTypeToInputType(item.type)}
+                variablesForm={variablesForm}
+                bg={'myGray.50'}
+              />
             ))}
           </Box>
           <Box display={currentTab === TabEnum.node ? 'block' : 'none'}>
             {renderInputs.map((item) => (
-              <NodeVariableInputItem key={item.key} item={item} variablesForm={variablesForm} />
+              <LabelAndFormRender
+                {...item}
+                key={item.key}
+                formKey={`nodeVariables.${item.key}`}
+                placeholder={item.placeholder || item.description}
+                inputType={nodeInputTypeToInputType(item.renderTypeList)}
+                variablesForm={variablesForm}
+                bg={'myGray.50'}
+              />
             ))}
           </Box>
         </Box>

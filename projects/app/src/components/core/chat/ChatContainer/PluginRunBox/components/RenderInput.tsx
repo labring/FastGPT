@@ -18,8 +18,8 @@ import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import InputRender from '@/components/InputRender';
-import { formatInputType } from '@/components/InputRender/utils';
+import InputRender from '@/components/core/app/formRender';
+import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const RenderInput = () => {
@@ -276,10 +276,7 @@ const RenderInput = () => {
                       isDisabled={isDisabledInput}
                       isInvalid={errors && errors.variables && !!errors.variables[input.key]}
                       setUploading={setUploading}
-                      inputType={formatInputType({
-                        inputType: inputType,
-                        valueType: input.valueType
-                      })}
+                      inputType={nodeInputTypeToInputType(input.renderTypeList)}
                       form={variablesForm}
                       fieldName={inputKey}
                       modelList={llmModelList}

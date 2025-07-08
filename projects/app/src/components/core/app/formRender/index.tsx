@@ -7,8 +7,8 @@ import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import JSONEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
-import AIModelSelector from '../Select/AIModelSelector';
-import FileSelector from '../Select/FileSelector';
+import AIModelSelector from '../../../Select/AIModelSelector';
+import FileSelector from '../../../Select/FileSelector';
 import { useTranslation } from 'next-i18next';
 
 const InputRender = (props: InputRenderProps) => {
@@ -22,8 +22,6 @@ const InputRender = (props: InputRenderProps) => {
     placeholder,
     bg = 'white'
   } = props;
-  const { t } = useTranslation();
-
   if (customRender) {
     return <>{customRender(props)}</>;
   }
@@ -33,7 +31,7 @@ const InputRender = (props: InputRenderProps) => {
     onChange,
     isDisabled,
     isInvalid,
-    placeholder: t(placeholder as any),
+    placeholder,
     bg
   };
 

@@ -11,8 +11,8 @@ import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
-import InputRender from '@/components/InputRender';
-import { formatInputType } from '@/components/InputRender/utils';
+import InputRender from '@/components/core/app/formRender';
+import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import SecretInputModal, {
@@ -161,10 +161,7 @@ const ConfigToolModal = ({
                         <InputRender
                           {...input}
                           isInvalid={errors && Object.keys(errors).includes(input.key)}
-                          inputType={formatInputType({
-                            inputType: input.renderTypeList[0],
-                            valueType: input.valueType
-                          })}
+                          inputType={nodeInputTypeToInputType(input.renderTypeList)}
                           value={value}
                           onChange={onChange}
                         />

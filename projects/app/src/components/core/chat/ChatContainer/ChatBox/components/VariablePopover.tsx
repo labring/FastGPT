@@ -7,7 +7,8 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { useEffect } from 'react';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
-import { VariableInputItem } from './VariableInputItem';
+import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
+import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
 
 const VariablePopover = ({
   showExternalVariables = false
@@ -68,7 +69,15 @@ const VariablePopover = ({
                 {t('chat:variable_invisable_in_share')}
               </Flex>
               {externalVariableList.map((item) => (
-                <VariableInputItem key={item.id} item={item} variablesForm={variablesForm} />
+                <LabelAndFormRender
+                  {...item}
+                  key={item.key}
+                  formKey={`variables.${item.key}`}
+                  placeholder={item.description}
+                  inputType={variableInputTypeToInputType(item.type)}
+                  variablesForm={variablesForm}
+                  bg={'myGray.50'}
+                />
               ))}
             </Box>
           )}
@@ -76,7 +85,15 @@ const VariablePopover = ({
           {hasVariable && (
             <Box textAlign={'left'}>
               {variableList.map((item) => (
-                <VariableInputItem key={item.id} item={item} variablesForm={variablesForm} />
+                <LabelAndFormRender
+                  {...item}
+                  key={item.key}
+                  formKey={`variables.${item.key}`}
+                  placeholder={item.description}
+                  inputType={variableInputTypeToInputType(item.type)}
+                  variablesForm={variablesForm}
+                  bg={'myGray.50'}
+                />
               ))}
             </Box>
           )}
