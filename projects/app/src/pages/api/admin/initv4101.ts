@@ -3,7 +3,7 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { websiteSyncQueue } from './websiteSync';
+import { websiteSyncQueue } from './initv494';
 import {
   upsertDatasetSyncJobScheduler,
   addDatasetSyncJob
