@@ -99,9 +99,20 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           time: variables.cTime
         },
         onStreamData: (data: any) => {
-          if (workflowStreamResponse && data.type === 'data' && data.data?.content) {
+          if (workflowStreamResponse && data.data.type === 'answer' && data.data?.content) {
             workflowStreamResponse({
               event: SseResponseEventEnum.answer,
+              data: textAdaptGptResponse({
+                text: data.data.content
+              })
+            });
+          } else if (
+            workflowStreamResponse &&
+            data.data.type === 'fastAnswer' &&
+            data.data?.content
+          ) {
+            workflowStreamResponse({
+              event: SseResponseEventEnum.fastAnswer,
               data: textAdaptGptResponse({
                 text: data.data.content
               })
