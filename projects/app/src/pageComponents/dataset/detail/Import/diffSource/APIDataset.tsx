@@ -1,6 +1,6 @@
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { Box, Button, Checkbox, Flex } from '@chakra-ui/react';
@@ -179,7 +179,7 @@ const CustomAPIFileInput = () => {
             </Box>
           )}
         </Flex>
-        <Box flex={1} overflowY="auto" mb={16}>
+        <Box flex={1} overflowY="auto" mb={16} userSelect={'none'}>
           <Box ml={2} mt={3}>
             <Flex
               alignItems={'center'}
@@ -195,15 +195,15 @@ const CustomAPIFileInput = () => {
               {parent?.parentId ? (
                 <>{t('dataset:filename')}</>
               ) : (
-                <>
-                  <Checkbox
-                    className="checkbox"
-                    mr={2}
-                    isChecked={isSelectAll}
-                    onChange={handleSelectAll}
-                  />
-                  {t('dataset:Select_all')}
-                </>
+                <Checkbox
+                  className="checkbox"
+                  isChecked={isSelectAll}
+                  onChange={(e) => {
+                    handleSelectAll();
+                  }}
+                >
+                  <Box>{t('dataset:Select_all')}</Box>
+                </Checkbox>
               )}
             </Flex>
 
