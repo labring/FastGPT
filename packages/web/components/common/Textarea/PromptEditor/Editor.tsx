@@ -43,7 +43,9 @@ export default function Editor({
   onBlur,
   value,
   placeholder = '',
-  bg = 'white'
+  bg = 'white',
+
+  isInvalid
 }: {
   minH?: number;
   maxH?: number;
@@ -57,6 +59,8 @@ export default function Editor({
   value?: string;
   placeholder?: string;
   bg?: string;
+
+  isInvalid?: boolean;
 }) {
   const [key, setKey] = useState(getNanoid(6));
   const [_, startSts] = useTransition();
@@ -91,7 +95,7 @@ export default function Editor({
         <PlainTextPlugin
           contentEditable={
             <ContentEditable
-              className={styles.contentEditable}
+              className={isInvalid ? styles.contentEditable_invalid : styles.contentEditable}
               style={{
                 minHeight: `${minH}px`,
                 maxHeight: `${maxH}px`

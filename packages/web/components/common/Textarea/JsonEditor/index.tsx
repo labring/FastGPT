@@ -230,12 +230,24 @@ const JSONEditor = ({
 
   return (
     <Box
-      borderWidth={isInvalid ? '2px' : '1px'}
-      borderRadius={'md'}
+      borderWidth={'1px'}
+      borderRadius={'sm'}
       borderColor={isInvalid ? 'red.500' : 'myGray.200'}
       py={2}
       height={height}
       position={'relative'}
+      transition={'border-color 0.1s ease-in-out, box-shadow 0.1s ease-in-out'}
+      _focusWithin={
+        isInvalid
+          ? {
+              borderColor: 'red.500',
+              boxShadow: '0px 0px 0px 2.4px rgba(244, 69, 46, 0.15)'
+            }
+          : {
+              borderColor: 'primary.600',
+              boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
+            }
+      }
       {...props}
     >
       {resize && (
@@ -291,6 +303,19 @@ const JSONEditor = ({
       >
         {placeholder}
       </Box>
+      {isDisabled && (
+        <Box
+          position="absolute"
+          top={0}
+          left={0}
+          right={0}
+          bottom={0}
+          bg="rgba(255, 255, 255, 0.4)"
+          borderRadius="sm"
+          zIndex={1}
+          cursor="not-allowed"
+        />
+      )}
     </Box>
   );
 };

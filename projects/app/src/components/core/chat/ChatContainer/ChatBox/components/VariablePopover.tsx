@@ -6,8 +6,8 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { useEffect } from 'react';
-import { ExternalVariableInputItem, VariableInputItem } from './VariableInput';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
+import { VariableInputItem } from './VariableInputItem';
 
 const VariablePopover = ({
   showExternalVariables = false
@@ -68,11 +68,7 @@ const VariablePopover = ({
                 {t('chat:variable_invisable_in_share')}
               </Flex>
               {externalVariableList.map((item) => (
-                <ExternalVariableInputItem
-                  key={item.id}
-                  item={item}
-                  variablesForm={variablesForm}
-                />
+                <VariableInputItem key={item.id} item={item} variablesForm={variablesForm} />
               ))}
             </Box>
           )}
