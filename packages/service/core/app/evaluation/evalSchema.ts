@@ -25,7 +25,7 @@ const EvaluationSchema = new Schema({
     ref: AppCollectionName,
     required: true
   },
-  agentModel: {
+  evalModal: {
     type: String,
     required: true
   },
@@ -35,17 +35,14 @@ const EvaluationSchema = new Schema({
   },
   createTime: {
     type: Date,
-    required: true
+    required: true,
+    default: () => new Date()
   },
   finishTime: Date,
   score: Number
 });
 
-try {
-  EvaluationSchema.index({ teamId: 1 });
-} catch (error) {
-  console.log(error);
-}
+EvaluationSchema.index({ teamId: 1 });
 
 export const MongoEvaluation = getMongoModel<EvaluationSchemaType>(
   EvaluationCollectionName,

@@ -41,12 +41,7 @@ const EvalItemSchema = new Schema({
   score: Number
 });
 
-try {
-  EvalItemSchema.index({ evalId: 1 });
-  EvalItemSchema.index({ evalId: 1, status: 1 });
-} catch (error) {
-  console.log(error);
-}
+EvalItemSchema.index({ evalId: 1, status: 1 });
 
 export const MongoEvalItem = getMongoModel<EvalItemSchemaType>(
   EvalItemCollectionName,

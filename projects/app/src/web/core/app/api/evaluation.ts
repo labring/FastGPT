@@ -1,28 +1,18 @@
+import { DELETE, POST } from '@/web/common/api/request';
 import type {
   deleteEvaluationQuery,
-  deleteEvaluationResponse
-} from '@/pages/api/core/app/evaluation/delete';
-import type {
+  deleteEvaluationResponse,
   deleteItemQuery,
-  deleteItemResponse
-} from '@/pages/api/core/app/evaluation/deleteItem';
-import type {
-  listEvaluationsBody,
-  listEvaluationsResponse
-} from '@/pages/api/core/app/evaluation/list';
-import type {
+  deleteItemResponse,
   listEvalItemsBody,
-  listEvalItemsResponse
-} from '@/pages/api/core/app/evaluation/listItems';
-import type {
+  listEvalItemsResponse,
+  listEvaluationsBody,
+  listEvaluationsResponse,
   rerunEvalItemBody,
-  rerunEvalItemResponse
-} from '@/pages/api/core/app/evaluation/rerunItem';
-import type {
+  rerunEvalItemResponse,
   updateEvalItemBody,
   updateEvalItemResponse
-} from '@/pages/api/core/app/evaluation/updateItem';
-import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
+} from '@fastgpt/global/core/app/evaluation/api';
 
 export const postCreateEvaluation = ({
   file,
@@ -41,7 +31,7 @@ export const postCreateEvaluation = ({
   formData.append('file', file, encodeURIComponent(file.name));
   formData.append('data', JSON.stringify({ name, agentModel, appId }));
 
-  return POST(`/core/app/evaluation/create`, formData, {
+  return POST(`/proApi/core/app/evaluation/create`, formData, {
     timeout: 600000,
     onUploadProgress: (e) => {
       if (!e.total) return;
@@ -56,19 +46,19 @@ export const postCreateEvaluation = ({
 };
 
 export const getEvaluationList = (data: listEvaluationsBody) =>
-  POST<listEvaluationsResponse>('/core/app/evaluation/list', data);
+  POST<listEvaluationsResponse>('/proApi/core/app/evaluation/list', data);
 
 export const deleteEvaluation = (data: deleteEvaluationQuery) =>
-  DELETE<deleteEvaluationResponse>('/core/app/evaluation/delete', data);
+  DELETE<deleteEvaluationResponse>('/proApi/core/app/evaluation/delete', data);
 
 export const getEvalItemsList = (data: listEvalItemsBody) =>
-  POST<listEvalItemsResponse>('/core/app/evaluation/listItems', data);
+  POST<listEvalItemsResponse>('/proApi/core/app/evaluation/listItems', data);
 
 export const deleteEvalItem = (data: deleteItemQuery) =>
-  DELETE<deleteItemResponse>('/core/app/evaluation/deleteItem', data);
+  DELETE<deleteItemResponse>('/proApi/core/app/evaluation/deleteItem', data);
 
 export const rerunEvalItem = (data: rerunEvalItemBody) =>
-  POST<rerunEvalItemResponse>('/core/app/evaluation/rerunItem', data);
+  POST<rerunEvalItemResponse>('/proApi/core/app/evaluation/rerunItem', data);
 
 export const updateEvalItem = (data: updateEvalItemBody) =>
-  POST<updateEvalItemResponse>('/core/app/evaluation/updateItem', data);
+  POST<updateEvalItemResponse>('/proApi/core/app/evaluation/updateItem', data);
