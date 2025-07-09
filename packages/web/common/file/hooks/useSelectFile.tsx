@@ -41,7 +41,7 @@ export const useSelectFile = (props?: {
         />
       </Box>
     ),
-    [fileType, maxCount, multiple, toast]
+    [fileType, maxCount, multiple, t, toast]
   );
 
   const onOpen = useCallback((sign?: any) => {

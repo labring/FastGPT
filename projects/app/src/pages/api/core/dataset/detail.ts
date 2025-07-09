@@ -5,7 +5,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { getWebsiteSyncDatasetStatus } from '@fastgpt/service/core/dataset/websiteSync';
+import { getDatasetSyncDatasetStatus } from '@fastgpt/service/core/dataset/datasetSync';
 import { DatasetStatusEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
 
@@ -31,17 +31,8 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
     per: ReadPermissionVal
   });
 
-  const { status, errorMsg } = await (async () => {
-    if (dataset.type === DatasetTypeEnum.websiteDataset) {
-      return await getWebsiteSyncDatasetStatus(datasetId);
-    }
+  const { status, errorMsg } = await getDatasetSyncDatasetStatus(datasetId);
 
-    return {
-      status: DatasetStatusEnum.active,
-      errorMsg: undefined
-    };
-  })();
-  console.log(filterApiDatasetServerPublicData(dataset.apiDatasetServer));
   return {
     ...dataset,
     status,
