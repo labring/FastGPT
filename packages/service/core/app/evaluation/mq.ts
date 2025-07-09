@@ -20,7 +20,6 @@ export const evaluationQueue = getQueue<EvaluationJobData>(QueueNames.evaluation
 export const getEvaluationWorker = (processor: Processor<EvaluationJobData>) => {
   return getWorker<EvaluationJobData>(QueueNames.evaluation, processor, {
     removeOnFail: {
-      age: 15 * 24 * 60 * 60,
       count: 1000
     },
     concurrency: Number(process.env.EVALUATION_MAX_PROCESS) || 3

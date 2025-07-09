@@ -28,18 +28,20 @@ import {
 } from '@/web/core/app/api/evaluation';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { downloadFetch } from '@/web/common/system/utils';
-import type { deleteItemQuery } from '@/pages/api/core/app/evaluation/deleteItem';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
-import { type evaluationType } from '@/pages/api/core/app/evaluation/list';
 import { type TFunction } from 'i18next';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { type rerunEvalItemBody } from '@/pages/api/core/app/evaluation/rerunItem';
-import type { updateEvalItemBody } from '@/pages/api/core/app/evaluation/updateItem';
 import { useForm } from 'react-hook-form';
 import {
   EvaluationStatusMap,
   EvaluationStatusEnum
 } from '@fastgpt/global/core/app/evaluation/constants';
+import type { evaluationType, listEvalItemsItem } from '@fastgpt/global/core/app/evaluation/type';
+import type {
+  deleteItemQuery,
+  rerunEvalItemBody,
+  updateEvalItemBody
+} from '@fastgpt/global/core/app/evaluation/api';
 
 const formatEvaluationStatus = (item: { status: number; errorMessage?: string }, t: TFunction) => {
   const statusConfig = {
@@ -101,11 +103,11 @@ const EvaluationDetailModal = ({
     },
     pollingInterval: 5000
   });
-  const evalItem = evalItemsList[seletedIndex];
+  const evalItem: listEvalItemsItem = evalItemsList[seletedIndex];
 
   const { runAsync: exportEval, loading: isDownloading } = useRequest2(async () => {
     await downloadFetch({
-      url: `/api/core/app/evaluation/exportItems?evalId=${evalDetail._id}&appId=${evalDetail.appId}`,
+      url: `/api/proApi/core/app/evaluation/exportItems?evalId=${evalDetail._id}&appId=${evalDetail.appId}`,
       filename: `${evalDetail.name}.csv`,
       body: {
         title: t('dashboard_evaluation:evaluation_export_title'),
@@ -359,7 +361,7 @@ const EvaluationDetailModal = ({
                     </Box>
                   </Flex>
                   <ScrollData px={6} w={'full'}>
-                    {evalItemsList.map((item, index) => {
+                    {evalItemsList.map((item: listEvalItemsItem, index: number) => {
                       const formattedStatus = formatEvaluationStatus(item, t);
 
                       return (

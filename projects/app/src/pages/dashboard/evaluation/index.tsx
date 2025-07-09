@@ -24,13 +24,15 @@ import { deleteEvaluation, getEvaluationList } from '@/web/core/app/api/evaluati
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import type { deleteEvaluationQuery } from '@/pages/api/core/app/evaluation/delete';
 import { useState } from 'react';
 import EvaluationDetailModal from '../../../pageComponents/app/evaluation/DetailModal';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import type { evaluationType } from '@/pages/api/core/app/evaluation/list';
+import type {
+  deleteEvaluationQuery,
+  evaluationType
+} from '@fastgpt/global/core/app/evaluation/type';
 
 const Evaluation = () => {
   const router = useRouter();
@@ -185,7 +187,7 @@ const Evaluation = () => {
                     </Thead>
                     <Tbody>
                       <Tr h={'5px'} />
-                      {evaluationList.map((item, index) => {
+                      {evaluationList.map((item: evaluationType, index: number) => {
                         return (
                           <Tr key={item._id}>
                             <Td fontWeight={'medium'} color={'myGray.900'}>
