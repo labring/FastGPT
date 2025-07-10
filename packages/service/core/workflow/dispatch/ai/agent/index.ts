@@ -74,7 +74,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   if (!fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0) {
     fileLinks = undefined;
   }
-  console.log(fileLinks, 22);
 
   const toolNodeIds = filterToolNodeIdByEdges({ nodeId, edges: runtimeEdges });
 
@@ -358,7 +357,7 @@ const getMultiInput = async ({
   };
 };
 
-/* 
+/*
 Tool call， auth add file prompt to question。
 Guide the LLM to call tool.
 */

@@ -6,7 +6,7 @@ const client = createClient({
   token: process.env.PLUGIN_TOKEN || ''
 });
 
-export async function getSystemToolList() {
+export async function APIGetSystemToolList() {
   const res = await client.tool.list();
 
   if (res.status === 200) {
@@ -26,7 +26,7 @@ export async function getSystemToolList() {
   return Promise.reject(res.body);
 }
 
-export async function runTool({
+export async function APIRunTool({
   toolId,
   inputs,
   systemVar
