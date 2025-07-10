@@ -18,10 +18,7 @@ import {
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyInput from '@/components/MyInput';
 import { type DatasetTagType } from '@fastgpt/global/core/dataset/type';
-import {
-  type ScrollListType,
-  useVirtualScrollPagination
-} from '@fastgpt/web/hooks/useScrollPagination';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { type DatasetCollectionsListItemType } from '@/global/core/dataset/type';
@@ -70,7 +67,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
       }),
     {
       onSuccess() {
-        fetchData(1);
+        refreshList();
         setSearchTagKey('');
         loadAllDatasetTags();
       },
@@ -89,7 +86,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     },
     {
       onSuccess() {
-        fetchData(1);
+        refreshList();
         setSearchTagKey('');
         loadAllDatasetTags();
       }
@@ -124,58 +121,39 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
 
   // Tags list
   const {
-    scrollDataList: renderTags,
-    totalData: collectionTags,
-    ScrollList,
-    isLoading: isRequesting,
-    fetchData,
+    data: collectionTags,
+    ScrollData,
+    refreshList,
     total: tagsTotal
-  } = useVirtualScrollPagination(getDatasetCollectionTags, {
-    refreshDeps: [''],
-    // debounceWait: 300,
-
-    itemHeight: 56,
-    overscan: 10,
-
+  } = useScrollPagination(getDatasetCollectionTags, {
     pageSize: 10,
-    defaultParams: {
+    params: {
       datasetId: datasetDetail._id,
-      searchText: ''
-    }
+      searchText
+    },
+    refreshDeps: [searchText],
+    EmptyTip: <EmptyTip text={t('dataset:dataset.no_tags')} />
   });
 
   // Collections list
-  const {
-    scrollDataList: collectionsList,
-    ScrollList: ScrollListCollections,
-    isLoading: collectionsListLoading
-  } = useVirtualScrollPagination(getDatasetCollections, {
-    refreshDeps: [searchText],
-    // debounceWait: 300,
-
-    itemHeight: 37,
-    overscan: 10,
-
-    pageSize: 30,
-    defaultParams: {
-      datasetId: datasetDetail._id,
-      simple: true,
-      searchText
+  const { data: collectionsList, ScrollData: ScrollDataCollections } = useScrollPagination(
+    getDatasetCollections,
+    {
+      pageSize: 30,
+      params: {
+        datasetId: datasetDetail._id,
+        simple: true,
+        searchText
+      },
+      refreshDeps: [searchText],
+      EmptyTip: <EmptyTip text={t('dataset:dataset.no_collections')} />
     }
-  });
+  );
 
   const { data: tagUsages } = useRequest2(() => getTagUsage(datasetDetail._id), {
     manual: false,
     refreshDeps: [collections]
   });
-
-  const isLoading =
-    isRequesting ||
-    isCreateCollectionTagLoading ||
-    isDeleteCollectionTagLoading ||
-    isUpdateCollectionTagLoading ||
-    isSaveCollectionTagLoading ||
-    collectionsListLoading;
 
   return (
     <MyModal
@@ -187,7 +165,6 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
       w={'580px'}
       h={'600px'}
       closeOnOverlayClick={false}
-      isLoading={isLoading}
     >
       {currentAddTag === undefined ? (
         <>
@@ -205,6 +182,15 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                 total: tagsTotal
               })}
             </Box>
+            <MyInput
+              placeholder={t('common:Search')}
+              w={'160px'}
+              h={8}
+              mr={2}
+              onChange={(e) => {
+                setSearchText(e.target.value);
+              }}
+            />
             <Button
               size={'sm'}
               leftIcon={<MyIcon name="common/addLight" w={4} />}
@@ -229,7 +215,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                   onBlur={async () => {
                     if (newTag && !collectionTags.map((item) => item.tag).includes(newTag)) {
                       await onCreateCollectionTag(newTag);
-                      fetchData(1);
+                      refreshList();
                     }
                     setNewTag(undefined);
                   }}
@@ -237,14 +223,8 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
               </Flex>
             )}
           </Flex>
-          <ScrollList
-            px={8}
-            flex={'1 0 0'}
-            fontSize={'sm'}
-            EmptyChildren={<EmptyTip text={t('dataset:dataset.no_tags')} />}
-          >
-            {renderTags.map((listItem) => {
-              const item = listItem.data;
+          <ScrollData px={8} flex={'1 0 0'} fontSize={'sm'} pb={2}>
+            {collectionTags.map((item) => {
               const tagUsage = tagUsages?.find((tagUsage) => tagUsage.tagId === item._id);
               const collections = tagUsage?.collections || [];
               const usage = collections.length;
@@ -324,6 +304,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                       borderRadius={'sm'}
                       onClick={() => {
                         setCurrentAddTag({ ...item, collections });
+                        setSearchText('');
                       }}
                       cursor={'pointer'}
                     >
@@ -366,7 +347,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                 </Flex>
               );
             })}
-          </ScrollList>
+          </ScrollData>
         </>
       ) : (
         <AddTagToCollections
@@ -375,7 +356,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
           onSaveCollectionTag={onSaveCollectionTag}
           setSearchText={setSearchText}
           collectionsList={collectionsList}
-          ScrollListCollections={ScrollListCollections}
+          ScrollDataCollections={ScrollDataCollections}
         />
       )}
     </MyModal>
@@ -390,7 +371,7 @@ const AddTagToCollections = ({
   onSaveCollectionTag,
   setSearchText,
   collectionsList,
-  ScrollListCollections
+  ScrollDataCollections
 }: {
   currentAddTag: DatasetTagType & { collections: string[] };
   setCurrentAddTag: (tag: (DatasetTagType & { collections: string[] }) | undefined) => void;
@@ -404,11 +385,8 @@ const AddTagToCollections = ({
     collectionIds: string[];
   }) => void;
   setSearchText: (text: string) => void;
-  collectionsList: {
-    index: number;
-    data: DatasetCollectionsListItemType;
-  }[];
-  ScrollListCollections: ScrollListType;
+  collectionsList: DatasetCollectionsListItemType[];
+  ScrollDataCollections: ReturnType<typeof useScrollPagination>['ScrollData'];
 }) => {
   const { t } = useTranslation();
 
@@ -419,8 +397,7 @@ const AddTagToCollections = ({
 
   const formatCollections = useMemo(
     () =>
-      collectionsList.map((item) => {
-        const collection = item.data;
+      collectionsList.map((collection) => {
         const icon = getCollectionIcon({ type: collection.type, name: collection.name });
         return {
           id: collection._id,
@@ -488,13 +465,7 @@ const AddTagToCollections = ({
           {t('common:Save')}
         </Button>
       </Flex>
-      <ScrollListCollections
-        px={8}
-        mt={2}
-        flex={'1 0 0'}
-        fontSize={'sm'}
-        EmptyChildren={<EmptyTip text={t('dataset:dataset.no_collections')} />}
-      >
+      <ScrollDataCollections px={8} mt={2} flex={'1 0 0'} fontSize={'sm'}>
         {formatCollections.map((collection) => {
           return (
             <Flex
@@ -544,7 +515,7 @@ const AddTagToCollections = ({
             </Flex>
           );
         })}
-      </ScrollListCollections>
+      </ScrollDataCollections>
     </>
   );
 };
