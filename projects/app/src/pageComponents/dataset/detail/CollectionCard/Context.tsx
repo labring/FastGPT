@@ -16,6 +16,8 @@ import { type WebsiteConfigFormType } from './WebsiteConfig';
 
 const WebSiteConfigModal = dynamic(() => import('./WebsiteConfig'));
 
+let defaultPageNum = 1;
+
 type CollectionPageContextType = {
   openWebSyncConfirm: () => void;
   onOpenWebsiteModal: () => void;
@@ -114,6 +116,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     pageSize
   } = usePagination(getDatasetCollections, {
     pageSize: 20,
+    defaultPageNum,
     params: {
       datasetId,
       parentId,
@@ -123,6 +126,8 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     // defaultRequest: false,
     refreshDeps: [parentId, searchText, filterTags]
   });
+
+  defaultPageNum = pageNum;
 
   const contextValue: CollectionPageContextType = {
     openWebSyncConfirm: openWebSyncConfirm(syncWebsite),
