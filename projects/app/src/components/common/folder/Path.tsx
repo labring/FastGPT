@@ -38,7 +38,7 @@ const FolderPath = (props: {
   return paths.length === 0 && !!FirstPathDom ? (
     <>{FirstPathDom}</>
   ) : (
-    <Flex flex={1}>
+    <Flex flex={1} overflowX={'auto'}>
       {concatPaths.map((item, i) => {
         const clickStyles = {
           cursor: 'pointer',
@@ -57,7 +57,7 @@ const FolderPath = (props: {
               py={0.5}
               px={1.5}
               borderRadius={'md'}
-              maxW={'45vw'}
+              maxW={'164px'}
               className={'textEllipsis'}
               {...(i === concatPaths.length - 1 && concatPaths.length > 1
                 ? {
