@@ -9,7 +9,7 @@ const client = createClient({
   token: TOKEN
 });
 
-export async function getSystemToolList() {
+export async function APIGetSystemToolList() {
   const res = await client.tool.list();
 
   if (res.status === 200) {
@@ -33,4 +33,4 @@ const runToolInstance = new RunToolWithStream({
   baseUrl: BASE_URL,
   token: TOKEN
 });
-export const runSystemTool = runToolInstance.run.bind(runToolInstance);
+export const APIRunSystemTool = runToolInstance.run.bind(runToolInstance);

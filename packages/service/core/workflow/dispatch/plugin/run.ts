@@ -66,7 +66,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       });
     }
 
-    /* 
+    /*
       1. Team app
       2. Admin selected system tool
     */
