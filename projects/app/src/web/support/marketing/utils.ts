@@ -22,6 +22,14 @@ export const setBdVId = (bdVid?: string) => {
   sessionStorage.setItem('bd_vid', bdVid);
 };
 
+export const getMsclkid = () => {
+  return sessionStorage.getItem('msclkid') || undefined;
+};
+export const setMsclkid = (msclkid?: string) => {
+  if (!msclkid) return;
+  sessionStorage.setItem('msclkid', msclkid);
+};
+
 export const getUtmWorkflow = () => {
   return localStorage.getItem('utm_workflow') || undefined;
 };
