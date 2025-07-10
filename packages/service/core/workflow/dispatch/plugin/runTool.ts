@@ -41,6 +41,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     runningUserInfo,
     runningAppInfo,
     variables,
+    workflowStreamResponse,
     node: { name, avatar, toolConfig, version }
   } = props;
 
@@ -75,8 +76,6 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       };
 
       const formatToolId = tool.id.split('-')[1];
-
-      const { workflowStreamResponse } = props;
 
       const result = await runToolStream({
         baseUrl: process.env.PLUGIN_BASE_URL || '',
