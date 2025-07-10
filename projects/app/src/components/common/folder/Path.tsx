@@ -116,7 +116,7 @@ const FolderPath = (props: {
         py={0.5}
         px={1.5}
         borderRadius={'sm'}
-        maxW={'45vw'}
+        maxW={['45vw', '250px']}
         className={'textEllipsis'}
         {...(isLast && concatPaths.length > 1
           ? {
