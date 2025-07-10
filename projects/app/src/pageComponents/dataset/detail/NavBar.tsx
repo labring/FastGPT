@@ -8,7 +8,7 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
-import ParentPaths from '@/components/common/ParentPaths';
+import FolderPath from '@/components/common/folder/Path';
 import { getTrainingQueueLen } from '@/web/core/dataset/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
@@ -166,7 +166,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
             </>
           ) : (
             <Flex py={'0.38rem'} px={2} h={10} ml={0.5}>
-              <ParentPaths
+              <FolderPath
                 paths={paths}
                 onClick={(e) => {
                   router.push(`/dataset/list?parentId=${e}`);

@@ -4,7 +4,7 @@ import { Box, Flex, Button, InputGroup, InputLeftElement, Input } from '@chakra-
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { serviceSideProps } from '@/web/common/i18n/utils';
-import ParentPaths from '@/components/common/folder/Path';
+import FolderPath from '@/components/common/folder/Path';
 import List from '@/pageComponents/dataset/list/List';
 import { DatasetsContext } from './context';
 import DatasetContextProvider from './context';
@@ -108,7 +108,7 @@ const Dataset = () => {
       <Flex pt={[4, 6]} pl={3} pr={folderDetail ? [3, 6] : [3, 8]}>
         <Flex flexGrow={1} flexDirection="column">
           <Flex alignItems={'center'} justifyContent={'space-between'}>
-            <ParentPaths
+            <FolderPath
               paths={paths}
               FirstPathDom={
                 <Flex flex={1} alignItems={'center'}>
