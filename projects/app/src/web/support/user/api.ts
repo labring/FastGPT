@@ -37,6 +37,7 @@ export const postRegister = ({
   code,
   inviterId,
   bd_vid,
+  msclkid,
   fastgpt_sem
 }: AccountRegisterBody) =>
   POST<ResLogin>(`/proApi/support/user/account/register/emailAndPhone`, {
@@ -44,6 +45,7 @@ export const postRegister = ({
     code,
     inviterId,
     bd_vid,
+    msclkid,
     fastgpt_sem,
     password: hashStr(password)
   });

@@ -16,6 +16,7 @@ import {
   getBdVId,
   getFastGPTSem,
   getInviterId,
+  getMsclkid,
   getSourceDomain,
   removeFastGPTSem
 } from '@/web/support/marketing/utils';
@@ -60,6 +61,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           password,
           inviterId: getInviterId(),
           bd_vid: getBdVId(),
+          msclkid: getMsclkid(),
           fastgpt_sem: getFastGPTSem(),
           sourceDomain: getSourceDomain()
         })
