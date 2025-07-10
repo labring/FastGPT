@@ -45,6 +45,7 @@ export const iconPaths = {
   'common/download': () => import('./icons/common/download.svg'),
   'common/edit': () => import('./icons/common/edit.svg'),
   'common/editor/resizer': () => import('./icons/common/editor/resizer.svg'),
+  'common/ellipsis': () => import('./icons/common/ellipsis.svg'),
   'common/enable': () => import('./icons/common/enable.svg'),
   'common/errorFill': () => import('./icons/common/errorFill.svg'),
   'common/file/move': () => import('./icons/common/file/move.svg'),

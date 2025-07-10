@@ -219,14 +219,14 @@ function List() {
                     }
                   }}
                 >
-                  <HStack>
-                    <Avatar src={dataset.avatar} borderRadius={6} w={'28px'} />
-                    <Box flex={'1 0 0'} className="textEllipsis3" color={'myGray.900'}>
+                  <Flex w="100%">
+                    <Avatar src={dataset.avatar} borderRadius={6} w={'28px'} flexShrink={0} />
+                    <Box width="0" flex="1" className="textEllipsis" color={'myGray.900'} ml={2}>
                       {dataset.name}
                     </Box>
 
-                    <Box mr={'-1.25rem'}>
-                      {dataset.type !== DatasetTypeEnum.folder && (
+                    {dataset.type !== DatasetTypeEnum.folder && (
+                      <Box flexShrink={0} ml={2}>
                         <SideTag
                           type={dataset.type}
                           py={0.5}
@@ -234,9 +234,9 @@ function List() {
                           borderLeftRadius={'sm'}
                           borderRightRadius={0}
                         />
-                      )}
-                    </Box>
-                  </HStack>
+                      </Box>
+                    )}
+                  </Flex>
 
                   <Box
                     flex={1}
