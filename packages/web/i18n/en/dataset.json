@@ -65,6 +65,7 @@
   "dataset.No_Error": "No exception information yet",
   "dataset.Operation": "operate",
   "dataset.ReTrain": "Retrain",
+  "dataset.Retry_All": "Retry all",
   "dataset.Training Process": "Training status",
   "dataset.Training_Count": "{{count}} Group training",
   "dataset.Training_Errors": "Errors",

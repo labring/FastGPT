@@ -39,7 +39,7 @@ import MyImage from '@/components/MyImage';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import React from 'react';
 import { useToast } from '@chakra-ui/react';
-import { getErrorMessageKey } from '@fastgpt/global/common/error/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 enum TrainingStatus {
   NotStart = 'NotStart',
@@ -385,7 +385,7 @@ const ErrorView = ({
             </Tr>
           </Thead>
           <Tbody>
-            {(errorList as any[]).map((item: any, index: number) => (
+            {errorList.map((item, index) => (
               <Tr key={index}>
                 <Td py={3} px={4}>
                   {item.chunkIndex + 1}
@@ -394,8 +394,8 @@ const ErrorView = ({
                   {TrainingText[String(item.mode)] || ''}
                 </Td>
                 <Td py={3} px={4} maxW={50}>
-                  <MyTooltip label={t(getErrorMessageKey(item.errorMsg))}>
-                    {t(getErrorMessageKey(item.errorMsg))}
+                  <MyTooltip label={t(getErrText(item.errorMsg))}>
+                    {t(getErrText(item.errorMsg))}
                   </MyTooltip>
                 </Td>
                 <Td py={3} px={4}>
@@ -550,9 +550,8 @@ const TrainingStates = ({
     if (!errorList.length) return;
     setRetrying(true);
     try {
-      await Promise.all(
-        errorList.map((item) => updateTrainingData({ datasetId, collectionId, dataId: item._id }))
-      );
+      // 不传 dataId 表示重试所有错误数据
+      await updateTrainingData({ datasetId, collectionId });
       refreshErrorList();
       refreshTrainingDetail();
     } catch (e) {
@@ -594,14 +593,8 @@ const TrainingStates = ({
             ]}
           />
           {tab === 'errors' && errorList.length > 0 && !errorLoading && (
-            <Button
-              colorScheme="primary"
-              size="sm"
-              isDisabled={retrying}
-              isLoading={retrying}
-              onClick={handleRetryAll}
-            >
-              全部重试
+            <Button colorScheme="primary" size="sm" isLoading={retrying} onClick={handleRetryAll}>
+              {t('dataset:dataset.Retry_All', { defaultValue: '全部重试' })}
             </Button>
           )}
         </Flex>
