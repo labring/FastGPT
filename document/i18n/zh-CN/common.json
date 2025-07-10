@@ -1,0 +1,14 @@
+{
+  "Documentation": "文档",
+  "nav": {
+    "home": "首页",
+    "docs": "文档",
+    "blog": "博客",
+    "about": "关于"
+  },
+  "footer": {
+    "links": "链接",
+    "community": "社区",
+    "resources": "资源"
+  }
+} 
