@@ -1,11 +1,7 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type {
-  SseResponseEventEnum
-} from '@fastgpt/global/core/workflow/runtime/constants';
-import {
-  DispatchNodeResponseKeyEnum
-} from '@fastgpt/global/core/workflow/runtime/constants';
+import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   type DispatchNodeResultType,
   type ModuleDispatchProps
