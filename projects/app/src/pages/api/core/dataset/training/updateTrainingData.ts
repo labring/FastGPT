@@ -8,7 +8,7 @@ import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 export type updateTrainingDataBody = {
   datasetId: string;
   collectionId: string;
-  dataId: string;
+  dataId?: string; // 改为可选，不传则重试所有错误数据
   q?: string;
   a?: string;
   chunkIndex?: number;
@@ -31,6 +31,25 @@ async function handler(
     per: WritePermissionVal
   });
 
+  // 如果没有传 dataId，则重试该集合下的所有错误数据
+  if (!dataId) {
+    await MongoDatasetTraining.updateMany(
+      {
+        teamId,
+        datasetId,
+        collectionId,
+        errorMsg: { $exists: true, $ne: null }
+      },
+      {
+        $unset: { errorMsg: '' },
+        retryCount: 3,
+        lockTime: new Date('2000')
+      }
+    );
+    return {};
+  }
+
+  // 单个数据重试逻辑
   const data = await MongoDatasetTraining.findOne({ teamId, datasetId, _id: dataId });
 
   if (!data) {
@@ -77,3 +96,5 @@ async function handler(
 }
 
 export default NextAPI(handler);
+
+export { handler };
