@@ -1,0 +1,5 @@
+{
+    "title": "FastGPT Docs",
+    "root": true,
+    "pages": ["intro.en", "guide", "use-cases", "development", "FAQ", "shopping_cart", "agreement", "community"]
+} 
