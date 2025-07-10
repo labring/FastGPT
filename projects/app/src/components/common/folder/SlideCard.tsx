@@ -51,7 +51,14 @@ const FolderSlideCard = ({
       <Box>
         <HStack>
           <MyIcon name={FolderIcon} w={'1.5rem'} />
-          <Box color={'myGray.900'}>{name}</Box>
+          <Box
+            color={'myGray.900'}
+            overflow={'hidden'}
+            textOverflow={'ellipsis'}
+            whiteSpace={'nowrap'}
+          >
+            {name}
+          </Box>
           <MyIcon
             name={'edit'}
             _hover={{ color: 'primary.600' }}

@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import React, { type Dispatch, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { Box } from '@chakra-ui/react';
-import ParentPaths from '@/components/common/ParentPaths';
+import FolderPath from '@/components/common/folder/Path';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
@@ -37,7 +37,7 @@ const DatasetSelectContainer = ({
       iconSrc="/imgs/workflow/db.png"
       title={
         <Box fontWeight={'normal'}>
-          <ParentPaths
+          <FolderPath
             paths={paths.map((path, i) => ({
               parentId: path.parentId,
               parentName: path.parentName

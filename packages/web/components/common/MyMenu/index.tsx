@@ -326,6 +326,7 @@ const MyMenu = ({
                       <Box
                         w={'100%'}
                         color={child.description ? 'myGray.900' : 'inherit'}
+                        pr={child.icon ? 4 : 0}
                         {...sizeMapStyle[size].labelStyle}
                       >
                         {child.label}

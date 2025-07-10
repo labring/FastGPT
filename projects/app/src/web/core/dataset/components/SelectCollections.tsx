@@ -1,6 +1,6 @@
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import ParentPaths from '@/components/common/ParentPaths';
+import FolderPath from '@/components/common/folder/Path';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getDatasetCollectionPathById, getDatasetCollections } from '@/web/core/dataset/api';
 import { Box, Flex, ModalFooter, Button, useTheme, Grid, Card, ModalBody } from '@chakra-ui/react';
@@ -114,7 +114,7 @@ const SelectCollections = ({
       iconSrc="/imgs/modal/move.svg"
       title={
         <Box>
-          <ParentPaths
+          <FolderPath
             paths={paths.map((path) => ({
               parentId: path.parentId,
               parentName: path.parentName

@@ -22,7 +22,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import EditFolderModal, { useEditFolder } from '../../EditFolderModal';
 import { TabEnum } from '../../../../pages/dataset/detail/index';
-import ParentPath from '@/components/common/ParentPaths';
+import FolderPath from '@/components/common/folder/Path';
 import dynamic from 'next/dynamic';
 
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
@@ -117,7 +117,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
     <MyBox display={['block', 'flex']} alignItems={'center'} gap={2}>
       <HStack flex={1}>
         <Box flex={1} fontWeight={'500'} color={'myGray.900'} whiteSpace={'nowrap'}>
-          <ParentPath
+          <FolderPath
             paths={paths.map((path, i) => ({
               parentId: path.parentId,
               parentName: i === paths.length - 1 ? `${path.parentName}` : path.parentName
