@@ -113,7 +113,17 @@ const PreviewData = () => {
                   bg: 'primary.50 !important'
                 })}
                 _notLast={{ mb: 3 }}
-                onClick={() => setPreviewFile(source)}
+                onClick={() => {
+                  if (source.apiFile?.type === 'folder') {
+                    toast({
+                      status: 'warning',
+                      title: t('dataset:preview_chunk_folder_warning')
+                    });
+                    return;
+                  } else {
+                    setPreviewFile(source);
+                  }
+                }}
               >
                 <MyIcon name={source.icon as any} w={'1.25rem'} />
                 <Box ml={1} flex={'1 0 0'} wordBreak={'break-all'} fontSize={'sm'}>

@@ -45,14 +45,15 @@ export type YuqueServer = {
 
 ### 2. 创建 Hook 文件
 
-每个第三方文档库都会采用 Hook 的方式来实现一套 API 接口的维护，Hook 里包含 4 个函数需要完成。
+每个第三方文档库都会采用 Hook 的方式来实现一套 API 接口的维护，Hook 里包含 5 个函数需要完成。
 
 - 在`FastGPT\packages\service\core\dataset\apiDataset\`下创建一个文档库的文件夹，然后在文件夹下创建一个`api.ts`文件
-- 在`api.ts`文件中，需要完成 4 个函数的定义，分别是：
+- 在`api.ts`文件中，需要完成 5 个函数的定义，分别是：
   - `listFiles`：获取文件列表
   - `getFileContent`：获取文件内容/文件链接
   - `getFileDetail`：获取文件详情信息
   - `getFilePreviewUrl`：获取原文预览地址
+  - `getFileId`: 获取原文件真实Id
 
 ### 3. 添加知识库类型
 

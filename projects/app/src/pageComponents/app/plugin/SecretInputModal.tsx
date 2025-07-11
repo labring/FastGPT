@@ -1,4 +1,4 @@
-import { Box, Button, Flex, HStack, Input, ModalBody, ModalFooter, Switch } from '@chakra-ui/react';
+import { Box, Button, Flex, HStack, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
 import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
@@ -7,12 +7,12 @@ import React, { useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import type { FlowNodeInputItemType, InputConfigType } from '@fastgpt/global/core/workflow/type/io';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import IconButton from '@/pageComponents/account/team/OrgManage/IconButton';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
-import MySelect from '@fastgpt/web/components/common/MySelect';
+import InputRender from '@/components/core/app/formRender';
+import { secretInputTypeToInputType } from '@/components/core/app/formRender/utils';
 
 export type ToolParamsFormType = {
   type: SystemToolInputTypeEnum;
@@ -38,24 +38,25 @@ const SecretInputModal = ({
   const [editIndex, setEditIndex] = useState<number>();
   const inputList = inputConfig?.inputList || [];
 
-  const { register, watch, setValue, getValues, handleSubmit } = useForm<ToolParamsFormType>({
-    defaultValues: (() => {
-      const defaultValue = inputConfig.value;
-      return (
-        defaultValue || {
-          type: hasSystemSecret ? SystemToolInputTypeEnum.system : SystemToolInputTypeEnum.manual,
-          value:
-            inputList?.reduce(
-              (acc, item) => {
-                acc[item.key] = { secret: '', value: '' };
-                return acc;
-              },
-              {} as Record<string, InputConfigType['value']>
-            ) || {}
-        }
-      );
-    })()
-  });
+  const { register, watch, setValue, getValues, handleSubmit, control } =
+    useForm<ToolParamsFormType>({
+      defaultValues: (() => {
+        const defaultValue = inputConfig.value;
+        return (
+          defaultValue || {
+            type: hasSystemSecret ? SystemToolInputTypeEnum.system : SystemToolInputTypeEnum.manual,
+            value:
+              inputList?.reduce(
+                (acc, item) => {
+                  acc[item.key] = { secret: '', value: '' };
+                  return acc;
+                },
+                {} as Record<string, InputConfigType['value']>
+              ) || {}
+          }
+        );
+      })()
+    });
   const configType = watch('type');
 
   return (
@@ -147,15 +148,7 @@ const SecretInputModal = ({
                               {item.description && <QuestionTip label={item.description} />}
                               <Box flex={'1 0 0'} />
                             </Flex>
-                            {item.inputType === 'input' && (
-                              <Input
-                                bg={'myGray.50'}
-                                {...register(inputKey, {
-                                  required: item.required
-                                })}
-                              />
-                            )}
-                            {item.inputType === 'secret' && (
+                            {item.inputType === 'secret' ? (
                               <Flex alignItems={'center'}>
                                 {showInput ? (
                                   <Input
@@ -191,33 +184,22 @@ const SecretInputModal = ({
                                   </>
                                 )}
                               </Flex>
-                            )}
-                            {item.inputType === 'switch' && (
-                              <Box>
-                                <Switch
-                                  {...register(inputKey, {
-                                    required: item.required
-                                  })}
-                                />
-                              </Box>
-                            )}
-                            {item.inputType === 'numberInput' && (
-                              <MyNumberInput
-                                bg={'myGray.50'}
-                                h={'36px'}
-                                register={register}
+                            ) : (
+                              <Controller
+                                control={control}
                                 name={inputKey}
-                              />
-                            )}
-                            {item.inputType === 'select' && (
-                              <MySelect
-                                h={'36px'}
-                                bg={'myGray.50'}
-                                value={value?.value}
-                                list={item.list || []}
-                                onChange={(e) => {
-                                  setValue(inputKey, e);
-                                }}
+                                rules={{ required: item.required }}
+                                render={({ field: { onChange, value }, fieldState: { error } }) => (
+                                  <InputRender
+                                    inputType={secretInputTypeToInputType(item.inputType)}
+                                    value={value}
+                                    onChange={onChange}
+                                    placeholder={item.description}
+                                    bg={'myGray.50'}
+                                    list={item.list}
+                                    isInvalid={!!error}
+                                  />
+                                )}
                               />
                             )}
                           </Box>

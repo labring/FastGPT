@@ -1,5 +1,5 @@
 import type {
-  APIFileItem,
+  APIFileItemType,
   ApiFileReadContentResponse,
   YuqueServer,
   ApiDatasetDetailResponse
@@ -106,7 +106,7 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
       if (yuqueServer.basePath) parentId = yuqueServer.basePath;
     }
 
-    let files: APIFileItem[] = [];
+    let files: APIFileItemType[] = [];
 
     if (!parentId) {
       const limit = 100;
@@ -133,7 +133,8 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
 
       files = allData.map((item) => {
         return {
-          id: item.id,
+          id: String(item.id),
+          rawId: String(item.id),
           name: item.name,
           parentId: null,
           type: 'folder',
@@ -144,7 +145,8 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
         };
       });
     } else {
-      if (typeof parentId === 'number') {
+      const numParentId = Number(parentId);
+      if (!isNaN(numParentId)) {
         const data = await request<YuqueTocListResponse>(
           `/api/v2/repos/${parentId}/toc`,
           {},
@@ -155,6 +157,7 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
           .filter((item) => !item.parent_uuid && item.type !== 'LINK')
           .map((item) => ({
             id: `${parentId}-${item.id}-${item.uuid}`,
+            rawId: String(item.uuid),
             name: item.title,
             parentId: item.parent_uuid,
             type: item.type === 'TITLE' ? ('folder' as const) : ('file' as const),
@@ -167,11 +170,11 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
       } else {
         const [repoId, uuid, parentUuid] = parentId.split(/-(.*?)-(.*)/);
         const data = await request<YuqueTocListResponse>(`/api/v2/repos/${repoId}/toc`, {}, 'GET');
-
         return data
           .filter((item) => item.parent_uuid === parentUuid)
           .map((item) => ({
             id: `${repoId}-${item.id}-${item.uuid}`,
+            rawId: String(item.uuid),
             name: item.title,
             parentId: item.parent_uuid,
             type: item.type === 'TITLE' ? ('folder' as const) : ('file' as const),
@@ -206,6 +209,10 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
       {},
       'GET'
     );
+
+    if (!data.title) {
+      return Promise.reject('Cannot find the file');
+    }
 
     return {
       title: data.title,
@@ -266,8 +273,13 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
       }
       return {
         id: file.id,
+        rawId: file.id,
         name: file.name,
-        parentId: null
+        parentId: null,
+        type: file.type === 'TITLE' ? ('folder' as const) : ('file' as const),
+        updateTime: file.updated_at,
+        createTime: file.created_at,
+        hasChild: true
       };
     } else {
       const [repoId, parentUuid, fileId] = apiFileId.split(/-(.*?)-(.*)/);
@@ -283,16 +295,35 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
       if (file.parent_uuid) {
         return {
           id: file.id,
+          rawId: file.id,
           name: file.title,
-          parentId: parentId
+          parentId: parentId,
+          type: file.type === 'TITLE' ? ('folder' as const) : ('file' as const),
+          updateTime: new Date(),
+          createTime: new Date(),
+          hasChild: !!file.child_uuid
         };
       } else {
         return {
           id: file.id,
+          rawId: file.id,
           name: file.title,
-          parentId: repoId
+          parentId: repoId,
+          type: file.type === 'TITLE' ? ('folder' as const) : ('file' as const),
+          updateTime: new Date(),
+          createTime: new Date(),
+          hasChild: !!file.child_uuid
         };
       }
+    }
+  };
+
+  const getFileRawId = (fileId: string) => {
+    const [repoId, parentUuid, fileUuid] = fileId.split(/-(.*?)-(.*)/);
+    if (fileUuid) {
+      return `${fileUuid}`;
+    } else {
+      return `${repoId}`;
     }
   };
 
@@ -300,6 +331,7 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
     getFileContent,
     listFiles,
     getFilePreviewUrl,
-    getFileDetail
+    getFileDetail,
+    getFileRawId
   };
 };

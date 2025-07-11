@@ -382,14 +382,31 @@ const NumberInput = numInputMultiStyle({
         bg: 'myGray.50',
         border: '1px solid',
         borderColor: 'myGray.200',
+        borderRadius: 'sm',
+        transition: 'border-color 0.1s ease-in-out, box-shadow 0.1s ease-in-out',
+        _hover: {
+          borderColor: 'primary.300'
+        },
         _focus: {
-          borderColor: 'primary.500 !important',
+          borderColor: 'primary.600 !important',
           boxShadow: `${shadowLight} !important`,
           bg: 'white'
         },
         _disabled: {
           color: 'myGray.400 !important',
           bg: 'myWhite.300 !important'
+        },
+        _invalid: {
+          borderColor: 'red.500 !important',
+          borderWidth: '1px !important',
+          boxShadow: 'none !important',
+          _hover: {
+            borderColor: 'red.400 !important'
+          },
+          _focus: {
+            borderColor: 'red.600 !important',
+            boxShadow: '0px 0px 0px 2.4px rgba(244, 69, 46, 0.15) !important'
+          }
         }
       },
       stepper: {
