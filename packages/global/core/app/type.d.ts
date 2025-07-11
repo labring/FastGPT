@@ -152,6 +152,7 @@ export type VariableItemType = {
   required: boolean;
   description: string;
   valueType?: WorkflowIOValueTypeEnum;
+  hidden?: boolean;
   defaultValue?: any;
 
   // input
