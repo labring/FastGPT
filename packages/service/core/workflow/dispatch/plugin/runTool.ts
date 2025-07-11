@@ -10,7 +10,8 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { MCPClient } from '../../../app/mcp';
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
-import { runToolStream, type StreamDataAnswerTypeEnum } from '@fastgpt-sdk/plugin';
+import { StreamDataAnswerTypeEnum } from '@fastgpt-sdk/plugin';
+import { runPluginToolStream } from '../../../app/tool/api';
 import { MongoSystemPlugin } from '../../../app/plugin/systemPluginSchema';
 import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
@@ -78,12 +79,10 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       const formatToolId = tool.id.split('-')[1];
 
       const result = await (async () => {
-        const res = await runToolStream({
-          baseUrl: process.env.PLUGIN_BASE_URL || '',
-          authtoken: process.env.PLUGIN_TOKEN || '',
-          toolId: formatToolId,
+        const res = await runPluginToolStream(
+          formatToolId,
           inputs,
-          systemVar: {
+          {
             user: {
               id: variables.userId,
               teamId: runningUserInfo.teamId,
@@ -99,8 +98,13 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
             },
             time: variables.cTime
           },
-          onStreamData: (type: `${SseResponseEventEnum}`, data: string) => {
-            if (workflowStreamResponse && data) {
+          (type, data) => {
+            if (
+              workflowStreamResponse &&
+              data &&
+              (type === StreamDataAnswerTypeEnum.Answer ||
+                type === StreamDataAnswerTypeEnum.FastAnswer)
+            ) {
               workflowStreamResponse({
                 event: type as SseResponseEventEnum,
                 data: textAdaptGptResponse({
@@ -109,11 +113,13 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
               });
             }
           }
-        });
-        if ('output' in res) {
-          return res.output;
+        );
+        if ('error' in res) {
+          return Promise.reject(res.error);
         }
-        return Promise.reject(new Error(res.error));
+        if (!res.output) return {};
+
+        return res.output;
       })();
 
       const usagePoints = await (async () => {
