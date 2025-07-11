@@ -73,7 +73,7 @@ const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal')
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
 const Empty = dynamic(() => import('./components/Empty'));
 const WelcomeBox = dynamic(() => import('./components/WelcomeBox'));
-const VariableInput = dynamic(() => import('./components/VariableInput'));
+const VariableInputForm = dynamic(() => import('./components/VariableInputForm'));
 
 enum FeedbackTypeEnum {
   user = 'user',
@@ -969,7 +969,7 @@ const ChatBox = ({
           {/* variable input */}
           {(!!variableList?.length || !!externalVariableList?.length) && (
             <Box id="variable-input">
-              <VariableInput
+              <VariableInputForm
                 chatStarted={chatStarted}
                 chatForm={chatForm}
                 showExternalVariables={chatType === 'chat'}

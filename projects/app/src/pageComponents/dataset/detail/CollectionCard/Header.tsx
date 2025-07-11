@@ -57,7 +57,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
     getData,
     pageNum,
     onOpenWebsiteModal,
-    openWebSyncConfirm
+    openDatasetSyncConfirm
   } = useContextSelector(CollectionPageContext, (v) => v);
 
   const { data: paths = [] } = useRequest2(() => getDatasetCollectionPathById(parentId), {
@@ -325,10 +325,10 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                       >
                         {t('dataset:params_config')}
                       </Button>
-                      {!hasTrainingData && (
+                      {!hasTrainingData && feConfigs?.isPlus && (
                         <Button
                           variant={'whitePrimary'}
-                          onClick={openWebSyncConfirm}
+                          onClick={openDatasetSyncConfirm}
                           leftIcon={<Icon name="common/confirm/restoreTip" w={'1rem'} />}
                         >
                           {t('dataset:immediate_sync')}
@@ -454,31 +454,90 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
           )}
           {/* apiDataset */}
           {datasetDetail?.type && ApiDatasetTypeMap[datasetDetail.type] && (
-            <Flex
-              px={3.5}
-              py={2}
-              borderRadius={'sm'}
-              cursor={'pointer'}
-              bg={'primary.500'}
-              overflow={'hidden'}
-              color={'white'}
-              onClick={() =>
-                router.replace({
-                  query: {
-                    ...router.query,
-                    currentTab: TabEnum.import,
-                    source: ImportDataSourceEnum.apiDataset
-                  }
-                })
-              }
-            >
-              <Flex h={'20px'} alignItems={'center'}>
-                <MyIcon name={'common/folderImport'} mr={2} w={'18px'} h={'18px'} color={'white'} />
-              </Flex>
-              <Box h={'20px'} fontSize={'sm'} fontWeight={'500'}>
-                {t('dataset:add_file')}
-              </Box>
-            </Flex>
+            <>
+              {datasetDetail.status === DatasetStatusEnum.active && (
+                <HStack gap={2}>
+                  <Flex
+                    px={3.5}
+                    py={2}
+                    borderRadius={'sm'}
+                    cursor={'pointer'}
+                    bg={'primary.500'}
+                    overflow={'hidden'}
+                    color={'white'}
+                    onClick={() =>
+                      router.replace({
+                        query: {
+                          ...router.query,
+                          currentTab: TabEnum.import,
+                          source: ImportDataSourceEnum.apiDataset
+                        }
+                      })
+                    }
+                  >
+                    <Flex h={'20px'} alignItems={'center'}>
+                      <MyIcon
+                        name={'common/folderImport'}
+                        mr={2}
+                        w={'18px'}
+                        h={'18px'}
+                        color={'white'}
+                      />
+                    </Flex>
+                    <Box h={'20px'} fontSize={'sm'} fontWeight={'500'}>
+                      {t('dataset:add_file')}
+                    </Box>
+                  </Flex>
+                  {!hasTrainingData && feConfigs?.isPlus && (
+                    <Button
+                      variant={'whitePrimary'}
+                      onClick={openDatasetSyncConfirm}
+                      leftIcon={<Icon name="common/confirm/restoreTip" w={'1rem'} />}
+                    >
+                      {t('dataset:immediate_sync')}
+                    </Button>
+                  )}
+                </HStack>
+              )}
+              {datasetDetail.status === DatasetStatusEnum.syncing && (
+                <MyTag
+                  colorSchema="purple"
+                  showDot
+                  px={3}
+                  h={'36px'}
+                  DotStyles={{
+                    w: '8px',
+                    h: '8px',
+                    animation: 'zoomStopIcon 0.5s infinite alternate'
+                  }}
+                >
+                  {t('common:core.dataset.status.syncing')}
+                </MyTag>
+              )}
+              {datasetDetail.status === DatasetStatusEnum.waiting && (
+                <MyTag
+                  colorSchema="gray"
+                  showDot
+                  px={3}
+                  h={'36px'}
+                  DotStyles={{
+                    w: '8px',
+                    h: '8px',
+                    animation: 'zoomStopIcon 0.5s infinite alternate'
+                  }}
+                >
+                  {t('common:core.dataset.status.waiting')}
+                </MyTag>
+              )}
+              {datasetDetail.status === DatasetStatusEnum.error && (
+                <MyTag colorSchema="red" showDot px={3} h={'36px'}>
+                  <HStack spacing={1}>
+                    <Box>{t('dataset:status_error')}</Box>
+                    <QuestionTip color={'red.500'} label={datasetDetail.errorMsg} />
+                  </HStack>
+                </MyTag>
+              )}
+            </>
           )}
         </Box>
       )}

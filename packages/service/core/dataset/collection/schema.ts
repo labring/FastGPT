@@ -78,11 +78,10 @@ const DatasetCollectionSchema = new Schema({
   },
 
   forbid: Boolean,
-  // next sync time
-  nextSyncTime: Date,
 
   // Parse settings
   customPdfParse: Boolean,
+  apiFileParentId: String,
 
   // Chunk settings
   ...ChunkSettings
@@ -111,16 +110,6 @@ try {
   DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, tags: 1 });
   // create time filter
   DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, createTime: 1 });
-
-  // next sync time filter
-  DatasetCollectionSchema.index(
-    { type: 1, nextSyncTime: -1 },
-    {
-      partialFilterExpression: {
-        nextSyncTime: { $exists: true }
-      }
-    }
-  );
 
   // Get collection by external file id
   DatasetCollectionSchema.index(

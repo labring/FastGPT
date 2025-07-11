@@ -10,7 +10,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MongoDatasetCollectionTags } from '@fastgpt/service/core/dataset/tag/schema';
 import { removeImageByPath } from '@fastgpt/service/common/file/image/controller';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { removeWebsiteSyncJobScheduler } from '@fastgpt/service/core/dataset/websiteSync';
+import { removeDatasetSyncJobScheduler } from '@fastgpt/service/core/dataset/datasetSync';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
@@ -48,8 +48,7 @@ async function handler(req: NextApiRequest) {
   // Remove cron job
   await Promise.all(
     datasets.map((dataset) => {
-      if (dataset.type === DatasetTypeEnum.websiteDataset)
-        return removeWebsiteSyncJobScheduler(dataset._id);
+      return removeDatasetSyncJobScheduler(dataset._id);
     })
   );
 

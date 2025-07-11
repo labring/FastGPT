@@ -1,10 +1,12 @@
-import { Button, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
+import type { BoxProps } from '@chakra-ui/react';
+import { Box, Button, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
 import React from 'react';
 import { editorStateToText } from './utils';
 import Editor from './Editor';
 import MyModal from '../../MyModal';
 import { useTranslation } from 'next-i18next';
 import type { EditorState, LexicalEditor } from 'lexical';
+import type { FormPropsType } from './type.d';
 import { type EditorVariableLabelPickerType, type EditorVariablePickerType } from './type.d';
 import { useCallback } from 'react';
 
@@ -20,7 +22,9 @@ const PromptEditor = ({
   maxLength,
   placeholder,
   title,
-  bg = 'white'
+  isInvalid,
+  isDisabled,
+  ...props
 }: {
   showOpenModal?: boolean;
   variables?: EditorVariablePickerType[];
@@ -33,8 +37,10 @@ const PromptEditor = ({
   maxLength?: number;
   placeholder?: string;
   title?: string;
-  bg?: string;
-}) => {
+
+  isInvalid?: boolean;
+  isDisabled?: boolean;
+} & FormPropsType) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { t } = useTranslation();
 
@@ -55,20 +61,36 @@ const PromptEditor = ({
 
   return (
     <>
-      <Editor
-        showOpenModal={showOpenModal}
-        onOpenModal={onOpen}
-        variables={variables}
-        variableLabels={variableLabels}
-        minH={minH}
-        maxH={maxH}
-        maxLength={maxLength}
-        value={value}
-        onChange={onChangeInput}
-        onBlur={onBlurInput}
-        placeholder={placeholder}
-        bg={bg}
-      />
+      <Box position="relative">
+        <Editor
+          showOpenModal={showOpenModal}
+          onOpenModal={onOpen}
+          variables={variables}
+          variableLabels={variableLabels}
+          minH={minH}
+          maxH={maxH}
+          maxLength={maxLength}
+          value={value}
+          onChange={onChangeInput}
+          onBlur={onBlurInput}
+          placeholder={placeholder}
+          isInvalid={isInvalid}
+          {...props}
+        />
+        {isDisabled && (
+          <Box
+            position="absolute"
+            top={0}
+            left={0}
+            right={0}
+            bottom={0}
+            bg="rgba(255, 255, 255, 0.4)"
+            borderRadius="md"
+            zIndex={1}
+            cursor="not-allowed"
+          />
+        )}
+      </Box>
       <MyModal isOpen={isOpen} onClose={onClose} iconSrc="modal/edit" title={title} w={'full'}>
         <ModalBody>
           <Editor

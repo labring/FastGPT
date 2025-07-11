@@ -17,7 +17,7 @@ export type JSONSchemaInputType = {
   required?: string[];
 };
 
-const getNodeInputTypeFromSchemaInputType = ({
+export const getNodeInputTypeFromSchemaInputType = ({
   type,
   arrayItems
 }: {

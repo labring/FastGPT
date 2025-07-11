@@ -97,8 +97,10 @@ export const getNextTimeByCronStringAndTimezone = ({
     };
     const interval = cronParser.parseExpression(cronString, options);
     const date = interval.next().toString();
+
     return new Date(date);
   } catch (error) {
-    return new Date('2099');
+    console.log('getNextTimeByCronStringAndTimezone error', error);
+    return new Date();
   }
 };

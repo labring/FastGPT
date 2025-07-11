@@ -1,5 +1,4 @@
 import type {
-  APIFileListResponse,
   ApiFileReadContentResponse,
   APIFileReadResponse,
   ApiDatasetDetailResponse,
@@ -17,6 +16,16 @@ type ResponseDataType = {
   success: boolean;
   message: string;
   data: any;
+};
+
+type APIFileListResponse = {
+  id: string;
+  parentId: ParentIdType;
+  name: string;
+  type: 'file' | 'folder';
+  updateTime: Date;
+  createTime: Date;
+  hasChild?: boolean;
 };
 
 export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }) => {
@@ -106,6 +115,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
 
     const formattedFiles = files.map((file) => ({
       ...file,
+      rawId: file.id,
       hasChild: file.hasChild ?? file.type === 'folder'
     }));
 
@@ -201,18 +211,27 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     if (fileData) {
       return {
         id: fileData.id,
+        rawId: apiFileId,
         name: fileData.name,
-        parentId: fileData.parentId === null ? '' : fileData.parentId
+        parentId: fileData.parentId === null ? '' : fileData.parentId,
+        type: fileData.type,
+        updateTime: fileData.updateTime,
+        createTime: fileData.createTime
       };
     }
 
     return Promise.reject('File not found');
   };
 
+  const getFileRawId = (fileId: string) => {
+    return fileId;
+  };
+
   return {
     getFileContent,
     listFiles,
     getFilePreviewUrl,
-    getFileDetail
+    getFileDetail,
+    getFileRawId
   };
 };

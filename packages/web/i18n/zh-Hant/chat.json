@@ -77,6 +77,7 @@
   "select_file_img": "上傳檔案 / 圖片",
   "select_img": "上傳圖片",
   "source_cronJob": "定時執行",
+  "start_chat": "開始對話",
   "stream_output": "串流輸出",
   "unsupported_file_type": "不支援的檔案類型",
   "upload": "上傳",

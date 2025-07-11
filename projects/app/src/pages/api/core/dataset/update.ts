@@ -32,9 +32,9 @@ import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controll
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
-  removeWebsiteSyncJobScheduler,
-  upsertWebsiteSyncJobScheduler
-} from '@fastgpt/service/core/dataset/websiteSync';
+  removeDatasetSyncJobScheduler,
+  upsertDatasetSyncJobScheduler
+} from '@fastgpt/service/core/dataset/datasetSync';
 import { delDatasetRelevantData } from '@fastgpt/service/core/dataset/controller';
 import { isEqual } from 'lodash';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
@@ -225,8 +225,7 @@ async function handler(
     );
     await updateSyncSchedule({
       dataset,
-      autoSync,
-      session
+      autoSync
     });
 
     await refreshSourceAvatar(avatar, dataset.avatar, session);
@@ -305,54 +304,20 @@ const updateTraining = async ({
 
 const updateSyncSchedule = async ({
   dataset,
-  autoSync,
-  session
+  autoSync
 }: {
   dataset: DatasetSchemaType;
   autoSync?: boolean;
-  session: ClientSession;
 }) => {
   if (typeof autoSync !== 'boolean') return;
 
   // Update all collection nextSyncTime
-  if (dataset.type === DatasetTypeEnum.websiteDataset) {
-    if (autoSync) {
-      // upsert Job Scheduler
-      return upsertWebsiteSyncJobScheduler({ datasetId: dataset._id });
-    } else {
-      // remove Job Scheduler
-      return removeWebsiteSyncJobScheduler(dataset._id);
-    }
+  if (autoSync) {
+    // upsert Job Scheduler
+    return upsertDatasetSyncJobScheduler({ datasetId: dataset._id });
   } else {
-    // Other dataset, update the collection sync
-    if (autoSync) {
-      await MongoDatasetCollection.updateMany(
-        {
-          teamId: dataset.teamId,
-          datasetId: dataset._id,
-          type: { $in: [DatasetCollectionTypeEnum.apiFile, DatasetCollectionTypeEnum.link] }
-        },
-        {
-          $set: {
-            nextSyncTime: addDays(new Date(), 1)
-          }
-        },
-        { session }
-      );
-    } else {
-      await MongoDatasetCollection.updateMany(
-        {
-          teamId: dataset.teamId,
-          datasetId: dataset._id
-        },
-        {
-          $unset: {
-            nextSyncTime: 1
-          }
-        },
-        { session }
-      );
-    }
+    // remove Job Scheduler
+    return removeDatasetSyncJobScheduler(dataset._id);
   }
 };
 

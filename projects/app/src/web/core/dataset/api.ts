@@ -13,7 +13,7 @@ import type {
 import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq.d';
 import type {
   AddTagsToCollectionsParams,
-  ApiDatasetCreateDatasetCollectionParams,
+  ApiDatasetCreateDatasetCollectionV2Params,
   CreateDatasetCollectionParams,
   CreateDatasetCollectionTagParams,
   DatasetUpdateBody,
@@ -21,7 +21,7 @@ import type {
   FileIdCreateDatasetCollectionParams,
   reTrainingDatasetFileCollectionParams,
   LinkCreateDatasetCollectionParams,
-  PostWebsiteSyncParams,
+  PostDatasetSyncParams,
   TextCreateDatasetCollectionParams,
   UpdateDatasetCollectionTagParams
 } from '@fastgpt/global/core/dataset/api.d';
@@ -69,7 +69,7 @@ import type {
   getTrainingErrorBody,
   getTrainingErrorResponse
 } from '@/pages/api/core/dataset/training/getTrainingError';
-import type { APIFileItem } from '@fastgpt/global/core/dataset/apiDataset/type';
+import type { APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import type { GetQuoteDataProps } from '@/pages/api/core/dataset/data/getQuoteData';
 import type {
   GetApiDatasetCataLogResponse,
@@ -104,8 +104,8 @@ export const putDatasetById = (data: DatasetUpdateBody) => PUT<void>(`/core/data
 
 export const delDatasetById = (id: string) => DELETE(`/core/dataset/delete?id=${id}`);
 
-export const postWebsiteSync = (data: PostWebsiteSyncParams) =>
-  POST(`/proApi/core/dataset/websiteSync`, data, {
+export const postDatasetSync = (data: PostDatasetSyncParams) =>
+  POST(`/proApi/core/dataset/datasetSync`, data, {
     timeout: 600000
   }).catch();
 
@@ -208,9 +208,9 @@ export const postCreateDatasetExternalFileCollection = (
     timeout: 360000
   });
 export const postCreateDatasetApiDatasetCollection = (
-  data: ApiDatasetCreateDatasetCollectionParams
+  data: ApiDatasetCreateDatasetCollectionV2Params
 ) =>
-  POST<{ collectionId: string }>(`/core/dataset/collection/create/apiCollection`, data, {
+  POST(`/core/dataset/collection/create/apiCollectionV2`, data, {
     timeout: 360000
   });
 
@@ -309,7 +309,7 @@ export const getCollectionSource = (data: readCollectionSourceBody) =>
 
 /* ================== apiDataset ======================== */
 export const getApiDatasetFileList = (data: GetApiDatasetFileListProps) =>
-  POST<APIFileItem[]>('/core/dataset/apiDataset/list', data);
+  POST<APIFileItemType[]>('/core/dataset/apiDataset/list', data);
 export const getApiDatasetFileListExistId = (data: listExistIdQuery) =>
   GET<listExistIdResponse>('/core/dataset/apiDataset/listExistId', data);
 

@@ -192,7 +192,7 @@ const MultipleSelect = <T = any,>({
                         bg={'primary.100'}
                         color={'primary.700'}
                         type={'fill'}
-                        borderRadius={'full'}
+                        borderRadius={'lg'}
                         px={2}
                         py={0.5}
                         flexShrink={0}

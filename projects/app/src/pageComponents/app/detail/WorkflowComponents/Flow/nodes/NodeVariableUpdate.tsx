@@ -3,19 +3,10 @@ import NodeCard from './render/NodeCard';
 import { type NodeProps } from 'reactflow';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
-import {
-  Box,
-  Button,
-  Flex,
-  NumberDecrementStepper,
-  NumberIncrementStepper,
-  NumberInput,
-  NumberInputField,
-  NumberInputStepper,
-  Switch
-} from '@chakra-ui/react';
+import { Box, Button, Flex, Switch } from '@chakra-ui/react';
 import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import {
@@ -33,13 +24,13 @@ import {
 import { ReferSelector, useReference } from './render/RenderInput/templates/Reference';
 import { getRefData } from '@/web/core/workflow/utils';
 import { AppContext } from '@/pageComponents/app/detail/context';
-import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { useCreation, useMemoizedFn } from 'ahooks';
 import { getEditorVariables } from '../../utils';
 import { isArray } from 'lodash';
 import { WorkflowNodeEdgeContext } from '../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import InputRender from '@/components/core/app/formRender';
+import { valueTypeToInputType } from '@/components/core/app/formRender/utils';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs = [], nodeId } = data;
@@ -232,47 +223,14 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
 
               const inputValue = isArray(updateItem.value?.[1]) ? '' : updateItem.value?.[1];
 
-              if (valueType === WorkflowIOValueTypeEnum.string) {
-                return (
-                  <Box w={'300px'}>
-                    <PromptEditor
-                      value={inputValue || ''}
-                      onChange={onUpdateNewValue}
-                      showOpenModal={false}
-                      variableLabels={variables}
-                      variables={[...variables, ...externalProviderWorkflowVariables]}
-                      minH={100}
-                    />
-                  </Box>
-                );
-              }
-              if (valueType === WorkflowIOValueTypeEnum.number) {
-                return (
-                  <MyNumberInput
-                    inputFieldProps={{ bg: 'white' }}
-                    value={Number(inputValue) || 0}
-                    onChange={(e) => onUpdateNewValue(String(e || 0))}
-                  />
-                );
-              }
-              if (valueType === WorkflowIOValueTypeEnum.boolean) {
-                return (
-                  <Switch
-                    defaultChecked={inputValue === 'true'}
-                    onChange={(e) => onUpdateNewValue(String(e.target.checked))}
-                  />
-                );
-              }
-
               return (
-                <Box w={'300px'}>
-                  <PromptEditor
+                <Box w={'300px'} bg={'white'} borderRadius={'sm'}>
+                  <InputRender
+                    inputType={valueTypeToInputType(valueType)}
                     value={inputValue || ''}
                     onChange={onUpdateNewValue}
-                    showOpenModal={false}
-                    variableLabels={variables}
                     variables={[...variables, ...externalProviderWorkflowVariables]}
-                    minH={100}
+                    variableLabels={variables}
                   />
                 </Box>
               );
