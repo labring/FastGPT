@@ -10,7 +10,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { MCPClient } from '../../../app/mcp';
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
-import { runToolStream } from '@fastgpt-sdk/plugin';
+import { runToolStream, type StreamDataAnswerTypeEnum } from '@fastgpt-sdk/plugin';
 import { MongoSystemPlugin } from '../../../app/plugin/systemPluginSchema';
 import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
@@ -77,38 +77,44 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
       const formatToolId = tool.id.split('-')[1];
 
-      const result = await runToolStream({
-        baseUrl: process.env.PLUGIN_BASE_URL || '',
-        authtoken: process.env.PLUGIN_TOKEN || '',
-        toolId: formatToolId,
-        inputs,
-        systemVar: {
-          user: {
-            id: variables.userId,
-            teamId: runningUserInfo.teamId,
-            name: runningUserInfo.tmbId
+      const result = await (async () => {
+        const res = await runToolStream({
+          baseUrl: process.env.PLUGIN_BASE_URL || '',
+          authtoken: process.env.PLUGIN_TOKEN || '',
+          toolId: formatToolId,
+          inputs,
+          systemVar: {
+            user: {
+              id: variables.userId,
+              teamId: runningUserInfo.teamId,
+              name: runningUserInfo.tmbId
+            },
+            app: {
+              id: runningAppInfo.id,
+              name: runningAppInfo.id
+            },
+            tool: {
+              id: formatToolId,
+              version
+            },
+            time: variables.cTime
           },
-          app: {
-            id: runningAppInfo.id,
-            name: runningAppInfo.id
-          },
-          tool: {
-            id: formatToolId,
-            version
-          },
-          time: variables.cTime
-        },
-        onStreamData: (type: string, data: string) => {
-          if (workflowStreamResponse && data) {
-            workflowStreamResponse({
-              event: type as SseResponseEventEnum,
-              data: textAdaptGptResponse({
-                text: data
-              })
-            });
+          onStreamData: (type: `${SseResponseEventEnum}`, data: string) => {
+            if (workflowStreamResponse && data) {
+              workflowStreamResponse({
+                event: type as SseResponseEventEnum,
+                data: textAdaptGptResponse({
+                  text: data
+                })
+              });
+            }
           }
+        });
+        if ('output' in res) {
+          return res.output;
         }
-      });
+        return Promise.reject(new Error(res.error));
+      })();
 
       const usagePoints = await (async () => {
         if (
