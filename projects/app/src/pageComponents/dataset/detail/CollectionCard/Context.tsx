@@ -1,5 +1,5 @@
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { type Dispatch, type ReactNode, type SetStateAction, useState } from 'react';
+import { type Dispatch, type ReactNode, type SetStateAction, useState, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -15,8 +15,6 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import { type WebsiteConfigFormType } from './WebsiteConfig';
 
 const WebSiteConfigModal = dynamic(() => import('./WebsiteConfig'));
-
-let defaultPageNum = 1;
 
 type CollectionPageContextType = {
   openWebSyncConfirm: () => void;
@@ -67,10 +65,8 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   const router = useRouter();
   const { parentId = '' } = router.query as { parentId: string };
 
-  const { datasetDetail, datasetId, updateDataset, loadDatasetDetail } = useContextSelector(
-    DatasetPageContext,
-    (v) => v
-  );
+  const { datasetDetail, datasetId, updateDataset, loadDatasetDetail, currentPageNum } =
+    useContextSelector(DatasetPageContext, (v) => v);
 
   // website config
   const { openConfirm: openWebSyncConfirm, ConfirmModal: ConfirmWebSyncModal } = useConfirm({
@@ -102,7 +98,6 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       }
     }
   );
-
   // collection list
   const [searchText, setSearchText] = useState('');
   const [filterTags, setFilterTags] = useState<string[]>([]);
@@ -116,7 +111,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     pageSize
   } = usePagination(getDatasetCollections, {
     pageSize: 20,
-    defaultPageNum,
+    defaultPageNum: currentPageNum || 1,
     params: {
       datasetId,
       parentId,
@@ -126,8 +121,6 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     // defaultRequest: false,
     refreshDeps: [parentId, searchText, filterTags]
   });
-
-  defaultPageNum = pageNum;
 
   const contextValue: CollectionPageContextType = {
     openWebSyncConfirm: openWebSyncConfirm(syncWebsite),
