@@ -173,37 +173,39 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
 
   // Check if the original text is the same: skip if same
   const hashRawText = hashStr(rawText);
-  if (collection.hashRawText && hashRawText === collection.hashRawText) {
-    return DatasetCollectionSyncResultEnum.sameRaw;
+  if (collection.hashRawText && hashRawText !== collection.hashRawText) {
+    await mongoSessionRun(async (session) => {
+      // Delete old collection
+      await delCollection({
+        collections: [collection],
+        delImg: false,
+        delFile: false,
+        session
+      });
+
+      // Create new collection
+      await createCollectionAndInsertData({
+        session,
+        dataset,
+        rawText: rawText,
+        createCollectionParams: {
+          ...collection,
+          name: title || collection.name,
+          updateTime: new Date(),
+          tags: await collectionTagsToTagLabel({
+            datasetId: collection.datasetId,
+            tags: collection.tags
+          })
+        }
+      });
+    });
+
+    return DatasetCollectionSyncResultEnum.success;
+  } else if (collection.name !== title) {
+    await MongoDatasetCollection.updateOne({ _id: collection._id }, { $set: { name: title } });
+    return DatasetCollectionSyncResultEnum.success;
   }
-
-  await mongoSessionRun(async (session) => {
-    // Delete old collection
-    await delCollection({
-      collections: [collection],
-      delImg: false,
-      delFile: false,
-      session
-    });
-
-    // Create new collection
-    await createCollectionAndInsertData({
-      session,
-      dataset,
-      rawText: rawText,
-      createCollectionParams: {
-        ...collection,
-        name: title || collection.name,
-        updateTime: new Date(),
-        tags: await collectionTagsToTagLabel({
-          datasetId: collection.datasetId,
-          tags: collection.tags
-        })
-      }
-    });
-  });
-
-  return DatasetCollectionSyncResultEnum.success;
+  return DatasetCollectionSyncResultEnum.sameRaw;
 };
 
 /* 

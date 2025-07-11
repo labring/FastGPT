@@ -21,6 +21,7 @@ import { VariableNode } from './plugins/VariablePlugin/node';
 import type { EditorState, LexicalEditor } from 'lexical';
 import OnBlurPlugin from './plugins/OnBlurPlugin';
 import MyIcon from '../../Icon';
+import type { FormPropsType } from './type.d';
 import { type EditorVariableLabelPickerType, type EditorVariablePickerType } from './type.d';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import FocusPlugin from './plugins/FocusPlugin';
@@ -43,7 +44,9 @@ export default function Editor({
   onBlur,
   value,
   placeholder = '',
-  bg = 'white'
+  bg = 'white',
+
+  isInvalid
 }: {
   minH?: number;
   maxH?: number;
@@ -56,8 +59,9 @@ export default function Editor({
   onBlur?: (editor: LexicalEditor) => void;
   value?: string;
   placeholder?: string;
-  bg?: string;
-}) {
+
+  isInvalid?: boolean;
+} & FormPropsType) {
   const [key, setKey] = useState(getNanoid(6));
   const [_, startSts] = useTransition();
   const [focus, setFocus] = useState(false);
@@ -91,7 +95,7 @@ export default function Editor({
         <PlainTextPlugin
           contentEditable={
             <ContentEditable
-              className={styles.contentEditable}
+              className={isInvalid ? styles.contentEditable_invalid : styles.contentEditable}
               style={{
                 minHeight: `${minH}px`,
                 maxHeight: `${maxH}px`

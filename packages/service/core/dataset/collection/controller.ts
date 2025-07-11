@@ -180,18 +180,6 @@ export const createCollectionAndInsertData = async ({
 
       hashRawText: rawText ? hashStr(rawText) : undefined,
       rawTextLength: rawText?.length,
-      nextSyncTime: (() => {
-        // ignore auto collections sync for website datasets
-        if (!dataset.autoSync && dataset.type === DatasetTypeEnum.websiteDataset) return undefined;
-        if (
-          [DatasetCollectionTypeEnum.link, DatasetCollectionTypeEnum.apiFile].includes(
-            formatCreateCollectionParams.type
-          )
-        ) {
-          return addDays(new Date(), 1);
-        }
-        return undefined;
-      })(),
       session
     });
 
@@ -285,7 +273,8 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
     rawLink,
     externalFileId,
     externalFileUrl,
-    apiFileId
+    apiFileId,
+    apiFileParentId
   } = props;
 
   const collectionTags = await createOrGetCollectionTags({
@@ -310,7 +299,8 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
         ...(rawLink ? { rawLink } : {}),
         ...(externalFileId ? { externalFileId } : {}),
         ...(externalFileUrl ? { externalFileUrl } : {}),
-        ...(apiFileId ? { apiFileId } : {})
+        ...(apiFileId ? { apiFileId } : {}),
+        ...(apiFileParentId ? { apiFileParentId } : {})
       }
     ],
     { session, ordered: true }
