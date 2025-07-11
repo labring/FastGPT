@@ -14,7 +14,6 @@ export const getErrText = (err: any, def = ''): any => {
         err?.error ||
         def;
 
-  // 检查是否是预定义的错误响应
   if (ERROR_RESPONSE[msg]) {
     return ERROR_RESPONSE[msg].message;
   }
