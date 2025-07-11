@@ -15,7 +15,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import {
   deleteTrainingData,
@@ -37,6 +37,9 @@ import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyImage from '@/components/MyImage';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import React from 'react';
+import { useToast } from '@chakra-ui/react';
+import { getErrorMessageKey } from '@fastgpt/global/common/error/utils';
 
 enum TrainingStatus {
   NotStart = 'NotStart',
@@ -285,14 +288,18 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
 const ErrorView = ({
   datasetId,
   collectionId,
-  refreshTrainingDetail
+  refreshTrainingDetail,
+  errorList = [],
+  errorLoading = false
 }: {
   datasetId: string;
   collectionId: string;
   refreshTrainingDetail: () => void;
+  errorList: any[];
+  errorLoading: boolean;
 }) => {
   const { t } = useTranslation();
-  const TrainingText = {
+  const TrainingText: Record<string, string> = {
     [TrainingModeEnum.parse]: t('dataset:process.Parsing'),
     [TrainingModeEnum.chunk]: t('dataset:process.Vectorizing'),
     [TrainingModeEnum.qa]: t('dataset:process.Get QA'),
@@ -302,19 +309,6 @@ const ErrorView = ({
   };
 
   const [editChunk, setEditChunk] = useState<getTrainingDataDetailResponse>();
-
-  const {
-    data: errorList,
-    ScrollData,
-    isLoading,
-    refreshList
-  } = useScrollPagination(getTrainingError, {
-    pageSize: 15,
-    params: {
-      collectionId
-    },
-    EmptyTip: <EmptyTip />
-  });
 
   const { runAsync: getData, loading: getDataLoading } = useRequest2(
     (data: { datasetId: string; collectionId: string; dataId: string }) => {
@@ -334,7 +328,7 @@ const ErrorView = ({
     {
       manual: true,
       onSuccess: () => {
-        refreshList();
+        // 这里可以考虑触发外部 refreshErrorList
       }
     }
   );
@@ -345,7 +339,7 @@ const ErrorView = ({
     {
       manual: true,
       onSuccess: () => {
-        refreshList();
+        // 这里可以考虑触发外部 refreshErrorList
         refreshTrainingDetail();
         setEditChunk(undefined);
       }
@@ -371,29 +365,40 @@ const ErrorView = ({
   }
 
   return (
-    <ScrollData
-      h={'400px'}
-      isLoading={isLoading || updateLoading || getDataLoading || deleteLoading}
-    >
+    <Box>
       <TableContainer overflowY={'auto'} fontSize={'12px'}>
-        <Table variant={'simple'}>
+        <Table size="sm" variant={'simple'}>
           <Thead>
             <Tr>
-              <Th pr={0}>{t('dataset:dataset.Chunk_Number')}</Th>
-              <Th pr={0}>{t('dataset:dataset.Training_Status')}</Th>
-              <Th>{t('dataset:dataset.Error_Message')}</Th>
-              <Th>{t('dataset:dataset.Operation')}</Th>
+              <Th py={3} px={4}>
+                {t('dataset:dataset.Chunk_Number')}
+              </Th>
+              <Th py={3} px={4}>
+                {t('dataset:dataset.Training_Status')}
+              </Th>
+              <Th py={3} px={4}>
+                {t('dataset:dataset.Error_Message')}
+              </Th>
+              <Th py={3} px={4}>
+                {t('dataset:dataset.Operation')}
+              </Th>
             </Tr>
           </Thead>
           <Tbody>
-            {errorList.map((item, index) => (
+            {(errorList as any[]).map((item: any, index: number) => (
               <Tr key={index}>
-                <Td>{item.chunkIndex + 1}</Td>
-                <Td>{TrainingText[item.mode]}</Td>
-                <Td maxW={50}>
-                  <MyTooltip label={item.errorMsg}>{item.errorMsg}</MyTooltip>
+                <Td py={3} px={4}>
+                  {item.chunkIndex + 1}
                 </Td>
-                <Td>
+                <Td py={3} px={4}>
+                  {TrainingText[String(item.mode)] || ''}
+                </Td>
+                <Td py={3} px={4} maxW={50}>
+                  <MyTooltip label={t(getErrorMessageKey(item.errorMsg))}>
+                    {t(getErrorMessageKey(item.errorMsg))}
+                  </MyTooltip>
+                </Td>
+                <Td py={3} px={4}>
                   <Flex alignItems={'center'}>
                     <Button
                       variant={'ghost'}
@@ -436,9 +441,11 @@ const ErrorView = ({
           </Tbody>
         </Table>
       </TableContainer>
-    </ScrollData>
+    </Box>
   );
 };
+
+ErrorView.displayName = 'ErrorView';
 
 const EditView = ({
   loading,
@@ -514,6 +521,7 @@ const TrainingStates = ({
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
+  const toast = useToast();
   const [tab, setTab] = useState<typeof defaultTab>(defaultTab);
 
   const {
@@ -525,6 +533,37 @@ const TrainingStates = ({
     pollingWhenHidden: false,
     manual: false
   });
+
+  // 新增：异常数据请求
+  const {
+    data: errorData,
+    loading: errorLoading,
+    runAsync: refreshErrorList
+  } = useRequest2(() => getTrainingError({ collectionId, pageSize: 999, pageNum: 1 }), {
+    manual: false
+  });
+  const errorList = errorData?.list || [];
+
+  // 全部重试逻辑
+  const [retrying, setRetrying] = useState(false);
+  const handleRetryAll = async () => {
+    if (!errorList.length) return;
+    setRetrying(true);
+    try {
+      await Promise.all(
+        errorList.map((item) => updateTrainingData({ datasetId, collectionId, dataId: item._id }))
+      );
+      refreshErrorList();
+      refreshTrainingDetail();
+    } catch (e) {
+      toast({
+        status: 'error',
+        title: t('common:retry_failed', { defaultValue: '批量重试失败，请稍后重试' })
+      });
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   const errorCounts = (Object.values(trainingDetail?.errorCounts || {}) as number[]).reduce(
     (acc, count) => acc + count,
@@ -541,27 +580,39 @@ const TrainingStates = ({
       isLoading={!trainingDetail && loading && tab === 'states'}
     >
       <ModalBody px={9} minH={['90vh', '500px']}>
-        <FillRowTabs
-          py={1}
-          mb={6}
-          value={tab}
-          onChange={(e) => setTab(e as 'states' | 'errors')}
-          list={[
-            { label: t('dataset:dataset.Training Process'), value: 'states' },
-            {
-              label: t('dataset:dataset.Training_Errors', {
-                count: errorCounts
-              }),
-              value: 'errors'
-            }
-          ]}
-        />
+        <Flex align="center" justify="space-between" mb={6}>
+          <FillRowTabs
+            py={1}
+            value={tab}
+            onChange={(e) => setTab(e as 'states' | 'errors')}
+            list={[
+              { label: t('dataset:dataset.Training Process'), value: 'states' },
+              {
+                label: t('dataset:dataset.Training_Errors', { count: errorList.length }),
+                value: 'errors'
+              }
+            ]}
+          />
+          {tab === 'errors' && errorList.length > 0 && !errorLoading && (
+            <Button
+              colorScheme="primary"
+              size="sm"
+              isDisabled={retrying}
+              isLoading={retrying}
+              onClick={handleRetryAll}
+            >
+              全部重试
+            </Button>
+          )}
+        </Flex>
         {tab === 'states' && trainingDetail && <ProgressView trainingDetail={trainingDetail} />}
         {tab === 'errors' && (
           <ErrorView
             datasetId={datasetId}
             collectionId={collectionId}
             refreshTrainingDetail={refreshTrainingDetail}
+            errorList={errorList}
+            errorLoading={errorLoading}
           />
         )}
       </ModalBody>
