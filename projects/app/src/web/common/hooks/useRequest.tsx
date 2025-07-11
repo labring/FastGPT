@@ -26,14 +26,10 @@ export const useRequest = ({ successToast, errorToast, onSuccess, onError, ...pr
       onError?.(err, variables, context);
 
       if (errorToast !== undefined) {
-        const errText = getErrText(err, errorToast || '');
-        // 如果errText是一个国际化键（以'error.'开头），则进行翻译
-        const translatedText = errText.startsWith('error.')
-          ? t(`common:${errText}` as any)
-          : errText;
-        if (translatedText) {
+        const errText = t(getErrText(err, errorToast || '') as any);
+        if (errText) {
           toast({
-            title: translatedText,
+            title: errText,
             status: 'error'
           });
         }
