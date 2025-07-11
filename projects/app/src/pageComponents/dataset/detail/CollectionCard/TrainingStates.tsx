@@ -288,9 +288,7 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
 const ErrorView = ({
   datasetId,
   collectionId,
-  refreshTrainingDetail,
-  errorList = [],
-  errorLoading = false
+  refreshTrainingDetail
 }: {
   datasetId: string;
   collectionId: string;
@@ -310,6 +308,19 @@ const ErrorView = ({
 
   const [editChunk, setEditChunk] = useState<getTrainingDataDetailResponse>();
 
+  const {
+    data: errorList,
+    ScrollData,
+    isLoading,
+    refreshList
+  } = useScrollPagination(getTrainingError, {
+    pageSize: 15,
+    params: {
+      collectionId
+    },
+    EmptyTip: <EmptyTip />
+  });
+
   const { runAsync: getData, loading: getDataLoading } = useRequest2(
     (data: { datasetId: string; collectionId: string; dataId: string }) => {
       return getTrainingDataDetail(data);
@@ -328,7 +339,7 @@ const ErrorView = ({
     {
       manual: true,
       onSuccess: () => {
-        // 这里可以考虑触发外部 refreshErrorList
+        refreshList();
       }
     }
   );
@@ -339,7 +350,7 @@ const ErrorView = ({
     {
       manual: true,
       onSuccess: () => {
-        // 这里可以考虑触发外部 refreshErrorList
+        refreshList();
         refreshTrainingDetail();
         setEditChunk(undefined);
       }
@@ -365,7 +376,10 @@ const ErrorView = ({
   }
 
   return (
-    <Box>
+    <ScrollData
+      h={'400px'}
+      isLoading={isLoading || updateLoading || getDataLoading || deleteLoading}
+    >
       <TableContainer overflowY={'auto'} fontSize={'12px'}>
         <Table size="sm" variant={'simple'}>
           <Thead>
@@ -441,7 +455,7 @@ const ErrorView = ({
           </Tbody>
         </Table>
       </TableContainer>
-    </Box>
+    </ScrollData>
   );
 };
 
@@ -534,7 +548,7 @@ const TrainingStates = ({
     manual: false
   });
 
-  // 新增：异常数据请求
+  // Abnormal data request
   const {
     data: errorData,
     loading: errorLoading,
@@ -544,20 +558,20 @@ const TrainingStates = ({
   });
   const errorList = errorData?.list || [];
 
-  // 全部重试逻辑
+  // All retry logic
   const [retrying, setRetrying] = useState(false);
   const handleRetryAll = async () => {
     if (!errorList.length) return;
     setRetrying(true);
     try {
-      // 不传 dataId 表示重试所有错误数据
+      // Not passing dataId means retrying all error data
       await updateTrainingData({ datasetId, collectionId });
       refreshErrorList();
       refreshTrainingDetail();
     } catch (e) {
       toast({
         status: 'error',
-        title: t('common:retry_failed', { defaultValue: '批量重试失败，请稍后重试' })
+        title: t('common:retry_failed')
       });
     } finally {
       setRetrying(false);
@@ -579,7 +593,7 @@ const TrainingStates = ({
       isLoading={!trainingDetail && loading && tab === 'states'}
     >
       <ModalBody px={9} minH={['90vh', '500px']}>
-        <Flex align="center" justify="space-between" mb={6}>
+        <Flex align="center" justify="space-between" mb={4}>
           <FillRowTabs
             py={1}
             value={tab}
@@ -594,7 +608,7 @@ const TrainingStates = ({
           />
           {tab === 'errors' && errorList.length > 0 && !errorLoading && (
             <Button colorScheme="primary" size="sm" isLoading={retrying} onClick={handleRetryAll}>
-              {t('dataset:dataset.Retry_All', { defaultValue: '全部重试' })}
+              {t('dataset:dataset.Retry_All')}
             </Button>
           )}
         </Flex>
