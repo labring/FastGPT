@@ -53,7 +53,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     });
   }
 
-  /* 
+  /*
     1. Team app
     2. Admin selected system tool
   */
@@ -66,7 +66,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     per: ReadPermissionVal
   });
 
-  const plugin = await getChildAppRuntimeById(pluginId, version);
+  const plugin = await getChildAppRuntimeById({ id: pluginId, versionId: version });
 
   const outputFilterMap =
     plugin.nodes

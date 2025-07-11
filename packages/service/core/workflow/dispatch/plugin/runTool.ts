@@ -9,11 +9,11 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { MCPClient } from '../../../app/mcp';
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
-import { runTool } from '../../../app/tool/api';
+import { APIRunTool } from '../../../app/tool/api';
 import { MongoSystemPlugin } from '../../../app/plugin/systemPluginSchema';
 import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import { getSystemPluginById, splitCombinePluginId } from '../../../app/plugin/controller';
+import { getSystemToolById, splitCombinePluginId } from '../../../app/plugin/controller';
 
 type SystemInputConfigType = {
   type: SystemToolInputTypeEnum;
@@ -42,10 +42,12 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     node: { name, avatar, toolConfig, version }
   } = props;
 
+  console.log('run tool', params, props.node);
+
   try {
     // run system tool
     if (toolConfig?.systemTool?.toolId) {
-      const tool = await getSystemPluginById(toolConfig.systemTool!.toolId);
+      const tool = await getSystemToolById(toolConfig.systemTool!.toolId);
 
       const inputConfigParams = await (async () => {
         switch (params.system_input_config?.type) {
@@ -73,7 +75,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       };
 
       const formatToolId = tool.id.split('-')[1];
-      const result = await runTool({
+      const result = await APIRunTool({
         toolId: formatToolId,
         inputs,
         systemVar: {

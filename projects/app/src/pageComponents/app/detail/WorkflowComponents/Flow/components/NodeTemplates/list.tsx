@@ -56,7 +56,6 @@ export type TemplateListProps = {
 
 const NodeTemplateListItem = ({
   template,
-  templateType,
   handleAddNode,
   isPopover,
   onUpdateParentId
@@ -128,10 +127,10 @@ const NodeTemplateListItem = ({
           });
         }}
         onClick={() => {
-          if (template.isFolder && template.flowNodeType !== FlowNodeTypeEnum.toolSet) {
-            onUpdateParentId(template.id);
-            return;
-          }
+          // if (template.isFolder && template.flowNodeType !== FlowNodeTypeEnum.toolSet) {
+          //   onUpdateParentId(template.id);
+          //   return;
+          // }
 
           const position =
             isPopover && handleParams
@@ -219,10 +218,6 @@ const NodeTemplateList = ({
       template: NodeTemplateListItemType;
       position: { x: number; y: number };
     }) => {
-      if (template.isFolder && template.flowNodeType !== FlowNodeTypeEnum.toolSet) {
-        return;
-      }
-
       try {
         const templateNode = await (async () => {
           try {
