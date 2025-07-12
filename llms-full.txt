@@ -12768,8 +12768,8 @@ function main({secret}){
 
 ### **相关示例**
 
-- [谷歌搜索](https://doc.fastgpt.in/docs/use-cases/app-cases/google_search/)
-- [发送飞书webhook](https://doc.fastgpt.in/docs/use-cases/app-cases/feishu_webhook/)
+- [谷歌搜索](https://doc.fastgpt.io/docs/use-cases/app-cases/google_search/)
+- [发送飞书webhook](https://doc.fastgpt.io/docs/use-cases/app-cases/feishu_webhook/)
 
 # 用户选择
 ## FastGPT 用户选择模块的使用说明
@@ -18332,7 +18332,7 @@ Fastgpt 提供了工作流线路可以返回去执行的功能，所以我们可
 
 需要在 dev 环境下执行下面的操作。
 
-> 可参照 [FastGPT｜快速开始本地开发](https://doc.fastgpt.in/docs/development/intro/)
+> 可参照 [FastGPT｜快速开始本地开发](https://doc.fastgpt.io/docs/development/intro/)
 
 1. ### 在 FastGPT 工作台中，创建一个应用
 
