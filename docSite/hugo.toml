@@ -1,4 +1,4 @@
-baseURL = "https://doc.tryfastgpt.ai"
+baseURL = "https://doc.fastgpt.io"
 languageCode = "en-GB"
 contentDir = "content"
 enableEmoji = true
@@ -114,7 +114,7 @@ defaultContentLanguageInSubdir = false
         # Link behaviour
         intLinkTooltip  = true                                # Enable a tooltip for internal links that displays info about the destination? default false
         # extLinkNewTab   = false                             # Open external links in a new Tab? default true
-        logoLinkURL = "https://tryfastgpt.ai/"                                    # Set a custom URL destination for the top header logo link.
+        logoLinkURL = "https://fastgpt.io/"                                    # Set a custom URL destination for the top header logo link.
 
     [params.flexsearch] # Parameters for FlexSearch
         # enabled             = true
