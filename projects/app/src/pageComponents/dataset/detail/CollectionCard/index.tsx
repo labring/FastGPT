@@ -61,7 +61,10 @@ const CollectionCard = () => {
   const router = useRouter();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { datasetDetail, loadDatasetDetail } = useContextSelector(DatasetPageContext, (v) => v);
+  const { datasetDetail, loadDatasetDetail, setCurrentPageNum } = useContextSelector(
+    DatasetPageContext,
+    (v) => v
+  );
   const { feConfigs } = useSystemStore();
 
   const [trainingStatesCollection, setTrainingStatesCollection] = useState<{
@@ -70,6 +73,8 @@ const CollectionCard = () => {
 
   const { collections, Pagination, total, getData, isGetting, pageNum, pageSize } =
     useContextSelector(CollectionPageContext, (v) => v);
+
+  setCurrentPageNum(pageNum);
 
   // Add file status icon
   const formatCollections = useMemo(
