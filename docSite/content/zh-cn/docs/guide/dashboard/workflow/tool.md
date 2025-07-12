@@ -82,5 +82,5 @@ weight: 236
 
 ### **相关示例**
 
-- [谷歌搜索](https://doc.fastgpt.in/docs/use-cases/app-cases/google_search/)
-- [发送飞书webhook](https://doc.fastgpt.in/docs/use-cases/app-cases/feishu_webhook/)
+- [谷歌搜索](https://doc.fastgpt.io/docs/use-cases/app-cases/google_search/)
+- [发送飞书webhook](https://doc.fastgpt.io/docs/use-cases/app-cases/feishu_webhook/)
