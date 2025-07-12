@@ -1,10 +1,12 @@
 import createClient, { type SystemVarType } from '@fastgpt-sdk/plugin';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
+import { runToolStream, type StreamDataAnswerTypeEnum } from '@fastgpt-sdk/plugin';
 
-const client = createClient({
+const PluginClientConfig = {
   baseUrl: process.env.PLUGIN_BASE_URL || '',
   token: process.env.PLUGIN_TOKEN || ''
-});
+};
+const client = createClient(PluginClientConfig);
 
 export async function getSystemToolList() {
   const res = await client.tool.list();
@@ -26,26 +28,18 @@ export async function getSystemToolList() {
   return Promise.reject(res.body);
 }
 
-export async function runTool({
-  toolId,
-  inputs,
-  systemVar
-}: {
-  toolId: string;
-  inputs: Record<string, any>;
-  systemVar: SystemVarType;
-}) {
-  const res = await client.tool.run({
-    body: {
-      toolId,
-      inputs,
-      systemVar
-    }
+export async function runPluginToolStream(
+  toolId: string,
+  inputs: Record<string, any>,
+  systemVar: SystemVarType,
+  onStreamData: (type: StreamDataAnswerTypeEnum, data: string) => void
+) {
+  return await runToolStream({
+    baseUrl: PluginClientConfig.baseUrl,
+    authtoken: PluginClientConfig.token,
+    toolId,
+    inputs,
+    systemVar,
+    onStreamData
   });
-
-  if (res.status === 200 && res.body.output) {
-    return res.body.output;
-  } else {
-    return Promise.reject(res.body);
-  }
 }
