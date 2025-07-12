@@ -1,12 +1,13 @@
-import createClient, { type SystemVarType } from '@fastgpt-sdk/plugin';
+import createClient, { RunToolWithStream } from '@fastgpt-sdk/plugin';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
-import { runToolStream, type StreamDataAnswerTypeEnum } from '@fastgpt-sdk/plugin';
 
-const PluginClientConfig = {
-  baseUrl: process.env.PLUGIN_BASE_URL || '',
-  token: process.env.PLUGIN_TOKEN || ''
-};
-const client = createClient(PluginClientConfig);
+const BASE_URL = process.env.PLUGIN_BASE_URL || '';
+const TOKEN = process.env.PLUGIN_TOKEN || '';
+
+const client = createClient({
+  baseUrl: BASE_URL,
+  token: TOKEN
+});
 
 export async function getSystemToolList() {
   const res = await client.tool.list();
@@ -28,18 +29,8 @@ export async function getSystemToolList() {
   return Promise.reject(res.body);
 }
 
-export async function runPluginToolStream(
-  toolId: string,
-  inputs: Record<string, any>,
-  systemVar: SystemVarType,
-  onStreamData: (type: StreamDataAnswerTypeEnum, data: string) => void
-) {
-  return await runToolStream({
-    baseUrl: PluginClientConfig.baseUrl,
-    authtoken: PluginClientConfig.token,
-    toolId,
-    inputs,
-    systemVar,
-    onStreamData
-  });
-}
+const runToolInstance = new RunToolWithStream({
+  baseUrl: BASE_URL,
+  token: TOKEN
+});
+export const runSystemTool = runToolInstance.run.bind(runToolInstance);

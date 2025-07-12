@@ -10,13 +10,13 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { MCPClient } from '../../../app/mcp';
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
-import { StreamDataAnswerTypeEnum } from '@fastgpt-sdk/plugin';
-import { runPluginToolStream } from '../../../app/tool/api';
+import { runSystemTool } from '../../../app/tool/api';
 import { MongoSystemPlugin } from '../../../app/plugin/systemPluginSchema';
 import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import { getSystemPluginById, splitCombinePluginId } from '../../../app/plugin/controller';
+import { getSystemPluginById } from '../../../app/plugin/controller';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
+import { pushTrack } from '../../../../common/middle/tracks/utils';
 
 type SystemInputConfigType = {
   type: SystemToolInputTypeEnum;
@@ -46,10 +46,12 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     node: { name, avatar, toolConfig, version }
   } = props;
 
+  const systemToolId = toolConfig?.systemTool?.toolId;
+
   try {
     // run system tool
-    if (toolConfig?.systemTool?.toolId) {
-      const tool = await getSystemPluginById(toolConfig.systemTool!.toolId);
+    if (systemToolId) {
+      const tool = await getSystemPluginById(systemToolId);
 
       const inputConfigParams = await (async () => {
         switch (params.system_input_config?.type) {
@@ -79,10 +81,10 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       const formatToolId = tool.id.split('-')[1];
 
       const result = await (async () => {
-        const res = await runPluginToolStream(
-          formatToolId,
+        const res = await runSystemTool({
+          toolId: formatToolId,
           inputs,
-          {
+          systemVar: {
             user: {
               id: variables.userId,
               teamId: runningUserInfo.teamId,
@@ -98,23 +100,18 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
             },
             time: variables.cTime
           },
-          (type, data) => {
-            if (
-              workflowStreamResponse &&
-              data &&
-              (type === StreamDataAnswerTypeEnum.Answer ||
-                type === StreamDataAnswerTypeEnum.FastAnswer)
-            ) {
+          onMessage: ({ type, content }) => {
+            if (workflowStreamResponse && content) {
               workflowStreamResponse({
-                event: type as SseResponseEventEnum,
+                event: type as unknown as SseResponseEventEnum,
                 data: textAdaptGptResponse({
-                  text: data
+                  text: content
                 })
               });
             }
           }
-        );
-        if ('error' in res) {
+        });
+        if (res.error) {
           return Promise.reject(res.error);
         }
         if (!res.output) return {};
@@ -122,7 +119,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         return res.output;
       })();
 
-      const usagePoints = await (async () => {
+      const usagePoints = (() => {
         if (
           params.system_input_config?.type !== SystemToolInputTypeEnum.system ||
           result[NodeOutputKeyEnum.systemError]
@@ -131,6 +128,16 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         }
         return tool.currentCost ?? 0;
       })();
+
+      pushTrack.runSystemTool({
+        teamId: runningUserInfo.teamId,
+        tmbId: runningUserInfo.tmbId,
+        uid: runningUserInfo.tmbId,
+        toolId: tool.id,
+        result: 1,
+        usagePoint: usagePoints,
+        msg: result[NodeOutputKeyEnum.systemError]
+      });
 
       return {
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
@@ -170,6 +177,17 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       };
     }
   } catch (error) {
+    if (systemToolId) {
+      pushTrack.runSystemTool({
+        teamId: runningUserInfo.teamId,
+        tmbId: runningUserInfo.tmbId,
+        uid: runningUserInfo.tmbId,
+        toolId: systemToolId,
+        result: 0,
+        msg: getErrText(error)
+      });
+    }
+
     return {
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         moduleLogo: avatar,
