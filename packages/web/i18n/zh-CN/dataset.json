@@ -65,6 +65,7 @@
   "dataset.No_Error": "暂无异常信息",
   "dataset.Operation": "操作",
   "dataset.ReTrain": "重试",
+  "dataset.Retry_All": "全部重试",
   "dataset.Training Process": "训练状态",
   "dataset.Training_Count": "{{count}} 组训练中",
   "dataset.Training_Errors": "异常 ({{count}})",
