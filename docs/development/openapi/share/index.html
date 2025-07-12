@@ -43,43 +43,43 @@ Table of Contents</button><nav id=toc-mobile><ul class=dropdown-menu><li><ul><li
         &#34;uid&#34;: &#34;用户唯一凭证&#34;
     }
 }</code>
-  </pre></div><p><code>FastGPT</code> 将会判断<code>success</code>是否为<code>true</code>决定是允许用户继续操作。<code>message</code>与<code>msg</code>是等同的，你可以选择返回其中一个，当<code>success</code>不为<code>true</code>时，将会提示这个错误。</p><p><code>uid</code>是用户的唯一凭证，将会用于拉取对话记录以及保存对话记录。可参考下方实践案例。</p><h3 id=触发流程>触发流程 <a href=#%e8%a7%a6%e5%8f%91%e6%b5%81%e7%a8%8b class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h3><p><img src=https://cdn.jsdelivr.net/gh/yangchuansheng/fastgpt-imgs@main/imgs/sharelink_process.png alt loading=lazy class=medium-zoom-image></p><h2 id=配置教程>配置教程 <a href=#%e9%85%8d%e7%bd%ae%e6%95%99%e7%a8%8b class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h2><h3 id=1-配置身份校验地址>1. 配置身份校验地址 <a href=#1-%e9%85%8d%e7%bd%ae%e8%ba%ab%e4%bb%bd%e6%a0%a1%e9%aa%8c%e5%9c%b0%e5%9d%80 class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h3><p><img src=https://cdn.jsdelivr.net/gh/yangchuansheng/fastgpt-imgs@main/imgs/share-setlink.png alt loading=lazy class=medium-zoom-image></p><p>配置校验地址后，在每次分享链接使用时，都会向对应的地址发起校验和上报请求。</p><div class="alert alert-default d-flex" role=alert><div class="flex-shrink-1 alert-icon"><p>🤖</p></div><div class=w-100><p>这里仅需配置根地址，无需具体到完整请求路径。</p></div></div><h3 id=2-分享链接中增加额外-query>2. 分享链接中增加额外 query <a href=#2-%e5%88%86%e4%ba%ab%e9%93%be%e6%8e%a5%e4%b8%ad%e5%a2%9e%e5%8a%a0%e9%a2%9d%e5%a4%96-query class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h3><p>在分享链接的地址中，增加一个额外的参数: authToken。例如：</p><p>原始的链接：<code>https://share.tryfastgpt.ai/chat/share?shareId=648aaf5ae121349a16d62192</code></p><p>完整链接: <code>https://share.tryfastgpt.ai/chat/share?shareId=648aaf5ae121349a16d62192&amp;authToken=userid12345</code></p><p>这个<code>authToken</code>通常是你系统生成的用户唯一凭证（Token之类的）。FastGPT 会在鉴权接口的<code>body</code>中携带 token={{authToken}} 的参数。</p><h3 id=3-编写聊天初始化校验接口>3. 编写聊天初始化校验接口 <a href=#3-%e7%bc%96%e5%86%99%e8%81%8a%e5%a4%a9%e5%88%9d%e5%a7%8b%e5%8c%96%e6%a0%a1%e9%aa%8c%e6%8e%a5%e5%8f%a3 class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h3><nav><div class="nav nav-tabs" id=nav-tab role=tablist><a class="nav-link active" id=adfcbeTab data-bs-toggle=tab data-bs-target=#adfcbe type=button role=tab aria-controls=adfcbe aria-selected=true>请求示例</a>
-<a class=nav-link id=febadcTab data-bs-toggle=tab data-bs-target=#febadc type=button role=tab aria-controls=febadc aria-selected=true>鉴权成功</a>
-<a class=nav-link id=cdafbeTab data-bs-toggle=tab data-bs-target=#cdafbe type=button role=tab aria-controls=cdafbe aria-selected=true>鉴权失败</a></div></nav><div class=tab-content id=nav-tab-content><div class="tab-pane fade show active" id=adfcbe role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=39d214b class=language-bash>
+  </pre></div><p><code>FastGPT</code> 将会判断<code>success</code>是否为<code>true</code>决定是允许用户继续操作。<code>message</code>与<code>msg</code>是等同的，你可以选择返回其中一个，当<code>success</code>不为<code>true</code>时，将会提示这个错误。</p><p><code>uid</code>是用户的唯一凭证，将会用于拉取对话记录以及保存对话记录。可参考下方实践案例。</p><h3 id=触发流程>触发流程 <a href=#%e8%a7%a6%e5%8f%91%e6%b5%81%e7%a8%8b class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h3><p><img src=https://cdn.jsdelivr.net/gh/yangchuansheng/fastgpt-imgs@main/imgs/sharelink_process.png alt loading=lazy class=medium-zoom-image></p><h2 id=配置教程>配置教程 <a href=#%e9%85%8d%e7%bd%ae%e6%95%99%e7%a8%8b class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h2><h3 id=1-配置身份校验地址>1. 配置身份校验地址 <a href=#1-%e9%85%8d%e7%bd%ae%e8%ba%ab%e4%bb%bd%e6%a0%a1%e9%aa%8c%e5%9c%b0%e5%9d%80 class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h3><p><img src=https://cdn.jsdelivr.net/gh/yangchuansheng/fastgpt-imgs@main/imgs/share-setlink.png alt loading=lazy class=medium-zoom-image></p><p>配置校验地址后，在每次分享链接使用时，都会向对应的地址发起校验和上报请求。</p><div class="alert alert-default d-flex" role=alert><div class="flex-shrink-1 alert-icon"><p>🤖</p></div><div class=w-100><p>这里仅需配置根地址，无需具体到完整请求路径。</p></div></div><h3 id=2-分享链接中增加额外-query>2. 分享链接中增加额外 query <a href=#2-%e5%88%86%e4%ba%ab%e9%93%be%e6%8e%a5%e4%b8%ad%e5%a2%9e%e5%8a%a0%e9%a2%9d%e5%a4%96-query class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h3><p>在分享链接的地址中，增加一个额外的参数: authToken。例如：</p><p>原始的链接：<code>https://share.tryfastgpt.ai/chat/share?shareId=648aaf5ae121349a16d62192</code></p><p>完整链接: <code>https://share.tryfastgpt.ai/chat/share?shareId=648aaf5ae121349a16d62192&amp;authToken=userid12345</code></p><p>这个<code>authToken</code>通常是你系统生成的用户唯一凭证（Token之类的）。FastGPT 会在鉴权接口的<code>body</code>中携带 token={{authToken}} 的参数。</p><h3 id=3-编写聊天初始化校验接口>3. 编写聊天初始化校验接口 <a href=#3-%e7%bc%96%e5%86%99%e8%81%8a%e5%a4%a9%e5%88%9d%e5%a7%8b%e5%8c%96%e6%a0%a1%e9%aa%8c%e6%8e%a5%e5%8f%a3 class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h3><nav><div class="nav nav-tabs" id=nav-tab role=tablist><a class="nav-link active" id=fbedacTab data-bs-toggle=tab data-bs-target=#fbedac type=button role=tab aria-controls=fbedac aria-selected=true>请求示例</a>
+<a class=nav-link id=edfacbTab data-bs-toggle=tab data-bs-target=#edfacb type=button role=tab aria-controls=edfacb aria-selected=true>鉴权成功</a>
+<a class=nav-link id=aefbcdTab data-bs-toggle=tab data-bs-target=#aefbcd type=button role=tab aria-controls=aefbcd aria-selected=true>鉴权失败</a></div></nav><div class=tab-content id=nav-tab-content><div class="tab-pane fade show active" id=fbedac role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=39d214b class=language-bash>
   <code>curl --location --request POST &#39;{{host}}/shareAuth/init&#39; \
 --header &#39;Content-Type: application/json&#39; \
 --data-raw &#39;{
     &#34;token&#34;: &#34;{{authToken}}&#34;
 }&#39;</code>
-  </pre></div></div><div class="tab-pane fade" id=febadc role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=d6c7899 class=language-json>
+  </pre></div></div><div class="tab-pane fade" id=edfacb role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=d6c7899 class=language-json>
   <code>{
     &#34;success&#34;: true,
     &#34;data&#34;: {
         &#34;uid&#34;: &#34;用户唯一凭证&#34;
     }
 }</code>
-  </pre></div><p>系统会拉取该分享链接下，uid 为 username123 的对话记录。</p></div><div class="tab-pane fade" id=cdafbe role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=3297f92 class=language-json>
+  </pre></div><p>系统会拉取该分享链接下，uid 为 username123 的对话记录。</p></div><div class="tab-pane fade" id=aefbcd role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=3297f92 class=language-json>
   <code>{
     &#34;success&#34;: false,
     &#34;message&#34;: &#34;身份错误&#34;,
 }</code>
-  </pre></div></div></div><h3 id=4-编写对话前校验接口>4. 编写对话前校验接口 <a href=#4-%e7%bc%96%e5%86%99%e5%af%b9%e8%af%9d%e5%89%8d%e6%a0%a1%e9%aa%8c%e6%8e%a5%e5%8f%a3 class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h3><nav><div class="nav nav-tabs" id=nav-tab role=tablist><a class="nav-link active" id=febacdTab data-bs-toggle=tab data-bs-target=#febacd type=button role=tab aria-controls=febacd aria-selected=true>请求示例</a>
-<a class=nav-link id=bafcedTab data-bs-toggle=tab data-bs-target=#bafced type=button role=tab aria-controls=bafced aria-selected=true>鉴权成功</a>
-<a class=nav-link id=cfedabTab data-bs-toggle=tab data-bs-target=#cfedab type=button role=tab aria-controls=cfedab aria-selected=true>鉴权失败</a></div></nav><div class=tab-content id=nav-tab-content><div class="tab-pane fade show active" id=febacd role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=40c1d59 class=language-bash>
+  </pre></div></div></div><h3 id=4-编写对话前校验接口>4. 编写对话前校验接口 <a href=#4-%e7%bc%96%e5%86%99%e5%af%b9%e8%af%9d%e5%89%8d%e6%a0%a1%e9%aa%8c%e6%8e%a5%e5%8f%a3 class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h3><nav><div class="nav nav-tabs" id=nav-tab role=tablist><a class="nav-link active" id=acedfbTab data-bs-toggle=tab data-bs-target=#acedfb type=button role=tab aria-controls=acedfb aria-selected=true>请求示例</a>
+<a class=nav-link id=fadbecTab data-bs-toggle=tab data-bs-target=#fadbec type=button role=tab aria-controls=fadbec aria-selected=true>鉴权成功</a>
+<a class=nav-link id=cbdfeaTab data-bs-toggle=tab data-bs-target=#cbdfea type=button role=tab aria-controls=cbdfea aria-selected=true>鉴权失败</a></div></nav><div class=tab-content id=nav-tab-content><div class="tab-pane fade show active" id=acedfb role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=40c1d59 class=language-bash>
   <code>curl --location --request POST &#39;{{host}}/shareAuth/start&#39; \
 --header &#39;Content-Type: application/json&#39; \
 --data-raw &#39;{
     &#34;token&#34;: &#34;{{authToken}}&#34;,
     &#34;question&#34;: &#34;用户问题&#34;,
 }&#39;</code>
-  </pre></div></div><div class="tab-pane fade" id=bafced role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=d6c7899 class=language-json>
+  </pre></div></div><div class="tab-pane fade" id=fadbec role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=d6c7899 class=language-json>
   <code>{
     &#34;success&#34;: true,
     &#34;data&#34;: {
         &#34;uid&#34;: &#34;用户唯一凭证&#34;
     }
 }</code>
-  </pre></div></div><div class="tab-pane fade" id=cfedab role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=23a56e7 class=language-json>
+  </pre></div></div><div class="tab-pane fade" id=cbdfea role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=23a56e7 class=language-json>
   <code>{
     &#34;success&#34;: false,
     &#34;message&#34;: &#34;身份验证失败&#34;,
@@ -202,9 +202,9 @@ Table of Contents</button><nav id=toc-mobile><ul class=dropdown-menu><li><ul><li
 
     isElseResult?: boolean; // 判断器结果
 }</code>
-  </pre></div><h2 id=实践案例>实践案例 <a href=#%e5%ae%9e%e8%b7%b5%e6%a1%88%e4%be%8b class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h2><p>我们以<a href=https://laf.dev/ rel=external target=_blank>Laf作为服务器为例<svg width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentcolor" d="M14 5c-.552.0-1-.448-1-1s.448-1 1-1h6c.552.0 1 .448 1 1v6c0 .552-.448 1-1 1s-1-.448-1-1V6.414l-7.293 7.293c-.391.39-1.024.39-1.414.0-.391-.391-.391-1.024.0-1.414L17.586 5H14zM5 7c-.552.0-1 .448-1 1v11c0 .552.448 1 1 1h11c.552.0 1-.448 1-1v-4.563c0-.552.448-1 1-1s1 .448 1 1V19c0 1.657-1.343 3-3 3H5c-1.657.0-3-1.343-3-3V8c0-1.657 1.343-3 3-3h4.563c.552.0 1 .448 1 1s-.448 1-1 1H5z"/></svg></a>，简单展示这 3 个接口的使用方式。</p><h3 id=1-创建3个laf接口>1. 创建3个Laf接口 <a href=#1-%e5%88%9b%e5%bb%ba3%e4%b8%aalaf%e6%8e%a5%e5%8f%a3 class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h3><p><img src=https://cdn.jsdelivr.net/gh/yangchuansheng/fastgpt-imgs@main/imgs/share-auth1.png alt loading=lazy class=medium-zoom-image></p><nav><div class="nav nav-tabs" id=nav-tab role=tablist><a class="nav-link active" id=afcbedTab data-bs-toggle=tab data-bs-target=#afcbed type=button role=tab aria-controls=afcbed aria-selected=true>/shareAuth/init</a>
-<a class=nav-link id=afedcbTab data-bs-toggle=tab data-bs-target=#afedcb type=button role=tab aria-controls=afedcb aria-selected=true>/shareAuth/start</a>
-<a class=nav-link id=dcfebaTab data-bs-toggle=tab data-bs-target=#dcfeba type=button role=tab aria-controls=dcfeba aria-selected=true>/shareAuth/finish</a></div></nav><div class=tab-content id=nav-tab-content><div class="tab-pane fade show active" id=afcbed role=tabpanel aria-labelledby=nav-1><p>这个接口中，我们设置了<code>token</code>必须等于<code>fastgpt</code>才能通过校验。（实际生产中不建议固定写死）</p><div class=prism-codeblock><pre id=ba0b6c9 class=language-ts>
+  </pre></div><h2 id=实践案例>实践案例 <a href=#%e5%ae%9e%e8%b7%b5%e6%a1%88%e4%be%8b class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h2><p>我们以<a href=https://laf.dev/ rel=external target=_blank>Laf作为服务器为例<svg width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentcolor" d="M14 5c-.552.0-1-.448-1-1s.448-1 1-1h6c.552.0 1 .448 1 1v6c0 .552-.448 1-1 1s-1-.448-1-1V6.414l-7.293 7.293c-.391.39-1.024.39-1.414.0-.391-.391-.391-1.024.0-1.414L17.586 5H14zM5 7c-.552.0-1 .448-1 1v11c0 .552.448 1 1 1h11c.552.0 1-.448 1-1v-4.563c0-.552.448-1 1-1s1 .448 1 1V19c0 1.657-1.343 3-3 3H5c-1.657.0-3-1.343-3-3V8c0-1.657 1.343-3 3-3h4.563c.552.0 1 .448 1 1s-.448 1-1 1H5z"/></svg></a>，简单展示这 3 个接口的使用方式。</p><h3 id=1-创建3个laf接口>1. 创建3个Laf接口 <a href=#1-%e5%88%9b%e5%bb%ba3%e4%b8%aalaf%e6%8e%a5%e5%8f%a3 class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h3><p><img src=https://cdn.jsdelivr.net/gh/yangchuansheng/fastgpt-imgs@main/imgs/share-auth1.png alt loading=lazy class=medium-zoom-image></p><nav><div class="nav nav-tabs" id=nav-tab role=tablist><a class="nav-link active" id=defacbTab data-bs-toggle=tab data-bs-target=#defacb type=button role=tab aria-controls=defacb aria-selected=true>/shareAuth/init</a>
+<a class=nav-link id=bacdfeTab data-bs-toggle=tab data-bs-target=#bacdfe type=button role=tab aria-controls=bacdfe aria-selected=true>/shareAuth/start</a>
+<a class=nav-link id=cbafedTab data-bs-toggle=tab data-bs-target=#cbafed type=button role=tab aria-controls=cbafed aria-selected=true>/shareAuth/finish</a></div></nav><div class=tab-content id=nav-tab-content><div class="tab-pane fade show active" id=defacb role=tabpanel aria-labelledby=nav-1><p>这个接口中，我们设置了<code>token</code>必须等于<code>fastgpt</code>才能通过校验。（实际生产中不建议固定写死）</p><div class=prism-codeblock><pre id=ba0b6c9 class=language-ts>
   <code>import cloud from &#39;@lafjs/cloud&#39;
 
 export default async function (ctx: FunctionContext) {
@@ -217,7 +217,7 @@ export default async function (ctx: FunctionContext) {
 
   return { success: false,message:&#34;身份错误&#34; }
 }</code>
-  </pre></div></div><div class="tab-pane fade" id=afedcb role=tabpanel aria-labelledby=nav-1><p>这个接口中，我们设置了<code>token</code>必须等于<code>fastgpt</code>才能通过校验。并且如果问题中包含了<code>你</code>字，则会报错，用于模拟敏感校验。</p><div class=prism-codeblock><pre id=cf82db5 class=language-ts>
+  </pre></div></div><div class="tab-pane fade" id=bacdfe role=tabpanel aria-labelledby=nav-1><p>这个接口中，我们设置了<code>token</code>必须等于<code>fastgpt</code>才能通过校验。并且如果问题中包含了<code>你</code>字，则会报错，用于模拟敏感校验。</p><div class=prism-codeblock><pre id=cf82db5 class=language-ts>
   <code>import cloud from &#39;@lafjs/cloud&#39;
 
 export default async function (ctx: FunctionContext) {
@@ -235,7 +235,7 @@ export default async function (ctx: FunctionContext) {
 
   return { success: true, data: { uid: &#34;user1&#34; } } 
 }</code>
-  </pre></div></div><div class="tab-pane fade" id=dcfeba role=tabpanel aria-labelledby=nav-1><p>结果上报接口可自行进行逻辑处理。</p><div class=prism-codeblock><pre id=b3696df class=language-ts>
+  </pre></div></div><div class="tab-pane fade" id=cbafed role=tabpanel aria-labelledby=nav-1><p>结果上报接口可自行进行逻辑处理。</p><div class=prism-codeblock><pre id=b3696df class=language-ts>
   <code>import cloud from &#39;@lafjs/cloud&#39;
 
 export default async function (ctx: FunctionContext) {

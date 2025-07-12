@@ -51,8 +51,8 @@ type FileListItem = {
   updateTime: Date;
   createTime: Date;
 }</code>
-  </pre></div><h3 id=1-获取文件树>1. 获取文件树 <a href=#1-%e8%8e%b7%e5%8f%96%e6%96%87%e4%bb%b6%e6%a0%91 class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h3><nav><div class="nav nav-tabs" id=nav-tab role=tablist><a class="nav-link active" id=fbaecdTab data-bs-toggle=tab data-bs-target=#fbaecd type=button role=tab aria-controls=fbaecd aria-selected=true>请求示例</a>
-<a class=nav-link id=acbdefTab data-bs-toggle=tab data-bs-target=#acbdef type=button role=tab aria-controls=acbdef aria-selected=true>响应示例</a></div></nav><div class=tab-content id=nav-tab-content><div class="tab-pane fade show active" id=fbaecd role=tabpanel aria-labelledby=nav-1><div class="alert alert-success d-flex" role=alert><div class="flex-shrink-1 alert-icon"></div><div class=w-100><ul><li>parentId - 父级 id，可选，或者 null | undefined。</li><li>searchKey - 检索词，可选</li></ul></div></div><div class=prism-codeblock><pre id=25aa990 class=language-bash>
+  </pre></div><h3 id=1-获取文件树>1. 获取文件树 <a href=#1-%e8%8e%b7%e5%8f%96%e6%96%87%e4%bb%b6%e6%a0%91 class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h3><nav><div class="nav nav-tabs" id=nav-tab role=tablist><a class="nav-link active" id=cabfedTab data-bs-toggle=tab data-bs-target=#cabfed type=button role=tab aria-controls=cabfed aria-selected=true>请求示例</a>
+<a class=nav-link id=eafdbcTab data-bs-toggle=tab data-bs-target=#eafdbc type=button role=tab aria-controls=eafdbc aria-selected=true>响应示例</a></div></nav><div class=tab-content id=nav-tab-content><div class="tab-pane fade show active" id=cabfed role=tabpanel aria-labelledby=nav-1><div class="alert alert-success d-flex" role=alert><div class="flex-shrink-1 alert-icon"></div><div class=w-100><ul><li>parentId - 父级 id，可选，或者 null | undefined。</li><li>searchKey - 检索词，可选</li></ul></div></div><div class=prism-codeblock><pre id=25aa990 class=language-bash>
   <code>curl --location --request POST &#39;{{baseURL}}/v1/file/list&#39; \
 --header &#39;Authorization: Bearer {{authorization}}&#39; \
 --header &#39;Content-Type: application/json&#39; \
@@ -60,7 +60,7 @@ type FileListItem = {
     &#34;parentId&#34;: &#34;&#34;,
     &#34;searchKey&#34;: &#34;&#34;
 }&#39;</code>
-  </pre></div></div><div class="tab-pane fade" id=acbdef role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=9b9616c class=language-json>
+  </pre></div></div><div class="tab-pane fade" id=eafdbc role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=9b9616c class=language-json>
   <code>{
     &#34;code&#34;: 200,
     &#34;success&#34;: true,
@@ -77,12 +77,12 @@ type FileListItem = {
         }
    ]
 }</code>
-  </pre></div></div></div><h3 id=2-获取单个文件内容文本内容或访问链接>2. 获取单个文件内容（文本内容或访问链接） <a href=#2-%e8%8e%b7%e5%8f%96%e5%8d%95%e4%b8%aa%e6%96%87%e4%bb%b6%e5%86%85%e5%ae%b9%e6%96%87%e6%9c%ac%e5%86%85%e5%ae%b9%e6%88%96%e8%ae%bf%e9%97%ae%e9%93%be%e6%8e%a5 class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h3><nav><div class="nav nav-tabs" id=nav-tab role=tablist><a class="nav-link active" id=dbafceTab data-bs-toggle=tab data-bs-target=#dbafce type=button role=tab aria-controls=dbafce aria-selected=true>请求示例</a>
-<a class=nav-link id=bdcfeaTab data-bs-toggle=tab data-bs-target=#bdcfea type=button role=tab aria-controls=bdcfea aria-selected=true>响应示例</a>
-<a class=nav-link id=Tab data-bs-toggle=tab data-bs-target=# type=button role=tab aria-controls aria-selected=true></a></div></nav><div class=tab-content id=nav-tab-content><div class="tab-pane fade show active" id=dbafce role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=1de88d3 class=language-bash>
+  </pre></div></div></div><h3 id=2-获取单个文件内容文本内容或访问链接>2. 获取单个文件内容（文本内容或访问链接） <a href=#2-%e8%8e%b7%e5%8f%96%e5%8d%95%e4%b8%aa%e6%96%87%e4%bb%b6%e5%86%85%e5%ae%b9%e6%96%87%e6%9c%ac%e5%86%85%e5%ae%b9%e6%88%96%e8%ae%bf%e9%97%ae%e9%93%be%e6%8e%a5 class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h3><nav><div class="nav nav-tabs" id=nav-tab role=tablist><a class="nav-link active" id=dbafecTab data-bs-toggle=tab data-bs-target=#dbafec type=button role=tab aria-controls=dbafec aria-selected=true>请求示例</a>
+<a class=nav-link id=fbadecTab data-bs-toggle=tab data-bs-target=#fbadec type=button role=tab aria-controls=fbadec aria-selected=true>响应示例</a>
+<a class=nav-link id=Tab data-bs-toggle=tab data-bs-target=# type=button role=tab aria-controls aria-selected=true></a></div></nav><div class=tab-content id=nav-tab-content><div class="tab-pane fade show active" id=dbafec role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=1de88d3 class=language-bash>
   <code>curl --location --request GET &#39;{{baseURL}}/v1/file/content?id=xx&#39; \
 --header &#39;Authorization: Bearer {{authorization}}&#39;</code>
-  </pre></div></div><div class="tab-pane fade" id=bdcfea role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=bcbc70a class=language-json>
+  </pre></div></div><div class="tab-pane fade" id=fbadec role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=bcbc70a class=language-json>
   <code>{
     &#34;code&#34;: 200,
     &#34;success&#34;: true,
@@ -93,11 +93,11 @@ type FileListItem = {
         &#34;previewUrl&#34;: &#34;xxxx&#34;
     }
 }</code>
-  </pre></div><div class="alert alert-success d-flex" role=alert><div class="flex-shrink-1 alert-icon"></div><div class=w-100><ul><li>title - 文件标题。</li><li>content - 文件内容，直接拿来用。</li><li>previewUrl - 文件链接，系统会请求该地址获取文件内容。</li></ul><p><code>content</code>和<code>previewUrl</code>二选一返回，如果同时返回则 <code>content</code> 优先级更高，返回 <code>previewUrl</code>时，则会访问该链接进行文档内容读取。</p></div></div></div></div><h3 id=3-获取文件阅读链接用于查看原文>3. 获取文件阅读链接（用于查看原文） <a href=#3-%e8%8e%b7%e5%8f%96%e6%96%87%e4%bb%b6%e9%98%85%e8%af%bb%e9%93%be%e6%8e%a5%e7%94%a8%e4%ba%8e%e6%9f%a5%e7%9c%8b%e5%8e%9f%e6%96%87 class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h3><nav><div class="nav nav-tabs" id=nav-tab role=tablist><a class="nav-link active" id=fbadecTab data-bs-toggle=tab data-bs-target=#fbadec type=button role=tab aria-controls=fbadec aria-selected=true>请求示例</a>
-<a class=nav-link id=defbacTab data-bs-toggle=tab data-bs-target=#defbac type=button role=tab aria-controls=defbac aria-selected=true>响应示例</a></div></nav><div class=tab-content id=nav-tab-content><div class="tab-pane fade show active" id=fbadec role=tabpanel aria-labelledby=nav-1><p>id 为文件的 id。</p><div class=prism-codeblock><pre id=3291e95 class=language-bash>
+  </pre></div><div class="alert alert-success d-flex" role=alert><div class="flex-shrink-1 alert-icon"></div><div class=w-100><ul><li>title - 文件标题。</li><li>content - 文件内容，直接拿来用。</li><li>previewUrl - 文件链接，系统会请求该地址获取文件内容。</li></ul><p><code>content</code>和<code>previewUrl</code>二选一返回，如果同时返回则 <code>content</code> 优先级更高，返回 <code>previewUrl</code>时，则会访问该链接进行文档内容读取。</p></div></div></div></div><h3 id=3-获取文件阅读链接用于查看原文>3. 获取文件阅读链接（用于查看原文） <a href=#3-%e8%8e%b7%e5%8f%96%e6%96%87%e4%bb%b6%e9%98%85%e8%af%bb%e9%93%be%e6%8e%a5%e7%94%a8%e4%ba%8e%e6%9f%a5%e7%9c%8b%e5%8e%9f%e6%96%87 class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h3><nav><div class="nav nav-tabs" id=nav-tab role=tablist><a class="nav-link active" id=ebcadfTab data-bs-toggle=tab data-bs-target=#ebcadf type=button role=tab aria-controls=ebcadf aria-selected=true>请求示例</a>
+<a class=nav-link id=cbafdeTab data-bs-toggle=tab data-bs-target=#cbafde type=button role=tab aria-controls=cbafde aria-selected=true>响应示例</a></div></nav><div class=tab-content id=nav-tab-content><div class="tab-pane fade show active" id=ebcadf role=tabpanel aria-labelledby=nav-1><p>id 为文件的 id。</p><div class=prism-codeblock><pre id=3291e95 class=language-bash>
   <code>curl --location --request GET &#39;{{baseURL}}/v1/file/read?id=xx&#39; \
 --header &#39;Authorization: Bearer {{authorization}}&#39;</code>
-  </pre></div></div><div class="tab-pane fade" id=defbac role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=9102b7d class=language-json>
+  </pre></div></div><div class="tab-pane fade" id=cbafde role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=9102b7d class=language-json>
   <code>{
     &#34;code&#34;: 200,
     &#34;success&#34;: true,
@@ -106,11 +106,11 @@ type FileListItem = {
         &#34;url&#34;: &#34;xxxx&#34;
     }
 }</code>
-  </pre></div><div class="alert alert-success d-flex" role=alert><div class="flex-shrink-1 alert-icon"></div><div class=w-100><ul><li>url - 文件访问链接，拿到后会自动打开。</li></ul></div></div></div></div><h3 id=4-获取文件详细信息用于获取文件信息>4. 获取文件详细信息（用于获取文件信息） <a href=#4-%e8%8e%b7%e5%8f%96%e6%96%87%e4%bb%b6%e8%af%a6%e7%bb%86%e4%bf%a1%e6%81%af%e7%94%a8%e4%ba%8e%e8%8e%b7%e5%8f%96%e6%96%87%e4%bb%b6%e4%bf%a1%e6%81%af class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h3><nav><div class="nav nav-tabs" id=nav-tab role=tablist><a class="nav-link active" id=dbcfaeTab data-bs-toggle=tab data-bs-target=#dbcfae type=button role=tab aria-controls=dbcfae aria-selected=true>请求示例</a>
-<a class=nav-link id=becfadTab data-bs-toggle=tab data-bs-target=#becfad type=button role=tab aria-controls=becfad aria-selected=true>响应示例</a></div></nav><div class=tab-content id=nav-tab-content><div class="tab-pane fade show active" id=dbcfae role=tabpanel aria-labelledby=nav-1><p>id 为文件的 id。</p><div class=prism-codeblock><pre id=3570318 class=language-bash>
+  </pre></div><div class="alert alert-success d-flex" role=alert><div class="flex-shrink-1 alert-icon"></div><div class=w-100><ul><li>url - 文件访问链接，拿到后会自动打开。</li></ul></div></div></div></div><h3 id=4-获取文件详细信息用于获取文件信息>4. 获取文件详细信息（用于获取文件信息） <a href=#4-%e8%8e%b7%e5%8f%96%e6%96%87%e4%bb%b6%e8%af%a6%e7%bb%86%e4%bf%a1%e6%81%af%e7%94%a8%e4%ba%8e%e8%8e%b7%e5%8f%96%e6%96%87%e4%bb%b6%e4%bf%a1%e6%81%af class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h3><nav><div class="nav nav-tabs" id=nav-tab role=tablist><a class="nav-link active" id=acbdfeTab data-bs-toggle=tab data-bs-target=#acbdfe type=button role=tab aria-controls=acbdfe aria-selected=true>请求示例</a>
+<a class=nav-link id=edfbacTab data-bs-toggle=tab data-bs-target=#edfbac type=button role=tab aria-controls=edfbac aria-selected=true>响应示例</a></div></nav><div class=tab-content id=nav-tab-content><div class="tab-pane fade show active" id=acbdfe role=tabpanel aria-labelledby=nav-1><p>id 为文件的 id。</p><div class=prism-codeblock><pre id=3570318 class=language-bash>
   <code>curl --location --request GET &#39;{{baseURL}}/v1/file/detail?id=xx&#39; \
 --header &#39;Authorization: Bearer {{authorization}}&#39;</code>
-  </pre></div></div><div class="tab-pane fade" id=becfad role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=d7fbca6 class=language-json>
+  </pre></div></div><div class="tab-pane fade" id=edfbac role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=d7fbca6 class=language-json>
   <code>{
     &#34;code&#34;: 200,
     &#34;success&#34;: true,
