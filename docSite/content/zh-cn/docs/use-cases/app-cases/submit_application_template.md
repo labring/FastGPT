@@ -22,7 +22,7 @@ weight: 602
 
 需要在 dev 环境下执行下面的操作。
 
-> 可参照 [FastGPT｜快速开始本地开发](https://doc.fastgpt.in/docs/development/intro/)
+> 可参照 [FastGPT｜快速开始本地开发](https://doc.fastgpt.io/docs/development/intro/)
 
 1. ### 在 FastGPT 工作台中，创建一个应用
 
