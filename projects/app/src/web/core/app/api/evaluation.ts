@@ -1,18 +1,14 @@
 import { DELETE, POST } from '@/web/common/api/request';
 import type {
-  deleteEvaluationQuery,
-  deleteEvaluationResponse,
-  deleteItemQuery,
-  deleteItemResponse,
   listEvalItemsBody,
-  listEvalItemsResponse,
   listEvaluationsBody,
-  listEvaluationsResponse,
   rerunEvalItemBody,
   rerunEvalItemResponse,
   updateEvalItemBody,
   updateEvalItemResponse
 } from '@fastgpt/global/core/app/evaluation/api';
+import type { evaluationType, listEvalItemsItem } from '@fastgpt/global/core/app/evaluation/type';
+import type { PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
 export const postCreateEvaluation = ({
   file,
@@ -46,16 +42,16 @@ export const postCreateEvaluation = ({
 };
 
 export const getEvaluationList = (data: listEvaluationsBody) =>
-  POST<listEvaluationsResponse>('/proApi/core/app/evaluation/list', data);
+  POST<PaginationResponse<evaluationType>>('/proApi/core/app/evaluation/list', data);
 
-export const deleteEvaluation = (data: deleteEvaluationQuery) =>
-  DELETE<deleteEvaluationResponse>('/proApi/core/app/evaluation/delete', data);
+export const deleteEvaluation = (data: { evalId: string }) =>
+  DELETE('/proApi/core/app/evaluation/delete', data);
 
 export const getEvalItemsList = (data: listEvalItemsBody) =>
-  POST<listEvalItemsResponse>('/proApi/core/app/evaluation/listItems', data);
+  POST<PaginationResponse<listEvalItemsItem>>('/proApi/core/app/evaluation/listItems', data);
 
-export const deleteEvalItem = (data: deleteItemQuery) =>
-  DELETE<deleteItemResponse>('/proApi/core/app/evaluation/deleteItem', data);
+export const deleteEvalItem = (data: { evalItemId: string }) =>
+  DELETE('/proApi/core/app/evaluation/deleteItem', data);
 
 export const rerunEvalItem = (data: rerunEvalItemBody) =>
   POST<rerunEvalItemResponse>('/proApi/core/app/evaluation/rerunItem', data);

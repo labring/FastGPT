@@ -38,7 +38,6 @@ import {
 } from '@fastgpt/global/core/app/evaluation/constants';
 import type { evaluationType, listEvalItemsItem } from '@fastgpt/global/core/app/evaluation/type';
 import type {
-  deleteItemQuery,
   rerunEvalItemBody,
   updateEvalItemBody
 } from '@fastgpt/global/core/app/evaluation/api';
@@ -106,7 +105,7 @@ const EvaluationDetailModal = ({
     },
     pollingInterval: 5000
   });
-  const evalItem: listEvalItemsItem = evalItemsList[seletedIndex];
+  const evalItem = evalItemsList[seletedIndex];
 
   const { runAsync: exportEval, loading: isDownloading } = useRequest2(async () => {
     await downloadFetch({
@@ -127,7 +126,7 @@ const EvaluationDetailModal = ({
   });
 
   const { runAsync: delEvalItem, loading: isLoadingDelete } = useRequest2(
-    async (data: deleteItemQuery) => {
+    async (data: { evalItemId: string }) => {
       await deleteEvalItem(data);
     },
     {

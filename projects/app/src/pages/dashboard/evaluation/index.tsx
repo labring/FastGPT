@@ -30,7 +30,6 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import type { evaluationType } from '@fastgpt/global/core/app/evaluation/type';
-import type { deleteEvaluationQuery } from '@fastgpt/global/core/app/evaluation/api';
 
 const Evaluation = () => {
   const router = useRouter();
@@ -60,7 +59,7 @@ const Evaluation = () => {
   });
 
   const { runAsync: deleteEval, loading: isLoadingDelete } = useRequest2(
-    async (data: deleteEvaluationQuery) => {
+    async (data: { evalId: string }) => {
       await deleteEvaluation(data);
     },
     {
@@ -185,7 +184,7 @@ const Evaluation = () => {
                     </Thead>
                     <Tbody>
                       <Tr h={'5px'} />
-                      {evaluationList.map((item: evaluationType, index: number) => {
+                      {evaluationList.map((item, index) => {
                         return (
                           <Tr key={item._id}>
                             <Td fontWeight={'medium'} color={'myGray.900'}>
