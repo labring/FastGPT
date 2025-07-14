@@ -277,11 +277,12 @@ const NodeTemplateList = ({
               .map((input) => ({
                 ...input,
                 value: defaultValueMap[input.key] ?? input.value ?? input.defaultValue,
-                valueDesc: t(input.valueDesc as any),
+                valueDesc: input.valueDesc ? t(input.valueDesc as any) : undefined,
                 label: t(input.label as any),
-                description: t(input.description as any),
-                debugLabel: t(input.debugLabel as any),
-                toolDescription: t(input.toolDescription as any)
+                description: input.description ? t(input.description as any) : undefined,
+                placeholder: input.placeholder ? t(input.placeholder as any) : undefined,
+                debugLabel: input.debugLabel ? t(input.debugLabel as any) : undefined,
+                toolDescription: input.toolDescription ? t(input.toolDescription as any) : undefined
               })),
             outputs: templateNode.outputs
               .filter((output) => output.deprecated !== true)
