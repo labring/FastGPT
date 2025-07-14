@@ -129,7 +129,8 @@ export const readDatasetSourceRawText = async ({
       apiDatasetServer,
       apiFileId: sourceId,
       teamId,
-      tmbId
+      tmbId,
+      customPdfParse
     });
     return {
       title,
