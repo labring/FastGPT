@@ -1,6 +1,6 @@
 <div align="center">
 
-<a href="https://tryfastgpt.ai/"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
+<a href="https://fastgpt.io/"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
 
 # FastGPT
 
@@ -15,13 +15,13 @@ FastGPT 是一个 AI Agent 构建平台，提供开箱即用的数据处理、�
 </div>
 
 <p align="center">
-  <a href="https://tryfastgpt.ai/">
+  <a href="https://fastgpt.io/">
     <img height="21" src="https://img.shields.io/badge/在线使用-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
   </a>
-  <a href="https://doc.tryfastgpt.ai/docs/intro">
+  <a href="https://doc.fastgpt.io/docs/intro">
     <img height="21" src="https://img.shields.io/badge/相关文档-7d09f1?style=flat-square" alt="document">
   </a>
-  <a href="https://doc.tryfastgpt.ai/docs/development">
+  <a href="https://doc.fastgpt.io/docs/development">
     <img height="21" src="https://img.shields.io/badge/本地开发-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
   </a>
   <a href="/#-%E7%9B%B8%E5%85%B3%E9%A1%B9%E7%9B%AE">
@@ -100,15 +100,15 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
   > 使用 [Sealos](https://sealos.io) 服务，无需采购服务器、无需域名，支持高并发 & 动态伸缩，并且数据库应用采用 kubeblocks 的数据库，在 IO 性能方面，远超于简单的 Docker 容器部署。
 
-  [点击查看 Sealos 一键部署 FastGPT 教程](https://doc.tryfastgpt.ai/docs/development/sealos/)
+  [点击查看 Sealos 一键部署 FastGPT 教程](https://doc.fastgpt.io/docs/development/sealos/)
 
-* [快速开始本地开发](https://doc.tryfastgpt.ai/docs/development/intro/)
-* [部署 FastGPT](https://doc.tryfastgpt.ai/docs/development/sealos/)
-* [系统配置文件说明](https://doc.tryfastgpt.ai/docs/development/configuration/)
-* [多模型配置方案](https://doc.tryfastgpt.ai/docs/development/modelconfig/one-api/)
-* [版本更新/升级介绍](https://doc.tryfastgpt.ai/docs/development/upgrading/)
-* [OpenAPI API 文档](https://doc.tryfastgpt.ai/docs/development/openapi/)
-* [知识库结构详解](https://doc.tryfastgpt.ai/docs/guide/knowledge_base/rag/)
+* [快速开始本地开发](https://doc.fastgpt.io/docs/development/intro/)
+* [部署 FastGPT](https://doc.fastgpt.io/docs/development/sealos/)
+* [系统配置文件说明](https://doc.fastgpt.io/docs/development/configuration/)
+* [多模型配置方案](https://doc.fastgpt.io/docs/development/modelconfig/one-api/)
+* [版本更新/升级介绍](https://doc.fastgpt.io/docs/development/upgrading/)
+* [OpenAPI API 文档](https://doc.fastgpt.io/docs/development/openapi/)
+* [知识库结构详解](https://doc.fastgpt.io/docs/guide/knowledge_base/rag/)
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
@@ -133,7 +133,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 - [PPIO 派欧云：一键调用高性价比的开源模型 API 和 GPU 容器](https://ppinfra.com/user/register?invited_by=VITYVU&utm_source=github_fastgpt)
 - [AI Proxy：国内模型聚合服务](https://sealos.run/aiproxy/?k=fastgpt-github/)
 - [SiliconCloud (硅基流动) —— 开源模型在线体验平台](https://cloud.siliconflow.cn/i/TR9Ym0c4)
-- [COW 个人微信/企微机器人](https://doc.tryfastgpt.ai/docs/use-cases/external-integration/onwechat/)
+- [COW 个人微信/企微机器人](https://doc.fastgpt.io/docs/use-cases/external-integration/onwechat/)
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
@@ -216,4 +216,4 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 1. 允许作为后台服务直接商用，但不允许提供 SaaS 服务。
 2. 未经商业授权，任何形式的商用服务均需保留相关版权信息。
 3. 完整请查看 [FastGPT Open Source License](./LICENSE)
-4. 联系方式：Dennis@sealos.io，[点击查看商业版定价策略](https://doc.tryfastgpt.ai/docs/shopping_cart/intro/)
+4. 联系方式：Dennis@sealos.io，[点击查看商业版定价策略](https://doc.fastgpt.io/docs/shopping_cart/intro/)
