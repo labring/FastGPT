@@ -55,7 +55,7 @@ deepseek 系列：
 
 ## 2. 部署最新版 FastGPT 到本地环境
 {{% alert context="warning" %}}
-请使用 v4.8.22 以上版本，部署参考: https://doc.tryfastgpt.ai/docs/development/intro/
+请使用 v4.8.22 以上版本，部署参考: https://doc.fastgpt.io/docs/development/intro/
 {{% /alert %}}
 
 ## 3. 模型配置（下面两种方式二选其一）
