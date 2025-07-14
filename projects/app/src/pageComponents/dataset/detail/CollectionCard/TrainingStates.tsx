@@ -15,7 +15,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState } from 'react';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import {
   deleteTrainingData,
@@ -37,9 +37,9 @@ import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyImage from '@/components/MyImage';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import React from 'react';
-import { useToast } from '@chakra-ui/react';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import React from 'react';
 
 enum TrainingStatus {
   NotStart = 'NotStart',
@@ -288,16 +288,16 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
 const ErrorView = ({
   datasetId,
   collectionId,
-  refreshTrainingDetail
+  refreshTrainingDetail,
+  onErrorCountChange
 }: {
   datasetId: string;
   collectionId: string;
   refreshTrainingDetail: () => void;
-  errorList: any[];
-  errorLoading: boolean;
+  onErrorCountChange?: (count: number) => void;
 }) => {
   const { t } = useTranslation();
-  const TrainingText: Record<string, string> = {
+  const TrainingText = {
     [TrainingModeEnum.parse]: t('dataset:process.Parsing'),
     [TrainingModeEnum.chunk]: t('dataset:process.Vectorizing'),
     [TrainingModeEnum.qa]: t('dataset:process.Get QA'),
@@ -320,6 +320,11 @@ const ErrorView = ({
     },
     EmptyTip: <EmptyTip />
   });
+
+  // Notify component of parent error count changes
+  React.useEffect(() => {
+    onErrorCountChange?.(errorList?.length || 0);
+  }, [errorList?.length, onErrorCountChange]);
 
   const { runAsync: getData, loading: getDataLoading } = useRequest2(
     (data: { datasetId: string; collectionId: string; dataId: string }) => {
@@ -381,38 +386,24 @@ const ErrorView = ({
       isLoading={isLoading || updateLoading || getDataLoading || deleteLoading}
     >
       <TableContainer overflowY={'auto'} fontSize={'12px'}>
-        <Table size="sm" variant={'simple'}>
+        <Table variant={'simple'}>
           <Thead>
             <Tr>
-              <Th py={3} px={4}>
-                {t('dataset:dataset.Chunk_Number')}
-              </Th>
-              <Th py={3} px={4}>
-                {t('dataset:dataset.Training_Status')}
-              </Th>
-              <Th py={3} px={4}>
-                {t('dataset:dataset.Error_Message')}
-              </Th>
-              <Th py={3} px={4}>
-                {t('dataset:dataset.Operation')}
-              </Th>
+              <Th pr={0}>{t('dataset:dataset.Chunk_Number')}</Th>
+              <Th pr={0}>{t('dataset:dataset.Training_Status')}</Th>
+              <Th>{t('dataset:dataset.Error_Message')}</Th>
+              <Th>{t('dataset:dataset.Operation')}</Th>
             </Tr>
           </Thead>
           <Tbody>
             {errorList.map((item, index) => (
               <Tr key={index}>
-                <Td py={3} px={4}>
-                  {item.chunkIndex + 1}
+                <Td>{item.chunkIndex + 1}</Td>
+                <Td>{TrainingText[item.mode]}</Td>
+                <Td maxW={50}>
+                  <MyTooltip label={item.errorMsg}>{t(item.errorMsg)}</MyTooltip>
                 </Td>
-                <Td py={3} px={4}>
-                  {TrainingText[String(item.mode)] || ''}
-                </Td>
-                <Td py={3} px={4} maxW={50}>
-                  <MyTooltip label={t(getErrText(item.errorMsg))}>
-                    {t(getErrText(item.errorMsg))}
-                  </MyTooltip>
-                </Td>
-                <Td py={3} px={4}>
+                <Td>
                   <Flex alignItems={'center'}>
                     <Button
                       variant={'ghost'}
@@ -458,8 +449,6 @@ const ErrorView = ({
     </ScrollData>
   );
 };
-
-ErrorView.displayName = 'ErrorView';
 
 const EditView = ({
   loading,
@@ -548,28 +537,19 @@ const TrainingStates = ({
     manual: false
   });
 
-  // Abnormal data request
-  const {
-    data: errorData,
-    loading: errorLoading,
-    runAsync: refreshErrorList
-  } = useRequest2(() => getTrainingError({ collectionId, pageSize: 999, pageNum: 1 }), {
-    manual: false
-  });
-  const errorList = errorData?.list || [];
-
   // All retry logic
   const [retrying, setRetrying] = useState(false);
+  const [errorCount, setErrorCount] = useState(0);
+
   const handleRetryAll = async () => {
-    if (!errorList.length) return;
+    if (!errorCount) return;
     setRetrying(true);
     try {
       // Not passing dataId means retrying all error data
       await updateTrainingData({ datasetId, collectionId });
-      refreshErrorList();
       refreshTrainingDetail();
     } catch (e) {
-      toast({
+      toast.toast({
         status: 'error',
         title: t('common:retry_failed')
       });
@@ -601,12 +581,12 @@ const TrainingStates = ({
             list={[
               { label: t('dataset:dataset.Training Process'), value: 'states' },
               {
-                label: t('dataset:dataset.Training_Errors', { count: errorList.length }),
+                label: t('dataset:dataset.Training_Errors', { count: errorCount }),
                 value: 'errors'
               }
             ]}
           />
-          {tab === 'errors' && errorList.length > 0 && !errorLoading && (
+          {tab === 'errors' && errorCount > 0 && (
             <Button colorScheme="primary" size="sm" isLoading={retrying} onClick={handleRetryAll}>
               {t('dataset:retry_all')}
             </Button>
@@ -618,8 +598,7 @@ const TrainingStates = ({
             datasetId={datasetId}
             collectionId={collectionId}
             refreshTrainingDetail={refreshTrainingDetail}
-            errorList={errorList}
-            errorLoading={errorLoading}
+            onErrorCountChange={setErrorCount}
           />
         )}
       </ModalBody>
