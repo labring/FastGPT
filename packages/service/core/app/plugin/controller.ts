@@ -215,8 +215,10 @@ export async function getChildAppPreviewNode({
         flowNodeType: app.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
         nodeIOConfig: {
           inputs: app.isFolder
-            ? ([
+            ? [
                 {
+                  key: NodeInputKeyEnum.toolSetData,
+                  label: '',
                   value: {
                     toolList: children.map((item) => ({
                       name: parseI18nString(item.name, lang),
@@ -235,7 +237,7 @@ export async function getChildAppPreviewNode({
                       }
                     ]
                   : [])
-              ] as FlowNodeInputItemType[])
+              ]
             : app.inputs ?? [],
           outputs: app.outputs ?? [],
           toolConfig: {
