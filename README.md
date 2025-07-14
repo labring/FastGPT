@@ -33,7 +33,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## 🛸 在线使用
 
-- 🌍 国际版：[tryfastgpt.ai](https://tryfastgpt.ai/)
+- 🌍 国际版：[fastgpt.io](https://fastgpt.io/)
 
 |                                    |                                    |
 | ---------------------------------- | ---------------------------------- |
