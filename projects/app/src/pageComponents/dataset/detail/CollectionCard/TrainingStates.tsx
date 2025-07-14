@@ -608,7 +608,7 @@ const TrainingStates = ({
           />
           {tab === 'errors' && errorList.length > 0 && !errorLoading && (
             <Button colorScheme="primary" size="sm" isLoading={retrying} onClick={handleRetryAll}>
-              {t('dataset:dataset.Retry_All')}
+              {t('dataset:retry_all')}
             </Button>
           )}
         </Flex>
