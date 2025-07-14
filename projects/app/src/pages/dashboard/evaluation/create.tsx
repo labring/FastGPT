@@ -30,7 +30,7 @@ import { evaluationFileErrors } from '@fastgpt/global/core/app/evaluation/consta
 
 type EvaluationFormType = {
   name: string;
-  agentModel: string;
+  evalModel: string;
   appId: string;
   evaluationFiles: SelectFileItemType[];
 };
@@ -56,7 +56,7 @@ const EvaluationCreating = () => {
   const { register, setValue, watch, handleSubmit } = useForm<EvaluationFormType>({
     defaultValues: {
       name: '',
-      agentModel:
+      evalModel:
         defaultModels.datasetTextLLM?.model || getWebDefaultLLMModel(datasetModelList)?.model,
       appId: '',
       evaluationFiles: [] as SelectFileItemType[]
@@ -64,7 +64,7 @@ const EvaluationCreating = () => {
   });
 
   const name = watch('name');
-  const agentModel = watch('agentModel');
+  const evalModel = watch('evalModel');
   const appId = watch('appId');
   const evaluationFiles = watch('evaluationFiles');
 
@@ -90,7 +90,7 @@ const EvaluationCreating = () => {
       await postCreateEvaluation({
         file: data.evaluationFiles[0].file,
         name: data.name,
-        agentModel: data.agentModel,
+        evalModel: data.evalModel,
         appId: data.appId,
         percentListen: setPercent
       });
@@ -180,13 +180,13 @@ const EvaluationCreating = () => {
               <AIModelSelector
                 w={'406px'}
                 bg={'myGray.50'}
-                value={agentModel}
+                value={evalModel}
                 list={datasetModelList.map((item) => ({
                   label: item.name,
                   value: item.model
                 }))}
                 onChange={(e) => {
-                  setValue('agentModel', e);
+                  setValue('evalModel', e);
                 }}
               />
             </Flex>
@@ -349,7 +349,7 @@ const EvaluationCreating = () => {
                 isDisabled={
                   !!error ||
                   !name ||
-                  !agentModel ||
+                  !evalModel ||
                   !appId ||
                   !evaluationFiles ||
                   evaluationFiles.length === 0

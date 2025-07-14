@@ -3,7 +3,7 @@ import type { EvaluationStatusEnum } from '@fastgpt/global/core/app/evaluation/c
 export type EvaluationSchemaType = {
   teamId: string;
   tmbId: string;
-  agentModel: string;
+  evalModel: string;
   appId: string;
   name: string;
   createTime: Date;

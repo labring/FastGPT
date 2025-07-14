@@ -25,7 +25,7 @@ const EvaluationSchema = new Schema({
     ref: AppCollectionName,
     required: true
   },
-  evalModal: {
+  evalModel: {
     type: String,
     required: true
   },

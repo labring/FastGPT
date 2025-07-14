@@ -45,7 +45,10 @@ import type {
 
 const formatEvaluationStatus = (item: { status: number; errorMessage?: string }, t: TFunction) => {
   const statusConfig = {
-    error: { color: 'red.600', key: t('dashboard_evaluation:error') },
+    [EvaluationStatusEnum.error]: {
+      color: 'red.600',
+      key: t('dashboard_evaluation:error')
+    },
     [EvaluationStatusEnum.queuing]: {
       color: 'myGray.500',
       key: t('dashboard_evaluation:queuing')
@@ -61,7 +64,7 @@ const formatEvaluationStatus = (item: { status: number; errorMessage?: string },
   };
 
   const config = item.errorMessage
-    ? statusConfig.error
+    ? statusConfig[EvaluationStatusEnum.error]
     : statusConfig[item.status as keyof typeof statusConfig] || null;
   if (!config) return null;
 
@@ -87,8 +90,8 @@ const EvaluationDetailModal = ({
 
   const { llmModelList } = useSystemStore();
   const modelData = useMemo(
-    () => getModelFromList(llmModelList, evalDetail.agentModel),
-    [evalDetail.agentModel]
+    () => getModelFromList(llmModelList, evalDetail.evalModel),
+    [evalDetail.evalModel]
   );
 
   const {
@@ -129,7 +132,7 @@ const EvaluationDetailModal = ({
     },
     {
       onSuccess: () => {
-        fetchData(false, undefined, true);
+        fetchData({ init: false, isPolling: true });
         fetchEvalList();
       }
     }
@@ -141,7 +144,7 @@ const EvaluationDetailModal = ({
     },
     {
       onSuccess: () => {
-        fetchData(false, undefined, true);
+        fetchData({ init: false, isPolling: true });
         fetchEvalList();
       }
     }
@@ -153,7 +156,7 @@ const EvaluationDetailModal = ({
     },
     {
       onSuccess: () => {
-        fetchData(false, undefined, true);
+        fetchData({ init: false, isPolling: true });
         fetchEvalList();
       }
     }

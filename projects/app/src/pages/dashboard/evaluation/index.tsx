@@ -29,10 +29,8 @@ import EvaluationDetailModal from '../../../pageComponents/app/evaluation/Detail
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import type {
-  deleteEvaluationQuery,
-  evaluationType
-} from '@fastgpt/global/core/app/evaluation/type';
+import type { evaluationType } from '@fastgpt/global/core/app/evaluation/type';
+import type { deleteEvaluationQuery } from '@fastgpt/global/core/app/evaluation/api';
 
 const Evaluation = () => {
   const router = useRouter();
@@ -67,7 +65,7 @@ const Evaluation = () => {
     },
     {
       onSuccess: () => {
-        fetchData(false, undefined, true);
+        fetchData({ init: false, isPolling: true });
       }
     }
   );
@@ -259,7 +257,7 @@ const Evaluation = () => {
         <EvaluationDetailModal
           evalDetail={evaluationList[evalDetailIndex]}
           onClose={() => setEvalDetailIndex(null)}
-          fetchEvalList={() => fetchData(false, undefined, true)}
+          fetchEvalList={() => fetchData({ init: false, isPolling: true })}
         />
       )}
       <ConfirmModal />

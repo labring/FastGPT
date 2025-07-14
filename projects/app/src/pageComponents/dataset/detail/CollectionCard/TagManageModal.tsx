@@ -25,13 +25,8 @@ import { type DatasetCollectionsListItemType } from '@/global/core/dataset/type'
 
 const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
-  const {
-    datasetDetail,
-    onCreateCollectionTag,
-    isCreateCollectionTagLoading,
-    loadAllDatasetTags,
-    setSearchTagKey
-  } = useContextSelector(DatasetPageContext, (v) => v);
+  const { datasetDetail, onCreateCollectionTag, loadAllDatasetTags, setSearchTagKey } =
+    useContextSelector(DatasetPageContext, (v) => v);
   const { getData, pageNum, collections } = useContextSelector(CollectionPageContext, (v) => v);
 
   const tagInputRef = useRef<HTMLInputElement>(null);
@@ -59,7 +54,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     }
   }, [currentEditTag]);
 
-  const { runAsync: onDeleteCollectionTag, loading: isDeleteCollectionTagLoading } = useRequest2(
+  const { runAsync: onDeleteCollectionTag } = useRequest2(
     (tag: string) =>
       delDatasetCollectionTag({
         datasetId: datasetDetail._id,
@@ -76,7 +71,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     }
   );
 
-  const { runAsync: onUpdateCollectionTag, loading: isUpdateCollectionTagLoading } = useRequest2(
+  const { runAsync: onUpdateCollectionTag } = useRequest2(
     async (tag: DatasetTagType) => {
       return updateDatasetCollectionTag({
         datasetId: datasetDetail._id,
@@ -93,7 +88,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     }
   );
 
-  const { runAsync: onSaveCollectionTag, loading: isSaveCollectionTagLoading } = useRequest2(
+  const { runAsync: onSaveCollectionTag } = useRequest2(
     async ({
       tag,
       originCollectionIds,

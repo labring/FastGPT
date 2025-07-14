@@ -14,7 +14,7 @@ export type evaluationType = {
   completedCount: number;
   errorCount: number;
   totalCount: number;
-  agentModel: string;
+  evalModel: string;
 };
 
 export type listEvalItemsItem = {
@@ -23,7 +23,7 @@ export type listEvalItemsItem = {
   expectedResponse: string;
   response: string;
   variables: Record<string, string>;
-  status: 0 | 1 | 2;
+  status: -1 | 0 | 1 | 2;
   errorMessage: string;
   accuracy: number;
   relevance: number;

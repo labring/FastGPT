@@ -70,7 +70,7 @@ export function useVirtualScrollPagination<
     overscan
   });
 
-  const loadData = useLockFn(async (init = false) => {
+  const loadData = useLockFn(async ({ init = false }: { init?: boolean } = {}) => {
     if (noMore && !init) return;
 
     const offset = init ? 0 : data.length;
@@ -140,7 +140,7 @@ export function useVirtualScrollPagination<
   // Reload data
   useRequest(
     async () => {
-      loadData(true);
+      loadData({ init: true });
     },
     {
       manual: false,
@@ -156,7 +156,7 @@ export function useVirtualScrollPagination<
       const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
 
       if (scrollTop + clientHeight >= scrollHeight - thresholdVal) {
-        loadData(false);
+        loadData({ init: false });
       }
     },
     [scroll],
@@ -217,7 +217,15 @@ export function useScrollPagination<
   const noMore = data.length >= total;
 
   const loadData = useLockFn(
-    async (init = false, ScrollContainerRef?: RefObject<HTMLDivElement>, isPolling = false) => {
+    async ({
+      init = false,
+      ScrollContainerRef,
+      isPolling = false
+    }: {
+      init?: boolean;
+      ScrollContainerRef?: RefObject<HTMLDivElement>;
+      isPolling?: boolean;
+    } = {}) => {
       if (noMore && !init && !isPolling) return;
 
       if (!isPolling) {
@@ -322,7 +330,7 @@ export function useScrollPagination<
               scrollTop + clientHeight >= scrollHeight - thresholdVal) ||
             (scrollLoadType === 'top' && scrollTop < thresholdVal)
           ) {
-            loadData(false, ref);
+            loadData({ init: false, ScrollContainerRef: ref });
           }
         },
         [scroll],
@@ -352,7 +360,7 @@ export function useScrollPagination<
               cursor={loadText === t('common:request_more') ? 'pointer' : 'default'}
               onClick={() => {
                 if (loadText !== t('common:request_more')) return;
-                loadData(false);
+                loadData({ init: false });
               }}
             >
               {loadText}
@@ -368,7 +376,7 @@ export function useScrollPagination<
   useRequest2(
     async () => {
       if (disabled) return;
-      loadData(true);
+      loadData({ init: true });
     },
     {
       manual: false,
@@ -379,7 +387,7 @@ export function useScrollPagination<
   useRequest2(
     async () => {
       if (disabled || !pollingInterval) return;
-      await loadData(false, ScrollRef, true);
+      await loadData({ init: false, ScrollContainerRef: ScrollRef, isPolling: true });
     },
     {
       pollingInterval,
@@ -390,7 +398,7 @@ export function useScrollPagination<
   );
 
   const refreshList = useMemoizedFn(() => {
-    loadData(true);
+    loadData({ init: true });
   });
 
   return {

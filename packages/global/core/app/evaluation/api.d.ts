@@ -44,7 +44,7 @@ export type listEvalItemsResponse = PaginationResponse<listEvalItemsItem>;
 export type createEvaluationBody = {
   name: string;
   appId: string;
-  agentModel: string;
+  evalModel: string;
   file: File;
 };
 export type createEvaluationResponse = Record<string, never> | { error: string };
@@ -58,10 +58,3 @@ export type exportItemsBody = {
   title: string;
   statusMap: Record<string, { label: string }>;
 };
-
-export type listEvalItemsBody = PaginationProps<{
-  evalId: string;
-  appId: string;
-}>;
-
-export type listEvalItemsResponse = PaginationResponse<listEvalItemsItem>;
