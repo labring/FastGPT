@@ -454,7 +454,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 --header 'Authorization: Bearer {{authorization}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "link":"https://doc.tryfastgpt.ai/docs/course/quick-start/",
+    "link":"https://doc.fastgpt.io/docs/course/quick-start/",
     "datasetId":"6593e137231a2be9c5603ba7",
     "parentId": null,
 
@@ -796,7 +796,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
                 "tmbId": "65422be6aa44b7da77729ec9",
                 "type": "link",
                 "name": "快速上手 | FastGPT",
-                "rawLink": "https://doc.tryfastgpt.ai/docs/course/quick-start/",
+                "rawLink": "https://doc.fastgpt.io/docs/course/quick-start/",
                 "updateTime": "2024-01-20T13:54:53.031Z",
                 "dataAmount": 3,
                 "trainingAmount": 0,

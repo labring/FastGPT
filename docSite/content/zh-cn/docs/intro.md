@@ -11,7 +11,7 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，将智能�
 
 {{% alert icon="🤖 " context="success" %}}
 快速开始体验
-- 海外版：[https://tryfastgpt.ai](https://tryfastgpt.ai)
+- 海外版：[https://fastgpt.io](https://fastgpt.io)
 - 国内版：[https://fastgpt.cn](https://fastgpt.cn)
 {{% /alert %}}
 
