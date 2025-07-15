@@ -1,4 +1,4 @@
-import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type { EvaluationStatusEnum } from './constants';
 
 export type evaluationType = {
   _id: string;
@@ -24,7 +24,7 @@ export type listEvalItemsItem = {
   expectedResponse: string;
   response: string;
   variables: Record<string, string>;
-  status: -1 | 0 | 1 | 2;
+  status: EvaluationStatusEnum;
   errorMessage: string;
   accuracy: number;
   relevance: number;

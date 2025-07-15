@@ -3,9 +3,7 @@ import type {
   listEvalItemsBody,
   listEvaluationsBody,
   rerunEvalItemBody,
-  rerunEvalItemResponse,
-  updateEvalItemBody,
-  updateEvalItemResponse
+  updateEvalItemBody
 } from '@fastgpt/global/core/app/evaluation/api';
 import type { evaluationType, listEvalItemsItem } from '@fastgpt/global/core/app/evaluation/type';
 import type { PaginationResponse } from '@fastgpt/web/common/fetch/type';
@@ -54,7 +52,7 @@ export const deleteEvalItem = (data: { evalItemId: string }) =>
   DELETE('/proApi/core/app/evaluation/deleteItem', data);
 
 export const rerunEvalItem = (data: rerunEvalItemBody) =>
-  POST<rerunEvalItemResponse>('/proApi/core/app/evaluation/rerunItem', data);
+  POST('/proApi/core/app/evaluation/rerunItem', data);
 
 export const updateEvalItem = (data: updateEvalItemBody) =>
-  POST<updateEvalItemResponse>('/proApi/core/app/evaluation/updateItem', data);
+  POST('/proApi/core/app/evaluation/updateItem', data);

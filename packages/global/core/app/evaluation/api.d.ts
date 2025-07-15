@@ -12,18 +12,10 @@ export type listEvalItemsBody = PaginationProps<{
 export type rerunEvalItemBody = {
   evalItemId: string;
 };
-export type rerunEvalItemResponse = {
-  message: string;
-  status: 'queued' | 'processing';
-};
 
 export type updateEvalItemBody = {
   evalItemId: string;
   question: string;
   expectedResponse: string;
   variables: Record<string, string>;
-};
-export type updateEvalItemResponse = {
-  message: string;
-  status: 'queued' | 'processing';
 };

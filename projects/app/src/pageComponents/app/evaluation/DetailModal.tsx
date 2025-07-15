@@ -83,7 +83,7 @@ const EvaluationDetailModal = ({
   fetchEvalList: () => void;
 }) => {
   const { t } = useTranslation();
-  const [seletedIndex, setSelectedIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const [editing, setEditing] = useState(false);
 
   const { llmModelList } = useSystemStore();
@@ -104,7 +104,18 @@ const EvaluationDetailModal = ({
     },
     pollingInterval: 5000
   });
-  const evalItem = evalItemsList[seletedIndex];
+  const evalItem = evalItemsList[selectedIndex] || null;
+
+  const statusMap = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(EvaluationStatusMap).map(([key, config]) => [
+          key,
+          { label: t(config.name as any) }
+        ])
+      ),
+    [t]
+  );
 
   const { runAsync: exportEval, loading: isDownloading } = useRequest2(async () => {
     await downloadFetch({
@@ -112,14 +123,7 @@ const EvaluationDetailModal = ({
       filename: `${evalDetail.name}.csv`,
       body: {
         title: t('dashboard_evaluation:evaluation_export_title'),
-        statusMap: Object.fromEntries(
-          Object.entries(EvaluationStatusMap).map(([key, config]) => [
-            key,
-            {
-              label: t(config.name as any)
-            }
-          ])
-        )
+        statusMap
       }
     });
   });
@@ -296,10 +300,10 @@ const EvaluationDetailModal = ({
                         {editing ? (
                           <Button
                             fontSize={12}
-                            onClick={async () => {
+                            onClick={handleSubmit(async (data) => {
+                              await updateItem(data);
                               setEditing(false);
-                              handleSubmit(updateItem)();
-                            }}
+                            })}
                           >
                             {t('common:Save')}
                           </Button>
@@ -381,10 +385,10 @@ const EvaluationDetailModal = ({
                           py={3}
                           fontSize={'14px'}
                           border={'1px solid'}
-                          borderColor={index === seletedIndex ? 'primary.600' : 'transparent'}
-                          borderBottomColor={index !== seletedIndex ? 'myGray.100' : ''}
+                          borderColor={index === selectedIndex ? 'primary.600' : 'transparent'}
+                          borderBottomColor={index !== selectedIndex ? 'myGray.100' : ''}
                           _hover={{ borderRadius: '8px', borderColor: 'primary.600' }}
-                          borderRadius={index === seletedIndex ? '8px' : '0'}
+                          borderRadius={index === selectedIndex ? '8px' : '0'}
                           cursor={'pointer'}
                           onClick={() => {
                             setSelectedIndex(index);
