@@ -1004,7 +1004,6 @@
   "required": "必填",
   "rerank_weight": "重排權重",
   "resume_failed": "恢復失敗",
-  "retry_failed": "重試失敗",
   "root_folder": "根目錄",
   "save_failed": "儲存失敗",
   "save_success": "儲存成功",

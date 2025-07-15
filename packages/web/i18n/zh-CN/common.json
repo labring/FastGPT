@@ -1004,7 +1004,6 @@
   "required": "必须",
   "rerank_weight": "重排权重",
   "resume_failed": "恢复失败",
-  "retry_failed": "重试失败",
   "root_folder": "根目录",
   "save_failed": "保存异常",
   "save_success": "保存成功",
