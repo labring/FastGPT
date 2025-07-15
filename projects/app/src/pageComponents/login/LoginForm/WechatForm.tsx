@@ -15,7 +15,8 @@ import {
   getFastGPTSem,
   getMsclkid,
   getSourceDomain,
-  removeFastGPTSem
+  removeFastGPTSem,
+  getInviterId
 } from '@/web/support/marketing/utils';
 
 interface Props {
@@ -40,6 +41,7 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
     ['getWXLoginResult', wechatInfo?.code],
     () =>
       getWXLoginResult({
+        inviterId: getInviterId(),
         code: wechatInfo?.code || '',
         bd_vid: getBdVId(),
         msclkid: getMsclkid(),
