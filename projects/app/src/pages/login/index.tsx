@@ -90,15 +90,10 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
 
   /* default login type */
   useEffect(() => {
-    const bd_vid = getBdVId();
-    if (bd_vid) {
-      setPageType(LoginPageTypeEnum.passwordLogin);
-      return;
-    }
+    //delete bd_vid and show WeChat login
     setPageType(
       feConfigs?.oauth?.wechat ? LoginPageTypeEnum.wechat : LoginPageTypeEnum.passwordLogin
     );
-
     // init store
     setLastChatAppId('');
   }, [feConfigs?.oauth, setLastChatAppId]);
