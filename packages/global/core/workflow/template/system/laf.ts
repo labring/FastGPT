@@ -11,7 +11,7 @@ import {
   FlowNodeTemplateTypeEnum
 } from '../../constants';
 import { Input_Template_DynamicInput } from '../input';
-import { Output_Template_AddOutput } from '../output';
+import { Output_Template_AddOutput, Output_Template_Error_Message } from '../output';
 import { i18nT } from '../../../../../web/i18n/utils';
 
 export const nodeLafCustomInputConfig = {
@@ -31,6 +31,7 @@ export const LafModule: FlowNodeTemplateType = {
   intro: i18nT('workflow:intro_laf_function_call'),
   showStatus: true,
   isTool: true,
+  catchError: false,
   courseUrl: '/docs/guide/dashboard/workflow/laf/',
   inputs: [
     {
@@ -57,8 +58,7 @@ export const LafModule: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.any,
       type: FlowNodeOutputTypeEnum.static
     },
-    {
-      ...Output_Template_AddOutput
-    }
+    Output_Template_AddOutput,
+    Output_Template_Error_Message
   ]
 };

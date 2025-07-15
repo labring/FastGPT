@@ -262,7 +262,9 @@ export async function dispatchDatasetSearch(
   };
 
   return {
-    quoteQA: searchRes,
+    data: {
+      quoteQA: searchRes
+    },
     [DispatchNodeResponseKeyEnum.nodeResponse]: responseData,
     nodeDispatchUsages,
     [DispatchNodeResponseKeyEnum.toolResponses]: {

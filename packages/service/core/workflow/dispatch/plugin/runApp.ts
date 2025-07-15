@@ -10,7 +10,8 @@ import {
   storeNodes2RuntimeNodes,
   textAdaptGptResponse
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { filterSystemVariables, getHistories } from '../utils';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
@@ -19,7 +20,6 @@ import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppVersionById } from '../../../app/version/controller';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
-import { type ChildrenInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { getUserChatInfoAndAuthTeamPoints } from '../../../../support/permission/auth/team';
 
 type Props = ModuleDispatchProps<{
@@ -30,7 +30,6 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]?: string[];
 }>;
 type Response = DispatchNodeResultType<{
-  [DispatchNodeResponseKeyEnum.interactive]?: ChildrenInteractive;
   [NodeOutputKeyEnum.answerText]: string;
   [NodeOutputKeyEnum.history]: ChatItemType[];
 }>;
@@ -171,6 +170,10 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   const usagePoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
 
   return {
+    data: {
+      [NodeOutputKeyEnum.answerText]: text,
+      [NodeOutputKeyEnum.history]: completeMessages
+    },
     system_memories,
     [DispatchNodeResponseKeyEnum.interactive]: workflowInteractiveResponse
       ? {
@@ -196,8 +199,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
         totalPoints: usagePoints
       }
     ],
-    [DispatchNodeResponseKeyEnum.toolResponses]: text,
-    answerText: text,
-    history: completeMessages
+    [DispatchNodeResponseKeyEnum.toolResponses]: text
   };
 };

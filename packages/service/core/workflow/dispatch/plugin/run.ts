@@ -15,7 +15,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { computedPluginUsage } from '../../../app/plugin/utils';
 import { filterSystemVariables } from '../utils';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getChildAppRuntimeById, splitCombinePluginId } from '../../../app/plugin/controller';
 import { dispatchWorkFlow } from '../index';
 import { getUserChatInfoAndAuthTeamPoints } from '../../../../support/permission/auth/team';
@@ -25,7 +25,15 @@ type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
   [key: string]: any;
 }>;
-type RunPluginResponse = DispatchNodeResultType<{}>;
+type RunPluginResponse = DispatchNodeResultType<
+  {
+    [key: string]: any;
+  },
+  {
+    [NodeOutputKeyEnum.errorText]?: string;
+  }
+>;
+
 export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPluginResponse> => {
   const {
     node: { pluginId, version },
@@ -140,6 +148,9 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     error: !!output?.pluginOutput?.error
   });
   return {
+    data: {
+      ...(output ? output.pluginOutput : {})
+    },
     // 嵌套运行时，如果 childApp stream=false，实际上不会有任何内容输出给用户，所以不需要存储
     assistantResponses: system_forbid_stream ? [] : assistantResponses,
     system_memories,
@@ -169,7 +180,6 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
             acc[key] = output.pluginOutput![key];
             return acc;
           }, {})
-      : null,
-    ...(output ? output.pluginOutput : {})
+      : null
   };
 };

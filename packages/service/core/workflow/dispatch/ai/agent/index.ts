@@ -38,7 +38,6 @@ import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
-  [DispatchNodeResponseKeyEnum.interactive]?: InteractiveNodeResponseType;
 }>;
 
 export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
@@ -265,11 +264,13 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   const previewAssistantResponses = filterToolResponseToPreview(assistantResponses);
 
   return {
+    data: {
+      [NodeOutputKeyEnum.answerText]: previewAssistantResponses
+        .filter((item) => item.text?.content)
+        .map((item) => item.text?.content || '')
+        .join('')
+    },
     [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
-    [NodeOutputKeyEnum.answerText]: previewAssistantResponses
-      .filter((item) => item.text?.content)
-      .map((item) => item.text?.content || '')
-      .join(''),
     [DispatchNodeResponseKeyEnum.assistantResponses]: previewAssistantResponses,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       // 展示的积分消耗

@@ -20,6 +20,7 @@ import { chatNodeSystemPromptTip, systemPromptTip } from '../tip';
 import { LLMModelTypeEnum } from '../../../ai/constants';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { Input_Template_File_Link } from '../input';
+import { Output_Template_Error_Message } from '../output';
 
 export const AgentNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.agent,
@@ -107,6 +108,7 @@ export const AgentNode: FlowNodeTemplateType = {
       description: i18nT('common:core.module.output.description.Ai response content'),
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static
-    }
+    },
+    Output_Template_Error_Message
   ]
 };

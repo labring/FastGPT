@@ -23,17 +23,20 @@ type SystemInputConfigType = {
   value: StoreSecretValueType;
 };
 
-type RunToolProps = ModuleDispatchProps<
-  {
-    [NodeInputKeyEnum.toolData]?: McpToolDataType;
-    [NodeInputKeyEnum.systemInputConfig]?: SystemInputConfigType;
-  } & Record<string, any>
->;
+type RunToolProps = ModuleDispatchProps<{
+  [NodeInputKeyEnum.toolData]?: McpToolDataType;
+  [NodeInputKeyEnum.systemInputConfig]?: SystemInputConfigType;
+  [key: string]: any;
+}>;
 
 type RunToolResponse = DispatchNodeResultType<
   {
     [NodeOutputKeyEnum.rawResponse]?: any;
-  } & Record<string, any>
+    [key: string]: any;
+  },
+  {
+    [NodeOutputKeyEnum.errorText]?: string;
+  }
 >;
 
 export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolResponse> => {
@@ -140,6 +143,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       });
 
       return {
+        data: result,
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
           toolRes: result,
           moduleLogo: avatar,
@@ -151,8 +155,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
             moduleName: name,
             totalPoints: usagePoints
           }
-        ],
-        ...result
+        ]
       };
     } else {
       // mcp tool
@@ -168,12 +171,14 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       const result = await mcpClient.toolCall(toolName, restParams);
 
       return {
+        data: {
+          [NodeOutputKeyEnum.rawResponse]: result
+        },
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
           toolRes: result,
           moduleLogo: avatar
         },
-        [DispatchNodeResponseKeyEnum.toolResponses]: result,
-        [NodeOutputKeyEnum.rawResponse]: result
+        [DispatchNodeResponseKeyEnum.toolResponses]: result
       };
     }
   } catch (error) {
@@ -189,6 +194,9 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     }
 
     return {
+      error: {
+        [NodeOutputKeyEnum.errorText]: getErrText(error)
+      },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         moduleLogo: avatar,
         error: getErrText(error)

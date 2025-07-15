@@ -13,6 +13,7 @@ import {
 import { Input_Template_SelectAIModel, Input_Template_History } from '../../input';
 import { LLMModelTypeEnum } from '../../../../ai/constants';
 import { i18nT } from '../../../../../../web/i18n/utils';
+import { Output_Template_Error_Message } from '../../output';
 
 export const ContextExtractModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.contentExtract,

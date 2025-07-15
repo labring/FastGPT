@@ -69,7 +69,9 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   });
 
   return {
-    [NodeOutputKeyEnum.text]: text,
+    data: {
+      [NodeOutputKeyEnum.text]: text
+    },
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       readFiles: readFilesResult.map((item) => ({
         name: item?.filename || '',

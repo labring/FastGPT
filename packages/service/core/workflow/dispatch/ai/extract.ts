@@ -46,6 +46,7 @@ type Props = ModuleDispatchProps<{
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.success]: boolean;
   [NodeOutputKeyEnum.contextExtractFields]: string;
+  [key: string]: any;
 }>;
 
 type ActionProps = Props & { extractModel: LLMModelItemType; lastMemory?: Record<string, any> };
@@ -131,12 +132,14 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   });
 
   return {
-    [NodeOutputKeyEnum.success]: success,
-    [NodeOutputKeyEnum.contextExtractFields]: JSON.stringify(arg),
+    data: {
+      [NodeOutputKeyEnum.success]: success,
+      [NodeOutputKeyEnum.contextExtractFields]: JSON.stringify(arg),
+      ...arg
+    },
     [DispatchNodeResponseKeyEnum.memories]: {
       [memoryKey]: arg
     },
-    ...arg,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,

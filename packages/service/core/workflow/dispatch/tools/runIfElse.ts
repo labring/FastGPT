@@ -157,7 +157,9 @@ export const dispatchIfElse = async (props: Props): Promise<Response> => {
   });
 
   return {
-    [NodeOutputKeyEnum.ifElseResult]: res,
+    data: {
+      [NodeOutputKeyEnum.ifElseResult]: res
+    },
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: 0,
       ifElseResult: res
