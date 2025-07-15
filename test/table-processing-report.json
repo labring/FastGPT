@@ -1,0 +1,16 @@
+{
+  "timestamp": "2025-07-15T07:28:41.920Z",
+  "testData": "tongrentang_table_data",
+  "totalChunks": 1,
+  "totalChars": 1041,
+  "averageChunkSize": 1041,
+  "tableProcessingSuccess": true,
+  "chunks": [
+    {
+      "index": 1,
+      "length": 1041,
+      "type": "markdown_table",
+      "preview": "| 列1 | 列2 | 列3 | 列4 | 列5 | 列6 | 列7 | 列8 | | --- | "
+    }
+  ]
+}
