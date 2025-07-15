@@ -5,17 +5,19 @@ export type EvaluationSchemaType = {
   tmbId: string;
   evalModel: string;
   appId: string;
+  billId: string;
   name: string;
   createTime: Date;
   finishTime?: Date;
   score?: number;
+  errorMessage?: string;
 };
 
 export type EvalItemSchemaType = {
   evalId: string;
   question: string;
   expectedResponse: string;
-  globalVariales?: Record<string, any>;
+  globalVariables?: Record<string, any>;
   history?: string;
   response?: string;
   status: EvaluationStatusEnum;

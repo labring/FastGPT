@@ -238,7 +238,7 @@ export function useScrollPagination<
       }
 
       const offset = init ? 0 : isPolling ? 0 : data.length;
-      const requestPageSize = isPolling && data.length > 0 ? data.length : pageSize;
+      const requestPageSize = isPolling && data.length > pageSize ? data.length : pageSize;
 
       try {
         const res = await api({

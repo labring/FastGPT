@@ -41,6 +41,7 @@ import type {
   rerunEvalItemBody,
   updateEvalItemBody
 } from '@fastgpt/global/core/app/evaluation/api';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const formatEvaluationStatus = (item: { status: number; errorMessage?: string }, t: TFunction) => {
   const statusConfig = {
@@ -62,9 +63,7 @@ const formatEvaluationStatus = (item: { status: number; errorMessage?: string },
     }
   };
 
-  const config = item.errorMessage
-    ? statusConfig[EvaluationStatusEnum.error]
-    : statusConfig[item.status as keyof typeof statusConfig] || null;
+  const config = statusConfig[item.status as keyof typeof statusConfig] || null;
   if (!config) return null;
 
   return (
@@ -220,9 +219,19 @@ const EvaluationDetailModal = ({
               <Box mb={3} color={'myGray.600'}>
                 {t('dashboard_evaluation:Progress')}
               </Box>
-              <Flex color={'myGray.900'} fontWeight={'medium'}>
+              <Flex color={'myGray.900'} fontWeight={'medium'} alignItems={'center'}>
                 {evalDetail?.completedCount}
-                <Box color={'myGray.600'}>{`/${evalDetail?.totalCount}`}</Box>
+                <Box color={'myGray.600'} mr={2}>{`/${evalDetail?.totalCount}`}</Box>
+                {evalDetail?.errorMessage && (
+                  <MyTooltip label={t('common:code_error.team_error.ai_points_not_enough')}>
+                    <Flex alignItems={'center'}>
+                      <Box fontWeight={'medium'} color={'adora.600'} fontSize={'12px'}>
+                        {t('dashboard_evaluation:paused')}
+                      </Box>
+                      <MyIcon name={'common/help'} w={4} color={'adora.600'} ml={0.5} />
+                    </Flex>
+                  </MyTooltip>
+                )}
               </Flex>
             </Box>
             <Box>

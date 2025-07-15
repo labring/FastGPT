@@ -30,6 +30,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import type { evaluationType } from '@fastgpt/global/core/app/evaluation/type';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const Evaluation = () => {
   const router = useRouter();
@@ -146,15 +147,23 @@ const Evaluation = () => {
       <Flex fontWeight={'medium'} alignItems={'center'}>
         <Box color={'myGray.900'}>{completedCount}</Box>
         <Box color={'myGray.600'}>{`/${totalCount}`}</Box>
-        {errorCount > 0 && (
-          <MyIcon
-            name={'common/error'}
-            color={'red.600'}
-            w={4}
-            ml={2}
-            cursor={'pointer'}
-            onClick={() => setEvalDetailIndex(index)}
-          />
+        {(errorCount > 0 || item.errorMessage) && (
+          <MyTooltip
+            label={
+              item.errorMessage
+                ? t('common:code_error.team_error.ai_points_not_enough')
+                : t('dashboard_evaluation:error_tooltip')
+            }
+          >
+            <MyIcon
+              name={'common/error'}
+              color={'red.600'}
+              w={4}
+              ml={2}
+              cursor={'pointer'}
+              onClick={() => setEvalDetailIndex(index)}
+            />
+          </MyTooltip>
         )}
       </Flex>
     );

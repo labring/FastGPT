@@ -1,6 +1,9 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
 import { EvaluationCollectionName } from './evalSchema';
-import { EvaluationStatusEnum } from '@fastgpt/global/core/app/evaluation/constants';
+import {
+  EvaluationStatusEnum,
+  EvaluationStatusValues
+} from '@fastgpt/global/core/app/evaluation/constants';
 import type { EvalItemSchemaType } from './type';
 
 const { Schema } = connectionMongo;
@@ -22,13 +25,13 @@ const EvalItemSchema = new Schema({
     required: true
   },
   history: String,
-  globalVariales: Object,
+  globalVariables: Object,
   response: String,
 
   status: {
     type: Number,
-    enum: Object.values(EvaluationStatusEnum),
-    default: EvaluationStatusEnum.queuing
+    default: EvaluationStatusEnum.queuing,
+    enum: EvaluationStatusValues
   },
   retry: {
     type: Number,

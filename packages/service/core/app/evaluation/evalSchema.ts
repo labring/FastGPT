@@ -5,6 +5,7 @@ import {
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
 import { AppCollectionName } from '../schema';
 import type { EvaluationSchemaType } from './type';
+import { UsageCollectionName } from '../../../support/wallet/usage/schema';
 const { Schema } = connectionMongo;
 
 export const EvaluationCollectionName = 'evaluations';
@@ -25,6 +26,11 @@ const EvaluationSchema = new Schema({
     ref: AppCollectionName,
     required: true
   },
+  billId: {
+    type: Schema.Types.ObjectId,
+    ref: UsageCollectionName,
+    required: true
+  },
   evalModel: {
     type: String,
     required: true
@@ -39,7 +45,8 @@ const EvaluationSchema = new Schema({
     default: () => new Date()
   },
   finishTime: Date,
-  score: Number
+  score: Number,
+  errorMessage: String
 });
 
 EvaluationSchema.index({ teamId: 1 });

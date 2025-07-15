@@ -196,60 +196,6 @@ export const createPdfParseUsage = async ({
   });
 };
 
-export const createEvaluationRerunUsage = async ({
-  teamId,
-  tmbId,
-  appName,
-  model,
-  inputTokens = 0,
-  outputTokens = 0,
-  workflowTotalPoints = 0,
-  workflowInputTokens = 0,
-  workflowOutputTokens = 0
-}: {
-  teamId: string;
-  tmbId: string;
-  appName: string;
-  model: string;
-  inputTokens?: number;
-  outputTokens?: number;
-  workflowTotalPoints?: number;
-  workflowInputTokens?: number;
-  workflowOutputTokens?: number;
-}) => {
-  const { totalPoints: computedPoints } = formatModelChars2Points({
-    model,
-    modelType: ModelTypeEnum.llm,
-    inputTokens,
-    outputTokens
-  });
-  const usageList = [
-    {
-      moduleName: i18nT('account_usage:generate_answer'),
-      amount: workflowTotalPoints,
-      model,
-      inputTokens: workflowInputTokens,
-      outputTokens: workflowOutputTokens
-    },
-    {
-      moduleName: i18nT('account_usage:answer_accuracy'),
-      amount: computedPoints,
-      model,
-      inputTokens,
-      outputTokens
-    }
-  ];
-
-  createUsage({
-    teamId,
-    tmbId,
-    appName: `${appName} - Rerun`,
-    totalPoints: computedPoints + workflowTotalPoints,
-    source: UsageSourceEnum.evaluation,
-    list: usageList
-  });
-};
-
 export const pushLLMTrainingUsage = async ({
   teamId,
   tmbId,
@@ -301,7 +247,7 @@ export const createEvaluationUsage = async ({
   appName: string;
   session?: ClientSession;
 }) => {
-  const [{ _id }] = await MongoUsage.create(
+  const [{ _id: billId }] = await MongoUsage.create(
     [
       {
         teamId,
@@ -315,7 +261,7 @@ export const createEvaluationUsage = async ({
     { session, ordered: true }
   );
 
-  return { billId: String(_id) };
+  return { billId: String(billId) };
 };
 
 export const pushEvaluationUsage = async ({

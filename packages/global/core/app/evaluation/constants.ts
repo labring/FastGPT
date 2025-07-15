@@ -9,6 +9,13 @@ export enum EvaluationStatusEnum {
   error = -1
 }
 
+export const EvaluationStatusValues = [
+  EvaluationStatusEnum.queuing,
+  EvaluationStatusEnum.evaluating,
+  EvaluationStatusEnum.completed,
+  EvaluationStatusEnum.error
+];
+
 export const EvaluationStatusMap = {
   [EvaluationStatusEnum.queuing]: {
     name: i18nT('dashboard_evaluation:queuing')

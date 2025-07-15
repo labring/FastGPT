@@ -27,6 +27,7 @@ import Markdown from '@/components/Markdown';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getEvaluationFileHeader } from '@fastgpt/global/core/app/evaluation/utils';
 import { evaluationFileErrors } from '@fastgpt/global/core/app/evaluation/constants';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
 type EvaluationFormType = {
   name: string;
@@ -108,6 +109,9 @@ const EvaluationCreating = () => {
         if (error.message === evaluationFileErrors) {
           setError(error.message);
         }
+        if (error.message === TeamErrEnum.aiPointsNotEnough) {
+          useSystemStore.getState().setNotSufficientModalType(error.message);
+        }
       }
     }
   );
@@ -146,7 +150,7 @@ const EvaluationCreating = () => {
             <Flex gap={20}>
               <FormLabel
                 w={'80px'}
-                h={9}
+                h={10}
                 display={'flex'}
                 alignItems={'center'}
                 color={'myGray.900'}
@@ -157,8 +161,9 @@ const EvaluationCreating = () => {
               </FormLabel>
               <Input
                 w={'406px'}
-                h={9}
+                h={10}
                 bg={'myGray.50'}
+                placeholder={t('dashboard_evaluation:Task_name_placeholder')}
                 autoFocus
                 {...register('name', {
                   required: true
@@ -168,7 +173,7 @@ const EvaluationCreating = () => {
             <Flex gap={20}>
               <FormLabel
                 w={'80px'}
-                h={9}
+                h={10}
                 display={'flex'}
                 alignItems={'center'}
                 color={'myGray.900'}
@@ -193,7 +198,7 @@ const EvaluationCreating = () => {
             <Flex gap={20}>
               <FormLabel
                 w={'80px'}
-                h={9}
+                h={10}
                 display={'flex'}
                 alignItems={'center'}
                 color={'myGray.900'}
@@ -234,7 +239,7 @@ const EvaluationCreating = () => {
             <Flex gap={20}>
               <FormLabel
                 w={'80px'}
-                h={9}
+                h={10}
                 display={'flex'}
                 alignItems={'center'}
                 color={'myGray.900'}

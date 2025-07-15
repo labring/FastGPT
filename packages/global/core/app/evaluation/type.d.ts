@@ -15,6 +15,7 @@ export type evaluationType = {
   errorCount: number;
   totalCount: number;
   evalModel: string;
+  errorMessage?: string;
 };
 
 export type listEvalItemsItem = {
