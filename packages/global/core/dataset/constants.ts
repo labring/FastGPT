@@ -109,12 +109,46 @@ export enum DatasetCollectionTypeEnum {
   folder = 'folder',
   virtual = 'virtual',
 
-  file = 'file',
-  link = 'link', // one link
-  externalFile = 'externalFile',
-  apiFile = 'apiFile',
-  images = 'images'
+  file = 'file', // file
+  link = 'link', // link
+  manual = 'manual', // manual input
+  apiFile = 'apiFile', // apiDatasetFile, not store mongo file
+  externalFile = 'externalFile', // external file, not store mongo file
+  images = 'images' // images collection
 }
+
+// 新增：表格处理配置
+export const TABLE_PROCESSING_CONFIG = {
+  // 表格识别阈值：如果80%以上的行都是表格格式，认为是表格
+  TABLE_RECOGNITION_THRESHOLD: 0.8,
+
+  // 表格合并最大间隔：表格片段之间最多允许多少个空行
+  MAX_TABLE_MERGE_GAP: 2,
+
+  // 表格最大列数限制
+  MAX_TABLE_COLUMNS: 20,
+
+  // 表格最小行数：少于这个数量的行不认为是表格
+  MIN_TABLE_ROWS: 2,
+
+  // 跨页表格合并：是否启用跨页表格合并功能
+  ENABLE_CROSS_PAGE_TABLE_MERGE: true,
+
+  // 表格修复：是否启用表格修复功能（自动添加表头、分隔符等）
+  ENABLE_TABLE_REPAIR: true,
+
+  // 智能表格识别：是否启用基于内容的智能表格识别
+  ENABLE_SMART_TABLE_DETECTION: true
+} as const;
+
+// 表格处理策略
+export enum TableProcessingStrategyEnum {
+  NONE = 'none', // 不进行特殊处理
+  BASIC = 'basic', // 基础表格处理
+  ENHANCED = 'enhanced', // 增强表格处理（包含跨页合并）
+  SMART = 'smart' // 智能表格处理（AI辅助识别）
+}
+
 export const DatasetCollectionTypeMap = {
   [DatasetCollectionTypeEnum.folder]: {
     name: i18nT('common:core.dataset.folder')
