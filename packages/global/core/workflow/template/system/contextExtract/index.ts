@@ -26,6 +26,7 @@ export const ContextExtractModule: FlowNodeTemplateType = {
   intro: i18nT('workflow:intro_text_content_extraction'),
   showStatus: true,
   isTool: true,
+  catchError: false,
   courseUrl: '/docs/guide/dashboard/workflow/content_extract/',
   version: '4.9.2',
   inputs: [
@@ -77,6 +78,7 @@ export const ContextExtractModule: FlowNodeTemplateType = {
       description: i18nT('workflow:complete_extraction_result_description'),
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static
-    }
+    },
+    Output_Template_Error_Message
   ]
 };

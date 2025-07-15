@@ -314,6 +314,9 @@ export enum NodeOutputKeyEnum {
   // form input
   formInputResult = 'formInputResult',
 
+  // File
+  fileTitle = 'fileTitle',
+
   // @deprecated
   error = 'error'
 }

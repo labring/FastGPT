@@ -19,7 +19,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { sliceJsonStr } from '@fastgpt/global/common/string/tools';
 import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { getHistories } from '../utils';
+import { getErrorTextResponse, getHistories } from '../utils';
 import { getLLMModel } from '../../../ai/model';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import json5 from 'json5';
@@ -63,7 +63,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   } = props;
 
   if (!content) {
-    return Promise.reject('Input is empty');
+    return getErrorTextResponse('Input is empty');
   }
 
   const extractModel = getLLMModel(model);
@@ -76,90 +76,94 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     any
   >;
 
-  const { arg, inputTokens, outputTokens } = await (async () => {
-    if (extractModel.toolChoice) {
-      return toolChoice({
+  try {
+    const { arg, inputTokens, outputTokens } = await (async () => {
+      if (extractModel.toolChoice) {
+        return toolChoice({
+          ...props,
+          histories: chatHistories,
+          extractModel,
+          lastMemory
+        });
+      }
+      return completions({
         ...props,
         histories: chatHistories,
         extractModel,
         lastMemory
       });
-    }
-    return completions({
-      ...props,
-      histories: chatHistories,
-      extractModel,
-      lastMemory
-    });
-  })();
+    })();
 
-  // remove invalid key
-  for (let key in arg) {
-    const item = extractKeys.find((item) => item.key === key);
-    if (!item) {
-      delete arg[key];
-    }
-    if (arg[key] === '') {
-      delete arg[key];
-    }
-  }
-
-  // auto fill required fields
-  extractKeys.forEach((item) => {
-    if (item.required && arg[item.key] === undefined) {
-      arg[item.key] = item.defaultValue || '';
-    }
-  });
-
-  // auth fields
-  let success = !extractKeys.find((item) => !(item.key in arg));
-  // auth empty value
-  if (success) {
-    for (const key in arg) {
+    // remove invalid key
+    for (let key in arg) {
       const item = extractKeys.find((item) => item.key === key);
       if (!item) {
-        success = false;
-        break;
+        delete arg[key];
+      }
+      if (arg[key] === '') {
+        delete arg[key];
       }
     }
-  }
 
-  const { totalPoints, modelName } = formatModelChars2Points({
-    model: extractModel.model,
-    inputTokens: inputTokens,
-    outputTokens: outputTokens,
-    modelType: ModelTypeEnum.llm
-  });
+    // auto fill required fields
+    extractKeys.forEach((item) => {
+      if (item.required && arg[item.key] === undefined) {
+        arg[item.key] = item.defaultValue || '';
+      }
+    });
 
-  return {
-    data: {
-      [NodeOutputKeyEnum.success]: success,
-      [NodeOutputKeyEnum.contextExtractFields]: JSON.stringify(arg),
-      ...arg
-    },
-    [DispatchNodeResponseKeyEnum.memories]: {
-      [memoryKey]: arg
-    },
-    [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
-      model: modelName,
-      query: content,
-      inputTokens,
-      outputTokens,
-      extractDescription: description,
-      extractResult: arg,
-      contextTotalLen: chatHistories.length + 2
-    },
-    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-      {
-        moduleName: name,
+    // auth fields
+    let success = !extractKeys.find((item) => !(item.key in arg));
+    // auth empty value
+    if (success) {
+      for (const key in arg) {
+        const item = extractKeys.find((item) => item.key === key);
+        if (!item) {
+          success = false;
+          break;
+        }
+      }
+    }
+
+    const { totalPoints, modelName } = formatModelChars2Points({
+      model: extractModel.model,
+      inputTokens: inputTokens,
+      outputTokens: outputTokens,
+      modelType: ModelTypeEnum.llm
+    });
+
+    return {
+      data: {
+        [NodeOutputKeyEnum.success]: success,
+        [NodeOutputKeyEnum.contextExtractFields]: JSON.stringify(arg),
+        ...arg
+      },
+      [DispatchNodeResponseKeyEnum.memories]: {
+        [memoryKey]: arg
+      },
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
         model: modelName,
+        query: content,
         inputTokens,
-        outputTokens
-      }
-    ]
-  };
+        outputTokens,
+        extractDescription: description,
+        extractResult: arg,
+        contextTotalLen: chatHistories.length + 2
+      },
+      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
+        {
+          moduleName: name,
+          totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
+          model: modelName,
+          inputTokens,
+          outputTokens
+        }
+      ]
+    };
+  } catch (error) {
+    return getErrorTextResponse(error);
+  }
 }
 
 const getJsonSchema = ({ params: { extractKeys } }: ActionProps) => {

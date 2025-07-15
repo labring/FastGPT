@@ -41,10 +41,10 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/
 import { responseWriteController } from '../../../../common/response';
 import { getLLMModel } from '../../../ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { checkQuoteQAValue, getHistories } from '../utils';
+import { checkQuoteQAValue, getErrorTextResponse, getHistories } from '../utils';
 import { filterSearchResultsByMaxChars } from '../../utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { computedMaxToken, llmCompletionsBodyFormat } from '../../../ai/utils';
@@ -75,15 +75,6 @@ export type ChatResponse = DispatchNodeResultType<
     [NodeOutputKeyEnum.errorText]: string;
   }
 >;
-
-const getErrorResponse = (error: any) => ({
-  error: {
-    [NodeOutputKeyEnum.errorText]: getErrText(error)
-  },
-  [DispatchNodeResponseKeyEnum.nodeResponse]: {
-    errorText: getErrText(error)
-  }
-});
 
 /* request openai chat */
 export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResponse> => {
@@ -126,7 +117,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
   const modelConstantsData = getLLMModel(model);
   if (!modelConstantsData) {
-    return getErrorResponse(`Model ${model} is undefined, you need to select a chat model.`);
+    return getErrorTextResponse(`Model ${model} is undefined, you need to select a chat model.`);
   }
 
   try {
@@ -160,7 +151,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     ]);
 
     if (!userChatInput && !documentQuoteText && userFiles.length === 0) {
-      return getErrorResponse(i18nT('chat:AI_input_is_empty'));
+      return getErrorTextResponse(i18nT('chat:AI_input_is_empty'));
     }
 
     const max_tokens = computedMaxToken({
@@ -315,7 +306,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       })();
 
     if (!answerText && !reasoningText) {
-      return getErrorResponse(getEmptyResponseTip());
+      return getErrorTextResponse(getEmptyResponseTip());
     }
 
     const AIMessages: ChatCompletionMessageParam[] = [
@@ -369,7 +360,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       [DispatchNodeResponseKeyEnum.toolResponses]: answerText
     };
   } catch (error) {
-    return getErrorResponse(error);
+    return getErrorTextResponse(error);
   }
 };
 
