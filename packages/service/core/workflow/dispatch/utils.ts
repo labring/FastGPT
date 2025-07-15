@@ -210,11 +210,29 @@ export const rewriteRuntimeWorkFlow = (
   }
 };
 
-export const getErrorTextResponse = (error: any) => ({
-  error: {
-    [NodeOutputKeyEnum.errorText]: getErrText(error)
-  },
-  [DispatchNodeResponseKeyEnum.nodeResponse]: {
-    errorText: getErrText(error)
-  }
-});
+export const getNodeErrResponse = ({
+  error,
+  customErr,
+  customNodeResponse
+}: {
+  error: any;
+  customErr?: Record<string, any>;
+  customNodeResponse?: Record<string, any>;
+}) => {
+  const errorText = getErrText(error);
+
+  return {
+    error: {
+      [NodeOutputKeyEnum.errorText]: errorText,
+      ...(typeof customErr === 'object' ? customErr : {})
+    },
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      errorText,
+      ...(typeof customNodeResponse === 'object' ? customNodeResponse : {})
+    },
+    [DispatchNodeResponseKeyEnum.toolResponses]: {
+      error: errorText,
+      ...(typeof customErr === 'object' ? customErr : {})
+    }
+  };
+};

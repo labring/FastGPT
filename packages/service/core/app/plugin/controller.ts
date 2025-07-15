@@ -33,6 +33,7 @@ import type {
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 import { isProduction } from '@fastgpt/global/common/system/constants';
+import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
 
 /**
   plugin id rule:
@@ -198,8 +199,8 @@ export async function getChildAppPreviewNode({
       return {
         flowNodeType: FlowNodeTypeEnum.tool,
         nodeIOConfig: {
-          inputs: app.inputs!,
-          outputs: app.outputs!,
+          inputs: app.inputs || [],
+          outputs: app.outputs || [],
           toolConfig: {
             systemTool: {
               toolId: app.id
@@ -209,6 +210,7 @@ export async function getChildAppPreviewNode({
       };
     }
 
+    // Plugin workflow
     if (!!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)) {
       return {
         flowNodeType: FlowNodeTypeEnum.pluginModule,
@@ -216,6 +218,7 @@ export async function getChildAppPreviewNode({
       };
     }
 
+    // Mcp
     if (
       !!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet) &&
       app.workflow.nodes.length === 1
@@ -236,6 +239,7 @@ export async function getChildAppPreviewNode({
       };
     }
 
+    // Chat workflow
     return {
       flowNodeType: FlowNodeTypeEnum.appModule,
       nodeIOConfig: appData2FlowNodeIO({ chatConfig: app.workflow.chatConfig })
@@ -254,6 +258,7 @@ export async function getChildAppPreviewNode({
     userGuide: app.userGuide,
     showStatus: true,
     isTool: true,
+    catchError: false,
 
     version: app.version,
     versionLabel: app.versionLabel,
@@ -265,7 +270,8 @@ export async function getChildAppPreviewNode({
     hasTokenFee: app.hasTokenFee,
     hasSystemSecret: app.hasSystemSecret,
 
-    ...nodeIOConfig
+    ...nodeIOConfig,
+    outputs: [...nodeIOConfig.outputs, Output_Template_Error_Message]
   };
 }
 

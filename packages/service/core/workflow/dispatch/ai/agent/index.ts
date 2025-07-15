@@ -6,7 +6,7 @@ import type {
   RuntimeNodeItemType
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { getLLMModel } from '../../../../ai/model';
-import { filterToolNodeIdByEdges, getErrorTextResponse, getHistories } from '../../utils';
+import { filterToolNodeIdByEdges, getNodeErrResponse, getHistories } from '../../utils';
 import { runToolWithToolChoice } from './toolChoice';
 import { type DispatchToolModuleProps, type ToolNodeItemType } from './type';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
@@ -303,7 +303,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       [DispatchNodeResponseKeyEnum.interactive]: toolWorkflowInteractiveResponse
     };
   } catch (error) {
-    return getErrorTextResponse(error);
+    return getNodeErrResponse({ error });
   }
 };
 

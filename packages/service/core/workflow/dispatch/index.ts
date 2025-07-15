@@ -49,7 +49,7 @@ import { dispatchRunTools } from './ai/agent/index';
 import { dispatchStopToolCall } from './ai/agent/stopTool';
 import { dispatchToolParams } from './ai/agent/toolParams';
 import { dispatchChatCompletion } from './ai/chat';
-import { dispatchRunCode } from './code/run';
+import { dispatchCodeSandbox } from './tools/codeSandbox';
 import { dispatchDatasetConcat } from './dataset/concat';
 import { dispatchDatasetSearch } from './dataset/search';
 import { dispatchSystemConfig } from './init/systemConfig';
@@ -60,10 +60,10 @@ import { dispatchLoop } from './loop/runLoop';
 import { dispatchLoopEnd } from './loop/runLoopEnd';
 import { dispatchLoopStart } from './loop/runLoopStart';
 import { dispatchRunPlugin } from './plugin/run';
-import { dispatchRunAppNode } from './plugin/runApp';
+import { dispatchRunAppNode } from './child/runApp';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
-import { dispatchRunTool } from './plugin/runTool';
+import { dispatchRunTool } from './child/runTool';
 import { dispatchAnswer } from './tools/answer';
 import { dispatchCustomFeedback } from './tools/customFeedback';
 import { dispatchHttp468Request } from './tools/http468';
@@ -97,7 +97,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.lafModule]: dispatchLafRequest,
   [FlowNodeTypeEnum.ifElseNode]: dispatchIfElse,
   [FlowNodeTypeEnum.variableUpdate]: dispatchUpdateVariable,
-  [FlowNodeTypeEnum.code]: dispatchRunCode,
+  [FlowNodeTypeEnum.code]: dispatchCodeSandbox,
   [FlowNodeTypeEnum.textEditor]: dispatchTextEditor,
   [FlowNodeTypeEnum.customFeedback]: dispatchCustomFeedback,
   [FlowNodeTypeEnum.readFiles]: dispatchReadFiles,

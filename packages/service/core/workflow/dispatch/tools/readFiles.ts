@@ -14,7 +14,7 @@ import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { addLog } from '../../../../common/system/log';
 import { addRawTextBuffer, getRawTextBuffer } from '../../../../common/buffer/rawText/controller';
 import { addMinutes } from 'date-fns';
-import { getErrorTextResponse } from '../utils';
+import { getNodeErrResponse } from '../utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
@@ -88,7 +88,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
       }
     };
   } catch (error) {
-    return getErrorTextResponse(error);
+    return getNodeErrResponse({ error });
   }
 };
 

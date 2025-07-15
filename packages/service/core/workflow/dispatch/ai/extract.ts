@@ -19,7 +19,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { sliceJsonStr } from '@fastgpt/global/common/string/tools';
 import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { getErrorTextResponse, getHistories } from '../utils';
+import { getNodeErrResponse, getHistories } from '../utils';
 import { getLLMModel } from '../../../ai/model';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import json5 from 'json5';
@@ -63,7 +63,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   } = props;
 
   if (!content) {
-    return getErrorTextResponse('Input is empty');
+    return getNodeErrResponse({ error: 'Input is empty' });
   }
 
   const extractModel = getLLMModel(model);
@@ -162,7 +162,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
       ]
     };
   } catch (error) {
-    return getErrorTextResponse(error);
+    return getNodeErrResponse({ error });
   }
 }
 

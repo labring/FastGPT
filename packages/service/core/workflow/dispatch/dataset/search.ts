@@ -17,7 +17,7 @@ import { i18nT } from '../../../../../web/i18n/utils';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { getDatasetSearchToolResponsePrompt } from '../../../../../global/core/ai/prompt/dataset';
-import { getErrorTextResponse } from '../utils';
+import { getNodeErrResponse } from '../utils';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSelectList]: SelectedDatasetType;
@@ -84,7 +84,7 @@ export async function dispatchDatasetSearch(
   }
 
   if (datasets.length === 0) {
-    return getErrorTextResponse(i18nT('common:core.chat.error.Select dataset empty'));
+    return getNodeErrResponse({ error: i18nT('common:core.chat.error.Select dataset empty') });
   }
 
   const emptyResult: DatasetSearchResponse = {
@@ -283,6 +283,6 @@ export async function dispatchDatasetSearch(
       }
     };
   } catch (error) {
-    return getErrorTextResponse(error);
+    return getNodeErrResponse({ error });
   }
 }

@@ -223,16 +223,14 @@ export const pluginData2FlowNodeIO = ({
         ]
       : [],
     outputs: pluginOutput
-      ? [
-          ...pluginOutput.inputs.map((item) => ({
-            id: item.key,
-            type: FlowNodeOutputTypeEnum.static,
-            key: item.key,
-            valueType: item.valueType,
-            label: item.label || item.key,
-            description: item.description
-          }))
-        ]
+      ? pluginOutput.inputs.map((item) => ({
+          id: item.key,
+          type: FlowNodeOutputTypeEnum.static,
+          key: item.key,
+          valueType: item.valueType,
+          label: item.label || item.key,
+          description: item.description
+        }))
       : []
   };
 };

@@ -5,6 +5,7 @@ import axios from 'axios';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getNodeErrResponse } from '../utils';
 
 type RunCodeType = ModuleDispatchProps<{
   [NodeInputKeyEnum.codeType]: string;
@@ -30,7 +31,7 @@ function getURL(codeType: string): string {
   }
 }
 
-export const dispatchRunCode = async (props: RunCodeType): Promise<RunCodeResponse> => {
+export const dispatchCodeSandbox = async (props: RunCodeType): Promise<RunCodeResponse> => {
   const {
     node: { catchError },
     params: { codeType, code, [NodeInputKeyEnum.addInputParam]: customVariables }

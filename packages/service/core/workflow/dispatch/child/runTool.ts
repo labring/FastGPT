@@ -17,6 +17,7 @@ import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { getSystemPluginById } from '../../../app/plugin/controller';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
+import { getNodeErrResponse } from '../utils';
 
 type SystemInputConfigType = {
   type: SystemToolInputTypeEnum;
@@ -83,50 +84,46 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
       const formatToolId = tool.id.split('-')[1];
 
-      const result = await (async () => {
-        const res = await runSystemTool({
-          toolId: formatToolId,
-          inputs,
-          systemVar: {
-            user: {
-              id: variables.userId,
-              teamId: runningUserInfo.teamId,
-              name: runningUserInfo.tmbId
-            },
-            app: {
-              id: runningAppInfo.id,
-              name: runningAppInfo.id
-            },
-            tool: {
-              id: formatToolId,
-              version
-            },
-            time: variables.cTime
+      const res = await runSystemTool({
+        toolId: formatToolId,
+        inputs,
+        systemVar: {
+          user: {
+            id: variables.userId,
+            teamId: runningUserInfo.teamId,
+            name: runningUserInfo.tmbId
           },
-          onMessage: ({ type, content }) => {
-            if (workflowStreamResponse && content) {
-              workflowStreamResponse({
-                event: type as unknown as SseResponseEventEnum,
-                data: textAdaptGptResponse({
-                  text: content
-                })
-              });
-            }
+          app: {
+            id: runningAppInfo.id,
+            name: runningAppInfo.id
+          },
+          tool: {
+            id: formatToolId,
+            version
+          },
+          time: variables.cTime
+        },
+        onMessage: ({ type, content }) => {
+          if (workflowStreamResponse && content) {
+            workflowStreamResponse({
+              event: type as unknown as SseResponseEventEnum,
+              data: textAdaptGptResponse({
+                text: content
+              })
+            });
           }
-        });
-        if (res.error) {
-          return Promise.reject(res.error);
         }
-        if (!res.output) return {};
-
-        return res.output;
-      })();
+      });
+      const result = res.output || {};
+      if (res.error) {
+        throw new Error(res.error);
+      }
+      if (result[NodeOutputKeyEnum.systemError]) {
+        throw new Error(result[NodeOutputKeyEnum.systemError]);
+      }
 
       const usagePoints = (() => {
-        if (
-          params.system_input_config?.type !== SystemToolInputTypeEnum.system ||
-          result[NodeOutputKeyEnum.systemError]
-        ) {
+        if (params.system_input_config?.type !== SystemToolInputTypeEnum.system) {
           return 0;
         }
         return tool.currentCost ?? 0;
@@ -193,15 +190,11 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       });
     }
 
-    return {
-      error: {
-        [NodeOutputKeyEnum.errorText]: getErrText(error)
-      },
-      [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        moduleLogo: avatar,
-        error: getErrText(error)
-      },
-      [DispatchNodeResponseKeyEnum.toolResponses]: getErrText(error)
-    };
+    return getNodeErrResponse({
+      error,
+      customNodeResponse: {
+        moduleLogo: avatar
+      }
+    });
   }
 };

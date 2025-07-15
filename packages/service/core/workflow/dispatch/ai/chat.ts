@@ -44,7 +44,7 @@ import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/ty
 import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { checkQuoteQAValue, getErrorTextResponse, getHistories } from '../utils';
+import { checkQuoteQAValue, getNodeErrResponse, getHistories } from '../utils';
 import { filterSearchResultsByMaxChars } from '../../utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { computedMaxToken, llmCompletionsBodyFormat } from '../../../ai/utils';
@@ -117,7 +117,9 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
   const modelConstantsData = getLLMModel(model);
   if (!modelConstantsData) {
-    return getErrorTextResponse(`Model ${model} is undefined, you need to select a chat model.`);
+    return getNodeErrResponse({
+      error: `Model ${model} is undefined, you need to select a chat model.`
+    });
   }
 
   try {
@@ -151,7 +153,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     ]);
 
     if (!userChatInput && !documentQuoteText && userFiles.length === 0) {
-      return getErrorTextResponse(i18nT('chat:AI_input_is_empty'));
+      return getNodeErrResponse({ error: i18nT('chat:AI_input_is_empty') });
     }
 
     const max_tokens = computedMaxToken({
@@ -306,7 +308,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       })();
 
     if (!answerText && !reasoningText) {
-      return getErrorTextResponse(getEmptyResponseTip());
+      return getNodeErrResponse({ error: getEmptyResponseTip() });
     }
 
     const AIMessages: ChatCompletionMessageParam[] = [
@@ -360,7 +362,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       [DispatchNodeResponseKeyEnum.toolResponses]: answerText
     };
   } catch (error) {
-    return getErrorTextResponse(error);
+    return getNodeErrResponse({ error });
   }
 };
 
