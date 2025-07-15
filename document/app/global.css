@@ -1,9 +1,6 @@
 @import 'tailwindcss';
 @import 'fumadocs-ui/css/neutral.css';
 @import 'fumadocs-ui/css/preset.css';
-@import 'tailwindcss';
-@import 'fumadocs-ui/css/neutral.css';
-@import 'fumadocs-ui/css/preset.css';
 
 /* 在文件开头添加这些基础变量 */
 :root {
@@ -17,6 +14,7 @@
   --yellow-50-hsl: 55, 92%, 95%;
   --yellow-500-hsl: 45, 93%, 47%;
   --blue-500-hsl: 217, 91%, 60%;
+  --fd-layout-width: 1400px;
   
   /* 文本颜色 */
   --text-default: #374151;
@@ -149,4 +147,40 @@ img {
 .tab-content {
   margin-bottom: 0.8rem;
   padding: 1rem 0;
+}
+
+#nd-subnav > div:nth-of-type(1) button:nth-of-type(1) {
+  box-shadow: 1px 1px 1px 1px #a9a0a0 !important;
+  background-color: none !important;
+  &:hover {
+    background-color: transparent !important;
+    cursor: pointer; 
+  }
+}
+#nd-subnav > div:nth-of-type(1) {
+  border-bottom: 0.5px solid var(--gray-200) !important;;
+}
+#nd-subnav > div:nth-of-type(2) {
+  border-bottom: 0.5px solid var(--gray-200) !important;
+}
+
+#nd-subnav > div:nth-of-type(2) a {
+  text-decoration: none;
+  color: inherit;
+  transition: color 0.2s ease;
+  background-color: transparent !important;
+  /* 先清除默认下划线 */
+  &:hover {
+    text-decoration: underline;
+    text-decoration-color: gray;
+    text-decoration-thickness: 2px;  /* 下划线粗细 */
+    text-underline-offset: 10px;      /* 下划线与文字距离 */
+  }
+  &:active {
+    text-decoration: underline;
+    text-decoration-color: blue;
+    text-decoration-thickness: 2px;  /* 下划线粗细 */
+    text-underline-offset: 10px;      /* 下划线与文字距离 */
+    background-color: transparent !important;
+  }
 }
