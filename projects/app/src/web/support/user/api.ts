@@ -15,6 +15,7 @@ import type {
   GetWXLoginQRResponse
 } from '@fastgpt/global/support/user/login/api.d';
 import type { preLoginResponse } from '@/pages/api/support/user/account/preLogin';
+import type { WxLoginProps } from '@fastgpt/global/support/user/api.d';
 
 export const sendAuthCode = (data: {
   username: string;
@@ -99,8 +100,8 @@ export const putUserInfo = (data: UserUpdateParams) => PUT('/support/user/accoun
 export const getWXLoginQR = () =>
   GET<GetWXLoginQRResponse>('/proApi/support/user/account/login/wx/getQR');
 
-export const getWXLoginResult = (code: string) =>
-  GET<ResLogin>(`/proApi/support/user/account/login/wx/getResult`, { code });
+export const getWXLoginResult = (params: WxLoginProps) =>
+  GET<ResLogin>(`/proApi/support/user/account/login/wx/getResult`, params);
 
 export const getCaptchaPic = (username: string) =>
   GET<{
