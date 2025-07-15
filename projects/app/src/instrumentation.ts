@@ -1,4 +1,5 @@
 import { exit } from 'process';
+import { connectSignoz } from '@fastgpt/service/support/otel/register';
 
 /*
   Init system
@@ -32,6 +33,8 @@ export async function register() {
         import('@fastgpt/service/worker/preload'),
         import('@fastgpt/service/core/ai/config/utils')
       ]);
+
+      connectSignoz();
 
       // 执行初始化流程
       systemStartCb();
