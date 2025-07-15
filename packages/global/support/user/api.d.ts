@@ -19,8 +19,11 @@ export type OauthLoginProps = {
 } & TrackRegisterParams;
 
 export type WxLoginProps = {
-  inviterId?: string;
   code: string;
+  bd_vid?: string;
+  msclkid?: string;
+  fastgpt_sem?: string;
+  sourceDomain?: string;
 };
 
 export type FastLoginProps = {
