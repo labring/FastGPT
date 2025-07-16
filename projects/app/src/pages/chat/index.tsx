@@ -37,7 +37,7 @@ import ChatRecordContextProvider, {
   ChatRecordContext
 } from '@/web/core/chat/context/chatRecordContext';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
-import LoginModal from '@/components/support/user/LoginModal';
+import LoginModal from '@/pageComponents/login/LoginModal';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
