@@ -146,8 +146,10 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
                 .replace(/\\[\(\)]/g, '$')
                 .replace(/\\[\[\]]/g, '$$')
                 .replace(/<img\s+src="([^"]+)"(?:\s*\?[^>]*)?(?:\s*\/>|>)/g, '![img]($1)')
-                .replace(/<!-- Media -->/g, '')
-                .replace(/<!-- Footnote -->/g, '')
+                .replace(/<!-- Media -->[\s\S]*?<!-- Media -->/g, '')
+                .replace(/<!-- Footnote -->[\s\S]*?<!-- Footnote -->/g, '')
+                .replace(/<!-- Meanless:[\s\S]*?-->/g, '')
+                .replace(/<!-- figureText:[\s\S]*?-->/g, '')
                 .replace(/\$(.+?)\s+\\tag\{(.+?)\}\$/g, '$$$1 \\qquad \\qquad ($2)$$')
                 .replace(/\\text\{([^}]*?)(\b\w+)_(\w+\b)([^}]*?)\}/g, '\\text{$1$2\\_$3$4}'),
               pages: result_data.result.pages.length
