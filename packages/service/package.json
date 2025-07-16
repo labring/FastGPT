@@ -7,6 +7,13 @@
     "@fastgpt/global": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.12.1",
     "@node-rs/jieba": "2.0.1",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/api-logs": "^0.203.0",
+    "@opentelemetry/exporter-logs-otlp-http": "^0.203.0",
+    "@opentelemetry/resources": "^2.0.1",
+    "@opentelemetry/sdk-logs": "^0.203.0",
+    "@opentelemetry/winston-transport": "^0.14.0",
+    "@vercel/otel": "^1.13.0",
     "@xmldom/xmldom": "^0.8.10",
     "@zilliz/milvus2-sdk-node": "2.4.2",
     "axios": "^1.8.2",
@@ -39,10 +46,13 @@
     "papaparse": "5.4.1",
     "pdfjs-dist": "4.10.38",
     "pg": "^8.10.0",
+    "pino": "^9.7.0",
+    "pino-opentelemetry-transport": "^1.0.1",
     "request-ip": "^3.3.0",
     "tiktoken": "1.0.17",
     "tunnel": "^0.0.6",
-    "turndown": "^7.1.2"
+    "turndown": "^7.1.2",
+    "winston": "^3.17.0"
   },
   "devDependencies": {
     "@types/cookie": "^0.5.2",
