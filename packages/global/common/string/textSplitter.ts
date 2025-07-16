@@ -62,228 +62,8 @@ const strIsMdTable = (str: string) => {
 
   return true;
 };
-
-// 新增：判断是否为制表符表格
-const strIsTabTable = (str: string): boolean => {
-  const lines = str.split('\n').filter((line) => line.trim());
-  if (lines.length < 2) return false;
-
-  const tabLines = lines.filter((line) => {
-    const tabs = line.split('\t');
-    return tabs.length >= 3; // 至少3列才算表格
-  });
-
-  // 降低阈值到70%，以适应混合内容
-  return tabLines.length / lines.length >= 0.7 && tabLines.length >= 2;
-};
-
-// 新增：将制表符表格转换为Markdown表格
-const convertTabTableToMarkdown = (text: string): string => {
-  const lines = text.split('\n').filter((line) => line.trim());
-  const tabLines = lines.filter((line) => line.split('\t').length >= 3);
-
-  if (tabLines.length === 0) return text;
-
-  // 找到最大列数
-  let maxColumns = 0;
-  tabLines.forEach((line) => {
-    const columns = line.split('\t');
-    if (columns.length > maxColumns) {
-      maxColumns = columns.length;
-    }
-  });
-
-  // 生成表头
-  const headerCells = Array(maxColumns)
-    .fill(0)
-    .map((_, i) => `列${i + 1}`);
-  const header = `| ${headerCells.join(' | ')} |`;
-  const separator = `| ${Array(maxColumns).fill('---').join(' | ')} |`;
-
-  // 转换数据行
-  const markdownRows = [header, separator];
-
-  tabLines.forEach((line) => {
-    const cells = line.split('\t');
-    // 补齐列数
-    while (cells.length < maxColumns) {
-      cells.push('');
-    }
-    // 截取到最大列数
-    const row = `| ${cells.slice(0, maxColumns).join(' | ')} |`;
-    markdownRows.push(row);
-  });
-
-  return markdownRows.join('\n');
-};
-
-// 新增：检测不完整的表格（可能是跨页表格的一部分）
-const isIncompleteTable = (str: string): boolean => {
-  const lines = str.split('\n').filter((line) => line.trim());
-  if (lines.length === 0) return false;
-
-  // 检查是否大部分行都是表格格式（管道符或制表符）
-  const tableLines = lines.filter((line) => {
-    const trimmed = line.trim();
-    // 管道符表格
-    const isPipeTable =
-      trimmed.startsWith('|') && trimmed.endsWith('|') && trimmed.split('|').length > 2;
-    // 制表符表格
-    const isTabTable = trimmed.split('\t').length >= 3;
-    return isPipeTable || isTabTable;
-  });
-
-  // 如果70%以上的行都是表格格式，认为是不完整表格
-  return tableLines.length / lines.length >= 0.7 && tableLines.length >= 2;
-};
-
-// 新增：尝试修复不完整的表格
-const repairIncompleteTable = (text: string): string => {
-  const lines = text.split('\n').filter((line) => line.trim());
-  if (lines.length === 0) return text;
-
-  // 找到第一行作为潜在的表头
-  const firstTableLine = lines.find((line) => {
-    const trimmed = line.trim();
-    return trimmed.startsWith('|') && trimmed.endsWith('|');
-  });
-
-  if (!firstTableLine) return text;
-
-  // 计算列数
-  const columnCount = firstTableLine.split('|').length - 2;
-  if (columnCount <= 0) return text;
-
-  // 创建表头（如果没有的话）
-  const hasValidHeader =
-    lines.length >= 2 &&
-    lines[0].trim().startsWith('|') &&
-    lines[1].trim().match(/^(\|[\s:]*-+[\s:]*)+\|$/);
-
-  if (!hasValidHeader) {
-    // 生成默认表头
-    const headerCells = Array(columnCount)
-      .fill(0)
-      .map((_, i) => `列${i + 1}`);
-    const header = `| ${headerCells.join(' | ')} |`;
-    const separator = `| ${Array(columnCount).fill('---').join(' | ')} |`;
-
-    // 找到所有表格行
-    const tableRows = lines.filter((line) => {
-      const trimmed = line.trim();
-      return trimmed.startsWith('|') && trimmed.endsWith('|');
-    });
-
-    return [header, separator, ...tableRows].join('\n');
-  }
-
-  return text;
-};
-
-// 新增：合并连续的表格片段
-const mergeTableFragments = (text: string): string => {
-  const paragraphs = text.split(/\n\s*\n/);
-  const mergedParagraphs: string[] = [];
-  let currentTableBuffer: string[] = [];
-
-  for (const paragraph of paragraphs) {
-    if (strIsMdTable(paragraph)) {
-      // 完整的管道符表格，直接处理
-      if (currentTableBuffer.length > 0) {
-        // 合并之前的片段
-        const mergedTable = mergeTableBufferToComplete(currentTableBuffer);
-        mergedParagraphs.push(mergedTable);
-        currentTableBuffer = [];
-      }
-      mergedParagraphs.push(paragraph);
-    } else if (strIsTabTable(paragraph)) {
-      // 制表符表格，转换为Markdown表格
-      if (currentTableBuffer.length > 0) {
-        // 合并之前的片段
-        const mergedTable = mergeTableBufferToComplete(currentTableBuffer);
-        mergedParagraphs.push(mergedTable);
-        currentTableBuffer = [];
-      }
-      const markdownTable = convertTabTableToMarkdown(paragraph);
-      mergedParagraphs.push(markdownTable);
-    } else if (isIncompleteTable(paragraph)) {
-      // 不完整表格，加入缓冲区
-      currentTableBuffer.push(paragraph);
-    } else {
-      // 非表格内容
-      if (currentTableBuffer.length > 0) {
-        // 处理缓冲区中的表格片段
-        const mergedTable = mergeTableBufferToComplete(currentTableBuffer);
-        mergedParagraphs.push(mergedTable);
-        currentTableBuffer = [];
-      }
-      mergedParagraphs.push(paragraph);
-    }
-  }
-
-  // 处理剩余的表格片段
-  if (currentTableBuffer.length > 0) {
-    const mergedTable = mergeTableBufferToComplete(currentTableBuffer);
-    mergedParagraphs.push(mergedTable);
-  }
-
-  return mergedParagraphs.join('\n\n');
-};
-
-// 新增：将表格片段合并为完整表格
-const mergeTableBufferToComplete = (fragments: string[]): string => {
-  if (fragments.length === 0) return '';
-  if (fragments.length === 1) return repairIncompleteTable(fragments[0]);
-
-  // 合并所有表格行
-  const allLines: string[] = [];
-  let columnCount = 0;
-
-  // 先确定列数
-  for (const fragment of fragments) {
-    const lines = fragment.split('\n').filter((line) => line.trim());
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
-        const cols = trimmed.split('|').length - 2;
-        if (cols > columnCount) {
-          columnCount = cols;
-        }
-      }
-    }
-  }
-
-  // 生成表头
-  const headerCells = Array(columnCount)
-    .fill(0)
-    .map((_, i) => `列${i + 1}`);
-  const header = `| ${headerCells.join(' | ')} |`;
-  const separator = `| ${Array(columnCount).fill('---').join(' | ')} |`;
-
-  allLines.push(header, separator);
-
-  // 合并所有数据行
-  for (const fragment of fragments) {
-    const lines = fragment.split('\n').filter((line) => line.trim());
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
-        // 标准化列数
-        const cells = trimmed.split('|').slice(1, -1);
-        while (cells.length < columnCount) {
-          cells.push('');
-        }
-        const normalizedRow = `| ${cells.slice(0, columnCount).join(' | ')} |`;
-        allLines.push(normalizedRow);
-      }
-    }
-  }
-
-  return allLines.join('\n');
-};
-
 const markdownTableSplit = (props: SplitProps): SplitResponse => {
-  let { text = '', chunkSize } = props;
+  let { text = '', chunkSize, maxSize = defaultMaxChunkSize } = props;
   const splitText2Lines = text.split('\n');
   const header = splitText2Lines[0];
   const headerSize = header.split('|').length - 2;
@@ -301,9 +81,9 @@ ${mdSplitString}
   for (let i = 2; i < splitText2Lines.length; i++) {
     const chunkLength = getTextValidLength(chunk);
     const nextLineLength = getTextValidLength(splitText2Lines[i]);
-
+    const tableChunkSize = Math.max(chunkSize, maxSize * 0.8);
     // Over size
-    if (chunkLength + nextLineLength > chunkSize) {
+    if (chunkLength + nextLineLength > tableChunkSize) {
       chunks.push(chunk);
       chunk = `${header}
 ${mdSplitString}
@@ -351,10 +131,6 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     return match.replace(/\n/g, codeBlockMarker);
   });
 
-  // 2. 表格跨页合并处理 - 新增
-  text = mergeTableFragments(text);
-
-  // 3. Markdown 表格处理 - 单独提取表格出来，进行表头合并
   const tableReg =
     /(\n\|(?:(?:[^\n|]+\|){1,})\n\|(?:[:\-\s]+\|){1,}\n(?:\|(?:[^\n|]+\|)*\n?)*)(?:\n|$)/g;
   const tableDataList = text.match(tableReg);
@@ -406,13 +182,9 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     // HTML Table tag 尽可能保障完整
     {
       reg: /(\n\|(?:(?:[^\n|]+\|){1,})\n\|(?:[:\-\s]+\|){1,}\n(?:\|(?:[^\n|]+\|)*\n)*)/g,
-      maxLen: chunkSize // 增加表格的最大长度限制
+      maxLen: maxSize // 增加表格的最大长度限制
     }, // Markdown Table 尽可能保证完整性
-    // 制表符表格也要保持完整性
-    {
-      reg: /(\n(?:[^\n]*\t[^\n]*){2,})/g,
-      maxLen: chunkSize // 制表符表格使用最大长度限制
-    },
+
     { reg: /(\n{2,})/g, maxLen: chunkSize },
     { reg: /([\n])/g, maxLen: chunkSize },
     // ------ There's no overlap on the top
@@ -699,14 +471,7 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
     if (strIsMdTable(item)) {
       return markdownTableSplit(props);
     }
-
-    // 新增：处理制表符表格
-    if (strIsTabTable(item)) {
-      const convertedText = convertTabTableToMarkdown(item);
-      return markdownTableSplit({ ...props, text: convertedText });
-    }
-
-    return commonSplit({ ...props, text: item });
+    return commonSplit(props);
   });
 
   return {
