@@ -38,7 +38,13 @@ const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPlu
 
 type Props = { appId: string; chatId: string; teamId: string; teamToken: string };
 
-const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
+const Chat = ({
+  myApps,
+  isLoadingApps
+}: {
+  myApps: AppListItemType[];
+  isLoadingApps?: boolean;
+}) => {
   const { t } = useTranslation();
   const router = useRouter();
   const {
@@ -187,7 +193,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       {/* pc show myself apps */}
       {isPc && (
         <Box borderRight={theme.borders.base} w={'220px'} flexShrink={0}>
-          <SliderApps apps={myApps} activeAppId={appId} />
+          <SliderApps apps={myApps} activeAppId={appId} isLoading={isLoadingApps} />
         </Box>
       )}
 
@@ -254,7 +260,11 @@ const Render = (props: Props) => {
   const router = useRouter();
   const { source, chatId, setSource, setAppId, setOutLinkAuthData } = useChatStore();
 
-  const { data: myApps = [], runAsync: loadMyApps } = useRequest2(
+  const {
+    data: myApps = [],
+    runAsync: loadMyApps,
+    loading: isLoadingApps
+  } = useRequest2(
     async () => {
       if (teamId && teamToken) {
         return getMyTokensApps({ teamId, teamToken });
@@ -319,7 +329,7 @@ const Render = (props: Props) => {
         showNodeStatus
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
-          <Chat {...props} myApps={myApps} />
+          <Chat {...props} myApps={myApps} isLoadingApps={isLoadingApps} />
         </ChatRecordContextProvider>
       </ChatItemContextProvider>
     </ChatContextProvider>
