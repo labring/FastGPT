@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import { LogLevelEnum } from './log/constant';
 import { connectionMongo } from '../mongo/index';
 import { getMongoLog } from './log/schema';
-import { getLogger } from './log/otel';
+import { getLogger } from '../otel/log';
 
 export enum EventTypeEnum {
   outLinkBot = '[Outlink bot]',

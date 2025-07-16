@@ -1,6 +1,6 @@
 import { LoggerProvider, SimpleLogRecordProcessor } from '@opentelemetry/sdk-logs';
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
-import { SignozBaseURL, SignozServiceName } from '../../../support/otel/const';
+import { SignozBaseURL, SignozServiceName } from '../const';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import type { Logger } from '@opentelemetry/api-logs';
 

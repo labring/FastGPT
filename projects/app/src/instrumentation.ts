@@ -1,5 +1,4 @@
 import { exit } from 'process';
-import { connectSignoz } from '@fastgpt/service/support/otel/register';
 
 /*
   Init system
@@ -19,7 +18,8 @@ export async function register() {
         { startCron },
         { startTrainingQueue },
         { preLoadWorker },
-        { loadSystemModels }
+        { loadSystemModels },
+        { connectSignoz }
       ] = await Promise.all([
         import('@fastgpt/service/common/mongo/init'),
         import('@fastgpt/service/common/mongo/index'),
@@ -31,9 +31,11 @@ export async function register() {
         import('@/service/common/system/cron'),
         import('@/service/core/dataset/training/utils'),
         import('@fastgpt/service/worker/preload'),
-        import('@fastgpt/service/core/ai/config/utils')
+        import('@fastgpt/service/core/ai/config/utils'),
+        import('@fastgpt/service/common/otel/trace/register')
       ]);
 
+      // connect to signoz
       connectSignoz();
 
       // 执行初始化流程
