@@ -6,13 +6,11 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
-import {
-  getSystemPluginByIdAndVersionId,
-  splitCombinePluginId
-} from '@fastgpt/service/core/app/plugin/controller';
+import { getSystemPluginByIdAndVersionId } from '@fastgpt/service/core/app/plugin/controller';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { Types } from '@fastgpt/service/common/mongo';
+import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 
 export type getToolVersionListProps = PaginationProps<{
   pluginId?: string;

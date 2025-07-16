@@ -39,37 +39,7 @@ import type {
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-
-/**
-  plugin id rule:
-  - personal: ObjectId
-  - commercial: commercial-ObjectId
-  - systemtool: systemTool-id
-  (deprecated) community: community-id
-*/
-export function splitCombinePluginId(id: string) {
-  const splitRes = id.split('-');
-  if (splitRes.length === 1) {
-    // app id
-    return {
-      source: PluginSourceEnum.personal,
-      pluginId: id
-    };
-  }
-
-  const [source, pluginId] = id.split('-') as [PluginSourceEnum, string | undefined];
-  if (!source || !pluginId) throw new Error('pluginId not found');
-
-  // 兼容4.10.0 之前的插件
-  if (source === 'community' || id === 'commercial-dalle3') {
-    return {
-      source: PluginSourceEnum.systemTool,
-      pluginId: `${PluginSourceEnum.systemTool}-${pluginId}`
-    };
-  }
-
-  return { source, pluginId: id };
-}
+import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 
 type ChildAppType = SystemPluginTemplateItemType & {
   teamId?: string;
