@@ -20,8 +20,6 @@ import Script from 'next/script';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { useLocalStorageState } from 'ahooks';
 import { useTranslation } from 'next-i18next';
-import I18nLngSelector from '@/components/Select/I18nLngSelector';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { GET } from '@/web/common/api/request';
 import { getDocPath } from '@/web/common/system/doc';
 import LoginForm from '@/pageComponents/login/LoginForm/LoginForm';
@@ -46,7 +44,6 @@ export const useLoginLogic = (options: {
   const { feConfigs } = useSystemStore();
   const { setUserInfo } = useUserStore();
   const { setLastChatAppId } = useChatStore();
-  const { isPc } = useSystem();
 
   const [pageType, setPageType] = useState<`${LoginPageTypeEnum}` | null>(null);
 
@@ -169,7 +166,6 @@ export const useLoginLogic = (options: {
     // State
     pageType,
     setPageType,
-    isPc,
     feConfigs,
     t,
 
@@ -287,23 +283,19 @@ export const CookiesDrawer = ({
   );
 };
 
-// 登录容器组件
+// 登录容器组件 - 专注于核心登录功能，不包含语言选择器
 export const LoginContainer = ({
-  children,
-  showLanguageSelector = true,
-  languageSelectorPosition = 'top-right',
   onSuccess,
   chineseRedirectUrl,
   autoInit = true,
-  enabled = true
+  enabled = true,
+  children
 }: {
-  children?: React.ReactNode;
-  showLanguageSelector?: boolean;
-  languageSelectorPosition?: 'top-right' | 'absolute-top-right';
   onSuccess?: (res: ResLogin) => void;
   chineseRedirectUrl?: string;
   autoInit?: boolean;
   enabled?: boolean;
+  children?: React.ReactNode;
 }) => {
   const loginLogic = useLoginLogic({
     onSuccess,
@@ -314,7 +306,6 @@ export const LoginContainer = ({
 
   const {
     pageType,
-    isPc,
     feConfigs,
     DynamicComponent,
     isCommunityOpen,
@@ -340,48 +331,34 @@ export const LoginContainer = ({
         />
       )}
 
-      <Box position="relative" w="full" h="full">
-        {/* 语言选择器 */}
-        {showLanguageSelector && isPc && (
-          <Box
-            position={languageSelectorPosition === 'absolute-top-right' ? 'absolute' : 'relative'}
-            top={languageSelectorPosition === 'absolute-top-right' ? '24px' : undefined}
-            right={languageSelectorPosition === 'absolute-top-right' ? '24px' : undefined}
-            zIndex={10}
-          >
-            <I18nLngSelector />
-          </Box>
+      {/* 主内容区域 */}
+      <Box w={['100%', '380px']} flex={'1 0 0'}>
+        {pageType && DynamicComponent ? (
+          DynamicComponent
+        ) : (
+          <Center w={'full'} h={'full'} position={'relative'}>
+            <Loading fixed={false} />
+          </Center>
         )}
-
-        {/* 主内容区域 */}
-        <Box w={['100%', '380px']} flex={'1 0 0'}>
-          {pageType && DynamicComponent ? (
-            DynamicComponent
-          ) : (
-            <Center w={'full'} h={'full'} position={'relative'}>
-              <Loading fixed={false} />
-            </Center>
-          )}
-        </Box>
-
-        {/* 无法登录帮助链接 */}
-        {feConfigs?.concatMd && (
-          <Box
-            mt={8}
-            color={'primary.700'}
-            fontSize={'mini'}
-            fontWeight={'medium'}
-            cursor={'pointer'}
-            textAlign={'center'}
-            onClick={onCommunityOpen}
-          >
-            {loginLogic.t('common:support.user.login.can_not_login')}
-          </Box>
-        )}
-
-        {/* 自定义内容 */}
-        {children}
       </Box>
+
+      {/* 无法登录帮助链接 */}
+      {feConfigs?.concatMd && (
+        <Box
+          mt={8}
+          color={'primary.700'}
+          fontSize={'mini'}
+          fontWeight={'medium'}
+          cursor={'pointer'}
+          textAlign={'center'}
+          onClick={onCommunityOpen}
+        >
+          {loginLogic.t('common:support.user.login.can_not_login')}
+        </Box>
+      )}
+
+      {/* 自定义内容 */}
+      {children}
 
       {/* 社区模态框 */}
       {isCommunityOpen && <CommunityModal onClose={onCommunityClose} />}
