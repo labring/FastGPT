@@ -59,6 +59,9 @@ export const dispatchQueryExtension = async ({
   });
 
   return {
+    data: {
+      [NodeOutputKeyEnum.text]: JSON.stringify(filterSameQueries)
+    },
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints,
       model: modelName,
@@ -75,7 +78,6 @@ export const dispatchQueryExtension = async ({
         inputTokens,
         outputTokens
       }
-    ],
-    [NodeOutputKeyEnum.text]: JSON.stringify(filterSameQueries)
+    ]
   };
 };

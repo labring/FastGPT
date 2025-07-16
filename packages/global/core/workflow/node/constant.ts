@@ -99,6 +99,7 @@ export const FlowNodeInputMap: Record<
 
 export enum FlowNodeOutputTypeEnum {
   hidden = 'hidden',
+  error = 'error',
   source = 'source',
   static = 'static',
   dynamic = 'dynamic'

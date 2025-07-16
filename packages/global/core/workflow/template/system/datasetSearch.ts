@@ -15,6 +15,7 @@ import {
 import { Input_Template_UserChatInput } from '../input';
 import { DatasetSearchModeEnum } from '../../../dataset/constants';
 import { i18nT } from '../../../../../web/i18n/utils';
+import { Output_Template_Error_Message } from '../output';
 
 export const Dataset_SEARCH_DESC = i18nT('workflow:template.dataset_search_intro');
 
@@ -29,6 +30,7 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
   intro: Dataset_SEARCH_DESC,
   showStatus: true,
   isTool: true,
+  catchError: false,
   courseUrl: '/docs/guide/dashboard/workflow/dataset_search/',
   version: '4.9.2',
   inputs: [
@@ -143,6 +145,7 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       type: FlowNodeOutputTypeEnum.static,
       valueType: WorkflowIOValueTypeEnum.datasetQuote,
       valueDesc: datasetQuoteValueDesc
-    }
+    },
+    Output_Template_Error_Message
   ]
 };

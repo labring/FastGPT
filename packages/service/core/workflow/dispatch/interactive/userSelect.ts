@@ -6,10 +6,7 @@ import type {
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import type {
-  UserSelectInteractive,
-  UserSelectOptionItemType
-} from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { UserSelectOptionItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 
 type Props = ModuleDispatchProps<{
@@ -17,8 +14,6 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userSelectOptions]: UserSelectOptionItemType[];
 }>;
 type UserSelectResponse = DispatchNodeResultType<{
-  [NodeOutputKeyEnum.answerText]?: string;
-  [DispatchNodeResponseKeyEnum.interactive]?: UserSelectInteractive;
   [NodeOutputKeyEnum.selectResult]?: string;
 }>;
 
@@ -59,6 +54,9 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
   }
 
   return {
+    data: {
+      [NodeOutputKeyEnum.selectResult]: userSelectedVal
+    },
     [DispatchNodeResponseKeyEnum.rewriteHistories]: histories.slice(0, -2), // Removes the current session record as the history of subsequent nodes
     [DispatchNodeResponseKeyEnum.skipHandleId]: userSelectOptions
       .filter((item) => item.value !== userSelectedVal)
@@ -66,7 +64,6 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       userSelectResult: userSelectedVal
     },
-    [DispatchNodeResponseKeyEnum.toolResponses]: userSelectedVal,
-    [NodeOutputKeyEnum.selectResult]: userSelectedVal
+    [DispatchNodeResponseKeyEnum.toolResponses]: userSelectedVal
   };
 };
