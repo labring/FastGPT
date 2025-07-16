@@ -34,6 +34,9 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   versionList?: {
     value: string;
     description?: string;
+
+    inputs: FlowNodeInputItemType[];
+    outputs: FlowNodeOutputItemType[];
   }[];
 
   // Admin workflow tool

@@ -1,5 +1,8 @@
 import { type FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import {
   appData2FlowNodeIO,
   pluginData2FlowNodeIO,
@@ -123,15 +126,24 @@ export const getSystemPluginByIdAndVersionId = async (
       };
     }
 
+    // System tool
+    const versionList = (plugin.versionList as SystemPluginTemplateItemType['versionList']) || [];
+
+    if (versionList.length === 0) {
+      return Promise.reject('Can not find plugin version list');
+    }
+
     const version = versionId
-      ? plugin.versionList?.find((item) => item.value === versionId)
-      : plugin.versionList?.[0];
-    const lastVersion = plugin.versionList?.[0];
+      ? versionList.find((item) => item.value === versionId) ?? versionList[0]
+      : versionList[0];
+    const lastVersion = versionList[0];
 
     return {
       ...plugin,
+      inputs: version.inputs,
+      outputs: version.outputs,
       version: versionId ? version?.value : '',
-      versionLabel: version ? version?.value : '',
+      versionLabel: versionId ? version?.value : '',
       isLatestVersion: !version || !lastVersion || version.value === lastVersion?.value
     };
   })();
@@ -271,7 +283,9 @@ export async function getChildAppPreviewNode({
     hasSystemSecret: app.hasSystemSecret,
 
     ...nodeIOConfig,
-    outputs: [...nodeIOConfig.outputs, Output_Template_Error_Message]
+    outputs: nodeIOConfig.outputs.some((item) => item.type === FlowNodeOutputTypeEnum.error)
+      ? nodeIOConfig.outputs
+      : [...nodeIOConfig.outputs, Output_Template_Error_Message]
   };
 }
 
@@ -420,8 +434,9 @@ export const getSystemPlugins = async (): Promise<SystemPluginTemplateItemType[]
 
     const formatTools = tools.map<SystemPluginTemplateItemType>((item) => {
       const dbPluginConfig = systemPlugins.get(item.id);
-      const inputs = item.versionList[0]?.inputs as FlowNodeInputItemType[];
-      const outputs = item.versionList[0]?.outputs as FlowNodeOutputItemType[];
+
+      const versionList = (item.versionList as SystemPluginTemplateItemType['versionList']) || [];
+      const inputs = versionList[0]?.inputs;
 
       return {
         isActive: item.isActive,
@@ -445,9 +460,7 @@ export const getSystemPlugins = async (): Promise<SystemPluginTemplateItemType[]
           nodes: [],
           edges: []
         },
-        versionList: item.versionList,
-        inputs,
-        outputs,
+        versionList,
 
         inputList: inputs?.find((input) => input.key === NodeInputKeyEnum.systemInputConfig)
           ?.inputList as any,

@@ -35,9 +35,7 @@ type RunToolResponse = DispatchNodeResultType<
     [NodeOutputKeyEnum.rawResponse]?: any;
     [key: string]: any;
   },
-  {
-    [NodeOutputKeyEnum.errorText]?: string;
-  }
+  Record<string, any>
 >;
 
 export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolResponse> => {
@@ -47,7 +45,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     runningAppInfo,
     variables,
     workflowStreamResponse,
-    node: { name, avatar, toolConfig, version }
+    node: { name, avatar, toolConfig, version, catchError }
   } = props;
 
   const systemToolId = toolConfig?.systemTool?.toolId;
@@ -99,7 +97,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           },
           tool: {
             id: formatToolId,
-            version
+            version: version || tool.versionList?.[0]?.value
           },
           time: variables.cTime
         },
@@ -114,12 +112,35 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           }
         }
       });
-      const result = res.output || {};
+      let result = res.output || {};
+
       if (res.error) {
-        throw new Error(res.error);
-      }
-      if (result[NodeOutputKeyEnum.systemError]) {
-        throw new Error(result[NodeOutputKeyEnum.systemError]);
+        // 适配旧版：旧版本没有catchError，部分工具会正常返回 error 字段作为响应。
+        if (catchError === undefined && typeof res.error === 'object') {
+          return {
+            data: res.error,
+            [DispatchNodeResponseKeyEnum.nodeResponse]: {
+              toolRes: res.error,
+              moduleLogo: avatar
+            },
+            [DispatchNodeResponseKeyEnum.toolResponses]: res.error
+          };
+        }
+
+        // String error(Common error, not custom)
+        if (typeof res.error === 'string') {
+          throw new Error(res.error);
+        }
+
+        // Custom error field
+        return {
+          error: res.error,
+          [DispatchNodeResponseKeyEnum.nodeResponse]: {
+            error: res.error,
+            moduleLogo: avatar
+          },
+          [DispatchNodeResponseKeyEnum.toolResponses]: res.error
+        };
       }
 
       const usagePoints = (() => {

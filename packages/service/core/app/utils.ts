@@ -79,6 +79,28 @@ export async function rewriteAppWorkflowToDetail({
         node.currentCost = preview.currentCost;
         node.hasTokenFee = preview.hasTokenFee;
         node.hasSystemSecret = preview.hasSystemSecret;
+
+        // Latest version
+        if (!node.version) {
+          const inputsMap = new Map(node.inputs.map((item) => [item.key, item]));
+          const outputsMap = new Map(node.outputs.map((item) => [item.key, item]));
+
+          node.inputs = preview.inputs.map((item) => {
+            const input = inputsMap.get(item.key);
+            return {
+              ...item,
+              value: input?.value,
+              selectedTypeIndex: input?.selectedTypeIndex
+            };
+          });
+          node.outputs = preview.outputs.map((item) => {
+            const output = outputsMap.get(item.key);
+            return {
+              ...item,
+              value: output?.value
+            };
+          });
+        }
       } catch (error) {
         node.pluginData = {
           error: getErrText(error)

@@ -678,5 +678,34 @@ export const adaptCatchError = (nodes: StoreNodeItemType[], edges: StoreEdgeItem
       );
       node.catchError = true;
     }
+
+    if (node.catchError === undefined && node.pluginId) {
+      if (
+        [
+          'systemTool-dalle3',
+          'systemTool-aliModelStudio/flux',
+          'systemTool-aliModelStudio/wanxTxt2ImgV2',
+          'systemTool-blackForestLab/kontextEditing',
+          'systemTool-blackForestLab/kontextGeneration',
+          'systemTool-bocha',
+          'systemTool-searchXNG'
+        ].includes(node.pluginId)
+      ) {
+        const sourceEdges = edges.filter((edge) => edge.source === node.nodeId);
+        edges.push(
+          ...sourceEdges.map((edge) => {
+            return {
+              source: edge.source,
+              sourceHandle: getHandleId(edge.source, 'source_catch', 'right'),
+              target: edge.target,
+              targetHandle: edge.targetHandle
+            };
+          })
+        );
+        node.catchError = true;
+      } else {
+        node.catchError = false;
+      }
+    }
   });
 };
