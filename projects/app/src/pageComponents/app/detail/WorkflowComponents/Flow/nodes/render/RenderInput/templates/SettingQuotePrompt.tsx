@@ -247,10 +247,7 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
             </Flex>
 
             <PromptEditor
-              variables={quoteTemplateVariables.map((item) => ({
-                ...item,
-                id: item.key
-              }))}
+              variables={quoteTemplateVariables}
               minH={160}
               title={t('common:core.app.Quote templates')}
               placeholder={t('workflow:quote_content_placeholder')}
@@ -271,10 +268,7 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
               />
             </Flex>
             <PromptEditor
-              variables={quotePromptVariables.map((item) => ({
-                ...item,
-                id: item.key
-              }))}
+              variables={quotePromptVariables}
               title={t('common:core.app.Quote prompt')}
               minH={300}
               placeholder={t('workflow:quote_prompt_tip', {
