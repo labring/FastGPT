@@ -67,7 +67,6 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
   const externalProviderWorkflowVariables = useMemo(() => {
     return (
       feConfigs?.externalProviderWorkflowVariables?.map((item) => ({
-        id: item.key,
         key: item.key,
         label: item.name
       })) || []
