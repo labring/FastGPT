@@ -269,11 +269,11 @@ export enum NodeOutputKeyEnum {
   reasoningText = 'reasoningText', // node reasoning. the value will be show but not save to history
   success = 'success',
   failed = 'failed',
-  error = 'error',
   text = 'system_text',
   addOutputParam = 'system_addOutputParam',
   rawResponse = 'system_rawResponse',
   systemError = 'system_error',
+  errorText = 'system_error_text',
 
   // start
   userFiles = 'userFiles',
@@ -312,7 +312,13 @@ export enum NodeOutputKeyEnum {
   loopStartIndex = 'loopStartIndex',
 
   // form input
-  formInputResult = 'formInputResult'
+  formInputResult = 'formInputResult',
+
+  // File
+  fileTitle = 'fileTitle',
+
+  // @deprecated
+  error = 'error'
 }
 
 export enum VariableInputEnum {

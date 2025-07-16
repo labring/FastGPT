@@ -24,10 +24,13 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
+import CatchError from './render/RenderOutput/CatchError';
 
 const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs } = data;
+  const { nodeId, inputs, outputs, catchError } = data;
+  const splitOutput = useContextSelector(WorkflowContext, (ctx) => ctx.splitOutput);
+  const { successOutputs, errorOutputs } = splitOutput(outputs);
 
   const codeType = inputs.find(
     (item) => item.key === NodeInputKeyEnum.codeType
@@ -140,9 +143,10 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         />
       </Container>
       <Container>
-        <IOTitle text={t('common:Output')} />
-        <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
+        <IOTitle text={t('common:Output')} nodeId={nodeId} catchError={catchError} />
+        <RenderOutput nodeId={nodeId} flowOutputList={successOutputs} />
       </Container>
+      {catchError && <CatchError nodeId={nodeId} errorOutputs={errorOutputs} />}
       <SwitchLangConfirm />
     </NodeCard>
   );

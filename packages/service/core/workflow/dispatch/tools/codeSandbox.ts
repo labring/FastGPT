@@ -2,20 +2,26 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import axios from 'axios';
-import { formatHttpError } from '../utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getNodeErrResponse } from '../utils';
 
 type RunCodeType = ModuleDispatchProps<{
   [NodeInputKeyEnum.codeType]: string;
   [NodeInputKeyEnum.code]: string;
   [NodeInputKeyEnum.addInputParam]: Record<string, any>;
 }>;
-type RunCodeResponse = DispatchNodeResultType<{
-  [NodeOutputKeyEnum.error]?: any;
-  [NodeOutputKeyEnum.rawResponse]?: Record<string, any>;
-  [key: string]: any;
-}>;
+type RunCodeResponse = DispatchNodeResultType<
+  {
+    [NodeOutputKeyEnum.error]?: any; // @deprecated
+    [NodeOutputKeyEnum.rawResponse]?: Record<string, any>;
+    [key: string]: any;
+  },
+  {
+    [NodeOutputKeyEnum.error]: string;
+  }
+>;
 
 function getURL(codeType: string): string {
   if (codeType == SandboxCodeTypeEnum.py) {
@@ -25,14 +31,21 @@ function getURL(codeType: string): string {
   }
 }
 
-export const dispatchRunCode = async (props: RunCodeType): Promise<RunCodeResponse> => {
+export const dispatchCodeSandbox = async (props: RunCodeType): Promise<RunCodeResponse> => {
   const {
+    node: { catchError },
     params: { codeType, code, [NodeInputKeyEnum.addInputParam]: customVariables }
   } = props;
 
   if (!process.env.SANDBOX_URL) {
     return {
-      [NodeOutputKeyEnum.error]: 'Can not find SANDBOX_URL in env'
+      error: {
+        [NodeOutputKeyEnum.error]: 'Can not find SANDBOX_URL in env'
+      },
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        errorText: 'Can not find SANDBOX_URL in env',
+        customInputs: customVariables
+      }
     };
   }
 
@@ -51,24 +64,43 @@ export const dispatchRunCode = async (props: RunCodeType): Promise<RunCodeRespon
 
     if (runResult.success) {
       return {
-        [NodeOutputKeyEnum.rawResponse]: runResult.data.codeReturn,
+        data: {
+          [NodeOutputKeyEnum.rawResponse]: runResult.data.codeReturn,
+          ...runResult.data.codeReturn
+        },
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
           customInputs: customVariables,
           customOutputs: runResult.data.codeReturn,
           codeLog: runResult.data.log
         },
-        [DispatchNodeResponseKeyEnum.toolResponses]: runResult.data.codeReturn,
-        ...runResult.data.codeReturn
+        [DispatchNodeResponseKeyEnum.toolResponses]: runResult.data.codeReturn
       };
     } else {
-      return Promise.reject('Run code failed');
+      throw new Error('Run code failed');
     }
   } catch (error) {
+    const text = getErrText(error);
+
+    // @adapt
+    if (catchError === undefined) {
+      return {
+        data: {
+          [NodeOutputKeyEnum.error]: { message: text }
+        },
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          customInputs: customVariables,
+          errorText: text
+        }
+      };
+    }
+
     return {
-      [NodeOutputKeyEnum.error]: formatHttpError(error),
+      error: {
+        [NodeOutputKeyEnum.error]: text
+      },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         customInputs: customVariables,
-        error: formatHttpError(error)
+        errorText: text
       }
     };
   }

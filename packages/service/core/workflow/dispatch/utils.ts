@@ -9,7 +9,10 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { responseWrite } from '../../../common/response';
 import { type NextApiResponse } from 'next';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
@@ -205,4 +208,31 @@ export const rewriteRuntimeWorkFlow = (
       edges.splice(i, 1);
     }
   }
+};
+
+export const getNodeErrResponse = ({
+  error,
+  customErr,
+  customNodeResponse
+}: {
+  error: any;
+  customErr?: Record<string, any>;
+  customNodeResponse?: Record<string, any>;
+}) => {
+  const errorText = getErrText(error);
+
+  return {
+    error: {
+      [NodeOutputKeyEnum.errorText]: errorText,
+      ...(typeof customErr === 'object' ? customErr : {})
+    },
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      errorText,
+      ...(typeof customNodeResponse === 'object' ? customNodeResponse : {})
+    },
+    [DispatchNodeResponseKeyEnum.toolResponses]: {
+      error: errorText,
+      ...(typeof customErr === 'object' ? customErr : {})
+    }
+  };
 };

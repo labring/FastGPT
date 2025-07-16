@@ -319,11 +319,11 @@ const NodeCard = (props: Props) => {
   const RenderHandle = useMemo(() => {
     return (
       <>
-        <ConnectionSourceHandle nodeId={nodeId} isFoldNode={isFolded} />
+        <ConnectionSourceHandle nodeId={nodeId} />
         <ConnectionTargetHandle nodeId={nodeId} />
       </>
     );
-  }, [nodeId, isFolded]);
+  }, [nodeId]);
   const RenderToolHandle = useMemo(
     () =>
       node?.flowNodeType === FlowNodeTypeEnum.agent ? <ToolSourceHandle nodeId={nodeId} /> : null,

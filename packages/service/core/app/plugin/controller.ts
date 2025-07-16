@@ -1,5 +1,8 @@
 import { type FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import {
   appData2FlowNodeIO,
   pluginData2FlowNodeIO,
@@ -33,6 +36,7 @@ import type {
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 import { isProduction } from '@fastgpt/global/common/system/constants';
+import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
 
 /**
   plugin id rule:
@@ -122,15 +126,24 @@ export const getSystemPluginByIdAndVersionId = async (
       };
     }
 
+    // System tool
+    const versionList = (plugin.versionList as SystemPluginTemplateItemType['versionList']) || [];
+
+    if (versionList.length === 0) {
+      return Promise.reject('Can not find plugin version list');
+    }
+
     const version = versionId
-      ? plugin.versionList?.find((item) => item.value === versionId)
-      : plugin.versionList?.[0];
-    const lastVersion = plugin.versionList?.[0];
+      ? versionList.find((item) => item.value === versionId) ?? versionList[0]
+      : versionList[0];
+    const lastVersion = versionList[0];
 
     return {
       ...plugin,
+      inputs: version.inputs,
+      outputs: version.outputs,
       version: versionId ? version?.value : '',
-      versionLabel: version ? version?.value : '',
+      versionLabel: versionId ? version?.value : '',
       isLatestVersion: !version || !lastVersion || version.value === lastVersion?.value
     };
   })();
@@ -198,8 +211,8 @@ export async function getChildAppPreviewNode({
       return {
         flowNodeType: FlowNodeTypeEnum.tool,
         nodeIOConfig: {
-          inputs: app.inputs!,
-          outputs: app.outputs!,
+          inputs: app.inputs || [],
+          outputs: app.outputs || [],
           toolConfig: {
             systemTool: {
               toolId: app.id
@@ -209,6 +222,7 @@ export async function getChildAppPreviewNode({
       };
     }
 
+    // Plugin workflow
     if (!!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)) {
       return {
         flowNodeType: FlowNodeTypeEnum.pluginModule,
@@ -216,6 +230,7 @@ export async function getChildAppPreviewNode({
       };
     }
 
+    // Mcp
     if (
       !!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet) &&
       app.workflow.nodes.length === 1
@@ -236,6 +251,7 @@ export async function getChildAppPreviewNode({
       };
     }
 
+    // Chat workflow
     return {
       flowNodeType: FlowNodeTypeEnum.appModule,
       nodeIOConfig: appData2FlowNodeIO({ chatConfig: app.workflow.chatConfig })
@@ -254,6 +270,7 @@ export async function getChildAppPreviewNode({
     userGuide: app.userGuide,
     showStatus: true,
     isTool: true,
+    catchError: false,
 
     version: app.version,
     versionLabel: app.versionLabel,
@@ -265,7 +282,10 @@ export async function getChildAppPreviewNode({
     hasTokenFee: app.hasTokenFee,
     hasSystemSecret: app.hasSystemSecret,
 
-    ...nodeIOConfig
+    ...nodeIOConfig,
+    outputs: nodeIOConfig.outputs.some((item) => item.type === FlowNodeOutputTypeEnum.error)
+      ? nodeIOConfig.outputs
+      : [...nodeIOConfig.outputs, Output_Template_Error_Message]
   };
 }
 
@@ -414,8 +434,9 @@ export const getSystemPlugins = async (): Promise<SystemPluginTemplateItemType[]
 
     const formatTools = tools.map<SystemPluginTemplateItemType>((item) => {
       const dbPluginConfig = systemPlugins.get(item.id);
-      const inputs = item.versionList[0]?.inputs as FlowNodeInputItemType[];
-      const outputs = item.versionList[0]?.outputs as FlowNodeOutputItemType[];
+
+      const versionList = (item.versionList as SystemPluginTemplateItemType['versionList']) || [];
+      const inputs = versionList[0]?.inputs;
 
       return {
         isActive: item.isActive,
@@ -439,9 +460,7 @@ export const getSystemPlugins = async (): Promise<SystemPluginTemplateItemType[]
           nodes: [],
           edges: []
         },
-        versionList: item.versionList,
-        inputs,
-        outputs,
+        versionList,
 
         inputList: inputs?.find((input) => input.key === NodeInputKeyEnum.systemInputConfig)
           ?.inputList as any,

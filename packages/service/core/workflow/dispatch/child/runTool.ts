@@ -17,23 +17,25 @@ import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { getSystemPluginById } from '../../../app/plugin/controller';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
+import { getNodeErrResponse } from '../utils';
 
 type SystemInputConfigType = {
   type: SystemToolInputTypeEnum;
   value: StoreSecretValueType;
 };
 
-type RunToolProps = ModuleDispatchProps<
-  {
-    [NodeInputKeyEnum.toolData]?: McpToolDataType;
-    [NodeInputKeyEnum.systemInputConfig]?: SystemInputConfigType;
-  } & Record<string, any>
->;
+type RunToolProps = ModuleDispatchProps<{
+  [NodeInputKeyEnum.toolData]?: McpToolDataType;
+  [NodeInputKeyEnum.systemInputConfig]?: SystemInputConfigType;
+  [key: string]: any;
+}>;
 
 type RunToolResponse = DispatchNodeResultType<
   {
     [NodeOutputKeyEnum.rawResponse]?: any;
-  } & Record<string, any>
+    [key: string]: any;
+  },
+  Record<string, any>
 >;
 
 export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolResponse> => {
@@ -43,7 +45,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     runningAppInfo,
     variables,
     workflowStreamResponse,
-    node: { name, avatar, toolConfig, version }
+    node: { name, avatar, toolConfig, version, catchError }
   } = props;
 
   const systemToolId = toolConfig?.systemTool?.toolId;
@@ -80,50 +82,69 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
       const formatToolId = tool.id.split('-')[1];
 
-      const result = await (async () => {
-        const res = await runSystemTool({
-          toolId: formatToolId,
-          inputs,
-          systemVar: {
-            user: {
-              id: variables.userId,
-              teamId: runningUserInfo.teamId,
-              name: runningUserInfo.tmbId
-            },
-            app: {
-              id: runningAppInfo.id,
-              name: runningAppInfo.id
-            },
-            tool: {
-              id: formatToolId,
-              version: version || tool.versionList?.[0]?.value || ''
-            },
-            time: variables.cTime
+      const res = await runSystemTool({
+        toolId: formatToolId,
+        inputs,
+        systemVar: {
+          user: {
+            id: variables.userId,
+            teamId: runningUserInfo.teamId,
+            name: runningUserInfo.tmbId
           },
-          onMessage: ({ type, content }) => {
-            if (workflowStreamResponse && content) {
-              workflowStreamResponse({
-                event: type as unknown as SseResponseEventEnum,
-                data: textAdaptGptResponse({
-                  text: content
-                })
-              });
-            }
+          app: {
+            id: runningAppInfo.id,
+            name: runningAppInfo.id
+          },
+          tool: {
+            id: formatToolId,
+            version: version || tool.versionList?.[0]?.value || ''
+          },
+          time: variables.cTime
+        },
+        onMessage: ({ type, content }) => {
+          if (workflowStreamResponse && content) {
+            workflowStreamResponse({
+              event: type as unknown as SseResponseEventEnum,
+              data: textAdaptGptResponse({
+                text: content
+              })
+            });
           }
-        });
-        if (res.error) {
-          return Promise.reject(res.error);
         }
-        if (!res.output) return {};
+      });
+      let result = res.output || {};
 
-        return res.output;
-      })();
+      if (res.error) {
+        // 适配旧版：旧版本没有catchError，部分工具会正常返回 error 字段作为响应。
+        if (catchError === undefined && typeof res.error === 'object') {
+          return {
+            data: res.error,
+            [DispatchNodeResponseKeyEnum.nodeResponse]: {
+              toolRes: res.error,
+              moduleLogo: avatar
+            },
+            [DispatchNodeResponseKeyEnum.toolResponses]: res.error
+          };
+        }
+
+        // String error(Common error, not custom)
+        if (typeof res.error === 'string') {
+          throw new Error(res.error);
+        }
+
+        // Custom error field
+        return {
+          error: res.error,
+          [DispatchNodeResponseKeyEnum.nodeResponse]: {
+            error: res.error,
+            moduleLogo: avatar
+          },
+          [DispatchNodeResponseKeyEnum.toolResponses]: res.error
+        };
+      }
 
       const usagePoints = (() => {
-        if (
-          params.system_input_config?.type !== SystemToolInputTypeEnum.system ||
-          result[NodeOutputKeyEnum.systemError]
-        ) {
+        if (params.system_input_config?.type !== SystemToolInputTypeEnum.system) {
           return 0;
         }
         return tool.currentCost ?? 0;
@@ -140,6 +161,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       });
 
       return {
+        data: result,
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
           toolRes: result,
           moduleLogo: avatar,
@@ -151,8 +173,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
             moduleName: name,
             totalPoints: usagePoints
           }
-        ],
-        ...result
+        ]
       };
     } else {
       // mcp tool
@@ -168,12 +189,14 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       const result = await mcpClient.toolCall(toolName, restParams);
 
       return {
+        data: {
+          [NodeOutputKeyEnum.rawResponse]: result
+        },
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
           toolRes: result,
           moduleLogo: avatar
         },
-        [DispatchNodeResponseKeyEnum.toolResponses]: result,
-        [NodeOutputKeyEnum.rawResponse]: result
+        [DispatchNodeResponseKeyEnum.toolResponses]: result
       };
     }
   } catch (error) {
@@ -188,12 +211,11 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       });
     }
 
-    return {
-      [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        moduleLogo: avatar,
-        error: getErrText(error)
-      },
-      [DispatchNodeResponseKeyEnum.toolResponses]: getErrText(error)
-    };
+    return getNodeErrResponse({
+      error,
+      customNodeResponse: {
+        moduleLogo: avatar
+      }
+    });
   }
 };
