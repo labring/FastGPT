@@ -2,10 +2,7 @@ import React, { useCallback, useEffect, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Flex, Box, type ButtonProps, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import {
-  computedNodeInputReference,
-  filterWorkflowNodeOutputsByType
-} from '@/web/core/workflow/utils';
+import { getNodeAllSource, filterWorkflowNodeOutputsByType } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import {
   NodeOutputKeyEnum,
@@ -19,7 +16,10 @@ import type {
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { WorkflowNodeEdgeContext } from '../../../../../context/workflowInitContext';
 
@@ -69,15 +69,13 @@ export const useReference = ({
 
   // 获取可选的变量列表
   const referenceList = useMemo(() => {
-    const sourceNodes = computedNodeInputReference({
+    const sourceNodes = getNodeAllSource({
       nodeId,
       nodes: nodeList,
       edges: edges,
       chatConfig: appDetail.chatConfig,
       t
     });
-
-    if (!sourceNodes) return [];
 
     const isArray = valueType?.includes('array');
 
@@ -93,9 +91,12 @@ export const useReference = ({
           ),
           value: node.nodeId,
           children: filterWorkflowNodeOutputsByType(node.outputs, valueType)
-            .filter(
-              (output) => output.id !== NodeOutputKeyEnum.addOutputParam && output.invalid !== true
-            )
+            .filter((output) => {
+              if (output.type === FlowNodeOutputTypeEnum.error) {
+                return node.catchError === true;
+              }
+              return output.id !== NodeOutputKeyEnum.addOutputParam && output.invalid !== true;
+            })
             .map((output) => {
               return {
                 label: t(output.label as any),

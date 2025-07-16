@@ -40,7 +40,9 @@ export const dispatchTextEditor = (props: Record<string, any>): Response => {
   });
 
   return {
-    [NodeOutputKeyEnum.text]: textResult,
+    data: {
+      [NodeOutputKeyEnum.text]: textResult
+    },
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       textOutput: textResult
     }

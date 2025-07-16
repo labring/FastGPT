@@ -88,6 +88,9 @@ export const WholeResponseContent = ({
         if (isObject) {
           return `~~~json\n${JSON.stringify(value, null, 2)}`;
         }
+        if (typeof value === 'string') {
+          return t(value);
+        }
         return `${value}`;
       }, [isObject, value]);
 
@@ -115,7 +118,7 @@ export const WholeResponseContent = ({
         </RowRender>
       );
     },
-    [RowRender]
+    [RowRender, t]
   );
 
   return activeModule ? (
@@ -176,6 +179,7 @@ export const WholeResponseContent = ({
           value={activeModule?.contextTotalLen}
         />
         <Row label={t('workflow:response.Error')} value={activeModule?.error} />
+        <Row label={t('workflow:response.Error')} value={activeModule?.errorText} />
         <Row label={t('chat:response.node_inputs')} value={activeModule?.nodeInputs} />
       </>
       {/* ai chat */}

@@ -35,10 +35,12 @@ export async function dispatchDatasetConcat(
   );
 
   return {
-    [NodeOutputKeyEnum.datasetQuoteQA]: await filterSearchResultsByMaxChars(
-      rrfConcatResults,
-      limit
-    ),
+    data: {
+      [NodeOutputKeyEnum.datasetQuoteQA]: await filterSearchResultsByMaxChars(
+        rrfConcatResults,
+        limit
+      )
+    },
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       concatLength: rrfConcatResults.length
     }

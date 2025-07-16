@@ -47,10 +47,14 @@ type HttpRequestProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.httpTimeout]?: number;
   [key: string]: any;
 }>;
-type HttpResponse = DispatchNodeResultType<{
-  [NodeOutputKeyEnum.error]?: object;
-  [key: string]: any;
-}>;
+type HttpResponse = DispatchNodeResultType<
+  {
+    [key: string]: any;
+  },
+  {
+    [NodeOutputKeyEnum.error]?: string;
+  }
+>;
 
 const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
 
@@ -349,7 +353,10 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     }
 
     return {
-      ...results,
+      data: {
+        [NodeOutputKeyEnum.httpRawResponse]: rawResponse,
+        ...results
+      },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints: 0,
         params: Object.keys(params).length > 0 ? params : undefined,
@@ -358,21 +365,36 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         httpResult: rawResponse
       },
       [DispatchNodeResponseKeyEnum.toolResponses]:
-        Object.keys(results).length > 0 ? results : rawResponse,
-      [NodeOutputKeyEnum.httpRawResponse]: rawResponse
+        Object.keys(results).length > 0 ? results : rawResponse
     };
   } catch (error) {
     addLog.error('Http request error', error);
 
+    // @adapt
+    if (node.catchError === undefined) {
+      return {
+        data: {
+          [NodeOutputKeyEnum.error]: getErrText(error)
+        },
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          params: Object.keys(params).length > 0 ? params : undefined,
+          body: Object.keys(formattedRequestBody).length > 0 ? formattedRequestBody : undefined,
+          headers: Object.keys(publicHeaders).length > 0 ? publicHeaders : undefined,
+          httpResult: { error: formatHttpError(error) }
+        }
+      };
+    }
+
     return {
-      [NodeOutputKeyEnum.error]: formatHttpError(error),
+      error: {
+        [NodeOutputKeyEnum.error]: getErrText(error)
+      },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         params: Object.keys(params).length > 0 ? params : undefined,
         body: Object.keys(formattedRequestBody).length > 0 ? formattedRequestBody : undefined,
         headers: Object.keys(publicHeaders).length > 0 ? publicHeaders : undefined,
         httpResult: { error: formatHttpError(error) }
-      },
-      [NodeOutputKeyEnum.httpRawResponse]: getErrText(error)
+      }
     };
   }
 };

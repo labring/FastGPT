@@ -10,10 +10,15 @@ import { Box } from '@chakra-ui/react';
 import IOTitle from '../components/IOTitle';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import RenderOutput from './render/RenderOutput';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '../../context';
+import CatchError from './render/RenderOutput/CatchError';
 
-const NodeTools = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs } = data;
+  const { nodeId, inputs, outputs, catchError } = data;
+  const splitOutput = useContextSelector(WorkflowContext, (ctx) => ctx.splitOutput);
+  const { successOutputs, errorOutputs } = splitOutput(outputs);
 
   return (
     <NodeCard minW={'480px'} selected={selected} {...data}>
@@ -22,9 +27,11 @@ const NodeTools = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         <RenderInput nodeId={nodeId} flowInputList={inputs} />
       </Container>
       <Container>
-        <IOTitle text={t('common:Output')} />
-        <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
+        <IOTitle text={t('common:Output')} nodeId={nodeId} catchError={catchError} />
+        <RenderOutput nodeId={nodeId} flowOutputList={successOutputs} />
       </Container>
+      {catchError && <CatchError nodeId={nodeId} errorOutputs={errorOutputs} />}
+
       <Box position={'relative'}>
         <Box mb={-3} borderBottomRadius={'lg'} overflow={'hidden'}>
           <Divider
@@ -37,4 +44,4 @@ const NodeTools = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     </NodeCard>
   );
 };
-export default React.memo(NodeTools);
+export default React.memo(NodeAgent);

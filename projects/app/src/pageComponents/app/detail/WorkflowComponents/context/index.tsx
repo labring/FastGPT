@@ -1,5 +1,6 @@
 import { postWorkflowDebug } from '@/web/core/workflow/api';
 import {
+  adaptCatchError,
   checkWorkflowNodeAndConnection,
   compareSnapshot,
   storeEdge2RenderEdge,
@@ -57,6 +58,7 @@ import { getAppConfigByDiff } from '@/web/core/app/diff';
 import WorkflowStatusContextProvider from './workflowStatusContext';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 /* 
   Context
@@ -201,6 +203,11 @@ type WorkflowContextType = {
     toolInputs: FlowNodeInputItemType[];
     commonInputs: FlowNodeInputItemType[];
   };
+  splitOutput: (outputs: FlowNodeOutputItemType[]) => {
+    successOutputs: FlowNodeOutputItemType[];
+    hiddenOutputs: FlowNodeOutputItemType[];
+    errorOutputs: FlowNodeOutputItemType[];
+  };
   initData: (
     e: {
       nodes: StoreNodeItemType[];
@@ -293,6 +300,13 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     isTool: boolean;
     toolInputs: FlowNodeInputItemType[];
     commonInputs: FlowNodeInputItemType[];
+  } {
+    throw new Error('Function not implemented.');
+  },
+  splitOutput: function (outputs: FlowNodeOutputItemType[]): {
+    successOutputs: FlowNodeOutputItemType[];
+    hiddenOutputs: FlowNodeOutputItemType[];
+    errorOutputs: FlowNodeOutputItemType[];
   } {
     throw new Error('Function not implemented.');
   },
@@ -588,6 +602,18 @@ const WorkflowContextProvider = ({
     },
     [edges]
   );
+  const splitOutput = useCallback((outputs: FlowNodeOutputItemType[]) => {
+    return {
+      successOutputs: outputs.filter(
+        (item) =>
+          item.type === FlowNodeOutputTypeEnum.dynamic ||
+          item.type === FlowNodeOutputTypeEnum.static ||
+          item.type === FlowNodeOutputTypeEnum.source
+      ),
+      hiddenOutputs: outputs.filter((item) => item.type === FlowNodeOutputTypeEnum.hidden),
+      errorOutputs: outputs.filter((item) => item.type === FlowNodeOutputTypeEnum.error)
+    };
+  }, []);
 
   /* ui flow to store data */
   const { fitView } = useReactFlow();
@@ -952,67 +978,10 @@ const WorkflowContextProvider = ({
       },
       isInit?: boolean
     ) => {
+      adaptCatchError(e.nodes, e.edges);
+
       const nodes = e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [];
       const edges = e.edges?.map((item) => storeEdge2RenderEdge({ edge: item })) || [];
-
-      // Get storage snapshot，兼容旧版正在编辑的用户，刷新后会把 local 数据存到内存并删除
-      const pastSnapshot = (() => {
-        try {
-          const pastSnapshot = localStorage.getItem(`${appId}-past`);
-          return pastSnapshot ? (JSON.parse(pastSnapshot) as WorkflowSnapshotsType[]) : [];
-        } catch (error) {
-          return [];
-        }
-      })();
-      if (isInit && pastSnapshot.length > 0) {
-        const defaultState = pastSnapshot[pastSnapshot.length - 1].state;
-
-        if (pastSnapshot[0].diff && defaultState) {
-          // 设置旧的历史记录
-          setPast(
-            pastSnapshot
-              .map((item) => {
-                if (item.state) {
-                  return {
-                    title: t(`app:app.version_initial`),
-                    isSaved: item.isSaved,
-                    nodes: item.state.nodes,
-                    edges: item.state.edges,
-                    chatConfig: item.state.chatConfig
-                  };
-                }
-                if (item.diff) {
-                  const currentState = getAppConfigByDiff(defaultState, item.diff);
-                  return {
-                    title: item.title,
-                    isSaved: item.isSaved,
-                    nodes: currentState.nodes,
-                    edges: currentState.edges,
-                    chatConfig: currentState.chatConfig
-                  };
-                }
-                return undefined;
-              })
-              .filter(Boolean) as WorkflowSnapshotsType[]
-          );
-
-          // 设置当前版本
-          const targetState = getAppConfigByDiff(
-            pastSnapshot[pastSnapshot.length - 1].state,
-            pastSnapshot[0].diff
-          ) as WorkflowStateType;
-
-          setNodes(targetState.nodes);
-          setEdges(targetState.edges);
-          setAppDetail((state) => ({
-            ...state,
-            chatConfig: targetState.chatConfig
-          }));
-
-          localStorage.removeItem(`${appId}-past`);
-          return;
-        }
-      }
 
       // 有历史记录，直接用历史记录覆盖
       if (isInit && past.length > 0) {
@@ -1042,7 +1011,7 @@ const WorkflowContextProvider = ({
         setAppDetail((state) => ({ ...state, chatConfig: e.chatConfig as AppChatConfigType }));
       }
     },
-    [appDetail.chatConfig, appId, past, setAppDetail, setEdges, setNodes, t]
+    [appDetail.chatConfig, past, setAppDetail, setEdges, setNodes, t]
   );
 
   const value = useMemo(
@@ -1076,6 +1045,7 @@ const WorkflowContextProvider = ({
 
       // function
       splitToolInputs,
+      splitOutput,
       initData,
       flowData2StoreDataAndCheck,
       flowData2StoreData,
@@ -1111,7 +1081,7 @@ const WorkflowContextProvider = ({
       past,
       pushPastSnapshot,
       redo,
-      setPast,
+      splitOutput,
       splitToolInputs,
       undo,
       workflowDebugData
