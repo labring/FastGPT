@@ -97,7 +97,7 @@ async function handler(
     customPdfParse,
     apiDatasetServer: dataset.apiDatasetServer
   });
-  console.log('rawText', rawText);
+
   const chunks = await rawText2Chunks({
     rawText,
     chunkTriggerType: formatChunkSettings.chunkTriggerType,
