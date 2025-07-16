@@ -1,44 +1,29 @@
-import React, { useCallback } from 'react';
-import { Flex, Box, IconButton, HStack } from '@chakra-ui/react';
+import React, { useCallback, useState } from 'react';
+import { Flex, Box, HStack, Image, Text, Skeleton } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { type AppListItemType } from '@fastgpt/global/core/app/type';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
-import MyPopover from '@fastgpt/web/components/common/MyPopover/index';
-import { getMyApps } from '@/web/core/app/api';
-import {
-  type GetResourceFolderListProps,
-  type GetResourceListItemResponse
-} from '@fastgpt/global/common/parentFolder/type';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import dynamic from 'next/dynamic';
-import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { useContextSelector } from 'use-context-selector';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import UserAvatarPopover from '@/components/support/user/UserAvatarPopover';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
-const SelectOneResource = dynamic(() => import('@/components/common/folder/SelectOneResource'));
-
-const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppId: string }) => {
+const SliderApps = ({
+  apps,
+  activeAppId,
+  isLoading = false
+}: {
+  apps: AppListItemType[];
+  activeAppId: string;
+  isLoading?: boolean;
+}) => {
   const { t } = useTranslation();
   const router = useRouter();
   const isTeamChat = router.pathname === '/chat/team';
-
-  const showRouteToAppDetail = useContextSelector(ChatItemContext, (v) => v.showRouteToAppDetail);
-
-  const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
-    return getMyApps({
-      parentId,
-      type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin]
-    }).then((res) =>
-      res.map<GetResourceListItemResponse>((item) => ({
-        id: item._id,
-        name: item.name,
-        avatar: item.avatar,
-        isFolder: item.type === AppTypeEnum.folder
-      }))
-    );
-  }, []);
+  const { userInfo } = useUserStore();
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   const onChangeApp = useCallback(
     (appId: string) => {
@@ -54,87 +39,46 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      {showRouteToAppDetail && (
-        <>
-          <Box mt={4} px={4}>
-            <Flex
-              alignItems={'center'}
-              cursor={'pointer'}
-              py={2}
-              px={3}
-              borderRadius={'md'}
-              _hover={{ bg: 'myGray.200' }}
-              onClick={() => router.push('/dashboard/apps')}
-            >
-              <IconButton
-                mr={3}
-                icon={<MyIcon name={'common/backFill'} w={'1rem'} color={'primary.500'} />}
-                bg={'white'}
-                boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
-                size={'smSquare'}
-                borderRadius={'50%'}
-                aria-label={''}
-              />
-              {t('common:core.chat.Exit Chat')}
-            </Flex>
-          </Box>
-          <MyDivider h={2} my={1} />
-        </>
-      )}
+      <Box mt={4} pl={4}>
+        <Flex alignItems={'center'} py={2}>
+          {!imageLoaded && (
+            <Skeleton
+              w="135px"
+              h="33px"
+              borderRadius="md"
+              startColor="gray.100"
+              endColor="gray.300"
+            />
+          )}
+          <Image
+            w="135px"
+            h="33px"
+            src="/imgs/fastgpt_slogan.png"
+            alt="FastGPT slogan"
+            loading="eager"
+            onLoad={() => setImageLoaded(true)}
+            onError={() => setImageLoaded(true)}
+            display={imageLoaded ? 'block' : 'none'}
+          />
+        </Flex>
+      </Box>
+
+      <MyDivider h={1} my={1} mx="16px" w="calc(100% - 32px)" />
 
       {!isTeamChat && (
-        <>
-          <HStack
-            px={4}
-            my={2}
-            color={'myGray.500'}
-            fontSize={'sm'}
-            justifyContent={'space-between'}
-          >
-            <Box>{t('common:core.chat.Recent use')}</Box>
-            <MyPopover
-              placement="bottom-end"
-              offset={[20, 10]}
-              p={4}
-              trigger="hover"
-              Trigger={
-                <HStack
-                  spacing={0.5}
-                  cursor={'pointer'}
-                  px={2}
-                  py={'0.5'}
-                  borderRadius={'md'}
-                  mr={-2}
-                  userSelect={'none'}
-                  _hover={{
-                    bg: 'myGray.200'
-                  }}
-                >
-                  <Box>{t('common:More')}</Box>
-                  <MyIcon name={'common/select'} w={'1rem'} />
-                </HStack>
-              }
-            >
-              {({ onClose }) => (
-                <Box minH={'200px'}>
-                  <SelectOneResource
-                    maxH={'60vh'}
-                    value={activeAppId}
-                    onSelect={(id) => {
-                      if (!id) return;
-                      onChangeApp(id);
-                      onClose();
-                    }}
-                    server={getAppList}
-                  />
-                </Box>
-              )}
-            </MyPopover>
-          </HStack>
-        </>
+        <HStack px={4} my={2} color={'myGray.500'} fontSize={'sm'} justifyContent={'space-between'}>
+          <Box>{t('common:core.chat.Recent use')}</Box>
+        </HStack>
       )}
 
-      <Box flex={'1 0 0'} px={4} h={0} overflow={'overlay'}>
+      <MyBox
+        isLoading={isLoading}
+        flex={'1 0 0'}
+        h={0}
+        overflow={'overlay'}
+        px={4}
+        position={'relative'}
+      >
         {apps.map((item) => (
           <Flex
             key={item._id}
@@ -164,7 +108,55 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
             </Box>
           </Flex>
         ))}
-      </Box>
+      </MyBox>
+
+      <Flex p="4" alignItems="center">
+        {userInfo ? (
+          <UserAvatarPopover userInfo={userInfo}>
+            <Flex alignItems="center" gap={2} w="100%">
+              <Avatar
+                flexShrink={0}
+                src={userInfo.avatar}
+                bg="myGray.200"
+                borderRadius="50%"
+                w={9}
+                h={9}
+              />
+              <Text
+                flexGrow={1}
+                textOverflow="ellipsis"
+                overflow="hidden"
+                whiteSpace="nowrap"
+                fontWeight={500}
+              >
+                {userInfo.username}
+              </Text>
+            </Flex>
+          </UserAvatarPopover>
+        ) : (
+          <Flex
+            alignItems="center"
+            gap={2}
+            w="100%"
+            cursor="pointer"
+            _hover={{ bg: 'myGray.100' }}
+            borderRadius="md"
+            p={2}
+          >
+            <Avatar flexShrink={0} bg="myGray.200" borderRadius="50%" w={9} h={9} />
+            <Text
+              flexGrow={1}
+              textOverflow="ellipsis"
+              overflow="hidden"
+              whiteSpace="nowrap"
+              fontWeight={500}
+              color="myGray.600"
+            >
+              {t('login:Login')}
+            </Text>
+          </Flex>
+        )}
+      </Flex>
     </Flex>
   );
 };
