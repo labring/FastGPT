@@ -78,7 +78,9 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
   });
 
   return {
-    [NodeOutputKeyEnum.cqResult]: result.value,
+    data: {
+      [NodeOutputKeyEnum.cqResult]: result.value
+    },
     [DispatchNodeResponseKeyEnum.skipHandleId]: agents
       .filter((item) => item.key !== result.key)
       .map((item) => getHandleId(nodeId, 'source', item.key)),

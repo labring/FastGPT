@@ -25,6 +25,7 @@ export const CodeNode: FlowNodeTemplateType = {
   name: i18nT('workflow:code_execution'),
   intro: i18nT('workflow:execute_a_simple_script_code_usually_for_complex_data_processing'),
   showStatus: true,
+  catchError: false,
   courseUrl: '/docs/guide/dashboard/workflow/sandbox/',
   inputs: [
     {
@@ -90,14 +91,6 @@ export const CodeNode: FlowNodeTemplateType = {
       type: FlowNodeOutputTypeEnum.static
     },
     {
-      id: NodeOutputKeyEnum.error,
-      key: NodeOutputKeyEnum.error,
-      label: i18nT('workflow:execution_error'),
-      description: i18nT('workflow:error_info_returns_empty_on_success'),
-      valueType: WorkflowIOValueTypeEnum.object,
-      type: FlowNodeOutputTypeEnum.static
-    },
-    {
       id: 'qLUQfhG0ILRX',
       type: FlowNodeOutputTypeEnum.dynamic,
       key: 'result',
@@ -110,6 +103,13 @@ export const CodeNode: FlowNodeTemplateType = {
       key: 'data2',
       valueType: WorkflowIOValueTypeEnum.string,
       label: 'data2'
+    },
+    {
+      id: NodeOutputKeyEnum.error,
+      key: NodeOutputKeyEnum.error,
+      label: i18nT('workflow:error_text'),
+      valueType: WorkflowIOValueTypeEnum.string,
+      type: FlowNodeOutputTypeEnum.error
     }
   ]
 };

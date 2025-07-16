@@ -49,6 +49,7 @@ import { getEditorVariables } from '../../../utils';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { WorkflowNodeEdgeContext } from '../../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import CatchError from '../render/RenderOutput/CatchError';
 
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
 const HeaderAuthConfig = dynamic(() => import('@/components/common/secret/HeaderAuthConfig'));
@@ -836,9 +837,11 @@ const RenderPropsItem = ({ text, num }: { text: string; num: number }) => {
 
 const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs } = data;
+  const { nodeId, inputs, outputs, catchError } = data;
   const splitToolInputs = useContextSelector(WorkflowContext, (v) => v.splitToolInputs);
   const { commonInputs, isTool } = splitToolInputs(inputs, nodeId);
+  const splitOutput = useContextSelector(WorkflowContext, (ctx) => ctx.splitOutput);
+  const { successOutputs, errorOutputs } = splitOutput(outputs);
 
   const HttpMethodAndUrl = useMemoizedFn(() => (
     <RenderHttpMethodAndUrl nodeId={nodeId} inputs={inputs} />
@@ -863,22 +866,19 @@ const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           </Container>
         </>
       )}
-      <>
-        <Container>
-          <IOTitle text={t('common:Input')} />
-          <RenderInput
-            nodeId={nodeId}
-            flowInputList={commonInputs}
-            CustomComponent={CustomComponents}
-          />
-        </Container>
-      </>
-      <>
-        <Container>
-          <IOTitle text={t('common:Output')} />
-          <RenderOutput flowOutputList={outputs} nodeId={nodeId} />
-        </Container>
-      </>
+      <Container>
+        <IOTitle text={t('common:Input')} />
+        <RenderInput
+          nodeId={nodeId}
+          flowInputList={commonInputs}
+          CustomComponent={CustomComponents}
+        />
+      </Container>
+      <Container>
+        <IOTitle text={t('common:Output')} nodeId={nodeId} catchError={catchError} />
+        <RenderOutput flowOutputList={successOutputs} nodeId={nodeId} />
+      </Container>
+      {catchError && <CatchError nodeId={nodeId} errorOutputs={errorOutputs} />}
     </NodeCard>
   );
 };

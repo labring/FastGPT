@@ -251,7 +251,8 @@ export const storeNodes2RuntimeNodes = (
         outputs: node.outputs,
         pluginId: node.pluginId,
         version: node.version,
-        toolConfig: node.toolConfig
+        toolConfig: node.toolConfig,
+        catchError: node.catchError
       };
     }) || []
   );

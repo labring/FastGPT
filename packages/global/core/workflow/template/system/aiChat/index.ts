@@ -20,6 +20,7 @@ import {
   Input_Template_File_Link
 } from '../../input';
 import { i18nT } from '../../../../../../web/i18n/utils';
+import { Output_Template_Error_Message } from '../../output';
 
 export const AiChatQuoteRole = {
   key: NodeInputKeyEnum.aiChatQuoteRole,
@@ -54,6 +55,7 @@ export const AiChatModule: FlowNodeTemplateType = {
   isTool: true,
   courseUrl: '/docs/guide/dashboard/workflow/ai_chat/',
   version: '4.9.7',
+  catchError: false,
   inputs: [
     Input_Template_SettingAiModel,
     // --- settings modal
@@ -158,6 +160,7 @@ export const AiChatModule: FlowNodeTemplateType = {
         const modelItem = llmModelList.find((item) => item.model === model);
         return modelItem?.reasoning !== true;
       }
-    }
+    },
+    Output_Template_Error_Message
   ]
 };

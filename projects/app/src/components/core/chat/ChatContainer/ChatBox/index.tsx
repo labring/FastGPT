@@ -551,10 +551,13 @@ const ChatBox = ({
 
                 // Check node response error
                 const responseData = mergeChatResponseData(item.responseData || []);
-                if (responseData[responseData.length - 1]?.error) {
+                const err =
+                  responseData[responseData.length - 1]?.error ||
+                  responseData[responseData.length - 1]?.errorText;
+                if (err) {
                   toast({
-                    title: t(getErrText(responseData[responseData.length - 1].error)),
-                    status: 'error'
+                    title: t(getErrText(err)),
+                    status: 'warning'
                   });
                 }
 

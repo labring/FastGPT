@@ -49,7 +49,7 @@ import { dispatchRunTools } from './ai/agent/index';
 import { dispatchStopToolCall } from './ai/agent/stopTool';
 import { dispatchToolParams } from './ai/agent/toolParams';
 import { dispatchChatCompletion } from './ai/chat';
-import { dispatchRunCode } from './code/run';
+import { dispatchCodeSandbox } from './tools/codeSandbox';
 import { dispatchDatasetConcat } from './dataset/concat';
 import { dispatchDatasetSearch } from './dataset/search';
 import { dispatchSystemConfig } from './init/systemConfig';
@@ -60,10 +60,10 @@ import { dispatchLoop } from './loop/runLoop';
 import { dispatchLoopEnd } from './loop/runLoopEnd';
 import { dispatchLoopStart } from './loop/runLoopStart';
 import { dispatchRunPlugin } from './plugin/run';
-import { dispatchRunAppNode } from './plugin/runApp';
+import { dispatchRunAppNode } from './child/runApp';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
-import { dispatchRunTool } from './plugin/runTool';
+import { dispatchRunTool } from './child/runTool';
 import { dispatchAnswer } from './tools/answer';
 import { dispatchCustomFeedback } from './tools/customFeedback';
 import { dispatchHttp468Request } from './tools/http468';
@@ -74,7 +74,8 @@ import { dispatchLafRequest } from './tools/runLaf';
 import { dispatchUpdateVariable } from './tools/runUpdateVar';
 import { dispatchTextEditor } from './tools/textEditor';
 import type { DispatchFlowResponse } from './type';
-import { formatHttpError, removeSystemVariable, rewriteRuntimeWorkFlow } from './utils';
+import { removeSystemVariable, rewriteRuntimeWorkFlow } from './utils';
+import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -96,7 +97,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.lafModule]: dispatchLafRequest,
   [FlowNodeTypeEnum.ifElseNode]: dispatchIfElse,
   [FlowNodeTypeEnum.variableUpdate]: dispatchUpdateVariable,
-  [FlowNodeTypeEnum.code]: dispatchRunCode,
+  [FlowNodeTypeEnum.code]: dispatchCodeSandbox,
   [FlowNodeTypeEnum.textEditor]: dispatchTextEditor,
   [FlowNodeTypeEnum.customFeedback]: dispatchCustomFeedback,
   [FlowNodeTypeEnum.readFiles]: dispatchReadFiles,
@@ -122,6 +123,14 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
 type Props = ChatDispatchProps & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
+};
+type NodeResponseType = DispatchNodeResultType<{
+  [NodeOutputKeyEnum.answerText]?: string;
+  [NodeOutputKeyEnum.reasoningText]?: string;
+  [key: string]: any;
+}>;
+type NodeResponseCompleteType = Omit<NodeResponseType, 'responseData'> & {
+  [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType;
 };
 
 /* running */
@@ -229,8 +238,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   function pushStore(
     { inputs = [] }: RuntimeNodeItemType,
     {
-      answerText = '',
-      reasoningText,
+      data: { answerText = '', reasoningText } = {},
       responseData,
       nodeDispatchUsages,
       toolResponses,
@@ -238,14 +246,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       rewriteHistories,
       runTimes = 1,
       system_memories: newMemories
-    }: Omit<
-      DispatchNodeResultType<{
-        [NodeOutputKeyEnum.answerText]?: string;
-        [NodeOutputKeyEnum.reasoningText]?: string;
-        [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType;
-      }>,
-      'nodeResponse'
-    >
+    }: NodeResponseCompleteType
   ) {
     // Add run times
     workflowRunTimes += runTimes;
@@ -316,22 +317,27 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   /* Pass the output of the node, to get next nodes and update edge status */
   function nodeOutput(
     node: RuntimeNodeItemType,
-    result: Record<string, any> = {}
+    result: NodeResponseCompleteType
   ): {
     nextStepActiveNodes: RuntimeNodeItemType[];
     nextStepSkipNodes: RuntimeNodeItemType[];
   } {
     pushStore(node, result);
 
+    const concatData: Record<string, any> = {
+      ...(result.data ?? {}),
+      ...(result.error ?? {})
+    };
+
     // Assign the output value to the next node
     node.outputs.forEach((outputItem) => {
-      if (result[outputItem.key] === undefined) return;
+      if (concatData[outputItem.key] === undefined) return;
       /* update output value */
-      outputItem.value = result[outputItem.key];
+      outputItem.value = concatData[outputItem.key];
     });
 
     // Get next source edges and update status
-    const skipHandleId = (result[DispatchNodeResponseKeyEnum.skipHandleId] || []) as string[];
+    const skipHandleId = result[DispatchNodeResponseKeyEnum.skipHandleId] || [];
     const targetEdges = filterWorkflowEdges(runtimeEdges).filter(
       (item) => item.source === node.nodeId
     );
@@ -591,7 +597,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   async function nodeRunWithActive(node: RuntimeNodeItemType): Promise<{
     node: RuntimeNodeItemType;
     runStatus: 'run';
-    result: Record<string, any>;
+    result: NodeResponseCompleteType;
   }> {
     // push run status messages
     if (node.showStatus && !props.isToolCall) {
@@ -625,23 +631,66 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     };
 
     // run module
-    const dispatchRes: Record<string, any> = await (async () => {
+    const dispatchRes: NodeResponseType = await (async () => {
       if (callbackMap[node.flowNodeType]) {
+        const targetEdges = runtimeEdges.filter((item) => item.source === node.nodeId);
+
         try {
-          return await callbackMap[node.flowNodeType](dispatchData);
+          const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
+          const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
+
+          if (!result.error) {
+            const skipHandleId =
+              targetEdges.find((item) => item.sourceHandle === errorHandleId)?.sourceHandle || '';
+
+            return {
+              ...result,
+              [DispatchNodeResponseKeyEnum.skipHandleId]: (result[
+                DispatchNodeResponseKeyEnum.skipHandleId
+              ]
+                ? [...result[DispatchNodeResponseKeyEnum.skipHandleId], skipHandleId]
+                : [skipHandleId]
+              ).filter(Boolean)
+            };
+          }
+
+          // Run error and not catch error, skip all edges
+          if (!node.catchError) {
+            return {
+              ...result,
+              [DispatchNodeResponseKeyEnum.skipHandleId]: targetEdges.map(
+                (item) => item.sourceHandle
+              )
+            };
+          }
+
+          //  Catch error
+          const skipHandleIds = targetEdges
+            .filter((item) => {
+              if (node.catchError) {
+                return item.sourceHandle !== errorHandleId;
+              }
+              return true;
+            })
+            .map((item) => item.sourceHandle);
+
+          return {
+            ...result,
+            [DispatchNodeResponseKeyEnum.skipHandleId]: result[
+              DispatchNodeResponseKeyEnum.skipHandleId
+            ]
+              ? [...result[DispatchNodeResponseKeyEnum.skipHandleId], ...skipHandleIds].filter(
+                  Boolean
+                )
+              : skipHandleIds
+          };
         } catch (error) {
-          // Get source handles of outgoing edges
-          const targetEdges = runtimeEdges.filter((item) => item.source === node.nodeId);
-          const skipHandleIds = targetEdges.map((item) => item.sourceHandle);
-
-          toolRunResponse = getErrText(error);
-
           // Skip all edges and return error
           return {
             [DispatchNodeResponseKeyEnum.nodeResponse]: {
-              error: formatHttpError(error)
+              error: getErrText(error)
             },
-            [DispatchNodeResponseKeyEnum.skipHandleId]: skipHandleIds
+            [DispatchNodeResponseKeyEnum.skipHandleId]: targetEdges.map((item) => item.sourceHandle)
           };
         }
       }
@@ -649,15 +698,16 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     })();
 
     // format response data. Add modulename and module type
-    const formatResponseData: ChatHistoryItemResType = (() => {
+    const formatResponseData: NodeResponseCompleteType['responseData'] = (() => {
       if (!dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]) return undefined;
+
       return {
+        ...dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse],
         id: getNanoid(),
         nodeId: node.nodeId,
         moduleName: node.name,
         moduleType: node.flowNodeType,
-        runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
-        ...dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]
+        runningTime: +((Date.now() - startTime) / 1000).toFixed(2)
       };
     })();
 
@@ -675,11 +725,13 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     }
 
     // Add output default value
-    node.outputs.forEach((item) => {
-      if (!item.required) return;
-      if (dispatchRes[item.key] !== undefined) return;
-      dispatchRes[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
-    });
+    if (dispatchRes.data) {
+      node.outputs.forEach((item) => {
+        if (!item.required) return;
+        if (dispatchRes.data?.[item.key] !== undefined) return;
+        dispatchRes.data![item.key] = valueTypeFormat(item.defaultValue, item.valueType);
+      });
+    }
 
     // Update new variables
     if (dispatchRes[DispatchNodeResponseKeyEnum.newVariables]) {
@@ -691,7 +743,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
     // Error
     if (dispatchRes?.responseData?.error) {
-      addLog.warn('workflow error', dispatchRes.responseData.error);
+      addLog.warn('workflow error', { error: dispatchRes.responseData.error });
     }
 
     return {
@@ -706,7 +758,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   async function nodeRunWithSkip(node: RuntimeNodeItemType): Promise<{
     node: RuntimeNodeItemType;
     runStatus: 'skip';
-    result: Record<string, any>;
+    result: NodeResponseCompleteType;
   }> {
     // Set target edges status to skipped
     const targetEdges = runtimeEdges.filter((item) => item.source === node.nodeId);

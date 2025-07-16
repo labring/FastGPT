@@ -32,11 +32,11 @@ export const getMCPToolSetRuntimeNode = ({
     nodeId: getNanoid(16),
     flowNodeType: FlowNodeTypeEnum.toolSet,
     avatar,
-    intro: 'MCP Tools',
+    intro: '',
     inputs: [
       {
         key: NodeInputKeyEnum.toolSetData,
-        label: 'Tool Set Data',
+        label: '',
         valueType: WorkflowIOValueTypeEnum.object,
         renderTypeList: [FlowNodeInputTypeEnum.hidden],
         value: {

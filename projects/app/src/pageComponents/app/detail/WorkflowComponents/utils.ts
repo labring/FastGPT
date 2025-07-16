@@ -1,7 +1,10 @@
-import { computedNodeInputReference } from '@/web/core/workflow/utils';
+import { getNodeAllSource } from '@/web/core/workflow/utils';
 import { type AppDetailType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
   type FlowNodeItemType,
@@ -31,7 +34,8 @@ export const uiWorkflow2StoreWorkflow = ({
     outputs: item.data.outputs,
     isFolded: item.data.isFolded,
     pluginId: item.data.pluginId,
-    toolConfig: item.data.toolConfig
+    toolConfig: item.data.toolConfig,
+    catchError: item.data.catchError
   }));
 
   // get all handle
@@ -84,10 +88,6 @@ export const filterExportModules = (modules: StoreNodeItemType[]) => {
   return JSON.stringify(modules, null, 2);
 };
 
-export default function Dom() {
-  return <></>;
-}
-
 export const getEditorVariables = ({
   nodeId,
   nodeList,
@@ -116,7 +116,7 @@ export const getEditorVariables = ({
       }
     }));
 
-  const sourceNodes = computedNodeInputReference({
+  const sourceNodes = getNodeAllSource({
     nodeId,
     nodes: nodeList,
     edges: edges,
@@ -129,12 +129,16 @@ export const getEditorVariables = ({
     : sourceNodes
         .map((node) => {
           return node.outputs
-            .filter(
-              (output) =>
+            .filter((output) => {
+              if (output.type === FlowNodeOutputTypeEnum.error) {
+                return node.catchError === true;
+              }
+              return (
                 !!output.label &&
                 output.invalid !== true &&
                 output.id !== NodeOutputKeyEnum.addOutputParam
-            )
+              );
+            })
             .map((output) => {
               return {
                 label: t((output.label as any) || ''),
