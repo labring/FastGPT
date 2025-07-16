@@ -40,9 +40,6 @@ type SpecificProps =
       // select & multipleSelect
       inputType: InputTypeEnum.select | InputTypeEnum.multipleSelect;
       list?: { label: string; value: string }[];
-
-      // old version
-      enums?: { value: string }[];
     }
   | {
       // JSONEditor

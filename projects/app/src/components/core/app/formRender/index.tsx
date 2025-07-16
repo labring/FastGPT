@@ -100,14 +100,11 @@ const InputRender = (props: InputRenderProps) => {
     }
 
     if (inputType === InputTypeEnum.select) {
-      const list =
-        props.list || props.enums?.map((item) => ({ label: item.value, value: item.value })) || [];
-      return <MySelect {...commonProps} list={list} h={10} />;
+      return <MySelect {...commonProps} list={props.list || []} h={10} />;
     }
 
     if (inputType === InputTypeEnum.multipleSelect) {
-      const list =
-        props.list || props.enums?.map((item) => ({ label: item.value, value: item.value })) || [];
+      const { list = [] } = props;
       return (
         <MultipleSelect<string>
           {...commonProps}
