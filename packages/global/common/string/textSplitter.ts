@@ -283,7 +283,7 @@ const mergeTableBufferToComplete = (fragments: string[]): string => {
 };
 
 const markdownTableSplit = (props: SplitProps): SplitResponse => {
-  let { text = '', chunkSize, maxSize = defaultMaxChunkSize } = props;
+  let { text = '', chunkSize } = props;
   const splitText2Lines = text.split('\n');
   const header = splitText2Lines[0];
   const headerSize = header.split('|').length - 2;
@@ -302,11 +302,8 @@ ${mdSplitString}
     const chunkLength = getTextValidLength(chunk);
     const nextLineLength = getTextValidLength(splitText2Lines[i]);
 
-    // 使用maxSize而不是chunkSize，给表格更大空间
-    const tableChunkSize = Math.max(chunkSize, maxSize * 0.8);
-
     // Over size
-    if (chunkLength + nextLineLength > tableChunkSize) {
+    if (chunkLength + nextLineLength > chunkSize) {
       chunks.push(chunk);
       chunk = `${header}
 ${mdSplitString}
@@ -409,12 +406,12 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     // HTML Table tag 尽可能保障完整
     {
       reg: /(\n\|(?:(?:[^\n|]+\|){1,})\n\|(?:[:\-\s]+\|){1,}\n(?:\|(?:[^\n|]+\|)*\n)*)/g,
-      maxLen: maxSize // 增加表格的最大长度限制
+      maxLen: chunkSize // 增加表格的最大长度限制
     }, // Markdown Table 尽可能保证完整性
     // 制表符表格也要保持完整性
     {
       reg: /(\n(?:[^\n]*\t[^\n]*){2,})/g,
-      maxLen: maxSize // 制表符表格使用最大长度限制
+      maxLen: chunkSize // 制表符表格使用最大长度限制
     },
     { reg: /(\n{2,})/g, maxLen: chunkSize },
     { reg: /([\n])/g, maxLen: chunkSize },
