@@ -1,4 +1,7 @@
-import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
+import {
+  getPluginInputsFromStoreNodes,
+  splitCombinePluginId
+} from '@fastgpt/global/core/app/plugin/utils';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -16,7 +19,7 @@ import { computedPluginUsage } from '../../../app/plugin/utils';
 import { filterSystemVariables } from '../utils';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { getChildAppRuntimeById, splitCombinePluginId } from '../../../app/plugin/controller';
+import { getChildAppRuntimeById } from '../../../app/plugin/controller';
 import { dispatchWorkFlow } from '../index';
 import { getUserChatInfoAndAuthTeamPoints } from '../../../../support/permission/auth/team';
 import { dispatchRunTool } from './runTool';

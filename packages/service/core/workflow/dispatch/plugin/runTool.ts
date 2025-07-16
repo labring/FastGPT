@@ -13,7 +13,7 @@ import { APIRunTool } from '../../../app/tool/api';
 import { MongoSystemPlugin } from '../../../app/plugin/systemPluginSchema';
 import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import { getSystemToolById, splitCombinePluginId } from '../../../app/plugin/controller';
+import { getSystemToolById } from '../../../app/plugin/controller';
 
 type SystemInputConfigType = {
   type: SystemToolInputTypeEnum;
