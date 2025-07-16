@@ -96,7 +96,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
             },
             tool: {
               id: formatToolId,
-              version
+              version: version || tool.versionList?.[0]?.value || ''
             },
             time: variables.cTime
           },
