@@ -1175,6 +1175,18 @@ curl --location --request POST 'https://<oneapi_url>/v1/chat/completions' \
 | 500w 组向量 | 8c32g 200GB | 16c64g 200GB |
 {{< /table >}}
 
+### Oceanbase版本
+
+支持最大 16,000 维的 float 稠密向量数据存储。
+
+{{< table "table-hover table-striped-columns" >}}
+| 环境        | 最低配置（单节点） | 推荐配置 |
+| ----------- | ------------------ | -------- |
+| 测试        | 2c6g               | 2c8g    |
+| 100w 组向量 | 未测试             |          |
+| 500w 组向量 |                    |          |
+{{< /table >}}
+
 ### Milvus版本
 
 对于亿级以上向量性能更优秀。
