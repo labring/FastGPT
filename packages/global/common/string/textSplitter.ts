@@ -32,7 +32,7 @@ const strIsMdTable = (str: string) => {
     return false;
   }
 
-  const lines = str.split('\n').filter((line) => line.trim());
+  const lines = str.split('\n');
 
   // 检查表格是否至少有两行
   if (lines.length < 2) {
@@ -63,7 +63,7 @@ const strIsMdTable = (str: string) => {
   return true;
 };
 const markdownTableSplit = (props: SplitProps): SplitResponse => {
-  let { text = '', chunkSize, maxSize = defaultMaxChunkSize } = props;
+  let { text = '', chunkSize } = props;
   const splitText2Lines = text.split('\n');
   const header = splitText2Lines[0];
   const headerSize = header.split('|').length - 2;
@@ -81,9 +81,9 @@ ${mdSplitString}
   for (let i = 2; i < splitText2Lines.length; i++) {
     const chunkLength = getTextValidLength(chunk);
     const nextLineLength = getTextValidLength(splitText2Lines[i]);
-    const tableChunkSize = Math.max(chunkSize, maxSize * 0.8);
+
     // Over size
-    if (chunkLength + nextLineLength > tableChunkSize) {
+    if (chunkLength + nextLineLength > chunkSize) {
       chunks.push(chunk);
       chunk = `${header}
 ${mdSplitString}
@@ -130,7 +130,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
   text = text.replace(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g, function (match) {
     return match.replace(/\n/g, codeBlockMarker);
   });
-
+  // 2. Markdown 表格处理 - 单独提取表格出来，进行表头合并
   const tableReg =
     /(\n\|(?:(?:[^\n|]+\|){1,})\n\|(?:[:\-\s]+\|){1,}\n(?:\|(?:[^\n|]+\|)*\n?)*)(?:\n|$)/g;
   const tableDataList = text.match(tableReg);
@@ -182,9 +182,8 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     // HTML Table tag 尽可能保障完整
     {
       reg: /(\n\|(?:(?:[^\n|]+\|){1,})\n\|(?:[:\-\s]+\|){1,}\n(?:\|(?:[^\n|]+\|)*\n)*)/g,
-      maxLen: maxSize // 增加表格的最大长度限制
+      maxLen: chunkSize
     }, // Markdown Table 尽可能保证完整性
-
     { reg: /(\n{2,})/g, maxLen: chunkSize },
     { reg: /([\n])/g, maxLen: chunkSize },
     // ------ There's no overlap on the top
@@ -471,6 +470,7 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
     if (strIsMdTable(item)) {
       return markdownTableSplit(props);
     }
+
     return commonSplit(props);
   });
 

@@ -4,7 +4,6 @@ from base64 import b64encode
 from glob import glob
 from io import StringIO
 from typing import Tuple, Union
-import re
 
 import uvicorn
 from fastapi import FastAPI, UploadFile, File
@@ -53,179 +52,6 @@ class MemoryDataWriter(DataWriter):
 
     def close(self):
         self.buffer.close()
-
-def enhance_table_processing(text: str) -> str:
-    """增强表格处理功能"""
-    # 1. 修复断行的表格
-    processed_text = repair_broken_tables(text)
-    
-    # 2. 合并相邻的表格片段
-    processed_text = merge_adjacent_table_fragments(processed_text)
-    
-    # 3. 标准化表格格式
-    processed_text = normalize_table_format(processed_text)
-    
-    return processed_text
-
-def repair_broken_tables(text: str) -> str:
-    """修复断行的表格"""
-    # 将被意外断行的表格行重新连接
-    return re.sub(r'\|\s*\n\s*([^|\n]+)\s*\n\s*\|', r'| \1 |', text)
-
-def is_likely_table_data(line: str, previous_line: str) -> bool:
-    """判断是否可能是表格数据"""
-    if not line or not previous_line:
-        return False
-    
-    # 计算前一行的列数
-    prev_cols = len(previous_line.split('|')) - 2
-    if prev_cols <= 0:
-        return False
-    
-    # 检查当前行是否可能是表格数据（通过分隔符推测）
-    possible_delimiters = [',', '\t', '  ', ' - ', ' | ']
-    for delimiter in possible_delimiters:
-        parts = line.split(delimiter)
-        if len(parts) == prev_cols and all(part.strip() for part in parts):
-            return True
-    
-    return False
-
-def convert_to_table_row(line: str, column_count: int) -> str:
-    """将普通文本转换为表格行"""
-    possible_delimiters = ['\t', '  ', ',', ' - ', '|']
-    
-    for delimiter in possible_delimiters:
-        parts = [part.strip() for part in line.split(delimiter)]
-        if len(parts) <= column_count and len(parts) > 1 and all(parts):
-            while len(parts) < column_count:
-                parts.append('')
-            return f"| {' | '.join(parts[:column_count])} |"
-    
-    return None
-
-def reconstruct_table(table_lines: list) -> str:
-    """重构表格"""
-    clean_lines = [line.strip() for line in table_lines if line.strip()]
-    if not clean_lines:
-        return ''
-
-    # 找到第一个有效的表格行来确定列数
-    column_count = 0
-    header_line = ''
-    
-    for line in clean_lines:
-        if '|' in line:
-            cols = len(line.split('|')) - 2
-            if cols > column_count:
-                column_count = cols
-                header_line = line
-
-    if column_count == 0:
-        return '\n'.join(table_lines)
-
-    # 重构表格
-    reconstructed_lines = []
-    has_header = False
-
-    for line in clean_lines:
-        if '|' in line:
-            # 标准表格行
-            cells = line.split('|')[1:-1]
-            while len(cells) < column_count:
-                cells.append('')
-            reconstructed_lines.append(f"| {' | '.join(cells[:column_count])} |")
-            
-            # 添加分隔行（如果这是第一行）
-            if not has_header:
-                reconstructed_lines.append(f"| {' | '.join(['---'] * column_count)} |")
-                has_header = True
-        elif line and not line.startswith('#'):
-            # 可能的数据行，尝试转换为表格格式
-            converted_row = convert_to_table_row(line, column_count)
-            if converted_row:
-                reconstructed_lines.append(converted_row)
-                if not has_header:
-                    # 插入分隔行
-                    reconstructed_lines.insert(-1, f"| {' | '.join(['---'] * column_count)} |")
-                    has_header = True
-
-    return '\n'.join(reconstructed_lines)
-
-def merge_adjacent_table_fragments(text: str) -> str:
-    """合并相邻的表格片段"""
-    lines = text.split('\n')
-    processed_lines = []
-    i = 0
-
-    while i < len(lines):
-        line = lines[i].strip()
-        
-        # 检测可能的表格开始
-        if '|' in line and len(line.split('|')) >= 3:
-            table_lines = [lines[i]]
-            j = i + 1
-            
-            # 收集连续的表格相关行
-            while j < len(lines):
-                next_line = lines[j].strip()
-                
-                # 如果是表格行或者是可能的数据行
-                if ('|' in next_line or 
-                    (next_line and not next_line.startswith('#') and table_lines and 
-                     is_likely_table_data(next_line, table_lines[-1]))):
-                    table_lines.append(lines[j])
-                    j += 1
-                elif next_line == '':
-                    # 空行，检查下一行是否还是表格
-                    if j + 1 < len(lines) and '|' in lines[j + 1].strip():
-                        table_lines.append(lines[j])  # 保留空行
-                        j += 1
-                    else:
-                        break
-                else:
-                    break
-
-            # 处理收集到的表格行
-            if len(table_lines) >= 2:
-                processed_table = reconstruct_table(table_lines)
-                processed_lines.append(processed_table)
-            else:
-                processed_lines.append(lines[i])
-            
-            i = j
-        else:
-            processed_lines.append(lines[i])
-            i += 1
-
-    return '\n'.join(processed_lines)
-
-def normalize_table_format(text: str) -> str:
-    """标准化表格格式"""
-    table_regex = r'(\|[^\n]*\|(?:\n\|[^\n]*\|)*)'
-    
-    def normalize_table_match(match):
-        table_text = match.group(1)
-        lines = [line for line in table_text.split('\n') if line.strip()]
-        if len(lines) < 2:
-            return table_text
-
-        # 确保有分隔行
-        has_separator_line = any(
-            re.match(r'^\|\s*[-:]+\s*(\|\s*[-:]+\s*)*\|$', line.strip())
-            for line in lines
-        )
-
-        if not has_separator_line and len(lines) >= 1:
-            first_line = lines[0]
-            column_count = len(first_line.split('|')) - 2
-            if column_count > 0:
-                separator = f"| {' | '.join(['---'] * column_count)} |"
-                lines.insert(1, separator)
-
-        return '\n'.join(lines)
-    
-    return re.sub(table_regex, normalize_table_match, text)
 
 def worker_init(counter, lock):
     num_gpus = torch.cuda.device_count()
@@ -434,19 +260,16 @@ async def process_pdfs(file: UploadFile = File(...)):
                     "error": results.get("message")
                 }, status_code=500)
             
-                    # 嵌入 Base64
-        image_dir = os.path.join(results.get("output_path"), "images")
-        md_content_with_base64 = embed_images_as_base64(results.get("text"), image_dir)
-        
-        # 新增：表格后处理优化
-        enhanced_markdown = enhance_table_processing(md_content_with_base64)
-        
-        return {
-            "success": True,
-            "message": "",
-            "markdown": enhanced_markdown,
-            "pages": total_pages
-        }
+            # 嵌入 Base64
+            image_dir = os.path.join(results.get("output_path"), "images")
+            md_content_with_base64 = embed_images_as_base64(results.get("text"), image_dir)
+            
+            return {
+                "success": True,
+                "message": "",
+                "markdown": md_content_with_base64,
+                "pages": total_pages
+            }
         except Exception as e:
             logger.error(f"Error in process_pdfs: {str(e)}")
             return JSONResponse(content={
