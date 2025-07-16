@@ -582,30 +582,35 @@ export function filterSensitiveFormData(appForm: AppSimpleEditFormType) {
 
 export const workflowSystemVariables: EditorVariablePickerType[] = [
   {
+    id: 'userId',
     key: 'userId',
     label: i18nT('workflow:use_user_id'),
     required: true,
     valueType: WorkflowIOValueTypeEnum.string
   },
   {
+    id: 'appId',
     key: 'appId',
     label: i18nT('common:core.module.http.AppId'),
     required: true,
     valueType: WorkflowIOValueTypeEnum.string
   },
   {
+    id: 'chatId',
     key: 'chatId',
     label: i18nT('common:core.module.http.ChatId'),
     valueType: WorkflowIOValueTypeEnum.string,
     required: true
   },
   {
+    id: 'responseChatItemId',
     key: 'responseChatItemId',
     label: i18nT('common:core.module.http.ResponseChatItemId'),
     valueType: WorkflowIOValueTypeEnum.string,
     required: true
   },
   {
+    id: 'histories',
     key: 'histories',
     label: i18nT('common:core.module.http.Histories'),
     required: true,
@@ -613,6 +618,7 @@ export const workflowSystemVariables: EditorVariablePickerType[] = [
     valueDesc: chatHistoryValueDesc
   },
   {
+    id: 'cTime',
     key: 'cTime',
     label: i18nT('common:core.module.http.Current time'),
     required: true,
