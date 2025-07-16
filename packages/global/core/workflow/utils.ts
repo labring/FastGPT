@@ -341,13 +341,7 @@ export const toolSetData2FlowNodeIO = ({
 };
 
 export const formatEditorVariablePickerIcon = (
-  variables: {
-    id: string;
-    key: string;
-    label: string;
-    type?: `${VariableInputEnum}`;
-    required?: boolean;
-  }[]
+  variables: { key: string; label: string; type?: `${VariableInputEnum}`; required?: boolean }[]
 ): EditorVariablePickerType[] => {
   return variables.map((item) => ({
     ...item,

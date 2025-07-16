@@ -174,7 +174,6 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
     return (
       feConfigs?.externalProviderWorkflowVariables?.map((item) => ({
         key: item.key,
-        id: item.key,
         label: item.name
       })) || []
     );
@@ -295,7 +294,6 @@ export function RenderHttpProps({
     return (
       feConfigs?.externalProviderWorkflowVariables?.map((item) => ({
         key: item.key,
-        id: item.key,
         label: item.name
       })) || []
     );
@@ -500,7 +498,6 @@ const RenderForm = ({
   input: FlowNodeInputItemType;
   variables: EditorVariableLabelPickerType[];
   externalProviderWorkflowVariables: {
-    id: string;
     key: string;
     label: string;
   }[];
@@ -687,7 +684,6 @@ const RenderBody = ({
   typeInput: FlowNodeInputItemType | undefined;
   variables: EditorVariableLabelPickerType[];
   externalProviderWorkflowVariables: {
-    id: string;
     key: string;
     label: string;
   }[];

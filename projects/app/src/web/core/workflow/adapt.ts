@@ -54,7 +54,7 @@ export const getGlobalVariableNode = ({
     nodeId: VARIABLE_NODE_ID,
     ...template,
     outputs: globalVariables.map((item) => ({
-      id: item.id,
+      id: item.key,
       type: FlowNodeOutputTypeEnum.static,
       label: item.label,
       key: item.key,
