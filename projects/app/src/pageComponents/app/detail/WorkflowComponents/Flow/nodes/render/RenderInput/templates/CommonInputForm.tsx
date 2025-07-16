@@ -51,6 +51,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const externalVariables = useMemo(() => {
     return (
       feConfigs?.externalProviderWorkflowVariables?.map((item) => ({
+        id: item.key,
         key: item.key,
         label: item.name
       })) || []

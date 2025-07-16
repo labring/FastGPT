@@ -107,6 +107,7 @@ export const getEditorVariables = ({
   const nodeVariables = currentNode.inputs
     .filter((input) => input.canEdit)
     .map((item) => ({
+      id: item.key,
       key: item.key,
       label: item.label,
       parent: {
@@ -137,6 +138,7 @@ export const getEditorVariables = ({
             )
             .map((output) => {
               return {
+                id: output.id,
                 label: t((output.label as any) || ''),
                 key: output.id,
                 parent: {

@@ -385,7 +385,7 @@ const TableItem = ({
             onClick={() => {
               const formattedItem = {
                 ...item,
-                list: item.enums || []
+                list: item.enums?.map((item) => ({ label: item.value, value: item.value })) || []
               };
               reset(formattedItem);
             }}
