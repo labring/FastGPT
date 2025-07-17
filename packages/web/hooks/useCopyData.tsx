@@ -34,29 +34,7 @@ export const useCopyData = () => {
             });
           }
         } else {
-          let textArea = document.createElement('textarea');
-          textArea.value = data;
-          // 使text area不在viewport，同时设置不可见
-          textArea.style.position = 'absolute';
-          // @ts-ignore
-          textArea.style.opacity = 0;
-          textArea.style.left = '-999999px';
-          textArea.style.top = '-999999px';
-          document.body.appendChild(textArea);
-          textArea.focus();
-          textArea.select();
-          await new Promise((res, rej) => {
-            document.execCommand('copy') ? res('') : rej();
-            textArea.remove();
-          }).then(() => {
-            if (title) {
-              toast({
-                title,
-                status: 'success',
-                duration
-              });
-            }
-          });
+          throw new Error('Clipboard is not supported');
         }
       } catch (error) {
         setCopyContent(data);
