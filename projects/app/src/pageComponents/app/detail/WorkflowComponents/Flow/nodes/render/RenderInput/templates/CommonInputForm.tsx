@@ -70,12 +70,33 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   );
 
   const inputType = nodeInputTypeToInputType(item.renderTypeList);
+  // 新建节点时自动赋默认值，保证数据一致性
+  React.useEffect(() => {
+    if (
+      inputType === InputTypeEnum.selectLLMModel &&
+      modelList.length > 0 &&
+      (!item.value || !modelList.find((m) => m.model === item.value))
+    ) {
+      onChangeNode({
+        nodeId,
+        type: 'updateInput',
+        key: item.key,
+        value: { ...item, value: defaultModel }
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inputType, item.value, modelList, defaultModel, nodeId, onChangeNode]);
+
   const value = useMemo(() => {
     if (inputType === InputTypeEnum.selectLLMModel) {
-      return item.value || defaultModel;
+      // 只要 value 为空或无效，直接兜底显示 defaultModel
+      if (!item.value || !modelList.find((m) => m.model === item.value)) {
+        return defaultModel;
+      }
+      return item.value;
     }
     return item.value;
-  }, [inputType, item.value, defaultModel]);
+  }, [inputType, item.value, defaultModel, modelList]);
 
   return (
     <InputRender

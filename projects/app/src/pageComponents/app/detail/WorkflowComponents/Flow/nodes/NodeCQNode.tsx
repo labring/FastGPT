@@ -16,11 +16,31 @@ import { MySourceHandle } from './render/Handle';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs } = data;
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const { llmModelList } = useSystemStore();
+
+  // 自动修正AI模型输入项
+  React.useEffect(() => {
+    const modelInput = inputs.find((input) => input.key === 'model');
+    if (
+      modelInput &&
+      llmModelList.length > 0 &&
+      (!modelInput.value || !llmModelList.find((m) => m.model === modelInput.value))
+    ) {
+      // value 为空或无效时，自动赋值为第一个可用模型
+      onChangeNode({
+        nodeId,
+        type: 'updateInput',
+        key: 'model',
+        value: { ...modelInput, value: llmModelList[0].model }
+      });
+    }
+  }, [inputs, llmModelList, nodeId, onChangeNode]);
 
   const CustomComponent = useMemo(
     () => ({
