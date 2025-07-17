@@ -41,7 +41,13 @@ import LoginModal from '@/pageComponents/login/LoginModal';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
-const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
+const Chat = ({
+  myApps,
+  isLoadingApps
+}: {
+  myApps: AppListItemType[];
+  isLoadingApps?: boolean;
+}) => {
   const router = useRouter();
   const { t } = useTranslation();
   const { isPc } = useSystem();
@@ -231,13 +237,10 @@ const Render = (props: { appId: string; isStandalone?: string; ChineseRedirectUr
   const { source, chatId, lastChatAppId, setSource, setAppId } = useChatStore();
   const { userInfo, initUserInfo } = useUserStore();
 
-  // 简化状态管理：只保留必要的状态
-  const [isInitializingUser, setIsInitializingUser] = useState(true);
-
   // 通过userInfo判断登录状态
   const isLoggedIn = useMemo(() => !!userInfo, [userInfo]);
   // 只有在用户初始化完成且未登录时才显示登录弹窗
-  const isLoginModalOpen = !isLoggedIn && !isInitializingUser;
+  const isLoginModalOpen = !isLoggedIn;
 
   // 初始化用户信息
   useMount(async () => {
@@ -245,8 +248,6 @@ const Render = (props: { appId: string; isStandalone?: string; ChineseRedirectUr
       await initUserInfo();
     } catch (error) {
       console.log('User not logged in:', error);
-    } finally {
-      setIsInitializingUser(false);
     }
   });
 
@@ -254,7 +255,7 @@ const Render = (props: { appId: string; isStandalone?: string; ChineseRedirectUr
     () => getMyApps({ getRecentlyChat: true }),
     {
       manual: true,
-      refreshDeps: [isLoggedIn] // 简化依赖，只在登录状态变化时刷新
+      refreshDeps: [isLoggedIn] // 只在登录状态变化时刷新
     }
   );
 
@@ -276,7 +277,7 @@ const Render = (props: { appId: string; isStandalone?: string; ChineseRedirectUr
 
   // 统一的初始化逻辑：当用户已登录且初始化完成时
   useEffect(() => {
-    if (isInitializingUser || !isLoggedIn) {
+    if (!isLoggedIn) {
       return;
     }
 
@@ -307,7 +308,6 @@ const Render = (props: { appId: string; isStandalone?: string; ChineseRedirectUr
 
     initChat();
   }, [
-    isInitializingUser,
     isLoggedIn,
     appId,
     lastChatAppId,
@@ -340,17 +340,6 @@ const Render = (props: { appId: string; isStandalone?: string; ChineseRedirectUr
       chatId: chatId
     };
   }, [appId, chatId]);
-
-  // 显示loading状态
-  if (isInitializingUser) {
-    return (
-      <PageContainer flex={'1'} p={4}>
-        <Box display="flex" justifyContent="center" alignItems="center" h="100%">
-          <Box>{t('common:Loading')}</Box>
-        </Box>
-      </PageContainer>
-    );
-  }
 
   return (
     <>

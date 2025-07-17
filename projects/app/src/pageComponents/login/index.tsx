@@ -204,7 +204,7 @@ export const useLoginLogic = (options: {
   return {
     // State
     isUserLoggedIn,
-    isLoading,
+    isLoadin
     pageType,
     setPageType,
     feConfigs,
@@ -247,7 +247,7 @@ export const RedirectDrawer = ({
   onRedirect: () => void;
 }) => {
   const { t } = useTranslation();
-
+  
   return (
     <Drawer placement="bottom" size={'xs'} isOpen={isOpen} onClose={onClose}>
       <DrawerOverlay backgroundColor={'rgba(0,0,0,0.2)'} />
