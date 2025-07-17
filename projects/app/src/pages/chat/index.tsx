@@ -41,13 +41,7 @@ import LoginModal from '@/pageComponents/login/LoginModal';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
-const Chat = ({
-  myApps,
-  isLoadingApps
-}: {
-  myApps: AppListItemType[];
-  isLoadingApps?: boolean;
-}) => {
+const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const router = useRouter();
   const { t } = useTranslation();
   const { isPc } = useSystem();
@@ -167,7 +161,7 @@ const Chat = ({
       <NextHead title={chatBoxData.app.name} icon={chatBoxData.app.avatar}></NextHead>
       {isPc && (
         <Box flexShrink={0} w="202px">
-          <SliderApps apps={myApps} activeAppId={appId} isLoading={isLoadingApps} />
+          <SliderApps apps={myApps} activeAppId={appId} />
         </Box>
       )}
 
@@ -237,12 +231,15 @@ const Render = (props: { appId: string; isStandalone?: string; ChineseRedirectUr
   const { source, chatId, lastChatAppId, setSource, setAppId } = useChatStore();
   const { userInfo, initUserInfo } = useUserStore();
 
-  const [hasTriggeredInit, setHasTriggeredInit] = useState(false);
+  // 简化状态管理：只保留必要的状态
   const [isInitializingUser, setIsInitializingUser] = useState(true);
 
+  // 通过userInfo判断登录状态
   const isLoggedIn = useMemo(() => !!userInfo, [userInfo]);
-  const isLoginModalOpen = !isLoggedIn && !isInitializingUser; // 只有没登录且没初始化用户信息的时候才展示登录弹窗
+  // 只有在用户初始化完成且未登录时才显示登录弹窗
+  const isLoginModalOpen = !isLoggedIn && !isInitializingUser;
 
+  // 初始化用户信息
   useMount(async () => {
     try {
       await initUserInfo();
@@ -253,22 +250,15 @@ const Render = (props: { appId: string; isStandalone?: string; ChineseRedirectUr
     }
   });
 
-  const {
-    data: myApps = [],
-    runAsync: loadMyApps,
-    loading: isLoadingApps
-  } = useRequest2(() => getMyApps({ getRecentlyChat: true }), {
-    manual: true, // 手动控制加载时机
-    refreshDeps: [isLoggedIn, isInitializingUser] // 当登录状态变化时刷新
-  });
-
-  // 在用户初始化完成且已登录时加载应用列表
-  useEffect(() => {
-    if (!isInitializingUser && isLoggedIn) {
-      loadMyApps();
+  const { data: myApps = [], runAsync: loadMyApps } = useRequest2(
+    () => getMyApps({ getRecentlyChat: true }),
+    {
+      manual: true,
+      refreshDeps: [isLoggedIn] // 简化依赖，只在登录状态变化时刷新
     }
-  }, [isInitializingUser, isLoggedIn, loadMyApps]);
+  );
 
+  // 登录成功后处理
   const handleLoginSuccess = useCallback(async () => {
     const apps = await loadMyApps();
 
@@ -284,12 +274,17 @@ const Render = (props: { appId: string; isStandalone?: string; ChineseRedirectUr
     setSource('online');
   }, [loadMyApps, appId, lastChatAppId, router, setSource]);
 
+  // 统一的初始化逻辑：当用户已登录且初始化完成时
   useEffect(() => {
     if (isInitializingUser || !isLoggedIn) {
       return;
     }
 
     const initChat = async () => {
+      // 加载应用列表
+      await loadMyApps();
+
+      // 如果没有appId，设置默认app
       if (!appId) {
         const apps = await loadMyApps();
         if (apps.length === 0) {
@@ -323,19 +318,7 @@ const Render = (props: { appId: string; isStandalone?: string; ChineseRedirectUr
     toast
   ]);
 
-  useEffect(() => {
-    if (!isLoggedIn) {
-      setHasTriggeredInit(false); // 登出的时候就重置初始化触发状态
-    } else {
-      // 如果没有 appId 并且没有触发过初始化，就触发初始化
-      if (!appId && !hasTriggeredInit) {
-        setHasTriggeredInit(true);
-        handleLoginSuccess();
-      }
-    }
-  }, [isLoggedIn, appId, hasTriggeredInit, handleLoginSuccess]);
-
-  // Watch appId
+  // 监听appId变化
   useEffect(() => {
     if (isLoggedIn) {
       setAppId(appId);
@@ -358,34 +341,26 @@ const Render = (props: { appId: string; isStandalone?: string; ChineseRedirectUr
     };
   }, [appId, chatId]);
 
+  // 显示loading状态
   if (isInitializingUser) {
     return (
       <PageContainer flex={'1'} p={4}>
         <Box display="flex" justifyContent="center" alignItems="center" h="100%">
-          <Text>{t('common:Loading')}</Text>
+          <Box>{t('common:Loading')}</Box>
         </Box>
       </PageContainer>
     );
   }
 
-  if (!isLoggedIn) {
-    return (
-      <>
+  return (
+    <>
+      {!isLoggedIn && (
         <PageContainer flex={'1'} p={4}>
           {/* TODO: 因为没登录所以展示空页面，后续可能有 UI 上的调整 */}
         </PageContainer>
-        <LoginModal
-          isOpen={isLoginModalOpen}
-          onSuccess={handleLoginSuccess}
-          ChineseRedirectUrl={ChineseRedirectUrl}
-        />
-      </>
-    );
-  }
+      )}
 
-  return (
-    <>
-      {source === ChatSourceEnum.online ? (
+      {isLoggedIn && source === ChatSourceEnum.online ? (
         <ChatContextProvider params={chatHistoryProviderParams}>
           <ChatItemContextProvider
             showRouteToAppDetail={isStandalone !== '1' && !!currentApp?.permission.hasWritePer}
@@ -396,7 +371,7 @@ const Render = (props: { appId: string; isStandalone?: string; ChineseRedirectUr
             showNodeStatus
           >
             <ChatRecordContextProvider params={chatRecordProviderParams}>
-              <Chat myApps={myApps} isLoadingApps={isLoadingApps} />
+              <Chat myApps={myApps} />
             </ChatRecordContextProvider>
           </ChatItemContextProvider>
         </ChatContextProvider>

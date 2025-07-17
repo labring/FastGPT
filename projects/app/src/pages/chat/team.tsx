@@ -193,7 +193,7 @@ const Chat = ({
       {/* pc show myself apps */}
       {isPc && (
         <Box borderRight={theme.borders.base} w={'220px'} flexShrink={0}>
-          <SliderApps apps={myApps} activeAppId={appId} isLoading={isLoadingApps} />
+          <SliderApps apps={myApps} activeAppId={appId} />
         </Box>
       )}
 
