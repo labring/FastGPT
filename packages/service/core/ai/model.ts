@@ -14,14 +14,14 @@ export const getDatasetModel = (model?: string) => {
       ?.find((item) => item.model === model || item.name === model) ?? getDefaultLLMModel()
   );
 };
-export const getVlmModel = (model?: string) => {
-  return Array.from(global.llmModelMap.values())
-    ?.filter((item) => item.vision)
-    ?.find((item) => item.model === model || item.name === model);
-};
 
 export const getVlmModelList = () => {
   return Array.from(global.llmModelMap.values())?.filter((item) => item.vision) || [];
+};
+export const getDefaultVLMModel = () => global?.systemDefaultModel.datasetImageLLM;
+export const getVlmModel = (model?: string) => {
+  const list = getVlmModelList();
+  return list.find((item) => item.model === model || item.name === model) || list[0];
 };
 
 export const getDefaultEmbeddingModel = () => global?.systemDefaultModel.embedding!;
