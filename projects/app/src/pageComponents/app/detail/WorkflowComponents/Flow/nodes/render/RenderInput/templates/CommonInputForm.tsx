@@ -72,10 +72,13 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const inputType = nodeInputTypeToInputType(item.renderTypeList);
   const value = useMemo(() => {
     if (inputType === InputTypeEnum.selectLLMModel) {
+      if (item.value === undefined && defaultModel) {
+        handleChange(defaultModel);
+      }
       return item.value || defaultModel;
     }
     return item.value;
-  }, [inputType, item.value, defaultModel]);
+  }, [inputType, item.value, defaultModel, handleChange]);
 
   return (
     <InputRender
