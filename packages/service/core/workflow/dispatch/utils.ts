@@ -175,7 +175,7 @@ export const rewriteRuntimeWorkFlow = async (
 
   for (const toolSetNode of toolSetNodes) {
     nodeIdsToRemove.add(toolSetNode.nodeId);
-    const toolId = toolSetNode.toolConfig?.systemTool?.toolId;
+    const toolId = toolSetNode.toolConfig?.systemToolSet?.toolId;
     if (toolId) {
       // systemTool
       const toolsetInputConfig = toolSetNode.inputs.find(
@@ -204,7 +204,7 @@ export const rewriteRuntimeWorkFlow = async (
         }
       }
     } else {
-      const toolSetValue = toolSetNode.inputs[0]?.value as McpToolSetDataType | undefined;
+      const toolSetValue = toolSetNode.toolConfig?.mcpToolSet;
 
       if (!toolSetValue) continue;
 

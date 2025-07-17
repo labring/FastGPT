@@ -127,11 +127,6 @@ const NodeTemplateListItem = ({
           });
         }}
         onClick={() => {
-          // if (template.isFolder && template.flowNodeType !== FlowNodeTypeEnum.toolSet) {
-          //   onUpdateParentId(template.id);
-          //   return;
-          // }
-
           const position =
             isPopover && handleParams
               ? handleParams.addNodePosition

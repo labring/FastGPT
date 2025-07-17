@@ -18,6 +18,7 @@ import {
   type ReferenceArrayValueType,
   type ReferenceItemValueType
 } from './type/io.d';
+import type { NodeToolConfigType } from './type/node';
 import { type StoreNodeItemType } from './type/node';
 import type {
   VariableItemType,
@@ -333,12 +334,20 @@ export const toolSetData2FlowNodeIO = ({
 }): {
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
+  toolConfig?: NodeToolConfigType;
 } => {
   const toolSetNode = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
 
   return {
     inputs: toolSetNode?.inputs || [],
-    outputs: toolSetNode?.outputs || []
+    outputs: toolSetNode?.outputs || [],
+    toolConfig: {
+      mcpToolSet: {
+        url: '',
+        headerSecret: '',
+        toolList: toolSetNode?.toolConfig?.mcpToolSet?.toolList || []
+      }
+    }
   };
 };
 

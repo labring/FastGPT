@@ -25,11 +25,23 @@ import { AppTypeEnum } from '../../app/constants';
 import type { WorkflowInteractiveResponseType } from '../template/system/interactive/type';
 
 export type NodeToolConfigType = {
-  mcpTool?: McpToolConfigType & {
+  mcpToolSet?: {
     url: string;
+    headerSecret: StoreSecretValueType;
+    toolList: McpToolConfigType[];
+  };
+  mcpTool?: {
+    toolId: string;
   };
   systemTool?: {
     toolId: string;
+  };
+  systemToolSet?: {
+    toolId: string;
+    toolList: {
+      name: string;
+      description: string;
+    }[];
   };
 };
 

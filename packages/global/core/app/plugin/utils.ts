@@ -29,6 +29,7 @@ export const getPluginRunContent = ({
   - personal: ObjectId
   - commercial: commercial-ObjectId
   - systemtool: systemTool-id
+  - mcp tool:  mcp-parentId/toolName
   (deprecated) community: community-id
 */
 export function splitCombinePluginId(id: string) {
@@ -52,5 +53,11 @@ export function splitCombinePluginId(id: string) {
     };
   }
 
+  if (source === 'mcp') {
+    return {
+      source: PluginSourceEnum.mcp,
+      pluginId
+    };
+  }
   return { source, pluginId: id };
 }

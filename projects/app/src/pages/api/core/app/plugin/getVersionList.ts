@@ -34,6 +34,7 @@ async function handler(
       list: []
     };
   }
+
   const { source, pluginId: formatPluginId } = splitCombinePluginId(pluginId);
 
   // System tool plugin
@@ -52,9 +53,10 @@ async function handler(
 
   // Workflow plugin
   const appId = await (async () => {
-    if (source === PluginSourceEnum.personal) {
+    if (source === PluginSourceEnum.personal || source === PluginSourceEnum.mcp) {
+      const appId = formatPluginId.split('/')[0];
       const { app } = await authApp({
-        appId: formatPluginId,
+        appId,
         req,
         per: ReadPermissionVal,
         authToken: true

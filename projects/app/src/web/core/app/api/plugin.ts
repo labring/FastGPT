@@ -5,7 +5,7 @@ import type {
   FlowNodeTemplateType,
   NodeTemplateListItemType
 } from '@fastgpt/global/core/workflow/type/node';
-import { getMyApps } from '../api';
+import { getAppBasicInfoByIds, getAppDetailById, getMyApps } from '../api';
 import type { ListAppBody } from '@/pages/api/core/app/list';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -28,10 +28,23 @@ import type {
   getToolVersionListProps,
   getToolVersionResponse
 } from '@/pages/api/core/app/plugin/getVersionList';
+import type { McpGetChildrenmResponse } from '@/pages/api/core/app/mcpTools/getChildren';
 
 /* ============ team plugin ============== */
-export const getTeamPlugTemplates = (data?: ListAppBody) =>
-  getMyApps(data).then((res) =>
+export const getTeamPlugTemplates = async (data?: ListAppBody) => {
+  if (data?.parentId) {
+    // handle get mcptools
+    const parent = await getAppDetailById(data.parentId);
+    if (parent.type === AppTypeEnum.toolSet) {
+      const children = await getMcpChildren(data.parentId);
+      return children.map((item) => ({
+        ...item,
+        flowNodeType: FlowNodeTypeEnum.tool,
+        templateType: FlowNodeTemplateTypeEnum.teamApp
+      }));
+    }
+  }
+  return getMyApps(data).then((res) =>
     res.map((app) => ({
       tmbId: app.tmbId,
       id: app._id,
@@ -56,6 +69,7 @@ export const getTeamPlugTemplates = (data?: ListAppBody) =>
       sourceMember: app.sourceMember
     }))
   );
+};
 
 /* ============ system plugin ============== */
 export const getSystemPlugTemplates = (data: GetSystemPluginTemplatesBody) =>
@@ -90,6 +104,9 @@ export const getMCPTools = (data: getMCPToolsBody) =>
 
 export const postRunMCPTool = (data: RunMCPToolBody) =>
   POST('/support/mcp/client/runTool', data, { timeout: 300000 });
+
+export const getMcpChildren = (parentId: string) =>
+  GET<McpGetChildrenmResponse>('/core/app/mcpTools/getChildren', { parentId });
 
 /* ============ http plugin ============== */
 export const postCreateHttpPlugin = (data: createHttpPluginBody) =>

@@ -1,4 +1,7 @@
-import { type FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
+import type {
+  NodeToolConfigType,
+  FlowNodeTemplateType
+} from '@fastgpt/global/core/workflow/type/node.d';
 import {
   FlowNodeOutputTypeEnum,
   FlowNodeInputTypeEnum,
@@ -40,6 +43,8 @@ import { isProduction } from '@fastgpt/global/common/system/constants';
 import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
+import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
+import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
 
 type ChildAppType = SystemPluginTemplateItemType & {
   teamId?: string;
@@ -145,9 +150,12 @@ export async function getChildAppPreviewNode({
   lang?: localeType;
 }): Promise<FlowNodeTemplateType> {
   const { source, pluginId } = splitCombinePluginId(appId);
+  console.log('pluginId', pluginId, source);
 
   const app: ChildAppType = await (async () => {
     if (source === PluginSourceEnum.personal) {
+      // 1. App
+      // 2. MCP ToolSets
       const item = await MongoApp.findById(pluginId).lean();
       if (!item) return Promise.reject(PluginErrEnum.unExist);
 
@@ -184,30 +192,63 @@ export async function getChildAppPreviewNode({
         hasTokenFee: false,
         pluginOrder: 0
       };
+    } else if (source === PluginSourceEnum.mcp) {
+      // mcp tool
+      const [parentId, toolName] = pluginId.split('/');
+      // 1. get parentApp
+      const item = await MongoApp.findById(parentId).lean();
+      if (!item) return Promise.reject(PluginErrEnum.unExist);
+      const version = await getAppVersionById({ appId: parentId, versionId, app: item });
+      const toolConfig = version.nodes[0].toolConfig?.mcpToolSet;
+      const tool = toolConfig?.toolList.find((item) => item.name === toolName);
+      if (!tool || !toolConfig) return Promise.reject(PluginErrEnum.unExist);
+      return {
+        avatar: item.avatar,
+        id: appId,
+        name: tool.name,
+        templateType: FlowNodeTemplateTypeEnum.tools,
+        workflow: {
+          nodes: [
+            getMCPToolRuntimeNode({
+              tool: {
+                description: tool.description,
+                inputSchema: tool.inputSchema,
+                name: tool.name
+              },
+              url: toolConfig.url,
+              avatar: item.avatar,
+              headerSecret: toolConfig.headerSecret
+            })
+          ],
+          edges: []
+        }
+      };
     } else {
+      // 1. System Tools
+      // 2. System Plugins configured in Pro (has associatedPluginId)
       return getSystemPluginByIdAndVersionId(pluginId, versionId);
     }
   })();
 
-  const { flowNodeType, nodeIOConfig } = await (async () => {
+  const { flowNodeType, nodeIOConfig } = await (async (): Promise<{
+    flowNodeType: FlowNodeTypeEnum;
+    nodeIOConfig: {
+      inputs: FlowNodeInputItemType[];
+      outputs: FlowNodeOutputItemType[];
+      toolConfig?: NodeToolConfigType;
+    };
+  }> => {
     if (source === PluginSourceEnum.systemTool) {
-      const children = (await getSystemTools()).filter((item) => item.parentId === pluginId);
+      // system Tool or Toolsets
+      const children = app.isFolder
+        ? (await getSystemTools()).filter((item) => item.parentId === pluginId)
+        : [];
+
       return {
         flowNodeType: app.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
         nodeIOConfig: {
           inputs: app.isFolder
             ? [
-                {
-                  key: NodeInputKeyEnum.toolSetData,
-                  label: '',
-                  value: {
-                    toolList: children.map((item) => ({
-                      name: parseI18nString(item.name, lang),
-                      description: parseI18nString(item.intro, lang)
-                    }))
-                  },
-                  renderTypeList: [FlowNodeInputTypeEnum.hidden]
-                },
                 ...(app.inputList
                   ? [
                       {
@@ -222,9 +263,17 @@ export async function getChildAppPreviewNode({
             : (app.inputs ?? []),
           outputs: app.outputs ?? [],
           toolConfig: {
-            systemTool: {
-              toolId: app.id
-            }
+            ...(app.isFolder
+              ? {
+                  systemToolSet: {
+                    toolId: app.id,
+                    toolList: children.map((item) => ({
+                      name: parseI18nString(item.name, lang),
+                      description: parseI18nString(item.intro, lang)
+                    }))
+                  }
+                }
+              : { systemTool: { toolId: app.id } })
           }
         }
       };
@@ -232,6 +281,7 @@ export async function getChildAppPreviewNode({
 
     // Plugin workflow
     if (!!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)) {
+      // plugin app
       return {
         flowNodeType: FlowNodeTypeEnum.pluginModule,
         nodeIOConfig: pluginData2FlowNodeIO({ nodes: app.workflow.nodes })
@@ -243,6 +293,7 @@ export async function getChildAppPreviewNode({
       !!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet) &&
       app.workflow.nodes.length === 1
     ) {
+      // mcp tools
       return {
         flowNodeType: FlowNodeTypeEnum.toolSet,
         nodeIOConfig: toolSetData2FlowNodeIO({ nodes: app.workflow.nodes })

@@ -15,13 +15,13 @@ const MCPTools = () => {
     const toolSetNode = appDetail.modules.find(
       (item) => item.flowNodeType === FlowNodeTypeEnum.toolSet
     );
-    return toolSetNode?.inputs[0].value as MCPToolSetData;
+    return toolSetNode?.toolConfig?.mcpToolSet!;
   }, [appDetail.modules]);
 
   const [url, setUrl] = useState(toolSetData?.url || '');
   const [toolList, setToolList] = useState<McpToolConfigType[]>(toolSetData?.toolList || []);
   const [headerSecret, setHeaderSecret] = useState<StoreSecretValueType>(toolSetData?.headerSecret);
-  const [currentTool, setCurrentTool] = useState<McpToolConfigType>(toolSetData?.toolList[0]);
+  const [currentTool, setCurrentTool] = useState<McpToolConfigType>(toolSetData.toolList[0]);
 
   return (
     <Flex h={'100%'} flexDirection={'column'} px={[3, 0]} pr={[3, 3]}>

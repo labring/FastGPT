@@ -25,8 +25,7 @@ async function handler(
   if (source === PluginSourceEnum.personal) {
     await authApp({ req, authToken: true, appId: pluginId, per: ReadPermissionVal });
   }
-
-  return getChildAppPreviewNode({ appId: pluginId, versionId, lang: getLocale(req) });
+  return getChildAppPreviewNode({ appId, versionId, lang: getLocale(req) });
 }
 
 export default NextAPI(handler);
