@@ -5,7 +5,6 @@ export type ConcatBillQueueItemType = {
   inputTokens: number;
   outputTokens: number;
   count?: number;
-  moduleName?: string;
 };
 
 declare global {

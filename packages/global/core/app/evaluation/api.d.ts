@@ -6,7 +6,6 @@ export type listEvaluationsBody = PaginationProps<{
 
 export type listEvalItemsBody = PaginationProps<{
   evalId: string;
-  appId: string;
 }>;
 
 export type retryEvalItemBody = {
