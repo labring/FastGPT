@@ -37,8 +37,6 @@ import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyImage from '@/components/MyImage';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import React from 'react';
 
 enum TrainingStatus {
@@ -385,7 +383,7 @@ const ErrorView = ({
               <Th pr={0}>{t('dataset:dataset.Chunk_Number')}</Th>
               <Th pr={0}>{t('dataset:dataset.Training_Status')}</Th>
               <Th>{t('dataset:dataset.Error_Message')}</Th>
-              <Th>{t('dataset:dataset.Operation')}</Th>
+              <Th w={'220px'}>{t('dataset:dataset.Operation')}</Th>
             </Tr>
           </Thead>
           <Tbody>
@@ -396,7 +394,7 @@ const ErrorView = ({
                 <Td maxW={50}>
                   <MyTooltip label={item.errorMsg}>{t(item.errorMsg)}</MyTooltip>
                 </Td>
-                <Td>
+                <Td w={'220px'} px={3}>
                   <Flex alignItems={'center'}>
                     <Button
                       variant={'ghost'}
@@ -517,7 +515,6 @@ const TrainingStates = ({
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
-  const toast = useToast();
   const [tab, setTab] = useState<typeof defaultTab>(defaultTab);
 
   const {
@@ -538,12 +535,7 @@ const TrainingStates = ({
       onSuccess: () => {
         refreshTrainingDetail();
       },
-      onError: (e) => {
-        toast.toast({
-          status: 'error',
-          title: t('dataset:retry_failed')
-        });
-      }
+      errorToast: t('dataset:retry_failed')
     }
   );
 
@@ -562,7 +554,7 @@ const TrainingStates = ({
       isLoading={!trainingDetail && loading && tab === 'states'}
     >
       <ModalBody px={9} minH={['90vh', '500px']}>
-        <Flex align="center" justify="space-between" mb={4}>
+        <Flex align="center" justify="space-between" mb={2}>
           <FillRowTabs
             py={1}
             value={tab}
@@ -576,7 +568,7 @@ const TrainingStates = ({
             ]}
           />
           {tab === 'errors' && errorCounts > 0 && (
-            <Button colorScheme="primary" size="sm" isLoading={retrying} onClick={handleRetryAll}>
+            <Button variant={'whiteBase'} size="sm" isLoading={retrying} onClick={handleRetryAll}>
               {t('dataset:retry_all')}
             </Button>
           )}
