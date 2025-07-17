@@ -19,21 +19,12 @@ import type {
   DatasetTrainingSchemaType
 } from '@fastgpt/global/core/dataset/type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+import { delay } from '@fastgpt/service/common/bullmq';
 
 const reduceQueue = () => {
   global.vectorQueueLen = global.vectorQueueLen > 0 ? global.vectorQueueLen - 1 : 0;
 
   return global.vectorQueueLen === 0;
-};
-const reduceQueueAndReturn = (delay = 0) => {
-  reduceQueue();
-  if (delay) {
-    setTimeout(() => {
-      generateVector();
-    }, delay);
-  } else {
-    generateVector();
-  }
 };
 
 type PopulateType = {
@@ -50,121 +41,123 @@ export async function generateVector(): Promise<any> {
 
   if (global.vectorQueueLen >= max) return;
   global.vectorQueueLen++;
-  const start = Date.now();
 
-  // get training data
-  const {
-    data,
-    done = false,
-    error = false
-  } = await (async () => {
-    try {
-      const data = await MongoDatasetTraining.findOneAndUpdate(
-        {
-          mode: TrainingModeEnum.chunk,
-          retryCount: { $gt: 0 },
-          lockTime: { $lte: addMinutes(new Date(), -3) }
-        },
-        {
-          lockTime: new Date(),
-          $inc: { retryCount: -1 }
-        }
-      )
-        .populate<PopulateType>([
+  while (true) {
+    const start = Date.now();
+
+    // get training data
+    const {
+      data,
+      done = false,
+      error = false
+    } = await (async () => {
+      try {
+        const data = await MongoDatasetTraining.findOneAndUpdate(
           {
-            path: 'dataset',
-            select: 'vectorModel'
+            mode: TrainingModeEnum.chunk,
+            retryCount: { $gt: 0 },
+            lockTime: { $lte: addMinutes(new Date(), -3) }
           },
           {
-            path: 'collection',
-            select: 'name indexPrefixTitle'
-          },
-          {
-            path: 'data',
-            select: '_id indexes'
+            lockTime: new Date(),
+            $inc: { retryCount: -1 }
           }
-        ])
-        .lean();
+        )
+          .populate<PopulateType>([
+            {
+              path: 'dataset',
+              select: 'vectorModel'
+            },
+            {
+              path: 'collection',
+              select: 'name indexPrefixTitle'
+            },
+            {
+              path: 'data',
+              select: '_id indexes'
+            }
+          ])
+          .lean();
 
-      // task preemption
-      if (!data) {
+        // task preemption
+        if (!data) {
+          return {
+            done: true
+          };
+        }
         return {
-          done: true
+          data
         };
-      }
-      return {
-        data
-      };
-    } catch (error) {
-      addLog.error(`Get Training Data error`, error);
-      return {
-        error: true
-      };
-    }
-  })();
-
-  if (done || !data) {
-    if (reduceQueue()) {
-      addLog.info(`[Vector Queue] Done`);
-    }
-    return;
-  }
-  if (error) {
-    addLog.error(`[Vector Queue] Error`, { error });
-    return reduceQueueAndReturn();
-  }
-
-  if (!data.dataset || !data.collection) {
-    addLog.info(`[Vector Queue] Dataset or collection not found`, data);
-    // Delete data
-    await MongoDatasetTraining.deleteOne({ _id: data._id });
-    return reduceQueueAndReturn();
-  }
-
-  // auth balance
-  if (!(await checkTeamAiPointsAndLock(data.teamId))) {
-    return reduceQueueAndReturn();
-  }
-
-  addLog.info(`[Vector Queue] Start`);
-
-  try {
-    const { tokens } = await (async () => {
-      if (data.dataId) {
-        return rebuildData({ trainingData: data });
-      } else {
-        return insertData({ trainingData: data });
+      } catch (error) {
+        return {
+          error: true
+        };
       }
     })();
 
-    // push usage
-    pushGenerateVectorUsage({
-      teamId: data.teamId,
-      tmbId: data.tmbId,
-      inputTokens: tokens,
-      model: data.dataset.vectorModel,
-      billId: data.billId
-    });
+    // Break loop
+    if (done || !data) {
+      break;
+    }
+    if (error) {
+      addLog.error(`[Vector Queue] Error`, error);
+      await delay(500);
+      continue;
+    }
 
-    addLog.info(`[Vector Queue] Finish`, {
-      time: Date.now() - start
-    });
+    if (!data.dataset || !data.collection) {
+      addLog.info(`[Vector Queue] Dataset or collection not found`, data);
+      // Delete data
+      await MongoDatasetTraining.deleteOne({ _id: data._id });
+      continue;
+    }
 
-    return reduceQueueAndReturn();
-  } catch (err: any) {
-    addLog.error(`[Vector Queue] Error`, err);
-    await MongoDatasetTraining.updateOne(
-      {
+    // auth balance
+    if (!(await checkTeamAiPointsAndLock(data.teamId))) {
+      continue;
+    }
+
+    addLog.info(`[Vector Queue] Start`);
+
+    try {
+      const { tokens } = await (async () => {
+        if (data.dataId) {
+          return rebuildData({ trainingData: data });
+        } else {
+          return insertData({ trainingData: data });
+        }
+      })();
+
+      // push usage
+      pushGenerateVectorUsage({
         teamId: data.teamId,
-        datasetId: data.datasetId,
-        _id: data._id
-      },
-      {
-        errorMsg: getErrText(err, 'unknown error')
-      }
-    );
-    return reduceQueueAndReturn(500);
+        tmbId: data.tmbId,
+        inputTokens: tokens,
+        model: data.dataset.vectorModel,
+        billId: data.billId
+      });
+
+      addLog.info(`[Vector Queue] Finish`, {
+        time: Date.now() - start
+      });
+    } catch (err: any) {
+      addLog.error(`[Vector Queue] Error`, err);
+      await MongoDatasetTraining.updateOne(
+        {
+          _id: data._id
+        },
+        {
+          errorMsg: getErrText(err, 'unknown error')
+        }
+      );
+      await delay(100);
+    }
   }
+
+  if (reduceQueue()) {
+    addLog.info(`[Vector Queue] Done`);
+  }
+  addLog.debug(`[Vector Queue] break loop, current queue size: ${global.vectorQueueLen}`);
 }
 
 const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
