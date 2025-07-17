@@ -68,6 +68,10 @@ export const getFastGPTSem = () => {
 };
 export const setFastGPTSem = (fastgptSem?: TrackRegisterParams['fastgpt_sem']) => {
   if (!fastgptSem) return;
+
+  const validEntries = Object.entries(fastgptSem).filter(([_, value]) => !!value);
+  if (validEntries.length === 0) return;
+
   localStorage.setItem('fastgpt_sem', JSON.stringify(fastgptSem));
 };
 export const removeFastGPTSem = () => {
