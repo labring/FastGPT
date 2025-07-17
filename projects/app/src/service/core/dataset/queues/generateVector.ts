@@ -292,3 +292,5 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
     };
   });
 };
+
+export { reduceQueue, rebuildData, insertData };
