@@ -37,6 +37,9 @@ import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyImage from '@/components/MyImage';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import React from 'react';
 
 enum TrainingStatus {
   NotStart = 'NotStart',
@@ -391,7 +394,7 @@ const ErrorView = ({
                 <Td>{item.chunkIndex + 1}</Td>
                 <Td>{TrainingText[item.mode]}</Td>
                 <Td maxW={50}>
-                  <MyTooltip label={item.errorMsg}>{item.errorMsg}</MyTooltip>
+                  <MyTooltip label={item.errorMsg}>{t(item.errorMsg)}</MyTooltip>
                 </Td>
                 <Td>
                   <Flex alignItems={'center'}>
@@ -514,6 +517,7 @@ const TrainingStates = ({
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
+  const toast = useToast();
   const [tab, setTab] = useState<typeof defaultTab>(defaultTab);
 
   const {
@@ -525,6 +529,23 @@ const TrainingStates = ({
     pollingWhenHidden: false,
     manual: false
   });
+
+  // All retry logic
+  const { runAsync: handleRetryAll, loading: retrying } = useRequest2(
+    () => updateTrainingData({ datasetId, collectionId }),
+    {
+      manual: true,
+      onSuccess: () => {
+        refreshTrainingDetail();
+      },
+      onError: (e) => {
+        toast.toast({
+          status: 'error',
+          title: t('dataset:retry_failed')
+        });
+      }
+    }
+  );
 
   const errorCounts = (Object.values(trainingDetail?.errorCounts || {}) as number[]).reduce(
     (acc, count) => acc + count,
@@ -541,21 +562,25 @@ const TrainingStates = ({
       isLoading={!trainingDetail && loading && tab === 'states'}
     >
       <ModalBody px={9} minH={['90vh', '500px']}>
-        <FillRowTabs
-          py={1}
-          mb={6}
-          value={tab}
-          onChange={(e) => setTab(e as 'states' | 'errors')}
-          list={[
-            { label: t('dataset:dataset.Training Process'), value: 'states' },
-            {
-              label: t('dataset:dataset.Training_Errors', {
-                count: errorCounts
-              }),
-              value: 'errors'
-            }
-          ]}
-        />
+        <Flex align="center" justify="space-between" mb={4}>
+          <FillRowTabs
+            py={1}
+            value={tab}
+            onChange={(e) => setTab(e as 'states' | 'errors')}
+            list={[
+              { label: t('dataset:dataset.Training Process'), value: 'states' },
+              {
+                label: t('dataset:dataset.Training_Errors', { count: errorCounts }),
+                value: 'errors'
+              }
+            ]}
+          />
+          {tab === 'errors' && errorCounts > 0 && (
+            <Button colorScheme="primary" size="sm" isLoading={retrying} onClick={handleRetryAll}>
+              {t('dataset:retry_all')}
+            </Button>
+          )}
+        </Flex>
         {tab === 'states' && trainingDetail && <ProgressView trainingDetail={trainingDetail} />}
         {tab === 'errors' && (
           <ErrorView
