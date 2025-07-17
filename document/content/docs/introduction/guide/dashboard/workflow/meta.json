@@ -1,0 +1,5 @@
+{
+  "title": "工作流节点",
+  "description": "FastGPT 工作流节点设置和使用指南",
+  "pages": ["ai_chat","dataset_search","tool","question_classify","content_extract","user-selection","form_input","text_editor","reply","document_parsing","http","tfswitch","variable_update","sandbox","loop","knowledge_base_search_merge","coreferenceResolution","laf","custom_feedback"]
+}

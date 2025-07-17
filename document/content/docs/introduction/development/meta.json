@@ -1,0 +1,6 @@
+{
+  "title": "开发与部署指南",
+  "description": "FastGPT 开发与部署指南",
+  "icon": "🔧",
+  "pages": ["intro","sealos","configuration","docker","faq","modelConfig","upgrading","openapi","custom-models","proxy","migration","design"]
+}

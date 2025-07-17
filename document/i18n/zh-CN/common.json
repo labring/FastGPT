@@ -10,5 +10,9 @@
     "links": "链接",
     "community": "社区",
     "resources": "资源"
-  }
+  },
+  "introduction": "使用说明",
+  "use-cases": "使用场景",
+  "api": "API 手册",
+  "protocol": "协议"
 } 

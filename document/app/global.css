@@ -1,8 +1,4 @@
 @import 'tailwindcss';
-@import 'fumadocs-ui/css/neutral.css';
-@import 'fumadocs-ui/css/preset.css';
-@import 'tailwindcss';
-@import 'fumadocs-ui/css/neutral.css';
 @import 'fumadocs-ui/css/preset.css';
 
 /* 在文件开头添加这些基础变量 */
@@ -17,13 +13,14 @@
   --yellow-50-hsl: 55, 92%, 95%;
   --yellow-500-hsl: 45, 93%, 47%;
   --blue-500-hsl: 217, 91%, 60%;
+  --fd-layout-width: 1400px;
   
   /* 文本颜色 */
   --text-default: #374151;
   --text-default-inv: #ffffff;
   --text-muted: #6B7280;
   --content-link-color: #2563EB;
-  
+
   /* 其他变量 */
   --font-size-sm: 0.875rem;
   --gray-200: #E5E7EB;
@@ -78,26 +75,6 @@ code {
 
 /* 代码块中的滚动条样式优化 */
 
-
-
-
-/* 图片居中显示 */
-.fumadocs-content img,
-.mdx-content img,
-.prose img,
-img {
-  display: block !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
-  margin-top: 1.5rem !important;
-  margin-bottom: 1.5rem !important;
-  max-width: 100% !important;
-  height: auto !important;
-  border-radius: 8px !important;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
-}
-
-
 /* MDX 表格样式 */
 .fumadocs-content table,
 .mdx-content table,
@@ -149,4 +126,110 @@ img {
 .tab-content {
   margin-bottom: 0.8rem;
   padding: 1rem 0;
+}
+
+div[data-state="open"].fixed.inset-0.z-50 {
+  background-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+
+#nd-subnav > div:nth-of-type(1) button:nth-of-type(1) {
+  box-shadow: 0px 1px 2px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)!important;
+  background-color: none !important;
+  &:hover {
+    cursor: pointer; 
+  }
+}
+#nd-subnav > div:nth-of-type(1) {
+  border-bottom: 0.1px solid #F4F4F7 !important;
+}
+#nd-subnav > div:nth-of-type(2) {
+  border-bottom: 0.1px solid #DFE2EA !important;
+  height: 100%;
+}
+.dark #nd-subnav > div:nth-of-type(1) {
+  border-bottom: 0.1px solid #363b4a58 !important;
+}
+.dark #nd-subnav > div:nth-of-type(2) {
+  border-bottom: 0.1px solid #61646fc6 !important;
+}
+
+div[data-rmiz-modal-content] {
+  background-color: #999 !important;
+}
+
+
+#nd-subnav > div:nth-of-type(2) a {
+  text-decoration: none;
+  color: #485264;
+  transition: color 0.2s ease;
+  background-color: transparent !important;
+  font-weight: 400;
+  /* 先清除默认下划线 */
+  &:hover {
+    text-decoration: underline;
+    text-decoration-color: #C5D7FF;
+    text-decoration-thickness: 3px;  /* 下划线粗细 */
+    text-underline-offset: 17px;      /* 下划线与文字距离 */
+  }
+  &.text-fd-primary {
+    text-decoration: underline;
+    text-decoration-color: #3370FF;
+    text-decoration-thickness: 3px;  /* 下划线粗细 */
+    text-underline-offset: 17px;      /* 下划线与文字距离 */
+    background-color: transparent !important;
+    font-weight: 600;
+    color: #111824;
+  }
+}
+.dark #nd-subnav > div:nth-of-type(2) a {
+  color: #FFFFFF;
+}
+
+
+@theme {
+  --color-fd-muted: hsl(0, 0%, 96.1%);
+  --color-fd-popover: hsl(0, 0%, 100%);
+  --color-fd-popover-foreground: hsl(0, 0%, 15.1%);
+  --color-fd-card-foreground: hsl(0, 0%, 3.9%);
+  --color-fd-border: hsl(0, 0%, 89.8%);
+  --color-fd-primary-foreground: hsl(0, 0%, 98%);
+  --color-fd-secondary-foreground: hsl(0, 0%, 9%);
+  --color-fd-accent: hsl(0, 0%, 94.1%);
+  --color-fd-ring: hsl(0, 0%, 63.9%);
+
+  --color-fd-background: hsl(0, 0%, 100%);
+  --color-fd-card: hsl(0, 0%, 100%);
+  --color-fd-foreground: hsl(240, 6%, 25%);
+  --color-fd-muted-foreground: hsl(240, 6%, 50%);
+  --color-fd-secondary: hsl(240, 6%, 97%);
+  --color-fd-accent-foreground: hsl(240, 6%, 25%);
+  --color-fd-primary: hsl(226, 55%, 45%);
+}
+
+.dark {
+  --color-fd-background: #060c1a;
+  --color-fd-foreground: hsl(220, 60%, 94.5%);
+  --color-fd-muted: hsl(220, 50%, 10%);
+  --color-fd-muted-foreground: hsl(220, 30%, 65%);
+  --color-fd-popover: hsl(220, 50%, 10%);
+  --color-fd-popover-foreground: hsl(220, 60%, 94.5%);
+  --color-fd-card: hsla(220, 56%, 15%, 0.4);
+  --color-fd-card-foreground: hsl(220, 60%, 94.5%);
+  --color-fd-border: hsla(220, 50%, 50%, 0.2);
+  --color-fd-primary: #3370FF; /* 文本高亮色 */
+  --color-fd-primary-foreground: hsl(0, 0%, 9%);
+  --color-fd-secondary: hsl(220, 50%, 20%);
+  --color-fd-secondary-foreground: hsl(220, 80%, 90%);
+  --color-fd-accent: hsl(220, 40%, 20%);
+  --color-fd-accent-foreground: hsl(220, 80%, 90%);
+  --color-fd-ring: hsl(205, 100%, 85%);
+}
+
+#nd-sidebar {
+  border-color: transparent;
+}
+
+button[data-search-full] {
+  background-color: var(--color-fd-background);
 }

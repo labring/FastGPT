@@ -10,5 +10,9 @@
     "links": "Links",
     "community": "Community",
     "resources": "Resources"
-  }
+  },
+  "introduction": "Introduction",
+  "use-cases": "Use Cases",
+  "api": "API",
+  "protocol": "Protocol"
 } 
