@@ -204,7 +204,7 @@ export const useLoginLogic = (options: {
   return {
     // State
     isUserLoggedIn,
-    isLoadin
+    isLoading,
     pageType,
     setPageType,
     feConfigs,
