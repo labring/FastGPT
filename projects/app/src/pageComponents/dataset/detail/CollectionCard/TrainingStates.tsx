@@ -288,13 +288,11 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
 const ErrorView = ({
   datasetId,
   collectionId,
-  refreshTrainingDetail,
-  onErrorCountChange
+  refreshTrainingDetail
 }: {
   datasetId: string;
   collectionId: string;
   refreshTrainingDetail: () => void;
-  onErrorCountChange?: (count: number) => void;
 }) => {
   const { t } = useTranslation();
   const TrainingText = {
@@ -320,11 +318,6 @@ const ErrorView = ({
     },
     EmptyTip: <EmptyTip />
   });
-
-  // Notify component of parent error count changes
-  React.useEffect(() => {
-    onErrorCountChange?.(errorList?.length || 0);
-  }, [errorList?.length, onErrorCountChange]);
 
   const { runAsync: getData, loading: getDataLoading } = useRequest2(
     (data: { datasetId: string; collectionId: string; dataId: string }) => {
@@ -538,25 +531,21 @@ const TrainingStates = ({
   });
 
   // All retry logic
-  const [retrying, setRetrying] = useState(false);
-  const [errorCount, setErrorCount] = useState(0);
-
-  const handleRetryAll = async () => {
-    if (!errorCount) return;
-    setRetrying(true);
-    try {
-      // Not passing dataId means retrying all error data
-      await updateTrainingData({ datasetId, collectionId });
-      refreshTrainingDetail();
-    } catch (e) {
-      toast.toast({
-        status: 'error',
-        title: t('common:retry_failed')
-      });
-    } finally {
-      setRetrying(false);
+  const { runAsync: handleRetryAll, loading: retrying } = useRequest2(
+    () => updateTrainingData({ datasetId, collectionId }),
+    {
+      manual: true,
+      onSuccess: () => {
+        refreshTrainingDetail();
+      },
+      onError: (e) => {
+        toast.toast({
+          status: 'error',
+          title: t('dataset:retry_failed')
+        });
+      }
     }
-  };
+  );
 
   const errorCounts = (Object.values(trainingDetail?.errorCounts || {}) as number[]).reduce(
     (acc, count) => acc + count,
@@ -581,12 +570,12 @@ const TrainingStates = ({
             list={[
               { label: t('dataset:dataset.Training Process'), value: 'states' },
               {
-                label: t('dataset:dataset.Training_Errors', { count: errorCount }),
+                label: t('dataset:dataset.Training_Errors', { count: errorCounts }),
                 value: 'errors'
               }
             ]}
           />
-          {tab === 'errors' && errorCount > 0 && (
+          {tab === 'errors' && errorCounts > 0 && (
             <Button colorScheme="primary" size="sm" isLoading={retrying} onClick={handleRetryAll}>
               {t('dataset:retry_all')}
             </Button>
@@ -598,7 +587,6 @@ const TrainingStates = ({
             datasetId={datasetId}
             collectionId={collectionId}
             refreshTrainingDetail={refreshTrainingDetail}
-            onErrorCountChange={setErrorCount}
           />
         )}
       </ModalBody>
