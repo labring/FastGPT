@@ -128,7 +128,7 @@ const InputRender = (props: InputRenderProps) => {
     }
 
     if (inputType === InputTypeEnum.JSONEditor) {
-      return <JSONEditor {...commonProps} />;
+      return <JSONEditor {...commonProps} resize />;
     }
 
     if (inputType === InputTypeEnum.selectLLMModel) {
