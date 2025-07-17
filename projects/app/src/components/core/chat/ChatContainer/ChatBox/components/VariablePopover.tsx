@@ -29,16 +29,18 @@ const VariablePopover = ({
   const hasExternalVariable = externalVariableList.length > 0;
   const hasVariable = variableList.length > 0;
 
-  const { getValues, setValue } = variablesForm;
+  const { getValues, reset } = variablesForm;
 
   useEffect(() => {
+    const values = getValues();
     variables.forEach((item) => {
       const val = getValues(`variables.${item.key}`);
       if (item.defaultValue !== undefined && (val === undefined || val === null || val === '')) {
-        setValue(`variables.${item.key}`, item.defaultValue);
+        values.variables[item.key] = item.defaultValue;
       }
     });
-  }, [variables]);
+    reset(values);
+  }, [getValues, reset, variables]);
 
   return (
     <MyPopover
@@ -52,7 +54,7 @@ const VariablePopover = ({
       }
     >
       {({ onClose }) => (
-        <Box p={4}>
+        <Box p={4} maxH={'60vh'}>
           {hasExternalVariable && (
             <Box textAlign={'left'}>
               <Flex
@@ -83,7 +85,7 @@ const VariablePopover = ({
           )}
           {hasExternalVariable && hasVariable && <MyDivider h={'1px'} />}
           {hasVariable && (
-            <Box textAlign={'left'}>
+            <Box>
               {variableList.map((item) => (
                 <LabelAndFormRender
                   {...item}
@@ -97,11 +99,6 @@ const VariablePopover = ({
               ))}
             </Box>
           )}
-          <Flex w={'full'} justifyContent={'flex-end'}>
-            <Button size={'sm'} onClick={onClose}>
-              {t('common:Confirm')}
-            </Button>
-          </Flex>
         </Box>
       )}
     </MyPopover>

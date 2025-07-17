@@ -11,7 +11,7 @@ export const variableInputTypeToInputType = (inputType: VariableInputEnum) => {
   if (inputType === VariableInputEnum.textarea) return InputTypeEnum.textarea;
   if (inputType === VariableInputEnum.numberInput) return InputTypeEnum.numberInput;
   if (inputType === VariableInputEnum.select) return InputTypeEnum.select;
-  return InputTypeEnum.textarea;
+  return InputTypeEnum.JSONEditor;
 };
 
 // 节点输入类型（通常是一个 reference+一个 form input）
