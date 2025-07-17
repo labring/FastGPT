@@ -88,7 +88,7 @@ export default async function Layout({
               </div>
             </div>
           ),
-          url: 'https://github.com/labring/FastGPT/tree/main/document',
+          url: 'https://github.com/labring/FastGPT',
           text: 'github'
         }
       ]}
