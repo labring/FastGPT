@@ -166,7 +166,7 @@ export async function saveChat({
     if (isUpdateUseTime) {
       await MongoApp.findByIdAndUpdate(appId, {
         updateTime: new Date()
-      });
+      }).catch();
     }
   } catch (error) {
     addLog.error(`update chat history error`, error);
