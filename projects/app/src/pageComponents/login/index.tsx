@@ -32,6 +32,13 @@ const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
 
 const ipDetectURL = 'https://qifu-api.baidubce.com/ip/local/geo/v1/district';
 
+// 抽屉类型枚举
+enum DrawerTypeEnum {
+  NONE = 'none',
+  COOKIES = 'cookies',
+  REDIRECT = 'redirect'
+}
+
 // 登录逻辑Hook
 export const useLoginLogic = (options: {
   onSuccess?: (res: ResLogin) => void;
@@ -42,20 +49,13 @@ export const useLoginLogic = (options: {
   const { onSuccess, chineseRedirectUrl, autoInit = true, enabled = true } = options;
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-  const { setUserInfo } = useUserStore();
+  const { userInfo, setUserInfo } = useUserStore();
   const { setLastChatAppId } = useChatStore();
 
+  // 统一状态管理
+  const [isInitializing, setIsInitializing] = useState(true);
   const [pageType, setPageType] = useState<`${LoginPageTypeEnum}` | null>(null);
-
-  // Cookie相关
-  const {
-    isOpen: isOpenCookiesDrawer,
-    onOpen: onOpenCookiesDrawer,
-    onClose: onCloseCookiesDrawer
-  } = useDisclosure();
-  const cookieVersion = '1';
-  const [localCookieVersion, setLocalCookieVersion] =
-    useLocalStorageState<string>('localCookieVersion');
+  const [currentDrawer, setCurrentDrawer] = useState<DrawerTypeEnum>(DrawerTypeEnum.NONE);
 
   // 社区模态框
   const {
@@ -64,15 +64,16 @@ export const useLoginLogic = (options: {
     onClose: onCommunityClose
   } = useDisclosure();
 
-  // 中国IP重定向
-  const {
-    isOpen: isOpenRedirect,
-    onOpen: onOpenRedirect,
-    onClose: onCloseRedirect
-  } = useDisclosure();
+  // Cookie和重定向相关
+  const cookieVersion = '1';
+  const [localCookieVersion, setLocalCookieVersion] =
+    useLocalStorageState<string>('localCookieVersion');
   const [showRedirect, setShowRedirect] = useLocalStorageState<boolean>('showRedirect', {
     defaultValue: true
   });
+
+  // 如果用户已登录，直接返回
+  const isUserLoggedIn = useMemo(() => userInfo !== null, [userInfo]);
 
   // IP检测
   const checkIpInChina = useCallback(async () => {
@@ -86,12 +87,12 @@ export const useLoginLogic = (options: {
         res.prov !== '中国澳门' &&
         res.prov !== '中国台湾'
       ) {
-        onOpenRedirect();
+        setCurrentDrawer(DrawerTypeEnum.REDIRECT);
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
-  }, [onOpenRedirect]);
+  }, []);
 
   // 登录成功处理
   const loginSuccess = useCallback(
@@ -103,34 +104,45 @@ export const useLoginLogic = (options: {
   );
 
   // 初始化逻辑
-  const initLoginLogic = useCallback(() => {
-    // Cookie版本检查
-    if (localCookieVersion !== cookieVersion) {
-      onOpenCookiesDrawer();
-    }
-
-    // 中国IP检测
-    if (chineseRedirectUrl && showRedirect) {
-      checkIpInChina();
-    }
-
-    // 设置页面类型
-    const bd_vid = getBdVId();
-    if (bd_vid) {
-      setPageType(LoginPageTypeEnum.passwordLogin);
+  const initLoginLogic = useCallback(async () => {
+    if (!enabled || isUserLoggedIn) {
+      setIsInitializing(false);
       return;
     }
 
-    setPageType(
-      feConfigs?.oauth?.wechat ? LoginPageTypeEnum.wechat : LoginPageTypeEnum.passwordLogin
-    );
+    setIsInitializing(true);
 
-    // 重置聊天状态
-    setLastChatAppId('');
+    try {
+      // Cookie版本检查
+      if (localCookieVersion !== cookieVersion) {
+        setCurrentDrawer(DrawerTypeEnum.COOKIES);
+      }
+
+      // 中国IP检测
+      if (chineseRedirectUrl && showRedirect) {
+        await checkIpInChina();
+      }
+
+      // 设置页面类型
+      const bd_vid = getBdVId();
+      if (bd_vid) {
+        setPageType(LoginPageTypeEnum.passwordLogin);
+      } else {
+        setPageType(
+          feConfigs?.oauth?.wechat ? LoginPageTypeEnum.wechat : LoginPageTypeEnum.passwordLogin
+        );
+      }
+
+      // 重置聊天状态
+      setLastChatAppId('');
+    } finally {
+      setIsInitializing(false);
+    }
   }, [
+    enabled,
+    isUserLoggedIn,
     localCookieVersion,
     cookieVersion,
-    onOpenCookiesDrawer,
     chineseRedirectUrl,
     showRedirect,
     checkIpInChina,
@@ -138,16 +150,40 @@ export const useLoginLogic = (options: {
     setLastChatAppId
   ]);
 
+  // 抽屉关闭处理
+  const closeDrawer = useCallback(() => {
+    setCurrentDrawer(DrawerTypeEnum.NONE);
+  }, []);
+
+  // Cookie同意处理
+  const agreeCookies = useCallback(() => {
+    setLocalCookieVersion(cookieVersion);
+    closeDrawer();
+  }, [cookieVersion, setLocalCookieVersion, closeDrawer]);
+
+  // 重定向处理
+  const handleRedirect = useCallback(() => {
+    if (chineseRedirectUrl) {
+      window.open(chineseRedirectUrl, '_self');
+    }
+  }, [chineseRedirectUrl]);
+
+  // 禁用重定向提醒
+  const disableRedirect = useCallback(() => {
+    setShowRedirect(false);
+    closeDrawer();
+  }, [setShowRedirect, closeDrawer]);
+
   // 自动初始化
   useEffect(() => {
-    if (autoInit && enabled) {
+    if (autoInit) {
       initLoginLogic();
     }
-  }, [autoInit, enabled, initLoginLogic]);
+  }, [autoInit, initLoginLogic]);
 
   // 动态组件
   const DynamicComponent = useMemo(() => {
-    if (!pageType) return null;
+    if (isUserLoggedIn || !pageType) return null;
 
     const TypeMap = {
       [LoginPageTypeEnum.passwordLogin]: LoginForm,
@@ -160,10 +196,15 @@ export const useLoginLogic = (options: {
     if (!Component) return null;
 
     return <Component setPageType={setPageType} loginSuccess={loginSuccess} />;
-  }, [pageType, loginSuccess]);
+  }, [isUserLoggedIn, pageType, loginSuccess]);
+
+  // 加载状态判断
+  const isLoading = isInitializing || (!isUserLoggedIn && !pageType);
 
   return {
     // State
+    isUserLoggedIn,
+    isLoadin
     pageType,
     setPageType,
     feConfigs,
@@ -181,21 +222,15 @@ export const useLoginLogic = (options: {
     onCommunityOpen,
     onCommunityClose,
 
-    // Cookies Drawer
-    isOpenCookiesDrawer,
-    onOpenCookiesDrawer,
-    onCloseCookiesDrawer,
-    cookieVersion,
-    localCookieVersion,
-    setLocalCookieVersion,
+    // Drawer Management
+    currentDrawer,
+    closeDrawer,
+    agreeCookies,
+    handleRedirect,
+    disableRedirect,
 
-    // Redirect Drawer
-    isOpenRedirect,
-    onOpenRedirect,
-    onCloseRedirect,
-    showRedirect,
-    setShowRedirect,
-    chineseRedirectUrl
+    isOpenCookiesDrawer: currentDrawer === DrawerTypeEnum.COOKIES,
+    isOpenRedirect: currentDrawer === DrawerTypeEnum.REDIRECT
   };
 };
 
@@ -212,6 +247,7 @@ export const RedirectDrawer = ({
   onRedirect: () => void;
 }) => {
   const { t } = useTranslation();
+  
   return (
     <Drawer placement="bottom" size={'xs'} isOpen={isOpen} onClose={onClose}>
       <DrawerOverlay backgroundColor={'rgba(0,0,0,0.2)'} />
@@ -305,21 +341,17 @@ export const LoginContainer = ({
   });
 
   const {
-    pageType,
+    isLoading,
     feConfigs,
     DynamicComponent,
     isCommunityOpen,
     onCommunityOpen,
     onCommunityClose,
-    isOpenCookiesDrawer,
-    onCloseCookiesDrawer,
-    cookieVersion,
-    setLocalCookieVersion,
-    isOpenRedirect,
-    onCloseRedirect,
-    showRedirect,
-    setShowRedirect,
-    chineseRedirectUrl: redirectUrl
+    currentDrawer,
+    closeDrawer,
+    agreeCookies,
+    handleRedirect,
+    disableRedirect
   } = loginLogic;
 
   return (
@@ -333,17 +365,17 @@ export const LoginContainer = ({
 
       {/* 主内容区域 */}
       <Box w={['100%', '380px']} flex={'1 0 0'}>
-        {pageType && DynamicComponent ? (
-          DynamicComponent
-        ) : (
+        {isLoading ? (
           <Center w={'full'} h={'full'} position={'relative'}>
             <Loading fixed={false} />
           </Center>
+        ) : (
+          DynamicComponent
         )}
       </Box>
 
       {/* 无法登录帮助链接 */}
-      {feConfigs?.concatMd && (
+      {feConfigs?.concatMd && !isLoading && (
         <Box
           mt={8}
           color={'primary.700'}
@@ -363,25 +395,18 @@ export const LoginContainer = ({
       {/* 社区模态框 */}
       {isCommunityOpen && <CommunityModal onClose={onCommunityClose} />}
 
-      {/* 中国IP重定向抽屉 */}
-      {showRedirect && redirectUrl && (
+      {/* 统一的抽屉管理 */}
+      {currentDrawer === DrawerTypeEnum.REDIRECT && (
         <RedirectDrawer
-          isOpen={isOpenRedirect}
-          onClose={onCloseRedirect}
-          onRedirect={() => window.open(redirectUrl, '_self')}
-          disableDrawer={() => setShowRedirect(false)}
+          isOpen={true}
+          onClose={closeDrawer}
+          onRedirect={handleRedirect}
+          disableDrawer={disableRedirect}
         />
       )}
 
-      {/* Cookie同意抽屉 */}
-      {isOpenCookiesDrawer && (
-        <CookiesDrawer
-          onAgree={() => {
-            setLocalCookieVersion(cookieVersion);
-            onCloseCookiesDrawer();
-          }}
-          onClose={onCloseCookiesDrawer}
-        />
+      {currentDrawer === DrawerTypeEnum.COOKIES && (
+        <CookiesDrawer onAgree={agreeCookies} onClose={closeDrawer} />
       )}
     </>
   );
