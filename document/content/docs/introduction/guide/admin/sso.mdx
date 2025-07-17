@@ -8,7 +8,6 @@ weight: 707
 ---
 
 import { Alert } from '@/components/docs/Alert';
-import { Tabs, Tab } from '@/components/docs/Tabs';
 
 如果你不需要用到 SSO/成员同步功能，或者是只需要用 Github、google、microsoft、公众号的快速登录，可以跳过本章节。本章适合需要接入自己的成员系统或主流 办公IM 的用户。
 
@@ -431,8 +430,8 @@ FastGPT 提供如下标准接口支持：
 
 返回一个重定向登录地址，fastgpt 会自动重定向到该地址。redirect_uri  会自动拼接到该地址的 query中。
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','响应示例']}>
+  <Tab value="请求示例" >
 
 ```bash
 curl -X GET "https://redict.example/login/oauth/getAuthURL?redirect_uri=xxx&state=xxxx" \
@@ -441,7 +440,7 @@ curl -X GET "https://redict.example/login/oauth/getAuthURL?redirect_uri=xxx&stat
 ```
 
   </Tab>
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 成功：
 
@@ -471,8 +470,8 @@ curl -X GET "https://redict.example/login/oauth/getAuthURL?redirect_uri=xxx&stat
 
 该接口接受一个 code 参数作为鉴权，消费 code 返回用户信息。
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','响应示例']}>
+  <Tab value="请求示例" >
 
 ```bash
 curl -X GET "https://oauth.example/login/oauth/getUserInfo?code=xxxxxx" \
@@ -482,7 +481,7 @@ curl -X GET "https://oauth.example/login/oauth/getUserInfo?code=xxxxxx" \
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 成功：
 ```json
@@ -512,8 +511,8 @@ curl -X GET "https://oauth.example/login/oauth/getUserInfo?code=xxxxxx" \
 
 ### 获取组织
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','响应示例']}>
+  <Tab value="请求示例" >
 
 ```bash
 curl -X GET "https://example.com/org/list" \
@@ -523,7 +522,7 @@ curl -X GET "https://example.com/org/list" \
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 ⚠️注意：只能存在一个根部门。如果你的系统中存在多个根部门，需要先进行处理，加一个虚拟的根部门。返回值类型：
 
@@ -565,8 +564,8 @@ type OrgListResponseType = {
 ### 获取成员
 
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','响应示例']}>
+  <Tab value="请求示例" >
 
 ```bash
 curl -X GET "https://example.com/user/list" \
@@ -576,7 +575,7 @@ curl -X GET "https://example.com/user/list" \
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 返回值类型：
 

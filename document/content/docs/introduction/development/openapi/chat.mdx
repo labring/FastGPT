@@ -8,7 +8,6 @@ weight: 852
 ---
 
 import { Alert } from '@/components/docs/Alert';
-import { Tabs, Tab } from '@/components/docs/Tabs';
 
 # 如何获取 AppId
 
@@ -37,8 +36,8 @@ import { Tabs, Tab } from '@/components/docs/Tabs';
 
 ### 请求
 
-<Tabs>
-  <Tab title="基础请求示例">
+<Tabs items={['基础请求示例','图片/文件请求示例','参数说明']}>
+  <Tab value="基础请求示例">
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
@@ -63,7 +62,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 ```
 
   </Tab>
-  <Tab title="图片/文件请求示例">
+  <Tab value="图片/文件请求示例">
 
 
 * 仅`messages`有部分区别，其他参数一致。
@@ -102,7 +101,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 ```
 
   </Tab>
-  <Tab title="参数说明">
+  <Tab>
 
 
 <Alert  context="info">
@@ -123,8 +122,8 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 
 v1,v2 接口请求参数一致，仅请求地址不一样。
 
-<Tabs>
-  <Tab title="基础请求示例">
+<Tabs items={['基础请求示例','图片/文件请求示例,'参数说明']}>
+  <Tab value="基础请求示例">
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/v2/chat/completions' \
@@ -149,7 +148,7 @@ curl --location --request POST 'http://localhost:3000/api/v2/chat/completions' \
 ```
 
   </Tab>
-  <Tab title="图片/文件请求示例">
+  <Tab value="图片/文件请求示例">
 
 
 * 仅`messages`有部分区别，其他参数一致。
@@ -188,7 +187,7 @@ curl --location --request POST 'http://localhost:3000/api/v2/chat/completions' \
 ```
 
   </Tab>
-  <Tab title="参数说明">
+  <Tab>
 
 <Alert  context="info">
 - headers.Authorization: Bearer [apikey]
@@ -214,8 +213,8 @@ curl --location --request POST 'http://localhost:3000/api/v2/chat/completions' \
 
 v2 接口比起 v1，主要变变化在于：会在每个节点运行结束后及时返回 response，而不是等工作流结束后再统一返回。
 
-<Tabs>
-  <Tab title="detail=false,stream=false 响应">
+<Tabs items={['detail=false,stream=false 响应','detail=false,stream=true 响应','detail=true,stream=false 响应','detail=true,stream=true 响应','event值']}>
+  <Tab value="detail=false,stream=false 响应">
 
 ```json
 {
@@ -240,7 +239,7 @@ v2 接口比起 v1，主要变变化在于：会在每个节点运行结束后�
 ```
 
   </Tab>
-  <Tab title="detail=false,stream=true 响应">
+  <Tab value="detail=false,stream=true 响应">
 
 
 ```bash
@@ -258,7 +257,7 @@ data: [DONE]
 ```
 
   </Tab>
-  <Tab title="detail=true,stream=false 响应">
+  <Tab value="detail=true,stream=false 响应">
 
 ```json
 {
@@ -320,7 +319,7 @@ data: [DONE]
 ```
 
   </Tab>
-  <Tab title="detail=true,stream=true 响应">
+  <Tab value="detail=true,stream=true 响应">
 
 
 ```bash
@@ -353,7 +352,7 @@ data: [DONE]
 ```
 
   </Tab>
-  <Tab title="event值">
+  <Tab valye="event值">
 
 event取值：
 
@@ -372,8 +371,8 @@ event取值：
 
 #### v1 */}
 
-<Tabs>
-  <Tab title="detail=false,stream=false 响应">
+<Tabs items={['detail=false,stream=false 响应','detail=false,stream=true 响应','detail=true,stream=false 响应','detail=true,stream=true 响应','event值']}>
+  <Tab value="detail=false,stream=false 响应">
 
 ```json
 {
@@ -398,7 +397,7 @@ event取值：
 ```
 
   </Tab>
-  <Tab title="detail=false,stream=true 响应">
+  <Tab value="detail=false,stream=true 响应">
 
 
 ```bash
@@ -411,7 +410,7 @@ data: {"id":"","object":"","created":0,"choices":[{"delta":{"content":"影"},"in
 data: {"id":"","object":"","created":0,"choices":[{"delta":{"content":"《"},"index":0,"finish_reason":null}]}
 ```
   </Tab>
-  <Tab title="detail=true,stream=false 响应">
+  <Tab value="detail=true,stream=false 响应">
 
 ```json
 {
@@ -500,7 +499,7 @@ data: {"id":"","object":"","created":0,"choices":[{"delta":{"content":"《"},"in
 ```
 
   </Tab>
-  <Tab title="detail=true,stream=true 响应">
+  <Tab value="detail=true,stream=true 响应">
 
 ```bash
 event: flowNodeStatus
@@ -535,7 +534,7 @@ data: [{"moduleName":"知识库搜索","moduleType":"datasetSearchNode","running
 ```
 
   </Tab>
-  <Tab title="event值">
+  <Tab value="event值">
 
 event取值：
 
@@ -559,8 +558,8 @@ event取值：
 
 当你调用一个带交互节点的工作流时，如果工作流遇到了交互节点，那么会直接返回，你可以得到下面的信息：
 
-<Tabs>
-  <Tab title="用户选择">
+<Tabs items={['用户选择','表单输入']}>
+  <Tab value="用户选择">
 
 ```json
 {
@@ -583,7 +582,7 @@ event取值：
 }
 ```
   </Tab>
-  <Tab title="表单输入">
+  <Tab value="表单输入">
 
 ```json
 {
@@ -637,8 +636,8 @@ event取值：
 
 紧接着上一节，当你接收到交互节点信息后，可以根据这些数据进行 UI 渲染，引导用户输入或选择相关信息。然后需要再次发起对话，来继续工作流。调用的接口与仍是该接口，你需要按以下格式来发起请求：
 
-<Tabs>
-  <Tab title="用户选择">
+<Tabs items={['用户选择','表单输入']}>
+  <Tab value="用户选择">
 
 对于用户选择，你只需要直接传递一个选择的结果给 messages 即可。
 
@@ -660,7 +659,7 @@ curl --location --request POST 'https://api.fastgpt.in/api/v1/chat/completions' 
 ```
 
   </Tab>
-  <Tab title="表单输入">
+  <Tab value="表单输入">
 
 表单输入稍微麻烦一点，需要将输入的内容，以对象形式并序列化成字符串，作为`messages`的值。对象的 key 对应表单的 key，value 为用户输入的值。务必确保`chatId`是一致的。
 
@@ -713,8 +712,8 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 
 ### 响应示例
 
-<Tabs>
-  <Tab title="detail=true,stream=false 响应">
+<Tabs items={['detail=true,stream=false 响应','detail=true,stream=true 响应','输出获取']}>
+  <Tab value="detail=true,stream=false 响应">
 
 * 插件的输出可以通过查找`responseData`中, `moduleType=pluginOutput`的元素，其`pluginOutput`是插件的输出。
 * 流输出，仍可以通过`choices`进行获取。
@@ -779,7 +778,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 ```
 
   </Tab>
-  <Tab title="detail=true,stream=true 响应">
+  <Tab value="detail=true,stream=true 响应">
 
 * 插件的输出可以通过获取`event=flowResponses`中的字符串，并将其反序列化后得到一个数组。同样的，查找 `moduleType=pluginOutput`的元素，其`pluginOutput`是插件的输出。
 * 流输出，仍和对话接口一样获取。
@@ -844,7 +843,7 @@ data: [{"nodeId":"fdDgXQ6SYn8v","moduleName":"AI 对话","moduleType":"chatNode"
 ```
 
   </Tab>
-  <Tab title="输出获取">
+  <Tab value="输出获取">
 
 event取值：
 
@@ -877,8 +876,8 @@ event取值：
 
 ### 获取某个应用历史记录
 
-<Tabs>
-  <Tab title="请求示例">
+<Tabs items={['请求示例','参数说明','响应示例']}>
+ <Tab value="请求示例">
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/chat/getHistories' \
@@ -893,7 +892,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getHistories
 ```
 
   </Tab>
-  <Tab title="参数说明">
+  <Tab value="参数说明">
 
 <Alert icon=" " context="success">
 - appId - 应用 Id
@@ -904,7 +903,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getHistories
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 ```json
@@ -941,8 +940,8 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getHistories
 
 ### 修改某个对话的标题
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例">
 
 
 ```bash
@@ -958,7 +957,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/updateHistor
 
   </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -969,7 +968,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/updateHistor
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 ```json
@@ -985,8 +984,8 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/updateHistor
 </Tabs>
 
 ### 置顶 / 取消置顶
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例">
 
 
 ```bash
@@ -1002,7 +1001,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/updateHistor
 
   </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -1013,7 +1012,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/updateHistor
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 ```json
@@ -1030,8 +1029,8 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/updateHistor
 
 ### 删除某个历史记录
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例">
 
 
 ```bash
@@ -1041,7 +1040,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/delHistory
 
   </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -1051,7 +1050,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/delHistory
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 ```json
@@ -1070,8 +1069,8 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/delHistory
 
 仅会情况通过 API Key 创建的对话历史记录，不会清空在线使用、分享链接等其他来源的对话历史记录。
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+    <Tab value="请求示例">
 
 
 ```bash
@@ -1081,7 +1080,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/clearHisto
 
   </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -1090,7 +1089,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/clearHisto
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 ```json
@@ -1111,8 +1110,8 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/clearHisto
 
 ### 获取单个对话初始化信息
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例">
 
 
 ```bash
@@ -1120,7 +1119,7 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/init?appId=[a
 --header 'Authorization: Bearer [apikey]'
 ```  </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -1130,7 +1129,7 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/init?appId=[a
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 ```json
 {
@@ -1193,8 +1192,8 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/init?appId=[a
 
 ### 获取对话记录列表
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例">
 
 
 ```bash
@@ -1212,7 +1211,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getPaginatio
 
   </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -1225,7 +1224,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getPaginatio
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 ```json
@@ -1284,8 +1283,8 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getPaginatio
 
 ### 获取单个对话记录运行详情
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例">
 
 
 ```bash
@@ -1295,7 +1294,7 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/getResData?ap
 
   </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -1306,7 +1305,7 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/getResData?ap
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 ```json
@@ -1364,7 +1363,7 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/getResData?ap
 ### 删除对话记录
 
 <Tabs>
-  <Tab title="请求示例" >
+  <Tab value="请求示例" >
 
 
 ```bash
@@ -1374,7 +1373,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/item/delet
 
   </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -1385,7 +1384,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/item/delet
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 ```json
@@ -1402,8 +1401,8 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/item/delet
 
 ### 点赞 / 取消点赞
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+    <Tab value="请求示例">
 
 
 ```bash
@@ -1420,7 +1419,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 
   </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -1432,7 +1431,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 ```json
@@ -1449,8 +1448,8 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 
 ### 点踩 / 取消点踩
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+    <Tab value="请求示例">
 
 
 ```bash
@@ -1467,7 +1466,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 
   </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -1479,7 +1478,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 ```json
 {
@@ -1498,8 +1497,8 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 
 新版猜你想问，必须包含 appId 和 chatId 的参数才可以进行使用。会自动根据 chatId 去拉取最近 6 轮对话记录作为上下文来引导回答。
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+    <Tab value="请求示例">
 
 
 ```bash
@@ -1519,7 +1518,7 @@ curl --location --request POST 'http://localhost:3000/api/core/ai/agent/v2/creat
 
   </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -1546,7 +1545,7 @@ type CreateQuestionGuideParams = OutLinkChatAuthProps & {
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 ```json
@@ -1568,8 +1567,8 @@ type CreateQuestionGuideParams = OutLinkChatAuthProps & {
 
 **4.8.16 前旧版接口：**
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+    <Tab value="请求示例">
 
 
 ```bash
@@ -1592,7 +1591,7 @@ curl --location --request POST 'http://localhost:3000/api/core/ai/agent/createQu
 
   </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -1601,7 +1600,7 @@ curl --location --request POST 'http://localhost:3000/api/core/ai/agent/createQu
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 ```json

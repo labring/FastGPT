@@ -8,7 +8,6 @@ weight: 707
 ---
 
 import { Alert } from '@/components/docs/Alert';
-import { Tabs, Tab } from '@/components/docs/Tabs';
 
 ## 前置知识
 
@@ -71,8 +70,8 @@ Zilliz Cloud 由 Milvus 原厂打造，是全托管的 SaaS 向量数据库服�
 
 ### 2. 准备 Docker 环境
 
-<Tabs>
-  <Tab title="Linux">
+<Tabs items={['Linux','MacOS','Windows']}>
+  <Tab value="Linux">
 ```bash
 # 安装 Docker
 curl -fsSL https://get.docker.com | bash -s docker --mirror Aliyun
@@ -86,7 +85,7 @@ docker-compose -v
 # 如失效，自行百度~
 ```
   </Tab>
-  <Tab title="MacOS">
+  <Tab value="MacOS">
 推荐直接使用 [Orbstack](https://orbstack.dev/)。可直接通过 Homebrew 来安装：
 
 ```bash
@@ -95,7 +94,7 @@ brew install orbstack
 
 或者直接[下载安装包](https://orbstack.dev/download)进行安装。
   </Tab>
-  <Tab title="Windows">
+  <Tab value="Windows">
 我们建议将源代码和其他数据绑定到 Linux 容器中时，将其存储在 Linux 文件系统中，而不是 Windows 文件系统中。
 
 可以选择直接[使用 WSL 2 后端在 Windows 中安装 Docker Desktop](https://docs.docker.com/desktop/wsl/)。
@@ -141,17 +140,17 @@ curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/mai
 
 找到 yml 文件中，fastgpt 容器的环境变量进行下面操作：
 
-<Tabs>
-  <Tab title="PgVector版本">
+<Tabs items={['PgVector版本','Oceanbase版本','Milvus版本','Zilliz版本']}>
+  <Tab value="PgVector版本">
 无需操作
   </Tab>
-  <Tab title="Oceanbase版本">
+  <Tab value="Oceanbase版本">
 无需操作
   </Tab>
-  <Tab title="Milvus版本">
+  <Tab value="Milvus版本">
 无需操作
   </Tab>
-  <Tab title="Zilliz版本">
+  <Tab value="Zilliz版本">
 打开 [Zilliz Cloud](https://zilliz.com.cn/), 创建实例并获取相关秘钥。
 
 ![zilliz_key](/imgs/zilliz_key.png)

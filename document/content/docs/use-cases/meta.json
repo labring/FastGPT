@@ -1,7 +1,7 @@
 {
-    "title": "使用案例",
-    "description": "有关 FastGPT 其他实践案例的更多信息",
-    "root": true,
-    "pages": ["app-cases","external-integration"],
-    "order": 2
+  "title": "使用案例",
+  "description": "有关 FastGPT 其他实践案例的更多信息",
+  "root": true,
+  "pages": ["index","external-integration","app-cases"],
+  "order": 2
 }

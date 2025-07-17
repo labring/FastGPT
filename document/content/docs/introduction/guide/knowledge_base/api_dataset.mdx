@@ -8,7 +8,6 @@ weight: 405
 ---
 
 import { Alert } from '@/components/docs/Alert';
-import { Tabs, Tab } from '@/components/docs/Tabs';
 
 | | |
 | --- | --- |
@@ -57,8 +56,8 @@ type FileListItem = {
 
 ### 1. 获取文件树
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','响应示例']}>
+  <Tab value="请求示例" >
 
 
 <Alert icon=" " context="success">
@@ -79,7 +78,7 @@ curl --location --request POST '{{baseURL}}/v1/file/list' \
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 ```json
@@ -106,8 +105,8 @@ curl --location --request POST '{{baseURL}}/v1/file/list' \
 
 ### 2. 获取单个文件内容（文本内容或访问链接）
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','响应示例']}>
+  <Tab value="请求示例" >
 
 
 ```bash
@@ -118,7 +117,7 @@ curl --location --request GET '{{baseURL}}/v1/file/content?id=xx' \
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 ```json
@@ -151,8 +150,8 @@ curl --location --request GET '{{baseURL}}/v1/file/content?id=xx' \
 
 ### 3. 获取文件阅读链接（用于查看原文）
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','响应示例']}>
+  <Tab value="请求示例" >
 
 
 id 为文件的 id。
@@ -165,7 +164,7 @@ curl --location --request GET '{{baseURL}}/v1/file/read?id=xx' \
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 ```json

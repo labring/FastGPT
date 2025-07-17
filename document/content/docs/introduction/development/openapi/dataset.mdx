@@ -8,7 +8,6 @@ weight: 853
 ---
 
 import { Alert } from '@/components/docs/Alert';
-import { Tabs, Tab } from '@/components/docs/Tabs';
 
 | 如何获取知识库ID（datasetId） | 如何获取文件集合ID（collection_id） |
 | --------------------- | --------------------- |
@@ -16,8 +15,8 @@ import { Tabs, Tab } from '@/components/docs/Tabs';
 
 ## 创建训练订单
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','响应示例']}>
+  <Tab value="请求示例" >
 
 
 **新例子**
@@ -34,7 +33,7 @@ curl --location --request POST 'http://localhost:3000/api/support/wallet/usage/c
 
 
   </Tab>
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 data 为 billId，可用于添加知识库数据时进行账单聚合。
@@ -56,8 +55,8 @@ data 为 billId，可用于添加知识库数据时进行账单聚合。
 
 ### 创建一个知识库
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例" >
 
 
 ```bash
@@ -77,7 +76,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/create' \
 
 
   </Tab>
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -92,7 +91,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/create' \
 
 
   </Tab>
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 ```json
@@ -110,8 +109,8 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/create' \
 
 ### 获取知识库列表
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例" >
 
 
 ```bash
@@ -125,7 +124,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/list?pare
 
 
   </Tab>
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -134,7 +133,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/list?pare
 
 
   </Tab>
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 
@@ -173,8 +172,8 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/list?pare
 
 ### 获取知识库详情
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例" >
 
 
 ```bash
@@ -184,7 +183,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/detail?id=
 
 
   </Tab>
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -193,7 +192,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/detail?id=
 
 
   </Tab>
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 
@@ -241,8 +240,8 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/detail?id=
 
 ### 删除一个知识库
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例" >
 
 
 ```bash
@@ -252,7 +251,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?
 
 
   </Tab>
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -261,7 +260,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?
 
 
   </Tab>
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 
@@ -308,8 +307,8 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?
 
 ### 创建一个空的集合
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例" >
 
 
 ```bash
@@ -329,7 +328,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
 
   </Tab>
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -344,7 +343,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
 
   </Tab>
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 data 为集合的 ID。
@@ -367,8 +366,8 @@ data 为集合的 ID。
 
 传入一段文字，创建一个集合，会根据传入的文字进行分割。
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例" >
 
 
 ```bash
@@ -391,7 +390,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
 
   </Tab>
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -404,7 +403,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
 
   </Tab>
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 data 为集合的 ID。
@@ -434,8 +433,8 @@ data 为集合的 ID。
 
 传入一个网络链接，创建一个集合，会先去对应网页抓取内容，再抓取的文字进行分割。
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例" >
 
 
 ```bash
@@ -459,7 +458,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
 
   </Tab>
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -471,7 +470,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
 
   </Tab>
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 data 为集合的 ID。
@@ -501,8 +500,8 @@ data 为集合的 ID。
 
 传入一个文件，创建一个集合，会读取文件内容进行分割。目前支持：pdf, docx, md, txt, html, csv。
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例" >
 
 
 使用代码上传时，请注意中文 filename 需要进行 encode 处理，否则容易乱码。
@@ -516,7 +515,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
 
   </Tab>
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 需要使用 POST form-data 的格式上传。包含 file 和 data 两个字段。
@@ -528,7 +527,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
 
   </Tab>
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 data 为集合的 ID。
@@ -558,8 +557,8 @@ data 为集合的 ID。
 
 传入一个文件的 id，创建一个集合，会读取文件内容进行分割。目前支持：pdf, docx, md, txt, html, csv。
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例" >
 
 
 使用代码上传时，请注意中文 filename 需要进行 encode 处理，否则容易乱码。
@@ -584,7 +583,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
 
   </Tab>
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 需要使用 POST form-data 的格式上传。包含 file 和 data 两个字段。
@@ -603,7 +602,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 data 为集合的 ID。
@@ -631,8 +630,8 @@ data 为集合的 ID。
 
 ### 创建一个外部文件库集合（商业版）
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例" >
 
 
 ```bash
@@ -659,7 +658,7 @@ curl --location --request POST 'http://localhost:3000/api/proApi/core/dataset/co
 
   </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 | 参数 | 说明 | 必填 |
@@ -673,7 +672,7 @@ curl --location --request POST 'http://localhost:3000/api/proApi/core/dataset/co
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 data 为集合的 ID。
@@ -701,8 +700,8 @@ data 为集合的 ID。
 
 ### 获取集合列表
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例" >
 
 
 **4.8.19+**
@@ -736,7 +735,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
   </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -750,7 +749,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 
@@ -822,8 +821,8 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
 ### 获取集合详情
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例" >
 
 
 ```bash
@@ -834,7 +833,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/collection
 
   </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -844,7 +843,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/collection
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 
@@ -895,8 +894,8 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/collection
 
 ### 修改集合信息
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例" >
 
 
 **通过集合 ID 修改集合信息**
@@ -935,7 +934,7 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/collection
 
   </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -950,7 +949,7 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/collection
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 
@@ -969,8 +968,8 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/collection
 
 ### 删除一个集合
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例" >
 
 
 ```bash
@@ -981,7 +980,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/collect
 
   </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -991,7 +990,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/collect
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 
@@ -1043,8 +1042,8 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/collect
 
 注意，每次最多推送 200 组数据。
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例" >
 
 
 ```bash
@@ -1080,7 +1079,7 @@ curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/data/pus
 
   </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -1096,7 +1095,7 @@ curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/data/pus
 
   </Tab>
 
-  <Tab title="响应例子" >
+  <Tab value="响应例子" >
 
 
 ```json
@@ -1115,7 +1114,7 @@ curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/data/pus
 
   </Tab>
 
-  <Tab title="QA Prompt 模板" >
+  <Tab value="QA Prompt 模板" >
 
 
 [theme] 里的内容可以换成数据的主题。默认为：它们可能包含多个主题内容
@@ -1144,8 +1143,8 @@ A2:
 
 ### 获取集合的数据列表
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例" >
 
 
 **4.8.11+**
@@ -1179,7 +1178,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/list
 
   </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -1194,7 +1193,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/list
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 
@@ -1232,8 +1231,8 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/list
 
 ### 获取单条数据详情
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例" >
 
 
 ```bash
@@ -1244,7 +1243,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/data/detai
 
   </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -1254,7 +1253,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/data/detai
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 
@@ -1292,8 +1291,8 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/data/detai
 
 ### 修改单条数据
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例" >
 
 
 ```bash
@@ -1326,7 +1325,7 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/data/updat
 
   </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -1339,7 +1338,7 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/data/updat
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 
@@ -1358,8 +1357,8 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/data/updat
 
 ### 删除单条数据
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例" >
 
 
 ```bash
@@ -1370,7 +1369,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/data/de
 
   </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -1380,7 +1379,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/data/de
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 
@@ -1399,8 +1398,8 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/data/de
 
 ## 搜索测试
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','参数说明','响应示例']}>
+  <Tab value="请求示例" >
 
 
 ```bash
@@ -1424,7 +1423,7 @@ curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/searchTe
 
   </Tab>
 
-  <Tab title="参数说明" >
+  <Tab value="参数说明" >
 
 
 <Alert icon=" " context="success">
@@ -1442,7 +1441,7 @@ curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/searchTe
 
   </Tab>
 
-  <Tab title="响应示例" >
+  <Tab value="响应示例" >
 
 
 返回 top k 结果， limit 为最大 Tokens 数量，最多 20000 tokens。
