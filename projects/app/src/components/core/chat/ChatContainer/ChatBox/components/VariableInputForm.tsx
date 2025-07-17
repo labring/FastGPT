@@ -37,16 +37,21 @@ const VariableInput = ({
     [allVariableList, showExternalVariables]
   );
 
-  const { getValues, setValue } = variablesForm;
+  const { getValues, setValue, reset } = variablesForm;
 
+  // Init variables and add default values
   useEffect(() => {
+    const values = getValues();
+
     allVariableList.forEach((item) => {
       const val = getValues(`variables.${item.key}`);
       if (item.defaultValue !== undefined && (val === undefined || val === null || val === '')) {
-        setValue(`variables.${item.key}`, item.defaultValue);
+        values.variables[item.key] = item.defaultValue;
       }
     });
-  }, [allVariableList, getValues, setValue, variableList]);
+
+    reset(values);
+  }, [allVariableList, getValues, reset, setValue, variableList]);
 
   return (
     <Box py={3}>
@@ -90,6 +95,7 @@ const VariableInput = ({
                 leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
                 size={'sm'}
                 maxW={'100px'}
+                mt={4}
                 onClick={variablesForm.handleSubmit(() => {
                   chatForm.setValue('chatStarted', true);
                 })}
@@ -123,18 +129,17 @@ const VariableInput = ({
               />
             ))}
             {!chatStarted && (
-              <Box>
-                <Button
-                  leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
-                  size={'sm'}
-                  maxW={'100px'}
-                  onClick={variablesForm.handleSubmit(() => {
-                    chatForm.setValue('chatStarted', true);
-                  })}
-                >
-                  {t('chat:start_chat')}
-                </Button>
-              </Box>
+              <Button
+                leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
+                size={'sm'}
+                maxW={'100px'}
+                mt={4}
+                onClick={variablesForm.handleSubmit(() => {
+                  chatForm.setValue('chatStarted', true);
+                })}
+              >
+                {t('chat:start_chat')}
+              </Button>
             )}
           </Card>
         </Box>
