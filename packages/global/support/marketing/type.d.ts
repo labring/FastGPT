@@ -10,6 +10,7 @@ export type TrackRegisterParams = {
   msclkid?: string;
   fastgpt_sem?: {
     keyword?: string;
+    search?: string;
   } & ShortUrlParams;
   sourceDomain?: string;
 };
