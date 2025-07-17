@@ -44,7 +44,6 @@ export type evaluationType = Pick<
   totalCount: number;
 };
 
-// 前端展示用的评估项类型，继承基础类型并添加前端特有字段
 export type listEvalItemsItem = EvalItemSchemaType & {
   evalItemId: string;
 };
