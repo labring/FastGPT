@@ -240,14 +240,16 @@ export const createEvaluationUsage = async ({
   teamId,
   tmbId,
   appName,
+  model,
   session
 }: {
   teamId: string;
   tmbId: string;
   appName: string;
+  model: string;
   session?: ClientSession;
 }) => {
-  const [{ _id: billId }] = await MongoUsage.create(
+  const [{ _id: usageId }] = await MongoUsage.create(
     [
       {
         teamId,
@@ -255,51 +257,26 @@ export const createEvaluationUsage = async ({
         appName,
         source: UsageSourceEnum.evaluation,
         totalPoints: 0,
-        list: []
+        list: [
+          {
+            moduleName: i18nT('account_usage:generate_answer'),
+            amount: 0,
+            inputTokens: 0,
+            outputTokens: 0,
+            model: '-'
+          },
+          {
+            moduleName: i18nT('account_usage:answer_accuracy'),
+            amount: 0,
+            inputTokens: 0,
+            outputTokens: 0,
+            model
+          }
+        ]
       }
     ],
     { session, ordered: true }
   );
 
-  return { billId: String(billId) };
-};
-
-export const pushEvaluationUsage = async ({
-  teamId,
-  tmbId,
-  model,
-  inputTokens,
-  outputTokens,
-  totalPoints,
-  billId,
-  moduleName
-}: {
-  teamId: string;
-  tmbId: string;
-  model: string;
-  inputTokens?: number;
-  outputTokens?: number;
-  totalPoints?: number;
-  billId: string;
-  moduleName: string;
-}) => {
-  const { totalPoints: computedPoints } = formatModelChars2Points({
-    model,
-    modelType: ModelTypeEnum.llm,
-    inputTokens,
-    outputTokens
-  });
-
-  concatUsage({
-    billId,
-    teamId,
-    tmbId,
-    totalPoints: totalPoints || computedPoints,
-    inputTokens,
-    outputTokens,
-    moduleName,
-    model
-  });
-
-  return { totalPoints: totalPoints || computedPoints };
+  return { usageId: String(usageId) };
 };

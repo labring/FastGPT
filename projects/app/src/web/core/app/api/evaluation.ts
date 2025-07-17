@@ -2,7 +2,7 @@ import { DELETE, POST } from '@/web/common/api/request';
 import type {
   listEvalItemsBody,
   listEvaluationsBody,
-  rerunEvalItemBody,
+  retryEvalItemBody,
   updateEvalItemBody
 } from '@fastgpt/global/core/app/evaluation/api';
 import type { evaluationType, listEvalItemsItem } from '@fastgpt/global/core/app/evaluation/type';
@@ -51,8 +51,8 @@ export const getEvalItemsList = (data: listEvalItemsBody) =>
 export const deleteEvalItem = (data: { evalItemId: string }) =>
   DELETE('/proApi/core/app/evaluation/deleteItem', data);
 
-export const rerunEvalItem = (data: rerunEvalItemBody) =>
-  POST('/proApi/core/app/evaluation/rerunItem', data);
+export const retryEvalItem = (data: retryEvalItemBody) =>
+  POST('/proApi/core/app/evaluation/retryItem', data);
 
 export const updateEvalItem = (data: updateEvalItemBody) =>
   POST('/proApi/core/app/evaluation/updateItem', data);

@@ -5,6 +5,7 @@
   "auto_index": "索引增強",
   "billing_module": "扣費模組",
   "confirm_export": "共篩選出 {{total}} 條資料，是否確認匯出？",
+  "count": "運行次數",
   "current_filter_conditions": "目前篩選條件：",
   "dashboard": "儀表板",
   "details": "詳細資訊",

@@ -42,17 +42,12 @@ const EvaluationCreating = () => {
   const { toast } = useToast();
 
   const [percent, setPercent] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string>();
 
   const { teamPlanStatus } = useUserStore();
   const { defaultModels, datasetModelList, subPlans } = useSystemStore();
 
   const standardPlan = teamPlanStatus?.standard;
-  const evalItemsCount = useMemo(() => {
-    if (!standardPlan?.currentSubLevel || !subPlans?.standard) return 1000;
-
-    return subPlans.standard[standardPlan.currentSubLevel]?.evalItemsCount;
-  }, [standardPlan?.currentSubLevel, subPlans?.standard]);
 
   const { register, setValue, watch, handleSubmit } = useForm<EvaluationFormType>({
     defaultValues: {
@@ -254,7 +249,7 @@ const EvaluationCreating = () => {
                     w={'full'}
                     maxCount={1}
                     maxSize={t('dashboard_evaluation:evaluation_file_max_size', {
-                      count: evalItemsCount
+                      count: 1000
                     })}
                     fileType=".csv"
                     selectFiles={evaluationFiles}
@@ -310,7 +305,7 @@ const EvaluationCreating = () => {
                                 evaluationFiles.filter((_, i) => i !== index)
                               );
 
-                              setError(null);
+                              setError(undefined);
                             }}
                           />
                         </Flex>

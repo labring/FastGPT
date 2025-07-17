@@ -23,7 +23,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
   deleteEvalItem,
   getEvalItemsList,
-  rerunEvalItem,
+  retryEvalItem,
   updateEvalItem
 } from '@/web/core/app/api/evaluation';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
@@ -38,17 +38,21 @@ import {
 } from '@fastgpt/global/core/app/evaluation/constants';
 import type { evaluationType, listEvalItemsItem } from '@fastgpt/global/core/app/evaluation/type';
 import type {
-  rerunEvalItemBody,
+  retryEvalItemBody,
   updateEvalItemBody
 } from '@fastgpt/global/core/app/evaluation/api';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const formatEvaluationStatus = (item: { status: number; errorMessage?: string }, t: TFunction) => {
+  if (item.errorMessage) {
+    return (
+      <Box color="red.600" fontWeight={'medium'}>
+        {t('dashboard_evaluation:error')}
+      </Box>
+    );
+  }
+
   const statusConfig = {
-    [EvaluationStatusEnum.error]: {
-      color: 'red.600',
-      key: t('dashboard_evaluation:error')
-    },
     [EvaluationStatusEnum.queuing]: {
       color: 'myGray.500',
       key: t('dashboard_evaluation:queuing')
@@ -141,8 +145,8 @@ const EvaluationDetailModal = ({
   );
 
   const { runAsync: rerunItem, loading: isLoadingRerun } = useRequest2(
-    async (data: rerunEvalItemBody) => {
-      await rerunEvalItem(data);
+    async (data: retryEvalItemBody) => {
+      await retryEvalItem(data);
     },
     {
       onSuccess: () => {
@@ -243,7 +247,7 @@ const EvaluationDetailModal = ({
                 {t('dashboard_evaluation:Overall_score')}
               </Box>
               <Box color={'myGray.900'} fontWeight={'medium'}>
-                {evalDetail.score !== null ? evalDetail?.score : '-'}
+                {evalDetail.score ? (evalDetail?.score * 100).toFixed(2) : '-'}
               </Box>
             </Box>
           </Flex>
@@ -440,7 +444,7 @@ const EvaluationDetailModal = ({
                       {evalItem?.errorMessage}
                     </Box>
                   )}
-                  {Object.keys(evalItem?.variables || {}).length > 0 && (
+                  {Object.keys(evalItem?.globalVariables || {}).length > 0 && (
                     <Box borderBottom={'1px solid'} borderColor={'myGray.200'} mb={5}>
                       <Accordion allowToggle defaultIndex={[0]}>
                         <AccordionItem border={'none'}>
@@ -456,7 +460,7 @@ const EvaluationDetailModal = ({
                             <AccordionIcon />
                           </AccordionButton>
                           <AccordionPanel px={0} py={3}>
-                            {Object.entries(evalItem?.variables || {}).map(
+                            {Object.entries(evalItem?.globalVariables || {}).map(
                               ([key, value], index, arr) => (
                                 <Flex
                                   key={key}

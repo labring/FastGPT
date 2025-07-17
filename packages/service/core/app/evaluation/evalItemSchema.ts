@@ -4,7 +4,7 @@ import {
   EvaluationStatusEnum,
   EvaluationStatusValues
 } from '@fastgpt/global/core/app/evaluation/constants';
-import type { EvalItemSchemaType } from './type';
+import type { EvalItemSchemaType } from '@fastgpt/global/core/app/evaluation/type';
 
 const { Schema } = connectionMongo;
 

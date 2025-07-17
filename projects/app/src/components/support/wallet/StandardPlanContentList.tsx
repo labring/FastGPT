@@ -44,8 +44,7 @@ const StandardPlanContentList = ({
       trainingWeight: plan.trainingWeight,
       totalPoints: plan.totalPoints * (mode === SubModeEnum.month ? 1 : 12),
       permissionWebsiteSync: plan.permissionWebsiteSync,
-      permissionTeamOperationLog: plan.permissionTeamOperationLog,
-      evalItemsCount: plan.evalItemsCount
+      permissionTeamOperationLog: plan.permissionTeamOperationLog
     };
   }, [
     subPlans?.standard,
@@ -122,14 +121,6 @@ const StandardPlanContentList = ({
         <Box color={'myGray.600'}>
           {t('common:support.wallet.subscription.Training weight', {
             weight: planContent.trainingWeight
-          })}
-        </Box>
-      </Flex>
-      <Flex alignItems={'center'}>
-        <MyIcon name={'price/right'} w={'16px'} mr={3} />
-        <Box color={'myGray.600'}>
-          {t('common:support.wallet.subscription.eval_items_count', {
-            count: planContent.evalItemsCount
           })}
         </Box>
       </Flex>

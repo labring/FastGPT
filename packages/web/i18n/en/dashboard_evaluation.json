@@ -44,6 +44,7 @@
   "task_creating": "Creating task",
   "task_detail": "Task Details",
   "task_name": "Task Name",
+  "team_has_running_evaluation": "The current team already has running application reviews. Please wait until it is completed before creating a new application review.",
   "template_csv_file_select_tip": "Only support {{fileType}} files that are strictly in accordance with template format</highlight>",
   "variables": "Global variables"
 }

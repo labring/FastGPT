@@ -16,7 +16,6 @@ export type TeamStandardSubPlanItemType = {
   permissionCustomCopyright: boolean; // feature
   permissionWebsiteSync: boolean;
   permissionTeamOperationLog: boolean;
-  evalItemsCount: number;
 };
 
 export type StandSubPlanLevelMapType = Record<

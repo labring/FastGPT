@@ -4,11 +4,11 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
 import { AppCollectionName } from '../schema';
-import type { EvaluationSchemaType } from './type';
+import type { EvaluationSchemaType } from '@fastgpt/global/core/app/evaluation/type';
 import { UsageCollectionName } from '../../../support/wallet/usage/schema';
 const { Schema } = connectionMongo;
 
-export const EvaluationCollectionName = 'evaluations';
+export const EvaluationCollectionName = 'eval';
 
 const EvaluationSchema = new Schema({
   teamId: {
@@ -26,7 +26,7 @@ const EvaluationSchema = new Schema({
     ref: AppCollectionName,
     required: true
   },
-  billId: {
+  usageId: {
     type: Schema.Types.ObjectId,
     ref: UsageCollectionName,
     required: true

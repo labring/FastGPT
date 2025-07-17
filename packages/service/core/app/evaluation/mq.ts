@@ -19,12 +19,9 @@ export const evaluationQueue = getQueue<EvaluationJobData>(QueueNames.evaluation
 export const getEvaluationWorker = (processor: Processor<EvaluationJobData>) => {
   return getWorker<EvaluationJobData>(QueueNames.evaluation, processor, {
     removeOnFail: {
-      count: 1000
+      count: 1000 // Keep last 1000 failed jobs
     },
-    limiter: {
-      max: Number(process.env.EVALUATION_MAX_PROCESS) || 3,
-      duration: 1000
-    }
+    concurrency: 3
   });
 };
 

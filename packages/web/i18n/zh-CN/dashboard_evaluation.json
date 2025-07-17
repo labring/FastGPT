@@ -47,6 +47,7 @@
   "task_creating": "正在创建任务",
   "task_detail": "任务详情",
   "task_name": "任务名称",
+  "team_has_running_evaluation": "当前团队已有正在运行的应用评测，请等待完成后再创建新的应用评测",
   "template_csv_file_select_tip": "仅支持<highlight>严格按照模板</highlight>填写的 {{fileType}} 文件",
   "variables": "全局变量"
 }

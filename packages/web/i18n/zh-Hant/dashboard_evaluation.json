@@ -40,6 +40,7 @@
   "start_evaluation": "開始評測",
   "task_creating": "正在創建任務",
   "task_detail": "任務詳情",
+  "team_has_running_evaluation": "當前團隊已有正在運行的應用評測，請等待完成後再創建新的應用評測",
   "template_csv_file_select_tip": "僅支持<highlight>嚴格按照模板格式</highlight>的 {{fileType}} 文件",
   "variables": "全局變量"
 }

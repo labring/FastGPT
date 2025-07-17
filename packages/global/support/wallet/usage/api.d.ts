@@ -29,7 +29,7 @@ export type ConcatUsageProps = UsageListItemCountType & {
   totalPoints: number;
   listIndex?: number;
   moduleName?: string;
-  model?: string;
+  count?: number;
 };
 
 export type CreateUsageProps = {

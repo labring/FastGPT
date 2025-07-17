@@ -5,6 +5,7 @@
   "auto_index": "Auto index",
   "billing_module": "Deduction module",
   "confirm_export": "A total of {{total}} pieces of data were filtered out. Are you sure to export?",
+  "count": "Number of runs",
   "current_filter_conditions": "Current filter conditions",
   "dashboard": "Dashboard",
   "details": "Details",

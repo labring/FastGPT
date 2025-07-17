@@ -9,7 +9,7 @@ export type listEvalItemsBody = PaginationProps<{
   appId: string;
 }>;
 
-export type rerunEvalItemBody = {
+export type retryEvalItemBody = {
   evalItemId: string;
 };
 

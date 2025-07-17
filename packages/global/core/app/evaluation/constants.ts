@@ -5,15 +5,13 @@ export const evaluationFileErrors = i18nT('dashboard_evaluation:eval_file_check_
 export enum EvaluationStatusEnum {
   queuing = 0,
   evaluating = 1,
-  completed = 2,
-  error = -1
+  completed = 2
 }
 
 export const EvaluationStatusValues = [
   EvaluationStatusEnum.queuing,
   EvaluationStatusEnum.evaluating,
-  EvaluationStatusEnum.completed,
-  EvaluationStatusEnum.error
+  EvaluationStatusEnum.completed
 ];
 
 export const EvaluationStatusMap = {
@@ -25,8 +23,5 @@ export const EvaluationStatusMap = {
   },
   [EvaluationStatusEnum.completed]: {
     name: i18nT('dashboard_evaluation:completed')
-  },
-  [EvaluationStatusEnum.error]: {
-    name: i18nT('dashboard_evaluation:error')
   }
 };
