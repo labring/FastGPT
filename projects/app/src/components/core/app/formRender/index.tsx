@@ -12,6 +12,7 @@ import JSONEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import AIModelSelector from '../../../Select/AIModelSelector';
 import FileSelector from '../../../Select/FileSelector';
 import { useTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { formatInputValue } from './utils';
 
 const InputRender = (props: InputRenderProps) => {
   const {
@@ -40,7 +41,7 @@ const InputRender = (props: InputRenderProps) => {
   );
 
   const commonProps = {
-    value,
+    value: formatInputValue(value),
     onChange,
     isDisabled,
     isInvalid,

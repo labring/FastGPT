@@ -2,7 +2,7 @@ import type { BoxProps } from '@chakra-ui/react';
 import { Box, Flex } from '@chakra-ui/react';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import React, { useMemo } from 'react';
+import React, { useEffect } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
 import InputRender from '.';
@@ -43,10 +43,15 @@ const LabelAndFormRender = ({
   variablesForm: UseFormReturn<any>;
 } & SpecificProps &
   BoxProps) => {
-  const { control } = variablesForm;
+  const { control, getValues, reset } = variablesForm;
+  const values = getValues();
+
+  useEffect(() => {
+    reset(values);
+  }, [values]);
 
   return (
-    <Box _notLast={{ mb: 4 }} px={1}>
+    <Box mb={4} px={1}>
       <Flex alignItems={'center'} mb={1}>
         <FormLabel required={required}>{label}</FormLabel>
         {placeholder && <QuestionTip ml={1} label={placeholder} />}

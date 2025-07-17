@@ -57,3 +57,16 @@ export const secretInputTypeToInputType = (inputType: InputConfigType['inputType
   if (inputType === 'select') return InputTypeEnum.select;
   return InputTypeEnum.textarea;
 };
+
+export const formatInputValue = (value: any) => {
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value);
+    } catch (error) {
+      console.warn('Failed to stringify value:', error);
+      return '[Object]';
+    }
+  }
+
+  return value;
+};
