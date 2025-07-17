@@ -6,7 +6,6 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { DatasetDataCollectionName } from '@fastgpt/service/core/dataset/data/schema';
-import { startTrainingQueue } from '@/service/core/dataset/training/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
@@ -176,10 +175,6 @@ async function handler(req: NextApiRequest) {
       permission
     }))
   );
-
-  if (data.find((item) => item.trainingAmount > 0)) {
-    startTrainingQueue();
-  }
 
   // count collections
   return {
