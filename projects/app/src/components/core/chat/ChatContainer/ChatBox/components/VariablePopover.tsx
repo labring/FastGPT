@@ -54,7 +54,7 @@ const VariablePopover = ({
       }
     >
       {({ onClose }) => (
-        <Box p={4} maxH={'60vh'}>
+        <Box p={4} maxH={'60vh'} overflow={'auto'}>
           {hasExternalVariable && (
             <Box textAlign={'left'}>
               <Flex
