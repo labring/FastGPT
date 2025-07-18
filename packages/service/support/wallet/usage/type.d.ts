@@ -4,6 +4,7 @@ export type ConcatBillQueueItemType = {
   totalPoints: number;
   inputTokens: number;
   outputTokens: number;
+  count?: number;
 };
 
 declare global {

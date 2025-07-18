@@ -17,6 +17,7 @@ export type UsageListItemType = UsageListItemCountType & {
   moduleName: string;
   amount: number;
   model?: string;
+  count?: number;
 };
 
 export type UsageSchemaType = CreateUsageProps & {
