@@ -178,7 +178,6 @@ const Render = ({
 
   return (
     <ChatItemContextProvider
-      showRouteToAppDetail={true}
       showRouteToDatasetDetail={true}
       isShowReadRawSource={true}
       isResponseDetail={true}

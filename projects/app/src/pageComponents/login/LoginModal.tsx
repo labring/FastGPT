@@ -4,27 +4,24 @@ import { LoginContainer } from '@/pageComponents/login';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type LoginModalProps = {
-  isOpen: boolean;
   onSuccess?: () => void;
 };
 
-const LoginModal = ({ isOpen, onSuccess }: LoginModalProps) => {
+const LoginModal = ({ onSuccess }: LoginModalProps) => {
   const { isPc } = useSystem();
-  const { feConfigs } = useSystemStore();
 
   return (
     <MyModal
-      isOpen={isOpen}
+      isOpen
       closeOnOverlayClick={false}
       isCentered
       size="lg"
       w={['100%', '556px']}
       h={['100%', 'auto']}
       maxW="556px"
-      maxH="90vh"
+      maxH={['100vh', '90vh']}
       borderRadius={[0, '16px']}
       overflow="auto"
     >
@@ -43,12 +40,7 @@ const LoginModal = ({ isOpen, onSuccess }: LoginModalProps) => {
           </Box>
         )}
 
-        <LoginContainer
-          onSuccess={onSuccess}
-          chineseRedirectUrl={feConfigs.chineseRedirectUrl}
-          autoInit={true}
-          enabled={isOpen}
-        />
+        <LoginContainer onSuccess={onSuccess} />
       </Box>
     </MyModal>
   );

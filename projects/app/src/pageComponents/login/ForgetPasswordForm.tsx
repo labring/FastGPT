@@ -179,7 +179,6 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           float={'right'}
           fontSize="mini"
           mt={3}
-          mb={'50px'}
           fontWeight={'medium'}
           color={'primary.700'}
           cursor={'pointer'}

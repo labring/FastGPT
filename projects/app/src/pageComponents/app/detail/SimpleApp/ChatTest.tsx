@@ -116,7 +116,6 @@ const Render = ({ appForm, setRenderEdit }: Props) => {
 
   return (
     <ChatItemContextProvider
-      showRouteToAppDetail={true}
       showRouteToDatasetDetail={true}
       isShowReadRawSource={true}
       isResponseDetail={true}

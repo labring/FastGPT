@@ -210,7 +210,6 @@ const Render = (props: Props) => {
 
   return (
     <ChatItemContextProvider
-      showRouteToAppDetail={true}
       showRouteToDatasetDetail={true}
       isShowReadRawSource={true}
       isResponseDetail={true}

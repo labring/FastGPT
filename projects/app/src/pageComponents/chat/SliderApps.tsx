@@ -8,6 +8,15 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import UserAvatarPopover from '@/pageComponents/chat/UserAvatarPopover';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import SelectOneResource from '@/components/common/folder/SelectOneResource';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import type {
+  GetResourceFolderListProps,
+  GetResourceListItemResponse
+} from '@fastgpt/global/common/parentFolder/type';
+import { getMyApps } from '@/web/core/app/api';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppId: string }) => {
   const { t } = useTranslation();
@@ -15,6 +24,20 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
   const isTeamChat = router.pathname === '/chat/team';
   const { userInfo } = useUserStore();
   const [imageLoaded, setImageLoaded] = useState(false);
+
+  const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
+    return getMyApps({
+      parentId,
+      type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin]
+    }).then((res) =>
+      res.map<GetResourceListItemResponse>((item) => ({
+        id: item._id,
+        name: item.name,
+        avatar: item.avatar,
+        isFolder: item.type === AppTypeEnum.folder
+      }))
+    );
+  }, []);
 
   const onChangeApp = useCallback(
     (appId: string) => {
@@ -48,7 +71,6 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
               loading="eager"
               onLoad={() => setImageLoaded(true)}
               onError={() => setImageLoaded(true)}
-              display={imageLoaded ? 'block' : 'none'}
             />
           </Skeleton>
         </Flex>
@@ -140,7 +162,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
         ))}
       </MyBox>
 
-      <Flex p="4" alignItems="center">
+      <Box p="4">
         {userInfo ? (
           <UserAvatarPopover>
             <Flex alignItems="center" gap={2} w="100%">
@@ -149,10 +171,10 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                 src={userInfo.avatar}
                 bg="myGray.200"
                 borderRadius="50%"
-                w={9}
-                h={9}
+                w={8}
+                h={8}
               />
-              <Text
+              <Box
                 flexGrow={1}
                 textOverflow="ellipsis"
                 overflow="hidden"
@@ -160,7 +182,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                 fontWeight={500}
               >
                 {userInfo.username}
-              </Text>
+              </Box>
             </Flex>
           </UserAvatarPopover>
         ) : (
@@ -174,7 +196,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
             p={2}
           >
             <Avatar flexShrink={0} bg="myGray.200" borderRadius="50%" w={9} h={9} />
-            <Text
+            <Box
               flexGrow={1}
               textOverflow="ellipsis"
               overflow="hidden"
@@ -183,10 +205,10 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
               color="myGray.600"
             >
               {t('login:Login')}
-            </Text>
+            </Box>
           </Flex>
         )}
-      </Flex>
+      </Box>
     </Flex>
   );
 };

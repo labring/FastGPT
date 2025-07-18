@@ -5,7 +5,6 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { clearToken } from '@/web/support/user/auth';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 type UserAvatarPopoverProps = {
@@ -15,7 +14,6 @@ type UserAvatarPopoverProps = {
 
 const UserAvatarPopover = ({ children, placement = 'top-end' }: UserAvatarPopoverProps) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
   const { setUserInfo } = useUserStore();
 
   const { openConfirm, ConfirmModal } = useConfirm({ content: t('common:confirm_logout') });
@@ -23,11 +21,7 @@ const UserAvatarPopover = ({ children, placement = 'top-end' }: UserAvatarPopove
   const handleLogout = useCallback(() => {
     setUserInfo(null);
     clearToken();
-    toast({
-      title: t('common:logout'),
-      status: 'success'
-    });
-  }, [setUserInfo, toast, t]);
+  }, [setUserInfo]);
 
   return (
     <>
