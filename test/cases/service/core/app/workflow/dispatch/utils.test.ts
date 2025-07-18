@@ -48,7 +48,7 @@ describe('valueTypeFormat', () => {
     {
       value: 'false',
       type: WorkflowIOValueTypeEnum.selectApp,
-      result: {}
+      result: []
     },
     {
       value: 'false',
@@ -171,7 +171,7 @@ describe('valueTypeFormat', () => {
     {
       value: true,
       type: WorkflowIOValueTypeEnum.object,
-      result: true
+      result: {}
     }
   ];
   boolTestList.forEach((item, index) => {
@@ -263,7 +263,7 @@ describe('valueTypeFormat', () => {
     {
       value: '1',
       type: WorkflowIOValueTypeEnum.chatHistory,
-      result: 0
+      result: []
     }
   ];
   chatHistoryTestList.forEach((item, index) => {

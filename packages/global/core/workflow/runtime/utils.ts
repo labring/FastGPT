@@ -98,7 +98,7 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
 
   // 4.3 字符串转对象
   if (type === WorkflowIOValueTypeEnum.object) {
-    if (typeof value === 'string') {
+    if (isObjectString(value)) {
       const trimmedValue = value.trim();
       try {
         return json5.parse(trimmedValue);
@@ -109,7 +109,7 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
 
   // 4.4 数组类型(这里 value 不是数组类型)（TODO: 嵌套数据类型转化）
   if (type.startsWith('array')) {
-    if (typeof value === 'string') {
+    if (isObjectString(value)) {
       try {
         return json5.parse(value);
       } catch (error) {}
@@ -135,7 +135,7 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
 
   // Invalid history type
   if (type === WorkflowIOValueTypeEnum.chatHistory) {
-    if (typeof value === 'string') {
+    if (isObjectString(value)) {
       try {
         return json5.parse(value);
       } catch (error) {}
