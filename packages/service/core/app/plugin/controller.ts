@@ -353,6 +353,7 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplat
     pluginOrder: item.pluginOrder,
     associatedPluginId,
     userGuide,
+    toolSource: 'uploaded', // Custom plugins are uploaded
     workflow: {
       nodes: [],
       edges: []
@@ -371,7 +372,7 @@ function getCachedSystemPlugins() {
   return global.systemPlugins_cache;
 }
 
-const cleanSystemPluginCache = () => {
+export const cleanSystemPluginCache = () => {
   global.systemPlugins_cache = undefined;
 };
 
@@ -418,31 +419,17 @@ export const getSystemPlugins = async (): Promise<SystemPluginTemplateItemType[]
       const outputs = item.versionList[0]?.outputs as FlowNodeOutputItemType[];
 
       return {
-        isActive: item.isActive,
-        id: item.id,
-        parentId: item.parentId,
+        ...item,
         isFolder: tools.some((tool) => tool.parentId === item.id),
-        name: item.name,
-        avatar: item.avatar,
-        intro: item.intro,
-        author: item.author,
-        courseUrl: item.courseUrl,
         showStatus: true,
-        weight: item.weight,
-        templateType: item.templateType,
-        originCost: item.originCost,
-        currentCost: item.currentCost,
-        hasTokenFee: item.hasTokenFee,
-        pluginOrder: item.pluginOrder,
+        toolSource: (item.toolSource as 'uploaded' | 'built-in') || 'built-in',
 
         workflow: {
           nodes: [],
           edges: []
         },
-        versionList: item.versionList,
         inputs,
         outputs,
-
         inputList: inputs?.find((input) => input.key === NodeInputKeyEnum.systemInputConfig)
           ?.inputList as any,
         hasSystemSecret: !!dbPluginConfig?.inputListVal
