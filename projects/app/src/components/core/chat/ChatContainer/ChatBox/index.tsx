@@ -963,7 +963,7 @@ const ChatBox = ({
         w={'100%'}
         overflow={'overlay'}
         px={[4, 0]}
-        pb={3}
+        pb={10}
       >
         <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
           {/* chat header */}

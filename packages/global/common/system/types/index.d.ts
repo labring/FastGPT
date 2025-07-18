@@ -51,6 +51,7 @@ export type FastGPTFeConfigsType = {
   bind_notification_method?: ['email' | 'phone'];
   googleClientVerKey?: string;
   mcpServerProxyEndpoint?: string;
+  chineseRedirectUrl?: string;
 
   show_emptyChat?: boolean;
   show_appStore?: boolean;

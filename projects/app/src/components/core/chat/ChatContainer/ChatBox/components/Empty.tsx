@@ -10,7 +10,7 @@ const Empty = () => {
   const { data: versionIntro } = useMarkdown({ url: '/versionIntro.md' });
 
   return (
-    <Box pt={6} w={'85%'} maxW={'600px'} m={'auto'} alignItems={'center'} justifyContent={'center'}>
+    <Box py={6} w={'85%'} maxW={'600px'} m={'auto'} alignItems={'center'} justifyContent={'center'}>
       {/* version intro */}
       <Card p={4} mb={10} minH={'200px'}>
         <Markdown source={versionIntro} />
