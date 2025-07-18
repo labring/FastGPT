@@ -14498,7 +14498,7 @@ Sealos 云服务属于按量计费，下面是它的价格表：
 
 线上版价格按套餐订阅模式，具体价格和计费请查看（请正确选择版本，账号不互通）：
 
-- [海外版](https://cloud.tryfastgpt.ai/price)
+- [海外版](https://cloud.fastgpt.io/price)
 - [国内版](https://cloud.fastgpt.cn/price)
 
 # Dalle3 绘图
@@ -20803,7 +20803,7 @@ Verification Token 默认生成的这个 Token 用于校验来源。但我们使
 
 私有部署的用户可自行查阅自己的 IP 地址。
 
-海外版用户（cloud.tryfastgpt.ai）可以填写下面的 IP 白名单：
+海外版用户（cloud.fastgpt.io）可以填写下面的 IP 白名单：
 
 ```
 35.240.227.100
