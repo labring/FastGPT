@@ -208,7 +208,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
   const stepReges: { reg: RegExp | string; maxLen: number }[] = [
     ...customReg.map((text) => ({
-      reg: text.replaceAll('\\n', '\n'),
+      reg: text.replace(/\\n/g, '\n'),
       maxLen: chunkSize
     })),
     ...markdownHeaderRules,
@@ -255,8 +255,8 @@ const commonSplit = (props: SplitProps): SplitResponse => {
       if (typeof reg === 'string') {
         let tmpText = text;
         reg.split('|').forEach((itemReg) => {
-          tmpText = tmpText.replaceAll(
-            itemReg,
+          tmpText = tmpText.replace(
+            new RegExp(itemReg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
             (() => {
               if (isCustomStep) return splitMarker;
               if (isMarkdownSplit) return `${splitMarker}$1`;
@@ -477,7 +477,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
       step: 0,
       lastText: '',
       parentTitle: ''
-    }).map((chunk) => chunk?.replaceAll(codeBlockMarker, '\n')?.trim() || ''); // restore code block
+    }).map((chunk) => chunk?.replace(new RegExp(codeBlockMarker, 'g'), '\n')?.trim() || ''); // restore code block
 
     const chars = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
 
