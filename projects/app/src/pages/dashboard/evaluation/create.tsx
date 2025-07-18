@@ -22,12 +22,13 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { fileDownload } from '@/web/common/file/utils';
 import { postCreateEvaluation } from '@/web/core/app/api/evaluation';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import Markdown from '@/components/Markdown';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getEvaluationFileHeader } from '@fastgpt/global/core/app/evaluation/utils';
 import { evaluationFileErrors } from '@fastgpt/global/core/app/evaluation/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 type EvaluationFormType = {
   name: string;
@@ -45,9 +46,7 @@ const EvaluationCreating = () => {
   const [error, setError] = useState<string>();
 
   const { teamPlanStatus } = useUserStore();
-  const { defaultModels, datasetModelList, subPlans } = useSystemStore();
-
-  const standardPlan = teamPlanStatus?.standard;
+  const { defaultModels, datasetModelList } = useSystemStore();
 
   const { register, setValue, watch, handleSubmit } = useForm<EvaluationFormType>({
     defaultValues: {
@@ -100,12 +99,17 @@ const EvaluationCreating = () => {
 
         router.push('/dashboard/evaluation');
       },
+      errorToast: '',
       onError: (error) => {
         if (error.message === evaluationFileErrors) {
           setError(error.message);
-        }
-        if (error.message === TeamErrEnum.aiPointsNotEnough) {
+        } else if (error.message === TeamErrEnum.aiPointsNotEnough) {
           useSystemStore.getState().setNotSufficientModalType(error.message);
+        } else {
+          toast({
+            title: getErrText(error),
+            status: 'error'
+          });
         }
       }
     }
@@ -347,12 +351,7 @@ const EvaluationCreating = () => {
                 onClick={handleSubmit(onSubmit)}
                 isLoading={isCreating}
                 isDisabled={
-                  !!error ||
-                  !name ||
-                  !evalModel ||
-                  !appId ||
-                  !evaluationFiles ||
-                  evaluationFiles.length === 0
+                  !!error || !name || !evalModel || !appId || evaluationFiles.length === 0
                 }
               >
                 {isCreating

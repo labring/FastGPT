@@ -21,6 +21,8 @@ export type EvalItemSchemaType = {
   globalVariables?: Record<string, any>;
   history?: string;
   response?: string;
+  responseTime?: Date;
+  finishTime?: Date;
   status: EvaluationStatusEnum;
   retry: number;
   errorMessage?: string;

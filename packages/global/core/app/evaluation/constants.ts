@@ -8,12 +8,6 @@ export enum EvaluationStatusEnum {
   completed = 2
 }
 
-export const EvaluationStatusValues = [
-  EvaluationStatusEnum.queuing,
-  EvaluationStatusEnum.evaluating,
-  EvaluationStatusEnum.completed
-];
-
 export const EvaluationStatusMap = {
   [EvaluationStatusEnum.queuing]: {
     name: i18nT('dashboard_evaluation:queuing')
@@ -25,3 +19,4 @@ export const EvaluationStatusMap = {
     name: i18nT('dashboard_evaluation:completed')
   }
 };
+export const EvaluationStatusValues = Object.keys(EvaluationStatusMap).map(Number);

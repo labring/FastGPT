@@ -312,6 +312,11 @@ const Button = defineStyleConfig({
 });
 
 const Input: ComponentStyleConfig = {
+  baseStyle: {
+    field: {
+      color: 'myGray.700'
+    }
+  },
   sizes: {
     sm: defineStyle({
       field: {

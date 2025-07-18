@@ -16,12 +16,13 @@ export const evaluationQueue = getQueue<EvaluationJobData>(QueueNames.evaluation
   }
 });
 
+const concurrency = process.env.EVAL_CONCURRENCY ? Number(process.env.EVAL_CONCURRENCY) : 3;
 export const getEvaluationWorker = (processor: Processor<EvaluationJobData>) => {
   return getWorker<EvaluationJobData>(QueueNames.evaluation, processor, {
     removeOnFail: {
       count: 1000 // Keep last 1000 failed jobs
     },
-    concurrency: 3
+    concurrency: concurrency
   });
 };
 
