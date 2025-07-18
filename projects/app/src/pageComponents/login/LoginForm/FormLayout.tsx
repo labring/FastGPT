@@ -173,7 +173,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
       </Flex>
       {children}
       {show_oauth && (
-        <Box mt={4}>
+        <Box mt={8}>
           <Box flex={1} />
           <Box position={'relative'}>
             <Box h={'1px'} bg={'myGray.250'} />
