@@ -97,7 +97,13 @@ const PromptEditor = ({
           />
         )}
       </Box>
-      <MyModal isOpen={isOpen} onClose={onClose} iconSrc="modal/edit" title={title} w={'full'}>
+      <MyModal
+        isOpen={isOpen}
+        onClose={onClose}
+        iconSrc="modal/edit"
+        title={title || t('common:Edit')}
+        w={'full'}
+      >
         <ModalBody>
           <Editor
             minH={400}

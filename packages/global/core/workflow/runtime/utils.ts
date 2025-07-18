@@ -97,58 +97,50 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
   }
 
   // 4.3 字符串转对象
-  if (
-    (type === WorkflowIOValueTypeEnum.object || type.startsWith('array')) &&
-    typeof value === 'string' &&
-    value.trim()
-  ) {
-    const trimmedValue = value.trim();
-    const isJsonString = isObjectString(trimmedValue);
-
-    if (isJsonString) {
+  if (type === WorkflowIOValueTypeEnum.object) {
+    if (isObjectString(value)) {
+      const trimmedValue = value.trim();
       try {
-        const parsed = json5.parse(trimmedValue);
-        // 检测解析结果与目标类型是否一致
-        if (type.startsWith('array') && Array.isArray(parsed)) return parsed;
-        if (type === WorkflowIOValueTypeEnum.object && typeof parsed === 'object') return parsed;
+        return json5.parse(trimmedValue);
       } catch (error) {}
     }
+    return {};
   }
 
   // 4.4 数组类型(这里 value 不是数组类型)（TODO: 嵌套数据类型转化）
   if (type.startsWith('array')) {
+    if (isObjectString(value)) {
+      try {
+        return json5.parse(value);
+      } catch (error) {}
+    }
     return [value];
   }
 
   // 4.5 特殊类型处理
   if (
-    [WorkflowIOValueTypeEnum.datasetQuote, WorkflowIOValueTypeEnum.selectDataset].includes(type)
+    [
+      WorkflowIOValueTypeEnum.datasetQuote,
+      WorkflowIOValueTypeEnum.selectDataset,
+      WorkflowIOValueTypeEnum.selectApp
+    ].includes(type)
   ) {
     if (isObjectString(value)) {
       try {
         return json5.parse(value);
-      } catch (error) {
-        return [];
-      }
+      } catch (error) {}
     }
     return [];
   }
-  if (
-    [WorkflowIOValueTypeEnum.selectApp, WorkflowIOValueTypeEnum.object].includes(type) &&
-    typeof value === 'string'
-  ) {
+
+  // Invalid history type
+  if (type === WorkflowIOValueTypeEnum.chatHistory) {
     if (isObjectString(value)) {
       try {
         return json5.parse(value);
-      } catch (error) {
-        return {};
-      }
+      } catch (error) {}
     }
-    return {};
-  }
-  // Invalid history type
-  if (type === WorkflowIOValueTypeEnum.chatHistory) {
-    return 0;
+    return [];
   }
 
   // 5. 默认返回原值
