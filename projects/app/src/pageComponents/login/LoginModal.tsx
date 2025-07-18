@@ -1,6 +1,8 @@
 import React from 'react';
-import { Modal, ModalOverlay, ModalContent, ModalBody } from '@chakra-ui/react';
+import { Modal, ModalOverlay, ModalContent, ModalBody, Box } from '@chakra-ui/react';
 import { LoginContainer } from '@/pageComponents/login';
+import I18nLngSelector from '@/components/Select/I18nLngSelector';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -9,6 +11,8 @@ interface LoginModalProps {
 }
 
 const LoginModal = ({ isOpen, onSuccess, ChineseRedirectUrl }: LoginModalProps) => {
+  const { isPc } = useSystem();
+
   return (
     <Modal
       isOpen={isOpen}
@@ -36,12 +40,18 @@ const LoginModal = ({ isOpen, onSuccess, ChineseRedirectUrl }: LoginModalProps) 
           flexDirection="column"
           position="relative"
         >
+          {/* language selector - modal */}
+          {isPc && (
+            <Box position="absolute" top="24px" right="24px" zIndex={10}>
+              <I18nLngSelector />
+            </Box>
+          )}
+
           <LoginContainer
             onSuccess={onSuccess}
             chineseRedirectUrl={ChineseRedirectUrl}
             autoInit={true}
             enabled={isOpen}
-            languageSelectorPosition="absolute-top-right"
           />
         </ModalBody>
       </ModalContent>

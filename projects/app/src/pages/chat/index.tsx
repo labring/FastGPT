@@ -41,13 +41,119 @@ import LoginModal from '@/pageComponents/login/LoginModal';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
-const Chat = ({
-  myApps,
-  isLoadingApps
-}: {
-  myApps: AppListItemType[];
-  isLoadingApps?: boolean;
-}) => {
+// custom hook for managing chat page state and initialization logic
+const useChatPageState = (appId: string, ChineseRedirectUrl?: string) => {
+  const router = useRouter();
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const { lastChatAppId, setSource, setAppId } = useChatStore();
+  const { userInfo, initUserInfo } = useUserStore();
+
+  const [isInitializingUser, setIsInitializingUser] = useState(true);
+
+  // calculate state
+  const isLoggedIn = useMemo(() => !!userInfo, [userInfo]);
+  const shouldShowLoginModal = !isLoggedIn && !isInitializingUser;
+
+  // get app list
+  const {
+    data: myApps = [],
+    runAsync: loadMyApps,
+    loading: isLoadingApps
+  } = useRequest2(() => getMyApps({ getRecentlyChat: true }), {
+    manual: true
+  });
+
+  // initialize user info
+  useMount(async () => {
+    try {
+      await initUserInfo();
+    } catch (error) {
+      console.log('User not logged in:', error);
+    } finally {
+      setIsInitializingUser(false);
+    }
+  });
+
+  // handle login success
+  const handleLoginSuccess = useCallback(async () => {
+    const apps = await loadMyApps();
+
+    // if no appId and there are available apps, automatically jump to the first app
+    if (!appId && apps.length > 0) {
+      await router.replace({
+        query: {
+          ...router.query,
+          appId: lastChatAppId || apps[0]._id
+        }
+      });
+    }
+
+    setSource('online');
+  }, [loadMyApps, appId, lastChatAppId, router, setSource]);
+
+  // unified initialization logic
+  useEffect(() => {
+    if (isInitializingUser) return;
+
+    if (isLoggedIn) {
+      // user is logged in, handle app related logic
+      const initializeLoggedInUser = async () => {
+        const apps = await loadMyApps();
+
+        if (!appId) {
+          if (apps.length === 0) {
+            toast({
+              status: 'error',
+              title: t('common:core.chat.You need to a chat app')
+            });
+            router.replace('/dashboard/apps');
+          } else {
+            router.replace({
+              query: {
+                ...router.query,
+                appId: lastChatAppId || apps[0]._id
+              }
+            });
+          }
+        }
+
+        setSource('online');
+      };
+
+      initializeLoggedInUser();
+    }
+    // if not logged in, login modal will be automatically displayed, no additional processing is needed
+  }, [
+    isInitializingUser,
+    isLoggedIn,
+    appId,
+    lastChatAppId,
+    loadMyApps,
+    router,
+    setSource,
+    t,
+    toast
+  ]);
+
+  // watch appId
+  useEffect(() => {
+    if (isLoggedIn && appId) {
+      setAppId(appId);
+    }
+  }, [appId, setAppId, isLoggedIn]);
+
+  return {
+    isInitializingUser,
+    isLoggedIn,
+    shouldShowLoginModal,
+    myApps,
+    isLoadingApps,
+    handleLoginSuccess
+  };
+};
+
+const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const router = useRouter();
   const { t } = useTranslation();
   const { isPc } = useSystem();
@@ -167,7 +273,7 @@ const Chat = ({
       <NextHead title={chatBoxData.app.name} icon={chatBoxData.app.avatar}></NextHead>
       {isPc && (
         <Box flexShrink={0} w="202px">
-          <SliderApps apps={myApps} activeAppId={appId} isLoading={isLoadingApps} />
+          <SliderApps apps={myApps} activeAppId={appId} />
         </Box>
       )}
 
@@ -232,115 +338,13 @@ const Chat = ({
 const Render = (props: { appId: string; isStandalone?: string; ChineseRedirectUrl?: string }) => {
   const { appId, isStandalone, ChineseRedirectUrl } = props;
   const { t } = useTranslation();
-  const { toast } = useToast();
-  const router = useRouter();
-  const { source, chatId, lastChatAppId, setSource, setAppId } = useChatStore();
-  const { userInfo, initUserInfo } = useUserStore();
 
-  const [hasTriggeredInit, setHasTriggeredInit] = useState(false);
-  const [isInitializingUser, setIsInitializingUser] = useState(true);
-
-  const isLoggedIn = useMemo(() => !!userInfo, [userInfo]);
-  const isLoginModalOpen = !isLoggedIn && !isInitializingUser; // 只有没登录且没初始化用户信息的时候才展示登录弹窗
-
-  useMount(async () => {
-    try {
-      await initUserInfo();
-    } catch (error) {
-      console.log('User not logged in:', error);
-    } finally {
-      setIsInitializingUser(false);
-    }
-  });
-
-  const {
-    data: myApps = [],
-    runAsync: loadMyApps,
-    loading: isLoadingApps
-  } = useRequest2(() => getMyApps({ getRecentlyChat: true }), {
-    manual: true, // 手动控制加载时机
-    refreshDeps: [isLoggedIn, isInitializingUser] // 当登录状态变化时刷新
-  });
-
-  // 在用户初始化完成且已登录时加载应用列表
-  useEffect(() => {
-    if (!isInitializingUser && isLoggedIn) {
-      loadMyApps();
-    }
-  }, [isInitializingUser, isLoggedIn, loadMyApps]);
-
-  const handleLoginSuccess = useCallback(async () => {
-    const apps = await loadMyApps();
-
-    if (!appId && apps.length > 0) {
-      await router.replace({
-        query: {
-          ...router.query,
-          appId: lastChatAppId || apps[0]._id
-        }
-      });
-    }
-
-    setSource('online');
-  }, [loadMyApps, appId, lastChatAppId, router, setSource]);
-
-  useEffect(() => {
-    if (isInitializingUser || !isLoggedIn) {
-      return;
-    }
-
-    const initChat = async () => {
-      if (!appId) {
-        const apps = await loadMyApps();
-        if (apps.length === 0) {
-          toast({
-            status: 'error',
-            title: t('common:core.chat.You need to a chat app')
-          });
-          router.replace('/dashboard/apps');
-        } else {
-          router.replace({
-            query: {
-              ...router.query,
-              appId: lastChatAppId || apps[0]._id
-            }
-          });
-        }
-      }
-      setSource('online');
-    };
-
-    initChat();
-  }, [
-    isInitializingUser,
-    isLoggedIn,
+  const { isInitializingUser, shouldShowLoginModal, myApps, handleLoginSuccess } = useChatPageState(
     appId,
-    lastChatAppId,
-    loadMyApps,
-    router,
-    setSource,
-    t,
-    toast
-  ]);
+    ChineseRedirectUrl
+  );
 
-  useEffect(() => {
-    if (!isLoggedIn) {
-      setHasTriggeredInit(false); // 登出的时候就重置初始化触发状态
-    } else {
-      // 如果没有 appId 并且没有触发过初始化，就触发初始化
-      if (!appId && !hasTriggeredInit) {
-        setHasTriggeredInit(true);
-        handleLoginSuccess();
-      }
-    }
-  }, [isLoggedIn, appId, hasTriggeredInit, handleLoginSuccess]);
-
-  // Watch appId
-  useEffect(() => {
-    if (isLoggedIn) {
-      setAppId(appId);
-    }
-  }, [appId, setAppId, isLoggedIn]);
+  const { chatId } = useChatStore();
 
   const currentApp = useMemo(() => {
     return myApps.find((app) => app._id === appId);
@@ -350,64 +354,51 @@ const Render = (props: { appId: string; isStandalone?: string; ChineseRedirectUr
     () => ({ appId, source: ChatSourceEnum.online }),
     [appId]
   );
+
   const chatRecordProviderParams = useMemo(() => {
     return {
       appId,
       type: GetChatTypeEnum.normal,
-      chatId: chatId
+      chatId
     };
   }, [appId, chatId]);
 
+  // show loading state
   if (isInitializingUser) {
     return (
       <PageContainer flex={'1'} p={4}>
         <Box display="flex" justifyContent="center" alignItems="center" h="100%">
-          <Text>{t('common:Loading')}</Text>
+          <Box>{t('common:Loading')}</Box>
         </Box>
       </PageContainer>
     );
   }
 
-  if (!isLoggedIn) {
+  // show login modal
+  if (shouldShowLoginModal) {
     return (
       <>
-        <PageContainer flex={'1'} p={4}>
-          {/* TODO: 因为没登录所以展示空页面，后续可能有 UI 上的调整 */}
-        </PageContainer>
-        <LoginModal
-          isOpen={isLoginModalOpen}
-          onSuccess={handleLoginSuccess}
-          ChineseRedirectUrl={ChineseRedirectUrl}
-        />
+        <PageContainer flex={'1'} p={4}></PageContainer>
+        <LoginModal isOpen onSuccess={handleLoginSuccess} ChineseRedirectUrl={ChineseRedirectUrl} />
       </>
     );
   }
 
+  // show main chat interface
   return (
-    <>
-      {source === ChatSourceEnum.online ? (
-        <ChatContextProvider params={chatHistoryProviderParams}>
-          <ChatItemContextProvider
-            showRouteToAppDetail={isStandalone !== '1' && !!currentApp?.permission.hasWritePer}
-            showRouteToDatasetDetail={isStandalone !== '1'}
-            isShowReadRawSource={true}
-            isResponseDetail={true}
-            // isShowFullText={true}
-            showNodeStatus
-          >
-            <ChatRecordContextProvider params={chatRecordProviderParams}>
-              <Chat myApps={myApps} isLoadingApps={isLoadingApps} />
-            </ChatRecordContextProvider>
-          </ChatItemContextProvider>
-        </ChatContextProvider>
-      ) : null}
-
-      <LoginModal
-        isOpen={isLoginModalOpen}
-        onSuccess={handleLoginSuccess}
-        ChineseRedirectUrl={ChineseRedirectUrl}
-      />
-    </>
+    <ChatContextProvider params={chatHistoryProviderParams}>
+      <ChatItemContextProvider
+        showRouteToAppDetail={isStandalone !== '1' && !!currentApp?.permission.hasWritePer}
+        showRouteToDatasetDetail={isStandalone !== '1'}
+        isShowReadRawSource={true}
+        isResponseDetail={true}
+        showNodeStatus
+      >
+        <ChatRecordContextProvider params={chatRecordProviderParams}>
+          <Chat myApps={myApps} />
+        </ChatRecordContextProvider>
+      </ChatItemContextProvider>
+    </ChatContextProvider>
   );
 };
 

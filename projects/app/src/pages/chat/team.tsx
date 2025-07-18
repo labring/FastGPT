@@ -38,13 +38,7 @@ const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPlu
 
 type Props = { appId: string; chatId: string; teamId: string; teamToken: string };
 
-const Chat = ({
-  myApps,
-  isLoadingApps
-}: {
-  myApps: AppListItemType[];
-  isLoadingApps?: boolean;
-}) => {
+const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const {
@@ -193,7 +187,7 @@ const Chat = ({
       {/* pc show myself apps */}
       {isPc && (
         <Box borderRight={theme.borders.base} w={'220px'} flexShrink={0}>
-          <SliderApps apps={myApps} activeAppId={appId} isLoading={isLoadingApps} />
+          <SliderApps apps={myApps} activeAppId={appId} />
         </Box>
       )}
 
@@ -329,7 +323,7 @@ const Render = (props: Props) => {
         showNodeStatus
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
-          <Chat {...props} myApps={myApps} isLoadingApps={isLoadingApps} />
+          <Chat {...props} myApps={myApps} />
         </ChatRecordContextProvider>
       </ChatItemContextProvider>
     </ChatContextProvider>

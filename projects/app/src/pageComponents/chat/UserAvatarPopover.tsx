@@ -25,22 +25,14 @@ const UserAvatarPopover = ({
 
   const { openConfirm, ConfirmModal } = useConfirm({ content: t('account:confirm_logout') });
 
-  const handleLogout = useCallback(async () => {
-    try {
-      setUserInfo(null);
-      clearToken()?.catch(() => void 0);
-      toast({
-        title: t('account:logout'),
-        status: 'success'
-      });
-    } catch (error) {
-      setUserInfo(null);
-    }
+  const handleLogout = useCallback(() => {
+    setUserInfo(null);
+    clearToken();
+    toast({
+      title: t('account:logout'),
+      status: 'success'
+    });
   }, [setUserInfo, toast, t]);
-
-  if (!userInfo) {
-    return <>{children}</>;
-  }
 
   return (
     <>

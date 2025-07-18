@@ -7,8 +7,7 @@ import {
   DrawerCloseButton,
   DrawerContent,
   DrawerOverlay,
-  Flex,
-  useDisclosure
+  Flex
 } from '@chakra-ui/react';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -20,7 +19,6 @@ import Script from 'next/script';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { useLocalStorageState } from 'ahooks';
 import { useTranslation } from 'next-i18next';
-import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { GET } from '@/web/common/api/request';
 import { getDocPath } from '@/web/common/system/doc';
@@ -34,7 +32,91 @@ const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
 
 const ipDetectURL = 'https://qifu-api.baidubce.com/ip/local/geo/v1/district';
 
-// 登录逻辑Hook
+// modal type enum
+enum ModalType {
+  NONE = 'none',
+  COOKIES = 'cookies',
+  REDIRECT = 'redirect',
+  COMMUNITY = 'community'
+}
+
+// IP detection cache
+let ipDetectionCache: { isChina: boolean; timestamp: number } | null = null;
+const IP_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+
+// common drawer component
+const CommonDrawer = ({
+  type,
+  isOpen,
+  onClose,
+  onConfirm,
+  onSecondaryAction,
+  secondaryActionText,
+  confirmText,
+  title,
+  description
+}: {
+  type: ModalType;
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  onSecondaryAction?: () => void;
+  secondaryActionText?: string;
+  confirmText: string;
+  title: string;
+  description?: string;
+}) => {
+  const { t } = useTranslation();
+
+  if (type === ModalType.NONE) return null;
+
+  return (
+    <Drawer placement="bottom" size={'xs'} isOpen={isOpen} onClose={onClose}>
+      <DrawerOverlay backgroundColor={'rgba(0,0,0,0.2)'} />
+      <DrawerContent py={'1.75rem'} px={'3rem'}>
+        <DrawerCloseButton size={'sm'} />
+        <Flex align={'center'} justify={'space-between'}>
+          <Box>
+            <Box color={'myGray.900'} fontWeight={'500'} fontSize={'1rem'}>
+              {title}
+            </Box>
+            {secondaryActionText && onSecondaryAction && (
+              <Box
+                color={'primary.700'}
+                fontWeight={'500'}
+                fontSize={'1rem'}
+                textDecorationLine={'underline'}
+                cursor={'pointer'}
+                w={'fit-content'}
+                onClick={onSecondaryAction}
+              >
+                {secondaryActionText}
+              </Box>
+            )}
+            {description && (
+              <Box
+                color={'primary.700'}
+                fontWeight={'500'}
+                fontSize={'1rem'}
+                textDecorationLine={'underline'}
+                cursor={'pointer'}
+                w={'fit-content'}
+                onClick={() => window.open(getDocPath('/docs/agreement/privacy/'), '_blank')}
+              >
+                {description}
+              </Box>
+            )}
+          </Box>
+          <Button ml={'0.75rem'} onClick={onConfirm}>
+            {confirmText}
+          </Button>
+        </Flex>
+      </DrawerContent>
+    </Drawer>
+  );
+};
+
+// hook for login logic
 export const useLoginLogic = (options: {
   onSuccess?: (res: ResLogin) => void;
   chineseRedirectUrl?: string;
@@ -49,54 +131,52 @@ export const useLoginLogic = (options: {
   const { isPc } = useSystem();
 
   const [pageType, setPageType] = useState<`${LoginPageTypeEnum}` | null>(null);
+  const [activeModal, setActiveModal] = useState<ModalType>(ModalType.NONE);
 
-  // Cookie相关
-  const {
-    isOpen: isOpenCookiesDrawer,
-    onOpen: onOpenCookiesDrawer,
-    onClose: onCloseCookiesDrawer
-  } = useDisclosure();
+  // localStorage state
   const cookieVersion = '1';
   const [localCookieVersion, setLocalCookieVersion] =
     useLocalStorageState<string>('localCookieVersion');
-
-  // 社区模态框
-  const {
-    isOpen: isCommunityOpen,
-    onOpen: onCommunityOpen,
-    onClose: onCommunityClose
-  } = useDisclosure();
-
-  // 中国IP重定向
-  const {
-    isOpen: isOpenRedirect,
-    onOpen: onOpenRedirect,
-    onClose: onCloseRedirect
-  } = useDisclosure();
   const [showRedirect, setShowRedirect] = useLocalStorageState<boolean>('showRedirect', {
     defaultValue: true
   });
 
-  // IP检测
+  // unified modal control
+  const openModal = useCallback((type: ModalType) => setActiveModal(type), []);
+  const closeModal = useCallback(() => setActiveModal(ModalType.NONE), []);
+
+  // optimized IP detection, add cache mechanism
   const checkIpInChina = useCallback(async () => {
     try {
+      // check cache
+      const now = Date.now();
+      if (ipDetectionCache && now - ipDetectionCache.timestamp < IP_CACHE_DURATION) {
+        if (ipDetectionCache.isChina) {
+          openModal(ModalType.REDIRECT);
+        }
+        return;
+      }
+
       const res = await GET<any>(ipDetectURL);
       const country = res?.country;
-      if (
-        country &&
+      const isChina =
         country === '中国' &&
         res.prov !== '中国香港' &&
         res.prov !== '中国澳门' &&
-        res.prov !== '中国台湾'
-      ) {
-        onOpenRedirect();
+        res.prov !== '中国台湾';
+
+      // update cache
+      ipDetectionCache = { isChina, timestamp: now };
+
+      if (isChina) {
+        openModal(ModalType.REDIRECT);
       }
     } catch (error) {
-      console.log(error);
+      console.log('IP detection failed:', error);
     }
-  }, [onOpenRedirect]);
+  }, [openModal]);
 
-  // 登录成功处理
+  // login success handler
   const loginSuccess = useCallback(
     (res: ResLogin) => {
       setUserInfo(res.user);
@@ -105,19 +185,19 @@ export const useLoginLogic = (options: {
     [setUserInfo, onSuccess]
   );
 
-  // 初始化逻辑
+  // unified initialization logic
   const initLoginLogic = useCallback(() => {
-    // Cookie版本检查
+    // Cookie version check
     if (localCookieVersion !== cookieVersion) {
-      onOpenCookiesDrawer();
+      openModal(ModalType.COOKIES);
     }
 
-    // 中国IP检测
+    // China IP detection
     if (chineseRedirectUrl && showRedirect) {
       checkIpInChina();
     }
 
-    // 设置页面类型
+    // set page type
     const bd_vid = getBdVId();
     if (bd_vid) {
       setPageType(LoginPageTypeEnum.passwordLogin);
@@ -128,12 +208,12 @@ export const useLoginLogic = (options: {
       feConfigs?.oauth?.wechat ? LoginPageTypeEnum.wechat : LoginPageTypeEnum.passwordLogin
     );
 
-    // 重置聊天状态
+    // reset chat state
     setLastChatAppId('');
   }, [
     localCookieVersion,
     cookieVersion,
-    onOpenCookiesDrawer,
+    openModal,
     chineseRedirectUrl,
     showRedirect,
     checkIpInChina,
@@ -141,14 +221,14 @@ export const useLoginLogic = (options: {
     setLastChatAppId
   ]);
 
-  // 自动初始化
+  // auto initialization
   useEffect(() => {
     if (autoInit && enabled) {
       initLoginLogic();
     }
   }, [autoInit, enabled, initLoginLogic]);
 
-  // 动态组件
+  // dynamic component
   const DynamicComponent = useMemo(() => {
     if (!pageType) return null;
 
@@ -165,171 +245,91 @@ export const useLoginLogic = (options: {
     return <Component setPageType={setPageType} loginSuccess={loginSuccess} />;
   }, [pageType, loginSuccess]);
 
+  // modal config
+  const modalConfig = useMemo(() => {
+    switch (activeModal) {
+      case ModalType.COOKIES:
+        return {
+          title: t('login:cookies_tip'),
+          confirmText: t('login:agree'),
+          description: t('login:privacy_policy'),
+          onConfirm: () => {
+            setLocalCookieVersion(cookieVersion);
+            closeModal();
+          }
+        };
+      case ModalType.REDIRECT:
+        return {
+          title: t('login:Chinese_ip_tip'),
+          confirmText: t('login:redirect'),
+          secondaryActionText: t('login:no_remind'),
+          onConfirm: () => window.open(chineseRedirectUrl, '_self'),
+          onSecondaryAction: () => setShowRedirect(false)
+        };
+      default:
+        return null;
+    }
+  }, [
+    activeModal,
+    t,
+    setLocalCookieVersion,
+    cookieVersion,
+    closeModal,
+    chineseRedirectUrl,
+    setShowRedirect
+  ]);
+
   return {
-    // State
+    // basic state
     pageType,
     setPageType,
     isPc,
     feConfigs,
     t,
 
-    // Handlers
+    // core functions
     loginSuccess,
     initLoginLogic,
-
-    // Components
     DynamicComponent,
 
-    // Community Modal
-    isCommunityOpen,
-    onCommunityOpen,
-    onCommunityClose,
-
-    // Cookies Drawer
-    isOpenCookiesDrawer,
-    onOpenCookiesDrawer,
-    onCloseCookiesDrawer,
-    cookieVersion,
-    localCookieVersion,
-    setLocalCookieVersion,
-
-    // Redirect Drawer
-    isOpenRedirect,
-    onOpenRedirect,
-    onCloseRedirect,
-    showRedirect,
-    setShowRedirect,
+    // modal management
+    activeModal,
+    modalConfig,
+    openModal,
+    closeModal,
     chineseRedirectUrl
   };
 };
 
-// 重定向抽屉组件
-export const RedirectDrawer = ({
-  isOpen,
-  onClose,
-  disableDrawer,
-  onRedirect
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  disableDrawer: () => void;
-  onRedirect: () => void;
-}) => {
-  const { t } = useTranslation();
-  return (
-    <Drawer placement="bottom" size={'xs'} isOpen={isOpen} onClose={onClose}>
-      <DrawerOverlay backgroundColor={'rgba(0,0,0,0.2)'} />
-      <DrawerContent py={'1.75rem'} px={'3rem'}>
-        <DrawerCloseButton size={'sm'} />
-        <Flex align={'center'} justify={'space-between'}>
-          <Box>
-            <Box color={'myGray.900'} fontWeight={'500'} fontSize={'1rem'}>
-              {t('login:Chinese_ip_tip')}
-            </Box>
-            <Box
-              color={'primary.700'}
-              fontWeight={'500'}
-              fontSize={'1rem'}
-              textDecorationLine={'underline'}
-              cursor={'pointer'}
-              onClick={disableDrawer}
-            >
-              {t('login:no_remind')}
-            </Box>
-          </Box>
-          <Button ml={'0.75rem'} onClick={onRedirect}>
-            {t('login:redirect')}
-          </Button>
-        </Flex>
-      </DrawerContent>
-    </Drawer>
-  );
-};
-
-// Cookie抽屉组件
-export const CookiesDrawer = ({
-  onClose,
-  onAgree
-}: {
-  onClose: () => void;
-  onAgree: () => void;
-}) => {
-  const { t } = useTranslation();
-
-  return (
-    <Drawer placement="bottom" size={'xs'} isOpen={true} onClose={onClose}>
-      <DrawerOverlay backgroundColor={'rgba(0,0,0,0.2)'} />
-      <DrawerContent py={'1.75rem'} px={'3rem'}>
-        <DrawerCloseButton size={'sm'} />
-        <Flex align={'center'} justify={'space-between'}>
-          <Box>
-            <Box color={'myGray.900'} fontWeight={'500'} fontSize={'1rem'}>
-              {t('login:cookies_tip')}
-            </Box>
-            <Box
-              color={'primary.700'}
-              fontWeight={'500'}
-              fontSize={'1rem'}
-              textDecorationLine={'underline'}
-              cursor={'pointer'}
-              w={'fit-content'}
-              onClick={() => window.open(getDocPath('/docs/agreement/privacy/'), '_blank')}
-            >
-              {t('login:privacy_policy')}
-            </Box>
-          </Box>
-          <Button ml={'0.75rem'} onClick={onAgree}>
-            {t('login:agree')}
-          </Button>
-        </Flex>
-      </DrawerContent>
-    </Drawer>
-  );
-};
-
-// 登录容器组件
+// login container component
 export const LoginContainer = ({
   children,
-  showLanguageSelector = true,
-  languageSelectorPosition = 'top-right',
   onSuccess,
   chineseRedirectUrl,
   autoInit = true,
   enabled = true
 }: {
   children?: React.ReactNode;
-  showLanguageSelector?: boolean;
-  languageSelectorPosition?: 'top-right' | 'absolute-top-right';
   onSuccess?: (res: ResLogin) => void;
   chineseRedirectUrl?: string;
   autoInit?: boolean;
   enabled?: boolean;
 }) => {
-  const loginLogic = useLoginLogic({
+  const {
+    pageType,
+    feConfigs,
+    DynamicComponent,
+    activeModal,
+    modalConfig,
+    openModal,
+    closeModal,
+    t
+  } = useLoginLogic({
     onSuccess,
     chineseRedirectUrl,
     autoInit,
     enabled
   });
-
-  const {
-    pageType,
-    isPc,
-    feConfigs,
-    DynamicComponent,
-    isCommunityOpen,
-    onCommunityOpen,
-    onCommunityClose,
-    isOpenCookiesDrawer,
-    onCloseCookiesDrawer,
-    cookieVersion,
-    setLocalCookieVersion,
-    isOpenRedirect,
-    onCloseRedirect,
-    showRedirect,
-    setShowRedirect,
-    chineseRedirectUrl: redirectUrl
-  } = loginLogic;
 
   return (
     <>
@@ -341,19 +341,7 @@ export const LoginContainer = ({
       )}
 
       <Box position="relative" w="full" h="full">
-        {/* 语言选择器 */}
-        {showLanguageSelector && isPc && (
-          <Box
-            position={languageSelectorPosition === 'absolute-top-right' ? 'absolute' : 'relative'}
-            top={languageSelectorPosition === 'absolute-top-right' ? '24px' : undefined}
-            right={languageSelectorPosition === 'absolute-top-right' ? '24px' : undefined}
-            zIndex={10}
-          >
-            <I18nLngSelector />
-          </Box>
-        )}
-
-        {/* 主内容区域 */}
+        {/* main content area */}
         <Box w={['100%', '380px']} flex={'1 0 0'}>
           {pageType && DynamicComponent ? (
             DynamicComponent
@@ -364,7 +352,7 @@ export const LoginContainer = ({
           )}
         </Box>
 
-        {/* 无法登录帮助链接 */}
+        {/* help link for login */}
         {feConfigs?.concatMd && (
           <Box
             mt={8}
@@ -373,37 +361,26 @@ export const LoginContainer = ({
             fontWeight={'medium'}
             cursor={'pointer'}
             textAlign={'center'}
-            onClick={onCommunityOpen}
+            onClick={() => openModal(ModalType.COMMUNITY)}
           >
-            {loginLogic.t('common:support.user.login.can_not_login')}
+            {t('common:support.user.login.can_not_login')}
           </Box>
         )}
 
-        {/* 自定义内容 */}
+        {/* custom content */}
         {children}
       </Box>
 
-      {/* 社区模态框 */}
-      {isCommunityOpen && <CommunityModal onClose={onCommunityClose} />}
+      {/* community modal */}
+      {activeModal === ModalType.COMMUNITY && <CommunityModal onClose={closeModal} />}
 
-      {/* 中国IP重定向抽屉 */}
-      {showRedirect && redirectUrl && (
-        <RedirectDrawer
-          isOpen={isOpenRedirect}
-          onClose={onCloseRedirect}
-          onRedirect={() => window.open(redirectUrl, '_self')}
-          disableDrawer={() => setShowRedirect(false)}
-        />
-      )}
-
-      {/* Cookie同意抽屉 */}
-      {isOpenCookiesDrawer && (
-        <CookiesDrawer
-          onAgree={() => {
-            setLocalCookieVersion(cookieVersion);
-            onCloseCookiesDrawer();
-          }}
-          onClose={onCloseCookiesDrawer}
+      {/* common drawer component */}
+      {modalConfig && (
+        <CommonDrawer
+          type={activeModal}
+          isOpen={activeModal !== ModalType.NONE && activeModal !== ModalType.COMMUNITY}
+          onClose={closeModal}
+          {...modalConfig}
         />
       )}
     </>

@@ -6,19 +6,10 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { type AppListItemType } from '@fastgpt/global/core/app/type';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import UserAvatarPopover from '@/components/support/user/UserAvatarPopover';
+import UserAvatarPopover from '@/pageComponents/chat/UserAvatarPopover';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
-const SliderApps = ({
-  apps,
-  activeAppId,
-  isLoading = false
-}: {
-  apps: AppListItemType[];
-  activeAppId: string;
-  isLoading?: boolean;
-}) => {
+const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppId: string }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const isTeamChat = router.pathname === '/chat/team';
@@ -71,14 +62,7 @@ const SliderApps = ({
         </HStack>
       )}
 
-      <MyBox
-        isLoading={isLoading}
-        flex={'1 0 0'}
-        h={0}
-        overflow={'overlay'}
-        px={4}
-        position={'relative'}
-      >
+      <MyBox flex={'1 0 0'} h={0} overflow={'overlay'} px={4} position={'relative'}>
         {apps.map((item) => (
           <Flex
             key={item._id}

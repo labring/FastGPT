@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { Flex } from '@chakra-ui/react';
+import { Flex, Box } from '@chakra-ui/react';
 import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useRouter } from 'next/router';
 import { serviceSideProps } from '@/web/common/i18n/utils';
@@ -7,9 +7,12 @@ import { clearToken } from '@/web/support/user/auth';
 import { useMount } from 'ahooks';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { LoginContainer } from '@/pageComponents/login';
+import I18nLngSelector from '@/components/Select/I18nLngSelector';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
   const router = useRouter();
+  const { isPc } = useSystem();
   const { lastRoute = '' } = router.query as { lastRoute: string };
 
   const loginSuccess = useCallback(
@@ -40,6 +43,13 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
       userSelect={'none'}
       h={'100%'}
     >
+      {/* Language selector - login page */}
+      {isPc && (
+        <Box position="absolute" top="24px" right="24px" zIndex={10}>
+          <I18nLngSelector />
+        </Box>
+      )}
+
       <Flex
         flexDirection={'column'}
         w={['100%', '556px']}
@@ -52,12 +62,9 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
           '',
           '0px 32px 64px -12px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.20)'
         ]}
+        position="relative"
       >
-        <LoginContainer
-          onSuccess={loginSuccess}
-          chineseRedirectUrl={ChineseRedirectUrl}
-          languageSelectorPosition="absolute-top-right"
-        />
+        <LoginContainer onSuccess={loginSuccess} chineseRedirectUrl={ChineseRedirectUrl} />
       </Flex>
     </Flex>
   );
