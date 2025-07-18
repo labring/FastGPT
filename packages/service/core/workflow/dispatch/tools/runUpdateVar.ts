@@ -58,6 +58,7 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
                 variables
               })
             : item.value?.[1];
+
         return valueTypeFormat(val, item.valueType);
       } else {
         return getReferenceVariableValue({
