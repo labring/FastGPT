@@ -28,6 +28,7 @@ import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
 import { type AppListItemType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
+import Loading from '@fastgpt/web/components/common/MyLoading';
 import dynamic from 'next/dynamic';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -88,50 +89,6 @@ const useChatPageState = (appId: string) => {
       setIsInitializingUser(false);
     }
   });
-
-  // unified initialization logic
-  useEffect(() => {
-    if (isInitializingUser) return;
-
-    if (isLoggedIn) {
-      // user is logged in, handle app related logic
-      const initializeLoggedInUser = async () => {
-        const apps = await loadMyApps();
-
-        if (!appId) {
-          if (apps.length === 0) {
-            toast({
-              status: 'error',
-              title: t('common:core.chat.You need to a chat app')
-            });
-            router.replace('/dashboard/apps');
-          } else {
-            router.replace({
-              query: {
-                ...router.query,
-                appId: lastChatAppId || apps[0]._id
-              }
-            });
-          }
-        }
-
-        setSource('online');
-      };
-
-      initializeLoggedInUser();
-    }
-    // if not logged in, login modal will be automatically displayed, no additional processing is needed
-  }, [
-    isInitializingUser,
-    isLoggedIn,
-    appId,
-    lastChatAppId,
-    loadMyApps,
-    router,
-    setSource,
-    t,
-    toast
-  ]);
 
   // watch appId
   useEffect(() => {
@@ -361,8 +318,8 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
   if (isInitializingUser) {
     return (
       <PageContainer flex={'1'} p={4}>
-        <Box display="flex" justifyContent="center" alignItems="center" h="100%">
-          <Box>{t('common:Loading')}</Box>
+        <Box position="relative" h="100%">
+          <Loading fixed={false} />
         </Box>
       </PageContainer>
     );
@@ -401,7 +358,7 @@ export async function getServerSideProps(context: any) {
     props: {
       appId: context?.query?.appId || '',
       isStandalone: context?.query?.isStandalone || '',
-      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow', 'login', 'account']))
+      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow', 'login']))
     }
   };
 }

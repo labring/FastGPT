@@ -18,13 +18,13 @@ const UserAvatarPopover = ({ children, placement = 'top-end' }: UserAvatarPopove
   const { toast } = useToast();
   const { setUserInfo } = useUserStore();
 
-  const { openConfirm, ConfirmModal } = useConfirm({ content: t('account:confirm_logout') });
+  const { openConfirm, ConfirmModal } = useConfirm({ content: t('common:confirm_logout') });
 
   const handleLogout = useCallback(() => {
     setUserInfo(null);
     clearToken();
     toast({
-      title: t('account:logout'),
+      title: t('common:logout'),
       status: 'success'
     });
   }, [setUserInfo, toast, t]);
@@ -57,7 +57,7 @@ const UserAvatarPopover = ({ children, placement = 'top-end' }: UserAvatarPopove
                 w="100%"
               >
                 <MyIcon name="core/chat/sidebar/logout" />
-                <Text fontSize="14px"> {t('account:logout')}</Text>
+                <Text fontSize="14px"> {t('common:logout')}</Text>
               </Flex>
             </Flex>
           );
