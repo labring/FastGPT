@@ -97,6 +97,10 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
                 })}
             onClick={() => {
               if (item.link === router.asPath) return;
+              if (item.link.startsWith('/chat')) {
+                window.open(item.link, '_blank');
+                return;
+              }
               router.push(item.link);
             }}
           >

@@ -145,7 +145,13 @@ const Navbar = ({ unread }: { unread: number }) => {
                   })}
               {...(item.link !== router.asPath
                 ? {
-                    onClick: () => router.push(item.link)
+                    onClick: () => {
+                      if (item.link.startsWith('/chat')) {
+                        window.open(item.link, '_blank');
+                        return;
+                      }
+                      router.push(item.link);
+                    }
                   }
                 : {})}
             >

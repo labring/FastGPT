@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { useRouter } from 'next/router';
 import { getInitChatInfo } from '@/web/core/chat/api';
-import { Box, Flex, Drawer, DrawerOverlay, DrawerContent, useTheme } from '@chakra-ui/react';
+import { Box, Flex, Drawer, DrawerOverlay, DrawerContent, Text } from '@chakra-ui/react';
 import { streamFetch } from '@/web/common/api/fetch';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -28,6 +28,7 @@ import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
 import { type AppListItemType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
+import Loading from '@fastgpt/web/components/common/MyLoading';
 import dynamic from 'next/dynamic';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -37,12 +38,76 @@ import ChatRecordContextProvider, {
   ChatRecordContext
 } from '@/web/core/chat/context/chatRecordContext';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
+import LoginModal from '@/pageComponents/login/LoginModal';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
+// custom hook for managing chat page state and initialization logic
+const useChatPageState = (appId: string) => {
+  const router = useRouter();
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const { lastChatAppId, setSource, setAppId } = useChatStore();
+  const { userInfo, initUserInfo } = useUserStore();
+
+  const [isInitializingUser, setIsInitializingUser] = useState(true);
+
+  // calculate state
+  const isLoggedIn = !!userInfo;
+  const shouldShowLoginModal = !isLoggedIn && !isInitializingUser;
+
+  // get app list
+  const {
+    data: myApps = [],
+    runAsync: loadMyApps,
+    loading: isLoadingApps
+  } = useRequest2(() => getMyApps({ getRecentlyChat: true }), {
+    manual: false,
+    refreshDeps: [userInfo],
+    async onSuccess(apps) {
+      // if no appId and there are available apps, automatically jump to the first app
+      if (!appId && apps.length > 0) {
+        await router.replace({
+          query: {
+            ...router.query,
+            appId: lastChatAppId || apps[0]._id
+          }
+        });
+      }
+
+      setSource('online');
+    }
+  });
+
+  // initialize user info
+  useMount(async () => {
+    try {
+      await initUserInfo();
+    } catch (error) {
+      console.log('User not logged in:', error);
+    } finally {
+      setIsInitializingUser(false);
+    }
+  });
+
+  // watch appId
+  useEffect(() => {
+    if (isLoggedIn && appId) {
+      setAppId(appId);
+    }
+  }, [appId, setAppId, isLoggedIn]);
+
+  return {
+    isInitializingUser,
+    isLoggedIn,
+    shouldShowLoginModal,
+    myApps,
+    isLoadingApps
+  };
+};
+
 const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const router = useRouter();
-  const theme = useTheme();
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
@@ -65,7 +130,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
-  // Load chat init data
   const { loading } = useRequest2(
     async () => {
       if (!appId || forbidLoadChat.current) return;
@@ -73,10 +137,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       const res = await getInitChatInfo({ appId, chatId });
       res.userAvatar = userInfo?.avatar;
 
-      // Wait for state update to complete
       setChatBoxData(res);
 
-      // reset chat variables
       resetVariables({
         variables: res.variables,
         variableList: res.app?.chatConfig?.variables
@@ -86,7 +148,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       manual: false,
       refreshDeps: [appId, chatId],
       onError(e: any) {
-        // reset all chat tore
         if (e?.code === 501) {
           setLastChatAppId('');
           router.replace('/dashboard/apps');
@@ -113,7 +174,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       generatingMessage,
       variables
     }: StartChatFnProps) => {
-      // Just send a user prompt
       const histories = messages.slice(-1);
       const { responseText } = await streamFetch({
         data: {
@@ -129,9 +189,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 
       const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(histories)[0]);
 
-      // new chat
       onUpdateHistoryTitle({ chatId, newTitle });
-      // update chat window
       setChatBoxData((state) => ({
         ...state,
         title: newTitle
@@ -166,19 +224,17 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   return (
     <Flex h={'100%'}>
       <NextHead title={chatBoxData.app.name} icon={chatBoxData.app.avatar}></NextHead>
-      {/* pc show myself apps */}
       {isPc && (
-        <Box borderRight={theme.borders.base} flex={'0 0 220px'}>
+        <Box flex={'0 0 202px'} overflow={'hidden'}>
           <SliderApps apps={myApps} activeAppId={appId} />
         </Box>
       )}
 
       {(!datasetCiteData || isPc) && (
-        <PageContainer flex={'1 0 0'} w={0} p={[0, '16px']} position={'relative'}>
+        <PageContainer flex={'1 0 0'} w={0} position={'relative'}>
           <Flex h={'100%'} flexDirection={['column', 'row']}>
-            {/* pc always show history. */}
+            {/* pc always show history */}
             {RenderHistorySlider}
-            {/* chat container */}
             <Flex
               position={'relative'}
               h={[0, '100%']}
@@ -186,7 +242,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
               flex={'1 0 0'}
               flexDirection={'column'}
             >
-              {/* header */}
               <ChatHeader
                 totalRecordsCount={totalRecordsCount}
                 apps={myApps}
@@ -194,7 +249,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                 showHistory
               />
 
-              {/* chat box */}
               <Box flex={'1 0 0'} bg={'white'}>
                 {isPlugin ? (
                   <CustomPluginRunBox
@@ -238,43 +292,10 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 const Render = (props: { appId: string; isStandalone?: string }) => {
   const { appId, isStandalone } = props;
   const { t } = useTranslation();
-  const { toast } = useToast();
-  const router = useRouter();
-  const { source, chatId, lastChatAppId, setSource, setAppId } = useChatStore();
 
-  const { data: myApps = [], runAsync: loadMyApps } = useRequest2(
-    () => getMyApps({ getRecentlyChat: true }),
-    {
-      manual: false
-    }
-  );
+  const { isInitializingUser, shouldShowLoginModal, myApps } = useChatPageState(appId);
 
-  // 初始化聊天框
-  useMount(async () => {
-    // pc: redirect to latest model chat
-    if (!appId) {
-      const apps = await loadMyApps();
-      if (apps.length === 0) {
-        toast({
-          status: 'error',
-          title: t('common:core.chat.You need to a chat app')
-        });
-        router.replace('/dashboard/apps');
-      } else {
-        router.replace({
-          query: {
-            ...router.query,
-            appId: lastChatAppId || apps[0]._id
-          }
-        });
-      }
-    }
-    setSource('online');
-  });
-  // Watch appId
-  useEffect(() => {
-    setAppId(appId);
-  }, [appId, setAppId]);
+  const { chatId } = useChatStore();
 
   const currentApp = useMemo(() => {
     return myApps.find((app) => app._id === appId);
@@ -284,22 +305,44 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
     () => ({ appId, source: ChatSourceEnum.online }),
     [appId]
   );
+
   const chatRecordProviderParams = useMemo(() => {
     return {
       appId,
       type: GetChatTypeEnum.normal,
-      chatId: chatId
+      chatId
     };
   }, [appId, chatId]);
 
-  return source === ChatSourceEnum.online ? (
+  // show loading state
+  if (isInitializingUser) {
+    return (
+      <PageContainer flex={'1'} p={4}>
+        <Box position="relative" h="100%">
+          <Loading fixed={false} />
+        </Box>
+      </PageContainer>
+    );
+  }
+
+  // show login modal
+  if (shouldShowLoginModal) {
+    return (
+      <>
+        <PageContainer flex={'1'} p={4}></PageContainer>
+        <LoginModal isOpen />
+      </>
+    );
+  }
+
+  // show main chat interface
+  return (
     <ChatContextProvider params={chatHistoryProviderParams}>
       <ChatItemContextProvider
         showRouteToAppDetail={isStandalone !== '1' && !!currentApp?.permission.hasWritePer}
         showRouteToDatasetDetail={isStandalone !== '1'}
         isShowReadRawSource={true}
         isResponseDetail={true}
-        // isShowFullText={true}
         showNodeStatus
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
@@ -307,7 +350,7 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
         </ChatRecordContextProvider>
       </ChatItemContextProvider>
     </ChatContextProvider>
-  ) : null;
+  );
 };
 
 export async function getServerSideProps(context: any) {
@@ -315,7 +358,7 @@ export async function getServerSideProps(context: any) {
     props: {
       appId: context?.query?.appId || '',
       isStandalone: context?.query?.isStandalone || '',
-      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow']))
+      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow', 'login']))
     }
   };
 }
