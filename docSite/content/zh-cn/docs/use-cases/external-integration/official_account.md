@@ -39,7 +39,7 @@ weight: 506
 
 私有部署的用户可自行查阅自己的 IP 地址。
 
-海外版用户（cloud.tryfastgpt.ai）可以填写下面的 IP 白名单：
+海外版用户（cloud.fastgpt.io）可以填写下面的 IP 白名单：
 
 ```
 35.240.227.100
