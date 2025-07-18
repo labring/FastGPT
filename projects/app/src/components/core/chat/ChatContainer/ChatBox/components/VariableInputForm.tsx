@@ -79,17 +79,19 @@ const VariableInput = ({
               <MyIcon name={'common/info'} color={'primary.600'} w={4} />
               {t('chat:variable_invisable_in_share')}
             </Flex>
-            {externalVariableList.map((item) => (
-              <LabelAndFormRender
-                {...item}
-                key={item.key}
-                formKey={`variables.${item.key}`}
-                placeholder={item.description}
-                inputType={variableInputTypeToInputType(item.type)}
-                variablesForm={variablesForm}
-                bg={'myGray.50'}
-              />
-            ))}
+            {externalVariableList.map((item) => {
+              return (
+                <LabelAndFormRender
+                  {...item}
+                  key={item.key}
+                  formKey={`variables.${item.key}`}
+                  placeholder={item.description}
+                  inputType={variableInputTypeToInputType(item.type, item.valueType)}
+                  variablesForm={variablesForm}
+                  bg={'myGray.50'}
+                />
+              );
+            })}
             {variableList.length === 0 && !chatStarted && (
               <Button
                 leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}

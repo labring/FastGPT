@@ -23,13 +23,14 @@ import { getChatResData } from '@/web/core/chat/api';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { useCreation } from 'ahooks';
+import type { ChatTypeEnum } from './constants';
 
 export type ChatProviderProps = {
   appId: string;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
 
-  chatType: 'log' | 'chat' | 'share' | 'team';
+  chatType: ChatTypeEnum;
 };
 
 type useChatStoreType = ChatProviderProps & {
@@ -130,7 +131,7 @@ const Provider = ({
   appId,
   chatId,
   outLinkAuthData,
-  chatType = 'chat',
+  chatType,
   children,
   ...props
 }: ChatProviderProps & {
