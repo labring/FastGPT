@@ -204,7 +204,15 @@ const DashboardContainer = ({
           ]
         : [])
     ];
-  }, [currentType, feConfigs.appTemplateCourse, pluginGroups, t, templateList, templateTags]);
+  }, [
+    currentType,
+    feConfigs.appTemplateCourse,
+    feConfigs?.isPlus,
+    pluginGroups,
+    t,
+    templateList,
+    templateTags
+  ]);
 
   const MenuIcon = useMemo(
     () => (
