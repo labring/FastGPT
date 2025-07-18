@@ -33,7 +33,7 @@ export const addEvaluationJob = (data: EvaluationJobData) => {
 
 export const checkEvaluationJobActive = async (evalId: string): Promise<boolean> => {
   try {
-    const jobId = await evaluationQueue.getDeduplicationJobId(evalId);
+    const jobId = await evaluationQueue.getDeduplicationJobId(String(evalId));
     if (!jobId) return false;
 
     const job = await evaluationQueue.getJob(jobId);
@@ -48,8 +48,9 @@ export const checkEvaluationJobActive = async (evalId: string): Promise<boolean>
 };
 
 export const removeEvaluationJob = async (evalId: string): Promise<boolean> => {
+  const formatEvalId = String(evalId);
   try {
-    const jobId = await evaluationQueue.getDeduplicationJobId(evalId);
+    const jobId = await evaluationQueue.getDeduplicationJobId(formatEvalId);
     if (!jobId) {
       addLog.warn('No job found to remove', { evalId });
       return false;

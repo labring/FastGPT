@@ -38,10 +38,11 @@ const EvalItemSchema = new Schema({
     default: 3
   },
   errorMessage: String,
+
   accuracy: Number,
   relevance: Number,
   semanticAccuracy: Number,
-  score: Number
+  score: Number // average score
 });
 
 EvalItemSchema.index({ evalId: 1, status: 1 });

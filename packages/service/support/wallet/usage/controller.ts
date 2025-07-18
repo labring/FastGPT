@@ -261,9 +261,7 @@ export const createEvaluationUsage = async ({
           {
             moduleName: i18nT('account_usage:generate_answer'),
             amount: 0,
-            inputTokens: 0,
-            outputTokens: 0,
-            model: '-'
+            count: 0
           },
           {
             moduleName: i18nT('account_usage:answer_accuracy'),
@@ -278,5 +276,5 @@ export const createEvaluationUsage = async ({
     { session, ordered: true }
   );
 
-  return { usageId: String(usageId) };
+  return { usageId };
 };

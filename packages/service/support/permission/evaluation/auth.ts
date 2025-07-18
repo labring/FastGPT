@@ -1,35 +1,64 @@
 import { parseHeaderCert } from '../controller';
 import { authAppByTmbId } from '../app/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import type { AppDetailType } from '@fastgpt/global/core/app/type';
+import {
+  ManagePermissionVal,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
 import type { EvaluationSchemaType } from '@fastgpt/global/core/app/evaluation/type';
 import type { AuthModeType } from '../type';
 import { MongoEvaluation } from '../../../core/app/evaluation/evalSchema';
 
 export const authEval = async ({
   evalId,
+  per = ReadPermissionVal,
   ...props
 }: AuthModeType & {
   evalId: string;
 }): Promise<{
   evaluation: EvaluationSchemaType;
-  app: AppDetailType;
   tmbId: string;
   teamId: string;
 }> => {
-  const { tmbId, isRoot } = await parseHeaderCert(props);
-  const evaluation = await MongoEvaluation.findById(evalId);
+  const { teamId, tmbId, isRoot } = await parseHeaderCert(props);
+
+  const evaluation = await MongoEvaluation.findById(evalId, 'tmbId').lean();
   if (!evaluation) {
-    throw new Error('Evaluation not found');
+    return Promise.reject('Evaluation not found');
   }
-  const { app } = await authAppByTmbId({
+
+  if (String(evaluation.tmbId) === tmbId) {
+    return {
+      teamId,
+      tmbId,
+      evaluation
+    };
+  }
+
+  // App read per
+  if (per === ReadPermissionVal) {
+    await authAppByTmbId({
+      tmbId,
+      appId: evaluation.appId,
+      per: ReadPermissionVal,
+      isRoot
+    });
+    return {
+      teamId,
+      tmbId,
+      evaluation
+    };
+  }
+
+  // Write per
+  await authAppByTmbId({
     tmbId,
     appId: evaluation.appId,
-    per: ReadPermissionVal,
+    per: ManagePermissionVal,
     isRoot
   });
-  if (!app.permission.hasManagePer && String(evaluation.tmbId) !== String(tmbId)) {
-    throw new Error('Permission denied');
-  }
-  return { evaluation, app, tmbId, teamId: String(evaluation.teamId) };
+  return {
+    teamId,
+    tmbId,
+    evaluation
+  };
 };
