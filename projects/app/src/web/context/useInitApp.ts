@@ -23,6 +23,7 @@ type MarketingQueryParams = {
   bd_vid?: string;
   msclkid?: string;
   k?: string;
+  search?: string;
   sourceDomain?: string;
   utm_source?: string;
   utm_medium?: string;
@@ -49,6 +50,7 @@ export const useInitApp = () => {
     bd_vid,
     msclkid,
     k,
+    search,
     sourceDomain,
     utm_source,
     utm_medium,
@@ -145,7 +147,7 @@ export const useInitApp = () => {
     if (utm_workflow) {
       setUtmParams(utmParams);
     }
-    setFastGPTSem({ keyword: k, ...utmParams });
+    setFastGPTSem({ keyword: k, search, ...utmParams });
 
     const newPath = getPathWithoutMarketingParams();
     router.replace(newPath);

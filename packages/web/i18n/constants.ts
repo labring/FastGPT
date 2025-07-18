@@ -19,7 +19,8 @@ export const I18N_NAMESPACES = [
   'account',
   'account_team',
   'account_model',
-  'dashboard_mcp'
+  'dashboard_mcp',
+  'dashboard_evaluation'
 ];
 
 export const I18N_NAMESPACES_MAP = I18N_NAMESPACES.reduce(

@@ -26,51 +26,64 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
     [usage.list]
   );
 
-  const { hasModel, hasToken, hasInputToken, hasOutputToken, hasCharsLen, hasDuration, hasPages } =
-    useMemo(() => {
-      let hasModel = false;
-      let hasToken = false;
-      let hasInputToken = false;
-      let hasOutputToken = false;
-      let hasCharsLen = false;
-      let hasDuration = false;
-      let hasPages = false;
+  const {
+    hasModel,
+    hasToken,
+    hasInputToken,
+    hasOutputToken,
+    hasCharsLen,
+    hasDuration,
+    hasPages,
+    hasCount
+  } = useMemo(() => {
+    let hasModel = false;
+    let hasToken = false;
+    let hasInputToken = false;
+    let hasOutputToken = false;
+    let hasCharsLen = false;
+    let hasDuration = false;
+    let hasPages = false;
+    let hasCount = false;
 
-      usage.list.forEach((item) => {
-        if (item.model !== undefined) {
-          hasModel = true;
-        }
+    usage.list.forEach((item) => {
+      if (item.model !== undefined) {
+        hasModel = true;
+      }
 
-        if (typeof item.tokens === 'number') {
-          hasToken = true;
-        }
-        if (typeof item.inputTokens === 'number') {
-          hasInputToken = true;
-        }
-        if (typeof item.outputTokens === 'number') {
-          hasOutputToken = true;
-        }
-        if (typeof item.charsLength === 'number') {
-          hasCharsLen = true;
-        }
-        if (typeof item.duration === 'number') {
-          hasDuration = true;
-        }
-        if (typeof item.pages === 'number') {
-          hasPages = true;
-        }
-      });
+      if (typeof item.tokens === 'number') {
+        hasToken = true;
+      }
+      if (typeof item.inputTokens === 'number') {
+        hasInputToken = true;
+      }
+      if (typeof item.outputTokens === 'number') {
+        hasOutputToken = true;
+      }
+      if (typeof item.charsLength === 'number') {
+        hasCharsLen = true;
+      }
+      if (typeof item.duration === 'number') {
+        hasDuration = true;
+      }
+      if (typeof item.pages === 'number') {
+        hasPages = true;
+      }
+      if (typeof item.count === 'number') {
+        hasCount = true;
+      }
+    });
 
-      return {
-        hasModel,
-        hasToken,
-        hasInputToken,
-        hasOutputToken,
-        hasCharsLen,
-        hasDuration,
-        hasPages
-      };
-    }, [usage.list]);
+    return {
+      hasModel,
+      hasToken,
+      hasInputToken,
+      hasOutputToken,
+      hasCharsLen,
+      hasDuration,
+      hasPages,
+      hasCount
+    };
+  }, [usage.list]);
 
   return (
     <MyModal
@@ -114,6 +127,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
                   {hasToken && <Th>{t('account_usage:token_length')}</Th>}
                   {hasInputToken && <Th>{t('account_usage:input_token_length')}</Th>}
                   {hasOutputToken && <Th>{t('account_usage:output_token_length')}</Th>}
+                  {hasCount && <Th>{t('account_usage:count')}</Th>}
                   {hasCharsLen && <Th>{t('account_usage:text_length')}</Th>}
                   {hasDuration && <Th>{t('account_usage:duration_seconds')}</Th>}
                   {hasPages && <Th>{t('account_usage:pages')}</Th>}
@@ -128,6 +142,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
                     {hasToken && <Td>{item.tokens ?? '-'}</Td>}
                     {hasInputToken && <Td>{item.inputTokens ?? '-'}</Td>}
                     {hasOutputToken && <Td>{item.outputTokens ?? '-'}</Td>}
+                    {hasCount && <Td>{item.count ?? '-'}</Td>}
                     {hasCharsLen && <Td>{item.charsLength ?? '-'}</Td>}
                     {hasDuration && <Td>{item.duration ?? '-'}</Td>}
                     {hasPages && <Td>{item.pages ?? '-'}</Td>}

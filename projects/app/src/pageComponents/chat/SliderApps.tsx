@@ -57,9 +57,55 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
       <MyDivider h={1} my={1} mx="16px" w="calc(100% - 32px)" />
 
       {!isTeamChat && (
-        <HStack px={4} my={2} color={'myGray.500'} fontSize={'sm'} justifyContent={'space-between'}>
-          <Box>{t('common:core.chat.Recent use')}</Box>
-        </HStack>
+        <>
+          <HStack
+            px={4}
+            my={2}
+            color={'myGray.500'}
+            fontSize={'sm'}
+            justifyContent={'space-between'}
+          >
+            <Box>{t('common:core.chat.Recent use')}</Box>
+            <MyPopover
+              placement="bottom-end"
+              offset={[20, 10]}
+              p={4}
+              trigger="hover"
+              Trigger={
+                <HStack
+                  spacing={0.5}
+                  cursor={'pointer'}
+                  px={2}
+                  py={'0.5'}
+                  borderRadius={'md'}
+                  mr={-2}
+                  userSelect={'none'}
+                  _hover={{
+                    bg: 'myGray.200'
+                  }}
+                >
+                  <Box>{t('common:More')}</Box>
+                  <MyIcon name={'common/select'} w={'1rem'} />
+                </HStack>
+              }
+            >
+              {({ onClose }) => (
+                <Box minH={'200px'}>
+                  <SelectOneResource
+                    maxH={'60vh'}
+                    value={activeAppId}
+                    onSelect={(item) => {
+                      if (!item) return;
+                      onChangeApp(item.id);
+                      onClose();
+                    }}
+                    server={getAppList}
+                  />
+                </Box>
+              )}
+            </MyPopover>
+          </HStack>
+        </>
       )}
 
       <MyBox flex={'1 0 0'} h={0} overflow={'overlay'} px={4} position={'relative'}>

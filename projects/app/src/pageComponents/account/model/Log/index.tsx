@@ -35,18 +35,13 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { type ChannelLogUsageType } from '@/global/aiproxy/type';
+import type { ChannelLogListItemType } from '@/global/aiproxy/type';
 
-type LogDetailType = {
-  id: number;
-  request_id: string;
+type LogDetailType = Omit<ChannelLogListItemType, 'model' | 'request_at'> & {
   channelName: string | number;
   model: React.JSX.Element;
   duration: number;
   request_at: string;
-  code: number;
-  usage?: ChannelLogUsageType;
-  endpoint: string;
 
   retry_times?: number;
   content?: string;
@@ -151,7 +146,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
       const provider = getModelProvider(model?.provider);
 
       return {
-        id: item.id,
+        ...item,
         channelName: channelName || item.channel,
         model: (
           <HStack>
@@ -161,11 +156,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
         ),
         duration: durationSecond,
         request_at: formatTime2YMDHMS(item.request_at),
-        code: item.code,
-        usage: item.usage,
-        request_id: item.request_id,
-        endpoint: item.endpoint,
-        content: item.content
+        ttfb_milliseconds: item.ttfb_milliseconds ? item.ttfb_milliseconds / 1000 : 0
       };
     });
   }, [channelList, data, systemModelList]);
@@ -299,7 +290,6 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
   const { t } = useTranslation();
   const { data: detailData } = useRequest2(
     async () => {
-      console.log(data);
       if (data.code === 200) return data;
       try {
         const res = await getLogDetail(data.id);
@@ -367,18 +357,26 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
               <Container>{detailData?.request_id}</Container>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px">
+              <Title>Request IP</Title>
+              <Container>{detailData?.ip}</Container>
+            </GridItem>
+            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
               <Title>{t('account_model:channel_status')}</Title>
               <Container color={detailData.code === 200 ? 'green.600' : 'red.600'}>
                 {detailData?.code}
               </Container>
             </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
+            <GridItem display={'flex'} borderBottomWidth="1px">
               <Title>Endpoint</Title>
               <Container>{detailData?.endpoint}</Container>
             </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px">
+            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
               <Title>{t('account_model:channel_name')}</Title>
               <Container>{detailData?.channelName}</Container>
+            </GridItem>
+            <GridItem display={'flex'} borderBottomWidth="1px">
+              <Title>{t('account_model:model')}</Title>
+              <Container>{detailData?.model}</Container>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
               <Title>{t('account_model:request_at')}</Title>
@@ -389,8 +387,10 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
               <Container>{detailData?.duration.toFixed(2)}s</Container>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <Title>{t('account_model:model')}</Title>
-              <Container>{detailData?.model}</Container>
+              <Title flex={'0 0 150px'}>{t('account_model:model_ttfb_time')}</Title>
+              <Container>
+                {detailData.ttfb_milliseconds ? `${detailData.ttfb_milliseconds}ms` : '-'}
+              </Container>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px">
               <Title flex={'0 0 150px'}>{t('account_model:model_tokens')}</Title>

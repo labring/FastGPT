@@ -235,3 +235,46 @@ export const pushLLMTrainingUsage = async ({
 
   return { totalPoints };
 };
+
+export const createEvaluationUsage = async ({
+  teamId,
+  tmbId,
+  appName,
+  model,
+  session
+}: {
+  teamId: string;
+  tmbId: string;
+  appName: string;
+  model: string;
+  session?: ClientSession;
+}) => {
+  const [{ _id: usageId }] = await MongoUsage.create(
+    [
+      {
+        teamId,
+        tmbId,
+        appName,
+        source: UsageSourceEnum.evaluation,
+        totalPoints: 0,
+        list: [
+          {
+            moduleName: i18nT('account_usage:generate_answer'),
+            amount: 0,
+            count: 0
+          },
+          {
+            moduleName: i18nT('account_usage:answer_accuracy'),
+            amount: 0,
+            inputTokens: 0,
+            outputTokens: 0,
+            model
+          }
+        ]
+      }
+    ],
+    { session, ordered: true }
+  );
+
+  return { usageId };
+};

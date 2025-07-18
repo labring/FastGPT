@@ -95,8 +95,8 @@ services:
 
   fastgpt:
     container_name: fastgpt
-    image: ghcr.io/labring/fastgpt:v4.10.1 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.10.1 # 阿里云
+    image: ghcr.io/labring/fastgpt:v4.10.1-fix # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.10.1-fix # 阿里云
     ports:
       - 3000:3000
     networks:

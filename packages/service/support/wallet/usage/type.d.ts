@@ -1,9 +1,13 @@
 export type ConcatBillQueueItemType = {
-  billId: string;
+  billId: string; // usageId
   listIndex?: number;
   totalPoints: number;
-  inputTokens: number;
-  outputTokens: number;
+
+  // Model usage
+  inputTokens?: number;
+  outputTokens?: number;
+  // Times
+  count?: number;
 };
 
 declare global {

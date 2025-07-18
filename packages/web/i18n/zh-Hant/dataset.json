@@ -166,6 +166,8 @@
   "request_headers": "請求頭",
   "retain_collection": "調整訓練參數",
   "retrain_task_submitted": "重新訓練任務已提交",
+  "retry_all": "全部重試",
+  "retry_failed": "重試失敗",
   "rootDirectoryFormatError": "根目錄資料格式不正確",
   "rootdirectory": "/根目錄",
   "same_api_collection": "存在相同的 API 集合",

@@ -24,21 +24,12 @@ import {
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { text2Chunks } from '@fastgpt/service/worker/function';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
+import { delay } from '@fastgpt/service/common/bullmq';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
 
   return global.qaQueueLen === 0;
-};
-const reduceQueueAndReturn = (delay = 0) => {
-  reduceQueue();
-  if (delay) {
-    setTimeout(() => {
-      generateQA();
-    }, delay);
-  } else {
-    generateQA();
-  }
 };
 
 type PopulateType = {
@@ -53,161 +44,163 @@ export async function generateQA(): Promise<any> {
   if (global.qaQueueLen >= max) return;
   global.qaQueueLen++;
 
-  const startTime = Date.now();
-  // get training data
-  const {
-    data,
-    text,
-    done = false,
-    error = false
-  } = await (async () => {
-    try {
-      const data = await MongoDatasetTraining.findOneAndUpdate(
-        {
-          mode: TrainingModeEnum.qa,
-          retryCount: { $gt: 0 },
-          lockTime: { $lte: addMinutes(new Date(), -10) }
-        },
-        {
-          lockTime: new Date(),
-          $inc: { retryCount: -1 }
-        }
-      )
-        .populate<PopulateType>([
+  while (true) {
+    const startTime = Date.now();
+    // get training data
+    const {
+      data,
+      text,
+      done = false,
+      error = false
+    } = await (async () => {
+      try {
+        const data = await MongoDatasetTraining.findOneAndUpdate(
           {
-            path: 'dataset',
-            select: 'agentModel vectorModel vlmModel'
+            mode: TrainingModeEnum.qa,
+            retryCount: { $gt: 0 },
+            lockTime: { $lte: addMinutes(new Date(), -10) }
           },
           {
-            path: 'collection',
-            select: 'qaPrompt'
+            lockTime: new Date(),
+            $inc: { retryCount: -1 }
           }
-        ])
-        .lean();
+        )
+          .populate<PopulateType>([
+            {
+              path: 'dataset',
+              select: 'agentModel vectorModel vlmModel'
+            },
+            {
+              path: 'collection',
+              select: 'qaPrompt'
+            }
+          ])
+          .lean();
 
-      // task preemption
-      if (!data) {
+        // task preemption
+        if (!data) {
+          return {
+            done: true
+          };
+        }
         return {
-          done: true
+          data,
+          text: data.q
+        };
+      } catch (error) {
+        return {
+          error: true
         };
       }
-      return {
-        data,
-        text: data.q
-      };
-    } catch (error) {
+    })();
+
+    if (done || !data) {
+      break;
+    }
+    if (error) {
       addLog.error(`[QA Queue] Error`, error);
-      return {
-        error: true
-      };
+      await delay(500);
+      continue;
     }
-  })();
 
-  if (done || !data) {
-    if (reduceQueue()) {
-      addLog.info(`[QA Queue] Done`);
+    if (!data.dataset || !data.collection) {
+      addLog.info(`[QA Queue] Dataset or collection not found`, data);
+      // Delete data
+      await MongoDatasetTraining.deleteOne({ _id: data._id });
+      continue;
     }
-    return;
-  }
-  if (error) {
-    return reduceQueueAndReturn();
-  }
+    // auth balance
+    if (!(await checkTeamAiPointsAndLock(data.teamId))) {
+      continue;
+    }
 
-  if (!data.dataset || !data.collection) {
-    addLog.info(`[QA Queue] Dataset or collection not found`, data);
-    // Delete data
-    await MongoDatasetTraining.deleteOne({ _id: data._id });
-    return reduceQueueAndReturn();
-  }
+    addLog.info(`[QA Queue] Start`);
 
-  // auth balance
-  if (!(await checkTeamAiPointsAndLock(data.teamId))) {
-    return reduceQueueAndReturn();
-  }
-  addLog.info(`[QA Queue] Start`);
-
-  try {
-    const modelData = getLLMModel(data.dataset.agentModel);
-    const prompt = `${data.collection.qaPrompt || Prompt_AgentQA.description}
+    try {
+      const modelData = getLLMModel(data.dataset.agentModel);
+      const prompt = `${data.collection.qaPrompt || Prompt_AgentQA.description}
 ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
 
-    // request LLM to get QA
-    const messages: ChatCompletionMessageParam[] = [
-      {
-        role: 'user',
-        content: prompt
-      }
-    ];
-
-    const { response: chatResponse } = await createChatCompletion({
-      body: llmCompletionsBodyFormat(
+      // request LLM to get QA
+      const messages: ChatCompletionMessageParam[] = [
         {
-          model: modelData.model,
-          temperature: 0.3,
-          messages: await loadRequestMessages({ messages, useVision: false }),
-          stream: true
-        },
-        modelData
-      )
-    });
-    const { text: answer, usage } = await formatLLMResponse(chatResponse);
-    const inputTokens = usage?.prompt_tokens || (await countGptMessagesTokens(messages));
-    const outputTokens = usage?.completion_tokens || (await countPromptTokens(answer));
+          role: 'user',
+          content: prompt
+        }
+      ];
 
-    const qaArr = await formatSplitText({ answer, rawText: text, llmModel: modelData }); // 格式化后的QA对
+      const { response: chatResponse } = await createChatCompletion({
+        body: llmCompletionsBodyFormat(
+          {
+            model: modelData.model,
+            temperature: 0.3,
+            messages: await loadRequestMessages({ messages, useVision: false }),
+            stream: true
+          },
+          modelData
+        )
+      });
+      const { text: answer, usage } = await formatLLMResponse(chatResponse);
+      const inputTokens = usage?.prompt_tokens || (await countGptMessagesTokens(messages));
+      const outputTokens = usage?.completion_tokens || (await countPromptTokens(answer));
 
-    // get vector and insert
-    await pushDataListToTrainingQueue({
-      teamId: data.teamId,
-      tmbId: data.tmbId,
-      datasetId: data.datasetId,
-      collectionId: data.collectionId,
-      mode: TrainingModeEnum.chunk,
-      data: qaArr.map((item) => ({
-        ...item,
-        chunkIndex: data.chunkIndex
-      })),
-      billId: data.billId,
-      vectorModel: data.dataset.vectorModel,
-      agentModel: data.dataset.agentModel,
-      vlmModel: data.dataset.vlmModel
-    });
+      const qaArr = await formatSplitText({ answer, rawText: text, llmModel: modelData }); // 格式化后的QA对
 
-    // delete data from training
-    await MongoDatasetTraining.findByIdAndDelete(data._id);
-
-    // add bill
-    pushLLMTrainingUsage({
-      teamId: data.teamId,
-      tmbId: data.tmbId,
-      inputTokens,
-      outputTokens,
-      billId: data.billId,
-      model: modelData.model,
-      mode: 'qa'
-    });
-    addLog.info(`[QA Queue] Finish`, {
-      time: Date.now() - startTime,
-      splitLength: qaArr.length,
-      usage
-    });
-
-    return reduceQueueAndReturn();
-  } catch (err: any) {
-    addLog.error(`[QA Queue] Error`, err);
-    await MongoDatasetTraining.updateOne(
-      {
+      // get vector and insert
+      await pushDataListToTrainingQueue({
         teamId: data.teamId,
+        tmbId: data.tmbId,
         datasetId: data.datasetId,
-        _id: data._id
-      },
-      {
-        errorMsg: getErrText(err, 'unknown error')
-      }
-    );
+        collectionId: data.collectionId,
+        mode: TrainingModeEnum.chunk,
+        data: qaArr.map((item) => ({
+          ...item,
+          chunkIndex: data.chunkIndex
+        })),
+        billId: data.billId,
+        vectorModel: data.dataset.vectorModel,
+        agentModel: data.dataset.agentModel,
+        vlmModel: data.dataset.vlmModel
+      });
 
-    return reduceQueueAndReturn(500);
+      // delete data from training
+      await MongoDatasetTraining.findByIdAndDelete(data._id);
+
+      // Push usage
+      pushLLMTrainingUsage({
+        teamId: data.teamId,
+        tmbId: data.tmbId,
+        inputTokens,
+        outputTokens,
+        billId: data.billId,
+        model: modelData.model,
+        mode: 'qa'
+      });
+
+      addLog.info(`[QA Queue] Finish`, {
+        time: Date.now() - startTime,
+        splitLength: qaArr.length,
+        usage
+      });
+    } catch (err: any) {
+      addLog.error(`[QA Queue] Error`, err);
+      await MongoDatasetTraining.updateOne(
+        {
+          _id: data._id
+        },
+        {
+          errorMsg: getErrText(err, 'unknown error')
+        }
+      );
+
+      await delay(100);
+    }
   }
+
+  if (reduceQueue()) {
+    addLog.info(`[QA Queue] Done`);
+  }
+  addLog.debug(`[QA Queue] break loop, current queue size: ${global.qaQueueLen}`);
 }
 
 // Format qa answer
