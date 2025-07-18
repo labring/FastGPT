@@ -152,7 +152,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
               .replace(/\$(.+?)\s+\\tag\{(.+?)\}\$/g, '$$$1 \\qquad \\qquad ($2)$$')
               .replace(/\\text\{([^}]*?)(\b\w+)_(\w+\b)([^}]*?)\}/g, '\\text{$1$2\\_$3$4}');
             // 添加调试日志来检测脏标签清理效果
-            console.log('cleanedText', cleanedText);
+            // console.log('cleanedText', cleanedText);
             const remainingTags = cleanedText.match(/<!--[\s\S]*?-->/g);
             if (remainingTags) {
               console.warn(`[Doc2x] Remaining dirty tags after cleaning:`, {

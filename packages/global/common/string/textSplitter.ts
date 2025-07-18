@@ -62,40 +62,76 @@ const strIsMdTable = (str: string) => {
 
   return true;
 };
+/**
+ * 将 Markdown 表格文本按 chunkSize 拆分为多个块，每个块都包含表头和分隔行，保证表格格式正确。
+ * 适用于 markdown 表格（以 | 分隔，且有表头和分隔行）。
+ *
+ * @param props - 传入的参数对象，包含 text（表格内容字符串）和 chunkSize（每块最大长度）
+ * @returns {SplitResponse} - 返回拆分后的表格块数组和总字符数
+ */
 const markdownTableSplit = (props: SplitProps): SplitResponse => {
   let { text = '', chunkSize } = props;
-  const splitText2Lines = text.split('\n');
+
+  // 按行分割表格文本，保留空的表格行但过滤完全空白的行
+  const splitText2Lines = text.split('\n').filter((line) => {
+    const trimmed = line.trim();
+    // 保留表格行（包含 | 的行）或者完全空白但在表格中的行
+    return trimmed || line.includes('|');
+  });
+
+  // 如果没有足够的行组成表格，直接返回
+  if (splitText2Lines.length < 2) {
+    return { chunks: [text], chars: text.length };
+  }
+
+  // 取第一行为表头
   const header = splitText2Lines[0];
+
+  // 计算表头有多少列（通过 | 分割，减去两端的空列）
   const headerSize = header.split('|').length - 2;
 
+  // 构造 markdown 表格的分隔行（如 | --- | --- |）
+  // headerSize > 0 时，生成对应数量的 ---，否则至少生成一个
   const mdSplitString = `| ${new Array(headerSize > 0 ? headerSize : 1)
     .fill(0)
     .map(() => '---')
     .join(' | ')} |`;
 
+  // 存储拆分后的表格块
   const chunks: string[] = [];
+
+  // 初始化第一个块，包含表头和分隔行
   let chunk = `${header}
 ${mdSplitString}
 `;
 
+  // 从第三行（索引2）开始遍历数据行
   for (let i = 2; i < splitText2Lines.length; i++) {
-    const chunkLength = getTextValidLength(chunk);
-    const nextLineLength = getTextValidLength(splitText2Lines[i]);
+    const currentLine = splitText2Lines[i];
 
-    // Over size
+    // 当前块的有效长度
+    const chunkLength = getTextValidLength(chunk);
+    // 下一个数据行的有效长度
+    const nextLineLength = getTextValidLength(currentLine);
+
+    // 如果加上下一个数据行后超出 chunkSize，则将当前块推入结果，并新建一个块
     if (chunkLength + nextLineLength > chunkSize) {
       chunks.push(chunk);
+      // 新块也要包含表头和分隔行
       chunk = `${header}
 ${mdSplitString}
 `;
     }
-    chunk += `${splitText2Lines[i]}\n`;
+    // 将当前数据行添加到当前块
+    chunk += `${currentLine}\n`;
   }
 
+  // 最后一个块如果有内容，推入结果
   if (chunk) {
     chunks.push(chunk);
   }
 
+  // 返回所有块和总字符数
   return {
     chunks,
     chars: chunks.reduce((sum, chunk) => sum + chunk.length, 0)
@@ -131,8 +167,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     return match.replace(/\n/g, codeBlockMarker);
   });
   // 2. Markdown 表格处理 - 单独提取表格出来，进行表头合并
-  const tableReg =
-    /(\n\|(?:(?:[^\n|]+\|){1,})\n\|(?:[:\-\s]+\|){1,}\n(?:\|(?:[^\n|]+\|)*\n?)*)(?:\n|$)/g;
+  const tableReg = /(\n\|(?:[^\n|]*\|)+\n\|(?:[:\-\s]*\|)+\n(?:\|(?:[^\n|]*\|)*\n?)*)(?:\n|$)/g;
   const tableDataList = text.match(tableReg);
   if (tableDataList) {
     tableDataList.forEach((tableData) => {
@@ -181,7 +216,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     { reg: /([\n](```[\s\S]*?```|~~~[\s\S]*?~~~))/g, maxLen: maxSize }, // code block
     // HTML Table tag 尽可能保障完整
     {
-      reg: /(\n\|(?:(?:[^\n|]+\|){1,})\n\|(?:[:\-\s]+\|){1,}\n(?:\|(?:[^\n|]+\|)*\n)*)/g,
+      reg: /(\n\|(?:[^\n|]*\|)+\n\|(?:[:\-\s]*\|)+\n(?:\|(?:[^\n|]*\|)*\n)*)/g,
       maxLen: chunkSize
     }, // Markdown Table 尽可能保证完整性
     { reg: /(\n{2,})/g, maxLen: chunkSize },
@@ -468,10 +503,10 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
 
   const splitResult = splitWithCustomSign.map((item) => {
     if (strIsMdTable(item)) {
-      return markdownTableSplit(props);
+      return markdownTableSplit({ ...props, text: item });
     }
 
-    return commonSplit(props);
+    return commonSplit({ ...props, text: item });
   });
 
   return {
