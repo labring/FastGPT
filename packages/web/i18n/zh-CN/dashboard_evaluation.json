@@ -15,7 +15,7 @@
   "app_response": "应用输出",
   "back": "退出",
   "check_error": "校验失败",
-  "check_error_tip": "请检查：\n1. 是否与.csv模板表头数据一致 \n2. 是否缺失必填项 \n3. 全局变量-是否超出字数限制、数字范围限制 \n4. 全局变量-数字框, 字符是否为number \n5. 全局变量-单选框, 字符是否与选项完全一致 \n6. 数据是否超过套餐条数限制",
+  "check_error_tip": "请检查：\n1. 是否与.csv模板表头数据一致 \n2. 是否缺失必填项 \n3. 全局变量-是否超出字数限制、数字范围限制 \n4. 全局变量-数字框, 字符是否为number \n5. 全局变量-单选框, 字符是否与选项完全一致",
   "check_format": "格式校验",
   "click_to_download_template": "点击下载该应用的 CSV 模板",
   "comfirm_delete_item": "确认删除该条数据?",

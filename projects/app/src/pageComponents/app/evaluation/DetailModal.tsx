@@ -93,7 +93,7 @@ const EvaluationDetailModal = ({
   const { llmModelList } = useSystemStore();
   const modelData = useMemo(
     () => getModelFromList(llmModelList, evalDetail.evalModel),
-    [evalDetail.evalModel]
+    [evalDetail.evalModel, llmModelList]
   );
 
   const {
@@ -107,7 +107,7 @@ const EvaluationDetailModal = ({
     },
     pollingInterval: 5000
   });
-  const evalItem = evalItemsList[selectedIndex] || null;
+  const evalItem = evalItemsList[selectedIndex];
 
   const statusMap = useMemo(
     () =>
@@ -131,29 +131,19 @@ const EvaluationDetailModal = ({
     });
   });
 
-  const { runAsync: delEvalItem, loading: isLoadingDelete } = useRequest2(
-    async (data: { evalItemId: string }) => {
-      await deleteEvalItem(data);
-    },
-    {
-      onSuccess: () => {
-        fetchData({ init: false, isPolling: true });
-        fetchEvalList();
-      }
+  const { runAsync: delEvalItem, loading: isLoadingDelete } = useRequest2(deleteEvalItem, {
+    onSuccess: () => {
+      fetchData({ init: false, isPolling: true });
+      fetchEvalList();
     }
-  );
+  });
 
-  const { runAsync: rerunItem, loading: isLoadingRerun } = useRequest2(
-    async (data: retryEvalItemBody) => {
-      await retryEvalItem(data);
-    },
-    {
-      onSuccess: () => {
-        fetchData({ init: false, isPolling: true });
-        fetchEvalList();
-      }
+  const { runAsync: rerunItem, loading: isLoadingRerun } = useRequest2(retryEvalItem, {
+    onSuccess: () => {
+      fetchData({ init: false, isPolling: true });
+      fetchEvalList();
     }
-  );
+  });
 
   const { runAsync: updateItem, loading: isLoadingUpdate } = useRequest2(
     async (data: updateEvalItemBody) => {
@@ -179,7 +169,6 @@ const EvaluationDetailModal = ({
         title={t('dashboard_evaluation:task_detail')}
         w={['90vw', '1200px']}
         maxW={['90vw', '1200px']}
-        isLoading={isLoadingUpdate || isLoadingRerun || isLoadingDelete}
       >
         <ModalBody py={6} px={9}>
           <Flex
@@ -297,20 +286,21 @@ const EvaluationDetailModal = ({
                 </Flex>
                 {evalItem && (
                   <Flex gap={2}>
-                    {(evalItem.status === EvaluationStatusEnum.queuing ||
-                      !!evalItem.errorMessage) && (
+                    {editing ? (
+                      <Button
+                        fontSize={'sm'}
+                        isLoading={isLoadingUpdate}
+                        onClick={handleSubmit(async (data) => {
+                          await updateItem(data);
+                          setEditing(false);
+                        })}
+                      >
+                        {t('common:Save')}
+                      </Button>
+                    ) : (
                       <>
-                        {editing ? (
-                          <Button
-                            fontSize={12}
-                            onClick={handleSubmit(async (data) => {
-                              await updateItem(data);
-                              setEditing(false);
-                            })}
-                          >
-                            {t('common:Save')}
-                          </Button>
-                        ) : (
+                        {(evalItem.status === EvaluationStatusEnum.queuing ||
+                          !!evalItem.errorMessage) && (
                           <IconButton
                             aria-label="edit"
                             size={'mdSquare'}
@@ -321,34 +311,39 @@ const EvaluationDetailModal = ({
                             }}
                           />
                         )}
+                        {!!evalItem.errorMessage && (
+                          <IconButton
+                            aria-label="restroe"
+                            size={'mdSquare'}
+                            variant={'whitePrimary'}
+                            icon={<MyIcon name={'common/confirm/restoreTip'} w={4} />}
+                            isLoading={isLoadingRerun}
+                            onClick={() => {
+                              rerunItem({
+                                evalItemId: evalItem.evalItemId
+                              });
+                            }}
+                          />
+                        )}
+                        {(evalItem.status === EvaluationStatusEnum.queuing ||
+                          !!evalItem.errorMessage) && (
+                          <PopoverConfirm
+                            Trigger={
+                              <IconButton
+                                aria-label="delete"
+                                size={'mdSquare'}
+                                variant={'whiteDanger'}
+                                icon={<MyIcon name={'delete'} w={4} />}
+                                isLoading={isLoadingDelete}
+                              />
+                            }
+                            type="delete"
+                            content={t('dashboard_evaluation:comfirm_delete_item')}
+                            onConfirm={() => delEvalItem({ evalItemId: evalItem.evalItemId })}
+                          />
+                        )}
                       </>
                     )}
-                    {evalItem.status === EvaluationStatusEnum.completed && (
-                      <IconButton
-                        aria-label="restroe"
-                        size={'mdSquare'}
-                        variant={'whitePrimary'}
-                        icon={<MyIcon name={'common/confirm/restoreTip'} w={4} />}
-                        onClick={() => {
-                          rerunItem({
-                            evalItemId: evalItem.evalItemId
-                          });
-                        }}
-                      />
-                    )}
-                    <PopoverConfirm
-                      Trigger={
-                        <IconButton
-                          aria-label="delete"
-                          size={'mdSquare'}
-                          variant={'whiteDanger'}
-                          icon={<MyIcon name={'delete'} w={4} />}
-                        />
-                      }
-                      type="delete"
-                      content={t('dashboard_evaluation:comfirm_delete_item')}
-                      onConfirm={() => delEvalItem({ evalItemId: evalItem.evalItemId })}
-                    />
                   </Flex>
                 )}
               </Flex>

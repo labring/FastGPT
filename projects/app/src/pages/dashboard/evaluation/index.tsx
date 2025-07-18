@@ -27,10 +27,10 @@ import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { useState } from 'react';
 import EvaluationDetailModal from '../../../pageComponents/app/evaluation/DetailModal';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import type { evaluationType } from '@fastgpt/global/core/app/evaluation/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 
 const Evaluation = () => {
   const router = useRouter();
@@ -39,11 +39,7 @@ const Evaluation = () => {
   const { isPc } = useSystem();
 
   const [searchKey, setSearchKey] = useState('');
-  const [evalDetailIndex, setEvalDetailIndex] = useState<number | null>(null);
-
-  const { openConfirm, ConfirmModal } = useConfirm({
-    type: 'delete'
-  });
+  const [evalDetail, setEvalDetail] = useState<evaluationType>();
 
   const {
     data: evaluationList,
@@ -51,7 +47,7 @@ const Evaluation = () => {
     fetchData
   } = useScrollPagination(getEvaluationList, {
     pageSize: 20,
-    pollingInterval: 5000,
+    pollingInterval: 10000,
     params: {
       searchKey
     },
@@ -59,16 +55,11 @@ const Evaluation = () => {
     refreshDeps: [searchKey]
   });
 
-  const { runAsync: deleteEval, loading: isLoadingDelete } = useRequest2(
-    async (data: { evalId: string }) => {
-      await deleteEvaluation(data);
-    },
-    {
-      onSuccess: () => {
-        fetchData({ init: false, isPolling: true });
-      }
+  const { runAsync: onDeleteEval } = useRequest2(deleteEvaluation, {
+    onSuccess: () => {
+      fetchData({ init: false, isPolling: true });
     }
-  );
+  });
 
   const renderHeader = (MenuIcon?: React.ReactNode) => {
     return isPc ? (
@@ -161,7 +152,7 @@ const Evaluation = () => {
               w={4}
               ml={2}
               cursor={'pointer'}
-              onClick={() => setEvalDetailIndex(index)}
+              onClick={() => setEvalDetail(item)}
             />
           </MyTooltip>
         )}
@@ -176,7 +167,7 @@ const Evaluation = () => {
           <Flex h={'full'} bg={'white'} p={6} flexDirection="column">
             {renderHeader(MenuIcon)}
 
-            <MyBox flex={'1 0 0'} overflow="hidden" isLoading={isLoadingDelete}>
+            <MyBox flex={'1 0 0'} overflow="hidden">
               <ScrollData h={'100%'}>
                 <TableContainer mt={3} fontSize={'sm'}>
                   <Table variant={'simple'}>
@@ -223,7 +214,7 @@ const Evaluation = () => {
                               <Box>{formatTime2YMDHM(item.finishTime)}</Box>
                             </Td>
                             <Td color={item.score ? 'myGray.600' : 'myGray.900'}>
-                              {item.score ? (item.score * 100).toFixed(2) : '-'}
+                              {typeof item.score === 'number' ? item.score * 100 : '-'}
                             </Td>
                             <Td>
                               <Button
@@ -232,22 +223,23 @@ const Evaluation = () => {
                                 fontSize={'12px'}
                                 fontWeight={'medium'}
                                 mr={2}
-                                onClick={() => setEvalDetailIndex(index)}
+                                onClick={() => setEvalDetail(item)}
                               >
                                 {t('dashboard_evaluation:detail')}
                               </Button>
-                              <IconButton
-                                aria-label="delete"
-                                size={'mdSquare'}
-                                variant={'whiteDanger'}
-                                icon={<MyIcon name={'delete'} w={4} />}
-                                onClick={() =>
-                                  openConfirm(
-                                    () => deleteEval({ evalId: item._id }),
-                                    undefined,
-                                    t('dashboard_evaluation:comfirm_delete_task')
-                                  )()
+
+                              <PopoverConfirm
+                                type="delete"
+                                Trigger={
+                                  <IconButton
+                                    aria-label="delete"
+                                    size={'mdSquare'}
+                                    variant={'whiteDanger'}
+                                    icon={<MyIcon name={'delete'} w={4} />}
+                                  />
                                 }
+                                content={t('dashboard_evaluation:comfirm_delete_task')}
+                                onConfirm={() => onDeleteEval({ evalId: item._id })}
                               />
                             </Td>
                           </Tr>
@@ -261,14 +253,13 @@ const Evaluation = () => {
           </Flex>
         )}
       </DashboardContainer>
-      {evalDetailIndex !== null && evaluationList[evalDetailIndex] && (
+      {!!evalDetail && (
         <EvaluationDetailModal
-          evalDetail={evaluationList[evalDetailIndex]}
-          onClose={() => setEvalDetailIndex(null)}
+          evalDetail={evalDetail}
+          onClose={() => setEvalDetail(undefined)}
           fetchEvalList={() => fetchData({ init: false, isPolling: true })}
         />
       )}
-      <ConfirmModal />
     </>
   );
 };

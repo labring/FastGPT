@@ -14,7 +14,7 @@
   "app_response": "Application output",
   "back": "back",
   "check_error": "Error",
-  "check_error_tip": "Please check:\n\n1. Is it consistent with the header data of the .csv template\n\n2. Whether required items are missing\n\n3. Global variables - whether the word limit or number range limit is exceeded\n\n4. Global variable-number box, whether the character is number\n\n5. Global variable - radio box, whether the characters are exactly the same as the options\n\n6. Whether the data exceeds the limit on the number of packages",
+  "check_error_tip": "Check, please:\n\n1. Is it consistent with the header data of the .csv template\n\n2. Whether required items are missing\n\n3. Global variables - whether the word limit or number range limit is exceeded\n\n4. Global variable-number box, whether the character is number\n\n5. Global variable - radio box, whether the characters are exactly the same as the options",
   "check_format": "Format Check",
   "comfirm_delete_item": "Confirm to delete this piece of data?",
   "comfirm_delete_task": "Confirm deleting the task and all its data?",

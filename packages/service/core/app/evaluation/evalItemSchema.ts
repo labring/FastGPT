@@ -27,6 +27,7 @@ const EvalItemSchema = new Schema({
   history: String,
   globalVariables: Object,
   response: String,
+  responseTime: Date,
 
   status: {
     type: Number,
@@ -37,12 +38,14 @@ const EvalItemSchema = new Schema({
     type: Number,
     default: 3
   },
-  errorMessage: String,
+  finishTime: Date,
 
   accuracy: Number,
   relevance: Number,
   semanticAccuracy: Number,
-  score: Number // average score
+  score: Number, // average score
+
+  errorMessage: String
 });
 
 EvalItemSchema.index({ evalId: 1, status: 1 });
