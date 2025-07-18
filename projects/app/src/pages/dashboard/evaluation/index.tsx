@@ -24,7 +24,7 @@ import { deleteEvaluation, getEvaluationList } from '@/web/core/app/api/evaluati
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import EvaluationDetailModal from '../../../pageComponents/app/evaluation/DetailModal';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -39,7 +39,9 @@ const Evaluation = () => {
   const { isPc } = useSystem();
 
   const [searchKey, setSearchKey] = useState('');
-  const [evalDetail, setEvalDetail] = useState<evaluationType>();
+  const [evalDetailId, setEvalDetailId] = useState<string>();
+
+  const [pollingInterval, setPollingInterval] = useState(10000);
 
   const {
     data: evaluationList,
@@ -47,13 +49,29 @@ const Evaluation = () => {
     fetchData
   } = useScrollPagination(getEvaluationList, {
     pageSize: 20,
-    pollingInterval: 10000,
+    pollingInterval,
+    pollingWhenHidden: true,
     params: {
       searchKey
     },
     EmptyTip: <EmptyTip />,
     refreshDeps: [searchKey]
   });
+
+  const evalDetail = useMemo(() => {
+    if (!evalDetailId) return undefined;
+    return evaluationList.find((item) => item._id === evalDetailId);
+  }, [evalDetailId, evaluationList]);
+
+  useEffect(() => {
+    const hasRunningOrErrorTasks = evaluationList.some((item) => {
+      const { totalCount = 0, completedCount = 0, errorCount = 0 } = item;
+      const isCompleted = totalCount === completedCount;
+      return !isCompleted || errorCount > 0;
+    });
+
+    setPollingInterval(hasRunningOrErrorTasks ? 10000 : 0);
+  }, [evaluationList]);
 
   const { runAsync: onDeleteEval } = useRequest2(deleteEvaluation, {
     onSuccess: () => {
@@ -123,7 +141,7 @@ const Evaluation = () => {
     );
   };
 
-  const renderProgress = (item: evaluationType, index: number) => {
+  const renderProgress = (item: evaluationType) => {
     const { completedCount, totalCount, errorCount } = item;
 
     if (completedCount === totalCount) {
@@ -152,7 +170,7 @@ const Evaluation = () => {
               w={4}
               ml={2}
               cursor={'pointer'}
-              onClick={() => setEvalDetail(item)}
+              onClick={() => setEvalDetailId(item._id)}
             />
           </MyTooltip>
         )}
@@ -184,13 +202,13 @@ const Evaluation = () => {
                     </Thead>
                     <Tbody>
                       <Tr h={'5px'} />
-                      {evaluationList.map((item, index) => {
+                      {evaluationList.map((item) => {
                         return (
                           <Tr key={item._id}>
                             <Td fontWeight={'medium'} color={'myGray.900'}>
                               {item.name}
                             </Td>
-                            <Td>{renderProgress(item, index)}</Td>
+                            <Td>{renderProgress(item)}</Td>
                             <Td>
                               <Flex alignItems={'center'} gap={1.5}>
                                 <Avatar
@@ -223,7 +241,7 @@ const Evaluation = () => {
                                 fontSize={'12px'}
                                 fontWeight={'medium'}
                                 mr={2}
-                                onClick={() => setEvalDetail(item)}
+                                onClick={() => setEvalDetailId(item._id)}
                               >
                                 {t('dashboard_evaluation:detail')}
                               </Button>
@@ -256,7 +274,7 @@ const Evaluation = () => {
       {!!evalDetail && (
         <EvaluationDetailModal
           evalDetail={evalDetail}
-          onClose={() => setEvalDetail(undefined)}
+          onClose={() => setEvalDetailId(undefined)}
           fetchEvalList={() => fetchData({ init: false, isPolling: true })}
         />
       )}
