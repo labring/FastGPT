@@ -35,7 +35,7 @@ const maxQuantityMap: Record<
     }[]
 > = {};
 
-/* 
+/*
   Every request generates a unique sign
   If the number of requests exceeds maxQuantity, cancel the earliest request and initiate a new request
 */
@@ -112,6 +112,7 @@ function responseError(err: any) {
   const isOutlinkPage = {
     '/chat/share': true,
     '/chat/team': true,
+    '/chat': true,
     '/login': true
   }[window.location.pathname];
 
@@ -223,3 +224,15 @@ export function PUT<T = undefined>(url: string, data = {}, config: ConfigType = 
 export function DELETE<T = undefined>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
   return request(url, data, config, 'DELETE');
 }
+
+export {
+  maxQuantityMap,
+  checkMaxQuantity,
+  requestFinish,
+  startInterceptors,
+  responseSuccess,
+  checkRes,
+  responseError,
+  instance,
+  request
+};
