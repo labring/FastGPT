@@ -39,6 +39,7 @@ import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
 import { type AppSchema } from '@fastgpt/global/core/app/type';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -294,7 +295,7 @@ const OutLink = (props: Props) => {
                       outLinkAuthData={outLinkAuthData}
                       feedbackType={'user'}
                       onStartChat={startChat}
-                      chatType="share"
+                      chatType={ChatTypeEnum.share}
                     />
                   )}
                 </Box>

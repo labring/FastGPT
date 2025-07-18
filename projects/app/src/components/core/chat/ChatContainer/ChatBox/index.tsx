@@ -47,7 +47,7 @@ import {
   formatChatValue2InputType,
   setUserSelectResultToHistories
 } from './utils';
-import { textareaMinH } from './constants';
+import { ChatTypeEnum, textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import ChatProvider, { ChatBoxContext, type ChatProviderProps } from './Provider';
 
@@ -155,7 +155,7 @@ const ChatBox = ({
   const isInteractive = useMemo(() => checkIsInteractiveByHistories(chatRecords), [chatRecords]);
 
   const externalVariableList = useMemo(() => {
-    if (chatType === 'chat') {
+    if ([ChatTypeEnum.log, ChatTypeEnum.chat].includes(chatType)) {
       return allVariableList.filter((item) => item.type === VariableInputEnum.custom);
     }
     return [];
@@ -972,7 +972,7 @@ const ChatBox = ({
               <VariableInputForm
                 chatStarted={chatStarted}
                 chatForm={chatForm}
-                showExternalVariables={chatType === 'chat'}
+                showExternalVariables={[ChatTypeEnum.log, ChatTypeEnum.chat].includes(chatType)}
               />
             </Box>
           )}

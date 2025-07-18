@@ -34,6 +34,7 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useMount } from 'ahooks';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
+import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
 type Props = { appId: string; chatId: string; teamId: string; teamToken: string };
@@ -228,7 +229,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                     outLinkAuthData={outLinkAuthData}
                     feedbackType={'user'}
                     onStartChat={startChat}
-                    chatType="team"
+                    chatType={ChatTypeEnum.team}
                   />
                 )}
               </Box>
