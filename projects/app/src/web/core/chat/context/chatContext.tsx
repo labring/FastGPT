@@ -219,7 +219,7 @@ const ChatContextProvider = ({
         );
       } else {
         // Chat history not exists
-        loadHistories(true);
+        loadHistories({ init: true });
       }
     },
     [histories, loadHistories, setHistories]

@@ -28,6 +28,7 @@ export type ConcatUsageProps = UsageListItemCountType & {
   billId?: string;
   totalPoints: number;
   listIndex?: number;
+  count?: number;
 };
 
 export type CreateUsageProps = {

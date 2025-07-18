@@ -19,6 +19,7 @@ import { concatPer } from '@fastgpt/service/support/permission/controller';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export type ListAppBody = {
   parentId?: ParentIdType;
@@ -144,7 +145,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
 
   const myApps = await MongoApp.find(
     findAppsQuery,
-    '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission',
+    '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission modules',
     {
       limit: limit
     }
@@ -196,10 +197,16 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
         };
       })();
 
+      const { modules, ...rest } = app;
+      const hasInteractiveNode = modules?.some((item) =>
+        [FlowNodeTypeEnum.formInput, FlowNodeTypeEnum.userSelect].includes(item.flowNodeType)
+      );
+
       return {
-        ...app,
+        ...rest,
         permission: Per,
-        private: privateApp
+        private: privateApp,
+        hasInteractiveNode
       };
     })
     .filter((app) => app.permission.hasReadPer);
