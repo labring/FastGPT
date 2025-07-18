@@ -225,7 +225,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
               const inputValue = isArray(updateItem.value?.[1]) ? '' : updateItem.value?.[1];
 
               return (
-                <Box w={'300px'} bg={'white'} borderRadius={'sm'}>
+                <Box w={'300px'} borderRadius={'sm'}>
                   <InputRender
                     inputType={valueTypeToInputType(valueType)}
                     value={inputValue || ''}

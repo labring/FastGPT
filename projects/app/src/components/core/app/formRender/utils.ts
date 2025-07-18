@@ -6,11 +6,15 @@ import { InputTypeEnum } from './constant';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { InputConfigType } from '@fastgpt/global/core/workflow/type/io';
 
-export const variableInputTypeToInputType = (inputType: VariableInputEnum) => {
+export const variableInputTypeToInputType = (
+  inputType: VariableInputEnum,
+  valueType?: WorkflowIOValueTypeEnum
+) => {
   if (inputType === VariableInputEnum.input) return InputTypeEnum.input;
   if (inputType === VariableInputEnum.textarea) return InputTypeEnum.textarea;
   if (inputType === VariableInputEnum.numberInput) return InputTypeEnum.numberInput;
   if (inputType === VariableInputEnum.select) return InputTypeEnum.select;
+  if (inputType === VariableInputEnum.custom) return valueTypeToInputType(valueType);
   return InputTypeEnum.JSONEditor;
 };
 
