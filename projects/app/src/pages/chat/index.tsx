@@ -37,6 +37,7 @@ import ChatRecordContextProvider, {
   ChatRecordContext
 } from '@/web/core/chat/context/chatRecordContext';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
+import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -212,7 +213,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                     showEmptyIntro
                     feedbackType={'user'}
                     onStartChat={onStartChat}
-                    chatType={'chat'}
+                    chatType={ChatTypeEnum.chat}
                     isReady={!loading}
                   />
                 )}

@@ -18,6 +18,7 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import { useTranslation } from 'next-i18next';
+import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 
@@ -140,7 +141,7 @@ export const useChatTest = ({
         appId={appId}
         chatId={chatId}
         showMarkIcon
-        chatType={'chat'}
+        chatType={ChatTypeEnum.chat}
         onStartChat={startChat}
       />
     )

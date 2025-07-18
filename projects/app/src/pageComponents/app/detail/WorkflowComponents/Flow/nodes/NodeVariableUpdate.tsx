@@ -31,6 +31,7 @@ import { WorkflowNodeEdgeContext } from '../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import InputRender from '@/components/core/app/formRender';
 import { valueTypeToInputType } from '@/components/core/app/formRender/utils';
+import { isValidReferenceValueFormat } from '@fastgpt/global/core/workflow/utils';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs = [], nodeId } = data;
@@ -110,17 +111,17 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
         (item) => item.renderType === updateItem.renderType
       );
 
-      const onUpdateNewValue = (newValue?: ReferenceValueType | string) => {
-        if (typeof newValue === 'string') {
-          onUpdateList(
-            updateList.map((update, i) =>
-              i === index ? { ...update, value: ['', newValue] } : update
-            )
-          );
-        } else if (newValue) {
+      const onUpdateNewValue = (newValue: any) => {
+        if (isValidReferenceValueFormat(newValue)) {
           onUpdateList(
             updateList.map((update, i) =>
               i === index ? { ...update, value: newValue as ReferenceItemValueType } : update
+            )
+          );
+        } else {
+          onUpdateList(
+            updateList.map((update, i) =>
+              i === index ? { ...update, value: ['', newValue] } : update
             )
           );
         }
@@ -224,7 +225,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
               const inputValue = isArray(updateItem.value?.[1]) ? '' : updateItem.value?.[1];
 
               return (
-                <Box w={'300px'} bg={'white'} borderRadius={'sm'}>
+                <Box w={'300px'} borderRadius={'sm'}>
                   <InputRender
                     inputType={valueTypeToInputType(valueType)}
                     value={inputValue || ''}
