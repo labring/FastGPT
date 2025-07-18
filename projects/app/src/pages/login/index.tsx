@@ -9,10 +9,12 @@ import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { LoginContainer } from '@/pageComponents/login';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
-const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
+const Login = () => {
   const router = useRouter();
   const { isPc } = useSystem();
+  const { feConfigs } = useSystemStore();
   const { lastRoute = '' } = router.query as { lastRoute: string };
 
   const loginSuccess = useCallback(
@@ -64,7 +66,10 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
         ]}
         position="relative"
       >
-        <LoginContainer onSuccess={loginSuccess} chineseRedirectUrl={ChineseRedirectUrl} />
+        <LoginContainer
+          onSuccess={loginSuccess}
+          chineseRedirectUrl={feConfigs.chineseRedirectUrl}
+        />
       </Flex>
     </Flex>
   );
@@ -73,7 +78,6 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
 export async function getServerSideProps(context: any) {
   return {
     props: {
-      ChineseRedirectUrl: process.env.CHINESE_IP_REDIRECT_URL ?? '',
       ...(await serviceSideProps(context, ['app', 'user', 'login']))
     }
   };

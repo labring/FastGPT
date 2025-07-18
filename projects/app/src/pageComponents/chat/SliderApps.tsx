@@ -29,28 +29,28 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
   );
 
   return (
-    <Flex flexDirection={'column'} h={'100%'}>
+    <Flex flexDirection={'column'} w={'100%'} h={'100%'}>
       <Box mt={4} pl={4}>
         <Flex alignItems={'center'} py={2}>
-          {!imageLoaded && (
-            <Skeleton
-              w="135px"
-              h="33px"
-              borderRadius="md"
-              startColor="gray.100"
-              endColor="gray.300"
-            />
-          )}
-          <Image
+          <Skeleton
             w="135px"
             h="33px"
-            src="/imgs/fastgpt_slogan.png"
-            alt="FastGPT slogan"
-            loading="eager"
-            onLoad={() => setImageLoaded(true)}
-            onError={() => setImageLoaded(true)}
-            display={imageLoaded ? 'block' : 'none'}
-          />
+            borderRadius="md"
+            startColor="gray.100"
+            endColor="gray.300"
+            isLoaded={imageLoaded}
+          >
+            <Image
+              w="135px"
+              h="33px"
+              src="/imgs/fastgpt_slogan.png"
+              alt="FastGPT slogan"
+              loading="eager"
+              onLoad={() => setImageLoaded(true)}
+              onError={() => setImageLoaded(true)}
+              display={imageLoaded ? 'block' : 'none'}
+            />
+          </Skeleton>
         </Flex>
       </Box>
 
@@ -96,7 +96,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
 
       <Flex p="4" alignItems="center">
         {userInfo ? (
-          <UserAvatarPopover userInfo={userInfo}>
+          <UserAvatarPopover>
             <Flex alignItems="center" gap={2} w="100%">
               <Avatar
                 flexShrink={0}

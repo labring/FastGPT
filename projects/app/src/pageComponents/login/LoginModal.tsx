@@ -1,61 +1,56 @@
 import React from 'react';
-import { Modal, ModalOverlay, ModalContent, ModalBody, Box } from '@chakra-ui/react';
+import { Box } from '@chakra-ui/react';
 import { LoginContainer } from '@/pageComponents/login';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import MyModal from '@fastgpt/web/components/common/MyModal';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
-interface LoginModalProps {
+type LoginModalProps = {
   isOpen: boolean;
   onSuccess?: () => void;
-  ChineseRedirectUrl?: string;
-}
+};
 
-const LoginModal = ({ isOpen, onSuccess, ChineseRedirectUrl }: LoginModalProps) => {
+const LoginModal = ({ isOpen, onSuccess }: LoginModalProps) => {
   const { isPc } = useSystem();
+  const { feConfigs } = useSystemStore();
 
   return (
-    <Modal
+    <MyModal
       isOpen={isOpen}
-      onClose={() => {}}
       closeOnOverlayClick={false}
-      closeOnEsc={false}
       isCentered
       size="lg"
+      w={['100%', '556px']}
+      h={['100%', 'auto']}
+      maxW="556px"
+      maxH="90vh"
+      borderRadius={[0, '16px']}
+      overflow="auto"
     >
-      <ModalOverlay />
-      <ModalContent
-        mx={4}
-        maxH="90vh"
-        overflow="auto"
-        w={['100%', '556px']}
-        h={['100%', 'auto']}
-        maxW="556px"
-        borderRadius={[0, '16px']}
+      <Box
+        px={['5vw', '88px']}
+        py={['5vh', '64px']}
+        minH={['100vh', '600px']}
+        display="flex"
+        flexDirection="column"
+        position="relative"
       >
-        <ModalBody
-          px={['5vw', '88px']}
-          py={['5vh', '64px']}
-          minH={['100vh', '600px']}
-          display="flex"
-          flexDirection="column"
-          position="relative"
-        >
-          {/* language selector - modal */}
-          {isPc && (
-            <Box position="absolute" top="24px" right="24px" zIndex={10}>
-              <I18nLngSelector />
-            </Box>
-          )}
+        {/* language selector - modal */}
+        {isPc && (
+          <Box position="absolute" top="24px" right="24px" zIndex={10}>
+            <I18nLngSelector />
+          </Box>
+        )}
 
-          <LoginContainer
-            onSuccess={onSuccess}
-            chineseRedirectUrl={ChineseRedirectUrl}
-            autoInit={true}
-            enabled={isOpen}
-          />
-        </ModalBody>
-      </ModalContent>
-    </Modal>
+        <LoginContainer
+          onSuccess={onSuccess}
+          chineseRedirectUrl={feConfigs.chineseRedirectUrl}
+          autoInit={true}
+          enabled={isOpen}
+        />
+      </Box>
+    </MyModal>
   );
 };
 

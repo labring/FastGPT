@@ -254,11 +254,7 @@ const Render = (props: Props) => {
   const router = useRouter();
   const { source, chatId, setSource, setAppId, setOutLinkAuthData } = useChatStore();
 
-  const {
-    data: myApps = [],
-    runAsync: loadMyApps,
-    loading: isLoadingApps
-  } = useRequest2(
+  const { data: myApps = [], runAsync: loadMyApps } = useRequest2(
     async () => {
       if (teamId && teamToken) {
         return getMyTokensApps({ teamId, teamToken });

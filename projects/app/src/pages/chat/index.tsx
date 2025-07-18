@@ -42,7 +42,7 @@ import LoginModal from '@/pageComponents/login/LoginModal';
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
 // custom hook for managing chat page state and initialization logic
-const useChatPageState = (appId: string, ChineseRedirectUrl?: string) => {
+const useChatPageState = (appId: string) => {
   const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -52,7 +52,7 @@ const useChatPageState = (appId: string, ChineseRedirectUrl?: string) => {
   const [isInitializingUser, setIsInitializingUser] = useState(true);
 
   // calculate state
-  const isLoggedIn = useMemo(() => !!userInfo, [userInfo]);
+  const isLoggedIn = !!userInfo;
   const shouldShowLoginModal = !isLoggedIn && !isInitializingUser;
 
   // get app list
@@ -61,7 +61,21 @@ const useChatPageState = (appId: string, ChineseRedirectUrl?: string) => {
     runAsync: loadMyApps,
     loading: isLoadingApps
   } = useRequest2(() => getMyApps({ getRecentlyChat: true }), {
-    manual: true
+    manual: false,
+    refreshDeps: [userInfo],
+    async onSuccess(apps) {
+      // if no appId and there are available apps, automatically jump to the first app
+      if (!appId && apps.length > 0) {
+        await router.replace({
+          query: {
+            ...router.query,
+            appId: lastChatAppId || apps[0]._id
+          }
+        });
+      }
+
+      setSource('online');
+    }
   });
 
   // initialize user info
@@ -74,23 +88,6 @@ const useChatPageState = (appId: string, ChineseRedirectUrl?: string) => {
       setIsInitializingUser(false);
     }
   });
-
-  // handle login success
-  const handleLoginSuccess = useCallback(async () => {
-    const apps = await loadMyApps();
-
-    // if no appId and there are available apps, automatically jump to the first app
-    if (!appId && apps.length > 0) {
-      await router.replace({
-        query: {
-          ...router.query,
-          appId: lastChatAppId || apps[0]._id
-        }
-      });
-    }
-
-    setSource('online');
-  }, [loadMyApps, appId, lastChatAppId, router, setSource]);
 
   // unified initialization logic
   useEffect(() => {
@@ -148,8 +145,7 @@ const useChatPageState = (appId: string, ChineseRedirectUrl?: string) => {
     isLoggedIn,
     shouldShowLoginModal,
     myApps,
-    isLoadingApps,
-    handleLoginSuccess
+    isLoadingApps
   };
 };
 
@@ -272,7 +268,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     <Flex h={'100%'}>
       <NextHead title={chatBoxData.app.name} icon={chatBoxData.app.avatar}></NextHead>
       {isPc && (
-        <Box flexShrink={0} w="202px">
+        <Box flex={'0 0 202px'} overflow={'hidden'}>
           <SliderApps apps={myApps} activeAppId={appId} />
         </Box>
       )}
@@ -280,6 +276,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       {(!datasetCiteData || isPc) && (
         <PageContainer flex={'1 0 0'} w={0} position={'relative'}>
           <Flex h={'100%'} flexDirection={['column', 'row']}>
+            {/* pc always show history */}
             {RenderHistorySlider}
             <Flex
               position={'relative'}
@@ -335,14 +332,11 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   );
 };
 
-const Render = (props: { appId: string; isStandalone?: string; ChineseRedirectUrl?: string }) => {
-  const { appId, isStandalone, ChineseRedirectUrl } = props;
+const Render = (props: { appId: string; isStandalone?: string }) => {
+  const { appId, isStandalone } = props;
   const { t } = useTranslation();
 
-  const { isInitializingUser, shouldShowLoginModal, myApps, handleLoginSuccess } = useChatPageState(
-    appId,
-    ChineseRedirectUrl
-  );
+  const { isInitializingUser, shouldShowLoginModal, myApps } = useChatPageState(appId);
 
   const { chatId } = useChatStore();
 
@@ -379,7 +373,7 @@ const Render = (props: { appId: string; isStandalone?: string; ChineseRedirectUr
     return (
       <>
         <PageContainer flex={'1'} p={4}></PageContainer>
-        <LoginModal isOpen onSuccess={handleLoginSuccess} ChineseRedirectUrl={ChineseRedirectUrl} />
+        <LoginModal isOpen />
       </>
     );
   }
@@ -407,7 +401,6 @@ export async function getServerSideProps(context: any) {
     props: {
       appId: context?.query?.appId || '',
       isStandalone: context?.query?.isStandalone || '',
-      ChineseRedirectUrl: process.env.CHINESE_IP_REDIRECT_URL ?? '',
       ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow', 'login', 'account']))
     }
   };

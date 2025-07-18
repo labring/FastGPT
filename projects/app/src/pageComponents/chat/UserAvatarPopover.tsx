@@ -8,17 +8,12 @@ import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
-interface UserAvatarPopoverProps {
-  userInfo: any;
+type UserAvatarPopoverProps = {
   children: React.ReactNode;
   placement?: Parameters<typeof MyPopover>[0]['placement'];
-}
+};
 
-const UserAvatarPopover = ({
-  userInfo,
-  children,
-  placement = 'top-end'
-}: UserAvatarPopoverProps) => {
+const UserAvatarPopover = ({ children, placement = 'top-end' }: UserAvatarPopoverProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { setUserInfo } = useUserStore();
@@ -49,24 +44,22 @@ const UserAvatarPopover = ({
           }, [onClose]);
 
           return (
-            <Box p={2}>
-              <Flex direction="column" gap={3}>
-                <Flex
-                  alignItems="center"
-                  cursor="pointer"
-                  _hover={{ bg: 'myGray.100' }}
-                  py={1}
-                  px={2}
-                  borderRadius="4px"
-                  gap={1}
-                  onClick={onLogout}
-                  w="100%"
-                >
-                  <MyIcon name="core/chat/sidebar/logout" />
-                  <Text fontSize="14px"> {t('account:logout')}</Text>
-                </Flex>
+            <Flex p={2} direction="column" gap={3}>
+              <Flex
+                alignItems="center"
+                cursor="pointer"
+                _hover={{ bg: 'myGray.100' }}
+                py={1}
+                px={2}
+                borderRadius="4px"
+                gap={1}
+                onClick={onLogout}
+                w="100%"
+              >
+                <MyIcon name="core/chat/sidebar/logout" />
+                <Text fontSize="14px"> {t('account:logout')}</Text>
               </Flex>
-            </Box>
+            </Flex>
           );
         }}
       </MyPopover>
