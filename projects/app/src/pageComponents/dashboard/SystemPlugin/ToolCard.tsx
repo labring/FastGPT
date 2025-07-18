@@ -2,27 +2,40 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, HStack } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { type NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 import { type PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
 
 const PluginCard = ({
   item,
-  groups
+  groups,
+  onDelete
 }: {
   item: NodeTemplateListItemType;
   groups: PluginGroupSchemaType[];
+  onDelete?: (pluginId: string) => void;
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
+  const [isHovered, setIsHovered] = useState(false);
 
   const type = groups.reduce<string | undefined>((acc, group) => {
     const foundType = group.groupTypes.find((type) => type.typeId === item.templateType);
     return foundType ? foundType.typeName : acc;
   }, undefined);
+
+  const isUploadedPlugin = item.toolSource === 'uploaded';
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDelete && item.id) {
+      onDelete(item.id);
+    }
+  };
 
   return (
     <MyBox
@@ -39,11 +52,27 @@ const PluginCard = ({
       position={'relative'}
       display={'flex'}
       flexDirection={'column'}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       _hover={{
         borderColor: 'primary.300',
         boxShadow: '1.5'
       }}
     >
+      {/* Delete button - show when hovering over the entire component */}
+      {isUploadedPlugin && isHovered && (
+        <MyIconButton
+          icon="delete"
+          position="absolute"
+          bottom={3}
+          right={4}
+          color="blue.500"
+          onClick={handleDelete}
+          aria-label={t('common:Delete')}
+          zIndex={1}
+        />
+      )}
+
       <HStack>
         <Avatar src={item.avatar} borderRadius={'sm'} w={'1.5rem'} h={'1.5rem'} />
         <Box flex={'1 0 0'} color={'myGray.900'} fontWeight={500}>
@@ -102,7 +131,10 @@ const PluginCard = ({
             </UseGuideModal>
           )}
         </Flex>
-        <Box color={'myGray.500'}>{`by ${item.author || feConfigs.systemTitle}`}</Box>
+        {/* Hide author info when showing delete button but maintain space */}
+        <Box color={'myGray.500'} visibility={isUploadedPlugin && isHovered ? 'hidden' : 'visible'}>
+          {`by ${item.author || feConfigs.systemTitle}`}
+        </Box>
       </Flex>
     </MyBox>
   );
