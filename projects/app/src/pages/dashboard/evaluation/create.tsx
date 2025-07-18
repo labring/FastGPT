@@ -135,7 +135,7 @@ const EvaluationCreating = () => {
   return (
     <DashboardContainer>
       {() => (
-        <MyBox h={'100%'} px={6} py={4} bg={'white'}>
+        <MyBox h={'100%'} px={6} py={4} bg={'white'} overflow={'auto'}>
           <Button
             onClick={() => {
               router.push('/dashboard/evaluation');
