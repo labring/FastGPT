@@ -41,6 +41,8 @@ type DatasetPageContextType = {
   rebuildingCount: number;
   trainingCount: number;
   refetchDatasetTraining: () => void;
+  currentPageNum: number;
+  setCurrentPageNum: Dispatch<SetStateAction<number>>;
 };
 
 export const DatasetPageContext = createContext<DatasetPageContextType>({
@@ -75,7 +77,11 @@ export const DatasetPageContext = createContext<DatasetPageContextType>({
     throw new Error('Function not implemented.');
   },
   paths: [],
-  refetchPaths: () => {}
+  refetchPaths: () => {},
+  currentPageNum: 1,
+  setCurrentPageNum: function (value: SetStateAction<number>): void {
+    throw new Error('Function not implemented.');
+  }
 });
 
 export const DatasetPageContextProvider = ({
@@ -182,6 +188,8 @@ export const DatasetPageContextProvider = ({
     }
   );
 
+  const [currentPageNum, setCurrentPageNum] = useState(1);
+
   const contextValue: DatasetPageContextType = {
     datasetId,
     datasetDetail,
@@ -202,7 +210,9 @@ export const DatasetPageContextProvider = ({
     onCreateCollectionTag,
     isCreateCollectionTagLoading,
     searchTagKey,
-    setSearchTagKey
+    setSearchTagKey,
+    currentPageNum,
+    setCurrentPageNum
   };
 
   return <DatasetPageContext.Provider value={contextValue}>{children}</DatasetPageContext.Provider>;
