@@ -46,7 +46,7 @@ const LabelAndFormRender = ({
   const { control } = variablesForm;
 
   return (
-    <Box mb={4}>
+    <Box _notLast={{ mb: 4 }}>
       <Flex alignItems={'center'} mb={1}>
         <FormLabel required={required}>{label}</FormLabel>
         {placeholder && <QuestionTip ml={1} label={placeholder} />}
