@@ -93,8 +93,11 @@ const CookiesModal = () => {
 };
 
 // Chinese Redirect Modal Component
-const ChineseRedirectModal = ({ chineseRedirectUrl }: { chineseRedirectUrl?: string }) => {
+const ChineseRedirectModal = () => {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
+  const chineseRedirectUrl = feConfigs?.chineseRedirectUrl;
+
   const [isOpen, setIsOpen] = useState(false);
 
   const [showRedirect, setShowRedirect] = useLocalStorageState<boolean>('showRedirect', {
@@ -181,16 +184,10 @@ const ChineseRedirectModal = ({ chineseRedirectUrl }: { chineseRedirectUrl?: str
 // login container component
 export const LoginContainer = ({
   children,
-  onSuccess,
-  chineseRedirectUrl,
-  autoInit = true,
-  enabled = true
+  onSuccess
 }: {
   children?: React.ReactNode;
   onSuccess?: (res: ResLogin) => void;
-  chineseRedirectUrl?: string;
-  autoInit?: boolean;
-  enabled?: boolean;
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -211,8 +208,6 @@ export const LoginContainer = ({
 
   // initialization logic
   useEffect(() => {
-    if (!autoInit || !enabled) return;
-
     // set page type based on configuration
     const bd_vid = getBdVId();
     if (bd_vid) {
@@ -226,7 +221,7 @@ export const LoginContainer = ({
 
     // reset chat state
     setLastChatAppId('');
-  }, [autoInit, enabled, feConfigs?.oauth?.wechat, setLastChatAppId]);
+  }, [feConfigs?.oauth?.wechat, setLastChatAppId]);
 
   // dynamic component based on page type
   const DynamicComponent = useMemo(() => {
@@ -266,10 +261,18 @@ export const LoginContainer = ({
           )}
         </Box>
 
+        {/* custom content */}
+        {children}
+
         {/* help link for login */}
         {feConfigs?.concatMd && (
           <Box
-            mt={8}
+            mt={
+              pageType === LoginPageTypeEnum.register ||
+              pageType === LoginPageTypeEnum.forgetPassword
+                ? 10
+                : 4
+            }
             color={'primary.700'}
             fontSize={'mini'}
             fontWeight={'medium'}
@@ -280,14 +283,10 @@ export const LoginContainer = ({
             {t('common:support.user.login.can_not_login')}
           </Box>
         )}
-
-        {/* custom content */}
-        {children}
       </Box>
 
-      {/* Modals - each manages its own display logic */}
       <CookiesModal />
-      <ChineseRedirectModal chineseRedirectUrl={chineseRedirectUrl} />
+      <ChineseRedirectModal />
 
       {/* Community modal */}
       {showCommunityModal && <CommunityModal onClose={() => setShowCommunityModal(false)} />}

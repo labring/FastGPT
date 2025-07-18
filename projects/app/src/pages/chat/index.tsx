@@ -28,7 +28,6 @@ import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
 import { type AppListItemType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
-import Loading from '@fastgpt/web/components/common/MyLoading';
 import dynamic from 'next/dynamic';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -40,22 +39,17 @@ import ChatRecordContextProvider, {
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import LoginModal from '@/pageComponents/login/LoginModal';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
 // custom hook for managing chat page state and initialization logic
-const useChatPageState = (appId: string) => {
+const useChatHook = (appId: string) => {
   const router = useRouter();
-  const { t } = useTranslation();
-  const { toast } = useToast();
   const { lastChatAppId, setSource, setAppId } = useChatStore();
   const { userInfo, initUserInfo } = useUserStore();
 
-  const [isInitializingUser, setIsInitializingUser] = useState(true);
-
-  // calculate state
-  const isLoggedIn = !!userInfo;
-  const shouldShowLoginModal = !isLoggedIn && !isInitializingUser;
+  const [isInitedUser, setIsIntedUser] = useState(false);
 
   // get app list
   const {
@@ -65,18 +59,17 @@ const useChatPageState = (appId: string) => {
   } = useRequest2(() => getMyApps({ getRecentlyChat: true }), {
     manual: false,
     refreshDeps: [userInfo],
+    errorToast: '',
     async onSuccess(apps) {
       // if no appId and there are available apps, automatically jump to the first app
       if (!appId && apps.length > 0) {
-        await router.replace({
+        router.replace({
           query: {
             ...router.query,
             appId: lastChatAppId || apps[0]._id
           }
         });
       }
-
-      setSource('online');
     }
   });
 
@@ -87,21 +80,21 @@ const useChatPageState = (appId: string) => {
     } catch (error) {
       console.log('User not logged in:', error);
     } finally {
-      setIsInitializingUser(false);
+      setSource('online');
+      setIsIntedUser(true);
     }
   });
 
   // watch appId
   useEffect(() => {
-    if (isLoggedIn && appId) {
+    if (userInfo && appId) {
       setAppId(appId);
     }
-  }, [appId, setAppId, isLoggedIn]);
+  }, [appId, setAppId, userInfo]);
 
   return {
-    isInitializingUser,
-    isLoggedIn,
-    shouldShowLoginModal,
+    isInitedUser,
+    userInfo,
     myApps,
     isLoadingApps
   };
@@ -292,15 +285,9 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 
 const Render = (props: { appId: string; isStandalone?: string }) => {
   const { appId, isStandalone } = props;
-  const { t } = useTranslation();
-
-  const { isInitializingUser, shouldShowLoginModal, myApps } = useChatPageState(appId);
-
   const { chatId } = useChatStore();
-
-  const currentApp = useMemo(() => {
-    return myApps.find((app) => app._id === appId);
-  }, [appId, myApps]);
+  const { feConfigs } = useSystemStore();
+  const { isInitedUser, userInfo, myApps } = useChatHook(appId);
 
   const chatHistoryProviderParams = useMemo(
     () => ({ appId, source: ChatSourceEnum.online }),
@@ -315,23 +302,22 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
     };
   }, [appId, chatId]);
 
-  // show loading state
-  if (isInitializingUser) {
+  // Waiting for user info to be initialized
+  if (!isInitedUser) {
     return (
-      <PageContainer flex={'1'} p={4}>
-        <Box position="relative" h="100%">
-          <Loading fixed={false} />
-        </Box>
+      <PageContainer isLoading flex={'1'} p={4}>
+        <NextHead title={feConfigs?.systemTitle}></NextHead>
       </PageContainer>
     );
   }
 
-  // show login modal
-  if (shouldShowLoginModal) {
+  // Not login
+  if (!userInfo) {
     return (
       <>
+        <NextHead title={feConfigs?.systemTitle}></NextHead>
         <PageContainer flex={'1'} p={4}></PageContainer>
-        <LoginModal isOpen />
+        <LoginModal />
       </>
     );
   }
@@ -340,7 +326,6 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
   return (
     <ChatContextProvider params={chatHistoryProviderParams}>
       <ChatItemContextProvider
-        showRouteToAppDetail={isStandalone !== '1' && !!currentApp?.permission.hasWritePer}
         showRouteToDatasetDetail={isStandalone !== '1'}
         isShowReadRawSource={true}
         isResponseDetail={true}
@@ -359,7 +344,7 @@ export async function getServerSideProps(context: any) {
     props: {
       appId: context?.query?.appId || '',
       isStandalone: context?.query?.isStandalone || '',
-      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow', 'login']))
+      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow', 'user', 'login']))
     }
   };
 }

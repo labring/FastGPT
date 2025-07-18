@@ -16,11 +16,11 @@ import dynamic from 'next/dynamic';
 import { POST } from '@/web/common/api/request';
 import { getBdVId } from '@/web/support/marketing/utils';
 
-interface Props {
+type Props = {
   children: React.ReactNode;
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
   pageType: `${LoginPageTypeEnum}`;
-}
+};
 
 type OAuthItem = {
   label: string;
@@ -173,7 +173,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
       </Flex>
       {children}
       {show_oauth && (
-        <>
+        <Box mt={4}>
           <Box flex={1} />
           <Box position={'relative'}>
             <Box h={'1px'} bg={'myGray.250'} />
@@ -198,7 +198,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
               </Box>
             ))}
           </Box>
-        </>
+        </Box>
       )}
     </Flex>
   );

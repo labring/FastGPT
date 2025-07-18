@@ -9,12 +9,10 @@ import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { LoginContainer } from '@/pageComponents/login';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const Login = () => {
   const router = useRouter();
   const { isPc } = useSystem();
-  const { feConfigs } = useSystemStore();
   const { lastRoute = '' } = router.query as { lastRoute: string };
 
   const loginSuccess = useCallback(
@@ -66,10 +64,7 @@ const Login = () => {
         ]}
         position="relative"
       >
-        <LoginContainer
-          onSuccess={loginSuccess}
-          chineseRedirectUrl={feConfigs.chineseRedirectUrl}
-        />
+        <LoginContainer onSuccess={loginSuccess} />
       </Flex>
     </Flex>
   );

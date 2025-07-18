@@ -4,7 +4,6 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useRouter } from 'next/router';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -27,16 +26,13 @@ type HistoryItemType = {
 
 const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) => {
   const theme = useTheme();
-  const router = useRouter();
 
   const { t } = useTranslation();
 
   const { isPc } = useSystem();
-  const { userInfo } = useUserStore();
 
   const { appId, chatId: activeChatId } = useChatStore();
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
-  const isLoading = useContextSelector(ChatContext, (v) => v.isLoading);
   const ScrollData = useContextSelector(ChatContext, (v) => v.ScrollData);
   const histories = useContextSelector(ChatContext, (v) => v.histories);
   const onDelHistory = useContextSelector(ChatContext, (v) => v.onDelHistory);
@@ -45,7 +41,6 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
 
   const appName = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.name);
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.avatar);
-  const showRouteToAppDetail = useContextSelector(ChatItemContext, (v) => v.showRouteToAppDetail);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
   const concatHistory = useMemo(() => {
@@ -74,11 +69,6 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
     placeholder: t('common:core.chat.Custom History Title Description')
   });
 
-  const canRouteToDetail = useMemo(
-    () => appId && userInfo?.team.permission.hasWritePer && showRouteToAppDetail,
-    [appId, userInfo?.team.permission.hasWritePer, showRouteToAppDetail]
-  );
-
   return (
     <MyBox
       display={'flex'}
@@ -90,28 +80,12 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
       whiteSpace={'nowrap'}
     >
       {isPc && (
-        <MyTooltip label={canRouteToDetail ? t('app:app_detail') : ''} offset={[0, 0]}>
-          <Flex
-            pt={5}
-            pb={2}
-            px={[2, 5]}
-            alignItems={'center'}
-            cursor={canRouteToDetail ? 'pointer' : 'default'}
-            fontSize={'sm'}
-            onClick={() =>
-              canRouteToDetail &&
-              router.push({
-                pathname: '/app/detail',
-                query: { appId }
-              })
-            }
-          >
-            <Avatar src={appAvatar} borderRadius={'md'} />
-            <Box flex={'1 0 0'} w={0} ml={2} fontWeight={'bold'} className={'textEllipsis'}>
-              {appName}
-            </Box>
-          </Flex>
-        </MyTooltip>
+        <Flex pt={5} pb={2} px={[2, 5]} alignItems={'center'} fontSize={'sm'}>
+          <Avatar src={appAvatar} borderRadius={'md'} />
+          <Box flex={'1 0 0'} w={0} ml={2} fontWeight={'bold'} className={'textEllipsis'}>
+            {appName}
+          </Box>
+        </Flex>
       )}
 
       {/* menu */}
@@ -290,28 +264,6 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
         </>
       </ScrollData>
 
-      {/* exec */}
-      {!isPc && !!canRouteToDetail && (
-        <Flex
-          mt={2}
-          borderTop={theme.borders.base}
-          alignItems={'center'}
-          cursor={'pointer'}
-          p={3}
-          onClick={() => router.push('/dashboard/apps')}
-        >
-          <IconButton
-            mr={3}
-            icon={<MyIcon name={'common/backFill'} w={'18px'} color={'primary.500'} />}
-            bg={'white'}
-            boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
-            size={'smSquare'}
-            borderRadius={'50%'}
-            aria-label={''}
-          />
-          {t('common:core.chat.Exit Chat')}
-        </Flex>
-      )}
       <EditTitleModal />
     </MyBox>
   );
