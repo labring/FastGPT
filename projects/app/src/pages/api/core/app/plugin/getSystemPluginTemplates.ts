@@ -13,7 +13,7 @@ import { getSystemPlugins } from '@fastgpt/service/core/app/plugin/controller';
 
 export type GetSystemPluginTemplatesBody = {
   searchKey?: string;
-  parentId: ParentIdType;
+  parentId?: ParentIdType;
 };
 
 async function handler(
@@ -35,7 +35,8 @@ async function handler(
       templateType: plugin.templateType ?? FlowNodeTemplateTypeEnum.other,
       flowNodeType: FlowNodeTypeEnum.tool,
       name: parseI18nString(plugin.name, lang),
-      intro: parseI18nString(plugin.intro ?? '', lang)
+      intro: parseI18nString(plugin.intro ?? '', lang),
+      toolSource: plugin.toolSource
     }))
     .filter((item) => {
       if (searchKey) {
