@@ -18,7 +18,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
   deleteEvalItem,
@@ -37,10 +37,7 @@ import {
   EvaluationStatusEnum
 } from '@fastgpt/global/core/app/evaluation/constants';
 import type { evaluationType, listEvalItemsItem } from '@fastgpt/global/core/app/evaluation/type';
-import type {
-  retryEvalItemBody,
-  updateEvalItemBody
-} from '@fastgpt/global/core/app/evaluation/api';
+import type { updateEvalItemBody } from '@fastgpt/global/core/app/evaluation/api';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const formatEvaluationStatus = (item: { status: number; errorMessage?: string }, t: TFunction) => {
@@ -89,6 +86,7 @@ const EvaluationDetailModal = ({
   const { t } = useTranslation();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [editing, setEditing] = useState(false);
+  const [pollingInterval, setPollingInterval] = useState(10000);
 
   const { llmModelList } = useSystemStore();
   const modelData = useMemo(
@@ -105,8 +103,20 @@ const EvaluationDetailModal = ({
     params: {
       evalId: evalDetail._id
     },
-    pollingInterval: 5000
+    pollingInterval
   });
+
+  useEffect(() => {
+    const hasRunningOrErrorTasks = evalItemsList.some((item) => {
+      return (
+        item.status === EvaluationStatusEnum.evaluating ||
+        item.status === EvaluationStatusEnum.queuing ||
+        !!item.errorMessage
+      );
+    });
+    setPollingInterval(hasRunningOrErrorTasks ? 10000 : 0);
+  }, [evalItemsList]);
+
   const evalItem = evalItemsList[selectedIndex];
 
   const statusMap = useMemo(

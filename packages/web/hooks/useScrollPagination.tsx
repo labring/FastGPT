@@ -193,6 +193,7 @@ export function useScrollPagination<
     disabled = false,
 
     pollingInterval,
+    pollingWhenHidden = false,
     ...props
   }: {
     scrollLoadType?: 'top' | 'bottom';
@@ -204,6 +205,7 @@ export function useScrollPagination<
     disabled?: boolean;
 
     pollingInterval?: number;
+    pollingWhenHidden?: boolean;
   } & Parameters<typeof useRequest2>[1]
 ) {
   const { t } = useTranslation();
@@ -250,13 +252,7 @@ export function useScrollPagination<
         setTotal(res.total);
 
         if (isPolling && data.length > 0) {
-          const prevScrollTop = ScrollContainerRef?.current?.scrollTop || 0;
           setData(res.list);
-          requestAnimationFrame(() => {
-            if (ScrollContainerRef?.current) {
-              ScrollContainerRef.current.scrollTop = prevScrollTop;
-            }
-          });
         } else if (scrollLoadType === 'top') {
           const prevHeight = ScrollContainerRef?.current?.scrollHeight || 0;
           const prevScrollTop = ScrollContainerRef?.current?.scrollTop || 0;
@@ -386,14 +382,15 @@ export function useScrollPagination<
 
   useRequest2(
     async () => {
-      if (disabled || !pollingInterval) return;
+      if (disabled) return;
+
       await loadData({ init: false, ScrollContainerRef: ScrollRef, isPolling: true });
     },
     {
       pollingInterval,
-      pollingWhenHidden: false,
+      pollingWhenHidden,
       manual: false,
-      ...props
+      refreshDeps: [pollingInterval]
     }
   );
 
