@@ -192,8 +192,6 @@ export function useScrollPagination<
     showErrorToast = true,
     disabled = false,
 
-    pollingInterval,
-    pollingWhenHidden = false,
     ...props
   }: {
     scrollLoadType?: 'top' | 'bottom';
@@ -203,9 +201,6 @@ export function useScrollPagination<
     EmptyTip?: React.JSX.Element;
     showErrorToast?: boolean;
     disabled?: boolean;
-
-    pollingInterval?: number;
-    pollingWhenHidden?: boolean;
   } & Parameters<typeof useRequest2>[1]
 ) {
   const { t } = useTranslation();
@@ -221,39 +216,32 @@ export function useScrollPagination<
   const loadData = useLockFn(
     async ({
       init = false,
-      ScrollContainerRef,
-      isPolling = false
+      ScrollContainerRef
     }: {
       init?: boolean;
       ScrollContainerRef?: RefObject<HTMLDivElement>;
-      isPolling?: boolean;
     } = {}) => {
-      if (noMore && !init && !isPolling) return;
+      if (noMore && !init) return;
 
-      if (!isPolling) {
-        setTrue();
-      }
+      setTrue();
 
-      if (init && !isPolling) {
+      if (init) {
         setData([]);
         setTotal(0);
       }
 
-      const offset = init ? 0 : isPolling ? 0 : data.length;
-      const requestPageSize = isPolling && data.length > pageSize ? data.length : pageSize;
+      const offset = init ? 0 : data.length;
 
       try {
         const res = await api({
           offset,
-          pageSize: requestPageSize,
+          pageSize,
           ...params
         } as TParams);
 
         setTotal(res.total);
 
-        if (isPolling && data.length > 0) {
-          setData(res.list);
-        } else if (scrollLoadType === 'top') {
+        if (scrollLoadType === 'top') {
           const prevHeight = ScrollContainerRef?.current?.scrollHeight || 0;
           const prevScrollTop = ScrollContainerRef?.current?.scrollTop || 0;
 
@@ -273,9 +261,7 @@ export function useScrollPagination<
 
           const newData = offset === 0 ? res.list : [...res.list, ...data];
           setData(newData);
-          if (!isPolling) {
-            adjustScrollPosition();
-          }
+          adjustScrollPosition();
         } else {
           const newData = offset === 0 ? res.list : [...data, ...res.list];
           setData(newData);
@@ -377,20 +363,6 @@ export function useScrollPagination<
     {
       manual: false,
       ...props
-    }
-  );
-
-  useRequest2(
-    async () => {
-      if (disabled) return;
-
-      await loadData({ init: false, ScrollContainerRef: ScrollRef, isPolling: true });
-    },
-    {
-      pollingInterval,
-      pollingWhenHidden,
-      manual: false,
-      refreshDeps: [pollingInterval]
     }
   );
 

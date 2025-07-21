@@ -26,7 +26,7 @@ import {
   retryEvalItem,
   updateEvalItem
 } from '@/web/core/app/api/evaluation';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { downloadFetch } from '@/web/common/system/utils';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { type TFunction } from 'i18next';
@@ -96,10 +96,10 @@ const EvaluationDetailModal = ({
 
   const {
     data: evalItemsList,
-    ScrollData,
-    fetchData
-  } = useScrollPagination(getEvalItemsList, {
-    pageSize: 20,
+    Pagination,
+    getData: fetchData
+  } = usePagination(getEvalItemsList, {
+    pageSize: 10,
     params: {
       evalId: evalDetail._id
     },
@@ -143,14 +143,14 @@ const EvaluationDetailModal = ({
 
   const { runAsync: delEvalItem, loading: isLoadingDelete } = useRequest2(deleteEvalItem, {
     onSuccess: () => {
-      fetchData({ init: false, isPolling: true });
+      fetchData();
       fetchEvalList();
     }
   });
 
   const { runAsync: rerunItem, loading: isLoadingRerun } = useRequest2(retryEvalItem, {
     onSuccess: () => {
-      fetchData({ init: false, isPolling: true });
+      fetchData();
       fetchEvalList();
     }
   });
@@ -161,7 +161,7 @@ const EvaluationDetailModal = ({
     },
     {
       onSuccess: () => {
-        fetchData({ init: false, isPolling: true });
+        fetchData();
         fetchEvalList();
       }
     }
@@ -359,10 +359,16 @@ const EvaluationDetailModal = ({
               </Flex>
             </Flex>
             <Flex flex={1} h={'calc(100% - 64px)'} overflow={'hidden'}>
-              <Flex h={'full'} w={2 / 3} borderRight={'1px solid'} borderColor={'myGray.200'}>
+              <Flex
+                h={'full'}
+                w={2 / 3}
+                borderRight={'1px solid'}
+                borderColor={'myGray.200'}
+                flexDirection={'column'}
+              >
                 <Box h={5} />
 
-                <Box w="full">
+                <Box w="full" flex={1} overflow={'hidden'} display="flex" flexDirection="column">
                   <Flex
                     h={10}
                     alignItems={'center'}
@@ -383,7 +389,8 @@ const EvaluationDetailModal = ({
                       {t('dashboard_evaluation:Overall_score')}
                     </Box>
                   </Flex>
-                  <ScrollData px={6} w={'full'}>
+
+                  <Box flex={1} overflow={'auto'} px={6}>
                     {evalItemsList.map((item: listEvalItemsItem, index: number) => {
                       const formattedStatus = formatEvaluationStatus(item, t);
 
@@ -422,8 +429,11 @@ const EvaluationDetailModal = ({
                         </Flex>
                       );
                     })}
-                    <Box h={10} />
-                  </ScrollData>
+                  </Box>
+
+                  <Box px={6} py={2} borderTop={'1px solid'} borderColor={'myGray.200'}>
+                    <Pagination />
+                  </Box>
                 </Box>
               </Flex>
               {evalItem ? (
