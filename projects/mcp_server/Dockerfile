@@ -7,6 +7,7 @@ RUN npm install -g pnpm@9.4.0
 # 复制package.json
 COPY pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/global ./packages/global
+COPY packages/web ./packages/web
 COPY projects/mcp_server/package.json ./projects/mcp_server/package.json
 
 RUN apk add --no-cache\
