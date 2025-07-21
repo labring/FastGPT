@@ -443,7 +443,7 @@ export const getSystemPlugins = async (): Promise<SystemPluginTemplateItemType[]
         ...item,
         isFolder: tools.some((tool) => tool.parentId === item.id),
         showStatus: true,
-        toolSource: (item.toolSource as 'uploaded' | 'built-in') || 'built-in',
+        toolSource: item.toolSource || 'built-in',
 
         workflow: {
           nodes: [],

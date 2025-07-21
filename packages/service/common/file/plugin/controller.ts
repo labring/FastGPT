@@ -41,31 +41,11 @@ export const generateDownloadUrl = (objectName: string, config: UploadFileConfig
   return `${config.bucket}/${encodedObjectName}`;
 };
 
-const validatePresignedInput = (input: PresignedUrlInput, config: UploadFileConfig): void => {
-  if (!input.filename) {
-    throw new Error('Filename is required');
-  }
-
-  const maxSize = input.maxSize || config.maxFileSize;
-  if (maxSize > config.maxFileSize) {
-    throw new Error(`Max size exceeds limit of ${config.maxFileSize} bytes`);
-  }
-
-  const ext = path.extname(input.filename).toLowerCase();
-  if (config.allowedExtensions && !config.allowedExtensions.includes(ext)) {
-    throw new Error(
-      `File extension ${ext} is not allowed. Supported extensions: ${config.allowedExtensions.join(', ')}`
-    );
-  }
-};
-
 //Generate a pre-signed URL for direct file upload
 export const generatePresignedUrl = async (
   input: PresignedUrlInput
 ): Promise<PresignedUrlResponse> => {
   const currentConfig = { ...globalConfig };
-
-  validatePresignedInput(input, currentConfig);
 
   const fileId = generateFileId();
   const pluginType = input.pluginType || PluginTypeEnum.tool;
@@ -76,13 +56,11 @@ export const generatePresignedUrl = async (
 
   try {
     const policy = connectionMinio.newPostPolicy();
+
     policy.setBucket(currentConfig.bucket);
     policy.setKey(objectName);
-
     policy.setContentType(contentType);
-
     policy.setContentLengthRange(1, maxSize);
-
     policy.setExpires(new Date(Date.now() + 10 * 60 * 1000));
 
     const metadata = {
@@ -102,8 +80,6 @@ export const generatePresignedUrl = async (
       formData
     };
 
-    console.log('Generated presigned URL successfully', response);
-
     return response;
   } catch (error) {
     addLog.error('Failed to generate presigned URL', error);
@@ -119,6 +95,7 @@ export const confirmPresignedUpload = async (objectName: string, size: string): 
     const stat = await connectionMinio.statObject(currentConfig.bucket, objectName);
 
     if (stat.size !== Number(size)) {
+      addLog.error(`File size mismatch. Expected: ${size}, Actual: ${stat.size}`);
       return Promise.reject(`File size mismatch. Expected: ${size}, Actual: ${stat.size}`);
     }
 
@@ -134,7 +111,6 @@ export const confirmPresignedUpload = async (objectName: string, size: string): 
     return result.url;
   } catch (error) {
     addLog.error('Failed to confirm presigned upload', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return Promise.reject(`Failed to confirm presigned upload: ${errorMessage}`);
+    return Promise.reject(`Failed to confirm presigned upload: ${error}`);
   }
 };

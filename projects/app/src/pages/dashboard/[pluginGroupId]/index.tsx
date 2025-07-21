@@ -1,6 +1,14 @@
 'use client';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
-import { Button, useDisclosure, ModalBody, ModalFooter, VStack, HStack } from '@chakra-ui/react';
+import {
+  Button,
+  useDisclosure,
+  ModalBody,
+  ModalFooter,
+  VStack,
+  HStack,
+  Link
+} from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import FileSelector, {
@@ -27,6 +35,8 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { getDocPath } from '@/web/common/system/doc';
 
 const SystemTools = () => {
   const { t } = useTranslation();
@@ -34,12 +44,13 @@ const SystemTools = () => {
   const router = useRouter();
   const { type, pluginGroupId } = router.query as { type?: string; pluginGroupId?: string };
   const { isPc } = useSystem();
+  const { userInfo } = useUserStore();
+
+  const isRoot = userInfo?.username === 'root';
 
   const [searchKey, setSearchKey] = useState('');
   const [selectFiles, setSelectFiles] = useState<SelectFileItemType[]>([]);
-  const [pluginToDelete, setPluginToDelete] = useState<string | null>(null);
   const [deletingPlugins, setDeletingPlugins] = useState<Set<string>>(new Set());
-  const [isDeletePopoverOpen, setIsDeletePopoverOpen] = useState(false);
 
   const {
     data: plugins = [],
@@ -50,49 +61,13 @@ const SystemTools = () => {
   });
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const handlePluginDelete = (pluginId: string) => {
-    setPluginToDelete(pluginId);
-    setIsDeletePopoverOpen(true);
+  const handleCloseUploadModal = () => {
+    setSelectFiles([]);
+    onClose();
   };
 
-  const executePluginDelete = async () => {
-    if (!pluginToDelete) return;
-
-    setDeletingPlugins((prev) => new Set(prev).add(pluginToDelete));
-    setIsDeletePopoverOpen(false);
-
-    try {
-      await postDeletePlugin(pluginToDelete);
-      toast({
-        title: t('common:delete_success'),
-        status: 'success'
-      });
-
-      // null means all tools
-      await refreshPlugins({ parentId: null });
-    } catch (error) {
-      Promise.reject(error);
-      toast({
-        title: t('common:delete_failed'),
-        status: 'error'
-      });
-    } finally {
-      setDeletingPlugins((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(pluginToDelete);
-        return newSet;
-      });
-      setPluginToDelete(null);
-    }
-  };
-
-  const cancelDelete = () => {
-    setPluginToDelete(null);
-    setIsDeletePopoverOpen(false);
-  };
-
-  const handlePluginUpload = async () => {
-    try {
+  const { run: handlePluginUpload, loading: uploadLoading } = useRequest2(
+    async () => {
       const file = selectFiles[0];
 
       const presignedData = await postPresignedUrl({
@@ -119,21 +94,53 @@ const SystemTools = () => {
       });
 
       await postUploadFileAndUrl(fileUrl);
+    },
+    {
+      manual: true,
+      onSuccess: async () => {
+        toast({
+          title: t('common:import_success'),
+          status: 'success'
+        });
 
+        setSelectFiles([]);
+        onClose();
+        // null means all tools
+        await refreshPlugins({ parentId: null });
+      },
+      onError: (error) => {
+        toast({
+          title: t('common:import_failed'),
+          description: error instanceof Error ? error.message : t('dataset:common.error.unKnow'),
+          status: 'error'
+        });
+      }
+    }
+  );
+
+  const handlePluginDelete = async (pluginId: string) => {
+    setDeletingPlugins((prev) => new Set(prev).add(pluginId));
+
+    try {
+      await postDeletePlugin(pluginId);
       toast({
-        title: '导入成功',
+        title: t('common:delete_success'),
         status: 'success'
       });
 
-      setSelectFiles([]);
-      onClose();
       // null means all tools
       await refreshPlugins({ parentId: null });
     } catch (error) {
+      Promise.reject(error);
       toast({
-        title: '导入失败，文件内容存在错误',
-        description: error instanceof Error ? error.message : '未知错误',
+        title: t('common:delete_failed'),
         status: 'error'
+      });
+    } finally {
+      setDeletingPlugins((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(pluginId);
+        return newSet;
       });
     }
   };
@@ -183,7 +190,7 @@ const SystemTools = () => {
                     MenuIcon
                   )}
                   <Flex alignItems={'center'} gap={2}>
-                    <Button onClick={onOpen}>导入/更新</Button>
+                    {isRoot && <Button onClick={onOpen}>{t('file:common:import_update')}</Button>}
                     <Box flex={'0 0 200px'}>
                       <SearchInput
                         value={searchKey}
@@ -210,7 +217,7 @@ const SystemTools = () => {
                       key={item.id}
                       item={item}
                       groups={pluginGroups}
-                      onDelete={handlePluginDelete}
+                      onDelete={isRoot ? handlePluginDelete : undefined}
                     />
                   ))}
                 </Grid>
@@ -218,27 +225,28 @@ const SystemTools = () => {
               </Box>
             </MyBox>
 
-            {/* Delete confirmation modal */}
-            <MyModal title="删除确认" isOpen={!!pluginToDelete} onClose={cancelDelete}>
+            <MyModal
+              title={t('file:Upload_system_tools')}
+              isOpen={isOpen}
+              onClose={handleCloseUploadModal}
+              iconSrc="core/app/type/plugin"
+              iconColor={'primary.600'}
+              h={'auto'}
+            >
               <ModalBody>
-                <Box>是否确认删除该工具？该操作无法撤回。</Box>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="whiteBase" mr={2} onClick={cancelDelete}>
-                  取消
-                </Button>
-                <Button
-                  colorScheme="red"
-                  onClick={executePluginDelete}
-                  isLoading={pluginToDelete ? deletingPlugins.has(pluginToDelete) : false}
-                >
-                  删除确认
-                </Button>
-              </ModalFooter>
-            </MyModal>
-
-            <MyModal title="上传系统工具" isOpen={isOpen}>
-              <ModalBody>
+                <Flex justifyContent={'flex-end'} mb={3} fontSize={'sm'} fontWeight={500}>
+                  <Link
+                    display={'flex'}
+                    alignItems={'center'}
+                    gap={0.5}
+                    href={getDocPath('/docs/guide/plugins/upload_system_tool/')}
+                    color="primary.600"
+                    target="_blank"
+                  >
+                    <MyIcon name={'book'} w={'18px'} />
+                    {t('common:Instructions')}
+                  </Link>
+                </Flex>
                 <FileSelector
                   maxCount={1}
                   maxSize="10MB"
@@ -270,11 +278,15 @@ const SystemTools = () => {
                 )}
               </ModalBody>
               <ModalFooter>
-                <Button variant="whiteBase" mr={2} onClick={onClose}>
+                <Button variant="whiteBase" mr={2} onClick={handleCloseUploadModal}>
                   {t('common:Close')}
                 </Button>
-                <Button onClick={handlePluginUpload} isDisabled={selectFiles.length === 0}>
-                  确认导入
+                <Button
+                  onClick={handlePluginUpload}
+                  isDisabled={selectFiles.length === 0}
+                  isLoading={uploadLoading}
+                >
+                  {t('common:comfirm_import')}
                 </Button>
               </ModalFooter>
             </MyModal>

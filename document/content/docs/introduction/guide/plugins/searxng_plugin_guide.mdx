@@ -5,27 +5,26 @@ description: FastGPT SearXNG 搜索插件配置指南
 
 [SearXNG](https://github.com/searxng/searxng)是一款免费的互联网元搜索引擎，它汇总了来自各种搜索服务和数据库的结果。它不会跟踪或分析用户。用户可以自行部署它进行使用。本文介绍 Searxng 的部署以及接入 FastGPT 插件。
 
-
 ## 1. 部署应用
 
 这里介绍在 Sealos 中部署 SearXNG 的方法。Docker 部署，可以直接参考 [SearXNG 官方教程](https://github.com/searxng/searxng)。
 
 点击打开 [Sealos 北京区](https://bja.sealos.run?uid=fnWRt09fZP)，点击应用部署，并新建一个应用：
 
-| 打开应用部署 | 点击新建应用 |
-| --- | --- |
+| 打开应用部署                         | 点击新建应用                    |
+| ------------------------------------ | ------------------------------- |
 | ![](/imgs/searxng_plugin_guide1.png) | ![alt text](/imgs/image-45.png) |
 
 ## 2. 部署配置
 
 把下面参数，填入配置中：
 
-* 镜像名: searxng/searxng:latest
-* CPU: 0.2
-* 内存: 512M
-* 容器暴露端口: 8080
-* 开启公网访问
-* 点击高级配置，填写环境变量和配置文件
+- 镜像名: searxng/searxng:latest
+- CPU: 0.2
+- 内存: 512M
+- 容器暴露端口: 8080
+- 开启公网访问
+- 点击高级配置，填写环境变量和配置文件
 
 ![alt text](/imgs/image-50.png)
 
@@ -142,13 +141,13 @@ default_doi_resolver: 'oadoi.org'
 
 复制 Sealos 部署后提供的公网地址，填入 FastGPT 的 SearXNG 插件的 URL 中。
 
-| 复制公网地址| 填入 URL |
-| --- | --- |
+| 复制公网地址                    | 填入 URL                        |
+| ------------------------------- | ------------------------------- |
 | ![alt text](/imgs/image-48.png) | ![alt text](/imgs/image-49.png) |
 
 ## 返回格式
 
-* 成功时返回搜索结果数组：
+- 成功时返回搜索结果数组：
 
 ```bash
 {
@@ -156,7 +155,7 @@ default_doi_resolver: 'oadoi.org'
 }
 ```
 
-* 搜索结果为空时会返回友好提示：
+- 搜索结果为空时会返回友好提示：
 
 ```bash
 {
@@ -168,7 +167,7 @@ default_doi_resolver: 'oadoi.org'
 }
 ```
 
-* 失败时通过 Promise.reject 可能返回错误信息：
+- 失败时通过 Promise.reject 可能返回错误信息：
 
 ```bash
 - "缺少查询参数"

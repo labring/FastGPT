@@ -15,7 +15,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
 
     const pluginUrl = `${PLUGIN_BASE_URL}/tool/upload`;
 
-    console.log('url', url);
     const response = await fetch(pluginUrl, {
       method: 'POST',
       headers: {

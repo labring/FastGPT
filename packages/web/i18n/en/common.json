@@ -1217,6 +1217,7 @@
   "support.wallet.usage.Total points": "AI Points Consumption",
   "support.wallet.usage.Usage Detail": "Usage Details",
   "support.wallet.usage.Whisper": "Voice Input",
+  "sure_delete_tool_cannot_undo": "Are you sure to delete the tool? \nThis operation cannot be withdrawn",
   "sync_link": "Sync Link",
   "sync_success": "Synced Successfully",
   "system.Concat us": "Contact Us",

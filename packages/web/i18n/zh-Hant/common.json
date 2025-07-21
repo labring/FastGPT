@@ -1217,6 +1217,7 @@
   "support.wallet.usage.Total points": "AI 點數消耗",
   "support.wallet.usage.Usage Detail": "使用詳細資訊",
   "support.wallet.usage.Whisper": "語音輸入",
+  "sure_delete_tool_cannot_undo": "是否確認刪除該工具？\n該操作無法撤回",
   "sync_link": "同步連結",
   "sync_success": "同步成功",
   "system.Concat us": "聯絡我們",

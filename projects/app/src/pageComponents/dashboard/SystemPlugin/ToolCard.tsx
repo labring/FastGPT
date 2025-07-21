@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { type NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 import { type PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
@@ -17,11 +18,16 @@ const PluginCard = ({
 }: {
   item: NodeTemplateListItemType;
   groups: PluginGroupSchemaType[];
-  onDelete?: (pluginId: string) => void;
+  onDelete?: (pluginId: string) => Promise<void>;
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const [isHovered, setIsHovered] = useState(false);
+
+  const { openConfirm, ConfirmModal } = useConfirm({
+    type: 'delete',
+    content: t('common:sure_delete_tool_cannot_undo')
+  });
 
   const type = groups.reduce<string | undefined>((acc, group) => {
     const foundType = group.groupTypes.find((type) => type.typeId === item.templateType);
@@ -30,11 +36,14 @@ const PluginCard = ({
 
   const isUploadedPlugin = item.toolSource === 'uploaded';
 
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDelete = async () => {
     if (onDelete && item.id) {
-      onDelete(item.id);
+      await onDelete(item.id);
     }
+  };
+
+  const handleDeleteClick = () => {
+    openConfirm(handleDelete)();
   };
 
   return (
@@ -59,19 +68,23 @@ const PluginCard = ({
         boxShadow: '1.5'
       }}
     >
-      {/* Delete button - show when hovering over the entire component */}
-      {isUploadedPlugin && isHovered && (
+      {/* Delete button with centered confirmation modal */}
+      {isUploadedPlugin && (
         <MyIconButton
           icon="delete"
           position="absolute"
           bottom={3}
           right={4}
           color="blue.500"
-          onClick={handleDelete}
           aria-label={t('common:Delete')}
           zIndex={1}
+          opacity={isHovered ? 1 : 0}
+          pointerEvents={isHovered ? 'auto' : 'none'}
+          onClick={handleDeleteClick}
         />
       )}
+
+      <ConfirmModal />
 
       <HStack>
         <Avatar src={item.avatar} borderRadius={'sm'} w={'1.5rem'} h={'1.5rem'} />

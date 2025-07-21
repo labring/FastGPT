@@ -6,9 +6,6 @@ export const initMinio = async () => {
   try {
     addLog.info('Connecting to MinIO...');
 
-    // Test connection by listing buckets
-    await connectionMinio.listBuckets();
-
     addLog.info('MinIO connected successfully');
     return true;
   } catch (error) {
@@ -51,14 +48,4 @@ export const ensureBucket = async (bucketName: string, isPublic: boolean = false
       throw error;
     }
   }, 3);
-};
-
-export const listBuckets = async () => {
-  try {
-    const buckets = await connectionMinio.listBuckets();
-    return buckets;
-  } catch (error) {
-    addLog.error('Failed to list buckets:', error);
-    throw error;
-  }
 };
