@@ -198,6 +198,7 @@
   "compliance.chat": "内容由第三方 AI 生成，无法确保真实准确，仅供参考",
   "compliance.dataset": "请确保您的内容严格遵守相关法律法规，避免包含任何违法或侵权的内容。请谨慎上传可能涉及敏感信息的资料。",
   "confirm_choice": "确认选择",
+  "confirm_logout": "确认退出登录?",
   "confirm_move": "移动到这",
   "confirm_update": "确认更新",
   "contact_way": "通知接收",
@@ -1207,6 +1208,7 @@
   "system.Concat us": "联系我们",
   "system.Help Document": "帮助文档",
   "system_help_chatbot": "机器人助手",
+  "system_intro": "{{title}} 是一个大模型应用编排系统，提供开箱即用的数据处理、模型调用等能力，可以快速的构建知识库并通过 Flow 可视化进行工作流编排，实现复杂的知识库场景！\n",
   "tag_list": "标签列表",
   "team_tag": "团队标签",
   "templateTags.Image_generation": "图片生成",
@@ -1314,6 +1316,5 @@
   "zoomin_tip": "缩小  ctrl  -",
   "zoomin_tip_mac": "缩小  ⌘  -",
   "zoomout_tip": "放大  ctrl  +",
-  "zoomout_tip_mac": "放大  ⌘  +",
-  "confirm_logout": "确认退出登录?"
+  "zoomout_tip_mac": "放大  ⌘  +"
 }

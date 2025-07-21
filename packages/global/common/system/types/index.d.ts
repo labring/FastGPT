@@ -83,7 +83,6 @@ export type FastGPTFeConfigsType = {
   customSharePageDomain?: string;
 
   systemTitle?: string;
-  systemDescription?: string;
   scripts?: { [key: string]: string }[];
   favicon?: string;
 

@@ -1207,6 +1207,7 @@
   "system.Concat us": "聯絡我們",
   "system.Help Document": "說明文件",
   "system_help_chatbot": "機器人助手",
+  "system_intro": "{{title}} 是一個大模型應用編排系統，提供開箱即用的數據處理、模型調用等能力，可以快速的構建知識庫並通過 Flow 可視化進行工作流編排，實現複雜的知識庫場景！",
   "tag_list": "標籤列表",
   "team_tag": "團隊標籤",
   "templateTags.Image_generation": "圖片生成",
