@@ -62,7 +62,7 @@ function App({ Component, pageProps }: AppPropsWithLayout) {
           desc={
             feConfigs?.systemDescription ||
             process.env.SYSTEM_DESCRIPTION ||
-            `${title}${t('app:intro')}`
+            `${title} ${t('app:intro')}`
           }
           icon={getWebReqUrl(feConfigs?.favicon || process.env.SYSTEM_FAVICON)}
         />

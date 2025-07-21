@@ -25,8 +25,7 @@ const SystemPluginSchema = new Schema({
     default: false
   },
   pluginOrder: {
-    type: Number,
-    default: 0
+    type: Number
   },
   customConfig: Object,
   inputListVal: Object,
