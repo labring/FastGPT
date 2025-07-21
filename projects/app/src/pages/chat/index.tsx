@@ -51,26 +51,25 @@ const useChatHook = (appId: string) => {
   const [isInitedUser, setIsIntedUser] = useState(false);
 
   // get app list
-  const {
-    data: myApps = [],
-    runAsync: loadMyApps,
-    loading: isLoadingApps
-  } = useRequest2(() => getMyApps({ getRecentlyChat: true }), {
-    manual: false,
-    refreshDeps: [userInfo],
-    errorToast: '',
-    async onSuccess(apps) {
-      // if no appId and there are available apps, automatically jump to the first app
-      if (!appId && apps.length > 0) {
-        router.replace({
-          query: {
-            ...router.query,
-            appId: lastChatAppId || apps[0]._id
-          }
-        });
+  const { data: myApps = [], loading: isLoadingApps } = useRequest2(
+    () => getMyApps({ getRecentlyChat: true }),
+    {
+      manual: false,
+      refreshDeps: [userInfo],
+      errorToast: '',
+      async onSuccess(apps) {
+        // if no appId and there are available apps, automatically jump to the first app
+        if (!appId && apps.length > 0) {
+          router.replace({
+            query: {
+              ...router.query,
+              appId: lastChatAppId || apps[0]._id
+            }
+          });
+        }
       }
     }
-  });
+  );
 
   // initialize user info
   useMount(async () => {

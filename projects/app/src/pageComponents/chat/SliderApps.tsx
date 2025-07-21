@@ -53,11 +53,12 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
 
   return (
     <Flex flexDirection={'column'} w={'100%'} h={'100%'}>
-      <Box mt={4} pl={4}>
+      <Box mt={4} pl={3}>
         <Flex alignItems={'center'} py={2}>
           <Skeleton
-            w="135px"
+            w="143px"
             h="33px"
+            pl={2}
             borderRadius="md"
             startColor="gray.100"
             endColor="gray.300"
@@ -81,13 +82,13 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
       {!isTeamChat && (
         <>
           <HStack
-            px={4}
+            px={3}
             my={2}
             color={'myGray.500'}
             fontSize={'sm'}
             justifyContent={'space-between'}
           >
-            <Box>{t('common:core.chat.Recent use')}</Box>
+            <Box pl={2}>{t('common:core.chat.Recent use')}</Box>
             <MyPopover
               placement="bottom-end"
               offset={[20, 10]}
@@ -135,7 +136,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
           <Flex
             key={item._id}
             py={2}
-            px={3}
+            px={2}
             mb={3}
             cursor={'pointer'}
             borderRadius={'md'}
@@ -162,7 +163,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
         ))}
       </MyBox>
 
-      <Box p="4">
+      <Box px={3} py={4}>
         {userInfo ? (
           <UserAvatarPopover>
             <Flex alignItems="center" gap={2} w="100%">
