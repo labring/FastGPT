@@ -245,7 +245,7 @@ const EvaluationDetailModal = ({
                 {t('dashboard_evaluation:Overall_score')}
               </Box>
               <Box color={'myGray.900'} fontWeight={'medium'}>
-                {evalDetail.score ? (evalDetail?.score * 100).toFixed(2) : '-'}
+                {typeof evalDetail.score === 'number' ? (evalDetail.score * 100).toFixed(2) : '-'}
               </Box>
             </Box>
           </Flex>
