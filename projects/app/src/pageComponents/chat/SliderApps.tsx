@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Flex, Box, HStack, Image, Text, Skeleton } from '@chakra-ui/react';
+import { Flex, Box, HStack, Image, Skeleton } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -175,13 +175,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                 w={8}
                 h={8}
               />
-              <Box
-                flexGrow={1}
-                textOverflow="ellipsis"
-                overflow="hidden"
-                whiteSpace="nowrap"
-                fontWeight={500}
-              >
+              <Box className="textEllipsis" flexGrow={1} fontSize={'sm'}>
                 {userInfo.username}
               </Box>
             </Flex>

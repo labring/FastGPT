@@ -52,6 +52,7 @@
   "module_runtime_and": "模組執行總時間",
   "multiple_AI_conversations": "多組 AI 對話",
   "new_input_guide_lexicon": "新增詞彙庫",
+  "no_invalid_app": "您賬號下沒有可用的應用",
   "no_workflow_response": "無工作流程資料",
   "not_query": "缺少查詢內容",
   "not_select_file": "尚未選取檔案",

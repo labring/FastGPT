@@ -2,10 +2,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { useRouter } from 'next/router';
 import { getInitChatInfo } from '@/web/core/chat/api';
-import { Box, Flex, Drawer, DrawerOverlay, DrawerContent, Text } from '@chakra-ui/react';
+import { Box, Flex, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
 import { streamFetch } from '@/web/common/api/fetch';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
@@ -39,37 +38,44 @@ import ChatRecordContextProvider, {
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import LoginModal from '@/pageComponents/login/LoginModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
 // custom hook for managing chat page state and initialization logic
 const useChatHook = (appId: string) => {
+  const { t } = useTranslation();
   const router = useRouter();
+  const { toast } = useToast();
   const { lastChatAppId, setSource, setAppId } = useChatStore();
   const { userInfo, initUserInfo } = useUserStore();
 
   const [isInitedUser, setIsIntedUser] = useState(false);
 
   // get app list
-  const { data: myApps = [], loading: isLoadingApps } = useRequest2(
-    () => getMyApps({ getRecentlyChat: true }),
-    {
-      manual: false,
-      refreshDeps: [userInfo],
-      errorToast: '',
-      async onSuccess(apps) {
-        // if no appId and there are available apps, automatically jump to the first app
-        if (!appId && apps.length > 0) {
-          router.replace({
-            query: {
-              ...router.query,
-              appId: lastChatAppId || apps[0]._id
-            }
-          });
-        }
+  const { data: myApps = [] } = useRequest2(() => getMyApps({ getRecentlyChat: true }), {
+    manual: false,
+    refreshDeps: [userInfo],
+    errorToast: '',
+    pollingInterval: 30000,
+    async onSuccess(apps) {
+      // if no appId and there are available apps, automatically jump to the first app
+      if (!appId && apps.length > 0) {
+        router.replace({
+          query: {
+            ...router.query,
+            appId: lastChatAppId || apps[0]._id
+          }
+        });
+      }
+      if (apps.length === 0) {
+        toast({
+          status: 'warning',
+          title: t('chat:no_invalid_app')
+        });
       }
     }
-  );
+  });
 
   // initialize user info
   useMount(async () => {
@@ -93,8 +99,7 @@ const useChatHook = (appId: string) => {
   return {
     isInitedUser,
     userInfo,
-    myApps,
-    isLoadingApps
+    myApps
   };
 };
 
@@ -104,7 +109,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const { isPc } = useSystem();
 
   const { userInfo } = useUserStore();
-  const { setLastChatAppId, chatId, appId, outLinkAuthData } = useChatStore();
+  const { chatId, appId, outLinkAuthData } = useChatStore();
 
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
@@ -139,11 +144,9 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     {
       manual: false,
       refreshDeps: [appId, chatId],
+      errorToast: '',
       onError(e: any) {
-        if (e?.code === 501) {
-          setLastChatAppId('');
-          router.replace('/dashboard/apps');
-        } else {
+        if (e?.code && e.code >= 502000) {
           router.replace({
             query: {
               ...router.query,
