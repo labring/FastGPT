@@ -43,7 +43,7 @@ const EvaluationCreating = () => {
   const [percent, setPercent] = useState(0);
   const [error, setError] = useState<string>();
 
-  const { llmModelList } = useSystemStore();
+  const { llmModelList, feConfigs } = useSystemStore();
 
   const evalModelList = useMemo(() => {
     return llmModelList.filter((item) => item.useInEvaluation);
@@ -252,7 +252,7 @@ const EvaluationCreating = () => {
                     w={'full'}
                     maxCount={1}
                     maxSize={t('dashboard_evaluation:evaluation_file_max_size', {
-                      count: 1000
+                      count: feConfigs?.evalFileMaxLines || 1000
                     })}
                     fileType=".csv"
                     selectFiles={evaluationFiles}
