@@ -13,7 +13,7 @@ export enum CommonErrEnum {
 }
 const datasetErr = [
   {
-    statusText: CommonErrEnum.fileNotFound,
+    statusText: CommonErrEnum.invalidParams,
     message: i18nT('common:error.invalid_params')
   },
   {
