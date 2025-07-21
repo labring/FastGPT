@@ -15,3 +15,10 @@ export const getErrText = (err: any, def = ''): any => {
   // msg && console.log('error =>', msg);
   return replaceSensitiveText(msg);
 };
+
+export class UserError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'UserError';
+  }
+}
