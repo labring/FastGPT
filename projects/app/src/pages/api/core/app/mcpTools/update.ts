@@ -11,7 +11,6 @@ import { onCreateApp } from '../create';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
-import { type MCPToolSetData } from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
@@ -60,7 +59,8 @@ async function handler(
       toolList,
       headerSecret: formatedHeaderAuth,
       name: app.name,
-      avatar: app.avatar
+      avatar: app.avatar,
+      toolId: ''
     });
 
     // update app and app version

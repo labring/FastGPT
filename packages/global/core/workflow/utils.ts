@@ -341,13 +341,7 @@ export const toolSetData2FlowNodeIO = ({
   return {
     inputs: toolSetNode?.inputs || [],
     outputs: toolSetNode?.outputs || [],
-    toolConfig: {
-      mcpToolSet: {
-        url: '',
-        headerSecret: '',
-        toolList: toolSetNode?.toolConfig?.mcpToolSet?.toolList || []
-      }
-    }
+    toolConfig: toolSetNode?.toolConfig
   };
 };
 

@@ -7,10 +7,7 @@ import { type CreateAppBody, onCreateApp } from '../create';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import {
-  getMCPToolRuntimeNode,
-  getMCPToolSetRuntimeNode
-} from '@fastgpt/global/core/app/mcpTools/utils';
+import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -58,7 +55,8 @@ async function handler(
           toolList,
           name,
           avatar,
-          headerSecret: formatedHeaderAuth
+          headerSecret: formatedHeaderAuth,
+          toolId: ''
         })
       ],
       session

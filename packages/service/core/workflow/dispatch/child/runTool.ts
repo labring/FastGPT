@@ -18,6 +18,8 @@ import { getSystemToolById } from '../../../app/plugin/controller';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
 import { getNodeErrResponse } from '../utils';
+import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
+import { getAppVersionById } from '../../../../core/app/version/controller';
 
 type SystemInputConfigType = {
   type: SystemToolInputTypeEnum;
@@ -176,8 +178,31 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           }
         ]
       };
+    } else if (toolConfig?.mcpTool?.toolId) {
+      const { pluginId } = splitCombinePluginId(toolConfig.mcpTool.toolId);
+      const [parentId, toolName] = pluginId.split('/');
+      const tool = await getAppVersionById({
+        appId: parentId,
+        versionId: version
+      });
+      const { headerSecret, url } = tool.nodes[0].toolConfig?.mcpToolSet!;
+      const mcpClient = new MCPClient({
+        url,
+        headers: getSecretValue({
+          storeSecret: headerSecret
+        })
+      });
+      const result = await mcpClient.toolCall(toolName, params);
+      return {
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          toolRes: result,
+          moduleLogo: avatar
+        },
+        [DispatchNodeResponseKeyEnum.toolResponses]: result,
+        [NodeOutputKeyEnum.rawResponse]: result
+      };
     } else {
-      // mcp tool
+      // mcp tool (old version compatible)
       const { toolData, system_toolData, ...restParams } = params;
       const { name: toolName, url, headerSecret } = toolData || system_toolData;
 

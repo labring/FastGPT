@@ -209,8 +209,6 @@ export const rewriteRuntimeWorkFlow = async (
       if (!toolSetValue) continue;
 
       const toolList = toolSetValue.toolList;
-      const url = toolSetValue.url;
-      const headerSecret = toolSetValue.headerSecret;
 
       const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
 
@@ -218,11 +216,10 @@ export const rewriteRuntimeWorkFlow = async (
         const newToolNode = getMCPToolRuntimeNode({
           avatar: toolSetNode.avatar,
           tool,
-          url,
-          headerSecret
+          parentId: toolSetValue.toolId
         });
 
-        nodes.push({ ...newToolNode, name: `${toolSetNode.name} / ${tool.name}` });
+        nodes.push({ ...newToolNode, name: `${toolSetNode.name}/${tool.name}` });
 
         for (const inEdge of incomingEdges) {
           edges.push({
@@ -236,6 +233,8 @@ export const rewriteRuntimeWorkFlow = async (
       }
     }
   }
+
+  console.log('nodes =-=-=-=-=-=-=-=', nodes);
 
   for (let i = nodes.length - 1; i >= 0; i--) {
     if (nodeIdsToRemove.has(nodes[i].nodeId)) {

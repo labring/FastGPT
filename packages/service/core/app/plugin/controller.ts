@@ -45,6 +45,7 @@ import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 type ChildAppType = SystemPluginTemplateItemType & {
   teamId?: string;
@@ -150,7 +151,6 @@ export async function getChildAppPreviewNode({
   lang?: localeType;
 }): Promise<FlowNodeTemplateType> {
   const { source, pluginId } = splitCombinePluginId(appId);
-  console.log('pluginId', pluginId, source);
 
   const app: ChildAppType = await (async () => {
     if (source === PluginSourceEnum.personal) {
@@ -168,6 +168,18 @@ export async function getChildAppPreviewNode({
               versionId: version.versionId
             })
           : true;
+
+      if (item.type === AppTypeEnum.toolSet) {
+        // no url return, and rewrite the toolId
+        const node = version.nodes[0];
+        version.nodes[0].toolConfig = {
+          mcpToolSet: {
+            toolId: pluginId,
+            toolList: node.toolConfig?.mcpToolSet?.toolList ?? [],
+            url: ''
+          }
+        };
+      }
 
       return {
         id: String(item._id),
@@ -215,9 +227,8 @@ export async function getChildAppPreviewNode({
                 inputSchema: tool.inputSchema,
                 name: tool.name
               },
-              url: toolConfig.url,
               avatar: item.avatar,
-              headerSecret: toolConfig.headerSecret
+              parentId: item._id
             })
           ],
           edges: []
