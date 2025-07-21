@@ -1,5 +1,5 @@
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { type Dispatch, type ReactNode, type SetStateAction, useState } from 'react';
+import { type Dispatch, type ReactNode, type SetStateAction, useState, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -67,10 +67,8 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   const router = useRouter();
   const { parentId = '' } = router.query as { parentId: string };
 
-  const { datasetDetail, datasetId, updateDataset, loadDatasetDetail } = useContextSelector(
-    DatasetPageContext,
-    (v) => v
-  );
+  const { datasetDetail, datasetId, updateDataset, loadDatasetDetail, currentPageNum } =
+    useContextSelector(DatasetPageContext, (v) => v);
 
   // dataset sync confirm
   const { openConfirm: openDatasetSyncConfirm, ConfirmModal: ConfirmDatasetSyncModal } = useConfirm(
@@ -115,7 +113,6 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       }
     }
   );
-
   // collection list
   const [searchText, setSearchText] = useState('');
   const [filterTags, setFilterTags] = useState<string[]>([]);
@@ -129,6 +126,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     pageSize
   } = usePagination(getDatasetCollections, {
     pageSize: 20,
+    defaultPageNum: currentPageNum || 1,
     params: {
       datasetId,
       parentId,
