@@ -179,8 +179,12 @@ const EvaluationDetailModal = ({
         title={t('dashboard_evaluation:task_detail')}
         w={['90vw', '1200px']}
         maxW={['90vw', '1200px']}
+        maxH={'95vh'}
+        h={'100%'}
+        isCentered
       >
-        <ModalBody py={6} px={9}>
+        <ModalBody py={6} px={9} display={'flex'} flexDirection={'column'}>
+          {/* Summary */}
           <Flex
             border={'1px solid'}
             borderColor={'primary.200'}
@@ -250,7 +254,14 @@ const EvaluationDetailModal = ({
             </Box>
           </Flex>
 
-          <Box mt={4} borderRadius={'16px'} h={500} border={'1px solid'} borderColor={'myGray.200'}>
+          <Box
+            mt={4}
+            borderRadius={'16px'}
+            border={'1px solid'}
+            borderColor={'myGray.200'}
+            flex={'1 0 0'}
+            h={0}
+          >
             <Flex h={16} w={'full'} borderBottom={'1px solid'} borderColor={'myGray.200'}>
               <Flex
                 alignItems={'center'}
@@ -366,8 +377,6 @@ const EvaluationDetailModal = ({
                 borderColor={'myGray.200'}
                 flexDirection={'column'}
               >
-                <Box h={5} />
-
                 <Box w="full" flex={1} overflow={'hidden'} display="flex" flexDirection="column">
                   <Flex
                     h={10}
@@ -402,8 +411,8 @@ const EvaluationDetailModal = ({
                           border={'1px solid'}
                           borderColor={index === selectedIndex ? 'primary.600' : 'transparent'}
                           borderBottomColor={index !== selectedIndex ? 'myGray.100' : ''}
-                          _hover={{ borderRadius: '8px', borderColor: 'primary.600' }}
-                          borderRadius={index === selectedIndex ? '8px' : '0'}
+                          _hover={{ bg: 'primary.50' }}
+                          borderRadius={'sm'}
                           cursor={'pointer'}
                           onClick={() => {
                             setSelectedIndex(index);
@@ -431,7 +440,7 @@ const EvaluationDetailModal = ({
                     })}
                   </Box>
 
-                  <Box px={6} py={2} borderTop={'1px solid'} borderColor={'myGray.200'}>
+                  <Box px={6} py={3}>
                     <Pagination />
                   </Box>
                 </Box>

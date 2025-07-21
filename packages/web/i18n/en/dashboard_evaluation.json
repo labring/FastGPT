@@ -1,7 +1,7 @@
 {
   "Action": "operate",
   "Evaluation_app": "Evaluation app",
-  "Evaluation_app_tip": "It only supports simple applications and workflows that do not contain user interaction nodes, and plug-ins are not supported yet.",
+  "Evaluation_app_tip": "Supports simple application and does not contain workflows with user interaction nodes. \nPlugins are not supported yet.",
   "Evaluation_file": "Evaluation documents",
   "Evaluation_model": "Evaluation model",
   "Executor": "Executor",

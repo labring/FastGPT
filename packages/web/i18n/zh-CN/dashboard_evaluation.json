@@ -1,7 +1,7 @@
 {
   "Action": "操作",
   "Evaluation_app": "评测应用",
-  "Evaluation_app_tip": "仅支持不含有用户交互节点的简易应用、工作流，暂不支持插件。",
+  "Evaluation_app_tip": "支持简易应用，不含有用户交互节点的工作流。暂不支持插件。",
   "Evaluation_file": "评测文件",
   "Evaluation_model": "评测模型",
   "Executor": "执行人",

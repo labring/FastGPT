@@ -109,6 +109,7 @@ export type FastGPTFeConfigsType = {
 
   uploadFileMaxAmount?: number;
   uploadFileMaxSize?: number;
+  evalFileMaxLines?: number;
 
   // Compute by systemEnv.customPdfParse
   showCustomPdfParse?: boolean;

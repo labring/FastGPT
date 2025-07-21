@@ -663,6 +663,16 @@ export const ModelEditModal = ({
                       </Flex>
                     </Td>
                   </Tr>
+                  {feConfigs?.isPlus && (
+                    <Tr>
+                      <Td>{t('account_model:use_in_eval')}</Td>
+                      <Td textAlign={'right'}>
+                        <Flex justifyContent={'flex-end'}>
+                          <Switch {...register('useInEvaluation')} />
+                        </Flex>
+                      </Td>
+                    </Tr>
+                  )}
                   <Tr>
                     <Td>
                       <HStack spacing={1}>

@@ -43,6 +43,15 @@ export const loadSystemModels = async (init = false) => {
   const pushModel = (model: SystemModelItemType) => {
     global.systemModelList.push(model);
 
+    // Add default value
+    if (model.type === ModelTypeEnum.llm) {
+      model.datasetProcess = model.datasetProcess ?? true;
+      model.usedInClassify = model.usedInClassify ?? true;
+      model.usedInExtractFields = model.usedInExtractFields ?? true;
+      model.usedInToolCall = model.usedInToolCall ?? true;
+      model.useInEvaluation = model.useInEvaluation ?? true;
+    }
+
     if (model.isActive) {
       global.systemActiveModelList.push(model);
 

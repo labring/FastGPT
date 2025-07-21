@@ -56,6 +56,7 @@
   "cron.interval": "間隔執行",
   "dataset_search_tool_description": "呼叫「語意搜尋」和「全文搜尋」功能，從「知識庫」中尋找可能與問題相關的參考內容。優先呼叫這個工具來協助回答使用者的問題。",
   "day": "日",
+  "deleted": "應用已刪除",
   "document_quote": "文件引用",
   "document_quote_tip": "通常用於接受使用者上傳的文件內容（這需要文件解析），也可以用於引用其他字串資料。",
   "document_upload": "文件上傳",
