@@ -23,8 +23,8 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { deleteEvaluation, getEvaluationList } from '@/web/core/app/api/evaluation';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import { useState } from 'react';
+import { usePagination } from '@fastgpt/web/hooks/usePagination';
+import { useState, useEffect, useMemo } from 'react';
 import EvaluationDetailModal from '../../../pageComponents/app/evaluation/DetailModal';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -39,15 +39,18 @@ const Evaluation = () => {
   const { isPc } = useSystem();
 
   const [searchKey, setSearchKey] = useState('');
-  const [evalDetail, setEvalDetail] = useState<evaluationType>();
+  const [evalDetailId, setEvalDetailId] = useState<string>();
+
+  const [pollingInterval, setPollingInterval] = useState(10000);
 
   const {
     data: evaluationList,
-    ScrollData,
-    fetchData
-  } = useScrollPagination(getEvaluationList, {
+    Pagination,
+    getData: fetchData
+  } = usePagination(getEvaluationList, {
     pageSize: 20,
-    pollingInterval: 10000,
+    pollingInterval,
+    pollingWhenHidden: true,
     params: {
       searchKey
     },
@@ -55,9 +58,24 @@ const Evaluation = () => {
     refreshDeps: [searchKey]
   });
 
+  const evalDetail = useMemo(() => {
+    if (!evalDetailId) return undefined;
+    return evaluationList.find((item) => item._id === evalDetailId);
+  }, [evalDetailId, evaluationList]);
+
+  useEffect(() => {
+    const hasRunningOrErrorTasks = evaluationList.some((item) => {
+      const { totalCount = 0, completedCount = 0, errorCount = 0 } = item;
+      const isCompleted = totalCount === completedCount;
+      return !isCompleted || errorCount > 0;
+    });
+
+    setPollingInterval(hasRunningOrErrorTasks ? 10000 : 0);
+  }, [evaluationList]);
+
   const { runAsync: onDeleteEval } = useRequest2(deleteEvaluation, {
     onSuccess: () => {
-      fetchData({ init: false, isPolling: true });
+      fetchData();
     }
   });
 
@@ -123,7 +141,7 @@ const Evaluation = () => {
     );
   };
 
-  const renderProgress = (item: evaluationType, index: number) => {
+  const renderProgress = (item: evaluationType) => {
     const { completedCount, totalCount, errorCount } = item;
 
     if (completedCount === totalCount) {
@@ -152,7 +170,7 @@ const Evaluation = () => {
               w={4}
               ml={2}
               cursor={'pointer'}
-              onClick={() => setEvalDetail(item)}
+              onClick={() => setEvalDetailId(item._id)}
             />
           </MyTooltip>
         )}
@@ -167,97 +185,98 @@ const Evaluation = () => {
           <Flex h={'full'} bg={'white'} p={6} flexDirection="column">
             {renderHeader(MenuIcon)}
 
-            <MyBox flex={'1 0 0'} overflow="hidden">
-              <ScrollData h={'100%'}>
-                <TableContainer mt={3} fontSize={'sm'}>
-                  <Table variant={'simple'}>
-                    <Thead>
-                      <Tr color={'myGray.600'}>
-                        <Th fontWeight={'400'}>{t('dashboard_evaluation:Task_name')}</Th>
-                        <Th fontWeight={'400'}>{t('dashboard_evaluation:Progress')}</Th>
-                        <Th fontWeight={'400'}>{t('dashboard_evaluation:Executor')}</Th>
-                        <Th fontWeight={'400'}>{t('dashboard_evaluation:Evaluation_app')}</Th>
-                        <Th fontWeight={'400'}>{t('dashboard_evaluation:Start_end_time')}</Th>
-                        <Th fontWeight={'400'}>{t('dashboard_evaluation:Overall_score')}</Th>
-                        <Th fontWeight={'400'}>{t('dashboard_evaluation:Action')}</Th>
-                      </Tr>
-                    </Thead>
-                    <Tbody>
-                      <Tr h={'5px'} />
-                      {evaluationList.map((item, index) => {
-                        return (
-                          <Tr key={item._id}>
-                            <Td fontWeight={'medium'} color={'myGray.900'}>
-                              {item.name}
-                            </Td>
-                            <Td>{renderProgress(item, index)}</Td>
-                            <Td>
-                              <Flex alignItems={'center'} gap={1.5}>
-                                <Avatar
-                                  src={item.executorAvatar}
-                                  w={5}
-                                  borderRadius={'full'}
-                                  border={'1px solid'}
-                                  borderColor={'myGray.200'}
-                                />
-                                <Box color={'myGray.900'}>{item.executorName}</Box>
-                              </Flex>
-                            </Td>
-                            <Td>
-                              <Flex alignItems={'center'} gap={1.5}>
-                                <Avatar src={item.appAvatar} w={5} borderRadius={'4px'} />
-                                <Box color={'myGray.900'}>{item.appName}</Box>
-                              </Flex>
-                            </Td>
-                            <Td color={'myGray.900'}>
-                              <Box>{formatTime2YMDHM(item.createTime)}</Box>
-                              <Box>{formatTime2YMDHM(item.finishTime)}</Box>
-                            </Td>
-                            <Td color={item.score ? 'myGray.600' : 'myGray.900'}>
-                              {typeof item.score === 'number' ? item.score * 100 : '-'}
-                            </Td>
-                            <Td>
-                              <Button
-                                variant={'whiteBase'}
-                                leftIcon={<MyIcon name={'common/detail'} w={4} />}
-                                fontSize={'12px'}
-                                fontWeight={'medium'}
-                                mr={2}
-                                onClick={() => setEvalDetail(item)}
-                              >
-                                {t('dashboard_evaluation:detail')}
-                              </Button>
-
-                              <PopoverConfirm
-                                type="delete"
-                                Trigger={
-                                  <IconButton
-                                    aria-label="delete"
-                                    size={'mdSquare'}
-                                    variant={'whiteDanger'}
-                                    icon={<MyIcon name={'delete'} w={4} />}
-                                  />
-                                }
-                                content={t('dashboard_evaluation:comfirm_delete_task')}
-                                onConfirm={() => onDeleteEval({ evalId: item._id })}
+            <MyBox flex={'1 0 0'} overflow="auto">
+              <TableContainer mt={3} fontSize={'sm'}>
+                <Table variant={'simple'}>
+                  <Thead>
+                    <Tr color={'myGray.600'}>
+                      <Th fontWeight={'400'}>{t('dashboard_evaluation:Task_name')}</Th>
+                      <Th fontWeight={'400'}>{t('dashboard_evaluation:Progress')}</Th>
+                      <Th fontWeight={'400'}>{t('dashboard_evaluation:Executor')}</Th>
+                      <Th fontWeight={'400'}>{t('dashboard_evaluation:Evaluation_app')}</Th>
+                      <Th fontWeight={'400'}>{t('dashboard_evaluation:Start_end_time')}</Th>
+                      <Th fontWeight={'400'}>{t('dashboard_evaluation:Overall_score')}</Th>
+                      <Th fontWeight={'400'}>{t('dashboard_evaluation:Action')}</Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    <Tr h={'5px'} />
+                    {evaluationList.map((item) => {
+                      return (
+                        <Tr key={item._id}>
+                          <Td fontWeight={'medium'} color={'myGray.900'}>
+                            {item.name}
+                          </Td>
+                          <Td>{renderProgress(item)}</Td>
+                          <Td>
+                            <Flex alignItems={'center'} gap={1.5}>
+                              <Avatar
+                                src={item.executorAvatar}
+                                w={5}
+                                borderRadius={'full'}
+                                border={'1px solid'}
+                                borderColor={'myGray.200'}
                               />
-                            </Td>
-                          </Tr>
-                        );
-                      })}
-                    </Tbody>
-                  </Table>
-                </TableContainer>
-              </ScrollData>
+                              <Box color={'myGray.900'}>{item.executorName}</Box>
+                            </Flex>
+                          </Td>
+                          <Td>
+                            <Flex alignItems={'center'} gap={1.5}>
+                              <Avatar src={item.appAvatar} w={5} borderRadius={'4px'} />
+                              <Box color={'myGray.900'}>{item.appName}</Box>
+                            </Flex>
+                          </Td>
+                          <Td color={'myGray.900'}>
+                            <Box>{formatTime2YMDHM(item.createTime)}</Box>
+                            <Box>{formatTime2YMDHM(item.finishTime)}</Box>
+                          </Td>
+                          <Td color={item.score ? 'myGray.600' : 'myGray.900'}>
+                            {typeof item.score === 'number' ? (item.score * 100).toFixed(2) : '-'}
+                          </Td>
+                          <Td>
+                            <Button
+                              variant={'whiteBase'}
+                              leftIcon={<MyIcon name={'common/detail'} w={4} />}
+                              fontSize={'12px'}
+                              fontWeight={'medium'}
+                              mr={2}
+                              onClick={() => setEvalDetailId(item._id)}
+                            >
+                              {t('dashboard_evaluation:detail')}
+                            </Button>
+
+                            <PopoverConfirm
+                              type="delete"
+                              Trigger={
+                                <IconButton
+                                  aria-label="delete"
+                                  size={'mdSquare'}
+                                  variant={'whiteDanger'}
+                                  icon={<MyIcon name={'delete'} w={4} />}
+                                />
+                              }
+                              content={t('dashboard_evaluation:comfirm_delete_task')}
+                              onConfirm={() => onDeleteEval({ evalId: item._id })}
+                            />
+                          </Td>
+                        </Tr>
+                      );
+                    })}
+                  </Tbody>
+                </Table>
+              </TableContainer>
             </MyBox>
+            <Flex mt={4} justifyContent="center">
+              <Pagination />
+            </Flex>
           </Flex>
         )}
       </DashboardContainer>
       {!!evalDetail && (
         <EvaluationDetailModal
           evalDetail={evalDetail}
-          onClose={() => setEvalDetail(undefined)}
-          fetchEvalList={() => fetchData({ init: false, isPolling: true })}
+          onClose={() => setEvalDetailId(undefined)}
+          fetchEvalList={() => fetchData()}
         />
       )}
     </>
