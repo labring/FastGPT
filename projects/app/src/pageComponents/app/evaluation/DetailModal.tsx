@@ -424,7 +424,7 @@ const EvaluationDetailModal = ({
                             {formattedStatus}
                           </Box>
                           <Box flex={2} px={4} color={'myGray.600'}>
-                            {((item.score || 0) * 100).toFixed(2)}
+                            {typeof item.score === 'number' ? (item.score * 100).toFixed(2) : '-'}
                           </Box>
                         </Flex>
                       );

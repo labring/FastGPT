@@ -58,16 +58,10 @@ export function usePagination<DataT, ResT = {}>(
   const noMore = data.length >= totalDataLength;
 
   const fetchData = useMemoizedFn(
-    async (
-      num: number = pageNum,
-      ScrollContainerRef?: RefObject<HTMLDivElement>,
-      isPolling: boolean = false
-    ) => {
-      if (noMore && num !== 1 && !isPolling) return;
+    async (num: number = pageNum, ScrollContainerRef?: RefObject<HTMLDivElement>) => {
+      if (noMore && num !== 1) return;
 
-      if (!isPolling) {
-        setTrue();
-      }
+      setTrue();
 
       try {
         const res = await api({
@@ -76,22 +70,11 @@ export function usePagination<DataT, ResT = {}>(
           ...params
         });
 
-        // Check total and set
-        if (!isPolling) {
-          setPageNum(num);
-        }
+        setPageNum(num);
         res.total !== undefined && setTotal(res.total);
 
         if (type === 'scroll') {
-          if (isPolling && data.length > 0) {
-            const pollingPageSize = Math.ceil(data.length / pageSize);
-            const pollingRes = await api({
-              pageNum: 1,
-              pageSize: data.length,
-              ...params
-            });
-            setData(pollingRes.list);
-          } else if (scrollLoadType === 'top') {
+          if (scrollLoadType === 'top') {
             const prevHeight = ScrollContainerRef?.current?.scrollHeight || 0;
             const prevScrollTop = ScrollContainerRef?.current?.scrollTop || 0;
             // 使用 requestAnimationFrame 来调整滚动位置
@@ -110,9 +93,7 @@ export function usePagination<DataT, ResT = {}>(
             }
 
             setData((prevData) => (num === 1 ? res.list : [...res.list, ...prevData]));
-            if (!isPolling) {
-              adjustScrollPosition();
-            }
+            adjustScrollPosition();
           } else {
             setData((prevData) => (num === 1 ? res.list : [...prevData, ...res.list]));
           }
@@ -120,9 +101,7 @@ export function usePagination<DataT, ResT = {}>(
           setData(res.list);
         }
 
-        if (!isPolling) {
-          onChange?.(num);
-        }
+        onChange?.(num);
       } catch (error: any) {
         if (error.code !== 'ERR_CANCELED') {
           toast({
@@ -132,9 +111,7 @@ export function usePagination<DataT, ResT = {}>(
         }
       }
 
-      if (!isPolling) {
-        setFalse();
-      }
+      setFalse();
     }
   );
 
@@ -286,13 +263,13 @@ export function usePagination<DataT, ResT = {}>(
   useRequest(
     async () => {
       if (!pollingInterval) return;
-      await fetchData(pageNum, undefined, true);
+      await fetchData(pageNum);
     },
     {
       pollingInterval,
       pollingWhenHidden,
       manual: false,
-      refreshDeps: [pollingInterval, pageNum]
+      refreshDeps: [pollingInterval]
     }
   );
 
