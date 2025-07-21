@@ -664,6 +664,14 @@ export const ModelEditModal = ({
                     </Td>
                   </Tr>
                   <Tr>
+                    <Td>{t('account_model:use_in_eval')}</Td>
+                    <Td textAlign={'right'}>
+                      <Flex justifyContent={'flex-end'}>
+                        <Switch {...register('useInEvaluation')} />
+                      </Flex>
+                    </Td>
+                  </Tr>
+                  <Tr>
                     <Td>
                       <HStack spacing={1}>
                         <Box>{t('account:model.default_system_chat_prompt')}</Box>

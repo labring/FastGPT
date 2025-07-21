@@ -15,10 +15,6 @@
       "toolChoice": true,
       "functionCall": true,
       "defaultSystemChatPrompt": "",
-      "datasetProcess": true,
-      "usedInClassify": true,
-      "usedInExtractFields": true,
-      "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
       "type": "llm"
@@ -37,10 +33,6 @@
       "toolChoice": true,
       "functionCall": true,
       "defaultSystemChatPrompt": "",
-      "datasetProcess": true,
-      "usedInClassify": true,
-      "usedInExtractFields": true,
-      "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
       "type": "llm"
@@ -59,10 +51,6 @@
       "toolChoice": true,
       "functionCall": true,
       "defaultSystemChatPrompt": "",
-      "datasetProcess": true,
-      "usedInClassify": true,
-      "usedInExtractFields": true,
-      "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
       "type": "llm"
@@ -81,10 +69,6 @@
       "toolChoice": true,
       "functionCall": true,
       "defaultSystemChatPrompt": "",
-      "datasetProcess": true,
-      "usedInClassify": true,
-      "usedInExtractFields": true,
-      "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
       "type": "llm"
@@ -103,11 +87,6 @@
       "toolChoice": true,
       "functionCall": true,
       "defaultSystemChatPrompt": "",
-      "datasetProcess": true,
-      "usedInClassify": true,
-      "usedInExtractFields": true,
-      "usedInQueryExtension": true,
-      "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
       "type": "llm"
@@ -123,11 +102,6 @@
       "toolChoice": true,
       "functionCall": false,
       "defaultSystemChatPrompt": "",
-      "datasetProcess": true,
-      "usedInClassify": true,
-      "usedInExtractFields": true,
-      "usedInQueryExtension": true,
-      "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {
         "max_tokens": "max_completion_tokens"
@@ -147,11 +121,6 @@
       "toolChoice": true,
       "functionCall": false,
       "defaultSystemChatPrompt": "",
-      "datasetProcess": true,
-      "usedInClassify": true,
-      "usedInExtractFields": true,
-      "usedInQueryExtension": true,
-      "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {
         "max_tokens": "max_completion_tokens"
@@ -171,11 +140,6 @@
       "toolChoice": true,
       "functionCall": false,
       "defaultSystemChatPrompt": "",
-      "datasetProcess": true,
-      "usedInClassify": true,
-      "usedInExtractFields": true,
-      "usedInQueryExtension": true,
-      "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {
         "max_tokens": "max_completion_tokens"
@@ -195,11 +159,6 @@
       "toolChoice": false,
       "functionCall": false,
       "defaultSystemChatPrompt": "",
-      "datasetProcess": true,
-      "usedInClassify": true,
-      "usedInExtractFields": true,
-      "usedInQueryExtension": true,
-      "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {
         "max_tokens": "max_completion_tokens"
@@ -219,11 +178,6 @@
       "toolChoice": false,
       "functionCall": false,
       "defaultSystemChatPrompt": "",
-      "datasetProcess": true,
-      "usedInClassify": true,
-      "usedInExtractFields": true,
-      "usedInQueryExtension": true,
-      "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {
         "max_tokens": "max_completion_tokens"
@@ -243,11 +197,6 @@
       "toolChoice": false,
       "functionCall": false,
       "defaultSystemChatPrompt": "",
-      "datasetProcess": true,
-      "usedInClassify": true,
-      "usedInExtractFields": true,
-      "usedInQueryExtension": true,
-      "usedInToolCall": true,
       "defaultConfig": {
         "stream": false
       },
@@ -271,11 +220,6 @@
       "toolChoice": true,
       "functionCall": true,
       "defaultSystemChatPrompt": "",
-      "datasetProcess": true,
-      "usedInClassify": true,
-      "usedInExtractFields": true,
-      "usedInQueryExtension": true,
-      "usedInToolCall": true,
       "type": "llm"
     },
     {
@@ -291,11 +235,6 @@
       "toolChoice": true,
       "functionCall": true,
       "defaultSystemChatPrompt": "",
-      "datasetProcess": true,
-      "usedInClassify": true,
-      "usedInExtractFields": true,
-      "usedInQueryExtension": true,
-      "usedInToolCall": true,
       "type": "llm"
     },
     {

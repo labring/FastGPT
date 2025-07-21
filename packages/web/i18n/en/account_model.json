@@ -82,6 +82,7 @@
   "timespan_label": "Time Granularity",
   "timespan_minute": "Minute",
   "total_call_volume": "Request amount",
+  "use_in_eval": "Use in eval",
   "view_chart": "Chart",
   "view_table": "Table",
   "vlm_model": "Vlm",

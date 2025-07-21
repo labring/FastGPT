@@ -47,6 +47,7 @@ export type LLMModelItemType = PriceType &
     usedInClassify?: boolean; // classify
     usedInExtractFields?: boolean; // extract fields
     usedInToolCall?: boolean; // tool call
+    useInEvaluation?: boolean; // evaluation
 
     functionCall: boolean;
     toolChoice: boolean;

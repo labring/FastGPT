@@ -82,6 +82,7 @@
   "timespan_label": "时间颗粒度",
   "timespan_minute": "分钟",
   "total_call_volume": "调用总量",
+  "use_in_eval": "用于应用评测",
   "view_chart": "图表",
   "view_table": "表格",
   "vlm_model": "图片理解模型",

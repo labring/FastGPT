@@ -7,7 +7,6 @@ import { serviceSideProps } from '@/web/common/i18n/utils';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useForm } from 'react-hook-form';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { getWebDefaultLLMModel } from '@/web/common/system/utils';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import AppSelect from '@/components/Select/AppSelect';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -22,9 +21,8 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { fileDownload } from '@/web/common/file/utils';
 import { postCreateEvaluation } from '@/web/core/app/api/evaluation';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Markdown from '@/components/Markdown';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import { getEvaluationFileHeader } from '@fastgpt/global/core/app/evaluation/utils';
 import { evaluationFileErrors } from '@fastgpt/global/core/app/evaluation/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
@@ -45,14 +43,15 @@ const EvaluationCreating = () => {
   const [percent, setPercent] = useState(0);
   const [error, setError] = useState<string>();
 
-  const { teamPlanStatus } = useUserStore();
-  const { defaultModels, datasetModelList } = useSystemStore();
+  const { llmModelList } = useSystemStore();
 
+  const evalModelList = useMemo(() => {
+    return llmModelList.filter((item) => item.useInEvaluation);
+  }, [llmModelList]);
   const { register, setValue, watch, handleSubmit } = useForm<EvaluationFormType>({
     defaultValues: {
       name: '',
-      evalModel:
-        defaultModels.datasetTextLLM?.model || getWebDefaultLLMModel(datasetModelList)?.model,
+      evalModel: evalModelList[0]?.model,
       appId: '',
       evaluationFiles: [] as SelectFileItemType[]
     }
@@ -107,7 +106,7 @@ const EvaluationCreating = () => {
           useSystemStore.getState().setNotSufficientModalType(error.message);
         } else {
           toast({
-            title: getErrText(error),
+            title: t(getErrText(error)),
             status: 'error'
           });
         }
@@ -185,7 +184,7 @@ const EvaluationCreating = () => {
                 w={'406px'}
                 bg={'myGray.50'}
                 value={evalModel}
-                list={datasetModelList.map((item) => ({
+                list={evalModelList.map((item) => ({
                   label: item.name,
                   value: item.model
                 }))}
