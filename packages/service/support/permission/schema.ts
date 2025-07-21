@@ -45,12 +45,6 @@ export const ResourcePermissionSchema = new Schema({
   }
 });
 
-const RolePermMap = {
-  // role: permission
-  0b0100: 0b100,
-  0b1000: 0b110, // gate
-  0b0001: 0b1111 // admin
-};
 ResourcePermissionSchema.virtual('tmb', {
   ref: TeamMemberCollectionName,
   localField: 'tmbId',
