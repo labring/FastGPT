@@ -41,35 +41,52 @@ export const htmlTable2Md = (content: string): string => {
   return content.replace(/<table>[\s\S]*?<\/table>/g, (htmlTable) => {
     try {
       // Clean up whitespace and newlines
+      // 清理多余的空白字符和换行符
       const cleanHtml = htmlTable.replace(/\n\s*/g, '');
       const rows = cleanHtml.match(/<tr>(.*?)<\/tr>/g);
       if (!rows) return htmlTable;
 
       // Parse table data
+      // 解析表格数据
       let tableData: string[][] = [];
       let maxColumns = 0;
 
       // Try to convert to markdown table
+      // 尝试将 HTML 表格转换为 markdown 表格
       rows.forEach((row, rowIndex) => {
         if (!tableData[rowIndex]) {
           tableData[rowIndex] = [];
         }
         let colIndex = 0;
-        const cells = row.match(/<td.*?>(.*?)<\/td>/g) || [];
+        // 匹配所有单元格，包括自闭合的 <td/> 标签和普通的 <td>...</td> 标签
+        const cells = row.match(/<td[^>]*\/>|<td[^>]*>.*?<\/td>/g) || [];
 
         cells.forEach((cell) => {
+          // 跳过已被占用的列
           while (tableData[rowIndex][colIndex]) {
             colIndex++;
           }
+          // 获取 colspan 和 rowspan 属性，默认为 1
           const colspan = parseInt(cell.match(/colspan="(\d+)"/)?.[1] || '1');
           const rowspan = parseInt(cell.match(/rowspan="(\d+)"/)?.[1] || '1');
-          const content = cell.replace(/<td.*?>|<\/td>/g, '').trim();
 
+          // 提取单元格内容，处理自闭合标签和普通标签
+          let content = '';
+          if (cell.endsWith('/>')) {
+            // 自闭合标签，内容为空
+            content = '';
+          } else {
+            // 普通标签，提取内容
+            content = cell.replace(/<td[^>]*>|<\/td>/g, '').trim();
+          }
+
+          // 根据 rowspan 和 colspan 填充表格数据
           for (let i = 0; i < rowspan; i++) {
             for (let j = 0; j < colspan; j++) {
               if (!tableData[rowIndex + i]) {
                 tableData[rowIndex + i] = [];
               }
+              // 只有左上角填内容，其余合并单元格填 ^^ 占位
               tableData[rowIndex + i][colIndex + j] = i === 0 && j === 0 ? content : '^^';
             }
           }
@@ -77,6 +94,7 @@ export const htmlTable2Md = (content: string): string => {
           maxColumns = Math.max(maxColumns, colIndex);
         });
 
+        // 补齐每一行的列数
         for (let i = 0; i < maxColumns; i++) {
           if (!tableData[rowIndex][i]) {
             tableData[rowIndex][i] = ' ';
@@ -85,15 +103,18 @@ export const htmlTable2Md = (content: string): string => {
       });
       const chunks: string[] = [];
 
+      // 构建表头
       const headerCells = tableData[0]
         .slice(0, maxColumns)
         .map((cell) => (cell === '^^' ? ' ' : cell || ' '));
       const headerRow = '| ' + headerCells.join(' | ') + ' |';
       chunks.push(headerRow);
 
+      // 构建分隔行
       const separator = '| ' + Array(headerCells.length).fill('---').join(' | ') + ' |';
       chunks.push(separator);
 
+      // 构建数据行
       tableData.slice(1).forEach((row) => {
         const paddedRow = row
           .slice(0, maxColumns)
@@ -106,6 +127,7 @@ export const htmlTable2Md = (content: string): string => {
 
       return chunks.join('\n');
     } catch (error) {
+      // 如果解析失败，返回原始 HTML 表格
       return htmlTable;
     }
   });
