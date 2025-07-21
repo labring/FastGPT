@@ -83,7 +83,6 @@
   "interval.4_hours": "Every 4 Hours",
   "interval.6_hours": "Every 6 Hours",
   "interval.per_hour": "Every Hour",
-  "intro": "A comprehensive model application orchestration system that offers out-of-the-box data processing and model invocation capabilities. It allows for rapid Dataset construction and workflow orchestration through Flow visualization, enabling complex Dataset scenarios!",
   "invalid_json_format": "JSON format error",
   "keep_the_latest": "Keep the latest",
   "llm_not_support_vision": "This model does not support image recognition",
