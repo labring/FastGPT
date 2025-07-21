@@ -45,7 +45,7 @@ export type FastGPTFeConfigsType = {
   show_workorder?: boolean;
   show_emptyChat?: boolean;
   isPlus?: boolean;
-  register_method?: ['email' | 'phone' | 'sync'];
+  register_method?: ['email' | 'phone'];
   login_method?: ['email' | 'phone']; // Attention: login method is diffrent with oauth
   find_password_method?: ['email' | 'phone'];
   bind_notification_method?: ['email' | 'phone'];
