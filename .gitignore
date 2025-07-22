@@ -19,6 +19,7 @@ yarn-error.log*
 
 # local env files
 .env*.local
+projects/app/.env.template
 
 # vercel
 .vercel
