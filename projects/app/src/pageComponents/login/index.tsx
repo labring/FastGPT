@@ -208,13 +208,6 @@ export const LoginContainer = ({
 
   // initialization logic
   useEffect(() => {
-    // set page type based on configuration
-    const bd_vid = getBdVId();
-    if (bd_vid) {
-      setPageType(LoginPageTypeEnum.passwordLogin);
-      return;
-    }
-
     setPageType(
       feConfigs?.oauth?.wechat ? LoginPageTypeEnum.wechat : LoginPageTypeEnum.passwordLogin
     );
