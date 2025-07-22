@@ -11,14 +11,7 @@ import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRC
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-
-// 根据积分数量获取对应的月份
-const getMonthByPoints = (points: number): number => {
-  if (points >= 200) return 12;
-  if (points >= 100) return 6;
-  if (points >= 50) return 3;
-  return 1;
-};
+import { getComputedMonth } from '@fastgpt/global/support/wallet/bill/tools';
 
 // 根据月份获取积分下限
 const getMinPointsByMonth = (month: number): number => {
@@ -123,7 +116,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
   // 当积分变化时，自动更新月份
   useEffect(() => {
     if (watchedPoints && watchedPoints > 0 && !isNaN(watchedPoints)) {
-      const expectedMonth = getMonthByPoints(watchedPoints);
+      const expectedMonth = getComputedMonth(watchedPoints);
       if (expectedMonth !== watchedMonth) {
         setValueExtraPoints('month', expectedMonth);
       }
