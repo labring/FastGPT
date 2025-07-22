@@ -9,7 +9,7 @@ const content = fs.readFileSync('.next/server/app/static.json.body');
 /** @type {import('fumadocs-core/search/algolia').DocumentRecord[]} **/
 const records = JSON.parse(content.toString());
 
-const client = algoliasearch('E98V5BVTTC', '2831a0e577ac9a4632ddc674eb5507f9');
+const client = algoliasearch(process.env.ALGOLIA_APP_ID || '', process.env.ALGOLIA_API_KEY || '');
 
 void sync(client, {
   indexName: 'document',
