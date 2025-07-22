@@ -24,7 +24,13 @@ type HistoryItemType = {
   updateTime: Date;
 };
 
-const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) => {
+const ChatHistorySlider = ({
+  confirmClearText,
+  customSliderTitle
+}: {
+  confirmClearText: string;
+  customSliderTitle?: string;
+}) => {
   const theme = useTheme();
 
   const { t } = useTranslation();
@@ -81,9 +87,10 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
     >
       {isPc && (
         <Flex pt={5} pb={2} px={[2, 5]} alignItems={'center'} fontSize={'sm'}>
-          <Avatar src={appAvatar} borderRadius={'md'} />
+          {!customSliderTitle && <Avatar src={appAvatar} borderRadius={'md'} />}
+
           <Box flex={'1 0 0'} w={0} ml={2} fontWeight={'bold'} className={'textEllipsis'}>
-            {appName}
+            {customSliderTitle || appName}
           </Box>
         </Flex>
       )}

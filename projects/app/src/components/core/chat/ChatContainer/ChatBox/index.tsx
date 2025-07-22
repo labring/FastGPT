@@ -14,7 +14,7 @@ import type {
 } from '@fastgpt/global/core/chat/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Box, Checkbox } from '@chakra-ui/react';
+import { Box, Checkbox, Flex, Image } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { useForm } from 'react-hook-form';
@@ -88,7 +88,12 @@ type Props = OutLinkChatAuthProps &
     showMarkIcon?: boolean; // admin mark dataset
     showVoiceIcon?: boolean;
     showEmptyIntro?: boolean;
+    showHomeChatEmptyIntro?: boolean;
     active?: boolean; // can use
+    customButtonGroup?: React.ReactNode;
+    dialogTips?: string;
+    wideLogo?: string;
+    slogan?: string;
 
     onStartChat?: (e: StartChatFnProps) => Promise<
       StreamResponseType & {
@@ -103,9 +108,14 @@ const ChatBox = ({
   showMarkIcon = false,
   showVoiceIcon = true,
   showEmptyIntro = false,
+  showHomeChatEmptyIntro = false,
   active = true,
+  customButtonGroup,
   onStartChat,
-  chatType
+  chatType,
+  dialogTips,
+  wideLogo,
+  slogan
 }: Props) => {
   const ScrollContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
@@ -819,9 +829,30 @@ const ChatBox = ({
     };
   });
 
+  const showHomeEmpty = useMemo(
+    () =>
+      feConfigs?.show_emptyChat &&
+      showHomeChatEmptyIntro &&
+      !showEmptyIntro &&
+      chatRecords.length === 0 &&
+      !variableList?.length &&
+      !externalVariableList?.length &&
+      !welcomeText,
+    [
+      chatRecords.length,
+      feConfigs?.show_emptyChat,
+      showHomeChatEmptyIntro,
+      showEmptyIntro,
+      variableList?.length,
+      externalVariableList?.length,
+      welcomeText
+    ]
+  );
+
   const showEmpty = useMemo(
     () =>
       feConfigs?.show_emptyChat &&
+      !showHomeChatEmptyIntro &&
       showEmptyIntro &&
       chatRecords.length === 0 &&
       !variableList?.length &&
@@ -830,6 +861,7 @@ const ChatBox = ({
     [
       chatRecords.length,
       feConfigs?.show_emptyChat,
+      showHomeChatEmptyIntro,
       showEmptyIntro,
       variableList?.length,
       externalVariableList?.length,
@@ -958,7 +990,7 @@ const ChatBox = ({
     return (
       <ScrollData
         ScrollContainerRef={ScrollContainerRef}
-        flex={'1 0 0'}
+        flex={showHomeEmpty ? '0 0 50%' : '1 0 0'}
         h={0}
         w={'100%'}
         overflow={'overlay'}
@@ -967,6 +999,16 @@ const ChatBox = ({
       >
         <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
           {/* chat header */}
+          {showHomeEmpty && (
+            <Flex flexDir="column" justifyContent="flex-end" alignItems="center" gap={4} h="full">
+              <Image
+                alt="fastgpt logo"
+                maxW={['388px', '50%']}
+                src={wideLogo || '/imgs/fastgpt_slogan.png'}
+              />
+              <Box color="myGray.500">{slogan}</Box>
+            </Flex>
+          )}
           {showEmpty && <Empty />}
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
           {/* variable input */}
@@ -1068,6 +1110,9 @@ const ChatBox = ({
     );
   }, [
     ScrollData,
+    showHomeEmpty,
+    wideLogo,
+    slogan,
     appAvatar,
     chatForm,
     chatRecords,
@@ -1107,11 +1152,13 @@ const ChatBox = ({
       {/* message input */}
       {canSendPrompt && (
         <ChatInput
+          dialogTips={dialogTips}
           onSendMessage={sendPrompt}
           onStop={() => chatController.current?.abort('stop')}
           TextareaDom={TextareaDom}
           resetInputVal={resetInputVal}
           chatForm={chatForm}
+          customButtonGroup={customButtonGroup}
         />
       )}
       {/* user feedback modal */}

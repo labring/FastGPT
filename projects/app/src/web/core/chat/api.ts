@@ -1,5 +1,9 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
-import type { ChatHistoryItemType, ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
+import type {
+  ChatHistoryItemType,
+  ChatHistoryItemResType,
+  ChatSettingSchema
+} from '@fastgpt/global/core/chat/type.d';
 import type { getResDataQuery } from '@/pages/api/core/chat/getResData';
 import type {
   CloseCustomFeedbackParams,
@@ -106,3 +110,12 @@ export const getQuoteDataList = (data: GetQuoteProps) =>
 
 export const getCollectionQuote = (data: GetCollectionQuoteProps) =>
   POST<GetCollectionQuoteRes>(`/core/chat/quote/getCollectionQuote`, data);
+
+/*---------- chat setting ------------*/
+export const getChatSetting = () => {
+  return GET<ChatSettingSchema>('/proApi/core/chat/getChatSetting');
+};
+
+export const updateChatSetting = (data: Partial<ChatSettingSchema>) => {
+  return POST<ChatSettingSchema>('/proApi/core/chat/updateChatSetting', data);
+};

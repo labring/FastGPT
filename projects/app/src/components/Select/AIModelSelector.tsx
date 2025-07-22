@@ -17,6 +17,7 @@ const ModelPriceModal = dynamic(() =>
 );
 
 type Props = SelectProps & {
+  multiple?: boolean;
   disableTip?: string;
 };
 
@@ -56,8 +57,8 @@ const OneRowSelector = ({ list, onChange, disableTip, ...props }: Props) => {
                 borderRadius={'0'}
                 mr={2}
                 src={modelData?.avatar || HUGGING_FACE_ICON}
-                fallbackSrc={HUGGING_FACE_ICON}
                 w={avatarSize}
+                fallbackSrc={HUGGING_FACE_ICON}
               />
               <Box>{modelData.name}</Box>
             </Flex>
@@ -233,7 +234,7 @@ const MultipleRowSelector = ({ list, onChange, disableTip, placeholder, ...props
 };
 
 const AIModelSelector = (props: Props) => {
-  return props.list.length > 10 ? (
+  return props.multiple || props.list.length > 10 ? (
     <MultipleRowSelector {...props} />
   ) : (
     <OneRowSelector {...props} />

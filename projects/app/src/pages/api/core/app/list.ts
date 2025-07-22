@@ -97,7 +97,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
   const findAppsQuery = (() => {
     if (getRecentlyChat) {
       return {
-        // get all chat app
+        // get all chat app, excluding hidden apps
         teamId,
         type: { $in: [AppTypeEnum.workflow, AppTypeEnum.simple, AppTypeEnum.plugin] }
       };
@@ -122,18 +122,33 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
         }
       : {};
 
+    const typeQuery = (() => {
+      if (type) {
+        // 如果明确指定了类型，则按指定类型查询（包括hidden）
+        if (Array.isArray(type)) {
+          return { type: { $in: type } };
+        } else {
+          return { type };
+        }
+      } else {
+        // 如果没有指定类型，则排除hidden类型
+        return { type: { $ne: AppTypeEnum.hidden } };
+      }
+    })();
+
     if (searchKey) {
       return {
         ...appPerQuery,
         teamId,
-        ...searchMatch
+        ...searchMatch,
+        ...typeQuery
       };
     }
 
     return {
       ...appPerQuery,
       teamId,
-      ...(type && (Array.isArray(type) ? { type: { $in: type } } : { type })),
+      ...typeQuery,
       ...parseParentIdInMongo(parentId)
     };
   })();

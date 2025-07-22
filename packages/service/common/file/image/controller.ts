@@ -10,6 +10,7 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 
 export const maxImgSize = 1024 * 1024 * 12;
 const base64MimeRegex = /data:image\/([^\)]+);base64/;
+
 export async function uploadMongoImg({
   base64Img,
   teamId,
