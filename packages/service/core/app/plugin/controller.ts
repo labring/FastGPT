@@ -43,7 +43,6 @@ import { isProduction } from '@fastgpt/global/common/system/constants';
 import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
-import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
@@ -59,85 +58,91 @@ export const getSystemPluginByIdAndVersionId = async (
   pluginId: string,
   versionId?: string
 ): Promise<ChildAppType> => {
-  const plugin = await (async (): Promise<ChildAppType> => {
-    const plugin = await getSystemToolById(pluginId);
+  const plugin = await getSystemToolById(pluginId);
 
-    // Admin selected system tool
-    if (plugin.associatedPluginId) {
-      // The verification plugin is set as a system plugin
-      const systemPlugin = await MongoSystemPlugin.findOne(
-        { pluginId: plugin.id, 'customConfig.associatedPluginId': plugin.associatedPluginId },
-        'associatedPluginId'
-      ).lean();
-      if (!systemPlugin) return Promise.reject(PluginErrEnum.unExist);
+  // Admin selected system tool
+  if (plugin.associatedPluginId) {
+    // The verification plugin is set as a system plugin
+    const systemPlugin = await MongoSystemPlugin.findOne(
+      { pluginId: plugin.id, 'customConfig.associatedPluginId': plugin.associatedPluginId },
+      'associatedPluginId'
+    ).lean();
+    if (!systemPlugin) return Promise.reject(PluginErrEnum.unExist);
 
-      const app = await MongoApp.findById(plugin.associatedPluginId).lean();
-      if (!app) return Promise.reject(PluginErrEnum.unExist);
-
-      const version = versionId
-        ? await getAppVersionById({
-            appId: plugin.associatedPluginId,
-            versionId,
-            app
-          })
-        : await getAppLatestVersion(plugin.associatedPluginId, app);
-      if (!version.versionId) return Promise.reject('App version not found');
-      const isLatest = version.versionId
-        ? await checkIsLatestVersion({
-            appId: plugin.associatedPluginId,
-            versionId: version.versionId
-          })
-        : true;
-
-      return {
-        ...plugin,
-        workflow: {
-          nodes: version.nodes,
-          edges: version.edges,
-          chatConfig: version.chatConfig
-        },
-        version: versionId ? version?.versionId : '',
-        versionLabel: version?.versionName,
-        isLatestVersion: isLatest,
-        teamId: String(app.teamId),
-        tmbId: String(app.tmbId)
-      };
-    }
-
-    // System tool
-    const versionList = (plugin.versionList as SystemPluginTemplateItemType['versionList']) || [];
-
-    if (versionList.length === 0) {
-      return Promise.reject('Can not find plugin version list');
-    }
+    const app = await MongoApp.findById(plugin.associatedPluginId).lean();
+    if (!app) return Promise.reject(PluginErrEnum.unExist);
 
     const version = versionId
-      ? versionList.find((item) => item.value === versionId) ?? versionList[0]
-      : versionList[0];
-    const lastVersion = versionList[0];
-
-    // concat parent (is exists) input config
-    const parent = plugin.parentId ? await getSystemToolById(plugin.parentId) : undefined;
-    if (parent && parent.inputList) {
-      plugin?.inputs?.push({
-        key: 'system_input_config',
-        label: '',
-        renderTypeList: [FlowNodeInputTypeEnum.hidden],
-        inputList: parent.inputList
-      });
-    }
+      ? await getAppVersionById({
+          appId: plugin.associatedPluginId,
+          versionId,
+          app
+        })
+      : await getAppLatestVersion(plugin.associatedPluginId, app);
+    if (!version.versionId) return Promise.reject('App version not found');
+    const isLatest = version.versionId
+      ? await checkIsLatestVersion({
+          appId: plugin.associatedPluginId,
+          versionId: version.versionId
+        })
+      : true;
 
     return {
       ...plugin,
-      inputs: version.inputs,
-      outputs: version.outputs,
-      version: versionId ? version?.value : '',
-      versionLabel: versionId ? version?.value : '',
-      isLatestVersion: !version || !lastVersion || version.value === lastVersion?.value
+      workflow: {
+        nodes: version.nodes,
+        edges: version.edges,
+        chatConfig: version.chatConfig
+      },
+      version: versionId ? version?.versionId : '',
+      versionLabel: version?.versionName,
+      isLatestVersion: isLatest,
+      teamId: String(app.teamId),
+      tmbId: String(app.tmbId)
     };
-  })();
+  }
 
-  return plugin;
+  // System toolset
+  if (plugin.isFolder) {
+    return {
+      ...plugin,
+      inputs: [],
+      outputs: [],
+      inputList: plugin.inputList
+    };
+  }
+
+  // System tool
+  const versionList = (plugin.versionList as SystemPluginTemplateItemType['versionList']) || [];
+
+  if (versionList.length === 0) {
+    return Promise.reject('Can not find plugin version list');
+  }
+
+  const version = versionId
+    ? versionList.find((item) => item.value === versionId) ?? versionList[0]
+    : versionList[0];
+  const lastVersion = versionList[0];
+
+  // concat parent (if exists) input config
+  const parent = plugin.parentId ? await getSystemToolById(plugin.parentId) : undefined;
+  if (parent && parent.inputList) {
+    plugin?.inputs?.push({
+      key: 'system_input_config',
+      label: '',
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      inputList: parent.inputList
+    });
+  }
+
+  return {
+    ...plugin,
+    inputs: version.inputs,
+    outputs: version.outputs,
+    version: versionId ? version?.value : '',
+    versionLabel: versionId ? version?.value : '',
+    isLatestVersion: !version || !lastVersion || version.value === lastVersion?.value
+  };
 };
 
 /* Format plugin to workflow preview node data */
@@ -182,7 +187,7 @@ export async function getChildAppPreviewNode({
       }
 
       return {
-        id: String(item._id),
+        id: item.type === AppTypeEnum.toolSet ? '' : String(item._id),
         teamId: String(item.teamId),
         name: item.name,
         avatar: item.avatar,
@@ -330,7 +335,7 @@ export async function getChildAppPreviewNode({
 
   return {
     id: getNanoid(),
-    pluginId: app.id,
+    pluginId: source === PluginSourceEnum.personal ? app.id : undefined,
     templateType: app.templateType,
     flowNodeType,
     avatar: app.avatar,

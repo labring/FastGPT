@@ -118,7 +118,9 @@ const NodeCard = (props: Props) => {
     // 1. Team app/System commercial plugin
     if (isAppNode && node?.pluginId && !node?.pluginData?.error) return true;
     // 2. System tool
-    if (isAppNode && node.toolConfig) return true;
+    if (isAppNode && node?.toolConfig?.systemTool) return true;
+    // 3. MCP tool set do not have version
+    if (isAppNode && node.toolConfig?.mcpToolSet) return false;
 
     return false;
   }, [isAppNode, node]);
