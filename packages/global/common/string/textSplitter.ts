@@ -73,7 +73,11 @@ const markdownTableSplit = (props: SplitProps & { usedLength?: number }): SplitR
   let { text = '', chunkSize, usedLength = 0 } = props;
 
   // 计算实际可用的块大小
-  const effectiveChunkSize = Math.max(chunkSize - usedLength, Math.min(chunkSize * 0.3, 300)); // 至少保留300字符或30%的空间
+  // 如果没有传入usedLength或者为0，使用完整的chunkSize
+  const effectiveChunkSize =
+    usedLength > 0
+      ? Math.max(chunkSize - usedLength, chunkSize * 0.2) // 至少保留20%的空间
+      : chunkSize; // 没有已使用长度时，使用完整空间
 
   // 按行分割表格文本，保留空的表格行但过滤完全空白的行
   const splitText2Lines = text.split('\n').filter((line) => {
@@ -169,20 +173,70 @@ const commonSplit = (props: SplitProps): SplitResponse => {
   text = text.replace(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g, function (match) {
     return match.replace(/\n/g, codeBlockMarker);
   });
-  // 2. Markdown 表格处理 - 注释掉独立的表格预处理，让表格跟随整体分割逻辑
-  // const tableReg = /(\n\|(?:[^\n|]*\|)+\n\|(?:[:\-\s]*\|)+\n(?:\|(?:[^\n|]*\|)*\n?)*)(?:\n|$)/g;
-  // const tableDataList = text.match(tableReg);
-  // if (tableDataList) {
-  //   tableDataList.forEach((tableData) => {
-  //     const { chunks } = markdownTableSplit({
-  //       text: tableData.trim(),
-  //       chunkSize
-  //     });
+  // 2. Markdown 表格处理 - 考虑上下文的智能表格分割
+  const tableReg = /(\n\|(?:[^\n|]*\|)+\n\|(?:[:\-\s]*\|)+\n(?:\|(?:[^\n|]*\|)*\n?)*)(?:\n|$)/g;
 
-  //     const splitText = chunks.join('\n');
-  //     text = text.replace(tableData, `\n${splitText}\n`);
-  //   });
-  // }
+  // 改进的表格处理：逐个处理表格，考虑前文累积长度
+  let processedText = text;
+  let cumulativeLength = 0; // 累积的有效字符长度
+
+  // 按顺序处理每个表格
+  let tableMatch;
+  let lastIndex = 0;
+  const tableReplacements: Array<{ original: string; replacement: string; index: number }> = [];
+
+  tableReg.lastIndex = 0;
+  while ((tableMatch = tableReg.exec(text)) !== null) {
+    const tableData = tableMatch[0];
+    const tableIndex = tableMatch.index;
+
+    // 计算到当前表格为止的累积长度
+    const beforeTable = text.substring(lastIndex, tableIndex);
+    cumulativeLength += getTextValidLength(beforeTable);
+
+    // 计算当前表格在chunk中的位置
+    const positionInChunk = cumulativeLength % chunkSize;
+
+    // 计算表格可用的空间
+    const availableSpace = chunkSize - positionInChunk;
+    const tableLength = getTextValidLength(tableData.trim());
+
+    if (tableLength <= availableSpace) {
+      // 表格能放在当前chunk中，不分割
+      cumulativeLength += tableLength;
+    } else {
+      // 表格需要分割，使用可用空间
+      const { chunks } = markdownTableSplit({
+        text: tableData.trim(),
+        chunkSize,
+        usedLength: positionInChunk
+      });
+
+      // 重要：在各个表格块之间插入特殊标记，防止后续分割逻辑破坏表格结构
+      const splitText = chunks.join(`\n${CUSTOM_SPLIT_SIGN}\n`);
+      tableReplacements.push({
+        original: tableData,
+        replacement: `\n${splitText}\n`,
+        index: tableIndex
+      });
+
+      // 更新累积长度（分割后的总长度）
+      cumulativeLength += getTextValidLength(splitText);
+    }
+
+    lastIndex = tableIndex + tableData.length;
+  }
+
+  // 从后往前替换，避免索引偏移
+  for (let i = tableReplacements.length - 1; i >= 0; i--) {
+    const { original, replacement, index } = tableReplacements[i];
+    processedText =
+      processedText.substring(0, index) +
+      replacement +
+      processedText.substring(index + original.length);
+  }
+
+  text = processedText;
 
   // replace invalid \n
   text = text.replace(/(\r?\n|\r){3,}/g, '\n\n\n');
@@ -420,53 +474,31 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
         // 说明是当前文本比较大，需要进一步拆分
 
-        // 检查是否是表格处理步骤
-        const tableStepIndex = customRegLen + markdownHeaderRules.length + 1; // 表格在stepReges中的索引
-        const isTableStep = step === tableStepIndex;
-        const isTableContent = isTableStep && strIsMdTable(currentText.trim());
+        // 把新的文本块进行一个拆分，并追加到 latestText 中
+        const innerChunks = splitTextRecursively({
+          text: currentText,
+          step: step + 1,
+          lastText,
+          parentTitle: parentTitle + item.title
+        });
+        const lastChunk = innerChunks[innerChunks.length - 1];
 
-        if (isTableContent) {
-          // 对于表格，使用 markdownTableSplit 并传入已使用长度
-          const usedLength = getTextValidLength(lastText);
-          const { chunks: tableChunks } = markdownTableSplit({
-            text: currentText.trim(),
-            chunkSize,
-            usedLength
-          });
+        if (!lastChunk) continue;
 
-          // 将第一个表格块与 lastText 合并，其余块独立
-          if (tableChunks.length > 0) {
-            tableChunks[0] = lastText + tableChunks[0];
-            chunks.push(...tableChunks);
-            lastText = getOneTextOverlapText({ text: tableChunks[tableChunks.length - 1], step });
-          }
-        } else {
-          // 把新的文本块进行一个拆分，并追加到 latestText 中
-          const innerChunks = splitTextRecursively({
-            text: currentText,
-            step: step + 1,
-            lastText,
-            parentTitle: parentTitle + item.title
-          });
-          const lastChunk = innerChunks[innerChunks.length - 1];
-
-          if (!lastChunk) continue;
-
-          // last chunk is too small, concat it to lastText(next chunk start)
-          if (getTextValidLength(lastChunk) < minChunkLen) {
-            chunks.push(...innerChunks.slice(0, -1));
-            lastText = lastChunk;
-            continue;
-          }
-
-          // Last chunk is large enough
-          chunks.push(...innerChunks);
-          // compute new overlapText
-          lastText = getOneTextOverlapText({
-            text: lastChunk,
-            step
-          });
+        // last chunk is too small, concat it to lastText(next chunk start)
+        if (getTextValidLength(lastChunk) < minChunkLen) {
+          chunks.push(...innerChunks.slice(0, -1));
+          lastText = lastChunk;
+          continue;
         }
+
+        // Last chunk is large enough
+        chunks.push(...innerChunks);
+        // compute new overlapText
+        lastText = getOneTextOverlapText({
+          text: lastChunk,
+          step
+        });
         continue;
       }
 
