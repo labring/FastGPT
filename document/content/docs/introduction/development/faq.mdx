@@ -7,8 +7,6 @@ draft: false
 images: []
 ---
 
-import { Tabs, Tab } from '@/components/docs/Tabs';
-
 ## 一、错误排查方式
 
 可以先找找[Issue](https://github.com/labring/FastGPT/issues)，或新提 Issue，私有部署错误，务必提供详细的操作步骤、日志、截图，否则很难排查。
@@ -159,8 +157,8 @@ OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并
 
 下面是几个测试 CURL 示例：
 
-<Tabs>
-  <Tab title="LLM模型">
+<Tabs items={['LLM模型','Embedding模型','Rerank 模型','TTS 模型','Whisper 模型']}>
+  <Tab value="LLM模型">
 ```bash
 curl https://api.openai.com/v1/chat/completions \
   -H "Content-Type: application/json" \
@@ -180,7 +178,7 @@ curl https://api.openai.com/v1/chat/completions \
   }'
 ```
   </Tab>
-  <Tab title="Embedding模型">
+  <Tab value="Embedding模型">
 ```bash
 curl https://api.openai.com/v1/embeddings \
   -H "Authorization: Bearer $OPENAI_API_KEY" \
@@ -192,7 +190,7 @@ curl https://api.openai.com/v1/embeddings \
   }'
 ```
   </Tab>
-  <Tab title="Rerank 模型">
+  <Tab value="Rerank 模型">
 ```bash
 curl --location --request POST 'https://xxxx.com/api/v1/rerank' \
 --header 'Authorization: Bearer {{ACCESS_TOKEN}}' \
@@ -206,7 +204,7 @@ curl --location --request POST 'https://xxxx.com/api/v1/rerank' \
 }'
 ```
   </Tab>
-  <Tab title="TTS 模型">
+  <Tab value="TTS 模型">
 ```bash
 curl https://api.openai.com/v1/audio/speech \
   -H "Authorization: Bearer $OPENAI_API_KEY" \
@@ -219,7 +217,7 @@ curl https://api.openai.com/v1/audio/speech \
   --output speech.mp3
 ```
   </Tab>
-  <Tab title="Whisper 模型">
+  <Tab value="Whisper 模型">
 ```bash
 curl https://api.openai.com/v1/audio/transcriptions \
   -H "Authorization: Bearer $OPENAI_API_KEY" \

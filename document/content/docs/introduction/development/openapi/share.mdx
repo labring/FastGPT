@@ -8,7 +8,6 @@ weight: 860
 ---
 
 import { Alert } from '@/components/docs/Alert';
-import { Tabs, Tab } from '@/components/docs/Tabs';
 
 ## 介绍
 
@@ -64,8 +63,8 @@ import { Tabs, Tab } from '@/components/docs/Tabs';
 
 ### 3. 编写聊天初始化校验接口
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','鉴权成功','鉴权失败']}>
+  <Tab value="请求示例" >
 
 
 ```bash
@@ -79,7 +78,7 @@ curl --location --request POST '{{host}}/shareAuth/init' \
 
   </Tab>
 
-  <Tab title="鉴权成功" >
+  <Tab value="鉴权成功" >
 
 
 ```json
@@ -96,7 +95,7 @@ curl --location --request POST '{{host}}/shareAuth/init' \
 
   </Tab>
 
-  <Tab title="鉴权失败" >
+  <Tab value="鉴权失败" >
 
 
 ```json
@@ -114,8 +113,8 @@ curl --location --request POST '{{host}}/shareAuth/init' \
 
 ### 4. 编写对话前校验接口
 
-<Tabs>
-  <Tab title="请求示例" >
+<Tabs items={['请求示例','鉴权成功','鉴权失败']}>
+  <Tab value="请求示例" >
 
 
 ```bash
@@ -130,7 +129,7 @@ curl --location --request POST '{{host}}/shareAuth/start' \
 
   </Tab>
 
-  <Tab title="鉴权成功" >
+  <Tab value="鉴权成功" >
 
 
 ```json
@@ -145,7 +144,7 @@ curl --location --request POST '{{host}}/shareAuth/start' \
 
   </Tab>
 
-  <Tab title="鉴权失败" >
+  <Tab value="鉴权失败" >
 
 
 ```json
@@ -303,8 +302,8 @@ type ResponseType = {
 
 
 
-<Tabs>
-  <Tab title="/shareAuth/init" >
+<Tabs items={['/shareAuth/init','/shareAuth/start','/shareAuth/finish']}>
+  <Tab value="/shareAuth/init" >
 
 
 这个接口中，我们设置了`token`必须等于`fastgpt`才能通过校验。（实际生产中不建议固定写死）
@@ -328,7 +327,7 @@ export default async function (ctx: FunctionContext) {
 
   </Tab>
 
-  <Tab title="/shareAuth/start" >
+  <Tab value="/shareAuth/start" >
 
 
 这个接口中，我们设置了`token`必须等于`fastgpt`才能通过校验。并且如果问题中包含了`你`字，则会报错，用于模拟敏感校验。
@@ -357,7 +356,7 @@ export default async function (ctx: FunctionContext) {
 
   </Tab>
 
-  <Tab title="/shareAuth/finish" >
+  <Tab value="/shareAuth/finish" >
 
 
 结果上报接口可自行进行逻辑处理。

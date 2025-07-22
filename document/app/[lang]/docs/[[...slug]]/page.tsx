@@ -15,7 +15,7 @@ export default async function Page({
   if (!page || !page.data || !page.file) notFound();
 
   const MDXContent = page.data.body;
-  const lastModified = await fetchLastModified(`content/docs/${page.file.path}`);
+  const lastModified = await fetchLastModified(`/content/docs/${page.path}`);
 
   return (
     <DocsPage

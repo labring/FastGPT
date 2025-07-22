@@ -3,7 +3,14 @@ import { source } from '@/lib/source';
 import { DocsLayout } from 'fumadocs-ui/layouts/notebook';
 import { baseOptions } from '@/app/layout.config';
 import { t } from '@/lib/i18n';
+import LogoLight from '@/components/docs/logo';
+import LogoDark from '@/components/docs/logoDark';
 import '@/app/global.css';
+import { CustomSidebarComponents } from '@/components/sideBar';
+import FeishuLogoLight from '@/components/docs/feishuLogoLIght';
+import FeishuLogoDark from '@/components/docs/feishuLogoDark';
+import GithubLogoLight from '@/components/docs/githubLogoLight';
+import GithubLogoDark from '@/components/docs/githubLogoDark';
 
 export default async function Layout({
   params,
@@ -16,23 +23,23 @@ export default async function Layout({
 
   const tab = [
     {
-      title: t('common:introduction'),
-      url: '/docs/introduction',
+      title: t('common:introduction', lang),
+      url: lang === 'zh-CN' ? '/docs/introduction' : '/en/docs/introduction',
       className: 'nav-tabs'
     },
     {
-      title: t('common:use-cases'),
-      url: '/docs/use-cases',
+      title: t('common:use-cases', lang),
+      url: lang === 'zh-CN' ? '/docs/use-cases' : '/en/docs/use-cases',
       className: 'nav-tabs-link-active-color'
     },
+    // {
+    //   title: t("common:api", lang),
+    //   url: lang === "zh-CN" ? "/docs/api" : "/en/docs/api",
+    //   className: "nav-tabs-link-active-color",
+    // },
     {
-      title: t('common:api'),
-      url: '/docs/api',
-      className: 'nav-tabs-link-active-color'
-    },
-    {
-      title: t('common:protocol'),
-      url: '/docs/protocol',
+      title: t('common:protocol', lang),
+      url: lang === 'zh-CN' ? '/docs/protocol' : '/en/docs/protocol',
       className: 'nav-tabs-link-active-color'
     }
   ];
@@ -42,27 +49,57 @@ export default async function Layout({
       {...baseOptions(lang)}
       nav={{
         title: (
-          <div className="flex flex-row items-center gap-2 h-14">
-            <img src="/FastGPT-full.svg" alt="FastGPT" className="w-40 h-40" />
+          <div className="flex flex-row items-center gap-2 h-14 ml-10">
+            <div className="block dark:hidden">
+              <LogoLight className="w-48 h-auto" />
+            </div>
+            <div className="hidden dark:block">
+              <LogoDark className="w-48 h-auto" />
+            </div>
           </div>
         ),
         mode: 'top'
       }}
-      // links={[
-      //   {
-      //     type: "icon",
-      //     icon: <img src="/feishu.svg" alt="FastGPT" className="w-4 h-4 hover-pointer bg-none" />,
-      //     url: "https://oss.laf.run/otnvvf-imgs/fastgpt-feishu1.png",
-      //     text: "飞书群",
-      //   },
-      // ]}
+      links={[
+        {
+          type: 'icon',
+          icon: (
+            <div className="flex flex-row items-center gap-2">
+              <div className="block dark:hidden">
+                <FeishuLogoLight />
+              </div>
+              <div className="hidden dark:block">
+                <FeishuLogoDark />
+              </div>
+            </div>
+          ),
+          url: 'https://oss.laf.run/otnvvf-imgs/fastgpt-feishu1.png',
+          text: '飞书群'
+        },
+        {
+          type: 'icon',
+          icon: (
+            <div className="flex flex-row items-center gap-2">
+              <div className="block dark:hidden">
+                <GithubLogoLight />
+              </div>
+              <div className="hidden dark:block">
+                <GithubLogoDark />
+              </div>
+            </div>
+          ),
+          url: 'https://github.com/labring/FastGPT/tree/main/document',
+          text: 'github'
+        }
+      ]}
       tree={source.pageTree[lang]}
       searchToggle={{
         enabled: true
       }}
       sidebar={{
         tabs: tab,
-        collapsible: false
+        collapsible: false,
+        components: CustomSidebarComponents
       }}
       tabMode="navbar"
     >

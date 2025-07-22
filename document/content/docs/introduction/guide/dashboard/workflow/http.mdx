@@ -8,7 +8,6 @@ weight: 252
 ---
 
 import { Alert } from '@/components/docs/Alert';
-import { Tabs, Tab } from '@/components/docs/Tabs';
 
 ## 特点
 
@@ -61,8 +60,8 @@ HTTP 模块会向对应的地址发送一个 `HTTP` 请求，实际操作与 Pos
 
 可以写一个`自定义的 Json`，并通过 `{{key}}` 来引入变量。例如：
 
-<Tabs>
-  <Tab title="假设有一组变量" >
+<Tabs items={['假设有一组变量','Http 模块中的Body声明','最终得到的解析']}>
+  <Tab value="假设有一组变量" >
 
 
 ```json
@@ -80,7 +79,7 @@ HTTP 模块会向对应的地址发送一个 `HTTP` 请求，实际操作与 Pos
 
 
   </Tab>
-  <Tab title="Http 模块中的Body声明" >
+  <Tab value="Http 模块中的Body声明" >
 
 
 注意，在 Body 中，你如果引用`字符串`，则需要加上`""`，例如：`"{{string}}"`。
@@ -99,7 +98,7 @@ HTTP 模块会向对应的地址发送一个 `HTTP` 请求，实际操作与 Pos
 
 
   </Tab>
-  <Tab title="最终得到的解析" >
+  <Tab value="最终得到的解析" >
 
 
 ```json
@@ -127,8 +126,8 @@ HTTP 模块会向对应的地址发送一个 `HTTP` 请求，实际操作与 Pos
 
 语法可以参考: https://github.com/JSONPath-Plus/JSONPath?tab=readme-ov-file
 
-<Tabs>
-  <Tab title="接口响应示例" >
+<Tabs items={['接口响应示例','提取示例']}>
+  <Tab value="接口响应示例" >
 
 
 ```json
@@ -153,7 +152,7 @@ HTTP 模块会向对应的地址发送一个 `HTTP` 请求，实际操作与 Pos
 
 
   </Tab>
-  <Tab title="提取示例" >
+  <Tab value="提取示例" >
 
 
 ```json
