@@ -7,7 +7,7 @@ export async function fetchLastModified(path: string): Promise<string | null> {
       owner: process.env.GITHUB_OWNER || 'labring',
       repo: process.env.GITHUB_REPO || 'FastGPT',
       path,
-      token: `Bearer ${process.env.GIT_TOKEN}` // 可选，提高速率限制
+      token: `Bearer ${process.env.GIT_TOKEN}`
     });
     return lastEdit ? lastEdit.toISOString() : null;
   } catch (err) {
