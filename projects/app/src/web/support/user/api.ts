@@ -101,7 +101,7 @@ export const getWXLoginQR = () =>
   GET<GetWXLoginQRResponse>('/proApi/support/user/account/login/wx/getQR');
 
 export const getWXLoginResult = (params: WxLoginProps) =>
-  GET<ResLogin>(`/proApi/support/user/account/login/wx/getResult`, params);
+  POST<ResLogin>(`/proApi/support/user/account/login/wx/getResult`, params);
 
 export const getCaptchaPic = (username: string) =>
   GET<{
