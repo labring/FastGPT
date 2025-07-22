@@ -6,14 +6,6 @@ on:
     paths:
       - docSite/assets/imgs/**
   workflow_dispatch:
-
-permissions:
-  contents: read
-  packages: write
-  attestations: write
-  id-token: write
-  pull-requests: write
-
 jobs:
   sync:
     runs-on: ubuntu-latest
@@ -24,7 +16,7 @@ jobs:
       - name: Run GitHub File Sync
         uses: BetaHuhn/repo-file-sync-action@v1.21.0
         with:
-          GH_PAT: ${{ secrets.GITHUB_TOKEN }}
+          GH_PAT: ${{ secrets.IMG_GH_PAT }}
           CONFIG_PATH: .github/doc-sync-image.yml
           ORIGINAL_MESSAGE: true
           SKIP_PR: true
