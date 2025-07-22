@@ -387,8 +387,6 @@ assistant: ${chatBg}
     const embeddings = await generateEmbeddings(allQueries, model);
     const originalEmbedding = embeddings[0];
     const candidateEmbeddings = embeddings.slice(1);
-    console.log('queries', queries.length);
-    console.log('queries', queries);
     // Select optimal queries using lazy greedy algorithm
     const selectedQueries = lazyGreedyQuerySelection(
       queries,
@@ -397,8 +395,6 @@ assistant: ${chatBg}
       Math.min(5, queries.length), // Select top 5 queries or less
       0.3 // alpha parameter for balancing relevance and diversity
     );
-    console.log('selectedQueries', selectedQueries);
-    console.log('selectedQueries', selectedQueries.length);
 
     return {
       rawQuery: query,
