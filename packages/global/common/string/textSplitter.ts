@@ -169,51 +169,20 @@ const commonSplit = (props: SplitProps): SplitResponse => {
   text = text.replace(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g, function (match) {
     return match.replace(/\n/g, codeBlockMarker);
   });
-  // 2. Markdown 表格处理 - 单独提取表格出来，进行表头合并（考虑上下文长度）
-  const tableReg = /(\n\|(?:[^\n|]*\|)+\n\|(?:[:\-\s]*\|)+\n(?:\|(?:[^\n|]*\|)*\n?)*)(?:\n|$)/g;
+  // 2. Markdown 表格处理 - 注释掉独立的表格预处理，让表格跟随整体分割逻辑
+  // const tableReg = /(\n\|(?:[^\n|]*\|)+\n\|(?:[:\-\s]*\|)+\n(?:\|(?:[^\n|]*\|)*\n?)*)(?:\n|$)/g;
+  // const tableDataList = text.match(tableReg);
+  // if (tableDataList) {
+  //   tableDataList.forEach((tableData) => {
+  //     const { chunks } = markdownTableSplit({
+  //       text: tableData.trim(),
+  //       chunkSize
+  //     });
 
-  // 改进：考虑表格前的内容长度，计算已使用长度
-  let processedText = text;
-  const tableMatches: Array<{ match: string; index: number; end: number }> = [];
-
-  // 收集所有表格匹配及其位置
-  let match;
-  tableReg.lastIndex = 0;
-  while ((match = tableReg.exec(text)) !== null) {
-    tableMatches.push({
-      match: match[0],
-      index: match.index,
-      end: match.index + match[0].length
-    });
-  }
-
-  // 从后往前处理表格，避免索引偏移问题
-  for (let i = tableMatches.length - 1; i >= 0; i--) {
-    const { match: tableData, index: tableStart } = tableMatches[i];
-
-    // 计算表格前的内容长度（作为已使用长度）
-    const beforeTableText = text.substring(0, tableStart);
-    const beforeTableLength = getTextValidLength(beforeTableText);
-
-    // 计算在当前块中已经使用的长度
-    const usedInCurrentChunk = beforeTableLength % chunkSize;
-
-    const { chunks } = markdownTableSplit({
-      text: tableData.trim(),
-      chunkSize,
-      usedLength: usedInCurrentChunk
-    });
-
-    const splitText = chunks.join('\n');
-
-    // 替换原表格内容
-    processedText =
-      processedText.substring(0, tableStart) +
-      `\n${splitText}\n` +
-      processedText.substring(tableStart + tableData.length);
-  }
-
-  text = processedText;
+  //     const splitText = chunks.join('\n');
+  //     text = text.replace(tableData, `\n${splitText}\n`);
+  //   });
+  // }
 
   // replace invalid \n
   text = text.replace(/(\r?\n|\r){3,}/g, '\n\n\n');
@@ -451,31 +420,53 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
         // 说明是当前文本比较大，需要进一步拆分
 
-        // 把新的文本块进行一个拆分，并追加到 latestText 中
-        const innerChunks = splitTextRecursively({
-          text: currentText,
-          step: step + 1,
-          lastText,
-          parentTitle: parentTitle + item.title
-        });
-        const lastChunk = innerChunks[innerChunks.length - 1];
+        // 检查是否是表格处理步骤
+        const tableStepIndex = customRegLen + markdownHeaderRules.length + 1; // 表格在stepReges中的索引
+        const isTableStep = step === tableStepIndex;
+        const isTableContent = isTableStep && strIsMdTable(currentText.trim());
 
-        if (!lastChunk) continue;
+        if (isTableContent) {
+          // 对于表格，使用 markdownTableSplit 并传入已使用长度
+          const usedLength = getTextValidLength(lastText);
+          const { chunks: tableChunks } = markdownTableSplit({
+            text: currentText.trim(),
+            chunkSize,
+            usedLength
+          });
 
-        // last chunk is too small, concat it to lastText(next chunk start)
-        if (getTextValidLength(lastChunk) < minChunkLen) {
-          chunks.push(...innerChunks.slice(0, -1));
-          lastText = lastChunk;
-          continue;
+          // 将第一个表格块与 lastText 合并，其余块独立
+          if (tableChunks.length > 0) {
+            tableChunks[0] = lastText + tableChunks[0];
+            chunks.push(...tableChunks);
+            lastText = getOneTextOverlapText({ text: tableChunks[tableChunks.length - 1], step });
+          }
+        } else {
+          // 把新的文本块进行一个拆分，并追加到 latestText 中
+          const innerChunks = splitTextRecursively({
+            text: currentText,
+            step: step + 1,
+            lastText,
+            parentTitle: parentTitle + item.title
+          });
+          const lastChunk = innerChunks[innerChunks.length - 1];
+
+          if (!lastChunk) continue;
+
+          // last chunk is too small, concat it to lastText(next chunk start)
+          if (getTextValidLength(lastChunk) < minChunkLen) {
+            chunks.push(...innerChunks.slice(0, -1));
+            lastText = lastChunk;
+            continue;
+          }
+
+          // Last chunk is large enough
+          chunks.push(...innerChunks);
+          // compute new overlapText
+          lastText = getOneTextOverlapText({
+            text: lastChunk,
+            step
+          });
         }
-
-        // Last chunk is large enough
-        chunks.push(...innerChunks);
-        // compute new overlapText
-        lastText = getOneTextOverlapText({
-          text: lastChunk,
-          step
-        });
         continue;
       }
 
