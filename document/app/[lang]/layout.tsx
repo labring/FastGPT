@@ -3,6 +3,7 @@ import { RootProvider } from 'fumadocs-ui/provider';
 import { Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
 import type { Translations } from 'fumadocs-ui/i18n';
+import CustomSearchDialog from '@/components/CustomSearchDialog';
 
 const inter = Inter({
   subsets: ['latin']
@@ -61,6 +62,13 @@ export default async function Layout({
                 chooseLanguage: 'Choose Language'
               }
             }[lang]
+          }}
+          search={{
+            enabled: true,
+            SearchDialog: CustomSearchDialog
+          }}
+          theme={{
+            enabled: true
           }}
         >
           {children}

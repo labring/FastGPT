@@ -10,15 +10,24 @@ import { i18n } from '@/lib/i18n';
  */
 export const baseOptions = (locale: string): BaseLayoutProps => {
   return {
-    i18n,
-    githubUrl: 'https://github.com/labring/FastGPT',
+    themeSwitch: {
+      enabled: true,
+      mode: 'light-dark'
+    },
     nav: {
       title: (
-        <>
-          <img src="/logo.svg" alt="FastGPT" width={49} height={48} style={{ display: 'inline' }} />
-          FastGPT
-        </>
+        <div className="flex flex-col">
+          <div className="flex flex-row items-center gap-2">
+            <img src="/FastGPT-full.svg" alt="FastGPT" width={49} height={48} />
+          </div>
+          <div className="relative flex flex-row items-center gap-2 h-10 top-14"> 12321</div>
+        </div>
       )
+    },
+    i18n,
+    githubUrl: 'https://github.com/labring/FastGPT/tree/main/document',
+    searchToggle: {
+      enabled: true
     }
   };
 };

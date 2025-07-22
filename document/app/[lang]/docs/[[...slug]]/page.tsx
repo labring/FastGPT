@@ -3,6 +3,7 @@ import { DocsPage, DocsBody, DocsDescription, DocsTitle } from 'fumadocs-ui/page
 import { notFound } from 'next/navigation';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { getMDXComponents } from '@/mdx-components';
+import { fetchLastModified } from '@/lib/github';
 
 export default async function Page({
   params
@@ -14,6 +15,7 @@ export default async function Page({
   if (!page || !page.data || !page.file) notFound();
 
   const MDXContent = page.data.body;
+  const lastModified = await fetchLastModified(`content/docs/${page.file.path}`);
 
   return (
     <DocsPage
@@ -23,11 +25,12 @@ export default async function Page({
         style: 'clerk'
       }}
       editOnGithub={{
-        owner: 'dreamer6680',
-        repo: 'fast',
+        owner: 'labring',
+        repo: 'FastGPT',
         sha: 'main',
-        path: `content/docs/${page.file.path}`
+        path: `document/content/docs/${page.file.path}`
       }}
+      lastUpdate={lastModified ? new Date(lastModified) : undefined}
     >
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
