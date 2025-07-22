@@ -4,14 +4,12 @@ import {
   type UploadFileConfig,
   type PresignedUrlInput,
   type PresignedUrlResponse,
-  PluginTypeEnum,
+  FilePluginTypeEnum,
   PLUGIN_TYPE_TO_PATH_MAP
 } from './config';
 import { addLog } from '../../system/log';
 import { ensureBucket } from '../../minio/init';
-import * as path from 'path';
 import { connectionMinio } from '../../minio/index';
-import { MongoFastGPTPlugin } from './schema';
 import { inferContentType } from './utils';
 
 let globalConfig: UploadFileConfig = defaultUploadConfig;
@@ -48,7 +46,7 @@ export const generatePresignedUrl = async (
   const currentConfig = { ...globalConfig };
 
   const fileId = generateFileId();
-  const pluginType = input.pluginType || PluginTypeEnum.tool;
+  const pluginType = input.pluginType || FilePluginTypeEnum.tool;
   const pluginPath = PLUGIN_TYPE_TO_PATH_MAP[pluginType];
   const objectName = `${pluginPath}/${fileId}/${input.filename}`;
   const contentType = input.contentType || inferContentType(input.filename);
@@ -101,14 +99,7 @@ export const confirmPresignedUpload = async (objectName: string, size: string): 
 
     const accessUrl = generateDownloadUrl(objectName, currentConfig);
 
-    const pluginData = {
-      url: accessUrl,
-      type: 'tool' as const
-    };
-
-    const result = await MongoFastGPTPlugin.create(pluginData);
-
-    return result.url;
+    return accessUrl;
   } catch (error) {
     addLog.error('Failed to confirm presigned upload', error);
     return Promise.reject(`Failed to confirm presigned upload: ${error}`);

@@ -8,16 +8,12 @@ type RequestBody = {
 };
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  try {
-    const { objectName, size }: RequestBody = req.body;
+  const { objectName, size }: RequestBody = req.body;
 
-    // Verify file upload and get access URL
-    const accessUrl = await confirmPresignedUpload(objectName, size);
+  // Verify file upload and get access URL
+  const accessUrl = await confirmPresignedUpload(objectName, size);
 
-    return accessUrl;
-  } catch (error) {
-    return Promise.reject(error);
-  }
+  return accessUrl;
 }
 
 export default NextAPI(handler);

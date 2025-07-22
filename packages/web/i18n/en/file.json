@@ -13,7 +13,7 @@
   "Only_support_uploading_one_image": "Only support uploading one image",
   "Please select the image to upload": "Please select the image to upload",
   "Please wait for all files to upload": "Please wait for all files to be uploaded to complete",
-  "Upload_system_tools": "Upload system tools",
+  "common.upload_system_tools": "Upload system tools",
   "bucket_chat": "Conversation Files",
   "bucket_file": "Dataset Documents",
   "click_to_view_raw_source": "Click to View Original Source",

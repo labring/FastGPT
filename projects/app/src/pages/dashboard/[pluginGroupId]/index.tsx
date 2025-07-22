@@ -184,7 +184,7 @@ const SystemTools = () => {
                 <Flex alignItems={'center'} justifyContent={'space-between'}>
                   {isPc ? (
                     <Box fontSize={'lg'} color={'myGray.900'} fontWeight={500}>
-                      {t('common:core.module.template.System Plugin')}
+                      {t('common:core.module.template.System Tools')}
                     </Box>
                   ) : (
                     MenuIcon
@@ -226,7 +226,7 @@ const SystemTools = () => {
             </MyBox>
 
             <MyModal
-              title={t('file:Upload_system_tools')}
+              title={t('file:common.upload_system_tools')}
               isOpen={isOpen}
               onClose={handleCloseUploadModal}
               iconSrc="core/app/type/plugin"

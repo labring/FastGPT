@@ -14,29 +14,25 @@ type RequestBody = {
 };
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  try {
-    await initFileUploadService({
-      bucket: 'fastgpt-uploads',
-      allowedExtensions: ['.js']
-    });
+  await initFileUploadService({
+    bucket: 'fastgpt-uploads',
+    allowedExtensions: ['.js']
+  });
 
-    const { filename, contentType, metadata, maxSize }: RequestBody = req.body;
+  const { filename, contentType, metadata, maxSize }: RequestBody = req.body;
 
-    if (!filename) {
-      return Promise.reject('Filename is required');
-    }
-
-    const presignedData = await generatePresignedUrl({
-      filename,
-      contentType,
-      metadata,
-      maxSize: maxSize || 10 * 1024 * 1024 // default 10MB
-    });
-
-    return presignedData;
-  } catch (error) {
-    return Promise.reject(error);
+  if (!filename) {
+    return Promise.reject('Filename is required');
   }
+
+  const presignedData = await generatePresignedUrl({
+    filename,
+    contentType,
+    metadata,
+    maxSize: maxSize || 10 * 1024 * 1024 // default 10MB
+  });
+
+  return presignedData;
 }
 
 export default NextAPI(handler);

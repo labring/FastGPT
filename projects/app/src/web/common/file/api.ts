@@ -38,19 +38,19 @@ export const postPresignedUrl = (data: {
   contentType?: string;
   metadata?: Record<string, string>;
   maxSize?: number;
-}) => POST<PresignedUrlResponse>('/common/file/plugin/presignedurl', data);
+}) => POST<PresignedUrlResponse>('/common/file/plugin/presignedUrl', data);
 
 export const postConfirmUpload = (data: { objectName: string; size: string }) =>
-  POST<string>('/common/file/plugin/confirm-upload', data);
+  POST<string>('/common/file/plugin/confirmUpload', data);
 
 export const postUploadFileAndUrl = async (url: string) => {
-  return await POST('/plugin/upload', {
+  POST('/plugin/upload', {
     url: url
   });
 };
 
 export const postDeletePlugin = async (toolId: string) => {
-  return await POST('/plugin/delete', {
+  POST('/plugin/delete', {
     toolId
   });
 };

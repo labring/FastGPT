@@ -659,7 +659,6 @@
   "core.module.template.AI support tool tip": "支持函数调用的模型，可以更好的使用工具调用。",
   "core.module.template.Basic Node": "基础功能",
   "core.module.template.Query extension": "问题优化",
-  "core.module.template.System Plugin": "系统工具",
   "core.module.template.System input module": "系统输入",
   "core.module.template.Team app": "团队应用",
   "core.module.template.UnKnow Module": "未知模块",

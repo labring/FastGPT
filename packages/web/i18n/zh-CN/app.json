@@ -43,6 +43,7 @@
   "confirm_delete_folder_tip": "确认删除该文件夹？将会删除它下面所有应用及对应的聊天记录，请确认！",
   "copy_one_app": "创建副本",
   "core.app.QG.Switch": "启用猜你想问",
+  "core.module.template.System Tools": "系统工具",
   "core.dataset.import.Custom prompt": "自定义提示词",
   "create_by_curl": "从 CURL 创建",
   "create_by_template": "从模板创建",

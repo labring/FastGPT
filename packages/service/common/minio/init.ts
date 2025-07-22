@@ -2,18 +2,6 @@ import { connectionMinio } from './index';
 import { addLog } from '../system/log';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 
-export const initMinio = async () => {
-  try {
-    addLog.info('Connecting to MinIO...');
-
-    addLog.info('MinIO connected successfully');
-    return true;
-  } catch (error) {
-    addLog.error('Failed to connect to MinIO:', error);
-    return false;
-  }
-};
-
 export const ensureBucket = async (bucketName: string, isPublic: boolean = false) => {
   return retryFn(async () => {
     try {

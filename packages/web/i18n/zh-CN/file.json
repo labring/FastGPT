@@ -13,7 +13,7 @@
   "Only_support_uploading_one_image": "仅支持上传一张图片",
   "Please select the image to upload": "请选择要上传的图片",
   "Please wait for all files to upload": "请等待所有文件上传完成",
-  "Upload_system_tools": "上传系统工具",
+  "common.common.upload_system_tools": "上传系统工具",
   "bucket_chat": "对话文件",
   "bucket_file": "知识库文件",
   "click_to_view_raw_source": "点击查看来源",

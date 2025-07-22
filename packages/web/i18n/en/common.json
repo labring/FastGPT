@@ -659,7 +659,6 @@
   "core.module.template.AI support tool tip": "Models that support function calls can better use tool calls.",
   "core.module.template.Basic Node": "Basic",
   "core.module.template.Query extension": "Question Optimization",
-  "core.module.template.System Plugin": "System Tools",
   "core.module.template.System input module": "System Input",
   "core.module.template.Team app": "Team",
   "core.module.template.UnKnow Module": "Unknown Module",
