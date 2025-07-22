@@ -198,8 +198,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           toolRes: result,
           moduleLogo: avatar
         },
-        [DispatchNodeResponseKeyEnum.toolResponses]: result,
-        [NodeOutputKeyEnum.rawResponse]: result
+        [DispatchNodeResponseKeyEnum.toolResponses]: result
       };
     } else {
       // mcp tool (old version compatible)

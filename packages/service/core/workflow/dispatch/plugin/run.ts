@@ -81,7 +81,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       per: ReadPermissionVal
     });
 
-    plugin = await getChildAppRuntimeById(pluginId, version);
+    plugin = await getChildAppRuntimeById({ id: pluginId, versionId: version });
 
     const outputFilterMap =
       plugin.nodes

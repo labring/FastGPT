@@ -112,7 +112,7 @@ export const getSystemPluginByIdAndVersionId = async (
     }
 
     const version = versionId
-      ? (versionList.find((item) => item.value === versionId) ?? versionList[0])
+      ? versionList.find((item) => item.value === versionId) ?? versionList[0]
       : versionList[0];
     const lastVersion = versionList[0];
 
@@ -271,7 +271,7 @@ export async function getChildAppPreviewNode({
                     ]
                   : [])
               ]
-            : (app.inputs ?? []),
+            : app.inputs ?? [],
           outputs: app.outputs ?? [],
           toolConfig: {
             ...(app.isFolder
@@ -545,6 +545,7 @@ export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> 
           nodes: [],
           edges: []
         },
+        versionList,
         inputs,
         outputs,
         inputList:
