@@ -6,13 +6,18 @@ import { clearToken } from '@/web/support/user/auth';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import type { PopoverProps } from '@chakra-ui/react';
 
 type UserAvatarPopoverProps = {
   children: React.ReactNode;
   placement?: Parameters<typeof MyPopover>[0]['placement'];
 };
 
-const UserAvatarPopover = ({ children, placement = 'top-end' }: UserAvatarPopoverProps) => {
+const UserAvatarPopover = ({
+  children,
+  placement = 'top-end',
+  ...props
+}: UserAvatarPopoverProps) => {
   const { t } = useTranslation();
   const { setUserInfo } = useUserStore();
 
@@ -30,6 +35,7 @@ const UserAvatarPopover = ({ children, placement = 'top-end' }: UserAvatarPopove
         trigger="hover"
         placement={placement}
         w="160px"
+        {...props}
       >
         {({ onClose }) => {
           const onLogout = useCallback(() => {

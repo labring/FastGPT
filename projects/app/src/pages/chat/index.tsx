@@ -39,9 +39,21 @@ import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import LoginModal from '@/pageComponents/login/LoginModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import {
+  ChatSidebarContextProvider,
+  useChatSidebarContext
+} from '@/web/core/chat/context/chatSidebarContext';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import ChatSetting from '@/components/core/chat/ChatSetting';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
+
+export enum ChatSidebarActionEnum {
+  HOME = 'home',
+  SETTING = 'setting',
+  TEAM_APPS = 'team_apps',
+  FAVORITE_APPS = 'favorite_apps'
+}
 
 // custom hook for managing chat page state and initialization logic
 const useChatHook = (appId: string) => {
@@ -111,6 +123,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 
   const { userInfo } = useUserStore();
   const { chatId, appId, outLinkAuthData } = useChatStore();
+
+  const { action, isFolded } = useChatSidebarContext();
 
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
@@ -221,54 +235,66 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     <Flex h={'100%'}>
       <NextHead title={chatBoxData.app.name} icon={chatBoxData.app.avatar}></NextHead>
       {isPc && (
-        <Box flex={'0 0 202px'} overflow={'hidden'}>
+        <Box
+          flexGrow={0}
+          flexShrink={0}
+          w={isFolded ? '72px' : '202px'}
+          overflow={'hidden'}
+          transition={'width 0.1s ease-in-out'}
+        >
           <SliderApps apps={myApps} activeAppId={appId} />
         </Box>
       )}
 
       {(!datasetCiteData || isPc) && (
         <PageContainer flex={'1 0 0'} w={0} position={'relative'}>
-          <Flex h={'100%'} flexDirection={['column', 'row']}>
-            {/* pc always show history */}
-            {RenderHistorySlider}
-            <Flex
-              position={'relative'}
-              h={[0, '100%']}
-              w={['100%', 0]}
-              flex={'1 0 0'}
-              flexDirection={'column'}
-            >
-              <ChatHeader
-                totalRecordsCount={totalRecordsCount}
-                apps={myApps}
-                history={chatRecords}
-                showHistory
-              />
+          {/* home */}
+          {action === ChatSidebarActionEnum.HOME && (
+            <Flex h={'100%'} flexDirection={['column', 'row']}>
+              {/* pc always show history */}
+              {RenderHistorySlider}
+              <Flex
+                position={'relative'}
+                h={[0, '100%']}
+                w={['100%', 0]}
+                flex={'1 0 0'}
+                flexDirection={'column'}
+              >
+                <ChatHeader
+                  totalRecordsCount={totalRecordsCount}
+                  apps={myApps}
+                  history={chatRecords}
+                  showHistory
+                />
 
-              <Box flex={'1 0 0'} bg={'white'}>
-                {isPlugin ? (
-                  <CustomPluginRunBox
-                    appId={appId}
-                    chatId={chatId}
-                    outLinkAuthData={outLinkAuthData}
-                    onNewChat={() => onChangeChatId(getNanoid())}
-                    onStartChat={onStartChat}
-                  />
-                ) : (
-                  <ChatBox
-                    appId={appId}
-                    chatId={chatId}
-                    outLinkAuthData={outLinkAuthData}
-                    showEmptyIntro
-                    feedbackType={'user'}
-                    onStartChat={onStartChat}
-                    chatType={ChatTypeEnum.chat}
-                    isReady={!loading}
-                  />
-                )}
-              </Box>
+                <Box flex={'1 0 0'} bg={'white'}>
+                  {isPlugin ? (
+                    <CustomPluginRunBox
+                      appId={appId}
+                      chatId={chatId}
+                      outLinkAuthData={outLinkAuthData}
+                      onNewChat={() => onChangeChatId(getNanoid())}
+                      onStartChat={onStartChat}
+                    />
+                  ) : (
+                    <ChatBox
+                      appId={appId}
+                      chatId={chatId}
+                      outLinkAuthData={outLinkAuthData}
+                      showEmptyIntro
+                      feedbackType={'user'}
+                      onStartChat={onStartChat}
+                      chatType={ChatTypeEnum.chat}
+                      isReady={!loading}
+                    />
+                  )}
+                </Box>
+              </Flex>
             </Flex>
-          </Flex>
+          )}
+
+          {/* setting */}
+          {action === ChatSidebarActionEnum.SETTING && <ChatSetting />}
         </PageContainer>
       )}
 
@@ -326,18 +352,20 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
 
   // show main chat interface
   return (
-    <ChatContextProvider params={chatHistoryProviderParams}>
-      <ChatItemContextProvider
-        showRouteToDatasetDetail={isStandalone !== '1'}
-        isShowReadRawSource={true}
-        isResponseDetail={true}
-        showNodeStatus
-      >
-        <ChatRecordContextProvider params={chatRecordProviderParams}>
-          <Chat myApps={myApps} />
-        </ChatRecordContextProvider>
-      </ChatItemContextProvider>
-    </ChatContextProvider>
+    <ChatSidebarContextProvider>
+      <ChatContextProvider params={chatHistoryProviderParams}>
+        <ChatItemContextProvider
+          showRouteToDatasetDetail={isStandalone !== '1'}
+          isShowReadRawSource={true}
+          isResponseDetail={true}
+          showNodeStatus
+        >
+          <ChatRecordContextProvider params={chatRecordProviderParams}>
+            <Chat myApps={myApps} />
+          </ChatRecordContextProvider>
+        </ChatItemContextProvider>
+      </ChatContextProvider>
+    </ChatSidebarContextProvider>
   );
 };
 

@@ -422,6 +422,7 @@
   "core.chat.response.user_select_result": "用户选择结果",
   "core.chat.retry": "重新生成",
   "core.chat.tts.Stop Speech": "停止",
+  "core.chat.side_bar Home": "首页",
   "core.dataset.Choose Dataset": "关联知识库",
   "core.dataset.Collection": "数据集",
   "core.dataset.Create dataset": "创建一个{{name}}",
