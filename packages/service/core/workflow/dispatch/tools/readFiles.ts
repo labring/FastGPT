@@ -15,6 +15,7 @@ import { addLog } from '../../../../common/system/log';
 import { addRawTextBuffer, getRawTextBuffer } from '../../../../common/buffer/rawText/controller';
 import { addMinutes } from 'date-fns';
 import { getNodeErrResponse } from '../utils';
+import { isInternalAddress } from '../../../../common/system/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
@@ -175,6 +176,9 @@ export const getFileContentFromLinks = async ({
         }
 
         try {
+          if (isInternalAddress(url)) {
+            return Promise.reject('Url is invalid');
+          }
           // Get file buffer data
           const response = await axios.get(url, {
             baseURL: serverRequestBaseUrl,
