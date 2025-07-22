@@ -169,8 +169,8 @@ services:
     environment:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v0.1.4 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1.4 # 阿里云
+    image: ghcr.io/labring/fastgpt-plugin:v0.1.5 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1.5 # 阿里云
     container_name: fastgpt-plugin
     restart: always
     networks:
