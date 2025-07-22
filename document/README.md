@@ -26,6 +26,7 @@ NEXT_PUBLIC_SEARCH_APPKEY = #这是上面获取的搜索key
 NEXT_PUBLIC_SEARCH_APPID =  #这是上面的搜索id
 GITHUB_REPO =   #fork的仓库名
 GITHUB_OWNER =  #你的github名
+NEXT_PUBLIC_DOMAIN =    #要跳转的FastGPT项目的域名，默认海外版
 ```
 
 你可以在FastGPT项目根目录下执行以下命令来运行文档。
@@ -51,7 +52,7 @@ import { Alert } from '@/components/docs/Alert'; #高亮块组件
 
 <Alert icon="🤖" context="success">
 快速开始体验
-- 海外版：[https://tryfastgpt.ai](https://tryfastgpt.ai)
+- 海外版：[https://fastgpt.io](https://fastgpt.io)
 - 国内版：[https://fastgpt.cn](https://fastgpt.cn)
 </Alert>
 
@@ -62,6 +63,11 @@ import {Redirect} from '@/components/docs/Redirect' #重定向组件，如果你
 <Tabs items={['Javascript', 'Rust']}> #tabs组件用法，渲染效果参考`introduction`下`development`的`faq`文档
   <Tab value="Javascript">Javascript is weird</Tab>
   <Tab value="Rust">Rust is fast</Tab>
+
+
+import FastGPTLink from '@/components/docs/linkFastGPT'; #FastGPT跳转链接组件，通过接收一个域名环境变量，来实现跳转到海外或者国内
+
+本文档介绍了如何设置开发环境以构建和测试 <FastGPTLink>FastGPT</FastGPTLink>。
 </Tabs>
 
 ```
