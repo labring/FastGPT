@@ -9,7 +9,7 @@ export type SystemPluginConfigSchemaType = {
   currentCost: number;
   hasTokenFee: boolean;
   isActive: boolean;
-  pluginOrder: number;
+  pluginOrder?: number;
 
   customConfig?: {
     name: string;

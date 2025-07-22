@@ -15,11 +15,6 @@
       "toolChoice": true,
       "functionCall": false,
       "defaultSystemChatPrompt": "",
-      "datasetProcess": true,
-      "usedInClassify": true,
-      "usedInExtractFields": true,
-      "usedInQueryExtension": true,
-      "usedInToolCall": true,
       "type": "llm"
     },
     {
@@ -34,11 +29,6 @@
       "toolChoice": false,
       "functionCall": false,
       "defaultSystemChatPrompt": "",
-      "datasetProcess": true,
-      "usedInClassify": true,
-      "usedInExtractFields": true,
-      "usedInQueryExtension": true,
-      "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
       "type": "llm",

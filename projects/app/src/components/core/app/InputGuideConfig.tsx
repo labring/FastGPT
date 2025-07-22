@@ -233,7 +233,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
             title: t('common:add_success')
           });
         }
-        fetchData(1);
+        fetchData({ init: true });
       });
     },
     {

@@ -21,7 +21,8 @@ import { type PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/typ
 export enum TabEnum {
   apps = 'apps',
   app_templates = 'templateMarket',
-  mcp_server = 'mcpServer'
+  mcp_server = 'mcpServer',
+  evaluation = 'evaluation'
 }
 type TabEnumType = `${keyof typeof TabEnum}` | string;
 
@@ -39,7 +40,6 @@ const DashboardContainer = ({
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const { feConfigs } = useSystemStore();
-
   const { isOpen: isOpenSidebar, onOpen: onOpenSidebar, onClose: onCloseSidebar } = useDisclosure();
 
   // First tab
@@ -189,12 +189,30 @@ const DashboardContainer = ({
       },
       {
         groupId: TabEnum.mcp_server,
-        groupAvatar: 'key',
+        groupAvatar: 'mcp',
         groupName: t('common:mcp_server'),
         children: []
-      }
+      },
+      ...(feConfigs?.isPlus
+        ? [
+            {
+              groupId: TabEnum.evaluation,
+              groupAvatar: 'kbTest',
+              groupName: t('common:app_evaluation'),
+              children: []
+            }
+          ]
+        : [])
     ];
-  }, [currentType, feConfigs.appTemplateCourse, pluginGroups, t, templateList, templateTags]);
+  }, [
+    currentType,
+    feConfigs.appTemplateCourse,
+    feConfigs?.isPlus,
+    pluginGroups,
+    t,
+    templateList,
+    templateTags
+  ]);
 
   const MenuIcon = useMemo(
     () => (

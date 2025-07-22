@@ -166,6 +166,8 @@
   "request_headers": "Request headers, will automatically append 'Bearer '",
   "retain_collection": "Adjust Training Parameters",
   "retrain_task_submitted": "The retraining task has been submitted",
+  "retry_all": "Retry all",
+  "retry_failed": "Retry Failed",
   "rootDirectoryFormatError": "Root directory data format is incorrect",
   "rootdirectory": "/rootdirectory",
   "same_api_collection": "The same API set exists",

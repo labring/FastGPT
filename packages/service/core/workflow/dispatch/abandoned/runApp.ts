@@ -95,6 +95,10 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const { text } = chatValue2RuntimePrompt(assistantResponses);
 
   return {
+    data: {
+      answerText: text,
+      history: completeMessages
+    },
     assistantResponses,
     system_memories,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
@@ -108,8 +112,6 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
         moduleName: appData.name,
         totalPoints: flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
       }
-    ],
-    answerText: text,
-    history: completeMessages
+    ]
   };
 };

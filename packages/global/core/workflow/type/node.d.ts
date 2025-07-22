@@ -48,6 +48,7 @@ export type FlowNodeCommonType = {
   isLatestVersion?: boolean; // Just ui show
 
   // data
+  catchError?: boolean;
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
 

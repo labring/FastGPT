@@ -1,30 +1,29 @@
-import React, { useCallback } from 'react';
-import { Flex, Box, IconButton, HStack } from '@chakra-ui/react';
+import React, { useCallback, useState } from 'react';
+import { Flex, Box, HStack, Image, Skeleton } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { type AppListItemType } from '@fastgpt/global/core/app/type';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
-import MyPopover from '@fastgpt/web/components/common/MyPopover/index';
-import { getMyApps } from '@/web/core/app/api';
-import {
-  type GetResourceFolderListProps,
-  type GetResourceListItemResponse
+import { useUserStore } from '@/web/support/user/useUserStore';
+import UserAvatarPopover from '@/pageComponents/chat/UserAvatarPopover';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import SelectOneResource from '@/components/common/folder/SelectOneResource';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import type {
+  GetResourceFolderListProps,
+  GetResourceListItemResponse
 } from '@fastgpt/global/common/parentFolder/type';
+import { getMyApps } from '@/web/core/app/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import dynamic from 'next/dynamic';
-import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { useContextSelector } from 'use-context-selector';
-
-const SelectOneResource = dynamic(() => import('@/components/common/folder/SelectOneResource'));
 
 const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppId: string }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const isTeamChat = router.pathname === '/chat/team';
-
-  const showRouteToAppDetail = useContextSelector(ChatItemContext, (v) => v.showRouteToAppDetail);
+  const { userInfo } = useUserStore();
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
     return getMyApps({
@@ -53,45 +52,43 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
   );
 
   return (
-    <Flex flexDirection={'column'} h={'100%'}>
-      {showRouteToAppDetail && (
-        <>
-          <Box mt={4} px={4}>
-            <Flex
-              alignItems={'center'}
-              cursor={'pointer'}
-              py={2}
-              px={3}
-              borderRadius={'md'}
-              _hover={{ bg: 'myGray.200' }}
-              onClick={() => router.push('/dashboard/apps')}
-            >
-              <IconButton
-                mr={3}
-                icon={<MyIcon name={'common/backFill'} w={'1rem'} color={'primary.500'} />}
-                bg={'white'}
-                boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
-                size={'smSquare'}
-                borderRadius={'50%'}
-                aria-label={''}
-              />
-              {t('common:core.chat.Exit Chat')}
-            </Flex>
-          </Box>
-          <MyDivider h={2} my={1} />
-        </>
-      )}
+    <Flex flexDirection={'column'} w={'100%'} h={'100%'}>
+      <Box mt={4} pl={3}>
+        <Flex alignItems={'center'} py={2}>
+          <Skeleton
+            w="143px"
+            h="33px"
+            pl={2}
+            borderRadius="md"
+            startColor="gray.100"
+            endColor="gray.300"
+            isLoaded={imageLoaded}
+          >
+            <Image
+              w="135px"
+              h="33px"
+              src="/imgs/fastgpt_slogan.png"
+              alt="FastGPT slogan"
+              loading="eager"
+              onLoad={() => setImageLoaded(true)}
+              onError={() => setImageLoaded(true)}
+            />
+          </Skeleton>
+        </Flex>
+      </Box>
+
+      <MyDivider h={1} my={1} mx="16px" w="calc(100% - 32px)" />
 
       {!isTeamChat && (
         <>
           <HStack
-            px={4}
+            px={3}
             my={2}
             color={'myGray.500'}
             fontSize={'sm'}
             justifyContent={'space-between'}
           >
-            <Box>{t('common:core.chat.Recent use')}</Box>
+            <Box pl={2}>{t('common:core.chat.Recent use')}</Box>
             <MyPopover
               placement="bottom-end"
               offset={[20, 10]}
@@ -120,9 +117,9 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                   <SelectOneResource
                     maxH={'60vh'}
                     value={activeAppId}
-                    onSelect={(id) => {
-                      if (!id) return;
-                      onChangeApp(id);
+                    onSelect={(item) => {
+                      if (!item) return;
+                      onChangeApp(item.id);
                       onClose();
                     }}
                     server={getAppList}
@@ -134,12 +131,12 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
         </>
       )}
 
-      <Box flex={'1 0 0'} px={4} h={0} overflow={'overlay'}>
+      <MyBox flex={'1 0 0'} h={0} overflow={'overlay'} px={4} position={'relative'}>
         {apps.map((item) => (
           <Flex
             key={item._id}
             py={2}
-            px={3}
+            px={2}
             mb={3}
             cursor={'pointer'}
             borderRadius={'md'}
@@ -164,6 +161,48 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
             </Box>
           </Flex>
         ))}
+      </MyBox>
+
+      <Box px={3} py={4}>
+        {userInfo ? (
+          <UserAvatarPopover>
+            <Flex alignItems="center" gap={2} w="100%">
+              <Avatar
+                flexShrink={0}
+                src={userInfo.avatar}
+                bg="myGray.200"
+                borderRadius="50%"
+                w={8}
+                h={8}
+              />
+              <Box className="textEllipsis" flexGrow={1} fontSize={'sm'}>
+                {userInfo.username}
+              </Box>
+            </Flex>
+          </UserAvatarPopover>
+        ) : (
+          <Flex
+            alignItems="center"
+            gap={2}
+            w="100%"
+            cursor="pointer"
+            _hover={{ bg: 'myGray.100' }}
+            borderRadius="md"
+            p={2}
+          >
+            <Avatar flexShrink={0} bg="myGray.200" borderRadius="50%" w={9} h={9} />
+            <Box
+              flexGrow={1}
+              textOverflow="ellipsis"
+              overflow="hidden"
+              whiteSpace="nowrap"
+              fontWeight={500}
+              color="myGray.600"
+            >
+              {t('login:Login')}
+            </Box>
+          </Flex>
+        )}
       </Box>
     </Flex>
   );

@@ -166,6 +166,8 @@
   "request_headers": "请求头参数，会自动补充 Bearer",
   "retain_collection": "调整训练参数",
   "retrain_task_submitted": "重新训练任务已提交",
+  "retry_all": "全部重试",
+  "retry_failed": "重试失败",
   "rootDirectoryFormatError": "根目录数据格式不正确",
   "rootdirectory": "/根目录",
   "same_api_collection": "存在相同的 API 集合",

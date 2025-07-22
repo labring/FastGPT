@@ -382,7 +382,6 @@ const Render = (props: Props) => {
   return source === ChatSourceEnum.share ? (
     <ChatContextProvider params={chatHistoryProviderParams}>
       <ChatItemContextProvider
-        showRouteToAppDetail={false}
         showRouteToDatasetDetail={false}
         isShowReadRawSource={props.showRawSource}
         isResponseDetail={props.responseDetail}

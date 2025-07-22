@@ -6,10 +6,7 @@ import type {
   DispatchNodeResultType,
   ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
-import type {
-  UserInputFormItemType,
-  UserInputInteractive
-} from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { addLog } from '../../../../common/system/log';
 
 type Props = ModuleDispatchProps<{
@@ -17,8 +14,8 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userInputForms]: UserInputFormItemType[];
 }>;
 type FormInputResponse = DispatchNodeResultType<{
-  [DispatchNodeResponseKeyEnum.interactive]?: UserInputInteractive;
   [NodeOutputKeyEnum.formInputResult]?: Record<string, any>;
+  [key: string]: any;
 }>;
 
 /* 
@@ -60,9 +57,11 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
   })();
 
   return {
+    data: {
+      ...userInputVal,
+      [NodeOutputKeyEnum.formInputResult]: userInputVal
+    },
     [DispatchNodeResponseKeyEnum.rewriteHistories]: histories.slice(0, -2), // Removes the current session record as the history of subsequent nodes
-    ...userInputVal,
-    [NodeOutputKeyEnum.formInputResult]: userInputVal,
     [DispatchNodeResponseKeyEnum.toolResponses]: userInputVal,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       formInputResult: userInputVal

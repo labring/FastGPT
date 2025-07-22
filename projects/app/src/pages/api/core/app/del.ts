@@ -22,6 +22,8 @@ import { removeImageByPath } from '@fastgpt/service/common/file/image/controller
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { removeEvaluationJob } from '@fastgpt/service/core/app/evaluation/mq';
+import { MongoEvaluation } from '@fastgpt/service/core/app/evaluation/evalSchema';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
@@ -74,6 +76,15 @@ export const onDelOneApp = async ({
     appId,
     fields: '_id avatar'
   });
+
+  // Remove eval job
+  const evalJobs = await MongoEvaluation.find(
+    {
+      appId: { $in: apps.map((app) => app._id) }
+    },
+    '_id'
+  ).lean();
+  await Promise.all(evalJobs.map((evalJob) => removeEvaluationJob(evalJob._id)));
 
   const del = async (session: ClientSession) => {
     for await (const app of apps) {

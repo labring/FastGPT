@@ -52,7 +52,11 @@ import { ChatRoleEnum } from '../../core/chat/constants';
 import { runtimePrompt2ChatsValue } from '../../core/chat/adapt';
 import { getPluginRunContent } from '../../core/app/plugin/utils';
 
-export const getHandleId = (nodeId: string, type: 'source' | 'target', key: string) => {
+export const getHandleId = (
+  nodeId: string,
+  type: 'source' | 'source_catch' | 'target',
+  key: string
+) => {
   return `${nodeId}-${type}-${key}`;
 };
 
@@ -219,16 +223,14 @@ export const pluginData2FlowNodeIO = ({
         ]
       : [],
     outputs: pluginOutput
-      ? [
-          ...pluginOutput.inputs.map((item) => ({
-            id: item.key,
-            type: FlowNodeOutputTypeEnum.static,
-            key: item.key,
-            valueType: item.valueType,
-            label: item.label || item.key,
-            description: item.description
-          }))
-        ]
+      ? pluginOutput.inputs.map((item) => ({
+          id: item.key,
+          type: FlowNodeOutputTypeEnum.static,
+          key: item.key,
+          valueType: item.valueType,
+          label: item.label || item.key,
+          description: item.description
+        }))
       : []
   };
 };

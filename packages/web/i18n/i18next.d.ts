@@ -44,6 +44,7 @@ export interface I18nNamespaces {
   account_thirdParty: typeof account_thirdParty;
   account_model: typeof account_model;
   dashboard_mcp: typeof dashboard_mcp;
+  dashboard_evaluation: typeof dashboard_evaluation;
 }
 
 export type I18nNsType = (keyof I18nNamespaces)[];

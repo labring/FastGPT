@@ -61,7 +61,9 @@ const Navbar = ({ unread }: { unread: number }) => {
           '/app/detail',
           '/dashboard/templateMarket',
           '/dashboard/[pluginGroupId]',
-          '/dashboard/mcpServer'
+          '/dashboard/mcpServer',
+          '/dashboard/evaluation',
+          '/dashboard/evaluation/create'
         ]
       },
       {
@@ -143,7 +145,13 @@ const Navbar = ({ unread }: { unread: number }) => {
                   })}
               {...(item.link !== router.asPath
                 ? {
-                    onClick: () => router.push(item.link)
+                    onClick: () => {
+                      if (item.link.startsWith('/chat')) {
+                        window.open(item.link, '_blank', 'noopener,noreferrer');
+                        return;
+                      }
+                      router.push(item.link);
+                    }
                   }
                 : {})}
             >

@@ -11,10 +11,7 @@ import {
   type ChatHistoryItemResType
 } from '@fastgpt/global/core/chat/type';
 import { cloneDeep } from 'lodash';
-import {
-  type LoopInteractive,
-  type WorkflowInteractiveResponseType
-} from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/utils';
 
 type Props = ModuleDispatchProps<{
@@ -22,7 +19,6 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.childrenNodeIdList]: string[];
 }>;
 type Response = DispatchNodeResultType<{
-  [DispatchNodeResponseKeyEnum.interactive]?: LoopInteractive;
   [NodeOutputKeyEnum.loopArray]: Array<any>;
 }>;
 
@@ -133,6 +129,9 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   }
 
   return {
+    data: {
+      [NodeOutputKeyEnum.loopArray]: outputValueArr
+    },
     [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
       ? {
           type: 'loopInteractive',
@@ -157,7 +156,6 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
         moduleName: name
       }
     ],
-    [NodeOutputKeyEnum.loopArray]: outputValueArr,
     [DispatchNodeResponseKeyEnum.newVariables]: newVariables
   };
 };

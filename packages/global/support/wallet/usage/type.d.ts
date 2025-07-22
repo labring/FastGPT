@@ -8,6 +8,7 @@ export type UsageListItemCountType = {
   charsLength?: number;
   duration?: number;
   pages?: number;
+  count?: number; // Times
 
   // deprecated
   tokens?: number;
@@ -17,6 +18,7 @@ export type UsageListItemType = UsageListItemCountType & {
   moduleName: string;
   amount: number;
   model?: string;
+  count?: number;
 };
 
 export type UsageSchemaType = CreateUsageProps & {
