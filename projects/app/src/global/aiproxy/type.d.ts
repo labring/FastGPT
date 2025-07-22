@@ -51,6 +51,8 @@ export type ChannelLogListItemType = {
   endpoint: string;
   content?: string;
   retry_times?: number;
+  ttfb_milliseconds?: number;
+  ip: string;
 };
 
 export type DashboardDataItemType = {

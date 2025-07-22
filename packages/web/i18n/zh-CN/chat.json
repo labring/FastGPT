@@ -52,6 +52,7 @@
   "module_runtime_and": "工作流总运行时间",
   "multiple_AI_conversations": "多组 AI 对话",
   "new_input_guide_lexicon": "新词库",
+  "no_invalid_app": "您账号下没有可用的应用",
   "no_workflow_response": "没有运行数据",
   "not_query": "缺少查询内容",
   "not_select_file": "未选择文件",

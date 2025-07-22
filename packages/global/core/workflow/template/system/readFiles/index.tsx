@@ -11,6 +11,7 @@ import {
   FlowNodeTypeEnum
 } from '../../../node/constant';
 import { type FlowNodeTemplateType } from '../../../type/node';
+import { Output_Template_Error_Message } from '../../output';
 
 export const ReadFilesNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.readFiles,
@@ -43,6 +44,7 @@ export const ReadFilesNode: FlowNodeTemplateType = {
       description: i18nT('app:workflow.read_files_result_desc'),
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static
-    }
+    },
+    Output_Template_Error_Message
   ]
 };

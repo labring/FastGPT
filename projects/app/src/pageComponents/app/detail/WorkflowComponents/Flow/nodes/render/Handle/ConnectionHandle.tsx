@@ -10,10 +10,10 @@ import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 export const ConnectionSourceHandle = ({
   nodeId,
-  isFoldNode
+  sourceType = 'source'
 }: {
   nodeId: string;
-  isFoldNode?: boolean;
+  sourceType?: 'source' | 'source_catch';
 }) => {
   const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
   const { connectingEdge, nodeList } = useContextSelector(WorkflowContext, (ctx) => ctx);
@@ -29,7 +29,7 @@ export const ConnectionSourceHandle = ({
     })();
 
     const RightHandle = (() => {
-      const handleId = getHandleId(nodeId, 'source', Position.Right);
+      const handleId = getHandleId(nodeId, sourceType, Position.Right);
       const rightTargetConnected = edges.some(
         (edge) => edge.targetHandle === getHandleId(nodeId, 'target', Position.Right)
       );
@@ -43,7 +43,7 @@ export const ConnectionSourceHandle = ({
           - already connected
       */
       if (
-        !(isFoldNode && node?.outputs.length) &&
+        !(node?.isFolded && node?.outputs.length) &&
         (!node || !node?.showSourceHandle || rightTargetConnected)
       )
         return null;
@@ -62,7 +62,7 @@ export const ConnectionSourceHandle = ({
       showSourceHandle,
       RightHandle
     };
-  }, [connectingEdge, edges, nodeId, nodeList, isFoldNode]);
+  }, [nodeList, nodeId, connectingEdge, sourceType, edges]);
 
   return showSourceHandle ? <>{RightHandle}</> : null;
 };

@@ -30,7 +30,9 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
           '/app/detail',
           '/dashboard/templateMarket',
           '/dashboard/[pluginGroupId]',
-          '/dashboard/mcpServer'
+          '/dashboard/mcpServer',
+          '/dashboard/evaluation',
+          '/dashboard/evaluation/create'
         ],
         unread: 0
       },
@@ -95,6 +97,10 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
                 })}
             onClick={() => {
               if (item.link === router.asPath) return;
+              if (item.link.startsWith('/chat')) {
+                window.open(item.link, '_blank');
+                return;
+              }
               router.push(item.link);
             }}
           >

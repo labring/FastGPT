@@ -27,7 +27,9 @@ export function usePagination<DataT, ResT = {}>(
     onChange,
     refreshDeps,
     scrollLoadType = 'bottom',
-    EmptyTip
+    EmptyTip,
+    pollingInterval,
+    pollingWhenHidden = false
   }: {
     pageSize?: number;
     params?: DataT;
@@ -38,6 +40,8 @@ export function usePagination<DataT, ResT = {}>(
     throttleWait?: number;
     scrollLoadType?: 'top' | 'bottom';
     EmptyTip?: React.JSX.Element;
+    pollingInterval?: number;
+    pollingWhenHidden?: boolean;
   }
 ) {
   const { toast } = useToast();
@@ -56,6 +60,7 @@ export function usePagination<DataT, ResT = {}>(
   const fetchData = useMemoizedFn(
     async (num: number = pageNum, ScrollContainerRef?: RefObject<HTMLDivElement>) => {
       if (noMore && num !== 1) return;
+
       setTrue();
 
       try {
@@ -65,7 +70,6 @@ export function usePagination<DataT, ResT = {}>(
           ...params
         });
 
-        // Check total and set
         setPageNum(num);
         res.total !== undefined && setTotal(res.total);
 
@@ -253,6 +257,19 @@ export function usePagination<DataT, ResT = {}>(
       manual: false,
       refreshDeps,
       throttleWait: 100
+    }
+  );
+
+  useRequest(
+    async () => {
+      if (!pollingInterval) return;
+      await fetchData(pageNum);
+    },
+    {
+      pollingInterval,
+      pollingWhenHidden,
+      manual: false,
+      refreshDeps: [pollingInterval]
     }
   );
 

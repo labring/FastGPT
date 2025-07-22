@@ -21,7 +21,8 @@ import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Te
 import {
   formatEditorVariablePickerIcon,
   getAppChatConfig,
-  getGuideModule
+  getGuideModule,
+  getHandleId
 } from '@fastgpt/global/core/workflow/utils';
 import { type TFunction } from 'next-i18next';
 import {
@@ -101,6 +102,7 @@ export const storeNode2FlowNode = ({
     ...storeNode,
     avatar: template.avatar ?? storeNode.avatar,
     version: template.version || storeNode.version,
+    catchError: storeNode.catchError ?? template.catchError,
     // template 中的输入必须都有
     inputs: templateInputs
       .map<FlowNodeInputItemType>((templateInput) => {
@@ -113,9 +115,7 @@ export const storeNode2FlowNode = ({
           debugLabel: t(templateInput.debugLabel ?? (storeInput.debugLabel as any)),
           toolDescription: t(templateInput.toolDescription ?? (storeInput.toolDescription as any)),
           selectedTypeIndex: storeInput.selectedTypeIndex ?? templateInput.selectedTypeIndex,
-          value: storeInput.value,
-          valueType: storeInput.valueType ?? templateInput.valueType,
-          label: storeInput.label ?? templateInput.label
+          value: storeInput.value
         };
       })
       .concat(
@@ -143,9 +143,7 @@ export const storeNode2FlowNode = ({
           ...templateOutput,
           description: t(templateOutput.description ?? (storeOutput.description as any)),
           id: storeOutput.id ?? templateOutput.id,
-          label: storeOutput.label ?? templateOutput.label,
-          value: storeOutput.value ?? templateOutput.value,
-          valueType: storeOutput.valueType ?? templateOutput.valueType
+          value: storeOutput.value ?? templateOutput.value
         };
       })
       .concat(
@@ -326,7 +324,8 @@ export const filterWorkflowNodeOutputsByType = (
       validTypeMap[valueType]?.includes(output.valueType)
   );
 };
-export const computedNodeInputReference = ({
+
+export const getNodeAllSource = ({
   nodeId,
   nodes,
   edges,
@@ -338,14 +337,15 @@ export const computedNodeInputReference = ({
   edges: Edge[];
   chatConfig: AppChatConfigType;
   t: TFunction;
-}) => {
+}): FlowNodeItemType[] => {
   // get current node
   const node = nodes.find((item) => item.nodeId === nodeId);
   if (!node) {
-    return;
+    return [];
   }
+
   const parentId = node.parentNodeId;
-  let sourceNodes: FlowNodeItemType[] = [];
+  const sourceNodes = new Map<string, FlowNodeItemType>();
   // 根据 edge 获取所有的 source 节点（source节点会继续向前递归获取）
   const findSourceNode = (nodeId: string) => {
     const targetEdges = edges.filter((item) => item.target === nodeId || item.target === parentId);
@@ -354,16 +354,17 @@ export const computedNodeInputReference = ({
       if (!sourceNode) return;
 
       // 去重
-      if (sourceNodes.some((item) => item.nodeId === sourceNode.nodeId)) {
+      if (sourceNodes.has(sourceNode.nodeId)) {
         return;
       }
-      sourceNodes.push(sourceNode);
+      sourceNodes.set(sourceNode.nodeId, sourceNode);
       findSourceNode(sourceNode.nodeId);
     });
   };
   findSourceNode(nodeId);
 
-  sourceNodes.push(
+  sourceNodes.set(
+    'system_global_variable',
     getGlobalVariableNode({
       nodes,
       t,
@@ -371,7 +372,7 @@ export const computedNodeInputReference = ({
     })
   );
 
-  return sourceNodes;
+  return Array.from(sourceNodes.values());
 };
 
 /* ====== Connection ======= */
@@ -457,10 +458,11 @@ export const checkWorkflowNodeAndConnection = ({
         }
 
         if (input.required) {
-          if (input.value === undefined) return true;
+          if (input.value === undefined && input.valueType !== WorkflowIOValueTypeEnum.boolean) {
+            return true;
+          }
           if (Array.isArray(input.value) && input.value.length === 0) return true;
         }
-
         // check reference invalid
         const renderType = input.renderTypeList[input.selectedTypeIndex || 0];
         if (renderType === FlowNodeInputTypeEnum.reference) {
@@ -651,4 +653,59 @@ export const compareSnapshot = (
   });
 
   return isEqual(node1, node2);
+};
+
+/* ====== Adapt ======= */
+// 给旧版的代码运行和 HTTP 节点，追加一个错误信息的连线
+export const adaptCatchError = (nodes: StoreNodeItemType[], edges: StoreEdgeItemType[]) => {
+  nodes.forEach((node) => {
+    if (
+      (node.flowNodeType === FlowNodeTypeEnum.code ||
+        node.flowNodeType === FlowNodeTypeEnum.httpRequest468) &&
+      node.catchError === undefined
+    ) {
+      // Get edge
+      const sourceEdges = edges.filter((edge) => edge.source === node.nodeId);
+      edges.push(
+        ...sourceEdges.map((edge) => {
+          return {
+            source: edge.source,
+            sourceHandle: getHandleId(edge.source, 'source_catch', 'right'),
+            target: edge.target,
+            targetHandle: edge.targetHandle
+          };
+        })
+      );
+      node.catchError = true;
+    }
+
+    if (node.catchError === undefined && node.pluginId) {
+      if (
+        [
+          'systemTool-dalle3',
+          'systemTool-aliModelStudio/flux',
+          'systemTool-aliModelStudio/wanxTxt2ImgV2',
+          'systemTool-blackForestLab/kontextEditing',
+          'systemTool-blackForestLab/kontextGeneration',
+          'systemTool-bocha',
+          'systemTool-searchXNG'
+        ].includes(node.pluginId)
+      ) {
+        const sourceEdges = edges.filter((edge) => edge.source === node.nodeId);
+        edges.push(
+          ...sourceEdges.map((edge) => {
+            return {
+              source: edge.source,
+              sourceHandle: getHandleId(edge.source, 'source_catch', 'right'),
+              target: edge.target,
+              targetHandle: edge.targetHandle
+            };
+          })
+        );
+        node.catchError = true;
+      } else {
+        node.catchError = false;
+      }
+    }
+  });
 };

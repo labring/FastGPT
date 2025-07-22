@@ -52,6 +52,7 @@
   "module_runtime_and": "Total Module Runtime",
   "multiple_AI_conversations": "Multiple AI Conversations",
   "new_input_guide_lexicon": "New Lexicon",
+  "no_invalid_app": "There are no available applications under your account",
   "no_workflow_response": "No workflow data",
   "not_query": "Missing query content",
   "not_select_file": "No file selected",

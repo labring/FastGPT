@@ -16,11 +16,11 @@ import dynamic from 'next/dynamic';
 import { POST } from '@/web/common/api/request';
 import { getBdVId } from '@/web/support/marketing/utils';
 
-interface Props {
+type Props = {
   children: React.ReactNode;
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
   pageType: `${LoginPageTypeEnum}`;
-}
+};
 
 type OAuthItem = {
   label: string;
@@ -39,73 +39,81 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
   const { isPc } = useSystem();
 
   const { lastRoute = '/dashboard/apps' } = router.query as { lastRoute: string };
+  const computedLastRoute = useMemo(() => {
+    return router.pathname === '/chat' ? router.asPath : lastRoute;
+  }, [lastRoute, router.pathname, router.asPath]);
+
   const state = useRef(getNanoid(8));
   const redirectUri = `${location.origin}/login/provider`;
 
   const isWecomWorkTerminal = checkIsWecomTerminal();
 
-  const oAuthList: OAuthItem[] = [
-    ...(feConfigs?.sso?.url
-      ? [
-          {
-            label: feConfigs.sso.title || 'Unknown',
-            provider: OAuthEnum.sso,
-            icon: feConfigs.sso.icon
-          }
-        ]
-      : []),
-    ...(feConfigs?.oauth?.wechat && pageType !== LoginPageTypeEnum.wechat
-      ? [
-          {
-            label: t('common:support.user.login.Wechat'),
-            provider: OAuthEnum.wechat,
-            icon: 'common/wechatFill',
-            pageType: LoginPageTypeEnum.wechat
-          }
-        ]
-      : []),
-    ...(feConfigs?.oauth?.google
-      ? [
-          {
-            label: t('common:support.user.login.Google'),
-            provider: OAuthEnum.google,
-            icon: 'common/googleFill',
-            redirectUrl: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${feConfigs?.oauth?.google}&redirect_uri=${redirectUri}&state=${state.current}&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email%20openid&include_granted_scopes=true`
-          }
-        ]
-      : []),
-    ...(feConfigs?.oauth?.github
-      ? [
-          {
-            label: t('common:support.user.login.Github'),
-            provider: OAuthEnum.github,
-            icon: 'common/gitFill',
-            redirectUrl: `https://github.com/login/oauth/authorize?client_id=${feConfigs?.oauth?.github}&redirect_uri=${redirectUri}&state=${state.current}&scope=user:email%20read:user`
-          }
-        ]
-      : []),
-    ...(feConfigs?.oauth?.microsoft
-      ? [
-          {
-            label:
-              feConfigs?.oauth?.microsoft?.customButton || t('common:support.user.login.Microsoft'),
-            provider: OAuthEnum.microsoft,
-            icon: 'common/microsoft',
-            redirectUrl: `https://login.microsoftonline.com/${feConfigs?.oauth?.microsoft?.tenantId || 'common'}/oauth2/v2.0/authorize?client_id=${feConfigs?.oauth?.microsoft?.clientId}&response_type=code&redirect_uri=${redirectUri}&response_mode=query&scope=https%3A%2F%2Fgraph.microsoft.com%2Fuser.read&state=${state.current}`
-          }
-        ]
-      : []),
-    ...(pageType !== LoginPageTypeEnum.passwordLogin
-      ? [
-          {
-            label: t('common:support.user.login.Password login'),
-            provider: LoginPageTypeEnum.passwordLogin,
-            icon: 'support/permission/privateLight',
-            pageType: LoginPageTypeEnum.passwordLogin
-          }
-        ]
-      : [])
-  ];
+  const oAuthList: OAuthItem[] = useMemo(
+    () => [
+      ...(feConfigs?.sso?.url
+        ? [
+            {
+              label: feConfigs.sso.title || 'Unknown',
+              provider: OAuthEnum.sso,
+              icon: feConfigs.sso.icon
+            }
+          ]
+        : []),
+      ...(feConfigs?.oauth?.wechat && pageType !== LoginPageTypeEnum.wechat
+        ? [
+            {
+              label: t('common:support.user.login.Wechat'),
+              provider: OAuthEnum.wechat,
+              icon: 'common/wechatFill',
+              pageType: LoginPageTypeEnum.wechat
+            }
+          ]
+        : []),
+      ...(feConfigs?.oauth?.google
+        ? [
+            {
+              label: t('common:support.user.login.Google'),
+              provider: OAuthEnum.google,
+              icon: 'common/googleFill',
+              redirectUrl: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${feConfigs?.oauth?.google}&redirect_uri=${redirectUri}&state=${state.current}&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email%20openid&include_granted_scopes=true`
+            }
+          ]
+        : []),
+      ...(feConfigs?.oauth?.github
+        ? [
+            {
+              label: t('common:support.user.login.Github'),
+              provider: OAuthEnum.github,
+              icon: 'common/gitFill',
+              redirectUrl: `https://github.com/login/oauth/authorize?client_id=${feConfigs?.oauth?.github}&redirect_uri=${redirectUri}&state=${state.current}&scope=user:email%20read:user`
+            }
+          ]
+        : []),
+      ...(feConfigs?.oauth?.microsoft
+        ? [
+            {
+              label:
+                feConfigs?.oauth?.microsoft?.customButton ||
+                t('common:support.user.login.Microsoft'),
+              provider: OAuthEnum.microsoft,
+              icon: 'common/microsoft',
+              redirectUrl: `https://login.microsoftonline.com/${feConfigs?.oauth?.microsoft?.tenantId || 'common'}/oauth2/v2.0/authorize?client_id=${feConfigs?.oauth?.microsoft?.clientId}&response_type=code&redirect_uri=${redirectUri}&response_mode=query&scope=https%3A%2F%2Fgraph.microsoft.com%2Fuser.read&state=${state.current}`
+            }
+          ]
+        : []),
+      ...(pageType !== LoginPageTypeEnum.passwordLogin
+        ? [
+            {
+              label: t('common:support.user.login.Password login'),
+              provider: LoginPageTypeEnum.passwordLogin,
+              icon: 'support/permission/privateLight',
+              pageType: LoginPageTypeEnum.passwordLogin
+            }
+          ]
+        : [])
+    ],
+    [feConfigs, pageType, redirectUri, t]
+  );
 
   const show_oauth = useMemo(
     () => !getBdVId() && !!(feConfigs?.sso?.url || oAuthList.length > 0),
@@ -121,7 +129,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
         });
         setLoginStore({
           provider: item.provider as OAuthEnum,
-          lastRoute,
+          lastRoute: computedLastRoute,
           state: state.current
         });
         router.replace(redirectUrl, '_self');
@@ -131,14 +139,14 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
       if (item.redirectUrl) {
         setLoginStore({
           provider: item.provider as OAuthEnum,
-          lastRoute,
+          lastRoute: computedLastRoute,
           state: state.current
         });
         router.replace(item.redirectUrl, '_self');
       }
       item.pageType && setPageType(item.pageType);
     },
-    [lastRoute, router, setLoginStore, setPageType]
+    [computedLastRoute, isWecomWorkTerminal, redirectUri, router, setLoginStore, setPageType]
   );
 
   // Auto login
@@ -147,7 +155,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
     const sso = oAuthList.find((item) => item.provider === OAuthEnum.sso);
     // sso auto login
     if (sso && (feConfigs?.sso?.autoLogin || isWecomWorkTerminal)) onClickOauth(sso);
-  }, [rootLogin, feConfigs?.sso?.autoLogin, isWecomWorkTerminal, onClickOauth]);
+  }, [rootLogin, feConfigs?.sso?.autoLogin, isWecomWorkTerminal, onClickOauth, oAuthList]);
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
@@ -173,7 +181,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
       </Flex>
       {children}
       {show_oauth && (
-        <>
+        <Box mt={8}>
           <Box flex={1} />
           <Box position={'relative'}>
             <Box h={'1px'} bg={'myGray.250'} />
@@ -198,7 +206,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
               </Box>
             ))}
           </Box>
-        </>
+        </Box>
       )}
     </Flex>
   );

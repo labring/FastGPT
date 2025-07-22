@@ -551,10 +551,13 @@ const ChatBox = ({
 
                 // Check node response error
                 const responseData = mergeChatResponseData(item.responseData || []);
-                if (responseData[responseData.length - 1]?.error) {
+                const err =
+                  responseData[responseData.length - 1]?.error ||
+                  responseData[responseData.length - 1]?.errorText;
+                if (err) {
                   toast({
-                    title: t(getErrText(responseData[responseData.length - 1].error)),
-                    status: 'error'
+                    title: t(getErrText(err)),
+                    status: 'warning'
                   });
                 }
 
@@ -960,7 +963,7 @@ const ChatBox = ({
         w={'100%'}
         overflow={'overlay'}
         px={[4, 0]}
-        pb={3}
+        pb={10}
       >
         <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
           {/* chat header */}

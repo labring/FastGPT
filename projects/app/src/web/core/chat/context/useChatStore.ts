@@ -27,7 +27,14 @@ const createCustomStorage = () => {
     getItem: (name: string) => {
       const sessionData = JSON.parse(sessionStorage.getItem(name) || '{}');
       const localData = JSON.parse(localStorage.getItem(name) || '{}');
-      return JSON.stringify({ ...localData, ...sessionData });
+
+      return JSON.stringify({
+        version: 0,
+        state: {
+          ...localData.state,
+          ...sessionData.state
+        }
+      });
     },
     setItem: (name: string, value: string) => {
       const data = JSON.parse(value);

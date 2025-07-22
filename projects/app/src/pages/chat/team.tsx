@@ -312,7 +312,6 @@ const Render = (props: Props) => {
   return source === ChatSourceEnum.team ? (
     <ChatContextProvider params={contextParams}>
       <ChatItemContextProvider
-        showRouteToAppDetail={false}
         showRouteToDatasetDetail={false}
         isShowReadRawSource={true}
         isResponseDetail={true}
