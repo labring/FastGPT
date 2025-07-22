@@ -69,8 +69,11 @@ const strIsMdTable = (str: string) => {
  * @param props - 传入的参数对象，包含 text（表格内容字符串）和 chunkSize（每块最大长度）
  * @returns {SplitResponse} - 返回拆分后的表格块数组和总字符数
  */
-const markdownTableSplit = (props: SplitProps): SplitResponse => {
-  let { text = '', chunkSize } = props;
+const markdownTableSplit = (props: SplitProps & { usedLength?: number }): SplitResponse => {
+  let { text = '', chunkSize, usedLength = 0 } = props;
+
+  // 计算实际可用的块大小
+  const effectiveChunkSize = Math.max(chunkSize - usedLength, Math.min(chunkSize * 0.3, 300)); // 至少保留300字符或30%的空间
 
   // 按行分割表格文本，保留空的表格行但过滤完全空白的行
   const splitText2Lines = text.split('\n').filter((line) => {
@@ -114,8 +117,8 @@ ${mdSplitString}
     // 下一个数据行的有效长度
     const nextLineLength = getTextValidLength(currentLine);
 
-    // 如果加上下一个数据行后超出 chunkSize，则将当前块推入结果，并新建一个块
-    if (chunkLength + nextLineLength > chunkSize) {
+    // 如果加上下一个数据行后超出 effectiveChunkSize，则将当前块推入结果，并新建一个块
+    if (chunkLength + nextLineLength > effectiveChunkSize) {
       chunks.push(chunk);
       // 新块也要包含表头和分隔行
       chunk = `${header}
@@ -166,20 +169,51 @@ const commonSplit = (props: SplitProps): SplitResponse => {
   text = text.replace(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g, function (match) {
     return match.replace(/\n/g, codeBlockMarker);
   });
-  // 2. Markdown 表格处理 - 单独提取表格出来，进行表头合并
+  // 2. Markdown 表格处理 - 单独提取表格出来，进行表头合并（考虑上下文长度）
   const tableReg = /(\n\|(?:[^\n|]*\|)+\n\|(?:[:\-\s]*\|)+\n(?:\|(?:[^\n|]*\|)*\n?)*)(?:\n|$)/g;
-  const tableDataList = text.match(tableReg);
-  if (tableDataList) {
-    tableDataList.forEach((tableData) => {
-      const { chunks } = markdownTableSplit({
-        text: tableData.trim(),
-        chunkSize
-      });
 
-      const splitText = chunks.join('\n');
-      text = text.replace(tableData, `\n${splitText}\n`);
+  // 改进：考虑表格前的内容长度，计算已使用长度
+  let processedText = text;
+  const tableMatches: Array<{ match: string; index: number; end: number }> = [];
+
+  // 收集所有表格匹配及其位置
+  let match;
+  tableReg.lastIndex = 0;
+  while ((match = tableReg.exec(text)) !== null) {
+    tableMatches.push({
+      match: match[0],
+      index: match.index,
+      end: match.index + match[0].length
     });
   }
+
+  // 从后往前处理表格，避免索引偏移问题
+  for (let i = tableMatches.length - 1; i >= 0; i--) {
+    const { match: tableData, index: tableStart } = tableMatches[i];
+
+    // 计算表格前的内容长度（作为已使用长度）
+    const beforeTableText = text.substring(0, tableStart);
+    const beforeTableLength = getTextValidLength(beforeTableText);
+
+    // 计算在当前块中已经使用的长度
+    const usedInCurrentChunk = beforeTableLength % chunkSize;
+
+    const { chunks } = markdownTableSplit({
+      text: tableData.trim(),
+      chunkSize,
+      usedLength: usedInCurrentChunk
+    });
+
+    const splitText = chunks.join('\n');
+
+    // 替换原表格内容
+    processedText =
+      processedText.substring(0, tableStart) +
+      `\n${splitText}\n` +
+      processedText.substring(tableStart + tableData.length);
+  }
+
+  text = processedText;
 
   // replace invalid \n
   text = text.replace(/(\r?\n|\r){3,}/g, '\n\n\n');
