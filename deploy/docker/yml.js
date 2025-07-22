@@ -95,8 +95,8 @@ services:
 
   fastgpt:
     container_name: fastgpt
-    image: ghcr.io/labring/fastgpt:v4.10.1-fix3 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.10.1-fix3 # 阿里云
+    image: ghcr.io/labring/fastgpt:v4.11.0 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.11.0 # 阿里云
     ports:
       - 3000:3000
     networks:
@@ -169,8 +169,8 @@ services:
     environment:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v0.1.3 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1.3 # 阿里云
+    image: ghcr.io/labring/fastgpt-plugin:v0.1.4 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1.4 # 阿里云
     container_name: fastgpt-plugin
     restart: always
     networks:
