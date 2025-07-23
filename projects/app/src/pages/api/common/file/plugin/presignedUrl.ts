@@ -29,7 +29,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     filename,
     contentType,
     metadata,
-    maxSize: maxSize || 10 * 1024 * 1024 // default 10MB
+    maxSize: maxSize || 10 * 1024 * 1024
   });
 
   return presignedData;
