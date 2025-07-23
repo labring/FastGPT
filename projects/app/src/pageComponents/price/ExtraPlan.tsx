@@ -347,7 +347,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
             </Flex>
             <Flex alignItems={'center'} fontSize={'sm'}>
               <Box flex={['0 0 100px', '1 0 0']} color={'myGray.600'} fontWeight={'500'}>
-                {t('common:date')}
+                {t('common:invalid_time')}
               </Box>
               <Flex
                 justifyContent={'end'}
