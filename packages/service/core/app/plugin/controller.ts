@@ -174,9 +174,9 @@ export async function getChildAppPreviewNode({
             })
           : true;
 
-      if (item.type === AppTypeEnum.toolSet) {
+      const node = version.nodes[0];
+      if (item.type === AppTypeEnum.toolSet && node.toolConfig?.mcpToolSet) {
         // no url return, and rewrite the toolId
-        const node = version.nodes[0];
         version.nodes[0].toolConfig = {
           mcpToolSet: {
             toolId: pluginId,
@@ -335,7 +335,7 @@ export async function getChildAppPreviewNode({
 
   return {
     id: getNanoid(),
-    pluginId: source === PluginSourceEnum.personal ? app.id : undefined,
+    pluginId: app.id,
     templateType: app.templateType,
     flowNodeType,
     avatar: app.avatar,
@@ -553,9 +553,7 @@ export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> 
         versionList,
         inputs,
         outputs,
-        inputList:
-          inputs?.find((input) => input.key === NodeInputKeyEnum.systemInputConfig)?.inputList ??
-          item?.inputConfig?.inputList,
+        inputList: item?.secretInputConfig,
         hasSystemSecret: !!dbPluginConfig?.inputListVal
       };
     });
