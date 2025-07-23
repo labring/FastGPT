@@ -14,7 +14,8 @@ export const ResourcePermissionCollectionName = 'resource_permissions';
 export const ResourcePermissionSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
-    ref: TeamCollectionName
+    ref: TeamCollectionName,
+    required: true
   },
   tmbId: {
     type: Schema.Types.ObjectId,

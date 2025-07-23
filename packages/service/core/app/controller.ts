@@ -5,6 +5,20 @@ import { MongoApp } from './schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { encryptSecretValue, storeSecretValue } from '../../common/secret/utils';
 import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
+import { type ClientSession } from '../../common/mongo';
+import { MongoEvaluation } from './evaluation/evalSchema';
+import { removeEvaluationJob } from './evaluation/mq';
+import { deleteChatFiles } from '../chat/controller';
+import { MongoChatItem } from '../chat/chatItemSchema';
+import { MongoChat } from '../chat/chatSchema';
+import { MongoOutLink } from '../../support/outLink/schema';
+import { MongoOpenApi } from '../../support/openapi/schema';
+import { MongoAppVersion } from './version/schema';
+import { MongoChatInputGuide } from '../chat/inputGuide/schema';
+import { MongoResourcePermission } from '../../support/permission/schema';
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { removeImageByPath } from '../../common/file/image/controller';
+import { mongoSessionRun } from '../../common/mongo/sessionRun';
 
 export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }) => {
   if (!nodes) return;
@@ -109,4 +123,89 @@ export const getAppBasicInfoByIds = async ({ teamId, ids }: { teamId: string; id
     name: item.name,
     avatar: item.avatar
   }));
+};
+
+export const onDelOneApp = async ({
+  teamId,
+  appId,
+  session
+}: {
+  teamId: string;
+  appId: string;
+  session?: ClientSession;
+}) => {
+  const apps = await findAppAndAllChildren({
+    teamId,
+    appId,
+    fields: '_id avatar'
+  });
+
+  // Remove eval job
+  const evalJobs = await MongoEvaluation.find(
+    {
+      appId: { $in: apps.map((app) => app._id) }
+    },
+    '_id'
+  ).lean();
+  await Promise.all(evalJobs.map((evalJob) => removeEvaluationJob(evalJob._id)));
+
+  const del = async (session: ClientSession) => {
+    for await (const app of apps) {
+      const appId = app._id;
+      // Chats
+      await deleteChatFiles({ appId });
+      await MongoChatItem.deleteMany(
+        {
+          appId
+        },
+        { session }
+      );
+      await MongoChat.deleteMany(
+        {
+          appId
+        },
+        { session }
+      );
+
+      // 删除分享链接
+      await MongoOutLink.deleteMany({
+        appId
+      }).session(session);
+      // Openapi
+      await MongoOpenApi.deleteMany({
+        appId
+      }).session(session);
+
+      // delete version
+      await MongoAppVersion.deleteMany({
+        appId
+      }).session(session);
+
+      await MongoChatInputGuide.deleteMany({
+        appId
+      }).session(session);
+
+      await MongoResourcePermission.deleteMany({
+        resourceType: PerResourceTypeEnum.app,
+        teamId,
+        resourceId: appId
+      }).session(session);
+
+      // delete app
+      await MongoApp.deleteOne(
+        {
+          _id: appId
+        },
+        { session }
+      );
+
+      await removeImageByPath(app.avatar, session);
+    }
+  };
+
+  if (session) {
+    return del(session);
+  }
+
+  return mongoSessionRun(del);
 };

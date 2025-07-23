@@ -17,6 +17,7 @@ const CouponSchema = new Schema({
     enum: Object.values(CouponTypeEnum)
   },
   price: Number,
+  description: String,
   subscriptions: {
     type: [Object],
     required: true
