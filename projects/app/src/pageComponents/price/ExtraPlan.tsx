@@ -32,12 +32,12 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
 
   // 额外的知识库索引量
   const extraDatasetPrice = subPlans?.extraDatasetSize?.price || 0;
-  const [datasetMonth, setDatasetMonth] = useState(1);
   const {
     watch: watchDatasetSize,
     register: registerDatasetSize,
     handleSubmit: handleSubmitDatasetSize,
-    setValue: setValueDatasetSize
+    setValue: setValueDatasetSize,
+    getValues: getValuesDatasetSize
   } = useForm({
     defaultValues: {
       datasetSize: 1,
@@ -46,11 +46,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
   });
 
   const watchedDatasetSize = watchDatasetSize('datasetSize');
-
-  // 同步月份到表单
-  useEffect(() => {
-    setValueDatasetSize('month', datasetMonth);
-  }, [datasetMonth, setValueDatasetSize]);
+  const watchedDatasetMonth = watchDatasetSize('month');
 
   const { runAsync: onclickBuyDatasetSize, loading: isLoadingBuyDatasetSize } = useRequest2(
     async ({ datasetSize, month }: { datasetSize: number; month: number }) => {
@@ -390,10 +386,10 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
               >
                 <MySelect
                   bg={'myGray.50'}
-                  value={datasetMonth}
+                  value={watchedDatasetMonth}
                   size={'sm'}
                   list={expireSelectorOptions}
-                  onChange={(val) => setDatasetMonth(val)}
+                  onChange={(val) => setValueDatasetSize('month', val)}
                 />
               </Flex>
             </Flex>
@@ -414,7 +410,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                   const price = calculatePrice(extraDatasetPrice, {
                     type: 'dataset',
                     size: watchedDatasetSize,
-                    month: datasetMonth
+                    month: watchedDatasetMonth
                   });
                   return Number.isNaN(price) ? 0 : price;
                 })()}`}
