@@ -89,11 +89,11 @@ jobs:
         domain_config:
           - domain: 'https://fastgpt.io'
             suffix: 'io'
-            deployment: 'fastgpt-docs-preview'
+            deployment: 'fastgpt-docs'
             kube_config: 'KUBE_CONFIG_IO'
           - domain: 'https://fastgpt.cn'
             suffix: 'cn'
-            deployment: 'fastgpt-docs-preview-cn'
+            deployment: 'fastgpt-docs'
             kube_config: 'KUBE_CONFIG_CN'
     steps:
       - name: Checkout code

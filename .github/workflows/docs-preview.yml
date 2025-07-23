@@ -70,7 +70,7 @@ jobs:
           build-args: |
             NEXT_PUBLIC_SEARCH_APPKEY=c4708d48f2de6ac5d2f0f443979ef92a
             NEXT_PUBLIC_SEARCH_APPID=HZAF4C2T88
-            NEXT_PUBLIC_DOMAIN=https://pueuoharpgcl.sealoshzh.site
+            NEXT_PUBLIC_HOME_DOMAIN=https://fastgpt.io
     outputs:
       tags: ${{ steps.datetime.outputs.datetime }}
 
@@ -105,13 +105,7 @@ jobs:
           tool: issue-comment
           title: 'Docs Preview:'
           body: |
-<<<<<<< Updated upstream
-            ```
-            🔗 Preview URL: https://vzldqobwbwna.sealoshzh.site
-            ```
-=======
             ---
             🚀 **FastGPT Document Preview Ready!**
 
             🔗 [👀 Click here to visit preview](https://pueuoharpgcl.sealoshzh.site)
->>>>>>> Stashed changes
