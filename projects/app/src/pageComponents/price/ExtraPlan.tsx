@@ -23,13 +23,6 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
   const { subPlans } = useSystemStore();
   const [qrPayData, setQRPayData] = useState<QRPayProps>();
 
-  const expireSelectorOptions: { label: string; value: number }[] = [
-    { label: t('common:support.wallet.subscription.Update extra expire 1 month'), value: 1 },
-    { label: t('common:support.wallet.subscription.Update extra expire 3 months'), value: 3 },
-    { label: t('common:support.wallet.subscription.Update extra expire 6 months'), value: 6 },
-    { label: t('common:support.wallet.subscription.Update extra expire 12 months'), value: 12 }
-  ];
-
   // 额外的知识库索引量
   const extraDatasetPrice = subPlans?.extraDatasetSize?.price || 0;
   const {
@@ -77,6 +70,12 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
   );
 
   // extra ai points
+  const expireSelectorOptions: { label: string; value: number }[] = [
+    { label: t('common:date_1_month'), value: 1 },
+    { label: t('common:date_3_months'), value: 3 },
+    { label: t('common:date_6_months'), value: 6 },
+    { label: t('common:date_12_months'), value: 12 }
+  ];
   const extraPointsPrice = subPlans?.extraPoints?.price || 0;
   const {
     watch: watchExtraPoints,
@@ -109,7 +108,6 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
 
       const res = await postCreatePayBill({
         type: BillTypeEnum.extraPoints,
-        month,
         extraPoints: points
       });
 
@@ -188,16 +186,15 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                   min={0}
                   size={'sm'}
                   onChange={(val) => {
-                    // 过滤掉NaN和无效输入
-                    if (val === ('' as unknown as number) || val === null || val === undefined) {
-                      setValueExtraPoints('points', undefined as unknown as number);
-                    } else if (!isNaN(val) && val >= 0) {
-                      setValueExtraPoints('points', val as unknown as number);
-                      // 当用户输入积分时，自动更新月份
-                      const expectedMonth = getMonthByPoints(val);
-                      if (expectedMonth !== watchedMonth) {
-                        setValueExtraPoints('month', expectedMonth);
-                      }
+                    setValueExtraPoints('points', val as unknown as number);
+                  }}
+                  onBlur={(val) => {
+                    const formatVal = val || 1;
+                    setValueExtraPoints('points', formatVal);
+
+                    const expectedMonth = getMonthByPoints(formatVal);
+                    if (expectedMonth !== watchedMonth) {
+                      setValueExtraPoints('month', expectedMonth);
                     }
                   }}
                 />
@@ -208,7 +205,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
             </Flex>
             <Flex alignItems={'center'} fontSize={'sm'} h="36px">
               <Box flex={['0 0 100px', '1 0 0']} color={'myGray.600'} fontWeight={'500'}>
-                {t('common:support.wallet.subscription.Update extra expire')}
+                {t('common:invalid_time')}
               </Box>
               <Flex
                 justifyContent={'end'}
@@ -350,7 +347,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
             </Flex>
             <Flex alignItems={'center'} fontSize={'sm'}>
               <Box flex={['0 0 100px', '1 0 0']} color={'myGray.600'} fontWeight={'500'}>
-                {t('common:support.wallet.subscription.Update extra expire')}
+                {t('common:date')}
               </Box>
               <Flex
                 justifyContent={'end'}

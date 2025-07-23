@@ -80,7 +80,7 @@ const Team = () => {
         px={'1rem'}
         value={teamTab}
         onChange={(e) => {
-          if (e === TeamTabEnum.audit && !planContent?.permissionTeamOperationLog) {
+          if (e === TeamTabEnum.audit && planContent && !planContent?.permissionTeamOperationLog) {
             toast({
               status: 'warning',
               title: t('common:not_permission')
@@ -96,7 +96,7 @@ const Team = () => {
         }}
       />
     ),
-    [planContent?.permissionTeamOperationLog, router, t, teamTab, toast]
+    [planContent, router, t, teamTab, toast]
   );
 
   return (
