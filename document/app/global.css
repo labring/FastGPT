@@ -152,6 +152,19 @@ div[data-state='open'].fixed.inset-0.z-50 {
     cursor: pointer;
   }
 }
+
+figure.shiki button[aria-label='Copy Text'] {
+  background-color: none !important;
+  &:hover {
+    cursor: pointer;
+  }
+}
+
+#nd-subnav > div:nth-of-type(1) button {
+  &:hover {
+    cursor: pointer;
+  }
+}
 #nd-subnav > div:nth-of-type(1) {
   border-bottom: 0.1px solid #f4f4f7 !important;
 }

@@ -43,7 +43,8 @@ const CustomItem: FC<{ item: PageTree.Item }> = ({ item }) => {
   return (
     <SidebarItem
       href={item.url}
-      className={`rounded-md hover:cursor-pointer ${isActive && 'bg-blue text-[#3451b2]'}`}
+      className={`rounded-md hover:cursor-pointer ${isActive && 'bg-blue text-[#3451b2] dark:text-[#3370FF]'} 
+      }`}
     >
       {item.icon}
       {item.name}
