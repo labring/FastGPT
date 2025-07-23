@@ -70,11 +70,24 @@ const CustomFolder: FC<{ item: PageTree.Folder; level: number; children: ReactNo
 };
 
 const CustomSeparator: FC<{ item: PageTree.Separator }> = ({ item }) => (
-  <div className="bg-blue text-xs text-gray-400 px-2 py-1 uppercase tracking-wide">{item.name}</div>
+  <div className="text-sm font-semibold px-2 py-2 mt-4 mb-2">{item.name}</div>
 );
 
 export const CustomSidebarComponents: SidebarComponents = {
   Item: CustomItem,
   Folder: CustomFolder,
   Separator: CustomSeparator
+};
+
+export const CustomNavItem: FC<{ item: { url: string; urlPrefix?: string; title: string } }> = ({
+  item
+}) => {
+  const pathname = usePathname();
+  const isActive = item.urlPrefix ? pathname.startsWith(item.urlPrefix) : pathname === item.url;
+
+  return (
+    <a href={item.url} className={`nav-link ${isActive ? 'active' : ''}`}>
+      {item.title}
+    </a>
+  );
 };
