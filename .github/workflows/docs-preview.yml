@@ -61,7 +61,7 @@ jobs:
           build-args: |
             NEXT_PUBLIC_SEARCH_APPKEY=c4708d48f2de6ac5d2f0f443979ef92a
             NEXT_PUBLIC_SEARCH_APPID=HZAF4C2T88
-            NEXT_PUBLIC_DOMAIN=https://vzldqobwbwna.sealoshzh.site
+            NEXT_PUBLIC_DOMAIN=https://pueuoharpgcl.sealoshzh.site
     outputs:
       tags: ${{ steps.datetime.outputs.datetime }}
 
