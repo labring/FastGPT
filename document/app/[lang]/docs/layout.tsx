@@ -6,7 +6,7 @@ import { t } from '@/lib/i18n';
 import LogoLight from '@/components/docs/logo';
 import LogoDark from '@/components/docs/logoDark';
 import '@/app/global.css';
-import { CustomSidebarComponents, CustomNavItem } from '@/components/sideBar';
+import { CustomSidebarComponents } from '@/components/sideBar';
 import FeishuLogoLight from '@/components/docs/feishuLogoLIght';
 import FeishuLogoDark from '@/components/docs/feishuLogoDark';
 import GithubLogoLight from '@/components/docs/githubLogoLight';
@@ -24,24 +24,15 @@ export default async function Layout({
   const tab = [
     {
       title: t('common:introduction', lang),
-      url: lang === 'zh-CN' ? '/docs/introduction' : '/en/docs/introduction',
-      urlPrefix: lang === 'zh-CN' ? '/docs/introduction' : '/en/docs/introduction',
-      className: 'nav-tabs-link-active-color'
+      url: lang === 'zh-CN' ? '/docs/introduction' : '/en/docs/introduction'
     },
     {
       title: t('common:use-cases', lang),
-      url:
-        lang === 'zh-CN'
-          ? '/docs/use-cases/external-integration/openapi'
-          : '/en/docs/use-cases/external-integration/openapi',
-      urlPrefix: lang === 'zh-CN' ? '/docs/use-cases' : '/en/docs/use-cases',
-      className: 'nav-tabs-link-active-color'
+      url: lang === 'zh-CN' ? '/docs/use-cases' : '/en/docs/use-cases'
     },
     {
       title: t('common:protocol', lang),
-      url: lang === 'zh-CN' ? '/docs/protocol/open-source' : '/en/docs/protocol/open-source',
-      urlPrefix: lang === 'zh-CN' ? '/docs/protocol' : '/en/docs/protocol',
-      className: 'nav-tabs-link-active-color'
+      url: lang === 'zh-CN' ? '/docs/protocol' : '/en/docs/protocol'
     }
   ];
 
@@ -98,12 +89,7 @@ export default async function Layout({
         enabled: true
       }}
       sidebar={{
-        tabs: tab.map((item) => ({
-          title: item.title,
-          url: item.url,
-          urlPrefix: item.urlPrefix,
-          className: item.className
-        })),
+        tabs: tab,
         collapsible: false,
         components: CustomSidebarComponents
       }}

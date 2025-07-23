@@ -44,7 +44,7 @@ const CustomItem: FC<{ item: PageTree.Item }> = ({ item }) => {
     <SidebarItem
       href={item.url}
       className={`rounded-lg hover:cursor-pointer ${isActive && 'bg-blue-50 font-bold text-[#3370FF] dark:bg-[rgba(104,143,232,0.1)] dark:text-blue-400'} 
-      }`}
+      `}
     >
       {item.icon}
       {item.name}
@@ -78,17 +78,4 @@ export const CustomSidebarComponents: SidebarComponents = {
   Item: CustomItem,
   Folder: CustomFolder,
   Separator: CustomSeparator
-};
-
-export const CustomNavItem: FC<{ item: { url: string; urlPrefix?: string; title: string } }> = ({
-  item
-}) => {
-  const pathname = usePathname();
-  const isActive = item.urlPrefix ? pathname.startsWith(item.urlPrefix) : pathname === item.url;
-
-  return (
-    <a href={item.url} className={`nav-link ${isActive ? 'active' : ''}`}>
-      {item.title}
-    </a>
-  );
 };
