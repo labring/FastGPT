@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-fastgpt-docs-images:
+  build-images:
     runs-on: ubuntu-latest
 
     permissions:
@@ -62,10 +62,9 @@ jobs:
     outputs:
       tags: ${{ steps.datetime.outputs.datetime }}
 
-  update-docs-image:
-    needs: build-fastgpt-docs-images
+  update-images:
+    needs: build-images
     runs-on: ubuntu-24.04
-    if: github.repository == 'labring/FastGPT'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
