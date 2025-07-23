@@ -1,75 +1,80 @@
-name: Preview FastGPT docs
-
+name: Preview documents
 on:
   pull_request_target:
     paths:
-      - 'docSite/**'
+      - 'document/**'
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains jobs "deploy-production"
-  deploy-preview:
+  build-fastgpt-docs-images:
+    runs-on: ubuntu-latest
+
     permissions:
       contents: read
       packages: write
       attestations: write
       id-token: write
-      pull-requests: write
-    # The environment this job references
-    environment:
-      name: Preview
-      url: ${{ steps.vercel-action.outputs.preview-url }}
 
-    # The type of runner that the job will run on
-    runs-on: ubuntu-24.04
-
-    # Job outputs
-    outputs:
-      url: ${{ steps.vercel-action.outputs.preview-url }}
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Step 1 - Checks-out your repository under $GITHUB_WORKSPACE
       - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # list of Docker images to use as base name for tags
+          images: |
+            ${{ secrets.ALI_IMAGE_NAME }}//fastgpt-docs
+          tags: |
+            ${{ steps.datetime.outputs.datetime }}
+          flavor: latest=false
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Aliyun
+        uses: docker/login-action@v3
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.ALI_HUB_USERNAME }}
+          password: ${{ secrets.ALI_HUB_PASSWORD }}
+
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./document/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            NEXT_PUBLIC_SEARCH_APPKEY=c4708d48f2de6ac5d2f0f443979ef92a
+            NEXT_PUBLIC_SEARCH_APPID=HZAF4C2T88
+            NEXT_PUBLIC_DOMAIN=https://vzldqobwbwna.sealoshzh.site
+    outputs:
+      tags: ${{ steps.datetime.outputs.datetime }}
+
+  update-docs-image:
+    needs: build-fastgpt-docs-images
+    runs-on: ubuntu-24.04
+    if: github.repository == 'labring/FastGPT'
+    steps:
+      - name: Checkout code
         uses: actions/checkout@v3
+      - uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          submodules: recursive # Fetch submodules
-          fetch-depth: 0 # Fetch all history for .GitInfo and .Lastmod
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      # Step 2 Detect changes to Docs Content
-      - name: Detect changes in doc content
-        uses: dorny/paths-filter@v2
-        id: filter
+          args: set image deployment/fastgpt-docs-preview fastgpt-docs-preview=${{ secrets.ALI_IMAGE_NAME }}//fastgpt-docs:${{ needs.build-fastgpt-docs-images.outputs.tags }}
+      - uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
         with:
-          filters: |
-            docs:
-              - 'docSite/content/docs/**'
-          base: main
-
-      # Step 3 - Install Hugo (specific version)
-      - name: Install Hugo
-        uses: peaceiris/actions-hugo@v2
-        with:
-          hugo-version: '0.117.0'
-          extended: true
-
-      # Step 4 - Builds the site using Hugo
-      - name: Build
-        run: cd docSite && hugo mod get -u github.com/colinwilson/lotusdocs@6d0568e && hugo -v --minify
-
-      # Step 5 - Push our generated site to Cloudflare
-      - name: Deploy to Cloudflare Pages
-        id: deploy
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy ./docSite/public --project-name=fastgpt-doc
-          packageManager: npm
+          args: annotate deployment/fastgpt-docs-preview originImageName="${{ secrets.ALI_IMAGE_NAME }}//fastgpt-docs:${{ needs.build-fastgpt-docs-images.outputs.tags }}" --overwrite
 
       - name: '@finleyge/github-tools'
         uses: FinleyGe/github-tools@0.0.1
@@ -81,5 +86,5 @@ jobs:
           title: 'Docs Preview:'
           body: |
             ```
-            🔗 Preview URL: ${{deploymentUrl}}
+            🔗 Preview URL: https://vzldqobwbwna.sealoshzh.site
             ```
