@@ -74,7 +74,7 @@ export const menuItemStyles: MenuItemProps = {
 
 const MySelect = <T = any,>(
   {
-    bg,
+    bg = '#fff',
     placeholder,
     value,
     valueLabel,

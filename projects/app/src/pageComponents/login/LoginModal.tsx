@@ -47,12 +47,7 @@ const LoginModal = ({ isOpen, onSuccess, ChineseRedirectUrl }: LoginModalProps) 
             </Box>
           )}
 
-          <LoginContainer
-            onSuccess={onSuccess}
-            chineseRedirectUrl={ChineseRedirectUrl}
-            autoInit={true}
-            enabled={isOpen}
-          />
+          <LoginContainer onSuccess={onSuccess} chineseRedirectUrl={ChineseRedirectUrl} />
         </ModalBody>
       </ModalContent>
     </Modal>
