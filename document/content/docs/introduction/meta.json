@@ -1,0 +1,14 @@
+{
+  "title": "FastGPT Docs",
+  "root": true,
+  "pages": [
+    "[Handshake][联系我们](https://fael3z0zfze.feishu.cn/share/base/form/shrcnRxj3utrzjywsom96Px4sud)",
+    "index",
+    "guide",
+    "development",
+    "FAQ",
+    "shopping_cart",
+    "community"
+  ],
+  "order": 1
+}
