@@ -86,7 +86,7 @@ const getSession = async (key: string): Promise<SessionType> => {
 export const delUserAllSession = async (userId: string, whiteList?: (string | undefined)[]) => {
   const formatWhiteList = whiteList?.map((item) => item && getSessionKey(item));
   const redis = getGlobalRedisConnection();
-  const keys = (await getAllKeysByPrefix(`${redisPrefix}${userId}`)).filter(
+  const keys = (await getAllKeysByPrefix(`${redisPrefix}${String(userId)}`)).filter(
     (item) => !formatWhiteList?.includes(item)
   );
 

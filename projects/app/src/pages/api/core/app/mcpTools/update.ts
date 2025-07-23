@@ -8,7 +8,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { isEqual } from 'lodash';
 import { type ClientSession } from 'mongoose';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { onDelOneApp } from '../del';
+import { onDelOneApp } from '@fastgpt/service/core/app/controller';
 import { onCreateApp } from '../create';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 

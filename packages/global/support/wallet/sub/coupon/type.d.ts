@@ -17,4 +17,5 @@ export type TeamCouponSchema = {
   redeemedTeamId?: string;
   type: CouponTypeEnum;
   price?: number;
+  description?: string;
 };

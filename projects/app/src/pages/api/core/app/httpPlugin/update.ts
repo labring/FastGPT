@@ -10,7 +10,7 @@ import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { isEqual } from 'lodash';
 import { onCreateApp } from '../create';
-import { onDelOneApp } from '../del';
+import { onDelOneApp } from '@fastgpt/service/core/app/controller';
 import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
 
 export type UpdateHttpPluginBody = {
