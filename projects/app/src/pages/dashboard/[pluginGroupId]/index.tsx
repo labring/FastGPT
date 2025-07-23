@@ -190,8 +190,7 @@ const SystemTools = () => {
                   ) : (
                     MenuIcon
                   )}
-                  <Flex alignItems={'center'} gap={2}>
-                    {isRoot && <Button onClick={onOpen}>{t('file:common:import_update')}</Button>}
+                  <Flex alignItems={'center'}>
                     <Box flex={'0 0 200px'}>
                       <SearchInput
                         value={searchKey}
@@ -199,6 +198,7 @@ const SystemTools = () => {
                         placeholder={t('common:plugin.Search plugin')}
                       />
                     </Box>
+                    {isRoot && <Button onClick={onOpen}>{t('file:common:import_update')}</Button>}
                   </Flex>
                 </Flex>
                 <Grid
