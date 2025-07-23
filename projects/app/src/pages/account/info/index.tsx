@@ -232,14 +232,12 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
           </Flex>
         )}
 
-        {feConfigs.isPlus && (
-          <Flex mt={6} alignItems={'center'}>
-            <Box {...labelStyles}>{t('account_info:user_team_team_name')}&nbsp;</Box>
-            <Flex flex={'1 0 0'} w={0} align={'center'}>
-              <TeamSelector height={'28px'} w={'100%'} showManage />
-            </Flex>
+        <Flex mt={6} alignItems={'center'}>
+          <Box {...labelStyles}>{t('account_info:user_team_team_name')}&nbsp;</Box>
+          <Flex flex={'1 0 0'} w={0} align={'center'}>
+            <TeamSelector height={'28px'} w={'100%'} showManage />
           </Flex>
-        )}
+        </Flex>
 
         {isPc ? (
           <Flex mt={4} alignItems={'center'} cursor={'pointer'}>

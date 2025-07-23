@@ -12,7 +12,7 @@ async function handler(
   req: ApiRequestProps<TokenLoginBody, TokenLoginQuery>,
   _res: ApiResponseType<any>
 ): Promise<TokenLoginResponse> {
-  const { tmbId } = await authCert({ req, authToken: true });
+  const { tmbId, isRoot } = await authCert({ req, authToken: true });
   const user = await getUserDetail({ tmbId });
 
   // Remove sensitive information
@@ -35,6 +35,10 @@ async function handler(
     );
   }
 
-  return user;
+  // 添加 isRoot 字段
+  return {
+    ...user,
+    isRoot: isRoot || user.username === 'root'
+  };
 }
 export default NextAPI(handler);

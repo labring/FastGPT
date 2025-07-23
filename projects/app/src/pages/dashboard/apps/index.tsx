@@ -34,7 +34,7 @@ import List from '@/pageComponents/dashboard/apps/List';
 import MCPToolsEditModal from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
 import { getUtmWorkflow } from '@/web/support/marketing/utils';
 import { useMount } from 'ahooks';
-import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import TeamSelector from '@/pageComponents/account/TeamSelector';
 
 const CreateModal = dynamic(() => import('@/pageComponents/dashboard/apps/CreateModal'));
 const EditFolderModal = dynamic(
@@ -118,6 +118,31 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     };
     return map[appType] || map['all'];
   }, [appType, t]);
+  const RenderSearchInput = useMemo(
+    () => (
+      <InputGroup maxW={['auto', '250px']} position={'relative'}>
+        <MyIcon
+          position={'absolute'}
+          zIndex={10}
+          name={'common/searchLight'}
+          w={'1rem'}
+          color={'myGray.600'}
+          left={2.5}
+          top={'50%'}
+          transform={'translateY(-50%)'}
+        />
+        <Input
+          value={searchKey}
+          onChange={(e) => setSearchKey(e.target.value)}
+          placeholder={t('app:search_app')}
+          maxLength={30}
+          pl={8}
+          bg={'white'}
+        />
+      </InputGroup>
+    ),
+    [searchKey, setSearchKey, t]
+  );
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
@@ -156,16 +181,17 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
             ) : (
               MenuIcon
             )}
+
+            {/* 团队切换器 */}
+            {isPc && (
+              <Box minW="200px">
+                <TeamSelector size="sm" />
+              </Box>
+            )}
+
             <Box flex={1} />
 
-            {isPc && (
-              <SearchInput
-                maxW={['auto', '250px']}
-                onChange={(e) => setSearchKey(e.target.value)}
-                placeholder={t('app:search_app')}
-                maxLength={30}
-              />
-            )}
+            {isPc && RenderSearchInput}
 
             {(folderDetail
               ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
@@ -236,18 +262,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
             )}
           </Flex>
 
-          {!isPc && (
-            <Box mt={2}>
-              {
-                <SearchInput
-                  maxW={['auto', '250px']}
-                  onChange={(e) => setSearchKey(e.target.value)}
-                  placeholder={t('app:search_app')}
-                  maxLength={30}
-                />
-              }
-            </Box>
-          )}
+          {!isPc && <Box mt={2}>{RenderSearchInput}</Box>}
 
           <MyBox flex={'1 0 0'} isLoading={myApps.length === 0 && isFetchingApps}>
             <List />

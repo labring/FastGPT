@@ -1,4 +1,4 @@
-import { NullPermission, PermissionKeyEnum, PermissionList } from '../constant';
+import { NullPermission, PermissionKeyEnum, PermissionList, ReadPermissionVal } from '../constant';
 import { type PermissionListType } from '../type';
 import { i18nT } from '../../../../web/i18n/utils';
 export enum AppPermissionKeyEnum {}
@@ -17,4 +17,5 @@ export const AppPermissionList: PermissionListType = {
   }
 };
 
-export const AppDefaultPermissionVal = NullPermission;
+// 修改默认权限：团队成员默认可以查看应用
+export const AppDefaultPermissionVal = ReadPermissionVal;

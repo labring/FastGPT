@@ -31,6 +31,7 @@ export type UserType = {
   notificationAccount?: string;
   permission: TeamPermission;
   contact?: string;
+  isRoot?: boolean; // 是否为系统管理员
 };
 
 export type SourceMemberType = {

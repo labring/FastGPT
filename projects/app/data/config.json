@@ -2,7 +2,10 @@
 {
   "feConfigs": {
     "lafEnv": "https://laf.dev", // laf环境。 https://laf.run （杭州阿里云） ,或者私有化的laf环境。如果使用 Laf openapi 功能，需要最新版的 laf 。
-    "mcpServerProxyEndpoint": "" // mcp server 代理地址，例如： http://localhost:3005
+    "mcpServerProxyEndpoint": "", // mcp server 代理地址，例如： http://localhost:3005
+    "systemTitle": "首迁大模型应用平台", // 系统标题
+    "systemDescription": "基于FastGPT的智能AI应用平台", // 系统描述
+    "favicon": "/favicon.ico" // 网站图标
   },
   "systemEnv": {
     "vectorMaxProcess": 10, // 向量处理线程数量

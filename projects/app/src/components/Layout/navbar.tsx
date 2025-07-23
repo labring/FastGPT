@@ -42,8 +42,8 @@ const Navbar = ({ unread }: { unread: number }) => {
   const { gitStar, feConfigs } = useSystemStore();
   const { lastChatAppId } = useChatStore();
 
-  const navbarList = useMemo(
-    () => [
+  const navbarList = useMemo(() => {
+    const baseNavbar = [
       {
         label: t('common:navbar.Chat'),
         icon: 'core/chat/chatLight',
@@ -61,9 +61,7 @@ const Navbar = ({ unread }: { unread: number }) => {
           '/app/detail',
           '/dashboard/templateMarket',
           '/dashboard/[pluginGroupId]',
-          '/dashboard/mcpServer',
-          '/dashboard/evaluation',
-          '/dashboard/evaluation/create'
+          '/dashboard/mcpServer'
         ]
       },
       {
@@ -91,9 +89,21 @@ const Navbar = ({ unread }: { unread: number }) => {
           '/account/model'
         ]
       }
-    ],
-    [lastChatAppId, t]
-  );
+    ];
+
+    // 如果是管理员，添加管理员菜单
+    if (userInfo?.isRoot) {
+      baseNavbar.push({
+        label: t('common:navbar.Admin'),
+        icon: 'common/settingLight',
+        activeIcon: 'common/settingFill',
+        link: '/admin/dashboard',
+        activeLink: ['/admin/dashboard', '/admin/users']
+      });
+    }
+
+    return baseNavbar;
+  }, [lastChatAppId, t, userInfo?.isRoot]);
 
   const isSecondNavbarPage = useMemo(() => {
     return ['/toolkit'].includes(router.pathname);
@@ -145,13 +155,7 @@ const Navbar = ({ unread }: { unread: number }) => {
                   })}
               {...(item.link !== router.asPath
                 ? {
-                    onClick: () => {
-                      if (item.link.startsWith('/chat')) {
-                        window.open(item.link, '_blank', 'noopener,noreferrer');
-                        return;
-                      }
-                      router.push(item.link);
-                    }
+                    onClick: () => router.push(item.link)
                   }
                 : {})}
             >

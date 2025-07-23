@@ -12,8 +12,7 @@ import { AppPermission } from '@fastgpt/global/support/permission/app/controller
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList, type AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';

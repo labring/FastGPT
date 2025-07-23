@@ -5,13 +5,16 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useTranslation } from 'next-i18next';
 import Badge from '../Badge';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const NavbarPhone = ({ unread }: { unread: number }) => {
   const router = useRouter();
   const { t } = useTranslation();
   const { lastChatAppId } = useChatStore();
-  const navbarList = useMemo(
-    () => [
+  const { userInfo } = useUserStore();
+
+  const navbarList = useMemo(() => {
+    const baseNavbar = [
       {
         label: t('common:navbar.Chat'),
         icon: 'core/chat/chatLight',
@@ -30,9 +33,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
           '/app/detail',
           '/dashboard/templateMarket',
           '/dashboard/[pluginGroupId]',
-          '/dashboard/mcpServer',
-          '/dashboard/evaluation',
-          '/dashboard/evaluation/create'
+          '/dashboard/mcpServer'
         ],
         unread: 0
       },
@@ -62,9 +63,22 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         ],
         unread
       }
-    ],
-    [t, lastChatAppId, unread]
-  );
+    ];
+
+    // 如果是管理员，添加管理员菜单
+    if (userInfo?.isRoot) {
+      baseNavbar.push({
+        label: t('common:navbar.Admin'),
+        icon: 'common/settingLight',
+        activeIcon: 'common/settingFill',
+        link: '/admin/dashboard',
+        activeLink: ['/admin/dashboard', '/admin/users'],
+        unread: 0
+      });
+    }
+
+    return baseNavbar;
+  }, [t, lastChatAppId, unread, userInfo?.isRoot]);
 
   return (
     <>
@@ -97,10 +111,6 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
                 })}
             onClick={() => {
               if (item.link === router.asPath) return;
-              if (item.link.startsWith('/chat')) {
-                window.open(item.link, '_blank');
-                return;
-              }
               router.push(item.link);
             }}
           >

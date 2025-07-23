@@ -263,26 +263,6 @@ export const LoginContainer = ({
 
         {/* custom content */}
         {children}
-
-        {/* help link for login */}
-        {feConfigs?.concatMd && (
-          <Box
-            mt={
-              pageType === LoginPageTypeEnum.register ||
-              pageType === LoginPageTypeEnum.forgetPassword
-                ? 10
-                : 4
-            }
-            color={'primary.700'}
-            fontSize={'mini'}
-            fontWeight={'medium'}
-            cursor={'pointer'}
-            textAlign={'center'}
-            onClick={() => setShowCommunityModal(true)}
-          >
-            {t('common:support.user.login.can_not_login')}
-          </Box>
-        )}
       </Box>
 
       <CookiesModal />

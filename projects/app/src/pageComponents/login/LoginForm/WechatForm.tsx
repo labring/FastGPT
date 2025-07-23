@@ -10,14 +10,6 @@ import FormLayout from './FormLayout';
 import { useTranslation } from 'next-i18next';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
-import {
-  getBdVId,
-  getFastGPTSem,
-  getMsclkid,
-  getSourceDomain,
-  removeFastGPTSem,
-  getInviterId
-} from '@/web/support/marketing/utils';
 
 interface Props {
   loginSuccess: (e: ResLogin) => void;
@@ -39,21 +31,12 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
 
   useQuery(
     ['getWXLoginResult', wechatInfo?.code],
-    () =>
-      getWXLoginResult({
-        inviterId: getInviterId(),
-        code: wechatInfo?.code || '',
-        bd_vid: getBdVId(),
-        msclkid: getMsclkid(),
-        fastgpt_sem: getFastGPTSem(),
-        sourceDomain: getSourceDomain()
-      }),
+    () => getWXLoginResult({ code: wechatInfo?.code || '' }),
     {
       refetchInterval: 3 * 1000,
       enabled: !!wechatInfo?.code,
       onSuccess(data: ResLogin | undefined) {
         if (data) {
-          removeFastGPTSem();
           loginSuccess(data);
         }
       }

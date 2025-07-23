@@ -31,10 +31,14 @@ const TeamSelector = ({
     async (teamId: string) => {
       setLoading(true);
       await putSwitchTeam(teamId);
+
+      // 等待一小段时间确保cookie设置完成
+      await new Promise((resolve) => setTimeout(resolve, 100));
     },
     {
       onFinally: () => {
-        router.reload();
+        // 使用window.location.reload()强制刷新
+        window.location.reload();
         setLoading(false);
       },
       errorToast: t('common:user.team.Switch Team Failed')

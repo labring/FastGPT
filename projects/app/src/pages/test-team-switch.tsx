@@ -75,7 +75,7 @@ const TestTeamSwitch: React.FC = () => {
       setSwitching(teamId);
 
       const response = await fetch('/api/proApi/support/user/team/switch', {
-        method: 'POST',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },

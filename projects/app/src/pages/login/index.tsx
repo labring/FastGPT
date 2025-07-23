@@ -1,22 +1,67 @@
-import React, { useCallback } from 'react';
-import { Flex, Box } from '@chakra-ui/react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import {
+  Box,
+  Button,
+  Center,
+  Drawer,
+  DrawerCloseButton,
+  DrawerContent,
+  DrawerOverlay,
+  Flex,
+  useDisclosure
+} from '@chakra-ui/react';
+import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useRouter } from 'next/router';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
+import dynamic from 'next/dynamic';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { clearToken } from '@/web/support/user/auth';
-import { useMount } from 'ahooks';
-import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
-import { LoginContainer } from '@/pageComponents/login';
+import Script from 'next/script';
+import Loading from '@fastgpt/web/components/common/MyLoading';
+import { useLocalStorageState, useMount } from 'ahooks';
+import { useTranslation } from 'next-i18next';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { GET } from '@/web/common/api/request';
+import { getDocPath } from '@/web/common/system/doc';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import LoginForm from '@/pageComponents/login/LoginForm/LoginForm';
+import { getBdVId } from '@/web/support/marketing/utils';
 
-const Login = () => {
+const RegisterForm = dynamic(() => import('@/pageComponents/login/RegisterForm'));
+const ForgetPasswordForm = dynamic(() => import('@/pageComponents/login/ForgetPasswordForm'));
+const WechatForm = dynamic(() => import('@/pageComponents/login/LoginForm/WechatForm'));
+const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
+
+const ipDetectURL = 'https://qifu-api.baidubce.com/ip/local/geo/v1/district';
+
+const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
   const router = useRouter();
-  const { isPc } = useSystem();
+  const { t } = useTranslation();
   const { lastRoute = '' } = router.query as { lastRoute: string };
+  const { feConfigs } = useSystemStore();
+  const [pageType, setPageType] = useState<`${LoginPageTypeEnum}`>(LoginPageTypeEnum.passwordLogin);
+  const { setUserInfo } = useUserStore();
+  const { setLastChatAppId } = useChatStore();
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isPc } = useSystem();
+
+  const {
+    isOpen: isOpenCookiesDrawer,
+    onOpen: onOpenCookiesDrawer,
+    onClose: onCloseCookiesDrawer
+  } = useDisclosure();
+  const cookieVersion = '1';
+  const [localCookieVersion, setLocalCookieVersion] =
+    useLocalStorageState<string>('localCookieVersion');
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
+      setUserInfo(res.user);
+
       const decodeLastRoute = decodeURIComponent(lastRoute);
 
       const navigateTo =
@@ -26,53 +71,297 @@ const Login = () => {
 
       router.push(navigateTo);
     },
-    [lastRoute, router]
+    [setUserInfo, lastRoute, router]
   );
+
+  const DynamicComponent = useMemo(() => {
+    const TypeMap = {
+      [LoginPageTypeEnum.passwordLogin]: LoginForm,
+      [LoginPageTypeEnum.register]: RegisterForm,
+      [LoginPageTypeEnum.forgetPassword]: ForgetPasswordForm,
+      [LoginPageTypeEnum.wechat]: WechatForm
+    };
+
+    // @ts-ignore
+    const Component = TypeMap[pageType];
+
+    return <Component setPageType={setPageType} loginSuccess={loginSuccess} />;
+  }, [pageType, loginSuccess]);
+
+  /* default login type */
+  useEffect(() => {
+    const bd_vid = getBdVId();
+    if (bd_vid) {
+      setPageType(LoginPageTypeEnum.passwordLogin);
+      return;
+    }
+    setPageType(
+      feConfigs?.oauth?.wechat ? LoginPageTypeEnum.wechat : LoginPageTypeEnum.passwordLogin
+    );
+
+    // init store
+    setLastChatAppId('');
+  }, [feConfigs?.oauth, setLastChatAppId]);
+
+  const {
+    isOpen: isOpenRedirect,
+    onOpen: onOpenRedirect,
+    onClose: onCloseRedirect
+  } = useDisclosure();
+  const [showRedirect, setShowRedirect] = useLocalStorageState<boolean>('showRedirect', {
+    defaultValue: true
+  });
+  const checkIpInChina = useCallback(async () => {
+    try {
+      const res = await GET<any>(ipDetectURL);
+      const country = res?.country;
+      if (
+        country &&
+        country === '中国' &&
+        res.prov !== '中国香港' &&
+        res.prov !== '中国澳门' &&
+        res.prov !== '中国台湾'
+      ) {
+        onOpenRedirect();
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  }, [onOpenRedirect]);
 
   useMount(() => {
     clearToken();
     router.prefetch('/dashboard/apps');
+
+    ChineseRedirectUrl && showRedirect && checkIpInChina();
+    localCookieVersion !== cookieVersion && onOpenCookiesDrawer();
   });
 
   return (
-    <Flex
-      alignItems={'center'}
-      justifyContent={'center'}
-      bg={`url(${getWebReqUrl('/icon/login-bg.svg')}) no-repeat`}
-      backgroundSize={'cover'}
-      userSelect={'none'}
-      h={'100%'}
-    >
-      {/* Language selector - login page */}
-      {isPc && (
-        <Box position="absolute" top="24px" right="24px" zIndex={10}>
-          <I18nLngSelector />
-        </Box>
+    <>
+      {feConfigs.googleClientVerKey && (
+        <Script
+          src={`https://www.recaptcha.net/recaptcha/api.js?render=${feConfigs.googleClientVerKey}`}
+        ></Script>
       )}
 
       <Flex
-        flexDirection={'column'}
-        w={['100%', '556px']}
-        h={['100%', '677px']}
-        bg={'white'}
-        px={['5vw', '88px']}
-        py={['5vh', '64px']}
-        borderRadius={[0, '16px']}
-        boxShadow={[
-          '',
-          '0px 32px 64px -12px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.20)'
-        ]}
-        position="relative"
+        alignItems={'center'}
+        justifyContent={'center'}
+        bg={
+          'linear-gradient(135deg, #0f2027 0%, #203a43 25%, #2c5364 50%, #1a4480 75%, #4a90e2 100%)'
+        }
+        backgroundSize={'400% 400%'}
+        animation={'gradientShift 15s ease infinite'}
+        userSelect={'none'}
+        h={'100%'}
+        position={'relative'}
+        _before={{
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background:
+            'radial-gradient(circle at 20% 80%, rgba(74, 144, 226, 0.3) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(44, 90, 160, 0.3) 0%, transparent 50%)',
+          zIndex: 1
+        }}
+        sx={{
+          '@keyframes gradientShift': {
+            '0%': { backgroundPosition: '0% 50%' },
+            '50%': { backgroundPosition: '100% 50%' },
+            '100%': { backgroundPosition: '0% 50%' }
+          }
+        }}
       >
-        <LoginContainer onSuccess={loginSuccess} />
+        {/* 装饰性几何图形 */}
+        <Box
+          position={'absolute'}
+          top={'10%'}
+          left={'10%'}
+          w={'100px'}
+          h={'100px'}
+          border={'2px solid rgba(74, 144, 226, 0.2)'}
+          borderRadius={'50%'}
+          zIndex={1}
+          animation={'float 6s ease-in-out infinite'}
+          sx={{
+            '@keyframes float': {
+              '0%, 100%': { transform: 'translateY(0px)' },
+              '50%': { transform: 'translateY(-20px)' }
+            }
+          }}
+        />
+        <Box
+          position={'absolute'}
+          bottom={'15%'}
+          right={'15%'}
+          w={'80px'}
+          h={'80px'}
+          border={'2px solid rgba(44, 90, 160, 0.3)'}
+          transform={'rotate(45deg)'}
+          zIndex={1}
+          animation={'rotate 8s linear infinite'}
+          sx={{
+            '@keyframes rotate': {
+              '0%': { transform: 'rotate(45deg)' },
+              '100%': { transform: 'rotate(405deg)' }
+            }
+          }}
+        />
+
+        {isPc && (
+          <Box position={'absolute'} top={'24px'} right={'50px'} zIndex={3}>
+            <I18nLngSelector />
+          </Box>
+        )}
+
+        <Flex
+          flexDirection={'column'}
+          w={['100%', '480px']}
+          h={['100%', 'auto']}
+          minH={['100%', '600px']}
+          bg={'rgba(255, 255, 255, 0.98)'}
+          backdropFilter={'blur(20px)'}
+          px={['5vw', '60px']}
+          py={['5vh', '50px']}
+          borderRadius={[0, '24px']}
+          border={'1px solid rgba(74, 144, 226, 0.15)'}
+          boxShadow={[
+            '',
+            '0px 40px 80px -20px rgba(26, 68, 128, 0.4), 0px 20px 40px -10px rgba(74, 144, 226, 0.2), inset 0px 1px 0px rgba(255, 255, 255, 0.9)'
+          ]}
+          position={'relative'}
+          zIndex={2}
+          _before={{
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background:
+              'linear-gradient(135deg, rgba(74, 144, 226, 0.02) 0%, rgba(26, 68, 128, 0.05) 100%)',
+            borderRadius: [0, '24px'],
+            zIndex: -1
+          }}
+        >
+          <Box w={['100%', '380px']} flex={'1 0 0'}>
+            {pageType ? (
+              DynamicComponent
+            ) : (
+              <Center w={'full'} h={'full'} position={'relative'}>
+                <Loading fixed={false} />
+              </Center>
+            )}
+          </Box>
+        </Flex>
+
+        {isOpen && <CommunityModal onClose={onClose} />}
       </Flex>
-    </Flex>
+
+      {showRedirect && (
+        <RedirectDrawer
+          isOpen={isOpenRedirect}
+          onClose={onCloseRedirect}
+          onRedirect={() => router.push(ChineseRedirectUrl)}
+          disableDrawer={() => setShowRedirect(false)}
+        />
+      )}
+      {isOpenCookiesDrawer && (
+        <CookiesDrawer
+          onAgree={() => {
+            setLocalCookieVersion(cookieVersion);
+            onCloseCookiesDrawer();
+          }}
+          onClose={onCloseCookiesDrawer}
+        />
+      )}
+    </>
   );
 };
+
+function RedirectDrawer({
+  isOpen,
+  onClose,
+  disableDrawer,
+  onRedirect
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  disableDrawer: () => void;
+  onRedirect: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Drawer placement="bottom" size={'xs'} isOpen={isOpen} onClose={onClose}>
+      <DrawerOverlay backgroundColor={'rgba(0,0,0,0.2)'} />
+      <DrawerContent py={'1.75rem'} px={'3rem'}>
+        <DrawerCloseButton size={'sm'} />
+        <Flex align={'center'} justify={'space-between'}>
+          <Box>
+            <Box color={'myGray.900'} fontWeight={'500'} fontSize={'1rem'}>
+              {t('login:Chinese_ip_tip')}
+            </Box>
+            <Box
+              color={'primary.700'}
+              fontWeight={'500'}
+              fontSize={'1rem'}
+              textDecorationLine={'underline'}
+              cursor={'pointer'}
+              onClick={disableDrawer}
+            >
+              {t('login:no_remind')}
+            </Box>
+          </Box>
+          <Button ml={'0.75rem'} onClick={onRedirect}>
+            {t('login:redirect')}
+          </Button>
+        </Flex>
+      </DrawerContent>
+    </Drawer>
+  );
+}
+
+function CookiesDrawer({ onClose, onAgree }: { onClose: () => void; onAgree: () => void }) {
+  const { t } = useTranslation();
+
+  return (
+    <Drawer placement="bottom" size={'xs'} isOpen={true} onClose={onClose}>
+      <DrawerOverlay backgroundColor={'rgba(0,0,0,0.2)'} />
+      <DrawerContent py={'1.75rem'} px={'3rem'}>
+        <DrawerCloseButton size={'sm'} />
+        <Flex align={'center'} justify={'space-between'}>
+          <Box>
+            <Box color={'myGray.900'} fontWeight={'500'} fontSize={'1rem'}>
+              {t('login:cookies_tip')}
+            </Box>
+            <Box
+              color={'primary.700'}
+              fontWeight={'500'}
+              fontSize={'1rem'}
+              textDecorationLine={'underline'}
+              cursor={'pointer'}
+              w={'fit-content'}
+              onClick={() => window.open(getDocPath('/docs/agreement/privacy/'), '_blank')}
+            >
+              {t('login:privacy_policy')}
+            </Box>
+          </Box>
+          <Button ml={'0.75rem'} onClick={onAgree}>
+            {t('login:agree')}
+          </Button>
+        </Flex>
+      </DrawerContent>
+    </Drawer>
+  );
+}
 
 export async function getServerSideProps(context: any) {
   return {
     props: {
+      ChineseRedirectUrl: process.env.CHINESE_IP_REDIRECT_URL ?? '',
       ...(await serviceSideProps(context, ['app', 'user', 'login']))
     }
   };

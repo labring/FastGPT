@@ -1,0 +1,58 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+<!-- 钢卷主体 -->
+<ellipse cx="16" cy="16" rx="12" ry="12" fill="url(#paint0_linear_steel_coil)" stroke="url(#paint1_linear_steel_border)" stroke-width="1"/>
+<!-- 钢卷内圈 -->
+<ellipse cx="16" cy="16" rx="8" ry="8" fill="url(#paint2_linear_steel_inner)" stroke="url(#paint3_linear_inner_border)" stroke-width="0.8"/>
+<!-- 钢卷中心孔 -->
+<ellipse cx="16" cy="16" rx="3" ry="3" fill="url(#paint4_linear_center_hole)" stroke="#1a4480" stroke-width="0.5"/>
+<!-- 钢卷纹理线条 -->
+<path d="M 7 16 Q 16 11 25 16 Q 16 21 7 16" fill="none" stroke="url(#paint5_linear_texture)" stroke-width="0.8" opacity="0.6"/>
+<path d="M 9 16 Q 16 13 23 16 Q 16 19 9 16" fill="none" stroke="url(#paint6_linear_texture)" stroke-width="0.6" opacity="0.4"/>
+<!-- 高光效果 -->
+<ellipse cx="13" cy="13" rx="2.5" ry="1.5" fill="url(#paint7_radial_highlight)" opacity="0.3"/>
+<defs>
+<!-- 主体渐变 - 工业蓝 -->
+<linearGradient id="paint0_linear_steel_coil" x1="4" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+<stop stop-color="#4a90e2"/>
+<stop offset="0.5" stop-color="#2c5aa0"/>
+<stop offset="1" stop-color="#1a4480"/>
+</linearGradient>
+<!-- 边框渐变 -->
+<linearGradient id="paint1_linear_steel_border" x1="4" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+<stop stop-color="#1a4480"/>
+<stop offset="1" stop-color="#0f2240"/>
+</linearGradient>
+<!-- 内圈渐变 -->
+<linearGradient id="paint2_linear_steel_inner" x1="8" y1="8" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+<stop stop-color="#6ba3f0"/>
+<stop offset="0.5" stop-color="#4a90e2"/>
+<stop offset="1" stop-color="#2c5aa0"/>
+</linearGradient>
+<!-- 内圈边框 -->
+<linearGradient id="paint3_linear_inner_border" x1="8" y1="8" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+<stop stop-color="#2c5aa0"/>
+<stop offset="1" stop-color="#1a4480"/>
+</linearGradient>
+<!-- 中心孔渐变 -->
+<linearGradient id="paint4_linear_center_hole" x1="13" y1="13" x2="19" y2="19" gradientUnits="userSpaceOnUse">
+<stop stop-color="#0f2240"/>
+<stop offset="1" stop-color="#1a4480"/>
+</linearGradient>
+<!-- 纹理线条渐变 -->
+<linearGradient id="paint5_linear_texture" x1="7" y1="16" x2="25" y2="16" gradientUnits="userSpaceOnUse">
+<stop stop-color="#8bb8f0"/>
+<stop offset="0.5" stop-color="#6ba3f0"/>
+<stop offset="1" stop-color="#8bb8f0"/>
+</linearGradient>
+<linearGradient id="paint6_linear_texture" x1="9" y1="16" x2="23" y2="16" gradientUnits="userSpaceOnUse">
+<stop stop-color="#a0c7f0"/>
+<stop offset="0.5" stop-color="#8bb8f0"/>
+<stop offset="1" stop-color="#a0c7f0"/>
+</linearGradient>
+<!-- 高光效果 -->
+<radialGradient id="paint7_radial_highlight" cx="13" cy="13" r="2.5" gradientUnits="userSpaceOnUse">
+<stop stop-color="#ffffff"/>
+<stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+</radialGradient>
+</defs>
+</svg>
