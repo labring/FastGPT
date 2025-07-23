@@ -1,4 +1,4 @@
-import { GET, POST } from '@/web/common/api/request';
+import { DELETE, GET, POST } from '@/web/common/api/request';
 import type { UploadImgProps } from '@fastgpt/global/common/file/api.d';
 import { type AxiosProgressEvent } from 'axios';
 import type { PresignedUrlResponse } from '@fastgpt/service/common/file/plugin/config';
@@ -43,14 +43,12 @@ export const postPresignedUrl = (data: {
 export const postConfirmUpload = (data: { objectName: string; size: string }) =>
   POST<string>('/common/file/plugin/confirmUpload', data);
 
-export const postUploadFileAndUrl = async (url: string) => {
-  POST('/plugin/upload', {
+export const postUploadFileAndUrl = (url: string) =>
+  POST<void>('/plugin/upload', {
     url: url
   });
-};
 
-export const postDeletePlugin = async (toolId: string) => {
-  POST('/plugin/delete', {
+export const postDeletePlugin = (toolId: string) =>
+  DELETE<void>('/plugin/delete', {
     toolId
   });
-};

@@ -56,6 +56,7 @@ const SystemTools = () => {
     data: plugins = [],
     loading: isLoading,
     runAsync: refreshPlugins
+    // refreshAsync: refreshPlugins
   } = useRequest2(getSystemPlugTemplates, {
     manual: false
   });
@@ -94,6 +95,7 @@ const SystemTools = () => {
       });
 
       await postUploadFileAndUrl(fileUrl);
+      await refreshPlugins({ parentId: null });
     },
     {
       manual: true,
@@ -106,7 +108,6 @@ const SystemTools = () => {
         setSelectFiles([]);
         onClose();
         // null means all tools
-        await refreshPlugins({ parentId: null });
       },
       onError: (error) => {
         toast({
@@ -184,7 +185,7 @@ const SystemTools = () => {
                 <Flex alignItems={'center'} justifyContent={'space-between'}>
                   {isPc ? (
                     <Box fontSize={'lg'} color={'myGray.900'} fontWeight={500}>
-                      {t('common:core.module.template.System Tools')}
+                      {t('app:core.module.template.System Tools')}
                     </Box>
                   ) : (
                     MenuIcon

@@ -373,7 +373,6 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplat
     pluginOrder: item.pluginOrder,
     associatedPluginId,
     userGuide,
-    toolSource: 'uploaded', // Custom plugins are uploaded
     workflow: {
       nodes: [],
       edges: []
