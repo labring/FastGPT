@@ -1,4 +1,5 @@
 import type { SubTypeEnum, StandardSubLevelEnum } from '../constants';
+import type { CouponTypeEnum } from './constants';
 
 export type TeamCouponSub = {
   type: `${SubTypeEnum}`; // Sub type
@@ -13,4 +14,7 @@ export type TeamCouponSchema = {
   subscriptions: TeamCouponSub[];
   redeemedAt?: Date;
   expiredAt?: Date;
+  redeemedTeamId?: string;
+  type: CouponTypeEnum;
+  price?: number;
 };
