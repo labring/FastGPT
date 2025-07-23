@@ -29,7 +29,10 @@ export default async function Layout({
     },
     {
       title: t('common:use-cases', lang),
-      url: lang === 'zh-CN' ? '/docs/use-cases' : '/en/docs/use-cases',
+      url:
+        lang === 'zh-CN'
+          ? '/docs/use-cases/external-integration/openapi'
+          : '/en/docs/use-cases/external-integration/openapi',
       className: 'nav-tabs-link-active-color'
     },
     // {
@@ -39,7 +42,7 @@ export default async function Layout({
     // },
     {
       title: t('common:protocol', lang),
-      url: lang === 'zh-CN' ? '/docs/protocol' : '/en/docs/protocol',
+      url: lang === 'zh-CN' ? '/docs/protocol/open-source' : '/en/docs/protocol/open-source',
       className: 'nav-tabs-link-active-color'
     }
   ];

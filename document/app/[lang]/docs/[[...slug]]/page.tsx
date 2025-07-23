@@ -3,7 +3,6 @@ import { DocsPage, DocsBody, DocsDescription, DocsTitle } from 'fumadocs-ui/page
 import { notFound } from 'next/navigation';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { getMDXComponents } from '@/mdx-components';
-import { fetchLastModified } from '@/lib/github';
 
 export default async function Page({
   params
@@ -15,7 +14,6 @@ export default async function Page({
   if (!page || !page.data || !page.file) notFound();
 
   const MDXContent = page.data.body;
-  const lastModified = await fetchLastModified(`/content/docs/${page.path}`);
 
   return (
     <DocsPage
@@ -30,7 +28,7 @@ export default async function Page({
         sha: 'main',
         path: `document/content/docs/${page.file.path}`
       }}
-      lastUpdate={lastModified ? new Date(lastModified) : undefined}
+      lastUpdate={page.data.lastModified ? new Date(page.data.lastModified) : undefined}
     >
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
