@@ -1,24 +1,68 @@
-# 开发环境文件
+# Dependencies
+node_modules
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local env files
+.env
+.env.local
+.env.production.local
+.env.test.local
+
+# Vercel
+.vercel
+
+# Typescript
+*.tsbuildinfo
+
+# Next.js
+.next/
+out/
+
+# Production
+build
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+debug.log*
+
+# Git
 .git
 .gitignore
-.env*
-.next
-node_modules
 
-# Docker 相关
-Dockerfile
-.dockerignore
+# Testing
+coverage
+.nyc_output
 
-# 其他
-README.md
-*.log
-.DS_Store
-
-# 缓存文件
+# Cache
 .cache
-.npm
-.pnpm-store
+.parcel-cache
 
-# IDE 配置
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+
+# IDE
 .vscode
-.idea 
+.idea
+
+# OS
+Thumbs.db
+
+# Temporary folders
+tmp/
+temp/ 

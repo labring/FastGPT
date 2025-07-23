@@ -5,15 +5,15 @@ on:
       - 'document/**'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+  attestations: write
+  id-token: write
+
 jobs:
   build-images:
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      packages: write
-      attestations: write
-      id-token: write
 
     steps:
       - name: Checkout
