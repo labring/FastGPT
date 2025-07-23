@@ -1,0 +1,5 @@
+{
+  "title": "对话框",
+  "description": "对话框组件，支持多种交互方式，提升用户在应用中的交互体验。",
+  "pages": ["htmlRendering","quoteList"]
+}
