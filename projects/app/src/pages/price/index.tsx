@@ -48,7 +48,7 @@ const PriceBox = () => {
         <Box fontWeight={'600'} color={'myGray.900'} fontSize={['24px', '36px']}>
           {t('common:support.wallet.subscription.Sub plan')}
         </Box>
-        <Box mt={8} mb={10} fontWeight={'500'} color={'myGray.600'} fontSize={'md'}>
+        <Box fontWeight={'500'} color={'myGray.600'} fontSize={'md'}>
           {t('common:support.wallet.subscription.Sub plan tip', {
             title: feConfigs?.systemTitle
           })}
