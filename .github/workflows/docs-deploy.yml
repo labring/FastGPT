@@ -1,6 +1,8 @@
 name: Document deploy
 on:
-  pull_request_target:
+  push:
+    branches:
+      - main
     paths:
       - 'document/**'
   workflow_dispatch:
