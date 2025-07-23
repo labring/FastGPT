@@ -25,7 +25,7 @@ jobs:
         with:
           # list of Docker images to use as base name for tags
           images: |
-            ${{ secrets.ALI_IMAGE_NAME }}//fastgpt-docs
+            ${{ secrets.ALI_IMAGE_NAME }}/fastgpt-docs
           tags: |
             ${{ steps.datetime.outputs.datetime }}
           flavor: latest=false
@@ -64,17 +64,17 @@ jobs:
     if: github.repository == 'labring/FastGPT'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - uses: actions-hub/kubectl@master
         env:
           KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
         with:
-          args: set image deployment/fastgpt-docs-preview fastgpt-docs-preview=${{ secrets.ALI_IMAGE_NAME }}//fastgpt-docs:${{ needs.build-fastgpt-docs-images.outputs.tags }}
+          args: set image deployment/fastgpt-docs-preview fastgpt-docs-preview=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-docs:${{ needs.build-fastgpt-docs-images.outputs.tags }}
       - uses: actions-hub/kubectl@master
         env:
           KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
         with:
-          args: annotate deployment/fastgpt-docs-preview originImageName="${{ secrets.ALI_IMAGE_NAME }}//fastgpt-docs:${{ needs.build-fastgpt-docs-images.outputs.tags }}" --overwrite
+          args: annotate deployment/fastgpt-docs-preview originImageName="${{ secrets.ALI_IMAGE_NAME }}/fastgpt-docs:${{ needs.build-fastgpt-docs-images.outputs.tags }}" --overwrite
 
       - name: '@finleyge/github-tools'
         uses: FinleyGe/github-tools@0.0.1
