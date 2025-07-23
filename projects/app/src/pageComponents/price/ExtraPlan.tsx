@@ -1,6 +1,6 @@
 import { Box, Flex, Grid, Button, VStack, HStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useForm } from 'react-hook-form';
@@ -36,8 +36,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
     watch: watchDatasetSize,
     register: registerDatasetSize,
     handleSubmit: handleSubmitDatasetSize,
-    setValue: setValueDatasetSize,
-    getValues: getValuesDatasetSize
+    setValue: setValueDatasetSize
   } = useForm({
     defaultValues: {
       datasetSize: 1,
@@ -93,31 +92,6 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
   // 监听积分和月份变化
   const watchedPoints = watchExtraPoints('points');
   const watchedMonth = watchExtraPoints('month');
-
-  // 添加标记，避免月份变化时重置用户输入的积分
-  const [isUserInputPoints, setIsUserInputPoints] = useState(false);
-
-  // 当积分变化时，自动更新月份
-  useEffect(() => {
-    if (watchedPoints && watchedPoints > 0 && !isNaN(watchedPoints)) {
-      const expectedMonth = getMonthByPoints(watchedPoints);
-      if (expectedMonth !== watchedMonth) {
-        setValueExtraPoints('month', expectedMonth);
-      }
-    }
-  }, [watchedPoints]);
-
-  // 当月份变化时，设置积分为该月份的下限（仅在非用户输入时）
-  useEffect(() => {
-    if (watchedMonth && !isUserInputPoints) {
-      const minPoints = getMinPointsByMonth(watchedMonth);
-      if (watchedPoints !== minPoints) {
-        setValueExtraPoints('points', minPoints);
-      }
-    }
-    // 重置标记
-    setIsUserInputPoints(false);
-  }, [watchedMonth]);
 
   const { runAsync: onclickBuyExtraPoints, loading: isLoadingBuyExtraPoints } = useRequest2(
     async ({ points, month }: { points: number; month: number }) => {
@@ -214,14 +188,17 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                   min={0}
                   size={'sm'}
                   onChange={(val) => {
-                    setIsUserInputPoints(true);
                     // 过滤掉NaN和无效输入
                     if (val === ('' as unknown as number) || val === null || val === undefined) {
                       setValueExtraPoints('points', undefined as unknown as number);
                     } else if (!isNaN(val) && val >= 0) {
                       setValueExtraPoints('points', val as unknown as number);
+                      // 当用户输入积分时，自动更新月份
+                      const expectedMonth = getMonthByPoints(val);
+                      if (expectedMonth !== watchedMonth) {
+                        setValueExtraPoints('month', expectedMonth);
+                      }
                     }
-                    // 如果是无效输入（如NaN），不做任何处理，保持当前值
                   }}
                 />
                 <Box flexShrink={0} color={'myGray.600'}>
@@ -247,11 +224,9 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                   list={expireSelectorOptions}
                   onChange={(val) => {
                     setValueExtraPoints('month', val);
-                    // 当用户选择月份时，强制更新积分为该月份的最小值
+                    // 当用户选择月份时，设置积分为该月份的最小值
                     const minPoints = getMinPointsByMonth(val);
                     setValueExtraPoints('points', minPoints);
-                    // 重置用户输入标记
-                    setIsUserInputPoints(false);
                   }}
                 />
               </Flex>
