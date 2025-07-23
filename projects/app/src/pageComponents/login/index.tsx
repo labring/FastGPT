@@ -2,7 +2,6 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   Box,
   Button,
-  Center,
   Drawer,
   DrawerCloseButton,
   DrawerContent,
@@ -36,10 +35,8 @@ const ipDetectURL = 'https://qifu-api.baidubce.com/ip/local/geo/v1/district';
 export const useLoginLogic = (options: {
   onSuccess?: (res: ResLogin) => void;
   chineseRedirectUrl?: string;
-  autoInit?: boolean;
-  enabled?: boolean;
 }) => {
-  const { onSuccess, chineseRedirectUrl, autoInit = true, enabled = true } = options;
+  const { onSuccess, chineseRedirectUrl } = options;
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const { setUserInfo } = useUserStore();
@@ -137,13 +134,6 @@ export const useLoginLogic = (options: {
     feConfigs?.oauth?.wechat,
     setLastChatAppId
   ]);
-
-  // 自动初始化
-  useEffect(() => {
-    if (autoInit && enabled) {
-      initLoginLogic();
-    }
-  }, [autoInit, enabled, initLoginLogic]);
 
   // 动态组件
   const DynamicComponent = useMemo(() => {
@@ -287,24 +277,19 @@ export const CookiesDrawer = ({
 export const LoginContainer = ({
   onSuccess,
   chineseRedirectUrl,
-  autoInit = true,
-  enabled = true,
   children
 }: {
   onSuccess?: (res: ResLogin) => void;
   chineseRedirectUrl?: string;
-  autoInit?: boolean;
-  enabled?: boolean;
   children?: React.ReactNode;
 }) => {
   const loginLogic = useLoginLogic({
     onSuccess,
-    chineseRedirectUrl,
-    autoInit,
-    enabled
+    chineseRedirectUrl
   });
 
   const {
+    t,
     pageType,
     feConfigs,
     DynamicComponent,
@@ -331,14 +316,33 @@ export const LoginContainer = ({
         />
       )}
 
-      {/* 主内容区域 */}
-      <Box w={['100%', '380px']} flex={'1 0 0'}>
-        {pageType && DynamicComponent ? (
-          DynamicComponent
-        ) : (
-          <Center w={'full'} h={'full'} position={'relative'}>
-            <Loading fixed={false} />
-          </Center>
+      <Box position="relative" w="full" h="full">
+        {/* main content area */}
+        <Box w={['100%', '380px']} minH={['100vh', '600px']} flex={'1 0 0'}>
+          {pageType && DynamicComponent ? DynamicComponent : <Loading fixed={false} />}
+        </Box>
+
+        {/* custom content */}
+        {children}
+
+        {/* help link for login */}
+        {feConfigs?.concatMd && (
+          <Box
+            mt={
+              pageType === LoginPageTypeEnum.register ||
+              pageType === LoginPageTypeEnum.forgetPassword
+                ? 10
+                : 4
+            }
+            color={'primary.700'}
+            fontSize={'mini'}
+            fontWeight={'medium'}
+            cursor={'pointer'}
+            textAlign={'center'}
+            onClick={onCommunityOpen}
+          >
+            {t('common:support.user.login.can_not_login')}
+          </Box>
         )}
       </Box>
 
@@ -353,7 +357,7 @@ export const LoginContainer = ({
           textAlign={'center'}
           onClick={onCommunityOpen}
         >
-          {loginLogic.t('common:support.user.login.can_not_login')}
+          {t('common:support.user.login.can_not_login')}
         </Box>
       )}
 

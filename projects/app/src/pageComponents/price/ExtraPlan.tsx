@@ -11,23 +11,11 @@ import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRC
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { getComputedMonth } from '@fastgpt/global/support/wallet/bill/tools';
-
-// 根据月份获取积分下限
-const getMinPointsByMonth = (month: number): number => {
-  switch (month) {
-    case 12:
-      return 200;
-    case 6:
-      return 100;
-    case 3:
-      return 50;
-    case 1:
-      return 1;
-    default:
-      return 1;
-  }
-};
+import {
+  getMonthByPoints,
+  getMinPointsByMonth,
+  calculatePrice
+} from '@fastgpt/global/support/wallet/bill/tools';
 
 const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
   const { t } = useTranslation();
@@ -116,7 +104,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
   // 当积分变化时，自动更新月份
   useEffect(() => {
     if (watchedPoints && watchedPoints > 0 && !isNaN(watchedPoints)) {
-      const expectedMonth = getComputedMonth(watchedPoints);
+      const expectedMonth = getMonthByPoints(watchedPoints);
       if (expectedMonth !== watchedMonth) {
         setValueExtraPoints('month', expectedMonth);
       }
@@ -170,7 +158,8 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
     <VStack>
       <Grid gridTemplateColumns={['1fr', '1fr 1fr']} gap={5} w={['100%', 'auto']}>
         {/* points */}
-        <Box
+        <Flex
+          flexDir="column"
           bg={'rgba(255, 255, 255, 0.90)'}
           w={['100%', '500px']}
           px={'32px'}
@@ -179,19 +168,20 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
           borderWidth={'1px'}
           borderColor={'myGray.150'}
           boxShadow={'1.5'}
+          gap={4}
         >
           <Flex borderBottomWidth={'1px'} borderBottomColor={'myGray.200'} pb={1}>
-            <Box flex={'1 0 0'}>
+            <Flex flexDir="column" gap={3} flex={'1 0 0'}>
               <Box fontSize={'lg'} fontWeight={'500'} color={'primary.700'}>
                 {t('common:support.wallet.subscription.Extra ai points')}
               </Box>
-              <Box mt={3} fontSize={['28px', '32px']} fontWeight={'bold'} color={'black'}>
+              <Box fontSize={['28px', '32px']} fontWeight={'bold'} color={'black'}>
                 {`￥${extraPointsPrice}/1000` + t('common:support.wallet.subscription.point')}
               </Box>
-              <Box mt={1} fontSize={'xs'} color={'myGray.600'} fontWeight={'500'}>
+              <Box mt="auto" fontSize={'xs'} color={'myGray.600'} fontWeight={'500'}>
                 {t('common:support.wallet.subscription.Extra ai points description')}
               </Box>
-            </Box>
+            </Flex>
             <MyIcon
               display={['none', 'block']}
               mt={'-30px'}
@@ -200,8 +190,8 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
               fill={'none'}
             />
           </Flex>
-          <Box h={'180px'} w={'100%'}>
-            <Flex mt={4} color={'myGray.900'}>
+          <Flex flexDir="column" gap={4} h={'180px'} w={'100%'}>
+            <Flex color={'myGray.900'}>
               <MyIcon
                 mr={2}
                 name={'support/bill/shoppingCart'}
@@ -211,7 +201,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
               />
               {t('common:support.wallet.buy_ai_points')}
             </Flex>
-            <Flex mt={4} alignItems={'center'} fontSize={'sm'} h="36px">
+            <Flex alignItems={'center'} fontSize={'sm'} h="36px">
               <Box flex={['0 0 100px', '1 0 0']} color={'myGray.600'} fontWeight={'500'}>
                 {t('common:support.wallet.subscription.Points amount')}
               </Box>
@@ -243,7 +233,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                 </Box>
               </Flex>
             </Flex>
-            <Flex mt={4} alignItems={'center'} fontSize={'sm'} h="36px">
+            <Flex alignItems={'center'} fontSize={'sm'} h="36px">
               <Box flex={['0 0 100px', '1 0 0']} color={'myGray.600'} fontWeight={'500'}>
                 {t('common:support.wallet.subscription.Update extra expire')}
               </Box>
@@ -259,11 +249,18 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                   value={watchedMonth}
                   size={'sm'}
                   list={expireSelectorOptions}
-                  onChange={(val) => setValueExtraPoints('month', val)}
+                  onChange={(val) => {
+                    setValueExtraPoints('month', val);
+                    // 当用户选择月份时，强制更新积分为该月份的最小值
+                    const minPoints = getMinPointsByMonth(val);
+                    setValueExtraPoints('points', minPoints);
+                    // 重置用户输入标记
+                    setIsUserInputPoints(false);
+                  }}
                 />
               </Flex>
             </Flex>
-            <Flex mt={4} alignItems={'end'} fontSize={'sm'} h="36px">
+            <Flex alignItems={'end'} fontSize={'sm'} h="36px">
               <Box flex={['0 0 100px', '1 0 0']} color={'myGray.600'} fontWeight={'500'}>
                 {t('common:support.wallet.subscription.Update extra price')}
               </Box>
@@ -276,36 +273,44 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                 fontWeight={500}
                 fontSize={'20px'}
               >
-                {`￥${15 * watchedPoints}`}
+                {`￥${(() => {
+                  const price = calculatePrice(extraPointsPrice, {
+                    type: 'points',
+                    points: watchedPoints
+                  });
+                  return Number.isNaN(price) ? 0 : price;
+                })()}`}
               </Flex>
             </Flex>
+          </Flex>
+          <Box mt={'auto'}>
+            <Button
+              w={'100%'}
+              h={'44px'}
+              variant={'primaryGhost'}
+              isLoading={isLoadingBuyExtraPoints}
+              onClick={() => {
+                const values = getValuesExtraPoints();
+                const points = values.points || 1; // 如果为空，默认为1
+                const month = values.month || 1;
+                onclickBuyExtraPoints({ points, month });
+              }}
+              color={'primary.700'}
+            >
+              {t('common:support.wallet.Buy')}
+            </Button>
+            <HStack color={'blue.700'} mt={4}>
+              <MyIcon name={'infoRounded'} w={'1rem'} />
+              <Box fontSize={'sm'} fontWeight={'500'}>
+                {t('common:support.wallet.subscription.Update extra ai points tips')}
+              </Box>
+            </HStack>
           </Box>
-          <Button
-            mt={6}
-            w={'100%'}
-            h={'44px'}
-            variant={'primaryGhost'}
-            isLoading={isLoadingBuyExtraPoints}
-            onClick={() => {
-              const values = getValuesExtraPoints();
-              const points = values.points || 1; // 如果为空，默认为1
-              const month = values.month || 1;
-              onclickBuyExtraPoints({ points, month });
-            }}
-            color={'primary.700'}
-          >
-            {t('common:support.wallet.Buy')}
-          </Button>
-          <HStack color={'blue.700'} mt={4}>
-            <MyIcon name={'infoRounded'} w={'1rem'} />
-            <Box fontSize={'sm'} fontWeight={'500'}>
-              {t('common:support.wallet.subscription.Update extra ai points tips')}
-            </Box>
-          </HStack>
-        </Box>
+        </Flex>
 
         {/* dataset */}
-        <Box
+        <Flex
+          flexDir="column"
           bg={'rgba(255, 255, 255, 0.90)'}
           px={'32px'}
           py={'24px'}
@@ -314,19 +319,20 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
           borderColor={'myGray.150'}
           boxShadow={'1.5'}
           w={['100%', '500px']}
+          gap={4}
         >
           <Flex borderBottomWidth={'1px'} borderBottomColor={'myGray.200'} pb={1}>
-            <Box flex={'1 0 0'}>
+            <Flex flexDir="column" gap={3} flex={'1 0 0'}>
               <Box fontSize={'lg'} fontWeight={'500'} color={'primary.700'}>
                 {t('common:support.wallet.subscription.Extra dataset size')}
               </Box>
-              <Box mt={3} fontSize={['28px', '32px']} fontWeight={'bold'} color={'black'}>
+              <Box fontSize={['28px', '32px']} fontWeight={'bold'} color={'black'}>
                 {`￥${extraDatasetPrice}/1000${t('common:support.wallet.subscription.Extra dataset unit')}`}
               </Box>
-              <Box mt={1} fontSize={'xs'} color={'myGray.600'} fontWeight={'500'}>
+              <Box mt="auto" fontSize={'xs'} color={'myGray.600'} fontWeight={'500'}>
                 {t('common:support.wallet.subscription.Extra dataset description')}
               </Box>
-            </Box>
+            </Flex>
             <MyIcon
               display={['none', 'block']}
               mt={'-30px'}
@@ -336,8 +342,8 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
             />
           </Flex>
 
-          <Box h={'180px'} w={'100%'}>
-            <Flex mt={4} color={'myGray.900'}>
+          <Flex flexDir="column" gap={4} h={'180px'} w={'100%'}>
+            <Flex color={'myGray.900'}>
               <MyIcon
                 mr={2}
                 name={'support/bill/shoppingCart'}
@@ -347,7 +353,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
               />
               {t('common:support.wallet.buy_dataset_capacity')}
             </Flex>
-            <Flex mt={4} alignItems={'center'} fontSize={'sm'}>
+            <Flex alignItems={'center'} fontSize={'sm'}>
               <Box flex={['0 0 100px', '1 0 0']} color={'myGray.600'} fontWeight={'500'}>
                 {t('common:support.wallet.subscription.Dataset size')}
               </Box>
@@ -371,7 +377,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                 </Box>
               </Flex>
             </Flex>
-            <Flex mt={4} alignItems={'center'} fontSize={'sm'}>
+            <Flex alignItems={'center'} fontSize={'sm'}>
               <Box flex={['0 0 100px', '1 0 0']} color={'myGray.600'} fontWeight={'500'}>
                 {t('common:support.wallet.subscription.Update extra expire')}
               </Box>
@@ -391,7 +397,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                 />
               </Flex>
             </Flex>
-            <Flex mt={4} alignItems={'end'} fontSize={'sm'} h="36px">
+            <Flex alignItems={'end'} fontSize={'sm'} h="36px">
               <Box flex={['0 0 100px', '1 0 0']} color={'myGray.600'} fontWeight={'500'}>
                 {t('common:support.wallet.subscription.Update extra price')}
               </Box>
@@ -404,28 +410,36 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                 fontWeight={500}
                 fontSize={'20px'}
               >
-                {`￥${extraDatasetPrice * watchedDatasetSize * datasetMonth}`}
+                {`￥${(() => {
+                  const price = calculatePrice(extraDatasetPrice, {
+                    type: 'dataset',
+                    size: watchedDatasetSize,
+                    month: datasetMonth
+                  });
+                  return Number.isNaN(price) ? 0 : price;
+                })()}`}
               </Flex>
             </Flex>
+          </Flex>
+          <Box mt={'auto'}>
+            <Button
+              w={'100%'}
+              h={'44px'}
+              variant={'primaryGhost'}
+              isLoading={isLoadingBuyDatasetSize}
+              onClick={handleSubmitDatasetSize(onclickBuyDatasetSize)}
+              color={'primary.700'}
+            >
+              {t('common:support.wallet.Buy')}
+            </Button>
+            <HStack color={'blue.700'} mt={4}>
+              <MyIcon name={'infoRounded'} w={'1rem'} />
+              <Box fontSize={'sm'} fontWeight={'500'}>
+                {t('common:support.wallet.subscription.Update extra dataset tips')}
+              </Box>
+            </HStack>
           </Box>
-          <Button
-            mt={6}
-            w={'100%'}
-            h={'44px'}
-            variant={'primaryGhost'}
-            isLoading={isLoadingBuyDatasetSize}
-            onClick={handleSubmitDatasetSize(onclickBuyDatasetSize)}
-            color={'primary.700'}
-          >
-            {t('common:support.wallet.Buy')}
-          </Button>
-          <HStack color={'blue.700'} mt={4}>
-            <MyIcon name={'infoRounded'} w={'1rem'} />
-            <Box fontSize={'sm'} fontWeight={'500'}>
-              {t('common:support.wallet.subscription.Update extra dataset tips')}
-            </Box>
-          </HStack>
-        </Box>
+        </Flex>
       </Grid>
 
       {!!qrPayData && <QRCodePayModal onSuccess={onPaySuccess} {...qrPayData} />}
