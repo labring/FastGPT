@@ -16,7 +16,6 @@ export type CreateStandPlanBill = {
 type CreateExtractPointsBill = {
   type: BillTypeEnum.extraPoints;
   extraPoints: number;
-  month: number;
 };
 type CreateExtractDatasetBill = {
   type: BillTypeEnum.extraDatasetSub;
