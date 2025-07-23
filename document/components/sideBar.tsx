@@ -78,3 +78,16 @@ export const CustomSidebarComponents: SidebarComponents = {
   Folder: CustomFolder,
   Separator: CustomSeparator
 };
+
+export const CustomNavItem: FC<{ item: { url: string; urlPrefix?: string; title: string } }> = ({
+  item
+}) => {
+  const pathname = usePathname();
+  const isActive = item.urlPrefix ? pathname.startsWith(item.urlPrefix) : pathname === item.url;
+
+  return (
+    <a href={item.url} className={`nav-link ${isActive ? 'active' : ''}`}>
+      {item.title}
+    </a>
+  );
+};

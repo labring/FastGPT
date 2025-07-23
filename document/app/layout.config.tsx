@@ -18,7 +18,6 @@ export const baseOptions = (locale: string): BaseLayoutProps => {
       title: (
         <div className="flex flex-col">
           <div className="flex flex-row items-center gap-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/FastGPT-full.svg" alt="FastGPT" width={49} height={48} />
           </div>
           <div className="relative flex flex-row items-center gap-2 h-10 top-14"> 12321</div>
