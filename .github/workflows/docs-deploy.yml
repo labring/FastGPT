@@ -1,6 +1,8 @@
-name: Preview documents
+name: Document deploy
 on:
-  pull_request_target:
+  push:
+    branches:
+      - main
     paths:
       - 'document/**'
   workflow_dispatch:
@@ -15,6 +17,13 @@ permissions:
 jobs:
   build-images:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        domain_config:
+          - domain: 'https://fastgpt.io'
+            suffix: 'io'
+          - domain: 'https://fastgpt.cn'
+            suffix: 'cn'
 
     steps:
       - name: Checkout
@@ -32,7 +41,7 @@ jobs:
           images: |
             ${{ secrets.ALI_IMAGE_NAME }}/fastgpt-docs
           tags: |
-            ${{ steps.datetime.outputs.datetime }}
+            ${{ matrix.domain_config.suffix }}-${{ steps.datetime.outputs.datetime }}
           flavor: latest=false
 
       - name: Set up QEMU
@@ -44,10 +53,10 @@ jobs:
       - name: Cache Docker layers
         uses: actions/cache@v4
         with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-docs-buildx-${{ github.sha }}
+          path: /tmp/.buildx-cache-${{ matrix.domain_config.suffix }}
+          key: ${{ runner.os }}-docs-buildx-${{ matrix.domain_config.suffix }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-docs-buildx-
+            ${{ runner.os }}-docs-buildx-${{ matrix.domain_config.suffix }}-
 
       - name: Login to Aliyun
         uses: docker/login-action@v3
@@ -65,18 +74,29 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           # 使用本地缓存替代 GHA 缓存
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
+          cache-from: type=local,src=/tmp/.buildx-cache-${{ matrix.domain_config.suffix }}
+          cache-to: type=local,dest=/tmp/.buildx-cache-${{ matrix.domain_config.suffix }}
           build-args: |
             NEXT_PUBLIC_SEARCH_APPKEY=c4708d48f2de6ac5d2f0f443979ef92a
             NEXT_PUBLIC_SEARCH_APPID=HZAF4C2T88
-            NEXT_PUBLIC_HOME_DOMAIN=https://fastgpt.io
+            NEXT_PUBLIC_HOME_DOMAIN=${{ matrix.domain_config.domain }}
     outputs:
       tags: ${{ steps.datetime.outputs.datetime }}
 
   update-images:
     needs: build-images
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        domain_config:
+          - domain: 'https://fastgpt.io'
+            suffix: 'io'
+            deployment: 'fastgpt-docs'
+            kube_config: 'KUBE_CONFIG_IO'
+          - domain: 'https://fastgpt.cn'
+            suffix: 'cn'
+            deployment: 'fastgpt-docs'
+            kube_config: 'KUBE_CONFIG_CN'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -85,27 +105,13 @@ jobs:
       - name: Setup kubeconfig
         run: |
           mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBE_CONFIG_CN }}" > $HOME/.kube/config
+          echo "${{ secrets[matrix.domain_config.kube_config] }}" > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
 
       - name: Update deployment image
         run: |
-          kubectl set image deployment/fastgpt-docs-preview fastgpt-docs-preview=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-docs:${{ needs.build-images.outputs.tags }}
+          kubectl set image deployment/${{ matrix.domain_config.deployment }} ${{ matrix.domain_config.deployment }}=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-docs:${{ matrix.domain_config.suffix }}-${{ needs.build-images.outputs.tags }}
 
       - name: Annotate deployment
         run: |
-          kubectl annotate deployment/fastgpt-docs-preview originImageName="${{ secrets.ALI_IMAGE_NAME }}/fastgpt-docs:${{ needs.build-images.outputs.tags }}" --overwrite
-
-      - name: '@finleyge/github-tools'
-        uses: FinleyGe/github-tools@0.0.1
-        id: print-image-label
-        if: success()
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tool: issue-comment
-          title: 'Docs Preview:'
-          body: |
-            ---
-            🚀 **FastGPT Document Preview Ready!**
-
-            🔗 [👀 Click here to visit preview](https://pueuoharpgcl.sealoshzh.site)
+          kubectl annotate deployment/${{ matrix.domain_config.deployment }} originImageName="${{ secrets.ALI_IMAGE_NAME }}/fastgpt-docs:${{ matrix.domain_config.suffix }}-${{ needs.build-images.outputs.tags }}" --overwrite

@@ -24,7 +24,7 @@
 NEXT_PUBLIC_SEARCH_APPWRITEKEY =  #这是上面获取的Write api key
 NEXT_PUBLIC_SEARCH_APPKEY = #这是上面获取的搜索key
 NEXT_PUBLIC_SEARCH_APPID =  #这是上面的搜索id
-NEXT_PUBLIC_DOMAIN =    #要跳转的FastGPT项目的域名，默认海外版
+NEXT_PUBLIC_HOME_DOMAIN =    #要跳转的FastGPT项目的域名，默认海外版
 ```
 
 你可以在FastGPT项目根目录下执行以下命令来运行文档。

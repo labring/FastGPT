@@ -14,6 +14,7 @@ const withMDX = createMDX({
 const config = {
   output: 'standalone',
   reactStrictMode: true,
+  compress: true,
   images: {
     unoptimized: true,
     dangerouslyAllowSVG: true,

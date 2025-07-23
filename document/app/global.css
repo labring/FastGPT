@@ -166,17 +166,17 @@ figure.shiki button[aria-label='Copy Text'] {
   }
 }
 #nd-subnav > div:nth-of-type(1) {
-  border-bottom: 0.1px solid #f4f4f7 !important;
+  border-bottom: 0.1px solid #e8ebf0 !important;
 }
 #nd-subnav > div:nth-of-type(2) {
-  border-bottom: 0.1px solid #dfe2ea !important;
+  border-bottom: 0.1px solid #e8ebf0 !important;
   height: 100%;
 }
 .dark #nd-subnav > div:nth-of-type(1) {
   border-bottom: 0.1px solid #363b4a58 !important;
 }
 .dark #nd-subnav > div:nth-of-type(2) {
-  border-bottom: 0.1px solid #61646fc6 !important;
+  border-bottom: 0.1px solid #363b4a58 !important;
 }
 
 div[data-rmiz-modal-content] {
@@ -195,6 +195,14 @@ div[data-rmiz-modal-overlay='visible'] {
   background-color: #060c1a00 !important;
 }
 
+#nd-tocnav {
+  border-bottom-color: #e8ebf0 !important;
+}
+.dark #nd-tocnav {
+  border-bottom-color: #1d2532 !important;
+  cursor: pointer !important;
+}
+
 #nd-subnav > div:nth-of-type(2) a {
   text-decoration: none;
   color: #485264;
@@ -204,7 +212,7 @@ div[data-rmiz-modal-overlay='visible'] {
   /* 先清除默认下划线 */
   &:hover {
     text-decoration: underline;
-    text-decoration-color: #c5d7ff;
+    text-decoration-color: #dfe2ea;
     text-decoration-thickness: 3px; /* 下划线粗细 */
     text-underline-offset: 17px; /* 下划线与文字距离 */
   }
