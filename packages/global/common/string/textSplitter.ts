@@ -69,12 +69,8 @@ const strIsMdTable = (str: string) => {
  * @param props - 传入的参数对象，包含 text（表格内容字符串）和 chunkSize（每块最大长度）
  * @returns {SplitResponse} - 返回拆分后的表格块数组和总字符数
  */
-const markdownTableSplit = (props: SplitProps & { usedLength?: number }): SplitResponse => {
-  let { text = '', chunkSize, usedLength = 0 } = props;
-
-  // 如果传入了usedLength且大于0，则考虑剩余空间，否则使用完整的chunkSize
-  const effectiveChunkSize =
-    usedLength > 0 ? Math.max(chunkSize - usedLength, chunkSize * 0.3) : chunkSize;
+const markdownTableSplit = (props: SplitProps): SplitResponse => {
+  let { text = '', chunkSize } = props;
 
   // 按行分割表格文本，保留空的表格行但过滤完全空白的行
   const splitText2Lines = text.split('\n').filter((line) => {
@@ -118,8 +114,8 @@ ${mdSplitString}
     // 下一个数据行的有效长度
     const nextLineLength = getTextValidLength(currentLine);
 
-    // 如果加上下一个数据行后超出 effectiveChunkSize，则将当前块推入结果，并新建一个块
-    if (chunkLength + nextLineLength > effectiveChunkSize) {
+    // 如果加上下一个数据行后超出 chunkSize，则将当前块推入结果，并新建一个块
+    if (chunkLength + nextLineLength > chunkSize) {
       chunks.push(chunk);
       // 新块也要包含表头和分隔行
       chunk = `${header}
@@ -170,20 +166,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
   text = text.replace(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g, function (match) {
     return match.replace(/\n/g, codeBlockMarker);
   });
-  // 2. Markdown 表格处理 - 单独提取表格出来，进行表头合并
-  const tableReg = /(\n\|(?:[^\n|]*\|)+\n\|(?:[:\-\s]*\|)+\n(?:\|(?:[^\n|]*\|)*\n?)*)(?:\n|$)/g;
-  const tableDataList = text.match(tableReg);
-  if (tableDataList) {
-    tableDataList.forEach((tableData) => {
-      const { chunks } = markdownTableSplit({
-        text: tableData.trim(),
-        chunkSize
-      });
-
-      const splitText = chunks.join('\n');
-      text = text.replace(tableData, `\n${splitText}\n`);
-    });
-  }
+  // 2. Markdown 表格处理 - 检测表格但不预分割，让主分割逻辑智能处理
 
   // replace invalid \n
   text = text.replace(/(\r?\n|\r){3,}/g, '\n\n\n');
@@ -370,6 +353,25 @@ const commonSplit = (props: SplitProps): SplitResponse => {
       const currentText = item.text;
       const newText = lastText + currentText;
       const newTextLen = getTextValidLength(newText);
+
+      // 表格特殊处理：如果当前文本是表格，且加上表格后会超出大小，先分块
+      if (strIsMdTable(currentText) && newTextLen > maxLen && lastTextLen > 0) {
+        // 先分块当前累积的内容
+        chunks.push(lastText);
+
+        // 对表格进行分块
+        const { chunks: tableChunks } = markdownTableSplit({
+          text: currentText,
+          chunkSize
+        });
+
+        chunks.push(...tableChunks);
+        lastText = getOneTextOverlapText({
+          text: tableChunks[tableChunks.length - 1] || currentText,
+          step
+        });
+        continue;
+      }
 
       // Markdown 模式下，会强制向下拆分最小块，并再最后一个标题深度，给小块都补充上所有标题（包含父级标题）
       if (isMarkdownStep) {
