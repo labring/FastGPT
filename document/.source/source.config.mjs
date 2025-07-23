@@ -1,10 +1,5 @@
 // source.config.ts
-import {
-  defineConfig,
-  defineDocs,
-  frontmatterSchema,
-  metaSchema
-} from "fumadocs-mdx/config";
+import { defineConfig, defineDocs, frontmatterSchema, metaSchema } from "fumadocs-mdx/config";
 var docs = defineDocs({
   docs: {
     schema: frontmatterSchema
