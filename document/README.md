@@ -12,7 +12,7 @@
 
 ![](./public/readme/algolia2.png)
 
-页面中的`Application ID`和`Search API Key`就是环境变量对应的`NEXT_PUBLIC_SEARCH_APPID`和`NEXT_PUBLIC_SEARCH_APPKEY`
+页面中的`Application ID`和`Search API Key`，`Write API KEY`就是环境变量对应的`NEXT_PUBLIC_SEARCH_APPID`和`NEXT_PUBLIC_SEARCH_APPKEY`，`NEXT_PUBLIC_SEARCH_APPWRITEKEY`
 
 ![](./public/readme/algolia3.png)
 
@@ -21,11 +21,9 @@
 要运行文档，首先需要进行环境变量配置，在文档的根目录下创建`.env.local`文件，填写以下环境变量:
 
 ```bash
-GITHUB_TOKEN =    #这是github申请的token，`https://github.com/settings/personal-access-tokens`建议创建token时，采用只有选择的库可以使用token，这样更安全
+NEXT_PUBLIC_SEARCH_APPWRITEKEY =  #这是上面获取的Write api key
 NEXT_PUBLIC_SEARCH_APPKEY = #这是上面获取的搜索key
 NEXT_PUBLIC_SEARCH_APPID =  #这是上面的搜索id
-GITHUB_REPO =   #fork的仓库名
-GITHUB_OWNER =  #你的github名
 NEXT_PUBLIC_DOMAIN =    #要跳转的FastGPT项目的域名，默认海外版
 ```
 
