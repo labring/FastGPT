@@ -244,14 +244,8 @@ export const LoginContainer = ({
 
       <Box position="relative" w="full" h="full">
         {/* main content area */}
-        <Box w={['100%', '380px']} flex={'1 0 0'}>
-          {pageType && DynamicComponent ? (
-            DynamicComponent
-          ) : (
-            <Center w={'full'} h={'full'} position={'relative'}>
-              <Loading fixed={false} />
-            </Center>
-          )}
+        <Box w={['100%', '380px']} minH={['100vh', '600px']} flex={'1 0 0'}>
+          {pageType && DynamicComponent ? DynamicComponent : <Loading fixed={false} />}
         </Box>
 
         {/* custom content */}

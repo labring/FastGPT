@@ -74,6 +74,7 @@ export const menuItemStyles: MenuItemProps = {
 
 const MySelect = <T = any,>(
   {
+    bg = '#fff',
     placeholder,
     value,
     valueLabel,
@@ -223,6 +224,7 @@ const MySelect = <T = any,>(
           _active={{
             transform: 'none'
           }}
+          bg={bg ? (isOpen ? '#fff' : bg) : '#fff'}
           color={isOpen ? 'primary.700' : 'myGray.700'}
           borderColor={isInvalid ? 'red.500' : isOpen ? 'primary.300' : 'myGray.200'}
           boxShadow={
@@ -232,17 +234,7 @@ const MySelect = <T = any,>(
                 : '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
               : 'none'
           }
-          _hover={
-            isInvalid
-              ? {
-                  borderColor: 'red.400',
-                  boxShadow: '0px 0px 0px 2.4px rgba(255, 0, 0, 0.15)'
-                }
-              : {
-                  borderColor: 'primary.300',
-                  boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
-                }
-          }
+          _hover={isInvalid ? { borderColor: 'red.400' } : { borderColor: 'primary.300' }}
           {...props}
         >
           <Flex alignItems={'center'} justifyContent="space-between" w="100%">
