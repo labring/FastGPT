@@ -37,6 +37,10 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
+import LogKeysConfigModal from './LogKeysConfigModal';
+import { getLogKeys } from '@/web/core/app/api/log';
+import type { LogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
+import { DefaultLogKeys } from '@fastgpt/global/core/app/logs/constants';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
@@ -52,6 +56,8 @@ const Logs = () => {
 
   const [detailLogsId, setDetailLogsId] = useState<string>();
   const [logTitle, setLogTitle] = useState<string>();
+  const [logKeys, setLogKeys] = useState<{ key: LogKeysEnum; enable: boolean }[]>(DefaultLogKeys);
+  const [logKeysConfigModalOpen, setLogKeysConfigModalOpen] = useState(false);
 
   const {
     value: chatSources,
@@ -91,6 +97,23 @@ const Logs = () => {
     params,
     refreshDeps: [params]
   });
+  const { runAsync: fetchLogKeys } = useRequest2(
+    async () => {
+      return await getLogKeys({ appId });
+    },
+    {
+      manual: true,
+      onSuccess: (res) => {
+        if (res.logKeys) {
+          setLogKeys(res.logKeys);
+        }
+      }
+    }
+  );
+
+  useEffect(() => {
+    fetchLogKeys();
+  }, [appId]);
 
   const { runAsync: exportLogs } = useRequest2(
     async () => {
@@ -174,6 +197,14 @@ const Logs = () => {
           />
         </Flex>
         <Box flex={'1'} />
+        <Button
+          size={'md'}
+          variant={'outline'}
+          leftIcon={<MyIcon name={'common/paramsLight'} w={'18px'} color={'myGray.500'} />}
+          onClick={() => setLogKeysConfigModalOpen(true)}
+        >
+          {t('app:logs_key_config')}
+        </Button>
         <PopoverConfirm
           Trigger={<Button size={'md'}>{t('common:Export')}</Button>}
           showCancel
@@ -292,6 +323,13 @@ const Logs = () => {
             setDetailLogsId(undefined);
             getData(pageNum);
           }}
+        />
+      )}
+      {logKeysConfigModalOpen && (
+        <LogKeysConfigModal
+          onClose={() => setLogKeysConfigModalOpen(false)}
+          logKeysList={logKeys}
+          fetchLogKeys={fetchLogKeys}
         />
       )}
     </Flex>

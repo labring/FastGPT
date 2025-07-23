@@ -487,5 +487,6 @@ export const iconPaths = {
   union: () => import('./icons/union.svg'),
   user: () => import('./icons/user.svg'),
   visible: () => import('./icons/visible.svg'),
+  invisible: () => import('./icons/invisible.svg'),
   wx: () => import('./icons/wx.svg')
 };
