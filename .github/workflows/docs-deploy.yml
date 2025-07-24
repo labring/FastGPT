@@ -58,6 +58,20 @@ jobs:
           username: ${{ secrets.ALI_HUB_USERNAME }}
           password: ${{ secrets.ALI_HUB_PASSWORD }}
 
+      - name: Set build args
+        id: build-args
+        run: |
+          BASE_ARGS="NEXT_PUBLIC_SEARCH_APPKEY=c4708d48f2de6ac5d2f0f443979ef92a
+          NEXT_PUBLIC_SEARCH_APPID=HZAF4C2T88
+          FASTGPT_HOME_DOMAIN=${{ matrix.domain_config.domain }}"
+
+          if [ "${{ matrix.domain_config.suffix }}" = "cn" ]; then
+            echo "args=${BASE_ARGS}
+          SEARCH_APPWRITEKEY=${{ secrets.SEARCH_APPWRITEKEY }}" >> $GITHUB_OUTPUT
+          else
+            echo "args=${BASE_ARGS}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Build and push Docker images
         uses: docker/build-push-action@v5
         with:
@@ -67,11 +81,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64
-          build-args: |
-            NEXT_PUBLIC_SEARCH_APPKEY=c4708d48f2de6ac5d2f0f443979ef92a
-            NEXT_PUBLIC_SEARCH_APPID=HZAF4C2T88
-            FASTGPT_HOME_DOMAIN=${{ matrix.domain_config.domain }}
-            ${{ matrix.domain_config.suffix == 'cn' && 'SEARCH_APPWRITEKEY=${{ secrets.SEARCH_APPWRITEKEY }}' || '' }}
+          build-args: ${{ steps.build-args.outputs.args }}
 
   update-images:
     needs: [generate-timestamp, build-images]
