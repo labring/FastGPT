@@ -8,8 +8,7 @@
     "update-index": "node --env-file=.env.local ./update-index.mjs",
     "get-doc-times": "node ./github.js",
     "dev": "next dev --turbo",
-    "start": "next start",
-    "postinstall": "fumadocs-mdx"
+    "start": "next start"
   },
   "dependencies": {
     "@orama/orama": "^3.1.11",
