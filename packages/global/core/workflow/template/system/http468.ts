@@ -27,7 +27,7 @@ export const HttpNode468: FlowNodeTemplateType = {
   showStatus: true,
   isTool: true,
   catchError: false,
-  courseUrl: '/docs/guide/dashboard/workflow/http/',
+  courseUrl: '/docs/introduction/guide/dashboard/workflow/http/',
   inputs: [
     {
       ...Input_Template_DynamicInput,

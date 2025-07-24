@@ -33,7 +33,7 @@ export const AgentNode: FlowNodeTemplateType = {
   intro: i18nT('workflow:template.agent_intro'),
   showStatus: true,
   catchError: false,
-  courseUrl: '/docs/guide/dashboard/workflow/tool/',
+  courseUrl: '/docs/introduction/guide/dashboard/workflow/tool/',
   version: '4.9.2',
   inputs: [
     {
