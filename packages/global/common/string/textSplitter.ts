@@ -62,13 +62,6 @@ const strIsMdTable = (str: string) => {
 
   return true;
 };
-/**
- * 将 Markdown 表格文本按 chunkSize 拆分为多个块，每个块都包含表头和分隔行，保证表格格式正确。
- * 适用于 markdown 表格（以 | 分隔，且有表头和分隔行）。
- *
- * @param props - 传入的参数对象，包含 text（表格内容字符串）和 chunkSize（每块最大长度）
- * @returns {SplitResponse} - 返回拆分后的表格块数组和总字符数
- */
 const markdownTableSplit = (props: SplitProps): SplitResponse => {
   let { text = '', chunkSize } = props;
 
@@ -84,54 +77,37 @@ const markdownTableSplit = (props: SplitProps): SplitResponse => {
     return { chunks: [text], chars: text.length };
   }
 
-  // 取第一行为表头
   const header = splitText2Lines[0];
-
-  // 计算表头有多少列（通过 | 分割，减去两端的空列）
   const headerSize = header.split('|').length - 2;
 
-  // 构造 markdown 表格的分隔行（如 | --- | --- |）
-  // headerSize > 0 时，生成对应数量的 ---，否则至少生成一个
   const mdSplitString = `| ${new Array(headerSize > 0 ? headerSize : 1)
     .fill(0)
     .map(() => '---')
     .join(' | ')} |`;
 
-  // 存储拆分后的表格块
   const chunks: string[] = [];
-
-  // 初始化第一个块，包含表头和分隔行
   let chunk = `${header}
 ${mdSplitString}
 `;
 
-  // 从第三行（索引2）开始遍历数据行
   for (let i = 2; i < splitText2Lines.length; i++) {
-    const currentLine = splitText2Lines[i];
-
-    // 当前块的有效长度
     const chunkLength = getTextValidLength(chunk);
-    // 下一个数据行的有效长度
-    const nextLineLength = getTextValidLength(currentLine);
+    const nextLineLength = getTextValidLength(splitText2Lines[i]);
 
-    // 如果加上下一个数据行后超出 chunkSize，则将当前块推入结果，并新建一个块
+    // Over size
     if (chunkLength + nextLineLength > chunkSize) {
       chunks.push(chunk);
-      // 新块也要包含表头和分隔行
       chunk = `${header}
 ${mdSplitString}
 `;
     }
-    // 将当前数据行添加到当前块
-    chunk += `${currentLine}\n`;
+    chunk += `${splitText2Lines[i]}\n`;
   }
 
-  // 最后一个块如果有内容，推入结果
   if (chunk) {
     chunks.push(chunk);
   }
 
-  // 返回所有块和总字符数
   return {
     chunks,
     chars: chunks.reduce((sum, chunk) => sum + chunk.length, 0)
@@ -167,6 +143,20 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     return match.replace(/\n/g, codeBlockMarker);
   });
   // 2. Markdown 表格处理 - 检测表格但不预分割，让主分割逻辑智能处理
+  // const tableReg =
+  //   /(\n\|(?:(?:[^\n|]+\|){1,})\n\|(?:[:\-\s]+\|){1,}\n(?:\|(?:[^\n|]+\|)*\n?)*)(?:\n|$)/g;
+  // const tableDataList = text.match(tableReg);
+  // if (tableDataList) {
+  //   tableDataList.forEach((tableData) => {
+  //     const { chunks } = markdownTableSplit({
+  //       text: tableData.trim(),
+  //       chunkSize
+  //     });
+
+  //     const splitText = chunks.join('\n');
+  //     text = text.replace(tableData, `\n${splitText}\n`);
+  //   });
+  // }
 
   // replace invalid \n
   text = text.replace(/(\r?\n|\r){3,}/g, '\n\n\n');
@@ -263,7 +253,37 @@ const commonSplit = (props: SplitProps): SplitResponse => {
         })()
       );
     })();
+    // 在此处增加表格完全分割 + 主逻辑上的表格分块处理
+    // const finalText = (() => {
 
+    //   // 使用更精确的表格正则，确保匹配真正的Markdown表格
+    //   const tableRegex = /(\n\|(?:[^\n|]*\|)+\n\|(?:[:\-\s]*\|)+\n(?:\|(?:[^\n|]*\|)*\n)*)/g;
+
+    //   return replaceText.replace(tableRegex, (match) => {
+    //     const tableText = match.trim();
+
+    //     // 验证是否为真正的表格
+    //     if (!strIsMdTable(tableText)) {
+    //       return match; // 不是表格，保持原样
+    //     }
+
+    //     const { chunks: tableChunks } = markdownTableSplit({
+    //       text: tableText,
+    //       chunkSize
+    //     });
+
+    //     // 只有当表格被分成多块时，才进行分块处理
+    //     if (tableChunks.length > 1) {
+    //       // 对于多块表格：在表格块中间加分隔符
+    //       return `\n${tableChunks.join(splitMarker)}\n`;
+    //     } else {
+    //       // 单个表格块，表格块前后都加分隔符
+    //       return `\n${splitMarker}${tableChunks[0]}\n`;
+    //     }
+    //   });
+    // })();
+
+    // const splitTexts = finalText.split(splitMarker).filter((part) => part.trim());
     const splitTexts = replaceText.split(splitMarker).filter((part) => part.trim());
 
     return splitTexts
@@ -354,8 +374,16 @@ const commonSplit = (props: SplitProps): SplitResponse => {
       const newText = lastText + currentText;
       const newTextLen = getTextValidLength(newText);
 
+      // console.log('splitTexts at step: ' ,item.text);
+
       // 表格特殊处理：如果当前文本是表格，且加上表格后会超出大小，先分块
       if (strIsMdTable(currentText) && newTextLen > maxLen && lastTextLen > 0) {
+        // 打印分块前的内容
+        // console.log('[markdownTableSplit] before:', {
+        //   lastText,
+        //   currentText
+        // });
+
         // 先分块当前累积的内容
         chunks.push(lastText);
 
@@ -512,6 +540,7 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
       return markdownTableSplit({ ...props, text: item });
     }
 
+    // console.log('splitText2Chunks: item ', item);
     return commonSplit({ ...props, text: item });
   });
 
