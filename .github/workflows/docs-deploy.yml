@@ -79,7 +79,8 @@ jobs:
           build-args: |
             NEXT_PUBLIC_SEARCH_APPKEY=c4708d48f2de6ac5d2f0f443979ef92a
             NEXT_PUBLIC_SEARCH_APPID=HZAF4C2T88
-            NEXT_PUBLIC_HOME_DOMAIN=${{ matrix.domain_config.domain }}
+            FASTGPT_HOME_DOMAIN=${{ matrix.domain_config.domain }}
+            ${{ matrix.domain_config.suffix == 'cn' && 'SEARCH_APPWRITEKEY=${{ secrets.SEARCH_APPWRITEKEY }}' || '' }}
     outputs:
       tags: ${{ steps.datetime.outputs.datetime }}
 
