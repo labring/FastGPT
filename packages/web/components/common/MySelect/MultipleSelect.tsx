@@ -38,6 +38,7 @@ export type SelectProps<T = any> = {
   isDisabled?: boolean;
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
   formLabel?: string;
+  formLabelFontSize?: string;
   tagStyle?: FlexProps;
   inputValue?: string;
   setInputValue?: (val: string) => void;
@@ -55,6 +56,7 @@ const MultipleSelect = <T = any,>({
   setIsSelectAll,
   isDisabled = false,
   formLabel,
+  formLabelFontSize = 'mini',
   tagStyle,
   inputValue,
   setInputValue,
@@ -218,14 +220,14 @@ const MultipleSelect = <T = any,>({
             <Flex alignItems={'center'} flex={1}>
               {formLabel && (
                 <>
-                  <Flex color={'myGray.600'} fontSize={'sm'} whiteSpace={'nowrap'}>
+                  <Flex color={'myGray.600'} fontSize={formLabelFontSize} whiteSpace={'nowrap'}>
                     {formLabel}
                   </Flex>
                   <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
                 </>
               )}
               {value.length === 0 && placeholder ? (
-                <Box color={'myGray.500'} fontSize={'sm'}>
+                <Box color={'myGray.500'} fontSize={formLabelFontSize}>
                   {placeholder}
                 </Box>
               ) : null}
@@ -239,7 +241,7 @@ const MultipleSelect = <T = any,>({
               alignItems={'center'}
             >
               {isSelectAll ? (
-                <Box fontSize={'sm'} color={'myGray.900'}>
+                <Box fontSize={formLabelFontSize} color={'myGray.900'}>
                   {t('common:All')}
                 </Box>
               ) : (

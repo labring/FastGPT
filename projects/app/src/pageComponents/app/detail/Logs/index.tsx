@@ -284,6 +284,7 @@ const Logs = () => {
             isSelectAll={isSelectAllChat}
             setIsSelectAll={setIsSelectAllChat}
             {...multipleSelectStyles}
+            formLabelFontSize={'sm'}
             formLabel={t('common:chat')}
             tagStyle={{
               ...commonTagStyle,
@@ -305,6 +306,7 @@ const Logs = () => {
             isSelectAll={isSelectAllTmb}
             setIsSelectAll={setIsSelectAllTmb}
             {...multipleSelectStyles}
+            formLabelFontSize={'sm'}
             formLabel={t('common:member')}
             tagStyle={{
               ...commonTagStyle,
