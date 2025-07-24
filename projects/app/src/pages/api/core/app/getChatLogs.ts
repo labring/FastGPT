@@ -182,7 +182,6 @@ async function handler(
               $ifNull: [{ $arrayElemAt: ['$chatItemsData.customFeedback', 0] }, 0]
             },
             markCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.adminMark', 0] }, 0] },
-            // 计算平均响应时长
             averageResponseTime: {
               $cond: [
                 {
@@ -197,9 +196,7 @@ async function handler(
                 0
               ]
             },
-            // 报错数量
             errorCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.errorCount', 0] }, 0] },
-            // 积分消耗
             totalPoints: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.totalPoints', 0] }, 0] }
           }
         },

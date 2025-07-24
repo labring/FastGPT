@@ -114,6 +114,7 @@
   "can_copy_content_tip": "It is not possible to copy automatically using the browser, please manually copy the following content",
   "chart_mode_cumulative": "Cumulative",
   "chart_mode_incremental": "Incremental",
+  "chat": "Session",
   "chat_chatId": "Session Id: {{chatId}}",
   "choosable": "Choosable",
   "chose_condition": "Choose Condition",

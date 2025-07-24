@@ -1,19 +1,19 @@
 import { i18nT } from '../../../../web/i18n/utils';
 
 export enum LogKeysEnum {
-  SOURCE = 'source', // 来源
-  USER = 'user', // 用户
-  TITLE = 'title', // 标题
-  SESSION_ID = 'sessionId', // 会话 ID
-  CREATED_TIME = 'createdTime', // 创建时间
-  LAST_CONVERSATION_TIME = 'lastConversationTime', // 上次对话时间
-  MESSAGE_COUNT = 'messageCount', // 消息总数
-  FEEDBACK = 'feedback', // 用户反馈
-  CUSTOM_FEEDBACK = 'customFeedback', // 自定义反馈
-  ANNOTATED_COUNT = 'annotatedCount', // 标注答案数量
-  POINTS = 'points', // 积分消耗
-  RESPONSE_TIME = 'responseTime', // 平均响应时长
-  ERROR_COUNT = 'errorCount' // 报错数量
+  SOURCE = 'source',
+  USER = 'user',
+  TITLE = 'title',
+  SESSION_ID = 'sessionId',
+  CREATED_TIME = 'createdTime',
+  LAST_CONVERSATION_TIME = 'lastConversationTime',
+  MESSAGE_COUNT = 'messageCount',
+  FEEDBACK = 'feedback',
+  CUSTOM_FEEDBACK = 'customFeedback',
+  ANNOTATED_COUNT = 'annotatedCount',
+  POINTS = 'points',
+  RESPONSE_TIME = 'responseTime',
+  ERROR_COUNT = 'errorCount'
 }
 
 export const LogKeysEnumMap = {

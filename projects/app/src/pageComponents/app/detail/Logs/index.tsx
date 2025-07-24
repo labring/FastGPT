@@ -78,6 +78,8 @@ const Logs = () => {
   const [logKeys, setLogKeys] = useState<{ key: LogKeysEnum; enable: boolean }[]>(DefaultLogKeys);
   const [logKeysConfigModalOpen, setLogKeysConfigModalOpen] = useState(false);
 
+  const isLogKeyEnabled = (key: LogKeysEnum) => logKeys.find((item) => item.key === key)?.enable;
+
   const {
     value: selectTmbIds,
     setValue: setSelectTmbIds,
@@ -337,31 +339,21 @@ const Logs = () => {
         <Table variant={'simple'} fontSize={'sm'}>
           <Thead>
             <Tr>
-              {logKeys.find((item) => item.key === LogKeysEnum.SOURCE)?.enable && (
-                <Th>{t('app:logs_keys_source')}</Th>
-              )}
-              {logKeys.find((item) => item.key === LogKeysEnum.CREATED_TIME)?.enable && (
+              {isLogKeyEnabled(LogKeysEnum.SOURCE) && <Th>{t('app:logs_keys_source')}</Th>}
+              {isLogKeyEnabled(LogKeysEnum.CREATED_TIME) && (
                 <Th>{t('app:logs_keys_createdTime')}</Th>
               )}
-              {logKeys.find((item) => item.key === LogKeysEnum.LAST_CONVERSATION_TIME)?.enable && (
+              {isLogKeyEnabled(LogKeysEnum.LAST_CONVERSATION_TIME) && (
                 <Th>{t('app:logs_keys_lastConversationTime')}</Th>
               )}
-              {logKeys.find((item) => item.key === LogKeysEnum.USER)?.enable && (
-                <Th>{t('app:logs_chat_user')}</Th>
-              )}
-              {logKeys.find((item) => item.key === LogKeysEnum.TITLE)?.enable && (
-                <Th>{t('app:logs_title')}</Th>
-              )}
-              {logKeys.find((item) => item.key === LogKeysEnum.MESSAGE_COUNT)?.enable && (
-                <Th>{t('app:logs_message_total')}</Th>
-              )}
-              {logKeys.find((item) => item.key === LogKeysEnum.FEEDBACK)?.enable && (
-                <Th>{t('app:feedback_count')}</Th>
-              )}
-              {logKeys.find((item) => item.key === LogKeysEnum.CUSTOM_FEEDBACK)?.enable && (
+              {isLogKeyEnabled(LogKeysEnum.USER) && <Th>{t('app:logs_chat_user')}</Th>}
+              {isLogKeyEnabled(LogKeysEnum.TITLE) && <Th>{t('app:logs_title')}</Th>}
+              {isLogKeyEnabled(LogKeysEnum.MESSAGE_COUNT) && <Th>{t('app:logs_message_total')}</Th>}
+              {isLogKeyEnabled(LogKeysEnum.FEEDBACK) && <Th>{t('app:feedback_count')}</Th>}
+              {isLogKeyEnabled(LogKeysEnum.CUSTOM_FEEDBACK) && (
                 <Th>{t('common:core.app.feedback.Custom feedback')}</Th>
               )}
-              {logKeys.find((item) => item.key === LogKeysEnum.ANNOTATED_COUNT)?.enable && (
+              {isLogKeyEnabled(LogKeysEnum.ANNOTATED_COUNT) && (
                 <Th>
                   <Flex gap={1} alignItems={'center'}>
                     {t('app:mark_count')}
@@ -369,15 +361,9 @@ const Logs = () => {
                   </Flex>
                 </Th>
               )}
-              {logKeys.find((item) => item.key === LogKeysEnum.RESPONSE_TIME)?.enable && (
-                <Th>{t('app:logs_response_time')}</Th>
-              )}
-              {logKeys.find((item) => item.key === LogKeysEnum.ERROR_COUNT)?.enable && (
-                <Th>{t('app:logs_error_count')}</Th>
-              )}
-              {logKeys.find((item) => item.key === LogKeysEnum.POINTS)?.enable && (
-                <Th>{t('app:logs_points')}</Th>
-              )}
+              {isLogKeyEnabled(LogKeysEnum.RESPONSE_TIME) && <Th>{t('app:logs_response_time')}</Th>}
+              {isLogKeyEnabled(LogKeysEnum.ERROR_COUNT) && <Th>{t('app:logs_error_count')}</Th>}
+              {isLogKeyEnabled(LogKeysEnum.POINTS) && <Th>{t('app:logs_points')}</Th>}
             </Tr>
           </Thead>
           <Tbody fontSize={'xs'}>
@@ -389,16 +375,17 @@ const Logs = () => {
                 title={t('common:core.view_chat_detail')}
                 onClick={() => setDetailLogsId(item.id)}
               >
-                {logKeys.find((item) => item.key === LogKeysEnum.SOURCE)?.enable && (
+                {isLogKeyEnabled(LogKeysEnum.SOURCE) && (
                   // @ts-ignore
                   <Td>{item.sourceName || t(ChatSourceMap[item.source]?.name) || item.source}</Td>
                 )}
-                {logKeys.find((item) => item.key === LogKeysEnum.CREATED_TIME)?.enable && (
+                {isLogKeyEnabled(LogKeysEnum.CREATED_TIME) && (
                   <Td>{dayjs(item.createTime).format('YYYY/MM/DD HH:mm')}</Td>
                 )}
-                {logKeys.find((item) => item.key === LogKeysEnum.LAST_CONVERSATION_TIME)
-                  ?.enable && <Td>{dayjs(item.updateTime).format('YYYY/MM/DD HH:mm')}</Td>}
-                {logKeys.find((item) => item.key === LogKeysEnum.USER)?.enable && (
+                {isLogKeyEnabled(LogKeysEnum.LAST_CONVERSATION_TIME) && (
+                  <Td>{dayjs(item.updateTime).format('YYYY/MM/DD HH:mm')}</Td>
+                )}
+                {isLogKeyEnabled(LogKeysEnum.USER) && (
                   <Td>
                     <Box>
                       {!!item.outLinkUid ? (

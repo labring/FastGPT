@@ -29,8 +29,11 @@ const LogKeysConfigModal = ({
   }[];
   fetchLogKeys: () => Promise<getLogKeysResponse>;
 }) => {
-  const appId = useContextSelector(AppContext, (v) => v.appId);
   const { t } = useTranslation();
+  const appId = useContextSelector(AppContext, (v) => v.appId);
+
+  const [logKeys, setLogKeys] = useState<{ key: LogKeysEnum; enable: boolean }[]>(logKeysList);
+
   const { runAsync: updateList, loading: updateLoading } = useRequest2(
     async (data: updateLogKeysBody) => {
       await updateLogKeys(data);
@@ -43,8 +46,6 @@ const LogKeysConfigModal = ({
       }
     }
   );
-
-  const [logKeys, setLogKeys] = useState<{ key: LogKeysEnum; enable: boolean }[]>(logKeysList);
 
   return (
     <MyModal

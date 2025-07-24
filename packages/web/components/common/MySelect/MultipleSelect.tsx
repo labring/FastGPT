@@ -21,6 +21,19 @@ import { useTranslation } from 'next-i18next';
 import type { useScrollPagination } from '../../../hooks/useScrollPagination';
 import MyDivider from '../MyDivider';
 
+const menuItemStyles: MenuItemProps = {
+  borderRadius: 'sm',
+  py: 2,
+  display: 'flex',
+  alignItems: 'center',
+  _hover: {
+    backgroundColor: 'myGray.100'
+  },
+  _notLast: {
+    mb: 2
+  }
+};
+
 export type SelectProps<T = any> = {
   list: {
     icon?: string;
@@ -68,31 +81,23 @@ const MultipleSelect = <T = any,>({
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const canInput = setInputValue !== undefined;
-
   const [selectedItems, setSelectedItems] = useState<{ value: T; label: React.ReactNode }[]>([]);
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Backspace' && (!inputValue || inputValue === '')) {
+        const newValue = [...value];
+        newValue.pop();
+        onSelect(newValue);
+      }
+    },
+    [inputValue, value, isSelectAll, onSelect]
+  );
   useEffect(() => {
     if (!isOpen) {
       setInputValue?.('');
     }
   }, [isOpen]);
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Backspace' && (!inputValue || inputValue === '') && value.length > 0) {
-        e.preventDefault();
-        if (isSelectAll) {
-          return;
-        } else {
-          const newValue = [...value];
-          newValue.pop();
-          onSelect(newValue);
-        }
-      }
-    },
-    [inputValue, value, isSelectAll, onSelect]
-  );
-
   useEffect(() => {
     const newSelectedItems = value.map((val) => {
       const existingItem = selectedItems.find((item) => item.value === val);
@@ -107,18 +112,6 @@ const MultipleSelect = <T = any,>({
     });
     setSelectedItems(newSelectedItems);
   }, [value, list]);
-  const menuItemStyles: MenuItemProps = {
-    borderRadius: 'sm',
-    py: 2,
-    display: 'flex',
-    alignItems: 'center',
-    _hover: {
-      backgroundColor: 'myGray.100'
-    },
-    _notLast: {
-      mb: 2
-    }
-  };
 
   const onclickItem = useCallback(
     (val: T) => {

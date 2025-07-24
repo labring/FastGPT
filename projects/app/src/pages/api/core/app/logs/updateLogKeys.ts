@@ -25,7 +25,6 @@ async function handler(
     appId,
     per: WritePermissionVal
   });
-  console.log(logKeys);
 
   await MongoLogKeys.findOneAndUpdate({ teamId, appId }, { logKeys }, { upsert: true });
 
