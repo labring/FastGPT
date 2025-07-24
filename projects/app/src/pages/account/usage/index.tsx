@@ -141,7 +141,7 @@ const UsageTable = () => {
                   setSelectTmbIds(val as string[]);
                 }}
                 itemWrap={false}
-                height={'32px'}
+                h={'32px'}
                 bg={'myGray.50'}
                 w={'160px'}
                 ScrollData={ScrollData}

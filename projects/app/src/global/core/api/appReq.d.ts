@@ -7,7 +7,8 @@ export type GetAppChatLogsProps = {
   dateStart: Date;
   dateEnd: Date;
   sources?: ChatSourceEnum[];
-  logTitle?: string;
+  chatIds?: string[];
+  tmbIds?: string[];
 };
 
 export type GetAppChatLogsParams = PaginationProps<GetAppChatLogsProps>;

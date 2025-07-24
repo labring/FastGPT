@@ -47,6 +47,23 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
+const multipleSelectStyles = {
+  bg: 'white',
+  minW: '226px',
+  maxW: '332px',
+  borderColor: 'myGray.200',
+  rounded: '8px',
+  minH: 10,
+  maxH: 20,
+  overflow: 'auto'
+};
+
+const commonTagStyle = {
+  px: 1,
+  borderRadius: 'sm',
+  bg: 'myGray.100'
+};
+
 const Logs = () => {
   const { t } = useTranslation();
 
@@ -58,9 +75,22 @@ const Logs = () => {
   });
 
   const [detailLogsId, setDetailLogsId] = useState<string>();
-  const [logTitle, setLogTitle] = useState<string>();
   const [logKeys, setLogKeys] = useState<{ key: LogKeysEnum; enable: boolean }[]>(DefaultLogKeys);
   const [logKeysConfigModalOpen, setLogKeysConfigModalOpen] = useState(false);
+
+  const {
+    value: selectTmbIds,
+    setValue: setSelectTmbIds,
+    isSelectAll: isSelectAllTmb,
+    setIsSelectAll: setIsSelectAllTmb
+  } = useMultipleSelect<string>([], true);
+
+  const {
+    value: selectChatIds,
+    setValue: setSelectChatIds,
+    isSelectAll: isSelectAllChat,
+    setIsSelectAll: setIsSelectAllChat
+  } = useMultipleSelect<string>([], true);
 
   const {
     value: chatSources,
@@ -84,9 +114,20 @@ const Logs = () => {
       dateStart: dateRange.from!,
       dateEnd: dateRange.to!,
       sources: isSelectAllSource ? undefined : chatSources,
-      logTitle
+      chatIds: isSelectAllChat ? undefined : selectChatIds,
+      tmbIds: isSelectAllTmb ? undefined : selectTmbIds
     }),
-    [appId, chatSources, dateRange.from, dateRange.to, isSelectAllSource, logTitle]
+    [
+      appId,
+      chatSources,
+      dateRange.from,
+      dateRange.to,
+      isSelectAllSource,
+      selectChatIds,
+      selectTmbIds,
+      isSelectAllChat,
+      isSelectAllTmb
+    ]
   );
   const {
     data: logs,
@@ -128,7 +169,6 @@ const Logs = () => {
           dateStart: dateRange.from || new Date(),
           dateEnd: addDays(dateRange.to || new Date(), 1),
           sources: isSelectAllSource ? undefined : chatSources,
-          logTitle,
 
           title: t('app:logs_export_title'),
           sourcesMap: Object.fromEntries(
@@ -143,7 +183,7 @@ const Logs = () => {
       });
     },
     {
-      refreshDeps: [chatSources, logTitle]
+      refreshDeps: [chatSources]
     }
   );
 
@@ -152,12 +192,6 @@ const Logs = () => {
     params: { searchKey: tmbInputValue },
     refreshDeps: [tmbInputValue]
   });
-  const {
-    value: selectTmbIds,
-    setValue: setSelectTmbIds,
-    isSelectAll: isSelectAllTmb,
-    setIsSelectAll: setIsSelectAllTmb
-  } = useMultipleSelect<string>([], true);
   const tmbList = useMemo(
     () =>
       members.map((item) => ({
@@ -182,12 +216,7 @@ const Logs = () => {
     },
     refreshDeps: [chatInputValue]
   });
-  const {
-    value: selectChatIds,
-    setValue: setSelectChatIds,
-    isSelectAll: isSelectAllChat,
-    setIsSelectAll: setIsSelectAllChat
-  } = useMultipleSelect<string>([], true);
+
   const chatList = useMemo(() => {
     return chats.map((item) => ({
       label: (
@@ -254,17 +283,10 @@ const Logs = () => {
             ScrollData={ChatScrollData}
             isSelectAll={isSelectAllChat}
             setIsSelectAll={setIsSelectAllChat}
-            bg={'white'}
-            minH={10}
-            minW={'226px'}
-            maxW={'332px'}
-            borderColor={'myGray.200'}
-            rounded={'8px'}
+            {...multipleSelectStyles}
             formLabel={t('common:chat')}
             tagStyle={{
-              px: 1,
-              borderRadius: 'sm',
-              bg: 'myGray.100',
+              ...commonTagStyle,
               maxW: '114px'
             }}
             inputValue={chatInputValue}
@@ -282,17 +304,10 @@ const Logs = () => {
             ScrollData={TmbScrollData}
             isSelectAll={isSelectAllTmb}
             setIsSelectAll={setIsSelectAllTmb}
-            bg={'white'}
-            minH={10}
-            minW={'226px'}
-            maxW={'332px'}
-            borderColor={'myGray.200'}
-            rounded={'8px'}
+            {...multipleSelectStyles}
             formLabel={t('common:member')}
             tagStyle={{
-              px: 1,
-              borderRadius: 'sm',
-              bg: 'myGray.100',
+              ...commonTagStyle,
               maxW: '76px'
             }}
             inputValue={tmbInputValue}

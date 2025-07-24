@@ -12,7 +12,6 @@ import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { type PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
@@ -26,7 +25,8 @@ async function handler(
     dateStart = addDays(new Date(), -7),
     dateEnd = new Date(),
     sources,
-    logTitle
+    chatIds,
+    tmbIds
   } = req.body as GetAppChatLogsParams;
 
   const { pageSize = 20, offset } = parsePaginationRequest(req);
@@ -51,12 +51,8 @@ async function handler(
       $lte: new Date(dateEnd)
     },
     ...(sources && { source: { $in: sources } }),
-    ...(logTitle && {
-      $or: [
-        { title: { $regex: new RegExp(`${replaceRegChars(logTitle)}`, 'i') } },
-        { customTitle: { $regex: new RegExp(`${replaceRegChars(logTitle)}`, 'i') } }
-      ]
-    })
+    ...(chatIds && { chatId: { $in: chatIds } }),
+    ...(tmbIds && { tmbId: { $in: tmbIds } })
   };
 
   const [list, total] = await Promise.all([

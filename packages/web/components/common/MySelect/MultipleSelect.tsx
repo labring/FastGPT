@@ -1,5 +1,4 @@
-import type {
-  FlexProps} from '@chakra-ui/react';
+import type { FlexProps } from '@chakra-ui/react';
 import {
   Box,
   Button,
@@ -33,7 +32,6 @@ export type SelectProps<T = any> = {
   setIsSelectAll?: React.Dispatch<React.SetStateAction<boolean>>;
 
   placeholder?: string;
-  maxH?: number;
   itemWrap?: boolean;
   onSelect: (val: T[]) => void;
   closeable?: boolean;
@@ -49,7 +47,6 @@ const MultipleSelect = <T = any,>({
   value = [],
   placeholder,
   list = [],
-  maxH = 400,
   onSelect,
   closeable = false,
   itemWrap = true,
@@ -194,7 +191,6 @@ const MultipleSelect = <T = any,>({
       >
         <MenuButton
           as={Flex}
-          minH={'40px'}
           ref={ref}
           px={3}
           alignItems={'center'}
@@ -218,84 +214,89 @@ const MultipleSelect = <T = any,>({
               }
             : {})}
         >
-          <Flex direction={'column'} w={'100%'} gap={1}>
-            <Flex alignItems={'center'} justifyContent={'space-between'}>
-              <Flex alignItems={'center'} flex={1}>
-                {formLabel && (
-                  <>
-                    <Flex color={'myGray.600'} fontSize={'sm'} whiteSpace={'nowrap'}>
-                      {formLabel}
-                    </Flex>
-                    <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
-                  </>
-                )}
-                {value.length === 0 && placeholder ? (
-                  <Box color={'myGray.500'} fontSize={'sm'}>
-                    {placeholder}
-                  </Box>
-                ) : null}
-              </Flex>
-              <Flex w={'100%'} py={1} gap={1} flexWrap={'wrap'} alignItems={'center'}>
-                {isSelectAll ? (
-                  <Box fontSize={'sm'} color={'myGray.900'}>
-                    {t('common:All')}
-                  </Box>
-                ) : (
-                  selectedItems.map((item, i) => (
-                    <MyTag
-                      className="tag-icon"
-                      key={i}
-                      bg={'primary.100'}
-                      color={'primary.700'}
-                      type={'fill'}
-                      borderRadius={'lg'}
-                      px={2}
-                      py={0.5}
-                      flexShrink={0}
-                      {...tagStyle}
-                    >
-                      {item.label}
-                      {closeable && (
-                        <MyIcon
-                          name={'common/closeLight'}
-                          ml={1}
-                          w="0.8rem"
-                          cursor={'pointer'}
-                          _hover={{
-                            color: 'red.500'
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            onclickItem(item.value);
-                          }}
-                        />
-                      )}
-                    </MyTag>
-                  ))
-                )}
-                {canInput && isOpen && (
-                  <Input
-                    value={inputValue}
-                    onChange={(e) => setInputValue?.(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    ref={SearchInputRef}
-                    autoFocus
-                    h={6}
-                    w={`${inputValue?.length ? inputValue.length * 14 : 1}px`}
-                    maxW={'210px'}
-                    variant={'unstyled'}
-                    border={'none'}
-                    onBlur={() => {
-                      setTimeout(() => {
-                        SearchInputRef?.current?.focus();
-                      }, 0);
-                    }}
-                  />
-                )}
-              </Flex>
-              <MyIcon name={'core/chat/chevronDown'} color={'myGray.600'} w={4} h={4} />
+          <Flex alignItems={'center'} w={'100%'}>
+            <Flex alignItems={'center'} flex={1}>
+              {formLabel && (
+                <>
+                  <Flex color={'myGray.600'} fontSize={'sm'} whiteSpace={'nowrap'}>
+                    {formLabel}
+                  </Flex>
+                  <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
+                </>
+              )}
+              {value.length === 0 && placeholder ? (
+                <Box color={'myGray.500'} fontSize={'sm'}>
+                  {placeholder}
+                </Box>
+              ) : null}
             </Flex>
+            <Flex
+              w={'100%'}
+              py={1}
+              gap={1}
+              flexWrap={canInput ? 'wrap' : 'nowrap'}
+              overflow={'hidden'}
+              alignItems={'center'}
+            >
+              {isSelectAll ? (
+                <Box fontSize={'sm'} color={'myGray.900'}>
+                  {t('common:All')}
+                </Box>
+              ) : (
+                selectedItems.map((item, i) => (
+                  <MyTag
+                    className="tag-icon"
+                    key={i}
+                    bg={'primary.100'}
+                    color={'primary.700'}
+                    type={'fill'}
+                    borderRadius={'lg'}
+                    px={2}
+                    py={0.5}
+                    flexShrink={0}
+                    {...tagStyle}
+                  >
+                    {item.label}
+                    {closeable && (
+                      <MyIcon
+                        name={'common/closeLight'}
+                        ml={1}
+                        w="0.8rem"
+                        cursor={'pointer'}
+                        _hover={{
+                          color: 'red.500'
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          onclickItem(item.value);
+                        }}
+                      />
+                    )}
+                  </MyTag>
+                ))
+              )}
+              {canInput && isOpen && (
+                <Input
+                  value={inputValue}
+                  onChange={(e) => setInputValue?.(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  ref={SearchInputRef}
+                  autoFocus
+                  h={6}
+                  w={`${inputValue?.length ? inputValue.length * 14 : 1}px`}
+                  maxW={'210px'}
+                  variant={'unstyled'}
+                  border={'none'}
+                  onBlur={() => {
+                    setTimeout(() => {
+                      SearchInputRef?.current?.focus();
+                    }, 0);
+                  }}
+                />
+              )}
+            </Flex>
+            <MyIcon name={'core/chat/chevronDown'} color={'myGray.600'} w={4} h={4} />
           </Flex>
         </MenuButton>
 
@@ -330,7 +331,7 @@ const MultipleSelect = <T = any,>({
 
           <MyDivider my={1} />
 
-          {ScrollData ? <ScrollData>{ListRender}</ScrollData> : ListRender}
+          {ScrollData ? <ScrollData minH={20}>{ListRender}</ScrollData> : ListRender}
         </MenuList>
       </Menu>
     </Box>

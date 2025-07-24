@@ -1,12 +1,8 @@
 import { Box, Button, Flex, ModalBody, ModalFooter } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import type {
-  LogKeysEnum} from '@fastgpt/global/core/app/logs/constants';
-import {
-  DefaultLogKeys,
-  LogKeysEnumMap
-} from '@fastgpt/global/core/app/logs/constants';
+import type { LogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
+import { LogKeysEnumMap } from '@fastgpt/global/core/app/logs/constants';
 import type {
   DraggableProvided,
   DraggableStateSnapshot
