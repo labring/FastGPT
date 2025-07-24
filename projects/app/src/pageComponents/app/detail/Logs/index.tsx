@@ -171,6 +171,8 @@ const Logs = () => {
           dateStart: dateRange.from || new Date(),
           dateEnd: addDays(dateRange.to || new Date(), 1),
           sources: isSelectAllSource ? undefined : chatSources,
+          chatIds: isSelectAllChat ? undefined : selectChatIds,
+          tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
 
           title: t('app:logs_export_title'),
           sourcesMap: Object.fromEntries(
