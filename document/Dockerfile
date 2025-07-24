@@ -30,8 +30,8 @@ ENV SEARCH_APPWRITEKEY=$SEARCH_APPWRITEKEY
 ENV FASTGPT_HOME_DOMAIN=$FASTGPT_HOME_DOMAIN
 
 COPY . .
-# Remove existing .source directory to avoid hash conflicts
-RUN npm install && npm run build
+RUN npm install 
+RUN npm run build
 # Update search index if SEARCH_APPWRITEKEY is provided
 RUN if [ -n "$SEARCH_APPWRITEKEY" ]; then \
     echo "SEARCH_APPWRITEKEY found, updating search index..." && \
