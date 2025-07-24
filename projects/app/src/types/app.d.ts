@@ -38,7 +38,8 @@ export type AppLogsListItemType = {
   _id: string;
   id: string;
   source: string;
-  time: Date;
+  createTime: Date;
+  updateTime: Date;
   title: string;
   customTitle: string;
   messageCount: number;
@@ -46,6 +47,9 @@ export type AppLogsListItemType = {
   userBadFeedbackCount: number;
   customFeedbacksCount: number;
   markCount: number;
+  averageResponseTime: number;
+  errorCount: number;
+  totalPoints: number;
   outLinkUid?: string;
   tmbId: string;
   sourceMember: SourceMember;

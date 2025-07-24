@@ -15,7 +15,7 @@ import {
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import { getAppChatLogs } from '@/web/core/app/api';
+import { getAppChatLogs, getAppChats } from '@/web/core/app/api/log';
 import dayjs from 'dayjs';
 import { ChatSourceEnum, ChatSourceMap } from '@fastgpt/global/core/chat/constants';
 import { addDays } from 'date-fns';
@@ -39,8 +39,11 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
 import LogKeysConfigModal from './LogKeysConfigModal';
 import { getLogKeys } from '@/web/core/app/api/log';
-import type { LogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
+import { LogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
 import { DefaultLogKeys } from '@fastgpt/global/core/app/logs/constants';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { getTeamMembers } from '@/web/support/user/team/api';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
@@ -144,6 +147,63 @@ const Logs = () => {
     }
   );
 
+  const [tmbInputValue, setTmbInputValue] = useState('');
+  const { data: members, ScrollData: TmbScrollData } = useScrollPagination(getTeamMembers, {
+    params: { searchKey: tmbInputValue },
+    refreshDeps: [tmbInputValue]
+  });
+  const {
+    value: selectTmbIds,
+    setValue: setSelectTmbIds,
+    isSelectAll: isSelectAllTmb,
+    setIsSelectAll: setIsSelectAllTmb
+  } = useMultipleSelect<string>([], true);
+  const tmbList = useMemo(
+    () =>
+      members.map((item) => ({
+        label: (
+          <HStack spacing={1}>
+            <Avatar src={item.avatar} w={'1.2rem'} rounded={'full'} />
+            <Box color={'myGray.900'} className="textEllipsis">
+              {item.memberName}
+            </Box>
+          </HStack>
+        ),
+        value: item.tmbId
+      })),
+    [members]
+  );
+
+  const [chatInputValue, setChatInputValue] = useState('');
+  const { data: chats, ScrollData: ChatScrollData } = useScrollPagination(getAppChats, {
+    params: {
+      appId,
+      search: chatInputValue
+    },
+    refreshDeps: [chatInputValue]
+  });
+  const {
+    value: selectChatIds,
+    setValue: setSelectChatIds,
+    isSelectAll: isSelectAllChat,
+    setIsSelectAll: setIsSelectAllChat
+  } = useMultipleSelect<string>([], true);
+  const chatList = useMemo(() => {
+    return chats.map((item) => ({
+      label: (
+        <HStack spacing={'1px'} h={'1.2rem'} w={'full'}>
+          <Box color={'myGray.900'} className="textEllipsis" maxW={'50%'} flexShrink={0}>
+            {item.title}
+          </Box>
+          <Box color={'myGray.500'} className="textEllipsis" fontSize={'mini'}>
+            {item.chatId}
+          </Box>
+        </HStack>
+      ),
+      value: item.chatId
+    }));
+  }, [chats]);
+
   return (
     <Flex
       flexDirection={'column'}
@@ -155,45 +215,88 @@ const Logs = () => {
       flex={'1 0 0'}
     >
       <Flex flexDir={['column', 'row']} alignItems={['flex-start', 'center']} gap={3}>
-        <Flex alignItems={'center'} gap={2}>
-          <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
-            {t('app:logs_source')}
-          </Box>
-          <Box>
-            <MultipleSelect<ChatSourceEnum>
-              list={sourceList}
-              value={chatSources}
-              onSelect={setChatSources}
-              isSelectAll={isSelectAllSource}
-              setIsSelectAll={setIsSelectAllSource}
-              itemWrap={false}
-              height={'32px'}
-              bg={'myGray.50'}
-              w={'160px'}
-            />
-          </Box>
+        <Flex>
+          <MultipleSelect<ChatSourceEnum>
+            list={sourceList}
+            value={chatSources}
+            onSelect={setChatSources}
+            isSelectAll={isSelectAllSource}
+            setIsSelectAll={setIsSelectAllSource}
+            itemWrap={false}
+            h={10}
+            w={'226px'}
+            rounded={'8px'}
+            borderColor={'myGray.200'}
+            formLabel={t('app:logs_source')}
+          />
         </Flex>
-        <Flex alignItems={'center'} gap={2}>
-          <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
-            {t('common:user.Time')}
-          </Box>
+        <Flex>
           <DateRangePicker
             defaultDate={dateRange}
-            position="bottom"
             onSuccess={(date) => {
               setDateRange(date);
             }}
+            bg={'white'}
+            h={10}
+            w={'226px'}
+            rounded={'8px'}
+            borderColor={'myGray.200'}
           />
         </Flex>
-        <Flex alignItems={'center'} gap={2}>
-          <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'} whiteSpace={'nowrap'}>
-            {t('app:logs_title')}
-          </Box>
-          <SearchInput
-            placeholder={t('app:logs_title')}
-            w={'240px'}
-            value={logTitle}
-            onChange={(e) => setLogTitle(e.target.value)}
+        <Flex>
+          <MultipleSelect<string>
+            list={chatList}
+            value={selectChatIds}
+            onSelect={(val) => {
+              setSelectChatIds(val as string[]);
+            }}
+            itemWrap={false}
+            ScrollData={ChatScrollData}
+            isSelectAll={isSelectAllChat}
+            setIsSelectAll={setIsSelectAllChat}
+            bg={'white'}
+            minH={10}
+            minW={'226px'}
+            maxW={'332px'}
+            borderColor={'myGray.200'}
+            rounded={'8px'}
+            formLabel={t('common:chat')}
+            tagStyle={{
+              px: 1,
+              borderRadius: 'sm',
+              bg: 'myGray.100',
+              maxW: '114px'
+            }}
+            inputValue={chatInputValue}
+            setInputValue={setChatInputValue}
+          />
+        </Flex>
+        <Flex>
+          <MultipleSelect<string>
+            list={tmbList}
+            value={selectTmbIds}
+            onSelect={(val) => {
+              setSelectTmbIds(val as string[]);
+            }}
+            itemWrap={false}
+            ScrollData={TmbScrollData}
+            isSelectAll={isSelectAllTmb}
+            setIsSelectAll={setIsSelectAllTmb}
+            bg={'white'}
+            minH={10}
+            minW={'226px'}
+            maxW={'332px'}
+            borderColor={'myGray.200'}
+            rounded={'8px'}
+            formLabel={t('common:member')}
+            tagStyle={{
+              px: 1,
+              borderRadius: 'sm',
+              bg: 'myGray.100',
+              maxW: '76px'
+            }}
+            inputValue={tmbInputValue}
+            setInputValue={setTmbInputValue}
           />
         </Flex>
         <Box flex={'1'} />
@@ -217,18 +320,47 @@ const Logs = () => {
         <Table variant={'simple'} fontSize={'sm'}>
           <Thead>
             <Tr>
-              <Th>{t('common:core.app.logs.Source And Time')}</Th>
-              <Th>{t('app:logs_chat_user')}</Th>
-              <Th>{t('app:logs_title')}</Th>
-              <Th>{t('app:logs_message_total')}</Th>
-              <Th>{t('app:feedback_count')}</Th>
-              <Th>{t('common:core.app.feedback.Custom feedback')}</Th>
-              <Th>
-                <Flex gap={1} alignItems={'center'}>
-                  {t('app:mark_count')}
-                  <QuestionTip label={t('common:core.chat.Mark Description')} />
-                </Flex>
-              </Th>
+              {logKeys.find((item) => item.key === LogKeysEnum.SOURCE)?.enable && (
+                <Th>{t('app:logs_keys_source')}</Th>
+              )}
+              {logKeys.find((item) => item.key === LogKeysEnum.CREATED_TIME)?.enable && (
+                <Th>{t('app:logs_keys_createdTime')}</Th>
+              )}
+              {logKeys.find((item) => item.key === LogKeysEnum.LAST_CONVERSATION_TIME)?.enable && (
+                <Th>{t('app:logs_keys_lastConversationTime')}</Th>
+              )}
+              {logKeys.find((item) => item.key === LogKeysEnum.USER)?.enable && (
+                <Th>{t('app:logs_chat_user')}</Th>
+              )}
+              {logKeys.find((item) => item.key === LogKeysEnum.TITLE)?.enable && (
+                <Th>{t('app:logs_title')}</Th>
+              )}
+              {logKeys.find((item) => item.key === LogKeysEnum.MESSAGE_COUNT)?.enable && (
+                <Th>{t('app:logs_message_total')}</Th>
+              )}
+              {logKeys.find((item) => item.key === LogKeysEnum.FEEDBACK)?.enable && (
+                <Th>{t('app:feedback_count')}</Th>
+              )}
+              {logKeys.find((item) => item.key === LogKeysEnum.CUSTOM_FEEDBACK)?.enable && (
+                <Th>{t('common:core.app.feedback.Custom feedback')}</Th>
+              )}
+              {logKeys.find((item) => item.key === LogKeysEnum.ANNOTATED_COUNT)?.enable && (
+                <Th>
+                  <Flex gap={1} alignItems={'center'}>
+                    {t('app:mark_count')}
+                    <QuestionTip label={t('common:core.chat.Mark Description')} />
+                  </Flex>
+                </Th>
+              )}
+              {logKeys.find((item) => item.key === LogKeysEnum.RESPONSE_TIME)?.enable && (
+                <Th>{t('app:logs_response_time')}</Th>
+              )}
+              {logKeys.find((item) => item.key === LogKeysEnum.ERROR_COUNT)?.enable && (
+                <Th>{t('app:logs_error_count')}</Th>
+              )}
+              {logKeys.find((item) => item.key === LogKeysEnum.POINTS)?.enable && (
+                <Th>{t('app:logs_points')}</Th>
+              )}
             </Tr>
           </Thead>
           <Tbody fontSize={'xs'}>
@@ -240,70 +372,97 @@ const Logs = () => {
                 title={t('common:core.view_chat_detail')}
                 onClick={() => setDetailLogsId(item.id)}
               >
-                <Td>
-                  {/* @ts-ignore */}
-                  <Box>{item.sourceName || t(ChatSourceMap[item.source]?.name) || item.source}</Box>
-                  <Box color={'myGray.500'}>{dayjs(item.time).format('YYYY/MM/DD HH:mm')}</Box>
-                </Td>
-                <Td>
-                  <Box>
-                    {!!item.outLinkUid ? (
-                      item.outLinkUid
-                    ) : (
-                      <UserBox sourceMember={item.sourceMember} />
-                    )}
-                  </Box>
-                </Td>
-                <Td className="textEllipsis" maxW={'250px'}>
-                  {item.customTitle || item.title}
-                </Td>
-                <Td>{item.messageCount}</Td>
-                <Td w={'100px'}>
-                  {!!item?.userGoodFeedbackCount && (
-                    <Flex
-                      mb={item?.userGoodFeedbackCount ? 1 : 0}
-                      bg={'green.100'}
-                      color={'green.600'}
-                      px={3}
-                      py={1}
-                      alignItems={'center'}
-                      justifyContent={'center'}
-                      borderRadius={'md'}
-                      fontWeight={'bold'}
-                    >
-                      <MyIcon
-                        mr={1}
-                        name={'core/chat/feedback/goodLight'}
+                {logKeys.find((item) => item.key === LogKeysEnum.SOURCE)?.enable && (
+                  // @ts-ignore
+                  <Td>{item.sourceName || t(ChatSourceMap[item.source]?.name) || item.source}</Td>
+                )}
+                {logKeys.find((item) => item.key === LogKeysEnum.CREATED_TIME)?.enable && (
+                  <Td>{dayjs(item.createTime).format('YYYY/MM/DD HH:mm')}</Td>
+                )}
+                {logKeys.find((item) => item.key === LogKeysEnum.LAST_CONVERSATION_TIME)
+                  ?.enable && <Td>{dayjs(item.updateTime).format('YYYY/MM/DD HH:mm')}</Td>}
+                {logKeys.find((item) => item.key === LogKeysEnum.USER)?.enable && (
+                  <Td>
+                    <Box>
+                      {!!item.outLinkUid ? (
+                        item.outLinkUid
+                      ) : (
+                        <UserBox sourceMember={item.sourceMember} />
+                      )}
+                    </Box>
+                  </Td>
+                )}
+                {logKeys.find((item) => item.key === LogKeysEnum.TITLE)?.enable && (
+                  <Td className="textEllipsis" maxW={'250px'}>
+                    {item.customTitle || item.title}
+                  </Td>
+                )}
+                {logKeys.find((item) => item.key === LogKeysEnum.MESSAGE_COUNT)?.enable && (
+                  <Td>{item.messageCount}</Td>
+                )}
+                {logKeys.find((item) => item.key === LogKeysEnum.FEEDBACK)?.enable && (
+                  <Td w={'100px'}>
+                    {!!item?.userGoodFeedbackCount && (
+                      <Flex
+                        mb={item?.userGoodFeedbackCount ? 1 : 0}
+                        bg={'green.100'}
                         color={'green.600'}
-                        w={'14px'}
-                      />
-                      {item.userGoodFeedbackCount}
-                    </Flex>
-                  )}
-                  {!!item?.userBadFeedbackCount && (
-                    <Flex
-                      bg={'#FFF2EC'}
-                      color={'#C96330'}
-                      px={3}
-                      py={1}
-                      alignItems={'center'}
-                      justifyContent={'center'}
-                      borderRadius={'md'}
-                      fontWeight={'bold'}
-                    >
-                      <MyIcon
-                        mr={1}
-                        name={'core/chat/feedback/badLight'}
+                        px={3}
+                        py={1}
+                        alignItems={'center'}
+                        justifyContent={'center'}
+                        borderRadius={'md'}
+                        fontWeight={'bold'}
+                      >
+                        <MyIcon
+                          mr={1}
+                          name={'core/chat/feedback/goodLight'}
+                          color={'green.600'}
+                          w={'14px'}
+                        />
+                        {item.userGoodFeedbackCount}
+                      </Flex>
+                    )}
+                    {!!item?.userBadFeedbackCount && (
+                      <Flex
+                        bg={'#FFF2EC'}
                         color={'#C96330'}
-                        w={'14px'}
-                      />
-                      {item.userBadFeedbackCount}
-                    </Flex>
-                  )}
-                  {!item?.userGoodFeedbackCount && !item?.userBadFeedbackCount && <>-</>}
-                </Td>
-                <Td>{item.customFeedbacksCount || '-'}</Td>
-                <Td>{item.markCount}</Td>
+                        px={3}
+                        py={1}
+                        alignItems={'center'}
+                        justifyContent={'center'}
+                        borderRadius={'md'}
+                        fontWeight={'bold'}
+                      >
+                        <MyIcon
+                          mr={1}
+                          name={'core/chat/feedback/badLight'}
+                          color={'#C96330'}
+                          w={'14px'}
+                        />
+                        {item.userBadFeedbackCount}
+                      </Flex>
+                    )}
+                    {!item?.userGoodFeedbackCount && !item?.userBadFeedbackCount && <>-</>}
+                  </Td>
+                )}
+                {logKeys.find((item) => item.key === LogKeysEnum.CUSTOM_FEEDBACK)?.enable && (
+                  <Td>{item.customFeedbacksCount || '-'}</Td>
+                )}
+                {logKeys.find((item) => item.key === LogKeysEnum.ANNOTATED_COUNT)?.enable && (
+                  <Td>{item.markCount}</Td>
+                )}
+                {logKeys.find((item) => item.key === LogKeysEnum.RESPONSE_TIME)?.enable && (
+                  <Td>
+                    {item.averageResponseTime ? `${item.averageResponseTime.toFixed(2)}s` : '-'}
+                  </Td>
+                )}
+                {logKeys.find((item) => item.key === LogKeysEnum.ERROR_COUNT)?.enable && (
+                  <Td>{item.errorCount || '-'}</Td>
+                )}
+                {logKeys.find((item) => item.key === LogKeysEnum.POINTS)?.enable && (
+                  <Td>{item.totalPoints ? `${item.totalPoints.toFixed(2)}` : '-'}</Td>
+                )}
               </Tr>
             ))}
           </Tbody>

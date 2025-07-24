@@ -1,9 +1,12 @@
+import type {
+  FlexProps} from '@chakra-ui/react';
 import {
   Box,
   Button,
   type ButtonProps,
   Checkbox,
   Flex,
+  Input,
   Menu,
   MenuButton,
   MenuItem,
@@ -11,7 +14,7 @@ import {
   MenuList,
   useDisclosure
 } from '@chakra-ui/react';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MyTag from '../Tag/index';
 import MyIcon from '../Icon';
 import MyAvatar from '../Avatar';
@@ -36,6 +39,10 @@ export type SelectProps<T = any> = {
   closeable?: boolean;
   isDisabled?: boolean;
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
+  formLabel?: string;
+  tagStyle?: FlexProps;
+  inputValue?: string;
+  setInputValue?: (val: string) => void;
 } & Omit<ButtonProps, 'onSelect'>;
 
 const MultipleSelect = <T = any,>({
@@ -50,11 +57,57 @@ const MultipleSelect = <T = any,>({
   isSelectAll,
   setIsSelectAll,
   isDisabled = false,
+  formLabel,
+  tagStyle,
+  inputValue,
+  setInputValue,
   ...props
 }: SelectProps<T>) => {
   const ref = useRef<HTMLButtonElement>(null);
+  const SearchInputRef = useRef<HTMLInputElement>(null);
+
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const canInput = setInputValue !== undefined;
+
+  const [selectedItems, setSelectedItems] = useState<{ value: T; label: React.ReactNode }[]>([]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setInputValue?.('');
+    }
+  }, [isOpen]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Backspace' && (!inputValue || inputValue === '') && value.length > 0) {
+        e.preventDefault();
+        if (isSelectAll) {
+          return;
+        } else {
+          const newValue = [...value];
+          newValue.pop();
+          onSelect(newValue);
+        }
+      }
+    },
+    [inputValue, value, isSelectAll, onSelect]
+  );
+
+  useEffect(() => {
+    const newSelectedItems = value.map((val) => {
+      const existingItem = selectedItems.find((item) => item.value === val);
+      if (existingItem) {
+        return existingItem;
+      }
+      const listItem = list.find((item) => item.value === val);
+      if (listItem) {
+        return { value: val, label: listItem.label };
+      }
+      return { value: val, label: val as React.ReactNode };
+    });
+    setSelectedItems(newSelectedItems);
+  }, [value, list]);
   const menuItemStyles: MenuItemProps = {
     borderRadius: 'sm',
     py: 2,
@@ -141,10 +194,10 @@ const MultipleSelect = <T = any,>({
       >
         <MenuButton
           as={Flex}
-          h={'100%'}
-          alignItems={'center'}
+          minH={'40px'}
           ref={ref}
           px={3}
+          alignItems={'center'}
           borderRadius={'md'}
           border={'base'}
           userSelect={'none'}
@@ -165,62 +218,85 @@ const MultipleSelect = <T = any,>({
               }
             : {})}
         >
-          {value.length === 0 && placeholder ? (
-            <Box color={'myGray.500'} fontSize={'sm'}>
-              {placeholder}
-            </Box>
-          ) : (
-            <Flex alignItems={'center'} gap={2}>
-              <Flex
-                alignItems={'center'}
-                gap={2}
-                flexWrap={itemWrap ? 'wrap' : 'nowrap'}
-                overflow={'hidden'}
-                flex={1}
-              >
+          <Flex direction={'column'} w={'100%'} gap={1}>
+            <Flex alignItems={'center'} justifyContent={'space-between'}>
+              <Flex alignItems={'center'} flex={1}>
+                {formLabel && (
+                  <>
+                    <Flex color={'myGray.600'} fontSize={'sm'} whiteSpace={'nowrap'}>
+                      {formLabel}
+                    </Flex>
+                    <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
+                  </>
+                )}
+                {value.length === 0 && placeholder ? (
+                  <Box color={'myGray.500'} fontSize={'sm'}>
+                    {placeholder}
+                  </Box>
+                ) : null}
+              </Flex>
+              <Flex w={'100%'} py={1} gap={1} flexWrap={'wrap'} alignItems={'center'}>
                 {isSelectAll ? (
-                  <Box fontSize={'mini'} color={'myGray.900'}>
+                  <Box fontSize={'sm'} color={'myGray.900'}>
                     {t('common:All')}
                   </Box>
                 ) : (
-                  list
-                    .filter((item) => value.includes(item.value))
-                    .map((item, i) => (
-                      <MyTag
-                        className="tag-icon"
-                        key={i}
-                        bg={'primary.100'}
-                        color={'primary.700'}
-                        type={'fill'}
-                        borderRadius={'lg'}
-                        px={2}
-                        py={0.5}
-                        flexShrink={0}
-                      >
-                        {item.label}
-                        {closeable && (
-                          <MyIcon
-                            name={'common/closeLight'}
-                            ml={1}
-                            w="0.8rem"
-                            cursor={'pointer'}
-                            _hover={{
-                              color: 'red.500'
-                            }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              onclickItem(item.value);
-                            }}
-                          />
-                        )}
-                      </MyTag>
-                    ))
+                  selectedItems.map((item, i) => (
+                    <MyTag
+                      className="tag-icon"
+                      key={i}
+                      bg={'primary.100'}
+                      color={'primary.700'}
+                      type={'fill'}
+                      borderRadius={'lg'}
+                      px={2}
+                      py={0.5}
+                      flexShrink={0}
+                      {...tagStyle}
+                    >
+                      {item.label}
+                      {closeable && (
+                        <MyIcon
+                          name={'common/closeLight'}
+                          ml={1}
+                          w="0.8rem"
+                          cursor={'pointer'}
+                          _hover={{
+                            color: 'red.500'
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            onclickItem(item.value);
+                          }}
+                        />
+                      )}
+                    </MyTag>
+                  ))
+                )}
+                {canInput && isOpen && (
+                  <Input
+                    value={inputValue}
+                    onChange={(e) => setInputValue?.(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    ref={SearchInputRef}
+                    autoFocus
+                    h={6}
+                    w={`${inputValue?.length ? inputValue.length * 14 : 1}px`}
+                    maxW={'210px'}
+                    variant={'unstyled'}
+                    border={'none'}
+                    onBlur={() => {
+                      setTimeout(() => {
+                        SearchInputRef?.current?.focus();
+                      }, 0);
+                    }}
+                  />
                 )}
               </Flex>
               <MyIcon name={'core/chat/chevronDown'} color={'myGray.600'} w={4} h={4} />
             </Flex>
-          )}
+          </Flex>
         </MenuButton>
 
         <MenuList
