@@ -265,6 +265,7 @@ export async function getChildAppPreviewNode({
     }
   })();
 
+  console.log('app', app);
   const { flowNodeType, nodeIOConfig } = await (async (): Promise<{
     flowNodeType: FlowNodeTypeEnum;
     nodeIOConfig: {
