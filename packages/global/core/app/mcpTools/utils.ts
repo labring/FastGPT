@@ -86,3 +86,12 @@ export const getMCPToolRuntimeNode = ({
     version: ''
   };
 };
+
+/**
+ * Get the parent id of the mcp toolset
+ * mcp-123123/toolName ==> 123123
+ * 123123/toolName ==> 123123
+ * @param id mcp-parentId/name or parentId/name
+ * @returns parentId
+ */
+export const getMCPParentId = (id: string) => id.split('-').pop()?.split('/')[0];

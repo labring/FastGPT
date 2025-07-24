@@ -5,7 +5,7 @@ import type {
   FlowNodeTemplateType,
   NodeTemplateListItemType
 } from '@fastgpt/global/core/workflow/type/node';
-import { getAppBasicInfoByIds, getAppDetailById, getMyApps } from '../api';
+import { getAppDetailById, getMyApps } from '../api';
 import type { ListAppBody } from '@/pages/api/core/app/list';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -34,8 +34,7 @@ import type { McpGetChildrenmResponse } from '@/pages/api/core/app/mcpTools/getC
 export const getTeamPlugTemplates = async (data?: ListAppBody) => {
   if (data?.parentId) {
     // handle get mcptools
-    const parent = await getAppDetailById(data.parentId);
-    if (parent.type === AppTypeEnum.toolSet) {
+    if (data.type === AppTypeEnum.toolSet) {
       const children = await getMcpChildren(data.parentId);
       return children.map((item) => ({
         ...item,

@@ -11,6 +11,7 @@ import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { Types } from '@fastgpt/service/common/mongo';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
+import { getMCPParentId } from '@fastgpt/global/core/app/mcpTools/utils';
 
 export type getToolVersionListProps = PaginationProps<{
   pluginId?: string;
@@ -54,7 +55,7 @@ async function handler(
   // Workflow plugin
   const appId = await (async () => {
     if (source === PluginSourceEnum.personal || source === PluginSourceEnum.mcp) {
-      const appId = formatPluginId.split('/')[0];
+      const appId = getMCPParentId(formatPluginId);
       const { app } = await authApp({
         appId,
         req,
