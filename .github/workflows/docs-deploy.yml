@@ -51,20 +51,6 @@ jobs:
             ${{ matrix.domain_config.suffix }}-${{ needs.generate-timestamp.outputs.datetime }}
           flavor: latest=false
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Cache Docker layers
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache-${{ matrix.domain_config.suffix }}
-          key: ${{ runner.os }}-docs-buildx-${{ matrix.domain_config.suffix }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-docs-buildx-${{ matrix.domain_config.suffix }}-
-
       - name: Login to Aliyun
         uses: docker/login-action@v3
         with:
@@ -72,7 +58,8 @@ jobs:
           username: ${{ secrets.ALI_HUB_USERNAME }}
           password: ${{ secrets.ALI_HUB_PASSWORD }}
 
-      - name: Build and push Docker images
+      - name: Build and push Docker images (CN)
+        if: matrix.domain_config.suffix == 'cn'
         uses: docker/build-push-action@v5
         with:
           context: ./document
@@ -80,14 +67,27 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # 使用本地缓存替代 GHA 缓存
-          cache-from: type=local,src=/tmp/.buildx-cache-${{ matrix.domain_config.suffix }}
-          cache-to: type=local,dest=/tmp/.buildx-cache-${{ matrix.domain_config.suffix }}
+          platforms: linux/amd64
           build-args: |
             NEXT_PUBLIC_SEARCH_APPKEY=c4708d48f2de6ac5d2f0f443979ef92a
             NEXT_PUBLIC_SEARCH_APPID=HZAF4C2T88
             FASTGPT_HOME_DOMAIN=${{ matrix.domain_config.domain }}
-            ${{ matrix.domain_config.suffix == 'cn' && 'SEARCH_APPWRITEKEY=${{ secrets.SEARCH_APPWRITEKEY }}' || '' }}
+            SEARCH_APPWRITEKEY=${{ secrets.SEARCH_APPWRITEKEY }}
+
+      - name: Build and push Docker images (IO)
+        if: matrix.domain_config.suffix == 'io'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./document
+          file: ./document/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64
+          build-args: |
+            NEXT_PUBLIC_SEARCH_APPKEY=c4708d48f2de6ac5d2f0f443979ef92a
+            NEXT_PUBLIC_SEARCH_APPID=HZAF4C2T88
+            FASTGPT_HOME_DOMAIN=${{ matrix.domain_config.domain }}
 
   update-images:
     needs: [generate-timestamp, build-images]

@@ -9,7 +9,13 @@ async function main() {
   /** @type {import('fumadocs-core/search/algolia').DocumentRecord[]} **/
   const records = JSON.parse(content.toString());
 
-  if (!process.env.NEXT_PUBLIC_SEARCH_APPID || !process.env.SEARCH_APPWRITEKEY) {
+  console.log({
+    NEXT_PUBLIC_SEARCH_APPID: process.env.NEXT_PUBLIC_SEARCH_APPID,
+    SEARCH_APPWRITEKEY: process.env.SEARCH_APPWRITEKEY,
+    SEARCH_APPWRITEKEY: process.env.SEARCH_APPWRITEKEY
+  })
+
+  if (!process.env.NEXT_PUBLIC_SEARCH_APPID || !process.env.SEARCH_APPWRITEKEY || !process.env.SEARCH_APPWRITEKEY) {
     console.log('NEXT_PUBLIC_SEARCH_APPID or SEARCH_APPWRITEKEY is not set');
     return;
   }
