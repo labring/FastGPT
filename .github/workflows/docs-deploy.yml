@@ -15,7 +15,18 @@ permissions:
   pull-requests: write
 
 jobs:
+  # Add a new job to generate unified timestamp
+  generate-timestamp:
+    runs-on: ubuntu-latest
+    outputs:
+      datetime: ${{ steps.datetime.outputs.datetime }}
+    steps:
+      - name: Get current datetime
+        id: datetime
+        run: echo "datetime=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
+
   build-images:
+    needs: generate-timestamp
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -29,10 +40,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Get current datetime
-        id: datetime
-        run: echo "datetime=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
-
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
@@ -41,7 +48,7 @@ jobs:
           images: |
             ${{ secrets.ALI_IMAGE_NAME }}/fastgpt-docs
           tags: |
-            ${{ matrix.domain_config.suffix }}-${{ steps.datetime.outputs.datetime }}
+            ${{ matrix.domain_config.suffix }}-${{ needs.generate-timestamp.outputs.datetime }}
           flavor: latest=false
 
       - name: Set up QEMU
@@ -81,11 +88,9 @@ jobs:
             NEXT_PUBLIC_SEARCH_APPID=HZAF4C2T88
             FASTGPT_HOME_DOMAIN=${{ matrix.domain_config.domain }}
             ${{ matrix.domain_config.suffix == 'cn' && 'SEARCH_APPWRITEKEY=${{ secrets.SEARCH_APPWRITEKEY }}' || '' }}
-    outputs:
-      tags: ${{ steps.datetime.outputs.datetime }}
 
   update-images:
-    needs: build-images
+    needs: [generate-timestamp, build-images]
     runs-on: ubuntu-24.04
     strategy:
       matrix:
@@ -111,8 +116,8 @@ jobs:
 
       - name: Update deployment image
         run: |
-          kubectl set image deployment/${{ matrix.domain_config.deployment }} ${{ matrix.domain_config.deployment }}=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-docs:${{ matrix.domain_config.suffix }}-${{ needs.build-images.outputs.tags }}
+          kubectl set image deployment/${{ matrix.domain_config.deployment }} ${{ matrix.domain_config.deployment }}=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-docs:${{ matrix.domain_config.suffix }}-${{ needs.generate-timestamp.outputs.datetime }}
 
       - name: Annotate deployment
         run: |
-          kubectl annotate deployment/${{ matrix.domain_config.deployment }} originImageName="${{ secrets.ALI_IMAGE_NAME }}/fastgpt-docs:${{ matrix.domain_config.suffix }}-${{ needs.build-images.outputs.tags }}" --overwrite
+          kubectl annotate deployment/${{ matrix.domain_config.deployment }} originImageName="${{ secrets.ALI_IMAGE_NAME }}/fastgpt-docs:${{ matrix.domain_config.suffix }}-${{ needs.generate-timestamp.outputs.datetime }}" --overwrite
