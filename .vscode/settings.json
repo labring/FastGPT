@@ -26,6 +26,6 @@
         "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
     "markdown.copyFiles.destination": {
-        "/docSite/content/**/*": "${documentWorkspaceFolder}/docSite/assets/imgs/"
+        "/document/content/**/*": "${documentWorkspaceFolder}/document/public/"
     }
 }
