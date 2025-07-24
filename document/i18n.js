@@ -7,7 +7,7 @@ import { globby } from 'globby';
 import pLimit from 'p-limit';
 
 const API_URL = 'https://api.siliconflow.cn/v1/chat/completions';
-const API_KEY = 'sk-vuhtbufojlsnrqnivoscchhtjskhwwkybeemcdqqxebqhirg'; // 替换为你的密钥
+const API_KEY = ''; // 替换为你的密钥
 const MODEL_NAME = 'Qwen/QwQ-32B';
 
 const limit = pLimit(2); // 限制并发翻译数量
