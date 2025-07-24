@@ -81,8 +81,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           # 使用本地缓存替代 GHA 缓存
-          cache-from: type=local,src=/tmp/.buildx-cache-${{ matrix.domain_config.suffix }}
-          cache-to: type=local,dest=/tmp/.buildx-cache-${{ matrix.domain_config.suffix }}
+          # cache-from: type=local,src=/tmp/.buildx-cache-${{ matrix.domain_config.suffix }}
+          # cache-to: type=local,dest=/tmp/.buildx-cache-${{ matrix.domain_config.suffix }}
           build-args: |
             NEXT_PUBLIC_SEARCH_APPKEY=c4708d48f2de6ac5d2f0f443979ef92a
             NEXT_PUBLIC_SEARCH_APPID=HZAF4C2T88

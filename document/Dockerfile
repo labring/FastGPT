@@ -31,7 +31,6 @@ ENV FASTGPT_HOME_DOMAIN=$FASTGPT_HOME_DOMAIN
 
 COPY . .
 # Remove existing .source directory to avoid hash conflicts
-RUN rm -rf .source
 RUN npm install && npm run build
 # Update search index if SEARCH_APPWRITEKEY is provided
 RUN if [ -n "$SEARCH_APPWRITEKEY" ]; then \
