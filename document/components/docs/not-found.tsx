@@ -41,5 +41,5 @@ export default function NotFound() {
     redirect('/docs/introduction');
   }, [pathname]);
 
-  return;
+  return <></>;
 }

@@ -15,10 +15,6 @@ import {
 } from 'fumadocs-ui/components/dialog/search';
 import { useI18n } from 'fumadocs-ui/contexts/i18n';
 
-console.log({
-  NEXT_PUBLIC_SEARCH_APPID: process.env.NEXT_PUBLIC_SEARCH_APPID,
-  NEXT_PUBLIC_SEARCH_APPKEY: process.env.NEXT_PUBLIC_SEARCH_APPKEY
-})
 if (!process.env.NEXT_PUBLIC_SEARCH_APPID || !process.env.NEXT_PUBLIC_SEARCH_APPKEY) {
   throw new Error('NEXT_PUBLIC_SEARCH_APPID and NEXT_PUBLIC_SEARCH_APPKEY are not set');
 }
