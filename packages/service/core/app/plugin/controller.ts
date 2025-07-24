@@ -109,7 +109,9 @@ export const getSystemPluginByIdAndVersionId = async (
       ...plugin,
       inputs: [],
       outputs: [],
-      inputList: plugin.inputList
+      inputList: plugin.inputList,
+      version: '',
+      isLatestVersion: true
     };
   }
 
@@ -263,7 +265,6 @@ export async function getChildAppPreviewNode({
     }
   })();
 
-  console.log('app', app);
   const { flowNodeType, nodeIOConfig } = await (async (): Promise<{
     flowNodeType: FlowNodeTypeEnum;
     nodeIOConfig: {
