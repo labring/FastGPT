@@ -395,7 +395,7 @@ function EditLinkModal({
                 />
               </Flex>
               <Link
-                href={getDocPath('/docs/development/openapi/share')}
+                href={getDocPath('/docs/introduction/development/openapi/share')}
                 target={'_blank'}
                 fontSize={'xs'}
                 color={'myGray.500'}

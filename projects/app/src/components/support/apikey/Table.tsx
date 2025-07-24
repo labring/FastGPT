@@ -97,7 +97,9 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
             </Box>
             {feConfigs?.docUrl && (
               <Link
-                href={feConfigs.openAPIDocUrl || getDocPath('/docs/development/openapi')}
+                href={
+                  feConfigs.openAPIDocUrl || getDocPath('/docs/introduction/development/openapi')
+                }
                 target={'_blank'}
                 ml={1}
                 color={'primary.500'}

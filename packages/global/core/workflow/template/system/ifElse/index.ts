@@ -22,7 +22,7 @@ export const IfElseNode: FlowNodeTemplateType = {
   name: i18nT('workflow:condition_checker'),
   intro: i18nT('workflow:execute_different_branches_based_on_conditions'),
   showStatus: true,
-  courseUrl: '/docs/guide/dashboard/workflow/tfswitch/',
+  courseUrl: '/docs/introduction/guide/dashboard/workflow/tfswitch/',
   inputs: [
     {
       key: NodeInputKeyEnum.ifElseList,

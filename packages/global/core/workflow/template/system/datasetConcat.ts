@@ -41,7 +41,7 @@ export const DatasetConcatModule: FlowNodeTemplateType = {
   intro: i18nT('workflow:intro_knowledge_base_search_merge'),
 
   showStatus: false,
-  courseUrl: '/docs/guide/dashboard/workflow/knowledge_base_search_merge/',
+  courseUrl: '/docs/introduction/guide/dashboard/workflow/knowledge_base_search_merge/',
   inputs: [
     {
       key: NodeInputKeyEnum.datasetMaxTokens,

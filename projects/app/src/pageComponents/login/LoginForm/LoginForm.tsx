@@ -121,7 +121,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
             {t('login:policy_tip')}
             <Link
               ml={1}
-              href={getDocPath('/docs/agreement/terms/')}
+              href={getDocPath('/docs/protocol/terms/')}
               target={'_blank'}
               color={'primary.700'}
             >
@@ -129,7 +129,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
             </Link>
             <Box mx={1}>&</Box>
             <Link
-              href={getDocPath('/docs/agreement/privacy/')}
+              href={getDocPath('/docs/protocol/privacy/')}
               target={'_blank'}
               color={'primary.700'}
             >
