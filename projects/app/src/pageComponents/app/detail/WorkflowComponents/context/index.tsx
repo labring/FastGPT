@@ -59,6 +59,7 @@ import WorkflowStatusContextProvider from './workflowStatusContext';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
 
 /* 
   Context
@@ -412,6 +413,8 @@ const WorkflowContextProvider = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
+
+  const { chatId } = useChatStore();
 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const setAppDetail = useContextSelector(AppContext, (v) => v.setAppDetail);
@@ -1091,7 +1094,7 @@ const WorkflowContextProvider = ({
   return (
     <WorkflowContext.Provider value={value}>
       {children}
-      <ChatTest isOpen={isOpenTest} {...workflowTestData} onClose={onCloseTest} />
+      <ChatTest isOpen={isOpenTest} {...workflowTestData} onClose={onCloseTest} chatId={chatId} />
     </WorkflowContext.Provider>
   );
 };
