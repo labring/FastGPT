@@ -234,8 +234,6 @@ export const rewriteRuntimeWorkFlow = async (
     }
   }
 
-  console.log('nodes =-=-=-=-=-=-=-=', nodes);
-
   for (let i = nodes.length - 1; i >= 0; i--) {
     if (nodeIdsToRemove.has(nodes[i].nodeId)) {
       nodes.splice(i, 1);

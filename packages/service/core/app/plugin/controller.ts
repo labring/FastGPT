@@ -45,6 +45,7 @@ import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { getMCPChildren } from '../mcp';
 
 type ChildAppType = SystemPluginTemplateItemType & {
   teamId?: string;
@@ -175,19 +176,35 @@ export async function getChildAppPreviewNode({
           : true;
 
       const node = version.nodes[0];
-      if (item.type === AppTypeEnum.toolSet && node.toolConfig?.mcpToolSet) {
-        // no url return, and rewrite the toolId
+      if (item.type === AppTypeEnum.toolSet) {
+        const children = await getMCPChildren(item);
         version.nodes[0].toolConfig = {
           mcpToolSet: {
             toolId: pluginId,
-            toolList: node.toolConfig?.mcpToolSet?.toolList ?? [],
+            toolList: children,
             url: ''
           }
         };
       }
+      // if (node.toolConfig?.mcpToolSet) {
+      //   // new version mcp toolset
+      //   // no url return, and rewrite the toolId
+      //   version.nodes[0].toolConfig = {
+      //     mcpToolSet: {
+      //       toolId: pluginId,
+      //       toolList: node.toolConfig?.mcpToolSet?.toolList ?? [],
+      //       url: ''
+      //     }
+      //   };
+      // } else {
+      //   // old version mcp toolset
+      // }
+      // }
+      // old version mcp toolset
 
       return {
-        id: item.type === AppTypeEnum.toolSet ? '' : String(item._id),
+        id:
+          item.type === AppTypeEnum.toolSet && node.toolConfig?.mcpToolSet ? '' : String(item._id),
         teamId: String(item.teamId),
         name: item.name,
         avatar: item.avatar,
@@ -246,6 +263,7 @@ export async function getChildAppPreviewNode({
     }
   })();
 
+  console.log('app', app);
   const { flowNodeType, nodeIOConfig } = await (async (): Promise<{
     flowNodeType: FlowNodeTypeEnum;
     nodeIOConfig: {

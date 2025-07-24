@@ -185,7 +185,8 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         appId: parentId,
         versionId: version
       });
-      const { headerSecret, url } = tool.nodes[0].toolConfig?.mcpToolSet!;
+      const { headerSecret, url } =
+        tool.nodes[0].toolConfig?.mcpToolSet ?? tool.nodes[0].inputs[0].value;
       const mcpClient = new MCPClient({
         url,
         headers: getSecretValue({

@@ -105,8 +105,8 @@ export const getMCPTools = (data: getMCPToolsBody) =>
 export const postRunMCPTool = (data: RunMCPToolBody) =>
   POST('/support/mcp/client/runTool', data, { timeout: 300000 });
 
-export const getMcpChildren = (parentId: string) =>
-  GET<McpGetChildrenmResponse>('/core/app/mcpTools/getChildren', { parentId });
+export const getMcpChildren = (id: string) =>
+  GET<McpGetChildrenmResponse>('/core/app/mcpTools/getChildren', { id });
 
 /* ============ http plugin ============== */
 export const postCreateHttpPlugin = (data: createHttpPluginBody) =>
