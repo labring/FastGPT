@@ -1,6 +1,7 @@
 import { source } from '@/lib/source';
 import { DocsPage, DocsBody, DocsDescription, DocsTitle } from 'fumadocs-ui/page';
 import { notFound } from 'next/navigation';
+import NotFound from '@/components/docs/not-found';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { getMDXComponents } from '@/mdx-components';
 
@@ -11,7 +12,11 @@ export default async function Page({
 }) {
   const { lang, slug } = await params;
   const page = source.getPage(slug, lang);
-  if (!page || !page.data || !page.file) notFound();
+
+  // 如果页面不存在，调用 notFound()
+  if (!page || !page.data || !page.file) {
+    return <NotFound />;
+  }
 
   const MDXContent = page.data.body;
 

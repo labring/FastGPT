@@ -78,7 +78,7 @@ const CookiesModal = () => {
               textDecorationLine={'underline'}
               cursor={'pointer'}
               w={'fit-content'}
-              onClick={() => window.open(getDocPath('/docs/agreement/privacy/'), '_blank')}
+              onClick={() => window.open(getDocPath('/docs/protocol/privacy/'), '_blank')}
             >
               {t('login:privacy_policy')}
             </Box>

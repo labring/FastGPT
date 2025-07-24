@@ -28,21 +28,21 @@ export const ApiDatasetTypeMap: Record<
     avatar: 'core/dataset/externalDatasetColor',
     label: i18nT('dataset:api_file'),
     collectionLabel: i18nT('common:File'),
-    courseUrl: '/docs/guide/knowledge_base/api_dataset/'
+    courseUrl: '/docs/introduction/guide/knowledge_base/api_dataset/'
   },
   [DatasetTypeEnum.feishu]: {
     icon: 'core/dataset/feishuDatasetOutline',
     avatar: 'core/dataset/feishuDatasetColor',
     label: i18nT('dataset:feishu_dataset'),
     collectionLabel: i18nT('common:File'),
-    courseUrl: '/docs/guide/knowledge_base/lark_dataset/'
+    courseUrl: '/docs/introduction/guide/knowledge_base/lark_dataset/'
   },
   [DatasetTypeEnum.yuque]: {
     icon: 'core/dataset/yuqueDatasetOutline',
     avatar: 'core/dataset/yuqueDatasetColor',
     label: i18nT('dataset:yuque_dataset'),
     collectionLabel: i18nT('common:File'),
-    courseUrl: '/docs/guide/knowledge_base/yuque_dataset/'
+    courseUrl: '/docs/introduction/guide/knowledge_base/yuque_dataset/'
   }
 };
 export const DatasetTypeMap: Record<
@@ -73,7 +73,7 @@ export const DatasetTypeMap: Record<
     avatar: 'core/dataset/websiteDatasetColor',
     label: i18nT('dataset:website_dataset'),
     collectionLabel: i18nT('common:Website'),
-    courseUrl: '/docs/guide/knowledge_base/websync/'
+    courseUrl: '/docs/introduction/guide/knowledge_base/websync/'
   },
   [DatasetTypeEnum.externalFile]: {
     icon: 'core/dataset/externalDatasetOutline',
