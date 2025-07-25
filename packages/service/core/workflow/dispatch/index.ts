@@ -152,7 +152,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   } = data;
   const startTime = Date.now();
 
-  await rewriteRuntimeWorkFlow(runtimeNodes, runtimeEdges);
+  await rewriteRuntimeWorkFlow({ nodes: runtimeNodes, edges: runtimeEdges });
 
   // 初始化深度和自动增加深度，避免无限嵌套
   if (!props.workflowDispatchDeep) {

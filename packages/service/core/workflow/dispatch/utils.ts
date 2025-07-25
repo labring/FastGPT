@@ -161,10 +161,13 @@ export const formatHttpError = (error: any) => {
  * @param edges
  * @returns
  */
-export const rewriteRuntimeWorkFlow = async (
-  nodes: RuntimeNodeItemType[],
-  edges: RuntimeEdgeItemType[]
-) => {
+export const rewriteRuntimeWorkFlow = async ({
+  nodes,
+  edges
+}: {
+  nodes: RuntimeNodeItemType[];
+  edges: RuntimeEdgeItemType[];
+}) => {
   const toolSetNodes = nodes.filter((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
 
   if (toolSetNodes.length === 0) {
@@ -176,8 +179,9 @@ export const rewriteRuntimeWorkFlow = async (
   for (const toolSetNode of toolSetNodes) {
     nodeIdsToRemove.add(toolSetNode.nodeId);
     const toolId = toolSetNode.toolConfig?.systemToolSet?.toolId;
+
+    // systemTool
     if (toolId) {
-      // systemTool
       const toolsetInputConfig = toolSetNode.inputs.find(
         (item) => item.key === NodeInputKeyEnum.systemInputConfig
       );
