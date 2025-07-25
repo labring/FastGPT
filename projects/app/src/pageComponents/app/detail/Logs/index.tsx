@@ -37,13 +37,14 @@ import MultipleSelect, {
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
-import LogKeysConfigModal from './LogKeysConfigModal';
+import LogKeysConfigPopover from './LogKeysConfigPopover';
 import { getLogKeys } from '@/web/core/app/api/log';
 import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
 import { DefaultAppLogKeys } from '@fastgpt/global/core/app/logs/constants';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import { useLocalStorageState } from 'ahooks';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
@@ -58,13 +59,138 @@ const Logs = () => {
   });
 
   const [detailLogsId, setDetailLogsId] = useState<string>();
-  const [logKeys, setLogKeys] =
-    useState<{ key: AppLogKeysEnum; enable: boolean }[]>(DefaultAppLogKeys);
-  const [logKeysConfigModalOpen, setLogKeysConfigModalOpen] = useState(false);
+  const [logKeys, setLogKeys] = useLocalStorageState<{ key: AppLogKeysEnum; enable: boolean }[]>(
+    `app_log_keys_${appId}`
+  );
   const [tmbInputValue, setTmbInputValue] = useState('');
   const [chatSearch, setChatSearch] = useState('');
 
-  const isLogKeyEnabled = (key: AppLogKeysEnum) => logKeys.find((item) => item.key === key)?.enable;
+  const headerRenderMap = {
+    [AppLogKeysEnum.SOURCE]: <Th key={AppLogKeysEnum.SOURCE}>{t('app:logs_keys_source')}</Th>,
+    [AppLogKeysEnum.CREATED_TIME]: (
+      <Th key={AppLogKeysEnum.CREATED_TIME}>{t('app:logs_keys_createdTime')}</Th>
+    ),
+    [AppLogKeysEnum.LAST_CONVERSATION_TIME]: (
+      <Th key={AppLogKeysEnum.LAST_CONVERSATION_TIME}>{t('app:logs_keys_lastConversationTime')}</Th>
+    ),
+    [AppLogKeysEnum.USER]: <Th key={AppLogKeysEnum.USER}>{t('app:logs_chat_user')}</Th>,
+    [AppLogKeysEnum.TITLE]: <Th key={AppLogKeysEnum.TITLE}>{t('app:logs_title')}</Th>,
+    [AppLogKeysEnum.SESSION_ID]: (
+      <Th key={AppLogKeysEnum.SESSION_ID}>{t('app:logs_keys_sessionId')}</Th>
+    ),
+    [AppLogKeysEnum.MESSAGE_COUNT]: (
+      <Th key={AppLogKeysEnum.MESSAGE_COUNT}>{t('app:logs_message_total')}</Th>
+    ),
+    [AppLogKeysEnum.FEEDBACK]: <Th key={AppLogKeysEnum.FEEDBACK}>{t('app:feedback_count')}</Th>,
+    [AppLogKeysEnum.CUSTOM_FEEDBACK]: (
+      <Th key={AppLogKeysEnum.CUSTOM_FEEDBACK}>{t('common:core.app.feedback.Custom feedback')}</Th>
+    ),
+    [AppLogKeysEnum.ANNOTATED_COUNT]: (
+      <Th key={AppLogKeysEnum.ANNOTATED_COUNT}>
+        <Flex gap={1} alignItems={'center'}>
+          {t('app:mark_count')}
+          <QuestionTip label={t('common:core.chat.Mark Description')} />
+        </Flex>
+      </Th>
+    ),
+    [AppLogKeysEnum.RESPONSE_TIME]: (
+      <Th key={AppLogKeysEnum.RESPONSE_TIME}>{t('app:logs_response_time')}</Th>
+    ),
+    [AppLogKeysEnum.ERROR_COUNT]: (
+      <Th key={AppLogKeysEnum.ERROR_COUNT}>{t('app:logs_error_count')}</Th>
+    ),
+    [AppLogKeysEnum.POINTS]: <Th key={AppLogKeysEnum.POINTS}>{t('app:logs_points')}</Th>
+  };
+
+  const getCellRenderMap = (item: any) => ({
+    [AppLogKeysEnum.SOURCE]: (
+      <Td key={AppLogKeysEnum.SOURCE}>
+        {/* @ts-ignore */}
+        {item.sourceName || t(ChatSourceMap[item.source]?.name) || item.source}
+      </Td>
+    ),
+    [AppLogKeysEnum.CREATED_TIME]: (
+      <Td key={AppLogKeysEnum.CREATED_TIME}>{dayjs(item.createTime).format('YYYY/MM/DD HH:mm')}</Td>
+    ),
+    [AppLogKeysEnum.LAST_CONVERSATION_TIME]: (
+      <Td key={AppLogKeysEnum.LAST_CONVERSATION_TIME}>
+        {dayjs(item.updateTime).format('YYYY/MM/DD HH:mm')}
+      </Td>
+    ),
+    [AppLogKeysEnum.USER]: (
+      <Td key={AppLogKeysEnum.USER}>
+        <Box>
+          {!!item.outLinkUid ? item.outLinkUid : <UserBox sourceMember={item.sourceMember} />}
+        </Box>
+      </Td>
+    ),
+    [AppLogKeysEnum.TITLE]: (
+      <Td key={AppLogKeysEnum.TITLE} className="textEllipsis" maxW={'250px'}>
+        {item.customTitle || item.title}
+      </Td>
+    ),
+    [AppLogKeysEnum.SESSION_ID]: (
+      <Td key={AppLogKeysEnum.SESSION_ID} className="textEllipsis" maxW={'200px'}>
+        {item.chatId || '-'}
+      </Td>
+    ),
+    [AppLogKeysEnum.MESSAGE_COUNT]: <Td key={AppLogKeysEnum.MESSAGE_COUNT}>{item.messageCount}</Td>,
+    [AppLogKeysEnum.FEEDBACK]: (
+      <Td key={AppLogKeysEnum.FEEDBACK} w={'100px'}>
+        {!!item?.userGoodFeedbackCount && (
+          <Flex
+            mb={item?.userGoodFeedbackCount ? 1 : 0}
+            bg={'green.100'}
+            color={'green.600'}
+            px={3}
+            py={1}
+            alignItems={'center'}
+            justifyContent={'center'}
+            borderRadius={'md'}
+            fontWeight={'bold'}
+          >
+            <MyIcon mr={1} name={'core/chat/feedback/goodLight'} color={'green.600'} w={'14px'} />
+            {item.userGoodFeedbackCount}
+          </Flex>
+        )}
+        {!!item?.userBadFeedbackCount && (
+          <Flex
+            bg={'#FFF2EC'}
+            color={'#C96330'}
+            px={3}
+            py={1}
+            alignItems={'center'}
+            justifyContent={'center'}
+            borderRadius={'md'}
+            fontWeight={'bold'}
+          >
+            <MyIcon mr={1} name={'core/chat/feedback/badLight'} color={'#C96330'} w={'14px'} />
+            {item.userBadFeedbackCount}
+          </Flex>
+        )}
+        {!item?.userGoodFeedbackCount && !item?.userBadFeedbackCount && <>-</>}
+      </Td>
+    ),
+    [AppLogKeysEnum.CUSTOM_FEEDBACK]: (
+      <Td key={AppLogKeysEnum.CUSTOM_FEEDBACK}>{item.customFeedbacksCount || '-'}</Td>
+    ),
+    [AppLogKeysEnum.ANNOTATED_COUNT]: (
+      <Td key={AppLogKeysEnum.ANNOTATED_COUNT}>{item.markCount}</Td>
+    ),
+    [AppLogKeysEnum.RESPONSE_TIME]: (
+      <Td key={AppLogKeysEnum.RESPONSE_TIME}>
+        {item.averageResponseTime ? `${item.averageResponseTime.toFixed(2)}s` : '-'}
+      </Td>
+    ),
+    [AppLogKeysEnum.ERROR_COUNT]: (
+      <Td key={AppLogKeysEnum.ERROR_COUNT}>{item.errorCount || '-'}</Td>
+    ),
+    [AppLogKeysEnum.POINTS]: (
+      <Td key={AppLogKeysEnum.POINTS}>
+        {item.totalPoints ? `${item.totalPoints.toFixed(2)}` : '-'}
+      </Td>
+    )
+  });
 
   const {
     value: selectTmbIds,
@@ -128,7 +254,7 @@ const Logs = () => {
     {
       manual: true,
       onSuccess: (res) => {
-        if (res.logKeys) {
+        if (res.logKeys.length > 0 && !logKeys) {
           setLogKeys(res.logKeys);
         }
       }
@@ -292,14 +418,19 @@ const Logs = () => {
           />
         </Flex>
         <Box flex={'1'} />
-        <Button
-          size={'md'}
-          variant={'outline'}
-          leftIcon={<MyIcon name={'common/paramsLight'} w={'18px'} color={'myGray.500'} />}
-          onClick={() => setLogKeysConfigModalOpen(true)}
+        <LogKeysConfigPopover
+          logKeysList={logKeys || DefaultAppLogKeys}
+          setLogKeysList={setLogKeys}
+          fetchLogKeys={fetchLogKeys}
         >
-          {t('app:logs_key_config')}
-        </Button>
+          <Button
+            size={'md'}
+            variant={'outline'}
+            leftIcon={<MyIcon name={'common/paramsLight'} w={'18px'} color={'myGray.500'} />}
+          >
+            {t('app:logs_key_config')}
+          </Button>
+        </LogKeysConfigPopover>
         <PopoverConfirm
           Trigger={<Button size={'md'}>{t('common:Export')}</Button>}
           showCancel
@@ -312,140 +443,28 @@ const Logs = () => {
         <Table variant={'simple'} fontSize={'sm'}>
           <Thead>
             <Tr>
-              {isLogKeyEnabled(AppLogKeysEnum.SOURCE) && <Th>{t('app:logs_keys_source')}</Th>}
-              {isLogKeyEnabled(AppLogKeysEnum.CREATED_TIME) && (
-                <Th>{t('app:logs_keys_createdTime')}</Th>
-              )}
-              {isLogKeyEnabled(AppLogKeysEnum.LAST_CONVERSATION_TIME) && (
-                <Th>{t('app:logs_keys_lastConversationTime')}</Th>
-              )}
-              {isLogKeyEnabled(AppLogKeysEnum.USER) && <Th>{t('app:logs_chat_user')}</Th>}
-              {isLogKeyEnabled(AppLogKeysEnum.TITLE) && <Th>{t('app:logs_title')}</Th>}
-              {isLogKeyEnabled(AppLogKeysEnum.MESSAGE_COUNT) && (
-                <Th>{t('app:logs_message_total')}</Th>
-              )}
-              {isLogKeyEnabled(AppLogKeysEnum.FEEDBACK) && <Th>{t('app:feedback_count')}</Th>}
-              {isLogKeyEnabled(AppLogKeysEnum.CUSTOM_FEEDBACK) && (
-                <Th>{t('common:core.app.feedback.Custom feedback')}</Th>
-              )}
-              {isLogKeyEnabled(AppLogKeysEnum.ANNOTATED_COUNT) && (
-                <Th>
-                  <Flex gap={1} alignItems={'center'}>
-                    {t('app:mark_count')}
-                    <QuestionTip label={t('common:core.chat.Mark Description')} />
-                  </Flex>
-                </Th>
-              )}
-              {isLogKeyEnabled(AppLogKeysEnum.RESPONSE_TIME) && (
-                <Th>{t('app:logs_response_time')}</Th>
-              )}
-              {isLogKeyEnabled(AppLogKeysEnum.ERROR_COUNT) && <Th>{t('app:logs_error_count')}</Th>}
-              {isLogKeyEnabled(AppLogKeysEnum.POINTS) && <Th>{t('app:logs_points')}</Th>}
+              {(logKeys || DefaultAppLogKeys)
+                .filter((logKey) => logKey.enable)
+                .map((logKey) => headerRenderMap[logKey.key])}
             </Tr>
           </Thead>
           <Tbody fontSize={'xs'}>
-            {logs.map((item) => (
-              <Tr
-                key={item._id}
-                _hover={{ bg: 'myWhite.600' }}
-                cursor={'pointer'}
-                title={t('common:core.view_chat_detail')}
-                onClick={() => setDetailLogsId(item.id)}
-              >
-                {isLogKeyEnabled(AppLogKeysEnum.SOURCE) && (
-                  // @ts-ignore
-                  <Td>{item.sourceName || t(ChatSourceMap[item.source]?.name) || item.source}</Td>
-                )}
-                {isLogKeyEnabled(AppLogKeysEnum.CREATED_TIME) && (
-                  <Td>{dayjs(item.createTime).format('YYYY/MM/DD HH:mm')}</Td>
-                )}
-                {isLogKeyEnabled(AppLogKeysEnum.LAST_CONVERSATION_TIME) && (
-                  <Td>{dayjs(item.updateTime).format('YYYY/MM/DD HH:mm')}</Td>
-                )}
-                {isLogKeyEnabled(AppLogKeysEnum.USER) && (
-                  <Td>
-                    <Box>
-                      {!!item.outLinkUid ? (
-                        item.outLinkUid
-                      ) : (
-                        <UserBox sourceMember={item.sourceMember} />
-                      )}
-                    </Box>
-                  </Td>
-                )}
-                {logKeys.find((item) => item.key === AppLogKeysEnum.TITLE)?.enable && (
-                  <Td className="textEllipsis" maxW={'250px'}>
-                    {item.customTitle || item.title}
-                  </Td>
-                )}
-                {logKeys.find((item) => item.key === AppLogKeysEnum.MESSAGE_COUNT)?.enable && (
-                  <Td>{item.messageCount}</Td>
-                )}
-                {logKeys.find((item) => item.key === AppLogKeysEnum.FEEDBACK)?.enable && (
-                  <Td w={'100px'}>
-                    {!!item?.userGoodFeedbackCount && (
-                      <Flex
-                        mb={item?.userGoodFeedbackCount ? 1 : 0}
-                        bg={'green.100'}
-                        color={'green.600'}
-                        px={3}
-                        py={1}
-                        alignItems={'center'}
-                        justifyContent={'center'}
-                        borderRadius={'md'}
-                        fontWeight={'bold'}
-                      >
-                        <MyIcon
-                          mr={1}
-                          name={'core/chat/feedback/goodLight'}
-                          color={'green.600'}
-                          w={'14px'}
-                        />
-                        {item.userGoodFeedbackCount}
-                      </Flex>
-                    )}
-                    {!!item?.userBadFeedbackCount && (
-                      <Flex
-                        bg={'#FFF2EC'}
-                        color={'#C96330'}
-                        px={3}
-                        py={1}
-                        alignItems={'center'}
-                        justifyContent={'center'}
-                        borderRadius={'md'}
-                        fontWeight={'bold'}
-                      >
-                        <MyIcon
-                          mr={1}
-                          name={'core/chat/feedback/badLight'}
-                          color={'#C96330'}
-                          w={'14px'}
-                        />
-                        {item.userBadFeedbackCount}
-                      </Flex>
-                    )}
-                    {!item?.userGoodFeedbackCount && !item?.userBadFeedbackCount && <>-</>}
-                  </Td>
-                )}
-                {logKeys.find((item) => item.key === AppLogKeysEnum.CUSTOM_FEEDBACK)?.enable && (
-                  <Td>{item.customFeedbacksCount || '-'}</Td>
-                )}
-                {logKeys.find((item) => item.key === AppLogKeysEnum.ANNOTATED_COUNT)?.enable && (
-                  <Td>{item.markCount}</Td>
-                )}
-                {logKeys.find((item) => item.key === AppLogKeysEnum.RESPONSE_TIME)?.enable && (
-                  <Td>
-                    {item.averageResponseTime ? `${item.averageResponseTime.toFixed(2)}s` : '-'}
-                  </Td>
-                )}
-                {logKeys.find((item) => item.key === AppLogKeysEnum.ERROR_COUNT)?.enable && (
-                  <Td>{item.errorCount || '-'}</Td>
-                )}
-                {logKeys.find((item) => item.key === AppLogKeysEnum.POINTS)?.enable && (
-                  <Td>{item.totalPoints ? `${item.totalPoints.toFixed(2)}` : '-'}</Td>
-                )}
-              </Tr>
-            ))}
+            {logs.map((item) => {
+              const cellRenderMap = getCellRenderMap(item);
+              return (
+                <Tr
+                  key={item._id}
+                  _hover={{ bg: 'myWhite.600' }}
+                  cursor={'pointer'}
+                  title={t('common:core.view_chat_detail')}
+                  onClick={() => setDetailLogsId(item.id)}
+                >
+                  {(logKeys || DefaultAppLogKeys)
+                    .filter((logKey) => logKey.enable)
+                    .map((logKey) => cellRenderMap[logKey.key])}
+                </Tr>
+              );
+            })}
           </Tbody>
         </Table>
         {logs.length === 0 && !isLoading && <EmptyTip text={t('app:logs_empty')}></EmptyTip>}
@@ -463,13 +482,6 @@ const Logs = () => {
             setDetailLogsId(undefined);
             getData(pageNum);
           }}
-        />
-      )}
-      {logKeysConfigModalOpen && (
-        <LogKeysConfigModal
-          onClose={() => setLogKeysConfigModalOpen(false)}
-          logKeysList={logKeys}
-          fetchLogKeys={fetchLogKeys}
         />
       )}
     </Flex>
