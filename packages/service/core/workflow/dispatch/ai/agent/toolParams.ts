@@ -10,6 +10,7 @@ export const dispatchToolParams = (props: Props): Response => {
 
   return {
     ...params,
+    data: params,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       toolParamsResult: params
     }
