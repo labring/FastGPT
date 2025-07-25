@@ -56,17 +56,14 @@ const SyncLogKeysPopover = ({
 
             <Flex justifyContent={'end'} gap={2}>
               <Button
-                variant={'grayGhost'}
+                variant={'outline'}
                 size={'sm'}
                 onClick={() => {
                   setLogKeys(teamLogKeys);
                   onClose();
                 }}
               >
-                {t('app:sync_team')}
-              </Button>
-              <Button variant={'outline'} size={'sm'} onClick={onClose}>
-                {t('common:Cancel')}
+                还原成团队配置
               </Button>
               <Button
                 size={'sm'}
@@ -79,7 +76,7 @@ const SyncLogKeysPopover = ({
                   onClose();
                 }}
               >
-                {t('common:Confirm')}
+                保存至团队配置
               </Button>
             </Flex>
           </Box>

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Flex,
   Box,
@@ -28,7 +28,6 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { cardStyles } from '../constants';
-
 import dynamic from 'next/dynamic';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MultipleSelect, {
@@ -65,51 +64,6 @@ const Logs = () => {
   const [detailLogsId, setDetailLogsId] = useState<string>();
   const [tmbInputValue, setTmbInputValue] = useState('');
   const [chatSearch, setChatSearch] = useState('');
-  const [logKeys, setLogKeys] = useLocalStorageState<AppLogKeysType[]>(`app_log_keys_${appId}`);
-
-  const HeaderRenderMap = useMemo(
-    () => ({
-      [AppLogKeysEnum.SOURCE]: <Th key={AppLogKeysEnum.SOURCE}>{t('app:logs_keys_source')}</Th>,
-      [AppLogKeysEnum.CREATED_TIME]: (
-        <Th key={AppLogKeysEnum.CREATED_TIME}>{t('app:logs_keys_createdTime')}</Th>
-      ),
-      [AppLogKeysEnum.LAST_CONVERSATION_TIME]: (
-        <Th key={AppLogKeysEnum.LAST_CONVERSATION_TIME}>
-          {t('app:logs_keys_lastConversationTime')}
-        </Th>
-      ),
-      [AppLogKeysEnum.USER]: <Th key={AppLogKeysEnum.USER}>{t('app:logs_chat_user')}</Th>,
-      [AppLogKeysEnum.TITLE]: <Th key={AppLogKeysEnum.TITLE}>{t('app:logs_title')}</Th>,
-      [AppLogKeysEnum.SESSION_ID]: (
-        <Th key={AppLogKeysEnum.SESSION_ID}>{t('app:logs_keys_sessionId')}</Th>
-      ),
-      [AppLogKeysEnum.MESSAGE_COUNT]: (
-        <Th key={AppLogKeysEnum.MESSAGE_COUNT}>{t('app:logs_message_total')}</Th>
-      ),
-      [AppLogKeysEnum.FEEDBACK]: <Th key={AppLogKeysEnum.FEEDBACK}>{t('app:feedback_count')}</Th>,
-      [AppLogKeysEnum.CUSTOM_FEEDBACK]: (
-        <Th key={AppLogKeysEnum.CUSTOM_FEEDBACK}>
-          {t('common:core.app.feedback.Custom feedback')}
-        </Th>
-      ),
-      [AppLogKeysEnum.ANNOTATED_COUNT]: (
-        <Th key={AppLogKeysEnum.ANNOTATED_COUNT}>
-          <Flex gap={1} alignItems={'center'}>
-            {t('app:mark_count')}
-            <QuestionTip label={t('common:core.chat.Mark Description')} />
-          </Flex>
-        </Th>
-      ),
-      [AppLogKeysEnum.RESPONSE_TIME]: (
-        <Th key={AppLogKeysEnum.RESPONSE_TIME}>{t('app:logs_response_time')}</Th>
-      ),
-      [AppLogKeysEnum.ERROR_COUNT]: (
-        <Th key={AppLogKeysEnum.ERROR_COUNT}>{t('app:logs_error_count')}</Th>
-      ),
-      [AppLogKeysEnum.POINTS]: <Th key={AppLogKeysEnum.POINTS}>{t('app:logs_points')}</Th>
-    }),
-    [t]
-  );
 
   const getCellRenderMap = (item: AppLogsListItemType) => ({
     [AppLogKeysEnum.SOURCE]: (
@@ -256,12 +210,15 @@ const Logs = () => {
     params,
     refreshDeps: [params]
   });
+
+  const [logKeys, setLogKeys] = useLocalStorageState<AppLogKeysType[]>(`app_log_keys_${appId}`);
   const { runAsync: fetchLogKeys, data: teamLogKeys } = useRequest2(
     async () => {
-      return await getLogKeys({ appId });
+      return getLogKeys({ appId });
     },
     {
-      manual: true,
+      manual: false,
+      refreshDeps: [appId],
       onSuccess: (res) => {
         if (res.logKeys.length > 0 && !logKeys) {
           setLogKeys(res.logKeys);
@@ -270,9 +227,49 @@ const Logs = () => {
     }
   );
 
-  useEffect(() => {
-    fetchLogKeys();
-  }, [appId]);
+  const HeaderRenderMap = useMemo(
+    () => ({
+      [AppLogKeysEnum.SOURCE]: <Th key={AppLogKeysEnum.SOURCE}>{t('app:logs_keys_source')}</Th>,
+      [AppLogKeysEnum.CREATED_TIME]: (
+        <Th key={AppLogKeysEnum.CREATED_TIME}>{t('app:logs_keys_createdTime')}</Th>
+      ),
+      [AppLogKeysEnum.LAST_CONVERSATION_TIME]: (
+        <Th key={AppLogKeysEnum.LAST_CONVERSATION_TIME}>
+          {t('app:logs_keys_lastConversationTime')}
+        </Th>
+      ),
+      [AppLogKeysEnum.USER]: <Th key={AppLogKeysEnum.USER}>{t('app:logs_chat_user')}</Th>,
+      [AppLogKeysEnum.TITLE]: <Th key={AppLogKeysEnum.TITLE}>{t('app:logs_title')}</Th>,
+      [AppLogKeysEnum.SESSION_ID]: (
+        <Th key={AppLogKeysEnum.SESSION_ID}>{t('app:logs_keys_sessionId')}</Th>
+      ),
+      [AppLogKeysEnum.MESSAGE_COUNT]: (
+        <Th key={AppLogKeysEnum.MESSAGE_COUNT}>{t('app:logs_message_total')}</Th>
+      ),
+      [AppLogKeysEnum.FEEDBACK]: <Th key={AppLogKeysEnum.FEEDBACK}>{t('app:feedback_count')}</Th>,
+      [AppLogKeysEnum.CUSTOM_FEEDBACK]: (
+        <Th key={AppLogKeysEnum.CUSTOM_FEEDBACK}>
+          {t('common:core.app.feedback.Custom feedback')}
+        </Th>
+      ),
+      [AppLogKeysEnum.ANNOTATED_COUNT]: (
+        <Th key={AppLogKeysEnum.ANNOTATED_COUNT}>
+          <Flex gap={1} alignItems={'center'}>
+            {t('app:mark_count')}
+            <QuestionTip label={t('common:core.chat.Mark Description')} />
+          </Flex>
+        </Th>
+      ),
+      [AppLogKeysEnum.RESPONSE_TIME]: (
+        <Th key={AppLogKeysEnum.RESPONSE_TIME}>{t('app:logs_response_time')}</Th>
+      ),
+      [AppLogKeysEnum.ERROR_COUNT]: (
+        <Th key={AppLogKeysEnum.ERROR_COUNT}>{t('app:logs_error_count')}</Th>
+      ),
+      [AppLogKeysEnum.POINTS]: <Th key={AppLogKeysEnum.POINTS}>{t('app:logs_points')}</Th>
+    }),
+    [t]
+  );
 
   const { runAsync: exportLogs } = useRequest2(
     async () => {
