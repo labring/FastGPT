@@ -1,4 +1,7 @@
-import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
+import {
+  getPluginInputsFromStoreNodes,
+  splitCombinePluginId
+} from '@fastgpt/global/core/app/plugin/utils';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -15,9 +18,8 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { computedPluginUsage } from '../../../app/plugin/utils';
 import { filterSystemVariables, getNodeErrResponse } from '../utils';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { getChildAppRuntimeById, splitCombinePluginId } from '../../../app/plugin/controller';
+import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { getChildAppRuntimeById } from '../../../app/plugin/controller';
 import { dispatchWorkFlow } from '../index';
 import { getUserChatInfoAndAuthTeamPoints } from '../../../../support/permission/auth/team';
 import { dispatchRunTool } from '../child/runTool';
@@ -66,7 +68,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       });
     }
 
-    /* 
+    /*
       1. Team app
       2. Admin selected system tool
     */
@@ -79,7 +81,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       per: ReadPermissionVal
     });
 
-    plugin = await getChildAppRuntimeById(pluginId, version);
+    plugin = await getChildAppRuntimeById({ id: pluginId, versionId: version });
 
     const outputFilterMap =
       plugin.nodes

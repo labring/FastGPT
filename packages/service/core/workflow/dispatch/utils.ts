@@ -1,7 +1,7 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   type RuntimeEdgeItemType,
   type RuntimeNodeItemType,
@@ -18,6 +18,10 @@ import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/ty
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { McpToolSetDataType } from '@fastgpt/global/core/app/mcpTools/type';
+import {
+  getSystemPluginRuntimeNodeById,
+  getSystemTools
+} from '../../../core/app/plugin/controller';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -151,7 +155,13 @@ export const formatHttpError = (error: any) => {
   };
 };
 
-export const rewriteRuntimeWorkFlow = (
+/**
+ * ToolSet node will be replaced by Children Tool Nodes.
+ * @param nodes
+ * @param edges
+ * @returns
+ */
+export const rewriteRuntimeWorkFlow = async (
   nodes: RuntimeNodeItemType[],
   edges: RuntimeEdgeItemType[]
 ) => {
@@ -165,34 +175,61 @@ export const rewriteRuntimeWorkFlow = (
 
   for (const toolSetNode of toolSetNodes) {
     nodeIdsToRemove.add(toolSetNode.nodeId);
-    const toolSetValue = toolSetNode.inputs[0]?.value as McpToolSetDataType | undefined;
+    const toolId = toolSetNode.toolConfig?.systemToolSet?.toolId;
+    if (toolId) {
+      // systemTool
+      const toolsetInputConfig = toolSetNode.inputs.find(
+        (item) => item.key === NodeInputKeyEnum.systemInputConfig
+      );
+      const tools = await getSystemTools();
+      const children = tools.filter((item) => item.parentId === toolId);
+      for (const child of children) {
+        const newNode = await getSystemPluginRuntimeNodeById(child.id);
+        const newNodeInputConfig = newNode.inputs.find(
+          (item) => item.key === NodeInputKeyEnum.systemInputConfig
+        );
+        if (newNodeInputConfig) {
+          newNodeInputConfig.value = toolsetInputConfig?.value;
+        }
+        nodes.push(newNode);
+        const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
+        for (const inEdge of incomingEdges) {
+          edges.push({
+            source: inEdge.source,
+            target: newNode.nodeId,
+            sourceHandle: inEdge.sourceHandle,
+            targetHandle: 'selectedTools',
+            status: inEdge.status
+          });
+        }
+      }
+    } else {
+      const toolSetValue = toolSetNode.toolConfig?.mcpToolSet;
 
-    if (!toolSetValue) continue;
+      if (!toolSetValue) continue;
 
-    const toolList = toolSetValue.toolList;
-    const url = toolSetValue.url;
-    const headerSecret = toolSetValue.headerSecret;
+      const toolList = toolSetValue.toolList;
 
-    const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
+      const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
 
-    for (const tool of toolList) {
-      const newToolNode = getMCPToolRuntimeNode({
-        avatar: toolSetNode.avatar,
-        tool,
-        url,
-        headerSecret
-      });
-
-      nodes.push({ ...newToolNode, name: `${toolSetNode.name} / ${tool.name}` });
-
-      for (const inEdge of incomingEdges) {
-        edges.push({
-          source: inEdge.source,
-          target: newToolNode.nodeId,
-          sourceHandle: inEdge.sourceHandle,
-          targetHandle: 'selectedTools',
-          status: inEdge.status
+      for (const tool of toolList) {
+        const newToolNode = getMCPToolRuntimeNode({
+          avatar: toolSetNode.avatar,
+          tool,
+          parentId: toolSetValue.toolId
         });
+
+        nodes.push({ ...newToolNode, name: `${toolSetNode.name}/${tool.name}` });
+
+        for (const inEdge of incomingEdges) {
+          edges.push({
+            source: inEdge.source,
+            target: newToolNode.nodeId,
+            sourceHandle: inEdge.sourceHandle,
+            targetHandle: 'selectedTools',
+            status: inEdge.status
+          });
+        }
       }
     }
   }
