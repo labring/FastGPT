@@ -43,6 +43,7 @@
   "confirm_delete_folder_tip": "Confirm to delete this folder? All apps and corresponding conversation records under it will be deleted. Please confirm!",
   "copy_one_app": "Create Duplicate",
   "core.app.QG.Switch": "Enable guess what you want to ask",
+  "core.module.template.System Tools": "System Tools",
   "core.dataset.import.Custom prompt": "Custom Prompt",
   "create_by_curl": "By CURL",
   "create_by_template": "By template",

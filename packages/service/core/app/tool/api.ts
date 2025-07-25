@@ -29,6 +29,26 @@ export async function getSystemToolList() {
   return Promise.reject(res.body);
 }
 
+export async function deleteSystemTool(toolId: string) {
+  const res = await client.tool.delete({ body: { toolId } });
+
+  if (res.status === 200) {
+    return res.body;
+  }
+
+  return Promise.reject(res.body);
+}
+
+export async function uploadSystemTool(url: string) {
+  const res = await client.tool.upload({ body: { url } });
+
+  if (res.status === 200) {
+    return res.body;
+  }
+
+  return Promise.reject(res.body);
+}
+
 const runToolInstance = new RunToolWithStream({
   baseUrl: BASE_URL,
   token: TOKEN

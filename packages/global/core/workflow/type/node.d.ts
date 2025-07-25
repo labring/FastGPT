@@ -124,6 +124,7 @@ export type NodeTemplateListItemType = {
   instructions?: string; // 使用说明
   courseUrl?: string; // 教程链接
   sourceMember?: SourceMember;
+  toolSource?: 'uploaded' | 'built-in'; // Plugin source type
 };
 
 export type NodeTemplateListType = {
