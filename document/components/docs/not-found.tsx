@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 
 const exactMap: Record<string, string> = {
-  '/docs/intro': '/docs/introduction/index',
+  '/docs/intro': '/docs/introduction',
   '/docs/guide/dashboard/workflow/coreferenceresolution':
     '/docs/introduction/guide/dashboard/workflow/coreferenceResolution',
   '/docs/guide/admin/sso_dingtalk':

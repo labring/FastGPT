@@ -6,6 +6,7 @@
     "build": "next build",
     "update-index-action": "node ./update-index.mjs",
     "update-index": "node --env-file=.env.local ./update-index.mjs",
+    "get-doc-times": "node ./github.js",
     "dev": "next dev --turbo",
     "start": "next start",
     "postinstall": "fumadocs-mdx"
