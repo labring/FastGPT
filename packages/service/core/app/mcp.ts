@@ -137,7 +137,6 @@ export const getMCPChildren = async (app: AppSchema) => {
   const isNewMcp = !!app.modules[0].toolConfig?.mcpToolSet;
   const id = String(app._id);
   if (isNewMcp) {
-    console.log(app.modules[0].toolConfig?.mcpToolSet);
     return (
       app.modules[0].toolConfig?.mcpToolSet?.toolList.map((item) => ({
         ...item,

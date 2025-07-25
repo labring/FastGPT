@@ -60,7 +60,7 @@ export const getMCPToolRuntimeNode = ({
   avatar?: string;
   parentId: string;
 }): RuntimeNodeItemType => {
-  const node = {
+  return {
     nodeId: getNanoid(16),
     flowNodeType: FlowNodeTypeEnum.tool,
     avatar,
@@ -85,7 +85,6 @@ export const getMCPToolRuntimeNode = ({
     name: tool.name,
     version: ''
   };
-  return node;
 };
 
 /**
