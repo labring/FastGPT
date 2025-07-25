@@ -195,7 +195,6 @@ const commonSplit = (props: SplitProps): SplitResponse => {
   const checkIsMarkdownSplit = (step: number) =>
     step >= customRegLen && step <= markdownIndex + customRegLen;
   const checkForbidOverlap = (step: number) => step <= forbidOverlapIndex;
-  // console.log('[textSplitter.ts][getSplitTexts] 当前处理text内容预览:', text );
 
   // if use markdown title split, Separate record title
   const getSplitTexts = ({ text, step }: { text: string; step: number }) => {
@@ -239,40 +238,8 @@ const commonSplit = (props: SplitProps): SplitResponse => {
         })()
       );
     })();
-    // 在此处增加表格完全分割 + 主逻辑上的表格分块处理
-    // const finalText = (() => {
 
-    //   // 使用更精确的表格正则，确保匹配真正的Markdown表格
-    //   const tableRegex = /(\n\|(?:[^\n|]*\|)+\n\|(?:[:\-\s]*\|)+\n(?:\|(?:[^\n|]*\|)*\n)*)/g;
-
-    //   return replaceText.replace(tableRegex, (match) => {
-    //     const tableText = match.trim();
-
-    //     // 验证是否为真正的表格
-    //     if (!strIsMdTable(tableText)) {
-    //       return match; // 不是表格，保持原样
-    //     }
-
-    //     const { chunks: tableChunks } = markdownTableSplit({
-    //       text: tableText,
-    //       chunkSize
-    //     });
-
-    //     // 只有当表格被分成多块时，才进行分块处理
-    //     if (tableChunks.length > 1) {
-    //       // 对于多块表格：在表格块中间加分隔符
-    //       return `\n${tableChunks.join(splitMarker)}\n`;
-    //     } else {
-    //       // 单个表格块，表格块前后都加分隔符
-    //       return `\n${splitMarker}${tableChunks[0]}\n`;
-    //     }
-    //   });
-    // })();
-
-    // const splitTexts = finalText.split(splitMarker).filter((part) => part.trim());
     const splitTexts = replaceText.split(splitMarker).filter((part) => part.trim());
-
-    // console.log('[textSplitter] splitTexts (joined):\n' + splitTexts.join('\n---SPLIT---\n'));
 
     return splitTexts
       .map((text) => {
@@ -349,16 +316,6 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
     // split text by special char
     const splitTexts = getSplitTexts({ text, step });
-    // 一次性打印所有分块信息，便于整体观察分块情况
-    // console.log(
-    //   `[splitTextRecursively] splitTexts at step ${step}, count: ${splitTexts.length}`,
-    //   splitTexts.map((item, idx) => ({
-    //     idx,
-    //     preview: JSON.stringify(item.text, null, 2),
-    //     chunkMaxSize: item.chunkMaxSize,
-    //     title: item.title
-    //   }))
-    // );
     const chunks: string[] = [];
 
     for (let i = 0; i < splitTexts.length; i++) {
@@ -371,20 +328,10 @@ const commonSplit = (props: SplitProps): SplitResponse => {
       const newText = lastText + currentText;
       const newTextLen = getTextValidLength(newText);
 
-      // console.log('splitTexts at step: ' ,item);
-
-      // 表格特殊处理：如果当前文本是表格，且加上表格后会超出大小，先分块
+      // split the current table if it will exceed after adding
       if (strIsMdTable(currentText) && newTextLen > maxLen && lastTextLen > 0) {
-        // 打印分块前的内容
-        // console.log('[markdownTableSplit] before:', {
-        //   lastText,
-        //   currentText
-        // });
-
-        // 先分块当前累积的内容
         chunks.push(lastText);
 
-        // 对表格进行分块
         const { chunks: tableChunks } = markdownTableSplit({
           text: currentText,
           chunkSize
@@ -397,8 +344,6 @@ const commonSplit = (props: SplitProps): SplitResponse => {
         });
         continue;
       }
-      // 对 newText 的 log 输出，便于调试分块内容
-      // console.log('[splitTextRecursively] newText at step', step, JSON.stringify(newText, null, 2));
       // Markdown 模式下，会强制向下拆分最小块，并再最后一个标题深度，给小块都补充上所有标题（包含父级标题）
       if (isMarkdownStep) {
         // split new Text, split chunks must will greater 1 (small lastText)
@@ -504,8 +449,6 @@ const commonSplit = (props: SplitProps): SplitResponse => {
   };
 
   try {
-    // 对text打个log
-    // console.log('[commonSplit] input text:', text);
     const chunks = splitTextRecursively({
       text,
       step: 0,
@@ -538,12 +481,9 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
   const splitResult = splitWithCustomSign.map((item) => {
     if (strIsMdTable(item)) {
       return markdownTableSplit({ ...props, text: item });
-      // return markdownTableSplit(props);
     }
 
-    // console.log('splitText2Chunks: item ', item);
     return commonSplit({ ...props, text: item });
-    // return commonSplit(props);
   });
 
   return {
