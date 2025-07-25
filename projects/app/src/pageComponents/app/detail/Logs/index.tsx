@@ -10,12 +10,13 @@ import {
   Td,
   Tbody,
   HStack,
-  Button
+  Button,
+  Input
 } from '@chakra-ui/react';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import { getAppChatLogs, getAppChats } from '@/web/core/app/api/log';
+import { getAppChatLogs } from '@/web/core/app/api/log';
 import dayjs from 'dayjs';
 import { ChatSourceEnum, ChatSourceMap } from '@fastgpt/global/core/chat/constants';
 import { addDays } from 'date-fns';
@@ -33,7 +34,6 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MultipleSelect, {
   useMultipleSelect
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
-import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
@@ -46,23 +46,6 @@ import { getTeamMembers } from '@/web/support/user/team/api';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
-
-const multipleSelectStyles = {
-  bg: 'white',
-  minW: '226px',
-  maxW: '332px',
-  borderColor: 'myGray.200',
-  rounded: '8px',
-  minH: 10,
-  maxH: 20,
-  overflow: 'auto'
-};
-
-const commonTagStyle = {
-  px: 1,
-  borderRadius: 'sm',
-  bg: 'myGray.100'
-};
 
 const Logs = () => {
   const { t } = useTranslation();
@@ -77,6 +60,8 @@ const Logs = () => {
   const [detailLogsId, setDetailLogsId] = useState<string>();
   const [logKeys, setLogKeys] = useState<{ key: LogKeysEnum; enable: boolean }[]>(DefaultLogKeys);
   const [logKeysConfigModalOpen, setLogKeysConfigModalOpen] = useState(false);
+  const [tmbInputValue, setTmbInputValue] = useState('');
+  const [chatSearch, setChatSearch] = useState('');
 
   const isLogKeyEnabled = (key: LogKeysEnum) => logKeys.find((item) => item.key === key)?.enable;
 
@@ -85,13 +70,6 @@ const Logs = () => {
     setValue: setSelectTmbIds,
     isSelectAll: isSelectAllTmb,
     setIsSelectAll: setIsSelectAllTmb
-  } = useMultipleSelect<string>([], true);
-
-  const {
-    value: selectChatIds,
-    setValue: setSelectChatIds,
-    isSelectAll: isSelectAllChat,
-    setIsSelectAll: setIsSelectAllChat
   } = useMultipleSelect<string>([], true);
 
   const {
@@ -116,8 +94,8 @@ const Logs = () => {
       dateStart: dateRange.from!,
       dateEnd: dateRange.to!,
       sources: isSelectAllSource ? undefined : chatSources,
-      chatIds: isSelectAllChat ? undefined : selectChatIds,
-      tmbIds: isSelectAllTmb ? undefined : selectTmbIds
+      tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
+      chatSearch
     }),
     [
       appId,
@@ -125,10 +103,9 @@ const Logs = () => {
       dateRange.from,
       dateRange.to,
       isSelectAllSource,
-      selectChatIds,
       selectTmbIds,
-      isSelectAllChat,
-      isSelectAllTmb
+      isSelectAllTmb,
+      chatSearch
     ]
   );
   const {
@@ -171,7 +148,6 @@ const Logs = () => {
           dateStart: dateRange.from || new Date(),
           dateEnd: addDays(dateRange.to || new Date(), 1),
           sources: isSelectAllSource ? undefined : chatSources,
-          chatIds: isSelectAllChat ? undefined : selectChatIds,
           tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
 
           title: t('app:logs_export_title'),
@@ -191,7 +167,6 @@ const Logs = () => {
     }
   );
 
-  const [tmbInputValue, setTmbInputValue] = useState('');
   const { data: members, ScrollData: TmbScrollData } = useScrollPagination(getTeamMembers, {
     params: { searchKey: tmbInputValue },
     refreshDeps: [tmbInputValue]
@@ -212,31 +187,6 @@ const Logs = () => {
     [members]
   );
 
-  const [chatInputValue, setChatInputValue] = useState('');
-  const { data: chats, ScrollData: ChatScrollData } = useScrollPagination(getAppChats, {
-    params: {
-      appId,
-      search: chatInputValue
-    },
-    refreshDeps: [chatInputValue]
-  });
-
-  const chatList = useMemo(() => {
-    return chats.map((item) => ({
-      label: (
-        <HStack spacing={'1px'} h={'1.2rem'} w={'full'}>
-          <Box color={'myGray.900'} className="textEllipsis" maxW={'50%'} flexShrink={0}>
-            {item.title}
-          </Box>
-          <Box color={'myGray.500'} className="textEllipsis" fontSize={'mini'}>
-            {item.chatId}
-          </Box>
-        </HStack>
-      ),
-      value: item.chatId
-    }));
-  }, [chats]);
-
   return (
     <Flex
       flexDirection={'column'}
@@ -255,12 +205,19 @@ const Logs = () => {
             onSelect={setChatSources}
             isSelectAll={isSelectAllSource}
             setIsSelectAll={setIsSelectAllSource}
-            itemWrap={false}
             h={10}
             w={'226px'}
             rounded={'8px'}
+            tagStyle={{
+              px: 1,
+              py: 1,
+              borderRadius: 'sm',
+              bg: 'myGray.100',
+              color: 'myGray.900'
+            }}
             borderColor={'myGray.200'}
             formLabel={t('app:logs_source')}
+            formLabelFontSize={'sm'}
           />
         </Flex>
         <Flex>
@@ -276,26 +233,36 @@ const Logs = () => {
             borderColor={'myGray.200'}
           />
         </Flex>
-        <Flex>
-          <MultipleSelect<string>
-            list={chatList}
-            value={selectChatIds}
-            onSelect={(val) => {
-              setSelectChatIds(val as string[]);
+        <Flex
+          w={'226px'}
+          h={10}
+          alignItems={'center'}
+          rounded={'8px'}
+          border={'1px solid'}
+          borderColor={'myGray.200'}
+          _focusWithin={{
+            borderColor: 'primary.600',
+            boxShadow: '0 0 0 2.4px rgba(51, 112, 255, 0.15)'
+          }}
+          pl={3}
+        >
+          <Box rounded={'8px'} bg={'white'} fontSize={'sm'} border={'none'} whiteSpace={'nowrap'}>
+            {t('common:chat')}
+          </Box>
+          <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
+          <Input
+            placeholder={t('app:logs_search_chat')}
+            value={chatSearch}
+            onChange={(e) => setChatSearch(e.target.value)}
+            fontSize={'sm'}
+            border={'none'}
+            pl={0}
+            _focus={{
+              boxShadow: 'none'
             }}
-            itemWrap={false}
-            ScrollData={ChatScrollData}
-            isSelectAll={isSelectAllChat}
-            setIsSelectAll={setIsSelectAllChat}
-            {...multipleSelectStyles}
-            formLabelFontSize={'sm'}
-            formLabel={t('common:chat')}
-            tagStyle={{
-              ...commonTagStyle,
-              maxW: '114px'
+            _placeholder={{
+              fontSize: 'sm'
             }}
-            inputValue={chatInputValue}
-            setInputValue={setChatInputValue}
           />
         </Flex>
         <Flex>
@@ -305,16 +272,19 @@ const Logs = () => {
             onSelect={(val) => {
               setSelectTmbIds(val as string[]);
             }}
-            itemWrap={false}
             ScrollData={TmbScrollData}
             isSelectAll={isSelectAllTmb}
             setIsSelectAll={setIsSelectAllTmb}
-            {...multipleSelectStyles}
+            h={10}
+            w={'226px'}
+            rounded={'8px'}
             formLabelFontSize={'sm'}
             formLabel={t('common:member')}
             tagStyle={{
-              ...commonTagStyle,
-              maxW: '76px'
+              px: 1,
+              borderRadius: 'sm',
+              bg: 'myGray.100',
+              w: '76px'
             }}
             inputValue={tmbInputValue}
             setInputValue={setTmbInputValue}

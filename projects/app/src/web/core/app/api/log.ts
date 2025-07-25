@@ -4,7 +4,6 @@ import { GET, POST } from '@/web/common/api/request';
 import type { AppLogsListItemType } from '@/types/app';
 import type { PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import type { GetAppChatLogsParams } from '@/global/core/api/appReq';
-import type { getAppChatsBody, getAppChatsResponse } from '@/pages/api/core/app/logs/getAppChats';
 
 export const updateLogKeys = (data: updateLogKeysBody) =>
   POST('/core/app/logs/updateLogKeys', data);
@@ -14,6 +13,3 @@ export const getLogKeys = (data: getLogKeysQuery) =>
 
 export const getAppChatLogs = (data: GetAppChatLogsParams) =>
   POST<PaginationResponse<AppLogsListItemType>>(`/core/app/getChatLogs`, data, { maxQuantity: 1 });
-
-export const getAppChats = (data: getAppChatsBody) =>
-  POST<getAppChatsResponse>(`/core/app/logs/getAppChats`, data);

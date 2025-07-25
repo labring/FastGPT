@@ -77,11 +77,27 @@ const MultipleSelect = <T = any,>({
 }: SelectProps<T>) => {
   const ref = useRef<HTMLButtonElement>(null);
   const SearchInputRef = useRef<HTMLInputElement>(null);
+  const tagsContainerRef = useRef<HTMLDivElement>(null);
 
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const canInput = setInputValue !== undefined;
-  const [selectedItems, setSelectedItems] = useState<{ value: T; label: React.ReactNode }[]>([]);
+
+  type SelectedItemType = {
+    icon?: string;
+    label: string | React.ReactNode;
+    value: T;
+  };
+
+  const [visibleItems, setVisibleItems] = useState<SelectedItemType[]>([]);
+  const [overflowItems, setOverflowItems] = useState<SelectedItemType[]>([]);
+
+  const selectedItems = useMemo(() => {
+    return value.map((val) => {
+      const listItem = list.find((item) => item.value === val);
+      return listItem || { value: val, label: String(val) };
+    });
+  }, [value, list]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -98,24 +114,43 @@ const MultipleSelect = <T = any,>({
       setInputValue?.('');
     }
   }, [isOpen]);
+
   useEffect(() => {
-    const newSelectedItems = value.map((val) => {
-      const existingItem = selectedItems.find((item) => item.value === val);
-      if (existingItem) {
-        return existingItem;
-      }
-      const listItem = list.find((item) => item.value === val);
-      if (listItem) {
-        return { value: val, label: listItem.label };
-      }
-      return { value: val, label: val as React.ReactNode };
-    });
-    setSelectedItems(newSelectedItems);
-  }, [value, list]);
+    const getWidth = (w: any) =>
+      typeof w === 'number' ? w : typeof w === 'string' ? parseInt(w) : 0;
+
+    const totalWidth = getWidth(props.w) || 200;
+    const tagWidth = getWidth(tagStyle?.w) || 60;
+    const formLabelWidth = formLabel ? formLabel.length * 8 + 20 : 0;
+    const availableWidth = totalWidth - formLabelWidth - 40;
+    const overflowWidth = 30;
+
+    if (availableWidth <= 0) {
+      setVisibleItems(selectedItems.length > 0 ? [selectedItems[0]] : []);
+      setOverflowItems(selectedItems.slice(1));
+      return;
+    }
+
+    const { count } = selectedItems.reduce(
+      (acc, item, i) => {
+        const remain = selectedItems.length - i - 1;
+        const needOverflow = remain > 0 ? overflowWidth : 0;
+        if (acc.used + tagWidth + needOverflow <= availableWidth) {
+          return {
+            used: acc.used + tagWidth,
+            count: i + 1
+          };
+        }
+        return acc;
+      },
+      { used: 0, count: 0 }
+    );
+    setVisibleItems(selectedItems.slice(0, count));
+    setOverflowItems(selectedItems.slice(count));
+  }, [selectedItems, isOpen, props.w, tagStyle?.maxW, formLabel]);
 
   const onclickItem = useCallback(
     (val: T) => {
-      // 全选状态下，value 实际上上空。
       if (isSelectAll) {
         onSelect(list.map((item) => item.value).filter((i) => i !== val));
         setIsSelectAll?.(false);
@@ -226,51 +261,67 @@ const MultipleSelect = <T = any,>({
               ) : null}
             </Flex>
             <Flex
+              ref={tagsContainerRef}
               w={'100%'}
               py={1}
               gap={1}
-              flexWrap={canInput ? 'wrap' : 'nowrap'}
+              flexWrap={'nowrap'}
               overflow={'hidden'}
               alignItems={'center'}
             >
-              {isSelectAll ? (
-                <Box fontSize={formLabelFontSize} color={'myGray.900'}>
-                  {t('common:All')}
-                </Box>
-              ) : (
-                selectedItems.map((item, i) => (
-                  <MyTag
-                    className="tag-icon"
-                    key={i}
-                    bg={'primary.100'}
-                    color={'primary.700'}
-                    type={'fill'}
-                    borderRadius={'lg'}
-                    px={2}
-                    py={0.5}
-                    flexShrink={0}
-                    {...tagStyle}
-                  >
-                    {item.label}
-                    {closeable && (
-                      <MyIcon
-                        name={'common/closeLight'}
-                        ml={1}
-                        w="0.8rem"
-                        cursor={'pointer'}
-                        _hover={{
-                          color: 'red.500'
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          onclickItem(item.value);
-                        }}
-                      />
+              {!isOpen &&
+                (isSelectAll ? (
+                  <Box fontSize={formLabelFontSize} color={'myGray.900'}>
+                    {t('common:All')}
+                  </Box>
+                ) : (
+                  <>
+                    {visibleItems.map((item, i) => (
+                      <MyTag
+                        className="tag-icon"
+                        key={i}
+                        bg={'primary.100'}
+                        color={'primary.700'}
+                        type={'fill'}
+                        borderRadius={'lg'}
+                        px={2}
+                        py={0.5}
+                        flexShrink={0}
+                        {...tagStyle}
+                      >
+                        {item.label}
+                        {closeable && (
+                          <MyIcon
+                            name={'common/closeLight'}
+                            ml={1}
+                            w="0.8rem"
+                            cursor={'pointer'}
+                            _hover={{
+                              color: 'red.500'
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              onclickItem(item.value);
+                            }}
+                          />
+                        )}
+                      </MyTag>
+                    ))}
+                    {overflowItems.length > 0 && (
+                      <Box
+                        fontSize={formLabelFontSize}
+                        px={2}
+                        py={0.5}
+                        flexShrink={0}
+                        borderRadius={'lg'}
+                        bg={'myGray.100'}
+                      >
+                        +{overflowItems.length}
+                      </Box>
                     )}
-                  </MyTag>
-                ))
-              )}
+                  </>
+                ))}
               {canInput && isOpen && (
                 <Input
                   value={inputValue}
