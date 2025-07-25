@@ -25,7 +25,7 @@ export type NodeTemplateListHeaderProps = {
     parentId?: string;
     type?: TemplateTypeEnum;
     searchVal?: string;
-  }) => Promise<void>;
+  }) => Promise<any>;
   onUpdateParentId: (parentId: string) => void;
 };
 

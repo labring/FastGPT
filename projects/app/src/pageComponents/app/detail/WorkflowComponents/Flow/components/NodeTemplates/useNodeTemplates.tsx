@@ -103,13 +103,6 @@ export const useNodeTemplates = () => {
     }
   );
 
-  // const loadNodeTemplates = useCallback(
-  //   async (params: { parentId?: ParentIdType; type?: TemplateTypeEnum; searchVal?: string }) => {
-  //     await getTemplates(params);
-  //   },
-  //   [getTemplates]
-  // );
-
   const onUpdateParentId = useCallback(
     (parentId: ParentIdType) => {
       loadNodeTemplates({

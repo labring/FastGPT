@@ -32,7 +32,10 @@ import type {
 import type { McpGetChildrenmResponse } from '@/pages/api/core/app/mcpTools/getChildren';
 
 /* ============ team plugin ============== */
-export const getTeamPlugTemplates = async (data?: { parentId?: ParentIdType }) => {
+export const getTeamPlugTemplates = async (data?: {
+  parentId?: ParentIdType;
+  searchKey?: string;
+}) => {
   if (data?.parentId) {
     // handle get mcptools
     const app = await getAppDetailById(data.parentId);
