@@ -13,6 +13,7 @@ import type { GetPreviewNodeQuery } from '@/pages/api/core/app/plugin/getPreview
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type {
   GetPathProps,
+  ParentIdType,
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
 import type { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/plugin/getSystemPluginTemplates';
@@ -31,10 +32,11 @@ import type {
 import type { McpGetChildrenmResponse } from '@/pages/api/core/app/mcpTools/getChildren';
 
 /* ============ team plugin ============== */
-export const getTeamPlugTemplates = async (data?: ListAppBody) => {
+export const getTeamPlugTemplates = async (data?: { parentId?: ParentIdType }) => {
   if (data?.parentId) {
     // handle get mcptools
-    if (data.type === AppTypeEnum.toolSet) {
+    const app = await getAppDetailById(data.parentId);
+    if (app.type === AppTypeEnum.toolSet) {
       const children = await getMcpChildren(data.parentId);
       return children.map((item) => ({
         ...item,

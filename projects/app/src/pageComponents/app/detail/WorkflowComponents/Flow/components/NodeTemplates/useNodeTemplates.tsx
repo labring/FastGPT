@@ -69,7 +69,7 @@ export const useNodeTemplates = () => {
   const {
     data: teamAndSystemApps,
     loading: templatesIsLoading,
-    runAsync
+    runAsync: loadNodeTemplates
   } = useRequest2(
     async ({
       parentId = '',
@@ -83,8 +83,7 @@ export const useNodeTemplates = () => {
       if (type === TemplateTypeEnum.teamPlugin) {
         // app, workflow-plugin, mcp
         return getTeamPlugTemplates({
-          parentId,
-          searchKey: searchVal
+          parentId
         }).then((res) => res.filter((app) => app.id !== appId));
       }
       if (type === TemplateTypeEnum.systemPlugin) {
@@ -104,12 +103,12 @@ export const useNodeTemplates = () => {
     }
   );
 
-  const loadNodeTemplates = useCallback(
-    async (params: { parentId?: ParentIdType; type?: TemplateTypeEnum; searchVal?: string }) => {
-      await runAsync(params);
-    },
-    [runAsync]
-  );
+  // const loadNodeTemplates = useCallback(
+  //   async (params: { parentId?: ParentIdType; type?: TemplateTypeEnum; searchVal?: string }) => {
+  //     await getTemplates(params);
+  //   },
+  //   [getTemplates]
+  // );
 
   const onUpdateParentId = useCallback(
     (parentId: ParentIdType) => {
