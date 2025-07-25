@@ -19,6 +19,7 @@ type ContextProps = {
   showNodeStatus: boolean;
 };
 type ChatBoxDataType = {
+  chatId?: string;
   appId: string;
   title?: string;
   userAvatar?: string;
