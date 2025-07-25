@@ -65,14 +65,14 @@ const strIsMdTable = (str: string) => {
 const markdownTableSplit = (props: SplitProps): SplitResponse => {
   let { text = '', chunkSize } = props;
 
-  // 按行分割表格文本，保留空的表格行但过滤完全空白的行
+  // split by rows
   const splitText2Lines = text.split('\n').filter((line) => {
     const trimmed = line.trim();
-    // 保留表格行（包含 | 的行）或者完全空白但在表格中的行
+    // keeping empty table rows（cotain '|' ） but filtering completely blank rows
     return trimmed || line.includes('|');
   });
 
-  // 如果没有足够的行组成表格，直接返回
+  // If there are not enough rows to form a table, return directly
   if (splitText2Lines.length < 2) {
     return { chunks: [text], chars: text.length };
   }
@@ -142,21 +142,6 @@ const commonSplit = (props: SplitProps): SplitResponse => {
   text = text.replace(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g, function (match) {
     return match.replace(/\n/g, codeBlockMarker);
   });
-  // 2. Markdown 表格处理 - 检测表格但不预分割，让主分割逻辑智能处理
-  // const tableReg =
-  //   /(\n\|(?:(?:[^\n|]+\|){1,})\n\|(?:[:\-\s]+\|){1,}\n(?:\|(?:[^\n|]+\|)*\n?)*)(?:\n|$)/g;
-  // const tableDataList = text.match(tableReg);
-  // if (tableDataList) {
-  //   tableDataList.forEach((tableData) => {
-  //     const { chunks } = markdownTableSplit({
-  //       text: tableData.trim(),
-  //       chunkSize
-  //     });
-
-  //     const splitText = chunks.join('\n');
-  //     text = text.replace(tableData, `\n${splitText}\n`);
-  //   });
-  // }
 
   // replace invalid \n
   text = text.replace(/(\r?\n|\r){3,}/g, '\n\n\n');
@@ -210,6 +195,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
   const checkIsMarkdownSplit = (step: number) =>
     step >= customRegLen && step <= markdownIndex + customRegLen;
   const checkForbidOverlap = (step: number) => step <= forbidOverlapIndex;
+  // console.log('[textSplitter.ts][getSplitTexts] 当前处理text内容预览:', text );
 
   // if use markdown title split, Separate record title
   const getSplitTexts = ({ text, step }: { text: string; step: number }) => {
@@ -286,6 +272,8 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     // const splitTexts = finalText.split(splitMarker).filter((part) => part.trim());
     const splitTexts = replaceText.split(splitMarker).filter((part) => part.trim());
 
+    // console.log('[textSplitter] splitTexts (joined):\n' + splitTexts.join('\n---SPLIT---\n'));
+
     return splitTexts
       .map((text) => {
         const matchTitle = isMarkdownSplit ? text.match(reg)?.[0] || '' : '';
@@ -361,7 +349,16 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
     // split text by special char
     const splitTexts = getSplitTexts({ text, step });
-
+    // 一次性打印所有分块信息，便于整体观察分块情况
+    // console.log(
+    //   `[splitTextRecursively] splitTexts at step ${step}, count: ${splitTexts.length}`,
+    //   splitTexts.map((item, idx) => ({
+    //     idx,
+    //     preview: JSON.stringify(item.text, null, 2),
+    //     chunkMaxSize: item.chunkMaxSize,
+    //     title: item.title
+    //   }))
+    // );
     const chunks: string[] = [];
 
     for (let i = 0; i < splitTexts.length; i++) {
@@ -374,7 +371,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
       const newText = lastText + currentText;
       const newTextLen = getTextValidLength(newText);
 
-      // console.log('splitTexts at step: ' ,item.text);
+      // console.log('splitTexts at step: ' ,item);
 
       // 表格特殊处理：如果当前文本是表格，且加上表格后会超出大小，先分块
       if (strIsMdTable(currentText) && newTextLen > maxLen && lastTextLen > 0) {
@@ -400,7 +397,8 @@ const commonSplit = (props: SplitProps): SplitResponse => {
         });
         continue;
       }
-
+      // 对 newText 的 log 输出，便于调试分块内容
+      // console.log('[splitTextRecursively] newText at step', step, JSON.stringify(newText, null, 2));
       // Markdown 模式下，会强制向下拆分最小块，并再最后一个标题深度，给小块都补充上所有标题（包含父级标题）
       if (isMarkdownStep) {
         // split new Text, split chunks must will greater 1 (small lastText)
@@ -506,6 +504,8 @@ const commonSplit = (props: SplitProps): SplitResponse => {
   };
 
   try {
+    // 对text打个log
+    // console.log('[commonSplit] input text:', text);
     const chunks = splitTextRecursively({
       text,
       step: 0,
@@ -538,10 +538,12 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
   const splitResult = splitWithCustomSign.map((item) => {
     if (strIsMdTable(item)) {
       return markdownTableSplit({ ...props, text: item });
+      // return markdownTableSplit(props);
     }
 
     // console.log('splitText2Chunks: item ', item);
     return commonSplit({ ...props, text: item });
+    // return commonSplit(props);
   });
 
   return {
