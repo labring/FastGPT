@@ -34,13 +34,15 @@ const LabelAndFormRender = ({
   placeholder,
   inputType,
   variablesForm,
+  showValueType,
   ...props
 }: {
   formKey: string;
-  label: string;
+  label: string | React.ReactNode;
   required?: boolean;
   placeholder?: string;
   variablesForm: UseFormReturn<any>;
+  showValueType?: boolean;
 } & SpecificProps &
   BoxProps) => {
   const { control } = variablesForm;
@@ -48,7 +50,7 @@ const LabelAndFormRender = ({
   return (
     <Box _notLast={{ mb: 4 }}>
       <Flex alignItems={'center'} mb={1}>
-        <FormLabel required={required}>{label}</FormLabel>
+        {typeof label === 'string' ? <FormLabel required={required}>{label}</FormLabel> : label}
         {placeholder && <QuestionTip ml={1} label={placeholder} />}
       </Flex>
 
