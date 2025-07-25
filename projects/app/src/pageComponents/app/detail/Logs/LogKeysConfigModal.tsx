@@ -1,8 +1,8 @@
 import { Box, Button, Flex, ModalBody, ModalFooter } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import type { LogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
-import { LogKeysEnumMap } from '@fastgpt/global/core/app/logs/constants';
+import type { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
+import { AppLogKeysEnumMap } from '@fastgpt/global/core/app/logs/constants';
 import type {
   DraggableProvided,
   DraggableStateSnapshot
@@ -24,7 +24,7 @@ const LogKeysConfigModal = ({
 }: {
   onClose: () => void;
   logKeysList: {
-    key: LogKeysEnum;
+    key: AppLogKeysEnum;
     enable: boolean;
   }[];
   fetchLogKeys: () => Promise<getLogKeysResponse>;
@@ -32,7 +32,7 @@ const LogKeysConfigModal = ({
   const { t } = useTranslation();
   const appId = useContextSelector(AppContext, (v) => v.appId);
 
-  const [logKeys, setLogKeys] = useState<{ key: LogKeysEnum; enable: boolean }[]>(logKeysList);
+  const [logKeys, setLogKeys] = useState<{ key: AppLogKeysEnum; enable: boolean }[]>(logKeysList);
 
   const { runAsync: updateList, loading: updateLoading } = useRequest2(
     async (data: updateLogKeysBody) => {
@@ -57,7 +57,7 @@ const LogKeysConfigModal = ({
       isLoading={updateLoading}
     >
       <ModalBody px={9} py={6} w={'450px'}>
-        <DndDrag<{ key: LogKeysEnum; enable: boolean }>
+        <DndDrag<{ key: AppLogKeysEnum; enable: boolean }>
           onDragEndCb={(list) => {
             setLogKeys(list);
           }}
@@ -122,11 +122,11 @@ const DragItem = ({
   logKeys,
   setLogKeys
 }: {
-  item: { key: LogKeysEnum; enable: boolean };
+  item: { key: AppLogKeysEnum; enable: boolean };
   provided: DraggableProvided;
   snapshot: DraggableStateSnapshot;
-  logKeys: { key: LogKeysEnum; enable: boolean }[];
-  setLogKeys: (logKeys: { key: LogKeysEnum; enable: boolean }[]) => void;
+  logKeys: { key: AppLogKeysEnum; enable: boolean }[];
+  setLogKeys: (logKeys: { key: AppLogKeysEnum; enable: boolean }[]) => void;
 }) => {
   const { t } = useTranslation();
 
@@ -152,7 +152,7 @@ const DragItem = ({
         />
       </Box>
       <Box fontSize={'14px'} color={'myGray.900'}>
-        {t(LogKeysEnumMap[item.key])}
+        {t(AppLogKeysEnumMap[item.key])}
       </Box>
       <Box flex={1} />
       {item.enable ? (

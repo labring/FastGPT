@@ -1,7 +1,7 @@
-import type { LogKeysEnum } from './constants';
+import type { AppLogKeysEnum } from './constants';
 
-export type LogKeysSchemaType = {
+export type AppLogKeysSchemaType = {
   teamId: string;
   appId: string;
-  logKeys: { key: LogKeysEnum; enable: boolean }[];
+  logKeys: { key: AppLogKeysEnum; enable: boolean }[];
 };

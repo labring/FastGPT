@@ -1,7 +1,7 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { MongoLogKeys } from '@fastgpt/service/core/app/logs/logkeysSchema';
-import type { LogKeysSchemaType } from '@fastgpt/global/core/app/logs/type';
+import { MongoAppLogKeys } from '@fastgpt/service/core/app/logs/logkeysSchema';
+import type { AppLogKeysSchemaType } from '@fastgpt/global/core/app/logs/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
@@ -12,7 +12,7 @@ export type getLogKeysQuery = {
 export type getLogKeysBody = {};
 
 export type getLogKeysResponse = {
-  logKeys: LogKeysSchemaType['logKeys'] | null;
+  logKeys: AppLogKeysSchemaType['logKeys'] | [];
 };
 
 async function handler(
@@ -28,9 +28,9 @@ async function handler(
     per: WritePermissionVal
   });
 
-  const result = await MongoLogKeys.findOne({ teamId, appId });
+  const result = await MongoAppLogKeys.findOne({ teamId, appId });
 
-  return { logKeys: result?.logKeys || null };
+  return { logKeys: result?.logKeys || [] };
 }
 
 export default NextAPI(handler);

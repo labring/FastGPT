@@ -39,8 +39,8 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
 import LogKeysConfigModal from './LogKeysConfigModal';
 import { getLogKeys } from '@/web/core/app/api/log';
-import { LogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
-import { DefaultLogKeys } from '@fastgpt/global/core/app/logs/constants';
+import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
+import { DefaultAppLogKeys } from '@fastgpt/global/core/app/logs/constants';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -58,12 +58,13 @@ const Logs = () => {
   });
 
   const [detailLogsId, setDetailLogsId] = useState<string>();
-  const [logKeys, setLogKeys] = useState<{ key: LogKeysEnum; enable: boolean }[]>(DefaultLogKeys);
+  const [logKeys, setLogKeys] =
+    useState<{ key: AppLogKeysEnum; enable: boolean }[]>(DefaultAppLogKeys);
   const [logKeysConfigModalOpen, setLogKeysConfigModalOpen] = useState(false);
   const [tmbInputValue, setTmbInputValue] = useState('');
   const [chatSearch, setChatSearch] = useState('');
 
-  const isLogKeyEnabled = (key: LogKeysEnum) => logKeys.find((item) => item.key === key)?.enable;
+  const isLogKeyEnabled = (key: AppLogKeysEnum) => logKeys.find((item) => item.key === key)?.enable;
 
   const {
     value: selectTmbIds,
@@ -311,21 +312,23 @@ const Logs = () => {
         <Table variant={'simple'} fontSize={'sm'}>
           <Thead>
             <Tr>
-              {isLogKeyEnabled(LogKeysEnum.SOURCE) && <Th>{t('app:logs_keys_source')}</Th>}
-              {isLogKeyEnabled(LogKeysEnum.CREATED_TIME) && (
+              {isLogKeyEnabled(AppLogKeysEnum.SOURCE) && <Th>{t('app:logs_keys_source')}</Th>}
+              {isLogKeyEnabled(AppLogKeysEnum.CREATED_TIME) && (
                 <Th>{t('app:logs_keys_createdTime')}</Th>
               )}
-              {isLogKeyEnabled(LogKeysEnum.LAST_CONVERSATION_TIME) && (
+              {isLogKeyEnabled(AppLogKeysEnum.LAST_CONVERSATION_TIME) && (
                 <Th>{t('app:logs_keys_lastConversationTime')}</Th>
               )}
-              {isLogKeyEnabled(LogKeysEnum.USER) && <Th>{t('app:logs_chat_user')}</Th>}
-              {isLogKeyEnabled(LogKeysEnum.TITLE) && <Th>{t('app:logs_title')}</Th>}
-              {isLogKeyEnabled(LogKeysEnum.MESSAGE_COUNT) && <Th>{t('app:logs_message_total')}</Th>}
-              {isLogKeyEnabled(LogKeysEnum.FEEDBACK) && <Th>{t('app:feedback_count')}</Th>}
-              {isLogKeyEnabled(LogKeysEnum.CUSTOM_FEEDBACK) && (
+              {isLogKeyEnabled(AppLogKeysEnum.USER) && <Th>{t('app:logs_chat_user')}</Th>}
+              {isLogKeyEnabled(AppLogKeysEnum.TITLE) && <Th>{t('app:logs_title')}</Th>}
+              {isLogKeyEnabled(AppLogKeysEnum.MESSAGE_COUNT) && (
+                <Th>{t('app:logs_message_total')}</Th>
+              )}
+              {isLogKeyEnabled(AppLogKeysEnum.FEEDBACK) && <Th>{t('app:feedback_count')}</Th>}
+              {isLogKeyEnabled(AppLogKeysEnum.CUSTOM_FEEDBACK) && (
                 <Th>{t('common:core.app.feedback.Custom feedback')}</Th>
               )}
-              {isLogKeyEnabled(LogKeysEnum.ANNOTATED_COUNT) && (
+              {isLogKeyEnabled(AppLogKeysEnum.ANNOTATED_COUNT) && (
                 <Th>
                   <Flex gap={1} alignItems={'center'}>
                     {t('app:mark_count')}
@@ -333,9 +336,11 @@ const Logs = () => {
                   </Flex>
                 </Th>
               )}
-              {isLogKeyEnabled(LogKeysEnum.RESPONSE_TIME) && <Th>{t('app:logs_response_time')}</Th>}
-              {isLogKeyEnabled(LogKeysEnum.ERROR_COUNT) && <Th>{t('app:logs_error_count')}</Th>}
-              {isLogKeyEnabled(LogKeysEnum.POINTS) && <Th>{t('app:logs_points')}</Th>}
+              {isLogKeyEnabled(AppLogKeysEnum.RESPONSE_TIME) && (
+                <Th>{t('app:logs_response_time')}</Th>
+              )}
+              {isLogKeyEnabled(AppLogKeysEnum.ERROR_COUNT) && <Th>{t('app:logs_error_count')}</Th>}
+              {isLogKeyEnabled(AppLogKeysEnum.POINTS) && <Th>{t('app:logs_points')}</Th>}
             </Tr>
           </Thead>
           <Tbody fontSize={'xs'}>
@@ -347,17 +352,17 @@ const Logs = () => {
                 title={t('common:core.view_chat_detail')}
                 onClick={() => setDetailLogsId(item.id)}
               >
-                {isLogKeyEnabled(LogKeysEnum.SOURCE) && (
+                {isLogKeyEnabled(AppLogKeysEnum.SOURCE) && (
                   // @ts-ignore
                   <Td>{item.sourceName || t(ChatSourceMap[item.source]?.name) || item.source}</Td>
                 )}
-                {isLogKeyEnabled(LogKeysEnum.CREATED_TIME) && (
+                {isLogKeyEnabled(AppLogKeysEnum.CREATED_TIME) && (
                   <Td>{dayjs(item.createTime).format('YYYY/MM/DD HH:mm')}</Td>
                 )}
-                {isLogKeyEnabled(LogKeysEnum.LAST_CONVERSATION_TIME) && (
+                {isLogKeyEnabled(AppLogKeysEnum.LAST_CONVERSATION_TIME) && (
                   <Td>{dayjs(item.updateTime).format('YYYY/MM/DD HH:mm')}</Td>
                 )}
-                {isLogKeyEnabled(LogKeysEnum.USER) && (
+                {isLogKeyEnabled(AppLogKeysEnum.USER) && (
                   <Td>
                     <Box>
                       {!!item.outLinkUid ? (
@@ -368,15 +373,15 @@ const Logs = () => {
                     </Box>
                   </Td>
                 )}
-                {logKeys.find((item) => item.key === LogKeysEnum.TITLE)?.enable && (
+                {logKeys.find((item) => item.key === AppLogKeysEnum.TITLE)?.enable && (
                   <Td className="textEllipsis" maxW={'250px'}>
                     {item.customTitle || item.title}
                   </Td>
                 )}
-                {logKeys.find((item) => item.key === LogKeysEnum.MESSAGE_COUNT)?.enable && (
+                {logKeys.find((item) => item.key === AppLogKeysEnum.MESSAGE_COUNT)?.enable && (
                   <Td>{item.messageCount}</Td>
                 )}
-                {logKeys.find((item) => item.key === LogKeysEnum.FEEDBACK)?.enable && (
+                {logKeys.find((item) => item.key === AppLogKeysEnum.FEEDBACK)?.enable && (
                   <Td w={'100px'}>
                     {!!item?.userGoodFeedbackCount && (
                       <Flex
@@ -422,21 +427,21 @@ const Logs = () => {
                     {!item?.userGoodFeedbackCount && !item?.userBadFeedbackCount && <>-</>}
                   </Td>
                 )}
-                {logKeys.find((item) => item.key === LogKeysEnum.CUSTOM_FEEDBACK)?.enable && (
+                {logKeys.find((item) => item.key === AppLogKeysEnum.CUSTOM_FEEDBACK)?.enable && (
                   <Td>{item.customFeedbacksCount || '-'}</Td>
                 )}
-                {logKeys.find((item) => item.key === LogKeysEnum.ANNOTATED_COUNT)?.enable && (
+                {logKeys.find((item) => item.key === AppLogKeysEnum.ANNOTATED_COUNT)?.enable && (
                   <Td>{item.markCount}</Td>
                 )}
-                {logKeys.find((item) => item.key === LogKeysEnum.RESPONSE_TIME)?.enable && (
+                {logKeys.find((item) => item.key === AppLogKeysEnum.RESPONSE_TIME)?.enable && (
                   <Td>
                     {item.averageResponseTime ? `${item.averageResponseTime.toFixed(2)}s` : '-'}
                   </Td>
                 )}
-                {logKeys.find((item) => item.key === LogKeysEnum.ERROR_COUNT)?.enable && (
+                {logKeys.find((item) => item.key === AppLogKeysEnum.ERROR_COUNT)?.enable && (
                   <Td>{item.errorCount || '-'}</Td>
                 )}
-                {logKeys.find((item) => item.key === LogKeysEnum.POINTS)?.enable && (
+                {logKeys.find((item) => item.key === AppLogKeysEnum.POINTS)?.enable && (
                   <Td>{item.totalPoints ? `${item.totalPoints.toFixed(2)}` : '-'}</Td>
                 )}
               </Tr>

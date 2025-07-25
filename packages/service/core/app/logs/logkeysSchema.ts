@@ -1,13 +1,13 @@
-import type { LogKeysSchemaType } from '@fastgpt/global/core/app/logs/type';
+import type { AppLogKeysSchemaType } from '@fastgpt/global/core/app/logs/type';
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
 import { AppCollectionName } from '../schema';
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 
 const { Schema } = connectionMongo;
 
-export const LogKeysCollectionEnum = 'log_keys';
+export const AppLogKeysCollectionEnum = 'app_log_keys';
 
-const LogKeysSchema = new Schema({
+const AppLogKeysSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
@@ -24,6 +24,9 @@ const LogKeysSchema = new Schema({
   }
 });
 
-LogKeysSchema.index({ teamId: 1, appId: 1 });
+AppLogKeysSchema.index({ teamId: 1, appId: 1 });
 
-export const MongoLogKeys = getMongoModel<LogKeysSchemaType>(LogKeysCollectionEnum, LogKeysSchema);
+export const MongoAppLogKeys = getMongoModel<AppLogKeysSchemaType>(
+  AppLogKeysCollectionEnum,
+  AppLogKeysSchema
+);
