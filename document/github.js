@@ -7,6 +7,7 @@ const path = require('path');
  * @param {string} filePath - 文件路径
  * @returns {string|null} - 最后修改时间（ISO 格式）或 null
  */
+
 function getFileLastModifiedTime(filePath) {
   try {
     // 使用 git log 获取文件的最后修改时间
@@ -63,7 +64,7 @@ function getAllDocFiles(dirPath, extensions = ['.md', '.mdx']) {
  * @param {string} contentDir - 文档内容目录
  * @returns {Object} - 文件路径到修改时间的映射
  */
-function getAllDocLastModifiedTimes(contentDir = './content') {
+function getAllDocLastModifiedTimes(contentDir = './document/content/docs') {
   const docFiles = getAllDocFiles(contentDir);
   const result = {};
 
@@ -90,7 +91,7 @@ function getAllDocLastModifiedTimes(contentDir = './content') {
  * @param {Object} data - 要保存的数据
  * @param {string} outputPath - 输出文件路径
  */
-function saveToJsonFile(data, outputPath = './data/doc-last-modified.json') {
+function saveToJsonFile(data, outputPath = './document/data/doc-last-modified.json') {
   try {
     // 确保目录存在
     const dir = path.dirname(outputPath);
@@ -130,7 +131,12 @@ function getFileInfo(filePath) {
 function main() {
   console.log('开始获取文档的最新修改时间...');
 
-  const contentDir = process.argv[2] || './content';
+  let contentDir = process.argv[2];
+
+  // 如果没有传参数，或者传入的是文件而非目录，就使用默认目录
+  if (!contentDir || !fs.existsSync(contentDir) || !fs.statSync(contentDir).isDirectory()) {
+    contentDir = './document/content/docs';
+  }
 
   if (!fs.existsSync(contentDir)) {
     console.error(`目录不存在: ${contentDir}`);
@@ -140,7 +146,7 @@ function main() {
   const result = getAllDocLastModifiedTimes(contentDir);
 
   // 保存简单的文件路径到修改时间的映射
-  saveToJsonFile(result, './data/doc-last-modified.json');
+  saveToJsonFile(result, './document/data/doc-last-modified.json');
 
   // 显示统计信息
   console.log('\n统计信息:');
