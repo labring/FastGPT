@@ -374,7 +374,6 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
               <DateRangePicker
                 defaultDate={filterProps.dateRange}
                 dateRange={filterProps.dateRange}
-                position="bottom"
                 onSuccess={handleDateRangeChange}
               />
             </Box>
