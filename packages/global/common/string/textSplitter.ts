@@ -95,7 +95,7 @@ ${mdSplitString}
     const nextLineLength = getTextValidLength(splitText2Lines[i]);
 
     // Over size
-    if (chunkLength + nextLineLength > chunkSize) {
+    if (chunkLength + nextLineLength > chunkSize * 1.2) {
       chunks.push(chunk);
       chunk = `${header}
 ${mdSplitString}
@@ -217,8 +217,8 @@ const commonSplit = (props: SplitProps): SplitResponse => {
       if (typeof reg === 'string') {
         let tmpText = text;
         reg.split('|').forEach((itemReg) => {
-          tmpText = tmpText.replace(
-            new RegExp(itemReg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+          tmpText = tmpText.replaceAll(
+            itemReg,
             (() => {
               if (isCustomStep) return splitMarker;
               if (isMarkdownSplit) return `${splitMarker}$1`;
@@ -316,6 +316,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
     // split text by special char
     const splitTexts = getSplitTexts({ text, step });
+
     const chunks: string[] = [];
 
     for (let i = 0; i < splitTexts.length; i++) {
@@ -454,7 +455,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
       step: 0,
       lastText: '',
       parentTitle: ''
-    }).map((chunk) => chunk?.replace(new RegExp(codeBlockMarker, 'g'), '\n')?.trim() || ''); // restore code block
+    }).map((chunk) => chunk?.replaceAll(codeBlockMarker, '\n')?.trim() || ''); // restore code block
 
     const chars = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
 
