@@ -311,37 +311,25 @@ export const appData2FlowNodeIO = ({
   };
 };
 
-export const toolData2FlowNodeIO = ({
-  nodes
-}: {
-  nodes: StoreNodeItemType[];
-}): {
-  inputs: FlowNodeInputItemType[];
-  outputs: FlowNodeOutputItemType[];
-} => {
+export const toolData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }) => {
   const toolNode = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.tool);
 
   return {
     inputs: toolNode?.inputs || [],
-    outputs: toolNode?.outputs || []
+    outputs: toolNode?.outputs || [],
+    toolConfig: toolNode?.toolConfig
   };
 };
 
-export const toolSetData2FlowNodeIO = ({
-  nodes
-}: {
-  nodes: StoreNodeItemType[];
-}): {
-  inputs: FlowNodeInputItemType[];
-  outputs: FlowNodeOutputItemType[];
-  toolConfig?: NodeToolConfigType;
-} => {
+export const toolSetData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }) => {
   const toolSetNode = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
 
   return {
     inputs: toolSetNode?.inputs || [],
     outputs: toolSetNode?.outputs || [],
-    toolConfig: toolSetNode?.toolConfig
+    toolConfig: toolSetNode?.toolConfig,
+    showSourceHandle: false,
+    showTargetHandle: false
   };
 };
 

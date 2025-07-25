@@ -18,6 +18,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { valueTypeToInputType } from '@/components/core/app/formRender/utils';
 import { getNodeInputTypeFromSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
+import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 
 const ChatTest = ({
   currentTool,
@@ -32,7 +33,8 @@ const ChatTest = ({
 
   const [output, setOutput] = useState<string>('');
 
-  const { control, handleSubmit, reset } = useForm();
+  const form = useForm();
+  const { handleSubmit, reset } = form;
 
   useEffect(() => {
     reset({});
@@ -89,48 +91,25 @@ const ChatTest = ({
               </Box>
               <Box border={'1px solid'} borderColor={'myGray.200'} borderRadius={'8px'} p={3}>
                 {Object.entries(currentTool?.inputSchema.properties || {}).map(
-                  ([paramName, paramInfo]) => (
-                    <Controller
-                      key={paramName}
-                      control={control}
-                      name={paramName}
-                      rules={{
-                        validate: (value) => {
-                          if (!currentTool?.inputSchema.required?.includes(paramName)) return true;
-                          return !!value;
-                        }
-                      }}
-                      render={({ field: { onChange, value }, fieldState: { error } }) => {
-                        const inputType = valueTypeToInputType(
-                          getNodeInputTypeFromSchemaInputType({ type: paramInfo.type })
-                        );
+                  ([paramName, paramInfo]) => {
+                    const inputType = valueTypeToInputType(
+                      getNodeInputTypeFromSchemaInputType({ type: paramInfo.type })
+                    );
 
-                        return (
-                          <Box _notLast={{ mb: 4 }}>
-                            <Flex alignItems="center" mb={1}>
-                              {currentTool?.inputSchema.required?.includes(paramName) && (
-                                <Box mr={1} color="red.500">
-                                  *
-                                </Box>
-                              )}
-                              <FormLabel fontSize="14px" fontWeight={'normal'} color="myGray.900">
-                                {paramName}
-                                <QuestionTip label={paramInfo.description} ml={1} />
-                              </FormLabel>
-                            </Flex>
-
-                            <InputRender
-                              inputType={inputType}
-                              value={value}
-                              onChange={onChange}
-                              placeholder={paramInfo.description}
-                              isInvalid={!!error}
-                            />
-                          </Box>
-                        );
-                      }}
-                    />
-                  )
+                    return (
+                      <LabelAndFormRender
+                        label={paramName}
+                        key={paramName}
+                        inputType={inputType}
+                        formKey={paramName}
+                        variablesForm={form}
+                        // value={value}
+                        // onChange={onChange}
+                        placeholder={paramInfo.description}
+                        // isInvalid={!!error}
+                      />
+                    );
+                  }
                 )}
               </Box>
             </>
