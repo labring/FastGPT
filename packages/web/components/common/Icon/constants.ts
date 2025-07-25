@@ -485,5 +485,6 @@ export const iconPaths = {
   upload: () => import('./icons/upload.svg'),
   user: () => import('./icons/user.svg'),
   visible: () => import('./icons/visible.svg'),
+  invisible: () => import('./icons/invisible.svg'),
   wx: () => import('./icons/wx.svg')
 };

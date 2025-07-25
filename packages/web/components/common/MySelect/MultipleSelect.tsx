@@ -37,6 +37,19 @@ const menuItemStyles: MenuItemProps = {
   }
 };
 
+const menuItemStyles: MenuItemProps = {
+  borderRadius: 'sm',
+  py: 2,
+  display: 'flex',
+  alignItems: 'center',
+  _hover: {
+    backgroundColor: 'myGray.100'
+  },
+  _notLast: {
+    mb: 2
+  }
+};
+
 export type SelectProps<T = any> = {
   list: {
     icon?: string;
