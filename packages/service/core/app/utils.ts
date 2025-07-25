@@ -3,11 +3,12 @@ import { getEmbeddingModel } from '../ai/model';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { getChildAppPreviewNode, splitCombinePluginId } from './plugin/controller';
+import { getChildAppPreviewNode } from './plugin/controller';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
   teamId,
