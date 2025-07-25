@@ -256,7 +256,9 @@ export async function getChildAppPreviewNode({
             })
           ],
           edges: []
-        }
+        },
+        version: '',
+        isLatestVersion: true
       };
     } else {
       // 1. System Tools
@@ -265,12 +267,16 @@ export async function getChildAppPreviewNode({
     }
   })();
 
+  // console.log('getSystemPluginByIdAndVersionId', pluginId, versionId, app, app.workflow.nodes[0]);
+
   const { flowNodeType, nodeIOConfig } = await (async (): Promise<{
     flowNodeType: FlowNodeTypeEnum;
     nodeIOConfig: {
       inputs: FlowNodeInputItemType[];
       outputs: FlowNodeOutputItemType[];
       toolConfig?: NodeToolConfigType;
+      showSourceHandle?: boolean;
+      showTargetHandle?: boolean;
     };
   }> => {
     if (source === PluginSourceEnum.systemTool) {
@@ -309,7 +315,9 @@ export async function getChildAppPreviewNode({
                   }
                 }
               : { systemTool: { toolId: app.id } })
-          }
+          },
+          showSourceHandle: app.isFolder ? false : true,
+          showTargetHandle: app.isFolder ? false : true
         }
       };
     }

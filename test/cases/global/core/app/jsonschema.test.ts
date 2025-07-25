@@ -27,7 +27,7 @@ describe('jsonSchema2NodeInput', () => {
         valueType: 'string',
         toolDescription: 'name',
         required: true,
-        renderTypeList: ['input']
+        renderTypeList: ['input', 'reference']
       },
       {
         key: 'select',
@@ -54,7 +54,7 @@ describe('jsonSchema2NodeInput', () => {
         valueType: 'number',
         toolDescription: 'age',
         required: true,
-        renderTypeList: ['numberInput'],
+        renderTypeList: ['numberInput', 'reference'],
         max: 100,
         min: 0
       },
@@ -72,7 +72,7 @@ describe('jsonSchema2NodeInput', () => {
         valueType: 'object',
         toolDescription: 'object',
         required: false,
-        renderTypeList: ['JSONEditor']
+        renderTypeList: ['JSONEditor', 'reference']
       },
       {
         key: 'strArr',
@@ -80,7 +80,7 @@ describe('jsonSchema2NodeInput', () => {
         valueType: 'arrayString',
         toolDescription: 'strArr',
         required: false,
-        renderTypeList: ['JSONEditor']
+        renderTypeList: ['JSONEditor', 'reference']
       },
       {
         key: 'numArr',
@@ -88,7 +88,7 @@ describe('jsonSchema2NodeInput', () => {
         valueType: 'arrayNumber',
         toolDescription: 'numArr',
         required: false,
-        renderTypeList: ['JSONEditor']
+        renderTypeList: ['JSONEditor', 'reference']
       },
       {
         key: 'boolArr',
@@ -96,7 +96,7 @@ describe('jsonSchema2NodeInput', () => {
         valueType: 'arrayBoolean',
         toolDescription: 'boolArr',
         required: false,
-        renderTypeList: ['JSONEditor']
+        renderTypeList: ['JSONEditor', 'reference']
       },
       {
         key: 'objArr',
@@ -104,7 +104,7 @@ describe('jsonSchema2NodeInput', () => {
         valueType: 'arrayObject',
         toolDescription: 'objArr',
         required: false,
-        renderTypeList: ['JSONEditor']
+        renderTypeList: ['JSONEditor', 'reference']
       },
       {
         key: 'anyArr',
@@ -112,7 +112,7 @@ describe('jsonSchema2NodeInput', () => {
         valueType: 'arrayAny',
         toolDescription: 'anyArr',
         required: false,
-        renderTypeList: ['JSONEditor']
+        renderTypeList: ['JSONEditor', 'reference']
       }
     ];
     const result = jsonSchema2NodeInput(jsonSchema);
