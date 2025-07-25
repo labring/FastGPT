@@ -47,6 +47,8 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useLocalStorageState } from 'ahooks';
 import type { AppLogKeysType } from '@fastgpt/global/core/app/logs/type';
 import type { AppLogsListItemType } from '@/types/app';
+import SyncLogKeysPopover from './SyncLogKeysPopover';
+import { isEqual } from 'lodash';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
@@ -254,7 +256,7 @@ const Logs = () => {
     params,
     refreshDeps: [params]
   });
-  const { runAsync: fetchLogKeys } = useRequest2(
+  const { runAsync: fetchLogKeys, data: teamLogKeys } = useRequest2(
     async () => {
       return await getLogKeys({ appId });
     },
@@ -368,6 +370,31 @@ const Logs = () => {
             borderColor={'myGray.200'}
           />
         </Flex>
+        <Flex>
+          <MultipleSelect<string>
+            list={tmbList}
+            value={selectTmbIds}
+            onSelect={(val) => {
+              setSelectTmbIds(val as string[]);
+            }}
+            ScrollData={TmbScrollData}
+            isSelectAll={isSelectAllTmb}
+            setIsSelectAll={setIsSelectAllTmb}
+            h={10}
+            w={'226px'}
+            rounded={'8px'}
+            formLabelFontSize={'sm'}
+            formLabel={t('common:member')}
+            tagStyle={{
+              px: 1,
+              borderRadius: 'sm',
+              bg: 'myGray.100',
+              w: '76px'
+            }}
+            inputValue={tmbInputValue}
+            setInputValue={setTmbInputValue}
+          />
+        </Flex>
         <Flex
           w={'226px'}
           h={10}
@@ -400,45 +427,23 @@ const Logs = () => {
             }}
           />
         </Flex>
-        <Flex>
-          <MultipleSelect<string>
-            list={tmbList}
-            value={selectTmbIds}
-            onSelect={(val) => {
-              setSelectTmbIds(val as string[]);
-            }}
-            ScrollData={TmbScrollData}
-            isSelectAll={isSelectAllTmb}
-            setIsSelectAll={setIsSelectAllTmb}
-            h={10}
-            w={'226px'}
-            rounded={'8px'}
-            formLabelFontSize={'sm'}
-            formLabel={t('common:member')}
-            tagStyle={{
-              px: 1,
-              borderRadius: 'sm',
-              bg: 'myGray.100',
-              w: '76px'
-            }}
-            inputValue={tmbInputValue}
-            setInputValue={setTmbInputValue}
-          />
-        </Flex>
         <Box flex={'1'} />
+        {!isEqual(
+          teamLogKeys?.logKeys.filter((item) => item.enable),
+          logKeys?.filter((item) => item.enable)
+        ) && (
+          <SyncLogKeysPopover
+            logKeys={logKeys || DefaultAppLogKeys}
+            setLogKeys={setLogKeys}
+            teamLogKeys={teamLogKeys?.logKeys || []}
+            fetchLogKeys={fetchLogKeys}
+          />
+        )}
         <LogKeysConfigPopover
           logKeysList={logKeys || DefaultAppLogKeys}
           setLogKeysList={setLogKeys}
-          fetchLogKeys={fetchLogKeys}
-        >
-          <Button
-            size={'md'}
-            variant={'outline'}
-            leftIcon={<MyIcon name={'common/paramsLight'} w={'18px'} color={'myGray.500'} />}
-          >
-            {t('app:logs_key_config')}
-          </Button>
-        </LogKeysConfigPopover>
+        />
+
         <PopoverConfirm
           Trigger={<Button size={'md'}>{t('common:Export')}</Button>}
           showCancel
