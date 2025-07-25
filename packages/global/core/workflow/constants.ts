@@ -105,6 +105,13 @@ export const toolValueTypeList: {
         type: 'boolean'
       }
     }
+  },
+  {
+    label: 'object',
+    value: WorkflowIOValueTypeEnum.object,
+    jsonSchema: {
+      type: 'object'
+    }
   }
 ];
 export const valueTypeJsonSchemaMap: Record<string, JsonSchemaPropertiesItemType> =
