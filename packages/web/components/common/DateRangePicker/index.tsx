@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import type { BoxProps } from '@chakra-ui/react';
 import { Box, Card, Flex, useTheme, useOutsideClick, Button } from '@chakra-ui/react';
 import { addDays, format } from 'date-fns';
 import { DayPicker } from 'react-day-picker';
@@ -15,19 +16,20 @@ export type DateRangeType = {
 const DateRangePicker = ({
   onChange,
   onSuccess,
-  position = 'bottom',
+  popPosition = 'bottom',
   defaultDate = {
     from: addDays(new Date(), -30),
     to: new Date()
   },
-  dateRange
+  dateRange,
+  ...props
 }: {
   onChange?: (date: DateRangeType) => void;
   onSuccess?: (date: DateRangeType) => void;
-  position?: 'bottom' | 'top';
+  popPosition?: 'bottom' | 'top';
   defaultDate?: DateRangeType;
   dateRange?: DateRangeType;
-}) => {
+} & BoxProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const OutRangeRef = useRef(null);
@@ -42,9 +44,9 @@ const DateRangePicker = ({
 
   const formatSelected = useMemo(() => {
     if (range?.from && range.to) {
-      return `${format(range.from, 'y-MM-dd')} ~ ${format(range.to, 'y-MM-dd')}`;
+      return `${format(range.from, 'y/MM/dd')} - ${format(range.to, 'y/MM/dd')}`;
     }
-    return `${format(new Date(), 'y-MM-dd')} ~ ${format(new Date(), 'y-MM-dd')}`;
+    return `${format(new Date(), 'y/MM/dd')} - ${format(new Date(), 'y/MM/dd')}`;
   }, [range]);
 
   useOutsideClick({
@@ -65,8 +67,10 @@ const DateRangePicker = ({
         bg={'myGray.50'}
         fontSize={'sm'}
         onClick={() => setShowSelected(true)}
+        alignItems={'center'}
+        {...props}
       >
-        <Box color={'myGray.600'} fontWeight={'400'}>
+        <Box color={'myGray.600'} fontWeight={'400'} flex={1}>
           {formatSelected}
         </Box>
         <MyIcon ml={2} name={'date'} w={'16px'} color={'myGray.600'} />
@@ -77,9 +81,9 @@ const DateRangePicker = ({
           zIndex={1}
           css={{
             '--rdp-background-color': '#d6e8ff',
-            ' --rdp-accent-color': '#0000ff'
+            '--rdp-accent-color': '#0000ff'
           }}
-          {...(position === 'top'
+          {...(popPosition === 'top'
             ? {
                 bottom: '40px'
               }

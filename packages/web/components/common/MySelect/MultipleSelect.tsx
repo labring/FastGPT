@@ -1,9 +1,11 @@
+import type { FlexProps } from '@chakra-ui/react';
 import {
   Box,
   Button,
   type ButtonProps,
   Checkbox,
   Flex,
+  Input,
   Menu,
   MenuButton,
   MenuItem,
@@ -11,13 +13,26 @@ import {
   MenuList,
   useDisclosure
 } from '@chakra-ui/react';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MyTag from '../Tag/index';
 import MyIcon from '../Icon';
 import MyAvatar from '../Avatar';
 import { useTranslation } from 'next-i18next';
 import type { useScrollPagination } from '../../../hooks/useScrollPagination';
 import MyDivider from '../MyDivider';
+
+const menuItemStyles: MenuItemProps = {
+  borderRadius: 'sm',
+  py: 2,
+  display: 'flex',
+  alignItems: 'center',
+  _hover: {
+    backgroundColor: 'myGray.100'
+  },
+  _notLast: {
+    mb: 2
+  }
+};
 
 export type SelectProps<T = any> = {
   list: {
@@ -30,19 +45,25 @@ export type SelectProps<T = any> = {
   setIsSelectAll?: React.Dispatch<React.SetStateAction<boolean>>;
 
   placeholder?: string;
-  maxH?: number;
   itemWrap?: boolean;
   onSelect: (val: T[]) => void;
   closeable?: boolean;
   isDisabled?: boolean;
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
+
+  formLabel?: string;
+  formLabelFontSize?: string;
+
+  inputValue?: string;
+  setInputValue?: (val: string) => void;
+
+  tagStyle?: FlexProps;
 } & Omit<ButtonProps, 'onSelect'>;
 
 const MultipleSelect = <T = any,>({
   value = [],
   placeholder,
   list = [],
-  maxH = 400,
   onSelect,
   closeable = false,
   itemWrap = true,
@@ -50,27 +71,92 @@ const MultipleSelect = <T = any,>({
   isSelectAll,
   setIsSelectAll,
   isDisabled = false,
+
+  formLabel,
+  formLabelFontSize = 'mini',
+
+  inputValue,
+  setInputValue,
+
+  tagStyle,
   ...props
 }: SelectProps<T>) => {
   const ref = useRef<HTMLButtonElement>(null);
+  const SearchInputRef = useRef<HTMLInputElement>(null);
+  const tagsContainerRef = useRef<HTMLDivElement>(null);
+
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const menuItemStyles: MenuItemProps = {
-    borderRadius: 'sm',
-    py: 2,
-    display: 'flex',
-    alignItems: 'center',
-    _hover: {
-      backgroundColor: 'myGray.100'
-    },
-    _notLast: {
-      mb: 2
-    }
+  const canInput = setInputValue !== undefined;
+
+  type SelectedItemType = {
+    icon?: string;
+    label: string | React.ReactNode;
+    value: T;
   };
+
+  const [visibleItems, setVisibleItems] = useState<SelectedItemType[]>([]);
+  const [overflowItems, setOverflowItems] = useState<SelectedItemType[]>([]);
+
+  const selectedItems = useMemo(() => {
+    return value.map((val) => {
+      const listItem = list.find((item) => item.value === val);
+      return listItem || { value: val, label: String(val) };
+    });
+  }, [value, list]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Backspace' && (!inputValue || inputValue === '')) {
+        const newValue = [...value];
+        newValue.pop();
+        onSelect(newValue);
+      }
+    },
+    [inputValue, value, isSelectAll, onSelect]
+  );
+  useEffect(() => {
+    if (!isOpen) {
+      setInputValue?.('');
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    const getWidth = (w: any) =>
+      typeof w === 'number' ? w : typeof w === 'string' ? parseInt(w) : 0;
+
+    const totalWidth = getWidth(props.w) || 200;
+    const tagWidth = getWidth(tagStyle?.w) || 60;
+    const formLabelWidth = formLabel ? formLabel.length * 8 + 20 : 0;
+    const availableWidth = totalWidth - formLabelWidth - 40;
+    const overflowWidth = 30;
+
+    if (availableWidth <= 0) {
+      setVisibleItems(selectedItems.length > 0 ? [selectedItems[0]] : []);
+      setOverflowItems(selectedItems.slice(1));
+      return;
+    }
+
+    const { count } = selectedItems.reduce(
+      (acc, item, i) => {
+        const remain = selectedItems.length - i - 1;
+        const needOverflow = remain > 0 ? overflowWidth : 0;
+        if (acc.used + tagWidth + needOverflow <= availableWidth) {
+          return {
+            used: acc.used + tagWidth,
+            count: i + 1
+          };
+        }
+        return acc;
+      },
+      { used: 0, count: 0 }
+    );
+    setVisibleItems(selectedItems.slice(0, count));
+    setOverflowItems(selectedItems.slice(count));
+  }, [selectedItems, isOpen, props.w, tagStyle?.maxW, formLabel]);
 
   const onclickItem = useCallback(
     (val: T) => {
-      // 全选状态下，value 实际上上空。
       if (isSelectAll) {
         onSelect(list.map((item) => item.value).filter((i) => i !== val));
         setIsSelectAll?.(false);
@@ -141,10 +227,9 @@ const MultipleSelect = <T = any,>({
       >
         <MenuButton
           as={Flex}
-          h={'100%'}
-          alignItems={'center'}
           ref={ref}
           px={3}
+          alignItems={'center'}
           borderRadius={'md'}
           border={'base'}
           userSelect={'none'}
@@ -165,27 +250,39 @@ const MultipleSelect = <T = any,>({
               }
             : {})}
         >
-          {value.length === 0 && placeholder ? (
-            <Box color={'myGray.500'} fontSize={'sm'}>
-              {placeholder}
-            </Box>
-          ) : (
-            <Flex alignItems={'center'} gap={2}>
-              <Flex
-                alignItems={'center'}
-                gap={2}
-                flexWrap={itemWrap ? 'wrap' : 'nowrap'}
-                overflow={'hidden'}
-                flex={1}
-              >
-                {isSelectAll ? (
-                  <Box fontSize={'mini'} color={'myGray.900'}>
+          <Flex alignItems={'center'} w={'100%'}>
+            <Flex alignItems={'center'} flex={1}>
+              {formLabel && (
+                <>
+                  <Flex color={'myGray.600'} fontSize={formLabelFontSize} whiteSpace={'nowrap'}>
+                    {formLabel}
+                  </Flex>
+                  <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
+                </>
+              )}
+              {value.length === 0 && placeholder ? (
+                <Box color={'myGray.500'} fontSize={formLabelFontSize}>
+                  {placeholder}
+                </Box>
+              ) : null}
+            </Flex>
+            <Flex
+              ref={tagsContainerRef}
+              w={'100%'}
+              py={1}
+              gap={1}
+              flexWrap={'nowrap'}
+              overflow={'hidden'}
+              alignItems={'center'}
+            >
+              {!isOpen &&
+                (isSelectAll ? (
+                  <Box fontSize={formLabelFontSize} color={'myGray.900'}>
                     {t('common:All')}
                   </Box>
                 ) : (
-                  list
-                    .filter((item) => value.includes(item.value))
-                    .map((item, i) => (
+                  <>
+                    {visibleItems.map((item, i) => (
                       <MyTag
                         className="tag-icon"
                         key={i}
@@ -196,6 +293,7 @@ const MultipleSelect = <T = any,>({
                         px={2}
                         py={0.5}
                         flexShrink={0}
+                        {...tagStyle}
                       >
                         {item.label}
                         {closeable && (
@@ -215,12 +313,41 @@ const MultipleSelect = <T = any,>({
                           />
                         )}
                       </MyTag>
-                    ))
-                )}
-              </Flex>
-              <MyIcon name={'core/chat/chevronDown'} color={'myGray.600'} w={4} h={4} />
+                    ))}
+                    {overflowItems.length > 0 && (
+                      <Box
+                        fontSize={formLabelFontSize}
+                        px={2}
+                        py={0.5}
+                        flexShrink={0}
+                        borderRadius={'lg'}
+                        bg={'myGray.100'}
+                      >
+                        +{overflowItems.length}
+                      </Box>
+                    )}
+                  </>
+                ))}
+              {canInput && isOpen && (
+                <Input
+                  value={inputValue}
+                  onChange={(e) => setInputValue?.(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  ref={SearchInputRef}
+                  autoFocus
+                  onBlur={() => {
+                    setTimeout(() => {
+                      SearchInputRef?.current?.focus();
+                    }, 0);
+                  }}
+                  h={6}
+                  variant={'unstyled'}
+                  border={'none'}
+                />
+              )}
             </Flex>
-          )}
+            <MyIcon name={'core/chat/chevronDown'} color={'myGray.600'} w={4} h={4} />
+          </Flex>
         </MenuButton>
 
         <MenuList
@@ -254,7 +381,7 @@ const MultipleSelect = <T = any,>({
 
           <MyDivider my={1} />
 
-          {ScrollData ? <ScrollData>{ListRender}</ScrollData> : ListRender}
+          {ScrollData ? <ScrollData minH={20}>{ListRender}</ScrollData> : ListRender}
         </MenuList>
       </Menu>
     </Box>
