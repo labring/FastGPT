@@ -52,7 +52,7 @@ export async function rewriteAppWorkflowToDetail({
       try {
         const [preview] = await Promise.all([
           getChildAppPreviewNode({
-            appId: pluginId,
+            appId: node.pluginId,
             versionId: node.version
           }),
           ...(source === PluginSourceEnum.personal

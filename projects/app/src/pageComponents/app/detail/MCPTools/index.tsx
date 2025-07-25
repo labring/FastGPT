@@ -14,7 +14,7 @@ const MCPTools = () => {
     const toolSetNode = appDetail.modules.find(
       (item) => item.flowNodeType === FlowNodeTypeEnum.toolSet
     );
-    return toolSetNode?.toolConfig?.mcpToolSet!;
+    return toolSetNode?.toolConfig?.mcpToolSet ?? toolSetNode?.inputs[0].value;
   }, [appDetail.modules]);
 
   const [url, setUrl] = useState(toolSetData?.url || '');
