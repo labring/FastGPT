@@ -50,11 +50,14 @@ export type SelectProps<T = any> = {
   closeable?: boolean;
   isDisabled?: boolean;
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
+
   formLabel?: string;
   formLabelFontSize?: string;
-  tagStyle?: FlexProps;
+
   inputValue?: string;
   setInputValue?: (val: string) => void;
+
+  tagStyle?: FlexProps;
 } & Omit<ButtonProps, 'onSelect'>;
 
 const MultipleSelect = <T = any,>({
@@ -68,11 +71,14 @@ const MultipleSelect = <T = any,>({
   isSelectAll,
   setIsSelectAll,
   isDisabled = false,
+
   formLabel,
   formLabelFontSize = 'mini',
-  tagStyle,
+
   inputValue,
   setInputValue,
+
+  tagStyle,
   ...props
 }: SelectProps<T>) => {
   const ref = useRef<HTMLButtonElement>(null);
@@ -329,16 +335,14 @@ const MultipleSelect = <T = any,>({
                   onKeyDown={handleKeyDown}
                   ref={SearchInputRef}
                   autoFocus
-                  h={6}
-                  w={`${inputValue?.length ? inputValue.length * 14 : 1}px`}
-                  maxW={'210px'}
-                  variant={'unstyled'}
-                  border={'none'}
                   onBlur={() => {
                     setTimeout(() => {
                       SearchInputRef?.current?.focus();
                     }, 0);
                   }}
+                  h={6}
+                  variant={'unstyled'}
+                  border={'none'}
                 />
               )}
             </Flex>

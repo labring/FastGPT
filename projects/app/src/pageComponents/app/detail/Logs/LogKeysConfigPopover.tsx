@@ -1,7 +1,6 @@
 import { Box, Button, Flex } from '@chakra-ui/react';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { useTranslation } from 'next-i18next';
-import type { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
 import { AppLogKeysEnumMap } from '@fastgpt/global/core/app/logs/constants';
 import type {
   DraggableProvided,
@@ -17,6 +16,7 @@ import { AppContext } from '../context';
 import { updateLogKeys } from '@/web/core/app/api/log';
 import type { getLogKeysResponse } from '@/pages/api/core/app/logs/getLogKeys';
 import { i18nT } from '@fastgpt/web/i18n/utils';
+import type { AppLogKeysType } from '@fastgpt/global/core/app/logs/type';
 
 const ConfirmingTypeMap = {
   personal: i18nT('app:logs_saved_as_personal'),
@@ -31,11 +31,8 @@ const LogKeysConfigPopover = ({
   fetchLogKeys
 }: {
   children: React.ReactElement;
-  logKeysList: {
-    key: AppLogKeysEnum;
-    enable: boolean;
-  }[];
-  setLogKeysList: (logKeysList: { key: AppLogKeysEnum; enable: boolean }[] | undefined) => void;
+  logKeysList: AppLogKeysType[];
+  setLogKeysList: (logKeysList: AppLogKeysType[] | undefined) => void;
   fetchLogKeys: () => Promise<getLogKeysResponse>;
 }) => {
   const { t } = useTranslation();
@@ -44,9 +41,7 @@ const LogKeysConfigPopover = ({
   const [confirmingType, setConfirmingType] = useState<'personal' | 'team' | 'restore' | null>(
     null
   );
-  const [originalLogKeys, setOriginalLogKeys] = useState<
-    { key: AppLogKeysEnum; enable: boolean }[]
-  >([]);
+  const [originalLogKeys, setOriginalLogKeys] = useState<AppLogKeysType[]>([]);
 
   const hasChanges = JSON.stringify(originalLogKeys) !== JSON.stringify(logKeysList);
 
@@ -89,10 +84,8 @@ const LogKeysConfigPopover = ({
           <>
             {!confirmingType ? (
               <Box p={4}>
-                <DndDrag<{ key: AppLogKeysEnum; enable: boolean }>
-                  onDragEndCb={(list) => {
-                    setLogKeysList(list);
-                  }}
+                <DndDrag<AppLogKeysType>
+                  onDragEndCb={setLogKeysList}
                   dataList={logKeysList}
                   renderClone={(provided, snapshot, rubric) => (
                     <DragItem
@@ -128,7 +121,7 @@ const LogKeysConfigPopover = ({
                   )}
                 </DndDrag>
 
-                <Flex gap={2} justifyContent={'flex-end'}>
+                <Flex gap={2} justifyContent={'flex-end'} mt={4}>
                   <Button
                     onClick={() => {
                       setLogKeysList(originalLogKeys);
@@ -141,8 +134,7 @@ const LogKeysConfigPopover = ({
                   </Button>
                   <Button
                     size={'sm'}
-                    isLoading={updateLoading}
-                    onClick={async () => {
+                    onClick={() => {
                       if (!hasChanges) return onClose();
                       setConfirmingType('personal');
                     }}
@@ -184,10 +176,10 @@ const LogKeysConfigPopover = ({
                   </Flex>
                 ))}
 
-                <Flex gap={2} justifyContent={'flex-end'}>
+                <Flex gap={2} justifyContent={'flex-end'} mt={4}>
                   <Button
                     onClick={() => {
-                      setLogKeysList(JSON.parse(JSON.stringify(originalLogKeys)));
+                      setLogKeysList(originalLogKeys);
                       onClose();
                     }}
                     variant={'outline'}
@@ -231,11 +223,11 @@ const DragItem = ({
   logKeys,
   setLogKeys
 }: {
-  item: { key: AppLogKeysEnum; enable: boolean };
+  item: AppLogKeysType;
   provided: DraggableProvided;
   snapshot: DraggableStateSnapshot;
-  logKeys: { key: AppLogKeysEnum; enable: boolean }[];
-  setLogKeys: (logKeys: { key: AppLogKeysEnum; enable: boolean }[]) => void;
+  logKeys: AppLogKeysType[];
+  setLogKeys: (logKeys: AppLogKeysType[]) => void;
 }) => {
   const { t } = useTranslation();
 
