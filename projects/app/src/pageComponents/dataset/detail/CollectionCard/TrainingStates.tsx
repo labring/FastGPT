@@ -37,12 +37,7 @@ import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyImage from '@/components/MyImage';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-<<<<<<< HEAD
 import React from 'react';
-=======
-import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useToast } from '@fastgpt/web/hooks/useToast';
->>>>>>> 046833df3 (feat: table test : 10 继续调试，修改trainingStates)
 
 enum TrainingStatus {
   NotStart = 'NotStart',
@@ -521,7 +516,6 @@ const TrainingStates = ({
 }) => {
   const { t } = useTranslation();
   const [tab, setTab] = useState<typeof defaultTab>(defaultTab);
-  const { toast } = useToast();
 
   const {
     data: trainingDetail,
