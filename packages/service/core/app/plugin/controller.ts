@@ -161,9 +161,9 @@ export async function getChildAppPreviewNode({
   const { source, pluginId } = splitCombinePluginId(appId);
 
   const app: ChildAppType = await (async () => {
+    // 1. App
+    // 2. MCP ToolSets
     if (source === PluginSourceEnum.personal) {
-      // 1. App
-      // 2. MCP ToolSets
       const item = await MongoApp.findById(pluginId).lean();
       if (!item) return Promise.reject(PluginErrEnum.unExist);
 
@@ -228,8 +228,9 @@ export async function getChildAppPreviewNode({
         hasTokenFee: false,
         pluginOrder: 0
       };
-    } else if (source === PluginSourceEnum.mcp) {
-      // mcp tool
+    }
+    // mcp tool
+    else if (source === PluginSourceEnum.mcp) {
       const [parentId, toolName] = pluginId.split('/');
       // 1. get parentApp
       const item = await MongoApp.findById(parentId).lean();
@@ -260,9 +261,10 @@ export async function getChildAppPreviewNode({
         version: '',
         isLatestVersion: true
       };
-    } else {
-      // 1. System Tools
-      // 2. System Plugins configured in Pro (has associatedPluginId)
+    }
+    // 1. System Tools
+    // 2. System Plugins configured in Pro (has associatedPluginId)
+    else {
       return getSystemPluginByIdAndVersionId(pluginId, versionId);
     }
   })();
