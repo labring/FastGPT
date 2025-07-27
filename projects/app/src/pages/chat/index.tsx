@@ -40,9 +40,9 @@ import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/const
 import LoginModal from '@/pageComponents/login/LoginModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
-  ChatSidebarContextProvider,
-  useChatSidebarContext
-} from '@/web/core/chat/context/chatSidebarContext';
+  ChatSettingContextProvider,
+  useChatSettingContext
+} from '@/web/core/chat/context/chatSettingContext';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import ChatSetting from '@/components/core/chat/ChatSetting';
 
@@ -124,7 +124,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const { userInfo } = useUserStore();
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
-  const { action, isFolded } = useChatSidebarContext();
+  const { action, isFolded } = useChatSettingContext();
 
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
@@ -352,7 +352,7 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
 
   // show main chat interface
   return (
-    <ChatSidebarContextProvider>
+    <ChatSettingContextProvider>
       <ChatContextProvider params={chatHistoryProviderParams}>
         <ChatItemContextProvider
           showRouteToDatasetDetail={isStandalone !== '1'}
@@ -365,7 +365,7 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
           </ChatRecordContextProvider>
         </ChatItemContextProvider>
       </ChatContextProvider>
-    </ChatSidebarContextProvider>
+    </ChatSettingContextProvider>
   );
 };
 

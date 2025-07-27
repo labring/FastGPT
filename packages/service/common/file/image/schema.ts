@@ -1,6 +1,6 @@
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { Schema, getMongoModel } from '../../mongo';
-import { type MongoImageSchemaType } from '@fastgpt/global/common/file/image/type.d';
+import { type MongoImageSchemaType, ImageTypeEnum } from '@fastgpt/global/common/file/image/type.d';
 
 const ImageSchema = new Schema({
   teamId: {
@@ -14,7 +14,12 @@ const ImageSchema = new Schema({
   },
   expiredTime: Date,
   binary: Buffer,
-  metadata: Object
+  metadata: Object,
+  type: {
+    type: String,
+    enum: Object.values(ImageTypeEnum),
+    default: ImageTypeEnum.IMAGE
+  }
 });
 
 try {

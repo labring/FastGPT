@@ -15,6 +15,7 @@
   "Please wait for all files to upload": "请等待所有文件上传完成",
   "bucket_chat": "对话文件",
   "bucket_file": "知识库文件",
+  "bucket_image": "图片",
   "click_to_view_raw_source": "点击查看来源",
   "common.Some images failed to process": "部分图片处理失败",
   "common.dataset_data_input_image_support_format": "支持 .jpg, .jpeg, .png, .gif, .webp 格式",

@@ -21,8 +21,8 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   ChatSidebarActionEnum,
   ChatSidebarExpandEnum,
-  useChatSidebarContext
-} from '@/web/core/chat/context/chatSidebarContext';
+  useChatSettingContext
+} from '@/web/core/chat/context/chatSettingContext';
 
 const MotionBox = motion(Box);
 const MotionFlex = motion(Flex);
@@ -56,7 +56,7 @@ const contentVariants = {
   hide: {
     opacity: 0,
     transition: {
-      duration: 0.1 // 内容快速淡出
+      duration: 0.01 // 内容快速淡出
     }
   }
 };
@@ -67,7 +67,8 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
   const isTeamChat = router.pathname === '/chat/team';
   const { userInfo } = useUserStore();
 
-  const { expand, action, isFolded, setAction, setExpand } = useChatSidebarContext();
+  const { expand, action, isFolded, setAction, setExpand, currentLogoSettings } =
+    useChatSettingContext();
 
   const [imageLoaded, setImageLoaded] = useState(false);
 
@@ -87,6 +88,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
 
   const onChangeApp = useCallback(
     (appId: string) => {
+      setAction(ChatSidebarActionEnum.HOME);
       router.replace({
         query: {
           ...router.query,
@@ -94,7 +96,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
         }
       });
     },
-    [router]
+    [router, setAction]
   );
 
   const handleToggleSidebar = useCallback(() => {
@@ -141,7 +143,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                   <Image
                     w="135px"
                     h="33px"
-                    src="/imgs/fastgpt_slogan.png"
+                    src={currentLogoSettings?.wideLogoUrl || '/imgs/fastgpt_slogan.png'}
                     alt="FastGPT slogan"
                     loading="eager"
                     onLoad={() => setImageLoaded(true)}
@@ -167,9 +169,9 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
             >
               <MotionBox layout={false}>
                 <Image
-                  w="32px"
-                  h="32px"
-                  src="/imgs/fastgpt_slogan_fold.png"
+                  w="33px"
+                  h="33px"
+                  src={currentLogoSettings?.squareLogoUrl || '/imgs/fastgpt_slogan_fold.png'}
                   alt="FastGPT logo"
                   loading="eager"
                 />
@@ -186,7 +188,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                 <MotionBox layout={false}>
                   <MyIcon
                     name={'core/chat/sidebar/fold'}
-                    p={2}
+                    p={1}
                     cursor={'pointer'}
                     onClick={handleToggleSidebar}
                     _hover={{
@@ -241,7 +243,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
             bg: 'myGray.200'
           }}
           borderRadius={'8px'}
-          color={action === ChatSidebarActionEnum.HOME ? 'primary.600' : 'myGray.500'}
+          color={action === ChatSidebarActionEnum.HOME ? 'primary.600' : '#8A95A7'}
           bg={action === ChatSidebarActionEnum.HOME ? 'myGray.200' : 'transparent'}
           fontSize={14}
           fontWeight={500}
@@ -346,7 +348,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                   borderRadius={'md'}
                   alignItems={'center'}
                   fontSize={'sm'}
-                  {...(item._id === activeAppId
+                  {...(item._id === activeAppId && action === ChatSidebarActionEnum.HOME
                     ? {
                         bg: 'primary.100',
                         color: 'primary.600'
@@ -393,6 +395,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
           >
             <Flex
               _hover={{ bg: 'myGray.200' }}
+              bg={action === ChatSidebarActionEnum.SETTING ? 'myGray.200' : 'transparent'}
               borderRadius={'8px'}
               p={2}
               cursor={'pointer'}
@@ -419,7 +422,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
             justifyContent={'flex-start'}
           >
             {userInfo ? (
-              <UserAvatarPopover placement={isFolded ? 'right' : 'top-end'}>
+              <UserAvatarPopover placement={isFolded ? 'right-start' : 'top-end'}>
                 <Flex
                   alignItems="center"
                   gap={2}
@@ -437,6 +440,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                         className="textEllipsis"
                         flexGrow={1}
                         fontSize={'sm'}
+                        fontWeight={500}
                         variants={contentVariants}
                         initial="hide"
                         animate="show"

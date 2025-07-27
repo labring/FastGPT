@@ -26,6 +26,7 @@ import type {
   InvitationLinkCreateType,
   InvitationType
 } from '@fastgpt/service/support/user/team/invitationLink/type';
+import type { GetLogoSettingsResponse } from '@/pages/api/support/user/team/getLogoSettings';
 
 /* --------------- team  ---------------- */
 export const getTeamList = (status: `${TeamMemberSchema['status']}`) =>
@@ -115,3 +116,6 @@ export const getTeamInvoiceHeader = () =>
 
 export const updateTeamInvoiceHeader = (data: TeamInvoiceHeaderType) =>
   POST(`/proApi/support/user/team/invoiceAccount/update`, data);
+
+export const getLogoSettings = () =>
+  GET<GetLogoSettingsResponse>('/support/user/team/getLogoSettings');

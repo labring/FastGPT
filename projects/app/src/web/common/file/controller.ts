@@ -4,6 +4,7 @@ import type { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import type { preUploadImgProps } from '@fastgpt/global/common/file/api';
 import { compressBase64Img, type CompressImgProps } from '@fastgpt/web/common/file/img';
 import type { UploadChatFileProps, UploadDatasetFileProps } from '@/pages/api/common/file/upload';
+import { ImageTypeEnum } from '@fastgpt/global/common/file/image/type.d';
 
 /**
  * upload file to mongo gridfs
@@ -47,6 +48,7 @@ const compressBase64ImgAndUpload = async ({
   maxW,
   maxH,
   maxSize,
+  imageType,
   ...props
 }: UploadImgProps & CompressImgProps) => {
   const compressUrl = await compressBase64Img({
@@ -58,16 +60,19 @@ const compressBase64ImgAndUpload = async ({
 
   return postUploadImg({
     ...props,
-    base64Img: compressUrl
+    base64Img: compressUrl,
+    imageType
   });
 };
 
 export const compressImgFileAndUpload = async ({
   file,
+  imageType = ImageTypeEnum.AVATAR, // 默认为头像类型
   ...props
 }: preUploadImgProps &
   CompressImgProps & {
     file: File;
+    imageType?: `${ImageTypeEnum}`;
   }) => {
   const reader = new FileReader();
   reader.readAsDataURL(file);
@@ -83,6 +88,7 @@ export const compressImgFileAndUpload = async ({
 
   return compressBase64ImgAndUpload({
     base64Img,
+    imageType,
     ...props
   });
 };
