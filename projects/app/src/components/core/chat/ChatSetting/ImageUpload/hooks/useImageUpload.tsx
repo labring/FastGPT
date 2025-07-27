@@ -1,9 +1,8 @@
-import { useCallback, useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useMemoizedFn } from 'ahooks';
 import { useSelectFile } from '@fastgpt/web/common/file/hooks/useSelectFile';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { PreviewFileItem } from '@/web/core/chat/context/chatSettingContext';
