@@ -188,7 +188,14 @@ export const rewriteRuntimeWorkFlow = async ({
       const tools = await getSystemTools();
       const children = tools.filter((item) => item.parentId === toolId);
       for (const child of children) {
-        const newNode = await getSystemPluginRuntimeNodeById(child.id);
+        const toolListItem = toolSetNode.toolConfig?.systemToolSet?.toolList.find(
+          (item) => item.toolId === child.id
+        )!;
+        const newNode = await getSystemPluginRuntimeNodeById({
+          pluginId: child.id,
+          name: toolListItem?.name,
+          intro: toolListItem?.description
+        });
         const newNodeInputConfig = newNode.inputs.find(
           (item) => item.key === NodeInputKeyEnum.systemInputConfig
         );
