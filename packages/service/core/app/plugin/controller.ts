@@ -283,20 +283,18 @@ export async function getChildAppPreviewNode({
       return {
         flowNodeType: app.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
         nodeIOConfig: {
-          inputs: app.isFolder
-            ? [
-                ...(app.inputList
-                  ? [
-                      {
-                        key: NodeInputKeyEnum.systemInputConfig,
-                        label: '',
-                        renderTypeList: [FlowNodeInputTypeEnum.hidden],
-                        inputList: app.inputList
-                      }
-                    ]
-                  : [])
-              ]
-            : app.inputs ?? [],
+          inputs: [
+            ...(app.inputList
+              ? [
+                  {
+                    key: NodeInputKeyEnum.systemInputConfig,
+                    label: '',
+                    renderTypeList: [FlowNodeInputTypeEnum.hidden],
+                    inputList: app.inputList
+                  }
+                ]
+              : [])
+          ],
           outputs: app.outputs ?? [],
           toolConfig: {
             ...(app.isFolder
