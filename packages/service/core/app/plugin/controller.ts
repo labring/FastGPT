@@ -269,8 +269,6 @@ export async function getChildAppPreviewNode({
     }
   })();
 
-  // console.log('getSystemPluginByIdAndVersionId', pluginId, versionId, app, app.workflow.nodes[0]);
-
   const { flowNodeType, nodeIOConfig } = await (async (): Promise<{
     flowNodeType: FlowNodeTypeEnum;
     nodeIOConfig: {
@@ -300,7 +298,8 @@ export async function getChildAppPreviewNode({
                     inputList: app.inputList
                   }
                 ]
-              : [])
+              : []),
+            ...(app.inputs ?? [])
           ],
           outputs: app.outputs ?? [],
           toolConfig: {
@@ -309,6 +308,7 @@ export async function getChildAppPreviewNode({
                   systemToolSet: {
                     toolId: app.id,
                     toolList: children.map((item) => ({
+                      toolId: item.id,
                       name: parseI18nString(item.name, lang),
                       description: parseI18nString(item.intro, lang)
                     }))
@@ -457,16 +457,22 @@ export async function getChildAppRuntimeById({
   };
 }
 
-export async function getSystemPluginRuntimeNodeById(
-  pluginId: string
-): Promise<RuntimeNodeItemType> {
+export async function getSystemPluginRuntimeNodeById({
+  pluginId,
+  name,
+  intro
+}: {
+  pluginId: string;
+  name: string;
+  intro: string;
+}): Promise<RuntimeNodeItemType> {
   const { source } = splitCombinePluginId(pluginId);
   if (source === PluginSourceEnum.systemTool) {
     const tool = await getSystemPluginByIdAndVersionId(pluginId);
     return {
       ...tool,
-      name: parseI18nString(tool.name),
-      intro: parseI18nString(tool.intro),
+      name,
+      intro,
       inputs: tool.inputs ?? [],
       outputs: tool.outputs ?? [],
       flowNodeType: FlowNodeTypeEnum.tool,
