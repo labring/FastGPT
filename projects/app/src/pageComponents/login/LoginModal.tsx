@@ -23,7 +23,7 @@ const LoginModal = ({ onSuccess }: LoginModalProps) => {
       maxW="556px"
       maxH={['100vh', '90vh']}
       borderRadius={[0, '16px']}
-      overflow="auto"
+      overflow="hidden"
     >
       <Box
         px={['5vw', '88px']}
