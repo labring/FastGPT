@@ -105,7 +105,8 @@ export const useSendCode = ({ type }: { type: `${UserAuthTypeEnum}` }) => {
     sendCode,
     sendCodeText,
     codeCountDown,
-    SendCodeBox
+    SendCodeBox,
+    openCodeAuthModal
   };
 };
 
