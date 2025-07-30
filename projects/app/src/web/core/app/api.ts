@@ -23,7 +23,7 @@ export const getMyAppsByTags = (data: {}) => POST(`/proApi/core/chat/team/getApp
 /**
  * 根据 ID 删除应用
  */
-export const delAppById = (id: string) => DELETE(`/core/app/del?appId=${id}`);
+export const delAppById = (id: string) => DELETE<string[]>(`/core/app/del?appId=${id}`);
 
 /**
  * 根据 ID 获取应用

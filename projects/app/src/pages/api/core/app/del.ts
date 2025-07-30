@@ -8,7 +8,7 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 
-async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+async function handler(req: NextApiRequest, res: NextApiResponse<string[]>) {
   const { appId } = req.query as { appId: string };
 
   if (!appId) {
@@ -23,7 +23,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     per: OwnerPermissionVal
   });
 
-  await onDelOneApp({
+  const deletedAppIds = await onDelOneApp({
     teamId,
     appId
   });
@@ -42,6 +42,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
 
   // Tracks
   pushTrack.countAppNodes({ teamId, tmbId, uid: userId, appId });
+
+  return deletedAppIds;
 }
 
 export default NextAPI(handler);
