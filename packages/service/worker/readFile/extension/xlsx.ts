@@ -12,16 +12,12 @@ export const readXlsxRawText = async ({
     defval: ''
   });
 
-  // Clean newline characters in data to prevent errors in subsequent markdown parsing
-  const cleanedResult = result.map(({ name, data }) => ({
-    name,
-    data: data.map((row) => row.map((cell) => cell.replace(/[\n\r]/g, '\\n')))
-  }));
-
-  const format2Csv = cleanedResult.map(({ name, data }) => {
+  const format2Csv = result.map(({ name, data }) => {
     return {
       title: `#${name}`,
-      csvText: data.map((item) => item.join(',')).join('\n')
+      csvText: data
+        .map((row) => row.map((cell) => cell.replace(/[\n\r]/g, '\\n')).join(','))
+        .join('\n')
     };
   });
 
