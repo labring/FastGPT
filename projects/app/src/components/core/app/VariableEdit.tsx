@@ -36,9 +36,9 @@ import DndDrag, {
   type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { workflowSystemVariables } from '@/web/core/app/utils';
 
 export const defaultVariable: VariableItemType = {
-  id: getNanoid(6),
   key: '',
   label: '',
   type: VariableInputEnum.input,
@@ -52,7 +52,7 @@ type InputItemType = VariableItemType & {
 };
 
 export const addVariable = () => {
-  const newVariable = { ...defaultVariable, key: '', id: '', list: [{ value: '', label: '' }] };
+  const newVariable = { ...defaultVariable, list: [{ value: '', label: '' }] };
   return newVariable;
 };
 
@@ -107,13 +107,24 @@ const VariableEdit = ({
     (data: InputItemType, action: 'confirm' | 'continue') => {
       data.label = data?.label?.trim();
 
-      const existingVariable = variables.find(
-        (item) => item.label === data.label && item.id !== data.id
-      );
+      // check if the variable already exists
+      const existingVariable = variables.find((item) => {
+        return (item.label === data.label && item.key !== data.key) || data.key === item.key;
+      });
       if (existingVariable) {
         toast({
           status: 'warning',
           title: t('common:core.module.variable.key already exists')
+        });
+        return;
+      }
+
+      // check if the variable is a system variable
+      const systemVariableKeys = workflowSystemVariables.map((item) => item.key);
+      if (systemVariableKeys.includes(data.label) || systemVariableKeys.includes(data.key)) {
+        toast({
+          status: 'warning',
+          title: t('common:core.module.variable.system_variable_conflict')
         });
         return;
       }
@@ -128,14 +139,12 @@ const VariableEdit = ({
       }
 
       const onChangeVariable = [...variables];
-      if (data.id) {
-        const index = variables.findIndex((item) => item.id === data.id);
-        onChangeVariable[index] = data;
-      } else {
+      if (data.key) {
         onChangeVariable.push({
-          ...data,
-          id: getNanoid(6)
+          ...data
         });
+      } else {
+        throw new Error('key is required');
       }
 
       if (action === 'confirm') {
@@ -226,7 +235,7 @@ const VariableEdit = ({
               {({ provided }) => (
                 <Tbody {...provided.droppableProps} ref={provided.innerRef}>
                   {formatVariables.map((item, index) => (
-                    <Draggable key={item.id} draggableId={item.id} index={index}>
+                    <Draggable key={item.key} draggableId={item.key} index={index}>
                       {(provided, snapshot) => (
                         <TableItem
                           provided={provided}
@@ -235,7 +244,7 @@ const VariableEdit = ({
                           reset={reset}
                           onChange={onChange}
                           variables={variables}
-                          key={item.id}
+                          key={item.key}
                         />
                       )}
                     </Draggable>
@@ -393,7 +402,7 @@ const TableItem = ({
           <MyIconButton
             icon={'delete'}
             hoverColor={'red.500'}
-            onClick={() => onChange(variables.filter((variable) => variable.id !== item.id))}
+            onClick={() => onChange(variables.filter((variable) => variable.key !== item.key))}
           />
         </Flex>
       </Td>
