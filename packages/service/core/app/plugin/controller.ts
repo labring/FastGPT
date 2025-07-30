@@ -148,8 +148,8 @@ export const getSystemPluginByIdAndVersionId = async (
   };
 };
 
-/* 
-  Format plugin to workflow preview node data 
+/*
+  Format plugin to workflow preview node data
   Persion workflow/plugin: objectId
   Persion mcptoolset: objectId
   Persion mcp tool: mcp-parentId/name
@@ -183,7 +183,6 @@ export async function getChildAppPreviewNode({
             })
           : true;
 
-      const node = version.nodes[0];
       if (item.type === AppTypeEnum.toolSet) {
         const children = await getMCPChildren(item);
         version.nodes[0].toolConfig = {
@@ -196,8 +195,7 @@ export async function getChildAppPreviewNode({
       }
 
       return {
-        id:
-          item.type === AppTypeEnum.toolSet && node.toolConfig?.mcpToolSet ? '' : String(item._id),
+        id: String(item._id),
         teamId: String(item.teamId),
         name: item.name,
         avatar: item.avatar,

@@ -17,11 +17,12 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import type { McpToolSetDataType } from '@fastgpt/global/core/app/mcpTools/type';
 import {
   getSystemPluginRuntimeNodeById,
   getSystemTools
 } from '../../../core/app/plugin/controller';
+import { MongoApp } from '../../../core/app/schema';
+import { getMCPChildren } from '../../../core/app/mcp';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -220,7 +221,10 @@ export const rewriteRuntimeWorkFlow = async ({
 
       if (!toolSetValue) continue;
 
-      const toolList = toolSetValue.toolList;
+      console.log(toolSetNode);
+      const app = await MongoApp.findOne({ _id: toolSetNode.pluginId }).lean();
+      if (!app) continue;
+      const toolList = await getMCPChildren(app);
 
       const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
 

@@ -9,6 +9,7 @@ import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
   teamId,
@@ -34,12 +35,14 @@ export async function rewriteAppWorkflowToDetail({
   nodes,
   teamId,
   isRoot,
-  ownerTmbId
+  ownerTmbId,
+  lang
 }: {
   nodes: StoreNodeItemType[];
   teamId: string;
   isRoot: boolean;
   ownerTmbId: string;
+  lang?: localeType;
 }) {
   const datasetIdSet = new Set<string>();
 
@@ -53,7 +56,8 @@ export async function rewriteAppWorkflowToDetail({
         const [preview] = await Promise.all([
           getChildAppPreviewNode({
             appId: node.pluginId,
-            versionId: node.version
+            versionId: node.version,
+            lang
           }),
           ...(source === PluginSourceEnum.personal
             ? [
@@ -81,6 +85,7 @@ export async function rewriteAppWorkflowToDetail({
         node.hasTokenFee = preview.hasTokenFee;
         node.hasSystemSecret = preview.hasSystemSecret;
 
+        node.toolConfig = preview.toolConfig;
         // Latest version
         if (!node.version) {
           const inputsMap = new Map(node.inputs.map((item) => [item.key, item]));
