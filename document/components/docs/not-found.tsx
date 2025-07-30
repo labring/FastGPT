@@ -1,7 +1,6 @@
 'use client';
-import { redirect } from 'next/navigation';
-import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 
 const exactMap: Record<string, string> = {
   '/docs/intro': '/docs/introduction',
@@ -21,25 +20,50 @@ const prefixMap: Record<string, string> = {
   '/docs/agreement': '/docs/protocol'
 };
 
+const fallbackRedirect = '/docs/introduction';
+
 export default function NotFound() {
   const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
-    if (exactMap[pathname]) {
-      redirect(exactMap[pathname]);
-      return;
-    }
-
-    for (const [oldPrefix, newPrefix] of Object.entries(prefixMap)) {
-      if (pathname.startsWith(oldPrefix)) {
-        const rest = pathname.slice(oldPrefix.length);
-        redirect(newPrefix + rest);
+    const tryRedirect = async () => {
+      if (exactMap[pathname]) {
+        router.replace(exactMap[pathname]);
         return;
       }
-    }
 
-    redirect('/docs/introduction');
-  }, [pathname]);
+      for (const [oldPrefix, newPrefix] of Object.entries(prefixMap)) {
+        if (pathname.startsWith(oldPrefix)) {
+          const rest = pathname.slice(oldPrefix.length);
+          router.replace(newPrefix + rest);
+          return;
+        }
+      }
 
-  return <></>;
+      try {
+        const basePath = pathname.replace(/\/$/, '');
+        const res = await fetch(`/api/meta?path=${basePath}`);
+        console.log('res', res);
+
+        if (!res.ok) throw new Error('meta API not found');
+
+        const validPage = await res.json();
+
+        if (validPage) {
+          console.log('validPage', validPage);
+          router.replace(validPage);
+          return;
+        }
+      } catch (e) {
+        console.warn('meta.json fallback failed:', e);
+      }
+
+      router.replace(fallbackRedirect);
+    };
+
+    tryRedirect();
+  }, [pathname, router]);
+
+  return null;
 }
