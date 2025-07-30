@@ -681,7 +681,6 @@
   "core.module.variable.add option": "Add Option",
   "core.module.variable.input type": "Text",
   "core.module.variable.key": "Variable Key",
-  "core.module.variable.key already exists": "Key Already Exists",
   "core.module.variable.key is required": "Variable Key is Required",
   "core.module.variable.select type": "Dropdown Single Select",
   "core.module.variable.system_variable_conflict": "Conflict between global variables and system variables",

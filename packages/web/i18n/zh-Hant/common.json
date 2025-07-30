@@ -681,7 +681,6 @@
   "core.module.variable.add option": "新增選項",
   "core.module.variable.input type": "文字",
   "core.module.variable.key": "變數鍵值",
-  "core.module.variable.key already exists": "鍵值已存在",
   "core.module.variable.key is required": "變數鍵值為必填",
   "core.module.variable.select type": "下拉單選",
   "core.module.variable.system_variable_conflict": "全局變量和系統變量衝突",

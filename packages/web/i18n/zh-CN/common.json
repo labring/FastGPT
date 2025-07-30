@@ -681,7 +681,6 @@
   "core.module.variable.add option": "添加选项",
   "core.module.variable.input type": "文本",
   "core.module.variable.key": "变量 key",
-  "core.module.variable.key already exists": "Key 已经存在",
   "core.module.variable.key is required": "变量 key 是必须的",
   "core.module.variable.select type": "下拉单选",
   "core.module.variable.system_variable_conflict": "全局变量和系统变量冲突",

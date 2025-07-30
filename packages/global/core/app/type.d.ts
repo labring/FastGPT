@@ -146,6 +146,7 @@ export type SettingAIDataType = {
 
 // variable
 export type VariableItemType = {
+  // id: string;
   key: string;
   label: string;
   type: VariableInputEnum;

@@ -251,6 +251,8 @@
   "upload_file_max_amount_tip": "Maximum number of files uploaded in a single round of conversation",
   "variable.select type_desc": "You can define a global variable that does not need to be filled in by the user.\n\nThe value of this variable can come from the API interface, the Query of the shared link, or assigned through the [Variable Update] module.",
   "variable.textarea_type_desc": "Allows users to input up to 4000 characters in the dialogue box.",
+  "variable_name_required": "Required variable name",
+  "variable_repeat": "Variable duplication",
   "version.Revert success": "Revert Successful",
   "version_back": "Revert to Original State",
   "version_copy": "Duplicate",
