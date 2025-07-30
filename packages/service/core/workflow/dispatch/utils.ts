@@ -228,7 +228,7 @@ export const rewriteRuntimeWorkFlow = async ({
         const newToolNode = getMCPToolRuntimeNode({
           avatar: toolSetNode.avatar,
           tool,
-          parentId: toolSetValue.toolId
+          parentId: toolSetValue.toolId ?? toolSetNode.pluginId
         });
 
         nodes.push({ ...newToolNode, name: `${toolSetNode.name}/${tool.name}` });
