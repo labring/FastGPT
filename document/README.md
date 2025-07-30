@@ -76,7 +76,7 @@ import FastGPTLink from '@/components/docs/linkFastGPT'; #FastGPT跳转链接组
 {
   "title": "FastGPT Docs",
   "root": true,
-  "pages": ["[Handshake][联系我们](https://fael3z0zfze.feishu.cn/share/base/form/shrcnRxj3utrzjywsom96Px4sud)","index","guide","development","FAQ","shopping_cart","community","hello"], #"hello"原本没有，此外，这里的顺序就是最后文档的展示顺序，现在"hello"文档将会在`introduction`的最后展示
+  "pages": ["[Handshake][联系我们](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc)","index","guide","development","FAQ","shopping_cart","community","hello"], #"hello"原本没有，此外，这里的顺序就是最后文档的展示顺序，现在"hello"文档将会在`introduction`的最后展示
   "order": 1
 }
 ```
@@ -87,7 +87,7 @@ import FastGPTLink from '@/components/docs/linkFastGPT'; #FastGPT跳转链接组
 
 # ps
 
-`meta.json`的`"pages"`中的`"[Handshake][联系我们](https://fael3z0zfze.feishu.cn/share/base/form/shrcnRxj3utrzjywsom96Px4sud)"`这个字段是目录的链接形式，表现效果为，点击后跳转到对应的url。
+`meta.json`的`"pages"`中的`"[Handshake][联系我们](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc)"`这个字段是目录的链接形式，表现效果为，点击后跳转到对应的url。
 
 ![](./public/readme/link.png)
 
