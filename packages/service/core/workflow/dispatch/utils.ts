@@ -221,7 +221,6 @@ export const rewriteRuntimeWorkFlow = async ({
 
       if (!toolSetValue) continue;
 
-      console.log(toolSetNode);
       const app = await MongoApp.findOne({ _id: toolSetNode.pluginId }).lean();
       if (!app) continue;
       const toolList = await getMCPChildren(app);
