@@ -179,15 +179,29 @@ export const rewriteRuntimeWorkFlow = async ({
 
   for (const toolSetNode of toolSetNodes) {
     nodeIdsToRemove.add(toolSetNode.nodeId);
-    const toolId = toolSetNode.toolConfig?.systemToolSet?.toolId;
+    const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId;
+    const mcpToolsetVal = toolSetNode.toolConfig?.mcpToolSet ?? toolSetNode.inputs[0].value;
+
+    const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
+    const pushEdges = (nodeId: string) => {
+      for (const inEdge of incomingEdges) {
+        edges.push({
+          source: inEdge.source,
+          target: nodeId,
+          sourceHandle: inEdge.sourceHandle,
+          targetHandle: 'selectedTools',
+          status: inEdge.status
+        });
+      }
+    };
 
     // systemTool
-    if (toolId) {
+    if (systemToolId) {
       const toolsetInputConfig = toolSetNode.inputs.find(
         (item) => item.key === NodeInputKeyEnum.systemInputConfig
       );
       const tools = await getSystemTools();
-      const children = tools.filter((item) => item.parentId === toolId);
+      const children = tools.filter((item) => item.parentId === systemToolId);
       for (const child of children) {
         const toolListItem = toolSetNode.toolConfig?.systemToolSet?.toolList.find(
           (item) => item.toolId === child.id
@@ -204,47 +218,23 @@ export const rewriteRuntimeWorkFlow = async ({
           newNodeInputConfig.value = toolsetInputConfig?.value;
         }
         nodes.push(newNode);
-        const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
-        for (const inEdge of incomingEdges) {
-          edges.push({
-            source: inEdge.source,
-            target: newNode.nodeId,
-            sourceHandle: inEdge.sourceHandle,
-            targetHandle: 'selectedTools',
-            status: inEdge.status
-          });
-        }
+        pushEdges(newNode.nodeId);
       }
-    } else {
-      // mcpToolSet
-      const toolSetValue = toolSetNode.toolConfig?.mcpToolSet ?? toolSetNode.inputs[0].value;
-
-      if (!toolSetValue) continue;
-
+    } else if (mcpToolsetVal) {
       const app = await MongoApp.findOne({ _id: toolSetNode.pluginId }).lean();
       if (!app) continue;
       const toolList = await getMCPChildren(app);
-
-      const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
 
       for (const tool of toolList) {
         const newToolNode = getMCPToolRuntimeNode({
           avatar: toolSetNode.avatar,
           tool,
-          parentId: toolSetValue.toolId ?? toolSetNode.pluginId
+          // New ?? Old
+          parentId: mcpToolsetVal.toolId ?? toolSetNode.pluginId
         });
 
         nodes.push({ ...newToolNode, name: `${toolSetNode.name}/${tool.name}` });
-
-        for (const inEdge of incomingEdges) {
-          edges.push({
-            source: inEdge.source,
-            target: newToolNode.nodeId,
-            sourceHandle: inEdge.sourceHandle,
-            targetHandle: 'selectedTools',
-            status: inEdge.status
-          });
-        }
+        pushEdges(newToolNode.nodeId);
       }
     }
   }
