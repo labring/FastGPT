@@ -42,7 +42,8 @@ export function splitCombinePluginId(id: string) {
     };
   }
 
-  const [source, pluginId] = id.split('-') as [PluginSourceEnum, string | undefined];
+  const [source, ...rest] = id.split('-') as [PluginSourceEnum, string | undefined];
+  const pluginId = rest.join('-');
   if (!source || !pluginId) throw new Error('pluginId not found');
 
   // 兼容4.10.0 之前的插件
