@@ -139,17 +139,27 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
 
           // Finifsh
           if (result_data.status === 'success') {
+            const cleanedText = result_data.result.pages
+              .map((page) => page.md)
+              .join('')
+              .replace(/\\[\(\)]/g, '$')
+              .replace(/\\[\[\]]/g, '$$')
+              .replace(/<img\s+src="([^"]+)"(?:\s*\?[^>]*)?(?:\s*\/>|>)/g, '![img]($1)')
+              .replace(/<!-- Media -->/g, '')
+              .replace(/<!-- Footnote -->/g, '')
+              .replace(/<!-- Meanless:[\s\S]*?-->/g, '')
+              .replace(/<!-- figureText:[\s\S]*?-->/g, '')
+              .replace(/\$(.+?)\s+\\tag\{(.+?)\}\$/g, '$$$1 \\qquad \\qquad ($2)$$')
+              .replace(/\\text\{([^}]*?)(\b\w+)_(\w+\b)([^}]*?)\}/g, '\\text{$1$2\\_$3$4}');
+            const remainingTags = cleanedText.match(/<!--[\s\S]*?-->/g);
+            if (remainingTags) {
+              addLog.warn(`[Doc2x] Remaining dirty tags after cleaning:`, {
+                count: remainingTags.length,
+                tags: remainingTags.slice(0, 3)
+              });
+            }
             return {
-              text: result_data.result.pages
-                .map((page) => page.md)
-                .join('')
-                .replace(/\\[\(\)]/g, '$')
-                .replace(/\\[\[\]]/g, '$$')
-                .replace(/<img\s+src="([^"]+)"(?:\s*\?[^>]*)?(?:\s*\/>|>)/g, '![img]($1)')
-                .replace(/<!-- Media -->/g, '')
-                .replace(/<!-- Footnote -->/g, '')
-                .replace(/\$(.+?)\s+\\tag\{(.+?)\}\$/g, '$$$1 \\qquad \\qquad ($2)$$')
-                .replace(/\\text\{([^}]*?)(\b\w+)_(\w+\b)([^}]*?)\}/g, '\\text{$1$2\\_$3$4}'),
+              text: cleanedText,
               pages: result_data.result.pages.length
             };
           }

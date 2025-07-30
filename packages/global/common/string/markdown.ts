@@ -55,7 +55,7 @@ export const htmlTable2Md = (content: string): string => {
           tableData[rowIndex] = [];
         }
         let colIndex = 0;
-        const cells = row.match(/<td.*?>(.*?)<\/td>/g) || [];
+        const cells = row.match(/<td[^>]*\/>|<td[^>]*>.*?<\/td>/g) || [];
 
         cells.forEach((cell) => {
           while (tableData[rowIndex][colIndex]) {
@@ -63,8 +63,12 @@ export const htmlTable2Md = (content: string): string => {
           }
           const colspan = parseInt(cell.match(/colspan="(\d+)"/)?.[1] || '1');
           const rowspan = parseInt(cell.match(/rowspan="(\d+)"/)?.[1] || '1');
-          const content = cell.replace(/<td.*?>|<\/td>/g, '').trim();
-
+          let content = '';
+          if (cell.endsWith('/>')) {
+            content = '';
+          } else {
+            content = cell.replace(/<td[^>]*>|<\/td>/g, '').trim();
+          }
           for (let i = 0; i < rowspan; i++) {
             for (let j = 0; j < colspan; j++) {
               if (!tableData[rowIndex + i]) {
