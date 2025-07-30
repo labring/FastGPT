@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
-import { Box, Card, Flex, useTheme, useOutsideClick, Button } from '@chakra-ui/react';
+import { Box, Card, Flex, useOutsideClick, Button } from '@chakra-ui/react';
 import { addDays, format } from 'date-fns';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
@@ -33,7 +33,6 @@ const DateRangePicker = ({
   formLabel?: string;
 } & BoxProps) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const OutRangeRef = useRef(null);
   const [range, setRange] = useState<DateRangeType>(defaultDate);
   const [showSelected, setShowSelected] = useState(false);
@@ -61,9 +60,9 @@ const DateRangePicker = ({
   return (
     <Box position={'relative'} ref={OutRangeRef}>
       <Flex
-        border={theme.borders.base}
+        border={'base'}
         px={3}
-        pr={formLabel ? 0 : 3}
+        pr={3}
         py={1}
         borderRadius={'sm'}
         cursor={'pointer'}
@@ -75,7 +74,7 @@ const DateRangePicker = ({
       >
         {formLabel && (
           <>
-            <Box rounded={'8px'} bg={'white'} fontSize={'sm'} border={'none'} whiteSpace={'nowrap'}>
+            <Box fontSize={'sm'} color={'myGray.600'}>
               {formLabel}
             </Box>
             <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />

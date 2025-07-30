@@ -37,7 +37,7 @@ const LogKeysConfigPopover = ({
     >
       {({ onClose }) => {
         return (
-          <Box p={4}>
+          <Box p={4} overflowY={'auto'} maxH={['300px', '500px']}>
             <DndDrag<AppLogKeysType>
               onDragEndCb={setLogKeysList}
               dataList={logKeysList}
