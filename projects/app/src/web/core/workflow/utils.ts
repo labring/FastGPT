@@ -181,6 +181,11 @@ export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
       });
     }
 
+    for (const input of node.inputs) {
+      if (input.key === NodeInputKeyEnum.systemInputConfig) {
+        input.value = undefined;
+      }
+    }
     return node;
   });
   return cloneNodes;

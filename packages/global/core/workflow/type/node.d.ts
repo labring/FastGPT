@@ -41,6 +41,7 @@ export type NodeToolConfigType = {
   systemToolSet?: {
     toolId: string;
     toolList: {
+      toolId: string;
       name: string;
       description: string;
     }[];
