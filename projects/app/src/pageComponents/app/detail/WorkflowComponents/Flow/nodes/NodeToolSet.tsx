@@ -15,7 +15,7 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>
       <Container>
-        <IOTitle text={t('app:MCP_tools_list')} />
+        <IOTitle text={t('app:MCP_tools_list')} {...data} catchError={undefined} />
         <Box maxH={'500px'} overflowY={'auto'} className="nowheel">
           {toolList?.map((tool, index) => (
             <Flex

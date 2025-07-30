@@ -17,11 +17,12 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import type { McpToolSetDataType } from '@fastgpt/global/core/app/mcpTools/type';
 import {
   getSystemPluginRuntimeNodeById,
   getSystemTools
 } from '../../../core/app/plugin/controller';
+import { MongoApp } from '../../../core/app/schema';
+import { getMCPChildren } from '../../../core/app/mcp';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -188,7 +189,14 @@ export const rewriteRuntimeWorkFlow = async ({
       const tools = await getSystemTools();
       const children = tools.filter((item) => item.parentId === toolId);
       for (const child of children) {
-        const newNode = await getSystemPluginRuntimeNodeById(child.id);
+        const toolListItem = toolSetNode.toolConfig?.systemToolSet?.toolList.find(
+          (item) => item.toolId === child.id
+        )!;
+        const newNode = await getSystemPluginRuntimeNodeById({
+          pluginId: child.id,
+          name: toolListItem?.name,
+          intro: toolListItem?.description
+        });
         const newNodeInputConfig = newNode.inputs.find(
           (item) => item.key === NodeInputKeyEnum.systemInputConfig
         );
@@ -208,11 +216,14 @@ export const rewriteRuntimeWorkFlow = async ({
         }
       }
     } else {
-      const toolSetValue = toolSetNode.toolConfig?.mcpToolSet;
+      // mcpToolSet
+      const toolSetValue = toolSetNode.toolConfig?.mcpToolSet ?? toolSetNode.inputs[0].value;
 
       if (!toolSetValue) continue;
 
-      const toolList = toolSetValue.toolList;
+      const app = await MongoApp.findOne({ _id: toolSetNode.pluginId }).lean();
+      if (!app) continue;
+      const toolList = await getMCPChildren(app);
 
       const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
 
@@ -220,7 +231,7 @@ export const rewriteRuntimeWorkFlow = async ({
         const newToolNode = getMCPToolRuntimeNode({
           avatar: toolSetNode.avatar,
           tool,
-          parentId: toolSetValue.toolId
+          parentId: toolSetValue.toolId ?? toolSetNode.pluginId
         });
 
         nodes.push({ ...newToolNode, name: `${toolSetNode.name}/${tool.name}` });

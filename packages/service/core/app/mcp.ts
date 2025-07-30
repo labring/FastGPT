@@ -158,7 +158,7 @@ export const getMCPChildren = async (app: AppSchema) => {
 
       return {
         avatar: app.avatar,
-        id: String(item._id),
+        id: `${PluginSourceEnum.mcp}-${id}/${item.name}`,
         ...toolData
       };
     });

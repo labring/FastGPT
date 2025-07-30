@@ -148,8 +148,8 @@ export const getSystemPluginByIdAndVersionId = async (
   };
 };
 
-/* 
-  Format plugin to workflow preview node data 
+/*
+  Format plugin to workflow preview node data
   Persion workflow/plugin: objectId
   Persion mcptoolset: objectId
   Persion mcp tool: mcp-parentId/name
@@ -183,7 +183,6 @@ export async function getChildAppPreviewNode({
             })
           : true;
 
-      const node = version.nodes[0];
       if (item.type === AppTypeEnum.toolSet) {
         const children = await getMCPChildren(item);
         version.nodes[0].toolConfig = {
@@ -196,8 +195,7 @@ export async function getChildAppPreviewNode({
       }
 
       return {
-        id:
-          item.type === AppTypeEnum.toolSet && node.toolConfig?.mcpToolSet ? '' : String(item._id),
+        id: String(item._id),
         teamId: String(item.teamId),
         name: item.name,
         avatar: item.avatar,
@@ -262,8 +260,6 @@ export async function getChildAppPreviewNode({
     }
   })();
 
-  // console.log('getSystemPluginByIdAndVersionId', pluginId, versionId, app, app.workflow.nodes[0]);
-
   const { flowNodeType, nodeIOConfig } = await (async (): Promise<{
     flowNodeType: FlowNodeTypeEnum;
     nodeIOConfig: {
@@ -283,20 +279,19 @@ export async function getChildAppPreviewNode({
       return {
         flowNodeType: app.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
         nodeIOConfig: {
-          inputs: app.isFolder
-            ? [
-                ...(app.inputList
-                  ? [
-                      {
-                        key: NodeInputKeyEnum.systemInputConfig,
-                        label: '',
-                        renderTypeList: [FlowNodeInputTypeEnum.hidden],
-                        inputList: app.inputList
-                      }
-                    ]
-                  : [])
-              ]
-            : app.inputs ?? [],
+          inputs: [
+            ...(app.inputList
+              ? [
+                  {
+                    key: NodeInputKeyEnum.systemInputConfig,
+                    label: '',
+                    renderTypeList: [FlowNodeInputTypeEnum.hidden],
+                    inputList: app.inputList
+                  }
+                ]
+              : []),
+            ...(app.inputs ?? [])
+          ],
           outputs: app.outputs ?? [],
           toolConfig: {
             ...(app.isFolder
@@ -304,6 +299,7 @@ export async function getChildAppPreviewNode({
                   systemToolSet: {
                     toolId: app.id,
                     toolList: children.map((item) => ({
+                      toolId: item.id,
                       name: parseI18nString(item.name, lang),
                       description: parseI18nString(item.intro, lang)
                     }))
@@ -452,16 +448,22 @@ export async function getChildAppRuntimeById({
   };
 }
 
-export async function getSystemPluginRuntimeNodeById(
-  pluginId: string
-): Promise<RuntimeNodeItemType> {
+export async function getSystemPluginRuntimeNodeById({
+  pluginId,
+  name,
+  intro
+}: {
+  pluginId: string;
+  name: string;
+  intro: string;
+}): Promise<RuntimeNodeItemType> {
   const { source } = splitCombinePluginId(pluginId);
   if (source === PluginSourceEnum.systemTool) {
     const tool = await getSystemPluginByIdAndVersionId(pluginId);
     return {
       ...tool,
-      name: parseI18nString(tool.name),
-      intro: parseI18nString(tool.intro),
+      name,
+      intro,
       inputs: tool.inputs ?? [],
       outputs: tool.outputs ?? [],
       flowNodeType: FlowNodeTypeEnum.tool,
