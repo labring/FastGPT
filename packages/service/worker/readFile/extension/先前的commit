@@ -12,7 +12,15 @@ export const readXlsxRawText = async ({
     defval: ''
   });
 
-  const format2Csv = result.map(({ name, data }) => {
+  // Clean newline characters in data to prevent errors in subsequent markdown parsing
+  const cleanedResult = result.map(({ name, data }) => ({
+    name,
+    data: data.map((row) =>
+      row.map((cell) => (typeof cell === 'string' ? cell.replace(/[\n\r]/g, '\\n') : cell))
+    )
+  }));
+
+  const format2Csv = cleanedResult.map(({ name, data }) => {
     return {
       title: `#${name}`,
       csvText: data.map((item) => item.join(',')).join('\n')
@@ -21,17 +29,18 @@ export const readXlsxRawText = async ({
 
   const rawText = format2Csv.map((item) => item.csvText).join('\n');
 
-  const formatText = result
-    .map(({ data }) => {
-      const header = data[0];
+  const formatText = format2Csv
+    .map((item) => {
+      const csvArr = Papa.parse(item.csvText).data as string[][];
+      const header = csvArr[0];
 
       if (!header) return;
 
       const formatText = `| ${header.join(' | ')} |
 | ${header.map(() => '---').join(' | ')} |
-${data
+${csvArr
   .slice(1)
-  .map((row) => `| ${row.map((cell) => String(cell).replace(/\n/g, '\\n')).join(' | ')} |`)
+  .map((row) => `| ${row.join(' | ')} |`)
   .join('\n')}`;
 
       return formatText;
