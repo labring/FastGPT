@@ -5,7 +5,6 @@ import { useTranslation } from 'next-i18next';
 import React from 'react';
 import type { updateLogKeysBody } from '@/pages/api/core/app/logs/updateLogKeys';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import type { getLogKeysResponse } from '@/pages/api/core/app/logs/getLogKeys';
 import { updateLogKeys } from '@/web/core/app/api/log';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
@@ -68,8 +67,8 @@ const SyncLogKeysPopover = ({
               <Button
                 size={'sm'}
                 isLoading={updateLoading}
-                onClick={() => {
-                  updateList({
+                onClick={async () => {
+                  await updateList({
                     appId: appId,
                     logKeys
                   });

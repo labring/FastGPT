@@ -20,6 +20,7 @@ import MyAvatar from '../Avatar';
 import { useTranslation } from 'next-i18next';
 import type { useScrollPagination } from '../../../hooks/useScrollPagination';
 import MyDivider from '../MyDivider';
+import { shadowLight } from '../../../styles/theme';
 
 const menuItemStyles: MenuItemProps = {
   borderRadius: 'sm',
@@ -73,7 +74,7 @@ const MultipleSelect = <T = any,>({
   isDisabled = false,
 
   formLabel,
-  formLabelFontSize = 'mini',
+  formLabelFontSize = 'sm',
 
   inputValue,
   setInputValue,
@@ -153,7 +154,7 @@ const MultipleSelect = <T = any,>({
     );
     setVisibleItems(selectedItems.slice(0, count));
     setOverflowItems(selectedItems.slice(count));
-  }, [selectedItems, isOpen, props.w, tagStyle?.maxW, formLabel]);
+  }, [selectedItems, isOpen, props.w, tagStyle, formLabel]);
 
   const onclickItem = useCallback(
     (val: T) => {
@@ -244,8 +245,8 @@ const MultipleSelect = <T = any,>({
           {...props}
           {...(isOpen && !isDisabled
             ? {
-                boxShadow: '0px 0px 4px #A8DBFF',
-                borderColor: 'primary.500',
+                boxShadow: shadowLight,
+                borderColor: 'primary.600 !important',
                 bg: 'white'
               }
             : {})}
@@ -254,9 +255,9 @@ const MultipleSelect = <T = any,>({
             <Flex alignItems={'center'} flex={1}>
               {formLabel && (
                 <>
-                  <Flex color={'myGray.600'} fontSize={formLabelFontSize} whiteSpace={'nowrap'}>
+                  <Box color={'myGray.600'} fontSize={formLabelFontSize} whiteSpace={'nowrap'}>
                     {formLabel}
-                  </Flex>
+                  </Box>
                   <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
                 </>
               )}

@@ -211,23 +211,19 @@ const Logs = () => {
     refreshDeps: [params]
   });
 
-  const [logKeys, setLogKeys] = useLocalStorageState<AppLogKeysType[]>(`app_log_keys_${appId}`);
-  const { runAsync: fetchLogKeys, data: teamLogKeys } = useRequest2(
+  const [logKeys = DefaultAppLogKeys, setLogKeys] = useLocalStorageState<AppLogKeysType[]>(
+    `app_log_keys_${appId}`
+  );
+  const { runAsync: fetchLogKeys, data: teamLogKeys = [] } = useRequest2(
     async () => {
       const res = await getLogKeys({ appId });
-      if (res.logKeys.length > 0) {
-        return res.logKeys;
-      }
-      return DefaultAppLogKeys;
+      const keys = res.logKeys.length > 0 ? res.logKeys : DefaultAppLogKeys;
+      setLogKeys(keys);
+      return keys;
     },
     {
       manual: false,
-      refreshDeps: [appId],
-      onSuccess: (res) => {
-        if (res.length > 0 && !logKeys) {
-          setLogKeys(res);
-        }
-      }
+      refreshDeps: [appId]
     }
   );
 
@@ -326,8 +322,8 @@ const Logs = () => {
   );
 
   const showSyncPopover = useMemo(() => {
-    const teamLogKeysList = teamLogKeys?.filter((item) => item.enable);
-    const personalLogKeysList = logKeys?.filter((item) => item.enable);
+    const teamLogKeysList = teamLogKeys.filter((item) => item.enable);
+    const personalLogKeysList = logKeys.filter((item) => item.enable);
     return !isEqual(teamLogKeysList, personalLogKeysList);
   }, [teamLogKeys, logKeys]);
 
@@ -341,7 +337,7 @@ const Logs = () => {
       py={[4, 6]}
       flex={'1 0 0'}
     >
-      <Flex flexDir={['column', 'row']} alignItems={['flex-start', 'center']} gap={3}>
+      <Flex alignItems={'center'} flexWrap={'wrap'} gap={3}>
         <Flex>
           <MultipleSelect<ChatSourceEnum>
             list={sourceList}
@@ -361,7 +357,6 @@ const Logs = () => {
             }}
             borderColor={'myGray.200'}
             formLabel={t('app:logs_source')}
-            formLabelFontSize={'sm'}
           />
         </Flex>
         <Flex>
@@ -394,7 +389,6 @@ const Logs = () => {
             h={10}
             w={'226px'}
             rounded={'8px'}
-            formLabelFontSize={'sm'}
             formLabel={t('common:member')}
             tagStyle={{
               px: 1,
@@ -441,7 +435,7 @@ const Logs = () => {
         <Box flex={'1'} />
         {showSyncPopover && (
           <SyncLogKeysPopover
-            logKeys={logKeys || DefaultAppLogKeys}
+            logKeys={logKeys}
             setLogKeys={setLogKeys}
             teamLogKeys={teamLogKeys || []}
             fetchLogKeys={fetchLogKeys}

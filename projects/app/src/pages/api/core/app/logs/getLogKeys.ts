@@ -12,7 +12,7 @@ export type getLogKeysQuery = {
 export type getLogKeysBody = {};
 
 export type getLogKeysResponse = {
-  logKeys: AppLogKeysSchemaType['logKeys'] | [];
+  logKeys: AppLogKeysSchemaType['logKeys'];
 };
 
 async function handler(
