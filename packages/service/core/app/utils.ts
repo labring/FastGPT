@@ -86,6 +86,7 @@ export async function rewriteAppWorkflowToDetail({
         node.hasSystemSecret = preview.hasSystemSecret;
 
         node.toolConfig = preview.toolConfig;
+
         // Latest version
         if (!node.version) {
           const inputsMap = new Map(node.inputs.map((item) => [item.key, item]));

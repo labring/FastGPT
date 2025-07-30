@@ -35,38 +35,35 @@ async function handler(
 
   const formatedHeaderAuth = storeSecretValue(headerSecret);
 
+  // create tool set node
+  const toolSetRuntimeNode = getMCPToolSetRuntimeNode({
+    url,
+    toolList,
+    headerSecret: formatedHeaderAuth,
+    name: app.name,
+    avatar: app.avatar,
+    toolId: ''
+  });
+
   await mongoSessionRun(async (session) => {
-    // create tool set node
-    const toolSetRuntimeNode = getMCPToolSetRuntimeNode({
-      url,
-      toolList,
-      headerSecret: formatedHeaderAuth,
-      name: app.name,
-      avatar: app.avatar,
-      toolId: ''
-    });
-
     // update app and app version
-    await Promise.all([
-      MongoApp.updateOne(
-        { _id: appId },
-        {
-          modules: [toolSetRuntimeNode],
-          updateTime: new Date()
-        },
-        { session }
-      ),
-
-      MongoAppVersion.updateOne(
-        { appId },
-        {
-          $set: {
-            nodes: [toolSetRuntimeNode]
-          }
-        },
-        { session }
-      )
-    ]);
+    await MongoApp.updateOne(
+      { _id: appId },
+      {
+        modules: [toolSetRuntimeNode],
+        updateTime: new Date()
+      },
+      { session }
+    );
+    await MongoAppVersion.updateOne(
+      { appId },
+      {
+        $set: {
+          nodes: [toolSetRuntimeNode]
+        }
+      },
+      { session }
+    );
   });
 
   return {};
