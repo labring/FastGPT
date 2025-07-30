@@ -6,7 +6,6 @@ import IOTitle from '../components/IOTitle';
 import Container from '../components/Container';
 import { useTranslation } from 'react-i18next';
 import { Box, Flex } from '@chakra-ui/react';
-import RenderInput from './render/RenderInput';
 
 const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
@@ -15,9 +14,8 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const toolList = toolConfig?.mcpToolSet?.toolList ?? toolConfig?.systemToolSet?.toolList ?? [];
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>
-      <RenderInput nodeId={data.nodeId} flowInputList={data.inputs} />
       <Container>
-        <IOTitle text={t('app:MCP_tools_list')} />
+        <IOTitle text={t('app:MCP_tools_list')} {...data} catchError={undefined} />
         <Box maxH={'500px'} overflowY={'auto'} className="nowheel">
           {toolList?.map((tool, index) => (
             <Flex
