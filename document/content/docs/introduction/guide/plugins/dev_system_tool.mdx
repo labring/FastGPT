@@ -30,9 +30,9 @@ FastGPT 系统工具项目从 4.10.0 版本后移动到独立的`fastgpt-plugin`
 bun run new:tool
 ```
 
-依据提示分别选择创建工具/工具集，以及目录名（小驼峰命名）。
+依据提示分别选择创建工具/工具集，以及目录名（使用 camelCase 小驼峰法命名）。
 
-执行完后，系统会在 `packages/tool/packages/[your-tool-name]`下生成一个工具/工具集的目录。
+执行完后，系统会在 `modules/tool/packages/[your-tool-name]`下生成一个工具/工具集的目录。
 
 系统工具 (Tool) 文件结构如下:
 
@@ -61,22 +61,70 @@ package.json
 ### 2.2 修改 config.ts
 
 - **name** 和 **description** 字段为中文和英文两种语言
-- **courseUrl** 密钥获取链接，或官网链接。
+- **courseUrl** 密钥获取链接，或官网链接，教程链接等。
 - **author** 开发者名
 - **type** 为枚举类型，目前有:
 	- tools: 工具
 	- search: 搜索
 	- multimodal: 多模态
 	- communication: 通讯
+	- finance: 金融
+	- design: 设计
+	- productivity: 生产力
+	- news: 新闻
+	- entertainment: 娱乐
+	- social: 社交
+	- scientific: 科学
 	- other: 其他
+- **secretInputList**: 密钥输入列表，其用于配置工具的`激活信息`,通常包含`密钥`、`Endpoint`、`Port`等。(见下面的 secretInputList 参数格式)
 - **versionList** (工具中配置)用于版本管理，是一个列表，其中的元素格式:
 	- value：版本号，建议使用 semver
 	- description: 描述
-	- inputs 入参
-	- outputs 返回值
-- **children**：（工具集 toolset 配置），需要将 tool import 后手动写入。
+	- inputs 入参（见下面的 inputs 参数格式）
+	- outputs 返回值 (见下面的 outputs 参数格式)
 
 对于 ToolSet 下的 tool 来说，无需填写 `type`、`courseUrl`、`author`，这几个字段会继承 ToolSet 的配置。
+
+#### secretInputList 参数格式
+
+一般格式:
+```ts
+{
+  key: 'key', // 唯一键
+  label: '前端显示的 label',
+  description: '前端显示的 description', // 可选
+  inputType: 'input' | 'secret' | 'switch' | 'select' | 'numberInput', // 前端输入框的类型
+  // secret: 密钥输入框，密钥将在保存时进行对称加密保存在节点内或数据库中
+  // switch: 开关
+  // select: 下拉选择框
+  // numberInput: 数字输入框
+  // input: 普通输入框
+}
+```
+
+下面的例子是 dalle3 的相关配置：可以参考 [dalle3 的 config.ts](https://github.com/labring/fastgpt-plugin/blob/main/modules/tool/packages/dalle3/config.ts)
+
+```ts
+{
+  // 其他配置
+  secretInputConfig: [
+    {
+      key: 'url',
+      label: 'Dalle3 接口基础地址',
+      description: '例如：https://api.openai.com',
+      inputType: 'input',
+      required: true
+    },
+    {
+      key: 'authorization',
+      label: '接口凭证（不需要 Bearer）',
+      description: 'sk-xxxx',
+      required: true,
+      inputType: 'secret'
+    }
+  ]
+}
+```
 
 #### inputs 参数格式
 
@@ -92,47 +140,63 @@ package.json
 }
 ```
 
-有一个特殊的 key `'system_input_config'`，其用于配置工具的`激活信息`,通常包含`密钥`、`Endpoint`、`Port`等。
-
-配置中`inputType=secret`的数据，将会通过对称加密的方式保存，以保证安全性。
-
-**参考 dalle3**:
-
-```
-"inputs": [
-  {
-    key: 'system_input_config', // 必须为这个值
-    label: '', // 为空即可
-    inputList: [
+dalle3 的 inputs 参数格式如下：
+```ts
+{
+//...
+  versionList: [
     {
-      key: 'url',
-      label: 'Dalle3 接口基础地址',
-      description: '例如：https://api.openai.com',
-      required: true,
-      inputType: 'input'
-    },
-    {
-      key: 'authorization',
-      label: '接口凭证（不需要 Bearer）',
-      description: 'sk-xxxx',
-      required: true,
-      inputType: 'secret'
+      // 其他配置
+      inputs: [
+        {
+          key: 'prompt',
+          label: '绘图提示词',
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
+          toolDescription: '绘图提示词'
+        }
+      ],
     }
-    ],
-    renderTypeList: [FlowNodeInputTypeEnum.hidden], // 必须为这个值
-    valueType: WorkflowIOValueTypeEnum.object // 必须为这个值
-  },
-....
-]
+    // ...
+  ]
+}
 ```
 
 #### outputs 参数格式
-```
+```ts
 {
   key: 'link', // 唯一键值对
   valueType: WorkflowIOValueTypeEnum.string, // 具体可以看这个 Enum 的类型定义
   label: '图片访问链接', // 名字
   description: '图片访问链接' // 描述，可选
+}
+```
+
+dalle3 的 outputs 参数格式如下：
+
+
+```ts
+{
+  // ...
+  versionList: [
+    {
+      // ...
+      outputs: [
+        {
+          valueType: WorkflowIOValueTypeEnum.string,
+          key: 'link',
+          label: '图片访问链接',
+          description: '图片访问链接'
+        },
+        {
+          type: FlowNodeOutputTypeEnum.error,
+          valueType: WorkflowIOValueTypeEnum.string,
+          key: 'system_error',
+          label: '错误信息'
+        }
+      ]
+    }
+  ],
 }
 ```
 
@@ -164,7 +228,7 @@ export async function tool(props: z.infer<typeof InputType>): Promise<z.infer<ty
 }
 ```
 
-上述例子给出了一个传入 formatStr （格式化字符串）并且返回当前时间的简单样例，如需安装包，可以在`/packages/tools/packages/[your-tool-name]`路径下，使用`bun install PACKAGE` 进行安装。
+上述例子给出了一个传入 formatStr （格式化字符串）并且返回当前时间的简单样例，如需安装包，可以在`/modules/tools/packages/[your-tool-name]`路径下，使用`bun install PACKAGE` 进行安装。
 
 ## 3. 调试
 
@@ -172,13 +236,13 @@ export async function tool(props: z.infer<typeof InputType>): Promise<z.infer<ty
 
 在 `test/index.test.ts` 中编写测试样例，使用 `bun run test index.test.ts完整路径` 即可运行测试。
 
-### 从 OpenAPI 文件进行测试
+### 从 Scalar 进行测试
 
 浏览器打开`localhost:3000/openapi`可进入`fastgpt-plugin`的 OpenAPI 页面，进行 API 调试。
 
 ![](/imgs/plugin-openapi.png)
 
-可以先通过`/tool/list`接口，获取工具列表，找到需要调试的工具的`toolId`。紧接着，通过`/tool/run`来运行工具获取实际结果。
+可以先通过`/tool/list`接口，获取工具列表，找到需要调试的工具的`toolId`。紧接着，通过`/tool/runStream`来运行工具获取实际结果。
 
 ![](/imgs/plugin-openapi2.png)
 
@@ -193,4 +257,3 @@ export async function tool(props: z.infer<typeof InputType>): Promise<z.infer<ty
 完毕上述所有内容后，向官方仓库 `https://github.com/labring/fastgpt-plugin` 提交 PR。官方人员审核通过后即可收录为 FastGPT 的官方插件。
 
 如无需官方收录，可自行对该项目进行 Docker 打包，并替换官方镜像即可。
-
