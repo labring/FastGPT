@@ -943,8 +943,7 @@ it(`Test splitText2Chunks 13 - Table split with empty lastText`, () => {
 
   const { chunks } = splitText2Chunks({
     text: mock.text,
-    chunkSize: 1000,
-    tableChunkOverflowRatio: 1.0
+    chunkSize: 1000
   });
 
   expect(chunks).toEqual(mock.result);
