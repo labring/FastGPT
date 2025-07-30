@@ -41,19 +41,13 @@ import LoginModal from '@/pageComponents/login/LoginModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
   ChatSettingContextProvider,
-  useChatSettingContext
+  useChatSettingContext,
+  ChatSidebarActionEnum
 } from '@/web/core/chat/context/chatSettingContext';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import ChatSetting from '@/components/core/chat/ChatSetting';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
-
-export enum ChatSidebarActionEnum {
-  HOME = 'home',
-  SETTING = 'setting',
-  TEAM_APPS = 'team_apps',
-  FAVORITE_APPS = 'favorite_apps'
-}
 
 // custom hook for managing chat page state and initialization logic
 const useChatHook = (appId: string) => {
@@ -63,7 +57,7 @@ const useChatHook = (appId: string) => {
   const { lastChatAppId, setSource, setAppId } = useChatStore();
   const { userInfo, initUserInfo } = useUserStore();
 
-  const [isInitedUser, setIsIntedUser] = useState(false);
+  const [isInitedUser, setIsInitedUser] = useState(false);
 
   // get app list
   const { data: myApps = [] } = useRequest2(() => getMyApps({ getRecentlyChat: true }), {
@@ -98,7 +92,7 @@ const useChatHook = (appId: string) => {
       console.log('User not logged in:', error);
     } finally {
       setSource('online');
-      setIsIntedUser(true);
+      setIsInitedUser(true);
     }
   });
 
@@ -124,7 +118,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const { userInfo } = useUserStore();
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
-  const { action, isFolded } = useChatSettingContext();
+  const { action, isFold, isCommercialVersion, setAction } = useChatSettingContext();
 
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
@@ -141,6 +135,12 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
+
+  const isChatWindow = useMemo(
+    () =>
+      action === ChatSidebarActionEnum.RECENTLY_USED_APPS || action === ChatSidebarActionEnum.HOME,
+    [action]
+  );
 
   const { loading } = useRequest2(
     async () => {
@@ -238,7 +238,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         <Box
           flexGrow={0}
           flexShrink={0}
-          w={isFolded ? '72px' : '202px'}
+          w={isFold ? '72px' : '202px'}
           overflow={'hidden'}
           transition={'width 0.1s ease-in-out'}
         >
@@ -247,9 +247,9 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       )}
 
       {(!datasetCiteData || isPc) && (
+        // decide which chat window to show
         <PageContainer flex={'1 0 0'} w={0} position={'relative'}>
-          {/* home */}
-          {action === ChatSidebarActionEnum.HOME && (
+          {isChatWindow && (
             <Flex h={'100%'} flexDirection={['column', 'row']}>
               {/* pc always show history */}
               {RenderHistorySlider}
@@ -260,35 +260,48 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                 flex={'1 0 0'}
                 flexDirection={'column'}
               >
-                <ChatHeader
-                  totalRecordsCount={totalRecordsCount}
-                  apps={myApps}
-                  history={chatRecords}
-                  showHistory
-                />
+                {/* only show chat header when in recently used apps mode */}
+                {action === ChatSidebarActionEnum.RECENTLY_USED_APPS && (
+                  <ChatHeader
+                    totalRecordsCount={totalRecordsCount}
+                    apps={myApps}
+                    history={chatRecords}
+                    showHistory
+                  />
+                )}
 
-                <Box flex={'1 0 0'} bg={'white'}>
-                  {isPlugin ? (
-                    <CustomPluginRunBox
-                      appId={appId}
-                      chatId={chatId}
-                      outLinkAuthData={outLinkAuthData}
-                      onNewChat={() => onChangeChatId(getNanoid())}
-                      onStartChat={onStartChat}
-                    />
-                  ) : (
-                    <ChatBox
-                      appId={appId}
-                      chatId={chatId}
-                      outLinkAuthData={outLinkAuthData}
-                      showEmptyIntro
-                      feedbackType={'user'}
-                      onStartChat={onStartChat}
-                      chatType={ChatTypeEnum.chat}
-                      isReady={!loading}
-                    />
-                  )}
-                </Box>
+                {/* home chat window */}
+                {action === ChatSidebarActionEnum.HOME && (
+                  <Box flex={'1 0 0'} bg={'white'}>
+                    {/* TODO: add home chat window */}
+                  </Box>
+                )}
+
+                {/* recently used apps chat window */}
+                {action === ChatSidebarActionEnum.RECENTLY_USED_APPS && (
+                  <Box flex={'1 0 0'} bg={'white'}>
+                    {isPlugin ? (
+                      <CustomPluginRunBox
+                        appId={appId}
+                        chatId={chatId}
+                        outLinkAuthData={outLinkAuthData}
+                        onNewChat={() => onChangeChatId(getNanoid())}
+                        onStartChat={onStartChat}
+                      />
+                    ) : (
+                      <ChatBox
+                        appId={appId}
+                        chatId={chatId}
+                        outLinkAuthData={outLinkAuthData}
+                        showEmptyIntro
+                        feedbackType={'user'}
+                        onStartChat={onStartChat}
+                        chatType={ChatTypeEnum.chat}
+                        isReady={!loading}
+                      />
+                    )}
+                  </Box>
+                )}
               </Flex>
             </Flex>
           )}

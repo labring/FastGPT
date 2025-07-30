@@ -1,15 +1,20 @@
 import { useCallback, useState, useEffect, createContext, useContext } from 'react';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { getLogoSettings } from '@/web/support/user/team/api';
+import { getLogos } from '@/web/core/chat/api';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { ImageTypeEnum } from '@fastgpt/global/common/file/image/type.d';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 export enum ChatSidebarActionEnum {
   HOME = 'home',
   SETTING = 'setting',
+  FAVORITE_APPS = 'favorite_apps',
+
+  // these two features are only available in the open source version
   TEAM_APPS = 'team_apps',
-  FAVORITE_APPS = 'favorite_apps'
+  RECENTLY_USED_APPS = 'recently_used_apps'
 }
 
 export enum ChatSidebarExpandEnum {
@@ -40,41 +45,50 @@ export type TabSaveRegistry = {
   [key in ChatSettingTabOptionEnum]?: TabSaveConfig;
 };
 
-export type ChatSettingContextValueType = {
-  action: `${ChatSidebarActionEnum}`;
-  setAction: (action: ChatSidebarActionEnum) => void;
-
-  expand: `${ChatSidebarExpandEnum}`;
-  setExpand: (expand: ChatSidebarExpandEnum) => void;
-
-  isFolded: boolean;
-
-  settingTabOption: `${ChatSettingTabOptionEnum}`;
-  setSettingTabOption: (tabOption: ChatSettingTabOptionEnum) => void;
-
-  showDiagram: boolean;
-  setShowDiagram: (showDiagram: boolean) => void;
-
-  // 通用保存状态管理
+// general values for this context
+export type ChatSettingGeneralValue = {
+  // for check the tab save status
   tabSaveRegistry: TabSaveRegistry;
   registerTabSave: (tab: `${ChatSettingTabOptionEnum}`, config: TabSaveConfig) => void;
   unregisterTabSave: (tab: `${ChatSettingTabOptionEnum}`) => void;
   getCurrentTabSaveConfig: () => TabSaveConfig | undefined;
   handleCurrentTabSave: () => Promise<void>;
 
-  // Copyright tab 特有状态
-  wideLogoPreview: PreviewFileItem[];
-  setWideLogoPreview: (files: PreviewFileItem[]) => void;
-  squareLogoPreview: PreviewFileItem[];
-  setSquareLogoPreview: (files: PreviewFileItem[]) => void;
-
-  // 新增：当前Logo设置
+  // for logo settings
   currentLogoSettings: {
     wideLogoUrl?: string;
     squareLogoUrl?: string;
   };
   refreshLogoSettings: () => Promise<void>;
+  wideLogoPreview: PreviewFileItem[];
+  setWideLogoPreview: (files: PreviewFileItem[]) => void;
+  squareLogoPreview: PreviewFileItem[];
+  setSquareLogoPreview: (files: PreviewFileItem[]) => void;
 };
+
+// controls for this context
+export type ChatSettingControls = {
+  action: `${ChatSidebarActionEnum}`;
+  setAction: (action: ChatSidebarActionEnum) => void;
+  expand: `${ChatSidebarExpandEnum}`;
+  setExpand: (expand: ChatSidebarExpandEnum) => void;
+  settingTabOption: `${ChatSettingTabOptionEnum}`;
+  setSettingTabOption: (tabOption: ChatSettingTabOptionEnum) => void;
+  showDiagram: boolean;
+  setShowDiagram: (showDiagram: boolean) => void;
+};
+
+// computed values for this context
+export type ChatSettingComputedValue = {
+  isFold: boolean;
+  isLoggedIn: boolean;
+  isAdminPermission: boolean;
+  isCommercialVersion: boolean;
+};
+
+export type ChatSettingContextValueType = ChatSettingGeneralValue &
+  ChatSettingControls &
+  ChatSettingComputedValue;
 
 export const ChatSettingContext = createContext<ChatSettingContextValueType | null>(null);
 
@@ -89,41 +103,43 @@ export const useChatSettingContext = () => {
 export const ChatSettingContextProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
 
+  const { userInfo } = useUserStore();
+  const { feConfigs } = useSystemStore();
+
   const [showDiagram, setShowDiagram] = useState(false);
   const [action, setAction] = useState(ChatSidebarActionEnum.HOME);
   const [expand, setExpand] = useState(ChatSidebarExpandEnum.EXPAND);
   const [settingTabOption, setSettingTabOption] = useState(ChatSettingTabOptionEnum.COPYRIGHT);
 
-  // 通用tab保存注册表
+  // general tab save registry
   const [tabSaveRegistry, setTabSaveRegistry] = useState<TabSaveRegistry>({});
 
-  // Copyright tab 特有状态
+  // `copyright` tab specific state
   const [wideLogoPreview, setWideLogoPreview] = useState<PreviewFileItem[]>([]);
   const [squareLogoPreview, setSquareLogoPreview] = useState<PreviewFileItem[]>([]);
 
-  // 当前Logo设置状态
+  // current logo settings state
   const [currentLogoSettings, setCurrentLogoSettings] = useState<{
     wideLogoUrl?: string;
     squareLogoUrl?: string;
   }>({});
 
-  // 加载Logo设置
+  // copyright tab save status
+  const copyrightHasChanges = wideLogoPreview.length > 0 || squareLogoPreview.length > 0;
+  const copyrightIsSaving = tabSaveRegistry[ChatSettingTabOptionEnum.COPYRIGHT]?.isSaving || false;
+  const isCommercialVersion = !!feConfigs.isPlus;
+
+  // load logo settings
   const refreshLogoSettings = useCallback(async () => {
     try {
-      const logoSettings = await getLogoSettings();
+      const logoSettings = await getLogos();
       setCurrentLogoSettings(logoSettings);
     } catch (error) {
       console.error('Failed to load logo settings:', error);
-      // 不显示错误提示，静默失败即可
     }
   }, []);
 
-  // 组件挂载时加载Logo设置
-  useEffect(() => {
-    refreshLogoSettings();
-  }, [refreshLogoSettings]);
-
-  // 注册tab保存配置
+  // register tab save config
   const registerTabSave = useCallback(
     (tab: `${ChatSettingTabOptionEnum}`, config: TabSaveConfig) => {
       setTabSaveRegistry((prev) => ({ ...prev, [tab]: config }));
@@ -131,34 +147,33 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
     []
   );
 
-  // 取消注册tab保存配置
+  // unregister tab save config
   const unregisterTabSave = useCallback((tab: `${ChatSettingTabOptionEnum}`) => {
     setTabSaveRegistry((prev) => {
-      const registry = { ...prev };
-      delete registry[tab];
-      return registry;
+      const { [tab]: _, ...r } = prev;
+      return r;
     });
   }, []);
 
-  // 获取当前tab的保存配置
+  // get current tab save config
   const getCurrentTabSaveConfig = useCallback(
     () => tabSaveRegistry[settingTabOption],
     [tabSaveRegistry, settingTabOption]
   );
 
-  // 执行当前tab的保存操作
+  // handle current tab save
   const handleCurrentTabSave = useCallback(async () => {
     const config = getCurrentTabSaveConfig();
     if (!config || !config.saveHandler) return;
     await config.saveHandler();
   }, [getCurrentTabSaveConfig]);
 
-  // 版权信息tab的保存逻辑
+  // copyright tab save logic
   const handleCopyrightSave = useCallback(async () => {
     if (wideLogoPreview.length === 0 && squareLogoPreview.length === 0) {
       toast({
         status: 'warning',
-        title: '请先选择要上传的Logo图片'
+        title: '请先选择要上传的Logo图片' // TODO: i18n
       });
       return;
     }
@@ -166,14 +181,14 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
     try {
       const uploadPromises: Promise<void>[] = [];
 
-      // 上传宽Logo - 使用压缩
+      // upload wide logo - using compression
       if (wideLogoPreview.length > 0) {
         const wideLogo = wideLogoPreview[0];
         const uploadPromise = (async () => {
           await compressImgFileAndUpload({
             file: wideLogo.file,
-            maxW: 800, // Logo可以稍大一些
-            maxH: 300, // 按照4:1比例
+            maxW: 800, // logo can be a little larger
+            maxH: 300, // 4:1 ratio
             maxSize: 1024 * 200, // 200KB
             imageType: ImageTypeEnum.LOGO_WIDE
           });
@@ -181,14 +196,14 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
         uploadPromises.push(uploadPromise);
       }
 
-      // 上传方形Logo - 使用压缩
+      // upload square logo - using compression
       if (squareLogoPreview.length > 0) {
         const squareLogo = squareLogoPreview[0];
         const uploadPromise = (async () => {
           await compressImgFileAndUpload({
             file: squareLogo.file,
-            maxW: 400, // 方形Logo
-            maxH: 400, // 1:1比例
+            maxW: 400, // square logo
+            maxH: 400, // 1:1 ratio
             maxSize: 1024 * 150, // 150KB
             imageType: ImageTypeEnum.LOGO_SQUARE
           });
@@ -196,22 +211,22 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
         uploadPromises.push(uploadPromise);
       }
 
-      // 等待所有上传完成
+      // wait for all uploads to complete
       await Promise.all(uploadPromises);
 
-      // 清除预览状态
+      // clear preview state
       setWideLogoPreview([]);
       setSquareLogoPreview([]);
 
-      // 刷新Logo设置
+      // refresh logo settings
       await refreshLogoSettings();
 
       toast({
         status: 'success',
-        title: 'Logo 保存成功'
+        title: 'Logo 保存成功' // TODO: i18n
       });
     } catch (error) {
-      const errorMessage = getErrText(error, 'Logo 保存失败');
+      const errorMessage = getErrText(error, 'Logo 保存失败'); // TODO: i18n
       toast({
         status: 'error',
         title: errorMessage
@@ -220,16 +235,12 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
     }
   }, [wideLogoPreview, squareLogoPreview, toast, refreshLogoSettings]);
 
-  // 版权信息tab的保存状态
-  const copyrightHasChanges = wideLogoPreview.length > 0 || squareLogoPreview.length > 0;
-  const copyrightIsSaving = tabSaveRegistry[ChatSettingTabOptionEnum.COPYRIGHT]?.isSaving || false;
-
-  // 自动注册版权信息tab
+  // auto register copyright tab
   const registerCopyrightTab = useCallback(() => {
     registerTabSave(ChatSettingTabOptionEnum.COPYRIGHT, {
       hasChanges: copyrightHasChanges,
       saveHandler: async () => {
-        // 设置保存状态
+        // set save status
         setTabSaveRegistry((prev) => ({
           ...prev,
           [ChatSettingTabOptionEnum.COPYRIGHT]: {
@@ -241,7 +252,7 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
         try {
           await handleCopyrightSave();
         } finally {
-          // 重置保存状态
+          // reset save status
           setTabSaveRegistry((prev) => ({
             ...prev,
             [ChatSettingTabOptionEnum.COPYRIGHT]: {
@@ -255,32 +266,53 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
     });
   }, [copyrightHasChanges, copyrightIsSaving, handleCopyrightSave, registerTabSave]);
 
-  // 在状态变化时自动更新版权信息tab注册
+  // auto register copyright tab
   useEffect(() => {
     registerCopyrightTab();
   }, [registerCopyrightTab]);
 
+  // load logo settings when component mounted
+  useEffect(() => {
+    refreshLogoSettings();
+  }, [refreshLogoSettings]);
+
+  useEffect(() => {
+    if (!isCommercialVersion) {
+      setAction(ChatSidebarActionEnum.RECENTLY_USED_APPS);
+    }
+  }, [isCommercialVersion, setAction]);
+
   const value: ChatSettingContextValueType = {
+    //----------- controls -------------//
     action,
     setAction,
     expand,
     setExpand,
-    isFolded: expand === ChatSidebarExpandEnum.FOLD,
     settingTabOption,
     setSettingTabOption,
     showDiagram,
     setShowDiagram,
+
+    //----------- tab status -------------//
     tabSaveRegistry,
     registerTabSave,
     unregisterTabSave,
     getCurrentTabSaveConfig,
     handleCurrentTabSave,
+
+    //--------- logo setting ------------//
+    currentLogoSettings,
+    refreshLogoSettings,
     wideLogoPreview,
     setWideLogoPreview,
     squareLogoPreview,
     setSquareLogoPreview,
-    currentLogoSettings,
-    refreshLogoSettings
+
+    //----------- computed state -------------//
+    isCommercialVersion,
+    isLoggedIn: !!userInfo,
+    isFold: expand === ChatSidebarExpandEnum.FOLD,
+    isAdminPermission: userInfo?.permission.hasManagePer || false
   };
 
   return <ChatSettingContext.Provider value={value}>{children}</ChatSettingContext.Provider>;

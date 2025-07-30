@@ -27,7 +27,7 @@ import {
 const MotionBox = motion(Box);
 const MotionFlex = motion(Flex);
 
-// 定义动画配置
+// define animation config
 const sidebarVariants = {
   expanded: {
     width: 202,
@@ -50,27 +50,50 @@ const contentVariants = {
     opacity: 1,
     transition: {
       duration: 0.1,
-      delay: 0.1 // 等sidebar宽度变化完成后再显示内容
+      delay: 0.1 // wait for sidebar width change to complete
     }
   },
   hide: {
     opacity: 0,
     transition: {
-      duration: 0.01 // 内容快速淡出
+      duration: 0.01 // content fade out quickly
     }
   }
 };
 
 const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppId: string }) => {
-  const { t } = useTranslation();
   const router = useRouter();
-  const isTeamChat = router.pathname === '/chat/team';
+  const { t } = useTranslation();
+
   const { userInfo } = useUserStore();
 
-  const { expand, action, isFolded, setAction, setExpand, currentLogoSettings } =
-    useChatSettingContext();
+  const {
+    expand,
+    action,
+    setAction,
+    setExpand,
+    currentLogoSettings,
+    isCommercialVersion,
+    isAdminPermission,
+    isFold,
+    isLoggedIn
+  } = useChatSettingContext();
 
   const [imageLoaded, setImageLoaded] = useState(false);
+
+  const isTeamChat = router.pathname === '/chat/team';
+  const { avatar, username } = userInfo as NonNullable<typeof userInfo>;
+  const wideLogoSrc =
+    !isCommercialVersion || !currentLogoSettings?.wideLogoUrl
+      ? '/imgs/fastgpt_slogan.png'
+      : currentLogoSettings.wideLogoUrl;
+  const squareLogoSrc =
+    !isCommercialVersion || !currentLogoSettings?.squareLogoUrl
+      ? '/imgs/fastgpt_slogan_fold.png'
+      : currentLogoSettings.squareLogoUrl;
+
+  const isSelectedRecentlyUsedApps = (id: string): boolean =>
+    action === ChatSidebarActionEnum.RECENTLY_USED_APPS && id === activeAppId;
 
   const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
     return getMyApps({
@@ -86,19 +109,6 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
     );
   }, []);
 
-  const onChangeApp = useCallback(
-    (appId: string) => {
-      setAction(ChatSidebarActionEnum.HOME);
-      router.replace({
-        query: {
-          ...router.query,
-          appId
-        }
-      });
-    },
-    [router, setAction]
-  );
-
   const handleToggleSidebar = useCallback(() => {
     switch (expand) {
       case ChatSidebarExpandEnum.FOLD:
@@ -110,12 +120,21 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
     }
   }, [expand, setExpand]);
 
+  const handleSelectRecentlyUsedApps = useCallback(
+    (id: string) => {
+      if (action === ChatSidebarActionEnum.RECENTLY_USED_APPS && id === activeAppId) return;
+      setAction(ChatSidebarActionEnum.RECENTLY_USED_APPS);
+      router.replace({ query: { ...router.query, appId: id } });
+    },
+    [action, router, activeAppId, setAction]
+  );
+
   return (
     <MotionFlex
       flexDirection={'column'}
       h={'100%'}
       variants={sidebarVariants}
-      animate={isFolded ? 'folded' : 'expanded'}
+      animate={isFold ? 'folded' : 'expanded'}
       initial={false}
       overflow={'hidden'}
     >
@@ -124,11 +143,11 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
         alignItems={'center'}
         py={2}
         justifyContent={'space-between'}
-        animate={{ paddingLeft: isFolded ? 0 : 12 }}
+        animate={{ paddingLeft: isFold ? 0 : 12 }}
         transition={{ duration: 0.2, ease: 'easeInOut' }}
       >
         <AnimatePresence mode="wait">
-          {!isFolded && (
+          {!isFold && (
             <MotionBox variants={contentVariants} initial="hide" animate="show" exit="hide">
               <MotionBox layout={false}>
                 <Skeleton
@@ -143,7 +162,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                   <Image
                     w="135px"
                     h="33px"
-                    src={currentLogoSettings?.wideLogoUrl || '/imgs/fastgpt_slogan.png'}
+                    src={wideLogoSrc}
                     alt="FastGPT slogan"
                     loading="eager"
                     onLoad={() => setImageLoaded(true)}
@@ -155,9 +174,9 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
           )}
         </AnimatePresence>
 
-        {/* 收起状态时显示折叠版logo */}
+        {/* show folded logo when folded */}
         <AnimatePresence mode="wait">
-          {isFolded && (
+          {isFold && (
             <MotionBox
               variants={contentVariants}
               initial="hide"
@@ -168,21 +187,15 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
               w="100%"
             >
               <MotionBox layout={false}>
-                <Image
-                  w="33px"
-                  h="33px"
-                  src={currentLogoSettings?.squareLogoUrl || '/imgs/fastgpt_slogan_fold.png'}
-                  alt="FastGPT logo"
-                  loading="eager"
-                />
+                <Image w="33px" h="33px" src={squareLogoSrc} alt="FastGPT logo" loading="eager" />
               </MotionBox>
             </MotionBox>
           )}
         </AnimatePresence>
 
-        {/* 展开状态时显示fold图标 */}
+        {/* show fold icon when expanded */}
         <AnimatePresence mode="wait">
-          {!isFolded && (
+          {!isFold && (
             <MotionBox variants={contentVariants} initial="hide" animate="show" exit="hide">
               <Flex pr={3}>
                 <MotionBox layout={false}>
@@ -204,9 +217,9 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
       </MotionFlex>
 
       <Flex mt={4} flexDirection={'column'} gap={1} px={4}>
-        {/* 收起状态时显示expand图标 */}
+        {/* show expand icon when folded */}
         <AnimatePresence mode="wait">
-          {isFolded && (
+          {isFold && (
             <MotionBox variants={contentVariants} initial="hide" animate="show" exit="hide">
               <Flex
                 flex={1}
@@ -232,39 +245,10 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
             </MotionBox>
           )}
         </AnimatePresence>
-
-        <Flex
-          flex={1}
-          alignItems={'center'}
-          gap={2}
-          p={2}
-          cursor={'pointer'}
-          _hover={{
-            bg: 'myGray.200'
-          }}
-          borderRadius={'8px'}
-          color={action === ChatSidebarActionEnum.HOME ? 'primary.600' : '#8A95A7'}
-          bg={action === ChatSidebarActionEnum.HOME ? 'myGray.200' : 'transparent'}
-          fontSize={14}
-          fontWeight={500}
-          onClick={() => setAction(ChatSidebarActionEnum.HOME)}
-        >
-          <Flex flexGrow={isFolded ? 1 : 0} alignItems={'center'} justifyContent={'center'}>
-            <MotionBox layout={false}>
-              <MyIcon
-                w={isFolded ? '20px' : '24px'}
-                h={isFolded ? '20px' : '24px'}
-                name={'core/chat/sidebar/home'}
-              />
-            </MotionBox>
-          </Flex>
-
-          {!isFolded && <Box userSelect={'none'}>{t('common:core.chat.side_bar Home')}</Box>}
-        </Flex>
       </Flex>
 
       <AnimatePresence mode="wait">
-        {!isFolded && (
+        {!isFold && (
           <MotionBox
             variants={contentVariants}
             initial="hide"
@@ -325,7 +309,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                           value={activeAppId}
                           onSelect={(item) => {
                             if (!item) return;
-                            onChangeApp(item.id);
+                            handleSelectRecentlyUsedApps(item.id);
                             onClose();
                           }}
                           server={getAppList}
@@ -348,7 +332,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                   borderRadius={'md'}
                   alignItems={'center'}
                   fontSize={'sm'}
-                  {...(item._id === activeAppId && action === ChatSidebarActionEnum.HOME
+                  {...(isSelectedRecentlyUsedApps(item._id)
                     ? {
                         bg: 'primary.100',
                         color: 'primary.600'
@@ -358,7 +342,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                           bg: 'primary.100',
                           color: 'primary.600'
                         },
-                        onClick: () => onChangeApp(item._id)
+                        onClick: () => handleSelectRecentlyUsedApps(item._id)
                       })}
                 >
                   <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'md'} />
@@ -375,54 +359,57 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
       {/* 底部区域 - 头像和设置按钮 */}
       <MotionBox mt={'auto'} px={3} py={4} layout={false}>
         <MotionFlex
-          flexDirection={isFolded ? 'column' : 'row'}
+          flexDirection={isFold ? 'column' : 'row'}
           alignItems={'center'}
-          justifyContent={isFolded ? 'center' : 'space-between'}
-          gap={isFolded ? 3 : 0}
+          justifyContent={isFold ? 'center' : 'space-between'}
+          gap={isFold ? 3 : 0}
           layout={false}
-          h={isFolded ? 'auto' : '40px'}
+          h={isFold ? 'auto' : '40px'}
           minH="40px"
         >
           {/* 设置按钮 - 在收起状态时显示在上方，展开状态时显示在右侧 */}
-          <MotionBox
-            order={isFolded ? 1 : 2}
-            layout={false}
-            w="40px"
-            h="40px"
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-          >
-            <Flex
-              _hover={{ bg: 'myGray.200' }}
-              bg={action === ChatSidebarActionEnum.SETTING ? 'myGray.200' : 'transparent'}
-              borderRadius={'8px'}
-              p={2}
-              cursor={'pointer'}
+          {/* only commercial version and user with `admin` permission can use this feature */}
+          {isCommercialVersion && isAdminPermission && (
+            <MotionBox
+              order={isFold ? 1 : 2}
+              layout={false}
               w="40px"
               h="40px"
+              display="flex"
               alignItems="center"
               justifyContent="center"
-              onClick={() => setAction(ChatSidebarActionEnum.SETTING)}
             >
-              <Flex alignItems={'center'} justifyContent={'center'}>
-                <MyIcon w={'20px'} h={'20px'} name={'core/chat/sidebar/setting'} />
+              <Flex
+                _hover={{ bg: 'myGray.200' }}
+                bg={action === ChatSidebarActionEnum.SETTING ? 'myGray.200' : 'transparent'}
+                borderRadius={'8px'}
+                p={2}
+                cursor={'pointer'}
+                w="40px"
+                h="40px"
+                alignItems="center"
+                justifyContent="center"
+                onClick={() => setAction(ChatSidebarActionEnum.SETTING)}
+              >
+                <Flex alignItems={'center'} justifyContent={'center'}>
+                  <MyIcon w={'20px'} h={'20px'} name={'core/chat/sidebar/setting'} />
+                </Flex>
               </Flex>
-            </Flex>
-          </MotionBox>
+            </MotionBox>
+          )}
 
           {/* 头像区域 - 在收起状态时显示在下方，展开状态时显示在左侧 */}
           <MotionBox
-            order={isFolded ? 2 : 1}
+            order={isFold ? 2 : 1}
             layout={false}
-            w={isFolded ? '40px' : '100%'}
+            w={isFold ? '40px' : '100%'}
             h="40px"
             display="flex"
             alignItems="center"
             justifyContent={'flex-start'}
           >
-            {userInfo ? (
-              <UserAvatarPopover placement={isFolded ? 'right-start' : 'top-end'}>
+            {isLoggedIn ? (
+              <UserAvatarPopover placement={isFold ? 'right-start' : 'top-end'}>
                 <Flex
                   alignItems="center"
                   gap={2}
@@ -432,10 +419,10 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                   justifyContent={'center'}
                 >
                   <Flex flexShrink={0} alignItems={'center'} justifyContent={'center'}>
-                    <Avatar src={userInfo.avatar} bg="myGray.200" borderRadius="50%" w={8} h={8} />
+                    <Avatar src={avatar} bg="myGray.200" borderRadius="50%" w={8} h={8} />
                   </Flex>
                   <AnimatePresence mode="wait">
-                    {!isFolded && (
+                    {!isFold && (
                       <MotionBox
                         className="textEllipsis"
                         flexGrow={1}
@@ -450,7 +437,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                         textOverflow="ellipsis"
                         minW={0}
                       >
-                        {userInfo.username}
+                        {username}
                       </MotionBox>
                     )}
                   </AnimatePresence>
@@ -462,8 +449,8 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                 gap={2}
                 w="100%"
                 h="40px"
-                minW={isFolded ? '40px' : 'auto'}
-                justifyContent={isFolded ? 'center' : 'flex-start'}
+                minW={isFold ? '40px' : 'auto'}
+                justifyContent={isFold ? 'center' : 'flex-start'}
                 cursor="pointer"
                 _hover={{ bg: 'myGray.100' }}
                 borderRadius="md"
@@ -473,7 +460,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                   <Avatar bg="myGray.200" borderRadius="50%" w={8} h={8} />
                 </Box>
                 <AnimatePresence mode="wait">
-                  {!isFolded && (
+                  {!isFold && (
                     <MotionBox
                       flexGrow={1}
                       fontWeight={500}

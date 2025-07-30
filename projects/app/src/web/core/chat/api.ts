@@ -106,3 +106,7 @@ export const getQuoteDataList = (data: GetQuoteProps) =>
 
 export const getCollectionQuote = (data: GetCollectionQuoteProps) =>
   POST<GetCollectionQuoteRes>(`/core/chat/quote/getCollectionQuote`, data);
+
+/*---------- chat setting ------------*/
+export const getLogos = () =>
+  GET<{ wideLogoUrl: string; squareLogoUrl: string }>('/proApi/core/chat/setting/logos');

@@ -21,10 +21,6 @@ const SettingHeader = () => {
   const tabOptions: Parameters<typeof FillRowTabs<`${ChatSettingTabOptionEnum}`>>[0]['list'] =
     useMemo(
       () => [
-        // {
-        //   label: t('common:core.chat.setting.Home'),
-        //   value: ChatSettingTabOptionEnum.HOME
-        // },
         {
           label: t('common:core.chat.setting.Copyright'),
           value: ChatSettingTabOptionEnum.COPYRIGHT
@@ -39,8 +35,6 @@ const SettingHeader = () => {
     },
     [setSettingTabOption]
   );
-
-  // const handleShareSetting = useCallback(() => {}, []);
 
   const handleSaveSetting = useCallback(() => {
     handleCurrentTabSave();
@@ -70,17 +64,6 @@ const SettingHeader = () => {
         >
           {t('common:core.chat.setting.Save')}
         </Button>
-
-        {/* <Button
-          variant={'solid'}
-          color="#fff"
-          bg={'primary.600'}
-          _hover={{ bg: 'primary.700' }}
-          leftIcon={<MyIcon name={'core/chat/setting/share'} />}
-          onClick={handleShareSetting}
-        >
-          {t('common:core.chat.setting.Share')}
-        </Button> */}
       </ButtonGroup>
     </Flex>
   );

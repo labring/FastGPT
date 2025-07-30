@@ -21,7 +21,7 @@ const UserAvatarPopover = ({
 }: UserAvatarPopoverProps) => {
   const { t } = useTranslation();
   const { setUserInfo, userInfo } = useUserStore();
-  const { isFolded } = useChatSettingContext();
+  const { isFold } = useChatSettingContext();
 
   const { openConfirm, ConfirmModal } = useConfirm({ content: t('common:confirm_logout') });
 
@@ -47,7 +47,7 @@ const UserAvatarPopover = ({
 
           return (
             <Flex p={2} direction="column" gap={3}>
-              {isFolded && (
+              {isFold && (
                 <Flex
                   borderBottom="1px solid"
                   alignItems="center"

@@ -6,9 +6,10 @@ import { useChatSettingContext } from '@/web/core/chat/context/chatSettingContex
 
 const HomepageSetting = () => {
   const { t } = useTranslation();
-  const [slogan, setSlogan] = useState('');
-  const [dialoguePrompt, setDialoguePrompt] = useState('');
   const { setShowDiagram } = useChatSettingContext();
+
+  const [slogan, setSlogan] = useState('');
+  const [dialogueTips, setDialogueTips] = useState('');
 
   return (
     <Flex flexDir="column" gap={6} w="100%">
@@ -55,8 +56,8 @@ const HomepageSetting = () => {
 
         <Box>
           <MyInput
-            value={dialoguePrompt}
-            onChange={(e) => setDialoguePrompt(e.target.value)}
+            value={dialogueTips}
+            onChange={(e) => setDialogueTips(e.target.value)}
             placeholder="你可以问我任何问题"
           />
         </Box>
