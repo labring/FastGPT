@@ -106,8 +106,15 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
   const { userInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
 
+  const isCommercialVersion = !!feConfigs.isPlus;
+
+  // TODO: remove this after `home` feature is implemented
+  // const [action, setAction] = useState(
+  //   isCommercialVersion ? ChatSidebarActionEnum.HOME : ChatSidebarActionEnum.RECENTLY_USED_APPS
+  // );
+
   const [showDiagram, setShowDiagram] = useState(false);
-  const [action, setAction] = useState(ChatSidebarActionEnum.HOME);
+  const [action, setAction] = useState(ChatSidebarActionEnum.RECENTLY_USED_APPS);
   const [expand, setExpand] = useState(ChatSidebarExpandEnum.EXPAND);
   const [settingTabOption, setSettingTabOption] = useState(ChatSettingTabOptionEnum.COPYRIGHT);
 
@@ -127,7 +134,6 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
   // copyright tab save status
   const copyrightHasChanges = wideLogoPreview.length > 0 || squareLogoPreview.length > 0;
   const copyrightIsSaving = tabSaveRegistry[ChatSettingTabOptionEnum.COPYRIGHT]?.isSaving || false;
-  const isCommercialVersion = !!feConfigs.isPlus;
 
   // load logo settings
   const refreshLogoSettings = useCallback(async () => {
@@ -275,12 +281,6 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
   useEffect(() => {
     refreshLogoSettings();
   }, [refreshLogoSettings]);
-
-  useEffect(() => {
-    if (!isCommercialVersion) {
-      setAction(ChatSidebarActionEnum.RECENTLY_USED_APPS);
-    }
-  }, [isCommercialVersion, setAction]);
 
   const value: ChatSettingContextValueType = {
     //----------- controls -------------//

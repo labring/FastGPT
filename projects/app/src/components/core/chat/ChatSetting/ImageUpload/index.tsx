@@ -4,9 +4,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useImageUpload } from './hooks/useImageUpload';
 import type { PreviewFileItem } from '@/web/core/chat/context/chatSettingContext';
 import { useMemoizedFn } from 'ahooks';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 
 type Props = {
   imageSrc?: string;
@@ -43,12 +40,6 @@ const ImageUpload = ({
 }: Props) => {
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoadError, setImageLoadError] = useState(false);
-  const { teamPlanStatus } = useUserStore();
-  const { toast } = useToast();
-
-  // 检查是否为企业版套餐
-  const isEnterprisePlan =
-    teamPlanStatus?.standard?.currentSubLevel === StandardSubLevelEnum.enterprise;
 
   // 当imageSrc变化时重置错误状态
   useEffect(() => {
@@ -79,15 +70,6 @@ const ImageUpload = ({
 
   const handleClick = useMemoizedFn(() => {
     if (!disabled && !isUploading) {
-      // 检查企业版套餐权限
-      if (!isEnterprisePlan) {
-        toast({
-          status: 'warning',
-          title: 'Logo上传功能仅限企业版套餐使用',
-          description: '请升级到企业版套餐以使用此功能'
-        });
-        return;
-      }
       onOpenSelectFile();
     }
   });
