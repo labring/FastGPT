@@ -22,14 +22,14 @@ const LogKeysConfigPopover = ({
   return (
     <MyPopover
       placement="bottom-end"
-      w={'400px'}
+      w={'300px'}
       closeOnBlur={true}
       trigger="click"
       Trigger={
         <Button
           size={'md'}
           variant={'whiteBase'}
-          leftIcon={<MyIcon name={'common/paramsLight'} w={'18px'} />}
+          leftIcon={<MyIcon name={'common/setting'} w={'18px'} />}
         >
           {t('app:logs_key_config')}
         </Button>

@@ -22,6 +22,7 @@ const DateRangePicker = ({
     to: new Date()
   },
   dateRange,
+  formLabel,
   ...props
 }: {
   onChange?: (date: DateRangeType) => void;
@@ -29,6 +30,7 @@ const DateRangePicker = ({
   popPosition?: 'bottom' | 'top';
   defaultDate?: DateRangeType;
   dateRange?: DateRangeType;
+  formLabel?: string;
 } & BoxProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -61,6 +63,7 @@ const DateRangePicker = ({
       <Flex
         border={theme.borders.base}
         px={3}
+        pr={formLabel ? 0 : 3}
         py={1}
         borderRadius={'sm'}
         cursor={'pointer'}
@@ -70,10 +73,18 @@ const DateRangePicker = ({
         alignItems={'center'}
         {...props}
       >
+        {formLabel && (
+          <>
+            <Box rounded={'8px'} bg={'white'} fontSize={'sm'} border={'none'} whiteSpace={'nowrap'}>
+              {formLabel}
+            </Box>
+            <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
+          </>
+        )}
         <Box color={'myGray.600'} fontWeight={'400'} flex={1}>
           {formatSelected}
         </Box>
-        <MyIcon ml={2} name={'date'} w={'16px'} color={'myGray.600'} />
+        {!formLabel && <MyIcon ml={2} name={'date'} w={'16px'} color={'myGray.600'} />}
       </Flex>
       {showSelected && (
         <Card

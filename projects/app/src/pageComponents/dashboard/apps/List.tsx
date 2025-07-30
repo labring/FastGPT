@@ -98,7 +98,10 @@ const ListItem = () => {
       return delAppById(id);
     },
     {
-      onSuccess() {
+      onSuccess(data) {
+        data.forEach((appId) => {
+          localStorage.removeItem(`app_log_keys_${appId}`);
+        });
         loadMyApps();
       },
       successToast: t('common:delete_success'),
