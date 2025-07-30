@@ -213,10 +213,26 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     }
 
     // Add system variables
+    const systemVariables = getSystemVariable(data);
+
+    const enhancedVariables = { ...variables };
+    const appVariables = data.chatConfig?.variables || [];
+
+    appVariables.forEach((appVar) => {
+      if (appVar.label && appVar.label !== appVar.key) {
+        if (variables[appVar.key] !== undefined) {
+          enhancedVariables[appVar.label] = variables[appVar.key];
+        }
+        if (variables[appVar.label] !== undefined) {
+          enhancedVariables[appVar.key] = variables[appVar.label];
+        }
+      }
+    });
+
     variables = {
-      ...getSystemVariable(data),
+      ...systemVariables,
       ...externalProvider.externalWorkflowVariables,
-      ...variables
+      ...enhancedVariables
     };
   }
 
@@ -857,7 +873,11 @@ const getSystemVariable = ({
 }: Props): SystemVariablesType => {
   const variables = chatConfig?.variables || [];
   const variablesMap = variables.reduce<Record<string, any>>((acc, item) => {
-    acc[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
+    const value = valueTypeFormat(item.defaultValue, item.valueType);
+    acc[item.key] = value;
+    if (item.label && item.label !== item.key) {
+      acc[item.label] = value;
+    }
     return acc;
   }, {});
 

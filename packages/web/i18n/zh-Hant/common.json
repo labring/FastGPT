@@ -684,6 +684,7 @@
   "core.module.variable.key already exists": "鍵值已存在",
   "core.module.variable.key is required": "變數鍵值為必填",
   "core.module.variable.select type": "下拉單選",
+  "core.module.variable.system_variable_conflict": "全局變量和系統變量衝突",
   "core.module.variable.text max length": "最大長度",
   "core.module.variable.textarea type": "段落",
   "core.module.variable.variable name is required": "變數名稱不能為空",
