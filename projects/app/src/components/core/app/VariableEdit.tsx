@@ -35,8 +35,8 @@ import DndDrag, {
   type DraggableProvided,
   type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { workflowSystemVariables } from '@/web/core/app/utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export const defaultVariable: VariableItemType = {
   key: '',
@@ -103,25 +103,34 @@ const VariableEdit = ({
     });
   }, [variables]);
 
+  /* 
+    - New var: random key
+    - Update var: keep key
+  */
   const onSubmitSuccess = useCallback(
     (data: InputItemType, action: 'confirm' | 'continue') => {
       data.label = data?.label?.trim();
+      if (!data.label) {
+        return toast({
+          status: 'warning',
+          title: t('app:variable_name_required')
+        });
+      }
 
       // check if the variable already exists
       const existingVariable = variables.find((item) => {
-        return (item.label === data.label && item.key !== data.key) || data.key === item.key;
+        return item.key !== data.key && data.label === item.label;
       });
       if (existingVariable) {
-        toast({
+        return toast({
           status: 'warning',
-          title: t('common:core.module.variable.key already exists')
+          title: t('app:variable_repeat')
         });
-        return;
       }
 
       // check if the variable is a system variable
-      const systemVariableKeys = workflowSystemVariables.map((item) => item.key);
-      if (systemVariableKeys.includes(data.label) || systemVariableKeys.includes(data.key)) {
+      const systemVariableKeys = workflowSystemVariables.map((item) => item.label);
+      if (systemVariableKeys.includes(data.label)) {
         toast({
           status: 'warning',
           title: t('common:core.module.variable.system_variable_conflict')
@@ -129,7 +138,6 @@ const VariableEdit = ({
         return;
       }
 
-      data.key = data.label;
       data.enums = data.list;
 
       if (data.type === VariableInputEnum.custom) {
@@ -138,14 +146,24 @@ const VariableEdit = ({
         data.valueType = inputTypeList.find((item) => item.value === data.type)?.defaultValueType;
       }
 
-      const onChangeVariable = [...variables];
-      if (data.key) {
-        onChangeVariable.push({
-          ...data
-        });
-      } else {
-        throw new Error('key is required');
-      }
+      const onChangeVariable = (() => {
+        if (data.key) {
+          return variables.map((item) => {
+            if (item.key === data.key) {
+              return data;
+            }
+            return item;
+          });
+        }
+
+        return [
+          ...variables,
+          {
+            ...data,
+            key: getNanoid(8)
+          }
+        ];
+      })();
 
       if (action === 'confirm') {
         onChange(onChangeVariable);
@@ -379,7 +397,7 @@ const TableItem = ({
       <Td fontWeight={'medium'}>
         <Flex alignItems={'center'}>
           <MyIcon name={item.icon as any} w={'16px'} color={'myGray.400'} mr={1} />
-          {item.key}
+          {item.label}
         </Flex>
       </Td>
       <Td>

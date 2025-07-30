@@ -213,26 +213,10 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     }
 
     // Add system variables
-    const systemVariables = getSystemVariable(data);
-
-    const enhancedVariables = { ...variables };
-    const appVariables = data.chatConfig?.variables || [];
-
-    appVariables.forEach((appVar) => {
-      if (appVar.label && appVar.label !== appVar.key) {
-        if (variables[appVar.key] !== undefined) {
-          enhancedVariables[appVar.label] = variables[appVar.key];
-        }
-        if (variables[appVar.label] !== undefined) {
-          enhancedVariables[appVar.key] = variables[appVar.label];
-        }
-      }
-    });
-
     variables = {
-      ...systemVariables,
       ...externalProvider.externalWorkflowVariables,
-      ...enhancedVariables
+      ...getSystemVariables(data)
+      // ...variables
     };
   }
 
@@ -862,21 +846,27 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 }
 
 /* get system variable */
-const getSystemVariable = ({
+const getSystemVariables = ({
   timezone,
   runningAppInfo,
   chatId,
   responseChatItemId,
   histories = [],
   uid,
-  chatConfig
+  chatConfig,
+  variables
 }: Props): SystemVariablesType => {
-  const variables = chatConfig?.variables || [];
-  const variablesMap = variables.reduce<Record<string, any>>((acc, item) => {
-    const value = valueTypeFormat(item.defaultValue, item.valueType);
-    acc[item.key] = value;
-    if (item.label && item.label !== item.key) {
-      acc[item.label] = value;
+  const globalVariables = chatConfig?.variables || [];
+  const variablesMap = globalVariables.reduce<Record<string, any>>((acc, item) => {
+    // Web
+    if (variables[item.key] !== undefined) {
+      acc[item.key] = valueTypeFormat(variables[item.key], item.valueType);
+    }
+    // API
+    else if (variables[item.label] !== undefined) {
+      acc[item.key] = valueTypeFormat(variables[item.label], item.valueType);
+    } else {
+      acc[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
     }
     return acc;
   }, {});
