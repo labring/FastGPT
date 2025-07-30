@@ -214,14 +214,18 @@ const Logs = () => {
   const [logKeys, setLogKeys] = useLocalStorageState<AppLogKeysType[]>(`app_log_keys_${appId}`);
   const { runAsync: fetchLogKeys, data: teamLogKeys } = useRequest2(
     async () => {
-      return getLogKeys({ appId });
+      const res = await getLogKeys({ appId });
+      if (res.logKeys.length > 0) {
+        return res.logKeys;
+      }
+      return DefaultAppLogKeys;
     },
     {
       manual: false,
       refreshDeps: [appId],
       onSuccess: (res) => {
-        if (res.logKeys.length > 0 && !logKeys) {
-          setLogKeys(res.logKeys);
+        if (res.length > 0 && !logKeys) {
+          setLogKeys(res);
         }
       }
     }
@@ -321,6 +325,12 @@ const Logs = () => {
     [members]
   );
 
+  const showSyncPopover = useMemo(() => {
+    const teamLogKeysList = teamLogKeys?.filter((item) => item.enable);
+    const personalLogKeysList = logKeys?.filter((item) => item.enable);
+    return !isEqual(teamLogKeysList, personalLogKeysList);
+  }, [teamLogKeys, logKeys]);
+
   return (
     <Flex
       flexDirection={'column'}
@@ -362,9 +372,13 @@ const Logs = () => {
             }}
             bg={'white'}
             h={10}
-            w={'226px'}
+            w={'240px'}
             rounded={'8px'}
             borderColor={'myGray.200'}
+            formLabel={t('app:logs_date')}
+            _hover={{
+              borderColor: 'primary.300'
+            }}
           />
         </Flex>
         <Flex>
@@ -425,14 +439,11 @@ const Logs = () => {
           />
         </Flex>
         <Box flex={'1'} />
-        {!isEqual(
-          teamLogKeys?.logKeys.filter((item) => item.enable),
-          logKeys?.filter((item) => item.enable)
-        ) && (
+        {showSyncPopover && (
           <SyncLogKeysPopover
             logKeys={logKeys || DefaultAppLogKeys}
             setLogKeys={setLogKeys}
-            teamLogKeys={teamLogKeys?.logKeys || []}
+            teamLogKeys={teamLogKeys || []}
             fetchLogKeys={fetchLogKeys}
           />
         )}

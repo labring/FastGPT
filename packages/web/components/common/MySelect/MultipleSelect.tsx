@@ -275,7 +275,7 @@ const MultipleSelect = <T = any,>({
               overflow={'hidden'}
               alignItems={'center'}
             >
-              {!isOpen &&
+              {(!isOpen || !canInput) &&
                 (isSelectAll ? (
                   <Box fontSize={formLabelFontSize} color={'myGray.900'}>
                     {t('common:All')}

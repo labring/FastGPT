@@ -20,7 +20,7 @@ const SyncLogKeysPopover = ({
   logKeys: AppLogKeysType[];
   setLogKeys: (logKeys: AppLogKeysType[]) => void;
   teamLogKeys: AppLogKeysType[];
-  fetchLogKeys: () => Promise<getLogKeysResponse>;
+  fetchLogKeys: () => Promise<AppLogKeysType[]>;
 }) => {
   const { t } = useTranslation();
   const appId = useContextSelector(AppContext, (v) => v.appId);
@@ -63,7 +63,7 @@ const SyncLogKeysPopover = ({
                   onClose();
                 }}
               >
-                还原成团队配置
+                {t('app:sync_team_app_log_keys')}
               </Button>
               <Button
                 size={'sm'}
@@ -76,7 +76,7 @@ const SyncLogKeysPopover = ({
                   onClose();
                 }}
               >
-                保存至团队配置
+                {t('app:save_team_app_log_keys')}
               </Button>
             </Flex>
           </Box>

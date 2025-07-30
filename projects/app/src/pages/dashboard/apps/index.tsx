@@ -95,7 +95,11 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     errorToast: 'Error'
   });
   const { runAsync: onDeleFolder } = useRequest2(delAppById, {
-    onSuccess() {
+    onSuccess(data) {
+      data.forEach((appId) => {
+        localStorage.removeItem(`app_log_keys_${appId}`);
+      });
+
       router.replace({
         query: {
           parentId: folderDetail?.parentId
