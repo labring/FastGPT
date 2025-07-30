@@ -15,6 +15,7 @@ export const iconPaths = {
   collectionLight: () => import('./icons/collectionLight.svg'),
   collectionSolid: () => import('./icons/collectionSolid.svg'),
   comment: () => import('./icons/comment.svg'),
+  chart: () => import('./icons/chart.svg'),
   'common/add2': () => import('./icons/common/add2.svg'),
   'common/addCircleLight': () => import('./icons/common/addCircleLight.svg'),
   'common/addLight': () => import('./icons/common/addLight.svg'),

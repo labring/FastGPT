@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Box, Flex, HStack, useTheme } from '@chakra-ui/react';
 import {
   ResponsiveContainer,
@@ -7,19 +7,19 @@ import {
   CartesianGrid,
   Tooltip,
   type TooltipProps,
-  LineChart,
-  Line
+  BarChart,
+  Bar
 } from 'recharts';
 import { type NameType, type ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { useTranslation } from 'next-i18next';
 import QuestionTip from '../MyTooltip/QuestionTip';
 
-type LineConfig = {
+type BarConfig = {
   dataKey: string;
   name: string;
   color: string;
-  gradient?: boolean;
+  stackId?: string;
 };
 
 type TooltipItem = {
@@ -30,12 +30,12 @@ type TooltipItem = {
   customValue?: (data: Record<string, any>) => number;
 };
 
-type LineChartComponentProps = {
+type BarChartComponentProps = {
   data: Record<string, any>[];
   title: string;
   description?: string;
   HeaderRightChildren?: React.ReactNode;
-  lines: LineConfig[];
+  bars: BarConfig[];
   tooltipItems?: TooltipItem[];
 };
 
@@ -71,14 +71,14 @@ const CustomTooltip = ({
   );
 };
 
-const LineChartComponent = ({
+const BarChartComponent = ({
   data,
   title,
   description,
   HeaderRightChildren,
-  lines,
+  bars,
   tooltipItems
-}: LineChartComponentProps) => {
+}: BarChartComponentProps) => {
   const theme = useTheme();
   const { t } = useTranslation();
 
@@ -92,28 +92,6 @@ const LineChartComponent = ({
     return value.toString();
   }, []);
 
-  // Generate gradient definitions
-  const gradientDefs = useMemo(
-    () => (
-      <defs>
-        {lines.map((line) => (
-          <linearGradient
-            key={`gradient-${line.color}`}
-            id={`gradient-${line.color}`}
-            x1="0"
-            y1="0"
-            x2="0"
-            y2="1"
-          >
-            <stop offset="0%" stopColor={line.color} stopOpacity={0.25} />
-            <stop offset="100%" stopColor={line.color} stopOpacity={0.01} />
-          </linearGradient>
-        ))}
-      </defs>
-    ),
-    [lines]
-  );
-
   return (
     <>
       <Flex mb={4} h={6}>
@@ -126,11 +104,10 @@ const LineChartComponent = ({
         {HeaderRightChildren}
       </Flex>
       <ResponsiveContainer width="100%" height={'100%'}>
-        <LineChart
+        <BarChart
           data={data}
           margin={{ top: 5, right: 30, left: 0, bottom: HeaderRightChildren ? 20 : 15 }}
         >
-          {gradientDefs}
           <XAxis
             dataKey="x"
             tickMargin={10}
@@ -147,21 +124,20 @@ const LineChartComponent = ({
           />
           <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
           {tooltipItems && <Tooltip content={<CustomTooltip tooltipItems={tooltipItems} />} />}
-          {lines.map((line, index) => (
-            <Line
-              key={line.dataKey}
-              name={line.name}
-              dataKey={line.dataKey}
-              stroke={line.color}
-              strokeWidth={2}
-              fill={`url(#gradient-${line.color})`}
-              dot={false}
+          {bars.map((bar) => (
+            <Bar
+              key={bar.dataKey}
+              name={bar.name}
+              dataKey={bar.dataKey}
+              fill={bar.color}
+              stackId={bar.stackId}
+              radius={[2, 2, 0, 0]}
             />
           ))}
-        </LineChart>
+        </BarChart>
       </ResponsiveContainer>
     </>
   );
 };
 
-export default LineChartComponent;
+export default BarChartComponent;

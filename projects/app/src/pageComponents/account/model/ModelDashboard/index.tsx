@@ -14,7 +14,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import { getChannelList, getDashboardV2 } from '@/web/core/ai/channel';
 import { getSystemModelList } from '@/web/core/ai/config';
 import { getModelProvider } from '@fastgpt/global/core/ai/provider';
-import LineChartComponent from '@fastgpt/web/components/common/charts/LineChartComponent';
+import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartComponent';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import DataTableComponent from './DataTableComponent';
@@ -210,6 +210,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       };
 
       const data = await getDashboardV2(params);
+      console.log(data);
 
       // Auto-fill missing periods based on timespan
       const startDate = dayjs(filterProps.dateRange.from);
@@ -271,6 +272,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       ]
     }
   );
+  console.log('dashboardData', dashboardData);
 
   // Process chart data - aggregate model calls, token usage and cost data based on timespan
   const chartData: ModelDashboardData[] = useMemo(() => {
@@ -357,6 +359,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       };
     });
   }, [dashboardData, filterProps.model, filterProps.timespan, modelPriceMap]);
+  console.log('chartData', chartData);
 
   const [tokensUsageType, setTokensUsageType] = useState<
     'inputTokens' | 'outputTokens' | 'totalTokens'
@@ -444,7 +447,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
           dashboardData.length > 0 && (
             <>
               <Box {...ChartsBoxStyles}>
-                <LineChartComponent
+                <AreaChartComponent
                   data={chartData}
                   title={t('account_model:model_request_times')}
                   enableCumulative={true}
@@ -467,7 +470,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
 
               <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5}>
                 <Box {...ChartsBoxStyles}>
-                  <LineChartComponent
+                  <AreaChartComponent
                     data={chartData}
                     title={t('account_model:model_error_request_times')}
                     enableCumulative={false}
@@ -488,7 +491,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
                   />
                 </Box>
                 <Box {...ChartsBoxStyles}>
-                  <LineChartComponent
+                  <AreaChartComponent
                     data={chartData}
                     title={t('account_model:model_error_rate')}
                     enableCumulative={false}
@@ -511,7 +514,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
               </Grid>
 
               <Box mt={5} {...ChartsBoxStyles}>
-                <LineChartComponent
+                <AreaChartComponent
                   data={chartData}
                   title={t('account_model:dashboard_token_usage')}
                   enableCumulative={true}
@@ -556,7 +559,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
 
               {feConfigs?.isPlus && (
                 <Box mt={5} {...ChartsBoxStyles}>
-                  <LineChartComponent
+                  <AreaChartComponent
                     data={chartData}
                     title={t('account_model:aipoint_usage')}
                     enableCumulative={true}
@@ -580,7 +583,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
 
               <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5}>
                 <Box {...ChartsBoxStyles}>
-                  <LineChartComponent
+                  <AreaChartComponent
                     data={chartData}
                     title={t('account_model:avg_response_time')}
                     enableCumulative={false}
@@ -602,7 +605,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
                   />
                 </Box>
                 <Box {...ChartsBoxStyles}>
-                  <LineChartComponent
+                  <AreaChartComponent
                     data={chartData}
                     title={t('account_model:avg_ttfb')}
                     enableCumulative={false}
@@ -628,7 +631,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
               {filterProps?.model && (
                 <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5}>
                   <Box {...ChartsBoxStyles}>
-                    <LineChartComponent
+                    <AreaChartComponent
                       data={chartData}
                       title={t('account_model:max_rpm')}
                       enableCumulative={false}
@@ -649,7 +652,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
                     />
                   </Box>
                   <Box {...ChartsBoxStyles}>
-                    <LineChartComponent
+                    <AreaChartComponent
                       data={chartData}
                       title={t('account_model:max_tpm')}
                       enableCumulative={false}
