@@ -1,5 +1,5 @@
-const fs = require('fs')
-const path = require('path')
+const fs = require('fs');
+const path = require('path');
 
 const template = `# 数据库的默认账号和密码仅首次运行时设置有效
 # 如果修改了账号密码，记得改数据库和项目连接参数，别只改一处~
@@ -129,7 +129,7 @@ services:
       - AIPROXY_API_ENDPOINT=http://aiproxy:3000
       # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
       - AIPROXY_API_TOKEN=aiproxy
-      
+
       # 数据库最大连接数
       - DB_MAX_LINK=30
       # MongoDB 连接参数. 用户名myusername,密码mypassword。
@@ -176,9 +176,13 @@ services:
     networks:
       - fastgpt
     environment:
-      - AUTH_TOKEN=xxxxxx # disable authentication token if you do not set this variable
-      # 改成 minio 可访问地址，例如 https://192.168.2.2:9000
-      - MINIO_CUSTOM_ENDPOINT=https://192.168.2.2:9000
+      - AUTH_TOKEN=xxxxxx # 如果不需要鉴权可以直接去掉这个环境变量
+
+      # 改成 minio 可访问地址，例如 http://192.168.2.2:9000/fastgpt-plugins
+      # 必须指向 Minio 的桶的地址
+      # 如果 Minio 可以直接通过外网访问，可以不设置这个环境变量
+      # - MINIO_CUSTOM_ENDPOINT=http://192.168.2.2:9000
+
       - MINIO_ENDPOINT=fastgpt-minio
       - MINIO_PORT=9000
       - MINIO_USE_SSL=false
@@ -239,11 +243,11 @@ services:
       retries: 10
 networks:
   fastgpt:
-`
+`;
 
 const list = [
   {
-    filename: "./docker-compose-pgvector.yml",
+    filename: './docker-compose-pgvector.yml',
     depends: `- pg`,
     service: `pg:
     image: pgvector/pgvector:0.8.0-pg15 # docker hub
@@ -269,7 +273,7 @@ const list = [
     env: `- PG_URL=postgresql://username:password@pg:5432/postgres`
   },
   {
-    filename: "./docker-compose-zilliz.yml",
+    filename: './docker-compose-zilliz.yml',
     depends: ``,
     service: ``,
     env: `# zilliz 连接参数
@@ -277,7 +281,7 @@ const list = [
       - MILVUS_TOKEN=zilliz_cloud_token`
   },
   {
-    filename: "./docker-compose-milvus.yml",
+    filename: './docker-compose-milvus.yml',
     depends: `- milvusStandalone`,
     service: `milvus-minio:
     container_name: milvus-minio
@@ -343,7 +347,7 @@ const list = [
       - MILVUS_TOKEN=none`
   },
   {
-    filename: "./docker-compose-oceanbase/docker-compose.yml",
+    filename: './docker-compose-oceanbase/docker-compose.yml',
     depends: `- ob`,
     service: `ob:
     image: oceanbase/oceanbase-ce:4.3.5-lts # docker hub
@@ -382,10 +386,13 @@ const list = [
       start_period: 10s`,
     env: `- OCEANBASE_URL=mysql://root%40tenantname:tenantpassword@ob:2881/test`
   }
-]
+];
 
-list.forEach(item => {
-  const { filename, service, env, depends } = item
-  const content = template.replace("{{Vector_DB_Service}}", service).replace("{{Vector_DB_ENV}}", env).replace("{{Vector_DB_Depends}}", depends)
-  fs.writeFileSync(path.join(__dirname, filename), content, 'utf-8')
-})
+list.forEach((item) => {
+  const { filename, service, env, depends } = item;
+  const content = template
+    .replace('{{Vector_DB_Service}}', service)
+    .replace('{{Vector_DB_ENV}}', env)
+    .replace('{{Vector_DB_Depends}}', depends);
+  fs.writeFileSync(path.join(__dirname, filename), content, 'utf-8');
+});
