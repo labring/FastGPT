@@ -136,6 +136,7 @@ export class MCPClient {
 export const getMCPChildren = async (app: AppSchema) => {
   const isNewMcp = !!app.modules[0].toolConfig?.mcpToolSet;
   const id = String(app._id);
+
   if (isNewMcp) {
     return (
       app.modules[0].toolConfig?.mcpToolSet?.toolList.map((item) => ({
@@ -145,13 +146,16 @@ export const getMCPChildren = async (app: AppSchema) => {
       })) ?? []
     );
   } else {
+    // Old mcp toolset
     const children = await MongoApp.find({
+      teamId: app.teamId,
       parentId: id
-    });
+    }).lean();
 
     return children.map((item) => {
       const node = item.modules[0];
       const toolData: McpToolDataType = node.inputs[0].value;
+
       return {
         avatar: app.avatar,
         id: String(item._id),
