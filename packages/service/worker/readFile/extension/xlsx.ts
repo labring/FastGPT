@@ -2,7 +2,6 @@ import { CUSTOM_SPLIT_SIGN } from '@fastgpt/global/common/string/textSplitter';
 import { type ReadRawTextByBuffer, type ReadFileResponse } from '../type';
 import xlsx from 'node-xlsx';
 import Papa from 'papaparse';
-import { addLog } from '../../../common/system/log';
 
 export const readXlsxRawText = async ({
   buffer
@@ -24,7 +23,6 @@ export const readXlsxRawText = async ({
   const formatText = result
     .map(({ data }) => {
       const header = data[0];
-
       if (!header) return;
 
       const formatText = `| ${header.join(' | ')} |
@@ -39,7 +37,6 @@ ${data
     .filter(Boolean)
     .join(CUSTOM_SPLIT_SIGN);
 
-  addLog.info('formatText', { formatText });
   return {
     rawText: rawText,
     formatText

@@ -15,7 +15,6 @@ export type SplitProps = {
   maxSize?: number;
   overlapRatio?: number;
   customReg?: string[];
-  tableChunkOverflowRatio?: number; // Table chunk overflow ratio, default: 1.0
 };
 export type TextSplitProps = Omit<SplitProps, 'text' | 'chunkSize'> & {
   chunkSize?: number;
@@ -64,7 +63,7 @@ const strIsMdTable = (str: string) => {
   return true;
 };
 const markdownTableSplit = (props: SplitProps): SplitResponse => {
-  let { text = '', chunkSize, tableChunkOverflowRatio = 1.0 } = props;
+  let { text = '', chunkSize } = props;
 
   // split by rows
   const splitText2Lines = text.split('\n').filter((line) => line.trim());
@@ -92,7 +91,7 @@ ${mdSplitString}
     const nextLineLength = getTextValidLength(splitText2Lines[i]);
 
     // Over size
-    if (chunkLength + nextLineLength > chunkSize * tableChunkOverflowRatio) {
+    if (chunkLength + nextLineLength > chunkSize) {
       chunks.push(chunk);
       chunk = `${header}
 ${mdSplitString}
@@ -332,8 +331,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
         const { chunks: tableChunks } = markdownTableSplit({
           text: currentText,
-          chunkSize,
-          tableChunkOverflowRatio: 1.2
+          chunkSize: chunkSize * 1.2
         });
 
         chunks.push(...tableChunks);
@@ -479,7 +477,7 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
 
   const splitResult = splitWithCustomSign.map((item) => {
     if (strIsMdTable(item)) {
-      return markdownTableSplit({ ...props, text: item, tableChunkOverflowRatio: 1.2 });
+      return markdownTableSplit({ ...props, text: item });
     }
 
     return commonSplit({ ...props, text: item });
