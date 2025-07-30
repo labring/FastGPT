@@ -70,7 +70,7 @@ export const getMCPToolRuntimeNode = ({
         toolId: `${PluginSourceEnum.mcp}-${parentId}/${tool.name}`
       }
     },
-    inputs: [...jsonSchema2NodeInput(tool.inputSchema)],
+    inputs: jsonSchema2NodeInput(tool.inputSchema),
     outputs: [
       {
         id: NodeOutputKeyEnum.rawResponse,

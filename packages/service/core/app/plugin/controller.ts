@@ -148,7 +148,13 @@ export const getSystemPluginByIdAndVersionId = async (
   };
 };
 
-/* Format plugin to workflow preview node data */
+/* 
+  Format plugin to workflow preview node data 
+  Persion workflow/plugin: objectId
+  Persion mcptoolset: objectId
+  Persion mcp tool: mcp-parentId/name
+  System tool/toolset: system-toolId
+*/
 export async function getChildAppPreviewNode({
   appId,
   versionId,
@@ -188,21 +194,6 @@ export async function getChildAppPreviewNode({
           }
         };
       }
-      // if (node.toolConfig?.mcpToolSet) {
-      //   // new version mcp toolset
-      //   // no url return, and rewrite the toolId
-      //   version.nodes[0].toolConfig = {
-      //     mcpToolSet: {
-      //       toolId: pluginId,
-      //       toolList: node.toolConfig?.mcpToolSet?.toolList ?? [],
-      //       url: ''
-      //     }
-      //   };
-      // } else {
-      //   // old version mcp toolset
-      // }
-      // }
-      // old version mcp toolset
 
       return {
         id:
@@ -235,10 +226,12 @@ export async function getChildAppPreviewNode({
       // 1. get parentApp
       const item = await MongoApp.findById(parentId).lean();
       if (!item) return Promise.reject(PluginErrEnum.unExist);
+
       const version = await getAppVersionById({ appId: parentId, versionId, app: item });
       const toolConfig = version.nodes[0].toolConfig?.mcpToolSet;
       const tool = toolConfig?.toolList.find((item) => item.name === toolName);
       if (!tool || !toolConfig) return Promise.reject(PluginErrEnum.unExist);
+
       return {
         avatar: item.avatar,
         id: appId,
