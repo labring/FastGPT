@@ -799,6 +799,7 @@ af da da fda a a`,
   expect(chunks).toEqual(mock.result);
 });
 
+// 表格合并测试
 it(`Test splitText2Chunks 13 - Table split with empty lastText`, () => {
   const mock = {
     text: `

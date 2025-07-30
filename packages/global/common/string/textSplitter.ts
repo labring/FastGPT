@@ -327,7 +327,10 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
       // split the current table if it will exceed after adding
       if (strIsMdTable(currentText) && newTextLen > maxLen) {
-        if (lastTextLen > 0) chunks.push(lastText);
+        if (lastTextLen > 0) {
+          chunks.push(lastText);
+          lastText = '';
+        }
 
         const { chunks: tableChunks } = markdownTableSplit({
           text: currentText,
@@ -335,10 +338,6 @@ const commonSplit = (props: SplitProps): SplitResponse => {
         });
 
         chunks.push(...tableChunks);
-        lastText = getOneTextOverlapText({
-          text: tableChunks[tableChunks.length - 1] || currentText,
-          step
-        });
         continue;
       }
       // Markdown 模式下，会强制向下拆分最小块，并再最后一个标题深度，给小块都补充上所有标题（包含父级标题）
