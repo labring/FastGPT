@@ -1,4 +1,3 @@
-import { ClassifyQuestionAgentItemType } from '../workflow/template/system/classifyQuestion/type';
 import type { SearchDataResponseItemType } from '../dataset/type';
 import type {
   ChatFileTypeEnum,
@@ -11,9 +10,7 @@ import type { FlowNodeTypeEnum } from '../workflow/node/constant';
 import type { NodeOutputKeyEnum } from '../workflow/constants';
 import type { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
 import type { AppSchema, VariableItemType } from '../app/type';
-import { AppChatConfigType } from '../app/type';
 import type { AppSchema as AppType } from '@fastgpt/global/core/app/type.d';
-import { DatasetSearchModeEnum } from '../dataset/constants';
 import type { DispatchNodeResponseType } from '../workflow/runtime/type.d';
 import type { ChatBoxInputType } from '../../../../projects/app/src/components/core/chat/ChatContainer/ChatBox/type';
 import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
@@ -116,7 +113,17 @@ export type ChatItemSchema = (UserChatItemType | SystemChatItemType | AIChatItem
   durationSeconds?: number;
   errorMsg?: string;
 };
-
+export type ChatItemResDataSchema = {
+  dataId: string;
+  chatId: string;
+  userId: string;
+  teamId: string;
+  tmbId: string;
+  appId: string;
+  itemId: string;
+  dataSort: number;
+  [DispatchNodeResponseKeyEnum.nodeResponse]: ChatHistoryItemResType
+};
 export type AdminFbkType = {
   feedbackDataId: string;
   datasetId: string;
@@ -175,6 +182,7 @@ export type ChatHistoryItemResType = DispatchNodeResponseType & {
   id: string;
   moduleType: FlowNodeTypeEnum;
   moduleName: string;
+  quoteList: SearchDataResponseItemType
 };
 
 /* ---------- node outputs ------------ */

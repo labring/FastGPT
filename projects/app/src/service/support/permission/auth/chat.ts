@@ -9,6 +9,9 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { getFlatAppResponses } from '@/global/core/chat/utils';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {MongoChatItemResData} from "@fastgpt/service/core/chat/chatItemResDataSchema";
+import {Types} from "mongoose";
 
 /* 
   检查chat的权限：
@@ -213,12 +216,28 @@ export const authCollectionInChat = async ({
         dataId: chatItemDataId
       },
       'responseData time'
-    ).lean()) as { time: Date; responseData?: ChatHistoryItemResType[] };
+    ).lean()) as { _id: Types.ObjectId,time: Date; responseData?: ChatHistoryItemResType[] };
 
     if (!chatItem) return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
+    let itemResponseData: any[] = [];
+
+    //AI节点的详情从item表迁移到了resData表，做个判断，兼容新老数据
+    const itemResponseDataExist = Array.isArray(chatItem.responseData) && chatItem.responseData.length > 0;
+    if (itemResponseDataExist === false) {
+      const resDataList = await MongoChatItemResData.find(
+          {
+            itemId: chatItem._id
+          },
+          { [DispatchNodeResponseKeyEnum.nodeResponse]: 1, _id: 0 }
+      )
+          .sort({ dataSort: 1 }) // 确保顺序一致（可按插入顺序）
+          .lean();
+      itemResponseData = resDataList.flatMap((item) => item[DispatchNodeResponseKeyEnum.nodeResponse] || []);
+    }
 
     // 找 responseData 里，是否有该文档 id
-    const flatResData = getFlatAppResponses(chatItem.responseData || []);
+    const flatResData = getFlatAppResponses(itemResponseData || []);
+    // const flatResData = getFlatAppResponses(chatItem.responseData || []);
 
     const quoteListSet = new Set(
       flatResData

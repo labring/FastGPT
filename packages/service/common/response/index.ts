@@ -137,13 +137,25 @@ export function responseWrite({
   event?: string;
   data: string;
 }) {
+  // break if closed
+  if (res?.closed || res?.destroyed) return;
+
+
   const Write = write || res?.write;
 
   if (!Write) return;
 
-  event && Write(`event: ${event}\n`);
-  Write(`data: ${data}\n\n`);
+  // event && Write(`event: ${event}\n`);
+  // Write(`data: ${data}\n\n`);
+  const text = event ? `event: ${event}\ndata: ${data}\n\n` : `data: ${data}\n\n`;
+  Write(text);
+  // flush immediately
+  if (res && typeof (res as any).flush === 'function') {
+    (res as any).flush();
+  }
+
 }
+
 
 export const responseWriteNodeStatus = ({
   res,

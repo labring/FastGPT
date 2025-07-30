@@ -11,6 +11,8 @@ import { removeEvaluationJob } from './evaluation/mq';
 import { deleteChatFiles } from '../chat/controller';
 import { MongoChatItem } from '../chat/chatItemSchema';
 import { MongoChat } from '../chat/chatSchema';
+import { MongoChatItemResData } from "../chat/chatItemResDataSchema";
+
 import { MongoOutLink } from '../../support/outLink/schema';
 import { MongoOpenApi } from '../../support/openapi/schema';
 import { MongoAppVersion } from './version/schema';
@@ -167,6 +169,12 @@ export const onDelOneApp = async ({
         { session }
       );
 
+      await MongoChatItemResData.deleteMany(
+        {
+          appId
+        },
+        { session }
+      );
       // 删除分享链接
       await MongoOutLink.deleteMany({
         appId

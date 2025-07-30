@@ -1,8 +1,14 @@
-import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type.d';
+import {
+  AIChatItemType,
+  ChatHistoryItemResType,
+  ChatItemResDataSchema,
+  UserChatItemType
+} from '@fastgpt/global/core/chat/type.d';
 import { MongoApp } from '../app/schema';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from './chatItemSchema';
+import { MongoChatItemResData } from './chatItemResDataSchema';
 import { MongoChat } from './chatSchema';
 import { addLog } from '../../common/system/log';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
@@ -77,16 +83,16 @@ export async function saveChat({
     const pluginInputs = nodes?.find(
       (node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput
     )?.inputs;
-
+    let nodeResponse: any[] = [];
     // Format save chat content: Remove quote q/a
     const processedContent = content.map((item) => {
       if (item.obj === ChatRoleEnum.AI) {
-        const nodeResponse = item[DispatchNodeResponseKeyEnum.nodeResponse]?.map((responseItem) => {
+        item[DispatchNodeResponseKeyEnum.nodeResponse]?.map((responseItem) => {
           if (
             responseItem.moduleType === FlowNodeTypeEnum.datasetSearchNode &&
             responseItem.quoteList
           ) {
-            return {
+            const res_data = {
               ...responseItem,
               quoteList: responseItem.quoteList.map((quote: any) => ({
                 id: quote.id,
@@ -99,13 +105,16 @@ export async function saveChat({
                 tokens: quote.tokens
               }))
             };
+            nodeResponse.push(res_data);
+            return;
           }
-          return responseItem;
+          nodeResponse.push(responseItem);
         });
-
+        //强制剔除responseData避免写入item表
+        const { [DispatchNodeResponseKeyEnum.nodeResponse]: _, ...rest } = item;
         return {
-          ...item,
-          [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
+          ...rest,
+          // [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
           durationSeconds,
           errorMsg
         };
@@ -125,6 +134,19 @@ export async function saveChat({
         { session }
       );
 
+      let resDataSortIndex = 0;
+      await MongoChatItemResData.insertMany(
+        nodeResponse.map((item) => ({
+          chatId,
+          teamId,
+          tmbId,
+          appId,
+          itemId: chatItemIdAi,
+          dataSort: resDataSortIndex++,
+          [DispatchNodeResponseKeyEnum.nodeResponse]: item
+        })),
+        { session }
+      );
       await MongoChat.updateOne(
         {
           appId,
