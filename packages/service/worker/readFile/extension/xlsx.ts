@@ -2,6 +2,7 @@ import { CUSTOM_SPLIT_SIGN } from '@fastgpt/global/common/string/textSplitter';
 import { type ReadRawTextByBuffer, type ReadFileResponse } from '../type';
 import xlsx from 'node-xlsx';
 import Papa from 'papaparse';
+import { addLog } from '../../../common/system/log';
 
 export const readXlsxRawText = async ({
   buffer
@@ -11,7 +12,13 @@ export const readXlsxRawText = async ({
     defval: ''
   });
 
-  const format2Csv = result.map(({ name, data }) => {
+  // Clean newline characters in data to prevent errors in subsequent markdown parsing
+  const cleanedResult = result.map(({ name, data }) => ({
+    name,
+    data: data.map((row) => row.map((cell) => cell.replace(/[\n\r]/g, '\\n')))
+  }));
+
+  const format2Csv = cleanedResult.map(({ name, data }) => {
     return {
       title: `#${name}`,
       csvText: data.map((item) => item.join(',')).join('\n')
@@ -31,7 +38,7 @@ export const readXlsxRawText = async ({
 | ${header.map(() => '---').join(' | ')} |
 ${csvArr
   .slice(1)
-  .map((row) => `| ${row.map((item) => item.replace(/[\n\r]/g, ' ')).join(' | ')} |`)
+  .map((row) => `| ${row.join(' | ')} |`)
   .join('\n')}`;
 
       return formatText;
@@ -39,6 +46,7 @@ ${csvArr
     .filter(Boolean)
     .join(CUSTOM_SPLIT_SIGN);
 
+  addLog.info('formatText', { formatText });
   return {
     rawText: rawText,
     formatText
