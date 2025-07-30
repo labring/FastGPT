@@ -215,7 +215,8 @@ export const rewriteRuntimeWorkFlow = async ({
         }
       }
     } else {
-      const toolSetValue = toolSetNode.toolConfig?.mcpToolSet;
+      // mcpToolSet
+      const toolSetValue = toolSetNode.toolConfig?.mcpToolSet ?? toolSetNode.inputs[0].value;
 
       if (!toolSetValue) continue;
 
