@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Image, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useImageUpload } from './hooks/useImageUpload';
-import type { PreviewFileItem } from '@/web/core/chat/context/chatSettingContext';
+import { useImageUpload, type UploadedFileItem } from './hooks/useImageUpload';
 import { useMemoizedFn } from 'ahooks';
 
 type Props = {
@@ -17,9 +16,8 @@ type Props = {
   aspectRatio?: number;
   borderRadius?: string | number;
   disabled?: boolean;
-  preview?: boolean;
-  onFileSelect?: (previewFiles: PreviewFileItem[]) => void;
-  previewFiles?: PreviewFileItem[];
+  onFileSelect?: (uploadedFiles: UploadedFileItem[]) => void;
+  uploadedFiles?: UploadedFileItem[];
 };
 
 const ImageUpload = ({
@@ -34,14 +32,13 @@ const ImageUpload = ({
   aspectRatio = 2.84 / 1,
   borderRadius = 'md',
   disabled = false,
-  preview = false,
   onFileSelect,
-  previewFiles: externalPreviewFiles
+  uploadedFiles: externalUploadedFiles
 }: Props) => {
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoadError, setImageLoadError] = useState(false);
 
-  // 当imageSrc变化时重置错误状态
+  // reset image load error when imageSrc changes
   useEffect(() => {
     setImageLoadError(false);
   }, [imageSrc]);
@@ -55,37 +52,36 @@ const ImageUpload = ({
     handleDragLeave,
     handleDragOver,
     handleDrop,
-    isUploading,
-    previewFiles: internalPreviewFiles
+    loading,
+    uploadedFiles: internalUploadedFiles
   } = useImageUpload({
     maxFiles,
     maxSize,
     accept,
-    preview,
     onFileSelect
   });
 
-  // 使用外部传入的预览文件或内部的预览文件
-  const previewFiles = externalPreviewFiles || internalPreviewFiles;
+  // use external uploaded files or internal uploaded files
+  const uploadedFiles = externalUploadedFiles || internalUploadedFiles;
 
   const handleClick = useMemoizedFn(() => {
-    if (!disabled && !isUploading) {
+    if (!disabled && !loading) {
       onOpenSelectFile();
     }
   });
 
-  const handleFileSelect = useMemoizedFn((files: File[]) => {
-    onSelectFile({ files });
-  });
-
   const renderUploadArea = () => {
-    // 优先显示预览图片（如果在预览模式且有预览文件）
-    if (preview && previewFiles.length > 0) {
-      const previewFile = previewFiles[0]; // 取第一个预览文件
+    if (isHovered && !isDragging && !loading) {
+      return <MyIcon name={'upload'} w="24px" h="24px" />;
+    }
+
+    // show uploaded image
+    if (uploadedFiles.length > 0) {
+      const uploadedFile = uploadedFiles[0]; // get first uploaded file
       return (
         <Image
-          src={previewFile.url}
-          alt="Preview image"
+          src={uploadedFile.url}
+          alt="Uploaded image"
           px={2}
           width="100%"
           height="100%"
@@ -94,8 +90,8 @@ const ImageUpload = ({
       );
     }
 
-    // Show current image if exists
-    if (imageSrc && !isUploading && !imageLoadError) {
+    // show current image if exists
+    if (imageSrc && !loading && !imageLoadError) {
       return (
         <Image
           src={imageSrc}
@@ -111,8 +107,8 @@ const ImageUpload = ({
       );
     }
 
-    // Show default image when not hovered and no upload in progress
-    if (defaultImageSrc && !isHovered && !isDragging && !isUploading) {
+    // show default image when not hovered and no upload in progress
+    if (defaultImageSrc && !isHovered && !isDragging && !loading) {
       return (
         <Image
           src={defaultImageSrc}
@@ -125,19 +121,11 @@ const ImageUpload = ({
         />
       );
     }
-
-    // Show upload icon when hovered, dragging, or uploading
-    return <MyIcon name={'upload'} w="24px" h="24px" />;
-  };
-
-  const renderUploadProgress = () => {
-    // This component is no longer used for direct uploads, so this section is removed.
-    return null;
   };
 
   return (
     <Box position="relative">
-      <SelectFileComponent onSelect={handleFileSelect} />
+      <SelectFileComponent onSelect={onSelectFile} />
 
       <Box
         width={width}
@@ -147,13 +135,13 @@ const ImageUpload = ({
         border="2px dashed"
         borderColor={isDragging ? 'blue.300' : 'gray.200'}
         borderRadius={borderRadius}
-        cursor={disabled || isUploading ? 'not-allowed' : 'pointer'}
+        cursor={disabled || loading ? 'not-allowed' : 'pointer'}
         position="relative"
         overflow="hidden"
         transition="all 0.2s"
         _hover={{
-          bg: disabled || isUploading ? 'gray.50' : 'gray.100',
-          borderColor: disabled || isUploading ? 'gray.200' : 'blue.300'
+          bg: disabled || loading ? 'gray.50' : 'gray.100',
+          borderColor: disabled || loading ? 'gray.200' : 'blue.300'
         }}
         onClick={handleClick}
         onMouseEnter={() => !disabled && setIsHovered(true)}
@@ -167,8 +155,6 @@ const ImageUpload = ({
         <Flex width="100%" height="100%" align="center" justify="center" position="relative">
           {renderUploadArea()}
         </Flex>
-
-        {renderUploadProgress()}
       </Box>
 
       {tips && (

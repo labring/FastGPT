@@ -6,22 +6,23 @@ import { clearToken } from '@/web/support/user/auth';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import type { CollapseStatusType } from '@/global/core/chat/constants';
 
 type UserAvatarPopoverProps = {
+  collapse: CollapseStatusType;
   children: React.ReactNode;
   placement?: Parameters<typeof MyPopover>[0]['placement'];
 };
 
 const UserAvatarPopover = ({
+  collapse,
   children,
   placement = 'top-end',
   ...props
 }: UserAvatarPopoverProps) => {
   const { t } = useTranslation();
   const { setUserInfo, userInfo } = useUserStore();
-  const { isFold } = useChatSettingContext();
 
   const { openConfirm, ConfirmModal } = useConfirm({ content: t('common:confirm_logout') });
 
@@ -47,7 +48,7 @@ const UserAvatarPopover = ({
 
           return (
             <Flex p={2} direction="column" gap={3}>
-              {isFold && (
+              {!!collapse && (
                 <Flex
                   borderBottom="1px solid"
                   alignItems="center"

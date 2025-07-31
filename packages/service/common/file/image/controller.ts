@@ -7,7 +7,6 @@ import { readFromSecondary } from '../../mongo/utils';
 import { addHours } from 'date-fns';
 import { imageFileType } from '@fastgpt/global/common/file/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import { ImageTypeEnum } from '@fastgpt/global/common/file/image/type.d';
 
 export const maxImgSize = 1024 * 1024 * 12;
 const base64MimeRegex = /data:image\/([^\)]+);base64/;
@@ -15,20 +14,12 @@ const base64MimeRegex = /data:image\/([^\)]+);base64/;
 // 删除指定类型的旧图片
 export async function deleteOldImages({
   teamId,
-  imageType,
   session
 }: {
   teamId: string;
-  imageType: `${ImageTypeEnum}`;
   session?: ClientSession;
 }) {
-  const deleteResult = await MongoImage.deleteMany(
-    {
-      teamId,
-      type: imageType
-    },
-    session ? { session } : {}
-  );
+  const deleteResult = await MongoImage.deleteMany({ teamId }, session ? { session } : {});
   return deleteResult;
 }
 
@@ -37,7 +28,6 @@ export async function uploadMongoImg({
   teamId,
   metadata,
   shareId,
-  imageType,
   forever = false
 }: UploadImgProps & {
   teamId: string;
@@ -64,26 +54,12 @@ export async function uploadMongoImg({
     return Promise.reject(`Invalid image file type: ${mime}`);
   }
 
-  const finalImageType = imageType || ImageTypeEnum.IMAGE;
-
-  // 如果是logo类型，先删除旧的同类型图片
-  const isLogoType =
-    finalImageType === ImageTypeEnum.LOGO_WIDE || finalImageType === ImageTypeEnum.LOGO_SQUARE;
-
-  if (isLogoType) {
-    await deleteOldImages({
-      teamId,
-      imageType: finalImageType
-    });
-  }
-
   const { _id } = await retryFn(() =>
     MongoImage.create({
       teamId,
       binary,
       metadata: Object.assign({ mime }, metadata),
       shareId,
-      type: finalImageType,
       expiredTime: forever ? undefined : addHours(new Date(), 1)
     })
   );

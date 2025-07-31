@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Flex, Box, HStack, Image, Text, Skeleton } from '@chakra-ui/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/router';
@@ -18,11 +18,19 @@ import type {
 } from '@fastgpt/global/common/parentFolder/type';
 import { getMyApps } from '@/web/core/app/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import {
-  ChatSidebarActionEnum,
-  ChatSidebarExpandEnum,
-  useChatSettingContext
-} from '@/web/core/chat/context/chatSettingContext';
+import { ChatSidebarPanelEnum, type CollapseStatusType } from '@/global/core/chat/constants';
+import type { ChatSettingSchema } from '@fastgpt/global/core/chat/type';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+
+type Props = {
+  activeAppId: string;
+  apps: AppListItemType[];
+  pane: ChatSidebarPanelEnum;
+  collapse: CollapseStatusType;
+  logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'>;
+  onCollapse: (collapse: CollapseStatusType) => void;
+  onPaneChange: (pane: ChatSidebarPanelEnum) => void;
+};
 
 const MotionBox = motion(Box);
 const MotionFlex = motion(Flex);
@@ -61,39 +69,49 @@ const contentVariants = {
   }
 };
 
-const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppId: string }) => {
+const SliderApps = ({
+  apps,
+  activeAppId,
+  collapse,
+  pane,
+  logos,
+  onCollapse,
+  onPaneChange
+}: Props) => {
+  //------------ hooks ------------//
   const router = useRouter();
   const { t } = useTranslation();
 
-  const { userInfo } = useUserStore();
+  //------------ stores ------------//
+  const { feConfigs } = useSystemStore();
+  const { userInfo, teamPlanStatus } = useUserStore();
 
-  const {
-    expand,
-    action,
-    setAction,
-    setExpand,
-    currentLogoSettings,
-    isCommercialVersion,
-    isAdminPermission,
-    isFold,
-    isLoggedIn
-  } = useChatSettingContext();
-
+  //------------ states ------------//
   const [imageLoaded, setImageLoaded] = useState(false);
 
+  //------------ derived states ------------//
   const isTeamChat = router.pathname === '/chat/team';
   const { avatar, username } = userInfo as NonNullable<typeof userInfo>;
-  const wideLogoSrc =
-    !isCommercialVersion || !currentLogoSettings?.wideLogoUrl
-      ? '/imgs/fastgpt_slogan.png'
-      : currentLogoSettings.wideLogoUrl;
-  const squareLogoSrc =
-    !isCommercialVersion || !currentLogoSettings?.squareLogoUrl
-      ? '/imgs/fastgpt_slogan_fold.png'
-      : currentLogoSettings.squareLogoUrl;
+  const isCommercialVersion = !!feConfigs.isPlus;
+  const isEnterprisePlan = !!teamPlanStatus?.standard?.currentSubLevel;
+  const isWideLogoEmpty = !logos.wideLogoUrl;
+  const isSquareLogoEmpty = !logos.squareLogoUrl;
+  const showDefaultWideLogo = isCommercialVersion
+    ? isWideLogoEmpty
+    : isEnterprisePlan
+      ? isWideLogoEmpty
+      : true;
+  const showDefaultSquareLogo = isCommercialVersion
+    ? isSquareLogoEmpty
+    : isEnterprisePlan
+      ? isSquareLogoEmpty
+      : true;
+  const wideLogoSrc = showDefaultWideLogo ? '/imgs/fastgpt_slogan.png' : logos.wideLogoUrl;
+  const squareLogoSrc = showDefaultSquareLogo
+    ? '/imgs/fastgpt_slogan_fold.svg'
+    : logos.squareLogoUrl;
 
-  const isSelectedRecentlyUsedApps = (id: string): boolean =>
-    action === ChatSidebarActionEnum.RECENTLY_USED_APPS && id === activeAppId;
+  const isLoggedIn = !!userInfo;
 
   const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
     return getMyApps({
@@ -109,24 +127,18 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
     );
   }, []);
 
-  const handleToggleSidebar = useCallback(() => {
-    switch (expand) {
-      case ChatSidebarExpandEnum.FOLD:
-        setExpand(ChatSidebarExpandEnum.EXPAND);
-        break;
-      case ChatSidebarExpandEnum.EXPAND:
-        setExpand(ChatSidebarExpandEnum.FOLD);
-        break;
-    }
-  }, [expand, setExpand]);
+  const isRecentlyUsedAppSelected = (id: string): boolean =>
+    pane === ChatSidebarPanelEnum.RECENTLY_USED_APPS && id === activeAppId;
 
-  const handleSelectRecentlyUsedApps = useCallback(
+  const handleToggleSidebar = () => onCollapse(collapse === 0 ? 1 : 0);
+
+  const handleSelectRecentlyUsedApp = useCallback(
     (id: string) => {
-      if (action === ChatSidebarActionEnum.RECENTLY_USED_APPS && id === activeAppId) return;
-      setAction(ChatSidebarActionEnum.RECENTLY_USED_APPS);
+      if (pane === ChatSidebarPanelEnum.RECENTLY_USED_APPS && id === activeAppId) return;
+      onPaneChange(ChatSidebarPanelEnum.RECENTLY_USED_APPS);
       router.replace({ query: { ...router.query, appId: id } });
     },
-    [action, router, activeAppId, setAction]
+    [pane, router, activeAppId, onPaneChange]
   );
 
   return (
@@ -134,7 +146,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
       flexDirection={'column'}
       h={'100%'}
       variants={sidebarVariants}
-      animate={isFold ? 'folded' : 'expanded'}
+      animate={collapse ? 'folded' : 'expanded'}
       initial={false}
       overflow={'hidden'}
     >
@@ -143,11 +155,11 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
         alignItems={'center'}
         py={2}
         justifyContent={'space-between'}
-        animate={{ paddingLeft: isFold ? 0 : 12 }}
+        animate={{ paddingLeft: collapse ? 0 : 12 }}
         transition={{ duration: 0.2, ease: 'easeInOut' }}
       >
         <AnimatePresence mode="wait">
-          {!isFold && (
+          {!collapse && (
             <MotionBox variants={contentVariants} initial="hide" animate="show" exit="hide">
               <MotionBox layout={false}>
                 <Skeleton
@@ -176,7 +188,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
 
         {/* show folded logo when folded */}
         <AnimatePresence mode="wait">
-          {isFold && (
+          {collapse && (
             <MotionBox
               variants={contentVariants}
               initial="hide"
@@ -195,19 +207,17 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
 
         {/* show fold icon when expanded */}
         <AnimatePresence mode="wait">
-          {!isFold && (
+          {!collapse && (
             <MotionBox variants={contentVariants} initial="hide" animate="show" exit="hide">
               <Flex pr={3}>
                 <MotionBox layout={false}>
                   <MyIcon
-                    name={'core/chat/sidebar/fold'}
                     p={1}
                     cursor={'pointer'}
-                    onClick={handleToggleSidebar}
-                    _hover={{
-                      bg: 'myGray.200'
-                    }}
                     borderRadius={'8px'}
+                    _hover={{ bg: 'myGray.200' }}
+                    name={'core/chat/sidebar/fold'}
+                    onClick={handleToggleSidebar}
                   />
                 </MotionBox>
               </Flex>
@@ -219,18 +229,16 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
       <Flex mt={4} flexDirection={'column'} gap={1} px={4}>
         {/* show expand icon when folded */}
         <AnimatePresence mode="wait">
-          {isFold && (
+          {collapse && (
             <MotionBox variants={contentVariants} initial="hide" animate="show" exit="hide">
               <Flex
+                p={2}
                 flex={1}
+                cursor={'pointer'}
+                borderRadius={'8px'}
                 alignItems={'center'}
                 justifyContent={'center'}
-                p={2}
-                cursor={'pointer'}
-                _hover={{
-                  bg: 'myGray.200'
-                }}
-                borderRadius={'8px'}
+                _hover={{ bg: 'myGray.200' }}
                 onClick={handleToggleSidebar}
               >
                 <MotionBox layout={false}>
@@ -248,7 +256,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
       </Flex>
 
       <AnimatePresence mode="wait">
-        {!isFold && (
+        {!collapse && (
           <MotionBox
             variants={contentVariants}
             initial="hide"
@@ -293,9 +301,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                         borderRadius={'md'}
                         mr={-2}
                         userSelect={'none'}
-                        _hover={{
-                          bg: 'myGray.200'
-                        }}
+                        _hover={{ bg: 'myGray.200' }}
                       >
                         <Box>{t('common:More')}</Box>
                         <MyIcon name={'common/select'} w={'1rem'} />
@@ -309,7 +315,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                           value={activeAppId}
                           onSelect={(item) => {
                             if (!item) return;
-                            handleSelectRecentlyUsedApps(item.id);
+                            handleSelectRecentlyUsedApp(item.id);
                             onClose();
                           }}
                           server={getAppList}
@@ -332,7 +338,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                   borderRadius={'md'}
                   alignItems={'center'}
                   fontSize={'sm'}
-                  {...(isSelectedRecentlyUsedApps(item._id)
+                  {...(isRecentlyUsedAppSelected(item._id)
                     ? {
                         bg: 'primary.100',
                         color: 'primary.600'
@@ -342,7 +348,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                           bg: 'primary.100',
                           color: 'primary.600'
                         },
-                        onClick: () => handleSelectRecentlyUsedApps(item._id)
+                        onClick: () => handleSelectRecentlyUsedApp(item._id)
                       })}
                 >
                   <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'md'} />
@@ -359,57 +365,62 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
       {/* 底部区域 - 头像和设置按钮 */}
       <MotionBox mt={'auto'} px={3} py={4} layout={false}>
         <MotionFlex
-          flexDirection={isFold ? 'column' : 'row'}
+          flexDirection={collapse ? 'column' : 'row'}
           alignItems={'center'}
-          justifyContent={isFold ? 'center' : 'space-between'}
-          gap={isFold ? 3 : 0}
+          justifyContent={collapse ? 'center' : 'space-between'}
+          gap={collapse ? 3 : 0}
           layout={false}
-          h={isFold ? 'auto' : '40px'}
+          h={collapse ? 'auto' : '40px'}
           minH="40px"
         >
           {/* 设置按钮 - 在收起状态时显示在上方，展开状态时显示在右侧 */}
-          {/* only commercial version and user with `admin` permission can use this feature */}
-          {isCommercialVersion && isAdminPermission && (
-            <MotionBox
-              order={isFold ? 1 : 2}
-              layout={false}
+          <MotionBox
+            order={collapse ? 1 : 2}
+            layout={false}
+            w="40px"
+            h="40px"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <Flex
+              _hover={{ bg: 'myGray.200' }}
+              bg={pane === ChatSidebarPanelEnum.SETTING ? 'myGray.200' : 'transparent'}
+              borderRadius={'8px'}
+              p={2}
+              cursor={'pointer'}
               w="40px"
               h="40px"
-              display="flex"
               alignItems="center"
               justifyContent="center"
+              onClick={() => onPaneChange(ChatSidebarPanelEnum.SETTING)}
             >
-              <Flex
-                _hover={{ bg: 'myGray.200' }}
-                bg={action === ChatSidebarActionEnum.SETTING ? 'myGray.200' : 'transparent'}
-                borderRadius={'8px'}
-                p={2}
-                cursor={'pointer'}
-                w="40px"
-                h="40px"
-                alignItems="center"
-                justifyContent="center"
-                onClick={() => setAction(ChatSidebarActionEnum.SETTING)}
-              >
-                <Flex alignItems={'center'} justifyContent={'center'}>
-                  <MyIcon w={'20px'} h={'20px'} name={'core/chat/sidebar/setting'} />
-                </Flex>
+              <Flex alignItems={'center'} justifyContent={'center'}>
+                <MyIcon
+                  w={'20px'}
+                  h={'20px'}
+                  name={'common/setting'}
+                  fill={pane === ChatSidebarPanelEnum.SETTING ? 'primary.500' : 'myGray.400'}
+                />
               </Flex>
-            </MotionBox>
-          )}
+            </Flex>
+          </MotionBox>
 
           {/* 头像区域 - 在收起状态时显示在下方，展开状态时显示在左侧 */}
           <MotionBox
-            order={isFold ? 2 : 1}
+            order={collapse ? 2 : 1}
             layout={false}
-            w={isFold ? '40px' : '100%'}
+            w={collapse ? '40px' : '100%'}
             h="40px"
             display="flex"
             alignItems="center"
             justifyContent={'flex-start'}
           >
             {isLoggedIn ? (
-              <UserAvatarPopover placement={isFold ? 'right-start' : 'top-end'}>
+              <UserAvatarPopover
+                collapse={collapse}
+                placement={collapse ? 'right-start' : 'top-end'}
+              >
                 <Flex
                   alignItems="center"
                   gap={2}
@@ -422,7 +433,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                     <Avatar src={avatar} bg="myGray.200" borderRadius="50%" w={8} h={8} />
                   </Flex>
                   <AnimatePresence mode="wait">
-                    {!isFold && (
+                    {!collapse && (
                       <MotionBox
                         className="textEllipsis"
                         flexGrow={1}
@@ -449,8 +460,8 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                 gap={2}
                 w="100%"
                 h="40px"
-                minW={isFold ? '40px' : 'auto'}
-                justifyContent={isFold ? 'center' : 'flex-start'}
+                minW={collapse ? '40px' : 'auto'}
+                justifyContent={collapse ? 'center' : 'flex-start'}
                 cursor="pointer"
                 _hover={{ bg: 'myGray.100' }}
                 borderRadius="md"
@@ -460,7 +471,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                   <Avatar bg="myGray.200" borderRadius="50%" w={8} h={8} />
                 </Box>
                 <AnimatePresence mode="wait">
-                  {!isFold && (
+                  {!collapse && (
                     <MotionBox
                       flexGrow={1}
                       fontWeight={500}

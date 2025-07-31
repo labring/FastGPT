@@ -201,3 +201,14 @@ export type RuntimeUserPromptType = {
   files: UserChatItemValueItemType['file'][];
   text: string;
 };
+
+/* chat setting */
+export type ChatSettingSchema = {
+  _id: string;
+  teamId: string;
+  slogan: string;
+  dialogTips: string;
+  teamApps: string[];
+  wideLogoUrl?: string;
+  squareLogoUrl?: string;
+};

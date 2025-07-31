@@ -1,12 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { useRouter } from 'next/router';
-import { getInitChatInfo } from '@/web/core/chat/api';
+import { getChatSetting, getInitChatInfo, getLogos } from '@/web/core/chat/api';
 import { Box, Flex, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
 import { streamFetch } from '@/web/common/api/fetch';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useTranslation } from 'next-i18next';
-
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import PageContainer from '@/components/PageContainer';
 import SideBar from '@/components/SideBar';
@@ -17,13 +16,14 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import { getMyApps } from '@/web/core/app/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-
-import { useMount } from 'ahooks';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-
-import { GetChatTypeEnum } from '@/global/core/chat/constants';
+import {
+  ChatSidebarPanelEnum,
+  defaultCollapseStatus,
+  type CollapseStatusType,
+  GetChatTypeEnum
+} from '@/global/core/chat/constants';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
 import { type AppListItemType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
@@ -39,87 +39,23 @@ import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import LoginModal from '@/pageComponents/login/LoginModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import {
-  ChatSettingContextProvider,
-  useChatSettingContext,
-  ChatSidebarActionEnum
-} from '@/web/core/chat/context/chatSettingContext';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import ChatSetting from '@/components/core/chat/ChatSetting';
+import { useChat } from '@/global/core/chat/hooks';
+import type { ChatSettingSchema } from '@fastgpt/global/core/chat/type';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
-// custom hook for managing chat page state and initialization logic
-const useChatHook = (appId: string) => {
-  const { t } = useTranslation();
-  const router = useRouter();
-  const { toast } = useToast();
-  const { lastChatAppId, setSource, setAppId } = useChatStore();
-  const { userInfo, initUserInfo } = useUserStore();
-
-  const [isInitedUser, setIsInitedUser] = useState(false);
-
-  // get app list
-  const { data: myApps = [] } = useRequest2(() => getMyApps({ getRecentlyChat: true }), {
-    manual: false,
-    refreshDeps: [userInfo],
-    errorToast: '',
-    pollingInterval: 30000,
-    async onSuccess(apps) {
-      // if no appId and there are available apps, automatically jump to the first app
-      if (!appId && apps.length > 0) {
-        router.replace({
-          query: {
-            ...router.query,
-            appId: lastChatAppId || apps[0]._id
-          }
-        });
-      }
-      if (apps.length === 0) {
-        toast({
-          status: 'warning',
-          title: t('chat:no_invalid_app')
-        });
-      }
-    }
-  });
-
-  // initialize user info
-  useMount(async () => {
-    try {
-      await initUserInfo();
-    } catch (error) {
-      console.log('User not logged in:', error);
-    } finally {
-      setSource('online');
-      setIsInitedUser(true);
-    }
-  });
-
-  // watch appId
-  useEffect(() => {
-    if (userInfo && appId) {
-      setAppId(appId);
-    }
-  }, [appId, setAppId, userInfo]);
-
-  return {
-    isInitedUser,
-    userInfo,
-    myApps
-  };
-};
-
 const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
+  //------------ hooks ------------//
   const router = useRouter();
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
+  //------------ stores ------------//
   const { userInfo } = useUserStore();
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
-  const { action, isFold, isCommercialVersion, setAction } = useChatSettingContext();
-
+  //------------ context states ------------//
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
@@ -136,11 +72,18 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
-  const isChatWindow = useMemo(
-    () =>
-      action === ChatSidebarActionEnum.RECENTLY_USED_APPS || action === ChatSidebarActionEnum.HOME,
-    [action]
-  );
+  //------------ states ------------//
+  const [pane, setPane] = useState<ChatSidebarPanelEnum>(ChatSidebarPanelEnum.HOME);
+  const [collapse, setCollapse] = useState<CollapseStatusType>(defaultCollapseStatus);
+  const [chatSettings, setChatSettings] = useState<ChatSettingSchema | null>(null);
+
+  //------------ derived states ------------//
+  const isChatWindow =
+    pane === ChatSidebarPanelEnum.HOME || pane === ChatSidebarPanelEnum.RECENTLY_USED_APPS;
+  const logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'> = {
+    wideLogoUrl: chatSettings?.wideLogoUrl,
+    squareLogoUrl: chatSettings?.squareLogoUrl
+  };
 
   const { loading } = useRequest2(
     async () => {
@@ -231,6 +174,19 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     );
   }, [t, isPc, appId, isOpenSlider, onCloseSlider, datasetCiteData]);
 
+  const refreshSettings = useCallback(async () => {
+    try {
+      const settings = await getChatSetting();
+      setChatSettings(settings);
+    } catch (error) {
+      console.error('Failed to refresh settings:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshSettings();
+  }, [refreshSettings]);
+
   return (
     <Flex h={'100%'}>
       <NextHead title={chatBoxData.app.name} icon={chatBoxData.app.avatar}></NextHead>
@@ -238,11 +194,19 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         <Box
           flexGrow={0}
           flexShrink={0}
-          w={isFold ? '72px' : '202px'}
+          w={collapse ? '72px' : '202px'}
           overflow={'hidden'}
           transition={'width 0.1s ease-in-out'}
         >
-          <SliderApps apps={myApps} activeAppId={appId} />
+          <SliderApps
+            logos={logos}
+            apps={myApps}
+            activeAppId={appId}
+            collapse={collapse}
+            pane={pane}
+            onCollapse={setCollapse}
+            onPaneChange={setPane}
+          />
         </Box>
       )}
 
@@ -261,7 +225,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                 flexDirection={'column'}
               >
                 {/* only show chat header when in recently used apps mode */}
-                {action === ChatSidebarActionEnum.RECENTLY_USED_APPS && (
+                {pane === ChatSidebarPanelEnum.RECENTLY_USED_APPS && (
                   <ChatHeader
                     totalRecordsCount={totalRecordsCount}
                     apps={myApps}
@@ -271,14 +235,14 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                 )}
 
                 {/* home chat window */}
-                {action === ChatSidebarActionEnum.HOME && (
+                {pane === ChatSidebarPanelEnum.HOME && (
                   <Box flex={'1 0 0'} bg={'white'}>
                     {/* TODO: add home chat window */}
                   </Box>
                 )}
 
                 {/* recently used apps chat window */}
-                {action === ChatSidebarActionEnum.RECENTLY_USED_APPS && (
+                {pane === ChatSidebarPanelEnum.RECENTLY_USED_APPS && (
                   <Box flex={'1 0 0'} bg={'white'}>
                     {isPlugin ? (
                       <CustomPluginRunBox
@@ -307,7 +271,9 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
           )}
 
           {/* setting */}
-          {action === ChatSidebarActionEnum.SETTING && <ChatSetting />}
+          {pane === ChatSidebarPanelEnum.SETTING && (
+            <ChatSetting settings={chatSettings} onSettingsRefresh={refreshSettings} />
+          )}
         </PageContainer>
       )}
 
@@ -328,7 +294,7 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
   const { appId, isStandalone } = props;
   const { chatId } = useChatStore();
   const { feConfigs } = useSystemStore();
-  const { isInitedUser, userInfo, myApps } = useChatHook(appId);
+  const { isInitedUser, userInfo, myApps } = useChat(appId);
 
   const chatHistoryProviderParams = useMemo(
     () => ({ appId, source: ChatSourceEnum.online }),
@@ -365,20 +331,18 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
 
   // show main chat interface
   return (
-    <ChatSettingContextProvider>
-      <ChatContextProvider params={chatHistoryProviderParams}>
-        <ChatItemContextProvider
-          showRouteToDatasetDetail={isStandalone !== '1'}
-          isShowReadRawSource={true}
-          isResponseDetail={true}
-          showNodeStatus
-        >
-          <ChatRecordContextProvider params={chatRecordProviderParams}>
-            <Chat myApps={myApps} />
-          </ChatRecordContextProvider>
-        </ChatItemContextProvider>
-      </ChatContextProvider>
-    </ChatSettingContextProvider>
+    <ChatContextProvider params={chatHistoryProviderParams}>
+      <ChatItemContextProvider
+        showRouteToDatasetDetail={isStandalone !== '1'}
+        isShowReadRawSource={true}
+        isResponseDetail={true}
+        showNodeStatus
+      >
+        <ChatRecordContextProvider params={chatRecordProviderParams}>
+          <Chat myApps={myApps} />
+        </ChatRecordContextProvider>
+      </ChatItemContextProvider>
+    </ChatContextProvider>
   );
 };
 

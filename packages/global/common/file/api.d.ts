@@ -1,5 +1,4 @@
 import type { OutLinkChatAuthProps } from '../../support/permission/chat.d';
-import type { ImageTypeEnum } from './image/type.d';
 
 export type preUploadImgProps = OutLinkChatAuthProps & {
   // expiredTime?: Date;
@@ -7,7 +6,6 @@ export type preUploadImgProps = OutLinkChatAuthProps & {
 };
 export type UploadImgProps = preUploadImgProps & {
   base64Img: string;
-  imageType?: `${ImageTypeEnum}`;
 };
 
 export type UrlFetchParams = {

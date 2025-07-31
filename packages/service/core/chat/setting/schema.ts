@@ -1,11 +1,10 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
 import { type ChatSettingSchema as ChatSettingType } from '@fastgpt/global/core/chat/type.d';
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
-import { AppCollectionName } from '../../app/schema';
 
 const { Schema } = connectionMongo;
 
-export const ChatSettingCollectionName = 'chat_setting';
+export const ChatSettingCollectionName = 'chat_settings';
 
 const ChatSettingSchema = new Schema({
   teamId: {
@@ -22,32 +21,18 @@ const ChatSettingSchema = new Schema({
     default: ''
   },
   teamApps: {
-    type: [
-      {
-        _id: {
-          type: Schema.Types.ObjectId,
-          ref: AppCollectionName,
-          required: true
-        }
-      }
-    ],
+    type: [String],
     default: []
   },
-  createTime: {
-    type: Date,
-    default: () => new Date()
+  wideLogoUrl: {
+    type: String
   },
-  updateTime: {
-    type: Date,
-    default: () => new Date()
+  squareLogoUrl: {
+    type: String
   }
 });
 
-try {
-  ChatSettingSchema.index({ teamId: 1 });
-} catch (error) {
-  console.log(error);
-}
+ChatSettingSchema.index({ teamId: 1 });
 
 export const MongoChatSetting = getMongoModel<ChatSettingType>(
   ChatSettingCollectionName,

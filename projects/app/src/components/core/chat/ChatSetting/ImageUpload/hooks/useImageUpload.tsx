@@ -2,24 +2,26 @@ import { useState, useRef } from 'react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useMemoizedFn } from 'ahooks';
-import { useSelectFile } from '@fastgpt/web/common/file/hooks/useSelectFile';
+import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { PreviewFileItem } from '@/web/core/chat/context/chatSettingContext';
+
+export type UploadedFileItem = {
+  url: string;
+  file: File;
+};
 
 type UseImageUploadProps = {
   maxFiles?: number;
   maxSize?: number; // MB
   accept?: string;
-  preview?: boolean;
-  onFileSelect?: (previewFiles: PreviewFileItem[]) => void;
+  onFileSelect?: (uploadedFiles: UploadedFileItem[]) => void;
 };
 
 export const useImageUpload = ({
   maxFiles = 1,
   maxSize,
   accept = 'image/*',
-  preview = false,
   onFileSelect
 }: UseImageUploadProps) => {
   const { toast } = useToast();
@@ -27,52 +29,43 @@ export const useImageUpload = ({
   const { feConfigs } = useSystemStore();
 
   const [isDragging, setIsDragging] = useState(false);
-  const [previewFiles, setPreviewFiles] = useState<PreviewFileItem[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFileItem[]>([]);
   const dragCounter = useRef(0);
 
-  // 使用系统配置的最大大小
-  const finalMaxSize = maxSize || feConfigs?.uploadFileMaxSize || 100; // MB
+  // use system config max size, but cap to match server limit
+  // server validates the base64 string length (12MB), the original file should be smaller because the base64 encoding will increase the size by about 33%
+  const configMaxSize = maxSize || feConfigs?.uploadFileMaxSize || 100; // MB
+  const serverLimitMB = 12; // server base64 limit
+  const clientLimitMB = Math.floor(serverLimitMB * 0.75); // considering the base64 encoding overhead, the client limit is set to 9MB
+  const finalMaxSize = Math.min(configMaxSize, clientLimitMB);
   const maxSizeBytes = finalMaxSize * 1024 * 1024;
 
-  const { File: SelectFileComponent, onOpen: onOpenSelectFile } = useSelectFile({
+  const {
+    File: SelectFileComponent,
+    onOpen: onOpenSelectFile,
+    onSelectImage,
+    loading
+  } = useSelectFile({
     fileType: accept,
     multiple: maxFiles > 1,
     maxCount: maxFiles
   });
 
-  // 验证文件大小
+  // validate file size
   const validateFile = useMemoizedFn((file: File): string | null => {
     if (file.size > maxSizeBytes) {
-      return t('file:file_size_exceeds_limit', { maxSize: formatFileSize(maxSizeBytes) });
+      return t('chat:setting.copyright.file_size_exceeds_limit', {
+        maxSize: formatFileSize(maxSizeBytes)
+      });
     }
     return null;
   });
 
-  // 将 File 转换为 base64
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsDataURL(file);
-    });
-  };
+  // handle file select - immediate upload if enabled
+  const handleFileSelect = useMemoizedFn(async (files: File[]) => {
+    const uploadedItems: UploadedFileItem[] = [];
 
-  // 处理文件预览
-  const handlePreview = useMemoizedFn(async (files: File[]) => {
-    if (files.length === 0) return;
-
-    const filesToPreview = files.slice(0, maxFiles);
-    if (files.length > maxFiles) {
-      toast({
-        status: 'warning',
-        title: t('file:select_file_amount_limit', { max: maxFiles })
-      });
-    }
-
-    const previewItems: PreviewFileItem[] = [];
-
-    for (const file of filesToPreview) {
+    for (const file of files) {
       const validationError = validateFile(file);
       if (validationError) {
         toast({
@@ -83,42 +76,28 @@ export const useImageUpload = ({
       }
 
       try {
-        const previewUrl = await fileToBase64(file);
-        previewItems.push({
-          file,
-          url: previewUrl
-        });
+        // 立即上传文件，带TTL
+        const url = await onSelectImage([file], { maxW: 1000, maxH: 1000 });
+        if (url) {
+          uploadedItems.push({ file, url });
+        }
       } catch (error) {
-        console.error('Failed to create preview:', error);
+        console.error('Failed to upload file:', error);
       }
     }
 
-    setPreviewFiles(previewItems);
-    onFileSelect?.(previewItems);
+    setUploadedFiles(uploadedItems);
+    onFileSelect?.(uploadedItems);
   });
 
-  const handleFiles = useMemoizedFn(async (files: File[]) => {
-    if (files.length === 0) return;
-
-    if (preview) {
-      // 预览模式：只生成预览，不上传
-      await handlePreview(files);
-    } else {
-      // 非预览模式：显示错误提示，因为现在只支持预览模式
-      toast({
-        status: 'warning',
-        title: '当前只支持预览模式上传'
-      });
-    }
+  // 获取已上传文件的URLs
+  const getUploadedUrls = useMemoizedFn(() => {
+    return uploadedFiles.map((item) => item.url);
   });
 
-  // 清除预览文件
-  const clearPreviewFiles = useMemoizedFn(() => {
-    setPreviewFiles([]);
-  });
-
-  const onSelectFile = useMemoizedFn(async ({ files }: { files: File[] }) => {
-    await handleFiles(files);
+  // 清除已上传文件
+  const clearUploadedFiles = useMemoizedFn(() => {
+    setUploadedFiles([]);
   });
 
   // 拖拽处理
@@ -153,25 +132,22 @@ export const useImageUpload = ({
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const files = Array.from(e.dataTransfer.files);
-      await handleFiles(files);
+      await handleFileSelect(files);
     }
   });
-
-  const isUploading = false; // No longer uploading files
 
   return {
     SelectFileComponent,
     onOpenSelectFile,
-    onSelectFile,
+    onSelectFile: handleFileSelect,
+    getUploadedUrls,
     isDragging,
     handleDragEnter,
     handleDragLeave,
     handleDragOver,
     handleDrop,
-    uploadingFiles: [], // No longer uploading files
-    isUploading,
-    handleFiles,
-    previewFiles,
-    clearPreviewFiles
+    loading,
+    uploadedFiles,
+    clearUploadedFiles
   };
 };

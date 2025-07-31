@@ -1,37 +1,50 @@
-import { Box, Flex } from '@chakra-ui/react';
-import SettingHeader from './SettingHeader';
 import CopyrightSetting from '@/components/core/chat/ChatSetting/CopyrightSetting';
-import {
-  ChatSettingTabOptionEnum,
-  useChatSettingContext
-} from '@/web/core/chat/context/chatSettingContext';
 import HomepageSetting from '@/components/core/chat/ChatSetting/HomepageSetting';
 import DiagramModal from '@/components/core/chat/ChatSetting/DiagramModal';
+import { useState } from 'react';
+import { ChatSettingTabOptionEnum } from '@/global/core/chat/constants';
+import type { ChatSettingSchema } from '@fastgpt/global/core/chat/type';
 
-const ChatSetting = () => {
-  const { settingTabOption } = useChatSettingContext();
+type Props = {
+  settings: ChatSettingSchema | null;
+  onSettingsRefresh: () => Promise<void>;
+};
+
+const ChatSetting = ({ settings, onSettingsRefresh }: Props) => {
+  //------------ states ------------//
+  const [isOpenDiagram, setIsOpenDiagram] = useState(false);
+  const [tab, setTab] = useState<`${ChatSettingTabOptionEnum}`>('copyright');
+
+  //------------ derived states ------------//
+  const logos = {
+    wideLogoUrl: settings?.wideLogoUrl,
+    squareLogoUrl: settings?.squareLogoUrl
+  };
 
   return (
     <>
-      <Flex flexDir="column" px={6} py={5} gap={'52px'} h="full">
-        <Box flexShrink={0}>
-          <SettingHeader />
-        </Box>
+      {/* homepage setting */}
+      {tab === ChatSettingTabOptionEnum.HOME && (
+        <HomepageSetting
+          settingTabOption={tab}
+          onDiagramShow={setIsOpenDiagram}
+          onTabChange={setTab}
+          onSettingsRefresh={onSettingsRefresh}
+        />
+      )}
 
-        <Flex
-          flexGrow={1}
-          overflowY={'auto'}
-          justifyContent={'flex-start'}
-          alignItems={'center'}
-          flexDir="column"
-          w="630px"
-          alignSelf="center"
-        >
-          {settingTabOption === ChatSettingTabOptionEnum.HOME && <HomepageSetting />}
-          {settingTabOption === ChatSettingTabOptionEnum.COPYRIGHT && <CopyrightSetting />}
-        </Flex>
-      </Flex>
-      <DiagramModal />
+      {/* copyright setting */}
+      {tab === ChatSettingTabOptionEnum.COPYRIGHT && (
+        <CopyrightSetting
+          logos={logos}
+          settingTabOption={tab}
+          onDiagramShow={setIsOpenDiagram}
+          onTabChange={setTab}
+          onSettingsRefresh={onSettingsRefresh}
+        />
+      )}
+
+      <DiagramModal show={isOpenDiagram} onShow={setIsOpenDiagram} />
     </>
   );
 };

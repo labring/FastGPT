@@ -2,11 +2,14 @@ import { Flex, Image } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'react-i18next';
 import { useMemo } from 'react';
-import { useChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 
-const DiagramModal = () => {
+type Props = {
+  show: boolean;
+  onShow: (show: boolean) => void;
+};
+
+const DiagramModal = ({ show, onShow }: Props) => {
   const { t } = useTranslation();
-  const { showDiagram, setShowDiagram } = useChatSettingContext();
   const { i18n } = useTranslation();
 
   const diagramImageSrc = useMemo(() => {
@@ -23,10 +26,10 @@ const DiagramModal = () => {
   return (
     <MyModal
       maxW={['90vw', '800px']}
-      title={t('common:core.chat.setting.Copyright Style Diagram')}
+      title={t('chat:setting.copyright.style_diagram')}
       iconSrc="/imgs/modal/info.svg"
-      isOpen={showDiagram}
-      onClose={() => setShowDiagram(false)}
+      isOpen={show}
+      onClose={() => onShow(false)}
     >
       <Flex p={4} justifyContent={'center'} alignItems={'center'}>
         <Image src={diagramImageSrc} alt="style diagram" objectFit={'cover'} />
