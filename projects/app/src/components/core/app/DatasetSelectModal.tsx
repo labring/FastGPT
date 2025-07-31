@@ -607,22 +607,27 @@ export const DatasetSelectModal = ({
       onClose={onClose} // 关闭弹窗
     >
       {/* 弹窗内容整体布局，纵向排列 */}
-      <Flex h={'100%'} flexDirection={'column'} flex={'1 0 0'}>
+      <Flex h={'100%'} flexDirection={'column'} flex={'1'}>
         {/* 弹窗主体内容 */}
-        <ModalBody flex={'1 0 0'} p={0} display="flex" alignItems="center" justifyContent="center">
+        <ModalBody flex={'1'}>
           {/* 左右分栏布局 */}
-          <Flex
-            h={'500px'}
-            w={'800px'}
-            border={'1px solid'}
-            borderColor={'gray.200'}
-            borderRadius={'md'}
-            overflow={'hidden'}
+          <Grid
+            border="1px solid"
+            borderColor="myGray.200"
+            borderRadius="0.5rem"
+            gridTemplateColumns="1fr 1fr"
+            h={'100%'}
           >
             {/* 左侧：搜索和知识库列表 */}
-            <Box w={'50%'} borderRight={'1px solid'} borderColor={'gray.200'} p={4}>
+            <Flex
+              h={'100%'}
+              flexDirection="column"
+              borderRight="1px solid"
+              borderColor="myGray.200"
+              p="4"
+            >
               {/* 搜索框 */}
-              <InputGroup mb={4}>
+              <InputGroup mb={4} flexShrink={0}>
                 <InputLeftElement>
                   <SearchIcon w={'16px'} color={'gray.400'} />
                 </InputLeftElement>
@@ -643,6 +648,7 @@ export const DatasetSelectModal = ({
                 minH="32px"
                 display="flex"
                 alignItems="center"
+                flexShrink={0}
               >
                 {!searchKey.trim() ? (
                   // 非搜索状态：显示路径
@@ -692,7 +698,7 @@ export const DatasetSelectModal = ({
               </Box>
 
               {/* 知识库列表 */}
-              <VStack align="stretch" spacing={0} h={'340px'} overflowY="auto">
+              <VStack align="stretch" spacing={0} flex={'1 0 0'} overflowY="auto" h={0}>
                 {filteredDatasets.length === 0 ? (
                   <EmptyTip text={t('common:folder.empty')} />
                 ) : (
@@ -871,7 +877,7 @@ export const DatasetSelectModal = ({
               </VStack>
 
               {/* 全选和全部取消功能 */}
-              <Flex mt={3} justify="space-between" align="center">
+              <Flex mt={3} justify="space-between" align="center" flexShrink={0}>
                 <Checkbox
                   isChecked={isAllSelected}
                   onChange={(e) => handleSelectAll(e.target.checked)}
@@ -890,6 +896,7 @@ export const DatasetSelectModal = ({
                 >
                   <Text fontSize="sm">{t('common:Select_all')}</Text>
                 </Checkbox>
+                {/* 注释掉取消全部按钮
                 <Button
                   size="sm"
                   variant="outline"
@@ -906,13 +913,20 @@ export const DatasetSelectModal = ({
                     {t('common:Clear_all')}
                   </Text>
                 </Button>
+                */}
               </Flex>
-            </Box>
+            </Flex>
 
             {/* 右侧：已选知识库展示 */}
-            <Box w={'50%'} p={4}>
+            <Flex h={'100%'} p="4" flexDirection="column">
+              {/* 已选数量显示 */}
+              <Box mb={3} flexShrink={0}>
+                <Text fontSize="sm" color="gray.600">
+                  {t('common:Selected')}: {selectedDatasets.length} {t('common:dataset')}
+                </Text>
+              </Box>
               {/* 已选知识库列表 */}
-              <VStack align="stretch" spacing={2} h={'450px'} overflowY="auto">
+              <VStack align="stretch" spacing={2} flex={'1 0 0'} overflowY="auto" h={0}>
                 {selectedDatasets.length === 0 ? (
                   <Box
                     display="flex"
@@ -922,7 +936,7 @@ export const DatasetSelectModal = ({
                     color="gray.400"
                   >
                     <VStack spacing={2}>
-                      <MyIcon name="empty" w="48px" color="gray.300" />
+                      <MyIcon name="empty" w="48px" color="transparent" />
                       <Text fontSize="sm">{t('common:No_selected_dataset')}</Text>
                     </VStack>
                   </Box>
@@ -952,12 +966,12 @@ export const DatasetSelectModal = ({
                   ))
                 )}
               </VStack>
-            </Box>
-          </Flex>
+            </Flex>
+          </Grid>
         </ModalBody>
 
         {/* 弹窗底部按钮区域 */}
-        <ModalFooter>
+        <ModalFooter flexShrink={0}>
           <HStack spacing={4} w="full" align="center">
             <Spacer />
             <HStack spacing={3} align="center">
@@ -975,7 +989,7 @@ export const DatasetSelectModal = ({
                   onChange(selectedDatasets);
                 }}
               >
-                {t('common:Confirm')} ({selectedDatasets.length})
+                {t('common:Confirm')}
               </Button>
             </HStack>
           </HStack>

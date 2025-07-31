@@ -1334,8 +1334,5 @@
   "zoomin_tip": "Zoom Out  ctrl  -",
   "zoomin_tip_mac": "Zoom Out  ⌘  -",
   "zoomout_tip": "Zoom In  ctrl  +",
-  "zoomout_tip_mac": "Zoom In  ⌘  +",
-  "Clear_all": "Clear All",
-  "Root_directory": "Root Directory",
-  "Index": "Index"
+  "zoomout_tip_mac": "Zoom In  ⌘  +"
 }
