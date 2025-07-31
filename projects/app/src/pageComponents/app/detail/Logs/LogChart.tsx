@@ -18,7 +18,7 @@ import { useTranslation } from 'next-i18next';
 import { AppContext } from '../context';
 import { useContextSelector } from 'use-context-selector';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getAppChartDataV2, getAppTotalDataV2 } from '@/web/core/app/api/log';
+import { getAppChartData, getAppTotalData } from '@/web/core/app/api/log';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { addDays } from 'date-fns';
 import LineChartComponent from '@fastgpt/web/components/common/charts/LineChartComponent';
@@ -61,7 +61,7 @@ const LogChart = ({
 
   const { data: chartData } = useRequest2(
     async () => {
-      return getAppChartDataV2({
+      return getAppChartData({
         appId,
         dateStart: dateRange.from || new Date(),
         dateEnd: addDays(dateRange.to || new Date(), 1),
@@ -661,7 +661,7 @@ const TotalData = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
   const { data: totalData } = useRequest2(
     async () => {
-      return getAppTotalDataV2({ appId });
+      return getAppTotalData({ appId });
     },
     {
       manual: false,

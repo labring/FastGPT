@@ -3,8 +3,8 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { Types } from 'mongoose';
-import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
+import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 
 export type getTotalDataQuery = {
   appId: string;
@@ -36,74 +36,40 @@ async function handler(
     appId: new Types.ObjectId(appId)
   };
 
-  const [userStats, chatStats, pointsStats] = await Promise.all([
-    MongoChat.aggregate([
-      { $match: where },
-      {
-        $group: {
-          _id: {
-            $ifNull: [
-              {
-                $cond: [{ $ne: ['$outLinkUid', ''] }, '$outLinkUid', null]
-              },
-              '$tmbId'
-            ]
+  const [userStats, chatStats] = await Promise.all([
+    MongoAppChatLog.distinct('userId', where).then((users) => users.length),
+    MongoAppChatLog.aggregate(
+      [
+        { $match: where },
+        {
+          $group: {
+            _id: null,
+            totalChat: { $sum: '$chatItemCount' },
+            totalPoints: { $sum: '$totalPoints' }
           }
         }
-      },
+      ],
       {
-        $group: {
-          _id: null,
-          totalUsers: { $sum: 1 }
-        }
+        ...readFromSecondary,
+        allowDiskUse: true
       }
-    ]),
-    MongoChatItem.aggregate([
-      { $match: where },
-      {
-        $group: {
-          _id: null,
-          totalChat: {
-            $sum: {
-              $cond: [{ $eq: ['$obj', 'AI'] }, 1, 0]
-            }
-          }
-        }
-      }
-    ]),
-    MongoChatItem.aggregate([
-      {
-        $match: {
-          appId: new Types.ObjectId(appId)
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          totalPoints: {
-            $sum: {
-              $reduce: {
-                input: { $ifNull: ['$responseData', []] },
-                initialValue: 0,
-                in: {
-                  $add: ['$$value', { $ifNull: ['$$this.totalPoints', 0] }]
-                }
-              }
-            }
-          }
-        }
-      }
-    ])
+    )
   ]);
 
-  const totalUsers = userStats.length > 0 ? userStats[0].totalUsers : 0;
-  const totalChat = chatStats.length > 0 ? chatStats[0].totalChat : 0;
-  const totalPoints = pointsStats.length > 0 ? pointsStats[0].totalPoints : 0;
+  if (!chatStats || chatStats.length === 0) {
+    return {
+      totalUsers: userStats || 0,
+      totalChat: 0,
+      totalPoints: 0
+    };
+  }
+
+  const { totalChat, totalPoints } = chatStats[0];
 
   return {
-    totalUsers,
-    totalChat,
-    totalPoints
+    totalUsers: userStats || 0,
+    totalChat: totalChat || 0,
+    totalPoints: totalPoints || 0
   };
 }
 
