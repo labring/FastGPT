@@ -124,7 +124,7 @@ export const getSystemPluginByIdAndVersionId = async (
   }
 
   const version = versionId
-    ? versionList.find((item) => item.value === versionId) ?? versionList[0]
+    ? (versionList.find((item) => item.value === versionId) ?? versionList[0])
     : versionList[0];
   const lastVersion = versionList[0];
 
@@ -555,6 +555,7 @@ export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> 
         courseUrl: item.courseUrl,
         instructions: dbPluginConfig?.customConfig?.userGuide,
         weight: item.weight,
+        toolSource: item.toolSource || 'built-in',
         workflow: {
           nodes: [],
           edges: []

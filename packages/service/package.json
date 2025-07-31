@@ -51,7 +51,8 @@
     "tiktoken": "1.0.17",
     "tunnel": "^0.0.6",
     "turndown": "^7.1.2",
-    "winston": "^3.17.0"
+    "winston": "^3.17.0",
+    "minio": "^8.0.5"
   },
   "devDependencies": {
     "@types/cookie": "^0.5.2",

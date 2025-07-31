@@ -34,7 +34,7 @@ export const workflowSystemNodeTemplateList: {
 export const defaultGroup: SystemToolGroupSchemaType = {
   groupId: 'systemPlugin',
   groupAvatar: 'core/app/type/pluginLight',
-  groupName: i18nT('common:core.module.template.System Plugin'),
+  groupName: i18nT('app:core.module.template.System Tools'),
   groupOrder: 0,
   groupTypes: [] // from getPluginGroups
 };
