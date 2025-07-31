@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Box, Flex, HStack, useTheme } from '@chakra-ui/react';
 import {
   ResponsiveContainer,
@@ -8,7 +8,8 @@ import {
   Tooltip,
   type TooltipProps,
   LineChart,
-  Line
+  Line,
+  ReferenceLine
 } from 'recharts';
 import { type NameType, type ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
@@ -37,6 +38,8 @@ type LineChartComponentProps = {
   HeaderRightChildren?: React.ReactNode;
   lines: LineConfig[];
   tooltipItems?: TooltipItem[];
+  showAverage?: boolean;
+  averageKey?: string;
 };
 
 const CustomTooltip = ({
@@ -51,8 +54,15 @@ const CustomTooltip = ({
   }
 
   return (
-    <Box bg="white" p={3} borderRadius="md" border="base" boxShadow="sm">
-      <Box fontSize="sm" color="myGray.900" mb={2}>
+    <Box
+      bg="white"
+      p={3}
+      borderRadius="md"
+      border="base"
+      boxShadow="sm"
+      {...(tooltipItems.length > 8 ? { position: 'relative', top: '-30px' } : {})}
+    >
+      <Box fontSize="sm" color="myGray.900" mb={tooltipItems.length > 5 ? 1 : 2}>
         {data.xLabel || data.x}
       </Box>
       {tooltipItems.map((item, index) => {
@@ -60,7 +70,7 @@ const CustomTooltip = ({
         const displayValue = item.formatter ? item.formatter(value) : formatNumber(value);
 
         return (
-          <HStack key={index} fontSize="sm" _notLast={{ mb: 1 }}>
+          <HStack key={index} fontSize="sm" _notLast={{ mb: tooltipItems.length > 5 ? 0 : 1 }}>
             <Box w={2} h={2} borderRadius="full" bg={item.color} />
             <Box>{item.label}</Box>
             <Box>{displayValue.toLocaleString()}</Box>
@@ -77,7 +87,9 @@ const LineChartComponent = ({
   description,
   HeaderRightChildren,
   lines,
-  tooltipItems
+  tooltipItems,
+  showAverage = false,
+  averageKey
 }: LineChartComponentProps) => {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -91,6 +103,14 @@ const LineChartComponent = ({
     }
     return value.toString();
   }, []);
+
+  // Calculate average value
+  const averageValue = useMemo(() => {
+    if (!showAverage || !averageKey || data.length === 0) return null;
+
+    const sum = data.reduce((acc, item) => acc + (item[averageKey] || 0), 0);
+    return sum / data.length;
+  }, [showAverage, averageKey, data]);
 
   // Generate gradient definitions
   const gradientDefs = useMemo(
@@ -115,7 +135,30 @@ const LineChartComponent = ({
   );
 
   return (
-    <>
+    <Box
+      onMouseEnter={(e) => {
+        const chartElement = e.currentTarget.querySelector('.recharts-wrapper');
+        if (chartElement && showAverage && averageValue !== null) {
+          chartElement.classList.add('show-average');
+        }
+      }}
+      onMouseLeave={(e) => {
+        const chartElement = e.currentTarget.querySelector('.recharts-wrapper');
+        if (chartElement) {
+          chartElement.classList.remove('show-average');
+        }
+      }}
+      h="100%"
+    >
+      <style jsx global>{`
+        .recharts-wrapper .average-line {
+          opacity: 0;
+          transition: opacity 0.2s ease-in-out;
+        }
+        .recharts-wrapper.show-average .average-line {
+          opacity: 1;
+        }
+      `}</style>
       <Flex mb={4} h={6}>
         <Flex flex={1} alignItems={'center'} gap={1}>
           <Box fontSize={'sm'} color={'myGray.900'} fontWeight={'medium'}>
@@ -158,9 +201,24 @@ const LineChartComponent = ({
               dot={false}
             />
           ))}
+          {showAverage && averageValue !== null && (
+            <ReferenceLine
+              y={averageValue}
+              stroke={theme.colors.primary?.['400']}
+              strokeDasharray="5 5"
+              strokeWidth={1}
+              className="average-line"
+              label={{
+                value: `${formatNumber(averageValue)}`,
+                position: 'insideTopRight',
+                fill: theme.colors.primary?.['400'],
+                fontSize: 12
+              }}
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
-    </>
+    </Box>
   );
 };
 

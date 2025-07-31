@@ -36,12 +36,8 @@ async function handler(
     appId: new Types.ObjectId(appId)
   };
 
-  // 使用分步查询，避免内存溢出
   const [userStats, chatStats] = await Promise.all([
-    // 1. 统计用户数 - 使用 distinct 更高效
     MongoAppChatLog.distinct('userId', where).then((users) => users.length),
-
-    // 2. 统计聊天和积分
     MongoAppChatLog.aggregate(
       [
         { $match: where },
@@ -55,7 +51,7 @@ async function handler(
       ],
       {
         ...readFromSecondary,
-        allowDiskUse: true // 允许使用磁盘处理大数据
+        allowDiskUse: true
       }
     )
   ]);

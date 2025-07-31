@@ -31,3 +31,33 @@ export type AppChatLogSchema = {
 
   isFirstChat: boolean; // whether this is the user's first session in the app
 };
+
+export type AppChatLogUserData = {
+  timestamp: number;
+  summary: {
+    userCount: number;
+    newUserCount: number;
+    retentionUserCount: number;
+    points: number;
+  };
+}[];
+
+export type AppChatLogChatData = {
+  timestamp: number;
+  summary: {
+    chatItemCount: number;
+    chatCount: number;
+    errorCount: number;
+    points: number;
+  };
+}[];
+
+export type AppChatLogAppData = {
+  timestamp: number;
+  summary: {
+    goodFeedBackCount: number;
+    badFeedBackCount: number;
+    totalResponseTime: number;
+    sourceCountMap: Record<ChatSourceEnum, number>;
+  };
+}[];
