@@ -439,32 +439,64 @@ export const DatasetSelectModal = ({
     return activeVectorModel && activeVectorModel !== item.vectorModel.model;
   };
 
-  // 全选功能 - 简化逻辑，只选择当前显示的知识库
+  // 获取可选择的兼容知识库列表（复用逻辑）
+  const getCompatibleDatasets = useCallback(() => {
+    // 获取当前显示的知识库（不包括文件夹）
+    const visibleDatasets = filteredDatasets.filter((item) => item.type !== DatasetTypeEnum.folder);
+
+    // 确定目标向量模型
+    const targetModel = activeVectorModel || visibleDatasets[0]?.vectorModel?.model;
+
+    if (!targetModel) {
+      return [];
+    }
+
+    // 如果是全局搜索模式，直接返回兼容的知识库
+    if (searchKey.trim()) {
+      return visibleDatasets.filter(
+        (item) => item.vectorModel.model === targetModel && !isDatasetSelected(item._id)
+      );
+    }
+
+    // 非全局搜索模式：选择当前目录下所有兼容的知识库，包括文件夹直属的知识库
+    const compatibleDatasets = [];
+
+    // 1. 当前目录下的直接知识库
+    const directDatasets = visibleDatasets.filter(
+      (item) => item.vectorModel.model === targetModel && !isDatasetSelected(item._id)
+    );
+    compatibleDatasets.push(...directDatasets);
+
+    // 2. 当前目录下文件夹的直属知识库
+    const folders = filteredDatasets.filter((item) => item.type === DatasetTypeEnum.folder);
+    for (const folder of folders) {
+      const folderDirectDatasets = getDirectDatasets(folder._id);
+      const folderCompatibleDatasets = folderDirectDatasets.filter(
+        (item) =>
+          item.vectorModel.model === targetModel &&
+          !isDatasetSelected(item._id) &&
+          isFolderSelectable(folder._id) // 确保文件夹可选择
+      );
+      compatibleDatasets.push(...folderCompatibleDatasets);
+    }
+
+    return compatibleDatasets;
+  }, [
+    filteredDatasets,
+    activeVectorModel,
+    searchKey,
+    isDatasetSelected,
+    getDirectDatasets,
+    isFolderSelectable
+  ]);
+
+  // 全选功能 - 复用逻辑
   const handleSelectAll = (checked: boolean) => {
     console.log(`[调试] handleSelectAll - ${checked ? '全选' : '取消全选'}`);
     console.log(`[调试] 当前显示数据集数量: ${filteredDatasets.length}`);
 
     if (checked) {
-      // 获取当前显示的知识库（不包括文件夹）
-      const visibleDatasets = filteredDatasets.filter(
-        (item) => item.type !== DatasetTypeEnum.folder
-      );
-
-      // 确定目标向量模型
-      const targetModel = activeVectorModel || visibleDatasets[0]?.vectorModel?.model;
-
-      if (!targetModel) {
-        console.log(`[调试] handleSelectAll - 无法确定目标向量模型`);
-        return;
-      }
-
-      console.log(`[调试] handleSelectAll - 目标向量模型: ${targetModel}`);
-
-      // 选择兼容的知识库
-      const compatibleDatasets = visibleDatasets.filter(
-        (item) => item.vectorModel.model === targetModel && !isDatasetSelected(item._id)
-      );
-
+      const compatibleDatasets = getCompatibleDatasets();
       console.log(`[调试] handleSelectAll - 可选择的知识库数量: ${compatibleDatasets.length}`);
 
       const newSelections = compatibleDatasets.map((item) => ({
@@ -482,7 +514,7 @@ export const DatasetSelectModal = ({
     }
   };
 
-  // 检查是否全选状态 - 简化逻辑，只检查当前显示的知识库
+  // 检查是否全选状态 - 复用逻辑
   const isAllSelected = useMemo(() => {
     console.log(`[调试] isAllSelected 计算开始`);
 
@@ -513,18 +545,43 @@ export const DatasetSelectModal = ({
         return false;
       }
 
-      // 检查兼容的知识库
-      const compatibleDatasets = visibleDatasets.filter(
-        (item) => item.vectorModel.model === targetModel
-      );
-      console.log(`[调试] isAllSelected - 兼容的知识库数量: ${compatibleDatasets.length}`);
+      // 复用逻辑：获取所有应该被选中的知识库
+      let allCompatibleDatasets = [];
 
-      const selectedCount = compatibleDatasets.filter((item) => isDatasetSelected(item._id)).length;
+      if (searchKey.trim()) {
+        // 全局搜索模式：只检查当前显示的知识库
+        allCompatibleDatasets = visibleDatasets.filter(
+          (item) => item.vectorModel.model === targetModel
+        );
+      } else {
+        // 非全局搜索模式：检查当前目录下所有兼容的知识库，包括文件夹直属的知识库
+        // 1. 当前目录下的直接知识库
+        const directDatasets = visibleDatasets.filter(
+          (item) => item.vectorModel.model === targetModel
+        );
+        allCompatibleDatasets.push(...directDatasets);
+
+        // 2. 当前目录下文件夹的直属知识库
+        const folders = filteredDatasets.filter((item) => item.type === DatasetTypeEnum.folder);
+        for (const folder of folders) {
+          const folderDirectDatasets = getDirectDatasets(folder._id);
+          const folderCompatibleDatasets = folderDirectDatasets.filter(
+            (item) => item.vectorModel.model === targetModel && isFolderSelectable(folder._id) // 确保文件夹可选择
+          );
+          allCompatibleDatasets.push(...folderCompatibleDatasets);
+        }
+      }
+
+      console.log(`[调试] isAllSelected - 兼容的知识库数量: ${allCompatibleDatasets.length}`);
+
+      const selectedCount = allCompatibleDatasets.filter((item) =>
+        isDatasetSelected(item._id)
+      ).length;
       console.log(`[调试] isAllSelected - 已选中的知识库数量: ${selectedCount}`);
 
       const result =
-        compatibleDatasets.length > 0 &&
-        compatibleDatasets.every((item) => isDatasetSelected(item._id));
+        allCompatibleDatasets.length > 0 &&
+        allCompatibleDatasets.every((item) => isDatasetSelected(item._id));
 
       console.log(`[调试] isAllSelected - 最终结果: ${result}`);
       return result;
@@ -532,7 +589,14 @@ export const DatasetSelectModal = ({
       console.error(`[调试] isAllSelected 计算出错:`, error);
       return false;
     }
-  }, [filteredDatasets, activeVectorModel, isDatasetSelected]);
+  }, [
+    filteredDatasets,
+    activeVectorModel,
+    isDatasetSelected,
+    searchKey,
+    getDirectDatasets,
+    isFolderSelectable
+  ]);
 
   // 组件渲染
   return (
@@ -571,10 +635,19 @@ export const DatasetSelectModal = ({
                 />
               </InputGroup>
 
-              {/* 路径显示 - 在非搜索状态下始终显示 */}
-              {!searchKey.trim() && (
-                <Box mb={2} py={1} px={2} fontSize="sm">
-                  {paths.length === 0 ? (
+              {/* 路径显示区域 - 始终占用空间，内容根据搜索状态显示 */}
+              <Box
+                mb={2}
+                py={1}
+                px={2}
+                fontSize="sm"
+                minH="32px"
+                display="flex"
+                alignItems="center"
+              >
+                {!searchKey.trim() ? (
+                  // 非搜索状态：显示路径
+                  paths.length === 0 ? (
                     // 根目录显示，使用与FolderPath完全相同的容器和样式
                     <Flex flex={1} ml={-2} alignItems="center">
                       <Box
@@ -608,12 +681,17 @@ export const DatasetSelectModal = ({
                         setParentId(e);
                       }}
                     />
-                  )}
-                </Box>
-              )}
+                  )
+                ) : (
+                  // 搜索状态：显示搜索提示，保持空间占用
+                  <Text fontSize="sm" color="gray.500">
+                    {t('chat:search_results')}
+                  </Text>
+                )}
+              </Box>
 
               {/* 知识库列表 */}
-              <VStack align="stretch" spacing={0} h={'390px'} overflowY="auto">
+              <VStack align="stretch" spacing={0} h={'350px'} overflowY="auto">
                 {filteredDatasets.length === 0 ? (
                   <EmptyTip text={t('common:folder.empty')} />
                 ) : (
