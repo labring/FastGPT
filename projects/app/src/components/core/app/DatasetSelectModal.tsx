@@ -439,8 +439,8 @@ export const DatasetSelectModal = ({
     return activeVectorModel && activeVectorModel !== item.vectorModel.model;
   };
 
-  // 获取可选择的兼容知识库列表（复用逻辑）
-  const getCompatibleDatasets = useCallback(() => {
+  // 获取当前范围内所有兼容的知识库列表（包括已选中的）
+  const getAllCompatibleDatasets = useCallback(() => {
     // 获取当前显示的知识库（不包括文件夹）
     const visibleDatasets = filteredDatasets.filter((item) => item.type !== DatasetTypeEnum.folder);
 
@@ -453,18 +453,14 @@ export const DatasetSelectModal = ({
 
     // 如果是全局搜索模式，直接返回兼容的知识库
     if (searchKey.trim()) {
-      return visibleDatasets.filter(
-        (item) => item.vectorModel.model === targetModel && !isDatasetSelected(item._id)
-      );
+      return visibleDatasets.filter((item) => item.vectorModel.model === targetModel);
     }
 
     // 非全局搜索模式：选择当前目录下所有兼容的知识库，包括文件夹直属的知识库
     const compatibleDatasets = [];
 
     // 1. 当前目录下的直接知识库
-    const directDatasets = visibleDatasets.filter(
-      (item) => item.vectorModel.model === targetModel && !isDatasetSelected(item._id)
-    );
+    const directDatasets = visibleDatasets.filter((item) => item.vectorModel.model === targetModel);
     compatibleDatasets.push(...directDatasets);
 
     // 2. 当前目录下文件夹的直属知识库
@@ -472,23 +468,18 @@ export const DatasetSelectModal = ({
     for (const folder of folders) {
       const folderDirectDatasets = getDirectDatasets(folder._id);
       const folderCompatibleDatasets = folderDirectDatasets.filter(
-        (item) =>
-          item.vectorModel.model === targetModel &&
-          !isDatasetSelected(item._id) &&
-          isFolderSelectable(folder._id) // 确保文件夹可选择
+        (item) => item.vectorModel.model === targetModel && isFolderSelectable(folder._id) // 确保文件夹可选择
       );
       compatibleDatasets.push(...folderCompatibleDatasets);
     }
 
     return compatibleDatasets;
-  }, [
-    filteredDatasets,
-    activeVectorModel,
-    searchKey,
-    isDatasetSelected,
-    getDirectDatasets,
-    isFolderSelectable
-  ]);
+  }, [filteredDatasets, activeVectorModel, searchKey, getDirectDatasets, isFolderSelectable]);
+
+  // 获取可选择的兼容知识库列表（复用逻辑）
+  const getCompatibleDatasets = useCallback(() => {
+    return getAllCompatibleDatasets().filter((item) => !isDatasetSelected(item._id));
+  }, [getAllCompatibleDatasets, isDatasetSelected]);
 
   // 全选功能 - 复用逻辑
   const handleSelectAll = (checked: boolean) => {
@@ -508,9 +499,17 @@ export const DatasetSelectModal = ({
 
       setSelectedDatasets((prev) => [...prev, ...newSelections]);
     } else {
-      // 取消全选
-      console.log(`[调试] handleSelectAll - 取消全选，清空所有选择`);
-      setSelectedDatasets([]);
+      // 取消全选 - 只取消当前范围内的选择
+      console.log(`[调试] handleSelectAll - 取消全选，只取消当前范围`);
+      const allCompatibleDatasets = getAllCompatibleDatasets();
+
+      // 获取所有应该被取消选择的知识库ID
+      const datasetIdsToRemove = allCompatibleDatasets.map((item) => item._id);
+
+      // 从已选列表中移除当前范围内的知识库
+      setSelectedDatasets((prev) =>
+        prev.filter((dataset) => !datasetIdsToRemove.includes(dataset.datasetId))
+      );
     }
   };
 
@@ -665,7 +664,7 @@ export const DatasetSelectModal = ({
                         }}
                         onClick={() => setParentId('')}
                       >
-                        根目录
+                        {t('common:Root_directory')}
                       </Box>
                       <MyIcon name={'common/line'} color={'myGray.500'} mx={1} width={'5px'} />
                     </Flex>
@@ -676,7 +675,7 @@ export const DatasetSelectModal = ({
                         parentId: path.parentId,
                         parentName: path.parentName
                       }))}
-                      FirstPathDom={'根目录'}
+                      FirstPathDom={t('common:Root_directory')}
                       onClick={(e) => {
                         setParentId(e);
                       }}
@@ -684,14 +683,16 @@ export const DatasetSelectModal = ({
                   )
                 ) : (
                   // 搜索状态：显示搜索提示，保持空间占用
-                  <Text fontSize="sm" color="gray.500">
-                    {t('chat:search_results')}
-                  </Text>
+                  <Box as="div" width="100%" minH={'25px'} display="flex" alignItems="center">
+                    <Text fontSize="sm" color="gray.500">
+                      {t('chat:search_results')}
+                    </Text>
+                  </Box>
                 )}
               </Box>
 
               {/* 知识库列表 */}
-              <VStack align="stretch" spacing={0} h={'350px'} overflowY="auto">
+              <VStack align="stretch" spacing={0} h={'340px'} overflowY="auto">
                 {filteredDatasets.length === 0 ? (
                   <EmptyTip text={t('common:folder.empty')} />
                 ) : (
@@ -719,7 +720,7 @@ export const DatasetSelectModal = ({
                       >
                         {/* 复选框 - 文件夹和知识库都显示复选框 */}
                         <Box
-                          w="20px"
+                          w="24px"
                           display="flex"
                           alignItems="center"
                           justifyContent="center"
@@ -762,10 +763,27 @@ export const DatasetSelectModal = ({
                                       ? {
                                           '& .chakra-checkbox__control': {
                                             borderColor: 'gray.200',
-                                            opacity: 0.3
+                                            opacity: 0.5,
+                                            width: '18px',
+                                            height: '18px',
+                                            borderWidth: '2px'
+                                          },
+                                          '& .chakra-checkbox__control::before': {
+                                            width: '10px',
+                                            height: '10px'
                                           }
                                         }
-                                      : {}
+                                      : {
+                                          '& .chakra-checkbox__control': {
+                                            width: '18px',
+                                            height: '18px',
+                                            borderWidth: '2px'
+                                          },
+                                          '& .chakra-checkbox__control::before': {
+                                            width: '10px',
+                                            height: '10px'
+                                          }
+                                        }
                                   }
                                 />
                               );
@@ -790,17 +808,34 @@ export const DatasetSelectModal = ({
                                   ? {
                                       '& .chakra-checkbox__control': {
                                         borderColor: 'gray.200',
-                                        opacity: 0.5
+                                        opacity: 0.5,
+                                        width: '18px',
+                                        height: '18px',
+                                        borderWidth: '2px'
+                                      },
+                                      '& .chakra-checkbox__control::before': {
+                                        width: '10px',
+                                        height: '10px'
                                       }
                                     }
-                                  : {}
+                                  : {
+                                      '& .chakra-checkbox__control': {
+                                        width: '18px',
+                                        height: '18px',
+                                        borderWidth: '2px'
+                                      },
+                                      '& .chakra-checkbox__control::before': {
+                                        width: '10px',
+                                        height: '10px'
+                                      }
+                                    }
                               }
                             />
                           )}
                         </Box>
 
                         {/* 图标 */}
-                        <Avatar src={item.avatar} w="18px" h="18px" borderRadius="sm" mx={3} />
+                        <Avatar src={item.avatar} w="22px" h="22px" borderRadius="sm" mx={3} />
 
                         {/* 名称和类型 */}
                         <Box flex={1} minW={0}>
@@ -813,7 +848,7 @@ export const DatasetSelectModal = ({
                             </Text>
                           ) : (
                             <Text fontSize="xs" color="gray.500">
-                              索引: {item.vectorModel.name}
+                              {t('common:Index')}: {item.vectorModel.name}
                             </Text>
                           )}
                         </Box>
@@ -835,16 +870,43 @@ export const DatasetSelectModal = ({
                 )}
               </VStack>
 
-              {/* 全选功能 */}
-              <Box mt={3}>
+              {/* 全选和全部取消功能 */}
+              <Flex mt={3} justify="space-between" align="center">
                 <Checkbox
                   isChecked={isAllSelected}
                   onChange={(e) => handleSelectAll(e.target.checked)}
                   colorScheme="blue"
+                  sx={{
+                    '& .chakra-checkbox__control': {
+                      width: '18px',
+                      height: '18px',
+                      borderWidth: '2px'
+                    },
+                    '& .chakra-checkbox__control::before': {
+                      width: '10px',
+                      height: '10px'
+                    }
+                  }}
                 >
                   <Text fontSize="sm">{t('common:Select_all')}</Text>
                 </Checkbox>
-              </Box>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  colorScheme="gray"
+                  bg="gray.50"
+                  borderColor="gray.300"
+                  onClick={() => setSelectedDatasets([])}
+                  _hover={{
+                    bg: 'gray.100',
+                    borderColor: 'gray.400'
+                  }}
+                >
+                  <Text fontSize="sm" color="gray.500">
+                    {t('common:Clear_all')}
+                  </Text>
+                </Button>
+              </Flex>
             </Box>
 
             {/* 右侧：已选知识库展示 */}

@@ -1335,5 +1335,8 @@
   "zoomin_tip": "缩小  ctrl  -",
   "zoomin_tip_mac": "缩小  ⌘  -",
   "zoomout_tip": "放大  ctrl  +",
-  "zoomout_tip_mac": "放大  ⌘  +"
+  "zoomout_tip_mac": "放大  ⌘  +",
+  "Clear_all": "全部取消",
+  "Root_directory": "根目录",
+  "Index": "索引"
 }
