@@ -19,7 +19,7 @@ import { useTranslation } from 'next-i18next';
 import { AppContext } from '../context';
 import { useContextSelector } from 'use-context-selector';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getAppChartData, getAppTotalData } from '@/web/core/app/api/log';
+import { getAppChartDataV2, getAppTotalDataV2 } from '@/web/core/app/api/log';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { addDays } from 'date-fns';
 import dayjs from 'dayjs';
@@ -27,6 +27,13 @@ import LineChartComponent from '@fastgpt/web/components/common/charts/LineChartC
 import BarChartComponent from '@fastgpt/web/components/common/charts/BarChartComponent';
 import { theme } from '@fastgpt/web/styles/theme';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+
+enum TimespanEnum {
+  day = 'day',
+  week = 'week',
+  month = 'month',
+  quarter = 'quarter'
+}
 
 const ChartsBoxStyles: BoxProps = {
   px: 5,
@@ -57,6 +64,10 @@ const LogChart = ({
 
   const { appId } = useContextSelector(AppContext, (v) => v);
 
+  const [userTimespan, setUserTimespan] = useState<TimespanEnum>(TimespanEnum.day);
+  const [chatTimespan, setChatTimespan] = useState<TimespanEnum>(TimespanEnum.day);
+  const [appTimespan, setAppTimespan] = useState<TimespanEnum>(TimespanEnum.day);
+
   const sourceList = useMemo(
     () =>
       Object.entries(ChatSourceMap).map(([key, value]) => ({
@@ -68,12 +79,11 @@ const LogChart = ({
 
   const { data: totalData } = useRequest2(
     async () => {
-      return getAppTotalData({ appId });
+      return getAppTotalDataV2({ appId });
     },
     {
       manual: false,
-      refreshDeps: [appId],
-      onSuccess: (res) => {}
+      refreshDeps: [appId]
     }
   );
   const totalDataArray = useMemo(() => {
@@ -115,20 +125,20 @@ const LogChart = ({
 
   const { data: chartData } = useRequest2(
     async () => {
-      return getAppChartData({
+      return getAppChartDataV2({
         appId,
         dateStart: dateRange.from || new Date(),
         dateEnd: addDays(dateRange.to || new Date(), 1),
 
-        offsetDays: 7,
-        userTimespan: 'day',
-        chatTimespan: 'day',
-        appTimespan: 'day'
+        offsetDays: 1,
+        userTimespan,
+        chatTimespan,
+        appTimespan
       });
     },
     {
       manual: false,
-      refreshDeps: [appId, dateRange.from, dateRange.to]
+      refreshDeps: [appId, dateRange.from, dateRange.to, userTimespan, chatTimespan, appTimespan]
     }
   );
   console.log('chartData', chartData);
@@ -145,7 +155,7 @@ const LogChart = ({
         x: date,
         xLabel,
         userCount: item.summary.userCount,
-        newUserCount: item.summary.newUserCount,
+        newUserCount: item.summary.newUserCount - item.summary.retentionUserCount,
         retentionUserCount: item.summary.retentionUserCount,
         points: item.summary.points,
         // sourceCountMap
@@ -298,10 +308,27 @@ const LogChart = ({
               color={'myGray.900'}
               alignItems={'center'}
               borderRadius={'md'}
-              px={0}
+              pl={0}
+              pr={4}
             >
               <AccordionIcon w={5} color={'myGray.600'} mr={1} />
               {t('app:logs_user_data')}
+              <Flex flex={1} />
+              <MySelect
+                list={[
+                  { label: t('app:logs_timespan_day'), value: TimespanEnum.day },
+                  { label: t('app:logs_timespan_week'), value: TimespanEnum.week },
+                  { label: t('app:logs_timespan_month'), value: TimespanEnum.month },
+                  { label: t('app:logs_timespan_quarter'), value: TimespanEnum.quarter }
+                ]}
+                value={userTimespan}
+                onChange={(value) => {
+                  setUserTimespan(value);
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+              />
             </AccordionButton>
             <AccordionPanel py={0}>
               <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5}>
@@ -354,7 +381,8 @@ const LogChart = ({
                       {
                         label: t('app:logs_new_user_count'),
                         dataKey: 'newUserCount',
-                        color: theme.colors.primary['100']
+                        color: theme.colors.primary['100'],
+                        customValue: (data) => data.newUserCount + data.retentionUserCount
                       },
                       {
                         label: t('app:logs_user_retention'),
@@ -442,17 +470,34 @@ const LogChart = ({
               </Grid>
             </AccordionPanel>
           </AccordionItem>
-          <AccordionItem border={'none'}>
+          <AccordionItem border={'none'} mt={4}>
             <AccordionButton
               fontSize={'24px'}
               fontWeight={'medium'}
               color={'myGray.900'}
               alignItems={'center'}
               borderRadius={'md'}
-              px={0}
+              pl={0}
+              pr={4}
             >
               <AccordionIcon w={5} color={'myGray.600'} mr={1} />
               {t('app:logs_chat_data')}
+              <Flex flex={1} />
+              <MySelect
+                list={[
+                  { label: t('app:logs_timespan_day'), value: TimespanEnum.day },
+                  { label: t('app:logs_timespan_week'), value: TimespanEnum.week },
+                  { label: t('app:logs_timespan_month'), value: TimespanEnum.month },
+                  { label: t('app:logs_timespan_quarter'), value: TimespanEnum.quarter }
+                ]}
+                value={userTimespan}
+                onChange={(value) => {
+                  setUserTimespan(value);
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+              />
             </AccordionButton>
             <AccordionPanel py={0}>
               <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5}>
@@ -563,17 +608,34 @@ const LogChart = ({
               </Grid>
             </AccordionPanel>
           </AccordionItem>
-          <AccordionItem border={'none'}>
+          <AccordionItem border={'none'} mt={4}>
             <AccordionButton
               fontSize={'24px'}
               fontWeight={'medium'}
               color={'myGray.900'}
               alignItems={'center'}
               borderRadius={'md'}
-              px={0}
+              pl={0}
+              pr={4}
             >
               <AccordionIcon w={5} color={'myGray.600'} mr={1} />
               {t('app:logs_app_result')}
+              <Flex flex={1} />
+              <MySelect
+                list={[
+                  { label: t('app:logs_timespan_day'), value: TimespanEnum.day },
+                  { label: t('app:logs_timespan_week'), value: TimespanEnum.week },
+                  { label: t('app:logs_timespan_month'), value: TimespanEnum.month },
+                  { label: t('app:logs_timespan_quarter'), value: TimespanEnum.quarter }
+                ]}
+                value={userTimespan}
+                onChange={(value) => {
+                  setUserTimespan(value);
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+              />
             </AccordionButton>
             <AccordionPanel py={0}>
               <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5}>

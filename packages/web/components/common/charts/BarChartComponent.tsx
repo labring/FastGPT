@@ -132,6 +132,7 @@ const BarChartComponent = ({
               fill={bar.color}
               stackId={bar.stackId}
               radius={[2, 2, 0, 0]}
+              maxBarSize={30}
             />
           ))}
         </BarChart>
