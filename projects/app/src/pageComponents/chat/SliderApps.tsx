@@ -22,6 +22,7 @@ import { ChatSidebarPaneEnum, type CollapseStatusType } from '@/global/core/chat
 import type { ChatSettingSchema } from '@fastgpt/global/core/chat/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 
 type Props = {
   activeAppId: string;
@@ -96,7 +97,8 @@ const SliderApps = ({
   const isTeamChat = router.pathname === '/chat/team';
   const { avatar, username } = userInfo as NonNullable<typeof userInfo>;
   const isCommercialVersion = !!feConfigs.isPlus;
-  const isEnterprisePlan = !!teamPlanStatus?.standard?.currentSubLevel;
+  const isEnterprisePlan =
+    teamPlanStatus?.standard?.currentSubLevel === StandardSubLevelEnum.enterprise;
   const isWideLogoEmpty = !logos.wideLogoUrl;
   const isSquareLogoEmpty = !logos.squareLogoUrl;
   const isAdmin = !!userInfo?.team.permission.hasManagePer;
