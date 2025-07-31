@@ -61,6 +61,7 @@ const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInpu
       </Button>
       {isOpen && (
         <SecretInputModal
+          isFolder={node?.isFolder}
           inputConfig={inputConfig}
           hasSystemSecret={node?.hasSystemSecret}
           secretCost={node?.currentCost}

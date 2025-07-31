@@ -2,10 +2,22 @@ import { Box, Flex, Divider } from '@chakra-ui/react';
 import React from 'react';
 import { useTranslation } from 'next-i18next';
 
-const CostTooltip = ({ cost, hasTokenFee }: { cost?: number; hasTokenFee?: boolean }) => {
+const CostTooltip = ({
+  cost,
+  hasTokenFee,
+  isFolder
+}: {
+  cost?: number;
+  hasTokenFee?: boolean;
+  isFolder?: boolean;
+}) => {
   const { t } = useTranslation();
 
   const getCostText = () => {
+    if (isFolder) {
+      return '该工具集包含下属工具，调用积分依据实际调用工具决定';
+    }
+
     if (hasTokenFee && cost && cost > 0) {
       return `${t('app:plugin_cost_per_times', {
         cost: cost
@@ -25,8 +37,8 @@ const CostTooltip = ({ cost, hasTokenFee }: { cost?: number; hasTokenFee?: boole
   return (
     <>
       <Divider mt={4} mb={2} />
-      <Flex>
-        <Box>{t('common:core.plugin.cost')}</Box>
+      <Flex alignItems={'center'}>
+        <Box whiteSpace={'nowrap'}>{t('common:core.plugin.cost')}</Box>
         <Box color={'myGray.600'}>{getCostText()}</Box>
       </Flex>
     </>

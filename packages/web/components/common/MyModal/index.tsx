@@ -34,7 +34,7 @@ const MyModal = ({
   isCentered,
   isLoading,
   w = 'auto',
-  maxW = ['90vw', '600px'],
+  maxW = ['90vw', '900px'],
   closeOnOverlayClick = true,
   iconColor,
   size = 'md',

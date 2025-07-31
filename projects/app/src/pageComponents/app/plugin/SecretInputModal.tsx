@@ -1,4 +1,13 @@
-import { Box, Button, Flex, HStack, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Flex,
+  HStack,
+  Input,
+  ModalBody,
+  ModalFooter,
+  useDisclosure
+} from '@chakra-ui/react';
 import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
@@ -21,21 +30,26 @@ export type ToolParamsFormType = {
 
 const SecretInputModal = ({
   hasSystemSecret,
-  secretCost = 0,
+  secretCost = [],
+  isFolder,
   inputConfig,
   courseUrl,
   onClose,
   onSubmit
 }: {
+  isFolder?: boolean;
   inputConfig: FlowNodeInputItemType;
   hasSystemSecret?: boolean;
-  secretCost?: number;
+  secretCost?: number | Array<{ name: string; cost: number }>;
   courseUrl?: string;
   onClose: () => void;
   onSubmit: (data: ToolParamsFormType) => void;
 }) => {
   const { t } = useTranslation();
   const [editIndex, setEditIndex] = useState<number>();
+  const { isOpen: isSystemCostOpen, onToggle: onToggleSystemCost } = useDisclosure({
+    defaultIsOpen: false
+  });
   const inputList = inputConfig?.inputList || [];
 
   const { register, watch, setValue, getValues, handleSubmit, control } =
@@ -85,16 +99,92 @@ const SecretInputModal = ({
                       desc: t('app:tool_active_system_config_desc'),
                       value: SystemToolInputTypeEnum.system,
                       children:
-                        configType === SystemToolInputTypeEnum.system ? (
-                          <HStack>
-                            <MyIcon name={'common/info'} w={'1.1rem'} color={'primary.600'} />
-                            <Box fontSize={'sm'}>
-                              {t('app:tool_active_system_config_price_desc', {
-                                price: secretCost || 0
-                              })}
-                            </Box>
-                          </HStack>
-                        ) : null
+                        configType === SystemToolInputTypeEnum.system
+                          ? (() => {
+                              const hasCost = Array.isArray(secretCost)
+                                ? secretCost.some((item) => item.cost > 0)
+                                : (secretCost || 0) > 0;
+
+                              if (!hasCost) return null;
+
+                              return (
+                                <Box>
+                                  {isFolder ? (
+                                    <>
+                                      <Flex
+                                        alignItems={'center'}
+                                        cursor={'pointer'}
+                                        onClick={onToggleSystemCost}
+                                        _hover={{ color: 'primary.600' }}
+                                        mb={isSystemCostOpen ? 2 : 0}
+                                      >
+                                        <MyIcon
+                                          name={'common/info'}
+                                          w={'1.1rem'}
+                                          color={'primary.600'}
+                                        />
+                                        <Box fontSize={'sm'} ml={2}>
+                                          {t('app:tool_active_system_config_price_desc_folder')}
+                                        </Box>
+                                        <MyIcon
+                                          name={
+                                            isSystemCostOpen
+                                              ? 'core/chat/chevronUp'
+                                              : 'core/chat/chevronDown'
+                                          }
+                                          w={'1rem'}
+                                          ml={'auto'}
+                                          color={'myGray.500'}
+                                        />
+                                      </Flex>
+                                      {isSystemCostOpen && (
+                                        <Box fontSize={'sm'} pl={6}>
+                                          {Array.isArray(secretCost) ? (
+                                            <Box>
+                                              {secretCost.map((item, index) => (
+                                                <Box key={index} fontSize={'sm'} mb={1}>
+                                                  {item.name}: {item.cost} 积分/次
+                                                </Box>
+                                              ))}
+                                            </Box>
+                                          ) : (
+                                            <Box fontSize={'sm'}>
+                                              {t('app:tool_active_system_config_price_desc', {
+                                                price: secretCost
+                                              })}
+                                            </Box>
+                                          )}
+                                        </Box>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <HStack>
+                                      <MyIcon
+                                        name={'common/info'}
+                                        w={'1.1rem'}
+                                        color={'primary.600'}
+                                      />
+                                      <Box fontSize={'sm'}>
+                                        {Array.isArray(secretCost) ? (
+                                          <Box>
+                                            {secretCost.map((item, index) => (
+                                              <Box key={index} fontSize={'sm'}>
+                                                {item.name}: {item.cost} 积分/次
+                                              </Box>
+                                            ))}
+                                          </Box>
+                                        ) : (
+                                          t('app:tool_active_system_config_price_desc', {
+                                            price: secretCost
+                                          })
+                                        )}
+                                      </Box>
+                                    </HStack>
+                                  )}
+                                </Box>
+                              );
+                            })()
+                          : null
                     }
                   ]
                 : []),

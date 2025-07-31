@@ -372,8 +372,10 @@ export async function getChildAppPreviewNode({
     showTargetHandle: true,
 
     currentCost: app.currentCost,
+    systemKeyCost: app.systemKeyCost,
     hasTokenFee: app.hasTokenFee,
     hasSystemSecret: app.hasSystemSecret,
+    isFolder: app.isFolder,
 
     ...nodeIOConfig,
     outputs: nodeIOConfig.outputs.some((item) => item.type === FlowNodeOutputTypeEnum.error)
@@ -426,6 +428,7 @@ export async function getChildAppRuntimeById({
 
         originCost: 0,
         currentCost: 0,
+        systemKeyCost: 0,
         hasTokenFee: false,
         pluginOrder: 0
       };
@@ -442,6 +445,7 @@ export async function getChildAppRuntimeById({
     avatar: app.avatar || '',
     showStatus: true,
     currentCost: app.currentCost,
+    systemKeyCost: app.systemKeyCost,
     nodes: app.workflow.nodes,
     edges: app.workflow.edges,
     hasTokenFee: app.hasTokenFee
@@ -498,6 +502,7 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplat
     currentCost: item.currentCost,
     hasTokenFee: item.hasTokenFee,
     pluginOrder: item.pluginOrder,
+    systemKeyCost: item.systemKeyCost,
     associatedPluginId,
     userGuide,
     workflow: {
@@ -578,7 +583,8 @@ export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> 
         inputs,
         outputs,
         inputList: item?.secretInputConfig,
-        hasSystemSecret: !!dbPluginConfig?.inputListVal
+        hasSystemSecret: !!dbPluginConfig?.inputListVal,
+        systemKeyCost: dbPluginConfig?.systemKeyCost ?? 0
       };
     });
 

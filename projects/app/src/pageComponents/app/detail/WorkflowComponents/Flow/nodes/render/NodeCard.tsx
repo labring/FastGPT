@@ -38,6 +38,7 @@ import { formatToolError } from '@fastgpt/global/core/app/utils';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import SecretInputModal from '@/pageComponents/app/plugin/SecretInputModal';
+import { getSystemPlugTemplates } from '@/web/core/app/api/plugin';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -113,6 +114,37 @@ const NodeCard = (props: Props) => {
 
     return { node, parentNode };
   }, [nodeList, nodeId]);
+
+  // get child tools info (if it is a tool set)
+  const { data: childTools } = useRequest2(
+    () => {
+      if (!node?.isFolder || !node?.pluginId) return Promise.resolve([]);
+      const parentId = node.pluginId?.startsWith('system-')
+        ? node.pluginId.replace('system-', '')
+        : node.pluginId;
+      return getSystemPlugTemplates({ parentId });
+    },
+    {
+      manual: !node?.isFolder,
+      refreshDeps: [node?.pluginId]
+    }
+  );
+
+  // calculate secretCost
+  const secretCost = useMemo(() => {
+    if (!node?.isFolder) {
+      return node?.systemKeyCost || 0;
+    }
+
+    if (childTools && Array.isArray(childTools) && childTools.length) {
+      return childTools.map((tool) => ({
+        name: tool.name,
+        cost: tool.systemKeyCost || 0
+      }));
+    }
+
+    return node?.systemKeyCost || 0;
+  }, [node, childTools]);
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
   const showVersion = useMemo(() => {
     // 1. MCP tool set do not have version
@@ -409,6 +441,7 @@ const NodeCard = (props: Props) => {
       <EditTitleModal maxLength={100} />
       {inputConfig && isOpenToolParamConfigModal && (
         <SecretInputModal
+          isFolder={node?.isFolder}
           onClose={onCloseToolParamConfigModal}
           onSubmit={(data) => {
             onChangeNode({
@@ -425,7 +458,7 @@ const NodeCard = (props: Props) => {
           courseUrl={node?.courseUrl}
           inputConfig={inputConfig}
           hasSystemSecret={node?.hasSystemSecret}
-          secretCost={node?.currentCost}
+          secretCost={secretCost}
         />
       )}
     </Flex>
