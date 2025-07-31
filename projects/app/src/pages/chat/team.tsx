@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import NextHead from '@/components/common/NextHead';
-import { getTeamChatInfo } from '@/web/core/chat/api';
+import { getChatSetting, getTeamChatInfo } from '@/web/core/chat/api';
 import { useRouter } from 'next/router';
 import { Box, Flex, Drawer, DrawerOverlay, DrawerContent, useTheme } from '@chakra-ui/react';
 import SideBar from '@/components/SideBar';
@@ -20,7 +20,12 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
 import { type AppListItemType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
-import { GetChatTypeEnum } from '@/global/core/chat/constants';
+import {
+  ChatSidebarPaneEnum,
+  defaultCollapseStatus,
+  type CollapseStatusType,
+  GetChatTypeEnum
+} from '@/global/core/chat/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
@@ -35,6 +40,7 @@ import { useMount } from 'ahooks';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
+import type { ChatSettingSchema } from '@fastgpt/global/core/chat/type';
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
 type Props = { appId: string; chatId: string; teamId: string; teamToken: string };
@@ -70,6 +76,21 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
+
+  //------------ states ------------//
+  const [collapse, setCollapse] = useState<CollapseStatusType>(defaultCollapseStatus);
+  const [chatSettings, setChatSettings] = useState<ChatSettingSchema | null>(null);
+  const [pane, setPane] = useState<ChatSidebarPaneEnum>(
+    !!feConfigs.isPlus ? ChatSidebarPaneEnum.HOME : ChatSidebarPaneEnum.RECENTLY_USED_APPS
+  );
+
+  //------------ derived states ------------//
+  const isChatWindow =
+    pane === ChatSidebarPaneEnum.HOME || pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS;
+  const logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'> = {
+    wideLogoUrl: chatSettings?.wideLogoUrl,
+    squareLogoUrl: chatSettings?.squareLogoUrl
+  };
 
   // get chat app info
   const { loading } = useRequest2(
@@ -182,13 +203,34 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     );
   }, [appId, isOpenSlider, isPc, onCloseSlider, datasetCiteData, t]);
 
+  const refreshSettings = useCallback(async () => {
+    try {
+      const settings = await getChatSetting();
+      setChatSettings(settings);
+    } catch (error) {
+      console.error('Failed to refresh settings:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshSettings();
+  }, [refreshSettings]);
+
   return (
     <Flex h={'100%'}>
       <NextHead title={chatBoxData.app.name} icon={chatBoxData.app.avatar}></NextHead>
       {/* pc show myself apps */}
       {isPc && (
         <Box borderRight={theme.borders.base} w={'220px'} flexShrink={0}>
-          <SliderApps apps={myApps} activeAppId={appId} />
+          <SliderApps
+            logos={logos}
+            apps={myApps}
+            activeAppId={appId}
+            collapse={collapse}
+            pane={pane}
+            onCollapse={setCollapse}
+            onPaneChange={setPane}
+          />
         </Box>
       )}
 
