@@ -93,6 +93,8 @@
   "setting.copyright.diagram": "示意图",
   "setting.copyright.logo": "Logo",
   "setting.copyright.basic_configuration": "基础配置",
+  "setting.incorrect_version": "当前版本不支持该功能",
+  "setting.incorrect_plan": "当前套餐不支持该功能，请联系管理员升级至企业版套餐",
   "setting.save": "保存",
   "setting.share": "分享",
   "setting.home.title": "首页配置",

@@ -21,6 +21,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ChatSidebarPaneEnum, type CollapseStatusType } from '@/global/core/chat/constants';
 import type { ChatSettingSchema } from '@fastgpt/global/core/chat/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 type Props = {
   activeAppId: string;
@@ -81,6 +82,7 @@ const SliderApps = ({
   //------------ hooks ------------//
   const router = useRouter();
   const { t } = useTranslation();
+  const { toast } = useToast();
 
   //------------ stores ------------//
   const { feConfigs } = useSystemStore();
@@ -97,6 +99,7 @@ const SliderApps = ({
   const isEnterprisePlan = !!teamPlanStatus?.standard?.currentSubLevel;
   const isWideLogoEmpty = !logos.wideLogoUrl;
   const isSquareLogoEmpty = !logos.squareLogoUrl;
+  const isAdmin = !!userInfo?.team.permission.hasManagePer;
   const showDefaultWideLogo = isCommercialVersion
     ? isWideLogoEmpty
     : isEnterprisePlan
@@ -139,6 +142,24 @@ const SliderApps = ({
     },
     [pane, router, activeAppId, onPaneChange]
   );
+
+  const handleClickSettingButton = () => {
+    if (isCommercialVersion) {
+      if (isEnterprisePlan && isAdmin) {
+        onPaneChange(ChatSidebarPaneEnum.SETTING);
+      } else {
+        toast({
+          status: 'warning',
+          title: t('chat:setting.incorrect_plan')
+        });
+      }
+    } else {
+      toast({
+        status: 'warning',
+        title: t('chat:setting.incorrect_version')
+      });
+    }
+  };
 
   return (
     <MotionFlex
@@ -373,37 +394,39 @@ const SliderApps = ({
           minH="40px"
         >
           {/* 设置按钮 - 在收起状态时显示在上方，展开状态时显示在右侧 */}
-          <MotionBox
-            order={collapse ? 1 : 2}
-            layout={false}
-            w="40px"
-            h="40px"
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-          >
-            <Flex
-              _hover={{ bg: 'myGray.200' }}
-              bg={pane === ChatSidebarPaneEnum.SETTING ? 'myGray.200' : 'transparent'}
-              borderRadius={'8px'}
-              p={2}
-              cursor={'pointer'}
+          {isAdmin && (
+            <MotionBox
+              order={collapse ? 1 : 2}
+              layout={false}
               w="40px"
               h="40px"
+              display="flex"
               alignItems="center"
               justifyContent="center"
-              onClick={() => onPaneChange(ChatSidebarPaneEnum.SETTING)}
             >
-              <Flex alignItems={'center'} justifyContent={'center'}>
-                <MyIcon
-                  w={'20px'}
-                  h={'20px'}
-                  name={'common/setting'}
-                  fill={pane === ChatSidebarPaneEnum.SETTING ? 'primary.500' : 'myGray.400'}
-                />
+              <Flex
+                _hover={{ bg: 'myGray.200' }}
+                bg={pane === ChatSidebarPaneEnum.SETTING ? 'myGray.200' : 'transparent'}
+                borderRadius={'8px'}
+                p={2}
+                cursor={'pointer'}
+                w="40px"
+                h="40px"
+                alignItems="center"
+                justifyContent="center"
+                onClick={handleClickSettingButton}
+              >
+                <Flex alignItems={'center'} justifyContent={'center'}>
+                  <MyIcon
+                    w={'20px'}
+                    h={'20px'}
+                    name={'common/setting'}
+                    fill={pane === ChatSidebarPaneEnum.SETTING ? 'primary.500' : 'myGray.400'}
+                  />
+                </Flex>
               </Flex>
-            </Flex>
-          </MotionBox>
+            </MotionBox>
+          )}
 
           {/* 头像区域 - 在收起状态时显示在下方，展开状态时显示在左侧 */}
           <MotionBox
