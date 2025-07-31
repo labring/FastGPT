@@ -58,6 +58,7 @@
   "copy_one_app": "建立副本",
   "core.app.QG.Switch": "啟用猜你想問",
   "core.dataset.import.Custom prompt": "自訂提示詞",
+  "core.module.template.System Tools": "系統工具",
   "create_by_curl": "從 CURL 建立",
   "create_by_template": "從範本建立",
   "create_copy_success": "建立副本成功",
