@@ -15,7 +15,7 @@ const CostTooltip = ({
 
   const getCostText = () => {
     if (isFolder) {
-      return '该工具集包含下属工具，调用积分依据实际调用工具决定';
+      return t('app:plugin_cost_folder_tip');
     }
 
     if (hasTokenFee && cost && cost > 0) {
