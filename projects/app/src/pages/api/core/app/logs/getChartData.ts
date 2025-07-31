@@ -389,7 +389,7 @@ function aggregateDataByTimespan(
       })();
 
       acc[key] = {
-        date: representativeDate,
+        date: representativeDate(itemDate),
         users: new Set<string>(),
         newUsers: new Set<string>(),
         stats: {
