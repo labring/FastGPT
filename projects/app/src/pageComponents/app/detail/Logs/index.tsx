@@ -345,7 +345,7 @@ const Logs = () => {
             onSelect={setChatSources}
             isSelectAll={isSelectAllSource}
             setIsSelectAll={setIsSelectAllSource}
-            h={10}
+            h={9}
             w={'226px'}
             rounded={'8px'}
             tagStyle={{
@@ -366,7 +366,7 @@ const Logs = () => {
               setDateRange(date);
             }}
             bg={'white'}
-            h={10}
+            h={9}
             w={'240px'}
             rounded={'8px'}
             borderColor={'myGray.200'}
@@ -386,7 +386,7 @@ const Logs = () => {
             ScrollData={TmbScrollData}
             isSelectAll={isSelectAllTmb}
             setIsSelectAll={setIsSelectAllTmb}
-            h={10}
+            h={9}
             w={'226px'}
             rounded={'8px'}
             formLabel={t('common:member')}
@@ -402,7 +402,7 @@ const Logs = () => {
         </Flex>
         <Flex
           w={'226px'}
-          h={10}
+          h={9}
           alignItems={'center'}
           rounded={'8px'}
           border={'1px solid'}

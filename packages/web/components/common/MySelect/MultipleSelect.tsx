@@ -232,7 +232,7 @@ const MultipleSelect = <T = any,>({
           px={3}
           alignItems={'center'}
           borderRadius={'md'}
-          border={'base'}
+          border={'sm'}
           userSelect={'none'}
           cursor={isDisabled ? 'not-allowed' : 'pointer'}
           _active={{
@@ -251,102 +251,100 @@ const MultipleSelect = <T = any,>({
               }
             : {})}
         >
-          <Flex alignItems={'center'} w={'100%'}>
-            <Flex alignItems={'center'} flex={1}>
-              {formLabel && (
-                <>
-                  <Box color={'myGray.600'} fontSize={formLabelFontSize} whiteSpace={'nowrap'}>
-                    {formLabel}
-                  </Box>
-                  <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
-                </>
-              )}
-              {value.length === 0 && placeholder ? (
-                <Box color={'myGray.500'} fontSize={formLabelFontSize}>
-                  {placeholder}
+          <Flex alignItems={'center'} w={'100%'} h={'100%'} py={1.5}>
+            {formLabel && (
+              <Flex alignItems={'center'}>
+                <Box color={'myGray.600'} fontSize={formLabelFontSize} whiteSpace={'nowrap'}>
+                  {formLabel}
                 </Box>
-              ) : null}
-            </Flex>
-            <Flex
-              ref={tagsContainerRef}
-              w={'100%'}
-              py={1}
-              gap={1}
-              flexWrap={'nowrap'}
-              overflow={'hidden'}
-              alignItems={'center'}
-            >
-              {(!isOpen || !canInput) &&
-                (isSelectAll ? (
-                  <Box fontSize={formLabelFontSize} color={'myGray.900'}>
-                    {t('common:All')}
-                  </Box>
-                ) : (
-                  <>
-                    {visibleItems.map((item, i) => (
-                      <MyTag
-                        className="tag-icon"
-                        key={i}
-                        bg={'primary.100'}
-                        color={'primary.700'}
-                        type={'fill'}
-                        borderRadius={'lg'}
-                        px={2}
-                        py={0.5}
-                        flexShrink={0}
-                        {...tagStyle}
-                      >
-                        {item.label}
-                        {closeable && (
-                          <MyIcon
-                            name={'common/closeLight'}
-                            ml={1}
-                            w="0.8rem"
-                            cursor={'pointer'}
-                            _hover={{
-                              color: 'red.500'
-                            }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              onclickItem(item.value);
-                            }}
-                          />
-                        )}
-                      </MyTag>
-                    ))}
-                    {overflowItems.length > 0 && (
-                      <Box
-                        fontSize={formLabelFontSize}
-                        px={2}
-                        py={0.5}
-                        flexShrink={0}
-                        borderRadius={'lg'}
-                        bg={'myGray.100'}
-                      >
-                        +{overflowItems.length}
-                      </Box>
-                    )}
-                  </>
-                ))}
-              {canInput && isOpen && (
-                <Input
-                  value={inputValue}
-                  onChange={(e) => setInputValue?.(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  ref={SearchInputRef}
-                  autoFocus
-                  onBlur={() => {
-                    setTimeout(() => {
-                      SearchInputRef?.current?.focus();
-                    }, 0);
-                  }}
-                  h={6}
-                  variant={'unstyled'}
-                  border={'none'}
-                />
-              )}
-            </Flex>
+                <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
+              </Flex>
+            )}
+            {value.length === 0 && placeholder ? (
+              <Box color={'myGray.500'} fontSize={formLabelFontSize} flex={1}>
+                {placeholder}
+              </Box>
+            ) : (
+              <Flex
+                ref={tagsContainerRef}
+                flex={'1 0 0'}
+                gap={1}
+                flexWrap={'nowrap'}
+                overflow={'hidden'}
+                alignItems={'center'}
+              >
+                {(!isOpen || !canInput) &&
+                  (isSelectAll ? (
+                    <Box fontSize={formLabelFontSize} color={'myGray.900'}>
+                      {t('common:All')}
+                    </Box>
+                  ) : (
+                    <>
+                      {visibleItems.map((item, i) => (
+                        <MyTag
+                          className="tag-icon"
+                          key={i}
+                          bg={'primary.100'}
+                          color={'primary.700'}
+                          type={'fill'}
+                          borderRadius={'lg'}
+                          px={2}
+                          py={0.5}
+                          flexShrink={0}
+                          {...tagStyle}
+                        >
+                          {item.label}
+                          {closeable && (
+                            <MyIcon
+                              name={'common/closeLight'}
+                              ml={1}
+                              w="0.8rem"
+                              cursor={'pointer'}
+                              _hover={{
+                                color: 'red.500'
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                onclickItem(item.value);
+                              }}
+                            />
+                          )}
+                        </MyTag>
+                      ))}
+                      {overflowItems.length > 0 && (
+                        <Box
+                          fontSize={formLabelFontSize}
+                          px={2}
+                          py={0.5}
+                          flexShrink={0}
+                          borderRadius={'lg'}
+                          bg={'myGray.100'}
+                        >
+                          +{overflowItems.length}
+                        </Box>
+                      )}
+                    </>
+                  ))}
+                {canInput && isOpen && (
+                  <Input
+                    value={inputValue}
+                    onChange={(e) => setInputValue?.(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    ref={SearchInputRef}
+                    autoFocus
+                    onBlur={() => {
+                      setTimeout(() => {
+                        SearchInputRef?.current?.focus();
+                      }, 0);
+                    }}
+                    h={6}
+                    variant={'unstyled'}
+                    border={'none'}
+                  />
+                )}
+              </Flex>
+            )}
             <MyIcon name={'core/chat/chevronDown'} color={'myGray.600'} w={4} h={4} />
           </Flex>
         </MenuButton>
