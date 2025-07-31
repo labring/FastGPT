@@ -18,18 +18,18 @@ import type {
 } from '@fastgpt/global/common/parentFolder/type';
 import { getMyApps } from '@/web/core/app/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { ChatSidebarPanelEnum, type CollapseStatusType } from '@/global/core/chat/constants';
+import { ChatSidebarPaneEnum, type CollapseStatusType } from '@/global/core/chat/constants';
 import type { ChatSettingSchema } from '@fastgpt/global/core/chat/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type Props = {
   activeAppId: string;
   apps: AppListItemType[];
-  pane: ChatSidebarPanelEnum;
+  pane: ChatSidebarPaneEnum;
   collapse: CollapseStatusType;
   logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'>;
   onCollapse: (collapse: CollapseStatusType) => void;
-  onPaneChange: (pane: ChatSidebarPanelEnum) => void;
+  onPaneChange: (pane: ChatSidebarPaneEnum) => void;
 };
 
 const MotionBox = motion(Box);
@@ -90,6 +90,7 @@ const SliderApps = ({
   const [imageLoaded, setImageLoaded] = useState(false);
 
   //------------ derived states ------------//
+  const isLoggedIn = !!userInfo;
   const isTeamChat = router.pathname === '/chat/team';
   const { avatar, username } = userInfo as NonNullable<typeof userInfo>;
   const isCommercialVersion = !!feConfigs.isPlus;
@@ -111,8 +112,6 @@ const SliderApps = ({
     ? '/imgs/fastgpt_slogan_fold.svg'
     : logos.squareLogoUrl;
 
-  const isLoggedIn = !!userInfo;
-
   const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
     return getMyApps({
       parentId,
@@ -128,14 +127,14 @@ const SliderApps = ({
   }, []);
 
   const isRecentlyUsedAppSelected = (id: string): boolean =>
-    pane === ChatSidebarPanelEnum.RECENTLY_USED_APPS && id === activeAppId;
+    pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && id === activeAppId;
 
   const handleToggleSidebar = () => onCollapse(collapse === 0 ? 1 : 0);
 
   const handleSelectRecentlyUsedApp = useCallback(
     (id: string) => {
-      if (pane === ChatSidebarPanelEnum.RECENTLY_USED_APPS && id === activeAppId) return;
-      onPaneChange(ChatSidebarPanelEnum.RECENTLY_USED_APPS);
+      if (pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && id === activeAppId) return;
+      onPaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS);
       router.replace({ query: { ...router.query, appId: id } });
     },
     [pane, router, activeAppId, onPaneChange]
@@ -385,7 +384,7 @@ const SliderApps = ({
           >
             <Flex
               _hover={{ bg: 'myGray.200' }}
-              bg={pane === ChatSidebarPanelEnum.SETTING ? 'myGray.200' : 'transparent'}
+              bg={pane === ChatSidebarPaneEnum.SETTING ? 'myGray.200' : 'transparent'}
               borderRadius={'8px'}
               p={2}
               cursor={'pointer'}
@@ -393,14 +392,14 @@ const SliderApps = ({
               h="40px"
               alignItems="center"
               justifyContent="center"
-              onClick={() => onPaneChange(ChatSidebarPanelEnum.SETTING)}
+              onClick={() => onPaneChange(ChatSidebarPaneEnum.SETTING)}
             >
               <Flex alignItems={'center'} justifyContent={'center'}>
                 <MyIcon
                   w={'20px'}
                   h={'20px'}
                   name={'common/setting'}
-                  fill={pane === ChatSidebarPanelEnum.SETTING ? 'primary.500' : 'myGray.400'}
+                  fill={pane === ChatSidebarPaneEnum.SETTING ? 'primary.500' : 'myGray.400'}
                 />
               </Flex>
             </Flex>

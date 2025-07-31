@@ -19,7 +19,7 @@ import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
-  ChatSidebarPanelEnum,
+  ChatSidebarPaneEnum,
   defaultCollapseStatus,
   type CollapseStatusType,
   GetChatTypeEnum
@@ -53,6 +53,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 
   //------------ stores ------------//
   const { userInfo } = useUserStore();
+  const { feConfigs } = useSystemStore();
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
   //------------ context states ------------//
@@ -73,13 +74,15 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
   //------------ states ------------//
-  const [pane, setPane] = useState<ChatSidebarPanelEnum>(ChatSidebarPanelEnum.HOME);
   const [collapse, setCollapse] = useState<CollapseStatusType>(defaultCollapseStatus);
   const [chatSettings, setChatSettings] = useState<ChatSettingSchema | null>(null);
+  const [pane, setPane] = useState<ChatSidebarPaneEnum>(
+    !!feConfigs.isPlus ? ChatSidebarPaneEnum.HOME : ChatSidebarPaneEnum.RECENTLY_USED_APPS
+  );
 
   //------------ derived states ------------//
   const isChatWindow =
-    pane === ChatSidebarPanelEnum.HOME || pane === ChatSidebarPanelEnum.RECENTLY_USED_APPS;
+    pane === ChatSidebarPaneEnum.HOME || pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS;
   const logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'> = {
     wideLogoUrl: chatSettings?.wideLogoUrl,
     squareLogoUrl: chatSettings?.squareLogoUrl
@@ -225,7 +228,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                 flexDirection={'column'}
               >
                 {/* only show chat header when in recently used apps mode */}
-                {pane === ChatSidebarPanelEnum.RECENTLY_USED_APPS && (
+                {pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && (
                   <ChatHeader
                     totalRecordsCount={totalRecordsCount}
                     apps={myApps}
@@ -235,14 +238,14 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                 )}
 
                 {/* home chat window */}
-                {pane === ChatSidebarPanelEnum.HOME && (
+                {pane === ChatSidebarPaneEnum.HOME && (
                   <Box flex={'1 0 0'} bg={'white'}>
                     {/* TODO: add home chat window */}
                   </Box>
                 )}
 
                 {/* recently used apps chat window */}
-                {pane === ChatSidebarPanelEnum.RECENTLY_USED_APPS && (
+                {pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && (
                   <Box flex={'1 0 0'} bg={'white'}>
                     {isPlugin ? (
                       <CustomPluginRunBox
@@ -271,7 +274,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
           )}
 
           {/* setting */}
-          {pane === ChatSidebarPanelEnum.SETTING && (
+          {pane === ChatSidebarPaneEnum.SETTING && (
             <ChatSetting settings={chatSettings} onSettingsRefresh={refreshSettings} />
           )}
         </PageContainer>
