@@ -18,6 +18,7 @@ import { getNodeInputTypeFromSchemaInputType } from '@fastgpt/global/core/app/js
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import ValueTypeLabel from '../WorkflowComponents/Flow/nodes/render/ValueTypeLabel';
+import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 
 const ChatTest = ({
   currentTool,
@@ -43,6 +44,20 @@ const ChatTest = ({
   const { runAsync: runTool, loading: isRunning } = useRequest2(
     async (data: Record<string, any>) => {
       if (!currentTool) return;
+
+      // Format type
+      Object.entries(currentTool?.inputSchema.properties || {}).forEach(
+        ([paramName, paramInfo]) => {
+          const valueType = getNodeInputTypeFromSchemaInputType({
+            type: paramInfo.type,
+            arrayItems: paramInfo.items
+          });
+          if (data[paramName] !== undefined) {
+            data[paramName] = valueTypeFormat(data[paramName], valueType);
+          }
+        }
+      );
+
       return await postRunMCPTool({
         params: data,
         url,
