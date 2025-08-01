@@ -1,7 +1,7 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   type RuntimeEdgeItemType,
   type RuntimeNodeItemType,
@@ -17,10 +17,9 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getSystemTools } from '../../../core/app/plugin/controller';
 import { MongoApp } from '../../../core/app/schema';
 import { getMCPChildren } from '../../../core/app/mcp';
-import { getSystemToolRuntimeNodeById } from '../utils';
+import { getSystemToolRunTimeNodeFromSystemToolset } from '../utils';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -195,35 +194,13 @@ export const rewriteRuntimeWorkFlow = async ({
 
     // systemTool
     if (systemToolId) {
-      const toolsetInputConfig = toolSetNode.inputs.find(
-        (item) => item.key === NodeInputKeyEnum.systemInputConfig
-      );
-      // Get children
-      const tools = await getSystemTools();
-      const children = tools.filter((item) => item.parentId === systemToolId);
-
-      for (const child of children) {
-        // Get the child tool name
-        const toolListItem = toolSetNode.toolConfig?.systemToolSet?.toolList.find(
-          (item) => item.toolId === child.id
-        )!;
-
-        // Get the tool node and add secret
-        const newNode = await getSystemToolRuntimeNodeById({
-          pluginId: child.id,
-          name: toolListItem?.name,
-          intro: toolListItem?.description
-        });
-        const newNodeInputConfig = newNode.inputs.find(
-          (item) => item.key === NodeInputKeyEnum.systemInputConfig
-        );
-        if (newNodeInputConfig) {
-          newNodeInputConfig.value = toolsetInputConfig?.value;
-        }
-
-        nodes.push(newNode);
-        pushEdges(newNode.nodeId);
-      }
+      const children = await getSystemToolRunTimeNodeFromSystemToolset({
+        toolSetNode
+      });
+      children.forEach((node) => {
+        nodes.push(node);
+        pushEdges(node.nodeId);
+      });
     } else if (mcpToolsetVal) {
       const app = await MongoApp.findOne({ _id: toolSetNode.pluginId }).lean();
       if (!app) continue;
