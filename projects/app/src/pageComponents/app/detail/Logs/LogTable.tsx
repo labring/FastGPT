@@ -19,7 +19,6 @@ import MultipleSelect, {
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import type { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
 import DateRangePicker from '@fastgpt/web/components/common/DateRangePicker';
 import { addDays } from 'date-fns';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
@@ -47,6 +46,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import dynamic from 'next/dynamic';
 import type { HeaderControlProps } from './LogChart';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
@@ -60,6 +60,7 @@ const LogTable = ({
 }: HeaderControlProps) => {
   const { t } = useTranslation();
   const appId = useContextSelector(AppContext, (v) => v.appId);
+  const { feConfigs } = useSystemStore();
 
   const [detailLogsId, setDetailLogsId] = useState<string>();
 
@@ -77,7 +78,8 @@ const LogTable = ({
   const [tmbInputValue, setTmbInputValue] = useState('');
   const { data: members, ScrollData: TmbScrollData } = useScrollPagination(getTeamMembers, {
     params: { searchKey: tmbInputValue },
-    refreshDeps: [tmbInputValue]
+    refreshDeps: [tmbInputValue],
+    disabled: !feConfigs?.isPlus
   });
   const tmbList = useMemo(
     () =>
@@ -366,31 +368,33 @@ const LogTable = ({
             }}
           />
         </Flex>
-        <Flex>
-          <MultipleSelect<string>
-            list={tmbList}
-            value={selectTmbIds}
-            onSelect={(val) => {
-              setSelectTmbIds(val as string[]);
-            }}
-            ScrollData={TmbScrollData}
-            isSelectAll={isSelectAllTmb}
-            setIsSelectAll={setIsSelectAllTmb}
-            h={10}
-            w={'226px'}
-            rounded={'8px'}
-            formLabelFontSize={'sm'}
-            formLabel={t('common:member')}
-            tagStyle={{
-              px: 1,
-              borderRadius: 'sm',
-              bg: 'myGray.100',
-              w: '76px'
-            }}
-            inputValue={tmbInputValue}
-            setInputValue={setTmbInputValue}
-          />
-        </Flex>
+        {feConfigs?.isPlus && (
+          <Flex>
+            <MultipleSelect<string>
+              list={tmbList}
+              value={selectTmbIds}
+              onSelect={(val) => {
+                setSelectTmbIds(val as string[]);
+              }}
+              ScrollData={TmbScrollData}
+              isSelectAll={isSelectAllTmb}
+              setIsSelectAll={setIsSelectAllTmb}
+              h={10}
+              w={'226px'}
+              rounded={'8px'}
+              formLabelFontSize={'sm'}
+              formLabel={t('common:member')}
+              tagStyle={{
+                px: 1,
+                borderRadius: 'sm',
+                bg: 'myGray.100',
+                w: '76px'
+              }}
+              inputValue={tmbInputValue}
+              setInputValue={setTmbInputValue}
+            />
+          </Flex>
+        )}
         <Flex
           w={'226px'}
           h={10}

@@ -8,10 +8,14 @@ import type { DateRangeType } from '@fastgpt/web/components/common/DateRangePick
 import { addDays } from 'date-fns';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { useMultipleSelect } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const Logs = () => {
   const { t } = useTranslation();
-  const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
+  const { toast } = useToast();
+  const { feConfigs } = useSystemStore();
+  const [viewMode, setViewMode] = useState<'chart' | 'table'>(feConfigs.isPlus ? 'chart' : 'table');
 
   const [dateRange, setDateRange] = useState<DateRangeType>({
     from: new Date(addDays(new Date(), -6).setHours(0, 0, 0, 0)),
@@ -47,7 +51,16 @@ const Logs = () => {
             px={2}
             py={2}
             cursor={'pointer'}
-            onClick={() => setViewMode('chart')}
+            onClick={() => {
+              if (!feConfigs.isPlus) {
+                toast({
+                  title: t('common:commercial_function_tip'),
+                  status: 'warning'
+                });
+                return;
+              }
+              setViewMode('chart');
+            }}
             gap={2}
             borderRadius={'8px'}
             fontWeight={'medium'}
