@@ -185,7 +185,6 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
             <DateRangePicker
               defaultDate={filterProps.dateRange}
               dateRange={filterProps.dateRange}
-              position="bottom"
               onSuccess={(e) => setFilterProps({ ...filterProps, dateRange: e })}
             />
           </Box>

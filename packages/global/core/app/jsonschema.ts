@@ -56,12 +56,12 @@ const getNodeInputRenderTypeFromSchemaInputType = ({
   }
   if (type === 'string') {
     return {
-      renderTypeList: [FlowNodeInputTypeEnum.input]
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
     };
   }
   if (type === 'number') {
     return {
-      renderTypeList: [FlowNodeInputTypeEnum.numberInput],
+      renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
       max: maximum,
       min: minimum
     };
@@ -71,7 +71,7 @@ const getNodeInputRenderTypeFromSchemaInputType = ({
       renderTypeList: [FlowNodeInputTypeEnum.switch]
     };
   }
-  return { renderTypeList: [FlowNodeInputTypeEnum.JSONEditor] };
+  return { renderTypeList: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference] };
 };
 export const jsonSchema2NodeInput = (jsonSchema: JSONSchemaInputType): FlowNodeInputItemType[] => {
   return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => ({

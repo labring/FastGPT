@@ -1,6 +1,7 @@
 import { type AppSchema } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoApp } from './schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { encryptSecretValue, storeSecretValue } from '../../common/secret/utils';
@@ -19,6 +20,7 @@ import { MongoResourcePermission } from '../../support/permission/schema';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { removeImageByPath } from '../../common/file/image/controller';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
+import { MongoAppLogKeys } from './logs/logkeysSchema';
 
 export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }) => {
   if (!nodes) return;
@@ -140,6 +142,10 @@ export const onDelOneApp = async ({
     fields: '_id avatar'
   });
 
+  const deletedAppIds = apps
+    .filter((app) => app.type !== AppTypeEnum.folder)
+    .map((app) => String(app._id));
+
   // Remove eval job
   const evalJobs = await MongoEvaluation.find(
     {
@@ -191,6 +197,10 @@ export const onDelOneApp = async ({
         resourceId: appId
       }).session(session);
 
+      await MongoAppLogKeys.deleteMany({
+        appId
+      }).session(session);
+
       // delete app
       await MongoApp.deleteOne(
         {
@@ -204,8 +214,10 @@ export const onDelOneApp = async ({
   };
 
   if (session) {
-    return del(session);
+    await del(session);
+    return deletedAppIds;
   }
 
-  return mongoSessionRun(del);
+  await mongoSessionRun(del);
+  return deletedAppIds;
 };

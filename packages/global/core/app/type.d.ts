@@ -146,7 +146,7 @@ export type SettingAIDataType = {
 
 // variable
 export type VariableItemType = {
-  id: string;
+  // id: string;
   key: string;
   label: string;
   type: VariableInputEnum;
@@ -161,6 +161,8 @@ export type VariableItemType = {
   max?: number;
   min?: number;
   // select
+  list?: { label: string; value: string }[];
+  // @deprecated
   enums?: { value: string; label: string }[];
 };
 // tts

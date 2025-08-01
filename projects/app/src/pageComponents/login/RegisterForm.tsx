@@ -50,7 +50,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   });
   const username = watch('username');
 
-  const { SendCodeBox } = useSendCode({ type: 'register' });
+  const { SendCodeBox, openCodeAuthModal } = useSendCode({ type: 'register' });
 
   const { runAsync: onclickRegister, loading: requesting } = useRequest2(
     async ({ username, password, code }: RegisterType) => {
@@ -122,7 +122,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
       <Box
         mt={9}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey && !requesting) {
+          if (!openCodeAuthModal && e.key === 'Enter' && !e.shiftKey && !requesting) {
             handleSubmit(onclickRegister, onSubmitErr)();
           }
         }}

@@ -15,12 +15,12 @@ import { type UsageItemType } from '@fastgpt/global/support/wallet/usage/type.d'
 import dayjs from 'dayjs';
 import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useTranslation } from 'next-i18next';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => void }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const filterBillList = useMemo(
     () => usage.list.filter((item) => item && item.moduleName),
     [usage.list]

@@ -22,18 +22,21 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import VariablePopover from '@/components/core/chat/ChatContainer/ChatBox/components/VariablePopover';
+import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 
 type Props = {
   isOpen: boolean;
   nodes?: StoreNodeItemType[];
   edges?: StoreEdgeItemType[];
   onClose: () => void;
+  chatId: string;
 };
 
-const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
+const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) => {
   const { t } = useTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const isPlugin = appDetail.type === AppTypeEnum.plugin;
+  const { copyData } = useCopyData();
 
   const { restartChat, ChatContainer, loading } = useChatTest({
     nodes,
@@ -118,7 +121,16 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
           >
             <Flex fontSize={'16px'} fontWeight={'bold'} alignItems={'center'} mr={3}>
               <MyIcon name={'common/paused'} w={'14px'} mr={2.5} />
-              {t('common:core.chat.Run test')}
+              <MyTooltip label={chatId ? t('common:chat_chatId', { chatId }) : ''}>
+                <Box
+                  cursor={'pointer'}
+                  onClick={() => {
+                    copyData(chatId);
+                  }}
+                >
+                  {t('common:core.chat.Run test')}
+                </Box>
+              </MyTooltip>
             </Flex>
             {!isVariableVisible && <VariablePopover showExternalVariables />}
             <Box flex={1} />
@@ -199,7 +211,7 @@ const Render = (Props: Props) => {
       showNodeStatus
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>
-        <ChatTest {...Props} />
+        <ChatTest {...Props} chatId={chatId} />
       </ChatRecordContextProvider>
     </ChatItemContextProvider>
   );
