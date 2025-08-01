@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Flex } from '@chakra-ui/react';
-import { cardStyles } from '../constants';
 import LogTable from './LogTable';
 import LogChart from './LogChart';
 import MyIcon from '@fastgpt/web/components/common/Icon';

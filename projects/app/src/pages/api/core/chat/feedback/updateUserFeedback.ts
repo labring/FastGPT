@@ -7,7 +7,6 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 
-/* 初始化我的聊天框，需要身份验证 */
 async function handler(req: ApiRequestProps<UpdateChatFeedbackProps>, res: NextApiResponse) {
   const { appId, chatId, dataId, userBadFeedback, userGoodFeedback } = req.body;
 
@@ -42,36 +41,34 @@ async function handler(req: ApiRequestProps<UpdateChatFeedbackProps>, res: NextA
   );
 
   if (chatItem.obj !== ChatRoleEnum.AI) return;
-  const messageTime = chatItem.time || chatItem._id.getTimestamp();
 
-  const getFeedbackDelta = (() => {
-    const goodFeedbackDelta =
-      !userGoodFeedback && chatItem.userGoodFeedback
-        ? -1
-        : userGoodFeedback && !chatItem.userGoodFeedback
-          ? 1
-          : 0;
+  const goodFeedbackDelta = (() => {
+    if (!userGoodFeedback && chatItem.userGoodFeedback) {
+      return -1;
+    } else if (userGoodFeedback && !chatItem.userGoodFeedback) {
+      return 1;
+    }
+    return 0;
+  })();
 
-    const badFeedbackDelta =
-      !userBadFeedback && chatItem.userBadFeedback
-        ? -1
-        : userBadFeedback && !chatItem.userBadFeedback
-          ? 1
-          : 0;
-
-    return { goodFeedbackDelta, badFeedbackDelta };
+  const badFeedbackDelta = (() => {
+    if (!userBadFeedback && chatItem.userBadFeedback) {
+      return -1;
+    } else if (userBadFeedback && !chatItem.userBadFeedback) {
+      return 1;
+    }
+    return 0;
   })();
 
   await MongoAppChatLog.findOneAndUpdate(
     {
       appId,
-      chatId,
-      createTime: { $lte: messageTime }
+      chatId
     },
     {
       $inc: {
-        goodFeedbackCount: getFeedbackDelta.goodFeedbackDelta,
-        badFeedbackCount: getFeedbackDelta.badFeedbackDelta
+        goodFeedbackCount: goodFeedbackDelta,
+        badFeedbackCount: badFeedbackDelta
       }
     },
     {
