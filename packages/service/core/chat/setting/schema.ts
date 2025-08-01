@@ -12,24 +12,11 @@ const ChatSettingSchema = new Schema({
     ref: TeamCollectionName,
     required: true
   },
-  slogan: {
-    type: String,
-    default: ''
-  },
-  dialogTips: {
-    type: String,
-    default: ''
-  },
-  teamApps: {
-    type: [String],
-    default: []
-  },
-  wideLogoUrl: {
-    type: String
-  },
-  squareLogoUrl: {
-    type: String
-  }
+  slogan: String,
+  dialogTips: String,
+  teamApps: [String],
+  wideLogoUrl: String,
+  squareLogoUrl: String
 });
 
 ChatSettingSchema.index({ teamId: 1 });

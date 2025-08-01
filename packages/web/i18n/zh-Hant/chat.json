@@ -99,7 +99,7 @@
   "setting.incorrect_plan": "當前套餐不支持該功能，請聯繫管理員升級至企業版套餐",
   "setting.incorrect_version": "當前版本不支持該功能",
   "setting.save": "保存",
-  "side_bar.home": "首頁",
+  "sidebar.home": "首頁",
   "source_cronJob": "定時執行",
   "start_chat": "開始對話",
   "stream_output": "串流輸出",

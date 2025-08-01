@@ -100,7 +100,7 @@
   "setting.incorrect_plan": "The current package does not support this function, please contact the administrator to upgrade to the enterprise version package.",
   "setting.incorrect_version": "This feature is not supported in the current version",
   "setting.save": "Save",
-  "side_bar.home": "Home",
+  "sidebar.home": "Home",
   "source_cronJob": "Scheduled execution",
   "start_chat": "Start",
   "stream_output": "Stream Output",

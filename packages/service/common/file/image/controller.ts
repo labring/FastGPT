@@ -11,18 +11,6 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 export const maxImgSize = 1024 * 1024 * 12;
 const base64MimeRegex = /data:image\/([^\)]+);base64/;
 
-// 删除指定类型的旧图片
-export async function deleteOldImages({
-  teamId,
-  session
-}: {
-  teamId: string;
-  session?: ClientSession;
-}) {
-  const deleteResult = await MongoImage.deleteMany({ teamId }, session ? { session } : {});
-  return deleteResult;
-}
-
 export async function uploadMongoImg({
   base64Img,
   teamId,
