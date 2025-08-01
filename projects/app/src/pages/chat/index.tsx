@@ -42,6 +42,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ChatSetting from '@/components/core/chat/ChatSetting';
 import { useChat } from '@/global/core/chat/hooks';
 import type { ChatSettingSchema } from '@fastgpt/global/core/chat/type';
+import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -52,7 +53,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const { isPc } = useSystem();
 
   //------------ stores ------------//
-  const { userInfo } = useUserStore();
+  const { userInfo, teamPlanStatus } = useUserStore();
   const { feConfigs } = useSystemStore();
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
@@ -73,11 +74,17 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
+  //------------ derived states ------------//
+  const isCommercialVersion = !!feConfigs.isPlus;
+
   //------------ states ------------//
   const [collapse, setCollapse] = useState<CollapseStatusType>(defaultCollapseStatus);
   const [chatSettings, setChatSettings] = useState<ChatSettingSchema | null>(null);
   const [pane, setPane] = useState<ChatSidebarPaneEnum>(
-    !!feConfigs.isPlus ? ChatSidebarPaneEnum.HOME : ChatSidebarPaneEnum.RECENTLY_USED_APPS
+    isCommercialVersion &&
+      teamPlanStatus?.standard?.currentSubLevel === StandardSubLevelEnum.enterprise
+      ? ChatSidebarPaneEnum.HOME
+      : ChatSidebarPaneEnum.RECENTLY_USED_APPS
   );
 
   //------------ derived states ------------//
@@ -179,12 +186,15 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 
   const refreshSettings = useCallback(async () => {
     try {
-      const settings = await getChatSetting();
-      setChatSettings(settings);
+      // only non open source version can access the pro apis
+      if (isCommercialVersion) {
+        const settings = await getChatSetting();
+        setChatSettings(settings);
+      }
     } catch (error) {
       console.error('Failed to refresh settings:', error);
     }
-  }, []);
+  }, [isCommercialVersion]);
 
   useEffect(() => {
     refreshSettings();

@@ -52,7 +52,12 @@
     "mdast-util-gfm-autolink-literal": "2.0.0"
   },
   "engines": {
-    "node": ">=18.16.0",
-    "pnpm": ">=9.0.0"
+    "node": ">=20"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "9.15.9"
+    }
   }
 }

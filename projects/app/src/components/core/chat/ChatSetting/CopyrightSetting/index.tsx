@@ -7,7 +7,7 @@ import type { ChatSettingTabOptionEnum } from '@/global/core/chat/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { getLogos, updateChatSetting } from '@/web/core/chat/api';
+import { updateChatSetting } from '@/web/core/chat/api';
 import type { ChatSettingSchema } from '@fastgpt/global/core/chat/type';
 import type { UploadedFileItem } from '../ImageUpload/hooks/useImageUpload';
 

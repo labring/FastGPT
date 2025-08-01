@@ -15,18 +15,14 @@ const ChatSetting = ({ settings, onSettingsRefresh }: Props) => {
   const [isOpenDiagram, setIsOpenDiagram] = useState(false);
   const [tab, setTab] = useState<`${ChatSettingTabOptionEnum}`>('copyright');
 
-  //------------ derived states ------------//
-  const logos = {
-    wideLogoUrl: settings?.wideLogoUrl,
-    squareLogoUrl: settings?.squareLogoUrl
-  };
-
   return (
     <>
       {/* homepage setting */}
       {tab === ChatSettingTabOptionEnum.HOME && (
         <HomepageSetting
           settingTabOption={tab}
+          slogan={settings?.slogan}
+          dialogTips={settings?.dialogTips}
           onDiagramShow={setIsOpenDiagram}
           onTabChange={setTab}
           onSettingsRefresh={onSettingsRefresh}
@@ -36,7 +32,10 @@ const ChatSetting = ({ settings, onSettingsRefresh }: Props) => {
       {/* copyright setting */}
       {tab === ChatSettingTabOptionEnum.COPYRIGHT && (
         <CopyrightSetting
-          logos={logos}
+          logos={{
+            wideLogoUrl: settings?.wideLogoUrl,
+            squareLogoUrl: settings?.squareLogoUrl
+          }}
           settingTabOption={tab}
           onDiagramShow={setIsOpenDiagram}
           onTabChange={setTab}
