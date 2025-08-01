@@ -41,11 +41,11 @@ import type {
 } from '@fastgpt/global/core/workflow/type/io';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
-import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getMCPChildren } from '../mcp';
+import { cloneDeep } from 'lodash';
 
 type ChildAppType = SystemPluginTemplateItemType & {
   teamId?: string;
@@ -562,8 +562,9 @@ export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> 
       };
     });
 
+    // TODO: Check the app exists
     const dbPlugins = systemPluginsArray
-      .filter((item) => item.customConfig)
+      .filter((item) => item.customConfig?.associatedPluginId)
       .map((item) => dbPluginFormat(item));
 
     const plugins = [...formatTools, ...dbPlugins];
@@ -584,7 +585,7 @@ export const getSystemToolById = async (id: string): Promise<SystemPluginTemplat
     const tools = await getSystemTools();
     const tool = tools.find((item) => item.id === pluginId);
     if (tool) {
-      return tool;
+      return cloneDeep(tool);
     }
     return Promise.reject(PluginErrEnum.unExist);
   }
