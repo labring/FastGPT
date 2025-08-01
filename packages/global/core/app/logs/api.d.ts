@@ -1,6 +1,5 @@
+import type { AppLogTimespanEnum } from './constants';
 import type { AppChatLogAppData, AppChatLogChatData, AppChatLogUserData } from './type';
-
-export type getChartDataQuery = {};
 
 export type getChartDataBody = {
   appId: string;
@@ -23,10 +22,8 @@ export type getTotalDataQuery = {
   appId: string;
 };
 
-export type getTotalDataBody = {};
-
 export type getTotalDataResponse = {
   totalUsers: number;
-  totalChat: number;
+  totalChats: number;
   totalPoints: number;
 };

@@ -1,48 +1,35 @@
 import dayjs from 'dayjs';
 import { AppLogTimespanEnum } from './constants';
 
-export const formatDateByTimespan = (timestamp: number, timespan: string) => {
-  const formatters = {
-    week: (timestamp: number) => {
-      const date = new Date(timestamp * 1000);
-      const weekEnd = new Date(date);
-      weekEnd.setDate(date.getDate() + 6);
+export const formatDateByTimespan = (timestamp: number, timespan: AppLogTimespanEnum) => {
+  const date = new Date(timestamp * 1000);
 
-      const startStr = dayjs(date).format('MM/DD');
-      const endStr = dayjs(weekEnd).format('MM/DD');
+  if (timespan === AppLogTimespanEnum.day) {
+    return {
+      date: dayjs(date).format('MM-DD'),
+      xLabel: dayjs(date).format('YYYY-MM-DD')
+    };
+  } else if (timespan === AppLogTimespanEnum.week) {
+    const startStr = dayjs(date).format('MM/DD');
+    const endStr = dayjs(date).add(6, 'day').format('MM/DD');
 
-      return {
-        date: `${startStr}-${endStr}`,
-        xLabel: `${startStr}-${endStr}`
-      };
-    },
-    month: (timestamp: number) => {
-      const date = new Date(timestamp * 1000);
-      return {
-        date: dayjs(date).format('YYYY-MM'),
-        xLabel: dayjs(date).format('YYYY-MM')
-      };
-    },
-    quarter: (timestamp: number) => {
-      const date = new Date(timestamp * 1000);
-      const year = date.getFullYear();
-      const quarter = Math.ceil((date.getMonth() + 1) / 3);
-      return {
-        date: `${year}Q${quarter}`,
-        xLabel: `${year}Q${quarter}`
-      };
-    },
-    day: (timestamp: number) => {
-      const date = new Date(timestamp * 1000);
-      return {
-        date: dayjs(date).format('MM-DD'),
-        xLabel: dayjs(date).format('YYYY-MM-DD')
-      };
-    }
-  };
-
-  const formatter = formatters[timespan as keyof typeof formatters] || formatters.day;
-  return formatter(timestamp);
+    return {
+      date: `${startStr}-${endStr}`,
+      xLabel: `${startStr}-${endStr}`
+    };
+  } else if (timespan === AppLogTimespanEnum.month) {
+    return {
+      date: dayjs(date).format('YYYY-MM'),
+      xLabel: dayjs(date).format('YYYY-MM')
+    };
+  } else {
+    const year = date.getFullYear();
+    const quarter = Math.ceil((date.getMonth() + 1) / 3);
+    return {
+      date: `${year}Q${quarter}`,
+      xLabel: `${year}Q${quarter}`
+    };
+  }
 };
 
 export const calculateOffsetDates = (
@@ -51,33 +38,22 @@ export const calculateOffsetDates = (
   offset: number,
   timespan: AppLogTimespanEnum
 ) => {
-  if (timespan === AppLogTimespanEnum.week) {
-    return {
-      offsetStart: new Date(start.getTime() + offset * 7 * 24 * 60 * 60 * 1000),
-      offsetEnd: new Date(end.getTime() + offset * 7 * 24 * 60 * 60 * 1000)
-    };
+  const offsetStart = new Date(start);
+  const offsetEnd = new Date(end);
+
+  if (timespan === AppLogTimespanEnum.quarter) {
+    offsetStart.setMonth(offsetStart.getMonth() + offset * 3);
+    offsetEnd.setMonth(offsetEnd.getMonth() + offset * 3);
   } else if (timespan === AppLogTimespanEnum.month) {
-    const offsetStartMonth = new Date(start);
-    const offsetEndMonth = new Date(end);
-    offsetStartMonth.setMonth(offsetStartMonth.getMonth() + offset);
-    offsetEndMonth.setMonth(offsetEndMonth.getMonth() + offset);
-    return {
-      offsetStart: offsetStartMonth,
-      offsetEnd: offsetEndMonth
-    };
-  } else if (timespan === AppLogTimespanEnum.quarter) {
-    const offsetStartQuarter = new Date(start);
-    const offsetEndQuarter = new Date(end);
-    offsetStartQuarter.setMonth(offsetStartQuarter.getMonth() + offset * 3);
-    offsetEndQuarter.setMonth(offsetEndQuarter.getMonth() + offset * 3);
-    return {
-      offsetStart: offsetStartQuarter,
-      offsetEnd: offsetEndQuarter
-    };
+    offsetStart.setMonth(offsetStart.getMonth() + offset);
+    offsetEnd.setMonth(offsetEnd.getMonth() + offset);
+  } else if (timespan === AppLogTimespanEnum.week) {
+    offsetStart.setDate(offsetStart.getDate() + offset * 7);
+    offsetEnd.setDate(offsetEnd.getDate() + offset * 7);
   } else {
-    return {
-      offsetStart: new Date(start.getTime() + offset * 24 * 60 * 60 * 1000),
-      offsetEnd: new Date(end.getTime() + offset * 24 * 60 * 60 * 1000)
-    };
+    offsetStart.setDate(offsetStart.getDate() + offset);
+    offsetEnd.setDate(offsetEnd.getDate() + offset);
   }
+
+  return { offsetStart, offsetEnd };
 };

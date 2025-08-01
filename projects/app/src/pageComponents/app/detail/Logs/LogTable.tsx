@@ -46,6 +46,7 @@ import UserBox from '@fastgpt/web/components/common/UserBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import dynamic from 'next/dynamic';
+import type { HeaderControlProps } from './LogChart';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
@@ -56,14 +57,7 @@ const LogTable = ({
   setIsSelectAllSource,
   dateRange,
   setDateRange
-}: {
-  chatSources: ChatSourceEnum[];
-  setChatSources: (value: ChatSourceEnum[]) => void;
-  isSelectAllSource: boolean;
-  setIsSelectAllSource: React.Dispatch<React.SetStateAction<boolean>>;
-  dateRange: DateRangeType;
-  setDateRange: (value: DateRangeType) => void;
-}) => {
+}: HeaderControlProps) => {
   const { t } = useTranslation();
   const appId = useContextSelector(AppContext, (v) => v.appId);
 

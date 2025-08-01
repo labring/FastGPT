@@ -25,20 +25,27 @@ import LineChartComponent from '@fastgpt/web/components/common/charts/LineChartC
 import BarChartComponent from '@fastgpt/web/components/common/charts/BarChartComponent';
 import { theme } from '@fastgpt/web/styles/theme';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import {
-  AppLogTimespanEnum,
-  chartBoxStyles,
-  offsetOptions
-} from '@fastgpt/global/core/app/logs/constants';
+import { AppLogTimespanEnum, offsetOptions } from '@fastgpt/global/core/app/logs/constants';
 import { formatDateByTimespan } from '@fastgpt/global/core/app/logs/utils';
 
-type HeaderControlProps = {
+export type HeaderControlProps = {
   chatSources: ChatSourceEnum[];
   setChatSources: (value: ChatSourceEnum[]) => void;
   isSelectAllSource: boolean;
   setIsSelectAllSource: React.Dispatch<React.SetStateAction<boolean>>;
   dateRange: DateRangeType;
   setDateRange: (value: DateRangeType) => void;
+};
+
+const chartBoxStyles = {
+  px: 5,
+  pt: 4,
+  pb: 8,
+  h: '300px',
+  border: 'base',
+  borderRadius: 'md',
+  overflow: 'hidden',
+  bg: 'white'
 };
 
 const LogChart = ({
@@ -101,7 +108,8 @@ const LogChart = ({
               ? item.summary.newUserCount - item.summary.retentionUserCount
               : item.summary.newUserCount,
           retentionUserCount: item.summary.retentionUserCount,
-          points: item.summary.points
+          points: item.summary.points,
+          sourceCountMap: item.summary.sourceCountMap
         };
       });
     })();
@@ -137,8 +145,7 @@ const LogChart = ({
           xLabel,
           goodFeedBackCount: item.summary.goodFeedBackCount,
           badFeedBackCount: item.summary.badFeedBackCount,
-          avgDuration: item.summary.totalResponseTime,
-          sourceCountMap: item.summary.sourceCountMap
+          avgDuration: item.summary.totalResponseTime / item.summary.chatCount
         };
       });
     })();
@@ -317,7 +324,7 @@ const LogChart = ({
                 </Box>
                 <Box {...chartBoxStyles}>
                   <LineChartComponent
-                    data={formatChartData.app}
+                    data={formatChartData.user}
                     title={t('app:logs_source_count')}
                     description={t('app:logs_source_count_description')}
                     lines={Object.entries(ChatSourceMap).map(([key, value]) => ({
@@ -690,7 +697,7 @@ const TotalData = ({ appId }: { appId: string }) => {
           border: 'green.200',
           bg: 'green.50'
         },
-        value: totalData.totalChat
+        value: totalData.totalChats
       },
       {
         label: t('app:logs_total_points'),

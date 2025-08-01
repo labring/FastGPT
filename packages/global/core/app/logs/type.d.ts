@@ -1,3 +1,4 @@
+import type { ChatSourceEnum } from '../../core/chat/constants';
 import type { AppLogKeysEnum } from './constants';
 
 export type AppLogKeysType = {
@@ -39,6 +40,7 @@ export type AppChatLogUserData = {
     newUserCount: number;
     retentionUserCount: number;
     points: number;
+    sourceCountMap: Record<ChatSourceEnum, number>;
   };
 }[];
 
@@ -57,7 +59,7 @@ export type AppChatLogAppData = {
   summary: {
     goodFeedBackCount: number;
     badFeedBackCount: number;
+    chatCount: number;
     totalResponseTime: number;
-    sourceCountMap: Record<ChatSourceEnum, number>;
   };
 }[];

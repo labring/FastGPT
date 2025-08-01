@@ -61,14 +61,3 @@ export const offsetOptions = [
   { label: 'T+7', value: '7' },
   { label: 'T+14', value: '14' }
 ];
-
-export const chartBoxStyles = {
-  px: 5,
-  pt: 4,
-  pb: 8,
-  h: '300px',
-  border: 'base',
-  borderRadius: 'md',
-  overflow: 'hidden',
-  bg: 'white'
-};

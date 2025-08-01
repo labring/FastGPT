@@ -81,7 +81,7 @@ export const ChatSourceMap = {
   },
   [ChatSourceEnum.mcp]: {
     name: i18nT('common:core.chat.logs.mcp'),
-    color: '#FF81AE'
+    color: '#F97066'
   }
 };
 
