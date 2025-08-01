@@ -129,9 +129,9 @@ export const getSystemPluginByIdAndVersionId = async (
 
   // concat parent (if exists) input config
   const parent = plugin.parentId ? await getSystemToolById(plugin.parentId) : undefined;
-  if (parent && parent.inputList) {
-    plugin?.inputs?.push({
-      key: 'system_input_config',
+  if (parent?.inputList) {
+    version?.inputs?.unshift({
+      key: NodeInputKeyEnum.systemInputConfig,
       label: '',
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       inputList: parent.inputList
@@ -140,8 +140,8 @@ export const getSystemPluginByIdAndVersionId = async (
 
   return {
     ...plugin,
-    inputs: version.inputs,
-    outputs: version.outputs,
+    inputs: version.inputs ?? [],
+    outputs: version.outputs ?? [],
     version: versionId ? version?.value : '',
     versionLabel: versionId ? version?.value : '',
     isLatestVersion: !version || !lastVersion || version.value === lastVersion?.value
@@ -448,36 +448,6 @@ export async function getChildAppRuntimeById({
   };
 }
 
-export async function getSystemPluginRuntimeNodeById({
-  pluginId,
-  name,
-  intro
-}: {
-  pluginId: string;
-  name: string;
-  intro: string;
-}): Promise<RuntimeNodeItemType> {
-  const { source } = splitCombinePluginId(pluginId);
-  if (source === PluginSourceEnum.systemTool) {
-    const tool = await getSystemPluginByIdAndVersionId(pluginId);
-    return {
-      ...tool,
-      name,
-      intro,
-      inputs: tool.inputs ?? [],
-      outputs: tool.outputs ?? [],
-      flowNodeType: FlowNodeTypeEnum.tool,
-      nodeId: getNanoid(),
-      toolConfig: {
-        systemTool: {
-          toolId: pluginId
-        }
-      }
-    };
-  }
-  return Promise.reject(PluginErrEnum.unExist);
-}
-
 const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplateItemType => {
   const { name, avatar, intro, version, weight, templateType, associatedPluginId, userGuide } =
     item.customConfig!;
@@ -563,20 +533,30 @@ export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> 
       const dbPluginConfig = systemPlugins.get(item.id);
 
       const versionList = (item.versionList as SystemPluginTemplateItemType['versionList']) || [];
-      const inputs = versionList[0]?.inputs ?? [];
-      const outputs = versionList[0]?.outputs ?? [];
 
       return {
-        ...item,
+        id: item.id,
+        parentId: item.parentId,
         isFolder: tools.some((tool) => tool.parentId === item.id),
-        showStatus: true,
+
+        name: item.name,
+        avatar: item.avatar,
+        intro: item.description,
+
+        author: item.author,
+        courseUrl: item.courseUrl,
+        weight: item.weight,
+
         workflow: {
           nodes: [],
           edges: []
         },
         versionList,
-        inputs,
-        outputs,
+
+        templateType: item.templateType,
+        showStatus: true,
+
+        isActive: item.isActive,
         inputList: item?.secretInputConfig,
         hasSystemSecret: !!dbPluginConfig?.inputListVal
       };

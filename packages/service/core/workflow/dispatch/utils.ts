@@ -17,12 +17,10 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import {
-  getSystemPluginRuntimeNodeById,
-  getSystemTools
-} from '../../../core/app/plugin/controller';
+import { getSystemTools } from '../../../core/app/plugin/controller';
 import { MongoApp } from '../../../core/app/schema';
 import { getMCPChildren } from '../../../core/app/mcp';
+import { getSystemToolRuntimeNodeById } from '../utils';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -200,13 +198,18 @@ export const rewriteRuntimeWorkFlow = async ({
       const toolsetInputConfig = toolSetNode.inputs.find(
         (item) => item.key === NodeInputKeyEnum.systemInputConfig
       );
+      // Get children
       const tools = await getSystemTools();
       const children = tools.filter((item) => item.parentId === systemToolId);
+
       for (const child of children) {
+        // Get the child tool name
         const toolListItem = toolSetNode.toolConfig?.systemToolSet?.toolList.find(
           (item) => item.toolId === child.id
         )!;
-        const newNode = await getSystemPluginRuntimeNodeById({
+
+        // Get the tool node and add secret
+        const newNode = await getSystemToolRuntimeNodeById({
           pluginId: child.id,
           name: toolListItem?.name,
           intro: toolListItem?.description
@@ -217,6 +220,7 @@ export const rewriteRuntimeWorkFlow = async ({
         if (newNodeInputConfig) {
           newNodeInputConfig.value = toolsetInputConfig?.value;
         }
+
         nodes.push(newNode);
         pushEdges(newNode.nodeId);
       }
