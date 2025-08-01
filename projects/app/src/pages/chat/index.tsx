@@ -40,6 +40,7 @@ import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/const
 import LoginModal from '@/pageComponents/login/LoginModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -287,6 +288,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 
 const Render = (props: { appId: string; isStandalone?: string }) => {
   const { appId, isStandalone } = props;
+  const { isPc } = useSystem();
   const { chatId } = useChatStore();
   const { feConfigs } = useSystemStore();
   const { isInitedUser, userInfo, myApps } = useChatHook(appId);
@@ -318,7 +320,14 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
     return (
       <>
         <NextHead title={feConfigs?.systemTitle}></NextHead>
-        <PageContainer flex={'1'} p={4}></PageContainer>
+
+        <Box
+          h="full"
+          bg={`url(${getWebReqUrl('/icon/login-bg.svg')}) no-repeat`}
+          bgSize={'cover'}
+          bgPosition={'center'}
+        />
+
         <LoginModal />
       </>
     );
