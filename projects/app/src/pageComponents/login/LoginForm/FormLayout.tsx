@@ -1,6 +1,6 @@
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { AbsoluteCenter, Box, Button, Flex } from '@chakra-ui/react';
+import { AbsoluteCenter, Box, Flex, Grid, IconButton, GridItem } from '@chakra-ui/react';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import { useRouter } from 'next/router';
@@ -159,8 +159,8 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      <Flex alignItems={'center'} justify={'space-between'}>
-        <Flex alignItems={'center'}>
+      <Flex alignItems={'center'} justify={'center'}>
+        <Flex alignItems={'center'} pr="4">
           <Flex
             w={['42px', '56px']}
             h={['42px', '56px']}
@@ -183,29 +183,35 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
       {show_oauth && (
         <Box mt={8}>
           <Box flex={1} />
+
           <Box position={'relative'}>
             <Box h={'1px'} bg={'myGray.250'} />
             <AbsoluteCenter bg={'white'} px={3} color={'myGray.500'} fontSize={'mini'}>
               or
             </AbsoluteCenter>
           </Box>
-          <Box mt={4}>
+
+          <Grid
+            mt={6}
+            gap={3}
+            mx="auto"
+            w="fit-content"
+            justifyItems={'center'}
+            templateColumns={`repeat(${oAuthList.length}, 1fr)`}
+          >
             {oAuthList.map((item) => (
-              <Box key={item.provider} _notFirst={{ mt: 4 }}>
-                <Button
-                  variant={'whitePrimary'}
-                  w={'100%'}
+              <Box key={item.provider}>
+                <IconButton
                   h={'40px'}
-                  borderRadius={'sm'}
-                  fontWeight={'medium'}
-                  leftIcon={<Avatar src={item.icon as any} w={'20px'} />}
+                  isRound={true}
+                  aria-label={item.label}
+                  variant={'whitePrimary'}
+                  icon={<Avatar src={item.icon as any} w={'20px'} />}
                   onClick={() => onClickOauth(item)}
-                >
-                  {item.label}
-                </Button>
+                />
               </Box>
             ))}
-          </Box>
+          </Grid>
         </Box>
       )}
     </Flex>

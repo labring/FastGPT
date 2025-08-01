@@ -115,7 +115,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
             alignItems={'center'}
             mt={7}
             fontSize={'mini'}
-            color={'myGray.700'}
+            color={'myGray.400'}
             fontWeight={'medium'}
           >
             {t('login:policy_tip')}
@@ -154,7 +154,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
 
         <Flex
           align={'center'}
-          justifyContent={'flex-end'}
+          justifyContent={'center'}
           color={'primary.700'}
           fontWeight={'medium'}
         >
