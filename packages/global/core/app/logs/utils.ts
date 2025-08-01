@@ -2,7 +2,7 @@ import dayjs from 'dayjs';
 import { AppLogTimespanEnum } from './constants';
 
 export const formatDateByTimespan = (timestamp: number, timespan: AppLogTimespanEnum) => {
-  const date = new Date(timestamp * 1000);
+  const date = new Date(timestamp);
 
   if (timespan === AppLogTimespanEnum.day) {
     return {

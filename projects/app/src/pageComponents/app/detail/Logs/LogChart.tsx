@@ -27,6 +27,7 @@ import { theme } from '@fastgpt/web/styles/theme';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { AppLogTimespanEnum, offsetOptions } from '@fastgpt/global/core/app/logs/constants';
 import { formatDateByTimespan } from '@fastgpt/global/core/app/logs/utils';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 export type HeaderControlProps = {
   chatSources: ChatSourceEnum[];
@@ -59,6 +60,7 @@ const LogChart = ({
   const { t } = useTranslation();
 
   const { appId } = useContextSelector(AppContext, (v) => v);
+  const { feConfigs } = useSystemStore();
 
   const [userTimespan, setUserTimespan] = useState<AppLogTimespanEnum>(AppLogTimespanEnum.day);
   const [chatTimespan, setChatTimespan] = useState<AppLogTimespanEnum>(AppLogTimespanEnum.day);
@@ -80,7 +82,7 @@ const LogChart = ({
       });
     },
     {
-      manual: false,
+      manual: !feConfigs?.isPlus,
       refreshDeps: [
         appId,
         dateRange.from,
@@ -666,18 +668,17 @@ const HeaderControl = ({
 
 const TotalData = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
   const { data: totalData } = useRequest2(
     async () => {
       return getAppTotalData({ appId });
     },
     {
-      manual: false,
+      manual: !feConfigs?.isPlus,
       refreshDeps: [appId]
     }
   );
   const totalDataArray = useMemo(() => {
-    if (!totalData) return [];
-
     return [
       {
         label: t('app:logs_total_users'),
@@ -687,7 +688,7 @@ const TotalData = ({ appId }: { appId: string }) => {
           border: 'primary.200',
           bg: 'primary.50'
         },
-        value: totalData.totalUsers
+        value: totalData?.totalUsers || 0
       },
       {
         label: t('app:logs_total_chat'),
@@ -697,7 +698,7 @@ const TotalData = ({ appId }: { appId: string }) => {
           border: 'green.200',
           bg: 'green.50'
         },
-        value: totalData.totalChats
+        value: totalData?.totalChats || 0
       },
       {
         label: t('app:logs_total_points'),
@@ -707,7 +708,7 @@ const TotalData = ({ appId }: { appId: string }) => {
           border: 'yellow.200',
           bg: 'yellow.50'
         },
-        value: totalData.totalPoints
+        value: totalData?.totalPoints || 0
       }
     ];
   }, [totalData]);

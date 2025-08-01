@@ -210,7 +210,6 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       };
 
       const data = await getDashboardV2(params);
-      console.log(data);
 
       // Auto-fill missing periods based on timespan
       const startDate = dayjs(filterProps.dateRange.from);
@@ -272,7 +271,6 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       ]
     }
   );
-  console.log('dashboardData', dashboardData);
 
   // Process chart data - aggregate model calls, token usage and cost data based on timespan
   const chartData: ModelDashboardData[] = useMemo(() => {
@@ -359,7 +357,6 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       };
     });
   }, [dashboardData, filterProps.model, filterProps.timespan, modelPriceMap]);
-  console.log('chartData', chartData);
 
   const [tokensUsageType, setTokensUsageType] = useState<
     'inputTokens' | 'outputTokens' | 'totalTokens'
