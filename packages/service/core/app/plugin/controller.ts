@@ -564,7 +564,7 @@ export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> 
 
     // TODO: Check the app exists
     const dbPlugins = systemPluginsArray
-      .filter((item) => item.customConfig)
+      .filter((item) => item.customConfig?.associatedPluginId)
       .map((item) => dbPluginFormat(item));
 
     const plugins = [...formatTools, ...dbPlugins];
