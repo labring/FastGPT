@@ -81,6 +81,7 @@ const InputRender = (props: InputRenderProps) => {
       return (
         <MyNumberInput
           {...commonProps}
+          value={value ?? ''}
           min={props.min}
           max={props.max}
           bg={undefined}
