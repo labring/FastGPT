@@ -125,8 +125,11 @@ const VariableEdit = ({
       }
 
       // check if the variable is a system variable
-      const systemVariableKeys = workflowSystemVariables.map((item) => item.key);
-      if (systemVariableKeys.includes(data.label)) {
+      if (
+        workflowSystemVariables.some(
+          (item) => item.key === data.label || t(item.label) === data.label
+        )
+      ) {
         toast({
           status: 'warning',
           title: t('app:systemval_conflict_globalval')

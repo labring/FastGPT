@@ -212,11 +212,10 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       sendStreamTimerSign();
     }
 
-    // Add system variables
+    // Get default variables
     variables = {
       ...externalProvider.externalWorkflowVariables,
       ...getSystemVariables(data)
-      // ...variables
     };
   }
 
@@ -856,15 +855,16 @@ const getSystemVariables = ({
   chatConfig,
   variables
 }: Props): SystemVariablesType => {
+  // Get global variables(Label -> key; Key -> key)
   const globalVariables = chatConfig?.variables || [];
   const variablesMap = globalVariables.reduce<Record<string, any>>((acc, item) => {
-    // Web
-    if (variables[item.key] !== undefined) {
-      acc[item.key] = valueTypeFormat(variables[item.key], item.valueType);
-    }
     // API
-    else if (variables[item.label] !== undefined) {
+    if (variables[item.label] !== undefined) {
       acc[item.key] = valueTypeFormat(variables[item.label], item.valueType);
+    }
+    // Web
+    else if (variables[item.key] !== undefined) {
+      acc[item.key] = valueTypeFormat(variables[item.key], item.valueType);
     } else {
       acc[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
     }
@@ -873,6 +873,7 @@ const getSystemVariables = ({
 
   return {
     ...variablesMap,
+    // System var:
     userId: uid,
     appId: String(runningAppInfo.id),
     chatId,
