@@ -11,7 +11,7 @@ import MultipleSelect, {
 import JSONEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import AIModelSelector from '../../../Select/AIModelSelector';
 import FileSelector from '../../../Select/FileSelector';
-import { useTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const InputRender = (props: InputRenderProps) => {
   const {
@@ -28,7 +28,7 @@ const InputRender = (props: InputRenderProps) => {
     return <>{customRender(props)}</>;
   }
 
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const {
     value: selectedValue,
     setValue,
@@ -81,6 +81,7 @@ const InputRender = (props: InputRenderProps) => {
       return (
         <MyNumberInput
           {...commonProps}
+          value={value ?? ''}
           min={props.min}
           max={props.max}
           bg={undefined}

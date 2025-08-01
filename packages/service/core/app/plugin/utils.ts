@@ -1,9 +1,9 @@
 import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { type PluginRuntimeType } from '@fastgpt/global/core/app/plugin/type';
-import { splitCombinePluginId } from './controller';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
+import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 
-/* 
+/*
   Plugin points calculation:
   1. 系统插件/商业版插件：
     - 有错误：返回 0

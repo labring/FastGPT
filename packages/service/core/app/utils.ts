@@ -3,11 +3,13 @@ import { getEmbeddingModel } from '../ai/model';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { getChildAppPreviewNode, splitCombinePluginId } from './plugin/controller';
+import { getChildAppPreviewNode } from './plugin/controller';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
   teamId,
@@ -33,12 +35,14 @@ export async function rewriteAppWorkflowToDetail({
   nodes,
   teamId,
   isRoot,
-  ownerTmbId
+  ownerTmbId,
+  lang
 }: {
   nodes: StoreNodeItemType[];
   teamId: string;
   isRoot: boolean;
   ownerTmbId: string;
+  lang?: localeType;
 }) {
   const datasetIdSet = new Set<string>();
 
@@ -51,8 +55,9 @@ export async function rewriteAppWorkflowToDetail({
       try {
         const [preview] = await Promise.all([
           getChildAppPreviewNode({
-            appId: pluginId,
-            versionId: node.version
+            appId: node.pluginId,
+            versionId: node.version,
+            lang
           }),
           ...(source === PluginSourceEnum.personal
             ? [
@@ -79,6 +84,8 @@ export async function rewriteAppWorkflowToDetail({
         node.currentCost = preview.currentCost;
         node.hasTokenFee = preview.hasTokenFee;
         node.hasSystemSecret = preview.hasSystemSecret;
+
+        node.toolConfig = preview.toolConfig;
 
         // Latest version
         if (!node.version) {

@@ -152,7 +152,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   } = data;
   const startTime = Date.now();
 
-  rewriteRuntimeWorkFlow(runtimeNodes, runtimeEdges);
+  await rewriteRuntimeWorkFlow({ nodes: runtimeNodes, edges: runtimeEdges });
 
   // 初始化深度和自动增加深度，避免无限嵌套
   if (!props.workflowDispatchDeep) {
@@ -212,11 +212,10 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       sendStreamTimerSign();
     }
 
-    // Add system variables
+    // Get default variables
     variables = {
-      ...getSystemVariable(data),
       ...externalProvider.externalWorkflowVariables,
-      ...variables
+      ...getSystemVariables(data)
     };
   }
 
@@ -846,23 +845,35 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 }
 
 /* get system variable */
-const getSystemVariable = ({
+const getSystemVariables = ({
   timezone,
   runningAppInfo,
   chatId,
   responseChatItemId,
   histories = [],
   uid,
-  chatConfig
+  chatConfig,
+  variables
 }: Props): SystemVariablesType => {
-  const variables = chatConfig?.variables || [];
-  const variablesMap = variables.reduce<Record<string, any>>((acc, item) => {
-    acc[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
+  // Get global variables(Label -> key; Key -> key)
+  const globalVariables = chatConfig?.variables || [];
+  const variablesMap = globalVariables.reduce<Record<string, any>>((acc, item) => {
+    // API
+    if (variables[item.label] !== undefined) {
+      acc[item.key] = valueTypeFormat(variables[item.label], item.valueType);
+    }
+    // Web
+    else if (variables[item.key] !== undefined) {
+      acc[item.key] = valueTypeFormat(variables[item.key], item.valueType);
+    } else {
+      acc[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
+    }
     return acc;
   }, {});
 
   return {
     ...variablesMap,
+    // System var:
     userId: uid,
     appId: String(runningAppInfo.id),
     chatId,

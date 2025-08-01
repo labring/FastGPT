@@ -42,6 +42,7 @@ const SendCodeAuthModal = ({
   };
 
   const handleEnterKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    e.stopPropagation();
     if (e.key.toLowerCase() !== 'enter') return;
     handleSubmit(onSubmit, onError)();
   };

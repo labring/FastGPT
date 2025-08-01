@@ -37,8 +37,8 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     dateStart = addDays(new Date(), -7),
     dateEnd = new Date(),
     sources,
-    logTitle,
-
+    tmbIds,
+    chatSearch,
     title,
     sourcesMap
   } = req.body;
@@ -80,10 +80,12 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
       $lte: new Date(dateEnd)
     },
     ...(sources && { source: { $in: sources } }),
-    ...(logTitle && {
+    ...(tmbIds && { tmbId: { $in: tmbIds } }),
+    ...(chatSearch && {
       $or: [
-        { title: { $regex: new RegExp(`${replaceRegChars(logTitle)}`, 'i') } },
-        { customTitle: { $regex: new RegExp(`${replaceRegChars(logTitle)}`, 'i') } }
+        { chatId: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
+        { title: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
+        { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } }
       ]
     })
   };

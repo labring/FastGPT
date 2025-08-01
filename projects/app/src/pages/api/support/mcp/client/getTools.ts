@@ -24,7 +24,8 @@ async function handler(
     })
   });
 
-  return mcpClient.getTools();
+  const result = await mcpClient.getTools();
+  return result;
 }
 
 export default NextAPI(handler);

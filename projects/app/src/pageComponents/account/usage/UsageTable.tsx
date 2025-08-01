@@ -27,6 +27,7 @@ import { type UsageFilterParams } from './type';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const UsageDetail = dynamic(() => import('./UsageDetail'));
 
@@ -39,7 +40,7 @@ const UsageTableList = ({
   Selectors: React.ReactNode;
   filterParams: UsageFilterParams;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
 
   const { dateRange, selectTmbIds, isSelectAllTmb, usageSources, isSelectAllSource, projectName } =
     filterParams;
@@ -147,7 +148,9 @@ const UsageTableList = ({
                       </Flex>
                     </Td>
                     <Td>{t(UsageSourceMap[item.source]?.label as any) || '-'}</Td>
-                    <Td>{t(item.appName as any) || '-'}</Td>
+                    <Td className="textEllipsis" maxW={'400px'} title={t(item.appName as any)}>
+                      {t(item.appName as any) || '-'}
+                    </Td>
                     <Td>{formatNumber(item.totalPoints) || 0}</Td>
                     <Td>
                       <Button

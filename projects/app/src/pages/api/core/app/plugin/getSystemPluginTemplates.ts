@@ -9,7 +9,7 @@ import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { NextApiResponse } from 'next';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getSystemPlugins } from '@fastgpt/service/core/app/plugin/controller';
+import { getSystemTools } from '@fastgpt/service/core/app/plugin/controller';
 
 export type GetSystemPluginTemplatesBody = {
   searchKey?: string;
@@ -25,7 +25,7 @@ async function handler(
   const formatParentId = parentId || null;
   const lang = getLocale(req);
 
-  const plugins = await getSystemPlugins();
+  const plugins = await getSystemTools();
 
   return plugins // Just show the active plugins
     .filter((item) => item.isActive)
@@ -33,7 +33,7 @@ async function handler(
       ...plugin,
       parentId: plugin.parentId === undefined ? null : plugin.parentId,
       templateType: plugin.templateType ?? FlowNodeTemplateTypeEnum.other,
-      flowNodeType: FlowNodeTypeEnum.tool,
+      flowNodeType: plugin.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
       name: parseI18nString(plugin.name, lang),
       intro: parseI18nString(plugin.intro ?? '', lang)
     }))

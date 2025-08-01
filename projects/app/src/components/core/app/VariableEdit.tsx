@@ -35,10 +35,10 @@ import DndDrag, {
   type DraggableProvided,
   type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag';
+import { workflowSystemVariables } from '@/web/core/app/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export const defaultVariable: VariableItemType = {
-  id: getNanoid(6),
   key: '',
   label: '',
   type: VariableInputEnum.input,
@@ -47,12 +47,8 @@ export const defaultVariable: VariableItemType = {
   valueType: WorkflowIOValueTypeEnum.string
 };
 
-type InputItemType = VariableItemType & {
-  list: { label: string; value: string }[];
-};
-
 export const addVariable = () => {
-  const newVariable = { ...defaultVariable, key: '', id: '', list: [{ value: '', label: '' }] };
+  const newVariable = { ...defaultVariable, list: [{ value: '', label: '' }] };
   return newVariable;
 };
 
@@ -103,23 +99,47 @@ const VariableEdit = ({
     });
   }, [variables]);
 
+  /* 
+    - New var: random key
+    - Update var: keep key
+  */
   const onSubmitSuccess = useCallback(
-    (data: InputItemType, action: 'confirm' | 'continue') => {
+    (data: VariableItemType, action: 'confirm' | 'continue') => {
       data.label = data?.label?.trim();
+      if (!data.label) {
+        return toast({
+          status: 'warning',
+          title: t('app:variable_name_required')
+        });
+      }
 
-      const existingVariable = variables.find(
-        (item) => item.label === data.label && item.id !== data.id
-      );
+      // check if the variable already exists
+      const existingVariable = variables.find((item) => {
+        return item.key !== data.key && (data.label === item.label || data.label === item.key);
+      });
       if (existingVariable) {
+        return toast({
+          status: 'warning',
+          title: t('app:variable_repeat')
+        });
+      }
+
+      // check if the variable is a system variable
+      if (
+        workflowSystemVariables.some(
+          (item) => item.key === data.label || t(item.label) === data.label
+        )
+      ) {
         toast({
           status: 'warning',
-          title: t('common:core.module.variable.key already exists')
+          title: t('app:systemval_conflict_globalval')
         });
         return;
       }
 
-      data.key = data.label;
-      data.enums = data.list;
+      if (data.type !== VariableInputEnum.select && data.list) {
+        delete data.list;
+      }
 
       if (data.type === VariableInputEnum.custom) {
         data.required = false;
@@ -127,16 +147,24 @@ const VariableEdit = ({
         data.valueType = inputTypeList.find((item) => item.value === data.type)?.defaultValueType;
       }
 
-      const onChangeVariable = [...variables];
-      if (data.id) {
-        const index = variables.findIndex((item) => item.id === data.id);
-        onChangeVariable[index] = data;
-      } else {
-        onChangeVariable.push({
-          ...data,
-          id: getNanoid(6)
-        });
-      }
+      const onChangeVariable = (() => {
+        if (data.key) {
+          return variables.map((item) => {
+            if (item.key === data.key) {
+              return data;
+            }
+            return item;
+          });
+        }
+
+        return [
+          ...variables,
+          {
+            ...data,
+            key: getNanoid(8)
+          }
+        ];
+      })();
 
       if (action === 'confirm') {
         onChange(onChangeVariable);
@@ -226,7 +254,7 @@ const VariableEdit = ({
               {({ provided }) => (
                 <Tbody {...provided.droppableProps} ref={provided.innerRef}>
                   {formatVariables.map((item, index) => (
-                    <Draggable key={item.id} draggableId={item.id} index={index}>
+                    <Draggable key={item.key} draggableId={item.key} index={index}>
                       {(provided, snapshot) => (
                         <TableItem
                           provided={provided}
@@ -235,7 +263,7 @@ const VariableEdit = ({
                           reset={reset}
                           onChange={onChange}
                           variables={variables}
-                          key={item.id}
+                          key={item.key}
                         />
                       )}
                     </Draggable>
@@ -370,7 +398,7 @@ const TableItem = ({
       <Td fontWeight={'medium'}>
         <Flex alignItems={'center'}>
           <MyIcon name={item.icon as any} w={'16px'} color={'myGray.400'} mr={1} />
-          {item.key}
+          {item.label}
         </Flex>
       </Td>
       <Td>
@@ -385,7 +413,10 @@ const TableItem = ({
             onClick={() => {
               const formattedItem = {
                 ...item,
-                list: item.enums?.map((item) => ({ label: item.value, value: item.value })) || []
+                list:
+                  item.list ||
+                  item.enums?.map((item) => ({ label: item.value, value: item.value })) ||
+                  []
               };
               reset(formattedItem);
             }}
@@ -393,7 +424,7 @@ const TableItem = ({
           <MyIconButton
             icon={'delete'}
             hoverColor={'red.500'}
-            onClick={() => onChange(variables.filter((variable) => variable.id !== item.id))}
+            onClick={() => onChange(variables.filter((variable) => variable.key !== item.key))}
           />
         </Flex>
       </Td>

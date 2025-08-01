@@ -242,7 +242,7 @@ export const LoginContainer = ({
         />
       )}
 
-      <Box position="relative" w="full" flex={'1 0 0'}>
+      <Flex flexDirection={'column'} w="full" flex={'1 0 0'}>
         {/* main content area */}
         <Box w={['100%', '380px']} flex={'1 0 0'}>
           {pageType && DynamicComponent ? DynamicComponent : <Loading fixed={false} />}
@@ -270,7 +270,7 @@ export const LoginContainer = ({
             {t('common:support.user.login.can_not_login')}
           </Box>
         )}
-      </Box>
+      </Flex>
 
       <CookiesModal />
       <ChineseRedirectModal />

@@ -134,6 +134,7 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
                   totalRecordsCount={totalRecordsCount}
                   title={title || ''}
                   chatModels={chatModels}
+                  chatId={chatId}
                 />
                 <Box flex={1} />
               </>
