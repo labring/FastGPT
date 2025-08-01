@@ -158,7 +158,8 @@ export const appWorkflow2Form = ({
         inputs: node.inputs,
         outputs: node.outputs,
         templateType: FlowNodeTemplateTypeEnum.other,
-        pluginData: node.pluginData
+        pluginData: node.pluginData,
+        toolConfig: node.toolConfig
       });
     } else if (node.flowNodeType === FlowNodeTypeEnum.systemConfig) {
       defaultAppForm.chatConfig = getAppChatConfig({
