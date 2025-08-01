@@ -47,10 +47,6 @@ export const defaultVariable: VariableItemType = {
   valueType: WorkflowIOValueTypeEnum.string
 };
 
-type InputItemType = VariableItemType & {
-  list: { label: string; value: string }[];
-};
-
 export const addVariable = () => {
   const newVariable = { ...defaultVariable, list: [{ value: '', label: '' }] };
   return newVariable;
@@ -108,7 +104,7 @@ const VariableEdit = ({
     - Update var: keep key
   */
   const onSubmitSuccess = useCallback(
-    (data: InputItemType, action: 'confirm' | 'continue') => {
+    (data: VariableItemType, action: 'confirm' | 'continue') => {
       data.label = data?.label?.trim();
       if (!data.label) {
         return toast({
@@ -119,7 +115,7 @@ const VariableEdit = ({
 
       // check if the variable already exists
       const existingVariable = variables.find((item) => {
-        return item.key !== data.key && data.label === item.label;
+        return item.key !== data.key && (data.label === item.label || data.label === item.key);
       });
       if (existingVariable) {
         return toast({
@@ -129,16 +125,18 @@ const VariableEdit = ({
       }
 
       // check if the variable is a system variable
-      const systemVariableKeys = workflowSystemVariables.map((item) => item.label);
+      const systemVariableKeys = workflowSystemVariables.map((item) => item.key);
       if (systemVariableKeys.includes(data.label)) {
         toast({
           status: 'warning',
-          title: t('common:core.module.variable.system_variable_conflict')
+          title: t('app:systemval_conflict_globalval')
         });
         return;
       }
 
-      data.enums = data.list;
+      if (data.type !== VariableInputEnum.select && data.list) {
+        delete data.list;
+      }
 
       if (data.type === VariableInputEnum.custom) {
         data.required = false;
@@ -412,7 +410,10 @@ const TableItem = ({
             onClick={() => {
               const formattedItem = {
                 ...item,
-                list: item.enums?.map((item) => ({ label: item.value, value: item.value })) || []
+                list:
+                  item.list ||
+                  item.enums?.map((item) => ({ label: item.value, value: item.value })) ||
+                  []
               };
               reset(formattedItem);
             }}

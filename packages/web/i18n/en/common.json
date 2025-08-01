@@ -683,7 +683,6 @@
   "core.module.variable.key": "Variable Key",
   "core.module.variable.key is required": "Variable Key is Required",
   "core.module.variable.select type": "Dropdown Single Select",
-  "core.module.variable.system_variable_conflict": "Conflict between global variables and system variables",
   "core.module.variable.text max length": "Max Length",
   "core.module.variable.textarea type": "Paragraph",
   "core.module.variable.variable name is required": "Variable Name Cannot Be Empty",

@@ -161,6 +161,8 @@ export type VariableItemType = {
   max?: number;
   min?: number;
   // select
+  list?: { label: string; value: string }[];
+  // @deprecated
   enums?: { value: string; label: string }[];
 };
 // tts

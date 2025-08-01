@@ -62,26 +62,6 @@ async function handler(
       session
     });
 
-    // for (const tool of toolList) {
-    //   await onCreateApp({
-    //     name: tool.name,
-    //     avatar,
-    //     parentId: mcpToolsId,
-    //     teamId,
-    //     tmbId,
-    //     type: AppTypeEnum.tool,
-    //     intro: tool.description,
-    //     modules: [
-    //       getMCPToolRuntimeNode({
-    //         tool,
-    //         url,
-    //         headerSecret: formatedHeaderAuth
-    //       })
-    //     ],
-    //     session
-    //   });
-    // }
-
     return mcpToolsId;
   });
 
