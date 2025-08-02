@@ -2,13 +2,13 @@
   "title": "使用文档",
   "root": true,
   "pages": [
+    "---入门---",
     "index",
-    "guide",
+    "cloud",
+    "commercial",
     "development",
-    "FAQ",
-    "shopping_cart",
-    "community",
-    "[Handshake][商业版咨询](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc)"
+    "---功能介绍---",
+    "...guide"
   ],
   "order": 1
 }
