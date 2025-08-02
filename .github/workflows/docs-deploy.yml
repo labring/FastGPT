@@ -26,18 +26,18 @@ jobs:
         with:
           repository: labring/fastgpt-docs-img
           token: ${{ secrets.DOCS_IMGS_SYNC_TOKEN }}
-          path: fastgpt-docs-imgs
+          path: fastgpt-docs-img
 
       - name: Sync images
         run: |
           # Create imgs directory if it doesn't exist
-          mkdir -p fastgpt-docs-imgs/imgs
+          mkdir -p fastgpt-docs-img
 
           # Copy all images from document/public/imgs to the target repository
-          cp -r document/public/imgs/* fastgpt-docs-imgs/
+          cp -r document/public/imgs/* fastgpt-docs-img
 
           # Navigate to target repository
-          cd fastgpt-docs-imgs
+          cd fastgpt-docs-img
 
           # Configure git
           git config user.name "github-actions[bot]"
@@ -54,6 +54,7 @@ jobs:
           fi
   # Add a new job to generate unified timestamp
   generate-timestamp:
+    needs: sync-images
     runs-on: ubuntu-latest
     outputs:
       datetime: ${{ steps.datetime.outputs.datetime }}
