@@ -2,6 +2,8 @@
 FROM node:20.14.0-alpine AS install
 WORKDIR /app
 
+ARG proxy
+
 RUN npm install -g pnpm@9.4.0
 
 # 复制package.json
@@ -26,6 +28,8 @@ RUN if [ -z "$proxy" ]; then \
 # --------- builder -----------
 FROM node:20.14.0-alpine AS builder
 WORKDIR /app
+
+ARG proxy
 
 COPY package.json pnpm-workspace.yaml .npmrc tsconfig.json ./
 COPY ./projects/mcp_server /app/projects/mcp_server
