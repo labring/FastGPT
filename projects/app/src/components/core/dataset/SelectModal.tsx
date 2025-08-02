@@ -63,7 +63,7 @@ const DatasetSelectContainer = ({
       maxH={'90vh'}
       isCentered
     >
-      <MyBox isLoading={isLoading} h={'100%'} overflow="hidden" minH={0}>
+      <MyBox isLoading={isLoading} h={'100%'} overflow="hidden">
         {children}
       </MyBox>
     </MyModal>

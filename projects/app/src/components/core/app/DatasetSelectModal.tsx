@@ -24,10 +24,52 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
 import DatasetSelectContainer, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
-import { getDatasets } from '@/web/core/dataset/api';
+import { getDatasets, getDatasetPaths } from '@/web/core/dataset/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import FolderPath from '@/components/common/folder/Path';
+
+// Custom hook for dataset selection with unified data fetching
+const useDatasetSelectWithSearch = () => {
+  const [parentId, setParentId] = useState<string>('');
+  const [searchKey, setSearchKey] = useState<string>('');
+
+  // Get paths for current directory
+  const { data: pathsData, loading: isFetchingPaths } = useRequest2(
+    () => getDatasetPaths({ sourceId: parentId, type: 'current' }),
+    {
+      manual: false,
+      refreshDeps: [parentId]
+    }
+  );
+
+  // Unified data fetching with search support
+  const { data: datasets, loading: isSearching } = useRequest2(
+    () => {
+      return getDatasets({
+        parentId: searchKey.trim() ? '' : parentId,
+        searchKey: searchKey.trim() || undefined
+      });
+    },
+    {
+      manual: false,
+      refreshDeps: [searchKey, parentId]
+    }
+  );
+
+  const paths = useMemo(() => [...(pathsData || [])], [pathsData]);
+
+  return {
+    parentId,
+    setParentId,
+    searchKey,
+    setSearchKey,
+    datasets: datasets || [],
+    paths,
+    isFetching: isFetchingPaths,
+    isSearching
+  };
+};
 
 // Dataset selection modal component
 export const DatasetSelectModal = ({
@@ -46,98 +88,21 @@ export const DatasetSelectModal = ({
   // Current selected datasets, initialized with defaultSelectedDatasets
   const [selectedDatasets, setSelectedDatasets] =
     useState<SelectedDatasetType>(defaultSelectedDatasets);
-  // Search keyword state
-  const [searchKey, setSearchKey] = useState<string>('');
   const { toast } = useToast();
 
   // Use server-side search, following the logic of the dataset list page
-  const { paths, setParentId, datasets, isFetching } = useDatasetSelect();
-
-  // If there is a search keyword, use server-side search; otherwise, use datasets in the current directory
-  const { data: searchDatasets, loading: isSearching } = useRequest2(
-    () => {
-      if (!searchKey.trim()) {
-        return Promise.resolve([]);
-      }
-      // Use server-side search, passing the searchKey parameter
-      return getDatasets({
-        parentId: '',
-        searchKey: searchKey.trim()
-      });
-    },
-    {
-      manual: false,
-      refreshDeps: [searchKey]
-    }
-  );
+  const { paths, setParentId, searchKey, setSearchKey, datasets, isFetching, isSearching } =
+    useDatasetSelectWithSearch();
 
   const { Loading } = useLoading();
 
   // Determine which datasets to display based on the search state
   const filteredDatasets = useMemo(() => {
-    if (searchKey.trim()) {
-      return searchDatasets || [];
-    }
-    return datasets;
-  }, [datasets, searchKey, searchDatasets]);
+    return datasets || [];
+  }, [datasets]);
 
   // The vector model of the first selected dataset
   const activeVectorModel = selectedDatasets[0]?.vectorModel?.model;
-
-  // Get direct datasets under a folder (excluding subfolders)
-  const getDirectDatasets = useCallback(
-    (folderId?: string) => {
-      const dataSource = filteredDatasets || [];
-      if (dataSource.length === 0) {
-        return [];
-      }
-      const result = dataSource.filter(
-        (item) =>
-          item.type !== DatasetTypeEnum.folder &&
-          (folderId ? (item as any).parentId === folderId : !(item as any).parentId)
-      );
-      return result;
-    },
-    [filteredDatasets]
-  );
-
-  // Check if a folder is selectable: all direct datasets in the folder have the same vector model && (no other datasets selected || folder's vector model matches current selection)
-  const isFolderSelectable = useCallback(
-    (folderId: string) => {
-      const directDatasets = getDirectDatasets(folderId);
-      if (directDatasets.length === 0) {
-        return false;
-      }
-      const firstVectorModel = directDatasets[0]?.vectorModel?.model;
-      const allSameIndex = directDatasets.every(
-        (item) => item.vectorModel?.model === firstVectorModel
-      );
-      if (!allSameIndex) {
-        return false;
-      }
-      if (!activeVectorModel) {
-        return true;
-      }
-      const isCompatible = firstVectorModel === activeVectorModel;
-      return isCompatible;
-    },
-    [getDirectDatasets, activeVectorModel]
-  );
-
-  // Check if all direct datasets in a folder are selected
-  const isFolderFullySelected = useCallback(
-    (folderId: string) => {
-      const directDatasets = getDirectDatasets(folderId);
-      if (directDatasets.length === 0) {
-        return false;
-      }
-      const isFullySelected = directDatasets.every((item) =>
-        selectedDatasets.some((selected) => selected.datasetId === item._id)
-      );
-      return isFullySelected;
-    },
-    [getDirectDatasets, selectedDatasets]
-  );
 
   // Handle dataset selection
   const handleDatasetSelect = (item: any, checked: boolean) => {
@@ -160,26 +125,6 @@ export const DatasetSelectModal = ({
       ]);
     } else {
       setSelectedDatasets((prev) => prev.filter((dataset) => dataset.datasetId !== item._id));
-    }
-  };
-
-  // Handle folder selection: select or deselect all direct datasets under the folder
-  const handleFolderSelect = (folderId: string, checked: boolean) => {
-    const directDatasets = getDirectDatasets(folderId);
-    if (checked) {
-      const unselectedDatasets = directDatasets.filter((item) => !isDatasetSelected(item._id));
-      const newSelections = unselectedDatasets.map((item) => ({
-        datasetId: item._id,
-        avatar: item.avatar,
-        name: item.name,
-        vectorModel: item.vectorModel
-      }));
-      setSelectedDatasets((prev) => [...prev, ...newSelections]);
-    } else {
-      const datasetIds = directDatasets.map((item) => item._id);
-      setSelectedDatasets((prev) =>
-        prev.filter((dataset) => !datasetIds.includes(dataset.datasetId))
-      );
     }
   };
 
@@ -208,24 +153,8 @@ export const DatasetSelectModal = ({
     if (!targetModel) {
       return [];
     }
-    if (searchKey.trim()) {
-      return visibleDatasets.filter((item) => item.vectorModel.model === targetModel);
-    }
-    const compatibleDatasets = [];
-    // 1. Direct datasets in current directory
-    const directDatasets = visibleDatasets.filter((item) => item.vectorModel.model === targetModel);
-    compatibleDatasets.push(...directDatasets);
-    // 2. Direct datasets under folders in current directory
-    const folders = filteredDatasets.filter((item) => item.type === DatasetTypeEnum.folder);
-    for (const folder of folders) {
-      const folderDirectDatasets = getDirectDatasets(folder._id);
-      const folderCompatibleDatasets = folderDirectDatasets.filter(
-        (item) => item.vectorModel.model === targetModel && isFolderSelectable(folder._id)
-      );
-      compatibleDatasets.push(...folderCompatibleDatasets);
-    }
-    return compatibleDatasets;
-  }, [filteredDatasets, activeVectorModel, searchKey, getDirectDatasets, isFolderSelectable]);
+    return visibleDatasets.filter((item) => item.vectorModel.model === targetModel);
+  }, [filteredDatasets, activeVectorModel]);
 
   // Get selectable compatible datasets (not already selected)
   const getCompatibleDatasets = useCallback(() => {
@@ -268,27 +197,9 @@ export const DatasetSelectModal = ({
       if (!targetModel) {
         return false;
       }
-      let allCompatibleDatasets = [];
-      if (searchKey.trim()) {
-        allCompatibleDatasets = visibleDatasets.filter(
-          (item) => item.vectorModel.model === targetModel
-        );
-      } else {
-        // 1. Direct datasets in current directory
-        const directDatasets = visibleDatasets.filter(
-          (item) => item.vectorModel.model === targetModel
-        );
-        allCompatibleDatasets.push(...directDatasets);
-        // 2. Direct datasets under folders in current directory
-        const folders = filteredDatasets.filter((item) => item.type === DatasetTypeEnum.folder);
-        for (const folder of folders) {
-          const folderDirectDatasets = getDirectDatasets(folder._id);
-          const folderCompatibleDatasets = folderDirectDatasets.filter(
-            (item) => item.vectorModel.model === targetModel && isFolderSelectable(folder._id)
-          );
-          allCompatibleDatasets.push(...folderCompatibleDatasets);
-        }
-      }
+      const allCompatibleDatasets = visibleDatasets.filter(
+        (item) => item.vectorModel.model === targetModel
+      );
       const result =
         allCompatibleDatasets.length > 0 &&
         allCompatibleDatasets.every((item) => isDatasetSelected(item._id));
@@ -296,14 +207,7 @@ export const DatasetSelectModal = ({
     } catch (error) {
       return false;
     }
-  }, [
-    filteredDatasets,
-    activeVectorModel,
-    isDatasetSelected,
-    searchKey,
-    getDirectDatasets,
-    isFolderSelectable
-  ]);
+  }, [filteredDatasets, activeVectorModel, isDatasetSelected]);
 
   // Render component
   return (
@@ -440,30 +344,6 @@ export const DatasetSelectModal = ({
                           justifyContent="center"
                           onClick={(e) => e.stopPropagation()} // Prevent parent click when clicking checkbox
                         >
-                          {item.type === DatasetTypeEnum.folder &&
-                            (() => {
-                              const isSelectable = isFolderSelectable(item._id);
-                              const isFullySelected = isFolderFullySelected(item._id);
-                              return (
-                                <Checkbox
-                                  isChecked={isFullySelected}
-                                  onChange={(e) => {
-                                    const checked = e.target.checked;
-                                    if (!isSelectable) {
-                                      toast({
-                                        status: 'warning',
-                                        title: t('common:dataset.Select Dataset Tips')
-                                      });
-                                      return;
-                                    }
-                                    handleFolderSelect(item._id, checked);
-                                  }}
-                                  colorScheme="blue"
-                                  size="sm"
-                                  variant={!isSelectable ? 'disabled' : undefined}
-                                />
-                              );
-                            })()}
                           {item.type !== DatasetTypeEnum.folder && (
                             <Checkbox
                               isChecked={isDatasetSelected(item._id)}
