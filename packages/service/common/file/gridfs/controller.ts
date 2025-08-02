@@ -79,6 +79,8 @@ export async function uploadFile({
       .pipe(stream as any)
       .on('finish', resolve)
       .on('error', reject);
+  }).finally(() => {
+    readStream.destroy();
   });
 
   return String(stream.id);

@@ -198,6 +198,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     if (item) {
       item.reject?.('error');
       clearTimeout(item.timeoutId);
+      item.worker.removeAllListeners();
       item.worker.terminate();
     }
 
