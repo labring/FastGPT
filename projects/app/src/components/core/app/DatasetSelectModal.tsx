@@ -5,13 +5,11 @@ import {
   Button,
   ModalBody,
   ModalFooter,
-  useTheme,
   Grid,
   Input,
   InputGroup,
   InputLeftElement,
   Checkbox,
-  Text,
   VStack,
   HStack,
   IconButton,
@@ -21,7 +19,6 @@ import { SearchIcon, ChevronRightIcon, CloseIcon, InfoIcon } from '@chakra-ui/ic
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
@@ -46,42 +43,43 @@ export const DatasetSelectModal = ({
 }) => {
   // Translation function
   const { t } = useTranslation();
-  const theme = useTheme();
   // Current selected datasets, initialized with defaultSelectedDatasets
   const [selectedDatasets, setSelectedDatasets] =
     useState<SelectedDatasetType>(defaultSelectedDatasets);
   // Search keyword state
   const [searchKey, setSearchKey] = useState<string>('');
-  // Expanded folder IDs
-  const [expandedFolders, setExpandedFolders] = useState<string[]>([]);
   const { toast } = useToast();
-  // paths: current path, setParentId: switch folder, datasets: current available datasets, isFetching: loading state
+
+  // Use server-side search, following the logic of the dataset list page
   const { paths, setParentId, datasets, isFetching } = useDatasetSelect();
 
-  // Fetch all datasets for folder logic
-  const { data: allDatasets } = useRequest2(
-    () => getDatasets({ parentId: '', getAllDatasets: true }),
+  // If there is a search keyword, use server-side search; otherwise, use datasets in the current directory
+  const { data: searchDatasets, loading: isSearching } = useRequest2(
+    () => {
+      if (!searchKey.trim()) {
+        return Promise.resolve([]);
+      }
+      // Use server-side search, passing the searchKey parameter
+      return getDatasets({
+        parentId: '',
+        searchKey: searchKey.trim()
+      });
+    },
     {
       manual: false,
-      refreshDeps: []
+      refreshDeps: [searchKey]
     }
   );
 
   const { Loading } = useLoading();
 
-  // Filter dataset list by search keyword
+  // Determine which datasets to display based on the search state
   const filteredDatasets = useMemo(() => {
-    if (!searchKey.trim()) {
-      return datasets;
+    if (searchKey.trim()) {
+      return searchDatasets || [];
     }
-    const dataSource = allDatasets || [];
-    const searchResults = dataSource.filter(
-      (item) =>
-        item.name.toLowerCase().includes(searchKey.toLowerCase()) ||
-        item.intro?.toLowerCase().includes(searchKey.toLowerCase())
-    );
-    return searchResults;
-  }, [datasets, searchKey, allDatasets]);
+    return datasets;
+  }, [datasets, searchKey, searchDatasets]);
 
   // The vector model of the first selected dataset
   const activeVectorModel = selectedDatasets[0]?.vectorModel?.model;
@@ -89,7 +87,7 @@ export const DatasetSelectModal = ({
   // Get direct datasets under a folder (excluding subfolders)
   const getDirectDatasets = useCallback(
     (folderId?: string) => {
-      const dataSource = allDatasets || [];
+      const dataSource = filteredDatasets || [];
       if (dataSource.length === 0) {
         return [];
       }
@@ -100,7 +98,7 @@ export const DatasetSelectModal = ({
       );
       return result;
     },
-    [allDatasets]
+    [filteredDatasets]
   );
 
   // Check if a folder is selectable: all direct datasets in the folder have the same vector model && (no other datasets selected || folder's vector model matches current selection)
@@ -133,9 +131,6 @@ export const DatasetSelectModal = ({
       if (directDatasets.length === 0) {
         return false;
       }
-      const selectedCount = directDatasets.filter((item) =>
-        selectedDatasets.some((selected) => selected.datasetId === item._id)
-      ).length;
       const isFullySelected = directDatasets.every((item) =>
         selectedDatasets.some((selected) => selected.datasetId === item._id)
       );
@@ -179,24 +174,13 @@ export const DatasetSelectModal = ({
         name: item.name,
         vectorModel: item.vectorModel
       }));
-      setSelectedDatasets((prev) => {
-        const newState = [...prev, ...newSelections];
-        return newState;
-      });
+      setSelectedDatasets((prev) => [...prev, ...newSelections]);
     } else {
       const datasetIds = directDatasets.map((item) => item._id);
-      setSelectedDatasets((prev) => {
-        const newState = prev.filter((dataset) => !datasetIds.includes(dataset.datasetId));
-        return newState;
-      });
+      setSelectedDatasets((prev) =>
+        prev.filter((dataset) => !datasetIds.includes(dataset.datasetId))
+      );
     }
-  };
-
-  // Handle folder expand/collapse
-  const handleFolderToggle = (folderId: string) => {
-    setExpandedFolders((prev) =>
-      prev.includes(folderId) ? prev.filter((id) => id !== folderId) : [...prev, folderId]
-    );
   };
 
   // Remove a selected dataset
@@ -305,9 +289,6 @@ export const DatasetSelectModal = ({
           allCompatibleDatasets.push(...folderCompatibleDatasets);
         }
       }
-      const selectedCount = allCompatibleDatasets.filter((item) =>
-        isDatasetSelected(item._id)
-      ).length;
       const result =
         allCompatibleDatasets.length > 0 &&
         allCompatibleDatasets.every((item) => isDatasetSelected(item._id));
@@ -334,28 +315,32 @@ export const DatasetSelectModal = ({
       onClose={onClose}
     >
       {/* Main vertical layout */}
-      <Flex h={'100%'} flexDirection={'column'} flex={'1'}>
-        <ModalBody flex={'1'}>
+      <Flex h="100%" direction="column" flex={1} overflow="hidden" minH={0}>
+        <ModalBody flex={1} overflow="hidden" minH={0}>
           {/* Two-column layout */}
           <Grid
             border="1px solid"
             borderColor="myGray.200"
-            borderRadius="0.5rem"
+            borderRadius="md"
             gridTemplateColumns="1fr 1fr"
-            h={'100%'}
+            h="100%"
+            overflow="hidden"
+            minH={0}
           >
             {/* Left: search and dataset list */}
             <Flex
-              h={'100%'}
-              flexDirection="column"
+              h="100%"
+              direction="column"
               borderRight="1px solid"
               borderColor="myGray.200"
-              p="4"
+              p={4}
+              overflow="hidden"
+              minH={0}
             >
               {/* Search box */}
-              <InputGroup mb={4} flexShrink={0}>
+              <InputGroup mb={4}>
                 <InputLeftElement>
-                  <SearchIcon w={'16px'} color={'gray.400'} />
+                  <SearchIcon w={4} color="gray.400" />
                 </InputLeftElement>
                 <Input
                   placeholder={t('app:Search_dataset')}
@@ -366,78 +351,79 @@ export const DatasetSelectModal = ({
               </InputGroup>
 
               {/* Path display area - always occupies space, content changes based on search state */}
-              <Box
-                mb={2}
-                py={1}
-                px={2}
-                fontSize="sm"
-                minH="32px"
-                display="flex"
-                alignItems="center"
-                flexShrink={0}
-              >
-                {!searchKey.trim() ? (
-                  paths.length === 0 ? (
-                    // Root directory path
-                    <Flex flex={1} ml={-2} alignItems="center">
-                      <Box
-                        fontSize={['xs', 'sm']}
-                        py={0.5}
-                        px={1.5}
-                        borderRadius="sm"
-                        maxW={['45vw', '250px']}
-                        className="textEllipsis"
-                        color="myGray.700"
-                        fontWeight="bold"
-                        cursor="pointer"
-                        _hover={{
-                          bg: 'myGray.100'
-                        }}
-                        onClick={() => setParentId('')}
-                      >
-                        {t('common:root_folder')}
-                      </Box>
-                      <MyIcon name={'common/line'} color={'myGray.500'} mx={1} width={'5px'} />
-                    </Flex>
-                  ) : (
-                    // Subdirectory path
-                    <FolderPath
-                      paths={paths.map((path, i) => ({
-                        parentId: path.parentId,
-                        parentName: path.parentName
-                      }))}
-                      FirstPathDom={t('common:root_folder')}
-                      onClick={(e) => {
-                        setParentId(e);
-                      }}
-                    />
-                  )
-                ) : (
-                  // Search state: show search tip, keep space
-                  <Box as="div" width="100%" minH={'25px'} display="flex" alignItems="center">
-                    <Text fontSize="sm" color="gray.500">
-                      {t('chat:search_results')}
-                    </Text>
+              <Box mb={2} py={1} px={2} fontSize="sm" minH={8} display="flex" alignItems="center">
+                {searchKey.trim() && (
+                  <Box
+                    w="100%"
+                    minH={6}
+                    display="flex"
+                    alignItems="center"
+                    fontSize="sm"
+                    color="gray.500"
+                  >
+                    {t('chat:search_results')}
                   </Box>
+                )}
+                {!searchKey.trim() && paths.length === 0 && (
+                  // Root directory path
+                  <Flex flex={1} ml={-2} alignItems="center">
+                    <Box
+                      fontSize={['xs', 'sm']}
+                      py={0.5}
+                      px={1.5}
+                      borderRadius="sm"
+                      maxW={['45vw', '250px']}
+                      className="textEllipsis"
+                      color="myGray.700"
+                      fontWeight="bold"
+                      cursor="pointer"
+                      _hover={{ bg: 'myGray.100' }}
+                      onClick={() => setParentId('')}
+                    >
+                      {t('common:root_folder')}
+                    </Box>
+                    <MyIcon name="common/line" color="myGray.500" mx={1} w="5px" />
+                  </Flex>
+                )}
+                {!searchKey.trim() && paths.length > 0 && (
+                  // Subdirectory path
+                  <FolderPath
+                    paths={paths.map((path) => ({
+                      parentId: path.parentId,
+                      parentName: path.parentName
+                    }))}
+                    FirstPathDom={t('common:root_folder')}
+                    onClick={(e) => setParentId(e)}
+                  />
                 )}
               </Box>
 
               {/* Dataset list */}
-              <VStack align="stretch" spacing="4px" flex={'1 0 0'} overflowY="auto" h={0}>
-                {filteredDatasets.length === 0 ? (
-                  <EmptyTip text={t('common:folder.empty')} />
-                ) : (
+              <VStack align="stretch" spacing={1} flex={1} overflowY="auto" h={0} minH={0}>
+                {filteredDatasets.length === 0 && (
+                  <Box
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    h="full"
+                    color="gray.400"
+                  >
+                    <VStack spacing={2} fontSize="sm">
+                      <MyIcon name="empty" w={12} color="transparent" />
+                      <Box fontSize="sm">{t('common:folder.empty')}</Box>
+                    </VStack>
+                  </Box>
+                )}
+                {filteredDatasets.length > 0 &&
                   filteredDatasets.map((item) => (
                     <Box key={item._id}>
                       <Flex
                         align="center"
-                        py={0}
                         px={2}
                         borderRadius="md"
                         _hover={{ bg: 'gray.50' }}
                         cursor="pointer"
-                        minH="38px"
-                        height="38px"
+                        h="38px"
                         onClick={() => {
                           if (item.type === DatasetTypeEnum.folder) {
                             if (searchKey.trim()) {
@@ -447,15 +433,14 @@ export const DatasetSelectModal = ({
                           }
                         }}
                       >
-                        {/* Checkbox for both folder and dataset */}
                         <Box
-                          w="24px"
+                          w={6}
                           display="flex"
                           alignItems="center"
                           justifyContent="center"
                           onClick={(e) => e.stopPropagation()} // Prevent parent click when clicking checkbox
                         >
-                          {item.type === DatasetTypeEnum.folder ? (
+                          {item.type === DatasetTypeEnum.folder &&
                             (() => {
                               const isSelectable = isFolderSelectable(item._id);
                               const isFullySelected = isFolderFullySelected(item._id);
@@ -474,37 +459,12 @@ export const DatasetSelectModal = ({
                                     handleFolderSelect(item._id, checked);
                                   }}
                                   colorScheme="blue"
-                                  sx={
-                                    !isSelectable
-                                      ? {
-                                          '& .chakra-checkbox__control': {
-                                            borderColor: 'gray.200',
-                                            opacity: 0.5,
-                                            width: '18px',
-                                            height: '18px',
-                                            borderWidth: '2px'
-                                          },
-                                          '& .chakra-checkbox__control::before': {
-                                            width: '10px',
-                                            height: '10px'
-                                          }
-                                        }
-                                      : {
-                                          '& .chakra-checkbox__control': {
-                                            width: '18px',
-                                            height: '18px',
-                                            borderWidth: '2px'
-                                          },
-                                          '& .chakra-checkbox__control::before': {
-                                            width: '10px',
-                                            height: '10px'
-                                          }
-                                        }
-                                  }
+                                  size="sm"
+                                  variant={!isSelectable ? 'disabled' : undefined}
                                 />
                               );
-                            })()
-                          ) : (
+                            })()}
+                          {item.type !== DatasetTypeEnum.folder && (
                             <Checkbox
                               isChecked={isDatasetSelected(item._id)}
                               onChange={(e) => {
@@ -519,92 +479,50 @@ export const DatasetSelectModal = ({
                                 handleDatasetSelect(item, checked);
                               }}
                               colorScheme="blue"
-                              sx={
-                                isDatasetDisabled(item)
-                                  ? {
-                                      '& .chakra-checkbox__control': {
-                                        borderColor: 'gray.200',
-                                        opacity: 0.5,
-                                        width: '18px',
-                                        height: '18px',
-                                        borderWidth: '2px'
-                                      },
-                                      '& .chakra-checkbox__control::before': {
-                                        width: '10px',
-                                        height: '10px'
-                                      }
-                                    }
-                                  : {
-                                      '& .chakra-checkbox__control': {
-                                        width: '18px',
-                                        height: '18px',
-                                        borderWidth: '2px'
-                                      },
-                                      '& .chakra-checkbox__control::before': {
-                                        width: '10px',
-                                        height: '10px'
-                                      }
-                                    }
-                              }
+                              size="sm"
+                              variant={isDatasetDisabled(item) ? 'disabled' : undefined}
                             />
                           )}
                         </Box>
 
                         {/* Avatar */}
-                        <Avatar src={item.avatar} w="22px" h="22px" borderRadius="sm" mx={3} />
+                        <Avatar src={item.avatar} w={22} h={22} borderRadius="sm" mx={3} />
 
                         {/* Name and type */}
-                        <Box flex={1} minW={0}>
-                          <Text fontSize="sm" fontWeight="medium" isTruncated>
-                            {item.name}
-                          </Text>
-                          {item.type === DatasetTypeEnum.folder ? (
-                            <Text fontSize="xs" color="gray.500">
+                        <Box flex={1} minW={0} fontSize="sm">
+                          {item.name}
+                          {item.type === DatasetTypeEnum.folder && (
+                            <Box fontSize="xs" color="gray.500">
                               {t('common:Folder')}
-                            </Text>
-                          ) : (
-                            <Text fontSize="xs" color="gray.500">
+                            </Box>
+                          )}
+                          {item.type !== DatasetTypeEnum.folder && (
+                            <Box fontSize="xs" color="gray.500">
                               {t('app:Index')}: {item.vectorModel.name}
-                            </Text>
+                            </Box>
                           )}
                         </Box>
 
                         {/* Folder expand arrow */}
                         {item.type === DatasetTypeEnum.folder && (
                           <Box mr={10}>
-                            <ChevronRightIcon
-                              w="20px"
-                              h="20px"
-                              color="gray.500"
-                              strokeWidth="1px"
-                            />
+                            <ChevronRightIcon w={5} h={5} color="gray.500" strokeWidth="1px" />
                           </Box>
                         )}
                       </Flex>
                     </Box>
-                  ))
-                )}
+                  ))}
               </VStack>
 
               {/* Select all / Deselect all */}
-              <Flex mt={3} justify="space-between" align="center" flexShrink={0}>
+              <Flex mt={3} justify="space-between" align="center">
                 <Checkbox
                   isChecked={isAllSelected}
                   onChange={(e) => handleSelectAll(e.target.checked)}
                   colorScheme="blue"
-                  sx={{
-                    '& .chakra-checkbox__control': {
-                      width: '18px',
-                      height: '18px',
-                      borderWidth: '2px'
-                    },
-                    '& .chakra-checkbox__control::before': {
-                      width: '10px',
-                      height: '10px'
-                    }
-                  }}
+                  size="sm"
                 >
-                  <Text fontSize="sm">{t('common:Select_all')}</Text>
+                  <Box fontSize="sm">{t('common:Select_all')}</Box>
                 </Checkbox>
                 {/* 
                 <Button
@@ -628,16 +546,14 @@ export const DatasetSelectModal = ({
             </Flex>
 
             {/* Right: selected datasets display */}
-            <Flex h={'100%'} p="4" flexDirection="column">
+            <Flex h="100%" p={4} direction="column" overflow="hidden" minH={0}>
               {/* Selected count display */}
-              <Box mb={3} flexShrink={0}>
-                <Text fontSize="sm" color="gray.600">
-                  {t('app:Selected')}: {selectedDatasets.length} {t('app:dataset')}
-                </Text>
+              <Box mb={3} fontSize="sm" color="gray.600">
+                {t('app:Selected')}: {selectedDatasets.length} {t('app:dataset')}
               </Box>
               {/* Selected dataset list */}
-              <VStack align="stretch" spacing={8} flex={'1 0 0'} overflowY="auto" h={0}>
-                {selectedDatasets.length === 0 ? (
+              <VStack align="stretch" spacing={8} flex={1} overflowY="auto" h={0} minH={0}>
+                {selectedDatasets.length === 0 && (
                   <Box
                     display="flex"
                     alignItems="center"
@@ -645,59 +561,61 @@ export const DatasetSelectModal = ({
                     h="full"
                     color="gray.400"
                   >
-                    <VStack spacing={8}>
-                      <MyIcon name="empty" w="48px" color="transparent" />
-                      <Text fontSize="sm">{t('app:No_selected_dataset')}</Text>
+                    <VStack spacing={2} fontSize="sm">
+                      <MyIcon name="empty" w={12} color="transparent" />
+                      <Box fontSize="sm">{t('app:No_selected_dataset')}</Box>
                     </VStack>
                   </Box>
-                ) : (
+                )}
+                {selectedDatasets.length > 0 &&
                   selectedDatasets.map((item) => (
                     <Box
                       key={item.datasetId}
                       px={2}
-                      py={0}
                       borderRadius="md"
                       _hover={{ bg: 'gray.50' }}
                       cursor="pointer"
-                      minH="24px"
+                      minH={6}
                       display="flex"
                       alignItems="center"
                     >
-                      <Avatar src={item.avatar} w="24px" h="24px" borderRadius="sm" mr={3} />
+                      <Avatar src={item.avatar} w={6} h={6} borderRadius="sm" mr={3} />
                       <Box flex={1} minW={0}>
-                        <Text fontSize="sm" fontWeight="medium" isTruncated>
-                          {item.name}
-                        </Text>
+                        <Box fontSize="sm">{item.name}</Box>
                       </Box>
                       <IconButton
                         aria-label="Remove"
-                        icon={<CloseIcon w="10px" h="10px" />}
+                        icon={<CloseIcon w={2.5} h={2.5} />}
                         size="xs"
                         variant="ghost"
                         color="black"
-                        _hover={{
-                          bg: 'gray.200'
-                        }}
+                        _hover={{ bg: 'gray.200' }}
                         onClick={() => removeSelectedDataset(item.datasetId)}
                       />
                     </Box>
-                  ))
-                )}
+                  ))}
               </VStack>
             </Flex>
           </Grid>
         </ModalBody>
 
         {/* Modal footer button area */}
-        <ModalFooter flexShrink={0}>
+        <ModalFooter>
           <HStack spacing={4} w="full" align="center">
             <Spacer />
             <HStack spacing={3} align="center">
-              <Box px={3} py={2} borderRadius="md" bg="#F0F4FF" display="flex" alignItems="center">
-                <InfoIcon w="14px" h="14px" color="blue.500" mr={2} />
-                <Text fontSize="xs" color="blue.600">
-                  {t('common:dataset.Select Dataset Tips')}
-                </Text>
+              <Box
+                px={3}
+                py={2}
+                borderRadius="md"
+                bg="#F0F4FF"
+                display="flex"
+                alignItems="center"
+                fontSize="xs"
+                color="blue.600"
+              >
+                <InfoIcon w={3.5} h={3.5} color="blue.500" mr={2} />
+                {t('common:dataset.Select Dataset Tips')}
               </Box>
               <Button
                 colorScheme="blue"
@@ -713,8 +631,8 @@ export const DatasetSelectModal = ({
           </HStack>
         </ModalFooter>
 
-        {/* Loading animation, shown when isFetching is true */}
-        <Loading fixed={false} loading={isFetching} />
+        {/* Loading animation, shown when isFetching or isSearching is true */}
+        <Loading fixed={false} loading={isFetching || isSearching} />
       </Flex>
     </DatasetSelectContainer>
   );
