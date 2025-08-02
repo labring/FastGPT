@@ -24,20 +24,20 @@ jobs:
       - name: Checkout target repository
         uses: actions/checkout@v4
         with:
-          repository: labring/fastgpt-docs-img
+          repository: labring/fastgpt-img
           token: ${{ secrets.DOCS_IMGS_SYNC_TOKEN }}
-          path: fastgpt-docs-img
+          path: fastgpt-img
 
       - name: Sync images
         run: |
           # Create imgs directory if it doesn't exist
-          mkdir -p fastgpt-docs-img
+          mkdir -p fastgpt-img
 
           # Copy all images from document/public/imgs to the target repository
-          cp -r document/public/imgs/* fastgpt-docs-img
+          cp -r document/public/imgs/* fastgpt-img
 
           # Navigate to target repository
-          cd fastgpt-docs-img
+          cd fastgpt-img
 
           # Configure git
           git config user.name "github-actions[bot]"
