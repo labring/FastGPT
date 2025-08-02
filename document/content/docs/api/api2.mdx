@@ -4,7 +4,7 @@ description: FastGPT OpenAPI 对话接口
 ---
 
 import { Alert } from '@/components/docs/Alert';
-
+t
 # 如何获取 AppId
 
 可在应用详情的路径里获取 AppId。
@@ -14,20 +14,21 @@ import { Alert } from '@/components/docs/Alert';
 # 发起对话
 
 <Alert icon="🤖" context="success">
-* 该接口的 API Key 需使用`应用特定的 key`，否则会报错。  
+* 该接口的 API Key 需使用`应用特定的 key`，否则会报错。
 
 {/* * 对话现在有`v1`和`v2`两个接口，可以按需使用，v2 自 4.9.4 版本新增，v1 接口同时不再维护 */}
 
-* 有些包调用时，`BaseUrl`需要添加`v1`路径，有些不需要，如果出现404情况，可补充`v1`重试。
-</Alert>
+- 有些包调用时，`BaseUrl`需要添加`v1`路径，有些不需要，如果出现404情况，可补充`v1`重试。
+  </Alert>
 
 ## 请求简易应用和工作流
 
 `v1`对话接口兼容`GPT`的接口！如果你的项目使用的是标准的`GPT`官方接口，可以直接通过修改`BaseUrl`和 `Authorization`来访问 FastGpt 应用，不过需要注意下面几个规则：
 
 <Alert icon="🤖" context="success">
-* 传入的`model`，`temperature`等参数字段均无效，这些字段由编排决定，不会根据 API 参数改变。
-* 不会返回实际消耗`Token`值，如果需要，可以设置`detail=true`，并手动计算 `responseData` 里的`tokens`值。
+  * 传入的`model`，`temperature`等参数字段均无效，这些字段由编排决定，不会根据 API 参数改变。 *
+  不会返回实际消耗`Token`值，如果需要，可以设置`detail=true`，并手动计算 `responseData`
+  里的`tokens`值。
 </Alert>
 
 ### 请求
@@ -60,8 +61,8 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
   </Tab>
   <Tab>
 
-* 仅`messages`有部分区别，其他参数一致。
-* 目前不支持上传文件，需上传到自己的对象存储中，获取对应的文件链接。
+- 仅`messages`有部分区别，其他参数一致。
+- 目前不支持上传文件，需上传到自己的对象存储中，获取对应的文件链接。
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
@@ -96,6 +97,5 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 ```
 
   </Tab>
-
 
 </Tabs>
