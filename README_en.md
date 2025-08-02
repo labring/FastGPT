@@ -80,7 +80,7 @@ Project tech stack: NextJs + TS + ChakraUI + MongoDB + PostgreSQL (PG Vector plu
 - [Deploying FastGPT](https://doc.fastgpt.io/docs/introduction/development/docker)
 - [Guide on System Configs](https://doc.fastgpt.io/docs/introduction/development/configuration)
 - [Configuring Multiple Models](https://doc.fastgpt.io/docs//introduction/development/modelConfig/intro)
-- [Version Updates & Upgrades](https://doc.fastgpt.io/docs/introduction/development/upgrading/intro)
+- [Version Updates & Upgrades](https://doc.fastgpt.io/docs/introduction/development/upgrading/index)
 
 <a href="#FastGPT">
     <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
@@ -185,7 +185,7 @@ This repository complies with the [FastGPT Open Source License](./LICENSE) open 
 1. Direct commercial use as a backend service is allowed, but provision of SaaS services is not allowed.
 2. Without commercial authorization, any form of commercial service must retain relevant copyright information.
 3. For full details, please see [FastGPT Open Source License](./LICENSE)
-4. Contact: Dennis@sealos.io , [click to view commercial version pricing strategy](https://doc.fastgpt.io/docs/introduction/shopping_cart/intro/)
+4. Contact: Dennis@sealos.io , [click to view commercial version pricing strategy](https://doc.fastgpt.io/docs/introduction/commercial/)
 
 <a href="#FastGPT">
     <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">

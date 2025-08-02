@@ -25,7 +25,12 @@
     "[typescript]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
+    "mdx.server.enable": true,
+    "markdown.copyFiles.overwriteBehavior": "nameIncrementally",
     "markdown.copyFiles.destination": {
-        "/document/content/**/*": "${documentWorkspaceFolder}/document/public/"
+        "/document/content/docs/**/*": "${documentWorkspaceFolder}/document/public/imgs/"
+    },
+    "files.associations": {
+        "*.mdx": "markdown"
     }
 }

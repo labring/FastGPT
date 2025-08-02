@@ -1,6 +1,6 @@
 ---
-title: 升级说明
-description: FastGPT 升级说明
+title: 版本升级说明
+description: FastGPT 版本升级说明
 ---
 
 FastGPT 升级包括两个步骤：
@@ -8,26 +8,30 @@ FastGPT 升级包括两个步骤：
 1. 镜像升级
 2. 执行升级初始化脚本
 
-
-
 ## 镜像名
 
 **git版**
-- FastGPT 主镜像：ghcr.io/labring/fastgpt:latest
-- 商业版镜像：ghcr.io/c121914yu/fastgpt-pro:latest
-- Admin 镜像：ghcr.io/c121914yu/fastgpt-admin:latest
+
+- FastGPT 主镜像: ghcr.io/labring/fastgpt:latest
+- Plugin 镜像: ghcr.io/labring/fastgpt-plugin
+- 代码沙箱镜像: ghcr.io/labring/fastgpt-sandbox
+- MCP SSE setver 镜像: ghcr.io/labring/fastgpt-mcp_server
+- 商业版镜像: ghcr.io/c121914yu/fastgpt-pro:latest
 
 **阿里云**
+
 - FastGPT 主镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt
-- 商业版镜像：ghcr:registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-pro
-- Admin 镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-admin
+- Plugin 镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin
+- 代码沙箱镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox
+- MCP SSE setver 镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server
+- 商业版镜像: ghcr:registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-pro
 
 镜像由镜像名和`Tag`组成，例如: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.6.1 代表`4.6.3`版本镜像，具体可以看 docker hub, github 仓库。
 
 ## Sealos 修改镜像
 
 1. 打开 [Sealos Cloud](https://cloud.sealos.io?uid=fnWRt09fZP)， 找到桌面上的应用管理
-   
+
 ![](/imgs/updateImageSealos1.jpg)
 
 2. 选择对应的应用 - 点击右边三个点 - 变更
@@ -36,7 +40,7 @@ FastGPT 升级包括两个步骤：
 
 3. 修改镜像 - 确认变更
 
-    如果要修改配置文件，可以拉到下面的`配置文件`进行修改。
+   如果要修改配置文件，可以拉到下面的`配置文件`进行修改。
 
 ![](/imgs/updateImageSealos3.png)
 
@@ -53,7 +57,6 @@ docker-compose up -d
 
 镜像更新完后，可以查看文档中的`版本介绍`，通常需要执行升级脚本的版本都会标明`包含升级脚本`，打开对应的文档，参考说明执行**升级脚本**即可，大部分时候都是需要发送一个`POST`请求。
 
-
 ## QA
 
 ### 为什么需要执行升级脚本
@@ -69,7 +72,6 @@ Sealos 中，你可以在下图中找到你的域名：
 
 ![](/imgs/updateImageSealos4.png)
 
-
 ### 如何获取 rootkey
 
 从`docker-compose.yml`中的`environment`中获取，对应的是`ROOT_KEY`的值。
@@ -78,12 +80,14 @@ sealos 中可以从上图左侧的环境变量中获取。
 
 ### 如何跨版本升级！！
 
-建议逐一版本升级，防止脏数据。例如，当前版本是4.4.7，需要升级到4.6。
+先进行数据备份！！！
 
-1. 修改镜像到4.5，执行初始化
-2. 修改镜像到4.5.1，执行初始化
-3. 修改镜像到4.5.2，执行初始化
-4. 修改镜像到4.6，执行初始化
+可以升级至最新版本，然后将所有升级脚本的版本都执行一遍。不过为了稳定，建议逐一版本升级。例如，当前版本是4.4.7，需要升级到4.6。
+
+1. 修改镜像到4.5，执行升级脚本
+2. 修改镜像到4.5.1，执行升级脚本
+3. 修改镜像到4.5.2，执行升级脚本
+4. 修改镜像到4.6，执行升级脚本
 5. .....
 
 逐一升级

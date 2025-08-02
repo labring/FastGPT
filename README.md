@@ -107,7 +107,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 * [部署 FastGPT](https://doc.fastgpt.io/docs/introduction/development/sealos/)
 * [系统配置文件说明](https://doc.fastgpt.io/docs/introduction/development/configuration/)
 * [多模型配置方案](https://doc.fastgpt.io/docs/introduction/development/modelConfig/one-api/)
-* [版本更新/升级介绍](https://doc.fastgpt.io/docs/introduction/development/upgrading/intro)
+* [版本更新/升级介绍](https://doc.fastgpt.io/docs/introduction/development/upgrading/index)
 * [OpenAPI API 文档](https://doc.fastgpt.io/docs/introduction/development/openapi/)
 * [知识库结构详解](https://doc.fastgpt.io/docs/introduction/guide/knowledge_base/RAG/)
 
@@ -216,4 +216,4 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 1. 允许作为后台服务直接商用，但不允许提供 SaaS 服务。
 2. 未经商业授权，任何形式的商用服务均需保留相关版权信息。
 3. 完整请查看 [FastGPT Open Source License](./LICENSE)
-4. 联系方式：Dennis@sealos.io，[点击查看商业版定价策略](https://doc.fastgpt.io/docs/introduction/shopping_cart/intro/)
+4. 联系方式：Dennis@sealos.io，[点击查看商业版定价策略](https://doc.fastgpt.io/docs/introduction/commercial/)
