@@ -33,6 +33,10 @@ export default async function Layout({
     {
       title: t('common:protocol', lang),
       url: lang === 'zh-CN' ? '/docs/protocol' : '/en/docs/protocol'
+    },
+    {
+      title: t('common:upgrading', lang),
+      url: lang === 'zh-CN' ? '/docs/upgrading' : '/en/docs/upgrading'
     }
   ];
 

@@ -9,7 +9,8 @@ const exactMap: Record<string, string> = {
   '/docs/guide/admin/sso_dingtalk':
     '/docs/introduction/guide/admin/sso#/docs/introduction/guide/admin/sso#钉钉',
   '/docs/guide/knowledge_base/rag': '/docs/introduction/guide/knowledge_base/RAG',
-  '/docs/commercial/intro/': '/docs/introduction'
+  '/docs/commercial/intro/': '/docs/introduction',
+  '/docs/upgrading/intro/': '/docs/upgrading'
 };
 
 const prefixMap: Record<string, string> = {

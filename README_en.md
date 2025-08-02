@@ -80,7 +80,7 @@ Project tech stack: NextJs + TS + ChakraUI + MongoDB + PostgreSQL (PG Vector plu
 - [Deploying FastGPT](https://doc.fastgpt.io/docs/introduction/development/docker)
 - [Guide on System Configs](https://doc.fastgpt.io/docs/introduction/development/configuration)
 - [Configuring Multiple Models](https://doc.fastgpt.io/docs//introduction/development/modelConfig/intro)
-- [Version Updates & Upgrades](https://doc.fastgpt.io/docs/introduction/development/upgrading/intro)
+- [Version Updates & Upgrades](https://doc.fastgpt.io/docs/introduction/development/upgrading/index)
 
 <a href="#FastGPT">
     <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
