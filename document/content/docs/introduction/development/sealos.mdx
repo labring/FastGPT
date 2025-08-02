@@ -15,7 +15,6 @@ FastGPT 使用了 one-api 项目来管理模型池，其可以兼容 OpenAI 、A
 
 可参考：[Sealos 快速部署 OneAPI](/docs/development/modelconfig/one-api)
 
-
 ## 一键部署
 
 使用 Sealos 服务，无需采购服务器、无需域名，支持高并发 & 动态伸缩，并且数据库应用采用 kubeblocks 的数据库，在 IO 性能方面，远超于简单的 Docker 容器部署。可以根据需求，再下面两个区域选择部署。
@@ -24,13 +23,31 @@ FastGPT 使用了 one-api 项目来管理模型池，其可以兼容 OpenAI 、A
 
 新加披区的服务器在国外，可以直接访问 OpenAI，但国内用户需要梯子才可以正常访问新加坡区。国际区价格稍贵，点击下面按键即可部署👇
 
-<a href="https://template.cloud.sealos.io/deploy?templateName=fastgpt&uid=fnWRt09fZP" rel="external" target="_blank"><img src="https://cdn.jsdelivr.net/gh/labring-actions/templates@main/Deploy-on-Sealos.svg" alt="Deploy on Sealos"/></a>
+<a
+  href="https://template.cloud.sealos.io/deploy?templateName=fastgpt&uid=fnWRt09fZP"
+  rel="external"
+  target="_blank"
+>
+  <img
+    src="https://cdn.jsdelivr.net/gh/labring-actions/templates@main/Deploy-on-Sealos.svg"
+    alt="Deploy on Sealos"
+  />
+</a>
 
 ### 北京区
 
 北京区服务提供商为火山云，国内用户可以稳定访问，但无法访问 OpenAI 等境外服务，价格约为新加坡区的 1/4。点击下面按键即可部署👇
 
-<a href="https://bja.sealos.run/?openapp=system-template%3FtemplateName%3Dfastgpt&uid=fnWRt09fZP" rel="external" target="_blank"><img src="https://raw.githubusercontent.com/labring-actions/templates/main/Deploy-on-Sealos.svg" alt="Deploy on Sealos"/></a>
+<a
+  href="https://bja.sealos.run/?openapp=system-template%3FtemplateName%3Dfastgpt&uid=fnWRt09fZP"
+  rel="external"
+  target="_blank"
+>
+  <img
+    src="https://raw.githubusercontent.com/labring-actions/templates/main/Deploy-on-Sealos.svg"
+    alt="Deploy on Sealos"
+  />
+</a>
 
 ### 1. 开始部署
 
@@ -87,7 +104,8 @@ FastGPT 商业版共包含了2个应用（fastgpt, fastgpt-plus）和2个数据�
 ![](/imgs/fastgptonsealos1.png)
 
 <Alert icon="🤖" context="success">
-在 Sealos 上，FastGPT 一共运行了 1 个服务和 2 个数据库，如暂停和删除请注意数据库一同操作。（你可以白天启动，晚上暂停它们，省钱大法）
+  在 Sealos 上，FastGPT 一共运行了 1 个服务和 2
+  个数据库，如暂停和删除请注意数据库一同操作。（你可以白天启动，晚上暂停它们，省钱大法）
 </Alert>
 
 ### 如何更新/升级 FastGPT
@@ -98,7 +116,7 @@ FastGPT 商业版共包含了2个应用（fastgpt, fastgpt-plus）和2个数据�
 
 升级步骤：
 
-1. 查看[更新文档](/docs/development/upgrading/intro/)，确认要升级的版本，避免跨版本升级。
+1. 查看[更新文档](/docs/development/upgrading/index/)，确认要升级的版本，避免跨版本升级。
 2. 打开 sealos 的应用管理
 3. 有2个应用 fastgpt ， fastgpt-pro
 4. 点击对应应用右边3个点，变更。或者点详情后右上角的变更。
@@ -130,6 +148,7 @@ FastGPT 商业版共包含了2个应用（fastgpt, fastgpt-plus）和2个数据�
 [配置文件参考](https://doc.tryfastgpt.ai/docs/development/configuration/)
 
 ### 修改站点名称以及 favicon
+
 修改应用的环境变量，增加
 
 ```
@@ -144,6 +163,7 @@ SYSTEM_FAVICON 可以是一个网络地址
 ![](/imgs/onsealos6.png)
 
 ### 挂载logo
+
 目前暂时无法 把浏览器上的logo替换。仅支持svg，待后续可视化做了后可以全部替换。
 新增一个挂载文件，文件名为：/app/projects/app/public/icon/logo.svg ，值为 svg 对应的值。
 

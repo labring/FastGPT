@@ -20,15 +20,14 @@ export const baseOptions = (locale: string): BaseLayoutProps => {
           <div className="flex flex-row items-center gap-2">
             <img src="/FastGPT-full.svg" alt="FastGPT" width={49} height={48} />
           </div>
-          <div className="relative flex flex-row items-center gap-2 h-10 top-14"> 12321</div>
         </div>
       )
     },
-    i18n: {
-      languages: ['zh-CN', 'en'],
-      defaultLanguage: 'zh-CN',
-      hideLocale: 'always'
-    },
+    // i18n: {
+    //   languages: ['zh-CN', 'en'],
+    //   defaultLanguage: 'zh-CN',
+    //   hideLocale: 'always'
+    // },
     searchToggle: {
       enabled: true
     }

@@ -11,8 +11,10 @@
     "community": "社区",
     "resources": "资源"
   },
-  "introduction": "使用说明",
+  "introduction": "使用文档",
   "use-cases": "使用场景",
   "api": "API 手册",
-  "protocol": "协议"
-} 
+  "protocol": "协议",
+  "upgrading": "更新日志",
+  "faq": "常见问题"
+}

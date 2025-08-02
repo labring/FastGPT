@@ -1,15 +1,15 @@
 {
-  "title": "开发与部署指南",
-  "description": "FastGPT 开发与部署指南",
+  "title": "FastGPT 社区版",
+  "description": "FastGPT 社区版",
   "icon": "🔧",
   "pages": [
+    "community",
     "intro",
     "sealos",
     "configuration",
     "docker",
     "faq",
     "modelConfig",
-    "upgrading",
     "openapi",
     "custom-models",
     "proxy",
