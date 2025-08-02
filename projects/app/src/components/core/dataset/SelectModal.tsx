@@ -56,12 +56,14 @@ const DatasetSelectContainer = ({
       }
       isOpen={isOpen}
       onClose={onClose}
-      h={'80vh'}
-      w={'100%'}
-      maxW={['90vw', '900px']}
+      minW="800px"
+      maxW={'800px'}
+      h={'100%'}
+      minH={'496px'}
+      maxH={'90vh'}
       isCentered
     >
-      <MyBox isLoading={isLoading} h={'100%'}>
+      <MyBox isLoading={isLoading} h={'100%'} overflow="hidden">
         {children}
       </MyBox>
     </MyModal>
