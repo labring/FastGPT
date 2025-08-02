@@ -15,6 +15,43 @@ permissions:
   pull-requests: write
 
 jobs:
+  sync-images:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current repository
+        uses: actions/checkout@v4
+
+      - name: Checkout target repository
+        uses: actions/checkout@v4
+        with:
+          repository: labring/fastgpt-docs-img
+          token: ${{ secrets.DOCS_IMGS_SYNC_TOKEN }}
+          path: fastgpt-docs-imgs
+
+      - name: Sync images
+        run: |
+          # Create imgs directory if it doesn't exist
+          mkdir -p fastgpt-docs-imgs/imgs
+
+          # Copy all images from document/public/imgs to the target repository
+          cp -r document/public/imgs/* fastgpt-docs-imgs/
+
+          # Navigate to target repository
+          cd fastgpt-docs-imgs
+
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Add, commit and push changes
+          git add .
+          if ! git diff --cached --quiet; then
+            git commit -m "Sync images from FastGPT document at $(date)"
+            git push
+            echo "Images synced successfully"
+          else
+            echo "No changes to sync"
+          fi
   # Add a new job to generate unified timestamp
   generate-timestamp:
     runs-on: ubuntu-latest
