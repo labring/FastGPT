@@ -27,7 +27,6 @@ jobs:
           repository: labring/fastgpt-docs-img
           token: ${{ secrets.DOCS_IMGS_SYNC_TOKEN }}
           path: fastgpt-docs-img
-          ref: ${{ github.event.repository.default_branch || 'master' }}
 
       - name: Sync images
         run: |
