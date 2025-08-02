@@ -180,6 +180,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   }
 
   let workflowRunTimes = 0;
+  let streamCheckTimer: NodeJS.Timeout | null = null;
 
   // Init
   if (isRootRuntime) {
@@ -198,18 +199,14 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       res.setHeader('Cache-Control', 'no-cache, no-transform');
 
       // 10s sends a message to prevent the browser from thinking that the connection is disconnected
-      const sendStreamTimerSign = () => {
-        setTimeout(() => {
-          props?.workflowStreamResponse?.({
-            event: SseResponseEventEnum.answer,
-            data: textAdaptGptResponse({
-              text: ''
-            })
-          });
-          sendStreamTimerSign();
-        }, 10000);
-      };
-      sendStreamTimerSign();
+      streamCheckTimer = setInterval(() => {
+        props?.workflowStreamResponse?.({
+          event: SseResponseEventEnum.answer,
+          data: textAdaptGptResponse({
+            text: ''
+          })
+        });
+      }, 10000);
     }
 
     // Get default variables
@@ -841,6 +838,10 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     };
   } catch (error) {
     return Promise.reject(error);
+  } finally {
+    if (streamCheckTimer) {
+      clearInterval(streamCheckTimer);
+    }
   }
 }
 
