@@ -27,6 +27,7 @@ jobs:
           repository: labring/fastgpt-docs-img
           token: ${{ secrets.DOCS_IMGS_SYNC_TOKEN }}
           path: fastgpt-docs-img
+          ref: ${{ github.event.repository.default_branch || 'master' }}
 
       - name: Sync images
         run: |
@@ -78,6 +79,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # - name: Process images for IO deployment
+      #   if: matrix.domain_config.suffix == 'io'
+      #   run: |
+      #     echo "Processing MDX files for IO deployment - replacing /imgs/ paths with CDN URLs"
+      #     find document/content/docs -name "*.mdx" -type f | while read file; do
+      #       echo "Processing: $file"
+      #       # Use sed to replace /imgs/ with https://cdn.fastgpt.io/imgs/
+      #       # This handles various formats like: /imgs/file.png, /imgs/folder/file.jpg, etc.
+      #       sed -i 's|/imgs/|https://cdn.fastgpt.io/imgs/|g' "$file"
+      #     done
+      #     echo "Image path replacement completed for IO deployment"
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
