@@ -20,5 +20,17 @@ export const readRawContentFromBuffer = (props: {
   encoding: string;
   buffer: Buffer;
 }) => {
-  return runWorker<ReadFileResponse>(WorkerNameEnum.readFile, props);
+  const bufferSize = props.buffer.length;
+
+  // 使用 SharedArrayBuffer，避免数据复制
+  const sharedBuffer = new SharedArrayBuffer(bufferSize);
+  const sharedArray = new Uint8Array(sharedBuffer);
+  sharedArray.set(props.buffer);
+
+  return runWorker<ReadFileResponse>(WorkerNameEnum.readFile, {
+    extension: props.extension,
+    encoding: props.encoding,
+    sharedBuffer: sharedBuffer,
+    bufferSize: bufferSize
+  });
 };
