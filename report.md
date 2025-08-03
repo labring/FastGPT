@@ -57,7 +57,7 @@ const checkIsCircular = (edge: RuntimeEdgeItemType, visited: Set<string>): boole
 };
 ```
 
-### 3. 交互式响应深度提取
+### 3. 交互式响应深度提取(已完成)
 **文件位置**: `packages/global/core/workflow/runtime/utils.ts:23-33`
 
 #### 风险分析
@@ -68,14 +68,71 @@ const checkIsCircular = (edge: RuntimeEdgeItemType, visited: Set<string>): boole
 
 ### 1. 文件处理操作
 
+#### 大文件缓冲区处理（已处理）
+**文件位置**: `packages/service/core/dataset/read.ts:32-40`
 
-#### Worker 线程中的文件处理
+```typescript
+const response = await axios({
+  method: 'get',
+  url: url,
+  responseType: 'arraybuffer'  // 可能占用大量内存
+});
+const buffer = Buffer.from(response.data, 'binary');  // 双倍内存使用
+```
+
+**风险**: 
+- 下载大文件时内存使用翻倍
+- ArrayBuffer 和 Buffer 同时存在
+
+#### Worker 线程中的文件处理（已处理）
 **文件位置**: `packages/service/worker/readFile/index.ts:38-42`
 
 ```typescript
 const buffer = Buffer.from(props.buffer);  // Uint8Array -> Buffer 转换
 ```
 
+### 2. 数据库队列处理
+
+#### QA 生成队列（已处理）
+**文件位置**: `projects/app/src/service/core/dataset/queues/generateQA.ts:44-244`
+
+**最近修复**: 添加了 try-catch 包装整个 while 循环，防止内存泄漏
+
+#### 向量生成队列 （已处理） 
+**文件位置**: `projects/app/src/service/core/dataset/queues/generateVector.ts:42-203`
+
+**最近修复**: 同样添加了 try-catch 包装，确保异常情况下队列能正确清理
+
+### 3. 工作流引擎
+
+#### 流式响应处理（已处理）
+**文件位置**: `packages/service/core/workflow/dispatch/index.ts:180-210`
+
+**最近修复 (52ad47aed)**: 
+- 修复了 `setInterval` 未清理的问题
+- 添加了 `finally` 块确保定时器清理
+
+```typescript
+// 修复前的问题代码
+const sendStreamTimerSign = () => {
+  setTimeout(() => {
+    // 递归调用，可能导致内存泄漏
+    sendStreamTimerSign();
+  }, 10000);
+};
+
+// 修复后
+streamCheckTimer = setInterval(() => {
+  // 使用 setInterval 替代递归
+}, 10000);
+
+// finally 块中清理
+finally {
+  if (streamCheckTimer) {
+    clearInterval(streamCheckTimer);
+  }
+}
+```
 
 ## 潜在的内存风险点
 
