@@ -9,49 +9,60 @@ import { readXlsxRawText } from './extension/xlsx';
 import { readCsvRawText } from './extension/csv';
 import { workerResponse } from '../controller';
 
-parentPort?.on('message', async (props: ReadRawTextProps<Uint8Array>) => {
-  const read = async (params: ReadRawTextByBuffer) => {
-    switch (params.extension) {
-      case 'txt':
-      case 'md':
-        return readFileRawText(params);
-      case 'html':
-        return readHtmlRawText(params);
-      case 'pdf':
-        return readPdfFile(params);
-      case 'docx':
-        return readDocsFile(params);
-      case 'pptx':
-        return readPptxRawText(params);
-      case 'xlsx':
-        return readXlsxRawText(params);
-      case 'csv':
-        return readCsvRawText(params);
-      default:
-        return Promise.reject(
-          `Only support .txt, .md, .html, .pdf, .docx, pptx, .csv, .xlsx. "${params.extension}" is not supported.`
-        );
+parentPort?.on(
+  'message',
+  async (
+    props: Omit<ReadRawTextProps<any>, 'buffer'> & {
+      sharedBuffer: SharedArrayBuffer;
+      bufferSize: number;
     }
-  };
+  ) => {
+    const read = async (params: ReadRawTextByBuffer) => {
+      switch (params.extension) {
+        case 'txt':
+        case 'md':
+          return readFileRawText(params);
+        case 'html':
+          return readHtmlRawText(params);
+        case 'pdf':
+          return readPdfFile(params);
+        case 'docx':
+          return readDocsFile(params);
+        case 'pptx':
+          return readPptxRawText(params);
+        case 'xlsx':
+          return readXlsxRawText(params);
+        case 'csv':
+          return readCsvRawText(params);
+        default:
+          return Promise.reject(
+            `Only support .txt, .md, .html, .pdf, .docx, pptx, .csv, .xlsx. "${params.extension}" is not supported.`
+          );
+      }
+    };
 
-  //   params.buffer: Uint8Array -> buffer
-  const buffer = Buffer.from(props.buffer);
-  const newProps: ReadRawTextByBuffer = {
-    ...props,
-    buffer
-  };
+    // 使用 SharedArrayBuffer，零拷贝共享内存
+    const sharedArray = new Uint8Array(props.sharedBuffer);
+    const buffer = Buffer.from(sharedArray.buffer, 0, props.bufferSize);
 
-  try {
-    workerResponse({
-      parentPort,
-      status: 'success',
-      data: await read(newProps)
-    });
-  } catch (error) {
-    workerResponse({
-      parentPort,
-      status: 'error',
-      data: error
-    });
+    const newProps: ReadRawTextByBuffer = {
+      extension: props.extension,
+      encoding: props.encoding,
+      buffer
+    };
+
+    try {
+      workerResponse({
+        parentPort,
+        status: 'success',
+        data: await read(newProps)
+      });
+    } catch (error) {
+      workerResponse({
+        parentPort,
+        status: 'error',
+        data: error
+      });
+    }
   }
-});
+);
