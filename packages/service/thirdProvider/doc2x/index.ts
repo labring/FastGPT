@@ -37,14 +37,14 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
     if (typeof err === 'string') {
       return Promise.reject({ message: `[Doc2x] ${err}` });
     }
-    if (typeof err.message === 'string') {
-      return Promise.reject({ message: `[Doc2x] ${err.message}` });
-    }
     if (typeof err.data === 'string') {
       return Promise.reject({ message: `[Doc2x] ${err.data}` });
     }
     if (err?.response?.data) {
       return Promise.reject({ message: `[Doc2x] ${getErrText(err?.response?.data)}` });
+    }
+    if (typeof err.message === 'string') {
+      return Promise.reject({ message: `[Doc2x] ${err.message}` });
     }
 
     addLog.error('[Doc2x] Unknown error', err);
@@ -78,7 +78,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
       code,
       msg,
       data: preupload_data
-    } = await request<{ uid: string; url: string }>('/v2/parse/preupload', null, 'POST');
+    } = await request<{ uid: string; url: string }>('/v2/parse/preupload', {}, 'POST');
     if (!['ok', 'success'].includes(code)) {
       return Promise.reject(`[Doc2x] Failed to get pre-upload URL: ${msg}`);
     }
@@ -96,6 +96,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
       .catch((error) => {
         return Promise.reject(`[Doc2x] Failed to upload file: ${getErrText(error)}`);
       });
+
     if (response.status !== 200) {
       return Promise.reject(
         `[Doc2x] Upload failed with status ${response.status}: ${response.statusText}`
