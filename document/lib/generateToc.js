@@ -1,7 +1,8 @@
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
+import path from 'node:path';
 import fg from 'fast-glob';
-import { i18n } from './i18n.ts'; // ✅ 根据你项目实际路径修改
+
+// 假设 i18n.defaultLanguage = 'zh-CN'，这里不用 i18n 直接写两份逻辑即可
 
 // 黑名单路径（不带语言前缀）
 const blacklist = [
@@ -9,62 +10,79 @@ const blacklist = [
   'protocol/index',
   'api/index',
   'faq/index',
-  'upgrading/index'
+  'upgrading/index',
+  'toc'
 ];
 
-// 将文件路径转换为 URL 路径（包括文件名）
-function filePathToUrl(filePath, defaultLanguage) {
-  const baseDir = path.resolve('../content/docs'); // 请确认路径正确
-
+function filePathToUrl(filePath, lang) {
+  const baseDir = path.resolve('../content/docs');
   let relativePath = path.relative(baseDir, path.resolve(filePath)).replace(/\\/g, '/');
+  const basePath = lang === 'zh-CN' ? '/docs' : '/en/docs';
 
-  const basePath = defaultLanguage === 'zh-CN' ? '/docs' : '/en/docs';
-
-  if (defaultLanguage !== 'zh-CN' && relativePath.endsWith('.en.mdx')) {
+  if (lang !== 'zh-CN' && relativePath.endsWith('.en.mdx')) {
     relativePath = relativePath.replace(/\.en\.mdx$/, '');
-  } else if (relativePath.endsWith('.mdx')) {
+  } else if (lang === 'zh-CN' && relativePath.endsWith('.mdx')) {
     relativePath = relativePath.replace(/\.mdx$/, '');
   }
 
   return `${basePath}/${relativePath}`.replace(/\/\/+/g, '/');
 }
 
-// 判断是否为黑名单路径
 function isBlacklisted(url) {
   return blacklist.some(
     (item) => url.endsWith(`/docs/${item}`) || url.endsWith(`/en/docs/${item}`)
   );
 }
 
-async function generateTocMdx() {
-  const defaultLanguage = i18n.defaultLanguage || 'zh-CN';
+function isEnFile(file) {
+  return file.endsWith('.en.mdx');
+}
 
-  const globPattern =
-    defaultLanguage === 'zh-CN' ? ['../content/docs/**/*.mdx'] : ['../content/docs/**/*.en.mdx'];
+function isZhFile(file) {
+  return file.endsWith('.mdx') && !file.endsWith('.en.mdx');
+}
 
-  console.log('📄 globPattern:', globPattern);
-  const files = await fg(globPattern, { caseSensitiveMatch: true });
-  console.log('📄 files:', files);
+async function generateToc() {
+  // 匹配所有 mdx 文件
+  const allFiles = await fg('../content/docs/**/*.mdx');
 
-  const urls = files
-    .map((file) => filePathToUrl(file, defaultLanguage))
+  // 筛选中英文文件
+  const zhFiles = allFiles.filter(isZhFile);
+  const enFiles = allFiles.filter(isEnFile);
+
+  // 生成中文 URL
+  const zhUrls = zhFiles
+    .map((file) => filePathToUrl(file, 'zh-CN'))
     .filter((url) => !isBlacklisted(url))
-    .sort((a, b) => a.localeCompare(b));
+    .sort();
 
-  console.log('📄 URLs 生成结果:\n', urls);
+  // 生成英文 URL
+  const enUrls = enFiles
+    .map((file) => filePathToUrl(file, 'en'))
+    .filter((url) => !isBlacklisted(url))
+    .sort();
 
-  const mdxContent = `---
-title: FastGPT 文档目录
-description: FastGPT 文档目录
+  const makeMdxContent = (urls, title, isChinese = true) =>
+    `---
+title: ${title}
+description: ${isChinese ? 'FastGPT 文档目录' : 'FastGPT Toc'}
 ---
 
 ${urls.map((url) => `- [${url}](${url})`).join('\n')}
 `;
 
-  const outputPath = path.resolve('../content/docs/toc.mdx');
-  await fs.mkdir(path.dirname(outputPath), { recursive: true });
-  await fs.writeFile(outputPath, mdxContent, 'utf8');
-  console.log(`✅ 已写入 ${outputPath}`);
+  // 写文件路径
+  const baseDir = path.resolve('../content/docs');
+  const zhOutputPath = path.join(baseDir, 'toc.mdx');
+  const enOutputPath = path.join(baseDir, 'toc.en.mdx');
+
+  // 写入文件
+  await fs.mkdir(baseDir, { recursive: true });
+  await fs.writeFile(zhOutputPath, makeMdxContent(zhUrls, 'FastGPT 文档目录', true), 'utf8');
+  await fs.writeFile(enOutputPath, makeMdxContent(enUrls, 'FastGPT Toc', false), 'utf8');
+
+  console.log(`✅ 写入中文目录 ${zhOutputPath}`);
+  console.log(`✅ 写入英文目录 ${enOutputPath}`);
 }
 
-generateTocMdx().catch(console.error);
+generateToc().catch(console.error);
