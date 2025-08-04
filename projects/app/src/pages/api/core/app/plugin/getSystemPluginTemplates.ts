@@ -10,6 +10,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { NextApiResponse } from 'next';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getSystemTools } from '@fastgpt/service/core/app/plugin/controller';
+import { MongoSystemPlugin } from '@fastgpt/service/core/app/plugin/systemPluginSchema';
 
 export type GetSystemPluginTemplatesBody = {
   searchKey?: string;
@@ -27,16 +28,24 @@ async function handler(
 
   const plugins = await getSystemTools();
 
+  // get database config
+  const dbPlugins = await MongoSystemPlugin.find().lean();
+  const dbPluginMap = new Map(dbPlugins.map((plugin) => [plugin.pluginId, plugin]));
+
   return plugins // Just show the active plugins
     .filter((item) => item.isActive)
-    .map<NodeTemplateListItemType>((plugin) => ({
-      ...plugin,
-      parentId: plugin.parentId === undefined ? null : plugin.parentId,
-      templateType: plugin.templateType ?? FlowNodeTemplateTypeEnum.other,
-      flowNodeType: plugin.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
-      name: parseI18nString(plugin.name, lang),
-      intro: parseI18nString(plugin.intro ?? '', lang)
-    }))
+    .map<NodeTemplateListItemType>((plugin) => {
+      const dbPlugin = dbPluginMap.get(plugin.id);
+      return {
+        ...plugin,
+        parentId: plugin.parentId === undefined ? null : plugin.parentId,
+        templateType: plugin.templateType ?? FlowNodeTemplateTypeEnum.other,
+        flowNodeType: plugin.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
+        name: parseI18nString(plugin.name, lang),
+        intro: parseI18nString(plugin.intro ?? '', lang),
+        systemKeyCost: dbPlugin?.systemKeyCost ?? plugin.systemKeyCost
+      };
+    })
     .filter((item) => {
       if (searchKey) {
         if (item.isFolder) return false;

@@ -120,6 +120,7 @@ const ConfigToolModal = ({
 
                         {isOpenSecretModal && (
                           <SecretInputModal
+                            isFolder={configTool?.isFolder}
                             inputConfig={{
                               ...input,
                               value: value as ToolParamsFormType
