@@ -1,22 +1,22 @@
-import React, { useCallback, useMemo } from 'react';
-import { Box, Flex, HStack, useTheme } from '@chakra-ui/react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Box, HStack, useTheme } from '@chakra-ui/react';
 import {
   ResponsiveContainer,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  type TooltipProps,
-  LineChart,
-  Line,
-  ReferenceLine
+  type TooltipProps
 } from 'recharts';
 import { type NameType, type ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
+import FillRowTabs from '../Tabs/FillRowTabs';
 import { useTranslation } from 'next-i18next';
-import QuestionTip from '../MyTooltip/QuestionTip';
+import { cloneDeep } from 'lodash';
 
-type LineConfig = {
+type AreaConfig = {
   dataKey: string;
   name: string;
   color: string;
@@ -31,15 +31,18 @@ type TooltipItem = {
   customValue?: (data: Record<string, any>) => number;
 };
 
-type LineChartComponentProps = {
+type AreaChartComponentProps = {
   data: Record<string, any>[];
   title: string;
-  description?: string;
-  HeaderRightChildren?: React.ReactNode;
-  lines: LineConfig[];
+  HeaderLeftChildren?: React.ReactNode;
+  lines: AreaConfig[];
   tooltipItems?: TooltipItem[];
-  showAverage?: boolean;
-  averageKey?: string;
+
+  defaultDisplayMode?: 'incremental' | 'cumulative';
+  enableIncremental?: boolean;
+  enableCumulative?: boolean;
+  enableTooltip?: boolean;
+  startDateValue?: number;
 };
 
 const CustomTooltip = ({
@@ -54,15 +57,8 @@ const CustomTooltip = ({
   }
 
   return (
-    <Box
-      bg="white"
-      p={3}
-      borderRadius="md"
-      border="base"
-      boxShadow="sm"
-      {...(tooltipItems.length > 8 ? { position: 'relative', top: '-30px' } : {})}
-    >
-      <Box fontSize="sm" color="myGray.900" mb={tooltipItems.length > 5 ? 1 : 2}>
+    <Box bg="white" p={3} borderRadius="md" border="base" boxShadow="sm">
+      <Box fontSize="sm" color="myGray.900" mb={2}>
         {data.xLabel || data.x}
       </Box>
       {tooltipItems.map((item, index) => {
@@ -70,7 +66,7 @@ const CustomTooltip = ({
         const displayValue = item.formatter ? item.formatter(value) : formatNumber(value);
 
         return (
-          <HStack key={index} fontSize="sm" _notLast={{ mb: tooltipItems.length > 5 ? 0 : 1 }}>
+          <HStack key={index} fontSize="sm" _notLast={{ mb: 1 }}>
             <Box w={2} h={2} borderRadius="full" bg={item.color} />
             <Box>{item.label}</Box>
             <Box>{displayValue.toLocaleString()}</Box>
@@ -81,18 +77,33 @@ const CustomTooltip = ({
   );
 };
 
-const LineChartComponent = ({
+const AreaChartComponent = ({
   data,
   title,
-  description,
-  HeaderRightChildren,
+  HeaderLeftChildren,
   lines,
   tooltipItems,
-  showAverage = false,
-  averageKey
-}: LineChartComponentProps) => {
+  defaultDisplayMode = 'incremental',
+  enableIncremental = true,
+  enableCumulative = true,
+  startDateValue = 0
+}: AreaChartComponentProps) => {
   const theme = useTheme();
   const { t } = useTranslation();
+  const [displayMode, setDisplayMode] = useState<'incremental' | 'cumulative'>(defaultDisplayMode);
+
+  // Tab list constant
+  const tabList = useMemo(
+    () => [
+      ...(enableIncremental
+        ? [{ label: t('common:chart_mode_incremental'), value: 'incremental' as const }]
+        : []),
+      ...(enableCumulative
+        ? [{ label: t('common:chart_mode_cumulative'), value: 'cumulative' as const }]
+        : [])
+    ],
+    [enableCumulative, enableIncremental, t]
+  );
 
   // Y-axis number formatter function
   const formatYAxisNumber = useCallback((value: number): string => {
@@ -104,13 +115,32 @@ const LineChartComponent = ({
     return value.toString();
   }, []);
 
-  // Calculate average value
-  const averageValue = useMemo(() => {
-    if (!showAverage || !averageKey || data.length === 0) return null;
+  // Process data based on display mode
+  const processedData = useMemo(() => {
+    if (displayMode === 'incremental') {
+      return data;
+    }
 
-    const sum = data.reduce((acc, item) => acc + (item[averageKey] || 0), 0);
-    return sum / data.length;
-  }, [showAverage, averageKey, data]);
+    // Cumulative mode: accumulate values for each line's dataKey
+    const cloneData = cloneDeep(data);
+
+    const dataKeys = lines.map((item) => item.dataKey);
+
+    return cloneData.map((item, index) => {
+      if (index === 0) {
+        item[dataKeys[0]] = startDateValue + item[dataKeys[0]];
+        return item;
+      }
+
+      dataKeys.forEach((key) => {
+        if (typeof item[key] === 'number') {
+          item[key] += cloneData[index - 1][key];
+        }
+      });
+
+      return item;
+    });
+  }, [displayMode, data, lines, startDateValue]);
 
   // Generate gradient definitions
   const gradientDefs = useMemo(
@@ -135,43 +165,28 @@ const LineChartComponent = ({
   );
 
   return (
-    <Box
-      onMouseEnter={(e) => {
-        const chartElement = e.currentTarget.querySelector('.recharts-wrapper');
-        if (chartElement && showAverage && averageValue !== null) {
-          chartElement.classList.add('show-average');
-        }
-      }}
-      onMouseLeave={(e) => {
-        const chartElement = e.currentTarget.querySelector('.recharts-wrapper');
-        if (chartElement) {
-          chartElement.classList.remove('show-average');
-        }
-      }}
-      h="100%"
-    >
-      <style jsx global>{`
-        .recharts-wrapper .average-line {
-          opacity: 0;
-          transition: opacity 0.2s ease-in-out;
-        }
-        .recharts-wrapper.show-average .average-line {
-          opacity: 1;
-        }
-      `}</style>
-      <Flex mb={4} h={6}>
-        <Flex flex={1} alignItems={'center'} gap={1}>
-          <Box fontSize={'sm'} color={'myGray.900'} fontWeight={'medium'}>
-            {title}
-          </Box>
-          <QuestionTip label={description} />
-        </Flex>
-        {HeaderRightChildren}
-      </Flex>
+    <>
+      <HStack mb={4} justifyContent={'space-between'} alignItems={'flex-start'}>
+        <Box fontSize={'sm'} color={'myGray.900'} fontWeight={'medium'}>
+          {title}
+        </Box>
+        <HStack spacing={2}>
+          {HeaderLeftChildren}
+          {tabList.length > 1 && (
+            <FillRowTabs<'incremental' | 'cumulative'>
+              list={tabList}
+              py={0.5}
+              px={2}
+              value={displayMode}
+              onChange={setDisplayMode}
+            />
+          )}
+        </HStack>
+      </HStack>
       <ResponsiveContainer width="100%" height={'100%'}>
-        <LineChart
-          data={data}
-          margin={{ top: 5, right: 30, left: 0, bottom: HeaderRightChildren ? 20 : 15 }}
+        <AreaChart
+          data={processedData}
+          margin={{ top: 5, right: 30, left: 0, bottom: HeaderLeftChildren ? 20 : 15 }}
         >
           {gradientDefs}
           <XAxis
@@ -191,8 +206,9 @@ const LineChartComponent = ({
           <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
           {tooltipItems && <Tooltip content={<CustomTooltip tooltipItems={tooltipItems} />} />}
           {lines.map((line, index) => (
-            <Line
+            <Area
               key={line.dataKey}
+              type="monotone"
               name={line.name}
               dataKey={line.dataKey}
               stroke={line.color}
@@ -201,25 +217,10 @@ const LineChartComponent = ({
               dot={false}
             />
           ))}
-          {showAverage && averageValue !== null && (
-            <ReferenceLine
-              y={averageValue}
-              stroke={theme.colors.primary?.['400']}
-              strokeDasharray="5 5"
-              strokeWidth={1}
-              className="average-line"
-              label={{
-                value: `${formatNumber(averageValue)}`,
-                position: 'insideTopRight',
-                fill: theme.colors.primary?.['400'],
-                fontSize: 12
-              }}
-            />
-          )}
-        </LineChart>
+        </AreaChart>
       </ResponsiveContainer>
-    </Box>
+    </>
   );
 };
 
-export default LineChartComponent;
+export default AreaChartComponent;
