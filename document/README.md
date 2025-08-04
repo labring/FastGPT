@@ -1,29 +1,11 @@
 # FastGPT 文档
 
 这是FastGPT的官方文档，采用fumadoc框架。
-
-## 配置文档搜索
-
-点击[Algolia](https://dashboard.algolia.com/account/overview),进行注册账号，注册成功后需要点击页面的搜索,然后查看应用，默认会有一个应用。
-
-![](./public/readme/algolia.png)
-
-拥有应用后点击个人头像，点击设置，点击`API Keys`查看自己的应用id和key。
-
-![](./public/readme/algolia2.png)
-
-页面中的`Application ID`和`Search API Key`，`Write API KEY`就是环境变量对应的`NEXT_PUBLIC_SEARCH_APPID`和`NEXT_PUBLIC_SEARCH_APPKEY`，`SEARCH_APPWRITEKEY`
-
-![](./public/readme/algolia3.png)
-
 ## 运行项目
 
 要运行文档，首先需要进行环境变量配置，在文档的根目录下创建`.env.local`文件，填写以下环境变量:
 
 ```bash
-SEARCH_APPWRITEKEY =  #这是上面获取的Write api key
-NEXT_PUBLIC_SEARCH_APPKEY = #这是上面获取的搜索key
-NEXT_PUBLIC_SEARCH_APPID =  #这是上面的搜索id
 FASTGPT_HOME_DOMAIN =    #要跳转的FastGPT项目的域名，默认海外版
 ```
 

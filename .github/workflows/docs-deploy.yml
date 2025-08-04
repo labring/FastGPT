@@ -114,10 +114,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64
           build-args: |
-            NEXT_PUBLIC_SEARCH_APPKEY=c4708d48f2de6ac5d2f0f443979ef92a
-            NEXT_PUBLIC_SEARCH_APPID=HZAF4C2T88
             FASTGPT_HOME_DOMAIN=${{ matrix.domain_config.domain }}
-            SEARCH_APPWRITEKEY=${{ secrets.SEARCH_APPWRITEKEY }}
 
       - name: Build and push Docker images (IO)
         if: matrix.domain_config.suffix == 'io'
@@ -130,8 +127,6 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64
           build-args: |
-            NEXT_PUBLIC_SEARCH_APPKEY=c4708d48f2de6ac5d2f0f443979ef92a
-            NEXT_PUBLIC_SEARCH_APPID=HZAF4C2T88
             FASTGPT_HOME_DOMAIN=${{ matrix.domain_config.domain }}
 
   update-images:
