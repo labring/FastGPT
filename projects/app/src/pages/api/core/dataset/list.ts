@@ -9,10 +9,7 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/dataset/constant';
-import {
-  type ParentIdType,
-  type ParentTreePathItemType
-} from '@fastgpt/global/common/parentFolder/type';
+import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -22,19 +19,11 @@ import { concatPer } from '@fastgpt/service/support/permission/controller';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
-import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
-import { getParents } from './paths';
-import { addLog } from '@fastgpt/service/common/system/log';
 
 export type GetDatasetListBody = {
   parentId: ParentIdType;
   type?: DatasetTypeEnum;
   searchKey?: string;
-};
-
-export type GetDatasetListResponse = {
-  datasets: DatasetListItemType[];
-  paths: ParentTreePathItemType[];
 };
 
 async function handler(req: ApiRequestProps<GetDatasetListBody>) {
@@ -193,24 +182,9 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
     })
     .filter((app) => app.permission.hasReadPer);
 
-  // Get paths only when not searching
-  let paths: ParentTreePathItemType[] = [];
-  if (!searchKey && parentId) {
-    try {
-      paths = await getParents(parentId);
-    } catch (error) {
-      addLog.error('Failed to get paths:', error);
-    }
-  }
-
-  const datasetsWithSourceMember = await addSourceMember({
+  return addSourceMember({
     list: formatDatasets
   });
-
-  return {
-    datasets: datasetsWithSourceMember,
-    paths
-  };
 }
 
 export default NextAPI(handler);

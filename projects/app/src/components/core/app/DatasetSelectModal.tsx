@@ -24,59 +24,9 @@ import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-
-import { getDatasets } from '@/web/core/dataset/api';
+import { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import FolderPath from '@/components/common/folder/Path';
-
-// Define the API response type
-type GetDatasetListResponse = {
-  datasets: DatasetListItemType[];
-  paths: ParentTreePathItemType[];
-};
-
-// Custom hook for dataset selection with search functionality
-const useDatasetSelect = () => {
-  const [parentId, setParentId] = useState<string>('');
-  const [searchKey, setSearchKey] = useState<string>('');
-
-  // Unified data fetching with search and paths support
-  const { data: responseData, loading: isFetching } = useRequest2(
-    () => {
-      return getDatasets({
-        parentId: searchKey.trim() ? '' : parentId,
-        searchKey: searchKey.trim() || undefined
-      });
-    },
-    {
-      manual: false,
-      refreshDeps: [searchKey, parentId]
-    }
-  );
-
-  const datasets = useMemo(() => {
-    return (responseData as unknown as GetDatasetListResponse)?.datasets || [];
-  }, [responseData]);
-
-  const paths = useMemo(() => {
-    // Return an empty array when searching
-    if (searchKey.trim()) {
-      return [];
-    }
-    return (responseData as unknown as GetDatasetListResponse)?.paths || [];
-  }, [responseData, searchKey]);
-
-  return {
-    parentId,
-    setParentId,
-    searchKey,
-    setSearchKey,
-    datasets,
-    paths,
-    isFetching,
-    isSearching: isFetching
-  };
-};
 
 // Dataset selection modal component
 export const DatasetSelectModal = ({
