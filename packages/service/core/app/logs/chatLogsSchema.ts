@@ -68,13 +68,8 @@ const ChatLogSchema = new Schema({
   }
 });
 
-ChatLogSchema.index({ chatId: 1, updateTime: -1 });
-ChatLogSchema.index({ appId: 1, updateTime: -1 });
-ChatLogSchema.index({ teamId: 1, appId: 1, updateTime: -1 });
-ChatLogSchema.index({ userId: 1, appId: 1, createTime: 1 });
-ChatLogSchema.index({ teamId: 1, appId: 1, userId: 1 });
 ChatLogSchema.index({ teamId: 1, appId: 1, source: 1, updateTime: -1 });
-ChatLogSchema.index({ teamId: 1, appId: 1, isFirstChat: 1, createTime: -1 });
+ChatLogSchema.index({ userId: 1, appId: 1, source: 1, createTime: -1 });
 
 export const MongoAppChatLog = getMongoLogModel<AppChatLogSchema>(
   ChatLogCollectionName,

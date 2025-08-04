@@ -20,7 +20,17 @@ import { useContextSelector } from 'use-context-selector';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getAppChartData, getAppTotalData } from '@/web/core/app/api/log';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { addDays } from 'date-fns';
+import {
+  addDays,
+  startOfDay,
+  startOfWeek,
+  endOfWeek,
+  differenceInDays,
+  differenceInMonths,
+  differenceInQuarters,
+  eachWeekOfInterval
+} from 'date-fns';
+import dayjs from 'dayjs';
 import LineChartComponent from '@fastgpt/web/components/common/charts/LineChartComponent';
 import BarChartComponent from '@fastgpt/web/components/common/charts/BarChartComponent';
 import { theme } from '@fastgpt/web/styles/theme';
@@ -47,6 +57,70 @@ const chartBoxStyles = {
   borderRadius: 'md',
   overflow: 'hidden',
   bg: 'white'
+};
+
+const formatWeekDate = (date: Date) => {
+  const weekStart = startOfWeek(date, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(date, { weekStartsOn: 1 });
+
+  const startStr = dayjs(weekStart).format('MM/DD');
+  const endStr = dayjs(weekEnd).format('MM/DD');
+
+  return {
+    date: `${startStr}-${endStr}`,
+    xLabel: `${startStr}-${endStr}`
+  };
+};
+
+const generateCompleteTimeSeries = (
+  dateRange: DateRangeType,
+  timespan: AppLogTimespanEnum
+): string[] => {
+  if (!dateRange.from || !dateRange.to) return [];
+
+  const start = startOfDay(new Date(dateRange.from));
+  const end = startOfDay(new Date(dateRange.to));
+
+  const timespanConfig = {
+    [AppLogTimespanEnum.day]: {
+      count: differenceInDays(end, start) + 1,
+      addUnit: (date: Date, i: number) => date.setDate(date.getDate() + i),
+      format: (date: Date) => formatDateByTimespan(date.getTime(), timespan)
+    },
+    [AppLogTimespanEnum.week]: {
+      dates: eachWeekOfInterval({ start, end }, { weekStartsOn: 1 }),
+      format: (date: Date) => formatWeekDate(date)
+    },
+    [AppLogTimespanEnum.month]: {
+      count: differenceInMonths(end, start) + 1,
+      addUnit: (date: Date, i: number) => date.setMonth(date.getMonth() + i),
+      format: (date: Date) => formatDateByTimespan(date.getTime(), timespan)
+    },
+    [AppLogTimespanEnum.quarter]: {
+      count: differenceInQuarters(end, start) + 1,
+      addUnit: (date: Date, i: number) => date.setMonth(date.getMonth() + i * 3),
+      format: (date: Date) => formatDateByTimespan(date.getTime(), timespan)
+    }
+  };
+
+  const config = timespanConfig[timespan];
+  const dates: string[] = [];
+
+  if ('dates' in config) {
+    config.dates.forEach((date) => {
+      const { date: formattedDate } = config.format(date);
+      dates.push(formattedDate);
+    });
+  } else {
+    for (let i = 0; i < config.count; i++) {
+      const date = new Date(start);
+      config.addUnit(date, i);
+      const { date: formattedDate } = config.format(date);
+      dates.push(formattedDate);
+    }
+  }
+
+  return [...new Set(dates)];
 };
 
 const LogChart = ({
@@ -97,36 +171,76 @@ const LogChart = ({
   );
 
   const formatChartData = useMemo(() => {
-    const user = (() => {
-      if (!chartData?.userData || !userTimespan) return [];
-      return chartData.userData.map((item) => {
-        const { date, xLabel } = formatDateByTimespan(item.timestamp, userTimespan);
-        return {
-          x: date,
-          xLabel,
-          userCount: item.summary.userCount,
-          newUserCount:
-            userTimespan === 'day' && item.summary.retentionUserCount > 0
-              ? item.summary.newUserCount - item.summary.retentionUserCount
-              : item.summary.newUserCount,
-          retentionUserCount: item.summary.retentionUserCount,
-          points: item.summary.points,
-          sourceCountMap: item.summary.sourceCountMap
-        };
-      });
-    })();
+    const formatTimestamp = (timestamp: number, timespan: AppLogTimespanEnum) => {
+      return timespan === AppLogTimespanEnum.week
+        ? formatWeekDate(new Date(timestamp))
+        : formatDateByTimespan(timestamp, timespan);
+    };
 
-    const chat = (() => {
-      if (!chartData?.chatData || !chatTimespan) return [];
-      return chartData.chatData.map((item) => {
-        const { date, xLabel } = formatDateByTimespan(item.timestamp, chatTimespan);
+    const processChartData = <T extends Record<string, any>>(
+      rawData: any[] | undefined,
+      timespan: AppLogTimespanEnum | undefined,
+      mapper: (item: any, dateInfo: { date: string; xLabel: string }) => Omit<T, 'x' | 'xLabel'>,
+      defaultValues: Omit<T, 'x' | 'xLabel'>
+    ): T[] => {
+      if (!timespan) return [];
+
+      const data = rawData || [];
+      const completeDates = generateCompleteTimeSeries(dateRange, timespan);
+
+      const dataMap = new Map<string, T>();
+      data.forEach((item) => {
+        const dateInfo = formatTimestamp(item.timestamp, timespan);
+        const mappedItem = {
+          x: dateInfo.date,
+          xLabel: dateInfo.xLabel,
+          ...mapper(item, dateInfo)
+        } as unknown as T;
+        dataMap.set(dateInfo.date, mappedItem);
+      });
+
+      return completeDates.map(
+        (date) => dataMap.get(date) || ({ x: date, xLabel: date, ...defaultValues } as unknown as T)
+      );
+    };
+
+    const createDefaultValues = (keys: string[], specialValues: Record<string, any> = {}) => {
+      return keys.reduce((acc, key) => ({ ...acc, [key]: specialValues[key] || 0 }), {});
+    };
+
+    const user = processChartData(
+      chartData?.userData,
+      userTimespan,
+      (item) => ({
+        userCount: item.summary.userCount,
+        newUserCount:
+          userTimespan === 'day' && item.summary.retentionUserCount > 0
+            ? item.summary.newUserCount - item.summary.retentionUserCount
+            : item.summary.newUserCount,
+        retentionUserCount: item.summary.retentionUserCount,
+        points: item.summary.points,
+        sourceCountMap: item.summary.sourceCountMap
+      }),
+      createDefaultValues(
+        ['userCount', 'newUserCount', 'retentionUserCount', 'points', 'sourceCountMap'],
+        {
+          sourceCountMap: Object.keys(ChatSourceMap).reduce(
+            (acc, key) => ({ ...acc, [key]: 0 }),
+            {}
+          )
+        }
+      )
+    );
+
+    const chat = processChartData(
+      chartData?.chatData,
+      chatTimespan,
+      (item) => {
         const pointsPerChat =
           item.summary.chatCount > 0
             ? Number((item.summary.points / item.summary.chatCount).toFixed(2))
             : 0;
         return {
-          x: date,
-          xLabel,
           chatItemCount: item.summary.chatItemCount,
           chatCount: item.summary.chatCount,
           pointsPerChat,
@@ -135,40 +249,60 @@ const LogChart = ({
             ? Number((item.summary.errorCount / item.summary.chatItemCount).toFixed(2))
             : 0
         };
-      });
-    })();
+      },
+      createDefaultValues([
+        'chatItemCount',
+        'chatCount',
+        'pointsPerChat',
+        'errorCount',
+        'errorRate'
+      ])
+    );
 
-    const app = (() => {
-      if (!chartData?.appData || !appTimespan) return [];
-      return chartData.appData.map((item) => {
-        const { date, xLabel } = formatDateByTimespan(item.timestamp, appTimespan);
-        return {
-          x: date,
-          xLabel,
-          goodFeedBackCount: item.summary.goodFeedBackCount,
-          badFeedBackCount: item.summary.badFeedBackCount,
-          avgDuration: item.summary.totalResponseTime / item.summary.chatCount
-        };
-      });
-    })();
+    const app = processChartData(
+      chartData?.appData,
+      appTimespan,
+      (item) => ({
+        goodFeedBackCount: item.summary.goodFeedBackCount,
+        badFeedBackCount: item.summary.badFeedBackCount,
+        avgDuration: item.summary.totalResponseTime / item.summary.chatCount
+      }),
+      createDefaultValues(['goodFeedBackCount', 'badFeedBackCount', 'avgDuration'])
+    );
 
-    const sumValues = (data: Record<string, any>[], key: string) =>
-      data.reduce((sum, item) => sum + (item[key] || 0), 0);
-
-    const avgValues = (data: Record<string, any>[], key: string) =>
-      data.length > 0 ? data.reduce((sum, item) => sum + (item[key] || 0), 0) / data.length : 0;
+    const calculateStats = (
+      data: Record<string, any>[],
+      metrics: { [key: string]: 'sum' | 'avg' }
+    ) => {
+      return Object.entries(metrics).reduce(
+        (acc, [key, type]) => {
+          const values = data.map((item) => item[key] || 0);
+          acc[key] =
+            type === 'sum'
+              ? values.reduce((sum, val) => sum + val, 0)
+              : values.length > 0
+                ? values.reduce((sum, val) => sum + val, 0) / values.length
+                : 0;
+          return acc;
+        },
+        {} as Record<string, number>
+      );
+    };
 
     const cumulative = {
-      userCount: sumValues(user, 'userCount'),
-      points: sumValues(user, 'points'),
-      chatItemCount: sumValues(chat, 'chatItemCount'),
-      chatCount: sumValues(chat, 'chatCount'),
-      pointsPerChat: avgValues(chat, 'pointsPerChat'),
-      goodFeedBackCount: sumValues(app, 'goodFeedBackCount'),
-      badFeedBackCount: sumValues(app, 'badFeedBackCount'),
-      errorCount: sumValues(chat, 'errorCount'),
-      errorRate: avgValues(chat, 'errorRate'),
-      avgDuration: avgValues(app, 'avgDuration')
+      ...calculateStats(user, { userCount: 'sum', points: 'sum' }),
+      ...calculateStats(chat, {
+        chatItemCount: 'sum',
+        chatCount: 'sum',
+        pointsPerChat: 'avg',
+        errorCount: 'sum',
+        errorRate: 'avg'
+      }),
+      ...calculateStats(app, {
+        goodFeedBackCount: 'sum',
+        badFeedBackCount: 'sum',
+        avgDuration: 'avg'
+      })
     };
 
     return { user, chat, app, cumulative };
@@ -178,7 +312,8 @@ const LogChart = ({
     chartData?.appData,
     userTimespan,
     chatTimespan,
-    appTimespan
+    appTimespan,
+    dateRange
   ]);
 
   return (
