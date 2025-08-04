@@ -19,12 +19,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Rewrite image paths
-        run: |
-          find document/content/docs -name "*.mdx" -type f | while read file; do
-            sed -i 's|](/imgs/|](https://cdn.jsdelivr.net/gh/labring/fastgpt-img@main/|g' "$file"
-          done
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Get current datetime
         id: datetime
