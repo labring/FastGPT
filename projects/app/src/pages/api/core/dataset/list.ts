@@ -105,7 +105,8 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
       return {
         ...datasetPerQuery,
         teamId,
-        ...searchMatch
+        ...searchMatch,
+        parentId: undefined
       };
     }
 
