@@ -29,6 +29,7 @@ description: FastGPT V4.9.6 更新说明
 3. 连续工具调用，上下文截断异常
 
 ## 升级指南
+
 ### 1. 做好数据备份
 
 ### 2. 部署 MCP server 服务
@@ -39,15 +40,15 @@ description: FastGPT V4.9.6 更新说明
 
 ```yml
 fastgpt-mcp-server:
-    container_name: fastgpt-mcp-server
-    image: ghcr.io/labring/fastgpt-mcp_server:v4.9.6
-    ports:
-      - 3005:3000
-    networks:
-      - fastgpt
-    restart: always
-    environment:
-      - FASTGPT_ENDPOINT=http://fastgpt:3000
+  container_name: fastgpt-mcp-server
+  image: ghcr.io/labring/fastgpt-mcp_server:v4.9.6
+  ports:
+    - 3005:3000
+  networks:
+    - fastgpt
+  restart: always
+  environment:
+    - FASTGPT_ENDPOINT=http://fastgpt:3000
 ```
 
 #### Sealos 部署
@@ -56,14 +57,15 @@ fastgpt-mcp-server:
 
 ### 3. 修改 FastGPT 容器环境变量
 
-#### 开源版
+#### 社区版
 
 修改`config.json`配置文件，增加: `"feconfigs.mcpServerProxyEndpoint": "fastgpt-mcp-server 的访问地址"`， 末尾不要携带/，例如:
+
 ```json
 {
   "feConfigs": {
     "lafEnv": "https://laf.dev",
-    "mcpServerProxyEndpoint": "https://mcp.fastgpt.cn" 
+    "mcpServerProxyEndpoint": "https://mcp.fastgpt.cn"
   }
 }
 ```

@@ -18,6 +18,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv47' \
 ```
 
 脚本功能：
+
 1. 初始化插件的 parentId
 
 ## 3. 升级 ReRank 模型
@@ -31,17 +32,16 @@ cohere的重排模型对中文不是很好，感觉不如 bge 的好用，接入
 
 ```json
 {
-    "reRankModels": [
-        {
-            "model": "rerank-multilingual-v2.0", // 这里的 model 需要对应 cohere 的模型名
-            "name": "检索重排", // 随意
-            "requestUrl": "https://api.cohere.ai/v1/rerank",
-            "requestAuth": "Coherer上申请的key"
-        }
-    ]
+  "reRankModels": [
+    {
+      "model": "rerank-multilingual-v2.0", // 这里的 model 需要对应 cohere 的模型名
+      "name": "检索重排", // 随意
+      "requestUrl": "https://api.cohere.ai/v1/rerank",
+      "requestAuth": "Coherer上申请的key"
+    }
+  ]
 }
 ```
-
 
 ## V4.7 更新说明
 
@@ -57,7 +57,7 @@ cohere的重排模型对中文不是很好，感觉不如 bge 的好用，接入
 10. 优化 - 变量输入弹窗。
 11. 优化 - docker 部署，自动初始化副本集。
 12. 优化 - 浏览器读取文件自动推断编码，减少乱码情况。
-13. 修复 - 开源版重排选不上。
+13. 修复 - 社区版重排选不上。
 14. 修复 - http 请求 body，不使用时，传入undefined。（会造成部分GET请求失败）
 15. 新增 - 支持 http url 使用变量。
 16. 修复 - 469 的提取的提示词容易造成幻觉。
