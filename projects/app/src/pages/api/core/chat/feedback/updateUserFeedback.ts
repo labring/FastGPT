@@ -4,8 +4,9 @@ import { type UpdateChatFeedbackProps } from '@fastgpt/global/core/chat/api';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 
-/* 初始化我的聊天框，需要身份验证 */
 async function handler(req: ApiRequestProps<UpdateChatFeedbackProps>, res: NextApiResponse) {
   const { appId, chatId, dataId, userBadFeedback, userGoodFeedback } = req.body;
 
@@ -20,12 +21,13 @@ async function handler(req: ApiRequestProps<UpdateChatFeedbackProps>, res: NextA
     ...req.body
   });
 
-  await MongoChatItem.findOneAndUpdate(
-    {
-      appId,
-      chatId,
-      dataId
-    },
+  const chatItem = await MongoChatItem.findOne({ appId, chatId, dataId });
+  if (!chatItem) {
+    return Promise.reject('Chat item not found');
+  }
+
+  await MongoChatItem.updateOne(
+    { appId, chatId, dataId },
     {
       $unset: {
         ...(userBadFeedback === undefined && { userBadFeedback: '' }),
@@ -35,6 +37,42 @@ async function handler(req: ApiRequestProps<UpdateChatFeedbackProps>, res: NextA
         ...(userBadFeedback !== undefined && { userBadFeedback }),
         ...(userGoodFeedback !== undefined && { userGoodFeedback })
       }
+    }
+  );
+
+  if (chatItem.obj !== ChatRoleEnum.AI) return;
+
+  const goodFeedbackDelta = (() => {
+    if (!userGoodFeedback && chatItem.userGoodFeedback) {
+      return -1;
+    } else if (userGoodFeedback && !chatItem.userGoodFeedback) {
+      return 1;
+    }
+    return 0;
+  })();
+
+  const badFeedbackDelta = (() => {
+    if (!userBadFeedback && chatItem.userBadFeedback) {
+      return -1;
+    } else if (userBadFeedback && !chatItem.userBadFeedback) {
+      return 1;
+    }
+    return 0;
+  })();
+
+  await MongoAppChatLog.findOneAndUpdate(
+    {
+      appId,
+      chatId
+    },
+    {
+      $inc: {
+        goodFeedbackCount: goodFeedbackDelta,
+        badFeedbackCount: badFeedbackDelta
+      }
+    },
+    {
+      sort: { createTime: -1 }
     }
   );
 }
