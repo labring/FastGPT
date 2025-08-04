@@ -12,6 +12,7 @@ COPY packages/global ./packages/global
 COPY packages/web ./packages/web
 COPY projects/mcp_server/package.json ./projects/mcp_server/package.json
 
+RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
 RUN apk add --no-cache\
     curl ca-certificates\
     && update-ca-certificates
@@ -50,6 +51,9 @@ RUN pnpm --filter=mcp_server build
 FROM node:20.14.0-alpine AS runner
 WORKDIR /app
 
+ARG proxy
+
+RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
 RUN apk add --no-cache libffi libffi-dev strace bash
 
 COPY --from=builder /app/node_modules /app/node_modules
