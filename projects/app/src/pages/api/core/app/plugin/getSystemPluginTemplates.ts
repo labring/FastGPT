@@ -43,6 +43,7 @@ async function handler(
         flowNodeType: plugin.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
         name: parseI18nString(plugin.name, lang),
         intro: parseI18nString(plugin.intro ?? '', lang),
+        currentCost: dbPlugin?.currentCost ?? plugin.currentCost,
         systemKeyCost: dbPlugin?.systemKeyCost ?? plugin.systemKeyCost
       };
     })

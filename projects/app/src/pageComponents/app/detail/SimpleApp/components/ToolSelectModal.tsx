@@ -47,6 +47,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import ConfigToolModal from './ConfigToolModal';
+import CostTooltip from '@/components/core/app/plugin/CostTooltip';
 
 type Props = {
   selectedTools: FlowNodeTemplateType[];
@@ -413,12 +414,11 @@ const RenderList = React.memo(function RenderList({
                           <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
                             {t(template.intro as any) || t('common:core.workflow.Not intro')}
                           </Box>
-                          {/* {type === TemplateTypeEnum.systemPlugin && (
-                            <CostTooltip
-                              cost={template.currentCost}
-                              hasTokenFee={template.hasTokenFee}
-                            />
-                          )} */}
+                          <CostTooltip
+                            cost={template.currentCost}
+                            hasTokenFee={template.hasTokenFee}
+                            isFolder={template.isFolder}
+                          />
                         </Box>
                       }
                     >

@@ -558,8 +558,11 @@ export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> 
           edges: []
         },
         versionList,
-        inputs,
-        outputs,
+
+        templateType: item.templateType,
+        showStatus: true,
+
+        isActive: item.isActive,
         inputList: item?.secretInputConfig,
         hasSystemSecret: !!dbPluginConfig?.inputListVal,
         systemKeyCost: dbPluginConfig?.systemKeyCost ?? 0
