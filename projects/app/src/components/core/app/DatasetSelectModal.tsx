@@ -16,6 +16,7 @@ import { ChevronRightIcon, CloseIcon, InfoIcon } from '@chakra-ui/icons';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
+import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -27,6 +28,12 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { getDatasets } from '@/web/core/dataset/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import FolderPath from '@/components/common/folder/Path';
+
+// Define the API response type
+type GetDatasetListResponse = {
+  datasets: DatasetListItemType[];
+  paths: ParentTreePathItemType[];
+};
 
 // Custom hook for dataset selection with search functionality
 const useDatasetSelect = () => {
@@ -48,7 +55,7 @@ const useDatasetSelect = () => {
   );
 
   const datasets = useMemo(() => {
-    return responseData?.datasets || [];
+    return (responseData as unknown as GetDatasetListResponse)?.datasets || [];
   }, [responseData]);
 
   const paths = useMemo(() => {
@@ -56,7 +63,7 @@ const useDatasetSelect = () => {
     if (searchKey.trim()) {
       return [];
     }
-    return responseData?.paths || [];
+    return (responseData as unknown as GetDatasetListResponse)?.paths || [];
   }, [responseData, searchKey]);
 
   return {
@@ -145,7 +152,9 @@ export const DatasetSelectModal = ({
 
   // Cache visible datasets (non-folder datasets) to avoid recalculation
   const visibleDatasets = useMemo(() => {
-    return (datasets || []).filter((item) => item.type !== DatasetTypeEnum.folder);
+    return (datasets || []).filter(
+      (item: DatasetListItemType) => item.type !== DatasetTypeEnum.folder
+    );
   }, [datasets]);
 
   // Cache compatible datasets by vector model to avoid repeated filtering
@@ -154,7 +163,9 @@ export const DatasetSelectModal = ({
     if (!targetModel) {
       return [];
     }
-    return visibleDatasets.filter((item) => item.vectorModel.model === targetModel);
+    return visibleDatasets.filter(
+      (item: DatasetListItemType) => item.vectorModel.model === targetModel
+    );
   }, [visibleDatasets, activeVectorModel]);
 
   // Get compatible datasets with optional filtering
@@ -163,7 +174,9 @@ export const DatasetSelectModal = ({
       // If includeSelected is false, filter out already selected datasets
       return includeSelected
         ? compatibleDatasetsByModel
-        : compatibleDatasetsByModel.filter((item) => !isDatasetSelected(item._id));
+        : compatibleDatasetsByModel.filter(
+            (item: DatasetListItemType) => !isDatasetSelected(item._id)
+          );
     },
     [compatibleDatasetsByModel, isDatasetSelected]
   );
@@ -172,7 +185,7 @@ export const DatasetSelectModal = ({
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       const compatibleDatasets = getCompatibleDatasets(false); // Exclude already selected
-      const newSelections = compatibleDatasets.map((item) => ({
+      const newSelections = compatibleDatasets.map((item: DatasetListItemType) => ({
         datasetId: item._id,
         avatar: item.avatar,
         name: item.name,
@@ -181,7 +194,7 @@ export const DatasetSelectModal = ({
       setSelectedDatasets((prev) => [...prev, ...newSelections]);
     } else {
       const allCompatibleDatasets = getCompatibleDatasets(true); // Include already selected
-      const datasetIdsToRemove = allCompatibleDatasets.map((item) => item._id);
+      const datasetIdsToRemove = allCompatibleDatasets.map((item: DatasetListItemType) => item._id);
       setSelectedDatasets((prev) =>
         prev.filter((dataset) => !datasetIdsToRemove.includes(dataset.datasetId))
       );
@@ -195,7 +208,9 @@ export const DatasetSelectModal = ({
     }
 
     const selectedDatasetIds = new Set(selectedDatasets.map((dataset) => dataset.datasetId));
-    return compatibleDatasetsByModel.every((item) => selectedDatasetIds.has(item._id));
+    return compatibleDatasetsByModel.every((item: DatasetListItemType) =>
+      selectedDatasetIds.has(item._id)
+    );
   }, [compatibleDatasetsByModel, selectedDatasets]);
 
   // Extract EmptyState component to avoid duplication
@@ -294,7 +309,7 @@ export const DatasetSelectModal = ({
                   {!searchKey.trim() && paths.length > 0 && (
                     // Subdirectory path
                     <FolderPath
-                      paths={paths.map((path) => ({
+                      paths={paths.map((path: ParentTreePathItemType) => ({
                         parentId: path.parentId,
                         parentName: path.parentName
                       }))}
@@ -309,7 +324,7 @@ export const DatasetSelectModal = ({
                   {(datasets || []).length === 0 && (
                     <EmptyState message={t('common:folder.empty')} />
                   )}
-                  {(datasets || []).map((item) => (
+                  {(datasets || []).map((item: DatasetListItemType) => (
                     <Box key={item._id}>
                       <Flex
                         align="center"
