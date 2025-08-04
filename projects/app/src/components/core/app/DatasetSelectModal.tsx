@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import {
   Flex,
   Box,
@@ -6,16 +6,13 @@ import {
   ModalBody,
   ModalFooter,
   Grid,
-  Input,
-  InputGroup,
-  InputLeftElement,
   Checkbox,
   VStack,
   HStack,
   IconButton,
   Spacer
 } from '@chakra-ui/react';
-import { SearchIcon, ChevronRightIcon, CloseIcon, InfoIcon } from '@chakra-ui/icons';
+import { ChevronRightIcon, CloseIcon, InfoIcon } from '@chakra-ui/icons';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
@@ -25,10 +22,10 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 
-import { getDatasets, getDatasetPaths } from '@/web/core/dataset/api';
+import { getDatasets } from '@/web/core/dataset/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import FolderPath from '@/components/common/folder/Path';
 
 // Custom hook for dataset selection with search functionality
@@ -36,22 +33,8 @@ const useDatasetSelect = () => {
   const [parentId, setParentId] = useState<string>('');
   const [searchKey, setSearchKey] = useState<string>('');
 
-  // Get paths for current directory
-  const { data: pathsData, loading: isFetchingPaths } = useRequest2(
-    () => {
-      if (searchKey.trim()) {
-        return Promise.resolve([]);
-      }
-      return getDatasetPaths({ sourceId: parentId, type: 'current' });
-    },
-    {
-      manual: false,
-      refreshDeps: [parentId, searchKey]
-    }
-  );
-
-  // Unified data fetching with search support
-  const { data: datasets, loading: isSearching } = useRequest2(
+  // Unified data fetching with search and paths support
+  const { data: responseData, loading: isFetching } = useRequest2(
     () => {
       return getDatasets({
         parentId: searchKey.trim() ? '' : parentId,
@@ -64,23 +47,27 @@ const useDatasetSelect = () => {
     }
   );
 
+  const datasets = useMemo(() => {
+    return responseData?.datasets || [];
+  }, [responseData]);
+
   const paths = useMemo(() => {
     // Return an empty array when searching
     if (searchKey.trim()) {
       return [];
     }
-    return [...(pathsData || [])];
-  }, [pathsData, searchKey]);
+    return responseData?.paths || [];
+  }, [responseData, searchKey]);
 
   return {
     parentId,
     setParentId,
     searchKey,
     setSearchKey,
-    datasets: datasets || [],
+    datasets,
     paths,
-    isFetching: isFetchingPaths,
-    isSearching
+    isFetching,
+    isSearching: isFetching
   };
 };
 
@@ -103,9 +90,13 @@ export const DatasetSelectModal = ({
     useState<SelectedDatasetType>(defaultSelectedDatasets);
   const { toast } = useToast();
 
+  // Sync selectedDatasets when defaultSelectedDatasets changes
+  useEffect(() => {
+    setSelectedDatasets(defaultSelectedDatasets);
+  }, [defaultSelectedDatasets]);
+
   // Use server-side search, following the logic of the dataset list page
-  const { paths, setParentId, searchKey, setSearchKey, datasets, isFetching, isSearching } =
-    useDatasetSelect();
+  const { paths, setParentId, searchKey, setSearchKey, datasets, isFetching } = useDatasetSelect();
 
   // The vector model of the first selected dataset
   const activeVectorModel = selectedDatasets[0]?.vectorModel?.model;
@@ -152,32 +143,35 @@ export const DatasetSelectModal = ({
     return activeVectorModel && activeVectorModel !== item.vectorModel.model;
   };
 
+  // Cache visible datasets (non-folder datasets) to avoid recalculation
+  const visibleDatasets = useMemo(() => {
+    return (datasets || []).filter((item) => item.type !== DatasetTypeEnum.folder);
+  }, [datasets]);
+
+  // Cache compatible datasets by vector model to avoid repeated filtering
+  const compatibleDatasetsByModel = useMemo(() => {
+    const targetModel = activeVectorModel || visibleDatasets[0]?.vectorModel?.model;
+    if (!targetModel) {
+      return [];
+    }
+    return visibleDatasets.filter((item) => item.vectorModel.model === targetModel);
+  }, [visibleDatasets, activeVectorModel]);
+
   // Get compatible datasets with optional filtering
   const getCompatibleDatasets = useCallback(
     (includeSelected = false) => {
-      const visibleDatasets = (datasets || []).filter(
-        (item) => item.type !== DatasetTypeEnum.folder
-      );
-      const targetModel = activeVectorModel || visibleDatasets[0]?.vectorModel?.model;
-      if (!targetModel) {
-        return [];
-      }
-      const compatibleDatasets = visibleDatasets.filter(
-        (item) => item.vectorModel.model === targetModel
-      );
-
       // If includeSelected is false, filter out already selected datasets
       return includeSelected
-        ? compatibleDatasets
-        : compatibleDatasets.filter((item) => !isDatasetSelected(item._id));
+        ? compatibleDatasetsByModel
+        : compatibleDatasetsByModel.filter((item) => !isDatasetSelected(item._id));
     },
-    [datasets, activeVectorModel, isDatasetSelected]
+    [compatibleDatasetsByModel, isDatasetSelected]
   );
 
   // Select all / Deselect all
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      const compatibleDatasets = getCompatibleDatasets(false); // 不包含已选中的
+      const compatibleDatasets = getCompatibleDatasets(false); // Exclude already selected
       const newSelections = compatibleDatasets.map((item) => ({
         datasetId: item._id,
         avatar: item.avatar,
@@ -186,7 +180,7 @@ export const DatasetSelectModal = ({
       }));
       setSelectedDatasets((prev) => [...prev, ...newSelections]);
     } else {
-      const allCompatibleDatasets = getCompatibleDatasets(true); // 包含已选中的
+      const allCompatibleDatasets = getCompatibleDatasets(true); // Include already selected
       const datasetIdsToRemove = allCompatibleDatasets.map((item) => item._id);
       setSelectedDatasets((prev) =>
         prev.filter((dataset) => !datasetIdsToRemove.includes(dataset.datasetId))
@@ -196,16 +190,23 @@ export const DatasetSelectModal = ({
 
   // Check if all compatible datasets are selected
   const isAllSelected = useMemo(() => {
-    try {
-      const allCompatibleDatasets = getCompatibleDatasets(true); // 包含已选中的
-      return (
-        allCompatibleDatasets.length > 0 &&
-        allCompatibleDatasets.every((item) => isDatasetSelected(item._id))
-      );
-    } catch (error) {
+    if (compatibleDatasetsByModel.length === 0) {
       return false;
     }
-  }, [getCompatibleDatasets, isDatasetSelected]);
+
+    const selectedDatasetIds = new Set(selectedDatasets.map((dataset) => dataset.datasetId));
+    return compatibleDatasetsByModel.every((item) => selectedDatasetIds.has(item._id));
+  }, [compatibleDatasetsByModel, selectedDatasets]);
+
+  // Extract EmptyState component to avoid duplication
+  const EmptyState = ({ message }: { message: string }) => (
+    <Box display="flex" alignItems="center" justifyContent="center" h="full" color="myGray.400">
+      <VStack spacing={2} fontSize="sm">
+        <MyIcon name="empty" w={12} color="transparent" />
+        <Box fontSize="sm">{message}</Box>
+      </VStack>
+    </Box>
+  );
 
   // Render component
   return (
@@ -221,7 +222,7 @@ export const DatasetSelectModal = ({
       maxH={'90vh'}
       isCentered
     >
-      <MyBox isLoading={isFetching || isSearching} h={'100%'} overflow="hidden">
+      <MyBox isLoading={isFetching} h={'100%'} overflow="hidden">
         {/* Main vertical layout */}
         <Flex h="100%" direction="column" flex={1} overflow="hidden" minH={0}>
           <ModalBody flex={1} overflow="hidden" minH={0}>
@@ -246,17 +247,14 @@ export const DatasetSelectModal = ({
                 minH={0}
               >
                 {/* Search box */}
-                <InputGroup mb={4}>
-                  <InputLeftElement>
-                    <SearchIcon w={4} color="gray.400" />
-                  </InputLeftElement>
-                  <Input
+                <Box mb={4}>
+                  <SearchInput
                     placeholder={t('app:Search_dataset')}
                     value={searchKey}
                     onChange={(e) => setSearchKey(e.target.value)}
                     size="md"
                   />
-                </InputGroup>
+                </Box>
 
                 {/* Path display area - always occupies space, content changes based on search state */}
                 <Box mb={2} py={1} px={2} fontSize="sm" minH={8} display="flex" alignItems="center">
@@ -267,7 +265,7 @@ export const DatasetSelectModal = ({
                       display="flex"
                       alignItems="center"
                       fontSize="sm"
-                      color="gray.500"
+                      color="myGray.500"
                     >
                       {t('chat:search_results')}
                     </Box>
@@ -309,18 +307,7 @@ export const DatasetSelectModal = ({
                 {/* Dataset list */}
                 <VStack align="stretch" spacing={1} flex={1} overflowY="auto" h={0} minH={0}>
                   {(datasets || []).length === 0 && (
-                    <Box
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                      h="full"
-                      color="gray.400"
-                    >
-                      <VStack spacing={2} fontSize="sm">
-                        <MyIcon name="empty" w={12} color="transparent" />
-                        <Box fontSize="sm">{t('common:folder.empty')}</Box>
-                      </VStack>
-                    </Box>
+                    <EmptyState message={t('common:folder.empty')} />
                   )}
                   {(datasets || []).map((item) => (
                     <Box key={item._id}>
@@ -328,7 +315,7 @@ export const DatasetSelectModal = ({
                         align="center"
                         px={2}
                         borderRadius="md"
-                        _hover={{ bg: 'gray.50' }}
+                        _hover={{ bg: 'myGray.50' }}
                         cursor="pointer"
                         h="38px"
                         onClick={() => {
@@ -375,12 +362,12 @@ export const DatasetSelectModal = ({
                         <Box flex={1} minW={0} fontSize="sm">
                           {item.name}
                           {item.type === DatasetTypeEnum.folder && (
-                            <Box fontSize="xs" color="gray.500">
+                            <Box fontSize="xs" color="myGray.500">
                               {t('common:Folder')}
                             </Box>
                           )}
                           {item.type !== DatasetTypeEnum.folder && (
-                            <Box fontSize="xs" color="gray.500">
+                            <Box fontSize="xs" color="myGray.500">
                               {t('app:Index')}: {item.vectorModel.name}
                             </Box>
                           )}
@@ -389,7 +376,7 @@ export const DatasetSelectModal = ({
                         {/* Folder expand arrow */}
                         {item.type === DatasetTypeEnum.folder && (
                           <Box mr={10}>
-                            <ChevronRightIcon w={5} h={5} color="gray.500" strokeWidth="1px" />
+                            <ChevronRightIcon w={5} h={5} color="myGray.500" strokeWidth="1px" />
                           </Box>
                         )}
                       </Flex>
@@ -411,16 +398,16 @@ export const DatasetSelectModal = ({
                   <Button
                     size="sm"
                     variant="outline"
-                    colorScheme="gray"
-                    bg="gray.50"
-                    borderColor="gray.300"
+                    colorScheme="myGray"
+                    bg="myGray.50"
+                    borderColor="myGray.300"
                     onClick={() => setSelectedDatasets([])}
                     _hover={{
-                      bg: 'gray.100',
-                      borderColor: 'gray.400'
+                      bg: 'myGray.100',
+                      borderColor: 'myGray.400'
                     }}
                   >
-                    <Text fontSize="sm" color="gray.500">
+                    <Text fontSize="sm" color="myGray.500">
                       {t('common:Clear_all')}
                     </Text>
                   </Button>
@@ -431,24 +418,13 @@ export const DatasetSelectModal = ({
               {/* Right: selected datasets display */}
               <Flex h="100%" p={4} direction="column" overflow="hidden" minH={0}>
                 {/* Selected count display */}
-                <Box mb={3} fontSize="sm" color="gray.600">
+                <Box mb={3} fontSize="sm" color="myGray.600">
                   {t('app:Selected')}: {selectedDatasets.length} {t('app:dataset')}
                 </Box>
                 {/* Selected dataset list */}
                 <VStack align="stretch" spacing={8} flex={1} overflowY="auto" h={0} minH={0}>
                   {selectedDatasets.length === 0 && (
-                    <Box
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                      h="full"
-                      color="gray.400"
-                    >
-                      <VStack spacing={2} fontSize="sm">
-                        <MyIcon name="empty" w={12} color="transparent" />
-                        <Box fontSize="sm">{t('app:No_selected_dataset')}</Box>
-                      </VStack>
-                    </Box>
+                    <EmptyState message={t('app:No_selected_dataset')} />
                   )}
                   {selectedDatasets.length > 0 &&
                     selectedDatasets.map((item) => (
@@ -456,7 +432,7 @@ export const DatasetSelectModal = ({
                         key={item.datasetId}
                         px={2}
                         borderRadius="md"
-                        _hover={{ bg: 'gray.50' }}
+                        _hover={{ bg: 'myGray.50' }}
                         cursor="pointer"
                         minH={6}
                         display="flex"
@@ -472,7 +448,7 @@ export const DatasetSelectModal = ({
                           size="xs"
                           variant="ghost"
                           color="black"
-                          _hover={{ bg: 'gray.200' }}
+                          _hover={{ bg: 'myGray.200' }}
                           onClick={() => removeSelectedDataset(item.datasetId)}
                         />
                       </Box>
@@ -491,7 +467,7 @@ export const DatasetSelectModal = ({
                   px={3}
                   py={2}
                   borderRadius="md"
-                  bg="#F0F4FF"
+                  bg="blue.50"
                   display="flex"
                   alignItems="center"
                   fontSize="xs"

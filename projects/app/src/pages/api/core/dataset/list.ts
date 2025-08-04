@@ -9,7 +9,10 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/dataset/constant';
-import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import {
+  type ParentIdType,
+  type ParentTreePathItemType
+} from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -19,16 +22,23 @@ import { concatPer } from '@fastgpt/service/support/permission/controller';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
+import { getParents } from './paths';
+import { addLog } from '@fastgpt/service/common/system/log';
 
 export type GetDatasetListBody = {
   parentId: ParentIdType;
   type?: DatasetTypeEnum;
   searchKey?: string;
-  getAllDatasets?: boolean; // 新增：是否获取所有层级的数据集（用于文件夹选择判断）
+};
+
+export type GetDatasetListResponse = {
+  datasets: DatasetListItemType[];
+  paths: ParentTreePathItemType[];
 };
 
 async function handler(req: ApiRequestProps<GetDatasetListBody>) {
-  const { parentId, type, searchKey, getAllDatasets } = req.body;
+  const { parentId, type, searchKey } = req.body;
 
   // Auth user permission
   const [{ tmbId, teamId, permission: teamPer }] = await Promise.all([
@@ -85,19 +95,13 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
   const findDatasetQuery = (() => {
     // Filter apps by permission, if not owner, only get apps that I have permission to access
     const idList = { _id: { $in: myPerList.map((item) => item.resourceId) } };
-
-    // 如果需要获取所有数据集（用于文件夹选择判断），则不限制 parentId
-    const datasetPerQuery = getAllDatasets
-      ? teamPer.isOwner
-        ? {}
-        : { $or: [idList] }
-      : teamPer.isOwner
-        ? {}
-        : parentId
-          ? {
-              $or: [idList, parseParentIdInMongo(parentId)]
-            }
-          : { $or: [idList, { parentId: null }] };
+    const datasetPerQuery = teamPer.isOwner
+      ? {}
+      : parentId
+        ? {
+            $or: [idList, parseParentIdInMongo(parentId)]
+          }
+        : { $or: [idList, { parentId: null }] };
 
     const searchMatch = searchKey
       ? {
@@ -116,12 +120,11 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
       };
     }
 
-    // 如果获取所有数据集，不应用 parentId 过滤
     return {
       ...datasetPerQuery,
       teamId,
       ...(type ? (Array.isArray(type) ? { type: { $in: type } } : { type }) : {}),
-      ...(getAllDatasets ? {} : parseParentIdInMongo(parentId))
+      ...parseParentIdInMongo(parentId)
     };
   })();
 
@@ -176,7 +179,6 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
 
       return {
         _id: dataset._id,
-        parentId: dataset.parentId,
         avatar: dataset.avatar,
         name: dataset.name,
         intro: dataset.intro,
@@ -191,9 +193,24 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
     })
     .filter((app) => app.permission.hasReadPer);
 
-  return addSourceMember({
+  // Get paths only when not searching
+  let paths: ParentTreePathItemType[] = [];
+  if (!searchKey && parentId) {
+    try {
+      paths = await getParents(parentId);
+    } catch (error) {
+      addLog.error('Failed to get paths:', error);
+    }
+  }
+
+  const datasetsWithSourceMember = await addSourceMember({
     list: formatDatasets
   });
+
+  return {
+    datasets: datasetsWithSourceMember,
+    paths
+  };
 }
 
 export default NextAPI(handler);

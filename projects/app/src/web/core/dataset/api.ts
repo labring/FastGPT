@@ -82,7 +82,10 @@ import type {
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
-  POST<DatasetListItemType[]>(`/core/dataset/list`, data);
+  POST<{ datasets: DatasetListItemType[]; paths: ParentTreePathItemType[] }>(
+    `/core/dataset/list`,
+    data
+  );
 
 export const getDatasetsByAppIdAndDatasetIds = (data: { appId: string; datasetIdList: string[] }) =>
   POST<DatasetSimpleItemType[]>(`/core/dataset/listByAppIdAndDatasetIds`, data);
