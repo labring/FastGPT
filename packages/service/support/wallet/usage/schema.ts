@@ -61,8 +61,7 @@ const UsageSchema = new Schema({
 });
 
 try {
-  UsageSchema.index({ teamId: 1, time: 1, tmbId: 1, source: 1 });
-  UsageSchema.index({ teamId: 1, time: 1, appName: 1 });
+  UsageSchema.index({ teamId: 1, tmbId: 1, source: 1, time: 1, appName: 1 });
   // timer task. clear dead team
   // UsageSchema.index({ teamId: 1, time: -1 });
 

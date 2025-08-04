@@ -19,12 +19,12 @@ import { Alert } from '@/components/docs/Alert';
 
 ```json
 {
-    "success": true,
-    "message": "错误提示",
-    "msg": "同message, 错误提示",
-    "data": {
-        "uid": "用户唯一凭证"
-    }
+  "success": true,
+  "message": "错误提示",
+  "msg": "同message, 错误提示",
+  "data": {
+    "uid": "用户唯一凭证"
+  }
 }
 ```
 
@@ -37,21 +37,20 @@ import { Alert } from '@/components/docs/Alert';
 ![](/imgs/sharelink_process.png)
 
 ## 配置教程
+
 ### 1. 配置身份校验地址
 
 ![](/imgs/share-setlink.png)
 
 配置校验地址后，在每次分享链接使用时，都会向对应的地址发起校验和上报请求。
 
-<Alert icon="🤖" >
-这里仅需配置根地址，无需具体到完整请求路径。
-</Alert>
+<Alert icon="🤖">这里仅需配置根地址，无需具体到完整请求路径。</Alert>
 
 ### 2. 分享链接中增加额外 query
 
 在分享链接的地址中，增加一个额外的参数: authToken。例如：
 
-原始的链接：`https://share.tryfastgpt.ai/chat/share?shareId=648aaf5ae121349a16d62192`  
+原始的链接：`https://share.tryfastgpt.ai/chat/share?shareId=648aaf5ae121349a16d62192`
 
 完整链接: `https://share.tryfastgpt.ai/chat/share?shareId=648aaf5ae121349a16d62192&authToken=userid12345`
 
@@ -62,7 +61,6 @@ import { Alert } from '@/components/docs/Alert';
 <Tabs items={['请求示例','鉴权成功','鉴权失败']}>
   <Tab value="请求示例" >
 
-
 ```bash
 curl --location --request POST '{{host}}/shareAuth/init' \
 --header 'Content-Type: application/json' \
@@ -71,47 +69,39 @@ curl --location --request POST '{{host}}/shareAuth/init' \
 }'
 ```
 
-
   </Tab>
 
   <Tab value="鉴权成功" >
 
-
 ```json
 {
-    "success": true,
-    "data": {
-        "uid": "用户唯一凭证"
-    }
+  "success": true,
+  "data": {
+    "uid": "用户唯一凭证"
+  }
 }
 ```
 
 系统会拉取该分享链接下，uid 为 username123 的对话记录。
 
-
   </Tab>
 
   <Tab value="鉴权失败" >
 
-
 ```json
 {
-    "success": false,
-    "message": "身份错误",
+  "success": false,
+  "message": "身份错误"
 }
 ```
 
-
   </Tab>
 </Tabs>
-
-
 
 ### 4. 编写对话前校验接口
 
 <Tabs items={['请求示例','鉴权成功','鉴权失败']}>
   <Tab value="请求示例" >
-
 
 ```bash
 curl --location --request POST '{{host}}/shareAuth/start' \
@@ -122,41 +112,36 @@ curl --location --request POST '{{host}}/shareAuth/start' \
 }'
 ```
 
-
   </Tab>
 
   <Tab value="鉴权成功" >
 
-
 ```json
 {
-    "success": true,
-    "data": {
-        "uid": "用户唯一凭证"
-    }
+  "success": true,
+  "data": {
+    "uid": "用户唯一凭证"
+  }
 }
 ```
-
 
   </Tab>
 
   <Tab value="鉴权失败" >
 
-
 ```json
 {
-    "success": false,
-    "message": "身份验证失败",
+  "success": false,
+  "message": "身份验证失败"
 }
 ```
 
 ```json
 {
-    "success": false,
-    "message": "存在违规词",
+  "success": false,
+  "message": "存在违规词"
 }
 ```
-
 
   </Tab>
 </Tabs>
@@ -165,7 +150,7 @@ curl --location --request POST '{{host}}/shareAuth/start' \
 
 该接口无规定返回值。
 
-响应值与[chat 接口格式相同](/docs/development/openapi/chat/#响应)，仅多了一个`token`。
+响应值与[chat 接口格式相同](/docs/introduction/development/openapi/intro/#响应)，仅多了一个`token`。
 
 重点关注：`totalPoints`(总消耗AI积分)，`token`(Token消耗总数)
 
@@ -236,8 +221,8 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
             "runningTime": 1.32
         }
     ]
-        
-    
+
+
 }'
 ```
 
@@ -245,47 +230,47 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
 
 ```ts
 type ResponseType = {
-    moduleType: FlowNodeTypeEnum; // 模块类型
-    moduleName: string; // 模块名
-    moduleLogo?: string; // logo
-    runningTime?: number; // 运行时间
-    query?: string; // 用户问题/检索词
-    textOutput?: string; // 文本输出
+  moduleType: FlowNodeTypeEnum; // 模块类型
+  moduleName: string; // 模块名
+  moduleLogo?: string; // logo
+  runningTime?: number; // 运行时间
+  query?: string; // 用户问题/检索词
+  textOutput?: string; // 文本输出
 
-    tokens?: number; // 上下文总Tokens
-    model?: string; // 使用到的模型
-    contextTotalLen?: number; // 上下文总长度
-    totalPoints?: number; // 总消耗AI积分
+  tokens?: number; // 上下文总Tokens
+  model?: string; // 使用到的模型
+  contextTotalLen?: number; // 上下文总长度
+  totalPoints?: number; // 总消耗AI积分
 
-    temperature?: number; // 温度
-    maxToken?: number; // 模型的最大token
-    quoteList?: SearchDataResponseItemType[]; // 引用列表
-    historyPreview?: ChatItemType[]; // 上下文预览（历史记录会被裁剪）
+  temperature?: number; // 温度
+  maxToken?: number; // 模型的最大token
+  quoteList?: SearchDataResponseItemType[]; // 引用列表
+  historyPreview?: ChatItemType[]; // 上下文预览（历史记录会被裁剪）
 
-    similarity?: number; // 最低相关度
-    limit?: number; // 引用上限token
-    searchMode?: `${DatasetSearchModeEnum}`; // 搜索模式
-    searchUsingReRank?: boolean; // 是否使用rerank
-    extensionModel?: string; // 问题扩展模型
-    extensionResult?: string; // 问题扩展结果
-    extensionTokens?: number; // 问题扩展总字符长度
+  similarity?: number; // 最低相关度
+  limit?: number; // 引用上限token
+  searchMode?: `${DatasetSearchModeEnum}`; // 搜索模式
+  searchUsingReRank?: boolean; // 是否使用rerank
+  extensionModel?: string; // 问题扩展模型
+  extensionResult?: string; // 问题扩展结果
+  extensionTokens?: number; // 问题扩展总字符长度
 
-    cqList?: ClassifyQuestionAgentItemType[]; // 分类问题列表
-    cqResult?: string; // 分类问题结果
+  cqList?: ClassifyQuestionAgentItemType[]; // 分类问题列表
+  cqResult?: string; // 分类问题结果
 
-    extractDescription?: string; // 内容提取描述
-    extractResult?: Record<string, any>; // 内容提取结果
+  extractDescription?: string; // 内容提取描述
+  extractResult?: Record<string, any>; // 内容提取结果
 
-    params?: Record<string, any>; // HTTP模块params
-    body?: Record<string, any>;  // HTTP模块body
-    headers?: Record<string, any>; // HTTP模块headers
-    httpResult?: Record<string, any>; // HTTP模块结果
+  params?: Record<string, any>; // HTTP模块params
+  body?: Record<string, any>; // HTTP模块body
+  headers?: Record<string, any>; // HTTP模块headers
+  httpResult?: Record<string, any>; // HTTP模块结果
 
-    pluginOutput?: Record<string, any>; // 插件输出
-    pluginDetail?: ChatHistoryItemResType[]; // 插件详情
+  pluginOutput?: Record<string, any>; // 插件输出
+  pluginDetail?: ChatHistoryItemResType[]; // 插件详情
 
-    isElseResult?: boolean; // 判断器结果
-}
+  isElseResult?: boolean; // 判断器结果
+};
 ```
 
 ## 实践案例
@@ -296,86 +281,74 @@ type ResponseType = {
 
 ![](/imgs/share-auth1.png)
 
-
-
 <Tabs items={['/shareAuth/init','/shareAuth/start','/shareAuth/finish']}>
   <Tab value="/shareAuth/init" >
-
 
 这个接口中，我们设置了`token`必须等于`fastgpt`才能通过校验。（实际生产中不建议固定写死）
 
 ```ts
-import cloud from '@lafjs/cloud'
+import cloud from '@lafjs/cloud';
 
 export default async function (ctx: FunctionContext) {
-  const { token } = ctx.body
- 
-  // 此处省略 token 解码过程 
+  const { token } = ctx.body;
+
+  // 此处省略 token 解码过程
   if (token === 'fastgpt') {
-    return { success: true,  data: { uid: "user1" } }
+    return { success: true, data: { uid: 'user1' } };
   }
 
-  return { success: false,message:"身份错误" }
+  return { success: false, message: '身份错误' };
 }
-
 ```
-
 
   </Tab>
 
   <Tab value="/shareAuth/start" >
 
-
 这个接口中，我们设置了`token`必须等于`fastgpt`才能通过校验。并且如果问题中包含了`你`字，则会报错，用于模拟敏感校验。
 
 ```ts
-import cloud from '@lafjs/cloud'
+import cloud from '@lafjs/cloud';
 
 export default async function (ctx: FunctionContext) {
-  const { token, question } = ctx.body
+  const { token, question } = ctx.body;
 
-  // 此处省略 token 解码过程 
+  // 此处省略 token 解码过程
   if (token !== 'fastgpt') {
-    return { success: false, message: "身份错误" }
- 
+    return { success: false, message: '身份错误' };
   }
 
-  if(question.includes("你")){
-    return { success: false, message: "内容不合规" }
+  if (question.includes('你')) {
+    return { success: false, message: '内容不合规' };
   }
 
-  return { success: true, data: { uid: "user1" } } 
+  return { success: true, data: { uid: 'user1' } };
 }
-
 ```
-
 
   </Tab>
 
   <Tab value="/shareAuth/finish" >
 
-
 结果上报接口可自行进行逻辑处理。
 
 ```ts
-import cloud from '@lafjs/cloud'
+import cloud from '@lafjs/cloud';
 
 export default async function (ctx: FunctionContext) {
-  const { token, responseData } = ctx.body
-  
-  const total = responseData.reduce((sum,item) => sum + item.price,0)
-  const amount = total / 100000
+  const { token, responseData } = ctx.body;
+
+  const total = responseData.reduce((sum, item) => sum + item.price, 0);
+  const amount = total / 100000;
 
   // 省略数据库操作
 
-  return { }
+  return {};
 }
 ```
 
-
   </Tab>
 </Tabs>
-
 
 ### 2. 配置校验地址
 
@@ -393,7 +366,6 @@ export default async function (ctx: FunctionContext) {
 
 1. 打开源链接或者`authToken`不等于`fastgpt`的链接会提示身份错误。
 2. 发送内容中包含你字，会提示内容不合规。
-
 
 ## 使用场景
 
