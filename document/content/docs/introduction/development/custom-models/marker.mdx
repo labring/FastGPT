@@ -9,7 +9,7 @@ PDF 是一个相对复杂的文件格式，在 FastGPT 内置的 pdf 解析器�
 
 市面上目前有多种解析 PDF 的方法，比如使用 [Marker](https://github.com/VikParuchuri/marker)，该项目使用了 Surya 模型，基于视觉解析，可以有效提取图片、表格、公式等复杂内容。
 
-在 `FastGPT v4.9.0` 版本中，开源版用户可以在`config.json`文件中添加`systemEnv.customPdfParse`配置，来使用 Marker 解析 PDF 文件。商业版用户直接在 Admin 后台根据表单指引填写即可。需重新拉取 Marker 镜像，接口格式已变动。
+在 `FastGPT v4.9.0` 版本中，社区版用户可以在`config.json`文件中添加`systemEnv.customPdfParse`配置，来使用 Marker 解析 PDF 文件。商业版用户直接在 Admin 后台根据表单指引填写即可。需重新拉取 Marker 镜像，接口格式已变动。
 
 ## 使用教程
 
@@ -23,6 +23,7 @@ PDF 是一个相对复杂的文件格式，在 FastGPT 内置的 pdf 解析器�
 docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.2
 docker run --gpus all -itd -p 7231:7232 --name model_pdf_v2 -e PROCESSES_PER_GPU="2" crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.2
 ```
+
 ### 2. 添加 FastGPT 文件配置
 
 ```json
@@ -52,7 +53,7 @@ docker run --gpus all -itd -p 7231:7232 --name model_pdf_v2 -e PROCESSES_PER_GPU
 
 ```
 [Info] 2024-12-05 15:04:42 Parsing files from an external service
-[Info] 2024-12-05 15:07:08 Custom file parsing is complete, time: 1316ms 
+[Info] 2024-12-05 15:07:08 Custom file parsing is complete, time: 1316ms
 ```
 
 然后你就可以发现，通过 Marker 解析出来的 pdf 会携带图片链接：
@@ -63,14 +64,13 @@ docker run --gpus all -itd -p 7231:7232 --name model_pdf_v2 -e PROCESSES_PER_GPU
 
 ![alt text](/imgs/marker3.png)
 
-
 ## 效果展示
 
 以清华的 [ChatDev Communicative Agents for Software Develop.pdf](https://arxiv.org/abs/2307.07924) 为例，展示 Marker 解析的效果：
 
-|  |  |  |
-| --- | --- | --- |
-| ![alt text](/imgs/image-11.png) | ![alt text](/imgs/image-12.png) | ![alt text](/imgs/image-13.png)  |
+|                                 |                                 |                                 |
+| ------------------------------- | ------------------------------- | ------------------------------- |
+| ![alt text](/imgs/image-11.png) | ![alt text](/imgs/image-12.png) | ![alt text](/imgs/image-13.png) |
 | ![alt text](/imgs/image-14.png) | ![alt text](/imgs/image-15.png) | ![alt text](/imgs/image-16.png) |
 
 上图是分块后的结果，下图是 pdf 原文。整体图片、公式、表格都可以提取出来，效果还是杠杠的。
@@ -95,5 +95,5 @@ CUSTOM_READ_FILE_URL=http://xxxx.com/v1/parse/file
 CUSTOM_READ_FILE_EXTENSION=pdf
 ```
 
-* CUSTOM_READ_FILE_URL - 自定义解析服务的地址, host改成解析服务的访问地址，path 不能变动。
-* CUSTOM_READ_FILE_EXTENSION - 支持的文件后缀，多个文件类型，可用逗号隔开。
+- CUSTOM_READ_FILE_URL - 自定义解析服务的地址, host改成解析服务的访问地址，path 不能变动。
+- CUSTOM_READ_FILE_EXTENSION - 支持的文件后缀，多个文件类型，可用逗号隔开。
