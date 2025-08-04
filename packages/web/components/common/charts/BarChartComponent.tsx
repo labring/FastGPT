@@ -7,20 +7,19 @@ import {
   CartesianGrid,
   Tooltip,
   type TooltipProps,
-  LineChart,
-  Line,
-  ReferenceLine
+  BarChart,
+  Bar
 } from 'recharts';
 import { type NameType, type ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { useTranslation } from 'next-i18next';
 import QuestionTip from '../MyTooltip/QuestionTip';
 
-type LineConfig = {
+type BarConfig = {
   dataKey: string;
   name: string;
   color: string;
-  gradient?: boolean;
+  stackId?: string;
 };
 
 type TooltipItem = {
@@ -31,15 +30,13 @@ type TooltipItem = {
   customValue?: (data: Record<string, any>) => number;
 };
 
-type LineChartComponentProps = {
+type BarChartComponentProps = {
   data: Record<string, any>[];
   title: string;
   description?: string;
   HeaderRightChildren?: React.ReactNode;
-  lines: LineConfig[];
+  bars: BarConfig[];
   tooltipItems?: TooltipItem[];
-  showAverage?: boolean;
-  averageKey?: string;
 };
 
 const CustomTooltip = ({
@@ -54,15 +51,8 @@ const CustomTooltip = ({
   }
 
   return (
-    <Box
-      bg="white"
-      p={3}
-      borderRadius="md"
-      border="base"
-      boxShadow="sm"
-      {...(tooltipItems.length > 8 ? { position: 'relative', top: '-30px' } : {})}
-    >
-      <Box fontSize="sm" color="myGray.900" mb={tooltipItems.length > 5 ? 1 : 2}>
+    <Box bg="white" p={3} borderRadius="md" border="base" boxShadow="sm">
+      <Box fontSize="sm" color="myGray.900" mb={2}>
         {data.xLabel || data.x}
       </Box>
       {tooltipItems.map((item, index) => {
@@ -70,7 +60,7 @@ const CustomTooltip = ({
         const displayValue = item.formatter ? item.formatter(value) : formatNumber(value);
 
         return (
-          <HStack key={index} fontSize="sm" _notLast={{ mb: tooltipItems.length > 5 ? 0 : 1 }}>
+          <HStack key={index} fontSize="sm" _notLast={{ mb: 1 }}>
             <Box w={2} h={2} borderRadius="full" bg={item.color} />
             <Box>{item.label}</Box>
             <Box>{displayValue.toLocaleString()}</Box>
@@ -81,16 +71,14 @@ const CustomTooltip = ({
   );
 };
 
-const LineChartComponent = ({
+const BarChartComponent = ({
   data,
   title,
   description,
   HeaderRightChildren,
-  lines,
-  tooltipItems,
-  showAverage = false,
-  averageKey
-}: LineChartComponentProps) => {
+  bars,
+  tooltipItems
+}: BarChartComponentProps) => {
   const theme = useTheme();
   const { t } = useTranslation();
 
@@ -104,61 +92,8 @@ const LineChartComponent = ({
     return value.toString();
   }, []);
 
-  // Calculate average value
-  const averageValue = useMemo(() => {
-    if (!showAverage || !averageKey || data.length === 0) return null;
-
-    const sum = data.reduce((acc, item) => acc + (item[averageKey] || 0), 0);
-    return sum / data.length;
-  }, [showAverage, averageKey, data]);
-
-  // Generate gradient definitions
-  const gradientDefs = useMemo(
-    () => (
-      <defs>
-        {lines.map((line) => (
-          <linearGradient
-            key={`gradient-${line.color}`}
-            id={`gradient-${line.color}`}
-            x1="0"
-            y1="0"
-            x2="0"
-            y2="1"
-          >
-            <stop offset="0%" stopColor={line.color} stopOpacity={0.25} />
-            <stop offset="100%" stopColor={line.color} stopOpacity={0.01} />
-          </linearGradient>
-        ))}
-      </defs>
-    ),
-    [lines]
-  );
-
   return (
-    <Box
-      onMouseEnter={(e) => {
-        const chartElement = e.currentTarget.querySelector('.recharts-wrapper');
-        if (chartElement && showAverage && averageValue !== null) {
-          chartElement.classList.add('show-average');
-        }
-      }}
-      onMouseLeave={(e) => {
-        const chartElement = e.currentTarget.querySelector('.recharts-wrapper');
-        if (chartElement) {
-          chartElement.classList.remove('show-average');
-        }
-      }}
-      h="100%"
-    >
-      <style jsx global>{`
-        .recharts-wrapper .average-line {
-          opacity: 0;
-          transition: opacity 0.2s ease-in-out;
-        }
-        .recharts-wrapper.show-average .average-line {
-          opacity: 1;
-        }
-      `}</style>
+    <>
       <Flex mb={4} h={6}>
         <Flex flex={1} alignItems={'center'} gap={1}>
           <Box fontSize={'sm'} color={'myGray.900'} fontWeight={'medium'}>
@@ -169,11 +104,10 @@ const LineChartComponent = ({
         {HeaderRightChildren}
       </Flex>
       <ResponsiveContainer width="100%" height={'100%'}>
-        <LineChart
+        <BarChart
           data={data}
           margin={{ top: 5, right: 30, left: 0, bottom: HeaderRightChildren ? 20 : 15 }}
         >
-          {gradientDefs}
           <XAxis
             dataKey="x"
             tickMargin={10}
@@ -190,36 +124,21 @@ const LineChartComponent = ({
           />
           <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
           {tooltipItems && <Tooltip content={<CustomTooltip tooltipItems={tooltipItems} />} />}
-          {lines.map((line, index) => (
-            <Line
-              key={line.dataKey}
-              name={line.name}
-              dataKey={line.dataKey}
-              stroke={line.color}
-              strokeWidth={2}
-              fill={`url(#gradient-${line.color})`}
-              dot={false}
+          {bars.map((bar) => (
+            <Bar
+              key={bar.dataKey}
+              name={bar.name}
+              dataKey={bar.dataKey}
+              fill={bar.color}
+              stackId={bar.stackId}
+              radius={[2, 2, 0, 0]}
+              maxBarSize={30}
             />
           ))}
-          {showAverage && averageValue !== null && (
-            <ReferenceLine
-              y={averageValue}
-              stroke={theme.colors.primary?.['400']}
-              strokeDasharray="5 5"
-              strokeWidth={1}
-              className="average-line"
-              label={{
-                value: `${formatNumber(averageValue)}`,
-                position: 'insideTopRight',
-                fill: theme.colors.primary?.['400'],
-                fontSize: 12
-              }}
-            />
-          )}
-        </LineChart>
+        </BarChart>
       </ResponsiveContainer>
-    </Box>
+    </>
   );
 };
 
-export default LineChartComponent;
+export default BarChartComponent;

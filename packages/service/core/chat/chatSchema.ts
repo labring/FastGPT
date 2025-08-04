@@ -1,7 +1,7 @@
 import { connectionMongo, getMongoModel } from '../../common/mongo';
 const { Schema } = connectionMongo;
 import { type ChatSchema as ChatType } from '@fastgpt/global/core/chat/type.d';
-import { ChatSourceEnum, ChatSourceMap } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
