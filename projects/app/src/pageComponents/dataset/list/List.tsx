@@ -226,7 +226,7 @@ function List() {
                     </Box>
 
                     {dataset.type !== DatasetTypeEnum.folder && (
-                      <Box flexShrink={0} ml={2}>
+                      <Box flexShrink={0} mr={-5}>
                         <SideTag
                           type={dataset.type}
                           py={0.5}
