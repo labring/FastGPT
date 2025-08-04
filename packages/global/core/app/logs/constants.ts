@@ -47,3 +47,17 @@ export const DefaultAppLogKeys = [
   { key: AppLogKeysEnum.RESPONSE_TIME, enable: false },
   { key: AppLogKeysEnum.ERROR_COUNT, enable: false }
 ];
+
+export enum AppLogTimespanEnum {
+  day = 'day',
+  week = 'week',
+  month = 'month',
+  quarter = 'quarter'
+}
+
+export const offsetOptions = [
+  { label: 'T+1', value: '1' },
+  { label: 'T+3', value: '3' },
+  { label: 'T+7', value: '7' },
+  { label: 'T+14', value: '14' }
+];

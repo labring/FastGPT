@@ -9,6 +9,7 @@ import { updateLogKeys } from '@/web/core/app/api/log';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import type { AppLogKeysType } from '@fastgpt/global/core/app/logs/type';
+import type { getLogKeysResponse } from '@/pages/api/core/app/logs/getLogKeys';
 
 const SyncLogKeysPopover = ({
   logKeys,
@@ -19,7 +20,7 @@ const SyncLogKeysPopover = ({
   logKeys: AppLogKeysType[];
   setLogKeys: (logKeys: AppLogKeysType[]) => void;
   teamLogKeys: AppLogKeysType[];
-  fetchLogKeys: () => Promise<AppLogKeysType[]>;
+  fetchLogKeys: () => Promise<getLogKeysResponse>;
 }) => {
   const { t } = useTranslation();
   const appId = useContextSelector(AppContext, (v) => v.appId);
