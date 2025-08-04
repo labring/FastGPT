@@ -70,27 +70,46 @@ const DatasetSelectContainer = ({
 
 export function useDatasetSelect() {
   const [parentId, setParentId] = useState<string>('');
+  const [searchKey, setSearchKey] = useState<string>('');
 
   const { data, loading: isFetching } = useRequest2(
-    () =>
-      Promise.all([
-        getDatasets({ parentId }),
-        getDatasetPaths({ sourceId: parentId, type: 'current' })
-      ]),
+    () => {
+      // When searching, ignore parentId and use searchKey
+      const params = searchKey.trim()
+        ? { parentId: '', searchKey: searchKey.trim() }
+        : { parentId };
+
+      return Promise.all([
+        getDatasets(params),
+        // Only get paths when not searching
+        searchKey.trim()
+          ? Promise.resolve([])
+          : getDatasetPaths({ sourceId: parentId, type: 'current' })
+      ]);
+    },
     {
       manual: false,
-      refreshDeps: [parentId]
+      refreshDeps: [parentId, searchKey]
     }
   );
 
-  const paths = useMemo(() => [...(data?.[1] || [])], [data]);
+  const paths = useMemo(() => {
+    // Return empty array when searching
+    if (searchKey.trim()) {
+      return [];
+    }
+    return [...(data?.[1] || [])];
+  }, [data, searchKey]);
 
   return {
     parentId,
     setParentId,
+    searchKey,
+    setSearchKey,
     datasets: data?.[0] || [],
     paths,
-    isFetching
+    isFetching,
+    isSearching: searchKey.trim().length > 0
   };
 }
 
