@@ -545,7 +545,28 @@ const Checkbox = checkBoxMultiStyle({
         borderColor: 'primary.400'
       }
     }
-  })
+  }),
+  sizes: {
+    sm: checkBoxPart({
+      control: {
+        width: '18px',
+        height: '18px',
+        borderWidth: '2px',
+        '&::before': {
+          width: '10px',
+          height: '10px'
+        }
+      }
+    })
+  },
+  variants: {
+    disabled: checkBoxPart({
+      control: {
+        borderColor: 'gray.200',
+        opacity: 0.5
+      }
+    })
+  }
 });
 
 const Modal = modalMultiStyle({

@@ -1,4 +1,9 @@
 {
+  "Index": "Index",
+  "Search_dataset": "Search dataset",
+  "Selected": "Selected", 
+  "dataset": "dataset",
+  "No_selected_dataset": "No selected dataset",
   "Click_to_delete_this_field": "Click to delete this field",
   "Filed_is_deprecated": "This field is deprecated",
   "MCP_tools_debug": "debug",
