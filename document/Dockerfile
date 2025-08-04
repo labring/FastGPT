@@ -35,7 +35,7 @@ RUN npm run build
 # Update search index if SEARCH_APPWRITEKEY is provided
 RUN if [ -n "$SEARCH_APPWRITEKEY" ]; then \
     echo "SEARCH_APPWRITEKEY found, updating search index..." && \
-    npm run update-index-action; \
+    (npm run update-index-action || echo "Search index update failed, but continuing..."); \
     else \
     echo "SEARCH_APPWRITEKEY not provided, skipping search index update"; \
     fi
