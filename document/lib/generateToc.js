@@ -1,6 +1,6 @@
-import * as fs from 'node:fs/promises';
-import path from 'node:path';
-import fg from 'fast-glob';
+const fs = require('node:fs/promises');
+const path = require('node:path');
+const fg = require('fast-glob');
 
 // 假设 i18n.defaultLanguage = 'zh-CN'，这里不用 i18n 直接写两份逻辑即可
 

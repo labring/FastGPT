@@ -69,23 +69,28 @@ const DatasetSelectContainer = ({
 };
 
 export function useDatasetSelect() {
-  const [parentId, setParentId] = useState<string>('');
-  const [searchKey, setSearchKey] = useState<string>('');
+  const [parentId, setParentId] = useState('');
+  const [searchKey, setSearchKey] = useState('');
 
-  const { data, loading: isFetching } = useRequest2(
-    () => {
-      // When searching, ignore parentId and use searchKey
-      const params = searchKey.trim()
-        ? { parentId: '', searchKey: searchKey.trim() }
-        : { parentId };
-
-      return Promise.all([
-        getDatasets(params),
+  const {
+    data = {
+      datasets: [],
+      paths: []
+    },
+    loading: isFetching
+  } = useRequest2(
+    async () => {
+      const result = await Promise.all([
+        getDatasets({ parentId, searchKey }),
         // Only get paths when not searching
         searchKey.trim()
           ? Promise.resolve([])
           : getDatasetPaths({ sourceId: parentId, type: 'current' })
       ]);
+      return {
+        datasets: result[0],
+        paths: result[1]
+      };
     },
     {
       manual: false,
@@ -93,23 +98,14 @@ export function useDatasetSelect() {
     }
   );
 
-  const paths = useMemo(() => {
-    // Return empty array when searching
-    if (searchKey.trim()) {
-      return [];
-    }
-    return [...(data?.[1] || [])];
-  }, [data, searchKey]);
-
   return {
     parentId,
     setParentId,
     searchKey,
     setSearchKey,
-    datasets: data?.[0] || [],
-    paths,
-    isFetching,
-    isSearching: searchKey.trim().length > 0
+    datasets: data.datasets,
+    paths: data.paths,
+    isFetching
   };
 }
 
