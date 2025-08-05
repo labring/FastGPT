@@ -98,6 +98,16 @@ async function handler(
     apiDatasetServer: dataset.apiDatasetServer
   });
 
+  // 添加调试日志：检查预览时的原始文本内容
+  console.log(`[getPreviewChunks] Raw text after readDatasetSourceRawText:`, {
+    rawTextLength: rawText.length,
+    rawTextPreview: rawText.substring(0, 500),
+    hasMarkdownHeaders: /^#+\s/m.test(rawText),
+    markdownHeadersCount: (rawText.match(/^#+\s/g) || []).length,
+    customPdfParse,
+    type
+  });
+
   const chunks = await rawText2Chunks({
     rawText,
     chunkTriggerType: formatChunkSettings.chunkTriggerType,
@@ -108,6 +118,14 @@ async function handler(
     maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
     overlapRatio,
     customReg: formatChunkSettings.chunkSplitter ? [formatChunkSettings.chunkSplitter] : []
+  });
+
+  // 添加调试日志：检查分块后的内容
+  console.log(`[getPreviewChunks] Chunks after rawText2Chunks:`, {
+    chunksCount: chunks.length,
+    firstChunkPreview: chunks[0]?.q?.substring(0, 200),
+    hasMarkdownHeaders: chunks.some((chunk) => /^#+\s/m.test(chunk.q)),
+    markdownHeadersInChunks: chunks.filter((chunk) => /^#+\s/m.test(chunk.q)).length
   });
 
   return {

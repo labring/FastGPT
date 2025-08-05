@@ -294,6 +294,16 @@ export const datasetParseQueue = async (): Promise<any> => {
         ...sourceReadType
       });
 
+      // 添加调试日志：检查原始文本内容
+      addLog.debug(`[Parse Queue] Raw text after readDatasetSourceRawText:`, {
+        rawTextLength: rawText.length,
+        rawTextPreview: rawText.substring(0, 500),
+        hasMarkdownHeaders: /^#+\s/m.test(rawText),
+        markdownHeadersCount: (rawText.match(/^#+\s/g) || []).length,
+        customPdfParse: collection.customPdfParse,
+        paragraphChunkAIMode: collection.paragraphChunkAIMode
+      });
+
       // 3. LLM Pargraph
       addLog.debug(`[Parse Queue] calling requestLLMPargraph with:`, {
         rawTextLength: rawText.length,
@@ -310,11 +320,14 @@ export const datasetParseQueue = async (): Promise<any> => {
         customPdfParse: collection.customPdfParse
       });
 
+      // 添加调试日志：检查LLM处理后的文本内容
       addLog.debug(`[Parse Queue] requestLLMPargraph completed:`, {
         resultTextLength: resultText.length,
         totalInputTokens,
         totalOutputTokens,
-        resultTextPreview: resultText.substring(0, 500)
+        resultTextPreview: resultText.substring(0, 500),
+        hasMarkdownHeaders: /^#+\s/m.test(resultText),
+        markdownHeadersCount: (resultText.match(/^#+\s/g) || []).length
       });
       // Push usage
       pushLLMTrainingUsage({
