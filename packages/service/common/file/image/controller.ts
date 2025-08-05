@@ -7,6 +7,7 @@ import { readFromSecondary } from '../../mongo/utils';
 import { addHours } from 'date-fns';
 import { imageFileType } from '@fastgpt/global/common/file/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 export const maxImgSize = 1024 * 1024 * 12;
 const base64MimeRegex = /data:image\/([^\)]+);base64/;
@@ -105,7 +106,7 @@ export async function readMongoImg({ id }: { id: string }) {
     ...readFromSecondary
   });
   if (!data) {
-    return Promise.reject('Image not found');
+    return Promise.reject(new UserError('Image not found'));
   }
 
   return {
