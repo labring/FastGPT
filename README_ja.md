@@ -102,7 +102,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 - [FastGPT のデプロイ](https://doc.fastgpt.io/docs/introduction/development/docker)
 - [システム 設定 ガイド](https://doc.fastgpt.io/docs/introduction/development/configuration)
 - [複数 モデルの 設定](https://doc.fastgpt.io/docs/introduction/development/modelConfig/ai-proxy)
-- [バージョン 更新 とアップグレード](https://doc.fastgpt.io/docs/introduction/development/upgrading/intro)
+- [バージョン 更新 とアップグレード](https://doc.fastgpt.io/docs/introduction/development/upgrading/index)
 
 <!-- ## :point_right: ロードマップ
 - [FastGPT ロードマップ](https://kjqvjse66l.feishu.cn/docx/RVUxdqE2WolDYyxEKATcM0XXnte) -->

@@ -24,8 +24,6 @@ export type PluginRuntimeType = {
 
 // system plugin
 export type SystemPluginTemplateItemType = WorkflowTemplateType & {
-  parentId?: ParentIdType;
-  isFolder?: boolean;
   templateType: string;
 
   // FastGPT-plugin tool

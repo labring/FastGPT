@@ -17,7 +17,9 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import type { McpToolSetDataType } from '@fastgpt/global/core/app/mcpTools/type';
+import { MongoApp } from '../../../core/app/schema';
+import { getMCPChildren } from '../../../core/app/mcp';
+import { getSystemToolRunTimeNodeFromSystemToolset } from '../utils';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -151,10 +153,19 @@ export const formatHttpError = (error: any) => {
   };
 };
 
-export const rewriteRuntimeWorkFlow = (
-  nodes: RuntimeNodeItemType[],
-  edges: RuntimeEdgeItemType[]
-) => {
+/**
+ * ToolSet node will be replaced by Children Tool Nodes.
+ * @param nodes
+ * @param edges
+ * @returns
+ */
+export const rewriteRuntimeWorkFlow = async ({
+  nodes,
+  edges
+}: {
+  nodes: RuntimeNodeItemType[];
+  edges: RuntimeEdgeItemType[];
+}) => {
   const toolSetNodes = nodes.filter((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
 
   if (toolSetNodes.length === 0) {
@@ -165,34 +176,46 @@ export const rewriteRuntimeWorkFlow = (
 
   for (const toolSetNode of toolSetNodes) {
     nodeIdsToRemove.add(toolSetNode.nodeId);
-    const toolSetValue = toolSetNode.inputs[0]?.value as McpToolSetDataType | undefined;
-
-    if (!toolSetValue) continue;
-
-    const toolList = toolSetValue.toolList;
-    const url = toolSetValue.url;
-    const headerSecret = toolSetValue.headerSecret;
+    const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId;
+    const mcpToolsetVal = toolSetNode.toolConfig?.mcpToolSet ?? toolSetNode.inputs[0].value;
 
     const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
-
-    for (const tool of toolList) {
-      const newToolNode = getMCPToolRuntimeNode({
-        avatar: toolSetNode.avatar,
-        tool,
-        url,
-        headerSecret
-      });
-
-      nodes.push({ ...newToolNode, name: `${toolSetNode.name} / ${tool.name}` });
-
+    const pushEdges = (nodeId: string) => {
       for (const inEdge of incomingEdges) {
         edges.push({
           source: inEdge.source,
-          target: newToolNode.nodeId,
+          target: nodeId,
           sourceHandle: inEdge.sourceHandle,
           targetHandle: 'selectedTools',
           status: inEdge.status
         });
+      }
+    };
+
+    // systemTool
+    if (systemToolId) {
+      const children = await getSystemToolRunTimeNodeFromSystemToolset({
+        toolSetNode
+      });
+      children.forEach((node) => {
+        nodes.push(node);
+        pushEdges(node.nodeId);
+      });
+    } else if (mcpToolsetVal) {
+      const app = await MongoApp.findOne({ _id: toolSetNode.pluginId }).lean();
+      if (!app) continue;
+      const toolList = await getMCPChildren(app);
+
+      for (const tool of toolList) {
+        const newToolNode = getMCPToolRuntimeNode({
+          avatar: toolSetNode.avatar,
+          tool,
+          // New ?? Old
+          parentId: mcpToolsetVal.toolId ?? toolSetNode.pluginId
+        });
+
+        nodes.push({ ...newToolNode, name: `${toolSetNode.name}/${tool.name}` });
+        pushEdges(newToolNode.nodeId);
       }
     }
   }

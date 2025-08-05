@@ -31,8 +31,16 @@ export default async function Layout({
       url: lang === 'zh-CN' ? '/docs/use-cases' : '/en/docs/use-cases'
     },
     {
+      title: t('common:faq', lang),
+      url: lang === 'zh-CN' ? '/docs/faq' : '/en/docs/faq'
+    },
+    {
       title: t('common:protocol', lang),
       url: lang === 'zh-CN' ? '/docs/protocol' : '/en/docs/protocol'
+    },
+    {
+      title: t('common:upgrading', lang),
+      url: lang === 'zh-CN' ? '/docs/upgrading' : '/en/docs/upgrading'
     }
   ];
 
@@ -41,7 +49,7 @@ export default async function Layout({
       {...baseOptions(lang)}
       nav={{
         title: (
-          <div className="flex flex-row items-center gap-2 h-14 ml-10">
+          <div className="flex flex-row items-center gap-2 h-14 ml-1">
             <div className="block dark:hidden">
               <LogoLight className="w-48 h-auto" />
             </div>

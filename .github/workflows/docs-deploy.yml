@@ -15,8 +15,46 @@ permissions:
   pull-requests: write
 
 jobs:
+  sync-images:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current repository
+        uses: actions/checkout@v4
+
+      - name: Checkout target repository
+        uses: actions/checkout@v4
+        with:
+          repository: labring/fastgpt-img
+          token: ${{ secrets.DOCS_IMGS_SYNC_TOKEN }}
+          path: fastgpt-img
+
+      - name: Sync images
+        run: |
+          # Create imgs directory if it doesn't exist
+          mkdir -p fastgpt-img
+
+          # Copy all images from document/public/imgs to the target repository
+          cp -r document/public/imgs/* fastgpt-img
+
+          # Navigate to target repository
+          cd fastgpt-img
+
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Add, commit and push changes
+          git add .
+          if ! git diff --cached --quiet; then
+            git commit -m "Sync images from FastGPT document at $(date)"
+            git push
+            echo "Images synced successfully"
+          else
+            echo "No changes to sync"
+          fi
   # Add a new job to generate unified timestamp
   generate-timestamp:
+    needs: sync-images
     runs-on: ubuntu-latest
     outputs:
       datetime: ${{ steps.datetime.outputs.datetime }}
@@ -39,6 +77,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Rewrite image paths
+        if: matrix.domain_config.suffix == 'io'
+        run: |
+          find document/content/docs -name "*.mdx" -type f | while read file; do
+            sed -i 's|](/imgs/|](https://cdn.jsdelivr.net/gh/labring/fastgpt-img@main/|g' "$file"
+          done
 
       - name: Docker meta
         id: meta
@@ -69,10 +114,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64
           build-args: |
-            NEXT_PUBLIC_SEARCH_APPKEY=c4708d48f2de6ac5d2f0f443979ef92a
-            NEXT_PUBLIC_SEARCH_APPID=HZAF4C2T88
             FASTGPT_HOME_DOMAIN=${{ matrix.domain_config.domain }}
-            SEARCH_APPWRITEKEY=${{ secrets.SEARCH_APPWRITEKEY }}
 
       - name: Build and push Docker images (IO)
         if: matrix.domain_config.suffix == 'io'
@@ -85,8 +127,6 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64
           build-args: |
-            NEXT_PUBLIC_SEARCH_APPKEY=c4708d48f2de6ac5d2f0f443979ef92a
-            NEXT_PUBLIC_SEARCH_APPID=HZAF4C2T88
             FASTGPT_HOME_DOMAIN=${{ matrix.domain_config.domain }}
 
   update-images:

@@ -1,0 +1,14 @@
+{
+  "root": true,
+  "title": "FAQ",
+  "description": "FastGPT 常见问题",
+  "pages": [
+    "app",
+    "chat",
+    "dataset",
+    "external_channel_integration",
+    "error",
+    "points_consumption",
+    "other"
+  ]
+}

@@ -1,7 +1,0 @@
-{
-  "title": "API手册",
-  "description": "FastGPT API手册",
-  "root": true,
-  "pages": ["api1", "api2", "test"],
-  "order": 4
-}

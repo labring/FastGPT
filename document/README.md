@@ -1,29 +1,11 @@
-# fast
+# FastGPT 文档
 
 这是FastGPT的官方文档，采用fumadoc框架。
-
-# 获取搜索应用
-
-点击[Algolia](https://dashboard.algolia.com/account/overview),进行注册账号，注册成功后需要点击页面的搜索,然后查看应用，默认会有一个应用。
-
-![](./public/readme/algolia.png)
-
-拥有应用后点击个人头像，点击设置，点击`API Keys`查看自己的应用id和key。
-
-![](./public/readme/algolia2.png)
-
-页面中的`Application ID`和`Search API Key`，`Write API KEY`就是环境变量对应的`NEXT_PUBLIC_SEARCH_APPID`和`NEXT_PUBLIC_SEARCH_APPKEY`，`SEARCH_APPWRITEKEY`
-
-![](./public/readme/algolia3.png)
-
-# 运行项目
+## 运行项目
 
 要运行文档，首先需要进行环境变量配置，在文档的根目录下创建`.env.local`文件，填写以下环境变量:
 
 ```bash
-SEARCH_APPWRITEKEY =  #这是上面获取的Write api key
-NEXT_PUBLIC_SEARCH_APPKEY = #这是上面获取的搜索key
-NEXT_PUBLIC_SEARCH_APPID =  #这是上面的搜索id
 FASTGPT_HOME_DOMAIN =    #要跳转的FastGPT项目的域名，默认海外版
 ```
 
@@ -35,7 +17,7 @@ npm run dev
 ```
 项目会默认跑在`http:localhost:3000`端口
 
-# 书写文档
+## 书写文档
 
 文档采用`mdx`格式，大体和`md`一致，但是现在文档的元数据只支持`title` `description`和`icon`三个字段，参考以下示例代码：
 
@@ -81,14 +63,12 @@ import FastGPTLink from '@/components/docs/linkFastGPT'; #FastGPT跳转链接组
 }
 ```
 
-# i18n
+## i18n
 
 在`content/docs`下的所有`.mdx`文件为默认语言文件(当前默认语言中文)，`.en.mdx`文件为`i18n`支持的英文文件，例如，你可以将`hello.mdx`文档翻译后，写一个`hello.en.mdx`,同时，在对应目录的`meta.en.json`的`"pages"`字段写下对应的文件名来支持英文文档。
 
-# ps
+## 特殊配置
 
-`meta.json`的`"pages"`中的`"[Handshake][联系我们](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc)"`这个字段是目录的链接形式，表现效果为，点击后跳转到对应的url。
+### 增加顶层导航栏
 
-![](./public/readme/link.png)
-
-最后，如果依然有问题，可以进入`https://fumadocs.dev/docs/ui`官网，询问官网提供的ai来了解文档框架的使用。
+1. 在 `FastGPT/document/app/[lang]/docs/layout.tsx` 文件中新增导航。

@@ -23,13 +23,28 @@ import type { AppDetailType, AppSchema, McpToolConfigType } from '../../app/type
 import type { ParentIdType } from 'common/parentFolder/type';
 import { AppTypeEnum } from '../../app/constants';
 import type { WorkflowInteractiveResponseType } from '../template/system/interactive/type';
+import type { StoreSecretValueType } from '../../../common/secret/type';
 
 export type NodeToolConfigType = {
-  mcpTool?: McpToolConfigType & {
+  mcpToolSet?: {
+    toolId: string; // ObjectId of the MCP App
     url: string;
+    headerSecret?: StoreSecretValueType;
+    toolList: McpToolConfigType[];
+  };
+  mcpTool?: {
+    toolId: string;
   };
   systemTool?: {
     toolId: string;
+  };
+  systemToolSet?: {
+    toolId: string;
+    toolList: {
+      toolId: string;
+      name: string;
+      description: string;
+    }[];
   };
 };
 

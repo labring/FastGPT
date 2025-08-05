@@ -1,16 +1,9 @@
-import createClient, { RunToolWithStream } from '@fastgpt-sdk/plugin';
+import { RunToolWithStream } from '@fastgpt-sdk/plugin';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
+import { pluginClient, BASE_URL, TOKEN } from '../../../thirdProvider/fastgptPlugin';
 
-const BASE_URL = process.env.PLUGIN_BASE_URL || '';
-const TOKEN = process.env.PLUGIN_TOKEN || '';
-
-const client = createClient({
-  baseUrl: BASE_URL,
-  token: TOKEN
-});
-
-export async function getSystemToolList() {
-  const res = await client.tool.list();
+export async function APIGetSystemToolList() {
+  const res = await pluginClient.tool.list();
 
   if (res.status === 200) {
     return res.body.map((item) => {
@@ -33,4 +26,4 @@ const runToolInstance = new RunToolWithStream({
   baseUrl: BASE_URL,
   token: TOKEN
 });
-export const runSystemTool = runToolInstance.run.bind(runToolInstance);
+export const APIRunSystemTool = runToolInstance.run.bind(runToolInstance);

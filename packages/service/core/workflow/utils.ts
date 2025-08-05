@@ -1,5 +1,11 @@
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { countPromptTokens } from '../../common/string/tiktoken/index';
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { getSystemPluginByIdAndVersionId, getSystemTools } from '../app/plugin/controller';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 
 /* filter search result */
 export const filterSearchResultsByMaxChars = async (
@@ -23,3 +29,52 @@ export const filterSearchResultsByMaxChars = async (
 
   return results.length === 0 ? list.slice(0, 1) : results;
 };
+
+export async function getSystemToolRunTimeNodeFromSystemToolset({
+  toolSetNode
+}: {
+  toolSetNode: RuntimeNodeItemType;
+}): Promise<RuntimeNodeItemType[]> {
+  const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId!;
+
+  const toolsetInputConfig = toolSetNode.inputs.find(
+    (item) => item.key === NodeInputKeyEnum.systemInputConfig
+  );
+  const tools = await getSystemTools();
+  const children = tools.filter((item) => item.parentId === systemToolId);
+
+  const nodes = await Promise.all(
+    children.map(async (child) => {
+      const toolListItem = toolSetNode.toolConfig?.systemToolSet?.toolList.find(
+        (item) => item.toolId === child.id
+      )!;
+
+      const tool = await getSystemPluginByIdAndVersionId(child.id);
+
+      const inputs = tool.inputs ?? [];
+      if (toolsetInputConfig?.value) {
+        const configInput = inputs.find((item) => item.key === NodeInputKeyEnum.systemInputConfig);
+        if (configInput) {
+          configInput.value = toolsetInputConfig.value;
+        }
+      }
+
+      return {
+        ...tool,
+        inputs,
+        outputs: tool.outputs ?? [],
+        name: toolListItem.name ?? parseI18nString(tool.name, 'en'),
+        intro: toolListItem.description ?? parseI18nString(tool.intro, 'en'),
+        flowNodeType: FlowNodeTypeEnum.tool,
+        nodeId: getNanoid(),
+        toolConfig: {
+          systemTool: {
+            toolId: child.id
+          }
+        }
+      };
+    })
+  );
+
+  return nodes;
+}

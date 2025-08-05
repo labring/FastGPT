@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Get current datetime
         id: datetime
@@ -51,8 +53,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            NEXT_PUBLIC_SEARCH_APPKEY=c4708d48f2de6ac5d2f0f443979ef92a
-            NEXT_PUBLIC_SEARCH_APPID=HZAF4C2T88
             FASTGPT_HOME_DOMAIN=https://fastgpt.io
     outputs:
       tags: ${{ steps.datetime.outputs.datetime }}

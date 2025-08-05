@@ -14,38 +14,37 @@ import { type RuntimeNodeItemType } from '../../workflow/runtime/type';
 import { type StoreSecretValueType } from '../../../common/secret/type';
 import { jsonSchema2NodeInput } from '../jsonschema';
 import { getNanoid } from '../../../common/string/tools';
+import { PluginSourceEnum } from '../plugin/constants';
 
 export const getMCPToolSetRuntimeNode = ({
   url,
   toolList,
   headerSecret,
   name,
-  avatar
+  avatar,
+  toolId
 }: {
   url: string;
   toolList: McpToolConfigType[];
   headerSecret?: StoreSecretValueType;
   name?: string;
   avatar?: string;
+  toolId: string;
 }): RuntimeNodeItemType => {
   return {
     nodeId: getNanoid(16),
     flowNodeType: FlowNodeTypeEnum.toolSet,
     avatar,
-    intro: '',
-    inputs: [
-      {
-        key: NodeInputKeyEnum.toolSetData,
-        label: '',
-        valueType: WorkflowIOValueTypeEnum.object,
-        renderTypeList: [FlowNodeInputTypeEnum.hidden],
-        value: {
-          url,
-          headerSecret,
-          toolList
-        }
+    intro: 'MCP Tools',
+    toolConfig: {
+      mcpToolSet: {
+        toolList,
+        headerSecret,
+        url,
+        toolId
       }
-    ],
+    },
+    inputs: [],
     outputs: [],
     name: name || '',
     version: ''
@@ -54,34 +53,24 @@ export const getMCPToolSetRuntimeNode = ({
 
 export const getMCPToolRuntimeNode = ({
   tool,
-  url,
-  headerSecret,
-  avatar = 'core/app/type/mcpToolsFill'
+  avatar = 'core/app/type/mcpToolsFill',
+  parentId
 }: {
   tool: McpToolConfigType;
-  url: string;
-  headerSecret?: StoreSecretValueType;
   avatar?: string;
+  parentId: string;
 }): RuntimeNodeItemType => {
   return {
     nodeId: getNanoid(16),
     flowNodeType: FlowNodeTypeEnum.tool,
     avatar,
     intro: tool.description,
-    inputs: [
-      {
-        key: NodeInputKeyEnum.toolData,
-        label: 'Tool Data',
-        valueType: WorkflowIOValueTypeEnum.object,
-        renderTypeList: [FlowNodeInputTypeEnum.hidden],
-        value: {
-          ...tool,
-          url,
-          headerSecret
-        }
-      },
-      ...jsonSchema2NodeInput(tool.inputSchema)
-    ],
+    toolConfig: {
+      mcpTool: {
+        toolId: `${PluginSourceEnum.mcp}-${parentId}/${tool.name}`
+      }
+    },
+    inputs: jsonSchema2NodeInput(tool.inputSchema),
     outputs: [
       {
         id: NodeOutputKeyEnum.rawResponse,
@@ -97,3 +86,12 @@ export const getMCPToolRuntimeNode = ({
     version: ''
   };
 };
+
+/**
+ * Get the parent id of the mcp toolset
+ * mcp-123123/toolName ==> 123123
+ * 123123/toolName ==> 123123
+ * @param id mcp-parentId/name or parentId/name
+ * @returns parentId
+ */
+export const getMCPParentId = (id: string) => id.split('-').pop()?.split('/')[0];

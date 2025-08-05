@@ -1,5 +1,0 @@
-{
-  "title": "FAQ",
-  "description": "FastGPT 常见问题",
-  "pages": ["docker","privateDeploy","chat","app","dataset","external_channel_integration","error","points_consumption","other"]
-}

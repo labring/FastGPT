@@ -186,7 +186,11 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       return delAppById(appDetail._id);
     },
     {
-      onSuccess() {
+      onSuccess(data) {
+        data.forEach((appId) => {
+          localStorage.removeItem(`app_log_keys_${appId}`);
+        });
+
         router.replace(`/dashboard/apps`);
       },
       successToast: t('common:delete_success'),

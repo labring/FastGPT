@@ -5,18 +5,17 @@ import NodeCard from './render/NodeCard';
 import IOTitle from '../components/IOTitle';
 import Container from '../components/Container';
 import { useTranslation } from 'react-i18next';
-import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import { Box, Flex } from '@chakra-ui/react';
 
 const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
 
-  const { inputs } = data;
-  const toolList: McpToolConfigType[] = inputs[0]?.value?.toolList;
+  const { toolConfig } = data;
+  const toolList = toolConfig?.mcpToolSet?.toolList ?? toolConfig?.systemToolSet?.toolList ?? [];
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>
       <Container>
-        <IOTitle text={t('app:MCP_tools_list')} />
+        <IOTitle text={t('app:MCP_tools_list')} {...data} catchError={undefined} />
         <Box maxH={'500px'} overflowY={'auto'} className="nowheel">
           {toolList?.map((tool, index) => (
             <Flex

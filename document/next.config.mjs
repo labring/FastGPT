@@ -18,7 +18,7 @@ const config = {
   images: {
     unoptimized: true,
     dangerouslyAllowSVG: true,
-    domains: ['oss.laf.run', 'static.ppinfra.com'],
+    domains: ['oss.laf.run', 'static.ppinfra.com', 'cdn.jsdelivr.net'],
     remotePatterns: [
       {
         protocol: 'https',
@@ -29,6 +29,12 @@ const config = {
       {
         protocol: 'https',
         hostname: 'static.ppinfra.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn.jsdelivr.net',
         port: '',
         pathname: '/**',
       },

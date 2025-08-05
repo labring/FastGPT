@@ -64,7 +64,15 @@ const strIsMdTable = (str: string) => {
 };
 const markdownTableSplit = (props: SplitProps): SplitResponse => {
   let { text = '', chunkSize } = props;
-  const splitText2Lines = text.split('\n');
+
+  // split by rows
+  const splitText2Lines = text.split('\n').filter((line) => line.trim());
+
+  // If there are not enough rows to form a table, return directly
+  if (splitText2Lines.length < 2) {
+    return { chunks: [text], chars: text.length };
+  }
+
   const header = splitText2Lines[0];
   const headerSize = header.split('|').length - 2;
 
@@ -130,21 +138,6 @@ const commonSplit = (props: SplitProps): SplitResponse => {
   text = text.replace(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g, function (match) {
     return match.replace(/\n/g, codeBlockMarker);
   });
-  // 2. Markdown 表格处理 - 单独提取表格出来，进行表头合并
-  const tableReg =
-    /(\n\|(?:(?:[^\n|]+\|){1,})\n\|(?:[:\-\s]+\|){1,}\n(?:\|(?:[^\n|]+\|)*\n?)*)(?:\n|$)/g;
-  const tableDataList = text.match(tableReg);
-  if (tableDataList) {
-    tableDataList.forEach((tableData) => {
-      const { chunks } = markdownTableSplit({
-        text: tableData.trim(),
-        chunkSize
-      });
-
-      const splitText = chunks.join('\n');
-      text = text.replace(tableData, `\n${splitText}\n`);
-    });
-  }
 
   // replace invalid \n
   text = text.replace(/(\r?\n|\r){3,}/g, '\n\n\n');
@@ -173,7 +166,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
   const stepReges: { reg: RegExp | string; maxLen: number }[] = [
     ...customReg.map((text) => ({
-      reg: text.replaceAll('\\n', '\n'),
+      reg: text.replace(/\\n/g, '\n'),
       maxLen: chunkSize
     })),
     ...markdownHeaderRules,
@@ -181,7 +174,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     { reg: /([\n](```[\s\S]*?```|~~~[\s\S]*?~~~))/g, maxLen: maxSize }, // code block
     // HTML Table tag 尽可能保障完整
     {
-      reg: /(\n\|(?:(?:[^\n|]+\|){1,})\n\|(?:[:\-\s]+\|){1,}\n(?:\|(?:[^\n|]+\|)*\n)*)/g,
+      reg: /(\n\|(?:[^\n|]*\|)+\n\|(?:[:\-\s]*\|)+\n(?:\|(?:[^\n|]*\|)*\n)*)/g,
       maxLen: chunkSize
     }, // Markdown Table 尽可能保证完整性
     { reg: /(\n{2,})/g, maxLen: chunkSize },
@@ -332,6 +325,21 @@ const commonSplit = (props: SplitProps): SplitResponse => {
       const newText = lastText + currentText;
       const newTextLen = getTextValidLength(newText);
 
+      // split the current table if it will exceed after adding
+      if (strIsMdTable(currentText) && newTextLen > maxLen) {
+        if (lastTextLen > 0) {
+          chunks.push(lastText);
+          lastText = '';
+        }
+
+        const { chunks: tableChunks } = markdownTableSplit({
+          text: currentText,
+          chunkSize: chunkSize * 1.2
+        });
+
+        chunks.push(...tableChunks);
+        continue;
+      }
       // Markdown 模式下，会强制向下拆分最小块，并再最后一个标题深度，给小块都补充上所有标题（包含父级标题）
       if (isMarkdownStep) {
         // split new Text, split chunks must will greater 1 (small lastText)
@@ -468,10 +476,10 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
 
   const splitResult = splitWithCustomSign.map((item) => {
     if (strIsMdTable(item)) {
-      return markdownTableSplit(props);
+      return markdownTableSplit({ ...props, text: item });
     }
 
-    return commonSplit(props);
+    return commonSplit({ ...props, text: item });
   });
 
   return {

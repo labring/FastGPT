@@ -20,7 +20,6 @@ async function handler(
   res: ApiResponseType<RunMCPToolResponse>
 ): Promise<RunMCPToolResponse> {
   const { url, toolName, headerSecret, params } = req.body;
-
   const mcpClient = new MCPClient({
     url,
     headers: getSecretValue({

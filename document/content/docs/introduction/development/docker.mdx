@@ -7,9 +7,9 @@ import { Alert } from '@/components/docs/Alert';
 
 ## 前置知识
 
-1. 基础的网络知识：端口，防火墙……  
-2. Docker 和 Docker Compose 基础知识  
-3. 大模型相关接口和参数  
+1. 基础的网络知识：端口，防火墙……
+2. Docker 和 Docker Compose 基础知识
+3. 大模型相关接口和参数
 4. RAG 相关知识：向量模型，向量数据库，向量检索
 
 ## 部署架构图
@@ -30,13 +30,11 @@ import { Alert } from '@/components/docs/Alert';
 
 非常轻量，适合知识库索引量在 5000 万以下。
 
-
-| 环境 | 最低配置（单节点） | 推荐配置 |
-| ---- | ---- | ---- |
-| 测试（可以把计算进程设置少一些） | 2c4g  | 2c8g |
-| 100w 组向量 | 4c8g 50GB | 4c16g 50GB |
-| 500w 组向量 | 8c32g 200GB | 16c64g 200GB |
-
+| 环境                             | 最低配置（单节点） | 推荐配置     |
+| -------------------------------- | ------------------ | ------------ |
+| 测试（可以把计算进程设置少一些） | 2c4g               | 2c8g         |
+| 100w 组向量                      | 4c8g 50GB          | 4c16g 50GB   |
+| 500w 组向量                      | 8c32g 200GB        | 16c64g 200GB |
 
 ### Milvus版本
 
@@ -44,13 +42,11 @@ import { Alert } from '@/components/docs/Alert';
 
 [点击查看 Milvus 官方推荐配置](https://milvus.io/docs/prerequisite-docker.md)
 
-
-| 环境 | 最低配置（单节点） | 推荐配置 |
-| ---- | ---- | ---- |
-| 测试 | 2c8g  | 4c16g |
-| 100w 组向量 | 未测试 |  |
-| 500w 组向量 |  |  |
-
+| 环境        | 最低配置（单节点） | 推荐配置 |
+| ----------- | ------------------ | -------- |
+| 测试        | 2c8g               | 4c16g    |
+| 100w 组向量 | 未测试             |          |
+| 500w 组向量 |                    |          |
 
 ### zilliz cloud版本
 
@@ -89,6 +85,7 @@ brew install orbstack
 ```
 
 或者直接[下载安装包](https://orbstack.dev/download)进行安装。
+
   </Tab>
   <Tab value="Windows">
 我们建议将源代码和其他数据绑定到 Linux 容器中时，将其存储在 Linux 文件系统中，而不是 Windows 文件系统中。
@@ -96,6 +93,7 @@ brew install orbstack
 可以选择直接[使用 WSL 2 后端在 Windows 中安装 Docker Desktop](https://docs.docker.com/desktop/wsl/)。
 
 也可以直接[在 WSL 2 中安装命令行版本的 Docker](https://nickjanetakis.com/blog/install-docker-in-wsl-2-without-docker-desktop)。
+
   </Tab>
 </Tabs>
 
@@ -110,7 +108,7 @@ brew install orbstack
 
 <Alert icon="🤖" context="success">
 
-所有 `docker-compose.yml` 配置文件中 `MongoDB` 为 5.x，需要用到AVX指令集，部分 CPU 不支持，需手动更改其镜像版本为 4.4.24**（需要自己在docker hub下载，阿里云镜像没做备份）
+所有 `docker-compose.yml` 配置文件中 `MongoDB` 为 5.x，需要用到AVX指令集，部分 CPU 不支持，需手动更改其镜像版本为 4.4.24\*\*（需要自己在docker hub下载，阿里云镜像没做备份）
 
 </Alert>
 
@@ -208,7 +206,7 @@ chown 999:root ./mongodb.key
 ```
 
 2. 修改 docker-compose.yml，挂载密钥
-  
+
 ```yml
 mongo:
   #  image: mongo:5.0.18
@@ -239,7 +237,7 @@ docker-compose up -d
 
 ```bash
 # 查看 mongo 容器是否正常运行
-docker ps 
+docker ps
 # 进入容器
 docker exec -it mongo bash
 
@@ -273,14 +271,14 @@ docker-compose up -d
 
 ### 如何更新版本？
 
-1. 查看[更新文档](/docs/development/upgrading/intro/)，确认要升级的版本，避免跨版本升级。
+1. 查看[更新文档](/docs/development/upgrading/index/)，确认要升级的版本，避免跨版本升级。
 2. 修改镜像 tag 到指定版本
 3. 执行下面命令会自动拉取镜像：
 
-    ```bash
-    docker-compose pull
-    docker-compose up -d
-    ```
+   ```bash
+   docker-compose pull
+   docker-compose up -d
+   ```
 
 4. 执行初始化脚本（如果有）
 

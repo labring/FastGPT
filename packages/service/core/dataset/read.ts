@@ -13,6 +13,9 @@ import { getApiDatasetRequest } from './apiDataset';
 import Papa from 'papaparse';
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { text2Chunks } from '../../worker/function';
+import { addLog } from '../../common/system/log';
+import { retryFn } from '@fastgpt/global/common/system/utils';
+import { getFileMaxSize } from '../../common/file/utils';
 
 export const readFileRawTextByUrl = async ({
   teamId,
@@ -20,7 +23,8 @@ export const readFileRawTextByUrl = async ({
   url,
   customPdfParse,
   getFormatText,
-  relatedId
+  relatedId,
+  maxFileSize = getFileMaxSize()
 }: {
   teamId: string;
   tmbId: string;
@@ -28,30 +32,113 @@ export const readFileRawTextByUrl = async ({
   customPdfParse?: boolean;
   getFormatText?: boolean;
   relatedId: string; // externalFileId / apiFileId
+  maxFileSize?: number;
 }) => {
+  const extension = parseFileExtensionFromUrl(url);
+
+  // Check file size
+  try {
+    const headResponse = await axios.head(url, { timeout: 10000 });
+    const contentLength = parseInt(headResponse.headers['content-length'] || '0');
+
+    if (contentLength > 0 && contentLength > maxFileSize) {
+      return Promise.reject(
+        `File too large. Size: ${Math.round(contentLength / 1024 / 1024)}MB, Maximum allowed: ${Math.round(maxFileSize / 1024 / 1024)}MB`
+      );
+    }
+  } catch (error) {
+    addLog.warn('Check file HEAD request failed');
+  }
+
+  // Use stream response type, avoid double memory usage
   const response = await axios({
     method: 'get',
     url: url,
-    responseType: 'arraybuffer'
-  });
-  const extension = parseFileExtensionFromUrl(url);
-
-  const buffer = Buffer.from(response.data, 'binary');
-
-  const { rawText } = await readRawContentByFileBuffer({
-    customPdfParse,
-    getFormatText,
-    extension,
-    teamId,
-    tmbId,
-    buffer,
-    encoding: 'utf-8',
-    metadata: {
-      relatedId
-    }
+    responseType: 'stream',
+    maxContentLength: maxFileSize,
+    timeout: 30000
   });
 
-  return rawText;
+  // 优化：直接从 stream 转换为 buffer，避免 arraybuffer 中间步骤
+  const chunks: Buffer[] = [];
+  let totalLength = 0;
+
+  return new Promise<string>((resolve, reject) => {
+    let isAborted = false;
+
+    const cleanup = () => {
+      if (!isAborted) {
+        isAborted = true;
+        chunks.length = 0; // 清理内存
+        response.data.destroy();
+      }
+    };
+
+    // Stream timeout
+    const timeoutId = setTimeout(() => {
+      cleanup();
+      reject('File download timeout after 30 seconds');
+    }, 600000);
+
+    response.data.on('data', (chunk: Buffer) => {
+      if (isAborted) return;
+      totalLength += chunk.length;
+      if (totalLength > maxFileSize) {
+        clearTimeout(timeoutId);
+        cleanup();
+        return reject(
+          `File too large. Maximum size allowed is ${Math.round(maxFileSize / 1024 / 1024)}MB.`
+        );
+      }
+
+      chunks.push(chunk);
+    });
+
+    response.data.on('end', async () => {
+      if (isAborted) return;
+
+      clearTimeout(timeoutId);
+
+      try {
+        // 合并所有 chunks 为单个 buffer
+        const buffer = Buffer.concat(chunks);
+
+        // 立即清理 chunks 数组释放内存
+        chunks.length = 0;
+
+        const { rawText } = await retryFn(() =>
+          readRawContentByFileBuffer({
+            customPdfParse,
+            getFormatText,
+            extension,
+            teamId,
+            tmbId,
+            buffer,
+            encoding: 'utf-8',
+            metadata: {
+              relatedId
+            }
+          })
+        );
+
+        resolve(rawText);
+      } catch (error) {
+        cleanup();
+        reject(error);
+      }
+    });
+
+    response.data.on('error', (error: Error) => {
+      clearTimeout(timeoutId);
+      cleanup();
+      reject(error);
+    });
+
+    response.data.on('close', () => {
+      clearTimeout(timeoutId);
+      cleanup();
+    });
+  });
 };
 
 /* 

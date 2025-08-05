@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Box, Card, Flex, useTheme, useOutsideClick, Button } from '@chakra-ui/react';
+import type { BoxProps } from '@chakra-ui/react';
+import { Box, Card, Flex, useOutsideClick, Button } from '@chakra-ui/react';
 import { addDays, format } from 'date-fns';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
@@ -15,21 +16,23 @@ export type DateRangeType = {
 const DateRangePicker = ({
   onChange,
   onSuccess,
-  position = 'bottom',
+  popPosition = 'bottom',
   defaultDate = {
     from: addDays(new Date(), -30),
     to: new Date()
   },
-  dateRange
+  dateRange,
+  formLabel,
+  ...props
 }: {
   onChange?: (date: DateRangeType) => void;
   onSuccess?: (date: DateRangeType) => void;
-  position?: 'bottom' | 'top';
+  popPosition?: 'bottom' | 'top';
   defaultDate?: DateRangeType;
   dateRange?: DateRangeType;
-}) => {
+  formLabel?: string;
+} & BoxProps) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const OutRangeRef = useRef(null);
   const [range, setRange] = useState<DateRangeType>(defaultDate);
   const [showSelected, setShowSelected] = useState(false);
@@ -42,9 +45,9 @@ const DateRangePicker = ({
 
   const formatSelected = useMemo(() => {
     if (range?.from && range.to) {
-      return `${format(range.from, 'y-MM-dd')} ~ ${format(range.to, 'y-MM-dd')}`;
+      return `${format(range.from, 'y/MM/dd')} - ${format(range.to, 'y/MM/dd')}`;
     }
-    return `${format(new Date(), 'y-MM-dd')} ~ ${format(new Date(), 'y-MM-dd')}`;
+    return `${format(new Date(), 'y/MM/dd')} - ${format(new Date(), 'y/MM/dd')}`;
   }, [range]);
 
   useOutsideClick({
@@ -57,19 +60,30 @@ const DateRangePicker = ({
   return (
     <Box position={'relative'} ref={OutRangeRef}>
       <Flex
-        border={theme.borders.base}
+        border={'base'}
         px={3}
+        pr={3}
         py={1}
         borderRadius={'sm'}
         cursor={'pointer'}
         bg={'myGray.50'}
         fontSize={'sm'}
         onClick={() => setShowSelected(true)}
+        alignItems={'center'}
+        {...props}
       >
-        <Box color={'myGray.600'} fontWeight={'400'}>
+        {formLabel && (
+          <>
+            <Box fontSize={'sm'} color={'myGray.600'}>
+              {formLabel}
+            </Box>
+            <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
+          </>
+        )}
+        <Box color={'myGray.600'} fontWeight={'400'} flex={1}>
           {formatSelected}
         </Box>
-        <MyIcon ml={2} name={'date'} w={'16px'} color={'myGray.600'} />
+        {!formLabel && <MyIcon ml={2} name={'date'} w={'16px'} color={'myGray.600'} />}
       </Flex>
       {showSelected && (
         <Card
@@ -77,9 +91,9 @@ const DateRangePicker = ({
           zIndex={1}
           css={{
             '--rdp-background-color': '#d6e8ff',
-            ' --rdp-accent-color': '#0000ff'
+            '--rdp-accent-color': '#0000ff'
           }}
-          {...(position === 'top'
+          {...(popPosition === 'top'
             ? {
                 bottom: '40px'
               }

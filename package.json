@@ -6,8 +6,9 @@
     "prepare": "husky install",
     "format-code": "prettier --config \"./.prettierrc.js\" --write \"./**/src/**/*.{ts,tsx,scss}\"",
     "format-doc": "zhlint --dir ./document/ *.mdx --fix",
+    "initDocTime": "node ./document/script/initDocTime.js",
+    "initDocToc": "node ./document/lib/generateToc.js",
     "gen:theme-typings": "chakra-cli tokens packages/web/styles/theme.ts --out node_modules/.pnpm/node_modules/@chakra-ui/styled-system/dist/theming.types.d.ts",
-    "initLastModified": "node ./document/github.js",
     "postinstall": "pnpm gen:theme-typings",
     "initIcon": "node ./scripts/icon/init.js",
     "previewIcon": "node ./scripts/icon/index.js",
@@ -44,7 +45,8 @@
     ],
     "./document/**/**/*.mdx": [
       "pnpm format-doc",
-      "pnpm initLastModified",
+      "pnpm initDocTime",
+      "pnpm initDocToc",
       "git add ."
     ]
   },

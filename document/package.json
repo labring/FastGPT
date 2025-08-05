@@ -4,9 +4,6 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "update-index-action": "node ./update-index.mjs",
-    "update-index": "node --env-file=.env.local ./update-index.mjs",
-    "get-doc-times": "node ./github.js",
     "dev": "next dev --turbo",
     "start": "next start",
     "postinstall": "fumadocs-mdx"
@@ -14,7 +11,6 @@
   "dependencies": {
     "@orama/orama": "^3.1.11",
     "@orama/tokenizers": "^3.1.11",
-    "algoliasearch": "^5.34.0",
     "fast-glob": "^3.3.3",
     "fs-extra": "^11.3.0",
     "fumadocs-core": "15.6.3",

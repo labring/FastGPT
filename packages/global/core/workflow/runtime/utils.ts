@@ -23,13 +23,20 @@ import type { RuntimeEdgeItemType, RuntimeNodeItemType } from './type';
 export const extractDeepestInteractive = (
   interactive: WorkflowInteractiveResponseType
 ): WorkflowInteractiveResponseType => {
-  if (
-    (interactive?.type === 'childrenInteractive' || interactive?.type === 'loopInteractive') &&
-    interactive.params?.childrenResponse
+  const MAX_DEPTH = 100;
+  let current = interactive;
+  let depth = 0;
+
+  while (
+    depth < MAX_DEPTH &&
+    (current?.type === 'childrenInteractive' || current?.type === 'loopInteractive') &&
+    current.params?.childrenResponse
   ) {
-    return extractDeepestInteractive(interactive.params.childrenResponse);
+    current = current.params.childrenResponse;
+    depth++;
   }
-  return interactive;
+
+  return current;
 };
 export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number => {
   let limit = 10;
@@ -87,6 +94,7 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
     return typeof value === 'object' ? JSON.stringify(value) : String(value);
   }
   if (type === WorkflowIOValueTypeEnum.number) {
+    if (value === '') return undefined;
     return Number(value);
   }
   if (type === WorkflowIOValueTypeEnum.boolean) {
@@ -293,22 +301,42 @@ export const checkNodeRunStatus = ({
     const commonEdges: RuntimeEdgeItemType[] = [];
     const recursiveEdges: RuntimeEdgeItemType[] = [];
 
-    const checkIsCircular = (edge: RuntimeEdgeItemType, visited: Set<string>): boolean => {
-      if (edge.source === currentNode.nodeId) {
-        return true; // 检测到环,并且环中包含当前节点
-      }
-      if (visited.has(edge.source)) {
-        return false; // 检测到环,但不包含当前节点(子节点成环)
-      }
-      visited.add(edge.source);
+    const checkIsCircular = (startEdge: RuntimeEdgeItemType, initialVisited: string[]): boolean => {
+      const stack: Array<{ edge: RuntimeEdgeItemType; visited: Set<string> }> = [
+        { edge: startEdge, visited: new Set(initialVisited) }
+      ];
 
-      // 递归检测后面的 edge，如果有其中一个成环，则返回 true
-      const nextEdges = allEdges.filter((item) => item.target === edge.source);
-      return nextEdges.some((nextEdge) => checkIsCircular(nextEdge, new Set(visited)));
+      const MAX_DEPTH = 3000;
+      let iterations = 0;
+
+      while (stack.length > 0 && iterations < MAX_DEPTH) {
+        iterations++;
+
+        const { edge, visited } = stack.pop()!;
+
+        if (edge.source === currentNode.nodeId) {
+          return true; // 检测到环,并且环中包含当前节点
+        }
+
+        if (visited.has(edge.source)) {
+          continue; // 已访问过此节点，跳过（避免子环干扰）
+        }
+
+        const newVisited = new Set(visited);
+        newVisited.add(edge.source);
+
+        // 查找目标节点的 source edges 并加入栈中
+        const nextEdges = allEdges.filter((item) => item.target === edge.source);
+        for (const nextEdge of nextEdges) {
+          stack.push({ edge: nextEdge, visited: newVisited });
+        }
+      }
+
+      return false;
     };
 
     sourceEdges.forEach((edge) => {
-      if (checkIsCircular(edge, new Set([currentNode.nodeId]))) {
+      if (checkIsCircular(edge, [currentNode.nodeId])) {
         recursiveEdges.push(edge);
       } else {
         commonEdges.push(edge);
