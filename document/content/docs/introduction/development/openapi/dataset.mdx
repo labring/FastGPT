@@ -3,17 +3,14 @@ title: 知识库接口
 description: FastGPT OpenAPI 知识库接口
 ---
 
-import { Alert } from '@/components/docs/Alert';
-
 | 如何获取知识库ID（datasetId） | 如何获取文件集合ID（collection_id） |
-| --------------------- | --------------------- |
-| ![](/imgs/getDatasetId.jpg) | ![](/imgs/getfile_id.webp) |
+| ----------------------------- | ----------------------------------- |
+| ![](/imgs/getDatasetId.jpg)   | ![](/imgs/getfile_id.webp)          |
 
 ## 创建训练订单
 
 <Tabs items={['请求示例','响应示例']}>
   <Tab value="请求示例" >
-
 
 **新例子**
 
@@ -27,10 +24,8 @@ curl --location --request POST 'http://localhost:3000/api/support/wallet/usage/c
 }'
 ```
 
-
   </Tab>
   <Tab value="响应示例" >
-
 
 data 为 billId，可用于添加知识库数据时进行账单聚合。
 
@@ -43,7 +38,6 @@ data 为 billId，可用于添加知识库数据时进行账单聚合。
 }
 ```
 
-
   </Tab>
 </Tabs>
 
@@ -54,29 +48,27 @@ data 为 billId，可用于添加知识库数据时进行账单聚合。
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例" >
 
-
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/dataset/create' \
 --header 'Authorization: Bearer {{authorization}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "parentId": null,
-    "type": "dataset",
-    "name":"测试",
-    "intro":"介绍",
-    "avatar": "",
-    "vectorModel": "text-embedding-ada-002",
-    "agentModel": "gpt-3.5-turbo-16k",
-    "vlmModel": "gpt-4.1" 
+  "parentId": null,
+  "type": "dataset",
+  "name":"测试",
+  "intro":"介绍",
+  "avatar": "",
+  "vectorModel": "text-embedding-ada-002",
+  "agentModel": "gpt-3.5-turbo-16k",
+  "vlmModel": "gpt-4.1"
 }'
 ```
-
 
   </Tab>
   <Tab value="参数说明" >
 
+<div>
 
-<Alert icon=" " context="success">
 - parentId - 父级ID，用于构建目录结构。通常可以为 null 或者直接不传。
 - type - `dataset`或者`folder`，代表普通知识库和文件夹。不传则代表创建普通知识库。
 - name - 知识库名（必填）
@@ -85,12 +77,12 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/create' \
 - vectorModel - 向量模型（建议传空，用系统默认的）
 - agentModel - 文本处理模型（建议传空，用系统默认的）
 - vlmModel - 图片理解模型（建议传空，用系统默认的）
-</Alert>
 
+</div>
 
   </Tab>
-  <Tab value="响应示例" >
 
+  <Tab value="响应示例" >
 
 ```json
 {
@@ -101,7 +93,6 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/create' \
 }
 ```
 
-
   </Tab>
 </Tabs>
 
@@ -109,7 +100,6 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/create' \
 
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例" >
-
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/dataset/list?parentId=' \
@@ -120,50 +110,45 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/list?pare
 }'
 ```
 
-
   </Tab>
-  <Tab value="参数说明" >
+  <Tab value="参数说明">
 
-
-<Alert icon=" " context="success">
+<div>
 - parentId - 父级ID，传空字符串或者null，代表获取根目录下的知识库
-</Alert>
-
+</div>
 
   </Tab>
+
   <Tab value="响应示例" >
-
-
 
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": [
-        {
-            "_id": "65abc9bd9d1448617cba5e6c",
-            "parentId": null,
-            "avatar": "",
-            "name": "测试",
-            "intro": "",
-            "type": "dataset",
-            "permission": "private",
-            "canWrite": true,
-            "isOwner": true,
-            "vectorModel": {
-                "model": "text-embedding-ada-002",
-                "name": "Embedding-2",
-                "charsPointsPrice": 0,
-                "defaultToken": 512,
-                "maxToken": 8000,
-                "weight": 100
-            }
-        }
-    ]
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": [
+    {
+      "_id": "65abc9bd9d1448617cba5e6c",
+      "parentId": null,
+      "avatar": "",
+      "name": "测试",
+      "intro": "",
+      "type": "dataset",
+      "permission": "private",
+      "canWrite": true,
+      "isOwner": true,
+      "vectorModel": {
+        "model": "text-embedding-ada-002",
+        "name": "Embedding-2",
+        "charsPointsPrice": 0,
+        "defaultToken": 512,
+        "maxToken": 8000,
+        "weight": 100
+      }
+    }
+  ]
 }
 ```
-
 
   </Tab>
 </Tabs>
@@ -173,65 +158,59 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/list?pare
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例" >
 
-
 ```bash
 curl --location --request GET 'http://localhost:3000/api/core/dataset/detail?id=6593e137231a2be9c5603ba7' \
 --header 'Authorization: Bearer {{authorization}}' \
 ```
 
-
   </Tab>
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - id: 知识库的ID
-</Alert>
-
+</div>
 
   </Tab>
+
   <Tab value="响应示例" >
-
-
 
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": {
-        "_id": "6593e137231a2be9c5603ba7",
-        "parentId": null,
-        "teamId": "65422be6aa44b7da77729ec8",
-        "tmbId": "65422be6aa44b7da77729ec9",
-        "type": "dataset",
-        "status": "active",
-        "avatar": "/icon/logo.svg",
-        "name": "FastGPT test",
-        "vectorModel": {
-            "model": "text-embedding-ada-002",
-            "name": "Embedding-2",
-            "charsPointsPrice": 0,
-            "defaultToken": 512,
-            "maxToken": 8000,
-            "weight": 100
-        },
-        "agentModel": {
-            "model": "gpt-3.5-turbo-16k",
-            "name": "FastAI-16k",
-            "maxContext": 16000,
-            "maxResponse": 16000,
-            "charsPointsPrice": 0
-        },
-        "intro": "",
-        "permission": "private",
-        "updateTime": "2024-01-02T10:11:03.084Z",
-        "canWrite": true,
-        "isOwner": true
-    }
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": {
+    "_id": "6593e137231a2be9c5603ba7",
+    "parentId": null,
+    "teamId": "65422be6aa44b7da77729ec8",
+    "tmbId": "65422be6aa44b7da77729ec9",
+    "type": "dataset",
+    "status": "active",
+    "avatar": "/icon/logo.svg",
+    "name": "FastGPT test",
+    "vectorModel": {
+      "model": "text-embedding-ada-002",
+      "name": "Embedding-2",
+      "charsPointsPrice": 0,
+      "defaultToken": 512,
+      "maxToken": 8000,
+      "weight": 100
+    },
+    "agentModel": {
+      "model": "gpt-3.5-turbo-16k",
+      "name": "FastAI-16k",
+      "maxContext": 16000,
+      "maxResponse": 16000,
+      "charsPointsPrice": 0
+    },
+    "intro": "",
+    "permission": "private",
+    "updateTime": "2024-01-02T10:11:03.084Z",
+    "canWrite": true,
+    "isOwner": true
+  }
 }
 ```
-
 
   </Tab>
 </Tabs>
@@ -241,40 +220,33 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/detail?id=
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例" >
 
-
 ```bash
 curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?id=65abc8729d1448617cba5df6' \
 --header 'Authorization: Bearer {{authorization}}' \
 ```
 
-
   </Tab>
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - id: 知识库的ID
-</Alert>
-
+</div>
 
   </Tab>
+
   <Tab value="响应示例" >
-
-
 
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": null
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": null
 }
 ```
 
-
   </Tab>
 </Tabs>
-
 
 ## 集合
 
@@ -282,33 +254,32 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?
 
 **入参**
 
-| 参数 | 说明 | 必填 |
-| --- | --- | --- |
-| datasetId | 知识库ID | ✅ |
-| parentId： | 父级ID，不填则默认为根目录 |  |
-| trainingType | 数据处理方式。chunk: 按文本长度进行分割;qa: 问答对提取 | ✅ |
-| indexPrefixTitle | 是否自动生成标题索引 |  |
-| autoIndexes | 是否自动生成索引(仅商业版支持) |  |
-| imageIndex | 是否自动生成图片索引(仅商业版支持) |  |
-| chunkSettingMode | 分块参数模式。auto: 系统默认参数; custom: 手动指定参数 |  |
-| chunkSplitMode | 分块拆分模式。size: 按长度拆分; char: 按字符拆分。chunkSettingMode=auto时不生效。 |  |
-| chunkSize | 分块大小，默认 1500。chunkSettingMode=auto时不生效。 |  |
-| indexSize | 索引大小，默认 512，必须小于索引模型最大token。chunkSettingMode=auto时不生效。 |  |
-| chunkSplitter | 自定义最高优先分割符号，除非超出文件处理最大上下文，否则不会进行进一步拆分。chunkSettingMode=auto时不生效。 |  |
-| qaPrompt | qa拆分提示词 |  |
-| tags |  集合标签（字符串数组） |  |
-| createTime | 文件创建时间（Date / String） |  |
+| 参数             | 说明                                                                                                        | 必填 |
+| ---------------- | ----------------------------------------------------------------------------------------------------------- | ---- |
+| datasetId        | 知识库ID                                                                                                    | ✅   |
+| parentId：       | 父级ID，不填则默认为根目录                                                                                  |      |
+| trainingType     | 数据处理方式。chunk: 按文本长度进行分割;qa: 问答对提取                                                      | ✅   |
+| indexPrefixTitle | 是否自动生成标题索引                                                                                        |      |
+| autoIndexes      | 是否自动生成索引(仅商业版支持)                                                                              |      |
+| imageIndex       | 是否自动生成图片索引(仅商业版支持)                                                                          |      |
+| chunkSettingMode | 分块参数模式。auto: 系统默认参数; custom: 手动指定参数                                                      |      |
+| chunkSplitMode   | 分块拆分模式。size: 按长度拆分; char: 按字符拆分。chunkSettingMode=auto时不生效。                           |      |
+| chunkSize        | 分块大小，默认 1500。chunkSettingMode=auto时不生效。                                                        |      |
+| indexSize        | 索引大小，默认 512，必须小于索引模型最大token。chunkSettingMode=auto时不生效。                              |      |
+| chunkSplitter    | 自定义最高优先分割符号，除非超出文件处理最大上下文，否则不会进行进一步拆分。chunkSettingMode=auto时不生效。 |      |
+| qaPrompt         | qa拆分提示词                                                                                                |      |
+| tags             | 集合标签（字符串数组）                                                                                      |      |
+| createTime       | 文件创建时间（Date / String）                                                                               |      |
 
 **出参**
 
-- collectionId - 新建的集合ID  
+- collectionId - 新建的集合ID
 - insertLen：插入的块数量
 
 ### 创建一个空的集合
 
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例" >
-
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/create' \
@@ -325,25 +296,22 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 }'
 ```
 
-
   </Tab>
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - datasetId: 知识库的ID(必填)
 - parentId： 父级ID，不填则默认为根目录
 - name: 集合名称（必填）
-- type: 
+- type:
   - folder：文件夹
   - virtual：虚拟集合(手动集合)
 - metadata： 元数据（暂时没啥用）
-</Alert>
-
+</div>
 
   </Tab>
-  <Tab value="响应示例" >
 
+  <Tab value="响应示例" >
 
 data 为集合的 ID。
 
@@ -356,10 +324,8 @@ data 为集合的 ID。
 }
 ```
 
-
   </Tab>
 </Tabs>
-
 
 ### 创建一个纯文本集合
 
@@ -367,7 +333,6 @@ data 为集合的 ID。
 
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例" >
-
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/create/text' \
@@ -387,23 +352,20 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 }'
 ```
 
-
   </Tab>
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - text: 原文本
 - datasetId: 知识库的ID(必填)
 - parentId： 父级ID，不填则默认为根目录
 - name: 集合名称（必填）
 - metadata： 元数据（暂时没啥用）
-</Alert>
-
+</div>
 
   </Tab>
-  <Tab value="响应示例" >
 
+  <Tab value="响应示例" >
 
 data 为集合的 ID。
 
@@ -413,17 +375,16 @@ data 为集合的 ID。
   "statusText": "",
   "message": "",
   "data": {
-      "collectionId": "65abcfab9d1448617cba5f0d",
-      "results": {
-          "insertLen": 5, // 分割成多少段
-          "overToken": [],
-          "repeat": [],
-          "error": []
-      }
+    "collectionId": "65abcfab9d1448617cba5f0d",
+    "results": {
+      "insertLen": 5, // 分割成多少段
+      "overToken": [],
+      "repeat": [],
+      "error": []
+    }
   }
 }
 ```
-
 
   </Tab>
 </Tabs>
@@ -435,13 +396,12 @@ data 为集合的 ID。
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例" >
 
-
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/create/link' \
 --header 'Authorization: Bearer {{authorization}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "link":"https://doc.tryfastgpt.ai/docs/course/quick-start/",
+    "link":"https://doc.fastgpt.io/docs/course/quick-start/",
     "datasetId":"6593e137231a2be9c5603ba7",
     "parentId": null,
 
@@ -455,42 +415,38 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 }'
 ```
 
-
   </Tab>
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - link: 网络链接
 - datasetId: 知识库的ID(必填)
 - parentId： 父级ID，不填则默认为根目录
 - metadata.webPageSelector: 网页选择器，用于指定网页中的哪个元素作为文本(可选)
-</Alert>
-
+</div>
 
   </Tab>
-  <Tab value="响应示例" >
 
+  <Tab value="响应示例" >
 
 data 为集合的 ID。
 
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": {
-        "collectionId": "65abd0ad9d1448617cba6031",
-        "results": {
-            "insertLen": 1,
-            "overToken": [],
-            "repeat": [],
-            "error": []
-        }
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": {
+    "collectionId": "65abd0ad9d1448617cba6031",
+    "results": {
+      "insertLen": 1,
+      "overToken": [],
+      "repeat": [],
+      "error": []
     }
+  }
 }
 ```
-
 
   </Tab>
 </Tabs>
@@ -502,7 +458,6 @@ data 为集合的 ID。
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例" >
 
-
 使用代码上传时，请注意中文 filename 需要进行 encode 处理，否则容易乱码。
 
 ```bash
@@ -512,42 +467,38 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 --form 'data="{\"datasetId\":\"6593e137231a2be9c5603ba7\",\"parentId\":null,\"trainingType\":\"chunk\",\"chunkSize\":512,\"chunkSplitter\":\"\",\"qaPrompt\":\"\",\"metadata\":{}}"'
 ```
 
-
   </Tab>
   <Tab value="参数说明" >
 
-
+<div>
 需要使用 POST form-data 的格式上传。包含 file 和 data 两个字段。
 
-<Alert icon=" " context="success">
 - file: 文件
-- data: 知识库相关信息（json序列化后传入）,参数说明见上方“通用创建参数说明”
-</Alert>
-
+- data: 知识库相关信息（json序列化后传入）,参数说明见上方"通用创建参数说明"
+</div>
 
   </Tab>
-  <Tab value="响应示例" >
 
+  <Tab value="响应示例" >
 
 data 为集合的 ID。
 
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": {
-        "collectionId": "65abc044e4704bac793fbd81",
-        "results": {
-            "insertLen": 1,
-            "overToken": [],
-            "repeat": [],
-            "error": []
-        }
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": {
+    "collectionId": "65abc044e4704bac793fbd81",
+    "results": {
+      "insertLen": 1,
+      "overToken": [],
+      "repeat": [],
+      "error": []
     }
+  }
 }
 ```
-
 
   </Tab>
 </Tabs>
@@ -557,8 +508,7 @@ data 为集合的 ID。
 传入一个文件的 id，创建一个集合，会读取文件内容进行分割。目前支持：pdf, docx, md, txt, html, csv。
 
 <Tabs items={['请求示例','参数说明','响应示例']}>
-  <Tab value="请求示例" >
-
+<Tab value="请求示例" >
 
 使用代码上传时，请注意中文 filename 需要进行 encode 处理，否则容易乱码。
 
@@ -567,27 +517,25 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 --header 'Authorization: Bearer fastgpt-xxx' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "name": "A Quick Guide to Building a Discord Bot.pdf",
-    "apiFileId":"A Quick Guide to Building a Discord Bot.pdf",
+  "name": "A Quick Guide to Building a Discord Bot.pdf",
+  "apiFileId":"A Quick Guide to Building a Discord Bot.pdf",
 
-    "datasetId": "674e9e479c3503c385495027",
-    "parentId": null,
+  "datasetId": "674e9e479c3503c385495027",
+  "parentId": null,
 
-    "trainingType": "chunk",
-    "chunkSize":512,
-    "chunkSplitter":"",
-    "qaPrompt":""
+  "trainingType": "chunk",
+  "chunkSize":512,
+  "chunkSplitter":"",
+  "qaPrompt":""
 }'
 ```
 
+</Tab>
+<Tab value="参数说明" >
 
-  </Tab>
-  <Tab value="参数说明" >
-
-
+<div>
 需要使用 POST form-data 的格式上传。包含 file 和 data 两个字段。
 
-<Alert icon=" " context="success">
 - name: 集合名，建议就用文件名，必填。
 - apiFileId: 文件的ID，必填。
 - datasetId: 知识库的ID(必填)
@@ -596,42 +544,38 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 - chunkSize: 每个 chunk 的长度（可选）. chunk模式:100~3000; qa模式: 4000~模型最大token（16k模型通常建议不超过10000）
 - chunkSplitter: 自定义最高优先分割符号（可选）
 - qaPrompt: qa拆分自定义提示词（可选）
-</Alert>
+</div>
 
+</Tab>
 
-  </Tab>
-
-  <Tab value="响应示例" >
-
+<Tab value="响应示例" >
 
 data 为集合的 ID。
 
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": {
-        "collectionId": "65abc044e4704bac793fbd81",
-        "results": {
-            "insertLen": 1,
-            "overToken": [],
-            "repeat": [],
-            "error": []
-        }
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": {
+    "collectionId": "65abc044e4704bac793fbd81",
+    "results": {
+      "insertLen": 1,
+      "overToken": [],
+      "repeat": [],
+      "error": []
     }
+  }
 }
 ```
 
-
-  </Tab>
+</Tab>
 </Tabs>
 
 ### 创建一个外部文件库集合（商业版）
 
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例" >
-
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/proApi/core/dataset/collection/create/externalFileUrl' \
@@ -654,25 +598,20 @@ curl --location --request POST 'http://localhost:3000/api/proApi/core/dataset/co
 }'
 ```
 
-
   </Tab>
 
   <Tab value="参数说明" >
 
-
-| 参数 | 说明 | 必填 |
-| --- | --- | --- |
-| externalFileUrl | 文件访问链接（可以是临时链接） | ✅ |
-| externalFileId | 外部文件ID |  |
-| filename | 自定义文件名，需要带后缀 |  |
-| createTime | 文件创建时间（Date ISO 字符串都 ok） |  |
-
-
+| 参数            | 说明                                 | 必填 |
+| --------------- | ------------------------------------ | ---- |
+| externalFileUrl | 文件访问链接（可以是临时链接）       | ✅   |
+| externalFileId  | 外部文件ID                           |      |
+| filename        | 自定义文件名，需要带后缀             |      |
+| createTime      | 文件创建时间（Date ISO 字符串都 ok） |      |
 
   </Tab>
 
   <Tab value="响应示例" >
-
 
 data 为集合的 ID。
 
@@ -684,15 +623,14 @@ data 为集合的 ID。
   "data": {
     "collectionId": "6646fcedfabd823cdc6de746",
     "results": {
-        "insertLen": 1,
-        "overToken": [],
-        "repeat": [],
-        "error": []
+      "insertLen": 1,
+      "overToken": [],
+      "repeat": [],
+      "error": []
     }
   }
 }
 ```
-
 
   </Tab>
 </Tabs>
@@ -702,8 +640,6 @@ data 为集合的 ID。
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例" >
 
-
-**4.8.19+**
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/listV2' \
 --header 'Authorization: Bearer {{authorization}}' \
@@ -717,103 +653,77 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 }'
 ```
 
-**4.8.19-(不再维护)**
-```bash
-curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/list' \
---header 'Authorization: Bearer {{authorization}}' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "pageNum":1,
-    "pageSize": 10,
-    "datasetId":"6593e137231a2be9c5603ba7",
-    "parentId": null,
-    "searchText":""
-}'
-```
-
-
   </Tab>
 
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - offset: 偏移量
 - pageSize: 每页数量，最大30（选填）
 - datasetId: 知识库的ID(必填)
 - parentId: 父级Id（选填）
 - searchText: 模糊搜索文本（选填）
-</Alert>
-
+</div>
 
   </Tab>
 
   <Tab value="响应示例" >
 
-
-
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": {
-        "list": [
-            {
-                "_id": "6593e137231a2be9c5603ba9",
-                "parentId": null,
-                "tmbId": "65422be6aa44b7da77729ec9",
-                "type": "virtual",
-                "name": "手动录入",
-                "updateTime": "2099-01-01T00:00:00.000Z",
-                "dataAmount": 3,
-                "trainingAmount": 0,
-                "externalFileId": "1111",
-                "tags": [
-                    "11",
-                    "测试的"
-                ],
-                "forbid": false,
-                 "trainingType": "chunk",
-                "permission": {
-                    "value": 4294967295,
-                    "isOwner": true,
-                    "hasManagePer": true,
-                    "hasWritePer": true,
-                    "hasReadPer": true
-                }
-
-            },
-            {
-                "_id": "65abd0ad9d1448617cba6031",
-                "parentId": null,
-                "tmbId": "65422be6aa44b7da77729ec9",
-                "type": "link",
-                "name": "快速上手 | FastGPT",
-                "rawLink": "https://doc.tryfastgpt.ai/docs/course/quick-start/",
-                "updateTime": "2024-01-20T13:54:53.031Z",
-                "dataAmount": 3,
-                "trainingAmount": 0,
-                "externalFileId": "222",
-                "tags": [
-                    "测试的"
-                ],
-                "forbid": false,
-                 "trainingType": "chunk",
-                "permission": {
-                    "value": 4294967295,
-                    "isOwner": true,
-                    "hasManagePer": true,
-                    "hasWritePer": true,
-                    "hasReadPer": true
-                }
-            }
-        ],
-        "total": 93
-    }
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": {
+    "list": [
+      {
+        "_id": "6593e137231a2be9c5603ba9",
+        "parentId": null,
+        "tmbId": "65422be6aa44b7da77729ec9",
+        "type": "virtual",
+        "name": "手动录入",
+        "updateTime": "2099-01-01T00:00:00.000Z",
+        "dataAmount": 3,
+        "trainingAmount": 0,
+        "externalFileId": "1111",
+        "tags": ["11", "测试的"],
+        "forbid": false,
+        "trainingType": "chunk",
+        "permission": {
+          "value": 4294967295,
+          "isOwner": true,
+          "hasManagePer": true,
+          "hasWritePer": true,
+          "hasReadPer": true
+        }
+      },
+      {
+        "_id": "65abd0ad9d1448617cba6031",
+        "parentId": null,
+        "tmbId": "65422be6aa44b7da77729ec9",
+        "type": "link",
+        "name": "快速上手 | FastGPT",
+        "rawLink": "https://doc.fastgpt.io/docs/course/quick-start/",
+        "updateTime": "2024-01-20T13:54:53.031Z",
+        "dataAmount": 3,
+        "trainingAmount": 0,
+        "externalFileId": "222",
+        "tags": ["测试的"],
+        "forbid": false,
+        "trainingType": "chunk",
+        "permission": {
+          "value": 4294967295,
+          "isOwner": true,
+          "hasManagePer": true,
+          "hasWritePer": true,
+          "hasReadPer": true
+        }
+      }
+    ],
+    "total": 93
+  }
 }
 ```
-
 
   </Tab>
 </Tabs>
@@ -823,70 +733,63 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例" >
 
-
 ```bash
 curl --location --request GET 'http://localhost:3000/api/core/dataset/collection/detail?id=65abcfab9d1448617cba5f0d' \
 --header 'Authorization: Bearer {{authorization}}' \
 ```
 
-
   </Tab>
 
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - id: 集合的ID
-</Alert>
-
+</div>
 
   </Tab>
 
   <Tab value="响应示例" >
 
-
-
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": {
-        "_id": "65abcfab9d1448617cba5f0d",
-        "parentId": null,
-        "teamId": "65422be6aa44b7da77729ec8",
-        "tmbId": "65422be6aa44b7da77729ec9",
-        "datasetId": {
-            "_id": "6593e137231a2be9c5603ba7",
-            "parentId": null,
-            "teamId": "65422be6aa44b7da77729ec8",
-            "tmbId": "65422be6aa44b7da77729ec9",
-            "type": "dataset",
-            "status": "active",
-            "avatar": "/icon/logo.svg",
-            "name": "FastGPT test",
-            "vectorModel": "text-embedding-ada-002",
-            "agentModel": "gpt-3.5-turbo-16k",
-            "intro": "",
-            "permission": "private",
-            "updateTime": "2024-01-02T10:11:03.084Z"
-        },
-        "type": "virtual",
-        "name": "测试训练",
-        "trainingType": "qa",
-        "chunkSize": 8000,
-        "chunkSplitter": "",
-        "qaPrompt": "11",
-        "rawTextLength": 40466,
-        "hashRawText": "47270840614c0cc122b29daaddc09c2a48f0ec6e77093611ab12b69cba7fee12",
-        "createTime": "2024-01-20T13:50:35.838Z",
-        "updateTime": "2024-01-20T13:50:35.838Z",
-        "canWrite": true,
-        "sourceName": "测试训练"
-    }
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": {
+    "_id": "65abcfab9d1448617cba5f0d",
+    "parentId": null,
+    "teamId": "65422be6aa44b7da77729ec8",
+    "tmbId": "65422be6aa44b7da77729ec9",
+    "datasetId": {
+      "_id": "6593e137231a2be9c5603ba7",
+      "parentId": null,
+      "teamId": "65422be6aa44b7da77729ec8",
+      "tmbId": "65422be6aa44b7da77729ec9",
+      "type": "dataset",
+      "status": "active",
+      "avatar": "/icon/logo.svg",
+      "name": "FastGPT test",
+      "vectorModel": "text-embedding-ada-002",
+      "agentModel": "gpt-3.5-turbo-16k",
+      "intro": "",
+      "permission": "private",
+      "updateTime": "2024-01-02T10:11:03.084Z"
+    },
+    "type": "virtual",
+    "name": "测试训练",
+    "trainingType": "qa",
+    "chunkSize": 8000,
+    "chunkSplitter": "",
+    "qaPrompt": "11",
+    "rawTextLength": 40466,
+    "hashRawText": "47270840614c0cc122b29daaddc09c2a48f0ec6e77093611ab12b69cba7fee12",
+    "createTime": "2024-01-20T13:50:35.838Z",
+    "updateTime": "2024-01-20T13:50:35.838Z",
+    "canWrite": true,
+    "sourceName": "测试训练"
+  }
 }
 ```
-
 
   </Tab>
 </Tabs>
@@ -895,7 +798,6 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/collection
 
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例" >
-
 
 **通过集合 ID 修改集合信息**
 
@@ -930,37 +832,31 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/collection
 }'
 ```
 
-
   </Tab>
 
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - id: 集合的ID
 - parentId: 修改父级ID（可选）
 - name: 修改集合名称（可选）
 - tags: 修改集合标签（可选）
 - forbid: 修改集合禁用状态（可选）
 - createTime: 修改集合创建时间（可选）
-</Alert>
-
+</div>
 
   </Tab>
 
   <Tab value="响应示例" >
 
-
-
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": null
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": null
 }
 ```
-
 
   </Tab>
 </Tabs>
@@ -970,38 +866,31 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/collection
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例" >
 
-
 ```bash
 curl --location --request DELETE 'http://localhost:3000/api/core/dataset/collection/delete?id=65aa2a64e6cb9b8ccdc00de8' \
 --header 'Authorization: Bearer {{authorization}}' \
 ```
 
-
   </Tab>
 
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - id: 集合的ID
-</Alert>
-
+</div>
 
   </Tab>
 
   <Tab value="响应示例" >
 
-
-
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": null
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": null
 }
 ```
-
 
   </Tab>
 </Tabs>
@@ -1012,28 +901,28 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/collect
 
 **Data结构**
 
-| 字段 | 类型 | 说明 | 必填 |
-| --- | --- | --- | --- |
-| teamId | String | 团队ID | ✅ |
-| tmbId | String | 成员ID | ✅ |
-| datasetId | String | 知识库ID | ✅ |
-| collectionId | String | 集合ID | ✅ |
-| q | String | 主要数据 | ✅ |
-| a | String | 辅助数据 | ✖ |
-| fullTextToken | String | 分词 | ✖ |
-| indexes | Index[] | 向量索引 | ✅ |
-| updateTime | Date | 更新时间 | ✅ |
-| chunkIndex | Number | 分块下表 | ✖ |
+| 字段          | 类型    | 说明     | 必填 |
+| ------------- | ------- | -------- | ---- |
+| teamId        | String  | 团队ID   | ✅   |
+| tmbId         | String  | 成员ID   | ✅   |
+| datasetId     | String  | 知识库ID | ✅   |
+| collectionId  | String  | 集合ID   | ✅   |
+| q             | String  | 主要数据 | ✅   |
+| a             | String  | 辅助数据 | ✖   |
+| fullTextToken | String  | 分词     | ✖   |
+| indexes       | Index[] | 向量索引 | ✅   |
+| updateTime    | Date    | 更新时间 | ✅   |
+| chunkIndex    | Number  | 分块下表 | ✖   |
 
 **Index结构**
 
 每组数据的自定义索引最多5个
 
-| 字段 | 类型 | 说明 | 必填 |
-| --- | --- | --- | --- |
-| type | String | 可选索引类型：default-默认索引; custom-自定义索引; summary-总结索引; question-问题索引; image-图片索引 | |
-| dataId | String | 关联的向量ID，变更数据时候传入该 ID，会进行差量更新，而不是全量更新 |  |
-| text | String | 文本内容 | ✅ |
+| 字段   | 类型   | 说明                                                                                                   | 必填 |
+| ------ | ------ | ------------------------------------------------------------------------------------------------------ | ---- |
+| type   | String | 可选索引类型：default-默认索引; custom-自定义索引; summary-总结索引; question-问题索引; image-图片索引 |      |
+| dataId | String | 关联的向量ID，变更数据时候传入该 ID，会进行差量更新，而不是全量更新                                    |      |
+| text   | String | 文本内容                                                                                               | ✅   |
 
 `type` 不填则默认为 `custom` 索引，还会基于 q/a 组成一个默认索引。如果传入了默认索引，则不会额外创建。
 
@@ -1043,7 +932,6 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/collect
 
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例" >
-
 
 ```bash
 curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/data/pushData' \
@@ -1075,46 +963,41 @@ curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/data/pus
 }'
 ```
 
-
   </Tab>
 
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - collectionId: 集合ID（必填）
 - trainingType:训练模式（必填）
 - prompt: 自定义 QA 拆分提示词，需严格按照模板，建议不要传入。（选填）
 - data：（具体数据）
+
   - q: 主要数据（必填）
   - a: 辅助数据（选填）
   - indexes: 自定义索引（选填）。可以不传或者传空数组，默认都会使用q和a组成一个索引。
-</Alert>
-
+</div>
 
   </Tab>
 
   <Tab value="响应例子" >
 
-
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "data": {
-        "insertLen": 1, // 最终插入成功的数量
-        "overToken": [], // 超出 token 的
-        "repeat": [], // 重复的数量
-        "error": [] // 其他错误
-    }
+  "code": 200,
+  "statusText": "",
+  "data": {
+    "insertLen": 1, // 最终插入成功的数量
+    "overToken": [], // 超出 token 的
+    "repeat": [], // 重复的数量
+    "error": [] // 其他错误
+  }
 }
 ```
-
 
   </Tab>
 
   <Tab value="QA Prompt 模板" >
-
 
 [theme] 里的内容可以换成数据的主题。默认为：它们可能包含多个主题内容
 
@@ -1134,19 +1017,14 @@ A2:
 我的文本："""{{text}}"""
 ```
 
-
   </Tab>
 
 </Tabs>
-
 
 ### 获取集合的数据列表
 
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例" >
-
-
-**4.8.11+**
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/dataset/data/v2/list' \
@@ -1160,68 +1038,47 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/v2/l
 }'
 ```
 
-**4.6.7-(即将弃用)**
-
-```bash
-curl --location --request POST 'http://localhost:3000/api/core/dataset/data/list' \
---header 'Authorization: Bearer {{authorization}}' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "pageNum":1,
-    "pageSize": 10,
-    "collectionId":"65abd4ac9d1448617cba6171",
-    "searchText":""
-}'
-```
-
-
   </Tab>
 
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
-
+<div>
 - offset: 偏移量（选填）
 - pageSize: 每页数量，最大30（选填）
 - collectionId: 集合的ID（必填）
 - searchText: 模糊搜索词（选填）
-  
-</Alert>
-
+</div>
 
   </Tab>
 
   <Tab value="响应示例" >
 
-
-
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": {
-        "list": [
-            {
-                "_id": "65abd4b29d1448617cba61db",
-                "datasetId": "65abc9bd9d1448617cba5e6c",
-                "collectionId": "65abd4ac9d1448617cba6171",
-                "q": "N o . 2 0 2 2 1 2中 国 信 息 通 信 研 究 院京东探索研究院2022年 9月人工智能生成内容（AIGC）白皮书(2022 年)版权声明本白皮书版权属于中国信息通信研究院和京东探索研究院，并受法律保护。转载、摘编或利用其它方式使用本白皮书文字或者观点的，应注明“来源：中国信息通信研究院和京东探索研究院”。违反上述声明者，编者将追究其相关法律责任。前 言习近平总书记曾指出，“数字技术正以新理念、新业态、新模式全面融入人类经济、政治、文化、社会、生态文明建设各领域和全过程”。在当前数字世界和物理世界加速融合的大背景下，人工智能生成内容（Artificial Intelligence Generated Content，简称 AIGC）正在悄然引导着一场深刻的变革，重塑甚至颠覆数字内容的生产方式和消费模式，将极大地丰富人们的数字生活，是未来全面迈向数字文明新时代不可或缺的支撑力量。",
-                "a": "",
-                "chunkIndex": 0
-            },
-            {
-                "_id": "65abd4b39d1448617cba624d",
-                "datasetId": "65abc9bd9d1448617cba5e6c",
-                "collectionId": "65abd4ac9d1448617cba6171",
-                "q": "本白皮书重点从 AIGC 技术、应用和治理等维度进行了阐述。在技术层面，梳理提出了 AIGC 技术体系，既涵盖了对现实世界各种内容的数字化呈现和增强，也包括了基于人工智能的自主内容创作。在应用层面，重点分析了 AIGC 在传媒、电商、影视等行业和场景的应用情况，探讨了以虚拟数字人、写作机器人等为代表的新业态和新应用。在治理层面，从政策监管、技术能力、企业应用等视角，分析了AIGC 所暴露出的版权纠纷、虚假信息传播等各种问题。最后，从政府、行业、企业、社会等层面，给出了 AIGC 发展和治理建议。由于人工智能仍处于飞速发展阶段，我们对 AIGC 的认识还有待进一步深化，白皮书中存在不足之处，敬请大家批评指正。目 录一、 人工智能生成内容的发展历程与概念.............................................................. 1（一）AIGC 历史沿革 .......................................................................................... 1（二）AIGC 的概念与内涵 .................................................................................. 4二、人工智能生成内容的技术体系及其演进方向.................................................... 7（一）AIGC 技术升级步入深化阶段 .................................................................. 7（二）AIGC 大模型架构潜力凸显 .................................................................... 10（三）AIGC 技术演化出三大前沿能力 ............................................................ 18三、人工智能生成内容的应用场景.......................................................................... 26（一）AIGC+传媒：人机协同生产，",
-                "a": "",
-                "chunkIndex": 1
-            }
-        ],
-        "total": 63
-    }
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": {
+    "list": [
+      {
+        "_id": "65abd4b29d1448617cba61db",
+        "datasetId": "65abc9bd9d1448617cba5e6c",
+        "collectionId": "65abd4ac9d1448617cba6171",
+        "q": "N o . 2 0 2 2 1 2中 国 信 息 通 信 研 究 院京东探索研究院2022年 9月人工智能生成内容（AIGC）白皮书(2022 年)版权声明本白皮书版权属于中国信息通信研究院和京东探索研究院，并受法律保护。转载、摘编或利用其它方式使用本白皮书文字或者观点的，应注明“来源：中国信息通信研究院和京东探索研究院”。违反上述声明者，编者将追究其相关法律责任。前 言习近平总书记曾指出，“数字技术正以新理念、新业态、新模式全面融入人类经济、政治、文化、社会、生态文明建设各领域和全过程”。在当前数字世界和物理世界加速融合的大背景下，人工智能生成内容（Artificial Intelligence Generated Content，简称 AIGC）正在悄然引导着一场深刻的变革，重塑甚至颠覆数字内容的生产方式和消费模式，将极大地丰富人们的数字生活，是未来全面迈向数字文明新时代不可或缺的支撑力量。",
+        "a": "",
+        "chunkIndex": 0
+      },
+      {
+        "_id": "65abd4b39d1448617cba624d",
+        "datasetId": "65abc9bd9d1448617cba5e6c",
+        "collectionId": "65abd4ac9d1448617cba6171",
+        "q": "本白皮书重点从 AIGC 技术、应用和治理等维度进行了阐述。在技术层面，梳理提出了 AIGC 技术体系，既涵盖了对现实世界各种内容的数字化呈现和增强，也包括了基于人工智能的自主内容创作。在应用层面，重点分析了 AIGC 在传媒、电商、影视等行业和场景的应用情况，探讨了以虚拟数字人、写作机器人等为代表的新业态和新应用。在治理层面，从政策监管、技术能力、企业应用等视角，分析了AIGC 所暴露出的版权纠纷、虚假信息传播等各种问题。最后，从政府、行业、企业、社会等层面，给出了 AIGC 发展和治理建议。由于人工智能仍处于飞速发展阶段，我们对 AIGC 的认识还有待进一步深化，白皮书中存在不足之处，敬请大家批评指正。目 录一、 人工智能生成内容的发展历程与概念.............................................................. 1（一）AIGC 历史沿革 .......................................................................................... 1（二）AIGC 的概念与内涵 .................................................................................. 4二、人工智能生成内容的技术体系及其演进方向.................................................... 7（一）AIGC 技术升级步入深化阶段 .................................................................. 7（二）AIGC 大模型架构潜力凸显 .................................................................... 10（三）AIGC 技术演化出三大前沿能力 ............................................................ 18三、人工智能生成内容的应用场景.......................................................................... 26（一）AIGC+传媒：人机协同生产，",
+        "a": "",
+        "chunkIndex": 1
+      }
+    ],
+    "total": 63
+  }
 }
 ```
 
@@ -1233,57 +1090,50 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/list
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例" >
 
-
 ```bash
 curl --location --request GET 'http://localhost:3000/api/core/dataset/data/detail?id=65abd4b29d1448617cba61db' \
 --header 'Authorization: Bearer {{authorization}}' \
 ```
 
-
   </Tab>
 
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - id: 数据的id
-</Alert>
-
+</div>
 
   </Tab>
 
   <Tab value="响应示例" >
 
-
-
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": {
-        "id": "65abd4b29d1448617cba61db",
-        "q": "N o . 2 0 2 2 1 2中 国 信 息 通 信 研 究 院京东探索研究院2022年 9月人工智能生成内容（AIGC）白皮书(2022 年)版权声明本白皮书版权属于中国信息通信研究院和京东探索研究院，并受法律保护。转载、摘编或利用其它方式使用本白皮书文字或者观点的，应注明“来源：中国信息通信研究院和京东探索研究院”。违反上述声明者，编者将追究其相关法律责任。前 言习近平总书记曾指出，“数字技术正以新理念、新业态、新模式全面融入人类经济、政治、文化、社会、生态文明建设各领域和全过程”。在当前数字世界和物理世界加速融合的大背景下，人工智能生成内容（Artificial Intelligence Generated Content，简称 AIGC）正在悄然引导着一场深刻的变革，重塑甚至颠覆数字内容的生产方式和消费模式，将极大地丰富人们的数字生活，是未来全面迈向数字文明新时代不可或缺的支撑力量。",
-        "a": "",
-        "chunkIndex": 0,
-        "indexes": [
-            {
-                "type": "default",
-                "dataId": "3720083",
-                "text": "N o . 2 0 2 2 1 2中 国 信 息 通 信 研 究 院京东探索研究院2022年 9月人工智能生成内容（AIGC）白皮书(2022 年)版权声明本白皮书版权属于中国信息通信研究院和京东探索研究院，并受法律保护。转载、摘编或利用其它方式使用本白皮书文字或者观点的，应注明“来源：中国信息通信研究院和京东探索研究院”。违反上述声明者，编者将追究其相关法律责任。前 言习近平总书记曾指出，“数字技术正以新理念、新业态、新模式全面融入人类经济、政治、文化、社会、生态文明建设各领域和全过程”。在当前数字世界和物理世界加速融合的大背景下，人工智能生成内容（Artificial Intelligence Generated Content，简称 AIGC）正在悄然引导着一场深刻的变革，重塑甚至颠覆数字内容的生产方式和消费模式，将极大地丰富人们的数字生活，是未来全面迈向数字文明新时代不可或缺的支撑力量。",
-                "_id": "65abd4b29d1448617cba61dc"
-            }
-        ],
-        "datasetId": "65abc9bd9d1448617cba5e6c",
-        "collectionId": "65abd4ac9d1448617cba6171",
-        "sourceName": "中文-AIGC白皮书2022.pdf",
-        "sourceId": "65abd4ac9d1448617cba6166",
-        "isOwner": true,
-        "canWrite": true
-    }
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": {
+    "id": "65abd4b29d1448617cba61db",
+    "q": "N o . 2 0 2 2 1 2中 国 信 息 通 信 研 究 院京东探索研究院2022年 9月人工智能生成内容（AIGC）白皮书(2022 年)版权声明本白皮书版权属于中国信息通信研究院和京东探索研究院，并受法律保护。转载、摘编或利用其它方式使用本白皮书文字或者观点的，应注明“来源：中国信息通信研究院和京东探索研究院”。违反上述声明者，编者将追究其相关法律责任。前 言习近平总书记曾指出，“数字技术正以新理念、新业态、新模式全面融入人类经济、政治、文化、社会、生态文明建设各领域和全过程”。在当前数字世界和物理世界加速融合的大背景下，人工智能生成内容（Artificial Intelligence Generated Content，简称 AIGC）正在悄然引导着一场深刻的变革，重塑甚至颠覆数字内容的生产方式和消费模式，将极大地丰富人们的数字生活，是未来全面迈向数字文明新时代不可或缺的支撑力量。",
+    "a": "",
+    "chunkIndex": 0,
+    "indexes": [
+      {
+        "type": "default",
+        "dataId": "3720083",
+        "text": "N o . 2 0 2 2 1 2中 国 信 息 通 信 研 究 院京东探索研究院2022年 9月人工智能生成内容（AIGC）白皮书(2022 年)版权声明本白皮书版权属于中国信息通信研究院和京东探索研究院，并受法律保护。转载、摘编或利用其它方式使用本白皮书文字或者观点的，应注明“来源：中国信息通信研究院和京东探索研究院”。违反上述声明者，编者将追究其相关法律责任。前 言习近平总书记曾指出，“数字技术正以新理念、新业态、新模式全面融入人类经济、政治、文化、社会、生态文明建设各领域和全过程”。在当前数字世界和物理世界加速融合的大背景下，人工智能生成内容（Artificial Intelligence Generated Content，简称 AIGC）正在悄然引导着一场深刻的变革，重塑甚至颠覆数字内容的生产方式和消费模式，将极大地丰富人们的数字生活，是未来全面迈向数字文明新时代不可或缺的支撑力量。",
+        "_id": "65abd4b29d1448617cba61dc"
+      }
+    ],
+    "datasetId": "65abc9bd9d1448617cba5e6c",
+    "collectionId": "65abd4ac9d1448617cba6171",
+    "sourceName": "中文-AIGC白皮书2022.pdf",
+    "sourceId": "65abd4ac9d1448617cba6166",
+    "isOwner": true,
+    "canWrite": true
+  }
 }
 ```
-
 
   </Tab>
 </Tabs>
@@ -1292,7 +1142,6 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/data/detai
 
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例" >
-
 
 ```bash
 curl --location --request PUT 'http://localhost:3000/api/core/dataset/data/update' \
@@ -1321,35 +1170,29 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/data/updat
 }'
 ```
 
-
   </Tab>
 
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - dataId: 数据的id
 - q: 主要数据（选填）
 - a: 辅助数据（选填）
 - indexes: 自定义索引（选填），类型参考`为集合批量添加添加数据`。如果创建时候有自定义索引，
-</Alert>
-
+</div>
 
   </Tab>
 
   <Tab value="响应示例" >
 
-
-
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": null
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": null
 }
 ```
-
 
   </Tab>
 </Tabs>
@@ -1359,28 +1202,22 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/data/updat
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例" >
 
-
 ```bash
 curl --location --request DELETE 'http://localhost:3000/api/core/dataset/data/delete?id=65abd4b39d1448617cba624d' \
 --header 'Authorization: Bearer {{authorization}}' \
 ```
 
-
   </Tab>
 
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - id: 数据的id
-</Alert>
-
+</div>
 
   </Tab>
 
   <Tab value="响应示例" >
-
-
 
 ```json
 {
@@ -1391,7 +1228,6 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/data/de
 }
 ```
 
-
   </Tab>
 </Tabs>
 
@@ -1399,7 +1235,6 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/data/de
 
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例" >
-
 
 ```bash
 curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/searchTest' \
@@ -1419,13 +1254,11 @@ curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/searchTe
 }'
 ```
 
-
   </Tab>
 
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - datasetId - 知识库ID
 - text - 需要测试的文本
 - limit - 最大 tokens 数量
@@ -1435,13 +1268,11 @@ curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/searchTe
 - datasetSearchUsingExtensionQuery - 使用问题优化
 - datasetSearchExtensionModel - 问题优化模型
 - datasetSearchExtensionBg - 问题优化背景描述
-</Alert>
-
+</div>
 
   </Tab>
 
   <Tab value="响应示例" >
-
 
 返回 top k 结果， limit 为最大 Tokens 数量，最多 20000 tokens。
 
@@ -1465,7 +1296,5 @@ curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/searchTe
 }
 ```
 
-
   </Tab>
 </Tabs>
-

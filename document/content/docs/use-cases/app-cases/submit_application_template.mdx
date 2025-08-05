@@ -3,7 +3,6 @@ title: 如何提交应用模板
 description: 指南：如何向 FastGPT 提交应用模板
 ---
 
-
 ## 什么模板可以合并
 
 目前合并进仓库的应用模板，会在「模板市场」中全部展示给用户。
@@ -18,7 +17,7 @@ description: 指南：如何向 FastGPT 提交应用模板
 
 需要在 dev 环境下执行下面的操作。
 
-> 可参照 [FastGPT｜快速开始本地开发](https://doc.fastgpt.in/docs/development/intro/)
+> 可参照 [FastGPT｜快速开始本地开发](/docs/introduction/development/intro/)
 
 1. ### 在 FastGPT 工作台中，创建一个应用
 
@@ -41,13 +40,14 @@ description: 指南：如何向 FastGPT 提交应用模板
   "intro": "模板描述，会展示在模板市场的展示页",
   "author": "填写你的名字",
   "avatar": "模板头像，可以将图片文件放在同一个文件夹中，然后填写相应路径",
-  
-  "tags": ["模板标签"], // writing(文本创作)，image-generation(图片生成)，web-search(联网搜索),
-              // roleplay(角色扮演), office-services(办公服务) 暂时分为 5 类，从中选择相应的标签
-  
-  "type": "模板类别",  // simple(简易应用), advanced(工作流), plugin(插件)
 
-  "workflow": {  // 这个对象先不管，待会直接粘贴导出的工作流即可
+  "tags": ["模板标签"], // writing(文本创作)，image-generation(图片生成)，web-search(联网搜索),
+  // roleplay(角色扮演), office-services(办公服务) 暂时分为 5 类，从中选择相应的标签
+
+  "type": "模板类别", // simple(简易应用), advanced(工作流), plugin(插件)
+
+  "workflow": {
+    // 这个对象先不管，待会直接粘贴导出的工作流即可
     "nodes": [],
     "edges": [],
     "chatConfig": {}

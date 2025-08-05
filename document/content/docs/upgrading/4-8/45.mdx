@@ -22,7 +22,7 @@ ALTER EXTENSION vector UPDATE;
 \dx
 
 -- 下面两个语句会设置 pg 在构建索引时可用的内存大小，需根据自身的数据库规格来动态配置，可配置为 1/4 的内存大小
-alter system set maintenance_work_mem = '2400MB'; 
+alter system set maintenance_work_mem = '2400MB';
 select pg_reload_conf();
 
 -- 重构数据库索引和排序
@@ -34,12 +34,10 @@ CREATE INDEX CONCURRENTLY vector_index ON modeldata USING hnsw (vector vector_ip
 \d modeldata
 ```
 
-|                       |                       |
-| --------------------- | --------------------- |
+|                      |                      |
+| -------------------- | -------------------- |
 | ![](/imgs/v45-1.jpg) | ![](/imgs/v45-2.jpg) |
 | ![](/imgs/v45-3.jpg) | ![](/imgs/v45-4.jpg) |
-
-
 
 ## PgVector升级：Docker-compose.yml 部署方案
 
@@ -58,7 +56,7 @@ ALTER EXTENSION vector UPDATE;
 \dx
 
 -- 下面两个语句会设置 pg 在构建索引时可用的内存大小，需根据自身的数据库规格来动态配置，可配置为 1/4 的内存大小
-alter system set maintenance_work_mem = '2400MB'; 
+alter system set maintenance_work_mem = '2400MB';
 select pg_reload_conf();
 
 -- 重构数据库索引和排序
@@ -86,4 +84,4 @@ CREATE INDEX CONCURRENTLY vector_index ON modeldata USING hnsw (vector vector_ip
 
 ## 该版本需要修改 `config.json` 文件
 
-最新配置可参考: [V45版本最新 config.json](/docs/development/configuration)
+最新配置可参考: [V45版本最新 config.json](/docs/introduction/development/configuration)

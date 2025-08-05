@@ -9,9 +9,9 @@ FastGPT 默认使用了 OpenAI 的 LLM 模型和向量模型，如果想要私�
 
 ## 部署镜像
 
-+ 镜像名: `stawky/chatglm2-m3e:latest`  
-+ 国内镜像名: `registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/chatglm2-m3e:latest`
-+ 端口号: 6006
+- 镜像名: `stawky/chatglm2-m3e:latest`
+- 国内镜像名: `registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/chatglm2-m3e:latest`
+- 端口号: 6006
 
 ```
 # 设置安全凭证（即oneapi中的渠道密钥）
@@ -21,7 +21,7 @@ FastGPT 默认使用了 OpenAI 的 LLM 模型和向量模型，如果想要私�
 
 ## 接入 OneAPI
 
-文档链接：[One API](/docs/development/modelconfig/one-api/)
+文档链接：[One API](/docs/introduction/development/modelconfig/one-api/)
 
 为 chatglm2 和 m3e-large 各添加一个渠道，参数如下：
 
@@ -97,7 +97,7 @@ M3E 模型的使用方法如下：
 1. 创建知识库时候选择 M3E 模型。
 
    注意，一旦选择后，知识库将无法修改向量模型。
-   
+
    ![](/imgs/model-m3e2.png)
 
 2. 导入数据
@@ -108,7 +108,7 @@ M3E 模型的使用方法如下：
 4. 应用绑定知识库
 
    注意，应用只能绑定同一个向量模型的知识库，不能跨模型绑定。并且，需要注意调整相似度，不同向量模型的相似度（距离）会有所区别，需要自行测试实验。
-   
+
    ![](/imgs/model-m3e4.png)
 
 chatglm2 模型的使用方法如下：

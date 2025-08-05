@@ -3,7 +3,7 @@ title: 配置文件介绍
 description: FastGPT 配置参数介绍
 ---
 
-由于环境变量不利于配置复杂的内容，新版 FastGPT 采用了 ConfigMap 的形式挂载配置文件，你可以在 `projects/app/data/config.json` 看到默认的配置文件。可以参考 [docker-compose 快速部署](/docs/development/docker/) 来挂载配置文件。
+由于环境变量不利于配置复杂的内容，新版 FastGPT 采用了 ConfigMap 的形式挂载配置文件，你可以在 `projects/app/data/config.json` 看到默认的配置文件。可以参考 [docker-compose 快速部署](/docs/introduction/development/docker/) 来挂载配置文件。
 
 **开发环境下**，你需要将示例配置文件 `config.json` 复制成 `config.local.json` 文件才会生效。
 
@@ -70,4 +70,4 @@ description: FastGPT 配置参数介绍
 
 ### 使用 Marker 解析 PDF 文件
 
-[点击查看 Marker 接入教程](/docs/development/custom-models/marker)
+[点击查看 Marker 接入教程](/docs/introduction/development/custom-models/marker)

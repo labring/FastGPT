@@ -3,8 +3,6 @@ title: 分享链接身份鉴权
 description: FastGPT 分享链接身份鉴权
 ---
 
-import { Alert } from '@/components/docs/Alert';
-
 ## 介绍
 
 在 FastGPT V4.6.4 中，我们修改了分享链接的数据读取方式，为每个用户生成一个 localId，用于标识用户，从云端拉取对话记录。但是这种方式仅能保障用户在同一设备同一浏览器中使用，如果切换设备或者清空浏览器缓存则会丢失这些记录。这种方式存在一定的风险，因此我们仅允许用户拉取近`30天`的`20条`记录。
@@ -44,15 +42,15 @@ import { Alert } from '@/components/docs/Alert';
 
 配置校验地址后，在每次分享链接使用时，都会向对应的地址发起校验和上报请求。
 
-<Alert icon="🤖">这里仅需配置根地址，无需具体到完整请求路径。</Alert>
+这里仅需配置根地址，无需具体到完整请求路径。
 
 ### 2. 分享链接中增加额外 query
 
 在分享链接的地址中，增加一个额外的参数: authToken。例如：
 
-原始的链接：`https://share.tryfastgpt.ai/chat/share?shareId=648aaf5ae121349a16d62192`
+原始的链接：`https://share.fastgpt.io/chat/share?shareId=648aaf5ae121349a16d62192`
 
-完整链接: `https://share.tryfastgpt.ai/chat/share?shareId=648aaf5ae121349a16d62192&authToken=userid12345`
+完整链接: `https://share.fastgpt.io/chat/share?shareId=648aaf5ae121349a16d62192&authToken=userid12345`
 
 这个`authToken`通常是你系统生成的用户唯一凭证（Token之类的）。FastGPT 会在鉴权接口的`body`中携带 token=[authToken] 的参数。
 
@@ -358,9 +356,9 @@ export default async function (ctx: FunctionContext) {
 
 ### 3. 修改分享链接参数
 
-源分享链接：`https://share.tryfastgpt.ai/chat/share?shareId=64be36376a438af0311e599c`
+源分享链接：`https://share.fastgpt.io/chat/share?shareId=64be36376a438af0311e599c`
 
-修改后：`https://share.tryfastgpt.ai/chat/share?shareId=64be36376a438af0311e599c&authToken=fastgpt`
+修改后：`https://share.fastgpt.io/chat/share?shareId=64be36376a438af0311e599c&authToken=fastgpt`
 
 ### 4. 测试效果
 

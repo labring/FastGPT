@@ -7,7 +7,7 @@ description: FastGPT V4.6.5
 
 由于 openai 已开始弃用 function call，改为 toolChoice。FastGPT 同步的修改了对于的配置和调用方式，需要对配置文件做一些修改：
 
-[点击查看最新的配置文件](/docs/development/configuration/)
+[点击查看最新的配置文件](/docs/introduction/development/configuration/)
 
 1. 主要是修改模型的`functionCall`字段，改成`toolChoice`即可。设置为`true`的模型，会默认走 openai 的 tools 模式；未设置或设置为`false`的，会走提示词生成模式。
 
@@ -26,4 +26,3 @@ description: FastGPT V4.6.5
 7. 优化 - 高级编排连接线交互
 8. 优化 - 由于 html2md 导致的 cpu密集计算，阻断线程问题
 9. 修复 - 高级编排提示词提取描述
-
