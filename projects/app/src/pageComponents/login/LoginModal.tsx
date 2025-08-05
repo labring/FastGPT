@@ -17,10 +17,10 @@ const LoginModal = ({ onSuccess }: LoginModalProps) => {
       isOpen
       closeOnOverlayClick={false}
       isCentered
-      size="lg"
-      borderRadius={[0, '16px']}
       overflow="auto"
       minH={['100vh', '690px']}
+      maxW={['100%', '560px']}
+      w={'100%'}
     >
       <Flex
         w={['100%', '560px']}

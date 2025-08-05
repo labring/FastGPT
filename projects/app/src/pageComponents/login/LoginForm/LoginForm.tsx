@@ -74,7 +74,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   return (
     <FormLayout setPageType={setPageType} pageType={LoginPageTypeEnum.passwordLogin}>
       <Box
-        mt={9}
+        mt={8}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey && !requesting) {
             handleSubmit(onclickLogin)();
@@ -140,7 +140,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
 
         <Button
           type="submit"
-          my={5}
+          my={[5, 7]}
           w={'100%'}
           size={['md', 'md']}
           h={[10, 10]}
@@ -154,7 +154,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
 
         <Flex
           align={'center'}
-          justifyContent={'center'}
+          justifyContent={['flex-end', 'center']}
           color={'primary.700'}
           fontWeight={'medium'}
         >
