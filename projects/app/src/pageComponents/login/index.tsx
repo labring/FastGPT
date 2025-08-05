@@ -242,7 +242,7 @@ export const LoginContainer = ({
         />
       )}
 
-      <Flex flexDirection={'column'} w="full" flex={'1 0 0'}>
+      <Flex position="relative" w="full" flex={'1 0 0'} flexDirection={'column'}>
         {/* main content area */}
         <Box w={['100%', '380px']} flex={'1 0 0'}>
           {pageType && DynamicComponent ? DynamicComponent : <Loading fixed={false} />}
@@ -254,12 +254,7 @@ export const LoginContainer = ({
         {/* help link for login */}
         {feConfigs?.concatMd && (
           <Box
-            mt={
-              pageType === LoginPageTypeEnum.register ||
-              pageType === LoginPageTypeEnum.forgetPassword
-                ? 10
-                : 4
-            }
+            mt={'auto'}
             color={'primary.700'}
             fontSize={'mini'}
             fontWeight={'medium'}
