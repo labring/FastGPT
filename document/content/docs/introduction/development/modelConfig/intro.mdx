@@ -15,11 +15,11 @@ import { Alert } from '@/components/docs/Alert';
 
 #### AI Proxy
 
-从 4.8.23 版本开始， FastGPT 支持在页面上配置模型提供商，即使用 [AI Proxy 接入教程](/docs/development/modelconfig/ai-proxy) 来进行模型聚合，从而可以对接更多模型提供商。
+从 4.8.23 版本开始， FastGPT 支持在页面上配置模型提供商，即使用 [AI Proxy 接入教程](/docs/introduction/development/modelconfig/ai-proxy) 来进行模型聚合，从而可以对接更多模型提供商。
 
 #### One API
 
-也可以使用 [OneAPI 接入教程](/docs/development/modelconfig/one-api)。你需要先在各服务商申请好 API 接入 OneAPI 后，才能在 FastGPT 中使用这些模型。示例流程如下：
+也可以使用 [OneAPI 接入教程](/docs/introduction/development/modelconfig/one-api)。你需要先在各服务商申请好 API 接入 OneAPI 后，才能在 FastGPT 中使用这些模型。示例流程如下：
 
 ![alt text](/imgs/image-95.png)
 
@@ -223,7 +223,7 @@ FastGPT 页面上提供了每类模型的简单测试，可以初步检查模型
 
 #### 私有部署模型
 
-[点击查看部署 ReRank 模型教程](/docs/development/custom-models/bge-rerank/)
+[点击查看部署 ReRank 模型教程](/docs/introduction/development/custom-models/bge-rerank/)
 
 ### 接入语音识别模型
 
@@ -253,7 +253,7 @@ OneAPI 的语言识别接口，无法正确的识别其他模型（会始终识�
 
 所有接口均遵循 OpenAI 提供的模型格式，可参考 [OpenAI API 文档](https://platform.openai.com/docs/api-reference/introduction) 进行配置。
 
-由于 OpenAI 没有提供 ReRank 模型，遵循的是 Cohere 的格式。[点击查看接口请求示例](/docs/development/faq/#如何检查模型问题)
+由于 OpenAI 没有提供 ReRank 模型，遵循的是 Cohere 的格式。[点击查看接口请求示例](/docs/introduction/development/faq/#如何检查模型问题)
 
 ### 模型价格配置
 
@@ -276,13 +276,13 @@ OneAPI 的语言识别接口，无法正确的识别其他模型（会始终识�
 
 ### 添加模型
 
-你可以在`FastGPT-plugin`项目中`modules/model/provider`目录下，找对应模型提供商的配置文件，并追加模型配置。请自行全文检查，`model`字段，必须在所有模型中唯一。具体配置字段说明，参考[模型配置字段说明](/docs/development/modelconfig/intro/#通过配置文件配置)
+你可以在`FastGPT-plugin`项目中`modules/model/provider`目录下，找对应模型提供商的配置文件，并追加模型配置。请自行全文检查，`model`字段，必须在所有模型中唯一。具体配置字段说明，参考[模型配置字段说明](/docs/introduction/development/modelconfig/intro/#通过配置文件配置)
 
 ## 旧版模型配置说明
 
 配置好 OneAPI 后，需要在`config.json`文件中，手动的增加模型配置，并重启。
 
-由于环境变量不利于配置复杂的内容，FastGPT 采用了 ConfigMap 的形式挂载配置文件，你可以在 `projects/app/data/config.json` 看到默认的配置文件。可以参考 [docker-compose 快速部署](/docs/development/docker/) 来挂载配置文件。
+由于环境变量不利于配置复杂的内容，FastGPT 采用了 ConfigMap 的形式挂载配置文件，你可以在 `projects/app/data/config.json` 看到默认的配置文件。可以参考 [docker-compose 快速部署](/docs/introduction/development/docker/) 来挂载配置文件。
 
 **开发环境下**，你需要将示例配置文件 `config.json` 复制成 `config.local.json` 文件才会生效。  
 **Docker部署**，修改`config.json` 文件，需要重启容器。

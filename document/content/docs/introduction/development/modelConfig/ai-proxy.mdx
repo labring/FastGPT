@@ -17,7 +17,7 @@ AI Proxy 与 One API 类似，也是作为一个 OpenAI 接口管理 & 分发系
 
 ## 运行原理
 
-AI proxy 核心模块: 
+AI proxy 核心模块:
 
 1. 渠道管理：管理各家模型提供商的 API Key 和可用模型列表。
 2. 模型调用：根据请求的模型，选中对应的渠道；根据渠道的 API 格式，构造请求体，发送请求；格式化响应体成标准格式返回。
@@ -47,12 +47,12 @@ AI proxy 相关功能，可以在`账号-模型提供商`页面找到。
 
 1. 渠道名：展示在外部的渠道名称，仅作标识;
 2. 厂商：模型对应的厂商，不同厂商对应不同的默认地址和 API 密钥格式;
-3. 模型：当前渠道具体可以使用的模型，系统内置了主流的一些模型，如果下拉框中没有想要的选项，可以点击“新增模型”，[增加自定义模型](/docs/development/modelconfig/intro/#新增自定义模型);
+3. 模型：当前渠道具体可以使用的模型，系统内置了主流的一些模型，如果下拉框中没有想要的选项，可以点击“新增模型”，[增加自定义模型](/docs/introduction/development/modelconfig/intro/#新增自定义模型);
 4. 模型映射：将 FastGPT 请求的模型，映射到具体提供的模型上。例如：
-   
+
 ```json
 {
-    "gpt-4o-test": "gpt-4o",
+  "gpt-4o-test": "gpt-4o"
 }
 ```
 
@@ -81,7 +81,7 @@ FatGPT 中的模型为 `gpt-4o-test`，向 AI Proxy 发起请求时也是 `gpt-4
 
 ### 3. 启用模型
 
-最后在`模型配置`中，可以选择启用对应的模型，这样就能在平台中使用了，更多模型配置可以参考[模型配置](/docs/development/modelconfig/intro)
+最后在`模型配置`中，可以选择启用对应的模型，这样就能在平台中使用了，更多模型配置可以参考[模型配置](/docs/introduction/development/modelconfig/intro)
 
 ![aiproxy8](/imgs/aiproxy-8.png)
 

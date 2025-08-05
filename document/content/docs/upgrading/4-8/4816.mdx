@@ -13,36 +13,34 @@ description: FastGPT V4.8.16 更新说明
 
 ### 2. 更新配置文件
 
-参考最新的[配置文件](/docs/development/configuration/)，更新 `config.json` 或 admin 中模型文件配置。给 LLMModel 和 VectorModel 增加 `provider` 字段，以便进行模型分类。例如：
+参考最新的[配置文件](/docs/introduction/development/configuration/)，更新 `config.json` 或 admin 中模型文件配置。给 LLMModel 和 VectorModel 增加 `provider` 字段，以便进行模型分类。例如：
 
 ```json
 {
-    "provider": "OpenAI", // 这是新增的
-    "model": "gpt-4o",
-    "name": "gpt-4o",
-    "maxContext": 125000,
-    "maxResponse": 4000,
-    "quoteMaxToken": 120000,
-    "maxTemperature": 1.2,
-    "charsPointsPrice": 0,
-    "censor": false,
-    "vision": true,
-    "datasetProcess": true,
-    "usedInClassify": true,
-    "usedInExtractFields": true,
-    "usedInToolCall": true,
-    "usedInQueryExtension": true,
-    "toolChoice": true,
-    "functionCall": false,
-    "customCQPrompt": "",
-    "customExtractPrompt": "",
-    "defaultSystemChatPrompt": "",
-    "defaultConfig": {},
-    "fieldMap": {}
+  "provider": "OpenAI", // 这是新增的
+  "model": "gpt-4o",
+  "name": "gpt-4o",
+  "maxContext": 125000,
+  "maxResponse": 4000,
+  "quoteMaxToken": 120000,
+  "maxTemperature": 1.2,
+  "charsPointsPrice": 0,
+  "censor": false,
+  "vision": true,
+  "datasetProcess": true,
+  "usedInClassify": true,
+  "usedInExtractFields": true,
+  "usedInToolCall": true,
+  "usedInQueryExtension": true,
+  "toolChoice": true,
+  "functionCall": false,
+  "customCQPrompt": "",
+  "customExtractPrompt": "",
+  "defaultSystemChatPrompt": "",
+  "defaultConfig": {},
+  "fieldMap": {}
 }
 ```
-
-
 
 ## 完整更新内容
 

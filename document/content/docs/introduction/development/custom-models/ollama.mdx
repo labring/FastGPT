@@ -7,14 +7,14 @@ description: ' 采用 Ollama 部署自己的模型'
 
 ## 安装 Ollama
 
-Ollama 本身支持多种安装方式，但是推荐使用 Docker 拉取镜像部署。如果是个人设备上安装了 Ollama 后续需要解决如何让 Docker 中 FastGPT 容器访问宿主机 Ollama的问题，较为麻烦。 
+Ollama 本身支持多种安装方式，但是推荐使用 Docker 拉取镜像部署。如果是个人设备上安装了 Ollama 后续需要解决如何让 Docker 中 FastGPT 容器访问宿主机 Ollama的问题，较为麻烦。
 
 ### Docker 安装（推荐）
 
 你可以使用 Ollama 官方的 Docker 镜像来一键安装和启动 Ollama 服务（确保你的机器上已经安装了 Docker），命令如下：
 
 ```bash
-docker pull ollama/ollama 
+docker pull ollama/ollama
 docker run --rm -d --name ollama -p 11434:11434 ollama/ollama
 ```
 
@@ -81,7 +81,6 @@ ollama pull [模型名]
 
 ![](/imgs/Ollama-pull.png)
 
-
 ### 测试通信
 
 在安装完成后，需要进行检测测试，首先进入 FastGPT 所在的容器，尝试访问自己的 Ollama ，命令如下：
@@ -108,7 +107,7 @@ ollama ls
 
 ### 2. AI Proxy 接入
 
-如果你采用的是 FastGPT 中的默认配置文件部署[这里](/docs/development/docker.md)，即默认采用 AI Proxy 进行启动。
+如果你采用的是 FastGPT 中的默认配置文件部署[这里](/docs/introduction/development/docker.md)，即默认采用 AI Proxy 进行启动。
 
 ![](/imgs/Ollama-aiproxy1.png)
 
@@ -116,7 +115,7 @@ ollama ls
 
 ![](/imgs/Ollama-aiproxy2.png)
 
-在 FastGPT 中点击账号->模型提供商->模型配置->新增模型，添加自己的模型即可，添加模型时需要保证模型ID和 OneAPI 中的模型名称一致。详细参考[这里](/docs/development/modelConfig/intro.md)
+在 FastGPT 中点击账号->模型提供商->模型配置->新增模型，添加自己的模型即可，添加模型时需要保证模型ID和 OneAPI 中的模型名称一致。详细参考[这里](/docs/introduction/development/modelConfig/intro.md)
 
 ![](/imgs/Ollama-models2.png)
 
@@ -177,4 +176,5 @@ docker run -it --network [ FastGPT 网络 ] --name 容器名 intel/oneapi-hpckit
 ![](/imgs/Ollama-models4.png)
 
 ### 6. 补充
+
 上述接入 Ollama 的代理地址中，主机安装 Ollama 的地址为“http://[主机IP]:[端口]”，容器部署 Ollama 地址为“http://[容器名]:[端口]”
