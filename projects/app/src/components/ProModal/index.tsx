@@ -1,5 +1,5 @@
 import { useTranslation } from 'next-i18next';
-import type { FlexProps} from '@chakra-ui/react';
+import type { FlexProps } from '@chakra-ui/react';
 import { ModalBody, Flex, useDisclosure, Box, VStack, Button } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -13,13 +13,15 @@ const ProModal = ({
   onClick,
 
   isPlus,
-  showClose = false,
+  showCloseIcon = false,
+  canOpen = true,
   ...props
 }: {
   children: React.ReactNode;
   onClick?: () => void;
   isPlus?: boolean;
-  showClose?: boolean;
+  showCloseIcon?: boolean;
+  canOpen?: boolean;
 } & FlexProps) => {
   const { t, i18n } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -36,14 +38,14 @@ const ProModal = ({
     return Date.now() - lastCloseTime > sixHoursInMs;
   }, [lastCloseTime]);
 
-  if (!shouldShowProTag && showClose) return null;
+  if (!shouldShowProTag && showCloseIcon) return null;
 
   return (
     <>
       <Flex
         onClick={() => {
           onClick && onClick();
-          !isPlus && onOpen();
+          !isPlus && canOpen && onOpen();
         }}
         position={'relative'}
         {...props}
@@ -52,7 +54,7 @@ const ProModal = ({
         {!isPlus && (
           <>
             <MyImage src={i18n.language === 'zh-CN' ? '/imgs/proTag.svg' : '/imgs/proTagEng.svg'} />
-            {showClose && (
+            {showCloseIcon && (
               <Box
                 position={'absolute'}
                 top={'-10px'}

@@ -52,6 +52,7 @@ const Logs = () => {
                 setViewMode('chart');
               }}
               isPlus={feConfigs.isPlus}
+              canOpen={viewMode !== 'chart'}
               px={2}
               py={2}
               cursor={'pointer'}
@@ -84,7 +85,7 @@ const Logs = () => {
           </Flex>
           {viewMode === 'chart' && !feConfigs.isPlus && (
             <Flex alignItems={'center'}>
-              <ProModal showClose alignItems={'center'} cursor={'pointer'} gap={1.5}>
+              <ProModal showCloseIcon alignItems={'center'} cursor={'pointer'} gap={1.5}>
                 <Box color={'primary.600'} fontSize="14px" fontWeight={'medium'}>
                   {t('common:upgrade')}
                 </Box>
