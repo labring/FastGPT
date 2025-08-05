@@ -396,6 +396,11 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
                                 label: t('dataset:llm_paragraph_mode_auto'),
                                 value: ParagraphChunkAIModeEnum.auto,
                                 description: t('dataset:llm_paragraph_mode_auto_desc')
+                              },
+                              {
+                                label: t('dataset:llm_paragraph_mode_force'),
+                                value: ParagraphChunkAIModeEnum.force,
+                                description: t('dataset:llm_paragraph_mode_force_desc')
                               }
                             ]}
                           />

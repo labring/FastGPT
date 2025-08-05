@@ -45,11 +45,17 @@ const requestLLMPargraph = async ({
   paragraphChunkAIMode: ParagraphChunkAIModeEnum;
   customPdfParse?: boolean;
 }) => {
+  addLog.debug(
+    `[requestLLMPargraph] start, mode: ${paragraphChunkAIMode}, customPdfParse: ${customPdfParse}, rawText length: ${rawText.length}`
+  );
+  addLog.debug(`[requestLLMPargraph] global.feConfigs?.isPlus: ${global.feConfigs?.isPlus}`);
+
   if (
     !global.feConfigs?.isPlus ||
     !paragraphChunkAIMode ||
     paragraphChunkAIMode === ParagraphChunkAIModeEnum.forbid
   ) {
+    addLog.debug(`[requestLLMPargraph] early return - not plus or forbidden mode`);
     return {
       resultText: rawText,
       totalInputTokens: 0,
@@ -60,7 +66,9 @@ const requestLLMPargraph = async ({
   // 优化Markdown检测逻辑
   if (paragraphChunkAIMode === ParagraphChunkAIModeEnum.auto) {
     const isMarkdown = isMarkdownText(rawText, customPdfParse);
+    addLog.debug(`[requestLLMPargraph] auto mode - isMarkdown: ${isMarkdown}`);
     if (isMarkdown) {
+      addLog.debug(`[requestLLMPargraph] auto mode - detected markdown, returning original text`);
       return {
         resultText: rawText,
         totalInputTokens: 0,
@@ -69,6 +77,41 @@ const requestLLMPargraph = async ({
     }
   }
 
+  // Force mode: Remove markdown header markers at the beginning of each line before passing to llmPargraph
+  if (paragraphChunkAIMode === ParagraphChunkAIModeEnum.force) {
+    addLog.debug(`[requestLLMPargraph] force mode - processing text`);
+    const processedText = rawText
+      .split('\n')
+      .map((line) => line.replace(/^#+\s*/, '').trim())
+      .join('\n');
+
+    addLog.debug(
+      `[requestLLMPargraph] force mode - processed text length: ${processedText.length}`
+    );
+    addLog.debug(
+      `[requestLLMPargraph] force mode - first 200 chars: ${processedText.substring(0, 200)}`
+    );
+
+    const data = await POST<{
+      resultText: string;
+      totalInputTokens: number;
+      totalOutputTokens: number;
+    }>('/core/dataset/training/llmPargraph', {
+      rawText: processedText,
+      model,
+      billId
+    });
+
+    addLog.debug(`[requestLLMPargraph] force mode - response:`, {
+      resultTextLength: data.resultText.length,
+      totalInputTokens: data.totalInputTokens,
+      totalOutputTokens: data.totalOutputTokens
+    });
+
+    return data;
+  }
+
+  addLog.debug(`[requestLLMPargraph] normal mode - calling llmPargraph`);
   const data = await POST<{
     resultText: string;
     totalInputTokens: number;
@@ -79,13 +122,24 @@ const requestLLMPargraph = async ({
     billId
   });
 
+  addLog.debug(`[requestLLMPargraph] normal mode - response:`, {
+    resultTextLength: data.resultText.length,
+    totalInputTokens: data.totalInputTokens,
+    totalOutputTokens: data.totalOutputTokens
+  });
+
   return data;
 };
 
 // Optimized Markdown detection logic
 const isMarkdownText = (rawText: string, customPdfParse?: boolean) => {
+  addLog.debug(
+    `[isMarkdownText] start, customPdfParse: ${customPdfParse}, rawText length: ${rawText.length}`
+  );
+
   // If external PDF parsing is enabled, trust the external parsing result first
   if (customPdfParse) {
+    addLog.debug(`[isMarkdownText] customPdfParse enabled, returning true`);
     return true;
   }
 
@@ -93,7 +147,15 @@ const isMarkdownText = (rawText: string, customPdfParse?: boolean) => {
   const hasMarkdownHeaders = /^(#+)\s/m.test(rawText);
   const hasMultipleHeaders = (rawText.match(/^(#+)\s/g) || []).length > 1;
 
-  return hasMarkdownHeaders && hasMultipleHeaders;
+  addLog.debug(
+    `[isMarkdownText] hasMarkdownHeaders: ${hasMarkdownHeaders}, hasMultipleHeaders: ${hasMultipleHeaders}`
+  );
+  addLog.debug(`[isMarkdownText] markdown headers found:`, rawText.match(/^(#+)\s/g) || []);
+
+  const result = hasMarkdownHeaders && hasMultipleHeaders;
+  addLog.debug(`[isMarkdownText] result: ${result}`);
+
+  return result;
 };
 
 export const datasetParseQueue = async (): Promise<any> => {
@@ -233,12 +295,26 @@ export const datasetParseQueue = async (): Promise<any> => {
       });
 
       // 3. LLM Pargraph
+      addLog.debug(`[Parse Queue] calling requestLLMPargraph with:`, {
+        rawTextLength: rawText.length,
+        model: dataset.agentModel,
+        paragraphChunkAIMode: collection.paragraphChunkAIMode,
+        customPdfParse: collection.customPdfParse
+      });
+
       const { resultText, totalInputTokens, totalOutputTokens } = await requestLLMPargraph({
         rawText,
         model: dataset.agentModel,
         billId: data.billId,
         paragraphChunkAIMode: collection.paragraphChunkAIMode,
         customPdfParse: collection.customPdfParse
+      });
+
+      addLog.debug(`[Parse Queue] requestLLMPargraph completed:`, {
+        resultTextLength: resultText.length,
+        totalInputTokens,
+        totalOutputTokens,
+        resultTextPreview: resultText.substring(0, 500)
       });
       // Push usage
       pushLLMTrainingUsage({
