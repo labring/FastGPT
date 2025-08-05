@@ -1,6 +1,6 @@
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { AbsoluteCenter, Box, Flex, Grid, IconButton, GridItem } from '@chakra-ui/react';
+import { AbsoluteCenter, Box, Flex, Grid, IconButton, GridItem, Button } from '@chakra-ui/react';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import { useRouter } from 'next/router';
@@ -14,7 +14,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import dynamic from 'next/dynamic';
 import { POST } from '@/web/common/api/request';
-import { getBdVId } from '@/web/support/marketing/utils';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 type Props = {
   children: React.ReactNode;
@@ -159,7 +159,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      <Flex alignItems={'center'} justify={'center'}>
+      <Flex alignItems={'center'} justifyContent={['space-between', 'center']}>
         <Flex alignItems={'center'} pr="4">
           <Flex
             w={['42px', '56px']}
@@ -181,37 +181,50 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
       </Flex>
       {children}
       {show_oauth && (
-        <Box mt={8}>
+        <Box mt={['80px', 9]}>
           <Box flex={1} />
 
-          <Box position={'relative'}>
+          <Box position={'relative'} mb={5}>
             <Box h={'1px'} bg={'myGray.250'} />
             <AbsoluteCenter bg={'white'} px={3} color={'myGray.500'} fontSize={'mini'}>
               or
             </AbsoluteCenter>
           </Box>
 
-          <Grid
-            mt={6}
-            gap={3}
-            mx="auto"
-            w="fit-content"
-            justifyItems={'center'}
-            templateColumns={`repeat(${oAuthList.length}, 1fr)`}
-          >
-            {oAuthList.map((item) => (
-              <Box key={item.provider}>
-                <IconButton
-                  h={'40px'}
-                  isRound={true}
-                  aria-label={item.label}
-                  variant={'whitePrimary'}
-                  icon={<Avatar src={item.icon as any} w={'20px'} />}
-                  onClick={() => onClickOauth(item)}
-                />
-              </Box>
-            ))}
-          </Grid>
+          {oAuthList.length > 2 ? (
+            <Flex gap={4} alignItems={'center'} justifyContent={'center'}>
+              {oAuthList.map((item) => (
+                <MyTooltip key={item.provider}>
+                  <IconButton
+                    h={'40px'}
+                    isRound={true}
+                    aria-label={item.label}
+                    variant={'whitePrimary'}
+                    icon={<Avatar src={item.icon as any} w={'20px'} />}
+                    onClick={() => onClickOauth(item)}
+                  />
+                </MyTooltip>
+              ))}
+            </Flex>
+          ) : (
+            <Flex gap={4} alignItems={'center'} justifyContent={'center'}>
+              {oAuthList.map((item) => (
+                <Box key={item.provider} flex={1}>
+                  <Button
+                    variant={'whitePrimary'}
+                    w={'100%'}
+                    h={'40px'}
+                    borderRadius={'sm'}
+                    fontWeight={'medium'}
+                    leftIcon={<Avatar src={item.icon as any} w={'20px'} />}
+                    onClick={() => onClickOauth(item)}
+                  >
+                    {item.label}
+                  </Button>
+                </Box>
+              ))}
+            </Flex>
+          )}
         </Box>
       )}
     </Flex>

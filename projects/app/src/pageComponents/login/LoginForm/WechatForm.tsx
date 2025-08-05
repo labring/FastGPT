@@ -1,7 +1,7 @@
 import React, { type Dispatch } from 'react';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import type { ResLogin } from '@/global/support/api/userRes';
-import { Box, Center } from '@chakra-ui/react';
+import { Box, Center, Flex, Link } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import { getWXLoginQR, getWXLoginResult } from '@/web/support/user/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -18,6 +18,8 @@ import {
   removeFastGPTSem,
   getInviterId
 } from '@/web/support/marketing/utils';
+import { getDocPath } from '@/web/common/system/doc';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 interface Props {
   loginSuccess: (e: ResLogin) => void;
@@ -27,6 +29,7 @@ interface Props {
 const WechatForm = ({ setPageType, loginSuccess }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { feConfigs } = useSystemStore();
 
   const { data: wechatInfo } = useQuery(['getWXLoginQR'], getWXLoginQR, {
     onError(err) {
@@ -66,15 +69,45 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
         <Box w={'full'} textAlign={'center'} pt={6} fontWeight={'medium'}>
           {t('common:support.user.login.wx_qr_login')}
         </Box>
-        <Box p={5} display={'flex'} w={'full'} justifyContent={'center'}>
+        <Box my={5} display={'flex'} w={'full'} justifyContent={'center'}>
           {wechatInfo?.codeUrl ? (
-            <MyImage w="200px" src={wechatInfo?.codeUrl} alt="qrcode"></MyImage>
+            <Box border={'base'} borderRadius={'md'} bg={'#FBFBFB'} overflow={'hidden'}>
+              <MyImage w={['180px', '220px']} src={wechatInfo?.codeUrl} alt="qrcode"></MyImage>
+            </Box>
           ) : (
             <Center w={200} h={200} position={'relative'}>
               <Loading fixed={false} />
             </Center>
           )}
         </Box>
+        {feConfigs?.docUrl && (
+          <Flex
+            alignItems={'center'}
+            justifyContent={'center'}
+            mt={7}
+            fontSize={'mini'}
+            color={'myGray.400'}
+            fontWeight={'medium'}
+          >
+            {t('login:policy_tip')}
+            <Link
+              ml={1}
+              href={getDocPath('/docs/protocol/terms/')}
+              target={'_blank'}
+              color={'primary.700'}
+            >
+              {t('login:terms')}
+            </Link>
+            <Box mx={1}>&</Box>
+            <Link
+              href={getDocPath('/docs/protocol/privacy/')}
+              target={'_blank'}
+              color={'primary.700'}
+            >
+              {t('login:privacy')}
+            </Link>
+          </Flex>
+        )}
       </Box>
     </FormLayout>
   );

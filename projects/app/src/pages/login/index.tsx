@@ -56,7 +56,7 @@ const Login = () => {
         h={['100%', '690px']}
         bg={'white'}
         px={['5vw', '90px']}
-        py={['5vh', '90px']}
+        py={['38px', '90px']}
         borderRadius={[0, '16px']}
         boxShadow={[
           '',
