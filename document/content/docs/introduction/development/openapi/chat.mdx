@@ -3,8 +3,6 @@ title: 对话接口
 description: FastGPT OpenAPI 对话接口
 ---
 
-import { Alert } from '@/components/docs/Alert';
-
 # 如何获取 AppId
 
 可在应用详情的路径里获取 AppId。
@@ -13,388 +11,132 @@ import { Alert } from '@/components/docs/Alert';
 
 # 发起对话
 
-<Alert icon="🤖" context="success">
-* 该接口的 API Key 需使用`应用特定的 key`，否则会报错。  
+- 该接口的 API Key 需使用`应用特定的 key`，否则会报错。
+- 有些包调用时，`BaseUrl`需要添加`v1`路径，有些不需要，如果出现404情况，可补充`v1`重试。
 
 {/* * 对话现在有`v1`和`v2`两个接口，可以按需使用，v2 自 4.9.4 版本新增，v1 接口同时不再维护 */}
-
-* 有些包调用时，`BaseUrl`需要添加`v1`路径，有些不需要，如果出现404情况，可补充`v1`重试。
-</Alert>
 
 ## 请求简易应用和工作流
 
 `v1`对话接口兼容`GPT`的接口！如果你的项目使用的是标准的`GPT`官方接口，可以直接通过修改`BaseUrl`和 `Authorization`来访问 FastGpt 应用，不过需要注意下面几个规则：
 
-<Alert icon="🤖" context="success">
 * 传入的`model`，`temperature`等参数字段均无效，这些字段由编排决定，不会根据 API 参数改变。
 * 不会返回实际消耗`Token`值，如果需要，可以设置`detail=true`，并手动计算 `responseData` 里的`tokens`值。
-</Alert>
 
 ### 请求
 
-<Tabs items={['基础请求示例','图片/文件请求示例','参数说明']}>
+<Tabs items={["基础请求示例","图片/文件请求示例","参数说明"]}>
+
   <Tab value="基础请求示例">
 
-```bash
-curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
---header 'Authorization: Bearer fastgpt-xxxxxx' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "chatId": "my_chatId",
-    "stream": false,
-    "detail": false,
-    "responseChatItemId": "my_responseChatItemId",
-    "variables": {
-        "uid": "asdfadsfasfd2323",
-        "name": "张三"
-    },
-    "messages": [
-        {
-            "role": "user",
-            "content": "导演是谁"
-        }
-    ]
-}'
-```
+  ```bash
+  curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
+  --header 'Authorization: Bearer fastgpt-xxxxxx' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+  "chatId": "my_chatId",
+  "stream": false,
+  "detail": false,
+  "responseChatItemId": "my_responseChatItemId",
+  "variables": {
+      "uid": "asdfadsfasfd2323",
+      "name": "张三"
+  },
+  "messages": [
+      {
+          "role": "user",
+          "content": "导演是谁"
+      }
+  ]
+  }'
+  ```
 
   </Tab>
+
   <Tab value="图片/文件请求示例">
 
+  - 仅`messages`有部分区别，其他参数一致。
+  - 目前不支持上传文件，需上传到自己的对象存储中，获取对应的文件链接。
 
-* 仅`messages`有部分区别，其他参数一致。
-* 目前不支持上传文件，需上传到自己的对象存储中，获取对应的文件链接。
-
-```bash
-curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
---header 'Authorization: Bearer fastgpt-xxxxxx' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "chatId": "abcd",
-    "stream": false,
-    "messages": [
-        {
-            "role": "user",
-            "content": [
-                {
-                    "type": "text",
-                    "text": "导演是谁"
-                },
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": "图片链接"
-                    }
-                },
-                {
-                    "type": "file_url",
-                    "name": "文件名",
-                    "url": "文档链接，支持 txt md html word pdf ppt csv excel"
-                }
-            ]
-        }
-    ]
-}'
-```
+  ```bash
+  curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
+  --header 'Authorization: Bearer fastgpt-xxxxxx' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+      "chatId": "abcd",
+      "stream": false,
+      "messages": [
+          {
+              "role": "user",
+              "content": [
+                  {
+                      "type": "text",
+                      "text": "导演是谁"
+                  },
+                  {
+                      "type": "image_url",
+                      "image_url": {
+                          "url": "图片链接"
+                      }
+                  },
+                  {
+                      "type": "file_url",
+                      "name": "文件名",
+                      "url": "文档链接，支持 txt md html word pdf ppt csv excel"
+                  }
+              ]
+          }
+      ]
+  }'
+  ```
 
   </Tab>
-  <Tab>
 
+  <Tab value="参数说明">
 
-<Alert  context="info">
+<div>
 - headers.Authorization: Bearer [apikey]
 - chatId: string | undefined 。
-  - 为 `undefined` 时（不传入），不使用 FastGpt 提供的上下文功能，完全通过传入的 messages 构建上下文。
-  - 为`非空字符串`时，意味着使用 chatId 进行对话，自动从 FastGpt 数据库取历史记录，并使用 messages 数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId 唯一，长度小于250，通常可以是自己系统的对话框ID。
-- messages: 结构与 [GPT接口](https://platform.openai.com/docs/api-reference/chat/object) chat模式一致。
-- responseChatItemId: string | undefined 。如果传入，则会将该值作为本次对话的响应消息的 ID，FastGPT 会自动将该 ID 存入数据库。请确保，在当前`chatId`下，`responseChatItemId`是唯一的。
-- detail: 是否返回中间值（模块状态，响应的完整结果等），`stream模式`下会通过`event`进行区分，`非stream模式`结果保存在`responseData`中。
+  - 为时（不传入），不使用 FastGpt 提供的上下文功能，完全通过传入的 messages 构建上下文。
+  - 为`非空字符串`时，意味着使用 chatId 进行对话，自动从 FastGpt 数据库取历史记录，并使用 messages数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId唯一，长度小于250，通常可以是自己系统的对话框ID。
+- messages: 结构与[GPT接口](https://platform.openai.com/docs/api-reference/chat/object) chat模式一致。
+- responseChatItemId: string | undefined 。如果传入，则会将该值作为本次对话的响应消息的 ID，FastGPT会自动将该 ID 存入数据库。请确保，在当前`chatId`下，`responseChatItemId`是唯一的。
+- detail:是否返回中间值（模块状态，响应的完整结果等），`stream模式`下会通过`event`进行区分，`非stream模式`结果保存在`responseData`中。
 - variables: 模块变量，一个对象，会替换模块中，输入框内容里的`[key]`
-</Alert>
-
-    </Tab>
-</Tabs>
-
-{/* #### v2
-
-v1,v2 接口请求参数一致，仅请求地址不一样。
-
-<Tabs items={['基础请求示例','图片/文件请求示例,'参数说明']}>
-  <Tab value="基础请求示例">
-
-```bash
-curl --location --request POST 'http://localhost:3000/api/v2/chat/completions' \
---header 'Authorization: fastgpt-xxxxxx' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "chatId": "my_chatId",
-    "stream": false,
-    "detail": false,
-    "responseChatItemId": "my_responseChatItemId",
-    "variables": {
-        "uid": "asdfadsfasfd2323",
-        "name": "张三"
-    },
-    "messages": [
-        {
-            "role": "user",
-            "content": "你是谁"
-        }
-    ]
-}'
-```
-
-  </Tab>
-  <Tab value="图片/文件请求示例">
-
-
-* 仅`messages`有部分区别，其他参数一致。
-* 目前不支持上传文件，需上传到自己的对象存储中，获取对应的文件链接。
-
-```bash
-curl --location --request POST 'http://localhost:3000/api/v2/chat/completions' \
---header 'Authorization: Bearer fastgpt-xxxxxx' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "chatId": "abcd",
-    "stream": false,
-    "messages": [
-        {
-            "role": "user",
-            "content": [
-                {
-                    "type": "text",
-                    "text": "导演是谁"
-                },
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": "图片链接"
-                    }
-                },
-                {
-                    "type": "file_url",
-                    "name": "文件名",
-                    "url": "文档链接，支持 txt md html word pdf ppt csv excel"
-                }
-            ]
-        }
-    ]
-}'
-```
-
-  </Tab>
-  <Tab>
-
-<Alert  context="info">
-- headers.Authorization: Bearer [apikey]
-- chatId: string | undefined 。
-  - 为 `undefined` 时（不传入），不使用 FastGpt 提供的上下文功能，完全通过传入的 messages 构建上下文。
-  - 为`非空字符串`时，意味着使用 chatId 进行对话，自动从 FastGpt 数据库取历史记录，并使用 messages 数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId 唯一，长度小于250，通常可以是自己系统的对话框ID。
-- messages: 结构与 [GPT接口](https://platform.openai.com/docs/api-reference/chat/object) chat模式一致。
-- responseChatItemId: string | undefined 。如果传入，则会将该值作为本次对话的响应消息的 ID，FastGPT 会自动将该 ID 存入数据库。请确保，在当前`chatId`下，`responseChatItemId`是唯一的。
-- detail: 是否返回中间值（模块状态，响应的完整结果等），`stream模式`下会通过`event`进行区分，`非stream模式`结果保存在`responseData`中。
-- variables: 模块变量，一个对象，会替换模块中，输入框内容里的`[key]`
-</Alert>
+</div>
 
   </Tab>
 </Tabs>
-
-#### v1
-
-
 
 ### 响应
 
-#### v2
-
-v2 接口比起 v1，主要变变化在于：会在每个节点运行结束后及时返回 response，而不是等工作流结束后再统一返回。
-
 <Tabs items={['detail=false,stream=false 响应','detail=false,stream=true 响应','detail=true,stream=false 响应','detail=true,stream=true 响应','event值']}>
   <Tab value="detail=false,stream=false 响应">
 
 ```json
 {
-    "id": "",
-    "model": "",
-    "usage": {
-        "prompt_tokens": 1,
-        "completion_tokens": 1,
-        "total_tokens": 1
-    },
-    "choices": [
-        {
-            "message": {
-                "role": "assistant",
-                "content": "我是一个人工智能助手，旨在回答问题和提供信息。如果你有任何问题或者需要帮助，随时问我！"
-            },
-            "finish_reason": "stop",
-            "index": 0
-        }
-    ]
+  "id": "adsfasf",
+  "model": "",
+  "usage": {
+    "prompt_tokens": 1,
+    "completion_tokens": 1,
+    "total_tokens": 1
+  },
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": "电影《铃芽之旅》的导演是新海诚。"
+      },
+      "finish_reason": "stop",
+      "index": 0
+    }
+  ]
 }
 ```
 
   </Tab>
   <Tab value="detail=false,stream=true 响应">
-
-
-```bash
-data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"你好"},"index":0,"finish_reason":null}]}
-
-data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"！"},"index":0,"finish_reason":null}]}
-
-data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"今天"},"index":0,"finish_reason":null}]}
-
-data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"过得怎么样？"},"index":0,"finish_reason":null}]}
-
-data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":null},"index":0,"finish_reason":"stop"}]}
-
-data: [DONE]
-```
-
-  </Tab>
-  <Tab value="detail=true,stream=false 响应">
-
-```json
-{
-    "responseData": [
-        {
-            "id": "iSol79OFrBH1I9kC",
-            "nodeId": "448745",
-            "moduleName": "common:core.module.template.work_start",
-            "moduleType": "workflowStart",
-            "runningTime": 0
-        },
-        {
-            "id": "t1T94WCy6Su3BK4V",
-            "nodeId": "fjLpE3XPegmoGtbU",
-            "moduleName": "AI 对话",
-            "moduleType": "chatNode",
-            "runningTime": 1.46,
-            "totalPoints": 0,
-            "model": "GPT-4o-mini",
-            "tokens": 64,
-            "inputTokens": 10,
-            "outputTokens": 54,
-            "query": "你是谁",
-            "reasoningText": "",
-            "historyPreview": [
-                {
-                    "obj": "Human",
-                    "value": "你是谁"
-                },
-                {
-                    "obj": "AI",
-                    "value": "我是一个人工智能助手，旨在帮助回答问题和提供信息。如果你有任何问题或需要帮助，请告诉我！"
-                }
-            ],
-            "contextTotalLen": 2
-        }
-    ],
-    "newVariables": {
-
-    },
-    "id": "",
-    "model": "",
-    "usage": {
-        "prompt_tokens": 1,
-        "completion_tokens": 1,
-        "total_tokens": 1
-    },
-    "choices": [
-        {
-            "message": {
-                "role": "assistant",
-                "content": "我是一个人工智能助手，旨在帮助回答问题和提供信息。如果你有任何问题或需要帮助，请告诉我！"
-            },
-            "finish_reason": "stop",
-            "index": 0
-        }
-    ]
-}
-```
-
-  </Tab>
-  <Tab value="detail=true,stream=true 响应">
-
-
-```bash
-event: flowNodeResponse
-data: {"id":"iYv2uA9rCWAtulWo","nodeId":"workflowStartNodeId","moduleName":"流程开始","moduleType":"workflowStart","runningTime":0}
-
-event: flowNodeStatus
-data: {"status":"running","name":"AI 对话"}
-
-event: answer
-data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"你好"},"index":0,"finish_reason":null}]}
-
-event: answer
-data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"！"},"index":0,"finish_reason":null}]}
-
-event: answer
-data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"今天"},"index":0,"finish_reason":null}]}
-
-event: answer
-data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"过得怎么样？"},"index":0,"finish_reason":null}]}
-
-event: flowNodeResponse
-data: {"id":"pVzLBF7M3Ol4n7s6","nodeId":"ixe20AHN3jy74pKf","moduleName":"AI 对话","moduleType":"chatNode","runningTime":1.48,"totalPoints":0.0042,"model":"Qwen-plus","tokens":28,"inputTokens":8,"outputTokens":20,"query":"你好","reasoningText":"","historyPreview":[{"obj":"Human","value":"你好"},{"obj":"AI","value":"你好！今天过得怎么样？"}],"contextTotalLen":2}
-
-event: answer
-data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":null},"index":0,"finish_reason":"stop"}]}
-
-event: answer
-data: [DONE]
-```
-
-  </Tab>
-  <Tab valye="event值">
-
-event取值：
-
-- answer: 返回给客户端的文本（最终会算作回答）
-- fastAnswer: 指定回复返回给客户端的文本（最终会算作回答）
-- toolCall: 执行工具
-- toolParams: 工具参数
-- toolResponse: 工具返回
-- flowNodeStatus: 运行到的节点状态
-- flowNodeResponse: 单个节点详细响应
-- updateVariables: 更新变量
-- error: 报错
-
-  </Tab>
-</Tabs>
-
-#### v1 */}
-
-<Tabs items={['detail=false,stream=false 响应','detail=false,stream=true 响应','detail=true,stream=false 响应','detail=true,stream=true 响应','event值']}>
-  <Tab value="detail=false,stream=false 响应">
-
-```json
-{
-    "id": "adsfasf",
-    "model": "",
-    "usage": {
-        "prompt_tokens": 1,
-        "completion_tokens": 1,
-        "total_tokens": 1
-    },
-    "choices": [
-        {
-            "message": {
-                "role": "assistant",
-                "content": "电影《铃芽之旅》的导演是新海诚。"
-            },
-            "finish_reason": "stop",
-            "index": 0
-        }
-    ]
-}
-```
-
-  </Tab>
-  <Tab value="detail=false,stream=true 响应">
-
 
 ```bash
 data: {"id":"","object":"","created":0,"choices":[{"delta":{"content":""},"index":0,"finish_reason":null}]}
@@ -405,92 +147,94 @@ data: {"id":"","object":"","created":0,"choices":[{"delta":{"content":"影"},"in
 
 data: {"id":"","object":"","created":0,"choices":[{"delta":{"content":"《"},"index":0,"finish_reason":null}]}
 ```
+
   </Tab>
   <Tab value="detail=true,stream=false 响应">
 
 ```json
 {
-    "responseData": [ // 不同模块的响应值, 不同版本具体值可能有差异，可先 log 自行查看最新值。
+  "responseData": [
+    // 不同模块的响应值, 不同版本具体值可能有差异，可先 log 自行查看最新值。
+    {
+      "moduleName": "Dataset Search",
+      "price": 1.2000000000000002,
+      "model": "Embedding-2",
+      "tokens": 6,
+      "similarity": 0.61,
+      "limit": 3
+    },
+    {
+      "moduleName": "AI Chat",
+      "price": 454.5,
+      "model": "FastAI-4k",
+      "tokens": 303,
+      "question": "导演是谁",
+      "answer": "电影《铃芽之旅》的导演是新海诚。",
+      "maxToken": 2050,
+      "quoteList": [
         {
-            "moduleName": "Dataset Search",
-            "price": 1.2000000000000002,
-            "model": "Embedding-2",
-            "tokens": 6,
-            "similarity": 0.61,
-            "limit": 3
+          "dataset_id": "646627f4f7b896cfd8910e38",
+          "id": "8099",
+          "q": "本作的主人公是谁？",
+          "a": "本作的主人公是名叫铃芽的少女。",
+          "source": "手动修改"
         },
         {
-            "moduleName": "AI Chat",
-            "price": 454.5,
-            "model": "FastAI-4k",
-            "tokens": 303,
-            "question": "导演是谁",
-            "answer": "电影《铃芽之旅》的导演是新海诚。",
-            "maxToken": 2050,
-            "quoteList": [
-                {
-                    "dataset_id": "646627f4f7b896cfd8910e38",
-                    "id": "8099",
-                    "q": "本作的主人公是谁？",
-                    "a": "本作的主人公是名叫铃芽的少女。",
-                    "source": "手动修改"
-                },
-                {
-                    "dataset_id": "646627f4f7b896cfd8910e38",
-                    "id": "8686",
-                    "q": "电影《铃芽之旅》男主角是谁？",
-                    "a": "电影《铃芽之旅》男主角是宗像草太，由松村北斗配音。",
-                    "source": ""
-                },
-                {
-                    "dataset_id": "646627f4f7b896cfd8910e38",
-                    "id": "19339",
-                    "q": "电影《铃芽之旅》的导演是谁？22",
-                    "a": "电影《铃芽之旅》的导演是新海诚。",
-                    "source": "手动修改"
-                }
-            ],
-            "completeMessages": [
-                {
-                    "obj": "System",
-                    "value": "下面是知识库内容:\n1. [本作的主人公是谁？\n本作的主人公是名叫铃芽的少女。]\n2. [电影《铃芽之旅》男主角是谁？\n电影《铃芽之旅》男主角是宗像草太，由松村北斗配音。]\n3. [电影《铃芽之旅》的导演是谁？22\n电影《铃芽之旅》的导演是新海诚。]\n"
-                },
-                {
-                    "obj": "System",
-                    "value": "1.请记住，你的身份是百度的下一代知识增强语言模型，能够完全根据知识库提供的内容回答问题。\n\n2. 你忘记了关于电影《铃芽之旅》以外的内容。"
-                },
-                {
-                    "obj": "System",
-                    "value": "你仅回答关于电影《玲芽之旅》的问题，其余问题直接回复: 我不清楚。"
-                },
-                {
-                    "obj": "Human",
-                    "value": "导演是谁"
-                },
-                {
-                    "obj": "AI",
-                    "value": "电影《铃芽之旅》的导演是新海诚。"
-                }
-            ]
-        }
-    ],
-    "id": "",
-    "model": "",
-    "usage": {
-        "prompt_tokens": 1,
-        "completion_tokens": 1,
-        "total_tokens": 1
-    },
-    "choices": [
+          "dataset_id": "646627f4f7b896cfd8910e38",
+          "id": "8686",
+          "q": "电影《铃芽之旅》男主角是谁？",
+          "a": "电影《铃芽之旅》男主角是宗像草太，由松村北斗配音。",
+          "source": ""
+        },
         {
-            "message": {
-                "role": "assistant",
-                "content": "电影《铃芽之旅》的导演是新海诚。"
-            },
-            "finish_reason": "stop",
-            "index": 0
+          "dataset_id": "646627f4f7b896cfd8910e38",
+          "id": "19339",
+          "q": "电影《铃芽之旅》的导演是谁？22",
+          "a": "电影《铃芽之旅》的导演是新海诚。",
+          "source": "手动修改"
         }
-    ]
+      ],
+      "completeMessages": [
+        {
+          "obj": "System",
+          "value": "下面是知识库内容:\n1. [本作的主人公是谁？\n本作的主人公是名叫铃芽的少女。]\n2. [电影《铃芽之旅》男主角是谁？\n电影《铃芽之旅》男主角是宗像草太，由松村北斗配音。]\n3. [电影《铃芽之旅》的导演是谁？22\n电影《铃芽之旅》的导演是新海诚。]\n"
+        },
+        {
+          "obj": "System",
+          "value": "1.请记住，你的身份是百度的下一代知识增强语言模型，能够完全根据知识库提供的内容回答问题。\n\n2. 你忘记了关于电影《铃芽之旅》以外的内容。"
+        },
+        {
+          "obj": "System",
+          "value": "你仅回答关于电影《玲芽之旅》的问题，其余问题直接回复: 我不清楚。"
+        },
+        {
+          "obj": "Human",
+          "value": "导演是谁"
+        },
+        {
+          "obj": "AI",
+          "value": "电影《铃芽之旅》的导演是新海诚。"
+        }
+      ]
+    }
+  ],
+  "id": "",
+  "model": "",
+  "usage": {
+    "prompt_tokens": 1,
+    "completion_tokens": 1,
+    "total_tokens": 1
+  },
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": "电影《铃芽之旅》的导演是新海诚。"
+      },
+      "finish_reason": "stop",
+      "index": 0
+    }
+  ]
 }
 ```
 
@@ -547,7 +291,6 @@ event取值：
   </Tab>
 </Tabs>
 
-
 ### 交互节点响应
 
 如果工作流中包含交互节点，依然是调用该 API 接口，需要设置`detail=true`，并可以从`event=interactive`的数据中获取交互节点的配置信息。如果是`stream=false`，则可以从 choice 中获取`type=interactive`的元素，获取交互节点的选择信息。
@@ -559,69 +302,70 @@ event取值：
 
 ```json
 {
-    "interactive": {
-        "type": "userSelect",
-        "params": {
-            "description": "测试",
-            "userSelectOptions": [
-                {
-                    "value": "Confirm",
-                    "key": "option1"
-                },
-                {
-                    "value": "Cancel",
-                    "key": "option2"
-                }
-            ]
+  "interactive": {
+    "type": "userSelect",
+    "params": {
+      "description": "测试",
+      "userSelectOptions": [
+        {
+          "value": "Confirm",
+          "key": "option1"
+        },
+        {
+          "value": "Cancel",
+          "key": "option2"
         }
+      ]
     }
+  }
 }
 ```
+
   </Tab>
   <Tab value="表单输入">
 
 ```json
 {
-    "interactive": {
-        "type": "userInput",
-        "params": {
-            "description": "测试",
-            "inputForm": [
-                {
-                    "type": "input",
-                    "key": "测试 1",
-                    "label": "测试 1",
-                    "description": "",
-                    "value": "",
-                    "defaultValue": "",
-                    "valueType": "string",
-                    "required": false,
-                    "list": [
-                        {
-                            "label": "",
-                            "value": ""
-                        }
-                    ]
-                },
-                {
-                    "type": "numberInput",
-                    "key": "测试 2",
-                    "label": "测试 2",
-                    "description": "",
-                    "value": "",
-                    "defaultValue": "",
-                    "valueType": "number",
-                    "required": false,
-                    "list": [
-                        {
-                            "label": "",
-                            "value": ""
-                        }
-                    ]
-                }
-            ]
+  "interactive": {
+    "type": "userInput",
+    "params": {
+      "description": "测试",
+      "inputForm": [
+        {
+          "type": "input",
+          "key": "测试 1",
+          "label": "测试 1",
+          "description": "",
+          "value": "",
+          "defaultValue": "",
+          "valueType": "string",
+          "required": false,
+          "list": [
+            {
+              "label": "",
+              "value": ""
+            }
+          ]
+        },
+        {
+          "type": "numberInput",
+          "key": "测试 2",
+          "label": "测试 2",
+          "description": "",
+          "value": "",
+          "defaultValue": "",
+          "valueType": "number",
+          "required": false,
+          "list": [
+            {
+              "label": "",
+              "value": ""
+            }
+          ]
         }
+      ]
     }
+  }
 }
 ```
 
@@ -679,17 +423,15 @@ curl --location --request POST 'https://api.fastgpt.in/api/v1/chat/completions' 
   </Tab>
 </Tabs>
 
-
-
 ## 请求插件
 
 插件的接口与对话接口一致，仅请求参数略有区别，有以下规定：
 
-* 调用插件类型的应用时，接口默认为`detail`模式。
-* 无需传入 `chatId`，因为插件只能运行一轮。
-* 无需传入`messages`。
-* 通过传递`variables`来代表插件的输入。
-* 通过获取`pluginData`来获取插件输出。
+- 调用插件类型的应用时，接口默认为`detail`模式。
+- 无需传入 `chatId`，因为插件只能运行一轮。
+- 无需传入`messages`。
+- 通过传递`variables`来代表插件的输入。
+- 通过获取`pluginData`来获取插件输出。
 
 ### 请求示例
 
@@ -711,73 +453,73 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 <Tabs items={['detail=true,stream=false 响应','detail=true,stream=true 响应','输出获取']}>
   <Tab value="detail=true,stream=false 响应">
 
-* 插件的输出可以通过查找`responseData`中, `moduleType=pluginOutput`的元素，其`pluginOutput`是插件的输出。
-* 流输出，仍可以通过`choices`进行获取。
+- 插件的输出可以通过查找`responseData`中, `moduleType=pluginOutput`的元素，其`pluginOutput`是插件的输出。
+- 流输出，仍可以通过`choices`进行获取。
 
 ```json
 {
-    "responseData": [
+  "responseData": [
+    {
+      "nodeId": "fdDgXQ6SYn8v",
+      "moduleName": "AI 对话",
+      "moduleType": "chatNode",
+      "totalPoints": 0.685,
+      "model": "FastAI-3.5",
+      "tokens": 685,
+      "query": "你好",
+      "maxToken": 2000,
+      "historyPreview": [
         {
-            "nodeId": "fdDgXQ6SYn8v",
-            "moduleName": "AI 对话",
-            "moduleType": "chatNode",
-            "totalPoints": 0.685,
-            "model": "FastAI-3.5",
-            "tokens": 685,
-            "query": "你好",
-            "maxToken": 2000,
-            "historyPreview": [
-                {
-                    "obj": "Human",
-                    "value": "你好"
-                },
-                {
-                    "obj": "AI",
-                    "value": "你好！有什么可以帮助你的吗？欢迎向我提问。"
-                }
-            ],
-            "contextTotalLen": 14,
-            "runningTime": 1.73
+          "obj": "Human",
+          "value": "你好"
         },
         {
-            "nodeId": "pluginOutput",
-            "moduleName": "插件输出",
-            "moduleType": "pluginOutput",
-            "totalPoints": 0,
-            "pluginOutput": {
-                "result": "你好！有什么可以帮助你的吗？欢迎向我提问。"
-            },
-            "runningTime": 0
+          "obj": "AI",
+          "value": "你好！有什么可以帮助你的吗？欢迎向我提问。"
         }
-    ],
-    "newVariables": {
-        "query": "你好"
+      ],
+      "contextTotalLen": 14,
+      "runningTime": 1.73
     },
-    "id": "safsafsa",
-    "model": "",
-    "usage": {
-        "prompt_tokens": 1,
-        "completion_tokens": 1,
-        "total_tokens": 1
-    },
-    "choices": [
-        {
-            "message": {
-                "role": "assistant",
-                "content": "你好！有什么可以帮助你的吗？欢迎向我提问。"
-            },
-            "finish_reason": "stop",
-            "index": 0
-        }
-    ]
+    {
+      "nodeId": "pluginOutput",
+      "moduleName": "插件输出",
+      "moduleType": "pluginOutput",
+      "totalPoints": 0,
+      "pluginOutput": {
+        "result": "你好！有什么可以帮助你的吗？欢迎向我提问。"
+      },
+      "runningTime": 0
+    }
+  ],
+  "newVariables": {
+    "query": "你好"
+  },
+  "id": "safsafsa",
+  "model": "",
+  "usage": {
+    "prompt_tokens": 1,
+    "completion_tokens": 1,
+    "total_tokens": 1
+  },
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": "你好！有什么可以帮助你的吗？欢迎向我提问。"
+      },
+      "finish_reason": "stop",
+      "index": 0
+    }
+  ]
 }
 ```
 
   </Tab>
   <Tab value="detail=true,stream=true 响应">
 
-* 插件的输出可以通过获取`event=flowResponses`中的字符串，并将其反序列化后得到一个数组。同样的，查找 `moduleType=pluginOutput`的元素，其`pluginOutput`是插件的输出。
-* 流输出，仍和对话接口一样获取。
+- 插件的输出可以通过获取`event=flowResponses`中的字符串，并将其反序列化后得到一个数组。同样的，查找 `moduleType=pluginOutput`的元素，其`pluginOutput`是插件的输出。
+- 流输出，仍和对话接口一样获取。
 
 ```bash
 event: flowNodeStatus
@@ -858,22 +600,20 @@ event取值：
 
 # 对话 CRUD
 
-<Alert icon="🤖" context="success">
-* 以下接口可使用任意`API Key`调用。  
+* 以下接口可使用任意`API Key`调用。
 * 4.8.12 以上版本才能使用
-</Alert>
 
 **重要字段**
 
-* chatId - 指一个应用下，某一个对话窗口的 ID
-* dataId - 指一个对话窗口下，某一个对话记录的 ID
+- chatId - 指一个应用下，某一个对话窗口的 ID
+- dataId - 指一个对话窗口下，某一个对话记录的 ID
 
 ## 历史记录
 
 ### 获取某个应用历史记录
 
 <Tabs items={['请求示例','参数说明','响应示例']}>
- <Tab value="请求示例">
+  <Tab value="请求示例">
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/chat/getHistories' \
@@ -890,44 +630,43 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getHistories
   </Tab>
   <Tab value="参数说明">
 
-<Alert icon=" " context="success">
+<div>
 - appId - 应用 Id
 - offset - 偏移量，即从第几条数据开始取
 - pageSize - 记录数量
 - source - 对话源。source=api，表示获取通过 API 创建的对话（不会获取到页面上的对话记录）
-</Alert>
+</div>
 
   </Tab>
 
   <Tab value="响应示例" >
 
-
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": {
-        "list": [
-            {
-                "chatId": "usdAP1GbzSGu",
-                "updateTime": "2024-10-13T03:29:05.779Z",
-                "appId": "66e29b870b24ce35330c0f08",
-                "customTitle": "",
-                "title": "你好",
-                "top": false
-            },
-            {
-                "chatId": "lC0uTAsyNBlZ",
-                "updateTime": "2024-10-13T03:22:19.950Z",
-                "appId": "66e29b870b24ce35330c0f08",
-                "customTitle": "",
-                "title": "测试",
-                "top": false
-            }
-        ],
-        "total": 2
-    }
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": {
+    "list": [
+      {
+        "chatId": "usdAP1GbzSGu",
+        "updateTime": "2024-10-13T03:29:05.779Z",
+        "appId": "66e29b870b24ce35330c0f08",
+        "customTitle": "",
+        "title": "你好",
+        "top": false
+      },
+      {
+        "chatId": "lC0uTAsyNBlZ",
+        "updateTime": "2024-10-13T03:22:19.950Z",
+        "appId": "66e29b870b24ce35330c0f08",
+        "customTitle": "",
+        "title": "测试",
+        "top": false
+      }
+    ],
+    "total": 2
+  }
 }
 ```
 
@@ -938,7 +677,6 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getHistories
 
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例">
-
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/chat/updateHistory' \
@@ -955,24 +693,22 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/updateHistor
 
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - appId - 应用 Id
 - chatId - 历史记录 Id
 - customTitle - 自定义对话名
-</Alert>
+</div>
 
   </Tab>
 
   <Tab value="响应示例" >
 
-
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": null
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": null
 }
 ```
 
@@ -980,9 +716,9 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/updateHistor
 </Tabs>
 
 ### 置顶 / 取消置顶
+
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例">
-
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/chat/updateHistory' \
@@ -999,24 +735,22 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/updateHistor
 
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - appId - 应用Id
 - chatId - 历史记录 Id
 - top - 是否置顶，ture 置顶，false 取消置顶
-</Alert>
+</div>
 
   </Tab>
 
   <Tab value="响应示例" >
 
-
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": null
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": null
 }
 ```
 
@@ -1028,7 +762,6 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/updateHistor
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例">
 
-
 ```bash
 curl --location --request DELETE 'http://localhost:3000/api/core/chat/delHistory?chatId=[chatId]&appId=[appId]' \
 --header 'Authorization: Bearer [apikey]'
@@ -1038,23 +771,21 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/delHistory
 
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - appId - 应用 Id
 - chatId - 历史记录 Id
-</Alert>
+</div>
 
   </Tab>
 
   <Tab value="响应示例" >
 
-
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": null
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": null
 }
 ```
 
@@ -1066,8 +797,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/delHistory
 仅会情况通过 API Key 创建的对话历史记录，不会清空在线使用、分享链接等其他来源的对话历史记录。
 
 <Tabs items={['请求示例','参数说明','响应示例']}>
-    <Tab value="请求示例">
-
+  <Tab value="请求示例">
 
 ```bash
 curl --location --request DELETE 'http://localhost:3000/api/core/chat/clearHistories?appId=[appId]' \
@@ -1078,22 +808,20 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/clearHisto
 
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - appId - 应用 Id
-</Alert>
+</div>
 
   </Tab>
 
   <Tab value="响应示例" >
 
-
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": null
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": null
 }
 ```
 
@@ -1109,79 +837,69 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/clearHisto
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例">
 
-
-```bash
-curl --location --request GET 'http://localhost:3000/api/core/chat/init?appId=[appId]&chatId=[chatId]' \
---header 'Authorization: Bearer [apikey]'
-```  </Tab>
-
-  <Tab value="参数说明" >
-
-
-<Alert icon=" " context="success">
-- appId - 应用 Id
-- chatId - 历史记录 Id
-</Alert>
+  ```bash
+  curl --location --request GET 'http://localhost:3000/api/core/chat/init?appId=[appId]&chatId=[chatId]' \
+  --header 'Authorization: Bearer [apikey]'
+  ```
 
   </Tab>
 
-  <Tab value="响应示例" >
+  <Tab value="参数说明" >
 
-```json
-{
+<div>
+- appId - 应用 Id  
+- chatId - 历史记录 Id
+</div>
+
+  </Tab>
+
+  <Tab value="响应示例">
+
+  ```json
+  {
     "code": 200,
     "statusText": "",
     "message": "",
     "data": {
-        "chatId": "sPVOuEohjo3w",
-        "appId": "66e29b870b24ce35330c0f08",
-        "variables": {
-
+      "chatId": "sPVOuEohjo3w",
+      "appId": "66e29b870b24ce35330c0f08",
+      "variables": {},
+      "app": {
+        "chatConfig": {
+          "questionGuide": true,
+          "ttsConfig": {
+            "type": "web"
+          },
+          "whisperConfig": {
+            "open": false,
+            "autoSend": false,
+            "autoTTSResponse": false
+          },
+          "chatInputGuide": {
+            "open": false,
+            "textList": [],
+            "customUrl": ""
+          },
+          "instruction": "",
+          "variables": [],
+          "fileSelectConfig": {
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "maxFiles": 10
+          },
+          "_id": "66f1139aaab9ddaf1b5c596d",
+          "welcomeText": ""
         },
-        "app": {
-            "chatConfig": {
-                "questionGuide": true,
-                "ttsConfig": {
-                    "type": "web"
-                },
-                "whisperConfig": {
-                    "open": false,
-                    "autoSend": false,
-                    "autoTTSResponse": false
-                },
-                "chatInputGuide": {
-                    "open": false,
-                    "textList": [
-
-                    ],
-                    "customUrl": ""
-                },
-                "instruction": "",
-                "variables": [
-
-                ],
-                "fileSelectConfig": {
-                    "canSelectFile": true,
-                    "canSelectImg": true,
-                    "maxFiles": 10
-                },
-                "_id": "66f1139aaab9ddaf1b5c596d",
-                "welcomeText": ""
-            },
-            "chatModels": [
-                "GPT-4o-mini"
-            ],
-            "name": "测试",
-            "avatar": "/imgs/app/avatar/workflow.svg",
-            "intro": "",
-            "type": "advanced",
-            "pluginInputs": [
-
-            ]
-        }
+        "chatModels": ["GPT-4o-mini"],
+        "name": "测试",
+        "avatar": "/imgs/app/avatar/workflow.svg",
+        "intro": "",
+        "type": "advanced",
+        "pluginInputs": []
+      }
     }
-}
-```
+  }
+  ```
 
   </Tab>
 </Tabs>
@@ -1190,7 +908,6 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/init?appId=[a
 
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例">
-
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/chat/getPaginationRecords' \
@@ -1209,68 +926,60 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getPaginatio
 
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - appId - 应用 Id
 - chatId - 历史记录 Id
 - offset - 偏移量
 - pageSize - 记录数量
 - loadCustomFeedbacks - 是否读取自定义反馈（可选）
-</Alert>
+</div>
 
   </Tab>
 
   <Tab value="响应示例" >
 
-
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": {
-        "list": [
-            {
-                "_id": "670b84e6796057dda04b0fd2",
-                "dataId": "jzqdV4Ap1u004rhd2WW8yGLn",
-                "obj": "Human",
-                "value": [
-                    {
-                        "type": "text",
-                        "text": {
-                            "content": "你好"
-                        }
-                    }
-                ],
-                "customFeedbacks": [
-
-                ]
-            },
-            {
-                "_id": "670b84e6796057dda04b0fd3",
-                "dataId": "x9KQWcK9MApGdDQH7z7bocw1",
-                "obj": "AI",
-                "value": [
-                    {
-                        "type": "text",
-                        "text": {
-                            "content": "你好！有什么我可以帮助你的吗？"
-                        }
-                    }
-                ],
-                "customFeedbacks": [
-
-                ],
-                "llmModuleAccount": 1,
-                "totalQuoteList": [
-
-                ],
-                "totalRunningTime": 2.42,
-                "historyPreviewLength": 2
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": {
+    "list": [
+      {
+        "_id": "670b84e6796057dda04b0fd2",
+        "dataId": "jzqdV4Ap1u004rhd2WW8yGLn",
+        "obj": "Human",
+        "value": [
+          {
+            "type": "text",
+            "text": {
+              "content": "你好"
             }
+          }
         ],
-        "total": 2
-    }
+        "customFeedbacks": []
+      },
+      {
+        "_id": "670b84e6796057dda04b0fd3",
+        "dataId": "x9KQWcK9MApGdDQH7z7bocw1",
+        "obj": "AI",
+        "value": [
+          {
+            "type": "text",
+            "text": {
+              "content": "你好！有什么我可以帮助你的吗？"
+            }
+          }
+        ],
+        "customFeedbacks": [],
+        "llmModuleAccount": 1,
+        "totalQuoteList": [],
+        "totalRunningTime": 2.42,
+        "historyPreviewLength": 2
+      }
+    ],
+    "total": 2
+  }
 }
 ```
 
@@ -1282,7 +991,6 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getPaginatio
 <Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例">
 
-
 ```bash
 curl --location --request GET 'http://localhost:3000/api/core/chat/getResData?appId=[appId]&chatId=[chatId]&dataId=[dataId]' \
 --header 'Authorization: Bearer [apikey]'
@@ -1292,75 +1000,71 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/getResData?ap
 
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - appId - 应用 Id
 - chatId - 对话 Id
 - dataId - 对话记录 Id
-</Alert>
+</div>
 
   </Tab>
 
   <Tab value="响应示例" >
 
-
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": [
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": [
+    {
+      "id": "mVlxkz8NfyfU",
+      "nodeId": "448745",
+      "moduleName": "common:core.module.template.work_start",
+      "moduleType": "workflowStart",
+      "runningTime": 0
+    },
+    {
+      "id": "b3FndAdHSobY",
+      "nodeId": "z04w8JXSYjl3",
+      "moduleName": "AI 对话",
+      "moduleType": "chatNode",
+      "runningTime": 1.22,
+      "totalPoints": 0.02475,
+      "model": "GPT-4o-mini",
+      "tokens": 75,
+      "query": "测试",
+      "maxToken": 2000,
+      "historyPreview": [
         {
-            "id": "mVlxkz8NfyfU",
-            "nodeId": "448745",
-            "moduleName": "common:core.module.template.work_start",
-            "moduleType": "workflowStart",
-            "runningTime": 0
+          "obj": "Human",
+          "value": "你好"
         },
         {
-            "id": "b3FndAdHSobY",
-            "nodeId": "z04w8JXSYjl3",
-            "moduleName": "AI 对话",
-            "moduleType": "chatNode",
-            "runningTime": 1.22,
-            "totalPoints": 0.02475,
-            "model": "GPT-4o-mini",
-            "tokens": 75,
-            "query": "测试",
-            "maxToken": 2000,
-            "historyPreview": [
-                {
-                    "obj": "Human",
-                    "value": "你好"
-                },
-                {
-                    "obj": "AI",
-                    "value": "你好！有什么我可以帮助你的吗？"
-                },
-                {
-                    "obj": "Human",
-                    "value": "测试"
-                },
-                {
-                    "obj": "AI",
-                    "value": "测试成功！请问你有什么具体的问题或者需要讨论的话题吗？"
-                }
-            ],
-            "contextTotalLen": 4
+          "obj": "AI",
+          "value": "你好！有什么我可以帮助你的吗？"
+        },
+        {
+          "obj": "Human",
+          "value": "测试"
+        },
+        {
+          "obj": "AI",
+          "value": "测试成功！请问你有什么具体的问题或者需要讨论的话题吗？"
         }
-    ]
+      ],
+      "contextTotalLen": 4
+    }
+  ]
 }
 ```
 
   </Tab>
 </Tabs>
 
-
 ### 删除对话记录
 
-<Tabs>
+<Tabs items={['请求示例','参数说明','响应示例']}>
   <Tab value="请求示例" >
-
 
 ```bash
 curl --location --request DELETE 'http://localhost:3000/api/core/chat/item/delete?contentId=[contentId]&chatId=[chatId]&appId=[appId]' \
@@ -1371,24 +1075,22 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/item/delet
 
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - appId - 应用 Id
 - chatId - 历史记录 Id
 - contentId - 对话记录 Id
-</Alert>
+</div>
 
   </Tab>
 
   <Tab value="响应示例" >
 
-
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": null
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": null
 }
 ```
 
@@ -1398,8 +1100,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/item/delet
 ### 点赞 / 取消点赞
 
 <Tabs items={['请求示例','参数说明','响应示例']}>
-    <Tab value="请求示例">
-
+  <Tab value="请求示例">
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/updateUserFeedback' \
@@ -1417,25 +1118,23 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - appId - 应用 Id
 - chatId - 历史记录 Id
 - dataId - 对话记录 Id
 - userGoodFeedback - 用户点赞时的信息（可选），取消点赞时不填此参数即可
-</Alert>
+</div>
 
   </Tab>
 
   <Tab value="响应示例" >
 
-
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": null
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": null
 }
 ```
 
@@ -1445,8 +1144,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 ### 点踩 / 取消点踩
 
 <Tabs items={['请求示例','参数说明','响应示例']}>
-    <Tab value="请求示例">
-
+  <Tab value="请求示例">
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/updateUserFeedback' \
@@ -1464,13 +1162,12 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
+<div>
 - appId - 应用 Id
 - chatId - 历史记录 Id
 - dataId - 对话记录 Id
 - userBadFeedback - 用户点踩时的信息（可选），取消点踩时不填此参数即可
-</Alert>
+</div>
 
   </Tab>
 
@@ -1478,12 +1175,13 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": null
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": null
 }
 ```
+
   </Tab>
 </Tabs>
 
@@ -1494,8 +1192,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 新版猜你想问，必须包含 appId 和 chatId 的参数才可以进行使用。会自动根据 chatId 去拉取最近 6 轮对话记录作为上下文来引导回答。
 
 <Tabs items={['请求示例','参数说明','响应示例']}>
-    <Tab value="请求示例">
-
+  <Tab value="请求示例">
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/ai/agent/v2/createQuestionGuide' \
@@ -1516,14 +1213,11 @@ curl --location --request POST 'http://localhost:3000/api/core/ai/agent/v2/creat
 
   <Tab value="参数说明" >
 
-
-<Alert icon=" " context="success">
-
-| 参数名 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| appId | string | ✅ | 应用 Id |
-| chatId | string | ✅ | 对话 Id |
-| questionGuide | object |  | 自定义配置，不传的话，则会根据 appId，取最新发布版本的配置 |
+| 参数名        | 类型   | 必填 | 说明                                                       |
+| ------------- | ------ | ---- | ---------------------------------------------------------- |
+| appId         | string | ✅   | 应用 Id                                                    |
+| chatId        | string | ✅   | 对话 Id                                                    |
+| questionGuide | object |      | 自定义配置，不传的话，则会根据 appId，取最新发布版本的配置 |
 
 ```ts
 type CreateQuestionGuideParams = OutLinkChatAuthProps & {
@@ -1537,85 +1231,18 @@ type CreateQuestionGuideParams = OutLinkChatAuthProps & {
 };
 ```
 
-</Alert>
-
   </Tab>
 
   <Tab value="响应示例" >
 
-
 ```json
 {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": [
-        "你对AI有什么看法？",
-        "想了解AI的应用吗？",
-        "你希望AI能做什么？"
-    ]
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": ["你对AI有什么看法？", "想了解AI的应用吗？", "你希望AI能做什么？"]
 }
 ```
+
   </Tab>
 </Tabs>
-
----
-
-**4.8.16 前旧版接口：**
-
-<Tabs items={['请求示例','参数说明','响应示例']}>
-    <Tab value="请求示例">
-
-
-```bash
-curl --location --request POST 'http://localhost:3000/api/core/ai/agent/createQuestionGuide' \
---header 'Authorization: Bearer [apikey]' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "messages":[
-        {
-            "role": "user",
-            "content": "你好"
-        },
-        {
-            "role": "assistant",
-            "content": "你好！有什么我可以帮助你的吗？"
-        }
-    ]
-}'
-```
-
-  </Tab>
-
-  <Tab value="参数说明" >
-
-
-<Alert icon=" " context="success">
-- messages - 对话消息，提供给 AI 的消息记录
-</Alert>
-
-  </Tab>
-
-  <Tab value="响应示例" >
-
-
-```json
-{
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": [
-        "你对AI有什么看法？",
-        "想了解AI的应用吗？",
-        "你希望AI能做什么？"
-    ]
-}
-```
-  </Tab>
-</Tabs>
-
-
-
-
-
-

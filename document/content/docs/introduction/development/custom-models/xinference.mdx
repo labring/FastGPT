@@ -13,8 +13,8 @@ Xinference 支持多种推理引擎作为后端，以满足不同场景下部署
 
 如果你的目标是在一台 Linux 或者 Window 服务器上部署大模型，可以选择 Transformers 或 vLLM 作为 Xinference 的推理后端：
 
-+ [Transformers](https://huggingface.co/docs/transformers/index)：通过集成 Huggingface 的 Transformers 库作为后端，Xinference 可以最快地 集成当今自然语言处理（NLP）领域的最前沿模型（自然也包括 LLM）。
-+ [vLLM](https://vllm.ai/): vLLM 是由加州大学伯克利分校开发的一个开源库，专为高效服务大型语言模型（LLM）而设计。它引入了 PagedAttention 算法， 通过有效管理注意力键和值来改善内存管理，吞吐量能够达到 Transformers 的 24 倍，因此 vLLM 适合在生产环境中使用，应对高并发的用户访问。
+- [Transformers](https://huggingface.co/docs/transformers/index)：通过集成 Huggingface 的 Transformers 库作为后端，Xinference 可以最快地 集成当今自然语言处理（NLP）领域的最前沿模型（自然也包括 LLM）。
+- [vLLM](https://vllm.ai/): vLLM 是由加州大学伯克利分校开发的一个开源库，专为高效服务大型语言模型（LLM）而设计。它引入了 PagedAttention 算法， 通过有效管理注意力键和值来改善内存管理，吞吐量能够达到 Transformers 的 24 倍，因此 vLLM 适合在生产环境中使用，应对高并发的用户访问。
 
 假设你服务器配备 NVIDIA 显卡，可以参考[这篇文章中的指令来安装 CUDA](https://xorbits.cn/blogs/langchain-streamlit-doc-chat)，从而让 Xinference 最大限度地利用显卡的加速功能。
 
@@ -98,7 +98,7 @@ xinference launch -n qwen-chat -s 14 -f pytorch
 
 ## 将本地模型接入 One API
 
-One API 的部署和接入请参考[这里](/docs/development/modelconfig/one-api/)。
+One API 的部署和接入请参考[这里](/docs/introduction/development/modelconfig/one-api/)。
 
 为 qwen1.5-chat 添加一个渠道，这里的 Base URL 需要填 Xinference 服务的端点，并且注册 qwen-chat (模型的 UID) 。
 
@@ -153,9 +153,6 @@ curl --location --request POST 'https://[oneapi_url]/v1/chat/completions' \
 
 然后重启 FastGPT 就可以在应用配置中选择 Qwen 模型进行对话：
 
-![](/imgs/fastgpt-list-models.png)
----
+## ![](/imgs/fastgpt-list-models.png)
 
-+ 参考：[FastGPT + Xinference：一站式本地 LLM 私有化部署和应用开发](https://xorbits.cn/blogs/fastgpt-weather-chat)
-
-
+- 参考：[FastGPT + Xinference：一站式本地 LLM 私有化部署和应用开发](https://xorbits.cn/blogs/fastgpt-weather-chat)

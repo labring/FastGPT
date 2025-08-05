@@ -18,7 +18,7 @@ description: FastGPT 私有部署常见问题
 
 ### OneAPI 错误
 
-带有`requestId`的，都是 OneAPI 提示错误，大部分都是因为模型接口报错。可以参考 [OneAPI 常见错误](/docs/development/faq/#三常见的-oneapi-错误)
+带有`requestId`的，都是 OneAPI 提示错误，大部分都是因为模型接口报错。可以参考 [OneAPI 常见错误](/docs/introduction/development/faq/#三常见的-oneapi-错误)
 
 ## 二、通用问题
 
@@ -59,13 +59,15 @@ description: FastGPT 私有部署常见问题
 
 1. 看日志。如果提示 JSON invalid，not support tool 之类的，说明该模型不支持工具调用或函数调用，需要设置`toolChoice=false`和`functionCall=false`，就会默认走提示词模式。目前内置提示词仅针对了商业模型API进行测试。问题分类基本可用，内容提取不太行。
 2. 如果已经配置正常，并且没有错误日志，则说明可能提示词不太适合该模型，可以通过修改`customCQPrompt`来自定义提示词。
-   
+
 ### 页面崩溃
 
 1. 关闭翻译
 2. 检查配置文件是否正常加载，如果没有正常加载会导致缺失系统信息，在某些操作下会导致空指针。
-  * 95%情况是配置文件不对。会提示 xxx undefined
-  * 提示`URI malformed`，请 Issue 反馈具体操作和页面，这是由于特殊字符串编码解析报错。
+
+- 95%情况是配置文件不对。会提示 xxx undefined
+- 提示`URI malformed`，请 Issue 反馈具体操作和页面，这是由于特殊字符串编码解析报错。
+
 3. 某些api不兼容问题（较少）
 
 ### 开启内容补全后，响应速度变慢
@@ -102,7 +104,7 @@ description: FastGPT 私有部署常见问题
 
 带有 requestId 的都是 OneAPI 的报错。
 
-### insufficient_user_quota user quota is not enough 
+### insufficient_user_quota user quota is not enough
 
 OneAPI 账号的余额不足，默认 root 用户只有 200 刀，可以手动修改。
 
@@ -120,7 +122,8 @@ FastGPT 模型配置文件中的 model 必须与 OneAPI 渠道中的模型对应
 
 ### 点击模型测试失败
 
-OneAPI 只会测试渠道的第一个模型，并且只会测试对话模型，向量模型无法自动测试，需要手动发起请求进行测试。[查看测试模型命令示例](/docs/development/faq/#如何检查模型问题)
+OneAPI 只会测试渠道的第一个模型，并且只会测试对话模型，向量模型无法自动测试，需要手动发起请求进行测试。[查看测试模型命令示例](/docs/introduction/development/faq/#如何检查模型问题)
+
 ### get request url failed: Post `"https://xxx"` dial tcp: xxxx
 
 OneAPI 与模型网络不通，需要检查网络配置。
@@ -136,7 +139,6 @@ OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并
 1. 模型服务不可用
 2. 模型接口参数异常（温度、max token等可能不适配）
 3. ....
-
 
 ### Tiktoken 下载失败
 
@@ -304,35 +306,35 @@ curl --location --request POST 'https://oneapi.xxx/v1/chat/completions' \
 
 ```json
 {
-    "id": "chatcmpl-A7kwo1rZ3OHYSeIFgfWYxu8X2koN3",
-    "object": "chat.completion.chunk",
-    "created": 1726412126,
-    "model": "gpt-4o-mini-2024-07-18",
-    "system_fingerprint": "fp_483d39d857",
-    "choices": [
-        {
+  "id": "chatcmpl-A7kwo1rZ3OHYSeIFgfWYxu8X2koN3",
+  "object": "chat.completion.chunk",
+  "created": 1726412126,
+  "model": "gpt-4o-mini-2024-07-18",
+  "system_fingerprint": "fp_483d39d857",
+  "choices": [
+    {
+      "index": 0,
+      "delta": {
+        "role": "assistant",
+        "content": null,
+        "tool_calls": [
+          {
             "index": 0,
-            "delta": {
-                "role": "assistant",
-                "content": null,
-                "tool_calls": [
-                    {
-                        "index": 0,
-                        "id": "call_0n24eiFk8OUyIyrdEbLdirU7",
-                        "type": "function",
-                        "function": {
-                            "name": "mEYIcFl84rYC",
-                            "arguments": ""
-                        }
-                    }
-                ],
-                "refusal": null
-            },
-            "logprobs": null,
-            "finish_reason": null
-        }
-    ],
-    "usage": null
+            "id": "call_0n24eiFk8OUyIyrdEbLdirU7",
+            "type": "function",
+            "function": {
+              "name": "mEYIcFl84rYC",
+              "arguments": ""
+            }
+          }
+        ],
+        "refusal": null
+      },
+      "logprobs": null,
+      "finish_reason": null
+    }
+  ],
+  "usage": null
 }
 ```
 
