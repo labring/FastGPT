@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { LoginContainer } from '@/pageComponents/login';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -18,18 +18,17 @@ const LoginModal = ({ onSuccess }: LoginModalProps) => {
       closeOnOverlayClick={false}
       isCentered
       size="lg"
-      w={['100%', '556px']}
-      h={['100%', 'auto']}
-      maxW="556px"
-      maxH={['100vh', '90vh']}
       borderRadius={[0, '16px']}
-      overflow="hidden"
+      overflow="auto"
+      minH={['100vh', '690px']}
     >
-      <Box
-        px={['5vw', '88px']}
-        py={['5vh', '64px']}
-        minH={['100vh', '600px']}
-        display="flex"
+      <Flex
+        w={['100%', '560px']}
+        px={['5vw', '90px']}
+        py={['5vh', '90px']}
+        h="690px"
+        flexGrow={1}
+        maxW="560px"
         flexDirection="column"
         position="relative"
       >
@@ -41,7 +40,7 @@ const LoginModal = ({ onSuccess }: LoginModalProps) => {
         )}
 
         <LoginContainer onSuccess={onSuccess} />
-      </Box>
+      </Flex>
     </MyModal>
   );
 };
