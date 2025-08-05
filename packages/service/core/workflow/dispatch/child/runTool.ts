@@ -34,7 +34,7 @@ type RunToolProps = ModuleDispatchProps<{
 
 type RunToolResponse = DispatchNodeResultType<
   {
-    [NodeOutputKeyEnum.rawResponse]?: any;
+    [NodeOutputKeyEnum.rawResponse]?: any; // MCP Tool
     [key: string]: any;
   },
   Record<string, any>
@@ -197,6 +197,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
       const result = await mcpClient.toolCall(toolName, params);
       return {
+        data: { [NodeOutputKeyEnum.rawResponse]: result },
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
           toolRes: result,
           moduleLogo: avatar
