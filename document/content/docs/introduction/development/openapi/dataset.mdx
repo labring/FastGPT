@@ -66,7 +66,8 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/create' \
     "intro":"介绍",
     "avatar": "",
     "vectorModel": "text-embedding-ada-002",
-    "agentModel": "gpt-3.5-turbo-16k"
+    "agentModel": "gpt-3.5-turbo-16k",
+    "vlmModel": "gpt-4.1" 
 }'
 ```
 
@@ -83,6 +84,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/create' \
 - avatar - 头像地址（可选）
 - vectorModel - 向量模型（建议传空，用系统默认的）
 - agentModel - 文本处理模型（建议传空，用系统默认的）
+- vlmModel - 图片理解模型（建议传空，用系统默认的）
 </Alert>
 
 
