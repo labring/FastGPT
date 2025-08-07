@@ -45,17 +45,11 @@ const requestLLMPargraph = async ({
   paragraphChunkAIMode: ParagraphChunkAIModeEnum;
   customPdfParse?: boolean;
 }) => {
-  addLog.debug(
-    `[requestLLMPargraph] start, mode: ${paragraphChunkAIMode}, customPdfParse: ${customPdfParse}, rawText length: ${rawText.length}`
-  );
-  addLog.debug(`[requestLLMPargraph] global.feConfigs?.isPlus: ${global.feConfigs?.isPlus}`);
-
   if (
     !global.feConfigs?.isPlus ||
     !paragraphChunkAIMode ||
     paragraphChunkAIMode === ParagraphChunkAIModeEnum.forbid
   ) {
-    addLog.debug(`[requestLLMPargraph] early return - not plus or forbidden mode`);
     return {
       resultText: rawText,
       totalInputTokens: 0,
@@ -63,12 +57,9 @@ const requestLLMPargraph = async ({
     };
   }
 
-  // 优化Markdown检测逻辑
   if (paragraphChunkAIMode === ParagraphChunkAIModeEnum.auto) {
     const isMarkdown = isMarkdownText(rawText, customPdfParse);
-    addLog.debug(`[requestLLMPargraph] auto mode - isMarkdown: ${isMarkdown}`);
     if (isMarkdown) {
-      addLog.debug(`[requestLLMPargraph] auto mode - detected markdown, returning original text`);
       return {
         resultText: rawText,
         totalInputTokens: 0,
@@ -85,13 +76,6 @@ const requestLLMPargraph = async ({
       .map((line) => line.replace(/^#+\s*/, '').trim())
       .join('\n');
 
-    addLog.debug(
-      `[requestLLMPargraph] force mode - processed text length: ${processedText.length}`
-    );
-    addLog.debug(
-      `[requestLLMPargraph] force mode - first 200 chars: ${processedText.substring(0, 200)}`
-    );
-
     const data = await POST<{
       resultText: string;
       totalInputTokens: number;
@@ -102,16 +86,9 @@ const requestLLMPargraph = async ({
       billId
     });
 
-    addLog.debug(`[requestLLMPargraph] force mode - response:`, {
-      resultTextLength: data.resultText.length,
-      totalInputTokens: data.totalInputTokens,
-      totalOutputTokens: data.totalOutputTokens
-    });
-
     return data;
   }
 
-  addLog.debug(`[requestLLMPargraph] normal mode - calling llmPargraph`);
   const data = await POST<{
     resultText: string;
     totalInputTokens: number;
@@ -120,12 +97,6 @@ const requestLLMPargraph = async ({
     rawText,
     model,
     billId
-  });
-
-  addLog.debug(`[requestLLMPargraph] normal mode - response:`, {
-    resultTextLength: data.resultText.length,
-    totalInputTokens: data.totalInputTokens,
-    totalOutputTokens: data.totalOutputTokens
   });
 
   return data;
@@ -147,13 +118,7 @@ const isMarkdownText = (rawText: string, customPdfParse?: boolean) => {
   const hasMarkdownHeaders = /^(#+)\s/m.test(rawText);
   const hasMultipleHeaders = (rawText.match(/^(#+)\s/g) || []).length > 1;
 
-  addLog.debug(
-    `[isMarkdownText] hasMarkdownHeaders: ${hasMarkdownHeaders}, hasMultipleHeaders: ${hasMultipleHeaders}`
-  );
-  addLog.debug(`[isMarkdownText] markdown headers found:`, rawText.match(/^(#+)\s/g) || []);
-
   const result = hasMarkdownHeaders && hasMultipleHeaders;
-  addLog.debug(`[isMarkdownText] result: ${result}`);
 
   return result;
 };
@@ -294,40 +259,13 @@ export const datasetParseQueue = async (): Promise<any> => {
         ...sourceReadType
       });
 
-      // 添加调试日志：检查原始文本内容
-      addLog.debug(`[Parse Queue] Raw text after readDatasetSourceRawText:`, {
-        rawTextLength: rawText.length,
-        rawTextPreview: rawText.substring(0, 500),
-        hasMarkdownHeaders: /^#+\s/m.test(rawText),
-        markdownHeadersCount: (rawText.match(/^#+\s/g) || []).length,
-        customPdfParse: collection.customPdfParse,
-        paragraphChunkAIMode: collection.paragraphChunkAIMode
-      });
-
       // 3. LLM Pargraph
-      addLog.debug(`[Parse Queue] calling requestLLMPargraph with:`, {
-        rawTextLength: rawText.length,
-        model: dataset.agentModel,
-        paragraphChunkAIMode: collection.paragraphChunkAIMode,
-        customPdfParse: collection.customPdfParse
-      });
-
       const { resultText, totalInputTokens, totalOutputTokens } = await requestLLMPargraph({
         rawText,
         model: dataset.agentModel,
         billId: data.billId,
         paragraphChunkAIMode: collection.paragraphChunkAIMode,
         customPdfParse: collection.customPdfParse
-      });
-
-      // 添加调试日志：检查LLM处理后的文本内容
-      addLog.debug(`[Parse Queue] requestLLMPargraph completed:`, {
-        resultTextLength: resultText.length,
-        totalInputTokens,
-        totalOutputTokens,
-        resultTextPreview: resultText.substring(0, 500),
-        hasMarkdownHeaders: /^#+\s/m.test(resultText),
-        markdownHeadersCount: (resultText.match(/^#+\s/g) || []).length
       });
       // Push usage
       pushLLMTrainingUsage({
