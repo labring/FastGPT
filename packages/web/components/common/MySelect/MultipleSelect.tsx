@@ -159,7 +159,7 @@ const MultipleSelect = <T = any,>({
   const onclickItem = useCallback(
     (val: T) => {
       if (isSelectAll) {
-        // 在全选状态下点击某个选项，从全选中移除该选项
+        // When in "Select All" state, clicking an option will remove it from the selection
         const newValue = list.map((item) => item.value).filter((i) => i !== val);
         onSelect(newValue);
         setIsSelectAll?.(false);
@@ -167,10 +167,10 @@ const MultipleSelect = <T = any,>({
       }
 
       if (value.includes(val)) {
-        // 移除已选中的选项
+        // Remove the selected option
         onSelect(value.filter((i) => i !== val));
       } else {
-        // 添加新选中的选项
+        // Add the newly selected option
         onSelect([...value, val]);
       }
     },
@@ -180,11 +180,11 @@ const MultipleSelect = <T = any,>({
   const onSelectAll = useCallback(() => {
     const hasSelected = isSelectAll || value.length > 0;
     if (hasSelected) {
-      // 如果当前有选中项，则取消全选
+      // If there are selected items, unselect all
       onSelect([]);
       setIsSelectAll?.(false);
     } else {
-      // 如果当前没有选中项，则全选
+      // If there are no selected items, select all
       onSelect(list.map((item) => item.value));
       setIsSelectAll?.(true);
     }
