@@ -42,7 +42,7 @@ import type {
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
-import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
+import { getMCPParentId, getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getMCPChildren } from '../mcp';
 import { cloneDeep } from 'lodash';
@@ -227,9 +227,15 @@ export async function getChildAppPreviewNode({
 
       const version = await getAppVersionById({ appId: parentId, versionId, app: item });
       const toolConfig = version.nodes[0].toolConfig?.mcpToolSet;
-      const tool = toolConfig?.toolList.find((item) => item.name === toolName);
-      if (!tool || !toolConfig) return Promise.reject(PluginErrEnum.unExist);
-
+      const tool = await (async () => {
+        if (toolConfig?.toolList) {
+          // new mcp toolset
+          return toolConfig.toolList.find((item) => item.name === toolName);
+        }
+        // old mcp toolset
+        return (await getMCPChildren(item)).find((item) => item.name === toolName);
+      })();
+      if (!tool) return Promise.reject(PluginErrEnum.unExist);
       return {
         avatar: item.avatar,
         id: appId,
