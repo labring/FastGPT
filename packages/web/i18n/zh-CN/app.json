@@ -331,5 +331,12 @@
   "workflow.user_file_input": "文件链接",
   "workflow.user_file_input_desc": "用户上传的文档和图片链接",
   "workflow.user_select": "用户选择",
-  "workflow.user_select_tip": "该模块可配置多个选项，以供对话时选择。不同选项可导向不同工作流支线"
+  "workflow.user_select_tip": "该模块可配置多个选项，以供对话时选择。不同选项可导向不同工作流支线",
+  "pro_modal_title": "商业版专享！",
+  "pro_modal_subtitle": "即刻加入商业版，解锁更多高级功能",
+  "pro_modal_feature_1": "外部组织架构接入与多租户",
+  "pro_modal_feature_2": "团队专属的应用展示页",
+  "pro_modal_feature_3": "知识库增强索引",
+  "pro_modal_unlock_button": "去解锁",
+  "pro_modal_later_button": "我再想想"
 }

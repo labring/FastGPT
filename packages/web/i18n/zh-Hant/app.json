@@ -322,5 +322,12 @@
   "workflow.user_file_input": "檔案連結",
   "workflow.user_file_input_desc": "使用者上傳的檔案和圖片連結",
   "workflow.user_select": "使用者選擇",
-  "workflow.user_select_tip": "這個模組可以設定多個選項，供對話時選擇。不同選項可以導向不同的工作流程支線"
+  "workflow.user_select_tip": "這個模組可以設定多個選項，供對話時選擇。不同選項可以導向不同的工作流程支線",
+  "pro_modal_title": "商業版專享！",
+  "pro_modal_subtitle": "即刻加入商業版，解鎖更多高級功能",
+  "pro_modal_feature_1": "外部組織架構接入與多租戶",
+  "pro_modal_feature_2": "團隊專屬的應用展示頁",
+  "pro_modal_feature_3": "知識庫增強索引",
+  "pro_modal_unlock_button": "去解鎖",
+  "pro_modal_later_button": "我再想想"
 }

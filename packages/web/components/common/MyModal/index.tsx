@@ -23,6 +23,7 @@ export interface MyModalProps extends ModalContentProps {
   onClose?: () => void;
   closeOnOverlayClick?: boolean;
   size?: 'md' | 'lg';
+  showCloseButton?: boolean;
 }
 
 const MyModal = ({
@@ -38,6 +39,7 @@ const MyModal = ({
   closeOnOverlayClick = true,
   iconColor,
   size = 'md',
+  showCloseButton = true,
   ...props
 }: MyModalProps) => {
   const { isPc } = useSystem();
@@ -65,7 +67,7 @@ const MyModal = ({
         boxShadow={'7'}
         {...props}
       >
-        {!title && onClose && <ModalCloseButton zIndex={1} />}
+        {!title && onClose && showCloseButton && <ModalCloseButton zIndex={1} />}
         {!!title && (
           <ModalHeader
             display={'flex'}

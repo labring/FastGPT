@@ -1250,6 +1250,7 @@
   "unusable_variable": "No Usable Variables",
   "update_failed": "Update Failed",
   "update_success": "Updated Successfully",
+  "upgrade": "upgrade",
   "upload_file": "Upload File",
   "upload_file_error": "File Upload Failed",
   "use_helper": "Use Helper",

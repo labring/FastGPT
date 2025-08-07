@@ -322,5 +322,12 @@
   "workflow.user_file_input": "File Link",
   "workflow.user_file_input_desc": "Links to documents and images uploaded by users.",
   "workflow.user_select": "User Select",
-  "workflow.user_select_tip": "This module can configure multiple options for selection during the dialogue. Different options can lead to different workflow branches."
+  "workflow.user_select_tip": "This module can configure multiple options for selection during the dialogue. Different options can lead to different workflow branches.",
+  "pro_modal_title": "Business Edition Exclusive!",
+  "pro_modal_subtitle": "Join the business edition now to unlock more premium features",
+  "pro_modal_feature_1": "External organization structure integration and multi-tenancy",
+  "pro_modal_feature_2": "Team-exclusive application showcase page",
+  "pro_modal_feature_3": "Knowledge base enhanced indexing",
+  "pro_modal_unlock_button": "Unlock Now",
+  "pro_modal_later_button": "Maybe Later"
 }
