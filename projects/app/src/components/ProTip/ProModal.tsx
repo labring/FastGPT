@@ -4,15 +4,21 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getDocPath } from '@/web/common/system/doc';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
+import { useState } from 'react';
 
-const ProModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+const ProModal = (props: { isOpen?: boolean; onClose?: () => void }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
+  const [isOpen, setIsOpen] = useState(false);
+
+  const openModal = props?.isOpen ?? isOpen;
+  const onClose = props?.onClose ?? (() => setIsOpen(false));
+
   return feConfigs?.isPlus ? null : (
-    <MyModal isOpen={isOpen} onClose={onClose} showCloseButton={false} w={'400px'} h={'392px'}>
+    <MyModal isOpen={openModal} onClose={onClose} showCloseButton={false} w={'400px'} h={'392px'}>
       <ModalBody
-        position="relative"
+        userSelect={'none'}
         py={8}
         _before={{
           content: '""',
