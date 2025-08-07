@@ -537,35 +537,26 @@ export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> 
 
     const formatTools = tools.map<SystemPluginTemplateItemType>((item) => {
       const dbPluginConfig = systemPlugins.get(item.id);
+      const isFolder = tools.some((tool) => tool.parentId === item.id);
 
       const versionList = (item.versionList as SystemPluginTemplateItemType['versionList']) || [];
 
+      // Calculate systemKeyCost for toolsets (folders)
+      const systemKeyCost = isFolder ? dbPluginConfig?.systemKeyCost ?? 0 : 0;
+
       return {
-        id: item.id,
-        parentId: item.parentId,
-        isFolder: tools.some((tool) => tool.parentId === item.id),
-
-        name: item.name,
-        avatar: item.avatar,
+        ...item,
+        isFolder,
         intro: item.description,
-
-        author: item.author,
-        courseUrl: item.courseUrl,
-        weight: item.weight,
-
         workflow: {
           nodes: [],
           edges: []
         },
         versionList,
-
-        templateType: item.templateType,
         showStatus: true,
-
-        isActive: item.isActive,
         inputList: item?.secretInputConfig,
         hasSystemSecret: !!dbPluginConfig?.inputListVal,
-        systemKeyCost: dbPluginConfig?.systemKeyCost ?? 0
+        systemKeyCost
       };
     });
 

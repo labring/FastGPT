@@ -11,7 +11,7 @@ export type SystemPluginConfigSchemaType = {
   hasTokenFee: boolean;
   isActive: boolean;
   pluginOrder?: number;
-  systemKeyCost?: number;
+  systemKeyCost?: number | { name: string; cost: number }[];
 
   customConfig?: {
     name: string;

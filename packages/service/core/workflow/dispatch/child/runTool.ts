@@ -152,9 +152,11 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
       const usagePoints = (() => {
         if (params.system_input_config?.type !== SystemToolInputTypeEnum.system) {
-          return (tool.currentCost ?? 0) + (dbPlugin?.systemKeyCost ?? 0);
+          return 0;
         }
-        return tool.currentCost ?? 0;
+        const systemKeyCost = dbPlugin?.systemKeyCost;
+        const systemCost = typeof systemKeyCost === 'number' ? systemKeyCost : 0;
+        return (tool.currentCost ?? 0) + systemCost;
       })();
 
       pushTrack.runSystemTool({

@@ -28,7 +28,15 @@ const SystemPluginSchema = new Schema({
     type: Number
   },
   systemKeyCost: {
-    type: Number,
+    type: [
+      Number,
+      [
+        {
+          name: String,
+          cost: Number
+        }
+      ]
+    ],
     default: 0
   },
   customConfig: Object,

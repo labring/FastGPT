@@ -19,7 +19,7 @@ export type PluginRuntimeType = {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
   currentCost?: number;
-  systemKeyCost?: number;
+  systemKeyCost?: number | { name: string; cost: number }[];
   hasTokenFee?: boolean;
 };
 
@@ -47,7 +47,7 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   currentCost?: number;
   hasTokenFee?: boolean;
   pluginOrder?: number;
-  systemKeyCost?: number;
+  systemKeyCost?: number | { name: string; cost: number }[];
 
   isActive?: boolean;
   isOfficial?: boolean;

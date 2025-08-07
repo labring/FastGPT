@@ -28,14 +28,10 @@ async function handler(
 
   const plugins = await getSystemTools();
 
-  // get database config
-  const dbPlugins = await MongoSystemPlugin.find().lean();
-  const dbPluginMap = new Map(dbPlugins.map((plugin) => [plugin.pluginId, plugin]));
+  const activePlugins = plugins.filter((item) => item.isActive);
 
-  return plugins // Just show the active plugins
-    .filter((item) => item.isActive)
+  return activePlugins
     .map<NodeTemplateListItemType>((plugin) => {
-      const dbPlugin = dbPluginMap.get(plugin.id);
       return {
         ...plugin,
         parentId: plugin.parentId === undefined ? null : plugin.parentId,
@@ -43,8 +39,9 @@ async function handler(
         flowNodeType: plugin.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
         name: parseI18nString(plugin.name, lang),
         intro: parseI18nString(plugin.intro ?? '', lang),
-        currentCost: dbPlugin?.currentCost ?? plugin.currentCost,
-        systemKeyCost: dbPlugin?.systemKeyCost ?? plugin.systemKeyCost
+        currentCost: plugin.currentCost,
+        systemKeyCost: plugin.systemKeyCost,
+        hasTokenFee: plugin.hasTokenFee
       };
     })
     .filter((item) => {
