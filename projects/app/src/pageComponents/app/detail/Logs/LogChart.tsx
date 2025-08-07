@@ -35,7 +35,11 @@ import LineChartComponent from '@fastgpt/web/components/common/charts/LineChartC
 import BarChartComponent from '@fastgpt/web/components/common/charts/BarChartComponent';
 import { theme } from '@fastgpt/web/styles/theme';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { AppLogTimespanEnum, offsetOptions } from '@fastgpt/global/core/app/logs/constants';
+import {
+  AppLogTimespanEnum,
+  fakeChartData,
+  offsetOptions
+} from '@fastgpt/global/core/app/logs/constants';
 import { formatDateByTimespan } from '@fastgpt/global/core/app/logs/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
@@ -171,6 +175,8 @@ const LogChart = ({
   );
 
   const formatChartData = useMemo(() => {
+    if (!feConfigs?.isPlus) return fakeChartData;
+
     const formatTimestamp = (timestamp: number, timespan: AppLogTimespanEnum) => {
       return timespan === AppLogTimespanEnum.week
         ? formatWeekDate(new Date(timestamp))
@@ -385,6 +391,7 @@ const LogChart = ({
                         {t('app:logs_total')}: {formatChartData.cumulative.userCount}
                       </Flex>
                     }
+                    blur={!feConfigs?.isPlus}
                   />
                 </Box>
                 <Box {...chartBoxStyles}>
@@ -429,6 +436,7 @@ const LogChart = ({
                         }}
                       />
                     }
+                    blur={!feConfigs?.isPlus}
                   />
                 </Box>
                 <Box {...chartBoxStyles}>
@@ -457,6 +465,7 @@ const LogChart = ({
                         {t('app:logs_total')}: {formatChartData.cumulative.points}
                       </Flex>
                     }
+                    blur={!feConfigs?.isPlus}
                   />
                 </Box>
                 <Box {...chartBoxStyles}>
@@ -475,6 +484,7 @@ const LogChart = ({
                       color: value.color,
                       customValue: (data) => data.sourceCountMap[key as ChatSourceEnum]
                     }))}
+                    blur={!feConfigs?.isPlus}
                   />
                 </Box>
               </Grid>
@@ -535,6 +545,7 @@ const LogChart = ({
                         {t('app:logs_total')}: {formatChartData.cumulative.chatItemCount}
                       </Flex>
                     }
+                    blur={!feConfigs?.isPlus}
                   />
                 </Box>
                 <Box {...chartBoxStyles}>
@@ -563,6 +574,7 @@ const LogChart = ({
                         {t('app:logs_total')}: {formatChartData.cumulative.chatCount}
                       </Flex>
                     }
+                    blur={!feConfigs?.isPlus}
                   />
                 </Box>
                 <Box {...chartBoxStyles}>
@@ -592,6 +604,7 @@ const LogChart = ({
                         })}
                       </Flex>
                     }
+                    blur={!feConfigs?.isPlus}
                   />
                 </Box>
                 <Box {...chartBoxStyles}>
@@ -618,6 +631,7 @@ const LogChart = ({
                         {`${t('app:logs_total_avg_points')}: ${formatChartData.cumulative.pointsPerChat.toFixed(2)}`}
                       </Flex>
                     }
+                    blur={!feConfigs?.isPlus}
                   />
                 </Box>
               </Grid>
@@ -691,6 +705,7 @@ const LogChart = ({
                         })}
                       </Flex>
                     }
+                    blur={!feConfigs?.isPlus}
                   />
                 </Box>
                 <Box {...chartBoxStyles}>
@@ -717,6 +732,7 @@ const LogChart = ({
                         {`${t('app:logs_total_avg_duration')}: ${formatChartData.cumulative.avgDuration.toFixed(2)}`}
                       </Flex>
                     }
+                    blur={!feConfigs?.isPlus}
                   />
                 </Box>
               </Grid>
@@ -823,7 +839,7 @@ const TotalData = ({ appId }: { appId: string }) => {
           border: 'primary.200',
           bg: 'primary.50'
         },
-        value: totalData?.totalUsers || 0
+        value: feConfigs?.isPlus ? totalData?.totalUsers || 0 : 455
       },
       {
         label: t('app:logs_total_chat'),
@@ -833,7 +849,7 @@ const TotalData = ({ appId }: { appId: string }) => {
           border: 'green.200',
           bg: 'green.50'
         },
-        value: totalData?.totalChats || 0
+        value: feConfigs?.isPlus ? totalData?.totalChats || 0 : 22112
       },
       {
         label: t('app:logs_total_points'),
@@ -843,7 +859,7 @@ const TotalData = ({ appId }: { appId: string }) => {
           border: 'yellow.200',
           bg: 'yellow.50'
         },
-        value: totalData?.totalPoints || 0
+        value: feConfigs?.isPlus ? totalData?.totalPoints || 0 : 112233
       }
     ];
   }, [totalData]);
@@ -867,7 +883,12 @@ const TotalData = ({ appId }: { appId: string }) => {
               <Box fontSize={'sm'} color={'myGray.500'} mb={1}>
                 {item.label}
               </Box>
-              <Box fontSize={'28px'} fontWeight={'medium'} color={'myGray.900'}>
+              <Box
+                fontSize={'28px'}
+                fontWeight={'medium'}
+                color={'myGray.900'}
+                filter={feConfigs?.isPlus ? 'none' : 'blur(7.5px)'}
+              >
                 {item.value.toLocaleString()}
               </Box>
             </Flex>
