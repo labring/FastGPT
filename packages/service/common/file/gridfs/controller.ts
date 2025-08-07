@@ -151,10 +151,6 @@ export async function getFileById({
     _id: new Types.ObjectId(fileId)
   });
 
-  // if (!file) {
-  //   return Promise.reject('File not found');
-  // }
-
   return file || undefined;
 }
 
