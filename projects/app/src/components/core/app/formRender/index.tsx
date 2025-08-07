@@ -41,7 +41,7 @@ const InputRender = (props: InputRenderProps) => {
       value.length === (props.list?.length || 0)
   );
 
-  // 同步外部传入的 value 变化
+  // Synchronize external value changes
   React.useEffect(() => {
     if (inputType === InputTypeEnum.multipleSelect && Array.isArray(value)) {
       setValue(value);
@@ -143,10 +143,10 @@ const InputRender = (props: InputRenderProps) => {
           setIsSelectAll={(all) => {
             setIsSelectAll(all);
             if (all) {
-              // 全选时，选择所有选项
+              // When selecting all, select all options
               onChange(list.map((item) => item.value));
             } else {
-              // 取消全选时，清空选择
+              // When deselecting all, clear the selection
               onChange([]);
             }
           }}
