@@ -9,7 +9,8 @@ import { addDays } from 'date-fns';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { useMultipleSelect } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import ProModal from '@/components/ProModal';
+import ProTag from '@/components/ProTip/Tag';
+import ProText from '@/components/ProTip/ProText';
 
 const Logs = () => {
   const { t } = useTranslation();
@@ -45,28 +46,25 @@ const Logs = () => {
           mb={4}
           borderBottom={'1px solid'}
           borderColor={'myGray.200'}
+          alignItems={'center'}
         >
-          <Flex flex={1}>
-            <ProModal
-              onClick={() => {
-                setViewMode('chart');
-              }}
-              isPlus={feConfigs.isPlus}
-              canOpen={viewMode !== 'chart'}
+          <Flex flex={'1 0 0'} gap={2}>
+            <Flex
               px={2}
               py={2}
               cursor={'pointer'}
-              gap={2}
-              borderRadius={'8px'}
-              fontWeight={'medium'}
               color={viewMode === 'chart' ? 'primary.600' : 'myGray.500'}
+              onClick={() => setViewMode('chart')}
+              borderRadius={'8px'}
               bg={viewMode === 'chart' ? 'myGray.05' : 'transparent'}
               _hover={{ bg: 'myGray.05' }}
-              alignItems={'center'}
             >
-              <MyIcon name={'chart'} w={4} />
-              {t('app:logs_app_data')}
-            </ProModal>
+              <MyIcon name={'core/app/logsLight'} w={4} />
+              <Box ml={2} mr={0.5}>
+                {t('app:logs_app_data')}
+              </Box>
+              <ProTag />
+            </Flex>
             <Flex
               px={2}
               py={2}
@@ -75,22 +73,22 @@ const Logs = () => {
               onClick={() => setViewMode('table')}
               gap={2}
               borderRadius={'8px'}
-              fontWeight={'medium'}
               bg={viewMode === 'table' ? 'myGray.05' : 'transparent'}
               _hover={{ bg: 'myGray.05' }}
             >
               <MyIcon name={'core/app/logsLight'} w={4} />
-              {t('app:log_chat_logs')}
+              {t('app:log_detail')}
             </Flex>
           </Flex>
           {viewMode === 'chart' && !feConfigs.isPlus && (
-            <Flex alignItems={'center'}>
-              <ProModal showCloseIcon alignItems={'center'} cursor={'pointer'} gap={1.5}>
-                <Box color={'primary.600'} fontSize="14px" fontWeight={'medium'}>
+            <ProText signKey={'app_log'}>
+              <Flex alignItems={'center'} cursor={'pointer'}>
+                <Box color={'primary.600'} fontSize="sm" fontWeight={'medium'} mr={1}>
                   {t('common:upgrade')}
                 </Box>
-              </ProModal>
-            </Flex>
+                <ProTag />
+              </Flex>
+            </ProText>
           )}
         </Flex>
       </Flex>
