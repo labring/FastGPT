@@ -1,6 +1,6 @@
 import { Box, Flex, useDisclosure } from '@chakra-ui/react';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useMemo } from 'react';
 import { AppTemplateTypeEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';

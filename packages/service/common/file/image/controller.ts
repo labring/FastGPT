@@ -22,13 +22,13 @@ export async function uploadMongoImg({
   forever?: Boolean;
 }) {
   if (base64Img.length > maxImgSize) {
-    return Promise.reject('Image too large');
+    return Promise.reject(new UserError('Image too large'));
   }
 
   const [base64Mime, base64Data] = base64Img.split(',');
   // Check if mime type is valid
   if (!base64MimeRegex.test(base64Mime)) {
-    return Promise.reject('Invalid image base64');
+    return Promise.reject(new UserError('Invalid image base64'));
   }
 
   const mime = `image/${base64Mime.match(base64MimeRegex)?.[1] ?? 'image/jpeg'}`;
@@ -39,7 +39,7 @@ export async function uploadMongoImg({
   }
 
   if (!extension || !imageFileType.includes(`.${extension}`)) {
-    return Promise.reject(`Invalid image file type: ${mime}`);
+    return Promise.reject(new UserError(`Invalid image file type: ${mime}`));
   }
 
   const { _id } = await retryFn(() =>

@@ -20,6 +20,7 @@ import {
 } from '@/web/support/marketing/utils';
 import { getDocPath } from '@/web/common/system/doc';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import PolicyTip from './PolicyTip';
 
 interface Props {
   loginSuccess: (e: ResLogin) => void;
@@ -66,13 +67,21 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
   return (
     <FormLayout setPageType={setPageType} pageType={LoginPageTypeEnum.wechat}>
       <Box>
-        <Box w={'full'} textAlign={'center'} pt={6} fontWeight={'medium'}>
+        <Box w={'full'} textAlign={'center'} pt={8} fontWeight={'medium'} fontSize={['sm', 'md']}>
           {t('common:support.user.login.wx_qr_login')}
         </Box>
         <Box my={5} display={'flex'} w={'full'} justifyContent={'center'}>
           {wechatInfo?.codeUrl ? (
-            <Box border={'base'} borderRadius={'md'} bg={'#FBFBFB'} overflow={'hidden'}>
-              <MyImage w={['180px', '220px']} src={wechatInfo?.codeUrl} alt="qrcode"></MyImage>
+            <Box
+              border={'base'}
+              borderRadius={'md'}
+              p={'3.2px'}
+              bg={'#FBFBFB'}
+              overflow={'hidden'}
+              w={['186px', '226px']}
+              h={['186px', '226px']}
+            >
+              <MyImage w={'100%'} h={'100%'} src={wechatInfo?.codeUrl} alt="qrcode"></MyImage>
             </Box>
           ) : (
             <Center w={200} h={200} position={'relative'}>
@@ -80,34 +89,7 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
             </Center>
           )}
         </Box>
-        {feConfigs?.docUrl && (
-          <Flex
-            alignItems={'center'}
-            justifyContent={'center'}
-            mt={7}
-            fontSize={'mini'}
-            color={'myGray.400'}
-            fontWeight={'medium'}
-          >
-            {t('login:policy_tip')}
-            <Link
-              ml={1}
-              href={getDocPath('/docs/protocol/terms/')}
-              target={'_blank'}
-              color={'primary.700'}
-            >
-              {t('login:terms')}
-            </Link>
-            <Box mx={1}>&</Box>
-            <Link
-              href={getDocPath('/docs/protocol/privacy/')}
-              target={'_blank'}
-              color={'primary.700'}
-            >
-              {t('login:privacy')}
-            </Link>
-          </Flex>
-        )}
+        <PolicyTip isCenter />
       </Box>
     </FormLayout>
   );

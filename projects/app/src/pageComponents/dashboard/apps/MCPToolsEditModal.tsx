@@ -21,7 +21,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useForm } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { AppListContext } from './context';
 import { useContextSelector } from 'use-context-selector';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/type';

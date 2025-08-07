@@ -4,7 +4,7 @@ import { type NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
 import IOTitle from '../components/IOTitle';
 import Container from '../components/Container';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import RenderOutput from './render/RenderOutput';
 import RenderInput from './render/RenderInput';
 import { useContextSelector } from 'use-context-selector';

@@ -11,7 +11,7 @@ import {
   HStack,
   css
 } from '@chakra-ui/react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getPluginGroups, getPreviewPluginNode } from '@/web/core/app/api/plugin';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
