@@ -22,7 +22,7 @@ export class MilvusCtrl {
       return Promise.reject('MILVUS_ADDRESS is not set');
     }
     if (global.milvusClient) return global.milvusClient;
-    console.log(MILVUS_ADDRESS, 111);
+
     global.milvusClient = new MilvusClient({
       address: MILVUS_ADDRESS,
       token: MILVUS_TOKEN
@@ -138,33 +138,31 @@ export class MilvusCtrl {
       return Number(`${firstDigit}${restDigits}`);
     };
 
-    return retryFn(async () => {
-      const result = await client.insert({
-        collection_name: DatasetVectorTableName,
-        data: vectors.map((vector) => ({
-          id: generateId(),
-          vector,
-          teamId: String(teamId),
-          datasetId: String(datasetId),
-          collectionId: String(collectionId),
-          createTime: Date.now()
-        }))
-      });
-
-      const insertIds = (() => {
-        if ('int_id' in result.IDs) {
-          return result.IDs.int_id.data.map((id) => String(id));
-        }
-        return result.IDs.str_id.data.map((id) => String(id));
-      })();
-
-      return {
-        insertIds
-      };
+    const result = await client.insert({
+      collection_name: DatasetVectorTableName,
+      data: vectors.map((vector) => ({
+        id: generateId(),
+        vector,
+        teamId: String(teamId),
+        datasetId: String(datasetId),
+        collectionId: String(collectionId),
+        createTime: Date.now()
+      }))
     });
+
+    const insertIds = (() => {
+      if ('int_id' in result.IDs) {
+        return result.IDs.int_id.data.map((id) => String(id));
+      }
+      return result.IDs.str_id.data.map((id) => String(id));
+    })();
+
+    return {
+      insertIds
+    };
   };
   delete = async (props: DelDatasetVectorCtrlProps): Promise<any> => {
-    const { teamId, retry = 2 } = props;
+    const { teamId } = props;
     const client = await this.getClient();
 
     const teamIdWhere = `(teamId=="${String(teamId)}")`;
@@ -196,21 +194,10 @@ export class MilvusCtrl {
 
     const concatWhere = `${teamIdWhere} and ${where}`;
 
-    try {
-      await client.delete({
-        collection_name: DatasetVectorTableName,
-        filter: concatWhere
-      });
-    } catch (error) {
-      if (retry <= 0) {
-        return Promise.reject(error);
-      }
-      await delay(500);
-      return this.delete({
-        ...props,
-        retry: retry - 1
-      });
-    }
+    await client.delete({
+      collection_name: DatasetVectorTableName,
+      filter: concatWhere
+    });
   };
   embRecall = async (props: EmbeddingRecallCtrlProps): Promise<EmbeddingRecallResponse> => {
     const client = await this.getClient();

@@ -2,7 +2,12 @@
 import { PgVectorCtrl } from './pg';
 import { ObVectorCtrl } from './oceanbase';
 import { getVectorsByText } from '../../core/ai/embedding';
-import { type DelDatasetVectorCtrlProps, type InsertVectorProps } from './controller.d';
+import type {
+  EmbeddingRecallCtrlProps} from './controller.d';
+import {
+  type DelDatasetVectorCtrlProps,
+  type InsertVectorProps
+} from './controller.d';
 import { type EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { MILVUS_ADDRESS, PG_ADDRESS, OCEANBASE_ADDRESS } from './constants';
 import { MilvusCtrl } from './milvus';
@@ -15,6 +20,7 @@ import {
   CacheKeyEnumTime
 } from '../redis/cache';
 import { throttle } from 'lodash';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 
 const getVectorObj = () => {
   if (PG_ADDRESS) return new PgVectorCtrl();
@@ -34,7 +40,8 @@ const onIncrCache = (teamId: string) => incrValueToCache(getChcheKey(teamId), 1)
 const Vector = getVectorObj();
 
 export const initVectorStore = Vector.init;
-export const recallFromVectorStore = Vector.embRecall;
+export const recallFromVectorStore = (props: EmbeddingRecallCtrlProps) =>
+  retryFn(() => Vector.embRecall(props));
 export const getVectorDataByTime = Vector.getVectorDataByTime;
 
 export const getVectorCountByTeamId = async (teamId: string) => {
@@ -68,10 +75,12 @@ export const insertDatasetDataVector = async ({
     input: inputs,
     type: 'db'
   });
-  const { insertIds } = await Vector.insert({
-    ...props,
-    vectors
-  });
+  const { insertIds } = await retryFn(() =>
+    Vector.insert({
+      ...props,
+      vectors
+    })
+  );
 
   onIncrCache(props.teamId);
 
@@ -82,7 +91,7 @@ export const insertDatasetDataVector = async ({
 };
 
 export const deleteDatasetDataVector = async (props: DelDatasetVectorCtrlProps) => {
-  const result = await Vector.delete(props);
+  const result = await retryFn(() => Vector.delete(props));
   onDelCache(props.teamId);
   return result;
 };

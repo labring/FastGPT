@@ -68,29 +68,27 @@ export class PgVectorCtrl {
   insert = async (props: InsertVectorControllerProps): Promise<{ insertIds: string[] }> => {
     const { teamId, datasetId, collectionId, vectors } = props;
 
-    return retryFn(async () => {
-      const values = vectors.map((vector) => [
-        { key: 'vector', value: `[${vector}]` },
-        { key: 'team_id', value: String(teamId) },
-        { key: 'dataset_id', value: String(datasetId) },
-        { key: 'collection_id', value: String(collectionId) }
-      ]);
+    const values = vectors.map((vector) => [
+      { key: 'vector', value: `[${vector}]` },
+      { key: 'team_id', value: String(teamId) },
+      { key: 'dataset_id', value: String(datasetId) },
+      { key: 'collection_id', value: String(collectionId) }
+    ]);
 
-      const { rowCount, rows } = await PgClient.insert(DatasetVectorTableName, {
-        values
-      });
-
-      if (rowCount === 0) {
-        return Promise.reject('insertDatasetData: no insert');
-      }
-
-      return {
-        insertIds: rows.map((row) => row.id)
-      };
+    const { rowCount, rows } = await PgClient.insert(DatasetVectorTableName, {
+      values
     });
+
+    if (rowCount === 0) {
+      return Promise.reject('insertDatasetData: no insert');
+    }
+
+    return {
+      insertIds: rows.map((row) => row.id)
+    };
   };
   delete = async (props: DelDatasetVectorCtrlProps): Promise<any> => {
-    const { teamId, retry = 2 } = props;
+    const { teamId } = props;
 
     const teamIdWhere = `team_id='${String(teamId)}' AND`;
 
@@ -120,31 +118,13 @@ export class PgVectorCtrl {
 
     if (!where) return;
 
-    try {
-      await PgClient.delete(DatasetVectorTableName, {
-        where: [where]
-      });
-    } catch (error) {
-      if (retry <= 0) {
-        return Promise.reject(error);
-      }
-      await delay(500);
-      return this.delete({
-        ...props,
-        retry: retry - 1
-      });
-    }
+    await PgClient.delete(DatasetVectorTableName, {
+      where: [where]
+    });
   };
   embRecall = async (props: EmbeddingRecallCtrlProps): Promise<EmbeddingRecallResponse> => {
-    const {
-      teamId,
-      datasetIds,
-      vector,
-      limit,
-      forbidCollectionIdList,
-      filterCollectionIdList,
-      retry = 2
-    } = props;
+    const { teamId, datasetIds, vector, limit, forbidCollectionIdList, filterCollectionIdList } =
+      props;
 
     // Get forbid collection
     const formatForbidCollectionIdList = (() => {
@@ -175,9 +155,8 @@ export class PgVectorCtrl {
       return { results: [] };
     }
 
-    try {
-      const results: any = await PgClient.query(
-        `BEGIN;
+    const results: any = await PgClient.query(
+      `BEGIN;
           SET LOCAL hnsw.ef_search = ${global.systemEnv?.hnswEfSearch || 100};
           SET LOCAL hnsw.max_scan_tuples = ${global.systemEnv?.hnswMaxScanTuples || 100000};
           SET LOCAL hnsw.iterative_scan = relaxed_order;
@@ -190,31 +169,22 @@ export class PgVectorCtrl {
               order by score limit ${limit}
           ) SELECT id, collection_id, score FROM relaxed_results ORDER BY score;
         COMMIT;`
-      );
-      const rows = results?.[results.length - 2]?.rows as PgSearchRawType[];
+    );
+    const rows = results?.[results.length - 2]?.rows as PgSearchRawType[];
 
-      if (!Array.isArray(rows)) {
-        return {
-          results: []
-        };
-      }
-
+    if (!Array.isArray(rows)) {
       return {
-        results: rows.map((item) => ({
-          id: String(item.id),
-          collectionId: item.collection_id,
-          score: item.score * -1
-        }))
+        results: []
       };
-    } catch (error) {
-      if (retry <= 0) {
-        return Promise.reject(error);
-      }
-      return this.embRecall({
-        ...props,
-        retry: retry - 1
-      });
     }
+
+    return {
+      results: rows.map((item) => ({
+        id: String(item.id),
+        collectionId: item.collection_id,
+        score: item.score * -1
+      }))
+    };
   };
   getVectorDataByTime = async (start: Date, end: Date) => {
     const { rows } = await PgClient.query<{
