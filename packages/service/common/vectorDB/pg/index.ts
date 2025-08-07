@@ -1,6 +1,6 @@
 /* pg vector crud */
 import { DatasetVectorTableName } from '../constants';
-import { delay } from '@fastgpt/global/common/system/utils';
+import { delay, retryFn } from '@fastgpt/global/common/system/utils';
 import { PgClient, connectPg } from './controller';
 import { type PgSearchRawType } from '@fastgpt/global/core/dataset/api';
 import type {
@@ -65,19 +65,19 @@ export class PgVectorCtrl {
       addLog.error('init pg error', error);
     }
   };
-  insert = async (props: InsertVectorControllerProps): Promise<{ insertId: string }> => {
-    const { teamId, datasetId, collectionId, vector, retry = 3 } = props;
+  insert = async (props: InsertVectorControllerProps): Promise<{ insertIds: string[] }> => {
+    const { teamId, datasetId, collectionId, vectors } = props;
 
-    try {
+    return retryFn(async () => {
+      const values = vectors.map((vector) => [
+        { key: 'vector', value: `[${vector}]` },
+        { key: 'team_id', value: String(teamId) },
+        { key: 'dataset_id', value: String(datasetId) },
+        { key: 'collection_id', value: String(collectionId) }
+      ]);
+
       const { rowCount, rows } = await PgClient.insert(DatasetVectorTableName, {
-        values: [
-          [
-            { key: 'vector', value: `[${vector}]` },
-            { key: 'team_id', value: String(teamId) },
-            { key: 'dataset_id', value: String(datasetId) },
-            { key: 'collection_id', value: String(collectionId) }
-          ]
-        ]
+        values
       });
 
       if (rowCount === 0) {
@@ -85,18 +85,9 @@ export class PgVectorCtrl {
       }
 
       return {
-        insertId: rows[0].id
+        insertIds: rows.map((row) => row.id)
       };
-    } catch (error) {
-      if (retry <= 0) {
-        return Promise.reject(error);
-      }
-      await delay(500);
-      return this.insert({
-        ...props,
-        retry: retry - 1
-      });
-    }
+    });
   };
   delete = async (props: DelDatasetVectorCtrlProps): Promise<any> => {
     const { teamId, retry = 2 } = props;

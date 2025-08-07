@@ -11,7 +11,7 @@ import type {
   EmbeddingRecallResponse,
   InsertVectorControllerProps
 } from '../controller.d';
-import { delay } from '@fastgpt/global/common/system/utils';
+import { delay, retryFn } from '@fastgpt/global/common/system/utils';
 import { addLog } from '../../system/log';
 import { customNanoid } from '@fastgpt/global/common/string/tools';
 
@@ -22,11 +22,12 @@ export class MilvusCtrl {
       return Promise.reject('MILVUS_ADDRESS is not set');
     }
     if (global.milvusClient) return global.milvusClient;
-
+    console.log(MILVUS_ADDRESS, 111);
     global.milvusClient = new MilvusClient({
       address: MILVUS_ADDRESS,
       token: MILVUS_TOKEN
     });
+    await global.milvusClient.connectPromise;
 
     addLog.info(`Milvus connected`);
 
@@ -124,9 +125,9 @@ export class MilvusCtrl {
     }
   };
 
-  insert = async (props: InsertVectorControllerProps): Promise<{ insertId: string }> => {
+  insert = async (props: InsertVectorControllerProps): Promise<{ insertIds: string[] }> => {
     const client = await this.getClient();
-    const { teamId, datasetId, collectionId, vector, retry = 3 } = props;
+    const { teamId, datasetId, collectionId, vectors } = props;
 
     const generateId = () => {
       // in js, the max safe integer is 2^53 - 1: 9007199254740991
@@ -136,42 +137,31 @@ export class MilvusCtrl {
       const restDigits = customNanoid('1234567890', 15);
       return Number(`${firstDigit}${restDigits}`);
     };
-    const id = generateId();
-    try {
+
+    return retryFn(async () => {
       const result = await client.insert({
         collection_name: DatasetVectorTableName,
-        data: [
-          {
-            id,
-            vector,
-            teamId: String(teamId),
-            datasetId: String(datasetId),
-            collectionId: String(collectionId),
-            createTime: Date.now()
-          }
-        ]
+        data: vectors.map((vector) => ({
+          id: generateId(),
+          vector,
+          teamId: String(teamId),
+          datasetId: String(datasetId),
+          collectionId: String(collectionId),
+          createTime: Date.now()
+        }))
       });
 
-      const insertId = (() => {
+      const insertIds = (() => {
         if ('int_id' in result.IDs) {
-          return `${result.IDs.int_id.data?.[0]}`;
+          return result.IDs.int_id.data.map((id) => String(id));
         }
-        return `${result.IDs.str_id.data?.[0]}`;
+        return result.IDs.str_id.data.map((id) => String(id));
       })();
 
       return {
-        insertId: insertId
+        insertIds
       };
-    } catch (error) {
-      if (retry <= 0) {
-        return Promise.reject(error);
-      }
-      await delay(500);
-      return this.insert({
-        ...props,
-        retry: retry - 1
-      });
-    }
+    });
   };
   delete = async (props: DelDatasetVectorCtrlProps): Promise<any> => {
     const { teamId, retry = 2 } = props;
@@ -224,15 +214,8 @@ export class MilvusCtrl {
   };
   embRecall = async (props: EmbeddingRecallCtrlProps): Promise<EmbeddingRecallResponse> => {
     const client = await this.getClient();
-    const {
-      teamId,
-      datasetIds,
-      vector,
-      limit,
-      forbidCollectionIdList,
-      filterCollectionIdList,
-      retry = 2
-    } = props;
+    const { teamId, datasetIds, vector, limit, forbidCollectionIdList, filterCollectionIdList } =
+      props;
 
     // Forbid collection
     const formatForbidCollectionIdList = (() => {
@@ -262,37 +245,29 @@ export class MilvusCtrl {
       return { results: [] };
     }
 
-    try {
-      const { results } = await client.search({
+    const { results } = await retryFn(() =>
+      client.search({
         collection_name: DatasetVectorTableName,
         data: vector,
         limit,
         filter: `(teamId == "${teamId}") and (datasetId in [${datasetIds.map((id) => `"${id}"`).join(',')}]) ${collectionIdQuery} ${forbidColQuery}`,
         output_fields: ['collectionId']
-      });
+      })
+    );
 
-      const rows = results as {
-        score: number;
-        id: string;
-        collectionId: string;
-      }[];
+    const rows = results as {
+      score: number;
+      id: string;
+      collectionId: string;
+    }[];
 
-      return {
-        results: rows.map((item) => ({
-          id: String(item.id),
-          collectionId: item.collectionId,
-          score: item.score
-        }))
-      };
-    } catch (error) {
-      if (retry <= 0) {
-        return Promise.reject(error);
-      }
-      return this.embRecall({
-        ...props,
-        retry: retry - 1
-      });
-    }
+    return {
+      results: rows.map((item) => ({
+        id: String(item.id),
+        collectionId: item.collectionId,
+        score: item.score
+      }))
+    };
   };
 
   getVectorCountByTeamId = async (teamId: string) => {

@@ -15,7 +15,6 @@ import {
   CacheKeyEnumTime
 } from '../redis/cache';
 import { throttle } from 'lodash';
-import { retryFn } from '@fastgpt/global/common/system/utils';
 
 const getVectorObj = () => {
   if (PG_ADDRESS) return new PgVectorCtrl();
@@ -58,30 +57,28 @@ export const getVectorCountByCollectionId = Vector.getVectorCountByCollectionId;
 
 export const insertDatasetDataVector = async ({
   model,
-  query,
+  inputs,
   ...props
 }: InsertVectorProps & {
-  query: string;
+  inputs: string[];
   model: EmbeddingModelItemType;
 }) => {
-  return retryFn(async () => {
-    const { vectors, tokens } = await getVectorsByText({
-      model,
-      input: query,
-      type: 'db'
-    });
-    const { insertId } = await Vector.insert({
-      ...props,
-      vector: vectors[0]
-    });
-
-    onIncrCache(props.teamId);
-
-    return {
-      tokens,
-      insertId
-    };
+  const { vectors, tokens } = await getVectorsByText({
+    model,
+    input: inputs,
+    type: 'db'
   });
+  const { insertIds } = await Vector.insert({
+    ...props,
+    vectors
+  });
+
+  onIncrCache(props.teamId);
+
+  return {
+    tokens,
+    insertIds
+  };
 };
 
 export const deleteDatasetDataVector = async (props: DelDatasetVectorCtrlProps) => {
