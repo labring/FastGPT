@@ -53,6 +53,11 @@ export const aiproxyIdMap: Record<
     label: i18nT('account_model:azure'),
     provider: 'OpenAI'
   },
+  4: {
+    avatar: 'model/azure',
+    label: `azure (model name support contain '.')`,
+    provider: 'Other'
+  },
   14: {
     label: 'Anthropic',
     provider: 'Claude'
@@ -151,5 +156,39 @@ export const aiproxyIdMap: Record<
     label: 'Cloudflare',
     provider: 'Other',
     avatar: 'model/cloudflare'
+  },
+  20: {
+    label: 'OpenRouter',
+    provider: 'OpenRouter'
+  },
+  47: {
+    label: 'JinaAI',
+    provider: 'Jina'
+  },
+  19: {
+    label: 'ai360',
+    provider: 'ai360'
+  },
+  42: {
+    label: 'vertexai',
+    provider: 'vertexai'
+  },
+  41: {
+    label: 'novita',
+    provider: 'novita'
+  },
+  45: {
+    label: 'Grok',
+    provider: 'Grok'
+  },
+  46: {
+    label: 'Doc2x',
+    provider: 'Other',
+    avatar: 'plugins/doc2x'
+  },
+  34: {
+    label: 'Coze',
+    provider: 'Other',
+    avatar: 'model/coze'
   }
 };

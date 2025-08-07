@@ -5,6 +5,7 @@ import axios, {
   type AxiosRequestConfig
 } from 'axios';
 import { FastGPTProUrl } from '../system/constants';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 interface ConfigType {
   headers?: { [key: string]: string };
@@ -78,7 +79,7 @@ instance.interceptors.response.use(responseSuccess, (err) => Promise.reject(err)
 export function request(url: string, data: any, config: ConfigType, method: Method): any {
   if (!FastGPTProUrl) {
     console.log('未部署商业版接口', url);
-    return Promise.reject('The The request was denied...');
+    return Promise.reject(new UserError('The request was denied...'));
   }
 
   /* 去空 */

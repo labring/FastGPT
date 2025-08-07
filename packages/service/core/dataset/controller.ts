@@ -14,6 +14,7 @@ import { MongoDatasetCollectionTags } from './tag/schema';
 import { removeDatasetSyncJobScheduler } from './datasetSync';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { removeImageByPath } from '../../common/file/image/controller';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 /* ============= dataset ========== */
 /* find all datasetId by top datasetId */
@@ -50,7 +51,7 @@ export async function findDatasetAndAllChildren({
   ]);
 
   if (!dataset) {
-    return Promise.reject('Dataset not found');
+    return Promise.reject(new UserError('Dataset not found'));
   }
 
   return [dataset, ...childDatasets];
@@ -79,7 +80,7 @@ export async function delDatasetRelevantData({
   const teamId = datasets[0].teamId;
 
   if (!teamId) {
-    return Promise.reject('TeamId is required');
+    return Promise.reject(new UserError('TeamId is required'));
   }
 
   const datasetIds = datasets.map((item) => item._id);

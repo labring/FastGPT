@@ -60,6 +60,7 @@ import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatc
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
 import { type ExternalProviderType } from '@fastgpt/global/core/workflow/runtime/type';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -196,7 +197,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       detail = true;
     } else {
       if (messages.length === 0) {
-        throw new Error('messages is empty');
+        throw new UserError('messages is empty');
       }
     }
 
