@@ -432,6 +432,7 @@ export const iconPaths = {
   'model/moonshot': () => import('./icons/model/moonshot.svg'),
   'model/ollama': () => import('./icons/model/ollama.svg'),
   'model/openai': () => import('./icons/model/openai.svg'),
+  'model/openrouter': () => import('./icons/model/openrouter.svg'),
   'model/ppio': () => import('./icons/model/ppio.svg'),
   'model/qwen': () => import('./icons/model/qwen.svg'),
   'model/siliconflow': () => import('./icons/model/siliconflow.svg'),

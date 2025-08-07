@@ -151,5 +151,9 @@ export const aiproxyIdMap: Record<
     label: 'Cloudflare',
     provider: 'Other',
     avatar: 'model/cloudflare'
+  },
+  20: {
+    label: 'OpenRouter',
+    provider: 'OpenRouter'
   }
 };

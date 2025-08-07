@@ -24,6 +24,7 @@ export type ModelProviderIdType =
   | 'Yi'
   | 'Siliconflow'
   | 'PPIO'
+  | 'OpenRouter'
   | 'Ollama'
   | 'BAAI'
   | 'FishAudio'
@@ -138,11 +139,15 @@ export const ModelProviderList: ModelProviderType[] = [
     name: i18nT('common:model_yi'),
     avatar: 'model/yi'
   },
-
   {
     id: 'Ollama',
     name: 'Ollama',
     avatar: 'model/ollama'
+  },
+  {
+    id: 'OpenRouter',
+    name: 'OpenRouter',
+    avatar: 'model/openrouter'
   },
   {
     id: 'BAAI',
