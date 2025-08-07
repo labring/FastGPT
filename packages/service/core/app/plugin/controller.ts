@@ -46,6 +46,7 @@ import { getMCPParentId, getMCPToolRuntimeNode } from '@fastgpt/global/core/app/
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getMCPChildren } from '../mcp';
 import { cloneDeep } from 'lodash';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 type ChildAppType = SystemPluginTemplateItemType & {
   teamId?: string;
@@ -80,7 +81,7 @@ export const getSystemPluginByIdAndVersionId = async (
           app
         })
       : await getAppLatestVersion(plugin.associatedPluginId, app);
-    if (!version.versionId) return Promise.reject('App version not found');
+    if (!version.versionId) return Promise.reject(new UserError('App version not found'));
     const isLatest = version.versionId
       ? await checkIsLatestVersion({
           appId: plugin.associatedPluginId,
@@ -119,7 +120,7 @@ export const getSystemPluginByIdAndVersionId = async (
   const versionList = (plugin.versionList as SystemPluginTemplateItemType['versionList']) || [];
 
   if (versionList.length === 0) {
-    return Promise.reject('Can not find plugin version list');
+    return Promise.reject(new UserError('Can not find plugin version list'));
   }
 
   const version = versionId

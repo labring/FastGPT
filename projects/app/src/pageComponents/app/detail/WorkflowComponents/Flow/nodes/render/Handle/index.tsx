@@ -10,7 +10,7 @@ import {
 } from '../../../../context/workflowInitContext';
 import { WorkflowEventContext } from '../../../../context/workflowEventContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { Box, Flex } from '@chakra-ui/react';
 
 const handleSizeConnected = 16;

@@ -69,6 +69,16 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
             }
           ]
         : []),
+      ...(pageType !== LoginPageTypeEnum.passwordLogin
+        ? [
+            {
+              label: t('common:support.user.login.Password login'),
+              provider: LoginPageTypeEnum.passwordLogin,
+              icon: 'support/permission/privateLight',
+              pageType: LoginPageTypeEnum.passwordLogin
+            }
+          ]
+        : []),
       ...(feConfigs?.oauth?.google
         ? [
             {
@@ -98,16 +108,6 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
               provider: OAuthEnum.microsoft,
               icon: 'common/microsoft',
               redirectUrl: `https://login.microsoftonline.com/${feConfigs?.oauth?.microsoft?.tenantId || 'common'}/oauth2/v2.0/authorize?client_id=${feConfigs?.oauth?.microsoft?.clientId}&response_type=code&redirect_uri=${redirectUri}&response_mode=query&scope=https%3A%2F%2Fgraph.microsoft.com%2Fuser.read&state=${state.current}`
-            }
-          ]
-        : []),
-      ...(pageType !== LoginPageTypeEnum.passwordLogin
-        ? [
-            {
-              label: t('common:support.user.login.Password login'),
-              provider: LoginPageTypeEnum.passwordLogin,
-              icon: 'support/permission/privateLight',
-              pageType: LoginPageTypeEnum.passwordLogin
             }
           ]
         : [])
@@ -184,12 +184,13 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
         <Box mt={['80px', 9]}>
           <Box flex={1} />
 
-          <Box position={'relative'} mb={5}>
-            <Box h={'1px'} bg={'myGray.250'} />
-            <AbsoluteCenter bg={'white'} px={3} color={'myGray.500'} fontSize={'mini'}>
+          <Flex position={'relative'} mb={5} alignItems={'center'}>
+            <Box h={'1px'} flex={'1'} bg={'myGray.250'} />
+            <Box px={3} color={'myGray.500'} fontSize={'mini'}>
               or
-            </AbsoluteCenter>
-          </Box>
+            </Box>
+            <Box h={'1px'} flex={'1'} bg={'myGray.250'} />
+          </Flex>
 
           {oAuthList.length > 2 ? (
             <Flex gap={4} alignItems={'center'} justifyContent={'center'}>
