@@ -40,6 +40,7 @@ type LineChartComponentProps = {
   tooltipItems?: TooltipItem[];
   showAverage?: boolean;
   averageKey?: string;
+  blur?: boolean;
 };
 
 const CustomTooltip = ({
@@ -89,10 +90,10 @@ const LineChartComponent = ({
   lines,
   tooltipItems,
   showAverage = false,
-  averageKey
+  averageKey,
+  blur = false
 }: LineChartComponentProps) => {
   const theme = useTheme();
-  const { t } = useTranslation();
 
   // Y-axis number formatter function
   const formatYAxisNumber = useCallback((value: number): string => {
@@ -166,9 +167,15 @@ const LineChartComponent = ({
           </Box>
           <QuestionTip label={description} />
         </Flex>
-        {HeaderRightChildren}
+        <Box filter={blur ? 'blur(7.5px)' : 'none'} pointerEvents={blur ? 'none' : 'auto'}>
+          {HeaderRightChildren}
+        </Box>
       </Flex>
-      <ResponsiveContainer width="100%" height={'100%'}>
+      <ResponsiveContainer
+        width="100%"
+        height={'100%'}
+        style={{ filter: blur ? 'blur(7.5px)' : 'none' }}
+      >
         <LineChart
           data={data}
           margin={{ top: 5, right: 30, left: 0, bottom: HeaderRightChildren ? 20 : 15 }}

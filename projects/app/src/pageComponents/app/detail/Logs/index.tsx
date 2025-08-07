@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Flex } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import LogTable from './LogTable';
 import LogChart from './LogChart';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -9,11 +9,10 @@ import { addDays } from 'date-fns';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { useMultipleSelect } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useToast } from '@fastgpt/web/hooks/useToast';
+import ProModal from '@/components/ProModal';
 
 const Logs = () => {
   const { t } = useTranslation();
-  const { toast } = useToast();
   const { feConfigs } = useSystemStore();
   const [viewMode, setViewMode] = useState<'chart' | 'table'>(feConfigs.isPlus ? 'chart' : 'table');
 
@@ -47,45 +46,52 @@ const Logs = () => {
           borderBottom={'1px solid'}
           borderColor={'myGray.200'}
         >
-          <Flex
-            px={2}
-            py={2}
-            cursor={'pointer'}
-            onClick={() => {
-              if (!feConfigs.isPlus) {
-                toast({
-                  title: t('common:commercial_function_tip'),
-                  status: 'warning'
-                });
-                return;
-              }
-              setViewMode('chart');
-            }}
-            gap={2}
-            borderRadius={'8px'}
-            fontWeight={'medium'}
-            color={viewMode === 'chart' ? 'primary.600' : 'myGray.500'}
-            bg={viewMode === 'chart' ? 'myGray.05' : 'transparent'}
-            _hover={{ bg: 'myGray.05' }}
-          >
-            <MyIcon name={'chart'} w={4} />
-            {t('app:logs_app_data')}
+          <Flex flex={1}>
+            <ProModal
+              onClick={() => {
+                setViewMode('chart');
+              }}
+              isPlus={feConfigs.isPlus}
+              canOpen={viewMode !== 'chart'}
+              px={2}
+              py={2}
+              cursor={'pointer'}
+              gap={2}
+              borderRadius={'8px'}
+              fontWeight={'medium'}
+              color={viewMode === 'chart' ? 'primary.600' : 'myGray.500'}
+              bg={viewMode === 'chart' ? 'myGray.05' : 'transparent'}
+              _hover={{ bg: 'myGray.05' }}
+              alignItems={'center'}
+            >
+              <MyIcon name={'chart'} w={4} />
+              {t('app:logs_app_data')}
+            </ProModal>
+            <Flex
+              px={2}
+              py={2}
+              cursor={'pointer'}
+              color={viewMode === 'table' ? 'primary.600' : 'myGray.500'}
+              onClick={() => setViewMode('table')}
+              gap={2}
+              borderRadius={'8px'}
+              fontWeight={'medium'}
+              bg={viewMode === 'table' ? 'myGray.05' : 'transparent'}
+              _hover={{ bg: 'myGray.05' }}
+            >
+              <MyIcon name={'core/app/logsLight'} w={4} />
+              {t('app:log_chat_logs')}
+            </Flex>
           </Flex>
-          <Flex
-            px={2}
-            py={2}
-            cursor={'pointer'}
-            color={viewMode === 'table' ? 'primary.600' : 'myGray.500'}
-            onClick={() => setViewMode('table')}
-            gap={2}
-            borderRadius={'8px'}
-            fontWeight={'medium'}
-            bg={viewMode === 'table' ? 'myGray.05' : 'transparent'}
-            _hover={{ bg: 'myGray.05' }}
-          >
-            <MyIcon name={'core/app/logsLight'} w={4} />
-            {t('app:log_chat_logs')}
-          </Flex>
+          {viewMode === 'chart' && !feConfigs.isPlus && (
+            <Flex alignItems={'center'}>
+              <ProModal showCloseIcon alignItems={'center'} cursor={'pointer'} gap={1.5}>
+                <Box color={'primary.600'} fontSize="14px" fontWeight={'medium'}>
+                  {t('common:upgrade')}
+                </Box>
+              </ProModal>
+            </Flex>
+          )}
         </Flex>
       </Flex>
       {viewMode === 'table' ? (
