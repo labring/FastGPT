@@ -728,6 +728,8 @@
   "core.workflow.inputType.Manual select": "手动选择",
   "core.workflow.inputType.Reference": "变量引用",
   "core.workflow.inputType.custom": "自定义变量",
+  "core.workflow.inputType.internal": "内部变量",
+  "core.workflow.inputType.external": "外部变量",
   "core.workflow.inputType.dynamicTargetInput": "动态外部数据",
   "core.workflow.inputType.input": "单行输入框",
   "core.workflow.inputType.number input": "数字输入框",

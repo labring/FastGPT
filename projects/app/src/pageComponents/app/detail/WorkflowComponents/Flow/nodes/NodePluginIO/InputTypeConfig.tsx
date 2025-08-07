@@ -154,7 +154,7 @@ const InputTypeConfig = ({
       VariableInputEnum.external
     ];
 
-    // 密码类型不显示默认值
+    // Do not show default value for password type
     if (inputType === FlowNodeInputTypeEnum.password) {
       return false;
     }

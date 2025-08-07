@@ -395,17 +395,17 @@ export const variableMap: Record<
   },
   [VariableInputEnum.internal]: {
     icon: 'core/workflow/inputType/customVariable',
-    label: '内部变量',
+    label: i18nT('common:core.workflow.inputType.internal'),
     value: VariableInputEnum.internal,
     defaultValueType: WorkflowIOValueTypeEnum.string,
-    description: '内部变量，仅在内部显示'
+    description: i18nT('app:variable.internal_type_desc')
   },
   [VariableInputEnum.external]: {
     icon: 'core/workflow/inputType/customVariable',
-    label: '外部变量',
+    label: i18nT('common:core.workflow.inputType.external'),
     value: VariableInputEnum.external,
     defaultValueType: WorkflowIOValueTypeEnum.string,
-    description: '外部变量，可在外部显示'
+    description: i18nT('app:variable.external_type_desc')
   }
 };
 

@@ -728,6 +728,8 @@
   "core.workflow.inputType.Manual select": "Manual Select",
   "core.workflow.inputType.Reference": "Variable Reference",
   "core.workflow.inputType.custom": "Custom Variable",
+  "core.workflow.inputType.internal": "Internal Variable",
+  "core.workflow.inputType.external": "External Variable",
   "core.workflow.inputType.dynamicTargetInput": "Dynamic External Data",
   "core.workflow.inputType.input": "Single Line Input Box",
   "core.workflow.inputType.number input": "Number Input Box",

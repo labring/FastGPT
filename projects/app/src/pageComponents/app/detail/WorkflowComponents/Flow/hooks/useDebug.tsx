@@ -72,7 +72,7 @@ export const useDebug = () => {
   const [defaultGlobalVariables, setDefaultGlobalVariables] = useState<Record<string, any>>(
     variables.reduce(
       (acc, item) => {
-        // 处理多选框的默认值，确保数组类型正确
+        // Handle the default value of the multiple select box, ensure the array type is correct
         if (item.type === VariableInputEnum.multipleSelect && Array.isArray(item.defaultValue)) {
           acc[item.key] = item.defaultValue;
         } else {
