@@ -54,6 +54,12 @@ const InputFormEditModal = ({
       defaultValueType: WorkflowIOValueTypeEnum.string
     },
     {
+      icon: 'core/workflow/inputType/password',
+      label: t('common:core.workflow.inputType.password'),
+      value: FlowNodeInputTypeEnum.password,
+      defaultValueType: WorkflowIOValueTypeEnum.string
+    },
+    {
       icon: 'core/workflow/inputType/numberInput',
       label: t('common:core.workflow.inputType.number input'),
       value: FlowNodeInputTypeEnum.numberInput,

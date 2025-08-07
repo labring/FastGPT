@@ -27,6 +27,11 @@ type SpecificProps =
       maxLength?: number;
     }
   | {
+      // password
+      inputType: InputTypeEnum.password;
+      maxLength?: number;
+    }
+  | {
       // numberInput
       inputType: InputTypeEnum.numberInput;
       min?: number;

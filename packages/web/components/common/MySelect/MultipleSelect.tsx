@@ -159,26 +159,36 @@ const MultipleSelect = <T = any,>({
   const onclickItem = useCallback(
     (val: T) => {
       if (isSelectAll) {
-        onSelect(list.map((item) => item.value).filter((i) => i !== val));
+        // 在全选状态下点击某个选项，从全选中移除该选项
+        const newValue = list.map((item) => item.value).filter((i) => i !== val);
+        onSelect(newValue);
         setIsSelectAll?.(false);
         return;
       }
 
       if (value.includes(val)) {
+        // 移除已选中的选项
         onSelect(value.filter((i) => i !== val));
       } else {
+        // 添加新选中的选项
         onSelect([...value, val]);
       }
     },
-    [value, isSelectAll, onSelect, setIsSelectAll]
+    [value, isSelectAll, onSelect, setIsSelectAll, list]
   );
 
   const onSelectAll = useCallback(() => {
     const hasSelected = isSelectAll || value.length > 0;
-    onSelect(hasSelected ? [] : list.map((item) => item.value));
-
-    setIsSelectAll?.((state) => !state);
-  }, [value, list, setIsSelectAll, onSelect]);
+    if (hasSelected) {
+      // 如果当前有选中项，则取消全选
+      onSelect([]);
+      setIsSelectAll?.(false);
+    } else {
+      // 如果当前没有选中项，则全选
+      onSelect(list.map((item) => item.value));
+      setIsSelectAll?.(true);
+    }
+  }, [value, list, setIsSelectAll, onSelect, isSelectAll]);
 
   const ListRender = useMemo(() => {
     return (

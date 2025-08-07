@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Switch } from '@chakra-ui/react';
+import { Box, Switch, Input } from '@chakra-ui/react';
 import type { InputRenderProps } from './type';
 import { InputTypeEnum } from './constant';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
@@ -35,9 +35,18 @@ const InputRender = (props: InputRenderProps) => {
     isSelectAll,
     setIsSelectAll
   } = useMultipleSelect<string>(
-    value,
-    inputType === InputTypeEnum.multipleSelect && value.length === (props.list?.length || 0)
+    Array.isArray(value) ? value : [],
+    inputType === InputTypeEnum.multipleSelect &&
+      Array.isArray(value) &&
+      value.length === (props.list?.length || 0)
   );
+
+  // 同步外部传入的 value 变化
+  React.useEffect(() => {
+    if (inputType === InputTypeEnum.multipleSelect && Array.isArray(value)) {
+      setValue(value);
+    }
+  }, [value, inputType, setValue]);
 
   const commonProps = {
     value,
@@ -59,6 +68,17 @@ const InputRender = (props: InputRenderProps) => {
           maxLength={props.maxLength}
           minH={40}
           maxH={120}
+        />
+      );
+    }
+
+    if (inputType === InputTypeEnum.password) {
+      return (
+        <Input
+          {...commonProps}
+          type="password"
+          placeholder={t('common:core.module.password_placeholder')}
+          maxLength={props.maxLength}
         />
       );
     }
@@ -122,7 +142,13 @@ const InputRender = (props: InputRenderProps) => {
           isSelectAll={isSelectAll}
           setIsSelectAll={(all) => {
             setIsSelectAll(all);
-            onChange(all ? list.map((item) => item.value) : []);
+            if (all) {
+              // 全选时，选择所有选项
+              onChange(list.map((item) => item.value));
+            } else {
+              // 取消全选时，清空选择
+              onChange([]);
+            }
           }}
         />
       );

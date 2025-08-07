@@ -333,7 +333,11 @@ export enum VariableInputEnum {
   textarea = 'textarea',
   numberInput = 'numberInput',
   select = 'select',
-  custom = 'custom'
+  multipleSelect = 'multipleSelect',
+  password = 'password',
+  custom = 'custom',
+  internal = 'internal',
+  external = 'external'
 }
 export const variableMap: Record<
   VariableInputEnum,
@@ -370,12 +374,38 @@ export const variableMap: Record<
     value: VariableInputEnum.select,
     defaultValueType: WorkflowIOValueTypeEnum.string
   },
+  [VariableInputEnum.multipleSelect]: {
+    icon: 'core/workflow/inputType/option',
+    label: i18nT('workflow:input_type_multiple_select'),
+    value: VariableInputEnum.multipleSelect,
+    defaultValueType: WorkflowIOValueTypeEnum.arrayString
+  },
+  [VariableInputEnum.password]: {
+    icon: 'key',
+    label: i18nT('common:core.workflow.inputType.password'),
+    value: VariableInputEnum.password,
+    defaultValueType: WorkflowIOValueTypeEnum.string
+  },
   [VariableInputEnum.custom]: {
     icon: 'core/workflow/inputType/customVariable',
     label: i18nT('common:core.workflow.inputType.custom'),
     value: VariableInputEnum.custom,
     defaultValueType: WorkflowIOValueTypeEnum.string,
     description: i18nT('app:variable.select type_desc')
+  },
+  [VariableInputEnum.internal]: {
+    icon: 'core/workflow/inputType/customVariable',
+    label: '内部变量',
+    value: VariableInputEnum.internal,
+    defaultValueType: WorkflowIOValueTypeEnum.string,
+    description: '内部变量，仅在内部显示'
+  },
+  [VariableInputEnum.external]: {
+    icon: 'core/workflow/inputType/customVariable',
+    label: '外部变量',
+    value: VariableInputEnum.external,
+    defaultValueType: WorkflowIOValueTypeEnum.string,
+    description: '外部变量，可在外部显示'
   }
 };
 

@@ -32,7 +32,9 @@ const VariableInput = ({
   const externalVariableList = useMemo(
     () =>
       allVariableList.filter((item) =>
-        showExternalVariables ? item.type === VariableInputEnum.custom : false
+        showExternalVariables
+          ? item.type === VariableInputEnum.custom || item.type === VariableInputEnum.external
+          : false
       ),
     [allVariableList, showExternalVariables]
   );

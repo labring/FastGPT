@@ -21,9 +21,13 @@ const VariablePopover = ({
     ChatItemContext,
     (v) => v.chatBoxData?.app?.chatConfig?.variables ?? []
   );
-  const variableList = variables.filter((item) => item.type !== VariableInputEnum.custom);
+  const variableList = variables.filter(
+    (item) => item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
+  );
   const externalVariableList = variables.filter((item) =>
-    showExternalVariables ? item.type === VariableInputEnum.custom : false
+    showExternalVariables
+      ? item.type === VariableInputEnum.custom || item.type === VariableInputEnum.external
+      : false
   );
 
   const hasExternalVariable = externalVariableList.length > 0;

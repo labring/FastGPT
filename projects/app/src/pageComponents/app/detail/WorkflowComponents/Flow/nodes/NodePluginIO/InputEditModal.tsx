@@ -61,6 +61,12 @@ const FieldEditModal = ({
             defaultValueType: WorkflowIOValueTypeEnum.string
           },
           {
+            icon: 'core/workflow/inputType/password',
+            label: t('common:core.workflow.inputType.password'),
+            value: [FlowNodeInputTypeEnum.password, FlowNodeInputTypeEnum.reference],
+            defaultValueType: WorkflowIOValueTypeEnum.string
+          },
+          {
             icon: 'core/workflow/inputType/jsonEditor',
             label: t('common:core.workflow.inputType.JSON Editor'),
             value: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference],

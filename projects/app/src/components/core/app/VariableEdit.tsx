@@ -137,7 +137,13 @@ const VariableEdit = ({
         return;
       }
 
-      if (data.type !== VariableInputEnum.select && data.list) {
+      if (
+        data.type !== VariableInputEnum.select &&
+        data.type !== VariableInputEnum.multipleSelect &&
+        data.type !== VariableInputEnum.internal &&
+        data.type !== VariableInputEnum.external &&
+        data.list
+      ) {
         delete data.list;
       }
 

@@ -55,8 +55,16 @@ export const useDebug = () => {
   const { filteredVar, customVar, variables } = useMemo(() => {
     const variables = appDetail.chatConfig?.variables || [];
     return {
-      filteredVar: variables.filter((item) => item.type !== VariableInputEnum.custom) || [],
-      customVar: variables.filter((item) => item.type === VariableInputEnum.custom) || [],
+      filteredVar:
+        variables.filter(
+          (item) =>
+            item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
+        ) || [],
+      customVar:
+        variables.filter(
+          (item) =>
+            item.type === VariableInputEnum.custom || item.type === VariableInputEnum.external
+        ) || [],
       variables
     };
   }, [appDetail.chatConfig?.variables]);
@@ -64,7 +72,12 @@ export const useDebug = () => {
   const [defaultGlobalVariables, setDefaultGlobalVariables] = useState<Record<string, any>>(
     variables.reduce(
       (acc, item) => {
-        acc[item.key] = item.defaultValue;
+        // 处理多选框的默认值，确保数组类型正确
+        if (item.type === VariableInputEnum.multipleSelect && Array.isArray(item.defaultValue)) {
+          acc[item.key] = item.defaultValue;
+        } else {
+          acc[item.key] = item.defaultValue;
+        }
         return acc;
       },
       {} as Record<string, any>

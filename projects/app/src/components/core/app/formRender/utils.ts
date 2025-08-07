@@ -14,7 +14,11 @@ export const variableInputTypeToInputType = (
   if (inputType === VariableInputEnum.textarea) return InputTypeEnum.textarea;
   if (inputType === VariableInputEnum.numberInput) return InputTypeEnum.numberInput;
   if (inputType === VariableInputEnum.select) return InputTypeEnum.select;
+  if (inputType === VariableInputEnum.multipleSelect) return InputTypeEnum.multipleSelect;
+  if (inputType === VariableInputEnum.password) return InputTypeEnum.password;
   if (inputType === VariableInputEnum.custom) return valueTypeToInputType(valueType);
+  if (inputType === VariableInputEnum.internal) return valueTypeToInputType(valueType);
+  if (inputType === VariableInputEnum.external) return valueTypeToInputType(valueType);
   return InputTypeEnum.JSONEditor;
 };
 
@@ -23,6 +27,7 @@ export const nodeInputTypeToInputType = (inputTypes: FlowNodeInputTypeEnum[] = [
   const inputType = inputTypes?.find((item) => item !== FlowNodeInputTypeEnum.reference);
 
   if (inputType === FlowNodeInputTypeEnum.input) return InputTypeEnum.input;
+  if (inputType === FlowNodeInputTypeEnum.password) return InputTypeEnum.password;
   if (inputType === FlowNodeInputTypeEnum.textarea) return InputTypeEnum.textarea;
   if (inputType === FlowNodeInputTypeEnum.numberInput) return InputTypeEnum.numberInput;
   if (inputType === FlowNodeInputTypeEnum.switch) return InputTypeEnum.switch;
@@ -39,7 +44,7 @@ export const valueTypeToInputType = (valueType?: WorkflowIOValueTypeEnum) => {
   if (valueType === WorkflowIOValueTypeEnum.number) return InputTypeEnum.numberInput;
   if (valueType === WorkflowIOValueTypeEnum.boolean) return InputTypeEnum.switch;
   if (valueType === WorkflowIOValueTypeEnum.object) return InputTypeEnum.JSONEditor;
-  if (valueType === WorkflowIOValueTypeEnum.arrayString) return InputTypeEnum.JSONEditor;
+  if (valueType === WorkflowIOValueTypeEnum.arrayString) return InputTypeEnum.multipleSelect;
   if (valueType === WorkflowIOValueTypeEnum.arrayNumber) return InputTypeEnum.JSONEditor;
   if (valueType === WorkflowIOValueTypeEnum.arrayBoolean) return InputTypeEnum.JSONEditor;
   if (valueType === WorkflowIOValueTypeEnum.arrayObject) return InputTypeEnum.JSONEditor;
