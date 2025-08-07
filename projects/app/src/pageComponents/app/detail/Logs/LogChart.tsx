@@ -313,6 +313,7 @@ const LogChart = ({
 
     return { user, chat, app, cumulative };
   }, [
+    feConfigs?.isPlus,
     chartData?.userData,
     chartData?.chatData,
     chartData?.appData,
@@ -729,7 +730,7 @@ const LogChart = ({
                     ]}
                     HeaderRightChildren={
                       <Flex alignItems={'center'} fontSize={'sm'} color={'myGray.600'}>
-                        {`${t('app:logs_total_avg_duration')}: ${formatChartData.cumulative.avgDuration.toFixed(2)}`}
+                        {`${t('app:logs_total_avg_duration')}: ${formatChartData.cumulative.avgDuration.toFixed(2)}s`}
                       </Flex>
                     }
                     blur={!feConfigs?.isPlus}
@@ -820,15 +821,30 @@ const HeaderControl = ({
 const TotalData = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-  const { data: totalData } = useRequest2(
+
+  const {
+    data: totalData = {
+      totalUsers: 0,
+      totalChats: 0,
+      totalPoints: 0
+    }
+  } = useRequest2(
     async () => {
-      return getAppTotalData({ appId });
+      if (feConfigs?.isPlus) {
+        return await getAppTotalData({ appId });
+      }
+      return {
+        totalUsers: 455,
+        totalChats: 22112,
+        totalPoints: 112233
+      };
     },
     {
-      manual: !feConfigs?.isPlus,
-      refreshDeps: [appId]
+      manual: false,
+      refreshDeps: [appId, feConfigs?.isPlus]
     }
   );
+
   const totalDataArray = useMemo(() => {
     return [
       {
@@ -839,7 +855,7 @@ const TotalData = ({ appId }: { appId: string }) => {
           border: 'primary.200',
           bg: 'primary.50'
         },
-        value: feConfigs?.isPlus ? totalData?.totalUsers || 0 : 455
+        value: totalData.totalUsers
       },
       {
         label: t('app:logs_total_chat'),
@@ -849,7 +865,7 @@ const TotalData = ({ appId }: { appId: string }) => {
           border: 'green.200',
           bg: 'green.50'
         },
-        value: feConfigs?.isPlus ? totalData?.totalChats || 0 : 22112
+        value: totalData.totalChats
       },
       {
         label: t('app:logs_total_points'),
@@ -859,10 +875,10 @@ const TotalData = ({ appId }: { appId: string }) => {
           border: 'yellow.200',
           bg: 'yellow.50'
         },
-        value: feConfigs?.isPlus ? totalData?.totalPoints || 0 : 112233
+        value: totalData.totalPoints
       }
     ];
-  }, [totalData]);
+  }, [t, totalData.totalChats, totalData.totalPoints, totalData.totalUsers]);
 
   return (
     <>
