@@ -244,11 +244,11 @@ const applyDirectoriesToText = (
 };
 
 export const llmPargraph = async ({ rawText, model }: { rawText: string; model: string }) => {
+  console.log(`[llmPargraph] start, model: ${model}, rawText length: ${rawText.length}`);
   const modelData = getLLMModel(model);
   if (!modelData) {
     return Promise.reject('Model not found');
   }
-
   // 添加调试日志：检查输入文本
   console.log(`[llmPargraph] Input rawText:`, {
     rawTextLength: rawText.length,
