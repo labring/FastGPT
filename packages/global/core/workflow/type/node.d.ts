@@ -77,6 +77,7 @@ export type FlowNodeCommonType = {
 
   // Not store, just computed
   currentCost?: number;
+  systemKeyCost?: number;
   hasTokenFee?: boolean;
   hasSystemSecret?: boolean;
 };
@@ -135,6 +136,7 @@ export type NodeTemplateListItemType = {
   author?: string;
   unique?: boolean; // 唯一的
   currentCost?: number; // 当前积分消耗
+  systemKeyCost?: number; // 系统密钥费用，统一为数字
   hasTokenFee?: boolean; // 是否配置积分
   instructions?: string; // 使用说明
   courseUrl?: string; // 教程链接

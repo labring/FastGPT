@@ -113,6 +113,7 @@ const NodeCard = (props: Props) => {
 
     return { node, parentNode };
   }, [nodeList, nodeId]);
+
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
   const showVersion = useMemo(() => {
     // 1. MCP tool set do not have version
@@ -409,6 +410,7 @@ const NodeCard = (props: Props) => {
       <EditTitleModal maxLength={100} />
       {inputConfig && isOpenToolParamConfigModal && (
         <SecretInputModal
+          isFolder={node?.isFolder}
           onClose={onCloseToolParamConfigModal}
           onSubmit={(data) => {
             onChangeNode({
@@ -425,7 +427,8 @@ const NodeCard = (props: Props) => {
           courseUrl={node?.courseUrl}
           inputConfig={inputConfig}
           hasSystemSecret={node?.hasSystemSecret}
-          secretCost={node?.currentCost}
+          parentId={node?.pluginId}
+          secretCost={node?.systemKeyCost}
         />
       )}
     </Flex>
