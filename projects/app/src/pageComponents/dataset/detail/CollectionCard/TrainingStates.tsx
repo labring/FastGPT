@@ -392,7 +392,9 @@ const ErrorView = ({
                 <Td>{item.chunkIndex + 1}</Td>
                 <Td>{TrainingText[item.mode]}</Td>
                 <Td maxW={50}>
-                  <MyTooltip label={item.errorMsg}>{t(item.errorMsg)}</MyTooltip>
+                  <MyTooltip shouldWrapChildren={false} placement={'auto'} label={t(item.errorMsg)}>
+                    {t(item.errorMsg)}
+                  </MyTooltip>
                 </Td>
                 <Td w={'220px'} px={3}>
                   <Flex alignItems={'center'}>
