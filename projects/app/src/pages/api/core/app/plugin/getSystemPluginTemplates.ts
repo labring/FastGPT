@@ -27,19 +27,16 @@ async function handler(
 
   const plugins = await getSystemTools();
 
-  const activePlugins = plugins.filter((item) => item.isActive);
-
-  return activePlugins
-    .map<NodeTemplateListItemType>((plugin) => {
-      return {
-        ...plugin,
-        parentId: plugin.parentId === undefined ? null : plugin.parentId,
-        templateType: plugin.templateType ?? FlowNodeTemplateTypeEnum.other,
-        flowNodeType: plugin.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
-        name: parseI18nString(plugin.name, lang),
-        intro: parseI18nString(plugin.intro ?? '', lang)
-      };
-    })
+  return plugins // Just show the active plugins
+    .filter((item) => item.isActive)
+    .map<NodeTemplateListItemType>((plugin) => ({
+      ...plugin,
+      parentId: plugin.parentId === undefined ? null : plugin.parentId,
+      templateType: plugin.templateType ?? FlowNodeTemplateTypeEnum.other,
+      flowNodeType: plugin.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
+      name: parseI18nString(plugin.name, lang),
+      intro: parseI18nString(plugin.intro ?? '', lang)
+    }))
     .filter((item) => {
       if (searchKey) {
         if (item.isFolder) return false;
