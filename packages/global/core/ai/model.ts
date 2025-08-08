@@ -14,8 +14,8 @@ export const defaultQAModels: LLMModelItemType[] = [
   {
     type: ModelTypeEnum.llm,
     provider: 'OpenAI',
-    model: 'gpt-4o-mini',
-    name: 'gpt-4o-mini',
+    model: 'gpt-5',
+    name: 'gpt-5',
     maxContext: 16000,
     maxResponse: 16000,
     quoteMaxToken: 13000,

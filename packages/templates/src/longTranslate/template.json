@@ -1428,7 +1428,7 @@
             "description": "",
             "debugLabel": "",
             "toolDescription": "",
-            "value": "gpt-4o-mini"
+            "value": "gpt-5"
           },
           {
             "key": "datasetSearchExtensionBg",
