@@ -171,13 +171,17 @@ export const createTrainingUsage = async ({
 export const createPdfParseUsage = async ({
   teamId,
   tmbId,
-  pages
+  pages,
+  parserName
 }: {
   teamId: string;
   tmbId: string;
   pages: number;
+  parserName?: string;
 }) => {
-  const unitPrice = global.systemEnv?.customPdfParse?.price || 0;
+  const parsers = global.systemEnv?.customPdfParse || [];
+  const selectedParser = parserName ? parsers.find((p) => p.name === parserName) : parsers[0];
+  const unitPrice = selectedParser?.price || 0;
   const totalPoints = pages * unitPrice;
 
   createUsage({

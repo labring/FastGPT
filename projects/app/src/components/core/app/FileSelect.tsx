@@ -9,8 +9,7 @@ import {
   HStack,
   Switch,
   ModalFooter,
-  type BoxProps,
-  Checkbox
+  type BoxProps
 } from '@chakra-ui/react';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -25,6 +24,8 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
+import { usePdfParsers } from '@/web/common/system/hooks/usePdfParsers';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 
 const FileSelect = ({
   forbidVision = false,
@@ -40,6 +41,24 @@ const FileSelect = ({
   const { feConfigs } = useSystemStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const maxSelectFiles = Math.min(feConfigs?.uploadFileMaxAmount ?? 20, 30);
+  const { data: pdfParsers = [] } = usePdfParsers();
+
+  // 构建选择器列表
+  const pdfParserOptions = useMemo(
+    () => [
+      {
+        label: t('app:system_default_parser'),
+        value: '',
+        description: t('app:system_default_parser_desc')
+      },
+      ...pdfParsers.map((parser) => ({
+        label: parser.label,
+        value: parser.value,
+        description: parser.desc
+      }))
+    ],
+    [pdfParsers, t]
+  );
 
   const formLabel = useMemo(
     () =>
@@ -100,20 +119,24 @@ const FileSelect = ({
           </HStack>
           {value.canSelectFile && feConfigs.showCustomPdfParse && (
             <>
-              <HStack justifyContent={'end'} spacing={1} mt={2}>
-                <Checkbox
-                  isChecked={value.customPdfParse}
-                  onChange={(e) => {
+              <Box mt={2}>
+                <HStack spacing={1} mb={2}>
+                  <FormLabel>{t('app:pdf_enhance_parse')}</FormLabel>
+                  <QuestionTip label={t('app:pdf_enhance_parse_tips')} />
+                </HStack>
+                <MySelect
+                  value={value.customPdfParse || ''}
+                  list={pdfParserOptions}
+                  onChange={(val) => {
                     onChange({
                       ...value,
-                      customPdfParse: e.target.checked
+                      customPdfParse: val
                     });
                   }}
-                >
-                  <FormLabel>{t('app:pdf_enhance_parse')}</FormLabel>
-                </Checkbox>
-                <QuestionTip label={t('app:pdf_enhance_parse_tips')} />
-                {feConfigs?.show_pay && (
+                  size={'sm'}
+                  h={'32px'}
+                />
+                {value.customPdfParse && feConfigs?.show_pay && (
                   <MyTag
                     type={'borderSolid'}
                     borderColor={'myGray.200'}
@@ -123,14 +146,14 @@ const FileSelect = ({
                     borderRadius={'md'}
                     px={3}
                     whiteSpace={'wrap'}
-                    ml={1}
+                    mt={2}
                   >
                     {t('app:pdf_enhance_parse_price', {
-                      price: feConfigs.customPdfParsePrice || 0
+                      price: pdfParsers.find((p) => p.value === value.customPdfParse)?.price || 0
                     })}
                   </MyTag>
                 )}
-              </HStack>
+              </Box>
               <MyDivider my={2} />
             </>
           )}

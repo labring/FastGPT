@@ -15,7 +15,7 @@ export type readRawTextByLocalFileParams = {
   tmbId: string;
   path: string;
   encoding: string;
-  customPdfParse?: boolean;
+  customPdfParse?: string;
   getFormatText?: boolean;
   metadata?: Record<string, any>;
 };
@@ -46,7 +46,7 @@ export const readRawContentByFileBuffer = async ({
   buffer,
   encoding,
   metadata,
-  customPdfParse = false,
+  customPdfParse,
   getFormatText = true
 }: {
   teamId: string;
@@ -57,7 +57,7 @@ export const readRawContentByFileBuffer = async ({
   encoding: string;
   metadata?: Record<string, any>;
 
-  customPdfParse?: boolean;
+  customPdfParse?: string;
   getFormatText?: boolean;
 }): Promise<{
   rawText: string;
@@ -68,9 +68,9 @@ export const readRawContentByFileBuffer = async ({
       encoding,
       buffer
     });
-  const parsePdfFromCustomService = async (): Promise<ReadFileResponse> => {
-    const url = global.systemEnv.customPdfParse?.url;
-    const token = global.systemEnv.customPdfParse?.key;
+  const parsePdfFromCustomService = async (parser: any): Promise<ReadFileResponse> => {
+    const url = parser.url;
+    const token = parser.key;
     if (!url) return systemParse();
 
     const start = Date.now();
@@ -104,7 +104,8 @@ export const readRawContentByFileBuffer = async ({
     createPdfParseUsage({
       teamId,
       tmbId,
-      pages: response.pages
+      pages: response.pages,
+      parserName: customPdfParse
     });
 
     return {
@@ -114,8 +115,8 @@ export const readRawContentByFileBuffer = async ({
     };
   };
   // Doc2x api
-  const parsePdfFromDoc2x = async (): Promise<ReadFileResponse> => {
-    const doc2xKey = global.systemEnv.customPdfParse?.doc2xKey;
+  const parsePdfFromDoc2x = async (parser: any): Promise<ReadFileResponse> => {
+    const doc2xKey = parser.doc2xKey;
     if (!doc2xKey) return systemParse();
 
     const { pages, text, imageList } = await useDoc2xServer({ apiKey: doc2xKey }).parsePDF(buffer);
@@ -123,7 +124,8 @@ export const readRawContentByFileBuffer = async ({
     createPdfParseUsage({
       teamId,
       tmbId,
-      pages
+      pages,
+      parserName: customPdfParse
     });
 
     return {
@@ -135,8 +137,14 @@ export const readRawContentByFileBuffer = async ({
   // Custom read file service
   const pdfParseFn = async (): Promise<ReadFileResponse> => {
     if (!customPdfParse) return systemParse();
-    if (global.systemEnv.customPdfParse?.url) return parsePdfFromCustomService();
-    if (global.systemEnv.customPdfParse?.doc2xKey) return parsePdfFromDoc2x();
+
+    const parsers = global.systemEnv.customPdfParse || [];
+    const selectedParser = parsers.find((parser) => parser.name === customPdfParse);
+
+    if (!selectedParser) return systemParse();
+
+    if (selectedParser.url) return parsePdfFromCustomService(selectedParser);
+    if (selectedParser.doc2xKey) return parsePdfFromDoc2x(selectedParser);
 
     return systemParse();
   };
@@ -145,9 +153,15 @@ export const readRawContentByFileBuffer = async ({
   addLog.debug(`Start parse file`, { extension });
 
   let { rawText, formatText, imageList } = await (async () => {
-    if (extension === 'pdf') {
+    // Check if any parser supports this extension
+    const parsers = global.systemEnv.customPdfParse || [];
+    const selectedParser = parsers.find((parser) => parser.name === customPdfParse);
+    const ext = selectedParser?.extension?.split(',');
+
+    if (ext?.includes(extension)) {
       return await pdfParseFn();
     }
+
     return await systemParse();
   })();
 

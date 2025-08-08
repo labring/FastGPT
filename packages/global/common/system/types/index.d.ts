@@ -139,15 +139,20 @@ export type SystemEnvType = {
   oneapiUrl?: string;
   chatApiKey?: string;
 
-  customPdfParse?: customPdfParseType;
+  customPdfParse?: SystemEnvCustomPdfParseType;
 };
 
 export type customPdfParseType = {
+  name: string;
+  desc: string;
   url?: string;
   key?: string;
   doc2xKey?: string;
   price?: number;
+  extension?: string;
 };
+
+export type SystemEnvCustomPdfParseType = customPdfParseType[];
 
 export type LicenseDataType = {
   startTime: string;
