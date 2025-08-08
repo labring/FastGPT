@@ -37,10 +37,7 @@ async function handler(
         templateType: plugin.templateType ?? FlowNodeTemplateTypeEnum.other,
         flowNodeType: plugin.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
         name: parseI18nString(plugin.name, lang),
-        intro: parseI18nString(plugin.intro ?? '', lang),
-        currentCost: plugin.currentCost,
-        systemKeyCost: plugin.systemKeyCost,
-        hasTokenFee: plugin.hasTokenFee
+        intro: parseI18nString(plugin.intro ?? '', lang)
       };
     })
     .filter((item) => {
