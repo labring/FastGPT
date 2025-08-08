@@ -113,13 +113,18 @@ export const loadSystemModels = async (init = false) => {
         const modelData: any = {
           ...model,
           ...dbModel?.metadata,
-          // @ts-ignore
-          defaultConfig: mergeObject(model.defaultConfig, dbModel?.metadata?.defaultConfig),
-          // @ts-ignore
-          fieldMap: mergeObject(model.fieldMap, dbModel?.metadata?.fieldMap),
           provider: getModelProvider(dbModel?.metadata?.provider || (model.provider as any)).id,
           type: dbModel?.metadata?.type || model.type,
-          isCustom: false
+          isCustom: false,
+
+          ...(model.type === ModelTypeEnum.llm && dbModel?.metadata?.type === ModelTypeEnum.llm
+            ? {
+                maxResponse: model.maxTokens ?? dbModel?.metadata?.maxResponse ?? 1000,
+                defaultConfig: mergeObject(model.defaultConfig, dbModel?.metadata?.defaultConfig),
+                fieldMap: mergeObject(model.fieldMap, dbModel?.metadata?.fieldMap),
+                maxTokens: undefined
+              }
+            : {})
         };
         pushModel(modelData);
       })
