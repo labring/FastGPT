@@ -114,8 +114,6 @@ const NodeCard = (props: Props) => {
     return { node, parentNode };
   }, [nodeList, nodeId]);
 
-  // get child tools info (if it is a tool set)
-
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
   const showVersion = useMemo(() => {
     // 1. MCP tool set do not have version

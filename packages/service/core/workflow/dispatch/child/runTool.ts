@@ -146,17 +146,11 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         };
       }
 
-      const dbPlugin = await MongoSystemPlugin.findOne({
-        pluginId: toolConfig.systemTool?.toolId
-      }).lean();
-
       const usagePoints = (() => {
         if (params.system_input_config?.type !== SystemToolInputTypeEnum.system) {
           return 0;
         }
-        const systemKeyCost = dbPlugin?.systemKeyCost;
-        const systemCost = typeof systemKeyCost === 'number' ? systemKeyCost : 0;
-        return (tool.currentCost ?? 0) + systemCost;
+        return (tool.systemKeyCost ?? 0) + (tool.currentCost ?? 0);
       })();
 
       pushTrack.runSystemTool({
