@@ -336,7 +336,7 @@ const ListItem = () => {
                                       ...(app.permission.hasManagePer
                                         ? [
                                             {
-                                              icon: 'key',
+                                              icon: 'core/workflow/inputType/password',
                                               type: 'grayBg' as MenuItemType,
                                               label: t('common:permission.Permission'),
                                               onClick: () => setEditPerAppId(app._id)

@@ -388,7 +388,7 @@ export const variableMap: Record<
     defaultValueType: WorkflowIOValueTypeEnum.arrayString
   },
   [VariableInputEnum.password]: {
-    icon: 'key',
+    icon: 'core/workflow/inputType/password',
     label: i18nT('common:core.workflow.inputType.password'),
     value: VariableInputEnum.password,
     defaultValueType: WorkflowIOValueTypeEnum.string

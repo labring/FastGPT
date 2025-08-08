@@ -94,7 +94,7 @@ const AccountContainer = ({
     ...(userInfo?.team?.permission.hasApikeyCreatePer
       ? [
           {
-            icon: 'key',
+            icon: 'core/workflow/inputType/password',
             label: t('account:api_key'),
             value: TabEnum.apikey
           }
