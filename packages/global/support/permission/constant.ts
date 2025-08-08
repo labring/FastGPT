@@ -1,4 +1,5 @@
-import { type PermissionListType } from './type';
+import type { PermissionListType } from './type';
+import { type RoleListType } from './type';
 import { i18nT } from '../../../web/i18n/utils';
 export enum AuthUserTypeEnum {
   token = 'token',
@@ -15,6 +16,12 @@ export enum PermissionTypeEnum {
   publicRead = 'publicRead',
   publicWrite = 'publicWrite'
 }
+
+export const NullRoleVal = 0;
+export const NullPermissionVal = 0;
+export const OwnerRoleVal = ~0 >>> 0;
+export const OwnerPermissionVal = ~0 >>> 0;
+
 export const PermissionTypeMap = {
   [PermissionTypeEnum.private]: {
     iconLight: 'support/permission/privateLight',
@@ -45,34 +52,56 @@ export enum PerResourceTypeEnum {
 }
 
 /* new permission */
-export enum PermissionKeyEnum {
+export enum CommonPerKeyEnum {
+  owner = 'owner',
   read = 'read',
   write = 'write',
   manage = 'manage'
 }
-export const PermissionList: PermissionListType = {
-  [PermissionKeyEnum.read]: {
+
+export enum CommonRoleKeyEnum {
+  read = 'read',
+  write = 'write',
+  manage = 'manage'
+}
+
+export const CommonPerList: PermissionListType<CommonPerKeyEnum> = {
+  [CommonPerKeyEnum.owner]: OwnerRoleVal,
+  [CommonPerKeyEnum.read]: 0b100,
+  [CommonPerKeyEnum.write]: 0b010,
+  [CommonPerKeyEnum.manage]: 0b001
+} as const;
+
+export const CommonRoleList: RoleListType = {
+  [CommonRoleKeyEnum.read]: {
     name: i18nT('common:permission.read'),
     description: '',
     value: 0b100,
+    permission: CommonPerList.read,
     checkBoxType: 'single'
   },
-  [PermissionKeyEnum.write]: {
+  [CommonRoleKeyEnum.write]: {
     name: i18nT('common:permission.write'),
     description: '',
-    value: 0b110,
+    value: 0b010,
+    permission: CommonPerList.write,
     checkBoxType: 'single'
   },
-  [PermissionKeyEnum.manage]: {
+  [CommonRoleKeyEnum.manage]: {
     name: i18nT('common:permission.manager'),
     description: '',
-    value: 0b111,
+    value: 0b001,
+    permission: CommonPerList.manage,
     checkBoxType: 'single'
   }
-};
+} as const;
 
-export const NullPermission = 0;
-export const OwnerPermissionVal = ~0 >>> 0;
-export const ReadPermissionVal = PermissionList['read'].value;
-export const WritePermissionVal = PermissionList['write'].value;
-export const ManagePermissionVal = PermissionList['manage'].value;
+export const CommonRolePerMap = new Map([
+  [CommonRoleList['read'].value, CommonPerList.read],
+  [CommonRoleList['write'].value, CommonPerList.write],
+  [CommonRoleList['manage'].value, CommonPerList.manage]
+]);
+
+export const ReadRoleVal = CommonRoleList['read'].value;
+export const WriteRoleVal = CommonRoleList['write'].value;
+export const ManageRoleVal = CommonRoleList['manage'].value;

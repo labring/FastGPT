@@ -20,7 +20,7 @@ export class TeamPermission extends Permission {
     } else if (!props?.per) {
       props.per = TeamDefaultPermissionVal;
     }
-    props.permissionList = TeamPermissionList;
+    props.roleList = TeamPermissionList;
     super(props);
 
     this.setUpdatePermissionCallback(() => {

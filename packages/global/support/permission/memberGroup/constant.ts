@@ -1,5 +1,5 @@
-import { PermissionKeyEnum, PermissionList } from '../constant';
-import { type PermissionListType } from '../type';
+import { CommonPerKeyEnum, CommonRoleList } from '../constant';
+import { type RoleListType } from '../type';
 
 export enum GroupMemberRole {
   owner = 'owner',
@@ -7,17 +7,17 @@ export enum GroupMemberRole {
   member = 'member'
 }
 
-export const memberGroupPermissionList: PermissionListType = {
-  [PermissionKeyEnum.read]: {
-    ...PermissionList[PermissionKeyEnum.read],
+export const memberGroupPermissionList: RoleListType = {
+  [CommonPerKeyEnum.read]: {
+    ...CommonRoleList[CommonPerKeyEnum.read],
     value: 0b100
   },
-  [PermissionKeyEnum.write]: {
-    ...PermissionList[PermissionKeyEnum.write],
+  [CommonPerKeyEnum.write]: {
+    ...CommonRoleList[CommonPerKeyEnum.write],
     value: 0b010
   },
-  [PermissionKeyEnum.manage]: {
-    ...PermissionList[PermissionKeyEnum.manage],
+  [CommonPerKeyEnum.manage]: {
+    ...CommonRoleList[CommonPerKeyEnum.manage],
     value: 0b001
   }
 };

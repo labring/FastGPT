@@ -1,6 +1,6 @@
-import { PermissionKeyEnum } from '../constant';
-import { type PermissionListType } from '../type';
-import { PermissionList } from '../constant';
+import { CommonPerKeyEnum } from '../constant';
+import { type RoleListType } from '../type';
+import { CommonRoleList } from '../constant';
 import { i18nT } from '../../../../web/i18n/utils';
 export enum TeamPermissionKeyEnum {
   appCreate = 'appCreate',
@@ -8,17 +8,17 @@ export enum TeamPermissionKeyEnum {
   apikeyCreate = 'apikeyCreate'
 }
 
-export const TeamPermissionList: PermissionListType<TeamPermissionKeyEnum> = {
-  [PermissionKeyEnum.read]: {
-    ...PermissionList[PermissionKeyEnum.read],
+export const TeamPermissionList: RoleListType<TeamPermissionKeyEnum> = {
+  [CommonPerKeyEnum.read]: {
+    ...CommonRoleList[CommonPerKeyEnum.read],
     value: 0b000100
   },
-  [PermissionKeyEnum.write]: {
-    ...PermissionList[PermissionKeyEnum.write],
+  [CommonPerKeyEnum.write]: {
+    ...CommonRoleList[CommonPerKeyEnum.write],
     value: 0b000010
   },
-  [PermissionKeyEnum.manage]: {
-    ...PermissionList[PermissionKeyEnum.manage],
+  [CommonPerKeyEnum.manage]: {
+    ...CommonRoleList[CommonPerKeyEnum.manage],
     value: 0b000001
   },
   [TeamPermissionKeyEnum.appCreate]: {

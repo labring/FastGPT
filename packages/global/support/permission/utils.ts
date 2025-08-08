@@ -1,5 +1,5 @@
 import { type PermissionValueType } from './type';
-import { NullPermission, PermissionTypeEnum } from './constant';
+import { NullRoleVal, PermissionTypeEnum } from './constant';
 import type { Permission } from './controller';
 
 /* team public source, or owner source in team */
@@ -30,7 +30,7 @@ export function mongoOwnerPermission({ teamId, tmbId }: { teamId: string; tmbId:
 }
 
 // return permission-related schema to define the schema of resources
-export function getPermissionSchema(defaultPermission: PermissionValueType = NullPermission) {
+export function getPermissionSchema(defaultPermission: PermissionValueType = NullRoleVal) {
   return {
     defaultPermission: {
       type: Number,
