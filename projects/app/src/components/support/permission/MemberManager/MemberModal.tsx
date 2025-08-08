@@ -98,7 +98,7 @@ function MemberModal({
   >([]);
 
   const [selectedGroupList, setSelectedGroupList] = useState<MemberGroupListItemType<false>[]>([]);
-  const permissionList = useContextSelector(CollaboratorContext, (v) => v.permissionList);
+  const permissionList = useContextSelector(CollaboratorContext, (v) => v.roleList);
   const getPerLabelList = useContextSelector(CollaboratorContext, (v) => v.getPerLabelList);
   const [selectedPermission, setSelectedPermission] = useState<number | undefined>(
     permissionList?.read?.value
@@ -277,7 +277,7 @@ function MemberModal({
                         avatar={member.avatar}
                         key={member.tmbId}
                         name={member.memberName}
-                        permission={collaborator?.permission.value}
+                        role={collaborator?.permission.role}
                         onChange={onChange}
                         isChecked={!!selectedMemberList.find((v) => v.tmbId === member.tmbId)}
                         orgs={member.orgs}
@@ -316,7 +316,7 @@ function MemberModal({
                         name={org.name}
                         onChange={onChange}
                         addOnly={addOnly}
-                        permission={collaborator?.permission.value}
+                        role={collaborator?.permission.role}
                         isChecked={!!selectedOrgList.find((v) => String(v._id) === String(org._id))}
                         rightSlot={
                           org.total && (
@@ -365,8 +365,8 @@ function MemberModal({
                               });
                             }}
                             isChecked={isChecked}
-                            permission={collaborator?.permission.value}
-                            addOnly={addOnly && !!member.permission.value}
+                            role={collaborator?.permission.role}
+                            addOnly={addOnly && !!member.permission.role}
                             orgs={member.orgs}
                           />
                         );
@@ -392,7 +392,7 @@ function MemberModal({
                       name={
                         group.name === DefaultGroupName ? userInfo?.team.teamName ?? '' : group.name
                       }
-                      permission={collaborator?.permission.value}
+                      role={collaborator?.permission.role}
                       onChange={onChange}
                       isChecked={!!selectedGroupList.find((v) => v._id === group._id)}
                       addOnly={addOnly}

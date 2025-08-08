@@ -1,14 +1,29 @@
 import { CommonPerKeyEnum } from '../constant';
-import { type RoleListType } from '../type';
-import { CommonRoleList } from '../constant';
+import type { PermissionListType, RoleListType, RolePerMapType } from '../type';
+import { CommonRoleList, CommonPerList } from '../constant';
 import { i18nT } from '../../../../web/i18n/utils';
-export enum TeamPermissionKeyEnum {
+import { sumPer } from '../utils';
+
+export enum TeamPerKeyEnum {
   appCreate = 'appCreate',
   datasetCreate = 'datasetCreate',
   apikeyCreate = 'apikeyCreate'
 }
 
-export const TeamPermissionList: RoleListType<TeamPermissionKeyEnum> = {
+export enum TeamRoleKeyEnum {
+  appCreate = 'appCreate',
+  datasetCreate = 'datasetCreate',
+  apikeyCreate = 'apikeyCreate'
+}
+
+export const TeamPerList: PermissionListType<TeamPerKeyEnum> = {
+  ...CommonPerList,
+  apikeyCreate: 0b100000,
+  appCreate: 0b001000,
+  datasetCreate: 0b010000
+};
+
+export const TeamRoleList: RoleListType<TeamRoleKeyEnum> = {
   [CommonPerKeyEnum.read]: {
     ...CommonRoleList[CommonPerKeyEnum.read],
     value: 0b000100
@@ -21,19 +36,19 @@ export const TeamPermissionList: RoleListType<TeamPermissionKeyEnum> = {
     ...CommonRoleList[CommonPerKeyEnum.manage],
     value: 0b000001
   },
-  [TeamPermissionKeyEnum.appCreate]: {
+  [TeamRoleKeyEnum.appCreate]: {
     checkBoxType: 'multiple',
     description: '',
     name: i18nT('account_team:permission_appCreate'),
     value: 0b001000
   },
-  [TeamPermissionKeyEnum.datasetCreate]: {
+  [TeamRoleKeyEnum.datasetCreate]: {
     checkBoxType: 'multiple',
     description: '',
     name: i18nT('account_team:permission_datasetCreate'),
     value: 0b010000
   },
-  [TeamPermissionKeyEnum.apikeyCreate]: {
+  [TeamRoleKeyEnum.apikeyCreate]: {
     checkBoxType: 'multiple',
     description: '',
     name: i18nT('account_team:permission_apikeyCreate'),
@@ -41,10 +56,39 @@ export const TeamPermissionList: RoleListType<TeamPermissionKeyEnum> = {
   }
 };
 
-export const TeamReadPermissionVal = TeamPermissionList['read'].value;
-export const TeamWritePermissionVal = TeamPermissionList['write'].value;
-export const TeamManagePermissionVal = TeamPermissionList['manage'].value;
-export const TeamAppCreatePermissionVal = TeamPermissionList['appCreate'].value;
-export const TeamDatasetCreatePermissionVal = TeamPermissionList['datasetCreate'].value;
-export const TeamApikeyCreatePermissionVal = TeamPermissionList['apikeyCreate'].value;
+export const TeamRolePerMap: RolePerMapType = new Map([
+  [TeamRoleList['read'].value, CommonPerList.read],
+  [TeamRoleList['write'].value, sumPer(CommonPerList.read, CommonPerList.write)],
+  [
+    TeamRoleList['manage'].value,
+    sumPer(CommonPerList.read, CommonPerList.write, CommonPerList.manage)
+  ],
+  [
+    TeamRoleList['appCreate'].value,
+    sumPer(TeamPerList.appCreate, CommonPerList.read, CommonPerList.write)
+  ],
+  [
+    TeamRoleList['datasetCreate'].value,
+    sumPer(TeamPerList.datasetCreate, CommonPerList.read, CommonPerList.write)
+  ],
+  [
+    TeamRoleList['apikeyCreate'].value,
+    sumPer(TeamPerList.apikeyCreate, CommonPerList.read, CommonPerList.write)
+  ]
+]);
+
+export const TeamReadRoleVal = TeamRoleList['read'].value;
+export const TeamWriteRoleVal = TeamRoleList['write'].value;
+export const TeamManageRoleVal = TeamRoleList['manage'].value;
+export const TeamAppCreateRoleVal = TeamRoleList['appCreate'].value;
+export const TeamDatasetCreateRoleVal = TeamRoleList['datasetCreate'].value;
+export const TeamApikeyCreateRoleVal = TeamRoleList['apikeyCreate'].value;
+export const TeamDefaultRoleVal = TeamReadRoleVal;
+
+export const TeamReadPermissionVal = TeamRolePerMap.get(TeamReadRoleVal)!;
+export const TeamWritePermissionVal = TeamRolePerMap.get(TeamWriteRoleVal)!;
+export const TeamManagePermissionVal = TeamRolePerMap.get(TeamManageRoleVal)!;
+export const TeamAppCreatePermissionVal = TeamRolePerMap.get(TeamAppCreateRoleVal)!;
+export const TeamDatasetCreatePermissionVal = TeamRolePerMap.get(TeamDatasetCreateRoleVal)!;
+export const TeamApikeyCreatePermissionVal = TeamRolePerMap.get(TeamApikeyCreateRoleVal)!;
 export const TeamDefaultPermissionVal = TeamReadPermissionVal;

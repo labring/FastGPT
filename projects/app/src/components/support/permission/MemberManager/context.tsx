@@ -3,11 +3,11 @@ import type {
   CollaboratorItemType,
   UpdateClbPermissionProps
 } from '@fastgpt/global/support/permission/collaborator';
-import { PermissionList } from '@fastgpt/global/support/permission/constant';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 import type {
   PermissionListType,
-  PermissionValueType
+  PermissionValueType,
+  RoleListType
 } from '@fastgpt/global/support/permission/type';
 import { type ReactNode, useCallback } from 'react';
 import { createContext } from 'use-context-selector';
@@ -19,6 +19,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { useTranslation } from 'next-i18next';
+import { CommonRoleList } from '@fastgpt/global/support/permission/constant';
 
 const MemberModal = dynamic(() => import('./MemberModal'));
 const ManageModal = dynamic(() => import('./ManageModal'));
@@ -26,7 +27,7 @@ const ManageModal = dynamic(() => import('./ManageModal'));
 export type MemberManagerInputPropsType = {
   permission: Permission;
   onGetCollaboratorList: () => Promise<CollaboratorItemType[]>;
-  permissionList?: PermissionListType;
+  roleList?: RoleListType;
   onUpdateCollaborators: (props: UpdateClbPermissionProps) => Promise<any>;
   onDelOneCollaborator: (
     props: RequireOnlyOne<{ tmbId: string; groupId: string; orgId: string }>
@@ -50,7 +51,7 @@ type CollaboratorContextType = MemberManagerPropsType & {};
 
 export const CollaboratorContext = createContext<CollaboratorContextType>({
   collaboratorList: [],
-  permissionList: PermissionList,
+  roleList: CommonRoleList,
   onUpdateCollaborators: () => {
     throw new Error('Function not implemented.');
   },
@@ -73,7 +74,7 @@ export const CollaboratorContext = createContext<CollaboratorContextType>({
 const CollaboratorContextProvider = ({
   permission,
   onGetCollaboratorList,
-  permissionList,
+  roleList: permissionList,
   onUpdateCollaborators,
   onDelOneCollaborator,
   children,
@@ -115,7 +116,7 @@ const CollaboratorContextProvider = ({
           return {
             ...item,
             permission: new Permission({
-              per: item.permission.value
+              role: item.permission.role
             })
           };
         });
@@ -129,10 +130,10 @@ const CollaboratorContextProvider = ({
   );
 
   const getPerLabelList = useCallback(
-    (per: PermissionValueType) => {
+    (role: PermissionValueType) => {
       if (!permissionList) return [];
 
-      const Per = new Permission({ per });
+      const Per = new Permission({ role });
       const labels: string[] = [];
 
       if (Per.hasManagePer) {

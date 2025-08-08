@@ -42,3 +42,7 @@ export function getPermissionSchema(defaultPermission: PermissionValueType = Nul
     }
   };
 }
+
+export const sumPer = (...per: PermissionValueType[]) => {
+  return per.reduce((acc, cur) => acc | cur, 0);
+};

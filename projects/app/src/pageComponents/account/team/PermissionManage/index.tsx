@@ -31,8 +31,7 @@ import {
   TeamAppCreatePermissionVal,
   TeamDatasetCreatePermissionVal,
   TeamManagePermissionVal,
-  TeamPermissionList,
-  TeamWritePermissionVal
+  TeamRoleList
 } from '@fastgpt/global/support/permission/user/constant';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import { useToggle } from 'ahooks';
@@ -117,18 +116,18 @@ function PermissionManage({
 
       if (!clb) return;
 
-      const permission = new TeamPermission({ per: clb.permission.value });
+      const permission = new TeamPermission({ role: clb.permission.role });
       if (type === 'add') {
-        permission.addPer(per);
+        permission.addRole(per);
       } else {
-        permission.removePer(per);
+        permission.removeRole(per);
       }
 
       return onUpdateCollaborators({
         ...(clb.tmbId && { members: [clb.tmbId] }),
         ...(clb.groupId && { groups: [clb.groupId] }),
         ...(clb.orgId && { orgs: [clb.orgId] }),
-        permission: permission.value
+        permission: permission.role
       });
     }
   );
@@ -434,7 +433,7 @@ export const Render = ({ Tabs }: { Tabs: React.ReactNode }) => {
   return userInfo?.team ? (
     <CollaboratorContextProvider
       permission={userInfo?.team.permission}
-      permissionList={TeamPermissionList}
+      roleList={TeamRoleList}
       onGetCollaboratorList={getTeamClbs}
       onUpdateCollaborators={updateMemberPermission}
       onDelOneCollaborator={deleteMemberPermission}

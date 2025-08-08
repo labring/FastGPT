@@ -1,8 +1,8 @@
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 
 export const processUpdateDatasetCollaboratorSpecific = (metadata: any) => {
-  const permissionValue = parseInt(metadata.permission, 10);
-  const permission = new DatasetPermission({ per: permissionValue });
+  const role = parseInt(metadata.permission, 10);
+  const permission = new DatasetPermission({ role });
   return {
     ...metadata,
     readPermission: permission.hasReadPer ? '✔' : '✘',

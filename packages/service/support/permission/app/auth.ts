@@ -12,7 +12,7 @@ import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { type AuthModeType, type AuthResponseType } from '../type';
-import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/constant';
+import { AppDefaultRoleVal } from '@fastgpt/global/support/permission/app/constant';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 
 export const authPluginByTmbId = async ({
@@ -83,16 +83,17 @@ export const authAppByTmbId = async ({
         app.inheritPermission === false ||
         !app.parentId
       ) {
-        // 1. is a folder. (Folders have compeletely permission)
+        // 1. is a folder. (Folders have completely permission)
         // 2. inheritPermission is false.
         // 3. is root folder/app.
-        const rp = await getResourcePermission({
-          teamId,
-          tmbId,
-          resourceId: appId,
-          resourceType: PerResourceTypeEnum.app
-        });
-        const Per = new AppPermission({ per: rp ?? AppDefaultPermissionVal, isOwner });
+        const role =
+          (await getResourcePermission({
+            teamId,
+            tmbId,
+            resourceId: appId,
+            resourceType: PerResourceTypeEnum.app
+          })) ?? AppDefaultRoleVal;
+        const Per = new AppPermission({ role, isOwner });
         return {
           Per
         };
@@ -105,7 +106,7 @@ export const authAppByTmbId = async ({
         });
 
         const Per = new AppPermission({
-          per: parent.permission.value,
+          role: parent.permission.role,
           isOwner
         });
         return {

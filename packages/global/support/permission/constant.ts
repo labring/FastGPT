@@ -65,7 +65,7 @@ export enum CommonRoleKeyEnum {
   manage = 'manage'
 }
 
-export const CommonPerList: PermissionListType<CommonPerKeyEnum> = {
+export const CommonPerList: PermissionListType = {
   [CommonPerKeyEnum.owner]: OwnerRoleVal,
   [CommonPerKeyEnum.read]: 0b100,
   [CommonPerKeyEnum.write]: 0b010,
@@ -77,21 +77,18 @@ export const CommonRoleList: RoleListType = {
     name: i18nT('common:permission.read'),
     description: '',
     value: 0b100,
-    permission: CommonPerList.read,
     checkBoxType: 'single'
   },
   [CommonRoleKeyEnum.write]: {
     name: i18nT('common:permission.write'),
     description: '',
     value: 0b010,
-    permission: CommonPerList.write,
     checkBoxType: 'single'
   },
   [CommonRoleKeyEnum.manage]: {
     name: i18nT('common:permission.manager'),
     description: '',
     value: 0b001,
-    permission: CommonPerList.manage,
     checkBoxType: 'single'
   }
 } as const;
@@ -105,3 +102,7 @@ export const CommonRolePerMap = new Map([
 export const ReadRoleVal = CommonRoleList['read'].value;
 export const WriteRoleVal = CommonRoleList['write'].value;
 export const ManageRoleVal = CommonRoleList['manage'].value;
+
+export const ManagePermissionVal = CommonPerList.manage;
+export const ReadPermissionVal = CommonPerList.read;
+export const WritePermissionVal = CommonPerList.write;

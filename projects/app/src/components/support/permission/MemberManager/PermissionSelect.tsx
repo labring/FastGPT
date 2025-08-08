@@ -40,7 +40,7 @@ const MenuStyle = {
 };
 
 function PermissionSelect({
-  value,
+  value: role,
   onChange,
   trigger = 'click',
   offset = [0, 5],
@@ -52,7 +52,10 @@ function PermissionSelect({
   const ref = useRef<HTMLButtonElement>(null);
   const closeTimer = useRef<NodeJS.Timeout>();
 
-  const { permission, permissionList } = useContextSelector(CollaboratorContext, (v) => v);
+  const { permission, roleList: permissionList } = useContextSelector(
+    CollaboratorContext,
+    (v) => v
+  );
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -82,13 +85,13 @@ function PermissionSelect({
   const selectedSingleValue = useMemo(() => {
     if (!permissionList) return undefined;
 
-    const per = new Permission({ per: value });
+    const per = new Permission({ role: role });
 
     if (per.hasManagePer) return permissionList['manage'].value;
     if (per.hasWritePer) return permissionList['write'].value;
 
     return permissionList['read'].value;
-  }, [permissionList, value]);
+  }, [permissionList, role]);
   // const selectedMultipleValues = useMemo(() => {
   //   const per = new Permission({ per: value });
   //
@@ -100,7 +103,7 @@ function PermissionSelect({
   // }, [permissionSelectList.multipleCheckBoxList, value]);
 
   const onSelectPer = (per: PermissionValueType) => {
-    if (per === value) return;
+    if (per === role) return;
     onChange(per);
     setIsOpen(false);
   };
@@ -155,10 +158,10 @@ function PermissionSelect({
           {/* The list of single select permissions */}
           {permissionSelectList.singleCheckBoxList.map((item) => {
             const change = () => {
-              const per = new Permission({ per: value });
-              per.removePer(selectedSingleValue);
-              per.addPer(item.value);
-              onSelectPer(per.value);
+              const per = new Permission({ role });
+              per.removeRole(selectedSingleValue);
+              per.addRole(item.value);
+              onSelectPer(per.role);
             };
 
             return (

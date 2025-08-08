@@ -10,7 +10,7 @@ import { Permission } from '@fastgpt/global/support/permission/controller';
 
 export async function authOpenApiKeyCrud({
   id,
-  per = OwnerPermissionVal,
+  per: role = OwnerPermissionVal,
   ...props
 }: AuthModeType & {
   id: string;
@@ -34,7 +34,7 @@ export async function authOpenApiKeyCrud({
 
     if (!!openapi.appId) {
       // if is not global openapi, then auth app
-      const { app } = await authAppByTmbId({ appId: openapi.appId!, tmbId, per });
+      const { app } = await authAppByTmbId({ appId: openapi.appId!, tmbId, per: role });
       return {
         permission: app.permission,
         openapi
@@ -43,14 +43,14 @@ export async function authOpenApiKeyCrud({
     // if is global openapi, then auth openapi
     const { permission: tmbPer } = await getTmbInfoByTmbId({ tmbId });
 
-    if (!tmbPer.checkPer(per) && tmbId !== String(openapi.tmbId)) {
+    if (!tmbPer.checkPer(role) && tmbId !== String(openapi.tmbId)) {
       return Promise.reject(OpenApiErrEnum.unAuth);
     }
 
     return {
       openapi,
       permission: new Permission({
-        per
+        role
       })
     };
   })();

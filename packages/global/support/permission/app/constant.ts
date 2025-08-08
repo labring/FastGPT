@@ -1,8 +1,14 @@
-import { NullRoleVal, CommonPerKeyEnum, CommonRoleList } from '../constant';
+import {
+  NullRoleVal,
+  CommonPerKeyEnum,
+  CommonRoleList,
+  CommonPerList,
+  CommonRolePerMap
+} from '../constant';
 import { type RoleListType } from '../type';
 import { i18nT } from '../../../../web/i18n/utils';
 export enum AppPermissionKeyEnum {}
-export const AppPermissionList: RoleListType = {
+export const AppRoleList: RoleListType = {
   [CommonPerKeyEnum.read]: {
     ...CommonRoleList[CommonPerKeyEnum.read],
     description: i18nT('app:permission.des.read')
@@ -17,4 +23,7 @@ export const AppPermissionList: RoleListType = {
   }
 };
 
-export const AppDefaultPermissionVal = NullRoleVal;
+export const AppPerList = CommonPerList;
+export const AppRolePerMap = CommonRolePerMap;
+
+export const AppDefaultRoleVal = NullRoleVal;

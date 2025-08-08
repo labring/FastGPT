@@ -1,8 +1,8 @@
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 
 export const processAssignPermissionSpecific = (metadata: any) => {
-  const permissionValue = parseInt(metadata.permission, 10);
-  const permission = new TeamPermission({ per: permissionValue });
+  const role = parseInt(metadata.permission, 10);
+  const permission = new TeamPermission({ role });
 
   return {
     ...metadata,

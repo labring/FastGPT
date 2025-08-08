@@ -8,17 +8,17 @@ import {
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/dataset/constant';
+import { DataSetDefaultRoleVal } from '@fastgpt/global/support/permission/dataset/constant';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
-import { concatPer } from '@fastgpt/service/support/permission/controller';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { sumPer } from '@fastgpt/global/support/permission/utils';
 
 export type GetDatasetListBody = {
   parentId: ParentIdType;
@@ -127,18 +127,18 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
     .map((dataset) => {
       const { Per, privateDataset } = (() => {
         const getPer = (datasetId: string) => {
-          const tmbPer = myPerList.find(
+          const tmbRole = myPerList.find(
             (item) => String(item.resourceId) === datasetId && !!item.tmbId
           )?.permission;
-          const groupPer = concatPer(
-            myPerList
+          const groupRole = sumPer(
+            ...myPerList
               .filter(
                 (item) => String(item.resourceId) === datasetId && (!!item.groupId || !!item.orgId)
               )
               .map((item) => item.permission)
           );
           return new DatasetPermission({
-            per: tmbPer ?? groupPer ?? DatasetDefaultPermissionVal,
+            role: tmbRole ?? groupRole ?? DataSetDefaultRoleVal,
             isOwner: String(dataset.tmbId) === String(tmbId) || teamPer.isOwner
           });
         };

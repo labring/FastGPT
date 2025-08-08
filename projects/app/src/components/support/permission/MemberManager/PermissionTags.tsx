@@ -10,7 +10,7 @@ export type PermissionTagsProp = {
   permission?: PermissionValueType;
 };
 
-function PermissionTags({ permission }: PermissionTagsProp) {
+function RoleTags({ permission }: PermissionTagsProp) {
   const { getPerLabelList } = useContextSelector(CollaboratorContext, (v) => v);
   const { t } = useTranslation();
 
@@ -37,4 +37,4 @@ function PermissionTags({ permission }: PermissionTagsProp) {
   );
 }
 
-export default PermissionTags;
+export default RoleTags;

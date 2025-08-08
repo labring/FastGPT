@@ -19,6 +19,7 @@ export type PerConstructPros = {
   role?: RoleValueType;
 
   isOwner?: boolean;
+
   roleList?: RoleListType;
   perList?: PermissionListType;
   rolePerMap?: RolePerMapType;

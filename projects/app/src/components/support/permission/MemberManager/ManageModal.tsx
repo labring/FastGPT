@@ -12,7 +12,7 @@ import { useTranslation } from 'next-i18next';
 import React from 'react';
 import { useContextSelector } from 'use-context-selector';
 import PermissionSelect from './PermissionSelect';
-import PermissionTags from './PermissionTags';
+import RoleTags from './PermissionTags';
 import { CollaboratorContext } from './context';
 export type ManageModalProps = {
   onClose: () => void;
@@ -70,7 +70,7 @@ function ManageModal({ onClose }: ManageModalProps) {
                       </Flex>
                     </Td>
                     <Td border="none">
-                      <PermissionTags permission={item.permission.value} />
+                      <RoleTags permission={item.permission.role} />
                     </Td>
                     <Td border="none">
                       {/* Not self; Not owner and other manager */}
@@ -80,7 +80,7 @@ function ManageModal({ onClose }: ManageModalProps) {
                             Button={
                               <MyIcon name={'edit'} w={'16px'} _hover={{ color: 'primary.600' }} />
                             }
-                            value={item.permission.value}
+                            value={item.permission.role}
                             onChange={(permission) => {
                               onUpdate({
                                 members: item.tmbId ? [item.tmbId] : undefined,
