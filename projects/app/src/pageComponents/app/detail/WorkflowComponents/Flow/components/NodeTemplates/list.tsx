@@ -127,6 +127,11 @@ const NodeTemplateListItem = ({
           });
         }}
         onClick={() => {
+          // Team folder
+          if (template.isFolder && template.flowNodeType === FlowNodeTypeEnum.pluginModule) {
+            onUpdateParentId(template.id);
+            return;
+          }
           const position =
             isPopover && handleParams
               ? handleParams.addNodePosition
