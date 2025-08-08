@@ -16,7 +16,7 @@ import {
   updateFastGPTConfigBuffer
 } from '../../../common/system/config/controller';
 import { delay } from '@fastgpt/global/common/system/utils';
-import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
+import { pluginClient, BASE_URL } from '../../../thirdProvider/fastgptPlugin';
 import { setCron } from '../../../common/system/cron';
 
 export const loadSystemModels = async (init = false) => {
@@ -89,13 +89,18 @@ export const loadSystemModels = async (init = false) => {
 
   try {
     // Get model from db and plugin
+    const pluginModelsPromise = BASE_URL
+      ? pluginClient.model
+          .list()
+          .then((res) => (res.status === 200 ? res.body : []))
+          .catch(() => {
+            console.warn('Get fastGPT plugin model error, continue without plugin models');
+            return [] as any[];
+          })
+      : Promise.resolve([] as any[]);
     const [dbModels, systemModels] = await Promise.all([
       MongoSystemModel.find({}).lean(),
-      pluginClient.model.list().then((res) => {
-        if (res.status === 200) return res.body;
-        console.error('Get fastGPT plugin model error');
-        return [];
-      })
+      pluginModelsPromise
     ]);
 
     // Load system model from local
@@ -195,13 +200,16 @@ export const getSystemModelConfig = async (model: string): Promise<SystemModelIt
   if (modelData.isCustom) return Promise.reject('Custom model not data');
 
   // Read file
-  const modelDefaulConfig = await pluginClient.model.list().then((res) => {
-    if (res.status === 200) {
-      return res.body.find((item) => item.model === model) as SystemModelItemType;
-    }
-
-    return Promise.reject('Can not get model config from plugin');
-  });
+  if (!BASE_URL) return Promise.reject('Plugin service unavailable');
+  const modelDefaulConfig = await pluginClient.model
+    .list()
+    .then((res) => {
+      if (res.status === 200) {
+        return res.body.find((item) => item.model === model) as SystemModelItemType;
+      }
+      return Promise.reject('Can not get model config from plugin');
+    })
+    .catch(() => Promise.reject('Plugin service unavailable'));
 
   return {
     ...modelDefaulConfig,

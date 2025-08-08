@@ -29,12 +29,18 @@ const VariableInput = ({
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
   const allVariableList = useContextSelector(ChatBoxContext, (v) => v.allVariableList);
 
+  // split custom/external groups for clarity
+  const customVariableList = useMemo(
+    () =>
+      allVariableList.filter((item) =>
+        showExternalVariables ? item.type === VariableInputEnum.custom : false
+      ),
+    [allVariableList, showExternalVariables]
+  );
   const externalVariableList = useMemo(
     () =>
       allVariableList.filter((item) =>
-        showExternalVariables
-          ? item.type === VariableInputEnum.custom || item.type === VariableInputEnum.external
-          : false
+        showExternalVariables ? item.type === VariableInputEnum.external : false
       ),
     [allVariableList, showExternalVariables]
   );
@@ -58,7 +64,8 @@ const VariableInput = ({
   return (
     <Box py={3}>
       <ChatAvatar src={appAvatar} type={'AI'} />
-      {externalVariableList.length > 0 && (
+
+      {customVariableList.length > 0 && (
         <Box textAlign={'left'}>
           <Card
             order={2}
@@ -81,19 +88,68 @@ const VariableInput = ({
               <MyIcon name={'common/info'} color={'primary.600'} w={4} />
               {t('chat:variable_invisable_in_share')}
             </Flex>
-            {externalVariableList.map((item) => {
-              return (
-                <LabelAndFormRender
-                  {...item}
-                  key={item.key}
-                  formKey={`variables.${item.key}`}
-                  placeholder={item.description}
-                  inputType={variableInputTypeToInputType(item.type, item.valueType)}
-                  variablesForm={variablesForm}
-                  bg={'myGray.50'}
-                />
-              );
-            })}
+            {customVariableList.map((item) => (
+              <LabelAndFormRender
+                {...item}
+                key={item.key}
+                formKey={`variables.${item.key}`}
+                placeholder={item.description}
+                inputType={variableInputTypeToInputType(item.type, item.valueType)}
+                variablesForm={variablesForm}
+                bg={'myGray.50'}
+              />
+            ))}
+            {variableList.length === 0 && !chatStarted && (
+              <Button
+                leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
+                size={'sm'}
+                maxW={'100px'}
+                mt={4}
+                onClick={variablesForm.handleSubmit(() => {
+                  chatForm.setValue('chatStarted', true);
+                })}
+              >
+                {t('chat:start_chat')}
+              </Button>
+            )}
+          </Card>
+        </Box>
+      )}
+
+      {externalVariableList.length > 0 && (
+        <Box textAlign={'left'}>
+          <Card
+            order={2}
+            mt={2}
+            w={'400px'}
+            {...MessageCardStyle}
+            bg={'white'}
+            boxShadow={'0 0 8px rgba(0,0,0,0.15)'}
+          >
+            <Flex
+              color={'primary.600'}
+              bg={'primary.100'}
+              mb={3}
+              px={3}
+              py={1.5}
+              gap={1}
+              fontSize={'mini'}
+              rounded={'sm'}
+            >
+              <MyIcon name={'common/info'} color={'primary.600'} w={4} />
+              {t('app:variable.external_type_desc')}
+            </Flex>
+            {externalVariableList.map((item) => (
+              <LabelAndFormRender
+                {...item}
+                key={item.key}
+                formKey={`variables.${item.key}`}
+                placeholder={item.description}
+                inputType={variableInputTypeToInputType(item.type, item.valueType)}
+                variablesForm={variablesForm}
+                bg={'myGray.50'}
+              />
+            ))}
             {variableList.length === 0 && !chatStarted && (
               <Button
                 leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}

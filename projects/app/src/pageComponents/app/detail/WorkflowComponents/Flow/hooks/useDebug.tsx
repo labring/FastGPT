@@ -52,21 +52,19 @@ export const useDebug = () => {
 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
-  const { filteredVar, customVar, variables } = useMemo(() => {
+  const { normalVar, customVar, externalVar, internalVar, variables } = useMemo(() => {
     const variables = appDetail.chatConfig?.variables || [];
-    return {
-      filteredVar:
-        variables.filter(
-          (item) =>
-            item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
-        ) || [],
-      customVar:
-        variables.filter(
-          (item) =>
-            item.type === VariableInputEnum.custom || item.type === VariableInputEnum.external
-        ) || [],
-      variables
-    };
+    const customVar = variables.filter((item) => item.type === VariableInputEnum.custom) || [];
+    const externalVar = variables.filter((item) => item.type === VariableInputEnum.external) || [];
+    const internalVar = variables.filter((item) => item.type === VariableInputEnum.internal) || [];
+    const normalVar =
+      variables.filter(
+        (item) =>
+          item.type !== VariableInputEnum.custom &&
+          item.type !== VariableInputEnum.external &&
+          item.type !== VariableInputEnum.internal
+      ) || [];
+    return { normalVar, customVar, externalVar, internalVar, variables };
   }, [appDetail.chatConfig?.variables]);
 
   const [defaultGlobalVariables, setDefaultGlobalVariables] = useState<Record<string, any>>(
@@ -267,18 +265,7 @@ export const useDebug = () => {
             />
           )}
           <Box display={currentTab === TabEnum.global ? 'block' : 'none'}>
-            {customVar.map((item) => (
-              <LabelAndFormRender
-                {...item}
-                key={item.key}
-                formKey={`variables.${item.key}`}
-                placeholder={item.description}
-                inputType={variableInputTypeToInputType(item.type)}
-                variablesForm={variablesForm}
-                bg={'myGray.50'}
-              />
-            ))}
-            {filteredVar.map((item) => (
+            {[...customVar, ...externalVar, ...normalVar, ...internalVar].map((item) => (
               <LabelAndFormRender
                 {...item}
                 key={item.key}
@@ -316,7 +303,9 @@ export const useDebug = () => {
     t,
     variables.length,
     customVar,
-    filteredVar,
+    externalVar,
+    normalVar,
+    internalVar,
     runtimeNodeId,
     onStartNodeDebug
   ]);
