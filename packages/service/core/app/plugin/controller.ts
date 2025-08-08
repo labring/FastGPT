@@ -379,8 +379,10 @@ export async function getChildAppPreviewNode({
     showTargetHandle: true,
 
     currentCost: app.currentCost,
+    systemKeyCost: app.systemKeyCost,
     hasTokenFee: app.hasTokenFee,
     hasSystemSecret: app.hasSystemSecret,
+    isFolder: app.isFolder,
 
     ...nodeIOConfig,
     outputs: nodeIOConfig.outputs.some((item) => item.type === FlowNodeOutputTypeEnum.error)
@@ -433,6 +435,7 @@ export async function getChildAppRuntimeById({
 
         originCost: 0,
         currentCost: 0,
+        systemKeyCost: 0,
         hasTokenFee: false,
         pluginOrder: 0
       };
@@ -449,6 +452,7 @@ export async function getChildAppRuntimeById({
     avatar: app.avatar || '',
     showStatus: true,
     currentCost: app.currentCost,
+    systemKeyCost: app.systemKeyCost,
     nodes: app.workflow.nodes,
     edges: app.workflow.edges,
     hasTokenFee: app.hasTokenFee
@@ -475,6 +479,7 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplat
     currentCost: item.currentCost,
     hasTokenFee: item.hasTokenFee,
     pluginOrder: item.pluginOrder,
+    systemKeyCost: item.systemKeyCost,
     associatedPluginId,
     userGuide,
     workflow: {
@@ -538,34 +543,32 @@ export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> 
 
     const formatTools = tools.map<SystemPluginTemplateItemType>((item) => {
       const dbPluginConfig = systemPlugins.get(item.id);
+      const isFolder = tools.some((tool) => tool.parentId === item.id);
 
       const versionList = (item.versionList as SystemPluginTemplateItemType['versionList']) || [];
 
       return {
         id: item.id,
         parentId: item.parentId,
-        isFolder: tools.some((tool) => tool.parentId === item.id),
-
+        isFolder,
         name: item.name,
         avatar: item.avatar,
         intro: item.description,
-
         author: item.author,
         courseUrl: item.courseUrl,
         weight: item.weight,
-
         workflow: {
           nodes: [],
           edges: []
         },
         versionList,
-
         templateType: item.templateType,
         showStatus: true,
-
         isActive: item.isActive,
         inputList: item?.secretInputConfig,
-        hasSystemSecret: !!dbPluginConfig?.inputListVal
+        hasSystemSecret: !!dbPluginConfig?.inputListVal,
+        currentCost: dbPluginConfig?.currentCost ?? 0,
+        systemKeyCost: dbPluginConfig?.systemKeyCost ?? 0
       };
     });
 
