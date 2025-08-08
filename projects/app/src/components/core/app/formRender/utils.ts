@@ -13,6 +13,7 @@ export const variableInputTypeToInputType = (
   if (inputType === VariableInputEnum.input) return InputTypeEnum.input;
   if (inputType === VariableInputEnum.textarea) return InputTypeEnum.textarea;
   if (inputType === VariableInputEnum.numberInput) return InputTypeEnum.numberInput;
+  if (inputType === VariableInputEnum.switch) return InputTypeEnum.switch;
   if (inputType === VariableInputEnum.select) return InputTypeEnum.select;
   if (inputType === VariableInputEnum.multipleSelect) return InputTypeEnum.multipleSelect;
   if (inputType === VariableInputEnum.password) return InputTypeEnum.password;

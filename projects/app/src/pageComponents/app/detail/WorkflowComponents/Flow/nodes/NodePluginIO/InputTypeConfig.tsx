@@ -149,6 +149,7 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.switch,
       FlowNodeInputTypeEnum.select,
       FlowNodeInputTypeEnum.multipleSelect,
+      VariableInputEnum.switch,
       VariableInputEnum.custom,
       VariableInputEnum.internal,
       VariableInputEnum.external
@@ -368,6 +369,7 @@ const InputTypeConfig = ({
                 />
               )}
               {(inputType === FlowNodeInputTypeEnum.switch ||
+                inputType === VariableInputEnum.switch ||
                 ((inputType === VariableInputEnum.custom ||
                   inputType === VariableInputEnum.internal ||
                   inputType === VariableInputEnum.external) &&
