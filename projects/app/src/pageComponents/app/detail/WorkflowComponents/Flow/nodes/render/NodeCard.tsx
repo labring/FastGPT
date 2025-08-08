@@ -429,6 +429,7 @@ const NodeCard = (props: Props) => {
           courseUrl={node?.courseUrl}
           inputConfig={inputConfig}
           hasSystemSecret={node?.hasSystemSecret}
+          parentId={node?.pluginId}
           secretCost={node?.systemKeyCost}
         />
       )}

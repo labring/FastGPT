@@ -10,7 +10,6 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { NextApiResponse } from 'next';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getSystemTools } from '@fastgpt/service/core/app/plugin/controller';
-import { MongoSystemPlugin } from '@fastgpt/service/core/app/plugin/systemPluginSchema';
 
 export type GetSystemPluginTemplatesBody = {
   searchKey?: string;

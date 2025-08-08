@@ -12,7 +12,7 @@ import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/con
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import { useTranslation } from 'next-i18next';
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import type { FlowNodeInputItemType, InputConfigType } from '@fastgpt/global/core/workflow/type/io';
@@ -22,6 +22,8 @@ import IconButton from '@/pageComponents/account/team/OrgManage/IconButton';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import InputRender from '@/components/core/app/formRender';
 import { secretInputTypeToInputType } from '@/components/core/app/formRender/utils';
+import { getSystemPlugTemplates } from '@/web/core/app/api/plugin';
+import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 
 export type ToolParamsFormType = {
   type: SystemToolInputTypeEnum;
@@ -30,20 +32,22 @@ export type ToolParamsFormType = {
 
 const SecretInputModal = ({
   hasSystemSecret,
-  secretCost = [],
+  secretCost = 0,
   isFolder,
   inputConfig,
   courseUrl,
   onClose,
-  onSubmit
+  onSubmit,
+  parentId
 }: {
   isFolder?: boolean;
   inputConfig: FlowNodeInputItemType;
   hasSystemSecret?: boolean;
-  secretCost?: number | Array<{ name: string; cost: number }>;
+  secretCost?: number;
   courseUrl?: string;
   onClose: () => void;
   onSubmit: (data: ToolParamsFormType) => void;
+  parentId?: string;
 }) => {
   const { t } = useTranslation();
   const [editIndex, setEditIndex] = useState<number>();
@@ -51,6 +55,7 @@ const SecretInputModal = ({
     defaultIsOpen: false
   });
   const inputList = inputConfig?.inputList || [];
+  const [childTools, setChildTools] = useState<NodeTemplateListItemType[] | null>(null);
 
   const { register, watch, setValue, getValues, handleSubmit, control } =
     useForm<ToolParamsFormType>({
@@ -72,6 +77,42 @@ const SecretInputModal = ({
       })()
     });
   const configType = watch('type');
+
+  // load child tools when folder and panel opened
+  useEffect(() => {
+    (async () => {
+      if (!isFolder) return;
+      try {
+        const list = await getSystemPlugTemplates({ parentId });
+        setChildTools(list || []);
+      } catch (e) {
+        setChildTools([]);
+      }
+    })();
+  }, [isFolder, isSystemCostOpen, parentId]);
+
+  const normalizeCost = (tool: NodeTemplateListItemType): number => {
+    const sk: number = tool.systemKeyCost || 0;
+    if (typeof sk === 'number') return sk || 0;
+    if (Array.isArray(sk)) {
+      const first = sk[0];
+      if (typeof first === 'number') return first || 0;
+      if (first && typeof first === 'object') {
+        const matched = (sk as Array<{ name: string; cost: number }>).find(
+          (it) => it?.name === (tool.name as any)
+        );
+        return matched?.cost || 0;
+      }
+    }
+    return 0;
+  };
+
+  const hasCost = useMemo(() => {
+    if (isFolder) {
+      return (childTools || [])?.some((item) => normalizeCost(item) > 0);
+    }
+    return (secretCost || 0) > 0;
+  }, [isFolder, childTools, secretCost]);
 
   return (
     <MyModal
@@ -101,10 +142,6 @@ const SecretInputModal = ({
                       children:
                         configType === SystemToolInputTypeEnum.system
                           ? (() => {
-                              const hasCost = Array.isArray(secretCost)
-                                ? secretCost.some((item) => item.cost > 0)
-                                : (secretCost || 0) > 0;
-
                               if (!hasCost) return null;
 
                               return (
@@ -139,21 +176,20 @@ const SecretInputModal = ({
                                       </Flex>
                                       {isSystemCostOpen && (
                                         <Box fontSize={'sm'} pl={6}>
-                                          {Array.isArray(secretCost) ? (
+                                          {childTools === null ? (
+                                            <Box fontSize={'sm'}>Loading...</Box>
+                                          ) : childTools.length > 0 ? (
                                             <Box>
-                                              {secretCost.map((item, index) => (
-                                                <Box key={index} fontSize={'sm'} mb={1}>
-                                                  {item.name}: {item.cost} 积分/次
-                                                </Box>
-                                              ))}
+                                              {childTools
+                                                .filter((tool) => normalizeCost(tool) > 0)
+                                                .map((tool) => (
+                                                  <Box key={tool.id} fontSize={'sm'} mb={1}>
+                                                    {t(tool.name as any)}: {normalizeCost(tool)}{' '}
+                                                    积分/次
+                                                  </Box>
+                                                ))}
                                             </Box>
-                                          ) : (
-                                            <Box fontSize={'sm'}>
-                                              {t('app:tool_active_system_config_price_desc', {
-                                                price: secretCost
-                                              })}
-                                            </Box>
-                                          )}
+                                          ) : null}
                                         </Box>
                                       )}
                                     </>
@@ -165,19 +201,9 @@ const SecretInputModal = ({
                                         color={'primary.600'}
                                       />
                                       <Box fontSize={'sm'}>
-                                        {Array.isArray(secretCost) ? (
-                                          <Box>
-                                            {secretCost.map((item, index) => (
-                                              <Box key={index} fontSize={'sm'}>
-                                                {item.name}: {item.cost} 积分/次
-                                              </Box>
-                                            ))}
-                                          </Box>
-                                        ) : (
-                                          t('app:tool_active_system_config_price_desc', {
-                                            price: secretCost
-                                          })
-                                        )}
+                                        {t('app:tool_active_system_config_price_desc', {
+                                          price: secretCost
+                                        })}
                                       </Box>
                                     </HStack>
                                   )}
