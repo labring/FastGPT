@@ -272,7 +272,7 @@ curl --location --request POST 'https://oneapi.xxx/v1/chat/completions' \
 --header 'Authorization: Bearer sk-xxxx' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "model": "gpt-4o-mini",
+  "model": "gpt-5",
   "temperature": 0.01,
   "max_tokens": 8000,
   "stream": true,
@@ -306,19 +306,13 @@ curl --location --request POST 'https://oneapi.xxx/v1/chat/completions' \
 
 ```json
 {
-  "id": "chatcmpl-A7kwo1rZ3OHYSeIFgfWYxu8X2koN3",
-  "object": "chat.completion.chunk",
-  "created": 1726412126,
-  "model": "gpt-4o-mini-2024-07-18",
-  "system_fingerprint": "fp_483d39d857",
-  "choices": [
-    {
-      "index": 0,
-      "delta": {
-        "role": "assistant",
-        "content": null,
-        "tool_calls": [
-          {
+    "id": "chatcmpl-A7kwo1rZ3OHYSeIFgfWYxu8X2koN3",
+    "object": "chat.completion.chunk",
+    "created": 1726412126,
+    "model": "gpt-5",
+    "system_fingerprint": "fp_483d39d857",
+    "choices": [
+        {
             "index": 0,
             "id": "call_0n24eiFk8OUyIyrdEbLdirU7",
             "type": "function",
@@ -347,7 +341,7 @@ curl --location --request POST 'https://oneapi.xxxx/v1/chat/completions' \
 --header 'Authorization: Bearer sk-xxx' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "model": "gpt-4o-mini",
+  "model": "gpt-5",
   "temperature": 0.01,
   "max_tokens": 8000,
   "stream": true,

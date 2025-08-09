@@ -693,7 +693,6 @@
   "core.module.variable.variable option is value is required": "選項內容不能為空",
   "core.module.variable.variable options": "選項",
   "core.plugin.Custom headers": "自訂請求標頭",
-  "core.plugin.Free": "此外掛程式不需消耗點數",
   "core.plugin.Get Plugin Module Detail Failed": "取得外掛程式資訊失敗",
   "core.plugin.Http plugin intro placeholder": "僅供展示，無實際效果",
   "core.plugin.cost": "點數消耗：",
