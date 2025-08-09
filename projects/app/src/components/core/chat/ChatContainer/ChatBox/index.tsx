@@ -67,7 +67,6 @@ import TimeBox from './components/TimeBox';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
-import { useChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 import WelcomeHomeBox from '@/components/core/chat/ChatContainer/ChatBox/components/WelcomeHomeBox';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
@@ -90,12 +89,7 @@ type Props = OutLinkChatAuthProps &
     showMarkIcon?: boolean; // admin mark dataset
     showVoiceIcon?: boolean;
     showEmptyIntro?: boolean;
-    showHomeChatEmptyIntro?: boolean;
     active?: boolean; // can use
-    customButtonGroup?: React.ReactNode;
-    dialogTips?: string;
-    wideLogo?: string;
-    slogan?: string;
 
     onStartChat?: (e: StartChatFnProps) => Promise<
       StreamResponseType & {
@@ -110,9 +104,7 @@ const ChatBox = ({
   showMarkIcon = false,
   showVoiceIcon = true,
   showEmptyIntro = false,
-  showHomeChatEmptyIntro = false,
   active = true,
-  customButtonGroup,
   onStartChat,
   chatType
 }: Props) => {
@@ -828,25 +820,25 @@ const ChatBox = ({
     };
   });
 
-  const showHomeEmpty = useMemo(
+  const showHomeWelcome = useMemo(
     () => chatRecords.length === 0 && chatType === ChatTypeEnum.home,
     [chatRecords.length, chatType]
   );
 
   const showEmpty = useMemo(
     () =>
+      chatType !== ChatTypeEnum.home &&
       feConfigs?.show_emptyChat &&
-      !showHomeChatEmptyIntro &&
       showEmptyIntro &&
       chatRecords.length === 0 &&
       !variableList?.length &&
       !externalVariableList?.length &&
       !welcomeText,
     [
-      chatRecords.length,
+      chatType,
       feConfigs?.show_emptyChat,
-      showHomeChatEmptyIntro,
       showEmptyIntro,
+      chatRecords.length,
       variableList?.length,
       externalVariableList?.length,
       welcomeText
@@ -974,7 +966,7 @@ const ChatBox = ({
     return (
       <ScrollData
         ScrollContainerRef={ScrollContainerRef}
-        flex={showHomeEmpty ? '0 0 50%' : '1 0 0'}
+        flex={showHomeWelcome ? '0 0 50%' : '1 0 0'}
         h={0}
         w={'100%'}
         overflow={'overlay'}
@@ -983,7 +975,7 @@ const ChatBox = ({
       >
         <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
           {/* chat header */}
-          {showHomeEmpty && <WelcomeHomeBox />}
+          {showHomeWelcome && <WelcomeHomeBox />}
           {showEmpty && <Empty />}
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
           {/* variable input */}
@@ -1085,7 +1077,6 @@ const ChatBox = ({
     );
   }, [
     ScrollData,
-    showHomeEmpty,
     appAvatar,
     chatForm,
     chatRecords,
@@ -1102,6 +1093,7 @@ const ChatBox = ({
     questionGuides,
     retryInput,
     showEmpty,
+    showHomeWelcome,
     showMarkIcon,
     showVoiceIcon,
     statusBoxData,
@@ -1130,7 +1122,6 @@ const ChatBox = ({
           TextareaDom={TextareaDom}
           resetInputVal={resetInputVal}
           chatForm={chatForm}
-          customButtonGroup={customButtonGroup}
         />
       )}
       {/* user feedback modal */}

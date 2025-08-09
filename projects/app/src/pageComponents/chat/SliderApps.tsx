@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import type { BoxProps } from '@chakra-ui/react';
 import { Flex, Box, HStack, Image, Skeleton } from '@chakra-ui/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/router';
@@ -18,10 +19,15 @@ import type {
 } from '@fastgpt/global/common/parentFolder/type';
 import { getMyApps } from '@/web/core/app/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
+import {
+  ChatSidebarPaneEnum,
+  DEFAULT_LOGO_BANNER_COLLAPSED_URL,
+  DEFAULT_LOGO_BANNER_URL
+} from '@/pageComponents/chat/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
-import { useChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { useContextSelector } from 'use-context-selector';
+import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 
 type Props = {
   activeAppId: string;
@@ -34,17 +40,6 @@ const MotionFlex = motion(Flex);
 const ANIMATION_DURATION = 0.15;
 const ANIMATION_EASE = 'easeInOut';
 const TEXT_DELAY = 0.1;
-
-const sidebarVariants = {
-  expanded: {
-    width: 202,
-    transition: { duration: ANIMATION_DURATION, ease: ANIMATION_EASE }
-  },
-  folded: {
-    width: 72,
-    transition: { duration: ANIMATION_DURATION, ease: ANIMATION_EASE }
-  }
-};
 
 const contentVariants = {
   show: {
@@ -99,17 +94,13 @@ const iconVariants = {
 };
 
 // 通用动画容器
-type AnimatedSectionProps = {
-  show: boolean;
-  children: React.ReactNode;
-  variant?: 'content' | 'text' | 'icon';
-};
-
-const AnimatedSection: React.FC<AnimatedSectionProps> = ({
-  show,
-  children,
-  variant = 'content'
-}) => {
+const AnimatedSection: React.FC<
+  {
+    show: boolean;
+    children: React.ReactNode;
+    variant?: 'content' | 'text' | 'icon';
+  } & BoxProps
+> = ({ show, children, variant = 'content', ...props }) => {
   const getVariants = () => {
     switch (variant) {
       case 'text':
@@ -130,6 +121,7 @@ const AnimatedSection: React.FC<AnimatedSectionProps> = ({
           animate="show"
           exit="hide"
           layout={false}
+          {...props}
         >
           {children}
         </MotionBox>
@@ -164,62 +156,50 @@ const AnimatedText: React.FC<AnimatedTextProps> = ({ show, children, className, 
   </AnimatePresence>
 );
 
-const LogoSection: React.FC<{
-  isCollapsed: boolean;
-  wideLogoSrc?: string;
-  imageLoaded: boolean;
-  squareLogoSrc?: string;
-  isHomeActive?: boolean;
-  showFoldButton?: boolean;
-  onToggle?: () => void;
-  onImageLoad: () => void;
-}> = ({
-  isCollapsed,
-  wideLogoSrc,
-  squareLogoSrc,
-  imageLoaded,
-  onImageLoad,
-  showFoldButton,
-  onToggle,
-  isHomeActive
-}) => (
-  <MotionFlex
-    mt={4}
-    py={2}
-    alignItems="center"
-    animate={{ paddingLeft: isCollapsed ? 0 : 12 }}
-    transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASE }}
-    justifyContent={isCollapsed ? 'center' : 'space-between'}
-  >
-    <AnimatedSection show={!isCollapsed}>
-      <Skeleton
-        w="143px"
-        h="33px"
-        pl={2}
-        borderRadius="md"
-        startColor="gray.100"
-        endColor="gray.300"
-        isLoaded={imageLoaded}
-      >
+const LogoSection = () => {
+  const isCollapsed = useContextSelector(ChatSettingContext, (v) => v.collapse === 1);
+  const logos = useContextSelector(ChatSettingContext, (v) => v.logos);
+  const isHomeActive = useContextSelector(
+    ChatSettingContext,
+    (v) => v.pane === ChatSidebarPaneEnum.HOME
+  );
+  const onTriggerCollapse = useContextSelector(ChatSettingContext, (v) => v.onTriggerCollapse);
+  const wideLogoSrc = logos.wideLogoUrl;
+  const squareLogoSrc = logos.squareLogoUrl;
+
+  return (
+    <MotionFlex
+      mt={4}
+      py={2}
+      alignItems="center"
+      animate={{ paddingLeft: isCollapsed ? 0 : 12 }}
+      transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASE }}
+      justifyContent={isCollapsed ? 'center' : 'space-between'}
+    >
+      <AnimatedSection show={!isCollapsed}>
         <Image
           w="135px"
           h="33px"
           loading="eager"
           alt="FastGPT slogan"
-          src={wideLogoSrc}
-          onLoad={onImageLoad}
-          onError={onImageLoad}
+          src={wideLogoSrc || DEFAULT_LOGO_BANNER_URL}
+          fallbackSrc={DEFAULT_LOGO_BANNER_URL}
         />
-      </Skeleton>
-    </AnimatedSection>
+      </AnimatedSection>
 
-    <AnimatedSection show={isCollapsed}>
-      <Flex justifyContent="center" w="100%">
-        <Image w="33px" h="33px" src={squareLogoSrc} alt="FastGPT logo" loading="eager" />
-      </Flex>
-    </AnimatedSection>
+      <AnimatedSection show={isCollapsed}>
+        <Flex justifyContent="center" w="100%">
+          <Image
+            w="33px"
+            h="33px"
+            src={squareLogoSrc || DEFAULT_LOGO_BANNER_COLLAPSED_URL}
+            fallbackSrc={DEFAULT_LOGO_BANNER_COLLAPSED_URL}
+            alt="FastGPT logo"
+            loading="eager"
+          />
+        </Flex>
+      </AnimatedSection>
 
-    {showFoldButton && (
       <AnimatedSection show={!isCollapsed}>
         <Flex pr={3}>
           <MyIcon
@@ -229,13 +209,13 @@ const LogoSection: React.FC<{
             _hover={{ bg: 'myGray.200' }}
             name={'core/chat/sidebar/fold'}
             color={isHomeActive ? 'primary.500' : 'myGray.400'}
-            onClick={onToggle}
+            onClick={onTriggerCollapse}
           />
         </Flex>
       </AnimatedSection>
-    )}
-  </MotionFlex>
-);
+    </MotionFlex>
+  );
+};
 
 const ActionButton: React.FC<{
   text?: string;
@@ -274,21 +254,24 @@ const ActionButton: React.FC<{
   );
 };
 
-const NavigationSection: React.FC<{
-  isCollapsed: boolean;
-  isHomeActive: boolean;
-  onToggle: () => void;
-  onHomeClick: () => void;
-}> = ({ isCollapsed, isHomeActive, onToggle, onHomeClick }) => {
+const NavigationSection = () => {
   //------------ hooks ------------//
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const isProVersion = !!feConfigs.isPlus;
 
+  const isCollapsed = useContextSelector(ChatSettingContext, (v) => v.collapse === 1);
+  const onTriggerCollapse = useContextSelector(ChatSettingContext, (v) => v.onTriggerCollapse);
+  const isHomeActive = useContextSelector(
+    ChatSettingContext,
+    (v) => v.pane === ChatSidebarPaneEnum.HOME
+  );
+  const onHomeClick = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
+
   return (
     <Flex mt={4} flexDirection={'column'} gap={1} px={4}>
       <AnimatedSection show={isCollapsed}>
-        <ActionButton isCollapsed icon="core/chat/sidebar/expand" onClick={onToggle} />
+        <ActionButton isCollapsed icon="core/chat/sidebar/expand" onClick={onTriggerCollapse} />
       </AnimatedSection>
 
       {isProVersion && (
@@ -299,7 +282,7 @@ const NavigationSection: React.FC<{
                 icon="core/chat/sidebar/home"
                 isCollapsed={true}
                 isActive={isHomeActive}
-                onClick={onHomeClick}
+                onClick={() => onHomeClick(ChatSidebarPaneEnum.HOME)}
               />
             </AnimatedSection>
           ) : (
@@ -309,7 +292,7 @@ const NavigationSection: React.FC<{
                 text={t('chat:sidebar.home')}
                 isCollapsed={false}
                 isActive={isHomeActive}
-                onClick={onHomeClick}
+                onClick={() => onHomeClick(ChatSidebarPaneEnum.HOME)}
               />
             </AnimatedSection>
           )}
@@ -319,22 +302,24 @@ const NavigationSection: React.FC<{
   );
 };
 
-const BottomSection: React.FC<{
-  isCollapsed: boolean;
-  isLoggedIn: boolean;
-  isSettingActive: boolean;
-  avatar?: string;
-  username?: string;
-  onSettingClick: () => void;
-}> = ({ isCollapsed, isLoggedIn, isSettingActive, avatar, username, onSettingClick }) => {
+const BottomSection = () => {
   //------------ hooks ------------//
   const { t } = useTranslation();
-  const { userInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
-
-  //------------ derived states ------------//
-  const isAdmin = !!userInfo?.team.permission.hasManagePer;
   const isProVersion = !!feConfigs.isPlus;
+
+  const { userInfo } = useUserStore();
+  const isLoggedIn = !!userInfo;
+  const avatar = userInfo?.avatar;
+  const username = userInfo?.username;
+  const isAdmin = !!userInfo?.team.permission.hasManagePer;
+
+  const isCollapsed = useContextSelector(ChatSettingContext, (v) => v.collapse === 1);
+  const isSettingActive = useContextSelector(
+    ChatSettingContext,
+    (v) => v.pane === ChatSidebarPaneEnum.SETTING
+  );
+  const onSettingClick = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
 
   return (
     <MotionBox mt={'auto'} px={3} py={4} layout={false}>
@@ -367,7 +352,7 @@ const BottomSection: React.FC<{
               h="40px"
               alignItems="center"
               justifyContent="center"
-              onClick={onSettingClick}
+              onClick={() => onSettingClick(ChatSidebarPaneEnum.SETTING)}
             >
               <MyIcon
                 w={'20px'}
@@ -452,40 +437,13 @@ const BottomSection: React.FC<{
 };
 
 const SliderApps = ({ apps, activeAppId }: Props) => {
-  const { collapse, pane, logos, handlePaneChange, setCollapse } = useChatSettingContext();
-
   const router = useRouter();
   const { t } = useTranslation();
 
-  const { feConfigs } = useSystemStore();
-  const { userInfo, teamPlanStatus } = useUserStore();
+  const isCollapsed = useContextSelector(ChatSettingContext, (v) => v.collapse === 1);
+  const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
 
-  const [imageLoaded, setImageLoaded] = useState(false);
-
-  const isLoggedIn = !!userInfo;
-  const { avatar, username } = userInfo as NonNullable<typeof userInfo>;
-  const isProVersion = !!feConfigs.isPlus;
-  const isEnterprisePlan =
-    teamPlanStatus?.standard?.currentSubLevel === StandardSubLevelEnum.enterprise;
-  const isWideLogoEmpty = !logos.wideLogoUrl;
-  const isSquareLogoEmpty = !logos.squareLogoUrl;
-  const showDefaultWideLogo = isProVersion
-    ? isWideLogoEmpty
-    : isEnterprisePlan
-      ? isWideLogoEmpty
-      : true;
-  const showDefaultSquareLogo = isProVersion
-    ? isSquareLogoEmpty
-    : isEnterprisePlan
-      ? isSquareLogoEmpty
-      : true;
-  const wideLogoSrc = showDefaultWideLogo ? '/imgs/fastgpt_banner.png' : logos.wideLogoUrl;
-  const squareLogoSrc = showDefaultSquareLogo
-    ? '/imgs/fastgpt_banner_fold.svg'
-    : logos.squareLogoUrl;
-  const isCollapsed = Boolean(collapse);
-  const isHomeActive = pane === ChatSidebarPaneEnum.HOME;
-  const isSettingActive = pane === ChatSidebarPaneEnum.SETTING;
+  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
 
   const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
     return getMyApps({
@@ -501,10 +459,8 @@ const SliderApps = ({ apps, activeAppId }: Props) => {
     );
   }, []);
 
-  const isRecentlyUsedAppSelected = (id: string): boolean =>
+  const isRecentlyUsedAppSelected = (id: string) =>
     pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && id === activeAppId;
-
-  const handleToggleSidebar = () => setCollapse(collapse === 0 ? 1 : 0);
 
   const handleSelectRecentlyUsedApp = useCallback(
     (id: string) => {
@@ -519,124 +475,102 @@ const SliderApps = ({ apps, activeAppId }: Props) => {
     <MotionFlex
       flexDirection={'column'}
       h={'100%'}
-      variants={sidebarVariants}
-      animate={collapse ? 'folded' : 'expanded'}
+      w={'100%'}
+      variants={{
+        expanded: {
+          transition: { duration: ANIMATION_DURATION, ease: ANIMATION_EASE }
+        },
+        folded: {
+          transition: { duration: ANIMATION_DURATION, ease: ANIMATION_EASE }
+        }
+      }}
+      animate={isCollapsed ? 'folded' : 'expanded'}
       initial={false}
-      overflow={'hidden'}
     >
-      <LogoSection
-        isCollapsed={isCollapsed}
-        wideLogoSrc={wideLogoSrc}
-        squareLogoSrc={squareLogoSrc}
-        imageLoaded={imageLoaded}
-        onImageLoad={() => setImageLoaded(true)}
-        showFoldButton={true}
-        onToggle={handleToggleSidebar}
-        isHomeActive={isHomeActive}
-      />
+      <LogoSection />
 
-      <NavigationSection
-        isCollapsed={isCollapsed}
-        isHomeActive={isHomeActive}
-        onToggle={handleToggleSidebar}
-        onHomeClick={() => handlePaneChange(ChatSidebarPaneEnum.HOME)}
-      />
+      <NavigationSection />
 
       {/* recently used apps */}
-      <AnimatedSection show={!isCollapsed}>
-        <Box flex="1" display="flex" flexDirection="column" overflow="hidden">
-          <MyDivider h={1} my={1} mx="16px" w="calc(100% - 32px)" />
+      <AnimatedSection show={!isCollapsed} display={'flex'} flexDir={'column'} flex={'1 0 0'}>
+        <MyDivider h={1} my={1} mx="16px" w="calc(100% - 32px)" />
 
-          <HStack
-            px={3}
-            my={2}
-            color={'myGray.500'}
-            fontSize={'sm'}
-            justifyContent={'space-between'}
+        <HStack px={3} my={2} color={'myGray.500'} fontSize={'sm'} justifyContent={'space-between'}>
+          <Box
+            whiteSpace={'nowrap'}
+            overflow={'hidden'}
+            textOverflow={'ellipsis'}
+            pl={2}
+            flexGrow={1}
           >
-            <Box
-              whiteSpace={'nowrap'}
-              overflow={'hidden'}
-              textOverflow={'ellipsis'}
-              pl={2}
-              flexGrow={1}
-            >
-              {t('common:core.chat.Recent use')}
-            </Box>
-            <MyPopover
-              placement="bottom-end"
-              offset={[20, 10]}
-              p={4}
-              trigger="hover"
-              Trigger={
-                <HStack
-                  spacing={0.5}
-                  cursor={'pointer'}
-                  px={2}
-                  py={'0.5'}
-                  borderRadius={'md'}
-                  mr={-2}
-                  userSelect={'none'}
-                  _hover={{ bg: 'myGray.200' }}
-                >
-                  <Box>{t('common:More')}</Box>
-                  <MyIcon name={'common/select'} w={'1rem'} />
-                </HStack>
-              }
-            >
-              {({ onClose }) => (
-                <Box minH={'200px'}>
-                  <SelectOneResource
-                    maxH={'60vh'}
-                    value={activeAppId}
-                    onSelect={(item) => {
-                      if (!item) return;
-                      handleSelectRecentlyUsedApp(item.id);
-                      onClose();
-                    }}
-                    server={getAppList}
-                  />
-                </Box>
-              )}
-            </MyPopover>
-          </HStack>
-
-          <MyBox flex={'1'} overflow={'overlay'} px={4} position={'relative'}>
-            {apps.map((item) => (
-              <Flex
-                key={item._id}
-                py={2}
-                px={2}
-                mb={3}
+            {t('common:core.chat.Recent use')}
+          </Box>
+          <MyPopover
+            placement="bottom-end"
+            offset={[20, 10]}
+            p={4}
+            trigger="hover"
+            Trigger={
+              <HStack
+                spacing={0.5}
                 cursor={'pointer'}
+                px={2}
+                py={'0.5'}
                 borderRadius={'md'}
-                alignItems={'center'}
-                fontSize={'sm'}
-                {...(isRecentlyUsedAppSelected(item._id)
-                  ? { bg: 'primary.100', color: 'primary.600' }
-                  : {
-                      _hover: { bg: 'primary.100', color: 'primary.600' },
-                      onClick: () => handleSelectRecentlyUsedApp(item._id)
-                    })}
+                mr={-2}
+                userSelect={'none'}
+                _hover={{ bg: 'myGray.200' }}
               >
-                <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'md'} />
-                <Box ml={2} className={'textEllipsis'}>
-                  {item.name}
-                </Box>
-              </Flex>
-            ))}
-          </MyBox>
-        </Box>
+                <Box>{t('common:More')}</Box>
+                <MyIcon name={'common/select'} w={'1rem'} />
+              </HStack>
+            }
+          >
+            {({ onClose }) => (
+              <Box minH={'200px'}>
+                <SelectOneResource
+                  maxH={'60vh'}
+                  value={activeAppId}
+                  onSelect={(item) => {
+                    if (!item) return;
+                    handleSelectRecentlyUsedApp(item.id);
+                    onClose();
+                  }}
+                  server={getAppList}
+                />
+              </Box>
+            )}
+          </MyPopover>
+        </HStack>
+
+        <MyBox flex={'1 0 0'} h={0} overflow={'overlay'} px={4} position={'relative'}>
+          {apps.map((item) => (
+            <Flex
+              key={item._id}
+              py={2}
+              px={2}
+              mb={3}
+              cursor={'pointer'}
+              borderRadius={'md'}
+              alignItems={'center'}
+              fontSize={'sm'}
+              {...(isRecentlyUsedAppSelected(item._id)
+                ? { bg: 'primary.100', color: 'primary.600' }
+                : {
+                    _hover: { bg: 'primary.100', color: 'primary.600' },
+                    onClick: () => handleSelectRecentlyUsedApp(item._id)
+                  })}
+            >
+              <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'md'} />
+              <Box ml={2} className={'textEllipsis'}>
+                {item.name}
+              </Box>
+            </Flex>
+          ))}
+        </MyBox>
       </AnimatedSection>
 
-      <BottomSection
-        isCollapsed={isCollapsed}
-        isLoggedIn={isLoggedIn}
-        isSettingActive={isSettingActive}
-        avatar={avatar}
-        username={username}
-        onSettingClick={() => handlePaneChange(ChatSidebarPaneEnum.SETTING)}
-      />
+      <BottomSection />
     </MotionFlex>
   );
 };

@@ -33,15 +33,13 @@ const ChatInput = ({
   onStop,
   TextareaDom,
   resetInputVal,
-  chatForm,
-  customButtonGroup
+  chatForm
 }: {
   onSendMessage: SendPromptFnType;
   onStop: () => void;
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
   resetInputVal: (val: ChatBoxInputType) => void;
   chatForm: UseFormReturn<ChatBoxInputFormType>;
-  customButtonGroup?: React.ReactNode;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -55,6 +53,8 @@ const ChatInput = ({
 
   // Check voice input state
   const [mobilePreSpeak, setMobilePreSpeak] = useState(false);
+
+  const InputLeftComponent = useContextSelector(ChatBoxContext, (v) => v.InputLeftComponent);
 
   const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
   const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
@@ -221,17 +221,19 @@ const ChatInput = ({
       </Flex>
     ),
     [
-      TextareaDom,
       fileList.length,
-      handleSend,
-      inputValue,
+      TextareaDom,
+      dialogTips,
       isPc,
-      onSelectFile,
+      t,
+      inputValue,
+      onFocus,
+      offFocus,
       setValue,
+      handleSend,
       showSelectFile,
       showSelectImg,
-      dialogTips,
-      t
+      onSelectFile
     ]
   );
 
@@ -253,14 +255,12 @@ const ChatInput = ({
         gap={[0, 1]}
       >
         {/* 左侧自定义按钮组 */}
-        {customButtonGroup && (
-          <Flex alignItems={'center'} gap={2}>
-            {customButtonGroup}
-          </Flex>
-        )}
+        <Flex alignItems={'center'} gap={2}>
+          {InputLeftComponent}
+        </Flex>
 
         {/* 右侧原有按钮组 */}
-        <Flex alignItems={'center'} gap={[0, 1]} ml="auto">
+        <Flex alignItems={'center'} gap={[0, 1]}>
           {/* Attachment and Voice Group */}
           <Flex alignItems={'center'} h={[8, 9]}>
             {/* file selector button */}
@@ -365,7 +365,7 @@ const ChatInput = ({
     onSelectFile,
     handleSend,
     onStop,
-    customButtonGroup
+    InputLeftComponent
   ]);
 
   const activeStyles: FlexProps = {

@@ -12,24 +12,16 @@ export type UploadedFileItem = {
 };
 
 type UseImageUploadProps = {
-  maxFiles?: number;
   maxSize?: number; // MB
-  accept?: string;
-  onFileSelect?: (uploadedFiles: UploadedFileItem[]) => void;
+  onFileSelect: (url: string) => void;
 };
 
-export const useImageUpload = ({
-  maxFiles = 1,
-  maxSize,
-  accept = 'image/*',
-  onFileSelect
-}: UseImageUploadProps) => {
+export const useImageUpload = ({ maxSize, onFileSelect }: UseImageUploadProps) => {
   const { toast } = useToast();
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
   const [isDragging, setIsDragging] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFileItem[]>([]);
   const dragCounter = useRef(0);
 
   // use system config max size, but cap to match server limit
@@ -46,9 +38,9 @@ export const useImageUpload = ({
     onSelectImage,
     loading
   } = useSelectFile({
-    fileType: accept,
-    multiple: maxFiles > 1,
-    maxCount: maxFiles
+    fileType: 'image/*',
+    multiple: false,
+    maxCount: 1
   });
 
   // validate file size
@@ -63,41 +55,23 @@ export const useImageUpload = ({
 
   // handle file select - immediate upload if enabled
   const handleFileSelect = useMemoizedFn(async (files: File[]) => {
-    const uploadedItems: UploadedFileItem[] = [];
+    const file = files[0];
 
-    for (const file of files) {
-      const validationError = validateFile(file);
-      if (validationError) {
-        toast({
-          status: 'warning',
-          title: validationError
-        });
-        continue;
-      }
-
-      try {
-        // 立即上传文件，带TTL
-        const url = await onSelectImage([file], { maxW: 1000, maxH: 1000 });
-        if (url) {
-          uploadedItems.push({ file, url });
-        }
-      } catch (error) {
-        console.error('Failed to upload file:', error);
-      }
+    const validationError = validateFile(file);
+    if (validationError) {
+      toast({
+        status: 'warning',
+        title: validationError
+      });
     }
 
-    setUploadedFiles(uploadedItems);
-    onFileSelect?.(uploadedItems);
-  });
-
-  // 获取已上传文件的URLs
-  const getUploadedUrls = useMemoizedFn(() => {
-    return uploadedFiles.map((item) => item.url);
-  });
-
-  // 清除已上传文件
-  const clearUploadedFiles = useMemoizedFn(() => {
-    setUploadedFiles([]);
+    try {
+      // 立即上传文件，带TTL
+      const url = await onSelectImage([file], { maxW: 1000, maxH: 1000 });
+      onFileSelect(url);
+    } catch (error) {
+      console.error('Failed to upload file:', error);
+    }
   });
 
   // 拖拽处理
@@ -140,14 +114,11 @@ export const useImageUpload = ({
     SelectFileComponent,
     onOpenSelectFile,
     onSelectFile: handleFileSelect,
-    getUploadedUrls,
     isDragging,
     handleDragEnter,
     handleDragLeave,
     handleDragOver,
     handleDrop,
-    loading,
-    uploadedFiles,
-    clearUploadedFiles
+    loading
   };
 };
