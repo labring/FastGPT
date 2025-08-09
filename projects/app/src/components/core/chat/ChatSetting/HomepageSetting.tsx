@@ -28,7 +28,6 @@ type Props = {
   dialogTips?: string;
   homeTabTitle?: string;
   selectedTools?: ChatSettingSchema['selectedTools'];
-  chatConfig?: AppSimpleEditFormType['chatConfig'];
   settingTabOption: `${ChatSettingTabOptionEnum}`;
   logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'>;
   onDiagramShow: (show: boolean) => void;
@@ -43,7 +42,6 @@ const HomepageSetting = ({
   dialogTips: _dialogTips,
   homeTabTitle: _homeTabTitle,
   selectedTools: _selectedTools,
-  chatConfig: _chatConfig,
   onDiagramShow,
   onTabChange,
   onSettingsRefresh
@@ -64,9 +62,6 @@ const HomepageSetting = ({
   const [toolSelectModalOpen, setToolSelectModalOpen] = useState(false);
   const [selectedTools, setSelectedTools] = useState<ChatSettingSchema['selectedTools']>(
     _selectedTools || []
-  );
-  const [chatConfig, setChatConfig] = useState<AppSimpleEditFormType['chatConfig']>(
-    _chatConfig || {}
   );
   const [wideLogoUploaded, setWideLogoUploaded] = useState<UploadedFileItem[]>([]);
   const [squareLogoUploaded, setSquareLogoUploaded] = useState<UploadedFileItem[]>([]);
@@ -123,7 +118,6 @@ const HomepageSetting = ({
         ['dialogTips', dialogTips],
         ['homeTabTitle', homeTabTitle],
         ['selectedTools', selectedTools],
-        ['chatConfig', chatConfig],
         ['wideLogoUrl', wideLogoUploaded.length > 0 ? wideLogoUploaded[0].url : undefined],
         ['squareLogoUrl', squareLogoUploaded.length > 0 ? squareLogoUploaded[0].url : undefined]
       );
@@ -142,7 +136,6 @@ const HomepageSetting = ({
     dialogTips,
     homeTabTitle,
     selectedTools,
-    chatConfig,
     wideLogoUploaded,
     squareLogoUploaded,
     onSettingsRefresh,
@@ -263,7 +256,6 @@ const HomepageSetting = ({
               {toolSelectModalOpen && (
                 <ToolSelectModal
                   selectedTools={selectedTools}
-                  chatConfig={chatConfig}
                   onAddTool={handleAddTool}
                   onRemoveTool={handleRemoveTool}
                   onClose={() => setToolSelectModalOpen(false)}

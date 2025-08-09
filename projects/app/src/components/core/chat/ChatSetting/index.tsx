@@ -26,7 +26,6 @@ const ChatSetting = ({ settings, onSettingsRefresh }: Props) => {
           dialogTips={settings?.dialogTips}
           homeTabTitle={settings?.homeTabTitle}
           selectedTools={settings?.selectedTools}
-          chatConfig={settings?.chatConfig}
           logos={{
             wideLogoUrl: settings?.wideLogoUrl,
             squareLogoUrl: settings?.squareLogoUrl

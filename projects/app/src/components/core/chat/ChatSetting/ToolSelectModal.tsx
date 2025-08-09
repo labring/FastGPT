@@ -46,7 +46,7 @@ import type { ChatSettingSchema } from '@fastgpt/global/core/chat/type';
 
 type Props = {
   selectedTools: ChatSettingSchema['selectedTools'];
-  chatConfig: AppSimpleEditFormType['chatConfig'];
+  chatConfig?: AppSimpleEditFormType['chatConfig'];
   onAddTool: (tool: FlowNodeTemplateType) => void;
   onRemoveTool: (tool: NodeTemplateListItemType) => void;
 };
@@ -154,7 +154,7 @@ const RenderList = React.memo(function RenderList({
   onRemoveTool,
   setParentId,
   selectedTools,
-  chatConfig
+  chatConfig = {}
 }: Props & {
   templates: NodeTemplateListItemType[];
   setParentId: (parentId: ParentIdType) => any;
