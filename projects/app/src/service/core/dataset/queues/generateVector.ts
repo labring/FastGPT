@@ -219,25 +219,19 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
 
   // update vector, update dataset_data rebuilding status, delete data from training
   // 1. Insert new vector to dataset_data
-  const updateResult: {
-    tokens: number;
-    insertId: string;
-  }[] = [];
-  let i = 0;
-  for await (const index of trainingData.data.indexes) {
-    const result = await insertDatasetDataVector({
-      query: index.text,
-      model: getEmbeddingModel(trainingData.dataset.vectorModel),
-      teamId: trainingData.teamId,
-      datasetId: trainingData.datasetId,
-      collectionId: trainingData.collectionId
-    });
-    trainingData.data.indexes[i].dataId = result.insertId;
-    updateResult.push(result);
-    i++;
-  }
+  const insertResult = await insertDatasetDataVector({
+    inputs: trainingData.data.indexes.map((index) => index.text),
+    model: getEmbeddingModel(trainingData.dataset.vectorModel),
+    teamId: trainingData.teamId,
+    datasetId: trainingData.datasetId,
+    collectionId: trainingData.collectionId
+  });
 
-  const { tokens } = await mongoSessionRun(async (session) => {
+  trainingData.data.indexes.forEach((item, index) => {
+    item.dataId = insertResult.insertIds[index];
+  });
+
+  await mongoSessionRun(async (session) => {
     // 2. Ensure that the training data is deleted after the Mongo update is successful
     await MongoDatasetData.updateOne(
       { _id: trainingData.data._id },
@@ -256,13 +250,9 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
       teamId: trainingData.teamId,
       idList: deleteVectorIdList
     });
-
-    return {
-      tokens: updateResult.reduce((acc, cur) => acc + cur.tokens, 0)
-    };
   });
 
-  return { tokens };
+  return { tokens: insertResult.tokens };
 };
 
 const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) => {

@@ -275,24 +275,30 @@ const MultipleReferenceSelector = ({
       <MultipleRowArraySelect
         label={
           invalidList.length > 0 ? (
-            <Grid py={3} gridTemplateColumns={'1fr 1fr'} gap={2} fontSize={'sm'}>
+            <Grid
+              py={3}
+              gridTemplateColumns={'1fr 1fr'}
+              gap={2}
+              fontSize={'sm'}
+              _hover={{
+                '.delete': {
+                  display: 'block'
+                }
+              }}
+            >
               {invalidList.map(({ nodeName, outputName }, index) => {
                 return (
                   <Flex
-                    alignItems={'center'}
                     key={index}
+                    w={'100%'}
+                    alignItems={'center'}
                     bg={'primary.50'}
                     color={'myGray.900'}
                     py={1}
                     px={1.5}
                     rounded={'sm'}
                   >
-                    <Flex
-                      alignItems={'center'}
-                      flex={'1 0 0'}
-                      maxW={'200px'}
-                      className="textEllipsis"
-                    >
+                    <Flex alignItems={'center'} flex={'1 0 0'} className="textEllipsis">
                       {nodeName}
                       <MyIcon
                         name={'common/rightArrowLight'}
@@ -303,6 +309,8 @@ const MultipleReferenceSelector = ({
                       {outputName}
                     </Flex>
                     <MyIcon
+                      className="delete"
+                      display={'none'}
                       name={'common/closeLight'}
                       w={'1rem'}
                       ml={1}

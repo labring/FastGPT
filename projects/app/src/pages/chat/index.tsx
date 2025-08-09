@@ -112,13 +112,6 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
       <>
         <NextHead title={feConfigs?.systemTitle}></NextHead>
 
-        <Box
-          h="full"
-          bg={`url(${getWebReqUrl('/icon/login-bg.svg')}) no-repeat`}
-          bgSize={'cover'}
-          bgPosition={'center'}
-        />
-
         <LoginModal />
       </>
     );

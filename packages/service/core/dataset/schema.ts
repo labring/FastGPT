@@ -96,13 +96,11 @@ const DatasetSchema = new Schema({
   },
   vectorModel: {
     type: String,
-    required: true,
-    default: 'text-embedding-3-small'
+    required: true
   },
   agentModel: {
     type: String,
-    required: true,
-    default: 'gpt-4o-mini'
+    required: true
   },
   vlmModel: String,
   intro: {

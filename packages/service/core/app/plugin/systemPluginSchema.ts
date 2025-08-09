@@ -27,6 +27,10 @@ const SystemPluginSchema = new Schema({
   pluginOrder: {
     type: Number
   },
+  systemKeyCost: {
+    type: Number,
+    default: 0
+  },
   customConfig: Object,
   inputListVal: Object,
 

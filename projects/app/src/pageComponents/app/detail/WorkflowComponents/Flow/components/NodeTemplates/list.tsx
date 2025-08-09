@@ -11,7 +11,7 @@ import {
   HStack,
   css
 } from '@chakra-ui/react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getPluginGroups, getPreviewPluginNode } from '@/web/core/app/api/plugin';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -92,9 +92,11 @@ const NodeTemplateListItem = ({
           <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
             {t(template.intro as any) || t('common:core.workflow.Not intro')}
           </Box>
-          {/* {templateType === TemplateTypeEnum.systemPlugin && (
-            <CostTooltip cost={template.currentCost} hasTokenFee={template.hasTokenFee} />
-          )} */}
+          <CostTooltip
+            cost={template.currentCost}
+            hasTokenFee={template.hasTokenFee}
+            isFolder={template.isFolder}
+          />
         </Box>
       }
       shouldWrapChildren={false}
@@ -127,6 +129,11 @@ const NodeTemplateListItem = ({
           });
         }}
         onClick={() => {
+          // Team folder
+          if (template.isFolder && template.flowNodeType === FlowNodeTypeEnum.pluginModule) {
+            onUpdateParentId(template.id);
+            return;
+          }
           const position =
             isPopover && handleParams
               ? handleParams.addNodePosition

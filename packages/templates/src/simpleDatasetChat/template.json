@@ -73,7 +73,7 @@
             ],
             "label": "core.module.input.label.aiModel",
             "valueType": "string",
-            "value": "gpt-4o-mini"
+            "value": "gpt-5"
           },
           {
             "key": "temperature",

@@ -241,7 +241,7 @@ export const LoginContainer = ({
       )}
 
       <Flex
-        my={pageType === LoginPageTypeEnum.wechat ? '-15px' : ''}
+        my={['', pageType === LoginPageTypeEnum.wechat ? '-15px' : '']}
         position="relative"
         w="full"
         flex={'1 0 0'}

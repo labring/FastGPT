@@ -56,6 +56,7 @@ const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/login': true,
   '/login/provider': true,
   '/login/fastlogin': true,
+  '/chat': true,
   '/chat/share': true,
   '/tools/price': true,
   '/price': true

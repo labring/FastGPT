@@ -47,6 +47,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import ConfigToolModal from './ConfigToolModal';
+import CostTooltip from '@/components/core/app/plugin/CostTooltip';
 
 type Props = {
   selectedTools: FlowNodeTemplateType[];
