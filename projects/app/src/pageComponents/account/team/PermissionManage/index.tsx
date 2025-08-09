@@ -28,9 +28,13 @@ import MemberTag from '../../../../components/support/user/team/Info/MemberTag';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import {
   TeamApikeyCreatePermissionVal,
+  TeamApikeyCreateRoleVal,
   TeamAppCreatePermissionVal,
+  TeamAppCreateRoleVal,
   TeamDatasetCreatePermissionVal,
+  TeamDatasetCreateRoleVal,
   TeamManagePermissionVal,
+  TeamManageRoleVal,
   TeamRoleList
 } from '@fastgpt/global/support/permission/user/constant';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
@@ -144,12 +148,12 @@ function PermissionManage({
 
   function PermissionCheckBox({
     isDisabled,
-    per,
+    role,
     clbPer,
     id
   }: {
     isDisabled: boolean;
-    per: PermissionValueType;
+    role: PermissionValueType;
     clbPer: Permission;
     id: string;
   }) {
@@ -158,18 +162,18 @@ function PermissionManage({
         <Box mx="auto" w="fit-content">
           <Checkbox
             isDisabled={isDisabled}
-            isChecked={clbPer.checkPer(per)}
+            isChecked={clbPer.checkRole(role)}
             onChange={(e) =>
               e.target.checked
                 ? onUpdatePermission({
                     id,
                     type: 'add',
-                    per
+                    per: role
                   })
                 : onUpdatePermission({
                     id,
                     type: 'remove',
-                    per
+                    per: role
                   })
             }
           />
@@ -265,25 +269,25 @@ function PermissionManage({
                       </Td>
                       <PermissionCheckBox
                         isDisabled={member.permission.isOwner || !userManage}
-                        per={TeamAppCreatePermissionVal}
+                        role={TeamAppCreateRoleVal}
                         clbPer={member.permission}
                         id={member.tmbId!}
                       />
                       <PermissionCheckBox
                         isDisabled={member.permission.isOwner || !userManage}
-                        per={TeamDatasetCreatePermissionVal}
+                        role={TeamDatasetCreateRoleVal}
                         clbPer={member.permission}
                         id={member.tmbId!}
                       />
                       <PermissionCheckBox
                         isDisabled={member.permission.isOwner || !userManage}
-                        per={TeamApikeyCreatePermissionVal}
+                        role={TeamApikeyCreateRoleVal}
                         clbPer={member.permission}
                         id={member.tmbId!}
                       />
                       <PermissionCheckBox
                         isDisabled={member.permission.isOwner || !userInfo?.permission.isOwner}
-                        per={TeamManagePermissionVal}
+                        role={TeamManageRoleVal}
                         clbPer={member.permission}
                         id={member.tmbId!}
                       />
@@ -322,25 +326,25 @@ function PermissionManage({
                       </Td>
                       <PermissionCheckBox
                         isDisabled={org.permission.isOwner || !userManage}
-                        per={TeamAppCreatePermissionVal}
+                        role={TeamAppCreatePermissionVal}
                         clbPer={org.permission}
                         id={org.orgId!}
                       />
                       <PermissionCheckBox
                         isDisabled={org.permission.isOwner || !userManage}
-                        per={TeamDatasetCreatePermissionVal}
+                        role={TeamDatasetCreatePermissionVal}
                         clbPer={org.permission}
                         id={org.orgId!}
                       />
                       <PermissionCheckBox
                         isDisabled={org.permission.isOwner || !userManage}
-                        per={TeamApikeyCreatePermissionVal}
+                        role={TeamApikeyCreatePermissionVal}
                         clbPer={org.permission}
                         id={org.orgId!}
                       />
                       <PermissionCheckBox
                         isDisabled={org.permission.isOwner || !userInfo?.permission.isOwner}
-                        per={TeamManagePermissionVal}
+                        role={TeamManagePermissionVal}
                         clbPer={org.permission}
                         id={org.orgId!}
                       />
@@ -384,25 +388,25 @@ function PermissionManage({
                       </Td>
                       <PermissionCheckBox
                         isDisabled={group.permission.isOwner || !userManage}
-                        per={TeamAppCreatePermissionVal}
+                        role={TeamAppCreatePermissionVal}
                         clbPer={group.permission}
                         id={group.groupId!}
                       />
                       <PermissionCheckBox
                         isDisabled={group.permission.isOwner || !userManage}
-                        per={TeamDatasetCreatePermissionVal}
+                        role={TeamDatasetCreatePermissionVal}
                         clbPer={group.permission}
                         id={group.groupId!}
                       />
                       <PermissionCheckBox
                         isDisabled={group.permission.isOwner || !userManage}
-                        per={TeamApikeyCreatePermissionVal}
+                        role={TeamApikeyCreatePermissionVal}
                         clbPer={group.permission}
                         id={group.groupId!}
                       />
                       <PermissionCheckBox
                         isDisabled={group.permission.isOwner || !userInfo?.permission.isOwner}
-                        per={TeamManagePermissionVal}
+                        role={TeamManagePermissionVal}
                         clbPer={group.permission}
                         id={group.groupId!}
                       />

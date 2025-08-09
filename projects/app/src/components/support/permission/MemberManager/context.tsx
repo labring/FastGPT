@@ -4,11 +4,7 @@ import type {
   UpdateClbPermissionProps
 } from '@fastgpt/global/support/permission/collaborator';
 import { Permission } from '@fastgpt/global/support/permission/controller';
-import type {
-  PermissionListType,
-  PermissionValueType,
-  RoleListType
-} from '@fastgpt/global/support/permission/type';
+import type { PermissionValueType, RoleListType } from '@fastgpt/global/support/permission/type';
 import { type ReactNode, useCallback } from 'react';
 import { createContext } from 'use-context-selector';
 import dynamic from 'next/dynamic';
@@ -74,7 +70,7 @@ export const CollaboratorContext = createContext<CollaboratorContextType>({
 const CollaboratorContextProvider = ({
   permission,
   onGetCollaboratorList,
-  roleList: permissionList,
+  roleList,
   onUpdateCollaborators,
   onDelOneCollaborator,
   children,
@@ -131,20 +127,20 @@ const CollaboratorContextProvider = ({
 
   const getPerLabelList = useCallback(
     (role: PermissionValueType) => {
-      if (!permissionList) return [];
+      if (!roleList) return [];
 
       const Per = new Permission({ role });
       const labels: string[] = [];
 
       if (Per.hasManagePer) {
-        labels.push(permissionList['manage'].name);
+        labels.push(roleList['manage'].name);
       } else if (Per.hasWritePer) {
-        labels.push(permissionList['write'].name);
+        labels.push(roleList['write'].name);
       } else if (Per.hasReadPer) {
-        labels.push(permissionList['read'].name);
+        labels.push(roleList['read'].name);
       }
 
-      Object.values(permissionList).forEach((item) => {
+      Object.values(roleList).forEach((item) => {
         if (item.checkBoxType === 'multiple') {
           if (Per.checkPer(item.value)) {
             labels.push(item.name);
@@ -154,7 +150,7 @@ const CollaboratorContextProvider = ({
 
       return labels;
     },
-    [permissionList]
+    [roleList]
   );
 
   const { ConfirmModal, openConfirm } = useConfirm({});
@@ -175,7 +171,7 @@ const CollaboratorContextProvider = ({
     collaboratorList,
     refetchCollaboratorList,
     isFetchingCollaborator,
-    permissionList,
+    roleList,
     onUpdateCollaborators: onUpdateCollaboratorsThen,
     onDelOneCollaborator: onDelOneCollaboratorThen,
     getPerLabelList
