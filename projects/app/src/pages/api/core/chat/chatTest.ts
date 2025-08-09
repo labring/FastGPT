@@ -49,6 +49,7 @@ import {
   ChatSourceEnum
 } from '@fastgpt/global/core/chat/constants';
 import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
+import { getLocale } from '@fastgpt/service/common/middle/i18n';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
@@ -171,6 +172,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       durationSeconds
     } = await dispatchWorkFlow({
       res,
+      lang: getLocale(req),
       requestOrigin: req.headers.origin,
       mode: 'test',
       timezone,

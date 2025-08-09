@@ -31,16 +31,13 @@ const CostTooltip = ({
         cost: cost
       });
     }
-    return t('common:core.plugin.Free');
+    return t('app:tool_run_free');
   };
 
   return (
     <>
       <Divider mt={4} mb={2} />
-      <Flex alignItems={'center'}>
-        <Box whiteSpace={'nowrap'}>{t('common:core.plugin.cost')}</Box>
-        <Box color={'myGray.600'}>{getCostText()}</Box>
-      </Flex>
+      <Box color={'myGray.600'}>{getCostText()}</Box>
     </>
   );
 };

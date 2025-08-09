@@ -6,6 +6,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 
 /* filter search result */
 export const filterSearchResultsByMaxChars = async (
@@ -31,9 +32,11 @@ export const filterSearchResultsByMaxChars = async (
 };
 
 export async function getSystemToolRunTimeNodeFromSystemToolset({
-  toolSetNode
+  toolSetNode,
+  lang = 'en'
 }: {
   toolSetNode: RuntimeNodeItemType;
+  lang?: localeType;
 }): Promise<RuntimeNodeItemType[]> {
   const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId!;
 
@@ -41,13 +44,14 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
     (item) => item.key === NodeInputKeyEnum.systemInputConfig
   );
   const tools = await getSystemTools();
-  const children = tools.filter((item) => item.parentId === systemToolId);
-
+  const children = tools.filter(
+    (item) => item.parentId === systemToolId && item.isActive !== false
+  );
   const nodes = await Promise.all(
     children.map(async (child) => {
       const toolListItem = toolSetNode.toolConfig?.systemToolSet?.toolList.find(
         (item) => item.toolId === child.id
-      )!;
+      );
 
       const tool = await getSystemPluginByIdAndVersionId(child.id);
 
@@ -63,8 +67,8 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
         ...tool,
         inputs,
         outputs: tool.outputs ?? [],
-        name: toolListItem.name ?? parseI18nString(tool.name, 'en'),
-        intro: toolListItem.description ?? parseI18nString(tool.intro, 'en'),
+        name: toolListItem?.name || parseI18nString(tool.name, lang),
+        intro: toolListItem?.description || parseI18nString(tool.intro, lang),
         flowNodeType: FlowNodeTypeEnum.tool,
         nodeId: getNanoid(),
         toolConfig: {
