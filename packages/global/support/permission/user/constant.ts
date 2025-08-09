@@ -1,4 +1,4 @@
-import { CommonPerKeyEnum } from '../constant';
+import { CommonPerKeyEnum, CommonRolePerMap } from '../constant';
 import type { PermissionListType, RoleListType, RolePerMapType } from '../type';
 import { CommonRoleList, CommonPerList } from '../constant';
 import { i18nT } from '../../../../web/i18n/utils';
@@ -57,12 +57,7 @@ export const TeamRoleList: RoleListType<TeamRoleKeyEnum> = {
 };
 
 export const TeamRolePerMap: RolePerMapType = new Map([
-  [TeamRoleList['read'].value, CommonPerList.read],
-  [TeamRoleList['write'].value, sumPer(CommonPerList.read, CommonPerList.write)],
-  [
-    TeamRoleList['manage'].value,
-    sumPer(CommonPerList.read, CommonPerList.write, CommonPerList.manage)
-  ],
+  ...CommonRolePerMap,
   [
     TeamRoleList['appCreate'].value,
     sumPer(TeamPerList.appCreate, CommonPerList.read, CommonPerList.write)

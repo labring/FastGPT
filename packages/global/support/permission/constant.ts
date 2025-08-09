@@ -1,6 +1,7 @@
 import type { PermissionListType } from './type';
 import { type RoleListType } from './type';
 import { i18nT } from '../../../web/i18n/utils';
+import { sumPer } from './utils';
 export enum AuthUserTypeEnum {
   token = 'token',
   root = 'root',
@@ -95,8 +96,11 @@ export const CommonRoleList: RoleListType = {
 
 export const CommonRolePerMap = new Map([
   [CommonRoleList['read'].value, CommonPerList.read],
-  [CommonRoleList['write'].value, CommonPerList.write],
-  [CommonRoleList['manage'].value, CommonPerList.manage]
+  [CommonRoleList['write'].value, sumPer(CommonPerList.write, CommonPerList.read)],
+  [
+    CommonRoleList['manage'].value,
+    sumPer(CommonPerList.manage, CommonPerList.write, CommonPerList.read)
+  ]
 ]);
 
 export const ReadRoleVal = CommonRoleList['read'].value;
