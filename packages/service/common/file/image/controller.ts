@@ -11,6 +11,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 
 export const maxImgSize = 1024 * 1024 * 12;
 const base64MimeRegex = /data:image\/([^\)]+);base64/;
+
 export async function uploadMongoImg({
   base64Img,
   teamId,

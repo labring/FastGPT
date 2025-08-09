@@ -15,6 +15,7 @@
   "Please wait for all files to upload": "Please wait for all files to be uploaded to complete",
   "bucket_chat": "Conversation Files",
   "bucket_file": "Dataset Documents",
+  "bucket_image": "picture",
   "click_to_view_raw_source": "Click to View Original Source",
   "common.Some images failed to process": "Some images failed to process",
   "common.dataset_data_input_image_support_format": "Support .jpg, .jpeg, .png, .gif, .webp formats",

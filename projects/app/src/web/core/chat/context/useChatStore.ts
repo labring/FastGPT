@@ -2,6 +2,7 @@ import { create, createJSONStorage, devtools, persist, immer } from '@fastgpt/we
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 
 type State = {
   source?: `${ChatSourceEnum}`;
@@ -15,6 +16,9 @@ type State = {
   lastChatId: string;
   chatId: string;
   setChatId: (e?: string) => any;
+
+  lastPane: ChatSidebarPaneEnum;
+  setLastPane: (e: ChatSidebarPaneEnum) => any;
 
   outLinkAuthData: OutLinkChatAuthProps;
   setOutLinkAuthData: (e: OutLinkChatAuthProps) => any;
@@ -61,7 +65,7 @@ const createCustomStorage = () => {
     }
   };
 };
-/* 
+/*
   appId chatId source 存在当前 tab 中，刷新浏览器不会丢失。
   lastChatId 和 lastChatAppId 全局存储，切换 tab 或浏览器也不会丢失。用于首次 tab 进入对话时，恢复上一次的 chat。(只恢复相同来源的)
 */
@@ -111,6 +115,12 @@ export const useChatStore = create<State>()(
             state.lastChatAppId = e;
           });
         },
+        lastPane: ChatSidebarPaneEnum.HOME,
+        setLastPane(e) {
+          set((state) => {
+            state.lastPane = e;
+          });
+        },
         outLinkAuthData: {},
         setOutLinkAuthData(e) {
           set((state) => {
@@ -126,7 +136,8 @@ export const useChatStore = create<State>()(
           chatId: state.chatId,
           appId: state.appId,
           lastChatId: state.lastChatId,
-          lastChatAppId: state.lastChatAppId
+          lastChatAppId: state.lastChatAppId,
+          lastPane: state.lastPane
         })
       }
     )
