@@ -11,7 +11,7 @@ const WelcomeHomeBox = () => {
     <Flex flexDir="column" justifyContent="flex-end" alignItems="center" gap={4} h="full">
       <Image
         alt="fastgpt logo"
-        maxW={['388px', '50%']}
+        maxW={['200px', '300px']}
         src={wideLogo || DEFAULT_LOGO_BANNER_URL}
         fallbackSrc={DEFAULT_LOGO_BANNER_URL}
       />

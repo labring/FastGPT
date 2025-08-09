@@ -96,7 +96,7 @@
   "setting.copyright.tips.square": "建議比例 1:1",
   "setting.copyright.title": "版權信息",
   "setting.copyright.upload_fail": "文件上傳失敗",
-  "setting.fastgpt_chat_diagram": "/imgs/fastgpt_chat_diagram_zh-Hant.png",
+  "setting.fastgpt_chat_diagram": "/imgs/chat/fastgpt_chat_diagram_zh-Hant.png",
   "setting.home.available_tools.add": "添加",
   "setting.home.commercial_version": "商業版",
   "setting.home.diagram": "示意圖",
