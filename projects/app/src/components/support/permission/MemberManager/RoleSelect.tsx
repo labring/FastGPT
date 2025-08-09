@@ -11,7 +11,7 @@ import {
 } from '@chakra-ui/react';
 import React, { useMemo, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
+import type { RoleValueType } from '@fastgpt/global/support/permission/type';
 import { useContextSelector } from 'use-context-selector';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 import { CollaboratorContext } from './context';
@@ -19,8 +19,8 @@ import { useTranslation } from 'next-i18next';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 
 export type PermissionSelectProps = {
-  value?: PermissionValueType;
-  onChange: (value: PermissionValueType) => void;
+  role?: RoleValueType;
+  onChange: (value: RoleValueType) => void;
   trigger?: 'hover' | 'click';
   offset?: [number, number];
   Button: React.ReactNode;
@@ -39,8 +39,8 @@ const MenuStyle = {
   fontSize: 'sm'
 };
 
-function PermissionSelect({
-  value: role,
+function RoleSelect({
+  role,
   onChange,
   trigger = 'click',
   offset = [0, 5],
@@ -59,7 +59,7 @@ function PermissionSelect({
 
   const [isOpen, setIsOpen] = useState(false);
 
-  const permissionSelectList = useMemo(() => {
+  const roleSelectList = useMemo(() => {
     if (!permissionList) return { singleCheckBoxList: [], multipleCheckBoxList: [] };
 
     const list = Object.entries(permissionList).map(([_, value]) => {
@@ -102,14 +102,14 @@ function PermissionSelect({
   //     .map((item) => item.value);
   // }, [permissionSelectList.multipleCheckBoxList, value]);
 
-  const onSelectPer = (per: PermissionValueType) => {
-    if (per === role) return;
-    onChange(per);
+  const onSelectRole = (newRole: RoleValueType) => {
+    if (newRole === role) return;
+    onChange(newRole);
     setIsOpen(false);
   };
 
   useOutsideClick({
-    ref: ref,
+    ref,
     handler: () => {
       setIsOpen(false);
     }
@@ -156,12 +156,12 @@ function PermissionSelect({
           whiteSpace={'pre-wrap'}
         >
           {/* The list of single select permissions */}
-          {permissionSelectList.singleCheckBoxList.map((item) => {
+          {roleSelectList.singleCheckBoxList.map((item) => {
             const change = () => {
               const per = new Permission({ role });
               per.removeRole(selectedSingleValue);
               per.addRole(item.value);
-              onSelectPer(per.role);
+              onSelectRole(per.role);
             };
 
             return (
@@ -252,4 +252,4 @@ function PermissionSelect({
   ) : null;
 }
 
-export default React.memo(PermissionSelect);
+export default React.memo(RoleSelect);

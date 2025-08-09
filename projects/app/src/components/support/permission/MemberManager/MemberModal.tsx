@@ -27,7 +27,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { CollaboratorContext } from './context';
 import MemberItemCard from './MemberItemCard';
-import PermissionSelect from './PermissionSelect';
+import RoleSelect from './RoleSelect';
 
 const HoverBoxStyle = {
   bgColor: 'myGray.50',
@@ -426,8 +426,8 @@ function MemberModal({
       </ModalBody>
       <ModalFooter>
         {!addOnly && !!permissionList && (
-          <PermissionSelect
-            value={selectedPermission}
+          <RoleSelect
+            role={selectedPermission}
             Button={
               <Flex
                 alignItems={'center'}

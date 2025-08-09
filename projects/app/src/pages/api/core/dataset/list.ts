@@ -51,7 +51,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
   ]);
 
   // Get team all app permissions
-  const [perList, myGroupMap, myOrgSet] = await Promise.all([
+  const [roleList, myGroupMap, myOrgSet] = await Promise.all([
     MongoResourcePermission.find({
       resourceType: PerResourceTypeEnum.dataset,
       teamId,
@@ -74,7 +74,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
       tmbId
     })
   ]);
-  const myPerList = perList.filter(
+  const myRoles = roleList.filter(
     (item) =>
       String(item.tmbId) === String(tmbId) ||
       myGroupMap.has(String(item.groupId)) ||
@@ -83,7 +83,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
 
   const findDatasetQuery = (() => {
     // Filter apps by permission, if not owner, only get apps that I have permission to access
-    const idList = { _id: { $in: myPerList.map((item) => item.resourceId) } };
+    const idList = { _id: { $in: myRoles.map((item) => item.resourceId) } };
     const datasetPerQuery = teamPer.isOwner
       ? {}
       : parentId
@@ -127,11 +127,11 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
     .map((dataset) => {
       const { Per, privateDataset } = (() => {
         const getPer = (datasetId: string) => {
-          const tmbRole = myPerList.find(
+          const tmbRole = myRoles.find(
             (item) => String(item.resourceId) === datasetId && !!item.tmbId
           )?.permission;
           const groupRole = sumPer(
-            ...myPerList
+            ...myRoles
               .filter(
                 (item) => String(item.resourceId) === datasetId && (!!item.groupId || !!item.orgId)
               )
@@ -143,7 +143,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
           });
         };
         const getClbCount = (datasetId: string) => {
-          return perList.filter((item) => String(item.resourceId) === String(datasetId)).length;
+          return roleList.filter((item) => String(item.resourceId) === String(datasetId)).length;
         };
 
         // inherit

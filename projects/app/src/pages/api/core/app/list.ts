@@ -63,7 +63,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
   ]);
 
   // Get team all app permissions
-  const [perList, myGroupMap, myOrgSet] = await Promise.all([
+  const [roleList, myGroupMap, myOrgSet] = await Promise.all([
     MongoResourcePermission.find({
       resourceType: PerResourceTypeEnum.app,
       teamId,
@@ -87,7 +87,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
     })
   ]);
   // Get my permissions
-  const myPerList = perList.filter(
+  const myPerList = roleList.filter(
     (item) =>
       String(item.tmbId) === String(tmbId) ||
       myGroupMap.has(String(item.groupId)) ||
@@ -178,7 +178,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
         };
 
         const getClbCount = (appId: string) => {
-          return perList.filter((item) => String(item.resourceId) === String(appId)).length;
+          return roleList.filter((item) => String(item.resourceId) === String(appId)).length;
         };
 
         // Inherit app, check parent folder clb

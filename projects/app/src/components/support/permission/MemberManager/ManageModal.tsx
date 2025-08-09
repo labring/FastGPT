@@ -11,7 +11,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import React from 'react';
 import { useContextSelector } from 'use-context-selector';
-import PermissionSelect from './PermissionSelect';
+import RoleSelect from './RoleSelect';
 import RoleTags from './PermissionTags';
 import { CollaboratorContext } from './context';
 export type ManageModalProps = {
@@ -76,11 +76,11 @@ function ManageModal({ onClose }: ManageModalProps) {
                       {/* Not self; Not owner and other manager */}
                       {item.tmbId !== userInfo?.team?.tmbId &&
                         (permission.isOwner || !item.permission.hasManagePer) && (
-                          <PermissionSelect
+                          <RoleSelect
                             Button={
                               <MyIcon name={'edit'} w={'16px'} _hover={{ color: 'primary.600' }} />
                             }
-                            value={item.permission.role}
+                            role={item.permission.role}
                             onChange={(permission) => {
                               onUpdate({
                                 members: item.tmbId ? [item.tmbId] : undefined,
