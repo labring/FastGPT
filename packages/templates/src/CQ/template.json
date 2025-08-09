@@ -70,7 +70,7 @@
             "renderTypeList": ["settingLLMModel", "reference"],
             "label": "core.module.input.label.aiModel",
             "valueType": "string",
-            "value": "gpt-4o-mini"
+            "value": "gpt-5"
           },
           {
             "key": "temperature",
@@ -189,7 +189,7 @@
             "required": true,
             "valueType": "string",
             "llmModelType": "classify",
-            "value": "gpt-4o-mini"
+            "value": "gpt-5"
           },
           {
             "key": "systemPrompt",

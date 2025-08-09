@@ -690,7 +690,6 @@
   "core.module.variable.variable option is value is required": "选项内容不能为空",
   "core.module.variable.variable options": "选项",
   "core.plugin.Custom headers": "自定义请求头",
-  "core.plugin.Free": "该插件无需积分消耗～",
   "core.plugin.Get Plugin Module Detail Failed": "加载插件异常",
   "core.plugin.Http plugin intro placeholder": "仅做展示，无实际效果",
   "core.plugin.cost": "积分消耗：",

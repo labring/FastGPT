@@ -260,6 +260,7 @@
   "tool_detail": "工具详情",
   "tool_input_param_tip": "该插件正常运行需要配置相关信息",
   "tool_not_active": "该工具尚未激活",
+  "tool_run_free": "该工具运行无积分消耗",
   "tool_type_communication": "通讯",
   "tool_type_design": "设计",
   "tool_type_entertainment": "商业",

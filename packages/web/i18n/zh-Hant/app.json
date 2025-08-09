@@ -251,6 +251,7 @@
   "tool_detail": "工具詳情",
   "tool_input_param_tip": "這個外掛正常執行需要設定相關資訊",
   "tool_not_active": "該工具尚未激活",
+  "tool_run_free": "該工具運行無積分消耗",
   "tool_type_communication": "通訊",
   "tool_type_design": "設計",
   "tool_type_entertainment": "商業",

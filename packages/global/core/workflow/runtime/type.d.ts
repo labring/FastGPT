@@ -29,6 +29,7 @@ import type {
   WorkflowInteractiveResponseType
 } from '../template/system/interactive/type';
 import type { SearchDataResponseItemType } from '../../dataset/type';
+import type { localeType } from '../../../common/i18n/type';
 export type ExternalProviderType = {
   openaiAccount?: OpenaiAccountType;
   externalWorkflowVariables?: Record<string, string>;
@@ -37,6 +38,7 @@ export type ExternalProviderType = {
 /* workflow props */
 export type ChatDispatchProps = {
   res?: NextApiResponse;
+  lang?: localeType;
   requestOrigin?: string;
   mode: 'test' | 'chat' | 'debug';
   timezone: string;
