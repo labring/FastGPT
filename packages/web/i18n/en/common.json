@@ -691,7 +691,6 @@
   "core.module.variable.variable option is value is required": "Option Content Cannot Be Empty",
   "core.module.variable.variable options": "Options",
   "core.plugin.Custom headers": "Custom Request Headers",
-  "core.plugin.Free": "This plugin does not consume points",
   "core.plugin.Get Plugin Module Detail Failed": "Failed to Retrieve Plugin Information",
   "core.plugin.Http plugin intro placeholder": "For display only, no actual effect",
   "core.plugin.cost": "Points Consumption:",

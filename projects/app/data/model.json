@@ -12,8 +12,8 @@
   "llmModels": [
     {
       "provider": "OpenAI", // 模型提供商，主要用于分类展示，目前已经内置提供商包括：https://github.com/labring/FastGPT/blob/main/packages/global/core/ai/provider.ts, 可 pr 提供新的提供商，或直接填写 Other
-      "model": "gpt-4o-mini", // 模型名(对应OneAPI中渠道的模型名)
-      "name": "gpt-4o-mini", // 模型别名
+      "model": "gpt-5", // 模型名(对应OneAPI中渠道的模型名)
+      "name": "gpt-5", // 模型别名
       "maxContext": 128000, // 最大上下文
       "maxResponse": 16000, // 最大回复
       "quoteMaxToken": 120000, // 最大引用内容

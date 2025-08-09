@@ -253,6 +253,7 @@
   "tool_detail": "Tool details",
   "tool_input_param_tip": "This plugin requires configuration of related information to run properly.",
   "tool_not_active": "This tool has not been activated yet",
+  "tool_run_free": "This tool runs without points consumption",
   "tool_type_communication": "Communication",
   "tool_type_design": "design",
   "tool_type_entertainment": "Business",
