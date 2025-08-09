@@ -159,7 +159,6 @@ const NodeTemplateListItem = ({
         >
           {t(template.name as any)}
         </Box>
-
         {/* Folder right arrow */}
         {template.isFolder && (
           <Box
@@ -180,7 +179,6 @@ const NodeTemplateListItem = ({
             <MyIcon name="common/arrowRight" w={isPopover ? '16px' : '20px'} />
           </Box>
         )}
-
         {/* Author */}
         {!isPopover && template.authorAvatar && template.author && (
           <HStack spacing={1} maxW={'120px'} flexShrink={0}>

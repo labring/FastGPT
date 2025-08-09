@@ -8,7 +8,7 @@ import type {
   ChatStatusEnum
 } from './constants';
 import type { FlowNodeTypeEnum } from '../workflow/node/constant';
-import type { NodeOutputKeyEnum } from '../workflow/constants';
+import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '../workflow/constants';
 import type { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
 import type { AppSchema, VariableItemType } from '../app/type';
 import { AppChatConfigType } from '../app/type';
@@ -18,6 +18,7 @@ import type { DispatchNodeResponseType } from '../workflow/runtime/type.d';
 import type { ChatBoxInputType } from '../../../../projects/app/src/components/core/chat/ChatContainer/ChatBox/type';
 import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
 import type { FlowNodeInputItemType } from '../workflow/type/io';
+import type { FlowNodeTemplateType } from '../workflow/type/node.d';
 
 export type ChatSchema = {
   _id: string;

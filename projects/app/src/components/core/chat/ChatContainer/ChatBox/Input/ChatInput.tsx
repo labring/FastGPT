@@ -33,13 +33,15 @@ const ChatInput = ({
   onStop,
   TextareaDom,
   resetInputVal,
-  chatForm
+  chatForm,
+  customButtonGroup
 }: {
   onSendMessage: SendPromptFnType;
   onStop: () => void;
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
   resetInputVal: (val: ChatBoxInputType) => void;
   chatForm: UseFormReturn<ChatBoxInputFormType>;
+  customButtonGroup?: React.ReactNode;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -61,6 +63,7 @@ const ChatInput = ({
   const whisperConfig = useContextSelector(ChatBoxContext, (v) => v.whisperConfig);
   const chatInputGuide = useContextSelector(ChatBoxContext, (v) => v.chatInputGuide);
   const fileSelectConfig = useContextSelector(ChatBoxContext, (v) => v.fileSelectConfig);
+  const dialogTips = useContextSelector(ChatBoxContext, (v) => v.dialogTips);
 
   const fileCtrl = useFieldArray({
     control,
@@ -127,7 +130,8 @@ const ChatInput = ({
               border: 'none'
             }}
             placeholder={
-              isPc ? t('common:core.chat.Type a message') : t('chat:input_placeholder_phone')
+              dialogTips ||
+              (isPc ? t('common:core.chat.Type a message') : t('chat:input_placeholder_phone'))
             }
             resize={'none'}
             rows={1}
@@ -226,6 +230,7 @@ const ChatInput = ({
       setValue,
       showSelectFile,
       showSelectImg,
+      dialogTips,
       t
     ]
   );
@@ -239,96 +244,107 @@ const ChatInput = ({
     return (
       <Flex
         alignItems={'center'}
-        justifyContent={'flex-end'}
+        justifyContent={'space-between'}
         w={'100%'}
         mt={0}
         pr={[3, 4]}
+        pl={[3, 4]}
         h={[8, 9]}
         gap={[0, 1]}
       >
-        {/* Attachment and Voice Group */}
-        <Flex alignItems={'center'} h={[8, 9]}>
-          {/* file selector button */}
-          {(showSelectFile || showSelectImg) && (
-            <Flex
-              alignItems={'center'}
-              justifyContent={'center'}
-              w={[8, 9]}
-              h={[8, 9]}
-              p={[1, 2]}
-              borderRadius={'sm'}
-              cursor={'pointer'}
-              _hover={{ bg: 'rgba(0, 0, 0, 0.04)' }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenSelectFile();
-              }}
-            >
-              <MyTooltip label={selectFileLabel}>
-                <MyIcon name={selectFileIcon as any} {...iconSize} color={'#707070'} />
-              </MyTooltip>
-              <File onSelect={(files) => onSelectFile({ files })} />
-            </Flex>
-          )}
-
-          {/* Voice input button */}
-          {whisperConfig?.open && !inputValue && (
-            <Flex
-              alignItems={'center'}
-              justifyContent={'center'}
-              w={[8, 9]}
-              h={[8, 9]}
-              p={[1, 2]}
-              borderRadius={'sm'}
-              cursor={'pointer'}
-              _hover={{ bg: 'rgba(0, 0, 0, 0.04)' }}
-              onClick={(e) => {
-                e.stopPropagation();
-                VoiceInputRef.current?.onSpeak?.();
-              }}
-            >
-              <MyTooltip label={t('common:core.chat.Record')}>
-                <MyIcon name={'core/chat/recordFill'} {...iconSize} color={'#707070'} />
-              </MyTooltip>
-            </Flex>
-          )}
-        </Flex>
-
-        {/* Divider Container */}
-        {((whisperConfig?.open && !inputValue) || showSelectFile || showSelectImg) && (
-          <Flex alignItems={'center'} justifyContent={'center'} w={2} h={4} mr={2}>
-            <Box w={'2px'} h={5} bg={'myGray.200'} />
+        {/* 左侧自定义按钮组 */}
+        {customButtonGroup && (
+          <Flex alignItems={'center'} gap={2}>
+            {customButtonGroup}
           </Flex>
         )}
 
-        {/* Send Button Container */}
-        <Flex alignItems={'center'} w={[8, 9]} h={[8, 9]} borderRadius={'lg'}>
-          <Flex
-            alignItems={'center'}
-            justifyContent={'center'}
-            w={[7, 9]}
-            h={[7, 9]}
-            p={[1, 2]}
-            bg={
-              isChatting ? 'primary.50' : canSendMessage ? 'primary.500' : 'rgba(17, 24, 36, 0.1)'
-            }
-            borderRadius={['md', 'lg']}
-            cursor={isChatting ? 'pointer' : canSendMessage ? 'pointer' : 'not-allowed'}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (isChatting) {
-                return onStop();
-              }
-              return handleSend();
-            }}
-          >
-            {isChatting ? (
-              <MyIcon {...iconSize} name={'stop'} color={'primary.600'} />
-            ) : (
-              <MyTooltip label={t('common:core.chat.Send Message')}>
-                <MyIcon name={'core/chat/sendFill'} {...iconSize} color={'white'} />
-              </MyTooltip>
+        {/* 右侧原有按钮组 */}
+        <Flex alignItems={'center'} gap={[0, 1]} ml="auto">
+          {/* Attachment and Voice Group */}
+          <Flex alignItems={'center'} h={[8, 9]}>
+            {/* file selector button */}
+            {(showSelectFile || showSelectImg) && (
+              <Flex
+                alignItems={'center'}
+                justifyContent={'center'}
+                w={[8, 9]}
+                h={[8, 9]}
+                p={[1, 2]}
+                borderRadius={'sm'}
+                cursor={'pointer'}
+                _hover={{ bg: 'rgba(0, 0, 0, 0.04)' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenSelectFile();
+                }}
+              >
+                <MyTooltip label={selectFileLabel}>
+                  <MyIcon name={selectFileIcon as any} {...iconSize} color={'#707070'} />
+                </MyTooltip>
+                <File onSelect={(files) => onSelectFile({ files })} />
+              </Flex>
             )}
+
+            {/* Voice input button */}
+            {whisperConfig?.open && !inputValue && (
+              <Flex
+                alignItems={'center'}
+                justifyContent={'center'}
+                w={[8, 9]}
+                h={[8, 9]}
+                p={[1, 2]}
+                borderRadius={'sm'}
+                cursor={'pointer'}
+                _hover={{ bg: 'rgba(0, 0, 0, 0.04)' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  VoiceInputRef.current?.onSpeak?.();
+                }}
+              >
+                <MyTooltip label={t('common:core.chat.Record')}>
+                  <MyIcon name={'core/chat/recordFill'} {...iconSize} color={'#707070'} />
+                </MyTooltip>
+              </Flex>
+            )}
+          </Flex>
+
+          {/* Divider Container */}
+          {((whisperConfig?.open && !inputValue) || showSelectFile || showSelectImg) && (
+            <Flex alignItems={'center'} justifyContent={'center'} w={2} h={4} mr={2}>
+              <Box w={'2px'} h={5} bg={'myGray.200'} />
+            </Flex>
+          )}
+
+          {/* Send Button Container */}
+          <Flex alignItems={'center'} w={[8, 9]} h={[8, 9]} borderRadius={'lg'}>
+            <Flex
+              alignItems={'center'}
+              justifyContent={'center'}
+              w={[7, 9]}
+              h={[7, 9]}
+              p={[1, 2]}
+              bg={
+                isChatting ? 'primary.50' : canSendMessage ? 'primary.500' : 'rgba(17, 24, 36, 0.1)'
+              }
+              borderRadius={['md', 'lg']}
+              cursor={isChatting ? 'pointer' : canSendMessage ? 'pointer' : 'not-allowed'}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isChatting) {
+                  return onStop();
+                }
+                return handleSend();
+              }}
+            >
+              {isChatting ? (
+                <MyIcon {...iconSize} name={'stop'} color={'primary.600'} />
+              ) : (
+                <MyTooltip label={t('common:core.chat.Send Message')}>
+                  <MyIcon name={'core/chat/sendFill'} {...iconSize} color={'white'} />
+                </MyTooltip>
+              )}
+            </Flex>
           </Flex>
         </Flex>
       </Flex>
@@ -348,7 +364,8 @@ const ChatInput = ({
     onOpenSelectFile,
     onSelectFile,
     handleSend,
-    onStop
+    onStop,
+    customButtonGroup
   ]);
 
   const activeStyles: FlexProps = {
