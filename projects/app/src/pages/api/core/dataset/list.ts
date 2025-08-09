@@ -138,7 +138,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
               .map((item) => item.permission)
           );
           return new DatasetPermission({
-            role: tmbRole ?? groupRole ?? DataSetDefaultRoleVal,
+            role: tmbRole ?? groupRole,
             isOwner: String(dataset.tmbId) === String(tmbId) || teamPer.isOwner
           });
         };

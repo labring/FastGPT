@@ -172,7 +172,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
           );
 
           return new AppPermission({
-            role: tmbRole ?? groupRole ?? AppDefaultRoleVal,
+            role: tmbRole ?? groupRole,
             isOwner: String(app.tmbId) === String(tmbId) || teamPer.isOwner
           });
         };

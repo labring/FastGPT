@@ -6,11 +6,10 @@ import { MongoOpenApi } from '../../openapi/schema';
 import { OpenApiErrEnum } from '@fastgpt/global/common/error/code/openapi';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authAppByTmbId } from '../app/auth';
-import { Permission } from '@fastgpt/global/support/permission/controller';
 
 export async function authOpenApiKeyCrud({
   id,
-  per: role = OwnerPermissionVal,
+  per = OwnerPermissionVal,
   ...props
 }: AuthModeType & {
   id: string;
@@ -34,7 +33,7 @@ export async function authOpenApiKeyCrud({
 
     if (!!openapi.appId) {
       // if is not global openapi, then auth app
-      const { app } = await authAppByTmbId({ appId: openapi.appId!, tmbId, per: role });
+      const { app } = await authAppByTmbId({ appId: openapi.appId!, tmbId, per });
       return {
         permission: app.permission,
         openapi
@@ -43,15 +42,13 @@ export async function authOpenApiKeyCrud({
     // if is global openapi, then auth openapi
     const { permission: tmbPer } = await getTmbInfoByTmbId({ tmbId });
 
-    if (!tmbPer.checkPer(role) && tmbId !== String(openapi.tmbId)) {
+    if (!tmbPer.checkPer(per) && tmbId !== String(openapi.tmbId)) {
       return Promise.reject(OpenApiErrEnum.unAuth);
     }
 
     return {
       openapi,
-      permission: new Permission({
-        role
-      })
+      permission: tmbPer
     };
   })();
 

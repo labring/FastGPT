@@ -44,5 +44,9 @@ export function getPermissionSchema(defaultPermission: PermissionValueType = Nul
 }
 
 export const sumPer = (...per: PermissionValueType[]) => {
+  if (per.length === 0) {
+    // prevent sum 0 value, to fallback to default value
+    return undefined;
+  }
   return per.reduce((acc, cur) => acc | cur, 0);
 };

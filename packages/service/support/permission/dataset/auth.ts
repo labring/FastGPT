@@ -84,7 +84,7 @@ export const authDatasetByTmbId = async ({
           resourceType: PerResourceTypeEnum.dataset
         });
         const Per = new DatasetPermission({
-          role: rp ?? DataSetDefaultRoleVal,
+          role: rp,
           isOwner
         });
         return {
