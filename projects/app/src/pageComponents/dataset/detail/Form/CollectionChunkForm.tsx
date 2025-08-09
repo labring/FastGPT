@@ -388,14 +388,19 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
                             }}
                             list={[
                               {
+                                label: t('dataset:llm_paragraph_mode_auto'),
+                                value: ParagraphChunkAIModeEnum.auto,
+                                description: t('dataset:llm_paragraph_mode_auto_desc')
+                              },
+                              {
                                 label: t('dataset:llm_paragraph_mode_forbid'),
                                 value: ParagraphChunkAIModeEnum.forbid,
                                 description: t('dataset:llm_paragraph_mode_forbid_desc')
                               },
                               {
-                                label: t('dataset:llm_paragraph_mode_auto'),
-                                value: ParagraphChunkAIModeEnum.auto,
-                                description: t('dataset:llm_paragraph_mode_auto_desc')
+                                label: t('dataset:llm_paragraph_mode_force'),
+                                value: ParagraphChunkAIModeEnum.force,
+                                description: t('dataset:llm_paragraph_mode_force_desc')
                               }
                             ]}
                           />
