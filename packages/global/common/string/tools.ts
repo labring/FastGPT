@@ -83,19 +83,37 @@ export const getRegQueryStr = (text: string, flags = 'i') => {
 
 /* slice json str */
 export const sliceJsonStr = (str: string) => {
-  str = str.replace(/(\\n|\\)/g, '').replace(/  /g, '');
+  str = str
+    .trim()
+    .replace(/(\\n|\\)/g, '')
+    .replace(/  /g, '');
 
-  const jsonRegex = /{(?:[^{}]|{(?:[^{}]|{[^{}]*})*})*}/g;
-  const matches = str.match(jsonRegex);
+  // Find first opening bracket
+  let start = -1;
+  let openChar = '';
 
-  if (!matches) {
-    return '';
+  for (let i = 0; i < str.length; i++) {
+    if (str[i] === '{' || str[i] === '[') {
+      start = i;
+      openChar = str[i];
+      break;
+    }
   }
 
-  // 找到第一个完整的 JSON 字符串
-  const jsonStr = matches[0];
+  if (start === -1) return str;
 
-  return jsonStr;
+  // Find matching closing bracket from the end
+  const closeChar = openChar === '{' ? '}' : ']';
+
+  for (let i = str.length - 1; i >= start; i--) {
+    const ch = str[i];
+
+    if (ch === closeChar) {
+      return str.slice(start, i + 1);
+    }
+  }
+
+  return str;
 };
 
 export const sliceStrStartEnd = (str: string, start: number, end: number) => {

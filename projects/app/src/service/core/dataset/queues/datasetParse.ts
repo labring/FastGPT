@@ -36,14 +36,12 @@ const requestLLMPargraph = async ({
   rawText,
   model,
   billId,
-  paragraphChunkAIMode,
-  customPdfParse
+  paragraphChunkAIMode
 }: {
   rawText: string;
   model: string;
   billId: string;
   paragraphChunkAIMode: ParagraphChunkAIModeEnum;
-  customPdfParse?: boolean;
 }) => {
   if (
     !global.feConfigs?.isPlus ||
@@ -58,7 +56,12 @@ const requestLLMPargraph = async ({
   }
 
   if (paragraphChunkAIMode === ParagraphChunkAIModeEnum.auto) {
-    const isMarkdown = isMarkdownText(rawText, customPdfParse);
+    // Check if the text contains Markdown header structure
+    const hasMarkdownHeaders = /^(#+)\s/m.test(rawText);
+    const hasMultipleHeaders = (rawText.match(/^(#+)\s/g) || []).length > 1;
+
+    const isMarkdown = hasMarkdownHeaders && hasMultipleHeaders;
+
     if (isMarkdown) {
       return {
         resultText: rawText,
@@ -68,59 +71,21 @@ const requestLLMPargraph = async ({
     }
   }
 
-  // Force mode: Remove markdown header markers at the beginning of each line before passing to llmPargraph
-  if (paragraphChunkAIMode === ParagraphChunkAIModeEnum.force) {
-    addLog.debug(`[requestLLMPargraph] force mode - processing text`);
-    const processedText = rawText
-      .split('\n')
-      .map((line) => line.replace(/^#+\s*/, '').trim())
-      .join('\n');
-
-    const data = await POST<{
-      resultText: string;
-      totalInputTokens: number;
-      totalOutputTokens: number;
-    }>('/core/dataset/training/llmPargraph', {
-      rawText: processedText,
-      model,
-      billId
-    });
-
-    return data;
-  }
-
   const data = await POST<{
     resultText: string;
     totalInputTokens: number;
     totalOutputTokens: number;
-  }>('/core/dataset/training/llmPargraph', {
-    rawText,
-    model,
-    billId
-  });
-
-  return data;
-};
-
-// Optimized Markdown detection logic
-const isMarkdownText = (rawText: string, customPdfParse?: boolean) => {
-  addLog.debug(
-    `[isMarkdownText] start, customPdfParse: ${customPdfParse}, rawText length: ${rawText.length}`
+  }>(
+    '/core/dataset/training/llmPargraph',
+    {
+      rawText,
+      model,
+      billId
+    },
+    { timeout: 600000 }
   );
 
-  // If external PDF parsing is enabled, trust the external parsing result first
-  if (customPdfParse) {
-    addLog.debug(`[isMarkdownText] customPdfParse enabled, returning true`);
-    return true;
-  }
-
-  // Check if the text contains Markdown header structure
-  const hasMarkdownHeaders = /^(#+)\s/m.test(rawText);
-  const hasMultipleHeaders = (rawText.match(/^(#+)\s/g) || []).length > 1;
-
-  const result = hasMarkdownHeaders && hasMultipleHeaders;
-
-  return result;
+  return data;
 };
 
 export const datasetParseQueue = async (): Promise<any> => {
@@ -264,8 +229,7 @@ export const datasetParseQueue = async (): Promise<any> => {
         rawText,
         model: dataset.agentModel,
         billId: data.billId,
-        paragraphChunkAIMode: collection.paragraphChunkAIMode,
-        customPdfParse: collection.customPdfParse
+        paragraphChunkAIMode: collection.paragraphChunkAIMode
       });
       // Push usage
       pushLLMTrainingUsage({
