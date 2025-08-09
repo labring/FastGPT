@@ -156,7 +156,9 @@ const ChatBox = ({
 
   const externalVariableList = useMemo(() => {
     if ([ChatTypeEnum.log, ChatTypeEnum.chat].includes(chatType)) {
-      return allVariableList.filter((item) => item.type === VariableInputEnum.custom);
+      return allVariableList.filter(
+        (item) => item.type === VariableInputEnum.custom || item.type === VariableInputEnum.external
+      );
     }
     return [];
   }, [allVariableList, chatType]);

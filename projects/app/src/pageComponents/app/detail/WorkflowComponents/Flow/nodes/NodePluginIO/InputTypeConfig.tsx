@@ -116,19 +116,23 @@ const InputTypeConfig = ({
   const showValueTypeSelect =
     inputType === FlowNodeInputTypeEnum.reference ||
     inputType === FlowNodeInputTypeEnum.customVariable ||
-    inputType === VariableInputEnum.custom;
+    inputType === VariableInputEnum.custom ||
+    inputType === VariableInputEnum.internal ||
+    inputType === VariableInputEnum.external;
 
   const showRequired = useMemo(() => {
     const list = [
       FlowNodeInputTypeEnum.addInputParam,
       FlowNodeInputTypeEnum.customVariable,
-      VariableInputEnum.custom
+      VariableInputEnum.custom,
+      VariableInputEnum.internal,
+      VariableInputEnum.external
     ];
     return !list.includes(inputType);
   }, [inputType]);
 
   const showMaxLenInput = useMemo(() => {
-    const list = [FlowNodeInputTypeEnum.input];
+    const list = [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.password];
     return list.includes(inputType as FlowNodeInputTypeEnum);
   }, [inputType]);
 
@@ -145,8 +149,16 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.switch,
       FlowNodeInputTypeEnum.select,
       FlowNodeInputTypeEnum.multipleSelect,
-      VariableInputEnum.custom
+      VariableInputEnum.switch,
+      VariableInputEnum.custom,
+      VariableInputEnum.internal,
+      VariableInputEnum.external
     ];
+
+    // Do not show default value for password type
+    if (inputType === FlowNodeInputTypeEnum.password) {
+      return false;
+    }
 
     return list.includes(inputType as FlowNodeInputTypeEnum);
   }, [inputType]);
@@ -156,6 +168,7 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.reference,
       FlowNodeInputTypeEnum.JSONEditor,
       FlowNodeInputTypeEnum.input,
+      FlowNodeInputTypeEnum.password,
       FlowNodeInputTypeEnum.numberInput,
       FlowNodeInputTypeEnum.switch,
       FlowNodeInputTypeEnum.select,
@@ -301,7 +314,9 @@ const InputTypeConfig = ({
             </FormLabel>
             <Flex flex={1} h={10}>
               {(inputType === FlowNodeInputTypeEnum.numberInput ||
-                (inputType === VariableInputEnum.custom &&
+                ((inputType === VariableInputEnum.custom ||
+                  inputType === VariableInputEnum.internal ||
+                  inputType === VariableInputEnum.external) &&
                   valueType === WorkflowIOValueTypeEnum.number)) && (
                 <MyNumberInput
                   value={defaultValue}
@@ -314,7 +329,9 @@ const InputTypeConfig = ({
                 />
               )}
               {(inputType === FlowNodeInputTypeEnum.input ||
-                (inputType === VariableInputEnum.custom &&
+                ((inputType === VariableInputEnum.custom ||
+                  inputType === VariableInputEnum.internal ||
+                  inputType === VariableInputEnum.external) &&
                   valueType === WorkflowIOValueTypeEnum.string)) && (
                 <MyTextarea
                   {...register('defaultValue')}
@@ -324,8 +341,18 @@ const InputTypeConfig = ({
                   maxH={100}
                 />
               )}
+              {inputType === FlowNodeInputTypeEnum.password && (
+                <Input
+                  type="password"
+                  bg={'myGray.50'}
+                  placeholder={t('common:core.module.password_placeholder')}
+                  {...register('defaultValue')}
+                />
+              )}
               {(inputType === FlowNodeInputTypeEnum.JSONEditor ||
-                (inputType === VariableInputEnum.custom &&
+                ((inputType === VariableInputEnum.custom ||
+                  inputType === VariableInputEnum.internal ||
+                  inputType === VariableInputEnum.external) &&
                   ![
                     WorkflowIOValueTypeEnum.number,
                     WorkflowIOValueTypeEnum.string,
@@ -342,7 +369,10 @@ const InputTypeConfig = ({
                 />
               )}
               {(inputType === FlowNodeInputTypeEnum.switch ||
-                (inputType === VariableInputEnum.custom &&
+                inputType === VariableInputEnum.switch ||
+                ((inputType === VariableInputEnum.custom ||
+                  inputType === VariableInputEnum.internal ||
+                  inputType === VariableInputEnum.external) &&
                   valueType === WorkflowIOValueTypeEnum.boolean)) && (
                 <Switch {...register('defaultValue')} />
               )}

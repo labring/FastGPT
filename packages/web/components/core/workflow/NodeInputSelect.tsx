@@ -33,6 +33,11 @@ const NodeInputSelect = ({
       title: t('common:core.workflow.inputType.Manual input')
     },
     {
+      type: FlowNodeInputTypeEnum.password,
+      icon: FlowNodeInputMap[FlowNodeInputTypeEnum.password].icon,
+      title: t('common:core.workflow.inputType.password')
+    },
+    {
       type: FlowNodeInputTypeEnum.numberInput,
       icon: FlowNodeInputMap[FlowNodeInputTypeEnum.numberInput].icon,
 

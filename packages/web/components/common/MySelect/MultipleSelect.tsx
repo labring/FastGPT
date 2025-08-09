@@ -159,26 +159,36 @@ const MultipleSelect = <T = any,>({
   const onclickItem = useCallback(
     (val: T) => {
       if (isSelectAll) {
-        onSelect(list.map((item) => item.value).filter((i) => i !== val));
+        // When in "Select All" state, clicking an option will remove it from the selection
+        const newValue = list.map((item) => item.value).filter((i) => i !== val);
+        onSelect(newValue);
         setIsSelectAll?.(false);
         return;
       }
 
       if (value.includes(val)) {
+        // Remove the selected option
         onSelect(value.filter((i) => i !== val));
       } else {
+        // Add the newly selected option
         onSelect([...value, val]);
       }
     },
-    [value, isSelectAll, onSelect, setIsSelectAll]
+    [value, isSelectAll, onSelect, setIsSelectAll, list]
   );
 
   const onSelectAll = useCallback(() => {
     const hasSelected = isSelectAll || value.length > 0;
-    onSelect(hasSelected ? [] : list.map((item) => item.value));
-
-    setIsSelectAll?.((state) => !state);
-  }, [value, list, setIsSelectAll, onSelect]);
+    if (hasSelected) {
+      // If there are selected items, unselect all
+      onSelect([]);
+      setIsSelectAll?.(false);
+    } else {
+      // If there are no selected items, select all
+      onSelect(list.map((item) => item.value));
+      setIsSelectAll?.(true);
+    }
+  }, [value, list, setIsSelectAll, onSelect, isSelectAll]);
 
   const ListRender = useMemo(() => {
     return (

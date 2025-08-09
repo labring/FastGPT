@@ -344,7 +344,7 @@ function List() {
                                   ...(dataset.permission.hasManagePer
                                     ? [
                                         {
-                                          icon: 'key',
+                                          icon: 'core/workflow/inputType/password',
                                           label: t('common:permission.Permission'),
                                           onClick: () => setEditPerDatasetId(dataset._id)
                                         }

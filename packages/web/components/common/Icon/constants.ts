@@ -280,6 +280,7 @@ export const iconPaths = {
     import('./icons/core/workflow/inputType/selectLLM.svg'),
   'core/workflow/inputType/switch': () => import('./icons/core/workflow/inputType/switch.svg'),
   'core/workflow/inputType/textarea': () => import('./icons/core/workflow/inputType/textarea.svg'),
+  'core/workflow/inputType/password': () => import('./icons/password.svg'),
   'core/workflow/mouse': () => import('./icons/core/workflow/mouse.svg'),
   'core/workflow/publish': () => import('./icons/core/workflow/publish.svg'),
   'core/workflow/redo': () => import('./icons/core/workflow/redo.svg'),
