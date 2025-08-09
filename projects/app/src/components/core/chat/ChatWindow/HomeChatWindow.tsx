@@ -41,12 +41,9 @@ import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import router from 'next/router';
 import { getPreviewPluginNode } from '@/web/core/app/api/plugin';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
+import { useChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 
-type Props = {
-  settings: ChatSettingSchema | null;
-};
-
-const HomeChatWindow: React.FC<Props> = ({ settings }) => {
+const HomeChatWindow = () => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
@@ -64,6 +61,8 @@ const HomeChatWindow: React.FC<Props> = ({ settings }) => {
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
 
+  const { chatSettings } = useChatSettingContext();
+
   const availableModels = useMemo(
     () => llmModelList.map((model) => ({ value: model.model, label: model.name })),
     [llmModelList]
@@ -78,13 +77,13 @@ const HomeChatWindow: React.FC<Props> = ({ settings }) => {
 
   const loadChatSettings = useCallback(async () => {
     try {
-      if (settings?.selectedTools) {
-        setAvailableTools(settings.selectedTools);
+      if (chatSettings?.selectedTools) {
+        setAvailableTools(chatSettings.selectedTools);
       }
     } catch (error) {
       console.error('Failed to load chat settings:', error);
     }
-  }, [settings]);
+  }, [chatSettings]);
 
   useEffect(() => {
     if (appId) {
@@ -123,16 +122,6 @@ const HomeChatWindow: React.FC<Props> = ({ settings }) => {
       manual: false,
       refreshDeps: [appId, chatId],
       errorToast: '',
-      onError(e: any) {
-        if (e?.code && e.code >= 502000) {
-          router.replace({
-            query: {
-              ...router.query,
-              appId
-            }
-          });
-        }
-      },
       onFinally() {
         forbidLoadChat.current = false;
       }
@@ -223,7 +212,9 @@ const HomeChatWindow: React.FC<Props> = ({ settings }) => {
             bg={selectedTools.length > 0 ? 'primary.50' : 'transparent'}
             leftIcon={<MyIcon name="core/app/toolCall" w="14px" />}
           >
-            {selectedTools.length > 0 ? `工具：${selectedTools.length}` : '选择工具'}
+            {selectedTools.length > 0
+              ? t('chat:home.tools', { num: selectedTools.length })
+              : t('chat:home.select_tools')}
           </MenuButton>
           <MenuList>
             {availableTools.map((tool) => {
@@ -273,7 +264,7 @@ const HomeChatWindow: React.FC<Props> = ({ settings }) => {
   return (
     <Flex h={'100%'} flexDirection={['column', 'row']}>
       {/* set window title and icon */}
-      <NextHead title={settings?.homeTabTitle || 'FastGPT'} icon="/icon/logo.svg" />
+      <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} icon="/icon/logo.svg" />
 
       {/* show history slider */}
       {isPc || !appId ? (
@@ -322,15 +313,15 @@ const HomeChatWindow: React.FC<Props> = ({ settings }) => {
 
         <Box flex={'1 0 0'} bg={'white'}>
           <ChatBox
+            dialogTips={chatSettings?.dialogTips}
+            wideLogo={chatSettings?.wideLogoUrl}
+            slogan={chatSettings?.slogan}
             showHomeChatEmptyIntro
-            dialogTips={settings?.dialogTips}
-            wideLogo={settings?.wideLogoUrl}
-            slogan={settings?.slogan}
             appId={appId}
             chatId={chatId}
             isReady={!loading}
             feedbackType={'user'}
-            chatType={ChatTypeEnum.chat}
+            chatType={ChatTypeEnum.home}
             outLinkAuthData={outLinkAuthData}
             onStartChat={onStartChat}
             customButtonGroup={customButtonGroup}

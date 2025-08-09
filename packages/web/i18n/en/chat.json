@@ -42,6 +42,8 @@
   "history_slider.home.title": "chat",
   "home.chat_app": "HomeChat-{{name}}",
   "home.no_available_tools": "No tools available",
+  "home.select_tools": "Select Tool",
+  "home.tools": "Tool: {{num}}",
   "in_progress": "In Progress",
   "input_guide": "Input Guide",
   "input_guide_lexicon": "Lexicon",

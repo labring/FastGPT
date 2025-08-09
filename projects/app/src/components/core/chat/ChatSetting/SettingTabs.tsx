@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useTranslation } from 'react-i18next';
-import { ChatSettingTabOptionEnum } from '@/web/components/chat/constants';
+import { ChatSettingTabOptionEnum } from '@/pageComponents/chat/constants';
 import { Flex } from '@chakra-ui/react';
 
 type Props = {

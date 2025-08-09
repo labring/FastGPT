@@ -42,6 +42,8 @@
   "history_slider.home.title": "聊天",
   "home.chat_app": "首页聊天-{{name}}",
   "home.no_available_tools": "暫無可用工具",
+  "home.select_tools": "選擇工具",
+  "home.tools": "工具：{{num}}",
   "in_progress": "進行中",
   "input_guide": "輸入導引",
   "input_guide_lexicon": "詞彙庫",

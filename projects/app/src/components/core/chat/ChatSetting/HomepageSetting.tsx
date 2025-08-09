@@ -3,14 +3,12 @@ import { useTranslation } from 'react-i18next';
 import MyInput from '@/components/MyInput';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import SettingTabs from '@/components/core/chat/ChatSetting/SettingTabs';
-import type { ChatSettingTabOptionEnum } from '@/web/components/chat/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { updateChatSetting } from '@/web/core/chat/api';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import ImageUpload from '@/components/core/chat/ChatSetting/ImageUpload';
 import type { ChatSettingSchema } from '@fastgpt/global/core/chat/setting/type';
 import type { UploadedFileItem } from '@/components/core/chat/ChatSetting/ImageUpload/hooks/useImageUpload';
-import { makePayload } from '@/components/core/chat/ChatSetting/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import NextHead from '@/components/common/NextHead';
 import ProModal from '@/components/ProTip/ProModal';
@@ -22,16 +20,11 @@ import type {
 } from '@fastgpt/global/core/workflow/type/node.d';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { useChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 
 type Props = {
-  slogan?: string;
-  dialogTips?: string;
-  homeTabTitle?: string;
   Header: React.FC<{ children?: React.ReactNode }>;
-  selectedTools?: ChatSettingSchema['selectedTools'];
-  logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'>;
   onDiagramShow: (show: boolean) => void;
-  onSettingsRefresh: () => Promise<ChatSettingSchema | null>;
 };
 
 type FormValues = {
@@ -43,43 +36,35 @@ type FormValues = {
   squareLogoUploaded: UploadedFileItem[];
 };
 
-const HomepageSetting = ({
-  logos,
-  Header,
-  slogan: _slogan,
-  dialogTips: _dialogTips,
-  homeTabTitle: _homeTabTitle,
-  selectedTools: _selectedTools,
-  onDiagramShow,
-  onSettingsRefresh
-}: Props) => {
+const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
   //------------ hooks ------------//
   const { toast } = useToast();
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
+  const { logos, chatSettings, refreshChatSetting } = useChatSettingContext();
+
   const defaultValues = useMemo<FormValues>(
     () => ({
-      slogan: _slogan || t('chat:setting.home.slogan.default'),
-      dialogTips: _dialogTips || t('chat:setting.home.dialogue_tips.default'),
-      homeTabTitle: _homeTabTitle || 'FastGPT',
-      selectedTools: _selectedTools || [],
+      slogan: chatSettings?.slogan || t('chat:setting.home.slogan.default'),
+      dialogTips: chatSettings?.dialogTips || t('chat:setting.home.dialogue_tips.default'),
+      homeTabTitle: chatSettings?.homeTabTitle || 'FastGPT',
+      selectedTools: chatSettings?.selectedTools || [],
       wideLogoUploaded: [],
       squareLogoUploaded: []
     }),
-    [_slogan, _dialogTips, _homeTabTitle, _selectedTools, t]
+    [chatSettings, t]
   );
 
-  const { control, handleSubmit, reset, setValue, watch, formState } = useForm<FormValues>({
-    defaultValues
-  });
+  const { register, control, handleSubmit, reset, setValue, watch, formState } =
+    useForm<FormValues>({
+      defaultValues
+    });
 
   useEffect(() => {
     reset(defaultValues);
   }, [defaultValues, reset]);
 
-  const [isSaving, setIsSaving] = useState(false);
-  const [openProModal, setOpenProModal] = useState(false);
   const [toolSelectModalOpen, setToolSelectModalOpen] = useState(false);
 
   const selectedTools = watch('selectedTools');
@@ -125,43 +110,36 @@ const HomepageSetting = ({
     [selectedTools, setValue]
   );
 
-  const onSubmit = useCallback(
-    async (values: FormValues) => {
-      setIsSaving(true);
-      try {
-        await updateChatSetting({
-          ...values,
-          selectedTools: values.selectedTools.map((tool) => ({
-            pluginId: tool.pluginId,
-            inputs: tool.inputs
-          }))
-        });
-        const refreshed = await onSettingsRefresh();
+  const { runAsync: onSubmit, loading: isSaving } = useRequest2(async (values: FormValues) => {
+    try {
+      await updateChatSetting({
+        ...values,
+        selectedTools: values.selectedTools.map((tool) => ({
+          pluginId: tool.pluginId,
+          inputs: tool.inputs
+        }))
+      });
+      const refreshed = await refreshChatSetting();
 
-        // reset form state after save
-        const nextDefaults: FormValues = {
-          slogan: refreshed?.slogan || values.slogan,
-          dialogTips: refreshed?.dialogTips || values.dialogTips,
-          homeTabTitle: refreshed?.homeTabTitle || values.homeTabTitle,
-          selectedTools: refreshed?.selectedTools || values.selectedTools,
-          wideLogoUploaded: [],
-          squareLogoUploaded: []
-        };
-        reset(nextDefaults);
+      const nextDefaults: FormValues = {
+        slogan: refreshed?.slogan || values.slogan,
+        dialogTips: refreshed?.dialogTips || values.dialogTips,
+        homeTabTitle: refreshed?.homeTabTitle || values.homeTabTitle,
+        selectedTools: refreshed?.selectedTools || values.selectedTools,
+        wideLogoUploaded: [],
+        squareLogoUploaded: []
+      };
+      reset(nextDefaults);
 
-        toast({ status: 'success', title: t('chat:setting.save_success') });
-      } catch (error) {
-        console.error('Failed to save settings:', error);
-      } finally {
-        setIsSaving(false);
-      }
-    },
-    [onSettingsRefresh, reset, t, toast]
-  );
+      toast({ status: 'success', title: t('chat:setting.save_success') });
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+    }
+  });
 
   return (
     <Flex flexDir="column" px={6} py={5} gap={'52px'} h="full">
-      <NextHead title={_homeTabTitle || 'FastGPT'} icon="/icon/logo.svg" />
+      <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} icon="/icon/logo.svg" />
 
       <Header>
         <Button
@@ -297,17 +275,10 @@ const HomepageSetting = ({
               </Flex>
 
               <Box>
-                <Controller
-                  name="slogan"
-                  control={control}
-                  render={({ field }) => (
-                    <MyInput
-                      isDisabled={isSaving}
-                      value={field.value}
-                      onChange={field.onChange}
-                      placeholder={t('chat:setting.home.slogan_placeholder')}
-                    />
-                  )}
+                <MyInput
+                  isDisabled={isSaving}
+                  placeholder={t('chat:setting.home.slogan_placeholder')}
+                  {...register('slogan')}
                 />
               </Box>
             </Box>
@@ -330,17 +301,10 @@ const HomepageSetting = ({
               </Flex>
 
               <Box>
-                <Controller
-                  name="dialogTips"
-                  control={control}
-                  render={({ field }) => (
-                    <MyInput
-                      isDisabled={isSaving}
-                      value={field.value}
-                      onChange={field.onChange}
-                      placeholder={t('chat:setting.home.dialogue_tips_placeholder')}
-                    />
-                  )}
+                <MyInput
+                  isDisabled={isSaving}
+                  placeholder={t('chat:setting.home.dialogue_tips_placeholder')}
+                  {...register('dialogTips')}
                 />
               </Box>
             </Box>
@@ -383,17 +347,10 @@ const HomepageSetting = ({
                   </Flex>
 
                   <Box>
-                    <Controller
-                      name="homeTabTitle"
-                      control={control}
-                      render={({ field }) => (
-                        <MyInput
-                          isDisabled={isSaving}
-                          value={field.value}
-                          placeholder={t('chat:setting.home.home_tab_title_placeholder')}
-                          onChange={field.onChange}
-                        />
-                      )}
+                    <MyInput
+                      isDisabled={isSaving}
+                      placeholder={t('chat:setting.home.home_tab_title_placeholder')}
+                      {...register('homeTabTitle')}
                     />
                   </Box>
                 </Box>
@@ -451,8 +408,6 @@ const HomepageSetting = ({
                     />
                   </Flex>
                 </Box>
-
-                <ProModal isOpen={openProModal} onClose={() => setOpenProModal(false)} />
               </>
             )}
           </Flex>

@@ -18,19 +18,14 @@ import type {
 } from '@fastgpt/global/common/parentFolder/type';
 import { getMyApps } from '@/web/core/app/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { ChatSidebarPaneEnum, type CollapseStatusType } from '@/web/components/chat/constants';
-import type { ChatSettingSchema } from '@fastgpt/global/core/chat/setting/type';
+import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
+import { useChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 
 type Props = {
   activeAppId: string;
   apps: AppListItemType[];
-  pane: ChatSidebarPaneEnum;
-  collapse: CollapseStatusType;
-  logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'>;
-  onCollapse: (collapse: CollapseStatusType) => void;
-  onPaneChange: (pane: ChatSidebarPaneEnum) => void;
 };
 
 const MotionBox = motion(Box);
@@ -456,15 +451,9 @@ const BottomSection: React.FC<{
   );
 };
 
-const SliderApps = ({
-  apps,
-  activeAppId,
-  collapse,
-  pane,
-  logos,
-  onCollapse,
-  onPaneChange
-}: Props) => {
+const SliderApps = ({ apps, activeAppId }: Props) => {
+  const { collapse, pane, logos, handlePaneChange, setCollapse } = useChatSettingContext();
+
   const router = useRouter();
   const { t } = useTranslation();
 
@@ -516,15 +505,15 @@ const SliderApps = ({
   const isRecentlyUsedAppSelected = (id: string): boolean =>
     pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && id === activeAppId;
 
-  const handleToggleSidebar = () => onCollapse(collapse === 0 ? 1 : 0);
+  const handleToggleSidebar = () => setCollapse(collapse === 0 ? 1 : 0);
 
   const handleSelectRecentlyUsedApp = useCallback(
     (id: string) => {
       if (pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && id === activeAppId) return;
-      onPaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS);
+      handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS);
       router.replace({ query: { ...router.query, appId: id } });
     },
-    [pane, router, activeAppId, onPaneChange]
+    [pane, router, activeAppId, handlePaneChange]
   );
 
   return (
@@ -551,7 +540,7 @@ const SliderApps = ({
         isCollapsed={isCollapsed}
         isHomeActive={isHomeActive}
         onToggle={handleToggleSidebar}
-        onHomeClick={() => onPaneChange(ChatSidebarPaneEnum.HOME)}
+        onHomeClick={() => handlePaneChange(ChatSidebarPaneEnum.HOME)}
       />
 
       {/* recently used apps */}
@@ -649,7 +638,7 @@ const SliderApps = ({
         isSettingActive={isSettingActive}
         avatar={avatar}
         username={username}
-        onSettingClick={() => onPaneChange(ChatSidebarPaneEnum.SETTING)}
+        onSettingClick={() => handlePaneChange(ChatSidebarPaneEnum.SETTING)}
       />
     </MotionFlex>
   );

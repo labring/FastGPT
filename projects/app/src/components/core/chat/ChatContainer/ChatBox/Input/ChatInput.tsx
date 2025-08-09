@@ -34,10 +34,8 @@ const ChatInput = ({
   TextareaDom,
   resetInputVal,
   chatForm,
-  customButtonGroup,
-  dialogTips
+  customButtonGroup
 }: {
-  dialogTips?: string;
   onSendMessage: SendPromptFnType;
   onStop: () => void;
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
@@ -65,6 +63,7 @@ const ChatInput = ({
   const whisperConfig = useContextSelector(ChatBoxContext, (v) => v.whisperConfig);
   const chatInputGuide = useContextSelector(ChatBoxContext, (v) => v.chatInputGuide);
   const fileSelectConfig = useContextSelector(ChatBoxContext, (v) => v.fileSelectConfig);
+  const dialogTips = useContextSelector(ChatBoxContext, (v) => v.dialogTips);
 
   const fileCtrl = useFieldArray({
     control,

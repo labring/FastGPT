@@ -67,6 +67,8 @@ import TimeBox from './components/TimeBox';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+import { useChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import WelcomeHomeBox from '@/components/core/chat/ChatContainer/ChatBox/components/WelcomeHomeBox';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
@@ -112,10 +114,7 @@ const ChatBox = ({
   active = true,
   customButtonGroup,
   onStartChat,
-  chatType,
-  dialogTips,
-  wideLogo,
-  slogan
+  chatType
 }: Props) => {
   const ScrollContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
@@ -830,23 +829,8 @@ const ChatBox = ({
   });
 
   const showHomeEmpty = useMemo(
-    () =>
-      feConfigs?.show_emptyChat &&
-      showHomeChatEmptyIntro &&
-      !showEmptyIntro &&
-      chatRecords.length === 0 &&
-      !variableList?.length &&
-      !externalVariableList?.length &&
-      !welcomeText,
-    [
-      chatRecords.length,
-      feConfigs?.show_emptyChat,
-      showHomeChatEmptyIntro,
-      showEmptyIntro,
-      variableList?.length,
-      externalVariableList?.length,
-      welcomeText
-    ]
+    () => chatRecords.length === 0 && chatType === ChatTypeEnum.home,
+    [chatRecords.length, chatType]
   );
 
   const showEmpty = useMemo(
@@ -999,16 +983,7 @@ const ChatBox = ({
       >
         <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
           {/* chat header */}
-          {showHomeEmpty && (
-            <Flex flexDir="column" justifyContent="flex-end" alignItems="center" gap={4} h="full">
-              <Image
-                alt="fastgpt logo"
-                maxW={['388px', '50%']}
-                src={wideLogo || '/imgs/fastgpt_banner.png'}
-              />
-              <Box color="myGray.500">{slogan}</Box>
-            </Flex>
-          )}
+          {showHomeEmpty && <WelcomeHomeBox />}
           {showEmpty && <Empty />}
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
           {/* variable input */}
@@ -1111,8 +1086,6 @@ const ChatBox = ({
   }, [
     ScrollData,
     showHomeEmpty,
-    wideLogo,
-    slogan,
     appAvatar,
     chatForm,
     chatRecords,
@@ -1152,7 +1125,6 @@ const ChatBox = ({
       {/* message input */}
       {canSendPrompt && (
         <ChatInput
-          dialogTips={dialogTips}
           onSendMessage={sendPrompt}
           onStop={() => chatController.current?.abort('stop')}
           TextareaDom={TextareaDom}

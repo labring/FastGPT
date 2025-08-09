@@ -24,7 +24,7 @@ import {
   ChatSidebarPaneEnum,
   defaultCollapseStatus,
   type CollapseStatusType
-} from '@/web/components/chat/constants';
+} from '@/pageComponents/chat/constants';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
