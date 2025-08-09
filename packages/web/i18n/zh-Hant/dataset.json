@@ -122,7 +122,7 @@
   "insert_images_success": "新增圖片成功，需等待訓練完成才會展示",
   "is_open_schedule": "啟用定時同步",
   "keep_image": "保留圖片",
-  "llm_paragraph_mode": "模型識別段落(Beta)",
+  "llm_paragraph_mode": "模型識別段落",
   "llm_paragraph_mode_auto": "自動",
   "llm_paragraph_mode_auto_desc": "當文本內容不含 Markdown 標題時，啟用模型識別。",
   "llm_paragraph_mode_forbid": "禁用",

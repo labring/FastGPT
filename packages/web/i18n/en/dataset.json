@@ -122,7 +122,7 @@
   "insert_images_success": "The new picture is successfully added, and you need to wait for the training to be completed before it will be displayed.",
   "is_open_schedule": "Enable scheduled synchronization",
   "keep_image": "Keep the picture",
-  "llm_paragraph_mode": "LLM recognition paragraph(Beta)",
+  "llm_paragraph_mode": "LLM recognition paragraph",
   "llm_paragraph_mode_auto": "automatic",
   "llm_paragraph_mode_auto_desc": "Enable model recognition when the text content does not contain a Markdown title.",
   "llm_paragraph_mode_forbid": "Disabled",
