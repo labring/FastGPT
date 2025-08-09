@@ -67,6 +67,10 @@ type useChatStoreType = ChatProviderProps & {
   appId: string;
   chatId: string;
   outLinkAuthData: OutLinkChatAuthProps;
+
+  wideLogo?: string;
+  slogan?: string;
+  dialogTips?: string;
 };
 
 export const ChatBoxContext = createContext<useChatStoreType>({

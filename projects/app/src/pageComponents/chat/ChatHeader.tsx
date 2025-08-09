@@ -99,7 +99,6 @@ const MobileDrawer = ({
   }
   const { t } = useTranslation();
   const router = useRouter();
-  const isTeamChat = router.pathname === '/chat/team';
   const [currentTab, setCurrentTab] = useState<TabEnum>(TabEnum.recently);
 
   const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
@@ -147,12 +146,8 @@ const MobileDrawer = ({
             px: 2
           }}
           list={[
-            ...(isTeamChat
-              ? [{ label: t('app:all_apps'), value: TabEnum.recently }]
-              : [
-                  { label: t('common:core.chat.Recent use'), value: TabEnum.recently },
-                  { label: t('app:all_apps'), value: TabEnum.app }
-                ])
+            { label: t('common:core.chat.Recent use'), value: TabEnum.recently },
+            { label: t('app:all_apps'), value: TabEnum.app }
           ]}
           value={currentTab}
           onChange={setCurrentTab}

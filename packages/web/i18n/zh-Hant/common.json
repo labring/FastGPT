@@ -423,7 +423,6 @@
   "core.chat.response.text output": "文字輸出",
   "core.chat.response.update_var_result": "變數更新結果（依序顯示多個變數更新結果）",
   "core.chat.response.user_select_result": "使用者選擇結果",
-  "core.chat.retry": "重新產生",
   "core.chat.tts.Stop Speech": "停止",
   "core.dataset.Choose Dataset": "關聯知識庫",
   "core.dataset.Collection": "資料集",

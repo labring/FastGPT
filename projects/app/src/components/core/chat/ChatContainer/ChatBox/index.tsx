@@ -14,7 +14,7 @@ import type {
 } from '@fastgpt/global/core/chat/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Box, Checkbox } from '@chakra-ui/react';
+import { Box, Checkbox, Flex, Image } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { useForm } from 'react-hook-form';
@@ -67,6 +67,8 @@ import TimeBox from './components/TimeBox';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+import { useChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import WelcomeHomeBox from '@/components/core/chat/ChatContainer/ChatBox/components/WelcomeHomeBox';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
@@ -88,7 +90,12 @@ type Props = OutLinkChatAuthProps &
     showMarkIcon?: boolean; // admin mark dataset
     showVoiceIcon?: boolean;
     showEmptyIntro?: boolean;
+    showHomeChatEmptyIntro?: boolean;
     active?: boolean; // can use
+    customButtonGroup?: React.ReactNode;
+    dialogTips?: string;
+    wideLogo?: string;
+    slogan?: string;
 
     onStartChat?: (e: StartChatFnProps) => Promise<
       StreamResponseType & {
@@ -103,7 +110,9 @@ const ChatBox = ({
   showMarkIcon = false,
   showVoiceIcon = true,
   showEmptyIntro = false,
+  showHomeChatEmptyIntro = false,
   active = true,
+  customButtonGroup,
   onStartChat,
   chatType
 }: Props) => {
@@ -819,9 +828,15 @@ const ChatBox = ({
     };
   });
 
+  const showHomeEmpty = useMemo(
+    () => chatRecords.length === 0 && chatType === ChatTypeEnum.home,
+    [chatRecords.length, chatType]
+  );
+
   const showEmpty = useMemo(
     () =>
       feConfigs?.show_emptyChat &&
+      !showHomeChatEmptyIntro &&
       showEmptyIntro &&
       chatRecords.length === 0 &&
       !variableList?.length &&
@@ -830,6 +845,7 @@ const ChatBox = ({
     [
       chatRecords.length,
       feConfigs?.show_emptyChat,
+      showHomeChatEmptyIntro,
       showEmptyIntro,
       variableList?.length,
       externalVariableList?.length,
@@ -958,7 +974,7 @@ const ChatBox = ({
     return (
       <ScrollData
         ScrollContainerRef={ScrollContainerRef}
-        flex={'1 0 0'}
+        flex={showHomeEmpty ? '0 0 50%' : '1 0 0'}
         h={0}
         w={'100%'}
         overflow={'overlay'}
@@ -967,6 +983,7 @@ const ChatBox = ({
       >
         <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
           {/* chat header */}
+          {showHomeEmpty && <WelcomeHomeBox />}
           {showEmpty && <Empty />}
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
           {/* variable input */}
@@ -1068,6 +1085,7 @@ const ChatBox = ({
     );
   }, [
     ScrollData,
+    showHomeEmpty,
     appAvatar,
     chatForm,
     chatRecords,
@@ -1112,6 +1130,7 @@ const ChatBox = ({
           TextareaDom={TextareaDom}
           resetInputVal={resetInputVal}
           chatForm={chatForm}
+          customButtonGroup={customButtonGroup}
         />
       )}
       {/* user feedback modal */}
