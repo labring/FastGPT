@@ -55,7 +55,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
     params: { fileUrlList = [] }
   } = props;
   const maxFiles = chatConfig?.fileSelectConfig?.maxFiles || 20;
-  const customPdfParse = chatConfig?.fileSelectConfig?.customPdfParse || false;
+  const customPdfParse = chatConfig?.fileSelectConfig?.customPdfParse;
 
   // Get files from histories
   const filesFromHistories = version !== '489' ? [] : getHistoryFileLinks(histories);
@@ -126,7 +126,7 @@ export const getFileContentFromLinks = async ({
   maxFiles: number;
   teamId: string;
   tmbId: string;
-  customPdfParse?: boolean;
+  customPdfParse?: string;
 }) => {
   const parseUrlList = urls
     // Remove invalid urls

@@ -74,11 +74,11 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
         label: t('common:core.dataset.collection.metadata.Updatetime'),
         value: formatTime2YMDHM(collection.updateTime)
       },
-      ...(collection.customPdfParse !== undefined
+      ...(collection.customPdfParse
         ? [
             {
               label: t('dataset:collection_metadata_custom_pdf_parse'),
-              value: collection.customPdfParse ? 'Yes' : 'No'
+              value: collection.customPdfParse
             }
           ]
         : []),

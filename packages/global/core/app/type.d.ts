@@ -205,7 +205,7 @@ export type AppAutoExecuteConfigType = {
 // File
 export type AppFileSelectConfigType = {
   canSelectFile: boolean;
-  customPdfParse?: boolean;
+  customPdfParse?: string;
   canSelectImg: boolean;
   maxFiles: number;
 };

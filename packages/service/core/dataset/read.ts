@@ -29,7 +29,7 @@ export const readFileRawTextByUrl = async ({
   teamId: string;
   tmbId: string;
   url: string;
-  customPdfParse?: boolean;
+  customPdfParse?: string;
   getFormatText?: boolean;
   relatedId: string; // externalFileId / apiFileId
   maxFileSize?: number;
@@ -161,7 +161,7 @@ export const readDatasetSourceRawText = async ({
   tmbId: string;
   type: DatasetSourceReadTypeEnum;
   sourceId: string;
-  customPdfParse?: boolean;
+  customPdfParse?: string;
   getFormatText?: boolean;
 
   selector?: string; // link selector
@@ -241,7 +241,7 @@ export const readApiServerFileContent = async ({
   apiFileId: string;
   teamId: string;
   tmbId: string;
-  customPdfParse?: boolean;
+  customPdfParse?: string;
 }): Promise<{
   title?: string;
   rawText: string;

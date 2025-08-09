@@ -199,14 +199,14 @@ export const readFileContentFromMongo = async ({
   tmbId,
   bucketName,
   fileId,
-  customPdfParse = false,
+  customPdfParse,
   getFormatText
 }: {
   teamId: string;
   tmbId: string;
   bucketName: `${BucketNameEnum}`;
   fileId: string;
-  customPdfParse?: boolean;
+  customPdfParse?: string;
   getFormatText?: boolean; // 数据类型都尽可能转化成 markdown 格式
 }): Promise<{
   rawText: string;

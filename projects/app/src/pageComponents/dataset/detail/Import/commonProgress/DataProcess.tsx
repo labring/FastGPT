@@ -20,14 +20,31 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { shadowLight } from '@fastgpt/web/styles/theme';
 import CollectionChunkForm from '../../Form/CollectionChunkForm';
+import { usePdfParsers } from '@/web/common/system/hooks/usePdfParsers';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 
 function DataProcess() {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
   const { goToNext, processParamsForm } = useContextSelector(DatasetImportContext, (v) => v);
-  const { register, watch } = processParamsForm;
+  const { register, watch, setValue } = processParamsForm;
   const customPdfParseValue = watch('customPdfParse');
+  const { data: pdfParsers = [] } = usePdfParsers();
+
+  // 构建选择器列表
+  const pdfParserOptions = [
+    {
+      label: t('dataset:system_default_parser'),
+      value: '',
+      description: t('dataset:system_default_parser_desc')
+    },
+    ...pdfParsers.map((parser) => ({
+      label: parser.label,
+      value: parser.value,
+      description: parser.desc
+    }))
+  ];
 
   const Title = useCallback(({ title }: { title: string }) => {
     return (
@@ -62,12 +79,19 @@ function DataProcess() {
                   p={4}
                 >
                   {feConfigs.showCustomPdfParse && (
-                    <HStack spacing={1}>
-                      <Checkbox isChecked={customPdfParseValue} {...register('customPdfParse')}>
+                    <Box>
+                      <HStack spacing={1} mb={3}>
                         <FormLabel>{t('dataset:pdf_enhance_parse')}</FormLabel>
-                      </Checkbox>
-                      <QuestionTip label={t('dataset:pdf_enhance_parse_tips')} />
-                      {feConfigs?.show_pay && (
+                        <QuestionTip label={t('dataset:pdf_enhance_parse_tips')} />
+                      </HStack>
+                      <MySelect
+                        value={customPdfParseValue || ''}
+                        list={pdfParserOptions}
+                        onChange={(val) => setValue('customPdfParse', val)}
+                        size={'sm'}
+                        h={'32px'}
+                      />
+                      {customPdfParseValue && feConfigs?.show_pay && (
                         <MyTag
                           type={'borderSolid'}
                           borderColor={'myGray.200'}
@@ -77,14 +101,15 @@ function DataProcess() {
                           borderRadius={'md'}
                           px={3}
                           whiteSpace={'wrap'}
-                          ml={1}
+                          mt={2}
                         >
                           {t('dataset:pdf_enhance_parse_price', {
-                            price: feConfigs.customPdfParsePrice || 0
+                            price:
+                              pdfParsers.find((p) => p.value === customPdfParseValue)?.price || 0
                           })}
                         </MyTag>
                       )}
-                    </HStack>
+                    </Box>
                   )}
                 </Flex>
               </AccordionPanel>
