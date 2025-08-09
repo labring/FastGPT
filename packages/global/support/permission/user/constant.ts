@@ -89,10 +89,10 @@ export const TeamDatasetCreateRoleVal = TeamRoleList['datasetCreate'].value;
 export const TeamApikeyCreateRoleVal = TeamRoleList['apikeyCreate'].value;
 export const TeamDefaultRoleVal = TeamReadRoleVal;
 
-export const TeamReadPermissionVal = TeamRolePerMap.get(TeamReadRoleVal)!;
-export const TeamWritePermissionVal = TeamRolePerMap.get(TeamWriteRoleVal)!;
-export const TeamManagePermissionVal = TeamRolePerMap.get(TeamManageRoleVal)!;
-export const TeamAppCreatePermissionVal = TeamRolePerMap.get(TeamAppCreateRoleVal)!;
-export const TeamDatasetCreatePermissionVal = TeamRolePerMap.get(TeamDatasetCreateRoleVal)!;
-export const TeamApikeyCreatePermissionVal = TeamRolePerMap.get(TeamApikeyCreateRoleVal)!;
+export const TeamReadPermissionVal = TeamPerList.read;
+export const TeamWritePermissionVal = TeamPerList.write;
+export const TeamManagePermissionVal = TeamPerList.manage;
+export const TeamAppCreatePermissionVal = TeamPerList.appCreate;
+export const TeamDatasetCreatePermissionVal = TeamPerList.datasetCreate;
+export const TeamApikeyCreatePermissionVal = TeamPerList.apikeyCreate;
 export const TeamDefaultPermissionVal = TeamReadPermissionVal;

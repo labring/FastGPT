@@ -98,15 +98,13 @@ function MemberModal({
   >([]);
 
   const [selectedGroupList, setSelectedGroupList] = useState<MemberGroupListItemType<false>[]>([]);
-  const permissionList = useContextSelector(CollaboratorContext, (v) => v.roleList);
-  const getPerLabelList = useContextSelector(CollaboratorContext, (v) => v.getPerLabelList);
-  const [selectedPermission, setSelectedPermission] = useState<number | undefined>(
-    permissionList?.read?.value
-  );
-  const perLabel = useMemo(() => {
-    if (selectedPermission === undefined) return '';
-    return getPerLabelList(selectedPermission!).join('、');
-  }, [getPerLabelList, selectedPermission]);
+  const roleList = useContextSelector(CollaboratorContext, (v) => v.roleList);
+  const getRoleLabelList = useContextSelector(CollaboratorContext, (v) => v.getRoleLabelList);
+  const [selectedRole, setSelectedRole] = useState<number | undefined>(roleList?.read?.value);
+  const roleLabel = useMemo(() => {
+    if (selectedRole === undefined) return '';
+    return getRoleLabelList(selectedRole!).join('、');
+  }, [getRoleLabelList, selectedRole]);
 
   const onUpdateCollaborators = useContextSelector(
     CollaboratorContext,
@@ -119,7 +117,7 @@ function MemberModal({
         members: selectedMemberList.map((item) => item.tmbId),
         groups: selectedGroupList.map((item) => item._id),
         orgs: selectedOrgList.map((item) => item._id),
-        permission: addOnly ? undefined : selectedPermission!
+        permission: addOnly ? undefined : selectedRole!
       } as UpdateClbPermissionProps<ValueOf<typeof addOnly>>),
     {
       successToast: t('common:add_success'),
@@ -425,9 +423,9 @@ function MemberModal({
         </Grid>
       </ModalBody>
       <ModalFooter>
-        {!addOnly && !!permissionList && (
+        {!addOnly && !!roleList && (
           <RoleSelect
-            value={selectedPermission}
+            value={selectedRole}
             Button={
               <Flex
                 alignItems={'center'}
@@ -438,11 +436,11 @@ function MemberModal({
                 borderRadius={'md'}
                 h={'32px'}
               >
-                {t(perLabel as any)}
+                {roleLabel}
                 <ChevronDownIcon fontSize={'md'} />
               </Flex>
             }
-            onChange={(v) => setSelectedPermission(v)}
+            onChange={(v) => setSelectedRole(v)}
           />
         )}
         {addOnly && (

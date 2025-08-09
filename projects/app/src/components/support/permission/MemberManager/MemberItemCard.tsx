@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'next-i18next';
 import { Box, Checkbox, HStack, VStack } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import RoleTags from './PermissionTags';
+import RoleTags from './RoleTags';
 import type { RoleValueType } from '@fastgpt/global/support/permission/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import OrgTags from '../../user/team/OrgTags';

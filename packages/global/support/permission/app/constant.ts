@@ -5,10 +5,21 @@ import {
   CommonPerList,
   CommonRolePerMap
 } from '../constant';
+import type { PermissionListType, PermissionValueType, RolePerMapType } from '../type';
 import { type RoleListType } from '../type';
 import { i18nT } from '../../../../web/i18n/utils';
-export enum AppPermissionKeyEnum {}
-export const AppRoleList: RoleListType = {
+import { sumPer } from '../utils';
+
+export enum AppPermissionKeyEnum {
+  ReadChatLog = 'readChatLog'
+}
+
+export const AppPerList: PermissionListType<AppPermissionKeyEnum> = {
+  ...CommonPerList,
+  readChatLog: 0b1000
+};
+
+export const AppRoleList: RoleListType<AppPermissionKeyEnum> = {
   [CommonPerKeyEnum.read]: {
     ...CommonRoleList[CommonPerKeyEnum.read],
     description: i18nT('app:permission.des.read')
@@ -20,10 +31,26 @@ export const AppRoleList: RoleListType = {
   [CommonPerKeyEnum.manage]: {
     ...CommonRoleList[CommonPerKeyEnum.manage],
     description: i18nT('app:permission.des.manage')
+  },
+  [AppPermissionKeyEnum.ReadChatLog]: {
+    value: 0b1000,
+    checkBoxType: 'multiple',
+    name: i18nT('app:permission.name.readChatLog'),
+    description: i18nT('app:permission.des.readChatLog')
   }
 };
 
-export const AppPerList = CommonPerList;
-export const AppRolePerMap = CommonRolePerMap;
+export const AppRolePerMap: RolePerMapType = new Map([
+  ...CommonRolePerMap,
+  [
+    AppRoleList[AppPermissionKeyEnum.ReadChatLog].value,
+    sumPer(
+      CommonPerList[CommonPerKeyEnum.read],
+      AppPerList[AppPermissionKeyEnum.ReadChatLog]
+    ) as PermissionValueType
+  ]
+]);
 
 export const AppDefaultRoleVal = NullRoleVal;
+export const AppReadChatLogPerVal = AppPerList[AppPermissionKeyEnum.ReadChatLog];
+export const AppReadChatLogRoleVal = AppRoleList[AppPermissionKeyEnum.ReadChatLog].value;

@@ -12,7 +12,7 @@ import { useTranslation } from 'next-i18next';
 import React from 'react';
 import { useContextSelector } from 'use-context-selector';
 import RoleSelect from './RoleSelect';
-import RoleTags from './PermissionTags';
+import RoleTags from './RoleTags';
 import { CollaboratorContext } from './context';
 export type ManageModalProps = {
   onClose: () => void;

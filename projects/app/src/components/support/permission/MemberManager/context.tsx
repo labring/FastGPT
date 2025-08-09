@@ -4,7 +4,11 @@ import type {
   UpdateClbPermissionProps
 } from '@fastgpt/global/support/permission/collaborator';
 import { Permission } from '@fastgpt/global/support/permission/controller';
-import type { PermissionValueType, RoleListType } from '@fastgpt/global/support/permission/type';
+import type {
+  PermissionValueType,
+  RoleListType,
+  RoleValueType
+} from '@fastgpt/global/support/permission/type';
 import { type ReactNode, useCallback } from 'react';
 import { createContext } from 'use-context-selector';
 import dynamic from 'next/dynamic';
@@ -35,7 +39,7 @@ export type MemberManagerPropsType = MemberManagerInputPropsType & {
   collaboratorList: CollaboratorItemType[];
   refetchCollaboratorList: () => void;
   isFetchingCollaborator: boolean;
-  getPerLabelList: (per: PermissionValueType) => string[];
+  getRoleLabelList: (role: RoleValueType) => string[];
 };
 export type ChildrenProps = {
   onOpenAddMember: () => void;
@@ -54,7 +58,7 @@ export const CollaboratorContext = createContext<CollaboratorContextType>({
   onDelOneCollaborator: () => {
     throw new Error('Function not implemented.');
   },
-  getPerLabelList: (): string[] => {
+  getRoleLabelList: (): string[] => {
     throw new Error('Function not implemented.');
   },
   refetchCollaboratorList: (): void => {
@@ -125,7 +129,7 @@ const CollaboratorContextProvider = ({
     }
   );
 
-  const getPerLabelList = useCallback(
+  const getRoleLabelList = useCallback(
     (role: PermissionValueType) => {
       if (!roleList) return [];
 
@@ -133,17 +137,17 @@ const CollaboratorContextProvider = ({
       const labels: string[] = [];
 
       if (Per.hasManagePer) {
-        labels.push(roleList['manage'].name);
+        labels.push(t(roleList['manage'].name as any));
       } else if (Per.hasWritePer) {
-        labels.push(roleList['write'].name);
+        labels.push(t(roleList['write'].name as any));
       } else if (Per.hasReadPer) {
-        labels.push(roleList['read'].name);
+        labels.push(t(roleList['read'].name as any));
       }
 
       Object.values(roleList).forEach((item) => {
         if (item.checkBoxType === 'multiple') {
-          if (Per.checkPer(item.value)) {
-            labels.push(item.name);
+          if (Per.checkRole(item.value)) {
+            labels.push(t(item.name as any));
           }
         }
       });
@@ -174,7 +178,7 @@ const CollaboratorContextProvider = ({
     roleList,
     onUpdateCollaborators: onUpdateCollaboratorsThen,
     onDelOneCollaborator: onDelOneCollaboratorThen,
-    getPerLabelList
+    getRoleLabelList
   };
 
   const onOpenAddMemberModal = () => {

@@ -11,16 +11,16 @@ export type PermissionTagsProp = {
 };
 
 function RoleTags({ permission }: PermissionTagsProp) {
-  const { getPerLabelList } = useContextSelector(CollaboratorContext, (v) => v);
+  const { getRoleLabelList } = useContextSelector(CollaboratorContext, (v) => v);
   const { t } = useTranslation();
 
   if (permission === undefined) return null;
 
-  const perTagList = getPerLabelList(permission);
+  const roleTagList = getRoleLabelList(permission);
 
   return (
     <Flex gap="2" alignItems="center">
-      {perTagList.map((item) => (
+      {roleTagList.map((item) => (
         <Tag
           mixBlendMode={'multiply'}
           key={item}
