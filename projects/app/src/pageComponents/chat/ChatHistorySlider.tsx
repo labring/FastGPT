@@ -37,7 +37,7 @@ const ChatHistorySlider = ({
 
   const { isPc } = useSystem();
 
-  const { appId, chatId: activeChatId } = useChatStore();
+  const { chatId: activeChatId } = useChatStore();
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
   const ScrollData = useContextSelector(ChatContext, (v) => v.ScrollData);
   const histories = useContextSelector(ChatContext, (v) => v.histories);
