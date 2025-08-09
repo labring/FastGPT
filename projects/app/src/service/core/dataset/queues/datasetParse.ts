@@ -36,12 +36,14 @@ const requestLLMPargraph = async ({
   rawText,
   model,
   billId,
-  paragraphChunkAIMode
+  paragraphChunkAIMode,
+  customPdfParse
 }: {
   rawText: string;
   model: string;
   billId: string;
   paragraphChunkAIMode: ParagraphChunkAIModeEnum;
+  customPdfParse?: boolean;
 }) => {
   if (
     !global.feConfigs?.isPlus ||
@@ -55,9 +57,8 @@ const requestLLMPargraph = async ({
     };
   }
 
-  // Check is markdown text(Include 1 group of title)
   if (paragraphChunkAIMode === ParagraphChunkAIModeEnum.auto) {
-    const isMarkdown = /^(#+)\s/.test(rawText);
+    const isMarkdown = isMarkdownText(rawText, customPdfParse);
     if (isMarkdown) {
       return {
         resultText: rawText,
@@ -65,6 +66,27 @@ const requestLLMPargraph = async ({
         totalOutputTokens: 0
       };
     }
+  }
+
+  // Force mode: Remove markdown header markers at the beginning of each line before passing to llmPargraph
+  if (paragraphChunkAIMode === ParagraphChunkAIModeEnum.force) {
+    addLog.debug(`[requestLLMPargraph] force mode - processing text`);
+    const processedText = rawText
+      .split('\n')
+      .map((line) => line.replace(/^#+\s*/, '').trim())
+      .join('\n');
+
+    const data = await POST<{
+      resultText: string;
+      totalInputTokens: number;
+      totalOutputTokens: number;
+    }>('/core/dataset/training/llmPargraph', {
+      rawText: processedText,
+      model,
+      billId
+    });
+
+    return data;
   }
 
   const data = await POST<{
@@ -78,6 +100,27 @@ const requestLLMPargraph = async ({
   });
 
   return data;
+};
+
+// Optimized Markdown detection logic
+const isMarkdownText = (rawText: string, customPdfParse?: boolean) => {
+  addLog.debug(
+    `[isMarkdownText] start, customPdfParse: ${customPdfParse}, rawText length: ${rawText.length}`
+  );
+
+  // If external PDF parsing is enabled, trust the external parsing result first
+  if (customPdfParse) {
+    addLog.debug(`[isMarkdownText] customPdfParse enabled, returning true`);
+    return true;
+  }
+
+  // Check if the text contains Markdown header structure
+  const hasMarkdownHeaders = /^(#+)\s/m.test(rawText);
+  const hasMultipleHeaders = (rawText.match(/^(#+)\s/g) || []).length > 1;
+
+  const result = hasMarkdownHeaders && hasMultipleHeaders;
+
+  return result;
 };
 
 export const datasetParseQueue = async (): Promise<any> => {
@@ -221,7 +264,8 @@ export const datasetParseQueue = async (): Promise<any> => {
         rawText,
         model: dataset.agentModel,
         billId: data.billId,
-        paragraphChunkAIMode: collection.paragraphChunkAIMode
+        paragraphChunkAIMode: collection.paragraphChunkAIMode,
+        customPdfParse: collection.customPdfParse
       });
       // Push usage
       pushLLMTrainingUsage({

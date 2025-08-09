@@ -127,6 +127,8 @@
   "llm_paragraph_mode_auto_desc": "Enable the model to automatically recognize the title when the file content does not contain a Markdown title.",
   "llm_paragraph_mode_forbid": "Disabled",
   "llm_paragraph_mode_forbid_desc": "Force the disabling of the model's automatic paragraph recognition",
+  "llm_paragraph_mode_force": "Force Process",
+  "llm_paragraph_mode_force_desc": "Remove all Markdown header markers from text and force model to recognize paragraph structure",
   "loading": "Loading...",
   "max_chunk_size": "Maximum chunk size",
   "move.hint": "After moving, the selected knowledge base/folder will inherit the permission settings of the new folder, and the original permission settings will become invalid.",
