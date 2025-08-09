@@ -23,9 +23,9 @@ import { useContextSelector } from 'use-context-selector';
 import {
   ChatSidebarPaneEnum,
   defaultCollapseStatus,
-  type CollapseStatusType,
-  GetChatTypeEnum
-} from '@/global/core/chat/constants';
+  type CollapseStatusType
+} from '@/web/components/chat/constants';
+import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
@@ -40,7 +40,7 @@ import { useMount } from 'ahooks';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import type { ChatSettingSchema } from '@fastgpt/global/core/chat/type';
+import type { ChatSettingSchema } from '@fastgpt/global/core/chat/setting/type';
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
 type Props = { appId: string; chatId: string; teamId: string; teamToken: string };

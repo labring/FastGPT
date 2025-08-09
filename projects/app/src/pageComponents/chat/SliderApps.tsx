@@ -18,8 +18,8 @@ import type {
 } from '@fastgpt/global/common/parentFolder/type';
 import { getMyApps } from '@/web/core/app/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { ChatSidebarPaneEnum, type CollapseStatusType } from '@/global/core/chat/constants';
-import type { ChatSettingSchema } from '@fastgpt/global/core/chat/type';
+import { ChatSidebarPaneEnum, type CollapseStatusType } from '@/web/components/chat/constants';
+import type { ChatSettingSchema } from '@fastgpt/global/core/chat/setting/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 
@@ -465,18 +465,14 @@ const SliderApps = ({
   onCollapse,
   onPaneChange
 }: Props) => {
-  //------------ hooks ------------//
   const router = useRouter();
   const { t } = useTranslation();
 
-  //------------ stores ------------//
   const { feConfigs } = useSystemStore();
   const { userInfo, teamPlanStatus } = useUserStore();
 
-  //------------ states ------------//
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  //------------ derived states ------------//
   const isLoggedIn = !!userInfo;
   const isTeamChat = router.pathname === '/chat/team';
   const { avatar, username } = userInfo as NonNullable<typeof userInfo>;
@@ -495,9 +491,9 @@ const SliderApps = ({
     : isEnterprisePlan
       ? isSquareLogoEmpty
       : true;
-  const wideLogoSrc = showDefaultWideLogo ? '/imgs/fastgpt_slogan.png' : logos.wideLogoUrl;
+  const wideLogoSrc = showDefaultWideLogo ? '/imgs/fastgpt_banner.png' : logos.wideLogoUrl;
   const squareLogoSrc = showDefaultSquareLogo
-    ? '/imgs/fastgpt_slogan_fold.svg'
+    ? '/imgs/fastgpt_banner_fold.svg'
     : logos.squareLogoUrl;
   const isCollapsed = Boolean(collapse);
   const isHomeActive = pane === ChatSidebarPaneEnum.HOME;

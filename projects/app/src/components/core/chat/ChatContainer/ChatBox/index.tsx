@@ -1004,7 +1004,7 @@ const ChatBox = ({
               <Image
                 alt="fastgpt logo"
                 maxW={['388px', '50%']}
-                src={wideLogo || '/imgs/fastgpt_slogan.png'}
+                src={wideLogo || '/imgs/fastgpt_banner.png'}
               />
               <Box color="myGray.500">{slogan}</Box>
             </Flex>

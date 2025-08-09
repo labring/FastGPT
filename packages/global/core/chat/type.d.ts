@@ -202,22 +202,3 @@ export type RuntimeUserPromptType = {
   files: UserChatItemValueItemType['file'][];
   text: string;
 };
-
-/* chat setting */
-export type ChatSettingSchema = {
-  _id: string;
-  appId: string;
-  teamId: string;
-  slogan: string;
-  dialogTips: string;
-  homeTabTitle: string;
-  wideLogoUrl?: string;
-  squareLogoUrl?: string;
-  selectedTools: Array<{
-    id: FlowNodeTemplateType['id'];
-    pluginId: FlowNodeTemplateType['pluginId'];
-    name?: string;
-    avatar?: string;
-    inputs?: Record<`${NodeInputKeyEnum}` | string, any>;
-  }>;
-};

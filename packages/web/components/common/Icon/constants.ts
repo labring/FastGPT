@@ -204,7 +204,6 @@ export const iconPaths = {
   'core/chat/sendFill': () => import('./icons/core/chat/sendFill.svg'),
   'core/chat/sendLight': () => import('./icons/core/chat/sendLight.svg'),
   'core/chat/setTopLight': () => import('./icons/core/chat/setTopLight.svg'),
-  'core/chat/setting/save': () => import('./icons/core/chat/setting/save.svg'),
   'core/chat/setting/share': () => import('./icons/core/chat/setting/share.svg'),
   'core/chat/sideLine': () => import('./icons/core/chat/sideLine.svg'),
   'core/chat/sidebar/expand': () => import('./icons/core/chat/sidebar/expand.svg'),

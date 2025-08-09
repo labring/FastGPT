@@ -20,7 +20,7 @@ import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { streamFetch } from '@/web/common/api/fetch';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
@@ -34,51 +34,47 @@ import NextHead from '@/components/common/NextHead';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import type { ChatSettingSchema } from '@fastgpt/global/core/chat/type';
+import type { ChatSettingSchema } from '@fastgpt/global/core/chat/setting/type';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import router from 'next/router';
 import { getPreviewPluginNode } from '@/web/core/app/api/plugin';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 
 type Props = {
   settings: ChatSettingSchema | null;
 };
 
 const HomeChatWindow: React.FC<Props> = ({ settings }) => {
-  //------------ hooks ------------//
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
-  //------------ stores ------------//
   const { userInfo } = useUserStore();
   const { llmModelList } = useSystemStore();
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
-  //------------ context states ------------//
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
 
+  const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
 
-  //------------ states ------------//
   const availableModels = useMemo(
     () => llmModelList.map((model) => ({ value: model.model, label: model.name })),
     [llmModelList]
   );
-
-  // settings中配置的可用工具（从配置加载）
-  const [availableTools, setAvailableTools] = useState<ChatSettingSchema['selectedTools']>([]);
-  // 用户选择的工具 ID 列表
-  const [selectedToolIds, setSelectedToolIds] = useState<string[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>(availableModels[0]?.value || '');
 
-  // 工作流数据
-  const [workflowData, setWorkflowData] = useState(() => form2AppWorkflow(getDefaultAppForm(), t));
+  const [availableTools, setAvailableTools] = useState<ChatSettingSchema['selectedTools']>([]);
+  const [selectedToolIds, setSelectedToolIds] = useState<string[]>([]);
+  const selectedTools = useMemo(() => {
+    return availableTools.filter((tool) => selectedToolIds.includes(tool.pluginId || ''));
+  }, [availableTools, selectedToolIds]);
 
   const loadChatSettings = useCallback(async () => {
     try {
@@ -90,50 +86,23 @@ const HomeChatWindow: React.FC<Props> = ({ settings }) => {
     }
   }, [settings]);
 
-  // 加载聊天设置并构建工作流
   useEffect(() => {
     if (appId) {
       loadChatSettings();
     }
   }, [appId, loadChatSettings]);
 
-  // 计算选中的工具对象
-  const selectedTools = useMemo(() => {
-    return availableTools.filter((tool) => selectedToolIds.includes(tool.id));
-  }, [availableTools, selectedToolIds]);
-
   // 工具选择处理
   const handleToolToggle = useCallback((toolId: string) => {
-    setSelectedToolIds((prev) => {
-      if (prev.includes(toolId)) {
-        return prev.filter((id) => id !== toolId);
-      } else {
-        return [...prev, toolId];
-      }
-    });
+    setSelectedToolIds((prev) =>
+      prev.includes(toolId) ? prev.filter((id) => id !== toolId) : [...prev, toolId]
+    );
   }, []);
 
   // 模型选择处理
   const handleModelChange = useCallback((model: string) => {
     setSelectedModel(model);
   }, []);
-
-  // 构建工作流数据
-  useEffect(() => {
-    (async () => {
-      const formData = getDefaultAppForm();
-      formData.aiSettings.model = selectedModel;
-      let tools = [];
-      for (const tool of selectedTools) {
-        if (!tool.pluginId) continue;
-        const node = await getPreviewPluginNode({ appId: tool.pluginId });
-        tools.push(node);
-      }
-      formData.selectedTools = tools;
-      const { nodes, edges, chatConfig } = form2AppWorkflow(formData, t);
-      setWorkflowData({ nodes, edges, chatConfig });
-    })();
-  }, [selectedModel, selectedTools, t]);
 
   // 初始化聊天数据
   const { loading } = useRequest2(
@@ -180,6 +149,25 @@ const HomeChatWindow: React.FC<Props> = ({ settings }) => {
       generatingMessage
     }: StartChatFnProps) => {
       const histories = messages.slice(-1);
+
+      // 根据所选工具 ID 动态拉取节点，并填充默认输入
+      const tools: FlowNodeTemplateType[] = await Promise.all(
+        selectedToolIds.map(async (toolId) => {
+          const node = await getPreviewPluginNode({ appId: toolId });
+          node.inputs = node.inputs.map((input) => {
+            const tool = availableTools.find((tool) => tool.pluginId === toolId);
+            const value = tool?.inputs?.[input.key];
+            return { ...input, value };
+          });
+          return node;
+        })
+      );
+
+      const formData = getDefaultAppForm();
+      formData.aiSettings.model = selectedModel;
+      formData.selectedTools = tools;
+      const { nodes, edges, chatConfig } = form2AppWorkflow(formData, t);
+
       const { responseText } = await streamFetch({
         url: '/api/proApi/core/chat/chatHome',
         data: {
@@ -189,16 +177,21 @@ const HomeChatWindow: React.FC<Props> = ({ settings }) => {
           appId,
           appName: t('chat:home.chat_app', { name: 'FastGPT' }),
           chatId,
-          nodes: workflowData.nodes,
-          edges: workflowData.edges,
-          chatConfig: workflowData.chatConfig
+          nodes,
+          edges,
+          chatConfig
         },
         onMessage: generatingMessage,
         abortCtrl: controller
       });
 
       const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(histories)[0]);
+
       onUpdateHistoryTitle({ chatId, newTitle });
+      setChatBoxData((state) => ({
+        ...state,
+        title: newTitle
+      }));
 
       return { responseText, isNewChat: forbidLoadChat.current };
     }
@@ -220,7 +213,7 @@ const HomeChatWindow: React.FC<Props> = ({ settings }) => {
         )}
 
         {/* 工具选择下拉框 */}
-        <Menu closeOnSelect={false}>
+        <Menu isLazy closeOnSelect={false}>
           <MenuButton
             as={Button}
             size="sm"
@@ -234,28 +227,33 @@ const HomeChatWindow: React.FC<Props> = ({ settings }) => {
           </MenuButton>
           <MenuList>
             {availableTools.map((tool) => {
-              const toolId = tool.id;
+              const toolId = tool.pluginId || '';
               const isSelected = selectedToolIds.includes(toolId);
               return (
                 <MenuItem
                   key={toolId}
-                  onClick={() => handleToolToggle(toolId)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    handleToolToggle(toolId);
+                  }}
                   closeOnSelect={false}
                 >
-                  <Checkbox
-                    isChecked={isSelected}
-                    mr={3}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={() => handleToolToggle(toolId)}
-                  />
+                  <Checkbox isChecked={isSelected} mr={3} />
                   <Flex alignItems="center" gap={2}>
-                    <Avatar src={tool.avatar} w={4} />
+                    <Avatar src={tool.avatar} w={4} rounded="8px" />
                     <Box fontSize="xs">{tool.name}</Box>
                   </Flex>
                 </MenuItem>
               );
             })}
-            {availableTools.length === 0 && <MenuItem isDisabled>暂无可用工具</MenuItem>}
+            {availableTools.length === 0 && (
+              <MenuItem isDisabled fontSize="xs" color="myGray.500">
+                <Box textAlign="center" flex="1">
+                  {t('chat:home.no_available_tools')}
+                </Box>
+              </MenuItem>
+            )}
           </MenuList>
         </Menu>
       </>
@@ -267,7 +265,8 @@ const HomeChatWindow: React.FC<Props> = ({ settings }) => {
       availableTools,
       selectedToolIds,
       handleModelChange,
-      handleToolToggle
+      handleToolToggle,
+      t
     ]
   );
 
@@ -310,6 +309,17 @@ const HomeChatWindow: React.FC<Props> = ({ settings }) => {
         flex={'1 0 0'}
         flexDirection={'column'}
       >
+        <Flex
+          py={4}
+          bg="white"
+          fontWeight={500}
+          color="myGray.900"
+          alignItems="center"
+          justifyContent="center"
+        >
+          {chatBoxData?.title}
+        </Flex>
+
         <Box flex={'1 0 0'} bg={'white'}>
           <ChatBox
             showHomeChatEmptyIntro

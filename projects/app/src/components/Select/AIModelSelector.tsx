@@ -17,7 +17,6 @@ const ModelPriceModal = dynamic(() =>
 );
 
 type Props = SelectProps & {
-  multiple?: boolean;
   disableTip?: string;
 };
 
@@ -234,7 +233,7 @@ const MultipleRowSelector = ({ list, onChange, disableTip, placeholder, ...props
 };
 
 const AIModelSelector = (props: Props) => {
-  return props.multiple || props.list.length > 10 ? (
+  return props.list.length > 10 ? (
     <MultipleRowSelector {...props} />
   ) : (
     <OneRowSelector {...props} />

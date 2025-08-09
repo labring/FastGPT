@@ -42,7 +42,7 @@ import { type AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import ConfigToolModal from '@/pageComponents/app/detail/SimpleApp/components/ConfigToolModal';
-import type { ChatSettingSchema } from '@fastgpt/global/core/chat/type';
+import type { ChatSettingSchema } from '@fastgpt/global/core/chat/setting/type';
 
 type Props = {
   selectedTools: ChatSettingSchema['selectedTools'];

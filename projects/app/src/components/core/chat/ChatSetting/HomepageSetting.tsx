@@ -1,13 +1,14 @@
 import { Box, Button, Flex, Grid } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
 import MyInput from '@/components/MyInput';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import SettingTabs from '@/components/core/chat/ChatSetting/SettingTabs';
-import type { ChatSettingTabOptionEnum } from '@/global/core/chat/constants';
+import type { ChatSettingTabOptionEnum } from '@/web/components/chat/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { updateChatSetting } from '@/web/core/chat/api';
 import ImageUpload from '@/components/core/chat/ChatSetting/ImageUpload';
-import type { ChatSettingSchema } from '@fastgpt/global/core/chat/type';
+import type { ChatSettingSchema } from '@fastgpt/global/core/chat/setting/type';
 import type { UploadedFileItem } from '@/components/core/chat/ChatSetting/ImageUpload/hooks/useImageUpload';
 import { makePayload } from '@/components/core/chat/ChatSetting/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -19,7 +20,6 @@ import type {
   FlowNodeTemplateType,
   NodeTemplateListItemType
 } from '@fastgpt/global/core/workflow/type/node.d';
-import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
@@ -27,23 +27,30 @@ type Props = {
   slogan?: string;
   dialogTips?: string;
   homeTabTitle?: string;
+  Header: React.FC<{ children?: React.ReactNode }>;
   selectedTools?: ChatSettingSchema['selectedTools'];
-  settingTabOption: `${ChatSettingTabOptionEnum}`;
   logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'>;
   onDiagramShow: (show: boolean) => void;
-  onTabChange: (tab: `${ChatSettingTabOptionEnum}`) => void;
   onSettingsRefresh: () => Promise<ChatSettingSchema | null>;
+};
+
+type FormValues = {
+  slogan: string;
+  dialogTips: string;
+  homeTabTitle: string;
+  selectedTools: ChatSettingSchema['selectedTools'];
+  wideLogoUploaded: UploadedFileItem[];
+  squareLogoUploaded: UploadedFileItem[];
 };
 
 const HomepageSetting = ({
   logos,
+  Header,
   slogan: _slogan,
-  settingTabOption,
   dialogTips: _dialogTips,
   homeTabTitle: _homeTabTitle,
   selectedTools: _selectedTools,
   onDiagramShow,
-  onTabChange,
   onSettingsRefresh
 }: Props) => {
   //------------ hooks ------------//
@@ -51,43 +58,42 @@ const HomepageSetting = ({
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
-  //------------ states ------------//
+  const defaultValues = useMemo<FormValues>(
+    () => ({
+      slogan: _slogan || t('chat:setting.home.slogan.default'),
+      dialogTips: _dialogTips || t('chat:setting.home.dialogue_tips.default'),
+      homeTabTitle: _homeTabTitle || 'FastGPT',
+      selectedTools: _selectedTools || [],
+      wideLogoUploaded: [],
+      squareLogoUploaded: []
+    }),
+    [_slogan, _dialogTips, _homeTabTitle, _selectedTools, t]
+  );
+
+  const { control, handleSubmit, reset, setValue, watch, formState } = useForm<FormValues>({
+    defaultValues
+  });
+
+  useEffect(() => {
+    reset(defaultValues);
+  }, [defaultValues, reset]);
+
   const [isSaving, setIsSaving] = useState(false);
-  const [slogan, setSlogan] = useState(_slogan || t('chat:setting.home.slogan.default'));
   const [openProModal, setOpenProModal] = useState(false);
-  const [dialogTips, setDialogTips] = useState(
-    _dialogTips || t('chat:setting.home.dialogue_tips.default')
-  );
-  const [homeTabTitle, setHomeTabTitle] = useState(_homeTabTitle || 'FastGPT');
   const [toolSelectModalOpen, setToolSelectModalOpen] = useState(false);
-  const [selectedTools, setSelectedTools] = useState<ChatSettingSchema['selectedTools']>(
-    _selectedTools || []
-  );
-  const [wideLogoUploaded, setWideLogoUploaded] = useState<UploadedFileItem[]>([]);
-  const [squareLogoUploaded, setSquareLogoUploaded] = useState<UploadedFileItem[]>([]);
 
-  //------------ derived states ------------//
-  const hasChanged =
-    slogan !== _slogan ||
-    dialogTips !== _dialogTips ||
-    homeTabTitle !== _homeTabTitle ||
-    wideLogoUploaded.length > 0 ||
-    squareLogoUploaded.length > 0 ||
-    selectedTools.length !== (_selectedTools || []).length ||
-    selectedTools.some((tool, index) => tool.pluginId !== (_selectedTools || [])[index]?.pluginId);
+  const selectedTools = watch('selectedTools');
 
-  //------------ tool handlers ------------//
   const handleAddTool = useCallback(
-    (tool: FlowNodeTemplateType) => {
+    async (tool: FlowNodeTemplateType) => {
       if (!selectedTools.some((t) => t.pluginId === tool.pluginId)) {
-        setSelectedTools((prev) => [
-          ...prev,
+        const next = [
+          ...selectedTools,
           {
-            id: tool.id,
-            pluginId: tool.pluginId,
             name: tool.name,
-            avatar: tool.avatar,
-            inputs: tool.inputs.reduce(
+            pluginId: tool.pluginId || '',
+            avatar: tool.avatar || '',
+            inputs: tool.inputs?.reduce(
               (acc, input) => {
                 acc[input.key] = input.value;
                 return acc;
@@ -95,74 +101,82 @@ const HomepageSetting = ({
               {} as Record<`${NodeInputKeyEnum}` | string, any>
             )
           }
-        ]);
+        ];
+        setValue('selectedTools', next, { shouldDirty: true });
       }
     },
-    [selectedTools]
+    [selectedTools, setValue]
   );
 
-  const handleRemoveTool = useCallback((tool: NodeTemplateListItemType) => {
-    setSelectedTools((prev) => prev.filter((t) => t.pluginId !== tool.id));
-  }, []);
+  const handleRemoveTool = useCallback(
+    (tool: NodeTemplateListItemType) => {
+      const next = selectedTools.filter((t) => t.pluginId !== tool.id);
+      setValue('selectedTools', next, { shouldDirty: true });
+    },
+    [selectedTools, setValue]
+  );
 
-  const handleRemoveToolById = useCallback((toolId: string | undefined) => {
-    if (!toolId) return;
-    setSelectedTools((prev) => prev.filter((t) => t.pluginId !== toolId));
-  }, []);
+  const handleRemoveToolById = useCallback(
+    (toolId: string | undefined) => {
+      if (!toolId) return;
+      const next = selectedTools.filter((t) => t.pluginId !== toolId);
+      setValue('selectedTools', next, { shouldDirty: true });
+    },
+    [selectedTools, setValue]
+  );
 
-  const handleSave = useCallback(async () => {
-    setIsSaving(true);
-    try {
-      const payload = makePayload(
-        ['slogan', slogan],
-        ['dialogTips', dialogTips],
-        ['homeTabTitle', homeTabTitle],
-        ['selectedTools', selectedTools],
-        ['wideLogoUrl', wideLogoUploaded.length > 0 ? wideLogoUploaded[0].url : undefined],
-        ['squareLogoUrl', squareLogoUploaded.length > 0 ? squareLogoUploaded[0].url : undefined]
-      );
-      await updateChatSetting(payload);
-      await onSettingsRefresh();
-      setWideLogoUploaded([]);
-      setSquareLogoUploaded([]);
-      toast({ status: 'success', title: t('chat:setting.save_success') });
-    } catch (error) {
-      console.error('Failed to save settings:', error);
-    } finally {
-      setIsSaving(false);
-    }
-  }, [
-    slogan,
-    dialogTips,
-    homeTabTitle,
-    selectedTools,
-    wideLogoUploaded,
-    squareLogoUploaded,
-    onSettingsRefresh,
-    toast,
-    t
-  ]);
+  const onSubmit = useCallback(
+    async (values: FormValues) => {
+      setIsSaving(true);
+      try {
+        await updateChatSetting({
+          ...values,
+          selectedTools: values.selectedTools.map((tool) => ({
+            pluginId: tool.pluginId,
+            inputs: tool.inputs
+          }))
+        });
+        const refreshed = await onSettingsRefresh();
+
+        // reset form state after save
+        const nextDefaults: FormValues = {
+          slogan: refreshed?.slogan || values.slogan,
+          dialogTips: refreshed?.dialogTips || values.dialogTips,
+          homeTabTitle: refreshed?.homeTabTitle || values.homeTabTitle,
+          selectedTools: refreshed?.selectedTools || values.selectedTools,
+          wideLogoUploaded: [],
+          squareLogoUploaded: []
+        };
+        reset(nextDefaults);
+
+        toast({ status: 'success', title: t('chat:setting.save_success') });
+      } catch (error) {
+        console.error('Failed to save settings:', error);
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [onSettingsRefresh, reset, t, toast]
+  );
 
   return (
     <Flex flexDir="column" px={6} py={5} gap={'52px'} h="full">
       <NextHead title={_homeTabTitle || 'FastGPT'} icon="/icon/logo.svg" />
 
-      <Flex flexShrink={0} justifyContent={'space-between'} gap={4} alignItems={'center'}>
-        <SettingTabs settingTabOption={settingTabOption} onTabChange={onTabChange} />
-
+      <Header>
         <Button
           variant={'outline'}
           borderColor={'primary.300'}
           _hover={{ bg: 'primary.50' }}
           color={'primary.700'}
           isLoading={isSaving}
-          isDisabled={!hasChanged}
-          leftIcon={<MyIcon name={'core/chat/setting/save'} />}
-          onClick={handleSave}
+          isDisabled={!formState.isDirty}
+          leftIcon={<MyIcon name={'save'} w="14px" h="14px" color="primary.700" />}
+          onClick={handleSubmit(onSubmit)}
         >
           {t('chat:setting.save')}
         </Button>
-      </Flex>
+      </Header>
 
       <Flex
         w="100%"
@@ -190,7 +204,7 @@ const HomepageSetting = ({
                 {selectedTools.length > 0 && (
                   <Button
                     color="myGray.600"
-                    leftIcon={<MyIcon w="12px" h="12px" name={'common/add2'} />}
+                    leftIcon={<MyIcon w="12px" h="12px" fill="currentColor" name={'common/add2'} />}
                     _hover={{ bg: 'primary.50' }}
                     variant={'outline'}
                     size={'sm'}
@@ -234,9 +248,10 @@ const HomepageSetting = ({
                       borderRadius="6px"
                       bg="white"
                       boxShadow="sm"
+                      _hover={{ '.chakra-icon': { display: 'block' } }}
                     >
                       <Flex alignItems="center" gap={2} flex={1}>
-                        <Avatar src={tool.avatar} w={4} />
+                        <Avatar src={tool.avatar} w={4} rounded="4px" />
                         <Box fontSize="xs">{tool.name}</Box>
                       </Flex>
                       <MyIcon
@@ -245,6 +260,7 @@ const HomepageSetting = ({
                         h="14px"
                         cursor="pointer"
                         color="myGray.500"
+                        display="none"
                         _hover={{ color: 'red.500' }}
                         onClick={() => handleRemoveToolById(tool.pluginId)}
                       />
@@ -281,11 +297,17 @@ const HomepageSetting = ({
               </Flex>
 
               <Box>
-                <MyInput
-                  isDisabled={isSaving}
-                  value={slogan}
-                  onChange={(e) => setSlogan(e.target.value)}
-                  placeholder={t('chat:setting.home.slogan_placeholder')}
+                <Controller
+                  name="slogan"
+                  control={control}
+                  render={({ field }) => (
+                    <MyInput
+                      isDisabled={isSaving}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder={t('chat:setting.home.slogan_placeholder')}
+                    />
+                  )}
                 />
               </Box>
             </Box>
@@ -308,17 +330,23 @@ const HomepageSetting = ({
               </Flex>
 
               <Box>
-                <MyInput
-                  isDisabled={isSaving}
-                  value={dialogTips}
-                  onChange={(e) => setDialogTips(e.target.value)}
-                  placeholder={t('chat:setting.home.dialogue_tips_placeholder')}
+                <Controller
+                  name="dialogTips"
+                  control={control}
+                  render={({ field }) => (
+                    <MyInput
+                      isDisabled={isSaving}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder={t('chat:setting.home.dialogue_tips_placeholder')}
+                    />
+                  )}
                 />
               </Box>
             </Box>
 
             {/* COPYRIGHT */}
-            {feConfigs.isCommercial && (
+            {feConfigs.showChatCopyrightSetting && (
               <>
                 <Flex fontWeight={'500'} alignItems="center" gap={2}>
                   <Flex
@@ -336,22 +364,6 @@ const HomepageSetting = ({
                   >
                     {t('chat:setting.copyright.copyright_configuration')}
                   </Flex>
-
-                  {!feConfigs.isCommercial && (
-                    <Box
-                      px={1}
-                      py={0.5}
-                      fontSize="10px"
-                      cursor="pointer"
-                      userSelect="none"
-                      color="myGray.800"
-                      borderRadius="8px 8px 8px 2px"
-                      background="linear-gradient(7deg, #BDE7F8 28.98%, #ECC3FF 95.94%)"
-                      onClick={() => setOpenProModal(true)}
-                    >
-                      {t('chat:setting.home.commercial_version')}
-                    </Box>
-                  )}
                 </Flex>
 
                 <Box fontWeight={'500'}>
@@ -371,11 +383,17 @@ const HomepageSetting = ({
                   </Flex>
 
                   <Box>
-                    <MyInput
-                      isDisabled={isSaving}
-                      value={homeTabTitle}
-                      placeholder={t('chat:setting.home.home_tab_title_placeholder')}
-                      onChange={(e) => setHomeTabTitle(e.target.value)}
+                    <Controller
+                      name="homeTabTitle"
+                      control={control}
+                      render={({ field }) => (
+                        <MyInput
+                          isDisabled={isSaving}
+                          value={field.value}
+                          placeholder={t('chat:setting.home.home_tab_title_placeholder')}
+                          onChange={field.onChange}
+                        />
+                      )}
                     />
                   </Box>
                 </Box>
@@ -398,26 +416,38 @@ const HomepageSetting = ({
                   </Flex>
 
                   <Flex alignItems="center">
-                    <ImageUpload
-                      height="100px"
-                      aspectRatio={2.84 / 1}
-                      uploadedFiles={wideLogoUploaded}
-                      tips={t('chat:setting.copyright.tips')}
-                      imageSrc={logos.wideLogoUrl}
-                      defaultImageSrc={'/imgs/fastgpt_slogan.png'}
-                      onFileSelect={setWideLogoUploaded}
+                    <Controller
+                      name="wideLogoUploaded"
+                      control={control}
+                      render={({ field }) => (
+                        <ImageUpload
+                          height="100px"
+                          aspectRatio={2.84 / 1}
+                          uploadedFiles={field.value}
+                          tips={t('chat:setting.copyright.tips')}
+                          imageSrc={logos.wideLogoUrl}
+                          defaultImageSrc={'/imgs/fastgpt_banner.png'}
+                          onFileSelect={(files) => field.onChange(files)}
+                        />
+                      )}
                     />
 
                     <Box mx={8} w="1px" h="100px" alignSelf="flex-start" bg="myGray.200" />
 
-                    <ImageUpload
-                      height="100px"
-                      aspectRatio={1 / 1}
-                      tips={t('chat:setting.copyright.tips.square')}
-                      uploadedFiles={squareLogoUploaded}
-                      imageSrc={logos.squareLogoUrl}
-                      defaultImageSrc={'/imgs/fastgpt_slogan_fold.svg'}
-                      onFileSelect={setSquareLogoUploaded}
+                    <Controller
+                      name="squareLogoUploaded"
+                      control={control}
+                      render={({ field }) => (
+                        <ImageUpload
+                          height="100px"
+                          aspectRatio={1 / 1}
+                          tips={t('chat:setting.copyright.tips.square')}
+                          uploadedFiles={field.value}
+                          imageSrc={logos.squareLogoUrl}
+                          defaultImageSrc={'/imgs/fastgpt_banner_fold.svg'}
+                          onFileSelect={(files) => field.onChange(files)}
+                        />
+                      )}
                     />
                   </Flex>
                 </Box>

@@ -86,10 +86,24 @@ const ChatHistorySlider = ({
       whiteSpace={'nowrap'}
     >
       {isPc && (
-        <Flex pt={5} pb={2} px={[2, 5]} alignItems={'center'} fontSize={'sm'}>
+        <Flex
+          pt={5}
+          px={[2, 5]}
+          alignItems={'center'}
+          fontSize={'sm'}
+          pb={customSliderTitle ? 0 : 2}
+        >
           {!customSliderTitle && <Avatar src={appAvatar} borderRadius={'md'} />}
 
-          <Box flex={'1 0 0'} w={0} ml={2} fontWeight={'bold'} className={'textEllipsis'}>
+          <Box
+            flex={'1 0 0'}
+            w={0}
+            ml={2}
+            fontWeight={'bold'}
+            fontSize={customSliderTitle ? '16px' : 'inherit'}
+            color={customSliderTitle ? 'myGray.900' : 'inherit'}
+            className={'textEllipsis'}
+          >
             {customSliderTitle || appName}
           </Box>
         </Flex>

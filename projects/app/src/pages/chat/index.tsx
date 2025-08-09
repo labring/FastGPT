@@ -9,9 +9,9 @@ import { serviceSideProps } from '@/web/common/i18n/utils';
 import {
   ChatSidebarPaneEnum,
   defaultCollapseStatus,
-  type CollapseStatusType,
-  GetChatTypeEnum
-} from '@/global/core/chat/constants';
+  type CollapseStatusType
+} from '@/web/components/chat/constants';
+import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import ChatContextProvider from '@/web/core/chat/context/chatContext';
 import { type AppListItemType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
@@ -24,68 +24,51 @@ import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import LoginModal from '@/pageComponents/login/LoginModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ChatSetting from '@/components/core/chat/ChatSetting';
-import { useChat } from '@/global/core/chat/hooks';
-import type { ChatSettingSchema } from '@fastgpt/global/core/chat/type';
+import { useChat } from '@/web/hooks/chat/useChat';
+import type { ChatSettingSchema } from '@fastgpt/global/core/chat/setting/type';
 import AppChatWindow from '@/components/core/chat/ChatWindow/AppChatWindow';
 import HomeChatWindow from '@/components/core/chat/ChatWindow/HomeChatWindow';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
-  //------------ hooks ------------//
   const { isPc } = useSystem();
   const router = useRouter();
 
-  //------------ stores ------------//
   const { appId, lastPane, setLastPane, hiddenAppId, setHiddenAppId } = useChatStore();
   const { feConfigs } = useSystemStore();
 
-  //------------ context states ------------//
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
-  //------------ derived states ------------//
-  const isProVersion = !!feConfigs.isPlus;
-
-  //------------ states ------------//
   const [collapse, setCollapse] = useState<CollapseStatusType>(defaultCollapseStatus);
-  const [chatSettings, setChatSettings] = useState<ChatSettingSchema | null>(null);
   const [pane, setPane] = useState<ChatSidebarPaneEnum>(
-    isProVersion ? lastPane || ChatSidebarPaneEnum.HOME : ChatSidebarPaneEnum.RECENTLY_USED_APPS
+    !!feConfigs.isPlus
+      ? lastPane || ChatSidebarPaneEnum.HOME
+      : ChatSidebarPaneEnum.RECENTLY_USED_APPS
   );
 
-  //------------ derived states ------------//
-  const showReference = Boolean(datasetCiteData);
-  const logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'> = {
-    wideLogoUrl: chatSettings?.wideLogoUrl,
-    squareLogoUrl: chatSettings?.squareLogoUrl
-  };
-
-  // becuase of the logos should be passed to the slider, so we need to refresh settings in the chat index page
-  const refreshChatSetting = useCallback(async () => {
-    try {
+  const { data: chatSettings, runAsync: refreshChatSetting } = useRequest2<
+    ChatSettingSchema | null,
+    []
+  >(
+    async () => {
+      if (!feConfigs.isPlus) return null;
       const settings = await getChatSetting();
-      setChatSettings(settings);
-      // 保存隐藏应用ID
       if (settings?.appId && settings.appId !== hiddenAppId) {
         setHiddenAppId(settings.appId);
       }
       return settings;
-    } catch (error) {
-      console.error('Failed to refresh settings:', error);
-      return null;
+    },
+    {
+      manual: false,
+      refreshDeps: [feConfigs.isPlus]
     }
-  }, [hiddenAppId, setHiddenAppId]);
-
-  useEffect(() => {
-    const init = async () => {
-      await refreshChatSetting();
-    };
-
-    // only non open source version can access the pro apis
-    if (isProVersion) {
-      init();
-    }
-  }, [isProVersion, refreshChatSetting]);
+  );
+  const logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'> = {
+    wideLogoUrl: chatSettings?.wideLogoUrl || undefined,
+    squareLogoUrl: chatSettings?.squareLogoUrl || undefined
+  };
 
   // 处理 pane 切换
   const handlePaneChange = useCallback(
@@ -130,26 +113,26 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         </Box>
       )}
 
-      {(!showReference || isPc) && (
+      {(!datasetCiteData || isPc) && (
         <PageContainer flex="1 0 0" w={0} position="relative">
           {/* home chat window */}
-          {pane === ChatSidebarPaneEnum.HOME && <HomeChatWindow settings={chatSettings} />}
+          {pane === ChatSidebarPaneEnum.HOME && <HomeChatWindow settings={chatSettings ?? null} />}
 
           {/* recently used apps chat window */}
           {pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && <AppChatWindow myApps={myApps} />}
 
           {/* setting */}
           {pane === ChatSidebarPaneEnum.SETTING && (
-            <ChatSetting settings={chatSettings} onSettingsRefresh={refreshChatSetting} />
+            <ChatSetting settings={chatSettings ?? null} onSettingsRefresh={refreshChatSetting} />
           )}
         </PageContainer>
       )}
 
-      {showReference && (
+      {datasetCiteData && (
         <PageContainer flex="1 0 0" w={0} maxW="560px">
           <ChatQuoteList
-            metadata={datasetCiteData!.metadata}
-            rawSearch={datasetCiteData!.rawSearch}
+            metadata={datasetCiteData.metadata}
+            rawSearch={datasetCiteData.rawSearch}
             onClose={() => setCiteModalData(undefined)}
           />
         </PageContainer>

@@ -1,5 +1,5 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
-import { type ChatSettingSchema as ChatSettingType } from '@fastgpt/global/core/chat/type.d';
+import { type ChatSettingSchema as ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { AppCollectionName } from '../../app/schema';
 
@@ -21,14 +21,7 @@ const ChatSettingSchema = new Schema({
   slogan: String,
   dialogTips: String,
   selectedTools: {
-    type: [
-      {
-        id: String,
-        name: String,
-        avatar: String,
-        inputs: Schema.Types.Mixed
-      }
-    ],
+    type: Array,
     default: []
   },
   homeTabTitle: String,

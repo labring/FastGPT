@@ -41,6 +41,7 @@
   "file_input_tip": "You can obtain the link to the corresponding file through the \"File Link\" of the [Plug-in Start] node",
   "history_slider.home.title": "chat",
   "home.chat_app": "HomeChat-{{name}}",
+  "home.no_available_tools": "No tools available",
   "in_progress": "In Progress",
   "input_guide": "Input Guide",
   "input_guide_lexicon": "Lexicon",

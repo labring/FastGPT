@@ -15,7 +15,7 @@ const ProModal = (props: { isOpen?: boolean; onClose?: () => void }) => {
   const openModal = props?.isOpen ?? isOpen;
   const onClose = props?.onClose ?? (() => setIsOpen(false));
 
-  return feConfigs?.isCommercial ? null : (
+  return feConfigs?.isPlus ? null : (
     <MyModal isOpen={openModal} onClose={onClose} showCloseButton={false} w={'400px'} h={'392px'}>
       <ModalBody
         userSelect={'none'}

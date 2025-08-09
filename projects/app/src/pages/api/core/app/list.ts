@@ -122,18 +122,13 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
         }
       : {};
 
-    const typeQuery = (() => {
+    const _type = (() => {
       if (type) {
-        // 如果明确指定了类型，则按指定类型查询（包括hidden）
-        if (Array.isArray(type)) {
-          return { type: { $in: type } };
-        } else {
-          return { type };
-        }
-      } else {
-        // 如果没有指定类型，则排除hidden类型
-        return { type: { $ne: AppTypeEnum.hidden } };
+        // 如果明确指定了类型，则按指定类型查询（包括 hidden）
+        return Array.isArray(type) ? { $in: type } : type;
       }
+      // 如果没有指定类型，则排除 hidden 类型
+      return { $ne: AppTypeEnum.hidden } as const;
     })();
 
     if (searchKey) {
@@ -141,14 +136,14 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
         ...appPerQuery,
         teamId,
         ...searchMatch,
-        ...typeQuery
+        type: _type
       };
     }
 
     return {
       ...appPerQuery,
       teamId,
-      ...typeQuery,
+      type: _type,
       ...parseParentIdInMongo(parentId)
     };
   })();
