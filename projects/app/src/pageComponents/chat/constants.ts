@@ -20,3 +20,6 @@ export enum ChatSettingTabOptionEnum {
   FAVORITE_APPS = 'favorite_apps',
   LOGS = 'logs'
 }
+
+export const DEFAULT_LOGO_BANNER_URL = '/imgs/fastgpt_banner.png';
+export const DEFAULT_LOGO_BANNER_COLLAPSED_URL = '/imgs/fastgpt_banner_fold.svg';

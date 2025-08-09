@@ -20,7 +20,7 @@ const SettingTabs = ({ tab, children, onChange }: Props) => {
     );
 
   return (
-    <Flex w="100%" flexShrink={0} justifyContent={'space-between'} gap={4} alignItems={'center'}>
+    <Flex w="100%" justifyContent={'space-between'} gap={4} alignItems={'center'}>
       <FillRowTabs px={3} py={2} list={tabOptions} value={tab} onChange={onChange} />
 
       {children}

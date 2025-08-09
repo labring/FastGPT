@@ -1,39 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Image, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useImageUpload, type UploadedFileItem } from './hooks/useImageUpload';
+import { useImageUpload } from './hooks/useImageUpload';
 import { useMemoizedFn } from 'ahooks';
+import MyLoading from '@fastgpt/web/components/common/MyLoading';
 
 type Props = {
-  imageSrc?: string;
+  imageSrc: string;
+  onFileSelect: (url: string) => void;
   tips?: string;
-  defaultImageSrc?: string;
-  maxFiles?: number;
   maxSize?: number; // MB
-  accept?: string;
   width?: string | number;
   height?: string | number;
   aspectRatio?: number;
   borderRadius?: string | number;
   disabled?: boolean;
-  onFileSelect?: (uploadedFiles: UploadedFileItem[]) => void;
-  uploadedFiles?: UploadedFileItem[];
 };
 
 const ImageUpload = ({
   imageSrc,
   tips,
-  defaultImageSrc,
-  maxFiles = 1,
   maxSize,
-  accept = 'image/*',
   width,
   height,
   aspectRatio = 2.84 / 1,
   borderRadius = 'md',
   disabled = false,
-  onFileSelect,
-  uploadedFiles: externalUploadedFiles
+  onFileSelect
 }: Props) => {
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoadError, setImageLoadError] = useState(false);
@@ -52,17 +45,11 @@ const ImageUpload = ({
     handleDragLeave,
     handleDragOver,
     handleDrop,
-    loading,
-    uploadedFiles: internalUploadedFiles
+    loading
   } = useImageUpload({
-    maxFiles,
     maxSize,
-    accept,
     onFileSelect
   });
-
-  // use external uploaded files or internal uploaded files
-  const uploadedFiles = externalUploadedFiles || internalUploadedFiles;
 
   const handleClick = useMemoizedFn(() => {
     if (!disabled && !loading) {
@@ -71,56 +58,24 @@ const ImageUpload = ({
   });
 
   const renderUploadArea = () => {
-    if (isHovered && !isDragging && !loading) {
+    if (loading) {
+      return <MyLoading fixed={false} />;
+    }
+    if (isHovered && !isDragging) {
       return <MyIcon name={'upload'} w="24px" h="24px" />;
     }
 
     // show uploaded image
-    if (uploadedFiles.length > 0) {
-      const uploadedFile = uploadedFiles[0]; // get first uploaded file
-      return (
-        <Image
-          src={uploadedFile.url}
-          alt="Uploaded image"
-          px={2}
-          width="100%"
-          height="100%"
-          objectFit="contain"
-        />
-      );
-    }
-
-    // show current image if exists
-    if (imageSrc && !loading && !imageLoadError) {
-      return (
-        <Image
-          src={imageSrc}
-          alt="Uploaded image"
-          px={2}
-          width="100%"
-          height="100%"
-          objectFit="contain"
-          borderRadius={borderRadius}
-          onError={() => setImageLoadError(true)}
-          onLoad={() => setImageLoadError(false)}
-        />
-      );
-    }
-
-    // show default image when not hovered and no upload in progress
-    if (defaultImageSrc && !isHovered && !isDragging && !loading) {
-      return (
-        <Image
-          src={defaultImageSrc}
-          alt="Default image"
-          width="100%"
-          height="100%"
-          px={2}
-          objectFit="contain"
-          borderRadius={borderRadius}
-        />
-      );
-    }
+    return (
+      <Image
+        src={imageSrc}
+        alt="Uploaded image"
+        px={2}
+        width="100%"
+        height="100%"
+        objectFit="contain"
+      />
+    );
   };
 
   return (
