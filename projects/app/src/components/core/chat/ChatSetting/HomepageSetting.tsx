@@ -310,7 +310,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
             </Box>
 
             {/* COPYRIGHT */}
-            {feConfigs.showChatCopyrightSetting && (
+            {feConfigs.hideChatCopyrightSetting && (
               <>
                 <Flex fontWeight={'500'} alignItems="center" gap={2}>
                   <Flex

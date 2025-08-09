@@ -463,7 +463,6 @@ const SliderApps = ({ apps, activeAppId }: Props) => {
   const [imageLoaded, setImageLoaded] = useState(false);
 
   const isLoggedIn = !!userInfo;
-  const isTeamChat = router.pathname === '/chat/team';
   const { avatar, username } = userInfo as NonNullable<typeof userInfo>;
   const isProVersion = !!feConfigs.isPlus;
   const isEnterprisePlan =
@@ -548,61 +547,59 @@ const SliderApps = ({ apps, activeAppId }: Props) => {
         <Box flex="1" display="flex" flexDirection="column" overflow="hidden">
           <MyDivider h={1} my={1} mx="16px" w="calc(100% - 32px)" />
 
-          {!isTeamChat && (
-            <HStack
-              px={3}
-              my={2}
-              color={'myGray.500'}
-              fontSize={'sm'}
-              justifyContent={'space-between'}
+          <HStack
+            px={3}
+            my={2}
+            color={'myGray.500'}
+            fontSize={'sm'}
+            justifyContent={'space-between'}
+          >
+            <Box
+              whiteSpace={'nowrap'}
+              overflow={'hidden'}
+              textOverflow={'ellipsis'}
+              pl={2}
+              flexGrow={1}
             >
-              <Box
-                whiteSpace={'nowrap'}
-                overflow={'hidden'}
-                textOverflow={'ellipsis'}
-                pl={2}
-                flexGrow={1}
-              >
-                {t('common:core.chat.Recent use')}
-              </Box>
-              <MyPopover
-                placement="bottom-end"
-                offset={[20, 10]}
-                p={4}
-                trigger="hover"
-                Trigger={
-                  <HStack
-                    spacing={0.5}
-                    cursor={'pointer'}
-                    px={2}
-                    py={'0.5'}
-                    borderRadius={'md'}
-                    mr={-2}
-                    userSelect={'none'}
-                    _hover={{ bg: 'myGray.200' }}
-                  >
-                    <Box>{t('common:More')}</Box>
-                    <MyIcon name={'common/select'} w={'1rem'} />
-                  </HStack>
-                }
-              >
-                {({ onClose }) => (
-                  <Box minH={'200px'}>
-                    <SelectOneResource
-                      maxH={'60vh'}
-                      value={activeAppId}
-                      onSelect={(item) => {
-                        if (!item) return;
-                        handleSelectRecentlyUsedApp(item.id);
-                        onClose();
-                      }}
-                      server={getAppList}
-                    />
-                  </Box>
-                )}
-              </MyPopover>
-            </HStack>
-          )}
+              {t('common:core.chat.Recent use')}
+            </Box>
+            <MyPopover
+              placement="bottom-end"
+              offset={[20, 10]}
+              p={4}
+              trigger="hover"
+              Trigger={
+                <HStack
+                  spacing={0.5}
+                  cursor={'pointer'}
+                  px={2}
+                  py={'0.5'}
+                  borderRadius={'md'}
+                  mr={-2}
+                  userSelect={'none'}
+                  _hover={{ bg: 'myGray.200' }}
+                >
+                  <Box>{t('common:More')}</Box>
+                  <MyIcon name={'common/select'} w={'1rem'} />
+                </HStack>
+              }
+            >
+              {({ onClose }) => (
+                <Box minH={'200px'}>
+                  <SelectOneResource
+                    maxH={'60vh'}
+                    value={activeAppId}
+                    onSelect={(item) => {
+                      if (!item) return;
+                      handleSelectRecentlyUsedApp(item.id);
+                      onClose();
+                    }}
+                    server={getAppList}
+                  />
+                </Box>
+              )}
+            </MyPopover>
+          </HStack>
 
           <MyBox flex={'1'} overflow={'overlay'} px={4} position={'relative'}>
             {apps.map((item) => (

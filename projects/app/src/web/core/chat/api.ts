@@ -113,7 +113,7 @@ export const getCollectionQuote = (data: GetCollectionQuoteProps) =>
 
 /*---------- chat setting ------------*/
 export const getChatSetting = () => {
-  return GET<ChatSettingSchema>('/proApi/core/chat/getChatSetting');
+  return GET<ChatSettingSchema>('/proApi/core/chat/setting/detail');
 };
 
 export const updateChatSetting = (data: ChatSettingUpdateParams) => {
