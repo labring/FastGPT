@@ -4,7 +4,7 @@ import { parseHeaderCert } from '../controller';
 import { getFileById } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { OwnerPermissionVal, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { OwnerPermissionVal, ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 
 export const authCollectionFile = async ({
@@ -32,7 +32,7 @@ export const authCollectionFile = async ({
   }
 
   const permission = new Permission({
-    per: ReadPermissionVal,
+    role: ReadRoleVal,
     isOwner: file.metadata?.uid === tmbId || file.metadata?.tmbId === tmbId
   });
 

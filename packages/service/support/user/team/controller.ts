@@ -11,7 +11,7 @@ import { type UpdateTeamProps } from '@fastgpt/global/support/user/team/controll
 import { getResourcePermission } from '../../permission/controller';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
-import { TeamDefaultPermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { TeamDefaultRoleVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoMemberGroupModel } from '../../permission/memberGroup/memberGroupSchema';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
@@ -25,11 +25,12 @@ async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemTyp
     return Promise.reject('member not exist');
   }
 
-  const Per = await getResourcePermission({
-    resourceType: PerResourceTypeEnum.team,
-    teamId: tmb.teamId,
-    tmbId: tmb._id
-  });
+  const role =
+    (await getResourcePermission({
+      resourceType: PerResourceTypeEnum.team,
+      teamId: tmb.teamId,
+      tmbId: tmb._id
+    })) ?? TeamDefaultRoleVal;
 
   return {
     userId: String(tmb.userId),
@@ -44,7 +45,7 @@ async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemTyp
     role: tmb.role,
     status: tmb.status,
     permission: new TeamPermission({
-      per: Per ?? TeamDefaultPermissionVal,
+      role,
       isOwner: tmb.role === TeamMemberRoleEnum.owner
     }),
     notificationAccount: tmb.team.notificationAccount,

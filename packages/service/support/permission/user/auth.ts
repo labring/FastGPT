@@ -3,7 +3,7 @@ import { parseHeaderCert } from '../controller';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { type AuthModeType, type AuthResponseType } from '../type';
-import { NullPermission } from '@fastgpt/global/support/permission/constant';
+import { NullPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import { authCert } from '../auth/common';
 import { MongoUser } from '../../user/schema';
@@ -28,7 +28,7 @@ export async function authUserPer(props: AuthModeType): Promise<
       tmb
     };
   }
-  if (!tmb.permission.checkPer(props.per ?? NullPermission)) {
+  if (!tmb.permission.checkPer(props.per ?? NullPermissionVal)) {
     return Promise.reject(TeamErrEnum.unAuthTeam);
   }
 

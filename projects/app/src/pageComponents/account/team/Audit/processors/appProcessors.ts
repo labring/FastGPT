@@ -1,8 +1,8 @@
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 
 export const processUpdateAppCollaboratorSpecific = (metadata: any) => {
-  const permissionValue = parseInt(metadata.permission, 10);
-  const permission = new AppPermission({ per: permissionValue });
+  const role = parseInt(metadata.permission, 10);
+  const permission = new AppPermission({ role });
   return {
     ...metadata,
     readPermission: permission.hasReadPer ? '✔' : '✘',

@@ -18,7 +18,7 @@ import { type EditFolderFormType } from '@fastgpt/web/components/common/MyModal/
 import dynamic from 'next/dynamic';
 import { postCreateDatasetFolder, resumeInheritPer } from '@/web/core/dataset/api';
 import FolderSlideCard from '@/components/common/folder/SlideCard';
-import { DatasetPermissionList } from '@fastgpt/global/support/permission/dataset/constant';
+import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
 import {
   postUpdateDatasetCollaborators,
   deleteDatasetCollaborators,
@@ -256,7 +256,7 @@ const Dataset = () => {
               managePer={{
                 permission: folderDetail.permission,
                 onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
-                permissionList: DatasetPermissionList,
+                roleList: DatasetRoleList,
                 onUpdateCollaborators: (params) =>
                   postUpdateDatasetCollaborators({
                     ...params,

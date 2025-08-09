@@ -20,7 +20,7 @@ import {
 } from '@chakra-ui/react';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import type { AppSchema } from '@fastgpt/global/core/app/type.d';
-import { AppPermissionList } from '@fastgpt/global/support/permission/app/constant';
+import { AppRoleList } from '@fastgpt/global/support/permission/app/constant';
 import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -187,7 +187,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
               <CollaboratorContextProvider
                 permission={appDetail.permission}
                 onGetCollaboratorList={() => getCollaboratorList(appDetail._id)}
-                permissionList={AppPermissionList}
+                roleList={AppRoleList}
                 onUpdateCollaborators={async (props) =>
                   onUpdateCollaborators({
                     permission: props.permission,

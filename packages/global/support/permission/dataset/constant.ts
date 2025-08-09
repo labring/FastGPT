@@ -1,21 +1,30 @@
 import { i18nT } from '../../../../web/i18n/utils';
-import { NullPermission, PermissionKeyEnum, PermissionList } from '../constant';
+import {
+  NullRoleVal,
+  CommonPerKeyEnum,
+  CommonRoleList,
+  CommonRolePerMap,
+  CommonPerList
+} from '../constant';
+import type { RolePerMapType } from '../type';
 
-export enum DatasetPermissionKeyEnum {}
-
-export const DatasetPermissionList = {
-  [PermissionKeyEnum.read]: {
-    ...PermissionList[PermissionKeyEnum.read],
+export const DatasetRoleList = {
+  [CommonPerKeyEnum.read]: {
+    ...CommonRoleList[CommonPerKeyEnum.read],
     description: i18nT('dataset:permission.des.read')
   },
-  [PermissionKeyEnum.write]: {
-    ...PermissionList[PermissionKeyEnum.write],
+  [CommonPerKeyEnum.write]: {
+    ...CommonRoleList[CommonPerKeyEnum.write],
     description: i18nT('dataset:permission.des.write')
   },
-  [PermissionKeyEnum.manage]: {
-    ...PermissionList[PermissionKeyEnum.manage],
+  [CommonPerKeyEnum.manage]: {
+    ...CommonRoleList[CommonPerKeyEnum.manage],
     description: i18nT('dataset:permission.des.manage')
   }
 };
 
-export const DatasetDefaultPermissionVal = NullPermission;
+export const DatasetRolePerMap: RolePerMapType = CommonRolePerMap;
+
+export const DatasetPerList = CommonPerList;
+
+export const DataSetDefaultRoleVal = NullRoleVal;

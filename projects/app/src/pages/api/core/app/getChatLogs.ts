@@ -7,7 +7,6 @@ import type { GetAppChatLogsParams } from '@/global/core/api/appReq.d';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ChatItemCollectionName } from '@fastgpt/service/core/chat/chatItemSchema';
 import { NextAPI } from '@/service/middleware/entry';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { type PaginationResponse } from '@fastgpt/web/common/fetch/type';
@@ -16,6 +15,7 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 
 async function handler(
   req: NextApiRequest,
@@ -41,7 +41,7 @@ async function handler(
     req,
     authToken: true,
     appId,
-    per: WritePermissionVal
+    per: AppReadChatLogPerVal
   });
 
   const where = {

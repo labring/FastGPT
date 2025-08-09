@@ -143,6 +143,8 @@
   "permission.des.manage": "在寫入權限基礎上，可以設定發布通道、檢視對話紀錄、分配這個應用程式的權限",
   "permission.des.read": "可以使用這個應用程式進行對話",
   "permission.des.write": "可以檢視和編輯應用程式",
+  "permission.des.readChatLog": "可以檢視對話紀錄",
+  "permission.name.readChatLog": "檢視對話紀錄",
   "plugin.Instructions": "使用說明",
   "plugin_cost_by_token": "根據 token 消耗計費",
   "plugin_cost_per_times": "{{cost}} 積分／次",

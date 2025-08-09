@@ -17,7 +17,7 @@ import FolderPath from '@/components/common/folder/Path';
 import { useRouter } from 'next/router';
 import FolderSlideCard from '@/components/common/folder/SlideCard';
 import { delAppById, resumeInheritPer } from '@/web/core/app/api';
-import { AppPermissionList } from '@fastgpt/global/support/permission/app/constant';
+import { AppRoleList } from '@fastgpt/global/support/permission/app/constant';
 import {
   deleteAppCollaborators,
   getCollaboratorList,
@@ -282,7 +282,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               managePer={{
                 permission: folderDetail.permission,
                 onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
-                permissionList: AppPermissionList,
+                roleList: AppRoleList,
                 onUpdateCollaborators: (props) =>
                   postUpdateAppCollaborators({
                     ...props,

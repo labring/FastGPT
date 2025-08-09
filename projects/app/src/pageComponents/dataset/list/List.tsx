@@ -17,7 +17,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetsContext } from '../../../pages/dataset/list/context';
-import { DatasetPermissionList } from '@fastgpt/global/support/permission/dataset/constant';
+import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
 import ConfigPerModal from '@/components/support/permission/ConfigPerModal';
 import {
   deleteDatasetCollaborators,
@@ -436,7 +436,7 @@ function List() {
           managePer={{
             permission: editPerDataset.permission,
             onGetCollaboratorList: () => getCollaboratorList(editPerDataset._id),
-            permissionList: DatasetPermissionList,
+            roleList: DatasetRoleList,
             onUpdateCollaborators: (props) =>
               postUpdateDatasetCollaborators({
                 ...props,

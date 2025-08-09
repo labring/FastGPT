@@ -143,6 +143,8 @@
   "permission.des.manage": "写权限基础上，可配置发布渠道、查看对话日志、分配该应用权限",
   "permission.des.read": "可使用该应用进行对话",
   "permission.des.write": "可查看和编辑应用",
+  "permission.des.readChatLog": "可查看对话日志",
+  "permission.name.readChatLog": "查看对话日志",
   "plugin.Instructions": "使用说明",
   "plugin_cost_by_token": "依据 token 消耗计费",
   "plugin_cost_per_times": "{{cost}} 积分/次",

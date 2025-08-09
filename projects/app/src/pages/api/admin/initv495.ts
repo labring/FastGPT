@@ -22,15 +22,15 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
   });
 
   for await (const rp of rps) {
-    const per = new TeamPermission({ per: rp.permission });
-    console.log(per.hasWritePer, per.value);
-    if (per.hasWritePer) {
-      const newPer = per.addPer(
-        TeamAppCreatePermissionVal,
-        TeamDatasetCreatePermissionVal,
-        TeamApikeyCreatePermissionVal
-      );
-      rp.permission = newPer.value;
+    const per = rp.permission;
+    console.log(per);
+    if (per & 0b010) {
+      // has 0b010
+      rp.permission =
+        per |
+        TeamAppCreatePermissionVal |
+        TeamDatasetCreatePermissionVal |
+        TeamApikeyCreatePermissionVal;
 
       try {
         await retryFn(async () => {

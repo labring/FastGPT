@@ -143,6 +143,8 @@
   "permission.des.manage": "Based on write permissions, you can configure publishing channels, view conversation logs, and assign permissions to the application.",
   "permission.des.read": "Use the app to have conversations",
   "permission.des.write": "Can view and edit apps",
+  "permission.des.readChatLog": "Can view chat logs",
+  "permission.name.readChatLog": "View chat logs",
   "plugin.Instructions": "Instructions",
   "plugin_cost_by_token": "Charged based on token usage",
   "plugin_cost_per_times": "{{cost}} points/time",

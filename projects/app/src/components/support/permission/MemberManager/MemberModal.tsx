@@ -27,7 +27,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { CollaboratorContext } from './context';
 import MemberItemCard from './MemberItemCard';
-import PermissionSelect from './PermissionSelect';
+import RoleSelect from './RoleSelect';
 
 const HoverBoxStyle = {
   bgColor: 'myGray.50',
@@ -98,15 +98,13 @@ function MemberModal({
   >([]);
 
   const [selectedGroupList, setSelectedGroupList] = useState<MemberGroupListItemType<false>[]>([]);
-  const permissionList = useContextSelector(CollaboratorContext, (v) => v.permissionList);
-  const getPerLabelList = useContextSelector(CollaboratorContext, (v) => v.getPerLabelList);
-  const [selectedPermission, setSelectedPermission] = useState<number | undefined>(
-    permissionList?.read?.value
-  );
-  const perLabel = useMemo(() => {
-    if (selectedPermission === undefined) return '';
-    return getPerLabelList(selectedPermission!).join('、');
-  }, [getPerLabelList, selectedPermission]);
+  const roleList = useContextSelector(CollaboratorContext, (v) => v.roleList);
+  const getRoleLabelList = useContextSelector(CollaboratorContext, (v) => v.getRoleLabelList);
+  const [selectedRole, setSelectedRole] = useState<number | undefined>(roleList?.read?.value);
+  const roleLabel = useMemo(() => {
+    if (selectedRole === undefined) return '';
+    return getRoleLabelList(selectedRole!).join('、');
+  }, [getRoleLabelList, selectedRole]);
 
   const onUpdateCollaborators = useContextSelector(
     CollaboratorContext,
@@ -119,7 +117,7 @@ function MemberModal({
         members: selectedMemberList.map((item) => item.tmbId),
         groups: selectedGroupList.map((item) => item._id),
         orgs: selectedOrgList.map((item) => item._id),
-        permission: addOnly ? undefined : selectedPermission!
+        permission: addOnly ? undefined : selectedRole!
       } as UpdateClbPermissionProps<ValueOf<typeof addOnly>>),
     {
       successToast: t('common:add_success'),
@@ -277,7 +275,7 @@ function MemberModal({
                         avatar={member.avatar}
                         key={member.tmbId}
                         name={member.memberName}
-                        permission={collaborator?.permission.value}
+                        role={collaborator?.permission.role}
                         onChange={onChange}
                         isChecked={!!selectedMemberList.find((v) => v.tmbId === member.tmbId)}
                         orgs={member.orgs}
@@ -316,7 +314,7 @@ function MemberModal({
                         name={org.name}
                         onChange={onChange}
                         addOnly={addOnly}
-                        permission={collaborator?.permission.value}
+                        role={collaborator?.permission.role}
                         isChecked={!!selectedOrgList.find((v) => String(v._id) === String(org._id))}
                         rightSlot={
                           org.total && (
@@ -365,8 +363,8 @@ function MemberModal({
                               });
                             }}
                             isChecked={isChecked}
-                            permission={collaborator?.permission.value}
-                            addOnly={addOnly && !!member.permission.value}
+                            role={collaborator?.permission.role}
+                            addOnly={addOnly && !!member.permission.role}
                             orgs={member.orgs}
                           />
                         );
@@ -392,7 +390,7 @@ function MemberModal({
                       name={
                         group.name === DefaultGroupName ? userInfo?.team.teamName ?? '' : group.name
                       }
-                      permission={collaborator?.permission.value}
+                      role={collaborator?.permission.role}
                       onChange={onChange}
                       isChecked={!!selectedGroupList.find((v) => v._id === group._id)}
                       addOnly={addOnly}
@@ -425,9 +423,9 @@ function MemberModal({
         </Grid>
       </ModalBody>
       <ModalFooter>
-        {!addOnly && !!permissionList && (
-          <PermissionSelect
-            value={selectedPermission}
+        {!addOnly && !!roleList && (
+          <RoleSelect
+            value={selectedRole}
             Button={
               <Flex
                 alignItems={'center'}
@@ -438,11 +436,11 @@ function MemberModal({
                 borderRadius={'md'}
                 h={'32px'}
               >
-                {t(perLabel as any)}
+                {roleLabel}
                 <ChevronDownIcon fontSize={'md'} />
               </Flex>
             }
-            onChange={(v) => setSelectedPermission(v)}
+            onChange={(v) => setSelectedRole(v)}
           />
         )}
         {addOnly && (

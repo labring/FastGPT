@@ -16,17 +16,17 @@ export const filterDatasetsByTmbId = async ({
   // First get all permissions
   const permissions = await Promise.all(
     datasetIds.map(async (datasetId) => {
-      const per = await getResourcePermission({
+      const role = await getResourcePermission({
         teamId,
         tmbId,
         resourceId: datasetId,
         resourceType: PerResourceTypeEnum.dataset
       });
 
-      if (per === undefined) return false;
+      if (role === undefined) return false;
 
       const datasetPer = new DatasetPermission({
-        per,
+        role,
         isOwner: tmbPer.isOwner
       });
 

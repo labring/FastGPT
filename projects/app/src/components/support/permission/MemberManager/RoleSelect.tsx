@@ -7,11 +7,12 @@ import {
   Radio,
   useOutsideClick,
   HStack,
-  MenuButton
+  MenuButton,
+  Checkbox
 } from '@chakra-ui/react';
 import React, { useMemo, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
+import type { RoleValueType } from '@fastgpt/global/support/permission/type';
 import { useContextSelector } from 'use-context-selector';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 import { CollaboratorContext } from './context';
@@ -19,8 +20,8 @@ import { useTranslation } from 'next-i18next';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 
 export type PermissionSelectProps = {
-  value?: PermissionValueType;
-  onChange: (value: PermissionValueType) => void;
+  value?: RoleValueType;
+  onChange: (value: RoleValueType) => void;
   trigger?: 'hover' | 'click';
   offset?: [number, number];
   Button: React.ReactNode;
@@ -39,8 +40,8 @@ const MenuStyle = {
   fontSize: 'sm'
 };
 
-function PermissionSelect({
-  value,
+function RoleSelect({
+  value: role,
   onChange,
   trigger = 'click',
   offset = [0, 5],
@@ -49,15 +50,18 @@ function PermissionSelect({
   onDelete
 }: PermissionSelectProps) {
   const { t } = useTranslation();
-  const ref = useRef<HTMLButtonElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<NodeJS.Timeout>();
 
-  const { permission, permissionList } = useContextSelector(CollaboratorContext, (v) => v);
+  const { permission, roleList: permissionList } = useContextSelector(
+    CollaboratorContext,
+    (v) => v
+  );
 
   const [isOpen, setIsOpen] = useState(false);
 
-  const permissionSelectList = useMemo(() => {
-    if (!permissionList) return { singleCheckBoxList: [], multipleCheckBoxList: [] };
+  const roleOptions = useMemo(() => {
+    if (!permissionList) return { singleOptions: [], checkboxList: [] };
 
     const list = Object.entries(permissionList).map(([_, value]) => {
       return {
@@ -69,44 +73,42 @@ function PermissionSelect({
     });
 
     return {
-      singleCheckBoxList: list
-        .filter((item) => item.checkBoxType === 'single')
-        .filter((item) => {
-          if (permission.isOwner) return true;
-          if (item.value === permissionList['manage'].value) return false;
-          return true;
-        }),
-      multipleCheckBoxList: list.filter((item) => item.checkBoxType === 'multiple')
+      singleOptions: list.filter(
+        (item) =>
+          item.checkBoxType === 'single' &&
+          (permission.isOwner || item.value !== permissionList['manage'].value)
+      ),
+      checkboxList: list.filter((item) => item.checkBoxType === 'multiple')
     };
   }, [permission.isOwner, permissionList]);
   const selectedSingleValue = useMemo(() => {
     if (!permissionList) return undefined;
 
-    const per = new Permission({ per: value });
+    const per = new Permission({ role });
 
     if (per.hasManagePer) return permissionList['manage'].value;
     if (per.hasWritePer) return permissionList['write'].value;
 
     return permissionList['read'].value;
-  }, [permissionList, value]);
-  // const selectedMultipleValues = useMemo(() => {
-  //   const per = new Permission({ per: value });
-  //
-  //   return permissionSelectList.multipleCheckBoxList
-  //     .filter((item) => {
-  //       return per.checkPer(item.value);
-  //     })
-  //     .map((item) => item.value);
-  // }, [permissionSelectList.multipleCheckBoxList, value]);
+  }, [permissionList, role]);
+  const selectedMultipleValues = useMemo(() => {
+    const per = new Permission({ role });
 
-  const onSelectPer = (per: PermissionValueType) => {
-    if (per === value) return;
-    onChange(per);
-    setIsOpen(false);
+    return roleOptions.checkboxList
+      .filter((item) => {
+        return per.checkRole(item.value);
+      })
+      .map((item) => item.value);
+  }, [role, roleOptions.checkboxList]);
+
+  const onSelectRole = (newRole: RoleValueType) => {
+    if (newRole === role) return;
+    onChange(newRole);
+    // setIsOpen(false);
   };
 
   useOutsideClick({
-    ref: ref,
+    ref,
     handler: () => {
       setIsOpen(false);
     }
@@ -115,6 +117,7 @@ function PermissionSelect({
   return selectedSingleValue !== undefined ? (
     <Menu offset={offset} isOpen={isOpen} autoSelect={false} direction={'ltr'}>
       <Box
+        ref={ref}
         w="fit-content"
         onMouseEnter={() => {
           if (trigger === 'hover') {
@@ -131,7 +134,6 @@ function PermissionSelect({
         }}
       >
         <MenuButton
-          ref={ref}
           position={'relative'}
           onClickCapture={() => {
             if (trigger === 'click') {
@@ -153,12 +155,12 @@ function PermissionSelect({
           whiteSpace={'pre-wrap'}
         >
           {/* The list of single select permissions */}
-          {permissionSelectList.singleCheckBoxList.map((item) => {
+          {roleOptions.singleOptions.map((item) => {
             const change = () => {
-              const per = new Permission({ per: value });
-              per.removePer(selectedSingleValue);
-              per.addPer(item.value);
-              onSelectPer(per.value);
+              const per = new Permission({ role });
+              per.removeRole(selectedSingleValue);
+              per.addRole(item.value);
+              onSelectRole(per.role);
             };
 
             return (
@@ -184,50 +186,45 @@ function PermissionSelect({
             );
           })}
 
-          {/* <MyDivider my={3} />
+          <MyDivider />
 
-          {multipleValues.length > 0 && <Box m="4">其他权限（多选）</Box>} */}
+          {roleOptions.checkboxList.length > 0 && (
+            <Box pb="2" px="3" fontSize={'sm'} color={'myGray.900'}>
+              {t('common:permission_other')}
+            </Box>
+          )}
 
-          {/* The list of multiple select permissions */}
-          {/* {list
-            .filter((item) => item.type === 'multiple')
-            .map((item) => {
-              const change = () => {
-                if (checkPermission(valueState, item.value)) {
-                  setValueState(new Permission(valueState).remove(item.value).value);
-                } else {
-                  setValueState(new Permission(valueState).add(item.value).value);
-                }
-              };
-              return (
-                <Flex
-                  key={item.value}
-                  {...(checkPermission(valueState, item.value)
-                    ? {
-                        color: 'primary.500',
-                        bg: 'myWhite.300'
-                      }
-                    : {})}
-                  whiteSpace="pre-wrap"
-                  flexDirection="row"
-                  justifyContent="start"
-                  p="2"
-                  _hover={{
-                    bg: 'myGray.50'
-                  }}
-                >
-                  <Checkbox
-                    size="lg"
-                    isChecked={checkPermission(valueState, item.value)}
-                    onChange={change}
-                  />
-                  <Flex px="4" flexDirection="column" onClick={change}>
-                    <Box fontWeight="500">{item.name}</Box>
-                    <Box fontWeight="400">{item.description}</Box>
-                  </Flex>
+          {roleOptions.checkboxList.map((item) => {
+            const change = () => {
+              const per = new Permission({ role });
+              if (per.checkRole(item.value)) {
+                per.removeRole(item.value);
+              } else {
+                per.addRole(item.value);
+              }
+              onSelectRole(per.role);
+            };
+            const isChecked = selectedMultipleValues.includes(item.value);
+            return (
+              <Flex
+                key={item.value}
+                {...(isChecked
+                  ? {
+                      color: 'primary.600'
+                    }
+                  : {})}
+                {...MenuStyle}
+              >
+                <Checkbox size="lg" isChecked={isChecked} onChange={change} />
+                <Flex px="4" flexDirection="column" onClick={change}>
+                  <Box>{t(item.name as any)}</Box>
+                  <Box color={'myGray.500'} fontSize={'mini'}>
+                    {t(item.description as any)}
+                  </Box>
                 </Flex>
-              );
-            })}*/}
+              </Flex>
+            );
+          })}
           {onDelete && (
             <>
               <MyDivider my={2} h={'2px'} borderColor={'myGray.200'} />
@@ -235,7 +232,7 @@ function PermissionSelect({
                 {...MenuStyle}
                 onClick={() => {
                   onDelete();
-                  setIsOpen(false);
+                  // setIsOpen(false);
                 }}
               >
                 <MyIcon name="delete" w="20px" color="red.600" />
@@ -249,4 +246,4 @@ function PermissionSelect({
   ) : null;
 }
 
-export default React.memo(PermissionSelect);
+export default React.memo(RoleSelect);
