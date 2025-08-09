@@ -20,6 +20,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoApp } from '../../../core/app/schema';
 import { getMCPChildren } from '../../../core/app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -161,10 +162,12 @@ export const formatHttpError = (error: any) => {
  */
 export const rewriteRuntimeWorkFlow = async ({
   nodes,
-  edges
+  edges,
+  lang
 }: {
   nodes: RuntimeNodeItemType[];
   edges: RuntimeEdgeItemType[];
+  lang?: localeType;
 }) => {
   const toolSetNodes = nodes.filter((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
 
@@ -195,7 +198,8 @@ export const rewriteRuntimeWorkFlow = async ({
     // systemTool
     if (systemToolId) {
       const children = await getSystemToolRunTimeNodeFromSystemToolset({
-        toolSetNode
+        toolSetNode,
+        lang
       });
       children.forEach((node) => {
         nodes.push(node);

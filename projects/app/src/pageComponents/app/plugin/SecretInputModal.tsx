@@ -32,15 +32,16 @@ export type ToolParamsFormType = {
 };
 
 const SecretInputModal = ({
+  parentId,
   hasSystemSecret,
   secretCost = 0,
   isFolder,
   inputConfig,
   courseUrl,
   onClose,
-  onSubmit,
-  parentId
+  onSubmit
 }: {
+  parentId?: string;
   isFolder?: boolean;
   inputConfig: FlowNodeInputItemType;
   hasSystemSecret?: boolean;
@@ -48,7 +49,6 @@ const SecretInputModal = ({
   courseUrl?: string;
   onClose: () => void;
   onSubmit: (data: ToolParamsFormType) => void;
-  parentId?: string;
 }) => {
   const { t } = useTranslation();
   const [editIndex, setEditIndex] = useState<number>();
@@ -78,25 +78,22 @@ const SecretInputModal = ({
     });
   const configType = watch('type');
 
-  const { data: childTools = [], loading: isLoadingChildTools } = useRequest2<
-    NodeTemplateListItemType[],
-    []
-  >(
+  const { data: childTools = [] } = useRequest2<NodeTemplateListItemType[], []>(
     async () => {
       if (!isFolder) return [];
       return getSystemPlugTemplates({ parentId });
     },
     {
       manual: false,
-      refreshDeps: [isFolder, isSystemCostOpen, parentId]
+      refreshDeps: [isFolder, parentId]
     }
   );
 
   const hasCost = useMemo(() => {
     if (isFolder) {
-      return (childTools || [])?.some((item) => (item.systemKeyCost || 0) > 0);
+      return childTools.some((item) => (item.systemKeyCost || 0) > 0);
     }
-    return (secretCost || 0) > 0;
+    return secretCost > 0;
   }, [isFolder, childTools, secretCost]);
 
   return (
@@ -125,75 +122,53 @@ const SecretInputModal = ({
                       desc: t('app:tool_active_system_config_desc'),
                       value: SystemToolInputTypeEnum.system,
                       children:
-                        configType === SystemToolInputTypeEnum.system
-                          ? (() => {
-                              if (!hasCost) return null;
-
-                              return (
-                                <Box>
-                                  {isFolder ? (
-                                    <>
-                                      <Flex
-                                        alignItems={'center'}
-                                        cursor={'pointer'}
-                                        onClick={onToggleSystemCost}
-                                        _hover={{ color: 'primary.600' }}
-                                        mb={isSystemCostOpen ? 2 : 0}
-                                      >
-                                        <MyIcon
-                                          name={'common/info'}
-                                          w={'1.1rem'}
-                                          color={'primary.600'}
-                                        />
-                                        <Box fontSize={'sm'} ml={2}>
-                                          {t('app:tool_active_system_config_price_desc_folder')}
-                                        </Box>
-                                        <MyIcon
-                                          name={
-                                            isSystemCostOpen
-                                              ? 'core/chat/chevronUp'
-                                              : 'core/chat/chevronDown'
-                                          }
-                                          w={'1rem'}
-                                          ml={'auto'}
-                                          color={'myGray.500'}
-                                        />
-                                      </Flex>
-                                      {isSystemCostOpen && (
-                                        <Box fontSize={'sm'} pl={6}>
-                                          {isLoadingChildTools ? (
-                                            <Box fontSize={'sm'}>Loading...</Box>
-                                          ) : childTools.length > 0 ? (
-                                            <Box>
-                                              {childTools.map((tool) => (
-                                                <Box key={tool.id} fontSize={'sm'} mb={1}>
-                                                  {t(tool.name as any)}: {tool.systemKeyCost || 0}{' '}
-                                                  积分/次
-                                                </Box>
-                                              ))}
-                                            </Box>
-                                          ) : null}
-                                        </Box>
-                                      )}
-                                    </>
-                                  ) : (
-                                    <HStack>
-                                      <MyIcon
-                                        name={'common/info'}
-                                        w={'1.1rem'}
-                                        color={'primary.600'}
-                                      />
-                                      <Box fontSize={'sm'}>
-                                        {t('app:tool_active_system_config_price_desc', {
-                                          price: secretCost
-                                        })}
+                        configType === SystemToolInputTypeEnum.system && hasCost ? (
+                          <Box>
+                            {isFolder ? (
+                              <>
+                                <Flex
+                                  alignItems={'center'}
+                                  cursor={'pointer'}
+                                  onClick={onToggleSystemCost}
+                                  _hover={{ color: 'primary.600' }}
+                                >
+                                  <MyIcon name={'common/info'} w={'1.1rem'} color={'primary.600'} />
+                                  <Box fontSize={'sm'} ml={2}>
+                                    {t('app:tool_active_system_config_price_desc_folder')}
+                                  </Box>
+                                  <MyIcon
+                                    name={
+                                      isSystemCostOpen
+                                        ? 'core/chat/chevronUp'
+                                        : 'core/chat/chevronDown'
+                                    }
+                                    w={'1rem'}
+                                    ml={'auto'}
+                                    color={'myGray.500'}
+                                  />
+                                </Flex>
+                                {isSystemCostOpen && (
+                                  <Box fontSize={'sm'} pl={6} mt={2}>
+                                    {childTools.map((tool) => (
+                                      <Box key={tool.id} fontSize={'sm'} mb={1}>
+                                        {t(tool.name as any)}: {tool.systemKeyCost || 0} 积分/次
                                       </Box>
-                                    </HStack>
-                                  )}
+                                    ))}
+                                  </Box>
+                                )}
+                              </>
+                            ) : (
+                              <HStack>
+                                <MyIcon name={'common/info'} w={'1.1rem'} color={'primary.600'} />
+                                <Box fontSize={'sm'}>
+                                  {t('app:tool_active_system_config_price_desc', {
+                                    price: secretCost
+                                  })}
                                 </Box>
-                              );
-                            })()
-                          : null
+                              </HStack>
+                            )}
+                          </Box>
+                        ) : null
                     }
                   ]
                 : []),

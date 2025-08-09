@@ -299,11 +299,13 @@ export async function getChildAppPreviewNode({
               ? {
                   systemToolSet: {
                     toolId: app.id,
-                    toolList: children.map((item) => ({
-                      toolId: item.id,
-                      name: parseI18nString(item.name, lang),
-                      description: parseI18nString(item.intro, lang)
-                    }))
+                    toolList: children
+                      .filter((item) => item.isActive !== false)
+                      .map((item) => ({
+                        toolId: item.id,
+                        name: parseI18nString(item.name, lang),
+                        description: parseI18nString(item.intro, lang)
+                      }))
                   }
                 }
               : { systemTool: { toolId: app.id } })
@@ -515,28 +517,28 @@ export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> 
     const tools = await APIGetSystemToolList();
 
     // 从数据库里加载插件配置进行替换
-    const systemPluginsArray = await MongoSystemPlugin.find({}).lean();
-    const systemPlugins = new Map(systemPluginsArray.map((plugin) => [plugin.pluginId, plugin]));
+    const systemToolsArray = await MongoSystemPlugin.find({}).lean();
+    const systemTools = new Map(systemToolsArray.map((plugin) => [plugin.pluginId, plugin]));
 
-    tools.forEach((tool) => {
-      // 如果有插件的配置信息，则需要进行替换
-      const dbPluginConfig = systemPlugins.get(tool.id);
+    // tools.forEach((tool) => {
+    //   // 如果有插件的配置信息，则需要进行替换
+    //   const dbPluginConfig = systemTools.get(tool.id);
 
-      if (dbPluginConfig) {
-        const children = tools.filter((item) => item.parentId === tool.id);
-        const list = [tool, ...children];
-        list.forEach((item) => {
-          item.isActive = dbPluginConfig.isActive ?? item.isActive ?? true;
-          item.originCost = dbPluginConfig.originCost ?? 0;
-          item.currentCost = dbPluginConfig.currentCost ?? 0;
-          item.hasTokenFee = dbPluginConfig.hasTokenFee ?? false;
-          item.pluginOrder = dbPluginConfig.pluginOrder ?? 0;
-        });
-      }
-    });
+    //   if (dbPluginConfig) {
+    //     const children = tools.filter((item) => item.parentId === tool.id);
+    //     const list = [tool, ...children];
+    //     list.forEach((item) => {
+    //       item.isActive = dbPluginConfig.isActive ?? item.isActive ?? true;
+    //       item.originCost = dbPluginConfig.originCost ?? 0;
+    //       item.currentCost = dbPluginConfig.currentCost ?? 0;
+    //       item.hasTokenFee = dbPluginConfig.hasTokenFee ?? false;
+    //       item.pluginOrder = dbPluginConfig.pluginOrder ?? 0;
+    //     });
+    //   }
+    // });
 
     const formatTools = tools.map<SystemPluginTemplateItemType>((item) => {
-      const dbPluginConfig = systemPlugins.get(item.id);
+      const dbPluginConfig = systemTools.get(item.id);
       const isFolder = tools.some((tool) => tool.parentId === item.id);
 
       const versionList = (item.versionList as SystemPluginTemplateItemType['versionList']) || [];
@@ -558,16 +560,20 @@ export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> 
         versionList,
         templateType: item.templateType,
         showStatus: true,
-        isActive: item.isActive,
+        isActive: dbPluginConfig?.isActive ?? item.isActive ?? true,
         inputList: item?.secretInputConfig,
         hasSystemSecret: !!dbPluginConfig?.inputListVal,
+
+        originCost: dbPluginConfig?.originCost ?? 0,
         currentCost: dbPluginConfig?.currentCost ?? 0,
-        systemKeyCost: dbPluginConfig?.systemKeyCost ?? 0
+        systemKeyCost: dbPluginConfig?.systemKeyCost ?? 0,
+        hasTokenFee: dbPluginConfig?.hasTokenFee ?? false,
+        pluginOrder: dbPluginConfig?.pluginOrder
       };
     });
 
     // TODO: Check the app exists
-    const dbPlugins = systemPluginsArray
+    const dbPlugins = systemToolsArray
       .filter((item) => item.customConfig?.associatedPluginId)
       .map((item) => dbPluginFormat(item));
 

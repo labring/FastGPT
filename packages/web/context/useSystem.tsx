@@ -1,8 +1,7 @@
-import React, { type ReactNode, useMemo } from 'react';
+import React, { type ReactNode, useMemo, useEffect } from 'react';
 import { createContext } from 'use-context-selector';
 import { useMediaQuery } from '@chakra-ui/react';
 import Cookies from 'js-cookie';
-import { useEffect } from 'react';
 
 const CookieKey = 'NEXT_DEVICE_SIZE';
 const setSize = (value: string) => {
