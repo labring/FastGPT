@@ -55,9 +55,13 @@ const requestLLMPargraph = async ({
     };
   }
 
-  // Check is markdown text(Include 1 group of title)
   if (paragraphChunkAIMode === ParagraphChunkAIModeEnum.auto) {
-    const isMarkdown = /^(#+)\s/.test(rawText);
+    // Check if the text contains Markdown header structure
+    const hasMarkdownHeaders = /^(#+)\s/m.test(rawText);
+    const hasMultipleHeaders = (rawText.match(/^(#+)\s/g) || []).length > 1;
+
+    const isMarkdown = hasMarkdownHeaders && hasMultipleHeaders;
+
     if (isMarkdown) {
       return {
         resultText: rawText,
@@ -71,11 +75,15 @@ const requestLLMPargraph = async ({
     resultText: string;
     totalInputTokens: number;
     totalOutputTokens: number;
-  }>('/core/dataset/training/llmPargraph', {
-    rawText,
-    model,
-    billId
-  });
+  }>(
+    '/core/dataset/training/llmPargraph',
+    {
+      rawText,
+      model,
+      billId
+    },
+    { timeout: 600000 }
+  );
 
   return data;
 };
