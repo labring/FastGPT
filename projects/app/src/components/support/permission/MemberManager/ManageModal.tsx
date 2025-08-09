@@ -80,7 +80,7 @@ function ManageModal({ onClose }: ManageModalProps) {
                             Button={
                               <MyIcon name={'edit'} w={'16px'} _hover={{ color: 'primary.600' }} />
                             }
-                            role={item.permission.role}
+                            value={item.permission.role}
                             onChange={(permission) => {
                               onUpdate({
                                 members: item.tmbId ? [item.tmbId] : undefined,

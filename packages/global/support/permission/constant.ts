@@ -1,4 +1,4 @@
-import type { PermissionListType } from './type';
+import type { PermissionListType, PermissionValueType, RolePerMapType } from './type';
 import { type RoleListType } from './type';
 import { i18nT } from '../../../web/i18n/utils';
 import { sumPer } from './utils';
@@ -94,12 +94,15 @@ export const CommonRoleList: RoleListType = {
   }
 } as const;
 
-export const CommonRolePerMap = new Map([
+export const CommonRolePerMap: RolePerMapType = new Map([
   [CommonRoleList['read'].value, CommonPerList.read],
-  [CommonRoleList['write'].value, sumPer(CommonPerList.write, CommonPerList.read)],
+  [
+    CommonRoleList['write'].value,
+    sumPer(CommonPerList.write, CommonPerList.read) as PermissionValueType
+  ],
   [
     CommonRoleList['manage'].value,
-    sumPer(CommonPerList.manage, CommonPerList.write, CommonPerList.read)
+    sumPer(CommonPerList.manage, CommonPerList.write, CommonPerList.read) as PermissionValueType
   ]
 ]);
 

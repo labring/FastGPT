@@ -1,5 +1,10 @@
 import { CommonPerKeyEnum, CommonRolePerMap } from '../constant';
-import type { PermissionListType, RoleListType, RolePerMapType } from '../type';
+import type {
+  PermissionListType,
+  PermissionValueType,
+  RoleListType,
+  RolePerMapType
+} from '../type';
 import { CommonRoleList, CommonPerList } from '../constant';
 import { i18nT } from '../../../../web/i18n/utils';
 import { sumPer } from '../utils';
@@ -60,15 +65,19 @@ export const TeamRolePerMap: RolePerMapType = new Map([
   ...CommonRolePerMap,
   [
     TeamRoleList['appCreate'].value,
-    sumPer(TeamPerList.appCreate, CommonPerList.read, CommonPerList.write)
+    sumPer(TeamPerList.appCreate, CommonPerList.read, CommonPerList.write) as PermissionValueType
   ],
   [
     TeamRoleList['datasetCreate'].value,
-    sumPer(TeamPerList.datasetCreate, CommonPerList.read, CommonPerList.write)
+    sumPer(
+      TeamPerList.datasetCreate,
+      CommonPerList.read,
+      CommonPerList.write
+    ) as PermissionValueType
   ],
   [
     TeamRoleList['apikeyCreate'].value,
-    sumPer(TeamPerList.apikeyCreate, CommonPerList.read, CommonPerList.write)
+    sumPer(TeamPerList.apikeyCreate, CommonPerList.read, CommonPerList.write) as PermissionValueType
   ]
 ]);
 

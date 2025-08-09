@@ -427,7 +427,7 @@ function MemberModal({
       <ModalFooter>
         {!addOnly && !!permissionList && (
           <RoleSelect
-            role={selectedPermission}
+            value={selectedPermission}
             Button={
               <Flex
                 alignItems={'center'}

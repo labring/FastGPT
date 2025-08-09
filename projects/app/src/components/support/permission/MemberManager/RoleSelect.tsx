@@ -19,7 +19,7 @@ import { useTranslation } from 'next-i18next';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 
 export type PermissionSelectProps = {
-  role?: RoleValueType;
+  value?: RoleValueType;
   onChange: (value: RoleValueType) => void;
   trigger?: 'hover' | 'click';
   offset?: [number, number];
@@ -40,7 +40,7 @@ const MenuStyle = {
 };
 
 function RoleSelect({
-  role,
+  value: role,
   onChange,
   trigger = 'click',
   offset = [0, 5],
