@@ -9,7 +9,8 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import type { ChatSettingSchema } from '@fastgpt/global/core/chat/setting/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
-import { createContext, useCallback, useContext, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { createContext } from 'use-context-selector';
 
 type ChatSettingReturnType = ChatSettingSchema | undefined;
 
@@ -17,21 +18,26 @@ export type ChatSettingContextValue = {
   pane: ChatSidebarPaneEnum;
   handlePaneChange: (pane: ChatSidebarPaneEnum) => void;
   collapse: CollapseStatusType;
-  setCollapse: (collapse: CollapseStatusType) => void;
+  onTriggerCollapse: () => void;
   chatSettings: ChatSettingSchema | undefined;
   refreshChatSetting: () => Promise<ChatSettingReturnType>;
   logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'>;
 };
 
-const ChatSettingContext = createContext<ChatSettingContextValue | null>(null);
-
-export const useChatSettingContext = () => {
-  const context = useContext(ChatSettingContext);
-  if (!context) {
-    throw new Error('useChatSettingContext must be used within a ChatSettingContextProvider');
+export const ChatSettingContext = createContext<ChatSettingContextValue>({
+  pane: ChatSidebarPaneEnum.HOME,
+  handlePaneChange: () => {},
+  collapse: defaultCollapseStatus,
+  onTriggerCollapse: () => {},
+  chatSettings: undefined,
+  refreshChatSetting: function (): Promise<ChatSettingReturnType> {
+    throw new Error('Function not implemented.');
+  },
+  logos: {
+    wideLogoUrl: '',
+    squareLogoUrl: ''
   }
-  return context;
-};
+});
 
 export const ChatSettingContextProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
@@ -79,20 +85,26 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
     [setLastPane, chatSettings?.appId, appId, router]
   );
 
-  const logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'> = {
-    wideLogoUrl: chatSettings?.wideLogoUrl,
-    squareLogoUrl: chatSettings?.squareLogoUrl
-  };
+  const logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'> = useMemo(
+    () => ({
+      wideLogoUrl: chatSettings?.wideLogoUrl,
+      squareLogoUrl: chatSettings?.squareLogoUrl
+    }),
+    [chatSettings?.squareLogoUrl, chatSettings?.wideLogoUrl]
+  );
 
-  const value: ChatSettingContextValue = {
-    pane,
-    handlePaneChange,
-    collapse,
-    setCollapse,
-    chatSettings,
-    refreshChatSetting,
-    logos
-  };
+  const value: ChatSettingContextValue = useMemo(
+    () => ({
+      pane,
+      handlePaneChange,
+      collapse,
+      onTriggerCollapse: () => setCollapse(collapse === 0 ? 1 : 0),
+      chatSettings,
+      refreshChatSetting,
+      logos
+    }),
+    [pane, handlePaneChange, collapse, chatSettings, refreshChatSetting, logos]
+  );
 
   return <ChatSettingContext.Provider value={value}>{children}</ChatSettingContext.Provider>;
 };

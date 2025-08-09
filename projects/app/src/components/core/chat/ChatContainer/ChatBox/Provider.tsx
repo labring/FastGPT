@@ -31,6 +31,10 @@ export type ChatProviderProps = {
   outLinkAuthData?: OutLinkChatAuthProps;
 
   chatType: ChatTypeEnum;
+  InputLeftComponent?: React.ReactNode;
+  dialogTips?: string;
+  wideLogo?: string;
+  slogan?: string;
 };
 
 type useChatStoreType = ChatProviderProps & {
@@ -67,10 +71,6 @@ type useChatStoreType = ChatProviderProps & {
   appId: string;
   chatId: string;
   outLinkAuthData: OutLinkChatAuthProps;
-
-  wideLogo?: string;
-  slogan?: string;
-  dialogTips?: string;
 };
 
 export const ChatBoxContext = createContext<useChatStoreType>({

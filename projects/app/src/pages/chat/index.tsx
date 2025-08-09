@@ -21,10 +21,9 @@ import ChatSetting from '@/components/core/chat/ChatSetting';
 import { useChat } from '@/pageComponents/chat/useChat';
 import AppChatWindow from '@/components/core/chat/ChatWindow/AppChatWindow';
 import HomeChatWindow from '@/components/core/chat/ChatWindow/HomeChatWindow';
-import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import {
-  ChatSettingContextProvider,
-  useChatSettingContext
+  ChatSettingContext,
+  ChatSettingContextProvider
 } from '@/web/core/chat/context/chatSettingContext';
 
 const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
@@ -35,7 +34,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
-  const { collapse, pane } = useChatSettingContext();
+  const collapse = useContextSelector(ChatSettingContext, (v) => v.collapse);
+  const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
 
   return (
     <Flex h={'100%'}>
@@ -44,7 +44,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         <Box
           flexGrow={0}
           flexShrink={0}
-          w={collapse ? '72px' : '202px'}
+          w={collapse ? '72px' : '220px'}
           overflow={'hidden'}
           transition={'width 0.1s ease-in-out'}
         >

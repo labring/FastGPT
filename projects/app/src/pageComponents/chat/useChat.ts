@@ -9,10 +9,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 export const useChat = (appId: string) => {
-  const router = useRouter();
-  const { t } = useTranslation();
-  const { toast } = useToast();
-  const { lastChatAppId, setSource, setAppId } = useChatStore();
+  const { setSource, setAppId } = useChatStore();
   const { userInfo, initUserInfo } = useUserStore();
 
   const [isInitedUser, setIsInitedUser] = useState(false);
@@ -22,24 +19,7 @@ export const useChat = (appId: string) => {
     manual: false,
     errorToast: '',
     refreshDeps: [userInfo],
-    pollingInterval: 30000,
-    async onSuccess(apps) {
-      // if no appId and there are available apps, automatically jump to the first app
-      if (!appId && apps.length > 0) {
-        router.replace({
-          query: {
-            ...router.query,
-            appId: lastChatAppId || apps[0]._id
-          }
-        });
-      }
-      if (apps.length === 0) {
-        toast({
-          status: 'warning',
-          title: t('chat:no_invalid_app')
-        });
-      }
-    }
+    pollingInterval: 30000
   });
 
   // initialize user info

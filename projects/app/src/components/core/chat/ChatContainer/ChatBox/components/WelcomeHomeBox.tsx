@@ -1,4 +1,5 @@
 import { ChatBoxContext } from '@/components/core/chat/ChatContainer/ChatBox/Provider';
+import { DEFAULT_LOGO_BANNER_URL } from '@/pageComponents/chat/constants';
 import { Box, Flex, Image } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 
@@ -11,7 +12,8 @@ const WelcomeHomeBox = () => {
       <Image
         alt="fastgpt logo"
         maxW={['388px', '50%']}
-        src={wideLogo || '/imgs/fastgpt_banner.png'}
+        src={wideLogo || DEFAULT_LOGO_BANNER_URL}
+        fallbackSrc={DEFAULT_LOGO_BANNER_URL}
       />
       <Box color="myGray.500">{slogan}</Box>
     </Flex>

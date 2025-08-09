@@ -20,12 +20,12 @@ import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { streamFetch } from '@/web/common/api/fetch';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import { useMemoizedFn } from 'ahooks';
+import { useLocalStorageState, useMemoizedFn } from 'ahooks';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getInitChatInfo } from '@/web/core/chat/api';
@@ -34,21 +34,19 @@ import NextHead from '@/components/common/NextHead';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import type { ChatSettingSchema } from '@fastgpt/global/core/chat/setting/type';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
-import router from 'next/router';
 import { getPreviewPluginNode } from '@/web/core/app/api/plugin';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
-import { useChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 
 const HomeChatWindow = () => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
   const { userInfo } = useUserStore();
-  const { llmModelList } = useSystemStore();
+  const { llmModelList, defaultModels } = useSystemStore();
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
@@ -61,47 +59,37 @@ const HomeChatWindow = () => {
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
 
-  const { chatSettings } = useChatSettingContext();
+  const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
 
   const availableModels = useMemo(
     () => llmModelList.map((model) => ({ value: model.model, label: model.name })),
     [llmModelList]
   );
-  const [selectedModel, setSelectedModel] = useState<string>(availableModels[0]?.value || '');
+  const [selectedModel, setSelectedModel] = useLocalStorageState('chat_home_model', {
+    defaultValue: defaultModels.llm?.model
+  });
 
-  const [availableTools, setAvailableTools] = useState<ChatSettingSchema['selectedTools']>([]);
-  const [selectedToolIds, setSelectedToolIds] = useState<string[]>([]);
+  const availableTools = useMemo(
+    () => chatSettings?.selectedTools || [],
+    [chatSettings?.selectedTools]
+  );
+
+  const [selectedToolIds = [], setSelectedToolIds] = useLocalStorageState<string[]>(
+    'chat_home_tools',
+    {
+      defaultValue: []
+    }
+  );
   const selectedTools = useMemo(() => {
-    return availableTools.filter((tool) => selectedToolIds.includes(tool.pluginId || ''));
+    return availableTools.filter((tool) => selectedToolIds.includes(tool.pluginId));
   }, [availableTools, selectedToolIds]);
-
-  const loadChatSettings = useCallback(async () => {
-    try {
-      if (chatSettings?.selectedTools) {
-        setAvailableTools(chatSettings.selectedTools);
-      }
-    } catch (error) {
-      console.error('Failed to load chat settings:', error);
-    }
-  }, [chatSettings]);
-
+  // If selected ToolIds not in availableTools, Remove it
   useEffect(() => {
-    if (appId) {
-      loadChatSettings();
-    }
-  }, [appId, loadChatSettings]);
-
-  // 工具选择处理
-  const handleToolToggle = useCallback((toolId: string) => {
-    setSelectedToolIds((prev) =>
-      prev.includes(toolId) ? prev.filter((id) => id !== toolId) : [...prev, toolId]
+    if (availableTools.length === 0) return;
+    setSelectedToolIds(
+      selectedToolIds.filter((id) => availableTools.some((tool) => tool.pluginId === id))
     );
-  }, []);
-
-  // 模型选择处理
-  const handleModelChange = useCallback((model: string) => {
-    setSelectedModel(model);
-  }, []);
+  }, [availableTools, selectedToolIds, setSelectedToolIds]);
 
   // 初始化聊天数据
   const { loading } = useRequest2(
@@ -137,6 +125,10 @@ const HomeChatWindow = () => {
       responseChatItemId,
       generatingMessage
     }: StartChatFnProps) => {
+      if (!selectedModel) {
+        return Promise.reject('No model selected');
+      }
+
       const histories = messages.slice(-1);
 
       // 根据所选工具 ID 动态拉取节点，并填充默认输入
@@ -155,7 +147,6 @@ const HomeChatWindow = () => {
       const formData = getDefaultAppForm();
       formData.aiSettings.model = selectedModel;
       formData.selectedTools = tools;
-      const { nodes, edges, chatConfig } = form2AppWorkflow(formData, t);
 
       const { responseText } = await streamFetch({
         url: '/api/proApi/core/chat/chatHome',
@@ -166,9 +157,7 @@ const HomeChatWindow = () => {
           appId,
           appName: t('chat:home.chat_app', { name: 'FastGPT' }),
           chatId,
-          nodes,
-          edges,
-          chatConfig
+          ...form2AppWorkflow(formData, t)
         },
         onMessage: generatingMessage,
         abortCtrl: controller
@@ -187,7 +176,7 @@ const HomeChatWindow = () => {
   );
 
   // 自定义按钮组（模型选择和工具选择）
-  const customButtonGroup = useMemo(
+  const InputLeftComponent = useMemo(
     () => (
       <>
         {/* 模型选择 */}
@@ -195,69 +184,80 @@ const HomeChatWindow = () => {
           <AIModelSelector
             h="28px"
             size="sm"
+            rounded="full"
             list={availableModels}
             value={selectedModel}
-            onChange={handleModelChange}
+            onChange={(model) => setSelectedModel(model)}
           />
         )}
 
         {/* 工具选择下拉框 */}
-        <Menu isLazy closeOnSelect={false}>
-          <MenuButton
-            as={Button}
-            size="sm"
-            rounded="full"
-            variant="outline"
-            color={selectedTools.length > 0 ? 'primary.500' : 'gray.500'}
-            bg={selectedTools.length > 0 ? 'primary.50' : 'transparent'}
-            leftIcon={<MyIcon name="core/app/toolCall" w="14px" />}
-          >
-            {selectedTools.length > 0
-              ? t('chat:home.tools', { num: selectedTools.length })
-              : t('chat:home.select_tools')}
-          </MenuButton>
-          <MenuList>
-            {availableTools.map((tool) => {
-              const toolId = tool.pluginId || '';
-              const isSelected = selectedToolIds.includes(toolId);
-              return (
-                <MenuItem
-                  key={toolId}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    handleToolToggle(toolId);
-                  }}
-                  closeOnSelect={false}
-                >
-                  <Checkbox isChecked={isSelected} mr={3} />
-                  <Flex alignItems="center" gap={2}>
-                    <Avatar src={tool.avatar} w={4} rounded="8px" />
-                    <Box fontSize="xs">{tool.name}</Box>
-                  </Flex>
-                </MenuItem>
-              );
-            })}
-            {availableTools.length === 0 && (
-              <MenuItem isDisabled fontSize="xs" color="myGray.500">
-                <Box textAlign="center" flex="1">
-                  {t('chat:home.no_available_tools')}
-                </Box>
-              </MenuItem>
-            )}
-          </MenuList>
-        </Menu>
+        {availableTools.length > 0 && (
+          <Menu isLazy closeOnSelect={false} autoSelect={false}>
+            <MenuButton
+              as={Button}
+              size="sm"
+              rounded="full"
+              variant="whiteBase"
+              leftIcon={<MyIcon name="core/app/toolCall" w="14px" />}
+              _active={{
+                transform: 'none'
+              }}
+              {...(selectedTools.length > 0 && {
+                color: 'primary.600',
+                bg: 'primary.50'
+              })}
+            >
+              {selectedTools.length > 0
+                ? t('chat:home.tools', { num: selectedTools.length })
+                : t('chat:home.select_tools')}
+            </MenuButton>
+            <MenuList px={2}>
+              {availableTools.map((tool) => {
+                const toolId = tool.pluginId || '';
+                const isSelected = selectedToolIds.includes(toolId);
+
+                return (
+                  <MenuItem
+                    key={toolId}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setSelectedToolIds(
+                        selectedToolIds.includes(toolId)
+                          ? selectedToolIds.filter((id) => id !== toolId)
+                          : [...selectedToolIds, toolId]
+                      );
+                    }}
+                    closeOnSelect={false}
+                    _hover={{
+                      bg: 'primary.50'
+                    }}
+                    _notLast={{ mb: 1 }}
+                    borderRadius={'md'}
+                  >
+                    <Checkbox size={'sm'} isChecked={isSelected} mr={3} />
+                    <Flex alignItems="center" gap={2}>
+                      <Avatar src={tool.avatar} w={5} borderRadius="xs" />
+                      <Box fontSize="sm">{tool.name}</Box>
+                    </Flex>
+                  </MenuItem>
+                );
+              })}
+            </MenuList>
+          </Menu>
+        )}
       </>
     ),
     [
       availableModels,
       selectedModel,
-      selectedTools,
       availableTools,
+      selectedTools.length,
+      t,
+      setSelectedModel,
       selectedToolIds,
-      handleModelChange,
-      handleToolToggle,
-      t
+      setSelectedToolIds
     ]
   );
 
@@ -313,10 +313,6 @@ const HomeChatWindow = () => {
 
         <Box flex={'1 0 0'} bg={'white'}>
           <ChatBox
-            dialogTips={chatSettings?.dialogTips}
-            wideLogo={chatSettings?.wideLogoUrl}
-            slogan={chatSettings?.slogan}
-            showHomeChatEmptyIntro
             appId={appId}
             chatId={chatId}
             isReady={!loading}
@@ -324,7 +320,10 @@ const HomeChatWindow = () => {
             chatType={ChatTypeEnum.home}
             outLinkAuthData={outLinkAuthData}
             onStartChat={onStartChat}
-            customButtonGroup={customButtonGroup}
+            InputLeftComponent={InputLeftComponent}
+            dialogTips={chatSettings?.dialogTips}
+            wideLogo={chatSettings?.wideLogoUrl}
+            slogan={chatSettings?.slogan}
           />
         </Box>
       </Flex>

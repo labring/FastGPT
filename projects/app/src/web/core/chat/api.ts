@@ -117,5 +117,5 @@ export const getChatSetting = () => {
 };
 
 export const updateChatSetting = (data: ChatSettingUpdateParams) => {
-  return POST<ChatSettingSchema>('/proApi/core/chat/updateChatSetting', data);
+  return POST<ChatSettingSchema>('/proApi/core/chat/setting/update', data);
 };

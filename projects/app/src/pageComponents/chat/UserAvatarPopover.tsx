@@ -7,7 +7,6 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import type { CollapseStatusType } from '@/pageComponents/chat/constants';
 
 type UserAvatarPopoverProps = {
   isCollapsed: boolean;
