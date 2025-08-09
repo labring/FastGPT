@@ -131,6 +131,7 @@ export type ResponseTagItemType = {
   totalQuoteList?: SearchDataResponseItemType[];
   llmModuleAccount?: number;
   historyPreviewLength?: number;
+  externalLinkList?: { name: string; url: string }[];
 };
 
 export type ChatItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {

@@ -33,20 +33,60 @@ export const getFlatAppResponses = (res: ChatHistoryItemResType[]): ChatHistoryI
 };
 export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
   if (historyItem.obj !== ChatRoleEnum.AI) return historyItem;
-  if (historyItem.totalQuoteList !== undefined) return historyItem;
-  if (!historyItem.responseData) return historyItem;
 
   // Flat children
   const flatResData = getFlatAppResponses(historyItem.responseData || []);
 
+  const llmModuleAccount = flatResData.filter(isLLMNode).length;
+  const totalQuoteList = flatResData
+    .filter((item) => item.moduleType === FlowNodeTypeEnum.datasetSearchNode)
+    .map((item) => item.quoteList)
+    .flat()
+    .filter(Boolean) as SearchDataResponseItemType[];
+  const historyPreviewLength = flatResData.find(isLLMNode)?.historyPreview?.length;
+
+  // Extract external link references from final tool responses in responseData
+  const externalLinkList = (() => {
+    try {
+      const refs: { name: string; url: string }[] = [];
+      const dedupe = new Set<string>();
+      // Also parse from flattened flow node responses (toolRes.referenceDocuments)
+      flatResData.forEach((res: ChatHistoryItemResType) => {
+        const docs = res?.toolRes?.referenceDocuments;
+        if (docs) {
+          docs.forEach((doc: { name: string; webUrl?: string; dingUrl?: string }) => {
+            const baseName = doc?.name || '';
+            const webUrl = doc?.webUrl;
+            const dingUrl = doc?.dingUrl;
+            const push = (name: string, url?: string) => {
+              if (!url) return;
+              const key = `${name}::${url}`;
+              if (!dedupe.has(key)) {
+                dedupe.add(key);
+                refs.push({ name, url });
+              }
+            };
+            if (baseName) {
+              push(`[Web] ${baseName}`, webUrl);
+              push(`[Dingding] ${baseName}`, dingUrl);
+            } else {
+              push('[Web]', webUrl);
+              push('[Dingding]', dingUrl);
+            }
+          });
+        }
+      });
+      return refs;
+    } catch (e) {
+      return [] as { name: string; url: string }[];
+    }
+  })();
+
   return {
     ...historyItem,
-    llmModuleAccount: flatResData.filter(isLLMNode).length,
-    totalQuoteList: flatResData
-      .filter((item) => item.moduleType === FlowNodeTypeEnum.datasetSearchNode)
-      .map((item) => item.quoteList)
-      .flat()
-      .filter(Boolean) as SearchDataResponseItemType[],
-    historyPreviewLength: flatResData.find(isLLMNode)?.historyPreview?.length
+    ...(llmModuleAccount ? { llmModuleAccount } : {}),
+    ...(totalQuoteList.length ? { totalQuoteList } : {}),
+    ...(historyPreviewLength ? { historyPreviewLength } : {}),
+    ...(externalLinkList.length ? { externalLinkList } : {})
   };
 }

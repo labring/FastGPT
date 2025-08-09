@@ -10,7 +10,10 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
-import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
+import {
+  getUserChatInfoAndAuthTeamPoints,
+  getRunningUserInfoByTmbId
+} from '@fastgpt/service/support/permission/auth/team';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
   concatHistories,
@@ -184,10 +187,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         teamId: app.teamId,
         tmbId: app.tmbId
       },
-      runningUserInfo: {
-        teamId,
-        tmbId
-      },
+      runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
 
       chatId,
       responseChatItemId,

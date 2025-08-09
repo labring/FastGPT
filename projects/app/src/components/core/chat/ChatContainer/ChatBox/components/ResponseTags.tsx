@@ -43,7 +43,8 @@ const ResponseTags = ({
   const {
     totalQuoteList: quoteList = [],
     llmModuleAccount = 0,
-    historyPreviewLength = 0
+    historyPreviewLength = 0,
+    externalLinkList = []
   } = useMemo(() => addStatisticalDataToHistoryItem(historyItem), [historyItem]);
 
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
@@ -68,38 +69,53 @@ const ResponseTags = ({
     ? quoteListRef.current.scrollHeight > (isPc ? 50 : 55)
     : true;
 
-  const sourceList = useMemo(() => {
-    return Object.values(
-      quoteList.reduce((acc: Record<string, SearchDataResponseItemType[]>, cur) => {
-        if (!acc[cur.collectionId]) {
-          acc[cur.collectionId] = [cur];
-        }
-        return acc;
-      }, {})
-    )
-      .flat()
-      .map((item) => ({
-        sourceName: item.sourceName,
-        sourceId: item.sourceId,
-        icon: item.imageId
-          ? 'core/dataset/imageFill'
-          : getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
-        collectionId: item.collectionId,
-        datasetId: item.datasetId
-      }));
+  // Dataset citation render items
+  const datasetCitationList = useMemo(() => {
+    // Keep first item per collectionId and preserve first-seen order
+    const firstByCollection = new Map<string, SearchDataResponseItemType>();
+    quoteList.forEach((cur) => {
+      if (!firstByCollection.has(cur.collectionId)) {
+        firstByCollection.set(cur.collectionId, cur);
+      }
+    });
+    return Array.from(firstByCollection.values()).map((item) => ({
+      itemType: 'dataset' as const,
+      sourceName: item.sourceName,
+      sourceId: item.sourceId,
+      icon: item.imageId
+        ? 'core/dataset/imageFill'
+        : getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
+      collectionId: item.collectionId,
+      datasetId: item.datasetId
+    }));
   }, [quoteList]);
 
-  const notEmptyTags =
-    quoteList.length > 0 ||
-    (llmModuleAccount === 1 && notSharePage) ||
-    (llmModuleAccount > 1 && notSharePage) ||
-    (isPc && durationSeconds > 0) ||
-    notSharePage;
+  // Merge dataset citations and external link references for unified rendering
+  type RenderCitationItem =
+    | {
+        itemType: 'dataset';
+        sourceName: string;
+        sourceId?: string;
+        icon: string;
+        collectionId: string;
+        datasetId: string;
+      }
+    | { itemType: 'link'; name: string; url: string };
+
+  const citationRenderList: RenderCitationItem[] = useMemo(() => {
+    const linkItems: RenderCitationItem[] = externalLinkList.map((r) => ({
+      ...r,
+      itemType: 'link'
+    }));
+    return [...datasetCitationList, ...linkItems];
+  }, [datasetCitationList, externalLinkList]);
+
+  const notEmptyTags = notSharePage || quoteList.length > 0 || (isPc && durationSeconds > 0);
 
   return !showTags ? null : (
     <>
       {/* quote */}
-      {sourceList.length > 0 && (
+      {citationRenderList.length > 0 && (
         <>
           <Flex justifyContent={'space-between'} alignItems={'center'}>
             <Box width={'100%'}>
@@ -143,9 +159,16 @@ const ResponseTags = ({
                 : {}
             }
           >
-            {sourceList.map((item, index) => {
+            {citationRenderList.map((item, index) => {
+              const key = item.itemType === 'dataset' ? item.collectionId : `${item.url}-${index}`;
+              const label = item.itemType === 'dataset' ? item.sourceName : item.name;
               return (
-                <MyTooltip key={item.collectionId} label={t('common:core.chat.quote.Read Quote')}>
+                <MyTooltip
+                  key={key}
+                  label={
+                    item.itemType === 'dataset' ? t('common:core.chat.quote.Read Quote') : item.url
+                  }
+                >
                   <Flex
                     alignItems={'center'}
                     fontSize={'xs'}
@@ -161,7 +184,16 @@ const ResponseTags = ({
                     cursor={'pointer'}
                     onClick={(e) => {
                       e.stopPropagation();
-                      onOpenCiteModal(item);
+                      if (item.itemType === 'dataset') {
+                        onOpenCiteModal({
+                          collectionId: item.collectionId,
+                          sourceId: item.sourceId,
+                          sourceName: item.sourceName,
+                          datasetId: item.datasetId
+                        });
+                      } else {
+                        window.open(item.url, '_blank');
+                      }
                     }}
                     height={6}
                   >
@@ -177,14 +209,16 @@ const ResponseTags = ({
                       {index + 1}
                     </Flex>
                     <Flex px={1.5}>
-                      <MyIcon name={item.icon as any} mr={1} flexShrink={0} w={'12px'} />
+                      {item.itemType === 'dataset' && (
+                        <MyIcon name={item.icon as any} mr={1} flexShrink={0} w={'12px'} />
+                      )}
                       <Box
                         className="textEllipsis3"
                         wordBreak={'break-all'}
                         flex={'1 0 0'}
                         fontSize={'mini'}
                       >
-                        {item.sourceName}
+                        {label}
                       </Box>
                     </Flex>
                   </Flex>

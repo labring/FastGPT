@@ -34,7 +34,10 @@ import {
   removeEmptyUserInput
 } from '@fastgpt/global/core/chat/utils';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
-import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
+import {
+  getUserChatInfoAndAuthTeamPoints,
+  getRunningUserInfoByTmbId
+} from '@fastgpt/service/support/permission/auth/team';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { type AppSchema } from '@fastgpt/global/core/app/type';
@@ -286,10 +289,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             teamId: String(app.teamId),
             tmbId: String(app.tmbId)
           },
-          runningUserInfo: {
-            teamId,
-            tmbId
-          },
+          runningUserInfo: await getRunningUserInfoByTmbId(app.tmbId),
           uid: String(outLinkUserId || tmbId),
 
           chatId,
