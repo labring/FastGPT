@@ -34,7 +34,10 @@ import {
   removeEmptyUserInput
 } from '@fastgpt/global/core/chat/utils';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
-import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
+import {
+  getUserChatInfoAndAuthTeamPoints,
+  getRunningUserInfoByTmbId
+} from '@fastgpt/service/support/permission/auth/team';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { type AppSchema } from '@fastgpt/global/core/app/type';
@@ -60,6 +63,8 @@ import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatc
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
 import { type ExternalProviderType } from '@fastgpt/global/core/workflow/runtime/type';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { getLocale } from '@fastgpt/service/common/middle/i18n';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -196,7 +201,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       detail = true;
     } else {
       if (messages.length === 0) {
-        throw new Error('messages is empty');
+        throw new UserError('messages is empty');
       }
     }
 
@@ -272,6 +277,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       if (app.version === 'v2') {
         return dispatchWorkFlow({
           res,
+          lang: getLocale(req),
           requestOrigin: req.headers.origin,
           mode: 'chat',
           timezone,
@@ -282,10 +288,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             teamId: String(app.teamId),
             tmbId: String(app.tmbId)
           },
-          runningUserInfo: {
-            teamId,
-            tmbId
-          },
+          runningUserInfo: await getRunningUserInfoByTmbId(app.tmbId),
           uid: String(outLinkUserId || tmbId),
 
           chatId,
@@ -650,3 +653,5 @@ export const config = {
     responseLimit: '20mb'
   }
 };
+
+export { handler, authShareChat, authTeamSpaceChat, authHeaderRequest };
