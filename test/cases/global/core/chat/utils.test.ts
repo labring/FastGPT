@@ -35,9 +35,7 @@ describe('transformPreviewHistories', () => {
       obj: ChatRoleEnum.AI,
       value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }],
       responseData: undefined,
-      llmModuleAccount: 1,
-      totalQuoteList: [],
-      historyPreviewLength: undefined
+      llmModuleAccount: 1
     });
   });
 
@@ -62,8 +60,7 @@ describe('transformPreviewHistories', () => {
       value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }],
       responseData: undefined,
       llmModuleAccount: 1,
-      totalQuoteList: undefined,
-      historyPreviewLength: undefined
+      totalQuoteList: undefined
     });
   });
 });
@@ -75,17 +72,7 @@ describe('addStatisticalDataToHistoryItem', () => {
       value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }]
     };
 
-    expect(addStatisticalDataToHistoryItem(item)).toBe(item);
-  });
-
-  it('should return original item if totalQuoteList is already defined', () => {
-    const item: ChatItemType = {
-      obj: ChatRoleEnum.AI,
-      value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }],
-      totalQuoteList: []
-    };
-
-    expect(addStatisticalDataToHistoryItem(item)).toBe(item);
+    expect(addStatisticalDataToHistoryItem(item)).toStrictEqual(item);
   });
 
   it('should return original item if responseData is undefined', () => {
@@ -94,7 +81,7 @@ describe('addStatisticalDataToHistoryItem', () => {
       value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }]
     };
 
-    expect(addStatisticalDataToHistoryItem(item)).toBe(item);
+    expect(addStatisticalDataToHistoryItem(item)).toStrictEqual(item);
   });
 
   it('should calculate statistics correctly', () => {
@@ -154,9 +141,7 @@ describe('addStatisticalDataToHistoryItem', () => {
 
     expect(result).toEqual({
       ...item,
-      llmModuleAccount: 1,
-      totalQuoteList: [],
-      historyPreviewLength: undefined
+      llmModuleAccount: 1
     });
   });
 
@@ -188,9 +173,43 @@ describe('addStatisticalDataToHistoryItem', () => {
 
     expect(result).toEqual({
       ...item,
-      llmModuleAccount: 3,
-      totalQuoteList: [],
-      historyPreviewLength: undefined
+      llmModuleAccount: 3
+    });
+  });
+
+  it('should handle external links', () => {
+    const item: ChatItemType = {
+      obj: ChatRoleEnum.AI,
+      value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }],
+      responseData: [
+        {
+          ...mockResponseData,
+          toolRes: {
+            referenceDocuments: [
+              {
+                name: 'doc1',
+                webUrl: 'http://web.com',
+                dingUrl: 'http://ding.com'
+              },
+              {
+                webUrl: 'http://web2.com'
+              }
+            ]
+          }
+        }
+      ]
+    };
+
+    const result = addStatisticalDataToHistoryItem(item);
+
+    expect(result).toEqual({
+      ...item,
+      llmModuleAccount: 1,
+      externalLinkList: [
+        { name: '[Web] doc1', url: 'http://web.com' },
+        { name: '[Dingding] doc1', url: 'http://ding.com' },
+        { name: '[Web]', url: 'http://web2.com' }
+      ]
     });
   });
 });
