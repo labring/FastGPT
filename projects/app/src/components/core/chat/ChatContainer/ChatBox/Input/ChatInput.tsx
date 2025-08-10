@@ -245,7 +245,7 @@ const ChatInput = ({
 
     return (
       <Flex
-        alignItems={'center'}
+        alignItems={'flex-start'}
         justifyContent={'space-between'}
         w={'100%'}
         mt={0}
@@ -409,7 +409,7 @@ const ChatInput = ({
         direction={'column'}
         minH={mobilePreSpeak ? '48px' : ['96px', '120px']}
         pt={fileList.length > 0 ? '0' : mobilePreSpeak ? [0, 4] : [3, 4]}
-        pb={[2, 4]}
+        pb={InputLeftComponent ? 2 : 3}
         position={'relative'}
         borderRadius={['xl', 'xxl']}
         bg={'white'}

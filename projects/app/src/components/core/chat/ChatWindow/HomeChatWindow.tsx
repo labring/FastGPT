@@ -182,8 +182,10 @@ const HomeChatWindow = () => {
         {/* 模型选择 */}
         {availableModels.length > 0 && (
           <AIModelSelector
-            h="28px"
+            h={['30px', '36px']}
+            boxShadow={'none'}
             size="sm"
+            bg={'myGray.50'}
             rounded="full"
             list={availableModels}
             value={selectedModel}
@@ -196,6 +198,8 @@ const HomeChatWindow = () => {
           <Menu isLazy closeOnSelect={false} autoSelect={false}>
             <MenuButton
               as={Button}
+              h={['30px', '36px']}
+              boxShadow={'none'}
               size="sm"
               rounded="full"
               variant="whiteBase"
@@ -205,7 +209,8 @@ const HomeChatWindow = () => {
               }}
               {...(selectedTools.length > 0 && {
                 color: 'primary.600',
-                bg: 'primary.50'
+                bg: 'primary.50',
+                borderColor: 'primary.200'
               })}
             >
               {selectedTools.length > 0
