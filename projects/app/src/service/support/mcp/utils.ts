@@ -13,7 +13,7 @@ import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import { type toolCallProps } from './type';
 import { type AppSchema } from '@fastgpt/global/core/app/type';
 import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
-import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/permission/user/team';
+import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
 import {
