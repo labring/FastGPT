@@ -30,33 +30,3 @@ export async function getUserChatInfoAndAuthTeamPoints(tmbId: string) {
     }
   };
 }
-
-export async function getRunningUserInfoByTmbId(tmbId: string) {
-  if (tmbId) {
-    const tmb = await MongoTeamMember.findById(tmbId, 'teamId name userId') // team_members name is the user's name
-      .populate<{ team: TeamSchema; user: UserModelSchema }>([
-        {
-          path: 'team',
-          select: 'name'
-        },
-        {
-          path: 'user',
-          select: 'username contact'
-        }
-      ])
-      .lean();
-
-    if (!tmb) return Promise.reject(TeamErrEnum.notUser);
-
-    return {
-      username: tmb.user.username,
-      teamName: tmb.team.name,
-      memberName: tmb.name,
-      contact: tmb.user.contact || '',
-      teamId: tmb.teamId,
-      tmbId: tmb._id
-    };
-  }
-
-  return Promise.reject(TeamErrEnum.notUser);
-}

@@ -90,8 +90,8 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         systemVar: {
           user: {
             id: variables.userId,
-            userId: runningUserInfo.username,
-            rank: runningUserInfo.contact,
+            username: runningUserInfo.username,
+            contact: runningUserInfo.contact,
             membername: runningUserInfo.memberName,
             teamName: runningUserInfo.teamName,
             teamId: runningUserInfo.teamId,

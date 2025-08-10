@@ -37,14 +37,6 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
   // Flat children
   const flatResData = getFlatAppResponses(historyItem.responseData || []);
 
-  const llmModuleAccount = flatResData.filter(isLLMNode).length;
-  const totalQuoteList = flatResData
-    .filter((item) => item.moduleType === FlowNodeTypeEnum.datasetSearchNode)
-    .map((item) => item.quoteList)
-    .flat()
-    .filter(Boolean) as SearchDataResponseItemType[];
-  const historyPreviewLength = flatResData.find(isLLMNode)?.historyPreview?.length;
-
   // Extract external link references from final tool responses in responseData
   const externalLinkList = (() => {
     try {
@@ -84,9 +76,13 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
 
   return {
     ...historyItem,
-    ...(llmModuleAccount ? { llmModuleAccount } : {}),
-    ...(totalQuoteList.length ? { totalQuoteList } : {}),
-    ...(historyPreviewLength ? { historyPreviewLength } : {}),
+    llmModuleAccount: flatResData.filter(isLLMNode).length,
+    totalQuoteList: flatResData
+      .filter((item) => item.moduleType === FlowNodeTypeEnum.datasetSearchNode)
+      .map((item) => item.quoteList)
+      .flat()
+      .filter(Boolean) as SearchDataResponseItemType[],
+    historyPreviewLength: flatResData.find(isLLMNode)?.historyPreview?.length,
     ...(externalLinkList.length ? { externalLinkList } : {})
   };
 }

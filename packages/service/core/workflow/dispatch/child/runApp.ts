@@ -20,10 +20,8 @@ import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppVersionById } from '../../../app/version/controller';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
-import {
-  getUserChatInfoAndAuthTeamPoints,
-  getRunningUserInfoByTmbId
-} from '../../../../support/permission/auth/team';
+import { getUserChatInfoAndAuthTeamPoints } from '../../../../support/permission/auth/team';
+import { getRunningUserInfoByTmbId } from '../../../../support/permission/user/team';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;

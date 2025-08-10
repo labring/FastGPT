@@ -70,24 +70,26 @@ const ResponseTags = ({
     : true;
 
   // Dataset citation render items
-  const datasetCitationList = useMemo(() => {
-    // Keep first item per collectionId and preserve first-seen order
-    const firstByCollection = new Map<string, SearchDataResponseItemType>();
-    quoteList.forEach((cur) => {
-      if (!firstByCollection.has(cur.collectionId)) {
-        firstByCollection.set(cur.collectionId, cur);
-      }
-    });
-    return Array.from(firstByCollection.values()).map((item) => ({
-      itemType: 'dataset' as const,
-      sourceName: item.sourceName,
-      sourceId: item.sourceId,
-      icon: item.imageId
-        ? 'core/dataset/imageFill'
-        : getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
-      collectionId: item.collectionId,
-      datasetId: item.datasetId
-    }));
+  const sourceList = useMemo(() => {
+    return Object.values(
+      quoteList.reduce((acc: Record<string, SearchDataResponseItemType[]>, cur) => {
+        if (!acc[cur.collectionId]) {
+          acc[cur.collectionId] = [cur];
+        }
+        return acc;
+      }, {})
+    )
+      .flat()
+      .map((item) => ({
+        itemType: 'dataset' as const,
+        sourceName: item.sourceName,
+        sourceId: item.sourceId,
+        icon: item.imageId
+          ? 'core/dataset/imageFill'
+          : getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
+        collectionId: item.collectionId,
+        datasetId: item.datasetId
+      }));
   }, [quoteList]);
 
   // Merge dataset citations and external link references for unified rendering
@@ -107,8 +109,8 @@ const ResponseTags = ({
       ...r,
       itemType: 'link'
     }));
-    return [...datasetCitationList, ...linkItems];
-  }, [datasetCitationList, externalLinkList]);
+    return [...sourceList, ...linkItems];
+  }, [sourceList, externalLinkList]);
 
   const notEmptyTags = notSharePage || quoteList.length > 0 || (isPc && durationSeconds > 0);
 
