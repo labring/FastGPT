@@ -14,7 +14,8 @@ export enum DatasetErrEnum {
   invalidVectorModelOrQAModel = 'invalidVectorModelOrQAModel',
   notSupportSync = 'notSupportSync',
   sameApiCollection = 'sameApiCollection',
-  noApiServer = 'noApiServer'
+  noApiServer = 'noApiServer',
+  canNotEditAdminPermission = 'canNotEditAdminPermission'
 }
 const datasetErr = [
   {
@@ -60,6 +61,10 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.invalidVectorModelOrQAModel,
     message: 'core.dataset.error.invalidVectorModelOrQAModel'
+  },
+  {
+    statusText: DatasetErrEnum.canNotEditAdminPermission,
+    message: 'core.dataset.error.canNotEditAdminPermission'
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

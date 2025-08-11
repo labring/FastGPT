@@ -15,7 +15,7 @@ function MemberItemCard({
   isChecked,
   onDelete,
   name,
-  role: permission,
+  role,
   orgs,
   addOnly,
   rightSlot
@@ -31,7 +31,7 @@ function MemberItemCard({
   orgs?: string[];
   rightSlot?: React.ReactNode;
 }) {
-  const isAdded = addOnly && !!permission;
+  const isAdded = addOnly && !!role;
   const onChange = () => {
     if (!isAdded) _onChange();
   };
@@ -61,7 +61,7 @@ function MemberItemCard({
         </Box>
         <Box lineHeight={1}>{orgs && orgs.length > 0 && <OrgTags orgs={orgs} />}</Box>
       </Box>
-      {!isAdded && permission && <RoleTags permission={permission} />}
+      {!isAdded && role && <RoleTags permission={role} />}
       {isAdded && (
         <Tag
           mixBlendMode={'multiply'}

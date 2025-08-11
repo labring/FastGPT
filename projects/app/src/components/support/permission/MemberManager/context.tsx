@@ -136,6 +136,9 @@ const CollaboratorContextProvider = ({
       const Per = new Permission({ role });
       const labels: string[] = [];
 
+      if (Per.isOwner) {
+        return [t('common:permission.Owner')];
+      }
       if (Per.hasManagePer) {
         labels.push(t(roleList['manage'].name as any));
       } else if (Per.hasWritePer) {
