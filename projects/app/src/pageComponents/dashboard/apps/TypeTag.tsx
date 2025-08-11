@@ -39,7 +39,8 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
       color: ''
     },
     [AppTypeEnum.tool]: undefined,
-    [AppTypeEnum.folder]: undefined
+    [AppTypeEnum.folder]: undefined,
+    [AppTypeEnum.hidden]: undefined
   });
 
   const data = map.current[type];

@@ -131,7 +131,7 @@ export type ResponseTagItemType = {
   totalQuoteList?: SearchDataResponseItemType[];
   llmModuleAccount?: number;
   historyPreviewLength?: number;
-  externalLinkList?: { name: string; url: string }[];
+  externalLinkList?: CiteLinksType[];
 };
 
 export type ChatItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
@@ -151,31 +151,6 @@ export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatIt
   errorMsg?: string;
 } & ChatBoxInputType &
   ResponseTagItemType;
-
-// Merge dataset citations and external link references for unified rendering
-export type CitationRenderItem =
-  | {
-      type: 'dataset';
-      label: string;
-      key: string;
-      datasetCite: {
-        sourceName: string;
-        sourceId?: string;
-        collectionId: string;
-        datasetId: string;
-        icon: string;
-      };
-    }
-  | {
-      type: 'link';
-      label: string;
-      key: string;
-      linkCite: {
-        name: string;
-        url: string;
-      };
-    };
-
 /* --------- team chat --------- */
 export type ChatAppListSchema = {
   apps: AppType[];
@@ -222,6 +197,10 @@ export type ToolModuleResponseItemType = {
   functionName: string;
 };
 
+export type CiteLinksType = {
+  name: string;
+  url: string;
+};
 /* dispatch run time */
 export type RuntimeUserPromptType = {
   files: UserChatItemValueItemType['file'][];

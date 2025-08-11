@@ -3,6 +3,7 @@ import { type UserModelSchema } from '@fastgpt/global/support/user/type';
 import { type TeamSchema } from '@fastgpt/global/support/user/team/type';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
+// TODO: 数据库优化
 export async function getRunningUserInfoByTmbId(tmbId: string) {
   if (tmbId) {
     const tmb = await MongoTeamMember.findById(tmbId, 'teamId name userId') // team_members name is the user's name

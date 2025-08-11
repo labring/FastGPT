@@ -2,6 +2,7 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { type ChatHistoryItemResType, type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { type CiteLinksType } from '@fastgpt/global/core/chat/type';
 
 export const isLLMNode = (item: ChatHistoryItemResType) =>
   item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.agent;
@@ -40,63 +41,46 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
   // Flat children
   const flatResData = getFlatAppResponses(historyItem.responseData || []);
 
-  // Extract external link references from final tool responses in responseData
-  const externalLinkList = (() => {
-    try {
-      const refs: { name: string; url: string }[] = [];
-      const dedupe = new Set<string>();
-      // Also parse from flattened flow node responses (toolRes.referenceDocuments)
-      flatResData.forEach((res: ChatHistoryItemResType) => {
-        const docs = res?.toolRes?.referenceDocuments;
-        if (docs) {
-          docs.forEach((doc: { name: string; webUrl?: string; dingUrl?: string }) => {
+  // get llm module account and history preview length and total quote list and external link list
+  const { llmModuleAccount, historyPreviewLength, totalQuoteList, externalLinkList } =
+    flatResData.reduce(
+      (acc, item) => {
+        const result = { ...acc };
+        if (isLLMNode(item)) {
+          result.llmModuleAccount = acc.llmModuleAccount + 1;
+          if (acc.historyPreviewLength === undefined) {
+            result.historyPreviewLength = item.historyPreview?.length;
+          }
+        }
+        if (item.moduleType === FlowNodeTypeEnum.datasetSearchNode && item.quoteList) {
+          result.totalQuoteList.push(...item.quoteList.filter(Boolean));
+        }
+
+        const citeLinks = item?.toolRes?.referenceDocuments;
+        if (citeLinks) {
+          citeLinks.forEach((doc: { name: string; url: string }) => {
             const baseName = doc?.name || '';
-            const webUrl = doc?.webUrl;
-            const dingUrl = doc?.dingUrl;
-            const push = (name: string, url?: string) => {
-              if (!url) return;
-              const key = `${name}::${url}`;
-              if (!dedupe.has(key)) {
-                dedupe.add(key);
-                refs.push({ name, url });
+            const url = doc?.url;
+            if (url) {
+              const key = `${baseName}::${url}`;
+              if (!acc.linkDedupe.has(key)) {
+                acc.linkDedupe.add(key);
+                result.externalLinkList.push({ name: baseName, url });
               }
-            };
-            if (baseName) {
-              push(`[Web] ${baseName}`, webUrl);
-              push(`[Dingding] ${baseName}`, dingUrl);
-            } else {
-              push('[Web]', webUrl);
-              push('[Dingding]', dingUrl);
             }
           });
         }
-      });
-      return refs;
-    } catch (e) {
-      return [] as { name: string; url: string }[];
-    }
-  })();
-  // get llm module account and history preview length and total quote list
-  const { llmModuleAccount, historyPreviewLength, totalQuoteList } = flatResData.reduce(
-    (acc, item) => {
-      const result = { ...acc };
-      if (isLLMNode(item)) {
-        result.llmModuleAccount = acc.llmModuleAccount + 1;
-        if (acc.historyPreviewLength === undefined) {
-          result.historyPreviewLength = item.historyPreview?.length || 0;
-        }
+
+        return result;
+      },
+      {
+        llmModuleAccount: 0,
+        historyPreviewLength: undefined as number | undefined,
+        totalQuoteList: [] as SearchDataResponseItemType[],
+        externalLinkList: [] as CiteLinksType[],
+        linkDedupe: new Set<string>()
       }
-      if (item.moduleType === FlowNodeTypeEnum.datasetSearchNode && item.quoteList) {
-        result.totalQuoteList.push(...item.quoteList.filter(Boolean));
-      }
-      return result;
-    },
-    {
-      llmModuleAccount: 0,
-      historyPreviewLength: 0,
-      totalQuoteList: [] as SearchDataResponseItemType[]
-    }
-  );
+    );
 
   return {
     ...historyItem,

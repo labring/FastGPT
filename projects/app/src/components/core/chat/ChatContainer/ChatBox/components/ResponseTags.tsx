@@ -9,11 +9,25 @@ import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import ChatBoxDivider from '@/components/core/chat/Divider';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { type ChatSiteItemType, type CitationRenderItem } from '@fastgpt/global/core/chat/type';
+import { type ChatSiteItemType, type CiteLinksType } from '@fastgpt/global/core/chat/type';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useSize } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
+
+export type CitationRenderItem = {
+  type: 'dataset' | 'link';
+  key: string;
+  displayText: string;
+  icon?: string;
+  datasetCite?: {
+    sourceName: string;
+    sourceId?: string;
+    collectionId: string;
+    datasetId: string;
+  };
+  linkCite?: CiteLinksType;
+};
 
 const ContextModal = dynamic(() => import('./ContextModal'));
 const WholeResponseModal = dynamic(() => import('../../../components/WholeResponseModal'));
@@ -82,24 +96,24 @@ const ResponseTags = ({
       .flat()
       .map((item) => ({
         type: 'dataset' as const,
-        label: item.sourceName,
         key: item.collectionId,
+        displayText: item.sourceName,
+        icon: item.imageId
+          ? 'core/dataset/imageFill'
+          : getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
         datasetCite: {
           sourceName: item.sourceName,
           sourceId: item.sourceId,
           collectionId: item.collectionId,
-          datasetId: item.datasetId,
-          icon: item.imageId
-            ? 'core/dataset/imageFill'
-            : getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName })
+          datasetId: item.datasetId
         }
       }));
 
     // Link citations
     const linkItems = externalLinkList.map((r, index) => ({
       type: 'link' as const,
-      label: r.name,
       key: `${r.url}-${index}`,
+      displayText: r.name,
       linkCite: {
         name: r.name,
         url: r.url
@@ -160,14 +174,7 @@ const ResponseTags = ({
           >
             {citationRenderList.map((item, index) => {
               return (
-                <MyTooltip
-                  key={item.key}
-                  label={
-                    item.type === 'dataset'
-                      ? t('common:core.chat.quote.Read Quote')
-                      : item.linkCite?.url
-                  }
-                >
+                <MyTooltip key={item.key} label={t('common:core.chat.quote.Read Quote')}>
                   <Flex
                     alignItems={'center'}
                     fontSize={'xs'}
@@ -183,13 +190,8 @@ const ResponseTags = ({
                     cursor={'pointer'}
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (item.type === 'dataset' && item.datasetCite) {
-                        onOpenCiteModal({
-                          collectionId: item.datasetCite.collectionId,
-                          sourceId: item.datasetCite.sourceId,
-                          sourceName: item.datasetCite.sourceName,
-                          datasetId: item.datasetCite.datasetId
-                        });
+                      if (item.type === 'dataset') {
+                        onOpenCiteModal(item.datasetCite);
                       } else if (item.type === 'link' && item.linkCite) {
                         window.open(item.linkCite.url, '_blank');
                       }
@@ -208,21 +210,14 @@ const ResponseTags = ({
                       {index + 1}
                     </Flex>
                     <Flex px={1.5}>
-                      {item.type === 'dataset' && item.datasetCite && (
-                        <MyIcon
-                          name={item.datasetCite.icon as any}
-                          mr={1}
-                          flexShrink={0}
-                          w={'12px'}
-                        />
-                      )}
+                      <MyIcon name={item.icon as any} mr={1} flexShrink={0} w={'12px'} />
                       <Box
                         className="textEllipsis3"
                         wordBreak={'break-all'}
                         flex={'1 0 0'}
                         fontSize={'mini'}
                       >
-                        {item.label}
+                        {item.displayText}
                       </Box>
                     </Flex>
                   </Flex>
