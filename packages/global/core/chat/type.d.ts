@@ -131,7 +131,7 @@ export type ResponseTagItemType = {
   totalQuoteList?: SearchDataResponseItemType[];
   llmModuleAccount?: number;
   historyPreviewLength?: number;
-  externalLinkList?: CiteLinksType[];
+  toolCiteLinks?: ToolCiteLinksType[];
 };
 
 export type ChatItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
@@ -197,7 +197,7 @@ export type ToolModuleResponseItemType = {
   functionName: string;
 };
 
-export type CiteLinksType = {
+export type ToolCiteLinksType = {
   name: string;
   url: string;
 };

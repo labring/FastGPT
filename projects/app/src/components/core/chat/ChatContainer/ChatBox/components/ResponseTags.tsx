@@ -9,7 +9,7 @@ import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import ChatBoxDivider from '@/components/core/chat/Divider';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { type ChatSiteItemType, type CiteLinksType } from '@fastgpt/global/core/chat/type';
+import { type ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useSize } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
@@ -20,13 +20,7 @@ export type CitationRenderItem = {
   key: string;
   displayText: string;
   icon?: string;
-  datasetCite?: {
-    sourceName: string;
-    sourceId?: string;
-    collectionId: string;
-    datasetId: string;
-  };
-  linkCite?: CiteLinksType;
+  onClick: () => any;
 };
 
 const ContextModal = dynamic(() => import('./ContextModal'));
@@ -58,7 +52,7 @@ const ResponseTags = ({
     totalQuoteList: quoteList = [],
     llmModuleAccount = 0,
     historyPreviewLength = 0,
-    externalLinkList = []
+    toolCiteLinks = []
   } = useMemo(() => addStatisticalDataToHistoryItem(historyItem), [historyItem]);
 
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
@@ -101,27 +95,28 @@ const ResponseTags = ({
         icon: item.imageId
           ? 'core/dataset/imageFill'
           : getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
-        datasetCite: {
-          sourceName: item.sourceName,
-          sourceId: item.sourceId,
-          collectionId: item.collectionId,
-          datasetId: item.datasetId
+        onClick: () => {
+          onOpenCiteModal({
+            collectionId: item.collectionId,
+            sourceId: item.sourceId,
+            sourceName: item.sourceName,
+            datasetId: item.datasetId
+          });
         }
       }));
 
     // Link citations
-    const linkItems = externalLinkList.map((r, index) => ({
+    const linkItems = toolCiteLinks.map((r, index) => ({
       type: 'link' as const,
       key: `${r.url}-${index}`,
       displayText: r.name,
-      linkCite: {
-        name: r.name,
-        url: r.url
+      onClick: () => {
+        window.open(r.url, '_blank');
       }
     }));
 
     return [...datasetItems, ...linkItems];
-  }, [quoteList, externalLinkList]);
+  }, [quoteList, toolCiteLinks, onOpenCiteModal]);
 
   const notEmptyTags = notSharePage || quoteList.length > 0 || (isPc && durationSeconds > 0);
 
@@ -190,11 +185,7 @@ const ResponseTags = ({
                     cursor={'pointer'}
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (item.type === 'dataset') {
-                        onOpenCiteModal(item.datasetCite);
-                      } else if (item.type === 'link' && item.linkCite) {
-                        window.open(item.linkCite.url, '_blank');
-                      }
+                      item.onClick?.();
                     }}
                     height={6}
                   >
