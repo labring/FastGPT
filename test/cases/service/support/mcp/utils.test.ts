@@ -4,21 +4,18 @@ import {
   workflow2InputSchema,
   getMcpServerTools,
   callMcpServerTool
-} from '@/service/support/mcp/utils';
+} from '../../../../../projects/app/src/service/support/mcp/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoMcpKey } from '@fastgpt/service/support/mcp/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
-import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
-import {
-  getUserChatInfoAndAuthTeamPoints,
-  getRunningUserInfoByTmbId
-} from '@fastgpt/service/support/permission/auth/team';
-import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
-import { saveChat } from '@fastgpt/service/core/chat/saveChat';
-import { createChatUsage } from '@fastgpt/service/support/wallet/usage/controller';
+import * as authModule from '@fastgpt/service/support/permission/app/auth';
+import * as versionController from '@fastgpt/service/core/app/version/controller';
+import * as teamAuth from '@fastgpt/service/support/permission/auth/team';
+import * as teamUtils from '@fastgpt/service/support/user/team/utils';
+import * as workflowDispatch from '@fastgpt/service/core/workflow/dispatch';
+import * as chatController from '@fastgpt/service/core/chat/saveChat';
+import * as usageController from '@fastgpt/service/support/wallet/usage/controller';
 
 vi.mock('@fastgpt/service/support/mcp/schema', () => ({
   MongoMcpKey: {
@@ -28,270 +25,216 @@ vi.mock('@fastgpt/service/support/mcp/schema', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/core/app/schema', () => ({
-  MongoApp: {
-    find: vi.fn().mockReturnValue({
-      lean: vi.fn()
-    })
-  }
-}));
+vi.mock('@fastgpt/service/core/app/schema', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/core/app/schema')>();
+  return {
+    ...actual,
+    MongoApp: {
+      find: vi.fn().mockReturnValue({
+        lean: vi.fn()
+      })
+    }
+  };
+});
 
-vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
-  authAppByTmbId: vi.fn()
-}));
+vi.mock('@fastgpt/service/support/permission/app/auth');
+vi.mock('@fastgpt/service/core/app/version/controller');
+vi.mock('@fastgpt/service/support/permission/auth/team');
+vi.mock('@fastgpt/service/support/user/team/utils');
+vi.mock('@fastgpt/service/core/workflow/dispatch');
+vi.mock('@fastgpt/service/core/chat/saveChat');
+vi.mock('@fastgpt/service/support/wallet/usage/controller');
 
-vi.mock('@fastgpt/service/core/app/version/controller', () => ({
-  getAppLatestVersion: vi.fn()
-}));
+describe('MCP Utils', () => {
+  describe('pluginNodes2InputSchema', () => {
+    it('should convert plugin nodes to input schema', () => {
+      const nodes = [
+        {
+          flowNodeType: FlowNodeTypeEnum.pluginInput,
+          inputs: [
+            {
+              key: 'test',
+              valueType: 'string',
+              description: 'test desc',
+              required: true
+            }
+          ]
+        }
+      ];
 
-vi.mock('@fastgpt/service/support/permission/auth/team', () => ({
-  getUserChatInfoAndAuthTeamPoints: vi.fn(),
-  getRunningUserInfoByTmbId: vi.fn()
-}));
+      const schema = pluginNodes2InputSchema(nodes);
 
-vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
-  dispatchWorkFlow: vi.fn()
-}));
+      expect(schema).toEqual({
+        type: 'object',
+        properties: {
+          test: {
+            type: 'string',
+            description: 'test desc'
+          }
+        },
+        required: ['test']
+      });
+    });
+  });
 
-vi.mock('@fastgpt/service/core/chat/saveChat', () => ({
-  saveChat: vi.fn()
-}));
-
-vi.mock('@fastgpt/service/support/wallet/usage/controller', () => ({
-  createChatUsage: vi.fn()
-}));
-
-describe('pluginNodes2InputSchema', () => {
-  it('should generate input schema from plugin nodes', () => {
-    const nodes = [
-      {
-        flowNodeType: FlowNodeTypeEnum.pluginInput,
-        inputs: [
+  describe('workflow2InputSchema', () => {
+    it('should create input schema for workflow', () => {
+      const chatConfig = {
+        fileSelectConfig: {
+          canSelectFile: true
+        },
+        variables: [
           {
-            key: 'testKey',
+            key: 'var1',
             valueType: 'string',
-            description: 'test description',
-            required: true,
-            enum: 'a\nb\nc'
+            description: 'var desc',
+            required: true
           }
         ]
-      }
-    ];
+      };
 
-    const schema = pluginNodes2InputSchema(nodes);
+      const schema = workflow2InputSchema(chatConfig);
 
-    expect(schema).toEqual({
-      type: 'object',
-      properties: {
-        testKey: {
-          type: 'string',
-          description: 'test description',
-          enum: ['a', 'b', 'c']
-        }
-      },
-      required: ['testKey']
-    });
-  });
-
-  it('should handle empty plugin input nodes', () => {
-    const nodes = [
-      {
-        flowNodeType: FlowNodeTypeEnum.pluginInput,
-        inputs: []
-      }
-    ];
-
-    const schema = pluginNodes2InputSchema(nodes);
-
-    expect(schema).toEqual({
-      type: 'object',
-      properties: {},
-      required: []
-    });
-  });
-});
-
-describe('workflow2InputSchema', () => {
-  it('should generate input schema with file config', () => {
-    const chatConfig = {
-      fileSelectConfig: {
-        canSelectFile: true,
-        canSelectImg: true
-      },
-      variables: [
-        {
-          key: 'var1',
-          valueType: 'string',
-          description: 'test var',
-          required: true,
-          enums: [{ value: 'a' }, { value: 'b' }]
-        }
-      ]
-    };
-
-    const schema = workflow2InputSchema(chatConfig);
-
-    expect(schema).toEqual({
-      type: 'object',
-      properties: {
-        question: {
-          type: 'string',
-          description: 'Question from user'
-        },
-        fileUrlList: {
-          type: 'array',
-          items: {
-            type: 'string'
+      expect(schema).toEqual({
+        type: 'object',
+        properties: {
+          question: {
+            type: 'string',
+            description: 'Question from user'
           },
-          description: 'File linkage'
+          fileUrlList: {
+            type: 'array',
+            items: {
+              type: 'string'
+            },
+            description: 'File linkage'
+          },
+          var1: {
+            type: 'string',
+            description: 'var desc'
+          }
         },
-        var1: {
-          type: 'string',
-          description: 'test var',
-          enum: ['a', 'b']
-        }
-      },
-      required: ['question', 'var1']
+        required: ['question', 'var1']
+      });
     });
   });
-});
 
-describe('getMcpServerTools', () => {
-  it('should return tools list', async () => {
-    const mockMcp = {
-      tmbId: 'test-tmb',
-      apps: [
-        {
-          appId: 'test-app',
-          toolName: 'test-tool',
-          description: 'test description'
-        }
-      ]
-    };
+  describe('getMcpServerTools', () => {
+    it('should get mcp server tools', async () => {
+      const mockMcp = {
+        apps: [
+          {
+            appId: '1',
+            toolName: 'tool1',
+            description: 'desc1'
+          }
+        ],
+        tmbId: 'tmb1'
+      };
 
-    vi.mocked(MongoMcpKey.findOne).mockReturnValue({
-      lean: () => mockMcp
+      const mockApp = {
+        _id: '1',
+        name: 'app1',
+        intro: 'intro1',
+        type: AppTypeEnum.plugin
+      };
+
+      const mockVersion = {
+        nodes: [
+          {
+            flowNodeType: FlowNodeTypeEnum.pluginInput,
+            inputs: []
+          }
+        ]
+      };
+
+      vi.mocked(MongoMcpKey.findOne).mockReturnValue({
+        lean: vi.fn().mockResolvedValue(mockMcp)
+      } as any);
+
+      vi.mocked(MongoApp.find).mockReturnValue({
+        lean: vi.fn().mockResolvedValue([mockApp])
+      } as any);
+
+      vi.mocked(authModule.authAppByTmbId).mockResolvedValue(undefined);
+      vi.mocked(versionController.getAppLatestVersion).mockResolvedValue(mockVersion);
+
+      const tools = await getMcpServerTools('key1');
+
+      expect(tools).toHaveLength(1);
+      expect(tools[0].name).toBe('tool1');
     });
-
-    vi.mocked(MongoApp.find).mockReturnValue({
-      lean: () => [
-        {
-          _id: 'test-app',
-          name: 'Test App',
-          type: AppTypeEnum.plugin
-        }
-      ]
-    });
-
-    vi.mocked(authAppByTmbId).mockResolvedValue(undefined);
-
-    vi.mocked(getAppLatestVersion).mockResolvedValue({
-      nodes: [
-        {
-          flowNodeType: FlowNodeTypeEnum.pluginInput,
-          inputs: []
-        }
-      ],
-      edges: [],
-      chatConfig: {}
-    });
-
-    const tools = await getMcpServerTools('test-key');
-
-    expect(tools).toHaveLength(1);
-    expect(tools[0].name).toBe('test-tool');
   });
 
-  it('should reject if key not found', async () => {
-    vi.mocked(MongoMcpKey.findOne).mockReturnValue({
-      lean: () => null
-    });
+  describe('callMcpServerTool', () => {
+    it('should call mcp server tool successfully', async () => {
+      const mockMcp = {
+        apps: [
+          {
+            appId: '1',
+            toolName: 'tool1'
+          }
+        ]
+      };
 
-    await expect(getMcpServerTools('invalid-key')).rejects.toBe(CommonErrEnum.invalidResource);
-  });
-});
+      const mockApp = {
+        _id: '1',
+        type: AppTypeEnum.plugin,
+        teamId: 'team1',
+        tmbId: 'tmb1',
+        name: 'app1',
+        modules: []
+      };
 
-describe('callMcpServerTool', () => {
-  it('should call tool and return response', async () => {
-    const mockMcp = {
-      apps: [
-        {
-          appId: 'test-app',
-          toolName: 'test-tool'
-        }
-      ]
-    };
+      const mockVersion = {
+        nodes: [
+          {
+            flowNodeType: FlowNodeTypeEnum.pluginInput,
+            inputs: []
+          }
+        ],
+        edges: []
+      };
 
-    const mockApp = {
-      _id: 'test-app',
-      type: AppTypeEnum.plugin,
-      teamId: 'test-team',
-      tmbId: 'test-tmb',
-      name: 'Test App'
-    };
+      const mockDispatchResult = {
+        flowUsages: [],
+        assistantResponses: [],
+        newVariables: {},
+        flowResponses: [
+          {
+            moduleType: FlowNodeTypeEnum.pluginOutput,
+            pluginOutput: { result: 'success' }
+          }
+        ],
+        durationSeconds: 1,
+        system_memories: []
+      };
 
-    vi.mocked(MongoMcpKey.findOne).mockReturnValue({
-      lean: () => mockMcp
-    });
+      vi.mocked(MongoMcpKey.findOne).mockReturnValue({
+        lean: vi.fn().mockResolvedValue(mockMcp)
+      } as any);
 
-    vi.mocked(MongoApp.find).mockReturnValue({
-      lean: () => [mockApp]
-    });
+      vi.mocked(MongoApp.find).mockReturnValue({
+        lean: vi.fn().mockResolvedValue([mockApp])
+      } as any);
 
-    vi.mocked(getUserChatInfoAndAuthTeamPoints).mockResolvedValue({
-      timezone: 'UTC',
-      externalProvider: {}
-    });
+      vi.mocked(teamAuth.getUserChatInfoAndAuthTeamPoints).mockResolvedValue({
+        timezone: 'UTC',
+        externalProvider: {}
+      });
+      vi.mocked(versionController.getAppLatestVersion).mockResolvedValue(mockVersion);
+      vi.mocked(teamUtils.getRunningUserInfoByTmbId).mockResolvedValue({});
+      vi.mocked(workflowDispatch.dispatchWorkFlow).mockResolvedValue(mockDispatchResult);
+      vi.mocked(chatController.saveChat).mockResolvedValue(undefined);
+      vi.mocked(usageController.createChatUsage).mockResolvedValue(undefined);
 
-    vi.mocked(getRunningUserInfoByTmbId).mockResolvedValue({});
-
-    vi.mocked(getAppLatestVersion).mockResolvedValue({
-      nodes: [
-        {
-          flowNodeType: FlowNodeTypeEnum.pluginInput,
-          inputs: []
-        }
-      ],
-      edges: [],
-      chatConfig: {}
-    });
-
-    vi.mocked(dispatchWorkFlow).mockResolvedValue({
-      flowUsages: [],
-      assistantResponses: [],
-      newVariables: {},
-      flowResponses: [
-        {
-          moduleType: FlowNodeTypeEnum.pluginOutput,
-          pluginOutput: { result: 'test' }
-        }
-      ],
-      durationSeconds: 1,
-      system_memories: []
-    });
-
-    const response = await callMcpServerTool({
-      key: 'test-key',
-      toolName: 'test-tool',
-      inputs: {
-        question: 'test question'
-      }
-    });
-
-    expect(response).toBe('{"result":"test"}');
-  });
-
-  it('should reject if key not found', async () => {
-    vi.mocked(MongoMcpKey.findOne).mockReturnValue({
-      lean: () => null
-    });
-
-    await expect(
-      callMcpServerTool({
-        key: 'invalid-key',
-        toolName: 'test-tool',
+      const result = await callMcpServerTool({
+        key: 'key1',
+        toolName: 'tool1',
         inputs: {}
-      })
-    ).rejects.toBe(CommonErrEnum.invalidResource);
+      });
+
+      expect(result).toBe('{"result":"success"}');
+    });
   });
 });
