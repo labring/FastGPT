@@ -9,7 +9,7 @@ import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import ChatBoxDivider from '@/components/core/chat/Divider';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { type ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatSiteItemType, type CitationRenderItem } from '@fastgpt/global/core/chat/type';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useSize } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
@@ -43,7 +43,8 @@ const ResponseTags = ({
   const {
     totalQuoteList: quoteList = [],
     llmModuleAccount = 0,
-    historyPreviewLength = 0
+    historyPreviewLength = 0,
+    externalLinkList = []
   } = useMemo(() => addStatisticalDataToHistoryItem(historyItem), [historyItem]);
 
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
@@ -68,8 +69,9 @@ const ResponseTags = ({
     ? quoteListRef.current.scrollHeight > (isPc ? 50 : 55)
     : true;
 
-  const sourceList = useMemo(() => {
-    return Object.values(
+  const citationRenderList: CitationRenderItem[] = useMemo(() => {
+    // Dataset citations
+    const datasetItems = Object.values(
       quoteList.reduce((acc: Record<string, SearchDataResponseItemType[]>, cur) => {
         if (!acc[cur.collectionId]) {
           acc[cur.collectionId] = [cur];
@@ -79,27 +81,40 @@ const ResponseTags = ({
     )
       .flat()
       .map((item) => ({
-        sourceName: item.sourceName,
-        sourceId: item.sourceId,
-        icon: item.imageId
-          ? 'core/dataset/imageFill'
-          : getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
-        collectionId: item.collectionId,
-        datasetId: item.datasetId
+        type: 'dataset' as const,
+        label: item.sourceName,
+        key: item.collectionId,
+        datasetCite: {
+          sourceName: item.sourceName,
+          sourceId: item.sourceId,
+          collectionId: item.collectionId,
+          datasetId: item.datasetId,
+          icon: item.imageId
+            ? 'core/dataset/imageFill'
+            : getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName })
+        }
       }));
-  }, [quoteList]);
 
-  const notEmptyTags =
-    quoteList.length > 0 ||
-    (llmModuleAccount === 1 && notSharePage) ||
-    (llmModuleAccount > 1 && notSharePage) ||
-    (isPc && durationSeconds > 0) ||
-    notSharePage;
+    // Link citations
+    const linkItems = externalLinkList.map((r, index) => ({
+      type: 'link' as const,
+      label: r.name,
+      key: `${r.url}-${index}`,
+      linkCite: {
+        name: r.name,
+        url: r.url
+      }
+    }));
+
+    return [...datasetItems, ...linkItems];
+  }, [quoteList, externalLinkList]);
+
+  const notEmptyTags = notSharePage || quoteList.length > 0 || (isPc && durationSeconds > 0);
 
   return !showTags ? null : (
     <>
       {/* quote */}
-      {sourceList.length > 0 && (
+      {citationRenderList.length > 0 && (
         <>
           <Flex justifyContent={'space-between'} alignItems={'center'}>
             <Box width={'100%'}>
@@ -143,9 +158,16 @@ const ResponseTags = ({
                 : {}
             }
           >
-            {sourceList.map((item, index) => {
+            {citationRenderList.map((item, index) => {
               return (
-                <MyTooltip key={item.collectionId} label={t('common:core.chat.quote.Read Quote')}>
+                <MyTooltip
+                  key={item.key}
+                  label={
+                    item.type === 'dataset'
+                      ? t('common:core.chat.quote.Read Quote')
+                      : item.linkCite?.url
+                  }
+                >
                   <Flex
                     alignItems={'center'}
                     fontSize={'xs'}
@@ -161,7 +183,16 @@ const ResponseTags = ({
                     cursor={'pointer'}
                     onClick={(e) => {
                       e.stopPropagation();
-                      onOpenCiteModal(item);
+                      if (item.type === 'dataset' && item.datasetCite) {
+                        onOpenCiteModal({
+                          collectionId: item.datasetCite.collectionId,
+                          sourceId: item.datasetCite.sourceId,
+                          sourceName: item.datasetCite.sourceName,
+                          datasetId: item.datasetCite.datasetId
+                        });
+                      } else if (item.type === 'link' && item.linkCite) {
+                        window.open(item.linkCite.url, '_blank');
+                      }
                     }}
                     height={6}
                   >
@@ -177,14 +208,21 @@ const ResponseTags = ({
                       {index + 1}
                     </Flex>
                     <Flex px={1.5}>
-                      <MyIcon name={item.icon as any} mr={1} flexShrink={0} w={'12px'} />
+                      {item.type === 'dataset' && item.datasetCite && (
+                        <MyIcon
+                          name={item.datasetCite.icon as any}
+                          mr={1}
+                          flexShrink={0}
+                          w={'12px'}
+                        />
+                      )}
                       <Box
                         className="textEllipsis3"
                         wordBreak={'break-all'}
                         flex={'1 0 0'}
                         fontSize={'mini'}
                       >
-                        {item.sourceName}
+                        {item.label}
                       </Box>
                     </Flex>
                   </Flex>

@@ -21,6 +21,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppVersionById } from '../../../app/version/controller';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { getUserChatInfoAndAuthTeamPoints } from '../../../../support/permission/auth/team';
+import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -147,6 +148,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
         tmbId: String(appData.tmbId),
         isChildApp: true
       },
+      runningUserInfo: await getRunningUserInfoByTmbId(appData.tmbId),
       runtimeNodes,
       runtimeEdges,
       histories: chatHistories,
