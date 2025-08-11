@@ -1,4 +1,4 @@
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '../../../web/i18n/utils';
 
 export const evaluationFileErrors = i18nT('dashboard_evaluation:eval_file_check_error');
 

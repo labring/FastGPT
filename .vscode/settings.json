@@ -23,7 +23,7 @@
     "i18n-ally.extract.targetPickingStrategy": "most-similar-by-key",
     "i18n-ally.translate.engines": ["deepl","google"],
     "[typescript]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
+        "editor.defaultFormatter": "vscode.typescript-language-features"
     },
     "mdx.server.enable": true,
     "markdown.copyFiles.overwriteBehavior": "nameIncrementally",

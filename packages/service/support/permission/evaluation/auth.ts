@@ -4,9 +4,9 @@ import {
   ManagePermissionVal,
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
-import type { EvaluationSchemaType } from '@fastgpt/global/core/app/evaluation/type';
+import type { EvaluationSchemaType } from '@fastgpt/global/core/evaluation/type';
 import type { AuthModeType } from '../type';
-import { MongoEvaluation } from '../../../core/app/evaluation/evalSchema';
+import { MongoEvaluation } from '../../../core/evaluation/evalSchema';
 
 export const authEval = async ({
   evalId,

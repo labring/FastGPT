@@ -1,10 +1,10 @@
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { connectionMongo, getMongoModel } from '../../common/mongo';
 import { EvaluationCollectionName } from './evalSchema';
 import {
   EvaluationStatusEnum,
   EvaluationStatusValues
-} from '@fastgpt/global/core/app/evaluation/constants';
-import type { EvalItemSchemaType } from '@fastgpt/global/core/app/evaluation/type';
+} from '@fastgpt/global/core/evaluation/constants';
+import type { EvalItemSchemaType } from '@fastgpt/global/core/evaluation/type';
 
 const { Schema } = connectionMongo;
 

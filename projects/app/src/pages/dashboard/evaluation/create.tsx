@@ -20,11 +20,11 @@ import { getAppDetailById } from '@/web/core/app/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { fileDownload } from '@/web/common/file/utils';
-import { postCreateEvaluation } from '@/web/core/app/api/evaluation';
+import { postCreateEvaluation } from '@/web/core/evaluation/evaluation';
 import { useMemo, useState } from 'react';
 import Markdown from '@/components/Markdown';
-import { getEvaluationFileHeader } from '@fastgpt/global/core/app/evaluation/utils';
-import { evaluationFileErrors } from '@fastgpt/global/core/app/evaluation/constants';
+import { getEvaluationFileHeader } from '@fastgpt/global/core/evaluation/utils';
+import { evaluationFileErrors } from '@fastgpt/global/core/evaluation/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
