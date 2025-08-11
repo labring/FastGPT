@@ -28,16 +28,13 @@ type Props = {
 };
 
 const AppChatWindow = ({ myApps }: Props) => {
-  //------------ stores ------------//
   const router = useRouter();
   const { userInfo } = useUserStore();
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
-  //------------ hooks ------------//
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
-  //------------ context states ------------//
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);

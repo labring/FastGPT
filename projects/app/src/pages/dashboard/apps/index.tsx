@@ -119,7 +119,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       [AppTypeEnum.folder]: t('common:Folder'),
       [AppTypeEnum.toolSet]: t('app:type.MCP tools'),
       [AppTypeEnum.tool]: t('app:type.MCP tools'),
-      [AppTypeEnum.hidden]: 'Hidden'
+      [AppTypeEnum.hidden]: t('app:type.hidden')
     };
     return map[appType] || map['all'];
   }, [appType, t]);

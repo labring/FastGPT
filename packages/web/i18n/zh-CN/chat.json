@@ -116,6 +116,7 @@
   "home.tools": "工具：{{num}}",
   "home.select_tools": "选择工具",
   "sidebar.home": "首页",
+  "sidebar.team_apps": "团队应用",
   "history_slider.home.title": "聊天",
   "source_cronJob": "定时执行",
   "start_chat": "开始对话",

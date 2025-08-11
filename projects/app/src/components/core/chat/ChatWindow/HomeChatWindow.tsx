@@ -10,8 +10,7 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
-  Checkbox,
-  Image
+  Checkbox
 } from '@chakra-ui/react';
 import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
 import { useTranslation } from 'react-i18next';
@@ -21,7 +20,7 @@ import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { streamFetch } from '@/web/common/api/fetch';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
@@ -47,7 +46,6 @@ import type {
   AppListItemType,
   AppWhisperConfigType
 } from '@fastgpt/global/core/app/type';
-import { DEFAULT_LOGO_BANNER_URL } from '@/pageComponents/chat/constants';
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 
@@ -78,7 +76,6 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
-  const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
 
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
@@ -87,9 +84,6 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
 
   const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
-  const isOpenAppDrawer = useContextSelector(ChatSettingContext, (v) => v.isOpenAppDrawer);
-  const onCloseAppDrawer = useContextSelector(ChatSettingContext, (v) => v.onCloseAppDrawer);
-  const onOpenAppDrawer = useContextSelector(ChatSettingContext, (v) => v.onOpenAppDrawer);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
@@ -121,7 +115,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
     setSelectedToolIds(
       selectedToolIds.filter((id) => availableTools.some((tool) => tool.pluginId === id))
     );
-  }, [availableTools, selectedToolIds, setSelectedToolIds]);
+  }, [availableTools]);
 
   // 初始化聊天数据
   const { loading } = useRequest2(
@@ -404,23 +398,6 @@ const HomeChatWindow = ({ myApps }: Props) => {
             borderBottom={isPc ? undefined : '1px solid'}
             borderColor="myGray.100"
           >
-            {/* <MyIcon
-                position="absolute"
-                left="4"
-                name="core/chat/sidebar/menu"
-                w="20px"
-                onClick={onOpenSlider}
-              />
-
-              <Flex alignItems="center" onClick={onOpenAppDrawer}>
-                <Image
-                  src={chatSettings?.wideLogoUrl || DEFAULT_LOGO_BANNER_URL}
-                  alt="banner"
-                  w="132px"
-                />
-                <MyIcon name="core/chat/chevronSelectorVertical" w="20px" />
-              </Flex> */}
-
             <Box flex="1" textAlign="center">
               {chatBoxData?.title}
             </Box>

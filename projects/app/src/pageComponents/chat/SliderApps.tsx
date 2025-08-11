@@ -264,6 +264,10 @@ const NavigationSection = () => {
     ChatSettingContext,
     (v) => v.pane === ChatSidebarPaneEnum.HOME
   );
+  const isTeamAppsActive = useContextSelector(
+    ChatSettingContext,
+    (v) => v.pane === ChatSidebarPaneEnum.TEAM_APPS
+  );
   const onHomeClick = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
 
   return (
@@ -276,22 +280,41 @@ const NavigationSection = () => {
         <AnimatePresence mode="wait">
           {isCollapsed ? (
             <AnimatedSection show={true}>
-              <ActionButton
-                icon="core/chat/sidebar/home"
-                isCollapsed={true}
-                isActive={isHomeActive}
-                onClick={() => onHomeClick(ChatSidebarPaneEnum.HOME)}
-              />
+              <Flex flexDir="column" gap={2}>
+                <ActionButton
+                  icon="core/chat/sidebar/home"
+                  isCollapsed={true}
+                  isActive={isHomeActive}
+                  onClick={() => onHomeClick(ChatSidebarPaneEnum.HOME)}
+                />
+
+                <ActionButton
+                  icon="core/chat/sidebar/teamApps"
+                  isCollapsed={true}
+                  isActive={isTeamAppsActive}
+                  onClick={() => onHomeClick(ChatSidebarPaneEnum.TEAM_APPS)}
+                />
+              </Flex>
             </AnimatedSection>
           ) : (
             <AnimatedSection show={true}>
-              <ActionButton
-                icon="core/chat/sidebar/home"
-                text={t('chat:sidebar.home')}
-                isCollapsed={false}
-                isActive={isHomeActive}
-                onClick={() => onHomeClick(ChatSidebarPaneEnum.HOME)}
-              />
+              <Flex flexDir="column" gap={2}>
+                <ActionButton
+                  icon="core/chat/sidebar/home"
+                  text={t('chat:sidebar.home')}
+                  isCollapsed={false}
+                  isActive={isHomeActive}
+                  onClick={() => onHomeClick(ChatSidebarPaneEnum.HOME)}
+                />
+
+                <ActionButton
+                  icon="core/chat/sidebar/teamApps"
+                  text={t('chat:sidebar.team_apps')}
+                  isCollapsed={false}
+                  isActive={isTeamAppsActive}
+                  onClick={() => onHomeClick(ChatSidebarPaneEnum.TEAM_APPS)}
+                />
+              </Flex>
             </AnimatedSection>
           )}
         </AnimatePresence>
