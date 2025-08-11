@@ -2,8 +2,8 @@ import React from 'react';
 import { useTranslation } from 'next-i18next';
 import { Box, Checkbox, HStack, VStack } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import PermissionTags from './PermissionTags';
-import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
+import RoleTags from './RoleTags';
+import type { RoleValueType } from '@fastgpt/global/support/permission/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import OrgTags from '../../user/team/OrgTags';
 import Tag from '@fastgpt/web/components/common/Tag';
@@ -15,7 +15,7 @@ function MemberItemCard({
   isChecked,
   onDelete,
   name,
-  permission,
+  role: permission,
   orgs,
   addOnly,
   rightSlot
@@ -26,7 +26,7 @@ function MemberItemCard({
   isChecked?: boolean;
   onDelete?: () => void;
   name: string;
-  permission?: PermissionValueType;
+  role?: RoleValueType;
   addOnly?: boolean;
   orgs?: string[];
   rightSlot?: React.ReactNode;
@@ -61,7 +61,7 @@ function MemberItemCard({
         </Box>
         <Box lineHeight={1}>{orgs && orgs.length > 0 && <OrgTags orgs={orgs} />}</Box>
       </Box>
-      {!isAdded && permission && <PermissionTags permission={permission} />}
+      {!isAdded && permission && <RoleTags permission={permission} />}
       {isAdded && (
         <Tag
           mixBlendMode={'multiply'}

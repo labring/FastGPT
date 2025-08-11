@@ -7,7 +7,10 @@ import {
 } from '@fastgpt/global/core/dataset/type';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { MongoDataset } from '../../../core/dataset/schema';
-import { NullPermission, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import {
+  NullPermissionVal,
+  PerResourceTypeEnum
+} from '@fastgpt/global/support/permission/constant';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import { getCollectionWithDataset } from '../../../core/dataset/controller';
@@ -15,7 +18,7 @@ import { MongoDatasetData } from '../../../core/dataset/data/schema';
 import { type AuthModeType, type AuthResponseType } from '../type';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/dataset/constant';
+import { DataSetDefaultRoleVal } from '@fastgpt/global/support/permission/dataset/constant';
 import { getDatasetImagePreviewUrl } from '../../../core/dataset/image/utils';
 import { i18nT } from '../../../../web/i18n/utils';
 
@@ -71,7 +74,7 @@ export const authDatasetByTmbId = async ({
         dataset.inheritPermission === false ||
         !dataset.parentId
       ) {
-        // 1. is a folder. (Folders have compeletely permission)
+        // 1. is a folder. (Folders have completely permission)
         // 2. inheritPermission is false.
         // 3. is root folder/dataset.
         const rp = await getResourcePermission({
@@ -81,7 +84,7 @@ export const authDatasetByTmbId = async ({
           resourceType: PerResourceTypeEnum.dataset
         });
         const Per = new DatasetPermission({
-          per: rp ?? DatasetDefaultPermissionVal,
+          role: rp,
           isOwner
         });
         return {
@@ -97,7 +100,7 @@ export const authDatasetByTmbId = async ({
         });
 
         const Per = new DatasetPermission({
-          per: parent.permission.value,
+          role: parent.permission.role,
           isOwner
         });
 
@@ -158,7 +161,7 @@ export const authDataset = async ({
 // the temporary solution for authDatasetCollection is getting the
 export async function authDatasetCollection({
   collectionId,
-  per = NullPermission,
+  per = NullPermissionVal,
   isRoot = false,
   ...props
 }: AuthModeType & {
@@ -242,7 +245,7 @@ export async function authDatasetCollection({
 //   }
 // }
 
-/* 
+/*
   DatasetData permission is inherited from collection.
 */
 export async function authDatasetData({

@@ -124,7 +124,7 @@ function GroupEditModal({
   const handleToggleSelect = (memberId: string) => {
     if (
       myRole === 'owner' &&
-      memberId === groupMembers.find((item) => item.role === 'owner')?.tmbId
+      memberId === groupMembers.find((item) => item.groupRole === 'owner')?.tmbId
     ) {
       toast({
         title: t('user:team.group.toast.can_not_delete_owner'),

@@ -64,6 +64,7 @@
   "Parse": "解析",
   "Permission": "权限",
   "Permission_tip": "个人权限大于群组权限",
+  "permission_other": "其他权限(多选)",
   "Preview": "预览",
   "Remove": "移除",
   "Rename": "重命名",

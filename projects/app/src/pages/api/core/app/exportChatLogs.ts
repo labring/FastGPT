@@ -1,7 +1,6 @@
 import type { NextApiResponse } from 'next';
 import { responseWriteController } from '@fastgpt/service/common/response';
 import { addDays } from 'date-fns';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { addLog } from '@fastgpt/service/common/system/log';
 import dayjs from 'dayjs';
@@ -19,6 +18,7 @@ import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
+import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 
 const formatJsonString = (data: any) => {
   if (data == null) return '';
@@ -47,7 +47,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     throw new Error('缺少参数');
   }
 
-  const { teamId } = await authApp({ req, authToken: true, appId, per: WritePermissionVal });
+  const { teamId } = await authApp({ req, authToken: true, appId, per: AppReadChatLogPerVal });
 
   const teamMemberWithContact = await MongoTeamMember.aggregate([
     { $match: { teamId: new Types.ObjectId(teamId) } },
