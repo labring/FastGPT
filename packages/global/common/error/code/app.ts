@@ -5,7 +5,8 @@ export enum AppErrEnum {
   unExist = 'appUnExist',
   unAuthApp = 'unAuthApp',
   invalidOwner = 'invalidOwner',
-  invalidAppType = 'invalidAppType'
+  invalidAppType = 'invalidAppType',
+  canNotEditAdminPermission = 'canNotEditAdminPermission'
 }
 const appErrList = [
   {
@@ -23,6 +24,10 @@ const appErrList = [
   {
     statusText: AppErrEnum.invalidAppType,
     message: i18nT('common:code_error.app_error.invalid_app_type')
+  },
+  {
+    statusText: AppErrEnum.canNotEditAdminPermission,
+    message: i18nT('common:code_error.app_error.can_not_edit_admin_permission')
   }
 ];
 export default appErrList.reduce((acc, cur, index) => {

@@ -186,12 +186,13 @@ function RoleSelect({
             );
           })}
 
-          <MyDivider />
-
           {roleOptions.checkboxList.length > 0 && (
-            <Box pb="2" px="3" fontSize={'sm'} color={'myGray.900'}>
-              {t('common:permission_other')}
-            </Box>
+            <>
+              <MyDivider />
+              <Box pb="2" px="3" fontSize={'sm'} color={'myGray.900'}>
+                {t('common:permission_other')}
+              </Box>
+            </>
           )}
 
           {roleOptions.checkboxList.map((item) => {
