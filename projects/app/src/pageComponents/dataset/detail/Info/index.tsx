@@ -17,7 +17,7 @@ import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/co
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { DatasetPermissionList } from '@fastgpt/global/support/permission/dataset/constant';
+import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
 import MemberManager from '../../MemberManager';
 import {
   getCollaboratorList,
@@ -382,7 +382,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               managePer={{
                 permission: datasetDetail.permission,
                 onGetCollaboratorList: () => getCollaboratorList(datasetId),
-                permissionList: DatasetPermissionList,
+                roleList: DatasetRoleList,
                 onUpdateCollaborators: (body) =>
                   postUpdateDatasetCollaborators({
                     ...body,

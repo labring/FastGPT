@@ -11,15 +11,15 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/constant';
+import { AppDefaultRoleVal } from '@fastgpt/global/support/permission/app/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
-import { concatPer } from '@fastgpt/service/support/permission/controller';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { sumPer } from '@fastgpt/global/support/permission/utils';
 
 export type ListAppBody = {
   parentId?: ParentIdType;
@@ -63,7 +63,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
   ]);
 
   // Get team all app permissions
-  const [perList, myGroupMap, myOrgSet] = await Promise.all([
+  const [roleList, myGroupMap, myOrgSet] = await Promise.all([
     MongoResourcePermission.find({
       resourceType: PerResourceTypeEnum.app,
       teamId,
@@ -87,7 +87,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
     })
   ]);
   // Get my permissions
-  const myPerList = perList.filter(
+  const myPerList = roleList.filter(
     (item) =>
       String(item.tmbId) === String(tmbId) ||
       myGroupMap.has(String(item.groupId)) ||
@@ -160,11 +160,11 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
     .map((app) => {
       const { Per, privateApp } = (() => {
         const getPer = (appId: string) => {
-          const tmbPer = myPerList.find(
+          const tmbRole = myPerList.find(
             (item) => String(item.resourceId) === appId && !!item.tmbId
           )?.permission;
-          const groupPer = concatPer(
-            myPerList
+          const groupRole = sumPer(
+            ...myPerList
               .filter(
                 (item) => String(item.resourceId) === appId && (!!item.groupId || !!item.orgId)
               )
@@ -172,13 +172,13 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
           );
 
           return new AppPermission({
-            per: tmbPer ?? groupPer ?? AppDefaultPermissionVal,
+            role: tmbRole ?? groupRole,
             isOwner: String(app.tmbId) === String(tmbId) || teamPer.isOwner
           });
         };
 
         const getClbCount = (appId: string) => {
-          return perList.filter((item) => String(item.resourceId) === String(appId)).length;
+          return roleList.filter((item) => String(item.resourceId) === String(appId)).length;
         };
 
         // Inherit app, check parent folder clb

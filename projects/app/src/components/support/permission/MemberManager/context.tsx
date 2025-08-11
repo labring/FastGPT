@@ -3,11 +3,11 @@ import type {
   CollaboratorItemType,
   UpdateClbPermissionProps
 } from '@fastgpt/global/support/permission/collaborator';
-import { PermissionList } from '@fastgpt/global/support/permission/constant';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 import type {
-  PermissionListType,
-  PermissionValueType
+  PermissionValueType,
+  RoleListType,
+  RoleValueType
 } from '@fastgpt/global/support/permission/type';
 import { type ReactNode, useCallback } from 'react';
 import { createContext } from 'use-context-selector';
@@ -19,6 +19,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { useTranslation } from 'next-i18next';
+import { CommonRoleList } from '@fastgpt/global/support/permission/constant';
 
 const MemberModal = dynamic(() => import('./MemberModal'));
 const ManageModal = dynamic(() => import('./ManageModal'));
@@ -26,7 +27,7 @@ const ManageModal = dynamic(() => import('./ManageModal'));
 export type MemberManagerInputPropsType = {
   permission: Permission;
   onGetCollaboratorList: () => Promise<CollaboratorItemType[]>;
-  permissionList?: PermissionListType;
+  roleList?: RoleListType;
   onUpdateCollaborators: (props: UpdateClbPermissionProps) => Promise<any>;
   onDelOneCollaborator: (
     props: RequireOnlyOne<{ tmbId: string; groupId: string; orgId: string }>
@@ -38,7 +39,7 @@ export type MemberManagerPropsType = MemberManagerInputPropsType & {
   collaboratorList: CollaboratorItemType[];
   refetchCollaboratorList: () => void;
   isFetchingCollaborator: boolean;
-  getPerLabelList: (per: PermissionValueType) => string[];
+  getRoleLabelList: (role: RoleValueType) => string[];
 };
 export type ChildrenProps = {
   onOpenAddMember: () => void;
@@ -50,14 +51,14 @@ type CollaboratorContextType = MemberManagerPropsType & {};
 
 export const CollaboratorContext = createContext<CollaboratorContextType>({
   collaboratorList: [],
-  permissionList: PermissionList,
+  roleList: CommonRoleList,
   onUpdateCollaborators: () => {
     throw new Error('Function not implemented.');
   },
   onDelOneCollaborator: () => {
     throw new Error('Function not implemented.');
   },
-  getPerLabelList: (): string[] => {
+  getRoleLabelList: (): string[] => {
     throw new Error('Function not implemented.');
   },
   refetchCollaboratorList: (): void => {
@@ -73,7 +74,7 @@ export const CollaboratorContext = createContext<CollaboratorContextType>({
 const CollaboratorContextProvider = ({
   permission,
   onGetCollaboratorList,
-  permissionList,
+  roleList,
   onUpdateCollaborators,
   onDelOneCollaborator,
   children,
@@ -115,7 +116,7 @@ const CollaboratorContextProvider = ({
           return {
             ...item,
             permission: new Permission({
-              per: item.permission.value
+              role: item.permission.role
             })
           };
         });
@@ -128,32 +129,32 @@ const CollaboratorContextProvider = ({
     }
   );
 
-  const getPerLabelList = useCallback(
-    (per: PermissionValueType) => {
-      if (!permissionList) return [];
+  const getRoleLabelList = useCallback(
+    (role: PermissionValueType) => {
+      if (!roleList) return [];
 
-      const Per = new Permission({ per });
+      const Per = new Permission({ role });
       const labels: string[] = [];
 
       if (Per.hasManagePer) {
-        labels.push(permissionList['manage'].name);
+        labels.push(t(roleList['manage'].name as any));
       } else if (Per.hasWritePer) {
-        labels.push(permissionList['write'].name);
+        labels.push(t(roleList['write'].name as any));
       } else if (Per.hasReadPer) {
-        labels.push(permissionList['read'].name);
+        labels.push(t(roleList['read'].name as any));
       }
 
-      Object.values(permissionList).forEach((item) => {
+      Object.values(roleList).forEach((item) => {
         if (item.checkBoxType === 'multiple') {
-          if (Per.checkPer(item.value)) {
-            labels.push(item.name);
+          if (Per.checkRole(item.value)) {
+            labels.push(t(item.name as any));
           }
         }
       });
 
       return labels;
     },
-    [permissionList]
+    [roleList]
   );
 
   const { ConfirmModal, openConfirm } = useConfirm({});
@@ -174,10 +175,10 @@ const CollaboratorContextProvider = ({
     collaboratorList,
     refetchCollaboratorList,
     isFetchingCollaborator,
-    permissionList,
+    roleList,
     onUpdateCollaborators: onUpdateCollaboratorsThen,
     onDelOneCollaborator: onDelOneCollaboratorThen,
-    getPerLabelList
+    getRoleLabelList
   };
 
   const onOpenAddMemberModal = () => {

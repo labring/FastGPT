@@ -21,6 +21,7 @@ import { type TeamMemberSchema } from '@fastgpt/global/support/user/team/type';
 import { type OrgSchemaType } from '@fastgpt/global/support/user/team/org/type';
 import { getOrgIdSetWithParentByTmbId } from './org/controllers';
 import { authUserSession } from '../user/session';
+import { sumPer } from '@fastgpt/global/support/permission/utils';
 
 /** get resource permission for a team member
  * If there is no permission for the team member, it will return undefined
@@ -102,7 +103,7 @@ export const getResourcePermission = async ({
       .then((perList) => perList.map((item) => item.permission))
   ]);
 
-  return concatPer([...groupPers, ...orgPers]);
+  return sumPer(...groupPers, ...orgPers);
 };
 
 export async function getResourceClbsAndGroups({
@@ -402,11 +403,3 @@ export const authFileToken = (token?: string) =>
       });
     });
   });
-
-export const concatPer = (perList: PermissionValueType[] = []) => {
-  if (perList.length === 0) {
-    return undefined;
-  }
-
-  return new Permission().addPer(...perList).value;
-};

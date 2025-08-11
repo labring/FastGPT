@@ -64,6 +64,7 @@
   "Parse": "Analysis",
   "Permission": "Permission",
   "Permission_tip": "Individual permissions are greater than group permissions",
+  "permission_other": "Other permissions (multiple)",
   "Preview": "Preview",
   "Remove": "Remove",
   "Rename": "Rename",

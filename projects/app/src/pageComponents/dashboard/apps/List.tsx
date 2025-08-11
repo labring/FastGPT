@@ -17,7 +17,7 @@ import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import MyMenu, { type MenuItemType } from '@fastgpt/web/components/common/MyMenu';
-import { AppPermissionList } from '@fastgpt/global/support/permission/app/constant';
+import { AppRoleList } from '@fastgpt/global/support/permission/app/constant';
 import {
   deleteAppCollaborators,
   getCollaboratorList,
@@ -427,7 +427,7 @@ const ListItem = () => {
           managePer={{
             permission: editPerApp.permission,
             onGetCollaboratorList: () => getCollaboratorList(editPerApp._id),
-            permissionList: AppPermissionList,
+            roleList: AppRoleList,
             onUpdateCollaborators: (props: {
               members?: string[];
               groups?: string[];
