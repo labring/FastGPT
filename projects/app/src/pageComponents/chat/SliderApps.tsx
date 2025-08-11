@@ -25,7 +25,6 @@ import {
   DEFAULT_LOGO_BANNER_URL
 } from '@/pageComponents/chat/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { useContextSelector } from 'use-context-selector';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 
@@ -255,7 +254,6 @@ const ActionButton: React.FC<{
 };
 
 const NavigationSection = () => {
-  //------------ hooks ------------//
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const isProVersion = !!feConfigs.isPlus;
@@ -303,7 +301,6 @@ const NavigationSection = () => {
 };
 
 const BottomSection = () => {
-  //------------ hooks ------------//
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const isProVersion = !!feConfigs.isPlus;

@@ -191,6 +191,8 @@ export const iconPaths = {
   'core/chat/chevronLeft': () => import('./icons/core/chat/chevronLeft.svg'),
   'core/chat/chevronRight': () => import('./icons/core/chat/chevronRight.svg'),
   'core/chat/chevronSelector': () => import('./icons/core/chat/chevronSelector.svg'),
+  'core/chat/chevronSelectorVertical': () =>
+    import('./icons/core/chat/chevronSelectorVertical.svg'),
   'core/chat/chevronUp': () => import('./icons/core/chat/chevronUp.svg'),
   'core/chat/export/pdf': () => import('./icons/core/chat/export/pdf.svg'),
   'core/chat/feedback/badLight': () => import('./icons/core/chat/feedback/badLight.svg'),
@@ -210,6 +212,7 @@ export const iconPaths = {
   'core/chat/sidebar/fold': () => import('./icons/core/chat/sidebar/fold.svg'),
   'core/chat/sidebar/home': () => import('./icons/core/chat/sidebar/home.svg'),
   'core/chat/sidebar/logout': () => import('./icons/core/chat/sidebar/logout.svg'),
+  'core/chat/sidebar/menu': () => import('./icons/core/chat/sidebar/menu.svg'),
   'core/chat/speaking': () => import('./icons/core/chat/speaking.svg'),
   'core/chat/stopSpeech': () => import('./icons/core/chat/stopSpeech.svg'),
   'core/chat/think': () => import('./icons/core/chat/think.svg'),

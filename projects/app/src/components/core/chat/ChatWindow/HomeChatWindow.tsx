@@ -10,7 +10,8 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
-  Checkbox
+  Checkbox,
+  Image
 } from '@chakra-ui/react';
 import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
 import { useTranslation } from 'react-i18next';
@@ -41,8 +42,32 @@ import { getPreviewPluginNode } from '@/web/core/app/api/plugin';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import type {
+  AppFileSelectConfigType,
+  AppListItemType,
+  AppWhisperConfigType
+} from '@fastgpt/global/core/app/type';
+import { DEFAULT_LOGO_BANNER_URL } from '@/pageComponents/chat/constants';
+import ChatHeader from '@/pageComponents/chat/ChatHeader';
+import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 
-const HomeChatWindow = () => {
+type Props = {
+  myApps: AppListItemType[];
+};
+
+const defaultFileSelectConfig: AppFileSelectConfigType = {
+  maxFiles: 20,
+  canSelectImg: false,
+  canSelectFile: true
+};
+
+const defaultWhisperConfig: AppWhisperConfigType = {
+  open: true,
+  autoSend: false,
+  autoTTSResponse: false
+};
+
+const HomeChatWindow = ({ myApps }: Props) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
@@ -53,6 +78,7 @@ const HomeChatWindow = () => {
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
+  const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
 
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
@@ -61,6 +87,12 @@ const HomeChatWindow = () => {
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
 
   const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
+  const isOpenAppDrawer = useContextSelector(ChatSettingContext, (v) => v.isOpenAppDrawer);
+  const onCloseAppDrawer = useContextSelector(ChatSettingContext, (v) => v.onCloseAppDrawer);
+  const onOpenAppDrawer = useContextSelector(ChatSettingContext, (v) => v.onOpenAppDrawer);
+
+  const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
+  const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
   const availableModels = useMemo(
     () => llmModelList.map((model) => ({ value: model.model, label: model.name })),
@@ -74,7 +106,6 @@ const HomeChatWindow = () => {
     () => chatSettings?.selectedTools || [],
     [chatSettings?.selectedTools]
   );
-
   const [selectedToolIds = [], setSelectedToolIds] = useLocalStorageState<string[]>(
     'chat_home_tools',
     {
@@ -92,46 +123,30 @@ const HomeChatWindow = () => {
     );
   }, [availableTools, selectedToolIds, setSelectedToolIds]);
 
-  // 模型选择处理
-  const handleModelChange = useCallback(
-    (model: string) => {
-      const data = getWebLLMModel(model);
-      setChatBoxData((state) => ({
-        ...state,
-        app: {
-          ...state.app,
-          chatConfig: {
-            ...state.app.chatConfig,
-            fileSelectConfig: {
-              ...state.app.chatConfig?.fileSelectConfig,
-              maxFiles: 20,
-              canSelectFile: true,
-              canSelectImg: !!data.vision
-            }
-          }
-        }
-      }));
-      setSelectedModel(model);
-    },
-    [setChatBoxData, setSelectedModel]
-  );
-
   // 初始化聊天数据
   const { loading } = useRequest2(
     async () => {
       if (!appId || forbidLoadChat.current) return;
 
-      const data = getWebLLMModel(selectedModel);
+      const modelData = getWebLLMModel(selectedModel);
       const res = await getInitChatInfo({ appId, chatId });
-
       res.userAvatar = userInfo?.avatar;
       if (!res.app.chatConfig) {
-        res.app['chatConfig'] = {
+        res.app.chatConfig = {
           fileSelectConfig: {
-            canSelectImg: !!data.vision,
-            canSelectFile: true,
-            maxFiles: 20
-          }
+            ...defaultFileSelectConfig,
+            canSelectImg: !!modelData.vision
+          },
+          whisperConfig: defaultWhisperConfig
+        };
+      } else {
+        res.app.chatConfig.fileSelectConfig = {
+          ...defaultFileSelectConfig,
+          canSelectImg: !!modelData.vision
+        };
+        res.app.chatConfig.whisperConfig = {
+          ...defaultWhisperConfig,
+          open: true
         };
       }
 
@@ -225,7 +240,28 @@ const HomeChatWindow = () => {
             rounded="full"
             list={availableModels}
             value={selectedModel}
-            onChange={(model) => setSelectedModel(model)}
+            maxW={isPc ? 'auto' : '114px'}
+            valueLabel={
+              <Box className="textEllipsis" maxW={isPc ? 'auto' : '74px'}>
+                {selectedModel}
+              </Box>
+            }
+            onChange={async (model) => {
+              setChatBoxData((state) => ({
+                ...state,
+                app: {
+                  ...state.app,
+                  chatConfig: {
+                    ...state.app.chatConfig,
+                    fileSelectConfig: {
+                      ...defaultFileSelectConfig,
+                      canSelectImg: !!getWebLLMModel(model).vision
+                    }
+                  }
+                }
+              }));
+              setSelectedModel(model);
+            }}
           />
         )}
 
@@ -249,9 +285,12 @@ const HomeChatWindow = () => {
                 borderColor: 'primary.200'
               })}
             >
-              {selectedTools.length > 0
-                ? t('chat:home.tools', { num: selectedTools.length })
-                : t('chat:home.select_tools')}
+              {isPc &&
+                (selectedTools.length > 0
+                  ? t('chat:home.tools', { num: selectedTools.length })
+                  : t('chat:home.select_tools'))}
+
+              {!isPc && `：${selectedTools.length}`}
             </MenuButton>
             <MenuList px={2}>
               {availableTools.map((tool) => {
@@ -298,7 +337,9 @@ const HomeChatWindow = () => {
       t,
       setSelectedModel,
       selectedToolIds,
-      setSelectedToolIds
+      setSelectedToolIds,
+      setChatBoxData,
+      isPc
     ]
   );
 
@@ -341,16 +382,50 @@ const HomeChatWindow = () => {
         flex={'1 0 0'}
         flexDirection={'column'}
       >
-        <Flex
-          py={4}
-          bg="white"
-          fontWeight={500}
-          color="myGray.900"
-          alignItems="center"
-          justifyContent="center"
-        >
-          {chatBoxData?.title}
-        </Flex>
+        {!isPc && (
+          <ChatHeader
+            showHistory
+            apps={myApps}
+            history={chatRecords}
+            totalRecordsCount={totalRecordsCount}
+          />
+        )}
+
+        {isPc && (
+          <Flex
+            py={4}
+            bg="white"
+            fontWeight={500}
+            color="myGray.900"
+            alignItems="center"
+            justifyContent="center"
+            position="relative"
+            h="56px"
+            borderBottom={isPc ? undefined : '1px solid'}
+            borderColor="myGray.100"
+          >
+            {/* <MyIcon
+                position="absolute"
+                left="4"
+                name="core/chat/sidebar/menu"
+                w="20px"
+                onClick={onOpenSlider}
+              />
+
+              <Flex alignItems="center" onClick={onOpenAppDrawer}>
+                <Image
+                  src={chatSettings?.wideLogoUrl || DEFAULT_LOGO_BANNER_URL}
+                  alt="banner"
+                  w="132px"
+                />
+                <MyIcon name="core/chat/chevronSelectorVertical" w="20px" />
+              </Flex> */}
+
+            <Box flex="1" textAlign="center">
+              {chatBoxData?.title}
+            </Box>
+          </Flex>
+        )}
 
         <Box flex={'1 0 0'} bg={'white'}>
           <ChatBox

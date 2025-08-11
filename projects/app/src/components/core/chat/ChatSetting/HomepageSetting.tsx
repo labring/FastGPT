@@ -24,6 +24,7 @@ import {
   DEFAULT_LOGO_BANNER_COLLAPSED_URL,
   DEFAULT_LOGO_BANNER_URL
 } from '@/pageComponents/chat/constants';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 type Props = {
   Header: React.FC<{ children?: React.ReactNode }>;
@@ -35,7 +36,7 @@ type FormValues = Omit<ChatSettingUpdateParams, 'selectedTools'> & {
 };
 
 const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
-  //------------ hooks ------------//
+  const { isPc } = useSystem();
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
@@ -121,11 +122,20 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
   );
 
   return (
-    <Flex flexDir="column" px={6} py={5} gap={'52px'} h="full">
+    <Flex
+      pl={6}
+      pr={isPc ? 6 : 0}
+      py={5}
+      gap={'52px'}
+      flexDir="column"
+      mt={isPc ? 0 : '46px'}
+      h={isPc ? 'full' : 'calc(100vh - 46px)'}
+    >
       <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} icon="/icon/logo.svg" />
 
       <Header>
         <Button
+          mr={isPc ? 0 : 6}
           variant={'outline'}
           borderColor={'primary.300'}
           _hover={{ bg: 'primary.50' }}
@@ -139,6 +149,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
       </Header>
 
       <Flex
+        pr={isPc ? 0 : 6}
         w="100%"
         flexGrow="1"
         overflowY="auto"
@@ -147,7 +158,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
         alignItems="center"
         justifyContent="flex-start"
       >
-        <Flex w="630px">
+        <Flex w={isPc ? '630px' : '100%'}>
           <Flex flexDir="column" gap={6} w="100%">
             {/* AVAILABLE TOOLS */}
             <Box fontWeight={'500'}>
@@ -196,7 +207,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
               )}
 
               {selectedTools.length > 0 && (
-                <Grid templateColumns="repeat(3, 1fr)" gap={2}>
+                <Grid templateColumns={isPc ? 'repeat(3, 1fr)' : 'repeat(1, 1fr)'} gap={2}>
                   {selectedTools.map((tool) => (
                     <Flex
                       key={tool.pluginId}
@@ -352,7 +363,11 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
                     </Button>
                   </Flex>
 
-                  <Flex alignItems="center">
+                  <Grid
+                    alignItems="center"
+                    templateColumns={isPc ? 'fit-content(100px) 64px fit-content(100px)' : '1fr'}
+                    gap={isPc ? 2 : 6}
+                  >
                     <ImageUpload
                       height="100px"
                       aspectRatio={2.84 / 1}
@@ -361,7 +376,9 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
                       onFileSelect={(url) => setValue('wideLogoUrl', url)}
                     />
 
-                    <Box mx={8} w="1px" h="100px" alignSelf="flex-start" bg="myGray.200" />
+                    {isPc && (
+                      <Box ml={8} w="1px" h="100px" alignSelf="flex-start" bg="myGray.200" />
+                    )}
 
                     <ImageUpload
                       height="100px"
@@ -370,7 +387,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
                       imageSrc={squareLogoUrl || DEFAULT_LOGO_BANNER_COLLAPSED_URL}
                       onFileSelect={(url) => setValue('squareLogoUrl', url)}
                     />
-                  </Flex>
+                  </Grid>
                 </Box>
               </>
             )}

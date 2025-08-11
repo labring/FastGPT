@@ -55,7 +55,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       {(!datasetCiteData || isPc) && (
         <PageContainer flex="1 0 0" w={0} position="relative">
           {/* home chat window */}
-          {pane === ChatSidebarPaneEnum.HOME && <HomeChatWindow />}
+          {pane === ChatSidebarPaneEnum.HOME && <HomeChatWindow myApps={myApps} />}
 
           {/* recently used apps chat window */}
           {pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && <AppChatWindow myApps={myApps} />}

@@ -11,6 +11,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import { useCallback, useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
+import { useDisclosure } from '@chakra-ui/react';
 
 type ChatSettingReturnType = ChatSettingSchema | undefined;
 
@@ -22,6 +23,9 @@ export type ChatSettingContextValue = {
   chatSettings: ChatSettingSchema | undefined;
   refreshChatSetting: () => Promise<ChatSettingReturnType>;
   logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'>;
+  isOpenAppDrawer: boolean;
+  onCloseAppDrawer: () => void;
+  onOpenAppDrawer: () => void;
 };
 
 export const ChatSettingContext = createContext<ChatSettingContextValue>({
@@ -36,6 +40,13 @@ export const ChatSettingContext = createContext<ChatSettingContextValue>({
   logos: {
     wideLogoUrl: '',
     squareLogoUrl: ''
+  },
+  isOpenAppDrawer: false,
+  onCloseAppDrawer: function (): void {
+    throw new Error('Function not implemented.');
+  },
+  onOpenAppDrawer: function (): void {
+    throw new Error('Function not implemented.');
   }
 });
 
@@ -46,6 +57,11 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
   const { appId, setLastPane } = useChatStore();
 
   const [collapse, setCollapse] = useState<CollapseStatusType>(defaultCollapseStatus);
+  const {
+    isOpen: isOpenAppDrawer,
+    onClose: onCloseAppDrawer,
+    onOpen: onOpenAppDrawer
+  } = useDisclosure();
 
   const { data: chatSettings, runAsync: refreshChatSetting } = useRequest2<
     ChatSettingReturnType,
@@ -101,9 +117,22 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
       onTriggerCollapse: () => setCollapse(collapse === 0 ? 1 : 0),
       chatSettings,
       refreshChatSetting,
-      logos
+      logos,
+      isOpenAppDrawer,
+      onCloseAppDrawer,
+      onOpenAppDrawer
     }),
-    [pane, handlePaneChange, collapse, chatSettings, refreshChatSetting, logos]
+    [
+      pane,
+      handlePaneChange,
+      collapse,
+      chatSettings,
+      refreshChatSetting,
+      logos,
+      isOpenAppDrawer,
+      onCloseAppDrawer,
+      onOpenAppDrawer
+    ]
   );
 
   return <ChatSettingContext.Provider value={value}>{children}</ChatSettingContext.Provider>;
