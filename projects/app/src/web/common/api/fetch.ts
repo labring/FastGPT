@@ -272,3 +272,47 @@ export const streamFetch = ({
       failedFinish(err);
     }
   });
+
+export async function streamOptimizePrompt(
+  params: {
+    originalPrompt: string;
+    optimizerInput: string;
+    appId: string;
+    model: string;
+  },
+  onResult: (result: string) => void,
+  abortController?: AbortController
+) {
+  const controller = abortController || new AbortController();
+
+  try {
+    await streamFetch({
+      url: '/api/core/ai/optimizePrompt',
+      data: {
+        originalPrompt: params.originalPrompt,
+        optimizerInput: params.optimizerInput,
+        appId: params.appId,
+        model: params.model
+      },
+      onMessage: ({ event, text }) => {
+        if (
+          (event === SseResponseEventEnum.fastAnswer || event === SseResponseEventEnum.answer) &&
+          text
+        ) {
+          onResult(text);
+        }
+      },
+      abortCtrl: controller
+    });
+
+    if (!controller.signal.aborted) {
+      onResult('[DONE]');
+    }
+  } catch (error) {
+    if (controller.signal.aborted) {
+      onResult('[CANCELLED]');
+    } else {
+      onResult('[ERROR]');
+    }
+  }
+}
