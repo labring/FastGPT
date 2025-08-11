@@ -131,6 +131,7 @@ export type ResponseTagItemType = {
   totalQuoteList?: SearchDataResponseItemType[];
   llmModuleAccount?: number;
   historyPreviewLength?: number;
+  externalLinkList?: CiteLinksType[];
 };
 
 export type ChatItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
@@ -150,7 +151,6 @@ export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatIt
   errorMsg?: string;
 } & ChatBoxInputType &
   ResponseTagItemType;
-
 /* --------- team chat --------- */
 export type ChatAppListSchema = {
   apps: AppType[];
@@ -197,6 +197,10 @@ export type ToolModuleResponseItemType = {
   functionName: string;
 };
 
+export type CiteLinksType = {
+  name: string;
+  url: string;
+};
 /* dispatch run time */
 export type RuntimeUserPromptType = {
   files: UserChatItemValueItemType['file'][];

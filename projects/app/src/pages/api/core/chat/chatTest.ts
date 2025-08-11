@@ -11,6 +11,7 @@ import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
+import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
   concatHistories,
@@ -184,10 +185,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         teamId: app.teamId,
         tmbId: app.tmbId
       },
-      runningUserInfo: {
-        teamId,
-        tmbId
-      },
+      runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
 
       chatId,
       responseChatItemId,

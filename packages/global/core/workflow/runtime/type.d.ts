@@ -51,6 +51,10 @@ export type ChatDispatchProps = {
     isChildApp?: boolean;
   };
   runningUserInfo: {
+    username: string;
+    teamName: string;
+    memberName: string;
+    contact: string;
     teamId: string;
     tmbId: string;
   };
