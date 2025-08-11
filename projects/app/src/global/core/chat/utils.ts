@@ -33,6 +33,9 @@ export const getFlatAppResponses = (res: ChatHistoryItemResType[]): ChatHistoryI
 };
 export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
   if (historyItem.obj !== ChatRoleEnum.AI) return historyItem;
+  if (historyItem.totalQuoteList !== undefined || historyItem.externalLinkList !== undefined)
+    return historyItem;
+  if (!historyItem.responseData) return historyItem;
 
   // Flat children
   const flatResData = getFlatAppResponses(historyItem.responseData || []);
