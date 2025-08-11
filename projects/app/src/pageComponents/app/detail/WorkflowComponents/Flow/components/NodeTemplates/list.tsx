@@ -72,6 +72,7 @@ const NodeTemplateListItem = ({
   const { t } = useTranslation();
   const { screenToFlowPosition } = useReactFlow();
   const handleParams = useContextSelector(WorkflowEventContext, (v) => v.handleParams);
+  const isToolHandle = handleParams?.handleId === 'selectedTools';
 
   return (
     <MyTooltip
@@ -129,6 +130,11 @@ const NodeTemplateListItem = ({
           });
         }}
         onClick={() => {
+          // Not tool handle, cannot add toolset
+          if (!isToolHandle && template.flowNodeType === FlowNodeTypeEnum.toolSet) {
+            onUpdateParentId(template.id);
+            return;
+          }
           // Team folder
           if (template.isFolder && template.flowNodeType === FlowNodeTypeEnum.pluginModule) {
             onUpdateParentId(template.id);
