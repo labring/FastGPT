@@ -22,15 +22,10 @@ const VariablePopover = ({
     (v) => v.chatBoxData?.app?.chatConfig?.variables ?? []
   );
   const variableList = variables.filter(
-    (item) =>
-      item.type !== VariableInputEnum.custom &&
-      item.type !== VariableInputEnum.internal &&
-      item.type !== VariableInputEnum.external
+    (item) => item.type !== VariableInputEnum.internal && item.type !== VariableInputEnum.external
   );
   const externalVariableList = variables.filter((item) =>
-    showExternalVariables
-      ? item.type === VariableInputEnum.custom || item.type === VariableInputEnum.external
-      : false
+    showExternalVariables ? item.type === VariableInputEnum.external : false
   );
 
   const hasExternalVariable = externalVariableList.length > 0;
@@ -64,19 +59,6 @@ const VariablePopover = ({
         <Box p={4} maxH={'60vh'} overflow={'auto'}>
           {hasExternalVariable && (
             <Box textAlign={'left'}>
-              <Flex
-                color={'primary.600'}
-                bg={'primary.100'}
-                mb={3}
-                px={3}
-                py={1.5}
-                gap={1}
-                fontSize={'mini'}
-                rounded={'sm'}
-              >
-                <MyIcon name={'common/info'} color={'primary.600'} w={4} />
-                {t('chat:variable_invisable_in_share')}
-              </Flex>
               {externalVariableList.map((item) => (
                 <LabelAndFormRender
                   {...item}

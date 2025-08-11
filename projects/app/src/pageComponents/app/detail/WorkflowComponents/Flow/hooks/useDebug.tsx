@@ -52,19 +52,16 @@ export const useDebug = () => {
 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
-  const { normalVar, customVar, externalVar, internalVar, variables } = useMemo(() => {
+  const { normalVar, externalVar, internalVar, variables } = useMemo(() => {
     const variables = appDetail.chatConfig?.variables || [];
-    const customVar = variables.filter((item) => item.type === VariableInputEnum.custom) || [];
     const externalVar = variables.filter((item) => item.type === VariableInputEnum.external) || [];
     const internalVar = variables.filter((item) => item.type === VariableInputEnum.internal) || [];
     const normalVar =
       variables.filter(
         (item) =>
-          item.type !== VariableInputEnum.custom &&
-          item.type !== VariableInputEnum.external &&
-          item.type !== VariableInputEnum.internal
+          item.type !== VariableInputEnum.external && item.type !== VariableInputEnum.internal
       ) || [];
-    return { normalVar, customVar, externalVar, internalVar, variables };
+    return { normalVar, externalVar, internalVar, variables };
   }, [appDetail.chatConfig?.variables]);
 
   const [defaultGlobalVariables, setDefaultGlobalVariables] = useState<Record<string, any>>(
@@ -265,7 +262,7 @@ export const useDebug = () => {
             />
           )}
           <Box display={currentTab === TabEnum.global ? 'block' : 'none'}>
-            {[...customVar, ...externalVar, ...normalVar, ...internalVar].map((item) => (
+            {[...externalVar, ...normalVar, ...internalVar].map((item) => (
               <LabelAndFormRender
                 {...item}
                 key={item.key}
@@ -302,7 +299,6 @@ export const useDebug = () => {
     defaultGlobalVariables,
     t,
     variables.length,
-    customVar,
     externalVar,
     normalVar,
     internalVar,

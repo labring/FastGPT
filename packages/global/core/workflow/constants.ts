@@ -336,7 +336,6 @@ export enum VariableInputEnum {
   select = 'select',
   multipleSelect = 'multipleSelect',
   password = 'password',
-  custom = 'custom',
   internal = 'internal',
   external = 'external'
 }
@@ -392,13 +391,6 @@ export const variableMap: Record<
     label: i18nT('common:core.workflow.inputType.password'),
     value: VariableInputEnum.password,
     defaultValueType: WorkflowIOValueTypeEnum.string
-  },
-  [VariableInputEnum.custom]: {
-    icon: 'core/workflow/inputType/customVariable',
-    label: i18nT('common:core.workflow.inputType.custom'),
-    value: VariableInputEnum.custom,
-    defaultValueType: WorkflowIOValueTypeEnum.string,
-    description: i18nT('app:variable.select type_desc')
   },
   [VariableInputEnum.internal]: {
     icon: 'core/workflow/inputType/customVariable',

@@ -678,7 +678,7 @@
   "core.module.template.work_start": "流程开始",
   "core.module.templates.Load plugin error": "加载插件失败",
   "core.module.variable add option": "添加选项",
-  "core.module.variable.Custom type": "自定义变量",
+
   "core.module.variable.add option": "添加选项",
   "core.module.variable.input type": "文本",
   "core.module.variable.key": "变量 key",
@@ -727,7 +727,7 @@
   "core.workflow.inputType.Manual input": "手动输入",
   "core.workflow.inputType.Manual select": "手动选择",
   "core.workflow.inputType.Reference": "变量引用",
-  "core.workflow.inputType.custom": "自定义变量",
+
   "core.workflow.inputType.internal": "内部变量",
   "core.workflow.inputType.external": "外部变量",
   "core.workflow.inputType.dynamicTargetInput": "动态外部数据",

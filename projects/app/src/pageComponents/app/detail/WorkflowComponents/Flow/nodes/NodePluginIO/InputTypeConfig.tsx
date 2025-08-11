@@ -116,7 +116,6 @@ const InputTypeConfig = ({
   const showValueTypeSelect =
     inputType === FlowNodeInputTypeEnum.reference ||
     inputType === FlowNodeInputTypeEnum.customVariable ||
-    inputType === VariableInputEnum.custom ||
     inputType === VariableInputEnum.internal ||
     inputType === VariableInputEnum.external;
 
@@ -124,7 +123,6 @@ const InputTypeConfig = ({
     const list = [
       FlowNodeInputTypeEnum.addInputParam,
       FlowNodeInputTypeEnum.customVariable,
-      VariableInputEnum.custom,
       VariableInputEnum.internal,
       VariableInputEnum.external
     ];
@@ -150,7 +148,6 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.select,
       FlowNodeInputTypeEnum.multipleSelect,
       VariableInputEnum.switch,
-      VariableInputEnum.custom,
       VariableInputEnum.internal,
       VariableInputEnum.external
     ];
@@ -314,8 +311,7 @@ const InputTypeConfig = ({
             </FormLabel>
             <Flex flex={1} h={10}>
               {(inputType === FlowNodeInputTypeEnum.numberInput ||
-                ((inputType === VariableInputEnum.custom ||
-                  inputType === VariableInputEnum.internal ||
+                ((inputType === VariableInputEnum.internal ||
                   inputType === VariableInputEnum.external) &&
                   valueType === WorkflowIOValueTypeEnum.number)) && (
                 <MyNumberInput
@@ -329,8 +325,7 @@ const InputTypeConfig = ({
                 />
               )}
               {(inputType === FlowNodeInputTypeEnum.input ||
-                ((inputType === VariableInputEnum.custom ||
-                  inputType === VariableInputEnum.internal ||
+                ((inputType === VariableInputEnum.internal ||
                   inputType === VariableInputEnum.external) &&
                   valueType === WorkflowIOValueTypeEnum.string)) && (
                 <MyTextarea
@@ -350,8 +345,7 @@ const InputTypeConfig = ({
                 />
               )}
               {(inputType === FlowNodeInputTypeEnum.JSONEditor ||
-                ((inputType === VariableInputEnum.custom ||
-                  inputType === VariableInputEnum.internal ||
+                ((inputType === VariableInputEnum.internal ||
                   inputType === VariableInputEnum.external) &&
                   ![
                     WorkflowIOValueTypeEnum.number,
@@ -370,8 +364,7 @@ const InputTypeConfig = ({
               )}
               {(inputType === FlowNodeInputTypeEnum.switch ||
                 inputType === VariableInputEnum.switch ||
-                ((inputType === VariableInputEnum.custom ||
-                  inputType === VariableInputEnum.internal ||
+                ((inputType === VariableInputEnum.internal ||
                   inputType === VariableInputEnum.external) &&
                   valueType === WorkflowIOValueTypeEnum.boolean)) && (
                 <Switch {...register('defaultValue')} />

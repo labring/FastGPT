@@ -155,10 +155,8 @@ const ChatBox = ({
   const isInteractive = useMemo(() => checkIsInteractiveByHistories(chatRecords), [chatRecords]);
 
   const externalVariableList = useMemo(() => {
-    if ([ChatTypeEnum.log, ChatTypeEnum.chat].includes(chatType)) {
-      return allVariableList.filter(
-        (item) => item.type === VariableInputEnum.custom || item.type === VariableInputEnum.external
-      );
+    if ([ChatTypeEnum.log, ChatTypeEnum.chat, ChatTypeEnum.share].includes(chatType)) {
+      return allVariableList.filter((item) => item.type === VariableInputEnum.external);
     }
     return [];
   }, [allVariableList, chatType]);
@@ -977,7 +975,11 @@ const ChatBox = ({
               <VariableInputForm
                 chatStarted={chatStarted}
                 chatForm={chatForm}
-                showExternalVariables={[ChatTypeEnum.log, ChatTypeEnum.chat].includes(chatType)}
+                showExternalVariables={[
+                  ChatTypeEnum.log,
+                  ChatTypeEnum.chat,
+                  ChatTypeEnum.share
+                ].includes(chatType)}
               />
             </Box>
           )}

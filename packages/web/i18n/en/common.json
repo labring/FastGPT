@@ -678,7 +678,7 @@
   "core.module.template.work_start": "Process starts",
   "core.module.templates.Load plugin error": "Failed to Load Plugin",
   "core.module.variable add option": "Add Option",
-  "core.module.variable.Custom type": "Custom Variable",
+
   "core.module.variable.add option": "Add Option",
   "core.module.variable.input type": "Text",
   "core.module.variable.key": "Variable Key",
@@ -727,7 +727,7 @@
   "core.workflow.inputType.Manual input": "Manual Input",
   "core.workflow.inputType.Manual select": "Manual Select",
   "core.workflow.inputType.Reference": "Variable Reference",
-  "core.workflow.inputType.custom": "Custom Variable",
+
   "core.workflow.inputType.internal": "Internal Variable",
   "core.workflow.inputType.external": "External Variable",
   "core.workflow.inputType.dynamicTargetInput": "Dynamic External Data",
