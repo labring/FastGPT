@@ -449,6 +449,7 @@ export const iconPaths = {
   'model/yi': () => import('./icons/model/yi.svg'),
   more: () => import('./icons/more.svg'),
   moreLine: () => import('./icons/moreLine.svg'),
+  optimizer: () => import('./icons/optimizer.svg'),
   out: () => import('./icons/out.svg'),
   paragraph: () => import('./icons/paragraph.svg'),
   'phoneTabbar/me': () => import('./icons/phoneTabbar/me.svg'),

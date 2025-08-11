@@ -1214,6 +1214,7 @@
   "support.wallet.usage.Bill Module": "扣费模块",
   "support.wallet.usage.Duration": "时长（秒）",
   "support.wallet.usage.Module name": "模块名",
+  "support.wallet.usage.Optimize Prompt": "提示词优化",
   "support.wallet.usage.Source": "来源",
   "support.wallet.usage.Text Length": "文本长度",
   "support.wallet.usage.Time": "生成时间",

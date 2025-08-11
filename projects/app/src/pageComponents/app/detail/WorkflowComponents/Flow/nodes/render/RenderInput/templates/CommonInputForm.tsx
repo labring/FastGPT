@@ -13,6 +13,11 @@ import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponen
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import { llmModelTypeFilterMap } from '@fastgpt/global/core/ai/constants';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { streamOptimizePrompt } from '@/web/common/api/fetch';
+import { getModelFromList } from '@fastgpt/global/core/ai/model';
+import type { OnOptimizePromptProps } from '@fastgpt/web/components/common/Textarea/PromptEditor/modules/OptimizerPopover';
 
 const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
@@ -24,13 +29,21 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
 
   const modelList = useMemo(
     () =>
-      llmModelList.filter((model) => {
-        if (!item.llmModelType) return true;
-        const filterField = llmModelTypeFilterMap[item.llmModelType];
-        if (!filterField) return true;
-        //@ts-ignore
-        return !!model[filterField];
-      }),
+      llmModelList
+        .filter((model) => {
+          if (!item.llmModelType) return true;
+          const filterField = llmModelTypeFilterMap[item.llmModelType];
+          if (!filterField) return true;
+          //@ts-ignore
+          return !!model[filterField];
+        })
+        .map((model) => {
+          const modelData = getModelFromList(llmModelList, model.model);
+          return {
+            ...model,
+            avatar: modelData?.avatar
+          };
+        }),
     [llmModelList, item.llmModelType]
   );
 
@@ -80,6 +93,33 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
     return item.value;
   }, [inputType, item.value, defaultModel, handleChange]);
 
+  const canOptimizePrompt = useMemo(() => {
+    const node = nodeList.find((n) => n.nodeId === nodeId);
+
+    const isChatOrAgentNode =
+      node?.flowNodeType === FlowNodeTypeEnum.chatNode ||
+      node?.flowNodeType === FlowNodeTypeEnum.agent;
+    const isSystemPromptKey = item.key === NodeInputKeyEnum.aiSystemPrompt;
+
+    return isChatOrAgentNode && isSystemPromptKey;
+  }, [nodeList, nodeId, item.key]);
+
+  const onOptimizePrompt = useCallback(
+    async ({ model, prompt, onResult, abortController }: OnOptimizePromptProps) => {
+      await streamOptimizePrompt(
+        {
+          originalPrompt: item.value,
+          optimizerInput: prompt,
+          appId: appDetail._id,
+          model
+        },
+        onResult,
+        abortController
+      );
+    },
+    [item.value, appDetail._id]
+  );
+
   return (
     <InputRender
       inputType={inputType}
@@ -93,6 +133,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
       max={item.max}
       list={item.list}
       modelList={modelList}
+      onOptimizePrompt={canOptimizePrompt ? onOptimizePrompt : undefined}
     />
   );
 };
