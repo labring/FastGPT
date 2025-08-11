@@ -116,15 +116,15 @@ const InputTypeConfig = ({
   const showValueTypeSelect =
     inputType === FlowNodeInputTypeEnum.reference ||
     inputType === FlowNodeInputTypeEnum.customVariable ||
-    inputType === VariableInputEnum.internal ||
-    inputType === VariableInputEnum.external;
+    inputType === VariableInputEnum.custom ||
+    inputType === VariableInputEnum.internal;
 
   const showRequired = useMemo(() => {
     const list = [
       FlowNodeInputTypeEnum.addInputParam,
       FlowNodeInputTypeEnum.customVariable,
-      VariableInputEnum.internal,
-      VariableInputEnum.external
+      VariableInputEnum.custom,
+      VariableInputEnum.internal
     ];
     return !list.includes(inputType);
   }, [inputType]);
@@ -148,8 +148,8 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.select,
       FlowNodeInputTypeEnum.multipleSelect,
       VariableInputEnum.switch,
-      VariableInputEnum.internal,
-      VariableInputEnum.external
+      VariableInputEnum.custom,
+      VariableInputEnum.internal
     ];
 
     // Do not show default value for password type
@@ -311,8 +311,8 @@ const InputTypeConfig = ({
             </FormLabel>
             <Flex flex={1} h={10}>
               {(inputType === FlowNodeInputTypeEnum.numberInput ||
-                ((inputType === VariableInputEnum.internal ||
-                  inputType === VariableInputEnum.external) &&
+                ((inputType === VariableInputEnum.custom ||
+                  inputType === VariableInputEnum.internal) &&
                   valueType === WorkflowIOValueTypeEnum.number)) && (
                 <MyNumberInput
                   value={defaultValue}
@@ -325,8 +325,8 @@ const InputTypeConfig = ({
                 />
               )}
               {(inputType === FlowNodeInputTypeEnum.input ||
-                ((inputType === VariableInputEnum.internal ||
-                  inputType === VariableInputEnum.external) &&
+                ((inputType === VariableInputEnum.custom ||
+                  inputType === VariableInputEnum.internal) &&
                   valueType === WorkflowIOValueTypeEnum.string)) && (
                 <MyTextarea
                   {...register('defaultValue')}
@@ -345,8 +345,8 @@ const InputTypeConfig = ({
                 />
               )}
               {(inputType === FlowNodeInputTypeEnum.JSONEditor ||
-                ((inputType === VariableInputEnum.internal ||
-                  inputType === VariableInputEnum.external) &&
+                ((inputType === VariableInputEnum.custom ||
+                  inputType === VariableInputEnum.internal) &&
                   ![
                     WorkflowIOValueTypeEnum.number,
                     WorkflowIOValueTypeEnum.string,
@@ -364,8 +364,8 @@ const InputTypeConfig = ({
               )}
               {(inputType === FlowNodeInputTypeEnum.switch ||
                 inputType === VariableInputEnum.switch ||
-                ((inputType === VariableInputEnum.internal ||
-                  inputType === VariableInputEnum.external) &&
+                ((inputType === VariableInputEnum.custom ||
+                  inputType === VariableInputEnum.internal) &&
                   valueType === WorkflowIOValueTypeEnum.boolean)) && (
                 <Switch {...register('defaultValue')} />
               )}

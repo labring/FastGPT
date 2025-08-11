@@ -261,11 +261,11 @@ export const appData2FlowNodeIO = ({
             FlowNodeInputTypeEnum.password,
             FlowNodeInputTypeEnum.reference
           ],
-          [VariableInputEnum.internal]: [
+          [VariableInputEnum.custom]: [
             FlowNodeInputTypeEnum.input,
             FlowNodeInputTypeEnum.reference
           ],
-          [VariableInputEnum.external]: [
+          [VariableInputEnum.internal]: [
             FlowNodeInputTypeEnum.input,
             FlowNodeInputTypeEnum.reference
           ],

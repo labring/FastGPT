@@ -82,7 +82,7 @@
   "stream_output": "串流輸出",
   "unsupported_file_type": "不支援的檔案類型",
   "upload": "上傳",
-
+  "variable_invisable_in_share": "自定義變數在免登入連結中不可見",
   "view_citations": "檢視引用",
   "web_site_sync": "網站同步"
 }

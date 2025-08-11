@@ -17,8 +17,8 @@ export const variableInputTypeToInputType = (
   if (inputType === VariableInputEnum.select) return InputTypeEnum.select;
   if (inputType === VariableInputEnum.multipleSelect) return InputTypeEnum.multipleSelect;
   if (inputType === VariableInputEnum.password) return InputTypeEnum.password;
+  if (inputType === VariableInputEnum.custom) return valueTypeToInputType(valueType);
   if (inputType === VariableInputEnum.internal) return valueTypeToInputType(valueType);
-  if (inputType === VariableInputEnum.external) return valueTypeToInputType(valueType);
   return InputTypeEnum.JSONEditor;
 };
 

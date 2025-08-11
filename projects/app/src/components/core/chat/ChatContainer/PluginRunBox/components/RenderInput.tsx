@@ -230,6 +230,21 @@ const RenderInput = () => {
                   {input.required && <Box color={'red.500'}>*</Box>}
                   <FormLabel>{input.label}</FormLabel>
                   {input.description && <QuestionTip ml={1} label={input.description} />}
+                  {inputType === FlowNodeInputTypeEnum.customVariable && (
+                    <Flex
+                      color={'primary.600'}
+                      bg={'primary.100'}
+                      px={2}
+                      py={1}
+                      gap={1}
+                      ml={2}
+                      fontSize={'mini'}
+                      rounded={'sm'}
+                    >
+                      <MyIcon name={'common/info'} color={'primary.600'} w={4} />
+                      {t('chat:variable_invisable_in_share')}
+                    </Flex>
+                  )}
                 </Flex>
               )}
               <Controller

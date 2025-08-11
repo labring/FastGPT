@@ -141,13 +141,12 @@ const VariableEdit = ({
         data.type !== VariableInputEnum.select &&
         data.type !== VariableInputEnum.multipleSelect &&
         data.type !== VariableInputEnum.internal &&
-        data.type !== VariableInputEnum.external &&
         data.list
       ) {
         delete data.list;
       }
 
-      if (data.type === VariableInputEnum.internal || data.type === VariableInputEnum.external) {
+      if (data.type === VariableInputEnum.custom || data.type === VariableInputEnum.internal) {
         data.required = false;
       } else {
         data.valueType = inputTypeList.find((item) => item.value === data.type)?.defaultValueType;

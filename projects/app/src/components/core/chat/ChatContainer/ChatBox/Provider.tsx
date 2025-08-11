@@ -229,7 +229,7 @@ const Provider = ({
     ...props,
     welcomeText,
     variableList: variables.filter(
-      (item) => item.type !== VariableInputEnum.internal && item.type !== VariableInputEnum.external
+      (item) => item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
     ),
     allVariableList: variables,
     questionGuide,

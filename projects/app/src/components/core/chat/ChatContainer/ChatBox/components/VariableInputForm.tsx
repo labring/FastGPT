@@ -30,10 +30,10 @@ const VariableInput = ({
   const allVariableList = useContextSelector(ChatBoxContext, (v) => v.allVariableList);
 
   // split custom/external groups for clarity
-  const externalVariableList = useMemo(
+  const customVariableList = useMemo(
     () =>
       allVariableList.filter((item) =>
-        showExternalVariables ? item.type === VariableInputEnum.external : false
+        showExternalVariables ? item.type === VariableInputEnum.custom : false
       ),
     [allVariableList, showExternalVariables]
   );
@@ -58,7 +58,7 @@ const VariableInput = ({
     <Box py={3}>
       <ChatAvatar src={appAvatar} type={'AI'} />
 
-      {externalVariableList.length > 0 && (
+      {customVariableList.length > 0 && (
         <Box textAlign={'left'}>
           <Card
             order={2}
@@ -81,7 +81,7 @@ const VariableInput = ({
               <MyIcon name={'common/info'} color={'primary.600'} w={4} />
               {t('app:variable.external_type_desc')}
             </Flex>
-            {externalVariableList.map((item) => (
+            {customVariableList.map((item) => (
               <LabelAndFormRender
                 {...item}
                 key={item.key}
@@ -92,7 +92,7 @@ const VariableInput = ({
                 bg={'myGray.50'}
               />
             ))}
-            {variableList.length === 0 && externalVariableList.length > 0 && !chatStarted && (
+            {variableList.length === 0 && customVariableList.length > 0 && !chatStarted && (
               <Button
                 leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
                 size={'sm'}
