@@ -37,7 +37,7 @@ describe('transformPreviewHistories', () => {
       responseData: undefined,
       llmModuleAccount: 1,
       totalQuoteList: [],
-      historyPreviewLength: undefined
+      historyPreviewLength: 0
     });
   });
 
@@ -63,7 +63,7 @@ describe('transformPreviewHistories', () => {
       responseData: undefined,
       llmModuleAccount: 1,
       totalQuoteList: undefined,
-      historyPreviewLength: undefined
+      historyPreviewLength: 0
     });
   });
 });
@@ -134,7 +134,7 @@ describe('addStatisticalDataToHistoryItem', () => {
       ...item,
       llmModuleAccount: 3,
       totalQuoteList: [{ id: '1', q: 'test', a: 'answer' }],
-      historyPreviewLength: 1
+      historyPreviewLength: 0
     });
   });
 
@@ -156,7 +156,7 @@ describe('addStatisticalDataToHistoryItem', () => {
       ...item,
       llmModuleAccount: 1,
       totalQuoteList: [],
-      historyPreviewLength: undefined
+      historyPreviewLength: 0
     });
   });
 
@@ -190,7 +190,7 @@ describe('addStatisticalDataToHistoryItem', () => {
       ...item,
       llmModuleAccount: 3,
       totalQuoteList: [],
-      historyPreviewLength: undefined
+      historyPreviewLength: 0
     });
   });
 });
