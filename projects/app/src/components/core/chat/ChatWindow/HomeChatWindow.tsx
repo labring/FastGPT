@@ -20,7 +20,7 @@ import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { streamFetch } from '@/web/common/api/fetch';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
@@ -39,6 +39,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { getPreviewPluginNode } from '@/web/core/app/api/plugin';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
+import { getWebLLMModel } from '@/web/common/system/utils';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 
 const HomeChatWindow = () => {
@@ -91,13 +92,48 @@ const HomeChatWindow = () => {
     );
   }, [availableTools, selectedToolIds, setSelectedToolIds]);
 
+  // 模型选择处理
+  const handleModelChange = useCallback(
+    (model: string) => {
+      const data = getWebLLMModel(model);
+      setChatBoxData((state) => ({
+        ...state,
+        app: {
+          ...state.app,
+          chatConfig: {
+            ...state.app.chatConfig,
+            fileSelectConfig: {
+              ...state.app.chatConfig?.fileSelectConfig,
+              maxFiles: 20,
+              canSelectFile: true,
+              canSelectImg: !!data.vision
+            }
+          }
+        }
+      }));
+      setSelectedModel(model);
+    },
+    [setChatBoxData, setSelectedModel]
+  );
+
   // 初始化聊天数据
   const { loading } = useRequest2(
     async () => {
       if (!appId || forbidLoadChat.current) return;
 
+      const data = getWebLLMModel(selectedModel);
       const res = await getInitChatInfo({ appId, chatId });
+
       res.userAvatar = userInfo?.avatar;
+      if (!res.app.chatConfig) {
+        res.app['chatConfig'] = {
+          fileSelectConfig: {
+            canSelectImg: !!data.vision,
+            canSelectFile: true,
+            maxFiles: 20
+          }
+        };
+      }
 
       setChatBoxData(res);
 
