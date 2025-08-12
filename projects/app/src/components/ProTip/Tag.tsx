@@ -5,7 +5,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const LangMap: Record<string, string> = {
   'zh-CN': '/imgs/proTag.svg',
-  'en-US': '/imgs/proTagEng.svg'
+  en: '/imgs/proTagEng.svg'
 };
 
 const ProTag = () => {
