@@ -131,8 +131,6 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
       mt={['46px', 0]}
       h={['calc(100vh - 46px)', 'full']}
     >
-      <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} icon="/icon/logo.svg" />
-
       <Header>
         <Button
           mr={[6, 0]}

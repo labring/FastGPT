@@ -11,11 +11,14 @@ import { useMultipleSelect } from '@fastgpt/web/components/common/MySelect/Multi
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ProTag from '@/components/ProTip/Tag';
 import ProText from '@/components/ProTip/ProText';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/pageComponents/app/detail/context';
 
 const Logs = () => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const [viewMode, setViewMode] = useState<'chart' | 'table'>(feConfigs.isPlus ? 'chart' : 'table');
+  const appId = useContextSelector(AppContext, (v) => v.appId);
 
   const [dateRange, setDateRange] = useState<DateRangeType>({
     from: new Date(addDays(new Date(), -6).setHours(0, 0, 0, 0)),
@@ -94,6 +97,7 @@ const Logs = () => {
       </Flex>
       {viewMode === 'table' ? (
         <LogTable
+          appId={appId}
           chatSources={chatSources}
           setChatSources={setChatSources}
           isSelectAllSource={isSelectAllSource}
@@ -103,6 +107,7 @@ const Logs = () => {
         />
       ) : (
         <LogChart
+          appId={appId}
           chatSources={chatSources}
           setChatSources={setChatSources}
           isSelectAllSource={isSelectAllSource}

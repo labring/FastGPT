@@ -44,6 +44,8 @@ import { formatDateByTimespan } from '@fastgpt/global/core/app/logs/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 export type HeaderControlProps = {
+  appId: string;
+  showSourceSelector?: boolean;
   chatSources: ChatSourceEnum[];
   setChatSources: (value: ChatSourceEnum[]) => void;
   isSelectAllSource: boolean;
@@ -128,16 +130,17 @@ const generateCompleteTimeSeries = (
 };
 
 const LogChart = ({
+  appId,
   chatSources,
   setChatSources,
   isSelectAllSource,
   setIsSelectAllSource,
   dateRange,
-  setDateRange
+  setDateRange,
+  showSourceSelector = true
 }: HeaderControlProps) => {
   const { t } = useTranslation();
 
-  const { appId } = useContextSelector(AppContext, (v) => v);
   const { feConfigs } = useSystemStore();
 
   const [userTimespan, setUserTimespan] = useState<AppLogTimespanEnum>(AppLogTimespanEnum.day);
@@ -326,12 +329,14 @@ const LogChart = ({
   return (
     <Flex flexDir={'column'} h={'full'}>
       <HeaderControl
+        appId={appId}
         chatSources={chatSources}
         setChatSources={setChatSources}
         isSelectAllSource={isSelectAllSource}
         setIsSelectAllSource={setIsSelectAllSource}
         dateRange={dateRange}
         setDateRange={setDateRange}
+        showSourceSelector={showSourceSelector}
       />
       <Flex flexDir={'column'} flex={'1 0 0'} h={0} overflowY={'auto'} px={[4, 8]}>
         <TotalData appId={appId} />
@@ -753,7 +758,8 @@ const HeaderControl = ({
   isSelectAllSource,
   setIsSelectAllSource,
   dateRange,
-  setDateRange
+  setDateRange,
+  showSourceSelector = true
 }: HeaderControlProps) => {
   const { t } = useTranslation();
 
@@ -766,6 +772,7 @@ const HeaderControl = ({
     [t]
   );
 
+  console.log(showSourceSelector);
   return (
     <Flex
       flexDir={['column', 'row']}
@@ -774,29 +781,31 @@ const HeaderControl = ({
       pb={2}
       px={[4, 8]}
     >
-      <Flex>
-        <MultipleSelect<ChatSourceEnum>
-          list={sourceList}
-          value={chatSources}
-          onSelect={setChatSources}
-          isSelectAll={isSelectAllSource}
-          setIsSelectAll={setIsSelectAllSource}
-          h={10}
-          w={'226px'}
-          bg={'white'}
-          rounded={'8px'}
-          tagStyle={{
-            px: 1,
-            py: 1,
-            borderRadius: 'sm',
-            bg: 'myGray.100',
-            color: 'myGray.900'
-          }}
-          borderColor={'myGray.200'}
-          formLabel={t('app:logs_source')}
-          formLabelFontSize={'sm'}
-        />
-      </Flex>
+      {showSourceSelector && (
+        <Flex>
+          <MultipleSelect<ChatSourceEnum>
+            list={sourceList}
+            value={chatSources}
+            onSelect={setChatSources}
+            isSelectAll={isSelectAllSource}
+            setIsSelectAll={setIsSelectAllSource}
+            h={10}
+            w={'226px'}
+            bg={'white'}
+            rounded={'8px'}
+            tagStyle={{
+              px: 1,
+              py: 1,
+              borderRadius: 'sm',
+              bg: 'myGray.100',
+              color: 'myGray.900'
+            }}
+            borderColor={'myGray.200'}
+            formLabel={t('app:logs_source')}
+            formLabelFontSize={'sm'}
+          />
+        </Flex>
+      )}
       <Flex>
         <DateRangePicker
           defaultDate={dateRange}

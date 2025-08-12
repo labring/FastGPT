@@ -17,7 +17,11 @@ const SettingTabs = ({ tab, children, onChange }: Props) => {
     useMemo(
       () => [
         { label: t('chat:setting.home.title'), value: ChatSettingTabOptionEnum.HOME },
-        { label: t('chat:setting.logs.title'), value: ChatSettingTabOptionEnum.LOGS }
+        {
+          label: t('chat:setting.data_dashboard.title'),
+          value: ChatSettingTabOptionEnum.DATA_DASHBOARD
+        },
+        { label: t('chat:setting.log_details.title'), value: ChatSettingTabOptionEnum.LOG_DETAILS }
       ],
       [t]
     );

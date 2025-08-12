@@ -50,6 +50,7 @@ import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import { getModelFromList } from '@fastgpt/global/core/ai/model';
+import MyPopover from '@fastgpt/web/components/common/MyPopover';
 
 type Props = {
   myApps: AppListItemType[];
@@ -397,9 +398,23 @@ const HomeChatWindow = ({ myApps }: Props) => {
               h="56px"
               borderBottom="sm"
             >
-              <Box flex="1" textAlign="center">
-                {chatBoxData?.title}
-              </Box>
+              <MyPopover
+                trigger="hover"
+                placement="bottom"
+                Trigger={
+                  <Flex
+                    flex="1"
+                    textAlign="center"
+                    cursor="pointer"
+                    alignItems="center"
+                    justifyContent="center"
+                  >
+                    {chatBoxData?.title}
+                  </Flex>
+                }
+              >
+                {() => `会话ID：${chatBoxData?.chatId}`}
+              </MyPopover>
             </Flex>
           )
         ) : (

@@ -10,9 +10,12 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
 import { useTranslation } from 'react-i18next';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
+import NextHead from '@/components/common/NextHead';
+import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 
 const HomepageSetting = dynamic(() => import('@/pageComponents/chat/ChatSetting/HomepageSetting'));
-const ChatLogs = dynamic(() => import('@/pageComponents/chat/ChatLogs'));
+const LogDetails = dynamic(() => import('@/pageComponents/chat/ChatSetting/LogDetails'));
+const DataDashboard = dynamic(() => import('@/pageComponents/chat/ChatSetting/DataDashboard'));
 
 const ChatSetting = () => {
   const { t } = useTranslation();
@@ -24,6 +27,7 @@ const ChatSetting = () => {
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
+  const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
 
   const SettingHeader = useCallback(
     ({ children }: { children?: React.ReactNode }) => (
@@ -38,6 +42,8 @@ const ChatSetting = () => {
 
   return (
     <>
+      <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} icon="/icon/logo.svg" />
+
       {!isPc && (
         <Flex h="46px" w="100vw" position="absolute" borderBottom="sm" color="myGray.900">
           <MyIcon
@@ -70,8 +76,11 @@ const ChatSetting = () => {
         <HomepageSetting Header={SettingHeader} onDiagramShow={setIsOpenDiagram} />
       )}
 
-      {/* home chat logs */}
-      {tab === ChatSettingTabOptionEnum.LOGS && <ChatLogs Header={SettingHeader} />}
+      {/* data dashboard */}
+      {tab === ChatSettingTabOptionEnum.DATA_DASHBOARD && <DataDashboard Header={SettingHeader} />}
+
+      {/* log details */}
+      {tab === ChatSettingTabOptionEnum.LOG_DETAILS && <LogDetails Header={SettingHeader} />}
 
       <DiagramModal show={isOpenDiagram} onShow={setIsOpenDiagram} />
     </>

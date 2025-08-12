@@ -27,6 +27,7 @@ const ListItem = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
     v.myApps.filter(
       (app) =>
         appType === app.type ||
+        app.type === AppTypeEnum.folder ||
         (appType === 'all' &&
           [
             AppTypeEnum.folder,
