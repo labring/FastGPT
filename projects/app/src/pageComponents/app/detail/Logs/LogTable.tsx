@@ -26,8 +26,6 @@ import { getTeamMembers } from '@/web/support/user/team/api';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useLocalStorageState } from 'ahooks';
 import { getLogKeys } from '@/web/core/app/api/log';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '../context';
 import type { AppLogKeysType } from '@fastgpt/global/core/app/logs/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import {
@@ -112,7 +110,9 @@ const LogTable = ({
   const [chatSearch, setChatSearch] = useState('');
 
   // log keys
-  const [logKeys, setLogKeys] = useLocalStorageState<AppLogKeysType[]>(`app_log_keys_${appId}`);
+  const [logKeys = DefaultAppLogKeys, setLogKeys] = useLocalStorageState<AppLogKeysType[]>(
+    `app_log_keys_${appId}`
+  );
   const { runAsync: fetchLogKeys, data: teamLogKeys } = useRequest2(
     async () => {
       return getLogKeys({ appId });
@@ -121,25 +121,24 @@ const LogTable = ({
       manual: false,
       refreshDeps: [appId],
       onSuccess: (res) => {
-        if (res.logKeys.length > 0 && !logKeys) {
+        if (logKeys.length > 0) return;
+        if (res.logKeys.length > 0) {
           setLogKeys(res.logKeys);
+        } else if (res.logKeys.length === 0) {
+          setLogKeys(DefaultAppLogKeys);
         }
       }
     }
   );
   const showSyncPopover = useMemo(() => {
-    const teamLogKeysList = (
-      teamLogKeys?.logKeys.length ? teamLogKeys?.logKeys : DefaultAppLogKeys
-    ).filter((item) => item.enable);
-    const personalLogKeysList = (logKeys || DefaultAppLogKeys).filter((item) => item.enable);
+    const teamLogKeysList = (teamLogKeys?.logKeys || []).filter((item) => item.enable);
+    const personalLogKeysList = logKeys.filter((item) => item.enable);
     return !isEqual(teamLogKeysList, personalLogKeysList);
   }, [teamLogKeys, logKeys]);
 
   const { runAsync: exportLogs } = useRequest2(
     async () => {
-      const enabledKeys = (logKeys || DefaultAppLogKeys)
-        .filter((item) => item.enable)
-        .map((item) => item.key);
+      const enabledKeys = logKeys.filter((item) => item.enable).map((item) => item.key);
       const headerTitle = enabledKeys.map((k) => t(AppLogKeysEnumMap[k])).join(',');
       await downloadFetch({
         url: '/api/core/app/exportChatLogs',
@@ -337,8 +336,8 @@ const LogTable = ({
   });
 
   return (
-    <Flex flexDir={'column'} h={'full'} px={[4, 8]}>
-      <Flex flexDir={['column', 'row']} alignItems={['flex-start', 'center']} gap={3}>
+    <Flex flexDir={'column'} h={'full'} overflow={'auto'} px={[4, 8]}>
+      <Flex alignItems={'center'} gap={3} flexWrap={'wrap'}>
         {showSourceSelector && (
           <Flex>
             <MultipleSelect<ChatSourceEnum>
@@ -348,7 +347,7 @@ const LogTable = ({
               isSelectAll={isSelectAllSource}
               setIsSelectAll={setIsSelectAllSource}
               h={10}
-              w={'226px'}
+              w={'200px'}
               rounded={'8px'}
               tagStyle={{
                 px: 1,
@@ -371,7 +370,7 @@ const LogTable = ({
             }}
             bg={'myGray.25'}
             h={10}
-            w={'240px'}
+            flex={'0 1 250px'}
             rounded={'8px'}
             borderColor={'myGray.200'}
             formLabel={t('app:logs_date')}
@@ -392,7 +391,7 @@ const LogTable = ({
               isSelectAll={isSelectAllTmb}
               setIsSelectAll={setIsSelectAllTmb}
               h={10}
-              w={'226px'}
+              w={' 226px'}
               rounded={'8px'}
               formLabelFontSize={'sm'}
               formLabel={t('common:member')}
@@ -408,7 +407,7 @@ const LogTable = ({
           </Flex>
         )}
         <Flex
-          w={'226px'}
+          flex={'0 1 230px'}
           h={10}
           alignItems={'center'}
           rounded={'8px'}
@@ -442,14 +441,14 @@ const LogTable = ({
         <Box flex={'1'} />
         {showSyncPopover && (
           <SyncLogKeysPopover
-            logKeys={logKeys || DefaultAppLogKeys}
+            logKeys={logKeys}
             setLogKeys={setLogKeys}
             teamLogKeys={teamLogKeys?.logKeys || []}
             fetchLogKeys={fetchLogKeys}
           />
         )}
         <LogKeysConfigPopover
-          logKeysList={(logKeys || DefaultAppLogKeys).filter((item) => {
+          logKeysList={logKeys.filter((item) => {
             if (item.key === AppLogKeysEnum.SOURCE && !showSourceSelector) return false;
             return true;
           })}
@@ -464,11 +463,11 @@ const LogTable = ({
         />
       </Flex>
 
-      <TableContainer mt={[2, 4]} flex={'1 0 0'} h={0} overflowY={'auto'}>
+      <TableContainer mt={[2, 4]} flex={['', '1 0 0']} h={['auto', 0]} overflowY={'auto'}>
         <Table variant={'simple'} fontSize={'sm'}>
           <Thead>
             <Tr>
-              {(logKeys || DefaultAppLogKeys)
+              {logKeys
                 .filter((logKey) => logKey.enable)
                 .map((logKey) => HeaderRenderMap[logKey.key])}
             </Tr>
@@ -484,7 +483,7 @@ const LogTable = ({
                   title={t('common:core.view_chat_detail')}
                   onClick={() => setDetailLogsId(item.id)}
                 >
-                  {(logKeys || DefaultAppLogKeys)
+                  {logKeys
                     .filter((logKey) => logKey.enable)
                     .map((logKey) => cellRenderMap[logKey.key])}
                 </Tr>
