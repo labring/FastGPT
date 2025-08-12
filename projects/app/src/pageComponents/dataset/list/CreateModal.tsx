@@ -76,7 +76,7 @@ const CreateModal = ({
   });
 
   /* create a new kb and router to it */
-  const { run: onclickCreate, loading: creating } = useRequest2(
+  const { runAsync: onclickCreate, loading: creating } = useRequest2(
     async (data: CreateDatasetParams) => await postCreateDataset(data),
     {
       successToast: t('common:create_success'),
