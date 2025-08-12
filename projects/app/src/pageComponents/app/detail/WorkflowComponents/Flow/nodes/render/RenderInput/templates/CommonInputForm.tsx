@@ -15,7 +15,8 @@ import { llmModelTypeFilterMap } from '@fastgpt/global/core/ai/constants';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { streamOptimizePrompt } from '@/web/common/api/fetch';
+import { streamFetch } from '@/web/common/api/fetch';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getModelFromList } from '@fastgpt/global/core/ai/model';
 import type { OnOptimizePromptProps } from '@fastgpt/web/components/common/Textarea/PromptEditor/modules/OptimizerPopover';
 
@@ -25,7 +26,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
-  const { feConfigs, llmModelList } = useSystemStore();
+  const { feConfigs, llmModelList, defaultModels } = useSystemStore();
 
   const modelList = useMemo(
     () =>
@@ -106,18 +107,26 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
 
   const onOptimizePrompt = useCallback(
     async ({ model, prompt, onResult, abortController }: OnOptimizePromptProps) => {
-      await streamOptimizePrompt(
-        {
+      const controller = abortController || new AbortController();
+      await streamFetch({
+        url: '/api/core/ai/optimizePrompt',
+        data: {
           originalPrompt: item.value,
           optimizerInput: prompt,
-          appId: appDetail._id,
           model
         },
-        onResult,
-        abortController
-      );
+        onMessage: ({ event, text }) => {
+          if (
+            (event === SseResponseEventEnum.fastAnswer || event === SseResponseEventEnum.answer) &&
+            text
+          ) {
+            onResult(text);
+          }
+        },
+        abortCtrl: controller
+      });
     },
-    [item.value, appDetail._id]
+    [item.value]
   );
 
   return (
@@ -133,6 +142,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
       max={item.max}
       list={item.list}
       modelList={modelList}
+      defaultModel={defaultModels.llm?.model}
       onOptimizePrompt={canOptimizePrompt ? onOptimizePrompt : undefined}
     />
   );

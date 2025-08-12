@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import type { FlexProps} from '@chakra-ui/react';
+import type { FlexProps } from '@chakra-ui/react';
 import { Box, Button, Flex, Textarea, useDisclosure } from '@chakra-ui/react';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import Avatar from '../../../../Avatar';
@@ -8,7 +8,7 @@ import MyIcon from '../../../../Icon';
 import MySelect from '../../../../MySelect';
 import MyModal from '../../../../MyModal';
 import { useTranslation } from 'next-i18next';
-import { useToast } from '../../../../../../hooks/useToast';
+import { useRequest2 } from '../../../../../../hooks/useRequest';
 
 export type OnOptimizePromptProps = {
   prompt: string;
@@ -21,21 +21,21 @@ const OptimizerPopover = ({
   onOptimizePrompt,
   onChangeText,
   modelList,
-  iconButtonStyle
+  iconButtonStyle,
+  defaultModel
 }: {
   onOptimizePrompt: (props: OnOptimizePromptProps) => Promise<void>;
   onChangeText?: (text: string) => void;
   modelList?: Array<{ model: string; name: string; avatar?: string }>;
   iconButtonStyle: FlexProps;
+  defaultModel?: string;
 }) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
 
   const [optimizerInput, setOptimizerInput] = useState('');
   const [optimizedResult, setOptimizedResult] = useState('');
-  const [selectedModel, setSelectedModel] = useState(modelList?.[0]?.model || '');
+  const [selectedModel, setSelectedModel] = useState(defaultModel || modelList?.[0]?.model || '');
 
-  const [isLoading, setIsLoading] = useState(false);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
   const { isOpen: isConfirmOpen, onOpen: onOpenConfirm, onClose: onCloseConfirm } = useDisclosure();
 
@@ -65,46 +65,39 @@ const OptimizerPopover = ({
     return !optimizerInput.trim();
   }, [optimizerInput]);
 
-  const handleSendOptimization = async (isAuto = false) => {
+  const { runAsync: handleSendOptimization, loading } = useRequest2(async (isAuto?: boolean) => {
     if (isEmptyOptimizerInput && !isAuto) return;
 
-    setIsLoading(true);
     setOptimizedResult('');
     setOptimizerInput('');
     const controller = new AbortController();
     setAbortController(controller);
 
-    try {
-      await onOptimizePrompt({
-        prompt: optimizerInput,
-        model: selectedModel,
-        onResult: (result) => {
-          if (!controller.signal.aborted) {
-            setOptimizedResult((prev) => prev + result);
-          }
-        },
-        abortController: controller
-      });
-    } catch (error) {
-      console.error('Optimization error:', error);
-    } finally {
-      setIsLoading(false);
-      setAbortController(null);
-    }
-  };
+    await onOptimizePrompt({
+      prompt: optimizerInput,
+      model: selectedModel,
+      onResult: (result) => {
+        if (!controller.signal.aborted) {
+          setOptimizedResult((prev) => prev + result);
+        }
+      },
+      abortController: controller
+    });
+
+    setAbortController(null);
+  });
 
   const handleStopRequest = () => {
     if (abortController) {
       abortController.abort();
       setAbortController(null);
     }
-    setIsLoading(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (!isLoading) {
+      if (!loading) {
         handleSendOptimization();
       }
     }
@@ -115,7 +108,7 @@ const OptimizerPopover = ({
       <MyPopover
         Trigger={
           <Flex {...iconButtonStyle}>
-            <MyIcon name={'optimizer'} />
+            <MyIcon name={'optimizer'} w={'18px'} />
           </Flex>
         }
         trigger="click"
@@ -136,7 +129,7 @@ const OptimizerPopover = ({
           closePopoverRef.current = onClose;
           return (
             <Box p={optimizedResult ? 8 : 4}>
-              {(optimizedResult || isLoading) && (
+              {(optimizedResult || loading) && (
                 <Box
                   px={'10px'}
                   maxHeight={'300px'}
@@ -147,10 +140,10 @@ const OptimizerPopover = ({
                   wordBreak={'break-word'}
                   mb={4}
                 >
-                  {optimizedResult || (isLoading ? t('app:Optimizer_Generating') : '')}
+                  {optimizedResult || (loading ? t('app:Optimizer_Generating') : '')}
                 </Box>
               )}
-              {!optimizedResult && !isLoading && (
+              {!optimizedResult && !loading && (
                 <Flex mb={3} alignItems={'center'} justifyContent={'space-between'} gap={3}>
                   <Button
                     variant={'outline'}
@@ -176,7 +169,7 @@ const OptimizerPopover = ({
                   )}
                 </Flex>
               )}
-              {optimizedResult && !isLoading && (
+              {optimizedResult && !loading && (
                 <Flex mb={3} gap={3}>
                   <Button
                     variant={'primaryGhost'}
@@ -200,12 +193,6 @@ const OptimizerPopover = ({
                     size={'sm'}
                     fontSize={'12px'}
                     onClick={() => {
-                      if (isEmptyOptimizerInput)
-                        return toast({
-                          title: t('app:Optimizer_EmptyPrompt'),
-                          status: 'warning'
-                        });
-
                       setOptimizedResult('');
                       handleSendOptimization();
                     }}
@@ -225,7 +212,7 @@ const OptimizerPopover = ({
                 mb={3}
                 _focusWithin={{ borderColor: 'primary.600' }}
               >
-                <MyIcon name={'optimizer'} alignSelf={'flex-start'} mt={1} />
+                <MyIcon name={'optimizer'} alignSelf={'flex-start'} mt={0.5} w={5} />
                 <Textarea
                   placeholder={t('app:Optimizer_Placeholder')}
                   resize={'none'}
@@ -262,14 +249,14 @@ const OptimizerPopover = ({
                   flex={1}
                 />
                 <MyIcon
-                  name={isLoading ? 'stop' : 'core/chat/sendLight'}
+                  name={loading ? 'stop' : 'core/chat/sendLight'}
                   w={'4'}
                   alignSelf={'flex-end'}
                   mb={1}
-                  color={isLoading || !isEmptyOptimizerInput ? 'primary.600' : 'gray.400'}
-                  cursor={isLoading || !isEmptyOptimizerInput ? 'pointer' : 'not-allowed'}
+                  color={loading || !isEmptyOptimizerInput ? 'primary.600' : 'gray.400'}
+                  cursor={loading || !isEmptyOptimizerInput ? 'pointer' : 'not-allowed'}
                   onClick={() => {
-                    if (isLoading) {
+                    if (loading) {
                       handleStopRequest();
                     } else {
                       void handleSendOptimization();
@@ -306,7 +293,6 @@ const OptimizerPopover = ({
                 if (abortController) {
                   abortController.abort();
                   setAbortController(null);
-                  setIsLoading(false);
                 }
                 onCloseConfirm();
                 closePopoverRef.current?.();

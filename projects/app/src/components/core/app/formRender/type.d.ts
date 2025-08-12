@@ -30,6 +30,7 @@ type SpecificProps =
       // prompt optimizer
       onOptimizePrompt?: (props: OnOptimizePromptProps) => Promise<void>;
       modelList?: { model: string; name: string; avatar?: string }[];
+      defaultModel?: string;
     }
   | {
       // numberInput

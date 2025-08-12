@@ -49,6 +49,7 @@ export default function Editor({
   bg = 'white',
   onOptimizePrompt,
   modelList,
+  defaultModel,
   onChangeText,
 
   isInvalid
@@ -66,6 +67,7 @@ export default function Editor({
   placeholder?: string;
   onOptimizePrompt?: (props: OnOptimizePromptProps) => Promise<void>;
   modelList?: Array<{ model: string; name: string; avatar?: string }>;
+  defaultModel?: string;
   onChangeText?: (text: string) => void;
 
   isInvalid?: boolean;
@@ -93,20 +95,23 @@ export default function Editor({
     return showOpenModal && scrollHeight > maxH;
   }, [showOpenModal, scrollHeight, maxH]);
 
-  const iconButtonStyle = {
-    position: 'absolute' as const,
-    bottom: 1,
-    right: showFullScreenIcon ? '34px' : 2,
-    zIndex: 10,
-    cursor: 'pointer',
-    borderRadius: '6px',
-    background: 'rgba(255, 255, 255, 0.01)',
-    backdropFilter: 'blur(6.6666669845581055px)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    w: 6,
-    h: 6
-  };
+  const iconButtonStyle = useMemo(
+    () => ({
+      position: 'absolute' as const,
+      bottom: 1,
+      right: showFullScreenIcon ? '34px' : 2,
+      zIndex: 10,
+      cursor: 'pointer',
+      borderRadius: '6px',
+      background: 'rgba(255, 255, 255, 0.01)',
+      backdropFilter: 'blur(6.6666669845581055px)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      w: 6,
+      h: 6
+    }),
+    [showFullScreenIcon]
+  );
 
   return (
     <Box
@@ -179,6 +184,7 @@ export default function Editor({
           onChangeText={onChangeText}
           modelList={modelList}
           iconButtonStyle={iconButtonStyle}
+          defaultModel={defaultModel}
         />
       )}
       {showFullScreenIcon && (

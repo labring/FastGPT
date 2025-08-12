@@ -33,7 +33,8 @@ import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from './components/ToolSelect';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getModelFromList } from '@fastgpt/global/core/ai/model';
-import { streamOptimizePrompt } from '@/web/common/api/fetch';
+import { streamFetch } from '@/web/common/api/fetch';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { OnOptimizePromptProps } from '@fastgpt/web/components/common/Textarea/PromptEditor/modules/OptimizerPopover';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
@@ -73,7 +74,7 @@ const EditForm = ({
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
-  const { llmModelList } = useSystemStore();
+  const { llmModelList, defaultModels } = useSystemStore();
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -145,18 +146,26 @@ const EditForm = ({
 
   const onOptimizePrompt = useCallback(
     async ({ model, prompt, onResult, abortController }: OnOptimizePromptProps) => {
-      await streamOptimizePrompt(
-        {
+      const controller = abortController || new AbortController();
+      await streamFetch({
+        url: '/api/core/ai/optimizePrompt',
+        data: {
           originalPrompt: appForm.aiSettings.systemPrompt || '',
           optimizerInput: prompt,
-          appId: appDetail._id,
           model
         },
-        onResult,
-        abortController
-      );
+        onMessage: ({ event, text }) => {
+          if (
+            (event === SseResponseEventEnum.fastAnswer || event === SseResponseEventEnum.answer) &&
+            text
+          ) {
+            onResult(text);
+          }
+        },
+        abortCtrl: controller
+      });
     },
-    [appForm.aiSettings.systemPrompt, appDetail._id]
+    [appForm.aiSettings.systemPrompt]
   );
 
   return (
@@ -231,6 +240,7 @@ const EditForm = ({
                 title={t('common:core.ai.Prompt')}
                 onOptimizePrompt={onOptimizePrompt}
                 modelList={modelList}
+                defaultModel={defaultModels.llm?.model}
               />
             </Box>
           </Box>

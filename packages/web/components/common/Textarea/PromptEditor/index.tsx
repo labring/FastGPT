@@ -26,6 +26,7 @@ const PromptEditor = ({
   isDisabled,
   onOptimizePrompt,
   modelList,
+  defaultModel,
   onChangeText,
   ...props
 }: {
@@ -45,6 +46,7 @@ const PromptEditor = ({
   isDisabled?: boolean;
   onOptimizePrompt?: (props: OnOptimizePromptProps) => Promise<void>;
   modelList?: Array<{ model: string; name: string; avatar?: string }>;
+  defaultModel?: string;
   onChangeText?: (text: string) => void;
 } & FormPropsType) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -89,6 +91,7 @@ const PromptEditor = ({
           isInvalid={isInvalid}
           onOptimizePrompt={onOptimizePrompt}
           modelList={modelList}
+          defaultModel={defaultModel}
           onChangeText={onChange}
           {...props}
         />
@@ -127,6 +130,7 @@ const PromptEditor = ({
             placeholder={placeholder}
             onOptimizePrompt={onOptimizePrompt}
             modelList={modelList}
+            defaultModel={defaultModel}
             onChangeText={onChange}
           />
         </ModalBody>
