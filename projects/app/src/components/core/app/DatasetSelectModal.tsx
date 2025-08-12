@@ -94,7 +94,6 @@ export const DatasetSelectModal = ({
   }, [compatibleDatasetsByModel, selectedDatasets]);
 
   const onSelect = (item: DatasetListItemType, checked: boolean) => {
-    console.log(item, checked);
     if (checked) {
       if (isDatasetDisabled(item)) {
         return toast({

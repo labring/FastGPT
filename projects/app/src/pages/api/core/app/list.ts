@@ -132,12 +132,15 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
     })();
 
     if (searchKey) {
-      return {
+      const data = {
         ...appPerQuery,
         teamId,
         ...searchMatch,
         type: _type
       };
+      // @ts-ignore
+      delete data.parentId;
+      return data;
     }
 
     return {
