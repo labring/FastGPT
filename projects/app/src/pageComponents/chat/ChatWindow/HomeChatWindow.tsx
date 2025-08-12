@@ -385,21 +385,23 @@ const HomeChatWindow = ({ myApps }: Props) => {
         flexDirection={'column'}
       >
         {isPc ? (
-          <Flex
-            py={4}
-            bg="white"
-            fontWeight={500}
-            color="myGray.900"
-            alignItems="center"
-            justifyContent="center"
-            position="relative"
-            h="56px"
-            borderBottom="sm"
-          >
-            <Box flex="1" textAlign="center">
-              {chatBoxData?.title}
-            </Box>
-          </Flex>
+          chatRecords.length > 0 && (
+            <Flex
+              py={4}
+              bg="white"
+              fontWeight={500}
+              color="myGray.900"
+              alignItems="center"
+              justifyContent="center"
+              position="relative"
+              h="56px"
+              borderBottom="sm"
+            >
+              <Box flex="1" textAlign="center">
+                {chatBoxData?.title}
+              </Box>
+            </Flex>
+          )
         ) : (
           <ChatHeader
             showHistory

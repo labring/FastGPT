@@ -14,6 +14,11 @@ export const getMyApps = (data?: ListAppBody) =>
     maxQuantity: 1
   });
 
+export const getRecentlyUsedApps = (data?: ListAppBody) =>
+  POST<AppListItemType[]>('/core/app/list?t=0', data, {
+    maxQuantity: 1
+  });
+
 /**
  * 创建一个应用
  */

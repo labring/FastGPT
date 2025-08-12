@@ -10,7 +10,7 @@ import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from '@/pageComponents/dashboard/apps/context';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import AppTypeTag from '@/components/core/chat/ChatTeamApp/TypeTag';
+import AppTypeTag from '@/pageComponents/chat/ChatTeamApp/TypeTag';
 
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -23,18 +23,20 @@ const ListItem = () => {
   const router = useRouter();
   const { isPc } = useSystem();
 
-  const { myApps, folderDetail } = useContextSelector(AppListContext, (v) => v);
+  const myApps = useContextSelector(AppListContext, (v) => v.myApps);
   const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
 
   return (
     <>
       <Grid
         py={4}
-        gridTemplateColumns={
-          folderDetail
-            ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
-            : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
-        }
+        gridTemplateColumns={[
+          '1fr',
+          'repeat(2,1fr)',
+          'repeat(2,1fr)',
+          'repeat(3,1fr)',
+          'repeat(4,1fr)'
+        ]}
         gridGap={5}
         alignItems={'stretch'}
       >

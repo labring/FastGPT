@@ -6,14 +6,14 @@ import { useForm } from 'react-hook-form';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { updateChatSetting } from '@/web/core/chat/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import ImageUpload from '@/components/core/chat/ChatSetting/ImageUpload';
+import ImageUpload from '@/pageComponents/chat/ChatSetting/ImageUpload';
 import type {
   ChatSettingSchema,
   ChatSettingUpdateParams
 } from '@fastgpt/global/core/chat/setting/type';
 import NextHead from '@/components/common/NextHead';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import ToolSelectModal from '@/components/core/chat/ChatSetting/ToolSelectModal';
+import ToolSelectModal from '@/pageComponents/chat/ChatSetting/ToolSelectModal';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
