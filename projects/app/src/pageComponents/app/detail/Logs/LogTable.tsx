@@ -369,7 +369,7 @@ const LogTable = ({
             onSuccess={(date) => {
               setDateRange(date);
             }}
-            bg={'white'}
+            bg={'myGray.25'}
             h={10}
             w={'240px'}
             rounded={'8px'}
