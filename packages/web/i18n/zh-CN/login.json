@@ -9,7 +9,7 @@
   "no_remind": "不再提醒",
   "password_condition": "密码最多 60 位",
   "password_tip": "密码至少 8 位，且至少包含两种组合：数字、字母或特殊字符",
-  "policy_tip": "使用即代表你同意我们的",
+  "policy_tip": "使用即代表您已阅读并同意<termsLink> 服务协议 </termsLink>和<privacyLink> 隐私协议</privacyLink>",
   "privacy": "隐私协议",
   "privacy_policy": "隐私政策",
   "redirect": "跳转",

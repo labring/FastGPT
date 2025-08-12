@@ -3,7 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { MongoAppLogKeys } from '@fastgpt/service/core/app/logs/logkeysSchema';
 import type { AppLogKeysSchemaType } from '@fastgpt/global/core/app/logs/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 
 export type getLogKeysQuery = {
   appId: string;
@@ -25,7 +25,7 @@ async function handler(
     req,
     authToken: true,
     appId,
-    per: WritePermissionVal
+    per: AppReadChatLogPerVal
   });
 
   const result = await MongoAppLogKeys.findOne({ teamId, appId });

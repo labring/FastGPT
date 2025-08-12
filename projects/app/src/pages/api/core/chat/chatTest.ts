@@ -11,6 +11,7 @@ import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
+import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
   concatHistories,
@@ -49,6 +50,7 @@ import {
   ChatSourceEnum
 } from '@fastgpt/global/core/chat/constants';
 import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
+import { getLocale } from '@fastgpt/service/common/middle/i18n';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
@@ -171,6 +173,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       durationSeconds
     } = await dispatchWorkFlow({
       res,
+      lang: getLocale(req),
       requestOrigin: req.headers.origin,
       mode: 'test',
       timezone,
@@ -182,10 +185,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         teamId: app.teamId,
         tmbId: app.tmbId
       },
-      runningUserInfo: {
-        teamId,
-        tmbId
-      },
+      runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
 
       chatId,
       responseChatItemId,

@@ -1,9 +1,18 @@
-import { Box, Button, Flex, HStack, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Flex,
+  HStack,
+  Input,
+  ModalBody,
+  ModalFooter,
+  useDisclosure
+} from '@chakra-ui/react';
 import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import { useTranslation } from 'next-i18next';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import type { FlowNodeInputItemType, InputConfigType } from '@fastgpt/global/core/workflow/type/io';
@@ -13,6 +22,9 @@ import IconButton from '@/pageComponents/account/team/OrgManage/IconButton';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import InputRender from '@/components/core/app/formRender';
 import { secretInputTypeToInputType } from '@/components/core/app/formRender/utils';
+import { getSystemPlugTemplates } from '@/web/core/app/api/plugin';
+import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 export type ToolParamsFormType = {
   type: SystemToolInputTypeEnum;
@@ -20,13 +32,17 @@ export type ToolParamsFormType = {
 };
 
 const SecretInputModal = ({
+  parentId,
   hasSystemSecret,
   secretCost = 0,
+  isFolder,
   inputConfig,
   courseUrl,
   onClose,
   onSubmit
 }: {
+  parentId?: string;
+  isFolder?: boolean;
   inputConfig: FlowNodeInputItemType;
   hasSystemSecret?: boolean;
   secretCost?: number;
@@ -36,6 +52,9 @@ const SecretInputModal = ({
 }) => {
   const { t } = useTranslation();
   const [editIndex, setEditIndex] = useState<number>();
+  const { isOpen: isSystemCostOpen, onToggle: onToggleSystemCost } = useDisclosure({
+    defaultIsOpen: false
+  });
   const inputList = inputConfig?.inputList || [];
 
   const { register, watch, setValue, getValues, handleSubmit, control } =
@@ -58,6 +77,24 @@ const SecretInputModal = ({
       })()
     });
   const configType = watch('type');
+
+  const { data: childTools = [] } = useRequest2<NodeTemplateListItemType[], []>(
+    async () => {
+      if (!isFolder) return [];
+      return getSystemPlugTemplates({ parentId });
+    },
+    {
+      manual: false,
+      refreshDeps: [isFolder, parentId]
+    }
+  );
+
+  const hasCost = useMemo(() => {
+    if (isFolder) {
+      return childTools.some((item) => (item.systemKeyCost || 0) > 0);
+    }
+    return secretCost > 0;
+  }, [isFolder, childTools, secretCost]);
 
   return (
     <MyModal
@@ -85,15 +122,52 @@ const SecretInputModal = ({
                       desc: t('app:tool_active_system_config_desc'),
                       value: SystemToolInputTypeEnum.system,
                       children:
-                        configType === SystemToolInputTypeEnum.system ? (
-                          <HStack>
-                            <MyIcon name={'common/info'} w={'1.1rem'} color={'primary.600'} />
-                            <Box fontSize={'sm'}>
-                              {t('app:tool_active_system_config_price_desc', {
-                                price: secretCost || 0
-                              })}
-                            </Box>
-                          </HStack>
+                        configType === SystemToolInputTypeEnum.system && hasCost ? (
+                          <Box>
+                            {isFolder ? (
+                              <>
+                                <Flex
+                                  alignItems={'center'}
+                                  cursor={'pointer'}
+                                  onClick={onToggleSystemCost}
+                                  _hover={{ color: 'primary.600' }}
+                                >
+                                  <MyIcon name={'common/info'} w={'1.1rem'} color={'primary.600'} />
+                                  <Box fontSize={'sm'} ml={2}>
+                                    {t('app:tool_active_system_config_price_desc_folder')}
+                                  </Box>
+                                  <MyIcon
+                                    name={
+                                      isSystemCostOpen
+                                        ? 'core/chat/chevronUp'
+                                        : 'core/chat/chevronDown'
+                                    }
+                                    w={'1rem'}
+                                    ml={'auto'}
+                                    color={'myGray.500'}
+                                  />
+                                </Flex>
+                                {isSystemCostOpen && (
+                                  <Box fontSize={'sm'} pl={6} mt={2}>
+                                    {childTools.map((tool) => (
+                                      <Box key={tool.id} fontSize={'sm'} mb={1}>
+                                        {t(tool.name as any)}: {tool.systemKeyCost || 0} 积分/次
+                                      </Box>
+                                    ))}
+                                  </Box>
+                                )}
+                              </>
+                            ) : (
+                              <HStack>
+                                <MyIcon name={'common/info'} w={'1.1rem'} color={'primary.600'} />
+                                <Box fontSize={'sm'}>
+                                  {t('app:tool_active_system_config_price_desc', {
+                                    price: secretCost
+                                  })}
+                                </Box>
+                              </HStack>
+                            )}
+                          </Box>
                         ) : null
                     }
                   ]

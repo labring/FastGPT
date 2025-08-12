@@ -19,6 +19,7 @@ export type PluginRuntimeType = {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
   currentCost?: number;
+  systemKeyCost?: number;
   hasTokenFee?: boolean;
 };
 
@@ -44,6 +45,7 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   // commercial plugin config
   originCost?: number; // n points/one time
   currentCost?: number;
+  systemKeyCost?: number;
   hasTokenFee?: boolean;
   pluginOrder?: number;
 
@@ -52,6 +54,7 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
 
   // Admin config
   inputList?: FlowNodeInputItemType['inputList'];
+  inputListVal?: Record<string, any>;
   hasSystemSecret?: boolean;
 };
 

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "@fastgpt-sdk/plugin": "^0.1.7",
+    "@fastgpt-sdk/plugin": "^0.1.8",
     "@fastgpt/global": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.12.1",
     "@node-rs/jieba": "2.0.1",
@@ -15,7 +15,7 @@
     "@opentelemetry/winston-transport": "^0.14.0",
     "@vercel/otel": "^1.13.0",
     "@xmldom/xmldom": "^0.8.10",
-    "@zilliz/milvus2-sdk-node": "2.4.2",
+    "@zilliz/milvus2-sdk-node": "2.4.10",
     "axios": "^1.8.2",
     "bullmq": "^5.52.2",
     "chalk": "^5.3.0",

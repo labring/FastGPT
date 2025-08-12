@@ -121,8 +121,8 @@ importers:
   packages/service:
     dependencies:
       '@fastgpt-sdk/plugin':
-        specifier: ^0.1.7
-        version: 0.1.7(@types/node@20.17.24)
+        specifier: ^0.1.8
+        version: 0.1.8(@types/node@20.17.24)
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../global
@@ -157,8 +157,8 @@ importers:
         specifier: ^0.8.10
         version: 0.8.10
       '@zilliz/milvus2-sdk-node':
-        specifier: 2.4.2
-        version: 2.4.2
+        specifier: 2.4.10
+        version: 2.4.10
       axios:
         specifier: ^1.8.2
         version: 1.8.4
@@ -1973,8 +1973,8 @@ packages:
     resolution: {integrity: sha512-d9zaMRSTIKDLhctzH12MtXvJKSSUhaHcjV+2Z+GK+EEY7XKpP5yR4x+N3TAcHTcu963nIr+TMcCb4DBCYX1z6Q==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
-  '@fastgpt-sdk/plugin@0.1.7':
-    resolution: {integrity: sha512-/9szNeb1zLqThHenBYhYTyJr25dqRJwbXiWHFaf99tHWBjgMdMt2tfJhM9E6fz/zlAE3XlJIn/Dlgv82LJa7RQ==}
+  '@fastgpt-sdk/plugin@0.1.8':
+    resolution: {integrity: sha512-Db4wWJV/NjWcsKXXOUeNRNYeVBmW9yn9IqjYr7Mj+Z77YwN0gUFIek4tv+zQzsr9IoQgq+vptCEf6Ae9d48uaA==}
 
   '@fastify/accept-negotiator@1.1.0':
     resolution: {integrity: sha512-OIHZrb2ImZ7XG85HXOONLcJWGosv7sIvM2ifAPQVhg9Lv7qdmMBNVaai4QTdyuaqbKM5eO6sLSQOYI7wEQeCJQ==}
@@ -3838,8 +3838,8 @@ packages:
   '@zag-js/focus-visible@0.31.1':
     resolution: {integrity: sha512-dbLksz7FEwyFoANbpIlNnd3bVm0clQSUsnP8yUVQucStZPsuWjCrhL2jlAbGNrTrahX96ntUMXHb/sM68TibFg==}
 
-  '@zilliz/milvus2-sdk-node@2.4.2':
-    resolution: {integrity: sha512-fkPu7XXzfUvHoCnSPVOjqQpWuSnnn9x2NMmmCcIOyRzMeXIsrz4Mf/+M7LUzmT8J9F0Khx65B0rJgCu27YzWQw==}
+  '@zilliz/milvus2-sdk-node@2.4.10':
+    resolution: {integrity: sha512-KeXRFePLGoAMFQRM2w+oyH0X+R1uaj+Pt1o0rAdgQfGTV9aGdEx2zOJAt3XPWKovbphvF6ANmCGw2bbk7alNxQ==}
 
   abbrev@2.0.0:
     resolution: {integrity: sha512-6/mh1E2u2YgEsCHdY0Yx5oW+61gZU+1vXaoiHHrpKeuRNNgFvS+/jrwHiQhB5apAf5oB7UB7E19ol2R2LKH8hQ==}
@@ -11208,7 +11208,7 @@ snapshots:
 
   '@eslint/js@8.57.1': {}
 
-  '@fastgpt-sdk/plugin@0.1.7(@types/node@20.17.24)':
+  '@fastgpt-sdk/plugin@0.1.8(@types/node@20.17.24)':
     dependencies:
       '@fortaine/fetch-event-source': 3.0.6
       '@ts-rest/core': 3.52.1(@types/node@20.17.24)(zod@3.25.51)
@@ -13384,7 +13384,7 @@ snapshots:
     dependencies:
       '@zag-js/dom-query': 0.31.1
 
-  '@zilliz/milvus2-sdk-node@2.4.2':
+  '@zilliz/milvus2-sdk-node@2.4.10':
     dependencies:
       '@grpc/grpc-js': 1.13.0
       '@grpc/proto-loader': 0.7.13

@@ -8,7 +8,6 @@ import {
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { DataSetDefaultRoleVal } from '@fastgpt/global/support/permission/dataset/constant';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
@@ -102,11 +101,14 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
       : {};
 
     if (searchKey) {
-      return {
+      const data = {
         ...datasetPerQuery,
         teamId,
         ...searchMatch
       };
+      // @ts-ignore
+      delete data.parentId;
+      return data;
     }
 
     return {

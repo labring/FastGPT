@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   Box,
-  Center,
   Drawer,
   DrawerOverlay,
   DrawerContent,
@@ -20,7 +19,6 @@ import Loading from '@fastgpt/web/components/common/MyLoading';
 import { useLocalStorageState } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import LoginForm from '@/pageComponents/login/LoginForm/LoginForm';
-import { getBdVId } from '@/web/support/marketing/utils';
 import { GET } from '@/web/common/api/request';
 import { getDocPath } from '@/web/common/system/doc';
 
@@ -242,9 +240,15 @@ export const LoginContainer = ({
         />
       )}
 
-      <Flex flexDirection={'column'} w="full" flex={'1 0 0'}>
+      <Flex
+        my={['', pageType === LoginPageTypeEnum.wechat ? '-15px' : '']}
+        position="relative"
+        w="full"
+        flex={'1 0 0'}
+        flexDirection={'column'}
+      >
         {/* main content area */}
-        <Box w={['100%', '380px']} flex={'1 0 0'}>
+        <Box w={['100%', '380px']} flex={['', '1 0 0']}>
           {pageType && DynamicComponent ? DynamicComponent : <Loading fixed={false} />}
         </Box>
 
@@ -254,12 +258,7 @@ export const LoginContainer = ({
         {/* help link for login */}
         {feConfigs?.concatMd && (
           <Box
-            mt={
-              pageType === LoginPageTypeEnum.register ||
-              pageType === LoginPageTypeEnum.forgetPassword
-                ? 10
-                : 4
-            }
+            mt={[9, '6']}
             color={'primary.700'}
             fontSize={'mini'}
             fontWeight={'medium'}

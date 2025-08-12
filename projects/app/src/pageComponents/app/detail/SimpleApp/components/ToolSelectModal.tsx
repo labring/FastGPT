@@ -47,6 +47,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import ConfigToolModal from './ConfigToolModal';
+import CostTooltip from '@/components/core/app/plugin/CostTooltip';
 
 type Props = {
   selectedTools: FlowNodeTemplateType[];
@@ -177,7 +178,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
             onChange={(e) => setSearchKey(e.target.value)}
             placeholder={
               templateType === TemplateTypeEnum.systemPlugin
-                ? t('common:plugin.Search plugin')
+                ? t('common:search_tool')
                 : t('app:search_app')
             }
           />

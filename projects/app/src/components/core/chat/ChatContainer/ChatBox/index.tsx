@@ -14,7 +14,7 @@ import type {
 } from '@fastgpt/global/core/chat/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Box, Checkbox } from '@chakra-ui/react';
+import { Box, Checkbox, Flex, Image } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { useForm } from 'react-hook-form';
@@ -67,6 +67,7 @@ import TimeBox from './components/TimeBox';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+import WelcomeHomeBox from '@/components/core/chat/ChatContainer/ChatBox/components/WelcomeHomeBox';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
@@ -819,8 +820,14 @@ const ChatBox = ({
     };
   });
 
+  const showHomeWelcome = useMemo(
+    () => chatRecords.length === 0 && chatType === ChatTypeEnum.home,
+    [chatRecords.length, chatType]
+  );
+
   const showEmpty = useMemo(
     () =>
+      chatType !== ChatTypeEnum.home &&
       feConfigs?.show_emptyChat &&
       showEmptyIntro &&
       chatRecords.length === 0 &&
@@ -828,9 +835,10 @@ const ChatBox = ({
       !externalVariableList?.length &&
       !welcomeText,
     [
-      chatRecords.length,
+      chatType,
       feConfigs?.show_emptyChat,
       showEmptyIntro,
+      chatRecords.length,
       variableList?.length,
       externalVariableList?.length,
       welcomeText
@@ -958,7 +966,7 @@ const ChatBox = ({
     return (
       <ScrollData
         ScrollContainerRef={ScrollContainerRef}
-        flex={'1 0 0'}
+        flex={showHomeWelcome ? '0 0 50%' : '1 0 0'}
         h={0}
         w={'100%'}
         overflow={'overlay'}
@@ -967,6 +975,7 @@ const ChatBox = ({
       >
         <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
           {/* chat header */}
+          {showHomeWelcome && <WelcomeHomeBox />}
           {showEmpty && <Empty />}
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
           {/* variable input */}
@@ -1084,6 +1093,7 @@ const ChatBox = ({
     questionGuides,
     retryInput,
     showEmpty,
+    showHomeWelcome,
     showMarkIcon,
     showVoiceIcon,
     statusBoxData,

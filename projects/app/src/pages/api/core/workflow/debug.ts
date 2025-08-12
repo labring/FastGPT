@@ -5,12 +5,14 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
+import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import type { PostWorkflowDebugProps, PostWorkflowDebugResponse } from '@/global/core/workflow/api';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { defaultApp } from '@/web/core/app/constants';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getLocale } from '@fastgpt/service/common/middle/i18n';
 
 async function handler(
   req: NextApiRequest,
@@ -51,6 +53,7 @@ async function handler(
   const { flowUsages, flowResponses, debugResponse, newVariables, workflowInteractiveResponse } =
     await dispatchWorkFlow({
       res,
+      lang: getLocale(req),
       requestOrigin: req.headers.origin,
       mode: 'debug',
       timezone,
@@ -61,10 +64,7 @@ async function handler(
         teamId: app.teamId,
         tmbId: app.tmbId
       },
-      runningUserInfo: {
-        teamId,
-        tmbId
-      },
+      runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
       runtimeNodes: nodes,
       runtimeEdges: edges,
       lastInteractive,

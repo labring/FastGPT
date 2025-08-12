@@ -56,9 +56,10 @@ const OneRowSelector = ({ list, onChange, disableTip, ...props }: Props) => {
                 borderRadius={'0'}
                 mr={2}
                 src={modelData?.avatar || HUGGING_FACE_ICON}
-                fallbackSrc={HUGGING_FACE_ICON}
                 w={avatarSize}
+                fallbackSrc={HUGGING_FACE_ICON}
               />
+
               <Box>{modelData.name}</Box>
             </Flex>
           )

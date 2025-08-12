@@ -16,6 +16,7 @@ import { text2Chunks } from '../../worker/function';
 import { addLog } from '../../common/system/log';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getFileMaxSize } from '../../common/file/utils';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 export const readFileRawTextByUrl = async ({
   teamId,
@@ -200,7 +201,7 @@ export const readDatasetSourceRawText = async ({
       rawText: content
     };
   } else if (type === DatasetSourceReadTypeEnum.externalFile) {
-    if (!externalFileId) return Promise.reject('FileId not found');
+    if (!externalFileId) return Promise.reject(new UserError('FileId not found'));
     const rawText = await readFileRawTextByUrl({
       teamId,
       tmbId,

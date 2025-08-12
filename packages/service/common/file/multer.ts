@@ -4,6 +4,7 @@ import path from 'path';
 import type { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { bucketNameMap } from '@fastgpt/global/common/file/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 export type FileType = {
   fieldname: string;
@@ -61,7 +62,7 @@ export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
           // check bucket name
           const bucketName = (req.body?.bucketName || originBucketName) as `${BucketNameEnum}`;
           if (bucketName && !bucketNameMap[bucketName]) {
-            return reject('BucketName is invalid');
+            return reject(new UserError('BucketName is invalid'));
           }
 
           // @ts-ignore

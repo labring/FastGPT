@@ -14,6 +14,7 @@ import { pushChatLog } from './pushChatLog';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import { MongoAppChatLog } from '../app/logs/chatLogsSchema';
 
 type Props = {
   chatId: string;
@@ -162,6 +163,62 @@ export async function saveChat({
         appId
       });
     });
+
+    try {
+      const userId = outLinkUid || tmbId;
+      const now = new Date();
+      const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
+
+      const aiResponse = processedContent.find((item) => item.obj === ChatRoleEnum.AI);
+      const errorCount = aiResponse?.responseData?.some((item) => item.errorText) ? 1 : 0;
+      const totalPoints =
+        aiResponse?.responseData?.reduce(
+          (sum: number, item: any) => sum + (item.totalPoints || 0),
+          0
+        ) || 0;
+
+      const hasHistoryChat = await MongoAppChatLog.exists({
+        appId,
+        userId,
+        createTime: { $lt: now }
+      });
+
+      await MongoAppChatLog.updateOne(
+        {
+          chatId,
+          appId,
+          updateTime: { $gte: fifteenMinutesAgo }
+        },
+        {
+          $inc: {
+            chatItemCount: 1,
+            errorCount,
+            totalPoints,
+            totalResponseTime: durationSeconds
+          },
+          $set: {
+            updateTime: now,
+            sourceName
+          },
+          $setOnInsert: {
+            appId,
+            teamId,
+            chatId,
+            userId,
+            source,
+            createTime: now,
+            goodFeedbackCount: 0,
+            badFeedbackCount: 0,
+            isFirstChat: !hasHistoryChat
+          }
+        },
+        {
+          upsert: true
+        }
+      );
+    } catch (error) {
+      addLog.error('update chat log error', error);
+    }
 
     if (isUpdateUseTime) {
       await MongoApp.findByIdAndUpdate(appId, {

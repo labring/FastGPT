@@ -16,6 +16,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 async function handler(
   req: NextApiRequest,
@@ -33,7 +34,7 @@ async function handler(
   const { pageSize = 20, offset } = parsePaginationRequest(req);
 
   if (!appId) {
-    throw new Error('缺少参数');
+    return Promise.reject(CommonErrEnum.missingParams);
   }
 
   // 凭证校验

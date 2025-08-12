@@ -19,7 +19,9 @@ describe('update training data test', () => {
     const dataset = await MongoDataset.create({
       name: 'test',
       teamId: root.teamId,
-      tmbId: root.tmbId
+      tmbId: root.tmbId,
+      vectorModel: 'test',
+      agentModel: 'test'
     });
     const collection = await MongoDatasetCollection.create({
       name: 'test',

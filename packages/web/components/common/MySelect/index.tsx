@@ -162,7 +162,8 @@ const MySelect = <T = any,>(
                   : {
                       color: 'myGray.900'
                     })}
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   if (value !== item.value) {
                     onClickChange(item.value);
                   }
@@ -172,7 +173,7 @@ const MySelect = <T = any,>(
                 display={'block'}
                 mb={0.5}
               >
-                <Flex alignItems={'center'} fontWeight={value === item.value ? '600' : 'normal'}>
+                <Flex alignItems={'center'}>
                   {item.icon && (
                     <Avatar mr={2} src={item.icon as any} w={item.iconSize ?? '1rem'} />
                   )}
@@ -303,6 +304,9 @@ const MySelect = <T = any,>(
           zIndex={99}
           maxH={'45vh'}
           overflowY={'auto'}
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
         >
           {ScrollData ? <ScrollData>{ListRender}</ScrollData> : ListRender}
         </MenuList>

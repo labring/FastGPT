@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Box, Flex, IconButton, Input, InputGroup, InputLeftElement } from '@chakra-ui/react';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -141,7 +141,7 @@ const NodeTemplateListHeader = ({
               placeholder={
                 templateType === TemplateTypeEnum.teamPlugin
                   ? t('common:plugin.Search_app')
-                  : t('common:plugin.Search plugin')
+                  : t('common:search_tool')
               }
               value={searchKey}
               onChange={(e) => setSearchKey(e.target.value)}

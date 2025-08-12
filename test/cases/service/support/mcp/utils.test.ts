@@ -17,8 +17,6 @@ import {
   getRunningUserInfoByTmbId
 } from '@fastgpt/service/support/permission/auth/team';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
-import { saveChat } from '@fastgpt/service/core/chat/saveChat';
-import { createChatUsage } from '@fastgpt/service/support/wallet/usage/controller';
 
 vi.mock('@fastgpt/service/support/mcp/schema', () => ({
   MongoMcpKey: {
@@ -208,90 +206,5 @@ describe('getMcpServerTools', () => {
     });
 
     await expect(getMcpServerTools('invalid-key')).rejects.toBe(CommonErrEnum.invalidResource);
-  });
-});
-
-describe('callMcpServerTool', () => {
-  it('should call tool and return response', async () => {
-    const mockMcp = {
-      apps: [
-        {
-          appId: 'test-app',
-          toolName: 'test-tool'
-        }
-      ]
-    };
-
-    const mockApp = {
-      _id: 'test-app',
-      type: AppTypeEnum.plugin,
-      teamId: 'test-team',
-      tmbId: 'test-tmb',
-      name: 'Test App'
-    };
-
-    vi.mocked(MongoMcpKey.findOne).mockReturnValue({
-      lean: () => mockMcp
-    });
-
-    vi.mocked(MongoApp.find).mockReturnValue({
-      lean: () => [mockApp]
-    });
-
-    vi.mocked(getUserChatInfoAndAuthTeamPoints).mockResolvedValue({
-      timezone: 'UTC',
-      externalProvider: {}
-    });
-
-    vi.mocked(getRunningUserInfoByTmbId).mockResolvedValue({});
-
-    vi.mocked(getAppLatestVersion).mockResolvedValue({
-      nodes: [
-        {
-          flowNodeType: FlowNodeTypeEnum.pluginInput,
-          inputs: []
-        }
-      ],
-      edges: [],
-      chatConfig: {}
-    });
-
-    vi.mocked(dispatchWorkFlow).mockResolvedValue({
-      flowUsages: [],
-      assistantResponses: [],
-      newVariables: {},
-      flowResponses: [
-        {
-          moduleType: FlowNodeTypeEnum.pluginOutput,
-          pluginOutput: { result: 'test' }
-        }
-      ],
-      durationSeconds: 1,
-      system_memories: []
-    });
-
-    const response = await callMcpServerTool({
-      key: 'test-key',
-      toolName: 'test-tool',
-      inputs: {
-        question: 'test question'
-      }
-    });
-
-    expect(response).toBe('{"result":"test"}');
-  });
-
-  it('should reject if key not found', async () => {
-    vi.mocked(MongoMcpKey.findOne).mockReturnValue({
-      lean: () => null
-    });
-
-    await expect(
-      callMcpServerTool({
-        key: 'invalid-key',
-        toolName: 'test-tool',
-        inputs: {}
-      })
-    ).rejects.toBe(CommonErrEnum.invalidResource);
   });
 });

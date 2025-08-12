@@ -146,7 +146,8 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
   const { data: appLatestVersion, run: reloadAppLatestVersion } = useRequest2(
     () => getAppLatestVersion({ appId }),
     {
-      manual: false
+      manual: !appDetail?.permission?.hasWritePer,
+      refreshDeps: [appDetail?.permission?.hasWritePer]
     }
   );
 
@@ -161,6 +162,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
 
   const { runAsync: onSaveApp } = useRequest2(async (data: PostPublishAppProps) => {
     try {
+      if (!appDetail.permission.hasWritePer) return;
       await postPublishApp(appId, data);
       setAppDetail((state) => ({
         ...state,

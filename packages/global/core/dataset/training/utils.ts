@@ -26,7 +26,7 @@ export const getLLMDefaultChunkSize = (model?: LLMModelItemType) => {
 
 export const getLLMMaxChunkSize = (model?: LLMModelItemType) => {
   if (!model) return 8000;
-  return Math.max(model.maxContext - model.maxResponse, 2000);
+  return Math.max(model.maxContext, 4000);
 };
 
 // Index size
