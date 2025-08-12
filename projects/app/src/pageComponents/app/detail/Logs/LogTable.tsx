@@ -30,7 +30,11 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import type { AppLogKeysType } from '@fastgpt/global/core/app/logs/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { AppLogKeysEnum, DefaultAppLogKeys } from '@fastgpt/global/core/app/logs/constants';
+import {
+  AppLogKeysEnum,
+  AppLogKeysEnumMap,
+  DefaultAppLogKeys
+} from '@fastgpt/global/core/app/logs/constants';
 import { isEqual } from 'lodash';
 import SyncLogKeysPopover from './SyncLogKeysPopover';
 import LogKeysConfigPopover from './LogKeysConfigPopover';
@@ -132,6 +136,10 @@ const LogTable = ({
 
   const { runAsync: exportLogs } = useRequest2(
     async () => {
+      const enabledKeys = (logKeys || DefaultAppLogKeys)
+        .filter((item) => item.enable)
+        .map((item) => item.key);
+      const headerTitle = enabledKeys.map((k) => t(AppLogKeysEnumMap[k])).join(',');
       await downloadFetch({
         url: '/api/core/app/exportChatLogs',
         filename: 'chat_logs.csv',
@@ -143,7 +151,8 @@ const LogTable = ({
           tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
           chatSearch,
 
-          title: t('app:logs_export_title'),
+          title: headerTitle,
+          logKeys: enabledKeys,
           sourcesMap: Object.fromEntries(
             Object.entries(ChatSourceMap).map(([key, config]) => [
               key,
