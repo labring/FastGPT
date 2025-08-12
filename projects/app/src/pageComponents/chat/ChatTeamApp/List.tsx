@@ -18,12 +18,24 @@ import UserBox from '@fastgpt/web/components/common/UserBox';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 
-const ListItem = () => {
+const ListItem = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
 
-  const myApps = useContextSelector(AppListContext, (v) => v.myApps);
+  const myApps = useContextSelector(AppListContext, (v) =>
+    v.myApps.filter(
+      (app) =>
+        appType === app.type ||
+        (appType === 'all' &&
+          [
+            AppTypeEnum.folder,
+            AppTypeEnum.simple,
+            AppTypeEnum.workflow,
+            AppTypeEnum.plugin
+          ].includes(app.type))
+    )
+  );
   const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
 
   return (
@@ -40,108 +52,104 @@ const ListItem = () => {
         gridGap={5}
         alignItems={'stretch'}
       >
-        {myApps
-          .filter((app) =>
-            [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.folder].includes(app.type)
-          )
-          .map((app) => {
-            return (
-              <MyTooltip
-                key={app._id}
+        {myApps.map((app) => {
+          return (
+            <MyTooltip
+              key={app._id}
+              h="100%"
+              label={
+                app.type === AppTypeEnum.folder ? t('common:open_folder') : t('app:go_to_chat')
+              }
+            >
+              <MyBox
+                lineHeight={1.5}
                 h="100%"
-                label={
-                  app.type === AppTypeEnum.folder ? t('common:open_folder') : t('app:go_to_chat')
-                }
+                pt={5}
+                pb={3}
+                px={5}
+                cursor={'pointer'}
+                border={'base'}
+                boxShadow={'2'}
+                bg={'white'}
+                borderRadius={'lg'}
+                position={'relative'}
+                display={'flex'}
+                flexDirection={'column'}
+                _hover={{
+                  borderColor: 'primary.300',
+                  boxShadow: '1.5',
+                  '& .more': {
+                    display: 'flex'
+                  },
+                  '& .time': {
+                    display: ['flex', 'none']
+                  }
+                }}
+                onClick={() => {
+                  if (app.type === AppTypeEnum.folder) {
+                    router.push({
+                      query: {
+                        ...router.query,
+                        parentId: app._id
+                      }
+                    });
+                  } else {
+                    router.push({
+                      query: {
+                        ...router.query,
+                        appId: app._id
+                      }
+                    });
+                    handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS);
+                  }
+                }}
               >
-                <MyBox
-                  lineHeight={1.5}
-                  h="100%"
-                  pt={5}
-                  pb={3}
-                  px={5}
-                  cursor={'pointer'}
-                  border={'base'}
-                  boxShadow={'2'}
-                  bg={'white'}
-                  borderRadius={'lg'}
-                  position={'relative'}
-                  display={'flex'}
-                  flexDirection={'column'}
-                  _hover={{
-                    borderColor: 'primary.300',
-                    boxShadow: '1.5',
-                    '& .more': {
-                      display: 'flex'
-                    },
-                    '& .time': {
-                      display: ['flex', 'none']
-                    }
-                  }}
-                  onClick={() => {
-                    if (app.type === AppTypeEnum.folder) {
-                      router.push({
-                        query: {
-                          ...router.query,
-                          parentId: app._id
-                        }
-                      });
-                    } else {
-                      router.push({
-                        query: {
-                          ...router.query,
-                          appId: app._id
-                        }
-                      });
-                      handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS);
-                    }
-                  }}
-                >
-                  <HStack>
-                    <Avatar src={app.avatar} borderRadius={'sm'} w={'1.5rem'} />
-                    <Box flex={'1 0 0'} color={'myGray.900'}>
-                      {app.name}
-                    </Box>
-                    <Box mr={'-1.25rem'}>
-                      <AppTypeTag type={app.type} />
-                    </Box>
-                  </HStack>
-                  <Box
-                    flex={['1 0 60px', '1 0 72px']}
-                    mt={3}
-                    pr={8}
-                    textAlign={'justify'}
-                    wordBreak={'break-all'}
-                    fontSize={'xs'}
-                    color={'myGray.500'}
-                  >
-                    <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'}>
-                      {app.intro || t('common:no_intro')}
-                    </Box>
+                <HStack>
+                  <Avatar src={app.avatar} borderRadius={'sm'} w={'1.5rem'} />
+                  <Box flex={'1 0 0'} color={'myGray.900'}>
+                    {app.name}
                   </Box>
-                  <HStack h={'24px'} fontSize={'mini'} color={'myGray.500'} w="full">
-                    <HStack flex={'1 0 0'}>
-                      <UserBox
-                        sourceMember={app.sourceMember}
-                        fontSize="xs"
-                        avatarSize="1rem"
-                        spacing={0.5}
-                      />
-                    </HStack>
-                    <HStack>
-                      {isPc && (
-                        <HStack spacing={0.5}>
-                          <MyIcon name={'history'} w={'0.85rem'} color={'myGray.400'} />
-                          <Box color={'myGray.500'}>
-                            {t(formatTimeToChatTime(app.updateTime) as any).replace('#', ':')}
-                          </Box>
-                        </HStack>
-                      )}
-                    </HStack>
+                  <Box mr={'-1.25rem'}>
+                    <AppTypeTag type={app.type} />
+                  </Box>
+                </HStack>
+                <Box
+                  flex={['1 0 60px', '1 0 72px']}
+                  mt={3}
+                  pr={8}
+                  textAlign={'justify'}
+                  wordBreak={'break-all'}
+                  fontSize={'xs'}
+                  color={'myGray.500'}
+                >
+                  <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'}>
+                    {app.intro || t('common:no_intro')}
+                  </Box>
+                </Box>
+                <HStack h={'24px'} fontSize={'mini'} color={'myGray.500'} w="full">
+                  <HStack flex={'1 0 0'}>
+                    <UserBox
+                      sourceMember={app.sourceMember}
+                      fontSize="xs"
+                      avatarSize="1rem"
+                      spacing={0.5}
+                    />
                   </HStack>
-                </MyBox>
-              </MyTooltip>
-            );
-          })}
+                  <HStack>
+                    {isPc && (
+                      <HStack spacing={0.5}>
+                        <MyIcon name={'history'} w={'0.85rem'} color={'myGray.400'} />
+                        <Box color={'myGray.500'}>
+                          {t(formatTimeToChatTime(app.updateTime) as any).replace('#', ':')}
+                        </Box>
+                      </HStack>
+                    )}
+                  </HStack>
+                </HStack>
+              </MyBox>
+            </MyTooltip>
+          );
+        })}
       </Grid>
       {myApps.length === 0 && <EmptyTip text={t('common:core.app.no_app')} pt={'30vh'} />}
     </>

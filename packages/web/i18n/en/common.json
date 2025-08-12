@@ -669,6 +669,7 @@
   "core.module.template.UnKnow Module": "Unknown Module",
   "core.module.template.ai_chat": "AI conversation",
   "core.module.template.ai_chat_intro": "AI large model dialogue",
+  "core.module.template.all_team_app": "All",
   "core.module.template.config_params": "Can configure application system parameters",
   "core.module.template.empty_plugin": "Blank plugin",
   "core.module.template.empty_workflow": "Blank workflow",

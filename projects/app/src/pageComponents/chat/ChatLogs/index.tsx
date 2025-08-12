@@ -42,7 +42,7 @@ const ChatLogs = ({ Header }: Props) => {
     <Flex
       py={5}
       px={6}
-      gap={['26px', '26px']}
+      gap={['13px', '13px']}
       flexDir="column"
       mt={['46px', 0]}
       h={['calc(100vh - 46px)', 'full']}

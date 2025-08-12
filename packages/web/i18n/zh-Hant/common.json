@@ -668,6 +668,7 @@
   "core.module.template.UnKnow Module": "未知模組",
   "core.module.template.ai_chat": "AI 對話",
   "core.module.template.ai_chat_intro": "AI 大型模型對話",
+  "core.module.template.all_team_app": "全部",
   "core.module.template.config_params": "可以設定應用程式的系統參數",
   "core.module.template.empty_plugin": "空白外掛程式",
   "core.module.template.empty_workflow": "空白工作流程",

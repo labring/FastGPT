@@ -666,6 +666,7 @@
   "core.module.template.System Plugin": "系统插件",
   "core.module.template.System input module": "系统输入",
   "core.module.template.Team app": "团队应用",
+  "core.module.template.all_team_app": "全部",
   "core.module.template.UnKnow Module": "未知模块",
   "core.module.template.ai_chat": "AI 对话",
   "core.module.template.ai_chat_intro": "AI 大模型对话",
