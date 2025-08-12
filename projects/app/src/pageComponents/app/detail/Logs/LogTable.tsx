@@ -449,16 +449,10 @@ const LogTable = ({
           />
         )}
         <LogKeysConfigPopover
-          logKeysList={
-            logKeys?.filter((item) => {
-              if (item.key === AppLogKeysEnum.SOURCE && !showSourceSelector) return false;
-              return true;
-            }) ||
-            DefaultAppLogKeys.filter((item) => {
-              if (item.key === AppLogKeysEnum.SOURCE && !showSourceSelector) return false;
-              return true;
-            })
-          }
+          logKeysList={[...(logKeys || DefaultAppLogKeys)].filter((item) => {
+            if (item.key === AppLogKeysEnum.SOURCE && !showSourceSelector) return false;
+            return true;
+          })}
           setLogKeysList={setLogKeys}
         />
 

@@ -413,7 +413,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
                   </Flex>
                 }
               >
-                {() => `会话ID：${chatBoxData?.chatId}`}
+                {() => `${t('chat:home.chat_id')}：${chatBoxData?.chatId}`}
               </MyPopover>
             </Flex>
           )
