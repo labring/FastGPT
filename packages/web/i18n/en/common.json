@@ -363,7 +363,6 @@
   "core.chat.Speaking": "I'm Listening, Please Speak...",
   "core.chat.Type a message": "Enter a Question, Press [Enter] to Send / Press [Ctrl(Alt/Shift) + Enter] for New Line",
   "core.chat.Unpin": "Unpin",
-  "core.chat.You need to a chat app": "You Do Not Have an Available App",
   "core.chat.error.Chat error": "Chat Error",
   "core.chat.error.Messages empty": "API Content is Empty, Possibly Due to Text Being Too Long",
   "core.chat.error.Select dataset empty": "You Have Not Selected a Dataset",
