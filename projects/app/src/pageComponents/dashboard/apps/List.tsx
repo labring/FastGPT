@@ -249,7 +249,7 @@ const ListItem = () => {
                     )}
                     {(AppFolderTypeList.includes(app.type)
                       ? app.permission.hasManagePer
-                      : app.permission.hasWritePer) && (
+                      : app.permission.hasWritePer || app.permission.hasReadChatLogPer) && (
                       <Box className="more" display={['', 'none']}>
                         <MyMenu
                           size={'xs'}
@@ -347,7 +347,8 @@ const ListItem = () => {
                                   }
                                 ]
                               : []),
-                            ...(app.type === AppTypeEnum.toolSet ||
+                            ...(!app.permission?.hasWritePer ||
+                            app.type === AppTypeEnum.toolSet ||
                             app.type === AppTypeEnum.folder ||
                             app.type === AppTypeEnum.httpPlugin
                               ? []
