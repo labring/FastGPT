@@ -89,6 +89,6 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
     llmModuleAccount,
     totalQuoteList,
     historyPreviewLength,
-    toolCiteLinks
+    ...(toolCiteLinks.length ? { toolCiteLinks } : {})
   };
 }
