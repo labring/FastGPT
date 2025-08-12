@@ -43,11 +43,17 @@ export const AppRoleList: RoleListType<AppPermissionKeyEnum> = {
 export const AppRolePerMap: RolePerMapType = new Map([
   ...CommonRolePerMap,
   [
-    AppRoleList[AppPermissionKeyEnum.ReadChatLog].value,
+    CommonRoleList[CommonPerKeyEnum.manage].value,
     sumPer(
       CommonPerList[CommonPerKeyEnum.read],
+      CommonPerList[CommonPerKeyEnum.write],
+      CommonPerList[CommonPerKeyEnum.manage],
       AppPerList[AppPermissionKeyEnum.ReadChatLog]
-    ) as PermissionValueType
+    )!
+  ],
+  [
+    AppRoleList[AppPermissionKeyEnum.ReadChatLog].value,
+    sumPer(CommonPerList[CommonPerKeyEnum.read], AppPerList[AppPermissionKeyEnum.ReadChatLog])!
   ]
 ]);
 
