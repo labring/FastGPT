@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { AppContext } from '../context';
 import { useContextSelector } from 'use-context-selector';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { type AppSchema } from '@fastgpt/global/core/app/type';

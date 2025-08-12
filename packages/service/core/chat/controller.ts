@@ -4,6 +4,7 @@ import { addLog } from '../../common/system/log';
 import { delFileByFileIdList, getGFSCollection } from '../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { MongoChat } from './chatSchema';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 export async function getChatItems({
   appId,
@@ -72,7 +73,8 @@ export const deleteChatFiles = async ({
   chatIdList?: string[];
   appId?: string;
 }) => {
-  if (!appId && !chatIdList) return Promise.reject('appId or chatIdList is required');
+  if (!appId && !chatIdList)
+    return Promise.reject(new UserError('appId or chatIdList is required'));
 
   const appChatIdList = await (async () => {
     if (appId) {

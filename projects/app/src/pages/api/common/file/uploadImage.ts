@@ -4,19 +4,15 @@ import { type UploadImgProps } from '@fastgpt/global/common/file/api';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { NextAPI } from '@/service/middleware/entry';
 
-/* 
-  Upload avatar image
+/*
+  Upload image (including avatar, logo, etc.)
 */
 async function handler(req: NextApiRequest, res: NextApiResponse): Promise<string> {
   const body = req.body as UploadImgProps;
-
   const { teamId } = await authCert({ req, authToken: true });
-
-  return uploadMongoImg({
-    teamId,
-    ...body
-  });
+  return uploadMongoImg({ teamId, ...body });
 }
+
 export default NextAPI(handler);
 
 export const config = {

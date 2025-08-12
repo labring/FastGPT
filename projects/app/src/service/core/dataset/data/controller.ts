@@ -203,30 +203,17 @@ export async function insertData2Dataset({
   });
 
   // insert to vector store
-  const results: {
-    tokens: number;
-    index: {
-      dataId: string;
-      type: `${DatasetDataIndexTypeEnum}`;
-      text: string;
-    };
-  }[] = [];
-  for await (const item of newIndexes) {
-    const result = await insertDatasetDataVector({
-      query: item.text,
-      model: embModel,
-      teamId,
-      datasetId,
-      collectionId
-    });
-    results.push({
-      tokens: result.tokens,
-      index: {
-        ...item,
-        dataId: result.insertId
-      }
-    });
-  }
+  const { tokens, insertIds } = await insertDatasetDataVector({
+    inputs: newIndexes.map((item) => item.text),
+    model: embModel,
+    teamId,
+    datasetId,
+    collectionId
+  });
+  const results = newIndexes.map((item, index) => ({
+    ...item,
+    dataId: insertIds[index]
+  }));
 
   // 2. Create mongo data
   const [{ _id }] = await MongoDatasetData.create(
@@ -241,7 +228,7 @@ export async function insertData2Dataset({
         imageId,
         imageDescMap,
         chunkIndex,
-        indexes: results.map((item) => item.index)
+        indexes: results
       }
     ],
     { session, ordered: true }
@@ -263,7 +250,7 @@ export async function insertData2Dataset({
 
   return {
     insertId: _id,
-    tokens: results.reduce((acc, cur) => acc + cur.tokens, 0)
+    tokens
   };
 }
 
@@ -357,27 +344,30 @@ export async function updateData2Dataset({
   await mongoData.save();
 
   // 5. insert vector
-  const insertResults: {
-    tokens: number;
-  }[] = [];
-  for await (const item of patchResult) {
-    if (item.type === 'delete' || item.type === 'unChange') continue;
 
-    // insert new vector and update dateId
-    const result = await insertDatasetDataVector({
-      query: item.index.text,
-      model: getEmbeddingModel(model),
-      teamId: mongoData.teamId,
-      datasetId: mongoData.datasetId,
-      collectionId: mongoData.collectionId
-    });
-    item.index.dataId = result.insertId;
-    insertResults.push({
-      tokens: result.tokens
-    });
-  }
+  const insertItems = patchResult.filter(
+    (item) => item.type === 'create' || item.type === 'update'
+  );
+  const tokens = await (async () => {
+    if (insertItems.length > 0) {
+      // Batch insert vectors
+      const result = await insertDatasetDataVector({
+        inputs: insertItems.map((item) => item.index.text),
+        model: getEmbeddingModel(model),
+        teamId: mongoData.teamId,
+        datasetId: mongoData.datasetId,
+        collectionId: mongoData.collectionId
+      });
 
-  const tokens = insertResults.reduce((acc, cur) => acc + cur.tokens, 0);
+      // Update dataIds for the items
+      insertItems.forEach((item, index) => {
+        item.index.dataId = result.insertIds[index];
+      });
+
+      return result.tokens;
+    }
+    return 0;
+  })();
 
   const newIndexes = patchResult
     .filter((item) => item.type !== 'delete')

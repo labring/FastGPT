@@ -9,7 +9,7 @@
   "no_remind": "不再提醒",
   "password_condition": "密碼最多 60 個字元",
   "password_tip": "密碼至少 8 位，且至少包含兩種組合：數字、字母或特殊字元",
-  "policy_tip": "使用即代表您同意我們的",
+  "policy_tip": "使用即代表您已閱讀並同意<termsLink> 服務協議 </termsLink>和<privacyLink> 隱私協議</privacyLink>",
   "privacy": "隱私權政策",
   "privacy_policy": "隱私權政策",
   "redirect": "跳轉",

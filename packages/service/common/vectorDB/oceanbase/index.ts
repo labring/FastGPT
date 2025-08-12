@@ -1,6 +1,6 @@
 /* oceanbase vector crud */
 import { DatasetVectorTableName } from '../constants';
-import { delay } from '@fastgpt/global/common/system/utils';
+import { delay, retryFn } from '@fastgpt/global/common/system/utils';
 import { ObClient } from './controller';
 import { type RowDataPacket } from 'mysql2/promise';
 import {
@@ -42,41 +42,30 @@ export class ObVectorCtrl {
       addLog.error('init oceanbase error', error);
     }
   };
-  insert = async (props: InsertVectorControllerProps): Promise<{ insertId: string }> => {
-    const { teamId, datasetId, collectionId, vector, retry = 3 } = props;
+  insert = async (props: InsertVectorControllerProps): Promise<{ insertIds: string[] }> => {
+    const { teamId, datasetId, collectionId, vectors } = props;
 
-    try {
-      const { rowCount, rows } = await ObClient.insert(DatasetVectorTableName, {
-        values: [
-          [
-            { key: 'vector', value: `[${vector}]` },
-            { key: 'team_id', value: String(teamId) },
-            { key: 'dataset_id', value: String(datasetId) },
-            { key: 'collection_id', value: String(collectionId) }
-          ]
-        ]
-      });
+    const values = vectors.map((vector) => [
+      { key: 'vector', value: `[${vector}]` },
+      { key: 'team_id', value: String(teamId) },
+      { key: 'dataset_id', value: String(datasetId) },
+      { key: 'collection_id', value: String(collectionId) }
+    ]);
 
-      if (rowCount === 0) {
-        return Promise.reject('insertDatasetData: no insert');
-      }
+    const { rowCount, rows } = await ObClient.insert(DatasetVectorTableName, {
+      values
+    });
 
-      return {
-        insertId: rows[0].id
-      };
-    } catch (error) {
-      if (retry <= 0) {
-        return Promise.reject(error);
-      }
-      await delay(500);
-      return this.insert({
-        ...props,
-        retry: retry - 1
-      });
+    if (rowCount === 0) {
+      return Promise.reject('insertDatasetData: no insert');
     }
+
+    return {
+      insertIds: rows.map((row) => row.id)
+    };
   };
   delete = async (props: DelDatasetVectorCtrlProps): Promise<any> => {
-    const { teamId, retry = 2 } = props;
+    const { teamId } = props;
 
     const teamIdWhere = `team_id='${String(teamId)}' AND`;
 
@@ -106,31 +95,13 @@ export class ObVectorCtrl {
 
     if (!where) return;
 
-    try {
-      await ObClient.delete(DatasetVectorTableName, {
-        where: [where]
-      });
-    } catch (error) {
-      if (retry <= 0) {
-        return Promise.reject(error);
-      }
-      await delay(500);
-      return this.delete({
-        ...props,
-        retry: retry - 1
-      });
-    }
+    await ObClient.delete(DatasetVectorTableName, {
+      where: [where]
+    });
   };
   embRecall = async (props: EmbeddingRecallCtrlProps): Promise<EmbeddingRecallResponse> => {
-    const {
-      teamId,
-      datasetIds,
-      vector,
-      limit,
-      forbidCollectionIdList,
-      filterCollectionIdList,
-      retry = 2
-    } = props;
+    const { teamId, datasetIds, vector, limit, forbidCollectionIdList, filterCollectionIdList } =
+      props;
 
     // Get forbid collection
     const formatForbidCollectionIdList = (() => {
@@ -161,15 +132,14 @@ export class ObVectorCtrl {
       return { results: [] };
     }
 
-    try {
-      const rows = await ObClient.query<
-        ({
-          id: string;
-          collection_id: string;
-          score: number;
-        } & RowDataPacket)[][]
-      >(
-        `BEGIN;
+    const rows = await ObClient.query<
+      ({
+        id: string;
+        collection_id: string;
+        score: number;
+      } & RowDataPacket)[][]
+    >(
+      `BEGIN;
           SET ob_hnsw_ef_search = ${global.systemEnv?.hnswEfSearch || 100};
           SELECT id, collection_id, inner_product(vector, [${vector}]) AS score
             FROM ${DatasetVectorTableName}
@@ -179,24 +149,15 @@ export class ObVectorCtrl {
               ${forbidCollectionSql}
             ORDER BY score desc APPROXIMATE LIMIT ${limit};
         COMMIT;`
-      ).then(([rows]) => rows[2]);
+    ).then(([rows]) => rows[2]);
 
-      return {
-        results: rows.map((item) => ({
-          id: String(item.id),
-          collectionId: item.collection_id,
-          score: item.score
-        }))
-      };
-    } catch (error) {
-      if (retry <= 0) {
-        return Promise.reject(error);
-      }
-      return this.embRecall({
-        ...props,
-        retry: retry - 1
-      });
-    }
+    return {
+      results: rows.map((item) => ({
+        id: String(item.id),
+        collectionId: item.collection_id,
+        score: item.score
+      }))
+    };
   };
   getVectorDataByTime = async (start: Date, end: Date) => {
     const rows = await ObClient.query<

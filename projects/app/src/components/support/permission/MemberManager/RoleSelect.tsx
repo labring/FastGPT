@@ -153,6 +153,7 @@ function RoleSelect({
           zIndex={99}
           overflowY={'auto'}
           whiteSpace={'pre-wrap'}
+          userSelect={'none'}
         >
           {/* The list of single select permissions */}
           {roleOptions.singleOptions.map((item) => {
@@ -216,8 +217,8 @@ function RoleSelect({
                   : {})}
                 {...MenuStyle}
               >
-                <Checkbox size="lg" isChecked={isChecked} onChange={change} />
-                <Flex px="4" flexDirection="column" onClick={change}>
+                <Checkbox size="sm" isChecked={isChecked} onChange={change} />
+                <Flex ml={4} flexDirection="column" flex={'1 0 0'} onClick={change}>
                   <Box>{t(item.name as any)}</Box>
                   <Box color={'myGray.500'} fontSize={'mini'}>
                     {t(item.description as any)}

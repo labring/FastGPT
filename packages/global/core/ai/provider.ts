@@ -21,14 +21,19 @@ export type ModelProviderIdType =
   | 'Hunyuan'
   | 'Baichuan'
   | 'StepFun'
+  | 'ai360'
   | 'Yi'
   | 'Siliconflow'
   | 'PPIO'
+  | 'OpenRouter'
   | 'Ollama'
+  | 'novita'
+  | 'vertexai'
   | 'BAAI'
   | 'FishAudio'
   | 'Intern'
   | 'Moka'
+  | 'Jina'
   | 'Other';
 
 export type ModelProviderType = {
@@ -134,15 +139,14 @@ export const ModelProviderList: ModelProviderType[] = [
     avatar: 'model/stepfun'
   },
   {
+    id: 'ai360',
+    name: '360 AI',
+    avatar: 'model/ai360'
+  },
+  {
     id: 'Yi',
     name: i18nT('common:model_yi'),
     avatar: 'model/yi'
-  },
-
-  {
-    id: 'Ollama',
-    name: 'Ollama',
-    avatar: 'model/ollama'
   },
   {
     id: 'BAAI',
@@ -163,6 +167,31 @@ export const ModelProviderList: ModelProviderType[] = [
     id: 'Moka',
     name: i18nT('common:model_moka'),
     avatar: 'model/moka'
+  },
+  {
+    id: 'Ollama',
+    name: 'Ollama',
+    avatar: 'model/ollama'
+  },
+  {
+    id: 'OpenRouter',
+    name: 'OpenRouter',
+    avatar: 'model/openrouter'
+  },
+  {
+    id: 'vertexai',
+    name: 'vertexai',
+    avatar: 'model/vertexai'
+  },
+  {
+    id: 'novita',
+    name: 'novita',
+    avatar: 'model/novita'
+  },
+  {
+    id: 'Jina',
+    name: 'Jina',
+    avatar: 'model/jina'
   },
   {
     id: 'AliCloud',

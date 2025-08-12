@@ -1,6 +1,6 @@
-import * as fs from 'node:fs/promises';
-import path from 'node:path';
-import fg from 'fast-glob';
+const fs = require('node:fs/promises');
+const path = require('node:path');
+const fg = require('fast-glob');
 
 // 假设 i18n.defaultLanguage = 'zh-CN'，这里不用 i18n 直接写两份逻辑即可
 
@@ -15,8 +15,8 @@ const blacklist = [
 ];
 
 function filePathToUrl(filePath, lang) {
-  const baseDir = path.resolve('../content/docs');
-  let relativePath = path.relative(baseDir, path.resolve(filePath)).replace(/\\/g, '/');
+  const baseDir = path.join(__dirname, '../content/docs');
+  let relativePath = filePath.replace(baseDir, '');
   const basePath = lang === 'zh-CN' ? '/docs' : '/en/docs';
 
   if (lang !== 'zh-CN' && relativePath.endsWith('.en.mdx')) {
@@ -44,7 +44,7 @@ function isZhFile(file) {
 
 async function generateToc() {
   // 匹配所有 mdx 文件
-  const allFiles = await fg('../content/docs/**/*.mdx');
+  const allFiles = await fg(path.join(__dirname, '../content/docs/**/*.mdx'))
 
   // 筛选中英文文件
   const zhFiles = allFiles.filter(isZhFile);
@@ -72,7 +72,7 @@ ${urls.map((url) => `- [${url}](${url})`).join('\n')}
 `;
 
   // 写文件路径
-  const baseDir = path.resolve('../content/docs');
+  const baseDir = path.join(__dirname, '../content/docs');
   const zhOutputPath = path.join(baseDir, 'toc.mdx');
   const enOutputPath = path.join(baseDir, 'toc.en.mdx');
 

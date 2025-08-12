@@ -13,7 +13,7 @@ import pluginErrList from '../../common/error/code/plugin';
 export const getDefaultAppForm = (): AppSimpleEditFormType => {
   return {
     aiSettings: {
-      model: 'gpt-4o-mini',
+      model: '',
       systemPrompt: '',
       temperature: 0,
       isResponseAnswerText: true,

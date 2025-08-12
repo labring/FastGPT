@@ -111,7 +111,6 @@ function responseError(err: any) {
   console.log('error->', '请求错误', err);
   const isOutlinkPage = {
     '/chat/share': true,
-    '/chat/team': true,
     '/chat': true,
     '/login': true
   }[window.location.pathname];

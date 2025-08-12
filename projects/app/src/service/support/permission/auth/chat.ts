@@ -149,7 +149,7 @@ export async function authChatCrud({
     per: ReadPermissionVal
   });
 
-  if (!chatId)
+  if (!chatId) {
     return {
       teamId,
       tmbId,
@@ -158,9 +158,10 @@ export async function authChatCrud({
 
       authType
     };
+  }
 
   const chat = await MongoChat.findOne({ appId, chatId }).lean();
-  if (!chat)
+  if (!chat) {
     return {
       teamId,
       tmbId,
@@ -168,9 +169,10 @@ export async function authChatCrud({
       ...defaultResponseShow,
       authType
     };
+  }
 
   if (String(teamId) !== String(chat.teamId)) return Promise.reject(ChatErrEnum.unAuthChat);
-  if (permission.hasManagePer)
+  if (permission.hasReadChatLogPer) {
     return {
       teamId,
       tmbId,
@@ -179,7 +181,9 @@ export async function authChatCrud({
       ...defaultResponseShow,
       authType
     };
-  if (String(tmbId) === String(chat.tmbId))
+  }
+
+  if (String(tmbId) === String(chat.tmbId)) {
     return {
       teamId,
       tmbId,
@@ -188,6 +192,7 @@ export async function authChatCrud({
       ...defaultResponseShow,
       authType
     };
+  }
 
   return Promise.reject(ChatErrEnum.unAuthChat);
 }

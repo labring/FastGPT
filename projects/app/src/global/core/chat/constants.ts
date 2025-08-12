@@ -19,5 +19,6 @@ export const defaultChatData: InitChatResponse = {
 export enum GetChatTypeEnum {
   normal = 'normal',
   outLink = 'outLink',
-  team = 'team'
+  team = 'team',
+  home = 'home'
 }

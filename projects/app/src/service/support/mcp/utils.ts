@@ -13,6 +13,7 @@ import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import { type toolCallProps } from './type';
 import { type AppSchema } from '@fastgpt/global/core/app/type';
 import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
+import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
 import {
@@ -228,10 +229,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
         teamId: String(app.teamId),
         tmbId: String(app.tmbId)
       },
-      runningUserInfo: {
-        teamId: String(app.teamId),
-        tmbId: String(app.tmbId)
-      },
+      runningUserInfo: await getRunningUserInfoByTmbId(app.tmbId),
       uid: String(app.tmbId),
       runtimeNodes,
       runtimeEdges: storeEdges2RuntimeEdges(edges),

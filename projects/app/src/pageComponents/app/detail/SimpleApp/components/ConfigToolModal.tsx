@@ -120,13 +120,15 @@ const ConfigToolModal = ({
 
                         {isOpenSecretModal && (
                           <SecretInputModal
+                            isFolder={configTool?.isFolder}
                             inputConfig={{
                               ...input,
                               value: value as ToolParamsFormType
                             }}
                             hasSystemSecret={configTool?.hasSystemSecret}
-                            secretCost={configTool?.currentCost}
+                            secretCost={configTool?.systemKeyCost}
                             courseUrl={configTool?.courseUrl}
+                            parentId={configTool?.pluginId}
                             onClose={setFalseSecretModal}
                             onSubmit={(data) => {
                               onChange(data);
