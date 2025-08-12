@@ -4,12 +4,12 @@ import { ChatSettingTabOptionEnum } from '@/pageComponents/chat/constants';
 import dynamic from 'next/dynamic';
 import SettingTabs from '@/components/core/chat/ChatSetting/SettingTabs';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { Box, Drawer, DrawerContent, DrawerOverlay, Flex } from '@chakra-ui/react';
-import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { Drawer, DrawerContent, DrawerOverlay, Flex } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
 import { useTranslation } from 'react-i18next';
+import { ChatContext } from '@/web/core/chat/context/chatContext';
 
 const HomepageSetting = dynamic(() => import('@/components/core/chat/ChatSetting/HomepageSetting'));
 
@@ -20,9 +20,9 @@ const ChatSetting = () => {
   const [isOpenDiagram, setIsOpenDiagram] = useState(false);
   const [tab, setTab] = useState<`${ChatSettingTabOptionEnum}`>('home');
 
-  const isOpenAppDrawer = useContextSelector(ChatSettingContext, (v) => v.isOpenAppDrawer);
-  const onCloseAppDrawer = useContextSelector(ChatSettingContext, (v) => v.onCloseAppDrawer);
-  const onOpenAppDrawer = useContextSelector(ChatSettingContext, (v) => v.onOpenAppDrawer);
+  const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
+  const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
+  const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
 
   const SettingHeader = useCallback(
     ({ children }: { children?: React.ReactNode }) => (
@@ -38,28 +38,21 @@ const ChatSetting = () => {
   return (
     <>
       {!isPc && (
-        <Flex
-          h="46px"
-          w="100vw"
-          left="4"
-          position="absolute"
-          borderBottom="1px solid"
-          borderColor="myGray.100"
-          onClick={onOpenAppDrawer}
-        >
+        <Flex h="46px" w="100vw" position="absolute" borderBottom="sm" color="myGray.900">
           <MyIcon
+            ml={3}
             w="20px"
             color="myGray.900"
             name="core/chat/sidebar/menu"
-            onClick={onCloseAppDrawer}
+            onClick={onOpenSlider}
           />
 
           <Drawer
             size="xs"
             placement="left"
             autoFocus={false}
-            isOpen={isOpenAppDrawer}
-            onClose={onCloseAppDrawer}
+            isOpen={isOpenSlider}
+            onClose={onCloseSlider}
           >
             <DrawerOverlay backgroundColor="rgba(255,255,255,0.5)" />
             <DrawerContent maxWidth="75vw">

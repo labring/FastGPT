@@ -35,7 +35,7 @@ export type MenuItemData = {
 export type Props = {
   width?: number | string;
   offset?: [number, number];
-  Button?: React.ReactNode;
+  Button: React.ReactNode;
   trigger?: 'hover' | 'click';
   size?: MenuSizeType;
 

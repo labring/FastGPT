@@ -27,8 +27,7 @@ import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 import {
   ChatSidebarPaneEnum,
-  DEFAULT_LOGO_BANNER_COLLAPSED_URL,
-  DEFAULT_LOGO_BANNER_URL
+  DEFAULT_LOGO_BANNER_COLLAPSED_URL
 } from '@/pageComponents/chat/constants';
 
 const ChatHeader = ({

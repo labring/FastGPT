@@ -12,25 +12,23 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import List from '@/components/core/chat/ChatTeamApp/List';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { Drawer, DrawerContent, DrawerOverlay } from '@chakra-ui/react';
+import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
+import { ChatContext } from '@/web/core/chat/context/chatContext';
 
 const MyApps = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
-  const {
-    paths,
-    parentId,
-    myApps,
-    appType,
-    loadMyApps,
-    onUpdateApp,
-    setMoveAppId,
-    isFetchingApps,
-    folderDetail,
-    refetchFolderDetail,
-    searchKey,
-    setSearchKey
-  } = useContextSelector(AppListContext, (v) => v);
+  const { paths, myApps, appType, isFetchingApps, folderDetail, setSearchKey } = useContextSelector(
+    AppListContext,
+    (v) => v
+  );
+
+  const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
+  const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
+  const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
 
   const appTypeName = useMemo(() => {
     const map: Record<AppTypeEnum | 'all', string> = {
@@ -48,7 +46,34 @@ const MyApps = () => {
   }, [appType, t]);
 
   return (
-    <Flex flexDirection={'column'} h={'100%'}>
+    <Flex flexDirection={'column'} h={'100%'} pt={['46px', 0]}>
+      {!isPc && (
+        <Flex h="46px" w="100vw" top="0" position="absolute" borderBottom="sm" color="myGray.900">
+          <MyIcon
+            ml={3}
+            w="20px"
+            color="myGray.900"
+            name="core/chat/sidebar/menu"
+            onClick={onOpenSlider}
+          />
+
+          <Drawer
+            size="xs"
+            placement="left"
+            autoFocus={false}
+            isOpen={isOpenSlider}
+            onClose={onCloseSlider}
+          >
+            <DrawerOverlay backgroundColor="rgba(255,255,255,0.5)" />
+            <DrawerContent maxWidth="75vw">
+              <ChatHistorySlider
+                confirmClearText={t('common:core.chat.Confirm to clear history')}
+              />
+            </DrawerContent>
+          </Drawer>
+        </Flex>
+      )}
+
       {paths.length > 0 && (
         <Box pt={[4, 6]} pl={5}>
           <FolderPath
@@ -68,11 +93,10 @@ const MyApps = () => {
       )}
       <Flex gap={5} flex={'1 0 0'} h={0}>
         <Flex
+          px={[3, 6]}
           flex={'1 0 0'}
           flexDirection={'column'}
           h={'100%'}
-          pr={folderDetail ? [3, 2] : [3, 6]}
-          pl={6}
           overflowY={'auto'}
           overflowX={'hidden'}
         >

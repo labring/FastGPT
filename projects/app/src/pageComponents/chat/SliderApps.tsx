@@ -289,7 +289,7 @@ const NavigationSection = () => {
                 />
 
                 <ActionButton
-                  icon="core/chat/sidebar/teamApps"
+                  icon="common/app"
                   isCollapsed={true}
                   isActive={isTeamAppsActive}
                   onClick={() => onHomeClick(ChatSidebarPaneEnum.TEAM_APPS)}
@@ -308,7 +308,7 @@ const NavigationSection = () => {
                 />
 
                 <ActionButton
-                  icon="core/chat/sidebar/teamApps"
+                  icon="common/app"
                   text={t('chat:sidebar.team_apps')}
                   isCollapsed={false}
                   isActive={isTeamAppsActive}

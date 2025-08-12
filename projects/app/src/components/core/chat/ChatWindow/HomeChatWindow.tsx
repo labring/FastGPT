@@ -279,12 +279,11 @@ const HomeChatWindow = ({ myApps }: Props) => {
                 borderColor: 'primary.200'
               })}
             >
-              {isPc &&
-                (selectedTools.length > 0
+              {isPc
+                ? selectedTools.length > 0
                   ? t('chat:home.tools', { num: selectedTools.length })
-                  : t('chat:home.select_tools'))}
-
-              {!isPc && `：${selectedTools.length}`}
+                  : t('chat:home.select_tools')
+                : `：${selectedTools.length}`}
             </MenuButton>
             <MenuList px={2}>
               {availableTools.map((tool) => {
@@ -376,16 +375,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
         flex={'1 0 0'}
         flexDirection={'column'}
       >
-        {!isPc && (
-          <ChatHeader
-            showHistory
-            apps={myApps}
-            history={chatRecords}
-            totalRecordsCount={totalRecordsCount}
-          />
-        )}
-
-        {isPc && (
+        {isPc ? (
           <Flex
             py={4}
             bg="white"
@@ -395,13 +385,19 @@ const HomeChatWindow = ({ myApps }: Props) => {
             justifyContent="center"
             position="relative"
             h="56px"
-            borderBottom={isPc ? undefined : '1px solid'}
-            borderColor="myGray.100"
+            borderBottom="sm"
           >
             <Box flex="1" textAlign="center">
               {chatBoxData?.title}
             </Box>
           </Flex>
+        ) : (
+          <ChatHeader
+            showHistory
+            apps={myApps}
+            history={chatRecords}
+            totalRecordsCount={totalRecordsCount}
+          />
         )}
 
         <Box flex={'1 0 0'} bg={'white'}>
