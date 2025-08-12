@@ -114,7 +114,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   return (
     <MyModal
       isOpen
-      title={t('common:core.app.Tool call')}
+      title={t('chat:home.select_tools')}
       iconSrc="core/app/toolCall"
       onClose={onClose}
       maxW={['90vw', '700px']}
@@ -127,7 +127,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
           <SearchInput
             value={searchKey}
             onChange={(e) => setSearchKey(e.target.value)}
-            placeholder={t('common:plugin.Search plugin')}
+            placeholder={t('common:search_tool')}
           />
         </Box>
       </Box>

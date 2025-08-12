@@ -138,6 +138,7 @@ const ChatInput = ({
             height={[5, 6]}
             lineHeight={[5, 6]}
             maxHeight={[24, 32]}
+            minH={'50px'}
             mb={0}
             maxLength={-1}
             overflowY={'hidden'}

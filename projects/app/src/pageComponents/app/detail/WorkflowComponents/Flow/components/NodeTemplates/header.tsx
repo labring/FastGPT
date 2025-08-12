@@ -141,7 +141,7 @@ const NodeTemplateListHeader = ({
               placeholder={
                 templateType === TemplateTypeEnum.teamPlugin
                   ? t('common:plugin.Search_app')
-                  : t('common:plugin.Search plugin')
+                  : t('common:search_tool')
               }
               value={searchKey}
               onChange={(e) => setSearchKey(e.target.value)}

@@ -178,7 +178,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
             onChange={(e) => setSearchKey(e.target.value)}
             placeholder={
               templateType === TemplateTypeEnum.systemPlugin
-                ? t('common:plugin.Search plugin')
+                ? t('common:search_tool')
                 : t('app:search_app')
             }
           />
