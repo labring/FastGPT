@@ -131,7 +131,9 @@ const LogTable = ({
     }
   );
   const showSyncPopover = useMemo(() => {
-    const teamLogKeysList = (teamLogKeys?.logKeys || []).filter((item) => item.enable);
+    const teamLogKeysList = (
+      teamLogKeys?.logKeys?.length ? teamLogKeys?.logKeys : DefaultAppLogKeys
+    ).filter((item) => item.enable);
     const personalLogKeysList = logKeys.filter((item) => item.enable);
     return !isEqual(teamLogKeysList, personalLogKeysList);
   }, [teamLogKeys, logKeys]);
@@ -443,7 +445,7 @@ const LogTable = ({
           <SyncLogKeysPopover
             logKeys={logKeys}
             setLogKeys={setLogKeys}
-            teamLogKeys={teamLogKeys?.logKeys || []}
+            teamLogKeys={teamLogKeys?.logKeys?.length ? teamLogKeys?.logKeys : DefaultAppLogKeys}
             fetchLogKeys={fetchLogKeys}
           />
         )}
