@@ -143,3 +143,5 @@ export const useChatStore = create<State>()(
     )
   )
 );
+
+export { createCustomStorage };
