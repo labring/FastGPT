@@ -444,8 +444,6 @@ const ChatInput = ({
             </Box>
           )}
 
-          {/* loading spinner */}
-
           {/* voice input and loading container */}
           {!inputValue && (
             <VoiceInput

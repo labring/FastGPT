@@ -25,7 +25,6 @@ import {
   DEFAULT_LOGO_BANNER_URL
 } from '@/pageComponents/chat/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { useContextSelector } from 'use-context-selector';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 
@@ -255,7 +254,6 @@ const ActionButton: React.FC<{
 };
 
 const NavigationSection = () => {
-  //------------ hooks ------------//
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const isProVersion = !!feConfigs.isPlus;
@@ -265,6 +263,10 @@ const NavigationSection = () => {
   const isHomeActive = useContextSelector(
     ChatSettingContext,
     (v) => v.pane === ChatSidebarPaneEnum.HOME
+  );
+  const isTeamAppsActive = useContextSelector(
+    ChatSettingContext,
+    (v) => v.pane === ChatSidebarPaneEnum.TEAM_APPS
   );
   const onHomeClick = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
 
@@ -278,22 +280,41 @@ const NavigationSection = () => {
         <AnimatePresence mode="wait">
           {isCollapsed ? (
             <AnimatedSection show={true}>
-              <ActionButton
-                icon="core/chat/sidebar/home"
-                isCollapsed={true}
-                isActive={isHomeActive}
-                onClick={() => onHomeClick(ChatSidebarPaneEnum.HOME)}
-              />
+              <Flex flexDir="column" gap={2}>
+                <ActionButton
+                  icon="core/chat/sidebar/home"
+                  isCollapsed={true}
+                  isActive={isHomeActive}
+                  onClick={() => onHomeClick(ChatSidebarPaneEnum.HOME)}
+                />
+
+                <ActionButton
+                  icon="common/app"
+                  isCollapsed={true}
+                  isActive={isTeamAppsActive}
+                  onClick={() => onHomeClick(ChatSidebarPaneEnum.TEAM_APPS)}
+                />
+              </Flex>
             </AnimatedSection>
           ) : (
             <AnimatedSection show={true}>
-              <ActionButton
-                icon="core/chat/sidebar/home"
-                text={t('chat:sidebar.home')}
-                isCollapsed={false}
-                isActive={isHomeActive}
-                onClick={() => onHomeClick(ChatSidebarPaneEnum.HOME)}
-              />
+              <Flex flexDir="column" gap={2}>
+                <ActionButton
+                  icon="core/chat/sidebar/home"
+                  text={t('chat:sidebar.home')}
+                  isCollapsed={false}
+                  isActive={isHomeActive}
+                  onClick={() => onHomeClick(ChatSidebarPaneEnum.HOME)}
+                />
+
+                <ActionButton
+                  icon="common/app"
+                  text={t('chat:sidebar.team_apps')}
+                  isCollapsed={false}
+                  isActive={isTeamAppsActive}
+                  onClick={() => onHomeClick(ChatSidebarPaneEnum.TEAM_APPS)}
+                />
+              </Flex>
             </AnimatedSection>
           )}
         </AnimatePresence>
@@ -303,7 +324,6 @@ const NavigationSection = () => {
 };
 
 const BottomSection = () => {
-  //------------ hooks ------------//
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const isProVersion = !!feConfigs.isPlus;
@@ -505,42 +525,6 @@ const SliderApps = ({ apps, activeAppId }: Props) => {
           >
             {t('common:core.chat.Recent use')}
           </Box>
-          <MyPopover
-            placement="bottom-end"
-            offset={[20, 10]}
-            p={4}
-            trigger="hover"
-            Trigger={
-              <HStack
-                spacing={0.5}
-                cursor={'pointer'}
-                px={2}
-                py={'0.5'}
-                borderRadius={'md'}
-                mr={-2}
-                userSelect={'none'}
-                _hover={{ bg: 'myGray.200' }}
-              >
-                <Box>{t('common:More')}</Box>
-                <MyIcon name={'common/select'} w={'1rem'} />
-              </HStack>
-            }
-          >
-            {({ onClose }) => (
-              <Box minH={'200px'}>
-                <SelectOneResource
-                  maxH={'60vh'}
-                  value={activeAppId}
-                  onSelect={(item) => {
-                    if (!item) return;
-                    handleSelectRecentlyUsedApp(item.id);
-                    onClose();
-                  }}
-                  server={getAppList}
-                />
-              </Box>
-            )}
-          </MyPopover>
         </HStack>
 
         <MyBox flex={'1 0 0'} h={0} overflow={'overlay'} px={4} position={'relative'}>

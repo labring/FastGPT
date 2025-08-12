@@ -59,6 +59,7 @@ const OneRowSelector = ({ list, onChange, disableTip, ...props }: Props) => {
                 w={avatarSize}
                 fallbackSrc={HUGGING_FACE_ICON}
               />
+
               <Box>{modelData.name}</Box>
             </Flex>
           )

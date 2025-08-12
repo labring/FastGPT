@@ -25,6 +25,7 @@ import {
   ChatSettingContext,
   ChatSettingContextProvider
 } from '@/web/core/chat/context/chatSettingContext';
+import ChatTeamApp from '@/components/core/chat/ChatTeamApp';
 
 const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const { isPc } = useSystem();
@@ -55,10 +56,13 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       {(!datasetCiteData || isPc) && (
         <PageContainer flex="1 0 0" w={0} position="relative">
           {/* home chat window */}
-          {pane === ChatSidebarPaneEnum.HOME && <HomeChatWindow />}
+          {pane === ChatSidebarPaneEnum.HOME && <HomeChatWindow myApps={myApps} />}
 
           {/* recently used apps chat window */}
           {pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && <AppChatWindow myApps={myApps} />}
+
+          {/* team apps */}
+          {pane === ChatSidebarPaneEnum.TEAM_APPS && <ChatTeamApp />}
 
           {/* setting */}
           {pane === ChatSidebarPaneEnum.SETTING && <ChatSetting />}

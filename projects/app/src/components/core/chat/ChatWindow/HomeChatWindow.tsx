@@ -20,7 +20,7 @@ import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { streamFetch } from '@/web/common/api/fetch';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
@@ -39,9 +39,35 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { getPreviewPluginNode } from '@/web/core/app/api/plugin';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
+import { getWebLLMModel } from '@/web/common/system/utils';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import type {
+  AppFileSelectConfigType,
+  AppListItemType,
+  AppWhisperConfigType
+} from '@fastgpt/global/core/app/type';
+import ChatHeader from '@/pageComponents/chat/ChatHeader';
+import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
+import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
+import { getModelFromList } from '@fastgpt/global/core/ai/model';
 
-const HomeChatWindow = () => {
+type Props = {
+  myApps: AppListItemType[];
+};
+
+const defaultFileSelectConfig: AppFileSelectConfigType = {
+  maxFiles: 20,
+  canSelectImg: false,
+  canSelectFile: true
+};
+
+const defaultWhisperConfig: AppWhisperConfigType = {
+  open: true,
+  autoSend: false,
+  autoTTSResponse: false
+};
+
+const HomeChatWindow = ({ myApps }: Props) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
@@ -61,6 +87,9 @@ const HomeChatWindow = () => {
 
   const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
 
+  const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
+  const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
+
   const availableModels = useMemo(
     () => llmModelList.map((model) => ({ value: model.model, label: model.name })),
     [llmModelList]
@@ -68,12 +97,15 @@ const HomeChatWindow = () => {
   const [selectedModel, setSelectedModel] = useLocalStorageState('chat_home_model', {
     defaultValue: defaultModels.llm?.model
   });
+  const selectedModelAvatar = useMemo(() => {
+    const modelData = getModelFromList(llmModelList, selectedModel || '');
+    return modelData?.avatar || HUGGING_FACE_ICON;
+  }, [selectedModel, llmModelList]);
 
   const availableTools = useMemo(
     () => chatSettings?.selectedTools || [],
     [chatSettings?.selectedTools]
   );
-
   const [selectedToolIds = [], setSelectedToolIds] = useLocalStorageState<string[]>(
     'chat_home_tools',
     {
@@ -89,15 +121,34 @@ const HomeChatWindow = () => {
     setSelectedToolIds(
       selectedToolIds.filter((id) => availableTools.some((tool) => tool.pluginId === id))
     );
-  }, [availableTools, selectedToolIds, setSelectedToolIds]);
+  }, [availableTools]);
 
   // 初始化聊天数据
   const { loading } = useRequest2(
     async () => {
       if (!appId || forbidLoadChat.current) return;
 
+      const modelData = getWebLLMModel(selectedModel);
       const res = await getInitChatInfo({ appId, chatId });
       res.userAvatar = userInfo?.avatar;
+      if (!res.app.chatConfig) {
+        res.app.chatConfig = {
+          fileSelectConfig: {
+            ...defaultFileSelectConfig,
+            canSelectImg: !!modelData.vision
+          },
+          whisperConfig: defaultWhisperConfig
+        };
+      } else {
+        res.app.chatConfig.fileSelectConfig = {
+          ...defaultFileSelectConfig,
+          canSelectImg: !!modelData.vision
+        };
+        res.app.chatConfig.whisperConfig = {
+          ...defaultWhisperConfig,
+          open: true
+        };
+      }
 
       setChatBoxData(res);
 
@@ -147,6 +198,7 @@ const HomeChatWindow = () => {
       const formData = getDefaultAppForm();
       formData.aiSettings.model = selectedModel;
       formData.selectedTools = tools;
+      formData.chatConfig = chatBoxData.app.chatConfig || {};
 
       const { responseText } = await streamFetch({
         url: '/api/proApi/core/chat/chatHome',
@@ -189,7 +241,29 @@ const HomeChatWindow = () => {
             rounded="full"
             list={availableModels}
             value={selectedModel}
-            onChange={(model) => setSelectedModel(model)}
+            maxW={['114px', 'fit-content']}
+            valueLabel={
+              <Flex className="textEllipsis" maxW={['74px', '100%']} alignItems={'center'} gap={1}>
+                {isPc && <Avatar src={selectedModelAvatar} w={4} h={4} />}
+                <Box>{selectedModel}</Box>
+              </Flex>
+            }
+            onChange={async (model) => {
+              setChatBoxData((state) => ({
+                ...state,
+                app: {
+                  ...state.app,
+                  chatConfig: {
+                    ...state.app.chatConfig,
+                    fileSelectConfig: {
+                      ...defaultFileSelectConfig,
+                      canSelectImg: !!getWebLLMModel(model).vision
+                    }
+                  }
+                }
+              }));
+              setSelectedModel(model);
+            }}
           />
         )}
 
@@ -213,9 +287,11 @@ const HomeChatWindow = () => {
                 borderColor: 'primary.200'
               })}
             >
-              {selectedTools.length > 0
-                ? t('chat:home.tools', { num: selectedTools.length })
-                : t('chat:home.select_tools')}
+              {isPc
+                ? selectedTools.length > 0
+                  ? t('chat:home.tools', { num: selectedTools.length })
+                  : t('chat:home.select_tools')
+                : `：${selectedTools.length}`}
             </MenuButton>
             <MenuList px={2}>
               {availableTools.map((tool) => {
@@ -262,7 +338,10 @@ const HomeChatWindow = () => {
       t,
       setSelectedModel,
       selectedToolIds,
-      setSelectedToolIds
+      setSelectedToolIds,
+      setChatBoxData,
+      isPc,
+      selectedModelAvatar
     ]
   );
 
@@ -305,16 +384,30 @@ const HomeChatWindow = () => {
         flex={'1 0 0'}
         flexDirection={'column'}
       >
-        <Flex
-          py={4}
-          bg="white"
-          fontWeight={500}
-          color="myGray.900"
-          alignItems="center"
-          justifyContent="center"
-        >
-          {chatBoxData?.title}
-        </Flex>
+        {isPc ? (
+          <Flex
+            py={4}
+            bg="white"
+            fontWeight={500}
+            color="myGray.900"
+            alignItems="center"
+            justifyContent="center"
+            position="relative"
+            h="56px"
+            borderBottom="sm"
+          >
+            <Box flex="1" textAlign="center">
+              {chatBoxData?.title}
+            </Box>
+          </Flex>
+        ) : (
+          <ChatHeader
+            showHistory
+            apps={myApps}
+            history={chatRecords}
+            totalRecordsCount={totalRecordsCount}
+          />
+        )}
 
         <Box flex={'1 0 0'} bg={'white'}>
           <ChatBox

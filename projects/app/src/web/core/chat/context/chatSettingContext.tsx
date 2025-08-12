@@ -43,7 +43,7 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
   const router = useRouter();
 
   const { feConfigs } = useSystemStore();
-  const { appId, setLastPane } = useChatStore();
+  const { appId, setLastPane, lastPane } = useChatStore();
 
   const [collapse, setCollapse] = useState<CollapseStatusType>(defaultCollapseStatus);
 
@@ -63,24 +63,23 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
   );
 
   const [pane, setPane] = useState<ChatSidebarPaneEnum>(
-    !!feConfigs.isPlus ? ChatSidebarPaneEnum.HOME : ChatSidebarPaneEnum.RECENTLY_USED_APPS
+    lastPane ??
+      (feConfigs.isPlus ? ChatSidebarPaneEnum.HOME : ChatSidebarPaneEnum.RECENTLY_USED_APPS)
   );
   const handlePaneChange = useCallback(
     (newPane: ChatSidebarPaneEnum) => {
-      setPane(newPane);
-      setLastPane(newPane);
-
       // 如果切换到首页，且当前不是隐藏应用，则切换到隐藏应用
       const hiddenAppId = chatSettings?.appId;
       if (newPane === ChatSidebarPaneEnum.HOME && hiddenAppId && appId !== hiddenAppId) {
-        router.replace({
-          pathname: router.pathname,
+        router.push({
           query: {
             ...router.query,
             appId: hiddenAppId
           }
         });
       }
+      setPane(newPane);
+      setLastPane(newPane);
     },
     [setLastPane, chatSettings?.appId, appId, router]
   );

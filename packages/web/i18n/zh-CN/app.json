@@ -306,6 +306,7 @@
   "type.error.Workflow data is empty": "没有获取到工作流数据",
   "type.error.workflowresponseempty": "响应内容为空",
   "type_not_recognized": "未识别到应用类型",
+  "type.hidden": "隐藏应用",
   "un_auth": "无权限",
   "upload_file_max_amount": "最大文件数量",
   "upload_file_max_amount_tip": "单轮对话中最大上传文件数量",
