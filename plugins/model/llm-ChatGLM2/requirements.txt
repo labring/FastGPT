@@ -7,5 +7,5 @@ sse_starlette==1.6.5
 starlette==0.47.2
 tiktoken==0.4.0
 torch==2.7.1
-transformers==4.52.1
+transformers==4.53.0
 uvicorn==0.23.2
