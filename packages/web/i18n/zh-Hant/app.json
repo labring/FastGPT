@@ -182,6 +182,7 @@
   "permission.des.read": "可以使用這個應用程式進行對話",
   "permission.des.readChatLog": "可以檢視對話紀錄",
   "permission.des.write": "可以檢視和編輯應用程式",
+  "permission.name.read": "僅對話",
   "permission.name.readChatLog": "檢視對話紀錄",
   "plugin.Instructions": "使用說明",
   "plugin_cost_by_token": "根據 token 消耗計費",

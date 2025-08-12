@@ -182,6 +182,7 @@
   "permission.des.read": "Use the app to have conversations",
   "permission.des.readChatLog": "Can view chat logs",
   "permission.des.write": "Can view and edit apps",
+  "permission.name.read": "Dialogue only",
   "permission.name.readChatLog": "View chat logs",
   "plugin.Instructions": "Instructions",
   "plugin_cost_by_token": "Charged based on token usage",

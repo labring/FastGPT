@@ -22,6 +22,7 @@ export const AppPerList: PermissionListType<AppPermissionKeyEnum> = {
 export const AppRoleList: RoleListType<AppPermissionKeyEnum> = {
   [CommonPerKeyEnum.read]: {
     ...CommonRoleList[CommonPerKeyEnum.read],
+    name: i18nT('app:permission.name.read'),
     description: i18nT('app:permission.des.read')
   },
   [CommonPerKeyEnum.write]: {

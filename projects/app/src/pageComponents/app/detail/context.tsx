@@ -162,6 +162,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
 
   const { runAsync: onSaveApp } = useRequest2(async (data: PostPublishAppProps) => {
     try {
+      if (!appDetail.permission.hasWritePer) return;
       await postPublishApp(appId, data);
       setAppDetail((state) => ({
         ...state,
