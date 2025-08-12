@@ -112,6 +112,7 @@
   "setting.home.title": "Home",
   "setting.incorrect_plan": "The current plan does not support this feature, please upgrade to the subscription plan",
   "setting.incorrect_version": "This feature is not supported in the current version",
+  "setting.logs.title": "Homepage log",
   "setting.save": "Save",
   "setting.save_success": "Save successfully",
   "sidebar.home": "Home",

@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 
 const HomepageSetting = dynamic(() => import('@/pageComponents/chat/ChatSetting/HomepageSetting'));
+const ChatLogs = dynamic(() => import('@/pageComponents/chat/ChatLogs'));
 
 const ChatSetting = () => {
   const { t } = useTranslation();
@@ -68,6 +69,9 @@ const ChatSetting = () => {
       {tab === ChatSettingTabOptionEnum.HOME && (
         <HomepageSetting Header={SettingHeader} onDiagramShow={setIsOpenDiagram} />
       )}
+
+      {/* home chat logs */}
+      {tab === ChatSettingTabOptionEnum.LOGS && <ChatLogs Header={SettingHeader} />}
 
       <DiagramModal show={isOpenDiagram} onShow={setIsOpenDiagram} />
     </>

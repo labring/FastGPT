@@ -29,6 +29,7 @@ import {
   ChatSidebarPaneEnum,
   DEFAULT_LOGO_BANNER_COLLAPSED_URL
 } from '@/pageComponents/chat/constants';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
 
 const ChatHeader = ({
   history,
@@ -115,7 +116,9 @@ const MobileDrawer = ({
     app = 'app'
   }
   const { t } = useTranslation();
-  const router = useRouter();
+
+  const { setChatId } = useChatStore();
+
   const [currentTab, setCurrentTab] = useState<TabEnum>(TabEnum.recently);
 
   const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
@@ -130,9 +133,13 @@ const MobileDrawer = ({
   }, []);
   const { onChangeAppId } = useContextSelector(ChatContext, (v) => v);
 
+  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
+
   const onclickApp = (id: string) => {
+    handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS);
     onChangeAppId(id);
     onCloseDrawer();
+    setChatId();
   };
 
   return (

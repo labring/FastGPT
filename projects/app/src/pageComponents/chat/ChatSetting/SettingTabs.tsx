@@ -15,7 +15,10 @@ const SettingTabs = ({ tab, children, onChange }: Props) => {
 
   const tabOptions: Parameters<typeof FillRowTabs<`${ChatSettingTabOptionEnum}`>>[0]['list'] =
     useMemo(
-      () => [{ label: t('chat:setting.home.title'), value: ChatSettingTabOptionEnum.HOME }],
+      () => [
+        { label: t('chat:setting.home.title'), value: ChatSettingTabOptionEnum.HOME },
+        { label: t('chat:setting.logs.title'), value: ChatSettingTabOptionEnum.LOGS }
+      ],
       [t]
     );
 
