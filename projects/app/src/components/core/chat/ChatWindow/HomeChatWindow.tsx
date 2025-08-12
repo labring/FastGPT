@@ -48,6 +48,8 @@ import type {
 } from '@fastgpt/global/core/app/type';
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
+import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
+import { getModelFromList } from '@fastgpt/global/core/ai/model';
 
 type Props = {
   myApps: AppListItemType[];
@@ -95,6 +97,10 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const [selectedModel, setSelectedModel] = useLocalStorageState('chat_home_model', {
     defaultValue: defaultModels.llm?.model
   });
+  const selectedModelAvatar = useMemo(() => {
+    const modelData = getModelFromList(llmModelList, selectedModel || '');
+    return modelData?.avatar || HUGGING_FACE_ICON;
+  }, [selectedModel, llmModelList]);
 
   const availableTools = useMemo(
     () => chatSettings?.selectedTools || [],
@@ -192,6 +198,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
       const formData = getDefaultAppForm();
       formData.aiSettings.model = selectedModel;
       formData.selectedTools = tools;
+      formData.chatConfig = chatBoxData.app.chatConfig || {};
 
       const { responseText } = await streamFetch({
         url: '/api/proApi/core/chat/chatHome',
@@ -234,11 +241,12 @@ const HomeChatWindow = ({ myApps }: Props) => {
             rounded="full"
             list={availableModels}
             value={selectedModel}
-            maxW={isPc ? 'auto' : '114px'}
+            maxW={['114px', 'fit-content']}
             valueLabel={
-              <Box className="textEllipsis" maxW={isPc ? 'auto' : '74px'}>
-                {selectedModel}
-              </Box>
+              <Flex className="textEllipsis" maxW={['74px', '100%']} alignItems={'center'} gap={1}>
+                {isPc && <Avatar src={selectedModelAvatar} w={4} h={4} />}
+                <Box>{selectedModel}</Box>
+              </Flex>
             }
             onChange={async (model) => {
               setChatBoxData((state) => ({
@@ -332,7 +340,8 @@ const HomeChatWindow = ({ myApps }: Props) => {
       selectedToolIds,
       setSelectedToolIds,
       setChatBoxData,
-      isPc
+      isPc,
+      selectedModelAvatar
     ]
   );
 

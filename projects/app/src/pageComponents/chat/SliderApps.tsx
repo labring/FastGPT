@@ -525,42 +525,6 @@ const SliderApps = ({ apps, activeAppId }: Props) => {
           >
             {t('common:core.chat.Recent use')}
           </Box>
-          <MyPopover
-            placement="bottom-end"
-            offset={[20, 10]}
-            p={4}
-            trigger="hover"
-            Trigger={
-              <HStack
-                spacing={0.5}
-                cursor={'pointer'}
-                px={2}
-                py={'0.5'}
-                borderRadius={'md'}
-                mr={-2}
-                userSelect={'none'}
-                _hover={{ bg: 'myGray.200' }}
-              >
-                <Box>{t('common:More')}</Box>
-                <MyIcon name={'common/select'} w={'1rem'} />
-              </HStack>
-            }
-          >
-            {({ onClose }) => (
-              <Box minH={'200px'}>
-                <SelectOneResource
-                  maxH={'60vh'}
-                  value={activeAppId}
-                  onSelect={(item) => {
-                    if (!item) return;
-                    handleSelectRecentlyUsedApp(item.id);
-                    onClose();
-                  }}
-                  server={getAppList}
-                />
-              </Box>
-            )}
-          </MyPopover>
         </HStack>
 
         <MyBox flex={'1 0 0'} h={0} overflow={'overlay'} px={4} position={'relative'}>
