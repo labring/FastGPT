@@ -36,7 +36,7 @@ export const AppRoleList: RoleListType<AppPermissionKeyEnum> = {
     value: 0b1000,
     checkBoxType: 'multiple',
     name: i18nT('app:permission.name.readChatLog'),
-    description: i18nT('app:permission.des.readChatLog')
+    description: ''
   }
 };
 

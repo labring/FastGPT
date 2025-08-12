@@ -17,7 +17,7 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
 
   for (const rp of rps) {
     const per = new AppPermission({ role: rp.permission });
-    if (per.hasWritePer) {
+    if (per.hasManagePer) {
       per.addRole(AppReadChatLogRoleVal);
       ops.push({
         updateOne: {
