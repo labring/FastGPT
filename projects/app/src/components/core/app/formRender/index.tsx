@@ -77,6 +77,7 @@ const InputRender = (props: InputRenderProps) => {
             name: item.name,
             avatar: item.avatar
           }))}
+          defaultModel={props.defaultModel}
           minH={100}
           maxH={300}
         />
