@@ -51,22 +51,7 @@ const MyApps = () => {
   );
 
   const [appType, setAppType] = useState<AppTypeEnum | 'all'>('all');
-  const handleAppTypeChange = (index: number) => {
-    switch (index) {
-      case 0:
-        setAppType('all');
-        break;
-      case 1:
-        setAppType(AppTypeEnum.simple);
-        break;
-      case 2:
-        setAppType(AppTypeEnum.workflow);
-        break;
-      case 3:
-        setAppType(AppTypeEnum.plugin);
-        break;
-    }
-  };
+  const tabs = ['all' as const, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin];
 
   return (
     <Flex flexDirection={'column'} h={'100%'} pt={['46px', 0]}>
@@ -127,18 +112,20 @@ const MyApps = () => {
         >
           <Flex pt={paths.length > 0 ? 3 : [4, 6]} alignItems={'center'} gap={3}>
             {isPc && (
-              <Tabs variant="unstyled" onChange={handleAppTypeChange}>
-                <TabList>
-                  {[
-                    'all' as const,
-                    AppTypeEnum.simple,
-                    AppTypeEnum.workflow,
-                    AppTypeEnum.plugin
-                  ].map((item) => (
-                    <Tab key={item}>{map[item]}</Tab>
+              <Tabs variant="unstyled" onChange={(index) => setAppType(tabs[index])}>
+                <TabList gap={5}>
+                  {tabs.map((item, index) => (
+                    <Tab
+                      key={item}
+                      color={appType === item ? 'primary.700' : 'myGray.500'}
+                      fontWeight={500}
+                      px={0}
+                    >
+                      {map[item]}
+                    </Tab>
                   ))}
                 </TabList>
-                <TabIndicator mt="-1.5px" height="2px" bg="primary.500" borderRadius="1px" />
+                <TabIndicator mt="-1.5px" height="2px" bg="primary.600" borderRadius="1px" />
               </Tabs>
             )}
             <Box flex={1} />
