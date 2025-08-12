@@ -10,12 +10,14 @@ import { useRouter } from 'next/router';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import List from '@/components/core/chat/ChatTeamApp/List';
+import List from '@/pageComponents/chat/ChatTeamApp/List';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Drawer, DrawerContent, DrawerOverlay } from '@chakra-ui/react';
 import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
+import NextHead from '@/components/common/NextHead';
+import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 
 const MyApps = () => {
   const { t } = useTranslation();
@@ -25,6 +27,8 @@ const MyApps = () => {
     AppListContext,
     (v) => v
   );
+
+  const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
 
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
@@ -47,6 +51,8 @@ const MyApps = () => {
 
   return (
     <Flex flexDirection={'column'} h={'100%'} pt={['46px', 0]}>
+      <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} icon="/icon/logo.svg" />
+
       {!isPc && (
         <Flex h="46px" w="100vw" top="0" position="absolute" borderBottom="sm" color="myGray.900">
           <MyIcon

@@ -1,8 +1,8 @@
-import DiagramModal from '@/components/core/chat/ChatSetting/DiagramModal';
+import DiagramModal from '@/pageComponents/chat/ChatSetting/DiagramModal';
 import { useCallback, useState } from 'react';
 import { ChatSettingTabOptionEnum } from '@/pageComponents/chat/constants';
 import dynamic from 'next/dynamic';
-import SettingTabs from '@/components/core/chat/ChatSetting/SettingTabs';
+import SettingTabs from '@/pageComponents/chat/ChatSetting/SettingTabs';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { Drawer, DrawerContent, DrawerOverlay, Flex } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
@@ -11,7 +11,7 @@ import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
 import { useTranslation } from 'react-i18next';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 
-const HomepageSetting = dynamic(() => import('@/components/core/chat/ChatSetting/HomepageSetting'));
+const HomepageSetting = dynamic(() => import('@/pageComponents/chat/ChatSetting/HomepageSetting'));
 
 const ChatSetting = () => {
   const { t } = useTranslation();

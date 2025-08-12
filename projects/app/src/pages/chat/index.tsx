@@ -17,15 +17,15 @@ import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import LoginModal from '@/pageComponents/login/LoginModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import ChatSetting from '@/components/core/chat/ChatSetting';
+import ChatSetting from '@/pageComponents/chat/ChatSetting';
 import { useChat } from '@/pageComponents/chat/useChat';
-import AppChatWindow from '@/components/core/chat/ChatWindow/AppChatWindow';
-import HomeChatWindow from '@/components/core/chat/ChatWindow/HomeChatWindow';
+import AppChatWindow from '@/pageComponents/chat/ChatWindow/AppChatWindow';
+import HomeChatWindow from '@/pageComponents/chat/ChatWindow/HomeChatWindow';
 import {
   ChatSettingContext,
   ChatSettingContextProvider
 } from '@/web/core/chat/context/chatSettingContext';
-import ChatTeamApp from '@/components/core/chat/ChatTeamApp';
+import ChatTeamApp from '@/pageComponents/chat/ChatTeamApp';
 
 const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const { isPc } = useSystem();

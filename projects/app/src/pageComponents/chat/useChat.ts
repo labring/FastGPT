@@ -1,12 +1,9 @@
-import { getMyApps } from '@/web/core/app/api';
+import { getRecentlyUsedApps } from '@/web/core/app/api';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useMount } from 'ahooks';
-import { useRouter } from 'next/router';
 import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 
 export const useChat = (appId: string) => {
   const { setSource, setAppId } = useChatStore();
@@ -15,7 +12,7 @@ export const useChat = (appId: string) => {
   const [isInitedUser, setIsInitedUser] = useState(false);
 
   // get app list
-  const { data: myApps = [] } = useRequest2(() => getMyApps({ getRecentlyChat: true }), {
+  const { data: myApps = [] } = useRequest2(() => getRecentlyUsedApps({ getRecentlyChat: true }), {
     manual: false,
     errorToast: '',
     refreshDeps: [userInfo],
