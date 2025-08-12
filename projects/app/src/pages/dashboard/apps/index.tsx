@@ -27,7 +27,6 @@ import type { CreateAppType } from '@/pageComponents/dashboard/apps/CreateModal'
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import JsonImportModal from '@/pageComponents/dashboard/apps/JsonImportModal';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
 import List from '@/pageComponents/dashboard/apps/List';
@@ -57,7 +56,6 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     isFetchingApps,
     folderDetail,
     refetchFolderDetail,
-    searchKey,
     setSearchKey
   } = useContextSelector(AppListContext, (v) => v);
   const { userInfo } = useUserStore();

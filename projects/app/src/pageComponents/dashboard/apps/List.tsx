@@ -153,7 +153,7 @@ const ListItem = () => {
               label={
                 app.type === AppTypeEnum.folder
                   ? t('common:open_folder')
-                  : app.permission.hasWritePer
+                  : app.permission.hasWritePer || app.permission.hasReadChatLogPer
                     ? t('app:edit_app')
                     : t('app:go_to_chat')
               }
@@ -190,7 +190,7 @@ const ListItem = () => {
                         parentId: app._id
                       }
                     });
-                  } else if (app.permission.hasWritePer) {
+                  } else if (app.permission.hasWritePer || app.permission.hasReadChatLogPer) {
                     router.push(`/app/detail?appId=${app._id}`);
                   } else {
                     window.open(`/chat?appId=${app._id}`, '_blank');

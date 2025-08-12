@@ -146,7 +146,8 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
   const { data: appLatestVersion, run: reloadAppLatestVersion } = useRequest2(
     () => getAppLatestVersion({ appId }),
     {
-      manual: false
+      manual: !appDetail?.permission?.hasWritePer,
+      refreshDeps: [appDetail?.permission?.hasWritePer]
     }
   );
 

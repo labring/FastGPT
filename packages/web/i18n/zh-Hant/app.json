@@ -65,7 +65,7 @@
   "document_quote": "文件引用",
   "document_quote_tip": "通常用於接受使用者上傳的文件內容（這需要文件解析），也可以用於引用其他字串資料。",
   "document_upload": "文件上傳",
-  "edit_app": "編輯應用程式",
+  "edit_app": "應用詳情",
   "edit_info": "編輯資訊",
   "execute_time": "執行時間",
   "export_config_successful": "已複製設定，自動過濾部分敏感資訊，請注意檢查是否仍有敏感資料",

@@ -65,7 +65,7 @@
   "document_quote": "Document Reference",
   "document_quote_tip": "Usually used to accept user-uploaded document content (requires document parsing), and can also be used to reference other string data.",
   "document_upload": "Document Upload",
-  "edit_app": "Edit Application",
+  "edit_app": "Application details",
   "edit_info": "Edit",
   "execute_time": "Execution Time",
   "export_config_successful": "Configuration copied, some sensitive information automatically filtered. Please check for any remaining sensitive data.",
