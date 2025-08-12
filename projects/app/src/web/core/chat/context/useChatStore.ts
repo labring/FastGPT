@@ -2,7 +2,7 @@ import { create, createJSONStorage, devtools, persist, immer } from '@fastgpt/we
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
+import type { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 
 type State = {
   source?: `${ChatSourceEnum}`;
@@ -17,7 +17,7 @@ type State = {
   chatId: string;
   setChatId: (e?: string) => any;
 
-  lastPane: ChatSidebarPaneEnum;
+  lastPane?: ChatSidebarPaneEnum;
   setLastPane: (e: ChatSidebarPaneEnum) => any;
 
   outLinkAuthData: OutLinkChatAuthProps;
@@ -115,7 +115,7 @@ export const useChatStore = create<State>()(
             state.lastChatAppId = e;
           });
         },
-        lastPane: ChatSidebarPaneEnum.HOME,
+        lastPane: undefined,
         setLastPane(e) {
           set((state) => {
             state.lastPane = e;

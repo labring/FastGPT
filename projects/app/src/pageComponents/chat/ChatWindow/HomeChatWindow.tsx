@@ -25,7 +25,7 @@ import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type
 import { streamFetch } from '@/web/common/api/fetch';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import { useLocalStorageState, useMemoizedFn } from 'ahooks';
+import { useLocalStorageState, useMemoizedFn, useMount } from 'ahooks';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getInitChatInfo } from '@/web/core/chat/api';
@@ -51,6 +51,7 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import { getModelFromList } from '@fastgpt/global/core/ai/model';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import { ChatSidebarPaneEnum } from '../constants';
 
 type Props = {
   myApps: AppListItemType[];
@@ -73,8 +74,10 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const { isPc } = useSystem();
 
   const { userInfo } = useUserStore();
-  const { llmModelList, defaultModels } = useSystemStore();
+  const { llmModelList, defaultModels, feConfigs } = useSystemStore();
   const { chatId, appId, outLinkAuthData } = useChatStore();
+
+  const onHomeClick = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
 
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
@@ -167,6 +170,12 @@ const HomeChatWindow = ({ myApps }: Props) => {
       }
     }
   );
+
+  useMount(() => {
+    if (!feConfigs?.isPlus) {
+      onHomeClick(ChatSidebarPaneEnum.RECENTLY_USED_APPS);
+    }
+  });
 
   // 使用类似AppChatWindow的对话逻辑
   const onStartChat = useMemoizedFn(

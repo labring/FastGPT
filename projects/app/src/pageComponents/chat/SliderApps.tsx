@@ -1,6 +1,6 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
-import { Flex, Box, HStack, Image, Skeleton } from '@chakra-ui/react';
+import { Flex, Box, HStack, Image } from '@chakra-ui/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
@@ -10,8 +10,6 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import UserAvatarPopover from '@/pageComponents/chat/UserAvatarPopover';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import MyPopover from '@fastgpt/web/components/common/MyPopover';
-import SelectOneResource from '@/components/common/folder/SelectOneResource';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type {
   GetResourceFolderListProps,
@@ -280,45 +278,49 @@ const NavigationSection = () => {
         <AnimatePresence mode="wait">
           {isCollapsed ? (
             <AnimatedSection show={true}>
-              <Flex flexDir="column" gap={2}>
-                <ActionButton
-                  icon="core/chat/sidebar/home"
-                  isCollapsed={true}
-                  isActive={isHomeActive}
-                  onClick={() => onHomeClick(ChatSidebarPaneEnum.HOME)}
-                />
-
-                <ActionButton
-                  icon="common/app"
-                  isCollapsed={true}
-                  isActive={isTeamAppsActive}
-                  onClick={() => onHomeClick(ChatSidebarPaneEnum.TEAM_APPS)}
-                />
-              </Flex>
+              <ActionButton
+                icon="core/chat/sidebar/home"
+                isCollapsed={true}
+                isActive={isHomeActive}
+                onClick={() => onHomeClick(ChatSidebarPaneEnum.HOME)}
+              />
             </AnimatedSection>
           ) : (
             <AnimatedSection show={true}>
-              <Flex flexDir="column" gap={2}>
-                <ActionButton
-                  icon="core/chat/sidebar/home"
-                  text={t('chat:sidebar.home')}
-                  isCollapsed={false}
-                  isActive={isHomeActive}
-                  onClick={() => onHomeClick(ChatSidebarPaneEnum.HOME)}
-                />
-
-                <ActionButton
-                  icon="common/app"
-                  text={t('chat:sidebar.team_apps')}
-                  isCollapsed={false}
-                  isActive={isTeamAppsActive}
-                  onClick={() => onHomeClick(ChatSidebarPaneEnum.TEAM_APPS)}
-                />
-              </Flex>
+              <ActionButton
+                icon="core/chat/sidebar/home"
+                text={t('chat:sidebar.home')}
+                isCollapsed={false}
+                isActive={isHomeActive}
+                onClick={() => onHomeClick(ChatSidebarPaneEnum.HOME)}
+              />
             </AnimatedSection>
           )}
         </AnimatePresence>
       )}
+
+      <AnimatePresence mode="wait">
+        {isCollapsed ? (
+          <AnimatedSection show={true}>
+            <ActionButton
+              icon="common/app"
+              isCollapsed={true}
+              isActive={isTeamAppsActive}
+              onClick={() => onHomeClick(ChatSidebarPaneEnum.TEAM_APPS)}
+            />
+          </AnimatedSection>
+        ) : (
+          <AnimatedSection show={true}>
+            <ActionButton
+              icon="common/app"
+              text={t('chat:sidebar.team_apps')}
+              isCollapsed={false}
+              isActive={isTeamAppsActive}
+              onClick={() => onHomeClick(ChatSidebarPaneEnum.TEAM_APPS)}
+            />
+          </AnimatedSection>
+        )}
+      </AnimatePresence>
     </Flex>
   );
 };

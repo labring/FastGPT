@@ -363,7 +363,6 @@
   "core.chat.Speaking": "我在聽，請說...",
   "core.chat.Type a message": "輸入問題，按 [Enter] 傳送 / 按 [Ctrl(Alt/Shift) + Enter] 換行",
   "core.chat.Unpin": "取消釘選",
-  "core.chat.You need to a chat app": "您沒有可用的應用程式",
   "core.chat.error.Chat error": "對話發生錯誤",
   "core.chat.error.Messages empty": "API 內容為空，可能是文字過長",
   "core.chat.error.Select dataset empty": "您尚未選擇知識庫",
