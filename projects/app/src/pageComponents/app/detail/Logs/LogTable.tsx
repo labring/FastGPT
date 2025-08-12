@@ -55,15 +55,16 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
 const LogTable = ({
+  appId,
   chatSources,
   setChatSources,
   isSelectAllSource,
   setIsSelectAllSource,
   dateRange,
-  setDateRange
+  setDateRange,
+  showSourceSelector = true
 }: HeaderControlProps) => {
   const { t } = useTranslation();
-  const appId = useContextSelector(AppContext, (v) => v.appId);
   const { feConfigs } = useSystemStore();
 
   const [detailLogsId, setDetailLogsId] = useState<string>();
@@ -338,28 +339,30 @@ const LogTable = ({
   return (
     <Flex flexDir={'column'} h={'full'} px={[4, 8]}>
       <Flex flexDir={['column', 'row']} alignItems={['flex-start', 'center']} gap={3}>
-        <Flex>
-          <MultipleSelect<ChatSourceEnum>
-            list={sourceList}
-            value={chatSources}
-            onSelect={setChatSources}
-            isSelectAll={isSelectAllSource}
-            setIsSelectAll={setIsSelectAllSource}
-            h={10}
-            w={'226px'}
-            rounded={'8px'}
-            tagStyle={{
-              px: 1,
-              py: 1,
-              borderRadius: 'sm',
-              bg: 'myGray.100',
-              color: 'myGray.900'
-            }}
-            borderColor={'myGray.200'}
-            formLabel={t('app:logs_source')}
-            formLabelFontSize={'sm'}
-          />
-        </Flex>
+        {showSourceSelector && (
+          <Flex>
+            <MultipleSelect<ChatSourceEnum>
+              list={sourceList}
+              value={chatSources}
+              onSelect={setChatSources}
+              isSelectAll={isSelectAllSource}
+              setIsSelectAll={setIsSelectAllSource}
+              h={10}
+              w={'226px'}
+              rounded={'8px'}
+              tagStyle={{
+                px: 1,
+                py: 1,
+                borderRadius: 'sm',
+                bg: 'myGray.100',
+                color: 'myGray.900'
+              }}
+              borderColor={'myGray.200'}
+              formLabel={t('app:logs_source')}
+              formLabelFontSize={'sm'}
+            />
+          </Flex>
+        )}
         <Flex>
           <DateRangePicker
             defaultDate={dateRange}
@@ -446,7 +449,10 @@ const LogTable = ({
           />
         )}
         <LogKeysConfigPopover
-          logKeysList={logKeys || DefaultAppLogKeys}
+          logKeysList={[...(logKeys || DefaultAppLogKeys)].filter((item) => {
+            if (item.key === AppLogKeysEnum.SOURCE && !showSourceSelector) return false;
+            return true;
+          })}
           setLogKeysList={setLogKeys}
         />
 

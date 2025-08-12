@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import React, { useMemo, useState } from 'react';
+import { Box, Flex, Tab, TabIndicator, TabList, TabPanel, TabPanels, Tabs } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import AppListContextProvider, { AppListContext } from '@/pageComponents/dashboard/apps/context';
@@ -23,7 +23,7 @@ const MyApps = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
-  const { paths, myApps, appType, isFetchingApps, folderDetail, setSearchKey } = useContextSelector(
+  const { paths, myApps, isFetchingApps, setSearchKey } = useContextSelector(
     AppListContext,
     (v) => v
   );
@@ -34,20 +34,39 @@ const MyApps = () => {
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
 
-  const appTypeName = useMemo(() => {
-    const map: Record<AppTypeEnum | 'all', string> = {
-      all: t('common:core.module.template.Team app'),
-      [AppTypeEnum.simple]: t('app:type.Simple bot'),
-      [AppTypeEnum.workflow]: t('app:type.Workflow bot'),
-      [AppTypeEnum.plugin]: t('app:type.Plugin'),
-      [AppTypeEnum.httpPlugin]: t('app:type.Http plugin'),
-      [AppTypeEnum.folder]: t('common:Folder'),
-      [AppTypeEnum.toolSet]: t('app:type.MCP tools'),
-      [AppTypeEnum.tool]: t('app:type.MCP tools'),
-      [AppTypeEnum.hidden]: t('app:type.hidden')
-    };
-    return map[appType] || map['all'];
-  }, [appType, t]);
+  const map = useMemo(
+    () =>
+      ({
+        all: t('common:core.module.template.all_team_app'),
+        [AppTypeEnum.simple]: t('app:type.Simple bot'),
+        [AppTypeEnum.workflow]: t('app:type.Workflow bot'),
+        [AppTypeEnum.plugin]: t('app:type.Plugin'),
+        [AppTypeEnum.httpPlugin]: t('app:type.Http plugin'),
+        [AppTypeEnum.folder]: t('common:Folder'),
+        [AppTypeEnum.toolSet]: t('app:type.MCP tools'),
+        [AppTypeEnum.tool]: t('app:type.MCP tools'),
+        [AppTypeEnum.hidden]: t('app:type.hidden')
+      }) satisfies Record<AppTypeEnum | 'all', string>,
+    [t]
+  );
+
+  const [appType, setAppType] = useState<AppTypeEnum | 'all'>('all');
+  const handleAppTypeChange = (index: number) => {
+    switch (index) {
+      case 0:
+        setAppType('all');
+        break;
+      case 1:
+        setAppType(AppTypeEnum.simple);
+        break;
+      case 2:
+        setAppType(AppTypeEnum.workflow);
+        break;
+      case 3:
+        setAppType(AppTypeEnum.plugin);
+        break;
+    }
+  };
 
   return (
     <Flex flexDirection={'column'} h={'100%'} pt={['46px', 0]}>
@@ -108,9 +127,19 @@ const MyApps = () => {
         >
           <Flex pt={paths.length > 0 ? 3 : [4, 6]} alignItems={'center'} gap={3}>
             {isPc && (
-              <Box fontSize={'lg'} color={'myGray.900'} fontWeight={500}>
-                {appTypeName}
-              </Box>
+              <Tabs variant="unstyled" onChange={handleAppTypeChange}>
+                <TabList>
+                  {[
+                    'all' as const,
+                    AppTypeEnum.simple,
+                    AppTypeEnum.workflow,
+                    AppTypeEnum.plugin
+                  ].map((item) => (
+                    <Tab key={item}>{map[item]}</Tab>
+                  ))}
+                </TabList>
+                <TabIndicator mt="-1.5px" height="2px" bg="primary.500" borderRadius="1px" />
+              </Tabs>
             )}
             <Box flex={1} />
 
@@ -138,7 +167,7 @@ const MyApps = () => {
           )}
 
           <MyBox flex={'1 0 0'} isLoading={myApps.length === 0 && isFetchingApps}>
-            <List />
+            <List appType={appType} />
           </MyBox>
         </Flex>
       </Flex>

@@ -41,7 +41,7 @@ const ChatHistorySlider = ({
 
   const { userInfo } = useUserStore();
 
-  const { chatId: activeChatId } = useChatStore();
+  const { chatId: activeChatId, setChatId } = useChatStore();
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
   const ScrollData = useContextSelector(ChatContext, (v) => v.ScrollData);
   const histories = useContextSelector(ChatContext, (v) => v.histories);
@@ -137,6 +137,7 @@ const ChatHistorySlider = ({
               onClick={() => {
                 handlePaneChange(ChatSidebarPaneEnum.HOME);
                 onCloseSlider();
+                setChatId();
               }}
             >
               <Flex
