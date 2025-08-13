@@ -99,6 +99,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
       answerText: text,
       history: completeMessages
     },
+    [DispatchNodeResponseKeyEnum.answerText]: text,
     assistantResponses,
     system_memories,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {

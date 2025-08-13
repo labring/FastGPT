@@ -344,15 +344,6 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         })();
       });
 
-    if (typeof formatResponse[NodeOutputKeyEnum.answerText] === 'string') {
-      workflowStreamResponse?.({
-        event: SseResponseEventEnum.fastAnswer,
-        data: textAdaptGptResponse({
-          text: formatResponse[NodeOutputKeyEnum.answerText]
-        })
-      });
-    }
-
     return {
       data: {
         [NodeOutputKeyEnum.httpRawResponse]: rawResponse,

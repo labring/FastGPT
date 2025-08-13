@@ -83,6 +83,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       };
 
       const formatToolId = tool.id.split('-')[1];
+      let answerText = '';
 
       const res = await APIRunSystemTool({
         toolId: formatToolId,
@@ -109,6 +110,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         },
         onMessage: ({ type, content }) => {
           if (workflowStreamResponse && content) {
+            answerText = content;
             workflowStreamResponse({
               event: type as unknown as SseResponseEventEnum,
               data: textAdaptGptResponse({
@@ -169,6 +171,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
       return {
         data: result,
+        [DispatchNodeResponseKeyEnum.answerText]: answerText,
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
           toolRes: result,
           moduleLogo: avatar,

@@ -18,6 +18,9 @@ export enum SseResponseEventEnum {
 }
 
 export enum DispatchNodeResponseKeyEnum {
+  answerText = 'answerText', // answer text
+  reasoningText = 'reasoningText', // reasoning text
+
   skipHandleId = 'skipHandleId', // skip handle id
   nodeResponse = 'responseData', // run node response
   nodeDispatchUsages = 'nodeDispatchUsages', // the node bill.
