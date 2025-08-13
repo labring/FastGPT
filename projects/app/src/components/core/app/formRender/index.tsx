@@ -71,6 +71,13 @@ const InputRender = (props: InputRenderProps) => {
           variableLabels={props.variableLabels}
           title={props.title}
           maxLength={props.maxLength}
+          onOptimizePrompt={props.onOptimizePrompt}
+          modelList={props.modelList?.map((item) => ({
+            model: item.model,
+            name: item.name,
+            avatar: item.avatar
+          }))}
+          defaultModel={props.defaultModel}
           minH={100}
           maxH={300}
         />

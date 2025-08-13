@@ -5,6 +5,7 @@ import type {
 import type { InputTypeEnum } from './constant';
 import type { UseFormReturn } from 'react-hook-form';
 import type { BoxProps } from '@chakra-ui/react';
+import type { OnOptimizePromptProps } from '@fastgpt/web/components/common/Textarea/PromptEditor/modules/OptimizerPopover';
 
 type CommonRenderProps = {
   placeholder?: string;
@@ -25,6 +26,11 @@ type SpecificProps =
       variableLabels?: EditorVariableLabelPickerType[];
       title?: string;
       maxLength?: number;
+
+      // prompt optimizer
+      onOptimizePrompt?: (props: OnOptimizePromptProps) => Promise<void>;
+      modelList?: { model: string; name: string; avatar?: string }[];
+      defaultModel?: string;
     }
   | {
       // numberInput

@@ -1,4 +1,3 @@
-import type { BoxProps } from '@chakra-ui/react';
 import { Box, Button, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
 import React, { useMemo } from 'react';
 import { editorStateToText } from './utils';
@@ -9,6 +8,7 @@ import type { EditorState, LexicalEditor } from 'lexical';
 import type { FormPropsType } from './type.d';
 import { type EditorVariableLabelPickerType, type EditorVariablePickerType } from './type.d';
 import { useCallback } from 'react';
+import type { OnOptimizePromptProps } from './modules/OptimizerPopover';
 
 const PromptEditor = ({
   showOpenModal = true,
@@ -24,6 +24,10 @@ const PromptEditor = ({
   title,
   isInvalid,
   isDisabled,
+  onOptimizePrompt,
+  modelList,
+  defaultModel,
+  onChangeText,
   ...props
 }: {
   showOpenModal?: boolean;
@@ -40,6 +44,10 @@ const PromptEditor = ({
 
   isInvalid?: boolean;
   isDisabled?: boolean;
+  onOptimizePrompt?: (props: OnOptimizePromptProps) => Promise<void>;
+  modelList?: Array<{ model: string; name: string; avatar?: string }>;
+  defaultModel?: string;
+  onChangeText?: (text: string) => void;
 } & FormPropsType) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { t } = useTranslation();
@@ -81,6 +89,10 @@ const PromptEditor = ({
           onBlur={onBlurInput}
           placeholder={placeholder}
           isInvalid={isInvalid}
+          onOptimizePrompt={onOptimizePrompt}
+          modelList={modelList}
+          defaultModel={defaultModel}
+          onChangeText={onChange}
           {...props}
         />
         {isDisabled && (
@@ -116,6 +128,10 @@ const PromptEditor = ({
             onChange={onChangeInput}
             onBlur={onBlurInput}
             placeholder={placeholder}
+            onOptimizePrompt={onOptimizePrompt}
+            modelList={modelList}
+            defaultModel={defaultModel}
+            onChangeText={onChange}
           />
         </ModalBody>
         <ModalFooter>

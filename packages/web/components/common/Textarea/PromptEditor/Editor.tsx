@@ -6,7 +6,7 @@
  *
  */
 
-import { useState, useTransition } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -14,7 +14,7 @@ import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
 import VariableLabelPickerPlugin from './plugins/VariableLabelPickerPlugin';
-import { Box } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import styles from './index.module.scss';
 import VariablePlugin from './plugins/VariablePlugin';
 import { VariableNode } from './plugins/VariablePlugin/node';
@@ -31,6 +31,8 @@ import { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
 import VariableLabelPlugin from './plugins/VariableLabelPlugin';
 import { useDeepCompareEffect } from 'ahooks';
 import VariablePickerPlugin from './plugins/VariablePickerPlugin';
+import type { OnOptimizePromptProps } from './modules/OptimizerPopover';
+import OptimizerPopover from './modules/OptimizerPopover';
 
 export default function Editor({
   minH = 200,
@@ -45,6 +47,10 @@ export default function Editor({
   value,
   placeholder = '',
   bg = 'white',
+  onOptimizePrompt,
+  modelList,
+  defaultModel,
+  onChangeText,
 
   isInvalid
 }: {
@@ -59,6 +65,10 @@ export default function Editor({
   onBlur?: (editor: LexicalEditor) => void;
   value?: string;
   placeholder?: string;
+  onOptimizePrompt?: (props: OnOptimizePromptProps) => Promise<void>;
+  modelList?: Array<{ model: string; name: string; avatar?: string }>;
+  defaultModel?: string;
+  onChangeText?: (text: string) => void;
 
   isInvalid?: boolean;
 } & FormPropsType) {
@@ -80,6 +90,28 @@ export default function Editor({
     if (focus) return;
     setKey(getNanoid(6));
   }, [value, variables, variableLabels]);
+
+  const showFullScreenIcon = useMemo(() => {
+    return showOpenModal && scrollHeight > maxH;
+  }, [showOpenModal, scrollHeight, maxH]);
+
+  const iconButtonStyle = useMemo(
+    () => ({
+      position: 'absolute' as const,
+      bottom: 1,
+      right: showFullScreenIcon ? '34px' : 2,
+      zIndex: 10,
+      cursor: 'pointer',
+      borderRadius: '6px',
+      background: 'rgba(255, 255, 255, 0.01)',
+      backdropFilter: 'blur(6.6666669845581055px)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      w: 6,
+      h: 6
+    }),
+    [showFullScreenIcon]
+  );
 
   return (
     <Box
@@ -146,17 +178,19 @@ export default function Editor({
         <VariablePickerPlugin variables={variableLabels.length > 0 ? [] : variables} />
         <OnBlurPlugin onBlur={onBlur} />
       </LexicalComposer>
-      {showOpenModal && scrollHeight > maxH && (
-        <Box
-          zIndex={10}
-          position={'absolute'}
-          bottom={-1}
-          right={2}
-          cursor={'pointer'}
-          onClick={onOpenModal}
-        >
+      {onOptimizePrompt && (
+        <OptimizerPopover
+          onOptimizePrompt={onOptimizePrompt}
+          onChangeText={onChangeText}
+          modelList={modelList}
+          iconButtonStyle={iconButtonStyle}
+          defaultModel={defaultModel}
+        />
+      )}
+      {showFullScreenIcon && (
+        <Flex onClick={onOpenModal} {...iconButtonStyle} right={2}>
           <MyIcon name={'common/fullScreenLight'} w={'14px'} color={'myGray.500'} />
-        </Box>
+        </Flex>
       )}
     </Box>
   );
