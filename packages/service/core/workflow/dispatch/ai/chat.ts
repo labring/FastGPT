@@ -332,12 +332,16 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       modelType: ModelTypeEnum.llm
     });
 
+    const trimAnswer = answerText.trim();
     return {
       data: {
-        answerText: answerText.trim(),
+        answerText: trimAnswer,
         reasoningText,
         history: chatCompleteMessages
       },
+      [DispatchNodeResponseKeyEnum.answerText]: isResponseAnswerText ? trimAnswer : undefined,
+      [DispatchNodeResponseKeyEnum.reasoningText]: aiChatReasoning ? reasoningText : undefined,
+
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
         model: modelName,

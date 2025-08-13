@@ -177,6 +177,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
         [NodeOutputKeyEnum.answerText]: text,
         [NodeOutputKeyEnum.history]: completeMessages
       },
+      [DispatchNodeResponseKeyEnum.answerText]: text,
       system_memories,
       [DispatchNodeResponseKeyEnum.interactive]: workflowInteractiveResponse
         ? {

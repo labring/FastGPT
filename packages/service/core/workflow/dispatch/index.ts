@@ -125,8 +125,6 @@ type Props = ChatDispatchProps & {
   runtimeEdges: RuntimeEdgeItemType[];
 };
 type NodeResponseType = DispatchNodeResultType<{
-  [NodeOutputKeyEnum.answerText]?: string;
-  [NodeOutputKeyEnum.reasoningText]?: string;
   [key: string]: any;
 }>;
 type NodeResponseCompleteType = Omit<NodeResponseType, 'responseData'> & {
@@ -234,7 +232,8 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   function pushStore(
     { inputs = [] }: RuntimeNodeItemType,
     {
-      data: { answerText = '', reasoningText } = {},
+      answerText,
+      reasoningText,
       responseData,
       nodeDispatchUsages,
       toolResponses,
@@ -279,30 +278,20 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       chatAssistantResponse = chatAssistantResponse.concat(assistantResponses);
     } else {
       if (reasoningText) {
-        const isResponseReasoningText = inputs.find(
-          (item) => item.key === NodeInputKeyEnum.aiChatReasoning
-        )?.value;
-        if (isResponseReasoningText) {
-          chatAssistantResponse.push({
-            type: ChatItemValueTypeEnum.reasoning,
-            reasoning: {
-              content: reasoningText
-            }
-          });
-        }
+        chatAssistantResponse.push({
+          type: ChatItemValueTypeEnum.reasoning,
+          reasoning: {
+            content: reasoningText
+          }
+        });
       }
       if (answerText) {
-        // save assistant text response
-        const isResponseAnswerText =
-          inputs.find((item) => item.key === NodeInputKeyEnum.aiChatIsResponseText)?.value ?? true;
-        if (isResponseAnswerText) {
-          chatAssistantResponse.push({
-            type: ChatItemValueTypeEnum.text,
-            text: {
-              content: answerText
-            }
-          });
-        }
+        chatAssistantResponse.push({
+          type: ChatItemValueTypeEnum.text,
+          text: {
+            content: answerText
+          }
+        });
       }
     }
 
