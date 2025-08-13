@@ -286,7 +286,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             teamId: String(app.teamId),
             tmbId: String(app.tmbId)
           },
-          runningUserInfo: await getRunningUserInfoByTmbId(app.tmbId),
+          runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
           uid: String(outLinkUserId || tmbId),
 
           chatId,
@@ -651,3 +651,5 @@ export const config = {
     responseLimit: '20mb'
   }
 };
+
+export { handler, authShareChat, authTeamSpaceChat, authHeaderRequest };
