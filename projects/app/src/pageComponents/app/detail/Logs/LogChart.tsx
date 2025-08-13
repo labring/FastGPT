@@ -255,7 +255,7 @@ const LogChart = ({
           pointsPerChat,
           errorCount: item.summary.errorCount,
           errorRate: item.summary.chatItemCount
-            ? Number((item.summary.errorCount / item.summary.chatItemCount).toFixed(2))
+            ? Number(((item.summary.errorCount / item.summary.chatItemCount) * 100).toFixed(2))
             : 0
         };
       },
@@ -304,8 +304,7 @@ const LogChart = ({
         chatItemCount: 'sum',
         chatCount: 'sum',
         pointsPerChat: 'avg',
-        errorCount: 'sum',
-        errorRate: 'avg'
+        errorCount: 'sum'
       }),
       ...calculateStats(app, {
         goodFeedBackCount: 'sum',
@@ -313,6 +312,11 @@ const LogChart = ({
         avgDuration: 'avg'
       })
     };
+
+    const totalChatItems = cumulative.chatItemCount || 0;
+    const totalErrors = cumulative.errorCount || 0;
+    cumulative.errorRate =
+      totalChatItems > 0 ? Number(((totalErrors / totalChatItems) * 100).toFixed(2)) : 0;
 
     return { user, chat, app, cumulative };
   }, [
@@ -468,7 +472,7 @@ const LogChart = ({
                     averageKey="points"
                     HeaderRightChildren={
                       <Flex alignItems={'center'} fontSize={'sm'} color={'myGray.600'}>
-                        {t('app:logs_total')}: {formatChartData.cumulative.points}
+                        {t('app:logs_total')}: {formatChartData.cumulative.points.toFixed(2)}
                       </Flex>
                     }
                     blur={!feConfigs?.isPlus}
@@ -599,7 +603,8 @@ const LogChart = ({
                       {
                         label: t('app:logs_error_rate'),
                         dataKey: 'errorRate',
-                        color: theme.colors.primary['400']
+                        color: theme.colors.primary['400'],
+                        formatter: (value) => `${value}%`
                       }
                     ]}
                     HeaderRightChildren={
