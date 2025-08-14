@@ -25,6 +25,7 @@ import { secretInputTypeToInputType } from '@/components/core/app/formRender/uti
 import { getSystemPlugTemplates } from '@/web/core/app/api/plugin';
 import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 
 export type ToolParamsFormType = {
   type: SystemToolInputTypeEnum;
@@ -262,18 +263,33 @@ const SecretInputModal = ({
                               <Controller
                                 control={control}
                                 name={inputKey}
-                                rules={{ required: item.required }}
-                                render={({ field: { onChange, value }, fieldState: { error } }) => (
-                                  <InputRender
-                                    inputType={secretInputTypeToInputType(item.inputType)}
-                                    value={value}
-                                    onChange={onChange}
-                                    placeholder={item.description}
-                                    bg={'myGray.50'}
-                                    list={item.list}
-                                    isInvalid={!!error}
-                                  />
-                                )}
+                                rules={{
+                                  required:
+                                    item.required &&
+                                    secretInputTypeToInputType(item.inputType) !==
+                                      InputTypeEnum.switch
+                                      ? true
+                                      : false,
+                                  validate:
+                                    item.required &&
+                                    secretInputTypeToInputType(item.inputType) ===
+                                      InputTypeEnum.switch
+                                      ? (value) => value !== undefined && value !== null
+                                      : undefined
+                                }}
+                                render={({ field: { onChange, value }, fieldState: { error } }) => {
+                                  return (
+                                    <InputRender
+                                      inputType={secretInputTypeToInputType(item.inputType)}
+                                      value={value}
+                                      onChange={onChange}
+                                      placeholder={item.description}
+                                      bg={'myGray.50'}
+                                      list={item.list}
+                                      isInvalid={!!error}
+                                    />
+                                  );
+                                }}
                               />
                             )}
                           </Box>
