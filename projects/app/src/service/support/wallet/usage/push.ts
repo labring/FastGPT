@@ -152,12 +152,12 @@ export const pushQuestionGuideUsage = ({
   createUsage({
     teamId,
     tmbId,
-    appName: 'core.app.Question Guide',
+    appName: i18nT('common:core.app.Question Guide'),
     totalPoints,
     source: UsageSourceEnum.fastgpt,
     list: [
       {
-        moduleName: 'core.app.Question Guide',
+        moduleName: i18nT('common:core.app.Question Guide'),
         amount: totalPoints,
         model: modelName,
         inputTokens,

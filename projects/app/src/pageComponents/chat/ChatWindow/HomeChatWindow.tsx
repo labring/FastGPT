@@ -217,7 +217,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
           variables,
           responseChatItemId,
           appId,
-          appName: t('chat:home.chat_app', { name: 'FastGPT' }),
+          appName: t('chat:home.chat_app'),
           chatId,
           ...form2AppWorkflow(formData, t)
         },
