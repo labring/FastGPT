@@ -96,7 +96,7 @@ export const dispatchLafRequest = async (props: LafRequestProps): Promise<LafRes
       [DispatchNodeResponseKeyEnum.toolResponses]: rawResponse
     };
   } catch (error) {
-    addLog.error('Http request error', error);
+    addLog.warn('Http request error', formatHttpError(error));
     return {
       error: {
         [NodeOutputKeyEnum.errorText]: getErrText(error)
