@@ -1,54 +1,29 @@
 import { Box, Button, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
 import React, { useMemo } from 'react';
 import { editorStateToText } from './utils';
+import type { EditorProps } from './Editor';
 import Editor from './Editor';
 import MyModal from '../../MyModal';
 import { useTranslation } from 'next-i18next';
 import type { EditorState, LexicalEditor } from 'lexical';
 import type { FormPropsType } from './type.d';
-import { type EditorVariableLabelPickerType, type EditorVariablePickerType } from './type.d';
 import { useCallback } from 'react';
-import type { OnOptimizePromptProps } from './modules/OptimizerPopover';
 
 const PromptEditor = ({
   showOpenModal = true,
-  variables = [],
-  variableLabels = [],
   value,
   onChange,
   onBlur,
-  minH,
-  maxH,
-  maxLength,
-  placeholder,
   title,
-  isInvalid,
   isDisabled,
-  onOptimizePrompt,
-  modelList,
-  defaultModel,
-  onChangeText,
   ...props
-}: {
-  showOpenModal?: boolean;
-  variables?: EditorVariablePickerType[];
-  variableLabels?: EditorVariableLabelPickerType[];
-  value?: string;
-  onChange?: (text: string) => void;
-  onBlur?: (text: string) => void;
-  minH?: number;
-  maxH?: number;
-  maxLength?: number;
-  placeholder?: string;
-  title?: string;
-
-  isInvalid?: boolean;
-  isDisabled?: boolean;
-  onOptimizePrompt?: (props: OnOptimizePromptProps) => Promise<void>;
-  modelList?: Array<{ model: string; name: string; avatar?: string }>;
-  defaultModel?: string;
-  onChangeText?: (text: string) => void;
-} & FormPropsType) => {
+}: FormPropsType &
+  EditorProps & {
+    title?: string;
+    isDisabled?: boolean;
+    onChange?: (text: string) => void;
+    onBlur?: (text: string) => void;
+  }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { t } = useTranslation();
 
@@ -77,23 +52,13 @@ const PromptEditor = ({
     <>
       <Box position="relative">
         <Editor
+          {...props}
           showOpenModal={showOpenModal}
           onOpenModal={onOpen}
-          variables={variables}
-          variableLabels={variableLabels}
-          minH={minH}
-          maxH={maxH}
-          maxLength={maxLength}
           value={formattedValue}
           onChange={onChangeInput}
-          onBlur={onBlurInput}
-          placeholder={placeholder}
-          isInvalid={isInvalid}
-          onOptimizePrompt={onOptimizePrompt}
-          modelList={modelList}
-          defaultModel={defaultModel}
           onChangeText={onChange}
-          {...props}
+          onBlur={onBlurInput}
         />
         {isDisabled && (
           <Box
@@ -118,20 +83,14 @@ const PromptEditor = ({
       >
         <ModalBody>
           <Editor
+            {...props}
             minH={400}
             maxH={400}
-            maxLength={maxLength}
             showOpenModal={false}
-            variables={variables}
-            variableLabels={variableLabels}
             value={value}
             onChange={onChangeInput}
-            onBlur={onBlurInput}
-            placeholder={placeholder}
-            onOptimizePrompt={onOptimizePrompt}
-            modelList={modelList}
-            defaultModel={defaultModel}
             onChangeText={onChange}
+            onBlur={onBlurInput}
           />
         </ModalBody>
         <ModalFooter>

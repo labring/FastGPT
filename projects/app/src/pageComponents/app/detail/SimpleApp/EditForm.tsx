@@ -32,10 +32,7 @@ import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from './components/ToolSelect';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { getModelFromList } from '@fastgpt/global/core/ai/model';
-import { streamFetch } from '@/web/common/api/fetch';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type { OnOptimizePromptProps } from '@fastgpt/web/components/common/Textarea/PromptEditor/modules/OptimizerPopover';
+import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -132,40 +129,25 @@ const EditForm = ({
     }
   }, [selectedModel, setAppForm]);
 
-  const modelList = useMemo(
-    () =>
-      llmModelList.map((model) => {
-        const modelData = getModelFromList(llmModelList, model.model);
-        return {
-          ...model,
-          avatar: modelData?.avatar
-        };
-      }),
-    [llmModelList]
-  );
-
-  const onOptimizePrompt = useCallback(
-    async ({ model, prompt, onResult, abortController }: OnOptimizePromptProps) => {
-      const controller = abortController || new AbortController();
-      await streamFetch({
-        url: '/api/core/ai/optimizePrompt',
-        data: {
-          originalPrompt: appForm.aiSettings.systemPrompt || '',
-          optimizerInput: prompt,
-          model
-        },
-        onMessage: ({ event, text }) => {
-          if (
-            (event === SseResponseEventEnum.fastAnswer || event === SseResponseEventEnum.answer) &&
-            text
-          ) {
-            onResult(text);
-          }
-        },
-        abortCtrl: controller
-      });
+  const OptimizerPopverComponent = useCallback(
+    ({ iconButtonStyle }: { iconButtonStyle: Record<string, any> }) => {
+      return (
+        <OptimizerPopover
+          iconButtonStyle={iconButtonStyle}
+          defaultPrompt={appForm.aiSettings.systemPrompt}
+          onChangeText={(e) => {
+            setAppForm((state) => ({
+              ...state,
+              aiSettings: {
+                ...state.aiSettings,
+                systemPrompt: e
+              }
+            }));
+          }}
+        />
+      );
     },
-    [appForm.aiSettings.systemPrompt]
+    [appForm.aiSettings.systemPrompt, setAppForm]
   );
 
   return (
@@ -238,9 +220,7 @@ const EditForm = ({
                 variables={formatVariables}
                 placeholder={t('common:core.app.tip.systemPromptTip')}
                 title={t('common:core.ai.Prompt')}
-                onOptimizePrompt={onOptimizePrompt}
-                modelList={modelList}
-                defaultModel={defaultModels.llm?.model}
+                ExtensionPopover={[OptimizerPopverComponent]}
               />
             </Box>
           </Box>

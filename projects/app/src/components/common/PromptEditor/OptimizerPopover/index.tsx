@@ -2,64 +2,75 @@ import { useMemo, useRef, useState } from 'react';
 import type { FlexProps } from '@chakra-ui/react';
 import { Box, Button, Flex, Textarea, useDisclosure } from '@chakra-ui/react';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
-import Avatar from '../../../../Avatar';
-import MyPopover from '../../../../MyPopover';
-import MyIcon from '../../../../Icon';
-import MySelect from '../../../../MySelect';
-import MyModal from '../../../../MyModal';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '../../../../../../hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useLocalStorageState } from 'ahooks';
+import AIModelSelector from '../../../Select/AIModelSelector';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { onOptimizePrompt } from '@/web/common/api/fetch';
+
+export type OptimizerPromptProps = {
+  onChangeText: (text: string) => void;
+  defaultPrompt?: string;
+};
 
 export type OnOptimizePromptProps = {
-  prompt: string;
+  originalPrompt?: string;
+  input: string;
   model: string;
   onResult: (result: string) => void;
   abortController?: AbortController;
 };
 
 const OptimizerPopover = ({
-  onOptimizePrompt,
   onChangeText,
-  modelList,
   iconButtonStyle,
-  defaultModel
-}: {
-  onOptimizePrompt: (props: OnOptimizePromptProps) => Promise<void>;
-  onChangeText?: (text: string) => void;
-  modelList?: Array<{ model: string; name: string; avatar?: string }>;
-  iconButtonStyle: FlexProps;
-  defaultModel?: string;
+  defaultPrompt
+}: OptimizerPromptProps & {
+  iconButtonStyle?: FlexProps;
 }) => {
   const { t } = useTranslation();
+  const { llmModelList, defaultModels } = useSystemStore();
 
   const [optimizerInput, setOptimizerInput] = useState('');
   const [optimizedResult, setOptimizedResult] = useState('');
-  const [selectedModel, setSelectedModel] = useState(defaultModel || modelList?.[0]?.model || '');
+  const [selectedModel = '', setSelectedModel] = useLocalStorageState<string>(
+    'prompt-editor-selected-model',
+    {
+      defaultValue: defaultModels.llm?.model || ''
+    }
+  );
 
   const [abortController, setAbortController] = useState<AbortController | null>(null);
   const { isOpen: isConfirmOpen, onOpen: onOpenConfirm, onClose: onCloseConfirm } = useDisclosure();
 
   const closePopoverRef = useRef<() => void>();
-  const optimizerInputRef = useRef<HTMLTextAreaElement>(null);
 
   const modelOptions = useMemo(() => {
-    return modelList?.map((model) => ({
-      label: (
-        <Flex alignItems={'center'}>
-          <Avatar
-            src={model.avatar || HUGGING_FACE_ICON}
-            fallbackSrc={HUGGING_FACE_ICON}
-            mr={1.5}
-            w={5}
-          />
-          <Box fontWeight={'normal'} fontSize={'14px'} color={'myGray.900'}>
-            {model.name}
-          </Box>
-        </Flex>
-      ),
-      value: model.model
-    }));
-  }, [modelList]);
+    return llmModelList.map((model) => {
+      // const provider = getModelProvider(model.model)
+      return {
+        label: (
+          <Flex alignItems={'center'}>
+            <Avatar
+              src={model.avatar || HUGGING_FACE_ICON}
+              fallbackSrc={HUGGING_FACE_ICON}
+              mr={1.5}
+              w={5}
+            />
+            <Box fontWeight={'normal'} fontSize={'14px'} color={'myGray.900'}>
+              {model.name}
+            </Box>
+          </Flex>
+        ),
+        value: model.model
+      };
+    });
+  }, [llmModelList]);
 
   const isEmptyOptimizerInput = useMemo(() => {
     return !optimizerInput.trim();
@@ -74,9 +85,10 @@ const OptimizerPopover = ({
     setAbortController(controller);
 
     await onOptimizePrompt({
-      prompt: optimizerInput,
+      originalPrompt: defaultPrompt,
+      input: optimizerInput,
       model: selectedModel,
-      onResult: (result) => {
+      onResult: (result: string) => {
         if (!controller.signal.aborted) {
           setOptimizedResult((prev) => prev + result);
         }
@@ -95,7 +107,7 @@ const OptimizerPopover = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       if (!loading) {
         handleSendOptimization();
@@ -112,11 +124,8 @@ const OptimizerPopover = ({
           </Flex>
         }
         trigger="click"
-        placement={'bottom'}
+        placement={'auto'}
         w="482px"
-        onOpenFunc={() => {
-          setTimeout(() => optimizerInputRef.current?.focus(), 50);
-        }}
         onBackdropClick={() => {
           if (optimizedResult) {
             onOpenConfirm();
@@ -129,7 +138,8 @@ const OptimizerPopover = ({
           closePopoverRef.current = onClose;
           return (
             <Box p={optimizedResult ? 8 : 4}>
-              {(optimizedResult || loading) && (
+              {/* Result */}
+              {optimizedResult && (
                 <Box
                   px={'10px'}
                   maxHeight={'300px'}
@@ -140,68 +150,73 @@ const OptimizerPopover = ({
                   wordBreak={'break-word'}
                   mb={4}
                 >
-                  {optimizedResult || (loading ? t('app:Optimizer_Generating') : '')}
+                  {optimizedResult}
                 </Box>
               )}
-              {!optimizedResult && !loading && (
-                <Flex mb={3} alignItems={'center'} justifyContent={'space-between'} gap={3}>
-                  <Button
-                    variant={'outline'}
-                    size={'sm'}
-                    fontSize={'12px'}
-                    color={'myGray.600'}
-                    onClick={() => handleSendOptimization(true)}
-                  >
-                    {t('app:AutoOptimize')}
-                  </Button>
-                  {modelOptions && modelOptions.length > 0 && (
-                    <MySelect<string>
-                      borderColor={'transparent'}
-                      _hover={{
-                        border: '1px solid',
-                        borderColor: 'primary.400'
-                      }}
-                      size={'sm'}
-                      value={selectedModel}
-                      list={modelOptions}
-                      onChange={setSelectedModel}
-                    />
-                  )}
-                </Flex>
-              )}
-              {optimizedResult && !loading && (
-                <Flex mb={3} gap={3}>
-                  <Button
-                    variant={'primaryGhost'}
-                    size={'sm'}
-                    px={2}
-                    borderRadius={'10px'}
-                    border={'0.5px solid'}
-                    borderColor={'primary.200'}
-                    color={'primary.600'}
-                    onClick={() => {
-                      onChangeText?.(optimizedResult);
-                      setOptimizedResult('');
-                      setOptimizerInput('');
-                      onClose();
-                    }}
-                  >
-                    {t('app:Optimizer_Replace')}
-                  </Button>
-                  <Button
-                    variant={'outline'}
-                    size={'sm'}
-                    fontSize={'12px'}
-                    onClick={() => {
-                      setOptimizedResult('');
-                      handleSendOptimization();
-                    }}
-                  >
-                    {t('app:Optimizer_Reoptimize')}
-                  </Button>
-                </Flex>
-              )}
+              {/* Button */}
+              <Flex mb={3} alignItems={'center'} gap={3}>
+                {!loading && (
+                  <>
+                    {!optimizedResult && !!defaultPrompt && (
+                      <Button
+                        variant={'whiteBase'}
+                        size={'sm'}
+                        color={'myGray.600'}
+                        onClick={() => handleSendOptimization(true)}
+                      >
+                        {t('app:AutoOptimize')}
+                      </Button>
+                    )}
+                    {optimizedResult && (
+                      <>
+                        <Button
+                          variant={'primaryGhost'}
+                          size={'sm'}
+                          px={2}
+                          border={'0.5px solid'}
+                          color={'primary.600'}
+                          onClick={() => {
+                            onChangeText?.(optimizedResult);
+                            setOptimizedResult('');
+                            setOptimizerInput('');
+                            onClose();
+                          }}
+                        >
+                          {t('app:Optimizer_Replace')}
+                        </Button>
+                        <Button
+                          variant={'whiteBase'}
+                          size={'sm'}
+                          fontSize={'12px'}
+                          onClick={() => {
+                            setOptimizedResult('');
+                            handleSendOptimization();
+                          }}
+                        >
+                          {t('app:Optimizer_Reoptimize')}
+                        </Button>
+                      </>
+                    )}
+                  </>
+                )}
 
+                <Box flex={1} />
+                {modelOptions && modelOptions.length > 0 && (
+                  <AIModelSelector
+                    borderColor={'transparent'}
+                    _hover={{
+                      border: '1px solid',
+                      borderColor: 'primary.400'
+                    }}
+                    size={'sm'}
+                    value={selectedModel}
+                    list={modelOptions}
+                    onChange={setSelectedModel}
+                  />
+                )}
+              </Flex>
+
+              {/* Input */}
               <Flex
                 alignItems={'center'}
                 gap={2}
@@ -229,8 +244,9 @@ const OptimizerPopover = ({
                   p={0}
                   borderRadius={'none'}
                   value={optimizerInput}
-                  ref={optimizerInputRef}
+                  autoFocus
                   onKeyDown={handleKeyDown}
+                  isDisabled={loading}
                   onChange={(e) => {
                     const textarea = e.target;
                     setOptimizerInput(e.target.value);
@@ -250,7 +266,7 @@ const OptimizerPopover = ({
                 />
                 <MyIcon
                   name={loading ? 'stop' : 'core/chat/sendLight'}
-                  w={'4'}
+                  w={'1rem'}
                   alignSelf={'flex-end'}
                   mb={1}
                   color={loading || !isEmptyOptimizerInput ? 'primary.600' : 'gray.400'}

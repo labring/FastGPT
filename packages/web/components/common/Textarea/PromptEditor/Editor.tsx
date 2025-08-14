@@ -31,8 +31,23 @@ import { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
 import VariableLabelPlugin from './plugins/VariableLabelPlugin';
 import { useDeepCompareEffect } from 'ahooks';
 import VariablePickerPlugin from './plugins/VariablePickerPlugin';
-import type { OnOptimizePromptProps } from './modules/OptimizerPopover';
-import OptimizerPopover from './modules/OptimizerPopover';
+
+export type EditorProps = {
+  variables?: EditorVariablePickerType[];
+  variableLabels?: EditorVariableLabelPickerType[];
+  value?: string;
+  showOpenModal?: boolean;
+  minH?: number;
+  maxH?: number;
+  maxLength?: number;
+  placeholder?: string;
+  isInvalid?: boolean;
+
+  ExtensionPopover?: ((e: {
+    onChangeText: (text: string) => void;
+    iconButtonStyle: Record<string, any>;
+  }) => React.ReactNode)[];
+};
 
 export default function Editor({
   minH = 200,
@@ -40,38 +55,24 @@ export default function Editor({
   maxLength,
   showOpenModal = true,
   onOpenModal,
-  variables,
-  variableLabels,
+  variables = [],
+  variableLabels = [],
   onChange,
+  onChangeText,
   onBlur,
   value,
   placeholder = '',
   bg = 'white',
-  onOptimizePrompt,
-  modelList,
-  defaultModel,
-  onChangeText,
+  isInvalid,
 
-  isInvalid
-}: {
-  minH?: number;
-  maxH?: number;
-  maxLength?: number;
-  showOpenModal?: boolean;
-  onOpenModal?: () => void;
-  variables: EditorVariablePickerType[];
-  variableLabels: EditorVariableLabelPickerType[];
-  onChange?: (editorState: EditorState, editor: LexicalEditor) => void;
-  onBlur?: (editor: LexicalEditor) => void;
-  value?: string;
-  placeholder?: string;
-  onOptimizePrompt?: (props: OnOptimizePromptProps) => Promise<void>;
-  modelList?: Array<{ model: string; name: string; avatar?: string }>;
-  defaultModel?: string;
-  onChangeText?: (text: string) => void;
-
-  isInvalid?: boolean;
-} & FormPropsType) {
+  ExtensionPopover
+}: EditorProps &
+  FormPropsType & {
+    onOpenModal?: () => void;
+    onChange: (editorState: EditorState, editor: LexicalEditor) => void;
+    onChangeText?: ((text: string) => void) | undefined;
+    onBlur: (editor: LexicalEditor) => void;
+  }) {
   const [key, setKey] = useState(getNanoid(6));
   const [_, startSts] = useTransition();
   const [focus, setFocus] = useState(false);
@@ -178,18 +179,14 @@ export default function Editor({
         <VariablePickerPlugin variables={variableLabels.length > 0 ? [] : variables} />
         <OnBlurPlugin onBlur={onBlur} />
       </LexicalComposer>
-      {onOptimizePrompt && (
-        <OptimizerPopover
-          onOptimizePrompt={onOptimizePrompt}
-          onChangeText={onChangeText}
-          modelList={modelList}
-          iconButtonStyle={iconButtonStyle}
-          defaultModel={defaultModel}
-        />
-      )}
+
+      {onChangeText &&
+        ExtensionPopover?.map((Item, index) => (
+          <Item key={index} iconButtonStyle={iconButtonStyle} onChangeText={onChangeText} />
+        ))}
       {showFullScreenIcon && (
         <Flex onClick={onOpenModal} {...iconButtonStyle} right={2}>
-          <MyIcon name={'common/fullScreenLight'} w={'14px'} color={'myGray.500'} />
+          <MyIcon name={'common/fullScreenLight'} w={'1rem'} color={'myGray.500'} />
         </Flex>
       )}
     </Box>

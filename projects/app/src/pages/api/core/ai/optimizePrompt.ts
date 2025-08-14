@@ -7,13 +7,14 @@ import { createChatCompletion } from '@fastgpt/service/core/ai/config';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { loadRequestMessages } from '@fastgpt/service/core/chat/utils';
-import { llmCompletionsBodyFormat } from '@fastgpt/service/core/ai/utils';
+import { llmCompletionsBodyFormat, parseLLMStreamResponse } from '@fastgpt/service/core/ai/utils';
 import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken/index';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { createUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { i18nT } from '@fastgpt/web/i18n/utils';
+import { addLog } from '@fastgpt/service/common/system/log';
 
 type OptimizePromptBody = {
   originalPrompt: string;
@@ -22,29 +23,30 @@ type OptimizePromptBody = {
 };
 
 const getPromptOptimizerSystemPrompt = () => {
-  return `# Role: Prompt工程师
+  return `# Role
+Prompt工程师
 
-## Skills:
+## Skills
 - 了解LLM的技术原理和局限性，包括它的训练数据、构建方式等，以便更好地设计Prompt
 - 具有丰富的自然语言处理经验，能够设计出符合语法、语义的高质量Prompt
 - 迭代优化能力强，能通过不断调整和测试Prompt的表现，持续改进Prompt质量
 - 能结合具体业务需求设计Prompt，使LLM生成的内容符合业务要求
 - 擅长分析用户需求，设计结构清晰、逻辑严谨的Prompt框架
 
-## Goals:
+## Goals
 - 分析用户的Prompt，理解其核心需求和意图
 - 设计一个结构清晰、符合逻辑的Prompt框架
 - 生成高质量的结构化Prompt
 - 提供针对性的优化建议
 
-## Constrains:
+## Constrains
 - 确保所有内容符合各个学科的最佳实践
 - 在任何情况下都不要跳出角色
 - 不要胡说八道和编造事实
 - 保持专业性和准确性
 - 输出必须包含优化建议部分
 
-## Suggestions:
+## Suggestions
 - 深入分析用户原始Prompt的核心意图，避免表面理解
 - 采用结构化思维，确保各个部分逻辑清晰且相互呼应
 - 优先考虑实用性，生成的Prompt应该能够直接使用
@@ -116,52 +118,77 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
       )
     });
 
-    if (!isStreamResponse) {
-      throw new Error('Expected stream response');
-    }
+    const { inputTokens, outputTokens } = await (async () => {
+      if (isStreamResponse) {
+        const { parsePart, getResponseData } = parseLLMStreamResponse();
 
-    let optimizedText = '';
-    for await (const chunk of response) {
-      if (chunk.choices?.[0]?.delta?.content) {
-        const content = chunk.choices[0].delta.content;
-        optimizedText += content;
+        let optimizedText = '';
+
+        for await (const part of response) {
+          const { responseContent } = parsePart({
+            part,
+            parseThinkTag: true,
+            retainDatasetCite: false
+          });
+
+          if (responseContent) {
+            optimizedText += responseContent;
+            responseWrite({
+              res,
+              event: SseResponseEventEnum.answer,
+              data: JSON.stringify({
+                choices: [
+                  {
+                    delta: {
+                      content: responseContent
+                    }
+                  }
+                ]
+              })
+            });
+          }
+        }
+
+        const { content: answer, usage } = getResponseData();
+        return {
+          content: answer,
+          inputTokens: usage?.prompt_tokens || (await countGptMessagesTokens(requestMessages)),
+          outputTokens:
+            usage?.completion_tokens ||
+            (await countGptMessagesTokens([{ role: 'assistant', content: optimizedText }]))
+        };
+      } else {
+        const usage = response.usage;
+        const content = response.choices?.[0]?.message?.content || '';
 
         responseWrite({
           res,
-          event: SseResponseEventEnum.fastAnswer,
+          event: SseResponseEventEnum.answer,
           data: JSON.stringify({
             choices: [
               {
                 delta: {
-                  content: content
+                  content
                 }
               }
             ]
           })
         });
-      }
 
-      if (
-        chunk.choices?.[0]?.finish_reason === 'stop' ||
-        chunk.choices?.[0]?.finish_reason === 'length' ||
-        chunk.choices?.[0]?.finish_reason
-      ) {
-        break;
+        return {
+          content,
+          inputTokens: usage?.prompt_tokens || (await countGptMessagesTokens(requestMessages)),
+          outputTokens:
+            usage?.completion_tokens ||
+            (await countGptMessagesTokens([{ role: 'assistant', content: content }]))
+        };
       }
-    }
-
+    })();
     responseWrite({
       res,
       event: SseResponseEventEnum.answer,
       data: '[DONE]'
     });
-
-    res.end();
-
-    const inputTokens = await countGptMessagesTokens(requestMessages);
-    const outputTokens = await countGptMessagesTokens([
-      { role: 'assistant', content: optimizedText }
-    ] as ChatCompletionMessageParam[]);
 
     const { totalPoints, modelName } = formatModelChars2Points({
       model,
@@ -170,7 +197,7 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
       modelType: ModelTypeEnum.llm
     });
 
-    await createUsage({
+    createUsage({
       teamId,
       tmbId,
       appName: i18nT('common:support.wallet.usage.Optimize Prompt'),
@@ -187,13 +214,10 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
       ]
     });
   } catch (error: any) {
-    console.error('Optimize prompt error:', error);
+    addLog.error('Optimize prompt error', error);
     sseErrRes(res, error);
-    try {
-      res.end();
-    } catch {}
-    return;
   }
+  res.end();
 }
 
 export default NextAPI(handler);
