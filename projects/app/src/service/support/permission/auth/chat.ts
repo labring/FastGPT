@@ -1,4 +1,4 @@
-import { type ChatHistoryItemResType, type ChatSchema } from '@fastgpt/global/core/chat/type';
+import { type ChatHistoryItemResType, type ChatSchemaType } from '@fastgpt/global/core/chat/type';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { type AuthModeType } from '@fastgpt/service/support/permission/type';
 import { authOutLink } from './outLink';
@@ -51,7 +51,7 @@ export async function authChatCrud({
   teamId: string;
   tmbId: string;
   uid: string;
-  chat?: ChatSchema;
+  chat?: ChatSchemaType;
   responseDetail: boolean;
   showNodeStatus: boolean;
   showRawSource: boolean;

@@ -5,6 +5,7 @@ import type {
 import type { InputTypeEnum } from './constant';
 import type { UseFormReturn } from 'react-hook-form';
 import type { BoxProps } from '@chakra-ui/react';
+import type { EditorProps } from '@fastgpt/web/components/common/Textarea/PromptEditor/Editor';
 
 type CommonRenderProps = {
   placeholder?: string;
@@ -18,14 +19,16 @@ type CommonRenderProps = {
 } & Omit<BoxProps, 'onChange' | 'list' | 'value'>;
 
 type SpecificProps =
-  | {
+  | ({
       // input & textarea
       inputType: InputTypeEnum.input | InputTypeEnum.textarea;
       variables?: EditorVariablePickerType[];
       variableLabels?: EditorVariableLabelPickerType[];
       title?: string;
       maxLength?: number;
-    }
+    } & {
+      ExtensionPopover?: EditorProps['ExtensionPopover'];
+    })
   | {
       // numberInput
       inputType: InputTypeEnum.numberInput;
