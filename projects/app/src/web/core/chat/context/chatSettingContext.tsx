@@ -22,7 +22,6 @@ export type ChatSettingContextValue = {
   chatSettings: ChatSettingSchema | undefined;
   refreshChatSetting: () => Promise<ChatSettingReturnType>;
   logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'>;
-  isLoadingChatSetting: boolean;
 };
 
 export const ChatSettingContext = createContext<ChatSettingContextValue>({
@@ -37,63 +36,63 @@ export const ChatSettingContext = createContext<ChatSettingContextValue>({
   logos: {
     wideLogoUrl: '',
     squareLogoUrl: ''
-  },
-  isLoadingChatSetting: false
+  }
 });
 
 export const ChatSettingContextProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
-  const queryPane = router.query.pane as ChatSidebarPaneEnum | undefined;
   const { feConfigs } = useSystemStore();
-  const { appId, setLastPane, lastPane } = useChatStore();
+  const { appId, setLastPane, setLastChatAppId, lastPane } = useChatStore();
+
+  const { pane = lastPane || ChatSidebarPaneEnum.HOME } = router.query as {
+    pane: ChatSidebarPaneEnum;
+  };
 
   const [collapse, setCollapse] = useState<CollapseStatusType>(defaultCollapseStatus);
 
-  const {
-    loading: isLoadingChatSetting,
-    data: chatSettings,
-    runAsync: refreshChatSetting
-  } = useRequest2<ChatSettingReturnType, []>(
+  const { data: chatSettings, runAsync: refreshChatSetting } = useRequest2(
     async () => {
       if (!feConfigs.isPlus) return;
-      const settings = await getChatSetting();
-      return settings;
+      return await getChatSetting();
     },
     {
       manual: false,
       refreshDeps: [feConfigs.isPlus],
       onSuccess(data) {
-        if (!data || appId === data.appId) return;
-        if (queryPane !== ChatSidebarPaneEnum.HOME) return;
-        handlePaneChange(ChatSidebarPaneEnum.HOME, data.appId);
+        if (!data) return;
+
+        // Reset home page appId
+        if (pane === ChatSidebarPaneEnum.HOME && appId !== data.appId) {
+          handlePaneChange(ChatSidebarPaneEnum.HOME, data.appId);
+        }
       }
     }
   );
 
-  const [pane, setPane] = useState<ChatSidebarPaneEnum>(() => {
-    if (queryPane && Object.values(ChatSidebarPaneEnum).includes(queryPane)) return queryPane;
-    if (lastPane) return lastPane;
-    return feConfigs.isPlus ? ChatSidebarPaneEnum.HOME : ChatSidebarPaneEnum.RECENTLY_USED_APPS;
-  });
   const handlePaneChange = useCallback(
     async (newPane: ChatSidebarPaneEnum, id?: string) => {
       if (newPane === pane && !id) return;
+
       const _id = (() => {
         if (id) return id;
+
         const hiddenAppId = chatSettings?.appId;
-        if (newPane === ChatSidebarPaneEnum.HOME && hiddenAppId && appId !== hiddenAppId) {
+        if (newPane === ChatSidebarPaneEnum.HOME && hiddenAppId) {
           return hiddenAppId;
         }
-        return appId;
+
+        return '';
       })();
+
       await router.replace({
         query: {
           appId: _id,
           pane: newPane
         }
       });
-      setPane(newPane);
+
       setLastPane(newPane);
+      setLastChatAppId(_id);
     },
     [setLastPane, chatSettings?.appId, appId, router, pane]
   );
@@ -114,18 +113,9 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
       onTriggerCollapse: () => setCollapse(collapse === 0 ? 1 : 0),
       chatSettings,
       refreshChatSetting,
-      logos,
-      isLoadingChatSetting
+      logos
     }),
-    [
-      pane,
-      handlePaneChange,
-      collapse,
-      chatSettings,
-      refreshChatSetting,
-      logos,
-      isLoadingChatSetting
-    ]
+    [pane, handlePaneChange, collapse, chatSettings, refreshChatSetting, logos]
   );
 
   return <ChatSettingContext.Provider value={value}>{children}</ChatSettingContext.Provider>;

@@ -78,10 +78,6 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
   const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
-  const isLoadingChatSetting = useContextSelector(
-    ChatSettingContext,
-    (v) => v.isLoadingChatSetting
-  );
 
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
@@ -138,7 +134,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
   // 初始化聊天数据
   const { loading } = useRequest2(
     async () => {
-      if (!appId || forbidLoadChat.current) return;
+      if (!appId || forbidLoadChat.current || !feConfigs?.isPlus) return;
 
       const modelData = getWebLLMModel(selectedModel);
       const res = await getInitChatInfo({ appId, chatId });
@@ -188,11 +184,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
 
   useMount(() => {
     if (!feConfigs?.isPlus) {
-      const id = (() => {
-        if (myApps.findIndex((app) => app._id === appId) === -1) return myApps[0]._id;
-        return appId;
-      })();
-      handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, id);
+      handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
     }
   });
 
@@ -415,35 +407,17 @@ const HomeChatWindow = ({ myApps }: Props) => {
         flexDirection={'column'}
       >
         {isPc ? (
-          chatRecords.length > 0 && (
+          chatBoxData?.title && (
             <Flex
-              py={4}
+              py={3}
               bg="white"
               fontWeight={500}
-              color="myGray.900"
+              color="myGray.600"
               alignItems="center"
               justifyContent="center"
-              position="relative"
-              h="56px"
               borderBottom="sm"
             >
-              <MyPopover
-                trigger="hover"
-                placement="bottom"
-                Trigger={
-                  <Flex
-                    flex="1"
-                    textAlign="center"
-                    cursor="pointer"
-                    alignItems="center"
-                    justifyContent="center"
-                  >
-                    {chatBoxData?.title}
-                  </Flex>
-                }
-              >
-                {() => `${t('chat:home.chat_id')}：${chatBoxData?.chatId}`}
-              </MyPopover>
+              {chatBoxData?.title}
             </Flex>
           )
         ) : (
@@ -459,7 +433,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
           <ChatBox
             appId={appId}
             chatId={chatId}
-            isReady={!loading && !isLoadingChatSetting}
+            isReady={!loading}
             feedbackType={'user'}
             chatType={ChatTypeEnum.home}
             outLinkAuthData={outLinkAuthData}

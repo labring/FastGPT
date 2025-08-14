@@ -23,6 +23,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRouter } from 'next/router';
 import NextHead from '@/components/common/NextHead';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { ChatSidebarPaneEnum } from '../constants';
 
 type Props = {
   myApps: AppListItemType[];
@@ -36,6 +37,7 @@ const AppChatWindow = ({ myApps }: Props) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
+  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
@@ -48,11 +50,6 @@ const AppChatWindow = ({ myApps }: Props) => {
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
-
-  const isLoadingChatSetting = useContextSelector(
-    ChatSettingContext,
-    (v) => v.isLoadingChatSetting
-  );
 
   const { loading } = useRequest2(
     async () => {
@@ -74,12 +71,7 @@ const AppChatWindow = ({ myApps }: Props) => {
       errorToast: '',
       onError(e: any) {
         if (e?.code && e.code >= 502000) {
-          router.replace({
-            query: {
-              ...router.query,
-              appId: myApps[0]?._id
-            }
-          });
+          handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
         }
       },
       onFinally() {
@@ -167,7 +159,7 @@ const AppChatWindow = ({ myApps }: Props) => {
             showEmptyIntro
             appId={appId}
             chatId={chatId}
-            isReady={!loading && !isLoadingChatSetting}
+            isReady={!loading}
             feedbackType={'user'}
             chatType={ChatTypeEnum.chat}
             outLinkAuthData={outLinkAuthData}
