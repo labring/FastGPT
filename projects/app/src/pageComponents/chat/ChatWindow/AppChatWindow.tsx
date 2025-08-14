@@ -22,6 +22,7 @@ import { getInitChatInfo } from '@/web/core/chat/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRouter } from 'next/router';
 import NextHead from '@/components/common/NextHead';
+import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 
 type Props = {
   myApps: AppListItemType[];
@@ -47,6 +48,11 @@ const AppChatWindow = ({ myApps }: Props) => {
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
+
+  const isLoadingChatSetting = useContextSelector(
+    ChatSettingContext,
+    (v) => v.isLoadingChatSetting
+  );
 
   const { loading } = useRequest2(
     async () => {
@@ -161,7 +167,7 @@ const AppChatWindow = ({ myApps }: Props) => {
             showEmptyIntro
             appId={appId}
             chatId={chatId}
-            isReady={!loading}
+            isReady={!loading && !isLoadingChatSetting}
             feedbackType={'user'}
             chatType={ChatTypeEnum.chat}
             outLinkAuthData={outLinkAuthData}

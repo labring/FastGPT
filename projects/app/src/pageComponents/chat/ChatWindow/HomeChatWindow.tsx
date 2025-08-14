@@ -77,7 +77,11 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const { llmModelList, defaultModels, feConfigs } = useSystemStore();
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
-  const onHomeClick = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
+  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
+  const isLoadingChatSetting = useContextSelector(
+    ChatSettingContext,
+    (v) => v.isLoadingChatSetting
+  );
 
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
@@ -105,6 +109,10 @@ const HomeChatWindow = ({ myApps }: Props) => {
     const modelData = getModelFromList(llmModelList, selectedModel || '');
     return modelData?.avatar || HUGGING_FACE_ICON;
   }, [selectedModel, llmModelList]);
+  const selectedModelButtonLabel = useMemo(() => {
+    const modelData = availableModels.find((model) => model.value === selectedModel);
+    return modelData?.label || selectedModel;
+  }, [selectedModel, availableModels]);
 
   const availableTools = useMemo(
     () => chatSettings?.selectedTools || [],
@@ -167,13 +175,24 @@ const HomeChatWindow = ({ myApps }: Props) => {
       errorToast: '',
       onFinally() {
         forbidLoadChat.current = false;
+      },
+      onError() {
+        if (feConfigs.isPlus) {
+          handlePaneChange(ChatSidebarPaneEnum.HOME);
+        } else {
+          handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
+        }
       }
     }
   );
 
   useMount(() => {
     if (!feConfigs?.isPlus) {
-      onHomeClick(ChatSidebarPaneEnum.RECENTLY_USED_APPS);
+      const id = (() => {
+        if (myApps.findIndex((app) => app._id === appId) === -1) return myApps[0]._id;
+        return appId;
+      })();
+      handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, id);
     }
   });
 
@@ -255,7 +274,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
             valueLabel={
               <Flex className="textEllipsis" maxW={['74px', '100%']} alignItems={'center'} gap={1}>
                 {isPc && <Avatar src={selectedModelAvatar} w={4} h={4} />}
-                <Box>{selectedModel}</Box>
+                <Box>{selectedModelButtonLabel}</Box>
               </Flex>
             }
             onChange={async (model) => {
@@ -351,7 +370,8 @@ const HomeChatWindow = ({ myApps }: Props) => {
       setSelectedToolIds,
       setChatBoxData,
       isPc,
-      selectedModelAvatar
+      selectedModelAvatar,
+      selectedModelButtonLabel
     ]
   );
 
@@ -439,7 +459,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
           <ChatBox
             appId={appId}
             chatId={chatId}
-            isReady={!loading}
+            isReady={!loading && !isLoadingChatSetting}
             feedbackType={'user'}
             chatType={ChatTypeEnum.home}
             outLinkAuthData={outLinkAuthData}

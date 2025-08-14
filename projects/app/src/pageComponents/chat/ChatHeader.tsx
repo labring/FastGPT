@@ -131,13 +131,11 @@ const MobileDrawer = ({
       }))
     );
   }, []);
-  const { onChangeAppId } = useContextSelector(ChatContext, (v) => v);
 
   const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
 
   const onclickApp = (id: string) => {
-    handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS);
-    onChangeAppId(id);
+    handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, id);
     onCloseDrawer();
     setChatId();
   };

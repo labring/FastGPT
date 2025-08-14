@@ -459,7 +459,6 @@ const BottomSection = () => {
 };
 
 const SliderApps = ({ apps, activeAppId }: Props) => {
-  const router = useRouter();
   const { t } = useTranslation();
 
   const isCollapsed = useContextSelector(ChatSettingContext, (v) => v.collapse === 1);
@@ -467,31 +466,8 @@ const SliderApps = ({ apps, activeAppId }: Props) => {
 
   const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
 
-  const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
-    return getMyApps({
-      parentId,
-      type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin]
-    }).then((res) =>
-      res.map<GetResourceListItemResponse>((item) => ({
-        id: item._id,
-        name: item.name,
-        avatar: item.avatar,
-        isFolder: item.type === AppTypeEnum.folder
-      }))
-    );
-  }, []);
-
   const isRecentlyUsedAppSelected = (id: string) =>
     pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && id === activeAppId;
-
-  const handleSelectRecentlyUsedApp = useCallback(
-    (id: string) => {
-      if (pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && id === activeAppId) return;
-      handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS);
-      router.replace({ query: { ...router.query, appId: id } });
-    },
-    [pane, router, activeAppId, handlePaneChange]
-  );
 
   return (
     <MotionFlex
@@ -544,7 +520,8 @@ const SliderApps = ({ apps, activeAppId }: Props) => {
                 ? { bg: 'primary.100', color: 'primary.600' }
                 : {
                     _hover: { bg: 'primary.100', color: 'primary.600' },
-                    onClick: () => handleSelectRecentlyUsedApp(item._id)
+                    onClick: () =>
+                      handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, item._id)
                   })}
             >
               <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'md'} />
