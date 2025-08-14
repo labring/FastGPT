@@ -382,7 +382,7 @@ event取值：
 对于用户选择，你只需要直接传递一个选择的结果给 messages 即可。
 
 ```bash
-curl --location --request POST 'https://api.fastgpt.in/api/v1/chat/completions' \
+curl --location --request POST 'https://localhost:3000/api/v1/chat/completions' \
 --header 'Authorization: Bearer fastgpt-xxx' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -404,7 +404,7 @@ curl --location --request POST 'https://api.fastgpt.in/api/v1/chat/completions' 
 表单输入稍微麻烦一点，需要将输入的内容，以对象形式并序列化成字符串，作为`messages`的值。对象的 key 对应表单的 key，value 为用户输入的值。务必确保`chatId`是一致的。
 
 ```bash
-curl --location --request POST 'https://api.fastgpt.in/api/v1/chat/completions' \
+curl --location --request POST 'https://localhost:3000/api/v1/chat/completions' \
 --header 'Authorization: Bearer fastgpt-xxxx' \
 --header 'Content-Type: application/json' \
 --data-raw '{
