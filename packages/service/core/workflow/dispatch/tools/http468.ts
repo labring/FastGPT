@@ -272,7 +272,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         Object.keys(results).length > 0 ? results : rawResponse
     };
   } catch (error) {
-    addLog.error('Http request error', error);
+    addLog.warn('Http request error', formatHttpError(error));
 
     // @adapt
     if (node.catchError === undefined) {
