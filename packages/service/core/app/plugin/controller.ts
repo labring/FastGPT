@@ -558,6 +558,7 @@ export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> 
         intro: item.description,
         author: item.author,
         courseUrl: item.courseUrl,
+        instructions: dbPluginConfig?.customConfig?.userGuide,
         weight: item.weight,
         workflow: {
           nodes: [],

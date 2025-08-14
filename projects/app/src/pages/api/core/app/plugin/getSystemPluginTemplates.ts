@@ -35,7 +35,8 @@ async function handler(
       templateType: plugin.templateType ?? FlowNodeTemplateTypeEnum.other,
       flowNodeType: plugin.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
       name: parseI18nString(plugin.name, lang),
-      intro: parseI18nString(plugin.intro ?? '', lang)
+      intro: parseI18nString(plugin.intro ?? '', lang),
+      instructions: parseI18nString(plugin.userGuide ?? '', lang)
     }))
     .filter((item) => {
       if (searchKey) {
