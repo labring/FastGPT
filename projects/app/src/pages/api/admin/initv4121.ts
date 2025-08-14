@@ -62,8 +62,8 @@ async function handler(
 }
 
 async function processChatRecord(chat: ChatSchemaType) {
-  async function calculateChatItemStats(chatId: string) {
-    const chatItems = await MongoChatItem.find({ chatId }).lean();
+  async function calculateChatItemStats() {
+    const chatItems = await MongoChatItem.find({ appId: chat.appId, chatId: chat.chatId }).lean();
 
     let chatItemCount = chatItems.length;
     let errorCount = 0;
@@ -122,21 +122,21 @@ async function processChatRecord(chat: ChatSchemaType) {
     };
   }
 
-  async function checkIsFirstChat(chat: any): Promise<boolean> {
+  async function checkIsFirstChat(): Promise<boolean> {
     const earliestChat = await MongoChat.findOne(
       {
-        userId: chat.userId,
-        appId: chat.appId
+        appId: chat.appId,
+        tmbId: chat.tmbId,
+        ...(chat.outLinkUid && { outLinkUid: chat.outLinkUid })
       },
-      {},
-      { sort: { createTime: 1 } }
+      '_id'
     ).lean();
 
     return earliestChat?._id.toString() === chat._id.toString();
   }
 
-  const chatItemStats = await calculateChatItemStats(chat.chatId);
-  const isFirstChat = await checkIsFirstChat(chat);
+  const chatItemStats = await calculateChatItemStats();
+  const isFirstChat = await checkIsFirstChat();
 
   const chatLogData = {
     appId: chat.appId,
