@@ -12,6 +12,7 @@ import { useLocalStorageState } from 'ahooks';
 import AIModelSelector from '../../../Select/AIModelSelector';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { onOptimizePrompt } from '@/web/common/api/fetch';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 export type OptimizerPromptProps = {
   onChangeText: (text: string) => void;
@@ -120,7 +121,9 @@ const OptimizerPopover = ({
       <MyPopover
         Trigger={
           <Flex {...iconButtonStyle}>
-            <MyIcon name={'optimizer'} w={'18px'} />
+            <MyTooltip label={t('app:Optimizer_Tooltip')}>
+              <MyIcon name={'optimizer'} w={'18px'} />
+            </MyTooltip>
           </Flex>
         }
         trigger="click"
@@ -155,7 +158,7 @@ const OptimizerPopover = ({
               )}
               {/* Button */}
               <Flex mb={3} alignItems={'center'} gap={3}>
-                {!loading && (
+                {!loading ? (
                   <>
                     {!optimizedResult && !!defaultPrompt && (
                       <Button
@@ -197,22 +200,24 @@ const OptimizerPopover = ({
                         </Button>
                       </>
                     )}
-                  </>
-                )}
 
-                <Box flex={1} />
-                {modelOptions && modelOptions.length > 0 && (
-                  <AIModelSelector
-                    borderColor={'transparent'}
-                    _hover={{
-                      border: '1px solid',
-                      borderColor: 'primary.400'
-                    }}
-                    size={'sm'}
-                    value={selectedModel}
-                    list={modelOptions}
-                    onChange={setSelectedModel}
-                  />
+                    <Box flex={1} />
+                    {modelOptions && modelOptions.length > 0 && (
+                      <AIModelSelector
+                        borderColor={'transparent'}
+                        _hover={{
+                          border: '1px solid',
+                          borderColor: 'primary.400'
+                        }}
+                        size={'sm'}
+                        value={selectedModel}
+                        list={modelOptions}
+                        onChange={setSelectedModel}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <MyIcon name={'common/ellipsis'} w={6} ml={3} color={'myGray.400'} />
                 )}
               </Flex>
 
@@ -229,7 +234,11 @@ const OptimizerPopover = ({
               >
                 <MyIcon name={'optimizer'} alignSelf={'flex-start'} mt={0.5} w={5} />
                 <Textarea
-                  placeholder={t('app:Optimizer_Placeholder')}
+                  placeholder={
+                    !loading
+                      ? t('app:Optimizer_Placeholder')
+                      : t('app:Optimizer_Placeholder_loading')
+                  }
                   resize={'none'}
                   rows={1}
                   minHeight={'24px'}
