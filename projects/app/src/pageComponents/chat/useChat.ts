@@ -21,6 +21,8 @@ export const useChat = (appId: string) => {
 
   // initialize user info
   useMount(async () => {
+    // ensure store has current appId before setting source (avoids fallback to lastChatAppId)
+    if (appId) setAppId(appId);
     try {
       await initUserInfo();
     } catch (error) {
@@ -31,9 +33,9 @@ export const useChat = (appId: string) => {
     }
   });
 
-  // watch appId
+  // sync appId to store as soon as route/appId changes
   useEffect(() => {
-    if (!userInfo || !appId) return;
+    if (!appId) return;
     setAppId(appId);
   }, [appId, setAppId, userInfo]);
 
