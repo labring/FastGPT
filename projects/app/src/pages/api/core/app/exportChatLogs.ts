@@ -343,26 +343,26 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
       [AppLogKeysEnum.MESSAGE_COUNT]: () => doc.messageCount,
       [AppLogKeysEnum.FEEDBACK]: () => {
         const goodItems = (doc.userGoodFeedbackItems || []).map((item: any) => ({
-          _id: item._id,
-          feedback: item.userGoodFeedback || 'good'
+          chatItemId: item._id,
+          feedback: item.userGoodFeedback
         }));
         const badItems = (doc.userBadFeedbackItems || []).map((item: any) => ({
-          _id: item._id,
-          feedback: item.userBadFeedback || 'bad'
+          chatItemId: item._id,
+          feedback: item.userBadFeedback
         }));
         return formatJsonString({ good: goodItems, bad: badItems });
       },
       [AppLogKeysEnum.CUSTOM_FEEDBACK]: () => {
         const customItems = (doc.customFeedbackItems || []).map((item: any) => ({
-          _id: item._id,
+          chatItemId: item._id,
           feedbacks: item.customFeedbacks || []
         }));
         return formatJsonString(customItems);
       },
       [AppLogKeysEnum.ANNOTATED_COUNT]: () => {
         const markItems = (doc.markItems || []).map((item: any) => ({
-          _id: item._id,
-          feedback: item.adminFeedback || 'marked'
+          chatItemId: item._id,
+          feedback: item.adminFeedback
         }));
         return formatJsonString(markItems);
       },
