@@ -124,6 +124,7 @@
   "logs_good_feedback": "Like",
   "logs_key_config": "Field Configuration",
   "logs_keys_annotatedCount": "Annotated Answer Count",
+  "logs_keys_chatDetails": "Conversation details",
   "logs_keys_createdTime": "Created Time",
   "logs_keys_customFeedback": "Custom Feedback",
   "logs_keys_errorCount": "Error Count",
