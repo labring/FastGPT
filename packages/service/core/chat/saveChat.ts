@@ -165,7 +165,7 @@ export async function saveChat({
     });
 
     try {
-      const userId = outLinkUid || tmbId;
+      const userId = String(outLinkUid || tmbId);
       const now = new Date();
       const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
 
