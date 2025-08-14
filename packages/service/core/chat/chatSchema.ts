@@ -89,7 +89,10 @@ const ChatSchema = new Schema({
 });
 
 try {
-  ChatSchema.index({ initCharts: 1 });
+  // Tmp
+  ChatSchema.index({ initStatistics: 1 });
+  ChatSchema.index({ appId: 1, tmbId: 1, outLinkUid: 1 });
+
   ChatSchema.index({ chatId: 1 });
   // get user history
   ChatSchema.index({ tmbId: 1, appId: 1, top: -1, updateTime: -1 });
