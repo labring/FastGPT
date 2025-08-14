@@ -153,7 +153,7 @@ const LogTable = ({
           tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
           chatSearch,
 
-          title: headerTitle,
+          title: headerTitle + ',' + t('app:logs_keys_chatDetails'),
           logKeys: enabledKeys,
           sourcesMap: Object.fromEntries(
             Object.entries(ChatSourceMap).map(([key, config]) => [

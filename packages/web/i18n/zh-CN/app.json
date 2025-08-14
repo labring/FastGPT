@@ -125,6 +125,7 @@
   "logs_good_feedback": "点赞",
   "logs_key_config": "字段配置",
   "logs_keys_annotatedCount": "标注答案数量",
+  "logs_keys_chatDetails": "对话详情",
   "logs_keys_createdTime": "创建时间",
   "logs_keys_customFeedback": "自定义反馈",
   "logs_keys_errorCount": "报错数量",
