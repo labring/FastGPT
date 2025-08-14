@@ -14,11 +14,10 @@ import { Types } from 'mongoose';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatItemCollectionName } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-import { ChatItemValueTypeEnum, type ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { type ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
-import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
 const formatJsonString = (data: any) => {
   if (data == null) return '';
@@ -334,41 +333,6 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
       ? doc.outLinkUid
       : teamMemberWithContact.find((member) => String(member.memberId) === String(doc.tmbId))?.name;
 
-    const chatDetails =
-      doc.chatDetails?.map((chat: { id: string; value: AIChatItemValueItemType[] }) => {
-        const simplifiedValue =
-          chat.value?.map((item) => {
-            if (item.type === ChatItemValueTypeEnum.text) {
-              return {
-                type: 'text',
-                content: item.text?.content || ''
-              };
-            }
-            if (item.type === ChatItemValueTypeEnum.tool) {
-              return {
-                type: 'tool',
-                toolName: item.tools?.[0]?.toolName || '',
-                result: item.tools?.[0]?.response || ''
-              };
-            }
-            if (item.type === ChatItemValueTypeEnum.interactive) {
-              return {
-                type: 'interactive',
-                interactiveType: item.interactive?.type || ''
-              };
-            }
-            return {
-              type: item.type,
-              content: 'other'
-            };
-          }) || [];
-
-        return {
-          _id: chat.id,
-          messages: simplifiedValue
-        };
-      }) || [];
-
     const valueMap: Record<string, () => any> = {
       [AppLogKeysEnum.SOURCE]: () => source,
       [AppLogKeysEnum.CREATED_TIME]: () => createdTime,
@@ -406,7 +370,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
         doc.averageResponseTime ? Number(doc.averageResponseTime).toFixed(2) : 0,
       [AppLogKeysEnum.ERROR_COUNT]: () => doc.errorCount || 0,
       [AppLogKeysEnum.POINTS]: () => (doc.totalPoints ? Number(doc.totalPoints).toFixed(2) : 0),
-      chatDetails: () => formatJsonString(chatDetails)
+      chatDetails: () => formatJsonString(doc.chatDetails || [])
     };
 
     const row = [...logKeys, 'chatDetails']
