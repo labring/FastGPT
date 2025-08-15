@@ -33,6 +33,7 @@ import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/
 import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { createLLMResponse } from '@fastgpt/global/core/ai/request';
 
 type ToolRunResponseType = {
   toolRunResponse?: DispatchFlowResponse;
@@ -308,119 +309,197 @@ export const runToolWithToolChoice = async (
     },
     toolModel
   );
-  // console.log(JSON.stringify(requestBody, null, 2), '==requestMessages');
-  /* Run llm */
-  const {
-    response: aiResponse,
-    isStreamResponse,
+
+  let {
+    reasoningContent,
+    answer,
+    toolCalls,
+    finish_reason,
+    inputTokens,
+    outputTokens,
     getEmptyResponseTip
-  } = await createChatCompletion({
-    body: requestBody,
-    userKey: externalProvider.openaiAccount,
-    options: {
-      headers: {
-        Accept: 'application/json, text/plain, */*'
-      }
-    }
-  });
+  }: {
+    reasoningContent: string;
+    answer: string;
+    toolCalls: ChatCompletionMessageToolCall[];
+    finish_reason: CompletionFinishReason;
+    inputTokens: number;
+    outputTokens: number;
+    getEmptyResponseTip: () => string;
+  } = {
+    reasoningContent: '',
+    answer: '',
+    toolCalls: [],
+    finish_reason: 'close',
+    inputTokens: 0,
+    outputTokens: 0,
+    getEmptyResponseTip: () => ''
+  };
 
-  let { reasoningContent, answer, toolCalls, finish_reason, inputTokens, outputTokens } =
-    await (async () => {
-      if (isStreamResponse) {
-        if (!res || res.closed) {
-          return {
-            reasoningContent: '',
-            answer: '',
-            toolCalls: [],
-            finish_reason: 'close' as const,
-            inputTokens: 0,
-            outputTokens: 0
-          };
-        }
+  if (res) {
+    const write = responseWriteController({
+      res,
+      readStream: stream
+    });
 
-        const result = await streamResponse({
-          res,
-          workflowStreamResponse,
-          toolNodes,
-          stream: aiResponse,
-          aiChatReasoning,
-          retainDatasetCite
-        });
+    const llmResponse = await createLLMResponse({
+      requestBody,
+      userKey: externalProvider.openaiAccount,
+      params: { abortSignal: res.closed, reasoning: aiChatReasoning, retainDatasetCite },
+      events: {
+        streamEvents: {
+          onReasoning({ reasoningContent }) {
+            workflowStreamResponse?.({
+              write,
+              event: SseResponseEventEnum.answer,
+              data: textAdaptGptResponse({
+                reasoning_content: reasoningContent
+              })
+            });
+          },
+          onStreaming({ responseContent, originContent }) {
+            workflowStreamResponse?.({
+              write,
+              event: SseResponseEventEnum.answer,
+              data: textAdaptGptResponse({
+                text: responseContent
+              })
+            });
+          },
+          onToolCalling({ toolCalls, toolCallResults }) {
+            let callingTool: { name: string; arguments: string } | null = null;
+            toolCalls.forEach((toolCall, i) => {
+              const index = toolCall.index ?? i;
 
-        return {
-          reasoningContent: result.reasoningContent,
-          answer: result.answer,
-          toolCalls: result.toolCalls,
-          finish_reason: result.finish_reason,
-          inputTokens: result.usage.prompt_tokens,
-          outputTokens: result.usage.completion_tokens
-        };
-      } else {
-        const result = aiResponse as ChatCompletion;
-        const finish_reason = result.choices?.[0]?.finish_reason as CompletionFinishReason;
-        const calls = result.choices?.[0]?.message?.tool_calls || [];
-        const answer = result.choices?.[0]?.message?.content || '';
-        // @ts-ignore
-        const reasoningContent = result.choices?.[0]?.message?.reasoning_content || '';
-        const usage = result.usage;
+              // Call new tool
+              const hasNewTool = toolCall?.function?.name || callingTool;
+              if (hasNewTool) {
+                // 有 function name，代表新 call 工具
+                if (toolCall?.function?.name) {
+                  callingTool = {
+                    name: toolCall.function?.name || '',
+                    arguments: toolCall.function?.arguments || ''
+                  };
+                } else if (callingTool) {
+                  // Continue call(Perhaps the name of the previous function was incomplete)
+                  callingTool.name += toolCall.function?.name || '';
+                  callingTool.arguments += toolCall.function?.arguments || '';
+                }
 
-        const formatReasoningContent = removeDatasetCiteText(reasoningContent, retainDatasetCite);
-        const formatAnswer = removeDatasetCiteText(answer, retainDatasetCite);
+                if (!callingTool) {
+                  return;
+                }
 
-        if (aiChatReasoning && reasoningContent) {
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.fastAnswer,
-            data: textAdaptGptResponse({
-              reasoning_content: formatReasoningContent
-            })
-          });
-        }
+                const toolNode = toolNodes.find((item) => item.nodeId === callingTool!.name);
 
-        // 格式化 toolCalls
-        const toolCalls = calls.map((tool) => {
-          const toolNode = toolNodes.find((item) => item.nodeId === tool.function?.name);
+                if (toolNode) {
+                  // New tool, add to list.
+                  const toolId = getNanoid();
+                  toolCallResults[index] = {
+                    ...toolCall,
+                    id: toolId,
+                    type: 'function',
+                    function: callingTool,
+                    toolName: toolNode.name,
+                    toolAvatar: toolNode.avatar
+                  };
 
-          // 不支持 stream 模式的模型的这里需要补一个响应给客户端
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.toolCall,
-            data: {
-              tool: {
-                id: tool.id,
-                toolName: toolNode?.name || '',
-                toolAvatar: toolNode?.avatar || '',
-                functionName: tool.function.name,
-                params: tool.function?.arguments ?? '',
-                response: ''
+                  workflowStreamResponse?.({
+                    event: SseResponseEventEnum.toolCall,
+                    data: {
+                      tool: {
+                        id: toolId,
+                        toolName: toolNode.name,
+                        toolAvatar: toolNode.avatar,
+                        functionName: callingTool.name,
+                        params: callingTool?.arguments ?? '',
+                        response: ''
+                      }
+                    }
+                  });
+                  callingTool = null;
+                }
+              } else {
+                /* arg 追加到当前工具的参数里 */
+                const arg: string = toolCall?.function?.arguments ?? '';
+                const currentTool = toolCallResults[index];
+                if (currentTool && arg) {
+                  currentTool.function.arguments += arg;
+
+                  workflowStreamResponse?.({
+                    write,
+                    event: SseResponseEventEnum.toolParams,
+                    data: {
+                      tool: {
+                        id: currentTool.id,
+                        toolName: '',
+                        toolAvatar: '',
+                        params: arg,
+                        response: ''
+                      }
+                    }
+                  });
+                }
               }
-            }
-          });
+            });
+          }
+        },
+        completionEvents: {
+          onReasoned({ reasoningContent }) {
+            workflowStreamResponse?.({
+              event: SseResponseEventEnum.fastAnswer,
+              data: textAdaptGptResponse({
+                reasoning_content: reasoningContent
+              })
+            });
+          },
+          onToolCalled({ toolCalls }) {
+            return toolCalls.map((tool) => {
+              const toolNode = toolNodes.find((item) => item.nodeId === tool.function?.name);
 
-          return {
-            ...tool,
-            toolName: toolNode?.name || '',
-            toolAvatar: toolNode?.avatar || ''
-          };
-        });
+              // 不支持 stream 模式的模型的这里需要补一个响应给客户端
+              workflowStreamResponse?.({
+                event: SseResponseEventEnum.toolCall,
+                data: {
+                  tool: {
+                    id: tool.id,
+                    toolName: toolNode?.name || '',
+                    toolAvatar: toolNode?.avatar || '',
+                    functionName: tool.function.name,
+                    params: tool.function?.arguments ?? '',
+                    response: ''
+                  }
+                }
+              });
 
-        if (answer) {
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.fastAnswer,
-            data: textAdaptGptResponse({
-              text: formatAnswer
-            })
-          });
+              return {
+                ...tool,
+                toolName: toolNode?.name || '',
+                toolAvatar: toolNode?.avatar || ''
+              };
+            });
+          },
+          onCompleted({ content }) {
+            workflowStreamResponse?.({
+              event: SseResponseEventEnum.fastAnswer,
+              data: textAdaptGptResponse({
+                text: content
+              })
+            });
+          }
         }
-
-        return {
-          reasoningContent: formatReasoningContent,
-          answer: formatAnswer,
-          toolCalls: toolCalls,
-          finish_reason,
-          inputTokens: usage?.prompt_tokens,
-          outputTokens: usage?.completion_tokens
-        };
       }
-    })();
+    });
+
+    reasoningContent = llmResponse.reasoningText;
+    answer = llmResponse.answerText;
+    toolCalls = llmResponse.toolCallResults;
+    finish_reason = llmResponse.finish_reason;
+    inputTokens = llmResponse.inputTokens || 0;
+    outputTokens = llmResponse.outputTokens || 0;
+    getEmptyResponseTip = llmResponse.getEmptyResponseTip;
+  }
+
   if (!answer && !reasoningContent && toolCalls.length === 0) {
     return Promise.reject(getEmptyResponseTip());
   }
@@ -664,152 +743,3 @@ export const runToolWithToolChoice = async (
     };
   }
 };
-
-async function streamResponse({
-  res,
-  toolNodes,
-  stream,
-  workflowStreamResponse,
-  aiChatReasoning,
-  retainDatasetCite
-}: {
-  res: NextApiResponse;
-  toolNodes: ToolNodeItemType[];
-  stream: StreamChatType;
-  workflowStreamResponse?: WorkflowResponseType;
-  aiChatReasoning: boolean;
-  retainDatasetCite?: boolean;
-}) {
-  const write = responseWriteController({
-    res,
-    readStream: stream
-  });
-
-  let callingTool: { name: string; arguments: string } | null = null;
-  let toolCalls: ChatCompletionMessageToolCall[] = [];
-
-  const { parsePart, getResponseData, updateFinishReason } = parseLLMStreamResponse();
-
-  for await (const part of stream) {
-    if (res.closed) {
-      stream.controller?.abort();
-      updateFinishReason('close');
-      break;
-    }
-
-    const { reasoningContent, responseContent } = parsePart({
-      part,
-      parseThinkTag: true,
-      retainDatasetCite
-    });
-
-    const responseChoice = part.choices?.[0]?.delta;
-
-    // Reasoning response
-    if (aiChatReasoning && reasoningContent) {
-      workflowStreamResponse?.({
-        write,
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          reasoning_content: reasoningContent
-        })
-      });
-    }
-    if (responseContent) {
-      workflowStreamResponse?.({
-        write,
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          text: responseContent
-        })
-      });
-    }
-    // Parse tool calls
-    if (responseChoice?.tool_calls?.length) {
-      responseChoice.tool_calls.forEach((toolCall, i) => {
-        const index = toolCall.index ?? i;
-
-        // Call new tool
-        const hasNewTool = toolCall?.function?.name || callingTool;
-        if (hasNewTool) {
-          // 有 function name，代表新 call 工具
-          if (toolCall?.function?.name) {
-            callingTool = {
-              name: toolCall.function?.name || '',
-              arguments: toolCall.function?.arguments || ''
-            };
-          } else if (callingTool) {
-            // Continue call(Perhaps the name of the previous function was incomplete)
-            callingTool.name += toolCall.function?.name || '';
-            callingTool.arguments += toolCall.function?.arguments || '';
-          }
-
-          if (!callingTool) {
-            return;
-          }
-
-          const toolNode = toolNodes.find((item) => item.nodeId === callingTool!.name);
-
-          if (toolNode) {
-            // New tool, add to list.
-            const toolId = getNanoid();
-            toolCalls[index] = {
-              ...toolCall,
-              id: toolId,
-              type: 'function',
-              function: callingTool,
-              toolName: toolNode.name,
-              toolAvatar: toolNode.avatar
-            };
-
-            workflowStreamResponse?.({
-              event: SseResponseEventEnum.toolCall,
-              data: {
-                tool: {
-                  id: toolId,
-                  toolName: toolNode.name,
-                  toolAvatar: toolNode.avatar,
-                  functionName: callingTool.name,
-                  params: callingTool?.arguments ?? '',
-                  response: ''
-                }
-              }
-            });
-            callingTool = null;
-          }
-        } else {
-          /* arg 追加到当前工具的参数里 */
-          const arg: string = toolCall?.function?.arguments ?? '';
-          const currentTool = toolCalls[index];
-          if (currentTool && arg) {
-            currentTool.function.arguments += arg;
-
-            workflowStreamResponse?.({
-              write,
-              event: SseResponseEventEnum.toolParams,
-              data: {
-                tool: {
-                  id: currentTool.id,
-                  toolName: '',
-                  toolAvatar: '',
-                  params: arg,
-                  response: ''
-                }
-              }
-            });
-          }
-        }
-      });
-    }
-  }
-
-  const { reasoningContent, content, finish_reason, usage } = getResponseData();
-
-  return {
-    reasoningContent,
-    answer: content,
-    toolCalls: toolCalls.filter(Boolean),
-    finish_reason,
-    usage
-  };
-}

@@ -17,20 +17,16 @@ import { createChatCompletion } from '../../../service/core/ai/config';
 import type { OpenaiAccountType } from 'support/user/team/type';
 
 type BasicResponseParams = {
-  abortSignal: boolean;
   reasoning: boolean;
+  abortSignal?: boolean;
   retainDatasetCite?: boolean;
 };
 
-type CreateLLMResponseProps<
-  T extends ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming
-> = {
-  requestBody: T;
+type CreateLLMResponseProps = {
+  requestBody: ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming;
   params: BasicResponseParams;
   userKey?: OpenaiAccountType;
-  events?: T extends ChatCompletionCreateParamsStreaming
-    ? CreateStreamResponseEvents
-    : CreateCompleteResopnseEvents;
+  events?: CreateStreamResponseEvents & CreateCompleteResopnseEvents;
 };
 
 type LLMResponse = {
@@ -47,37 +43,41 @@ type CreateStreamResponseParams = BasicResponseParams & {
   stream: StreamChatType;
 };
 
-type CreateCompleteResopnseParams = Omit<BasicResponseParams, 'res'> & {
+type CreateCompleteResopnseParams = Omit<BasicResponseParams, 'abortSignal'> & {
   completion: ChatCompletion;
 };
 
 type CreateStreamResponseEvents = {
-  onStreaming?: ({
-    responseContent,
-    originContent
-  }: {
-    responseContent: string;
-    originContent: string;
-  }) => void;
-  onReasoning?: ({ reasoningContent }: { reasoningContent: string }) => void;
-  onToolCalling?: ({
-    toolCalls,
-    toolCallResults
-  }: {
-    toolCalls: ChatCompletionChunk.Choice.Delta.ToolCall[];
-    toolCallResults: ChatCompletionMessageToolCall[];
-  }) => void;
-  onFinished?: () => void;
+  streamEvents?: {
+    onStreaming?: ({
+      responseContent,
+      originContent
+    }: {
+      responseContent: string;
+      originContent: string;
+    }) => void;
+    onReasoning?: ({ reasoningContent }: { reasoningContent: string }) => void;
+    onToolCalling?: ({
+      toolCalls,
+      toolCallResults
+    }: {
+      toolCalls: ChatCompletionChunk.Choice.Delta.ToolCall[];
+      toolCallResults: ChatCompletionMessageToolCall[];
+    }) => void;
+    onFinished?: () => void;
+  };
 };
 
 type CreateCompleteResopnseEvents = {
-  onReasoned?: ({ reasoningContent }: { reasoningContent: string }) => void;
-  onToolCalled?: ({
-    toolCalls
-  }: {
-    toolCalls: ChatCompletionMessageToolCall[];
-  }) => ChatCompletionMessageToolCall[];
-  onCompleted?: ({ content }: { content: string }) => void;
+  completionEvents?: {
+    onReasoned?: ({ reasoningContent }: { reasoningContent: string }) => void;
+    onToolCalled?: ({
+      toolCalls
+    }: {
+      toolCalls: ChatCompletionMessageToolCall[];
+    }) => ChatCompletionMessageToolCall[];
+    onCompleted?: ({ content }: { content: string }) => void;
+  };
 };
 
 type CreateStreamResponseProps = {
@@ -99,11 +99,7 @@ type CompleteResopnse = Omit<
   usage?: CompletionUsage;
 };
 
-export const createLLMResponse = async <
-  T extends ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming
->(
-  args: CreateLLMResponseProps<T>
-): Promise<LLMResponse> => {
+export const createLLMResponse = async (args: CreateLLMResponseProps): Promise<LLMResponse> => {
   const { requestBody, userKey, params, events } = args;
 
   const { response, isStreamResponse, getEmptyResponseTip } = await createChatCompletion({
@@ -149,11 +145,24 @@ export const createStreamResponse = async (
   const { params, ...events } = args;
 
   const { abortSignal, stream, reasoning, retainDatasetCite = true } = params;
-  const { onStreaming, onReasoning, onToolCalling, onFinished } = events;
 
   const { parsePart, getResponseData, updateFinishReason } = parseLLMStreamResponse();
 
   let toolCallResults: ChatCompletionMessageToolCall[] = [];
+
+  if (abortSignal) {
+    return {
+      reasoningText: '',
+      answerText: '',
+      toolCallResults: [],
+      finish_reason: 'close',
+      usage: {
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        total_tokens: 0
+      }
+    };
+  }
 
   for await (const part of stream) {
     if (abortSignal) {
@@ -173,21 +182,24 @@ export const createStreamResponse = async (
       retainDatasetCite
     });
 
-    if (onReasoning && reasoning && reasoningContent) {
-      onReasoning({ reasoningContent });
+    if (events?.streamEvents?.onReasoning && reasoning && reasoningContent) {
+      events?.streamEvents?.onReasoning({ reasoningContent });
     }
-    if (onStreaming && responseContent && originContent) {
-      onStreaming({ responseContent, originContent });
+    if (events?.streamEvents?.onStreaming && responseContent && originContent) {
+      events?.streamEvents?.onStreaming({ responseContent, originContent });
     }
-    if (onToolCalling && responseChoice?.tool_calls?.length) {
-      onToolCalling({ toolCalls: responseChoice.tool_calls, toolCallResults });
+    if (events?.streamEvents?.onToolCalling && responseChoice?.tool_calls?.length) {
+      events?.streamEvents?.onToolCalling({
+        toolCalls: responseChoice.tool_calls,
+        toolCallResults
+      });
     }
   }
 
   const { reasoningContent, content, finish_reason, usage } = getResponseData();
 
-  if (onFinished) {
-    onFinished();
+  if (events?.streamEvents?.onFinished) {
+    events?.streamEvents?.onFinished();
   }
 
   return {
@@ -205,7 +217,6 @@ export const createCompleteResponse = async (
   const { params, ...events } = args;
 
   const { completion, reasoning, retainDatasetCite = true } = params;
-  const { onReasoned, onToolCalled, onCompleted } = events;
 
   const finish_reason = completion.choices?.[0]?.finish_reason as CompletionFinishReason;
   const toolCalls = completion.choices?.[0]?.message?.tool_calls || [];
@@ -235,14 +246,14 @@ export const createCompleteResponse = async (
   const formatReasonContent = removeDatasetCiteText(reasoningContent, retainDatasetCite);
   const formatContent = removeDatasetCiteText(content, retainDatasetCite);
 
-  if (onReasoned && reasoning && reasoningContent) {
-    onReasoned({ reasoningContent: formatReasonContent });
+  if (events?.completionEvents?.onReasoned && reasoning && reasoningContent) {
+    events?.completionEvents?.onReasoned({ reasoningContent: formatReasonContent });
   }
-  if (onToolCalled && toolCalls.length !== 0) {
-    toolCallResults = onToolCalled({ toolCalls });
+  if (events?.completionEvents?.onToolCalled && toolCalls.length !== 0) {
+    toolCallResults = events?.completionEvents?.onToolCalled({ toolCalls });
   }
-  if (onCompleted && content) {
-    onCompleted({ content: formatContent });
+  if (events?.completionEvents?.onCompleted && content) {
+    events?.completionEvents?.onCompleted({ content: formatContent });
   }
 
   return {
