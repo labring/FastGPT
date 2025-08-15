@@ -101,14 +101,6 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const [selectedModel, setSelectedModel] = useLocalStorageState('chat_home_model', {
     defaultValue: defaultModels.llm?.model
   });
-  const selectedModelAvatar = useMemo(() => {
-    const modelData = getModelFromList(llmModelList, selectedModel || '');
-    return modelData?.avatar || HUGGING_FACE_ICON;
-  }, [selectedModel, llmModelList]);
-  const selectedModelButtonLabel = useMemo(() => {
-    const modelData = availableModels.find((model) => model.value === selectedModel);
-    return modelData?.label || selectedModel;
-  }, [selectedModel, availableModels]);
 
   const availableTools = useMemo(
     () => chatSettings?.selectedTools || [],
@@ -254,38 +246,33 @@ const HomeChatWindow = ({ myApps }: Props) => {
       <>
         {/* 模型选择 */}
         {availableModels.length > 0 && (
-          <AIModelSelector
-            h={['30px', '36px']}
-            boxShadow={'none'}
-            size="sm"
-            bg={'myGray.50'}
-            rounded="full"
-            list={availableModels}
-            value={selectedModel}
-            maxW={['114px', 'fit-content']}
-            valueLabel={
-              <Flex className="textEllipsis" maxW={['74px', '100%']} alignItems={'center'} gap={1}>
-                {isPc && <Avatar src={selectedModelAvatar} w={4} h={4} />}
-                <Box>{selectedModelButtonLabel}</Box>
-              </Flex>
-            }
-            onChange={async (model) => {
-              setChatBoxData((state) => ({
-                ...state,
-                app: {
-                  ...state.app,
-                  chatConfig: {
-                    ...state.app.chatConfig,
-                    fileSelectConfig: {
-                      ...defaultFileSelectConfig,
-                      canSelectImg: !!getWebLLMModel(model).vision
+          <Box flex={['1', '0']} w={[0, 'auto']}>
+            <AIModelSelector
+              h={['30px', '36px']}
+              boxShadow={'none'}
+              size="sm"
+              bg={'myGray.50'}
+              rounded="full"
+              list={availableModels}
+              value={selectedModel}
+              onChange={async (model) => {
+                setChatBoxData((state) => ({
+                  ...state,
+                  app: {
+                    ...state.app,
+                    chatConfig: {
+                      ...state.app.chatConfig,
+                      fileSelectConfig: {
+                        ...defaultFileSelectConfig,
+                        canSelectImg: !!getWebLLMModel(model).vision
+                      }
                     }
                   }
-                }
-              }));
-              setSelectedModel(model);
-            }}
-          />
+                }));
+                setSelectedModel(model);
+              }}
+            />
+          </Box>
         )}
 
         {/* 工具选择下拉框 */}
@@ -361,9 +348,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
       selectedToolIds,
       setSelectedToolIds,
       setChatBoxData,
-      isPc,
-      selectedModelAvatar,
-      selectedModelButtonLabel
+      isPc
     ]
   );
 
