@@ -63,7 +63,9 @@ async function handler(
 
 async function processChatRecord(chat: ChatSchemaType) {
   async function calculateChatItemStats() {
-    const chatItems = await MongoChatItem.find({ appId: chat.appId, chatId: chat.chatId }).lean();
+    const chatItems = await MongoChatItem.find({ appId: chat.appId, chatId: chat.chatId })
+      .limit(1000)
+      .lean();
 
     let chatItemCount = chatItems.length;
     let errorCount = 0;
