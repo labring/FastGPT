@@ -19,7 +19,8 @@ export async function register() {
         { startTrainingQueue },
         { preLoadWorker },
         { loadSystemModels },
-        { connectSignoz }
+        { connectSignoz },
+        { ProxyAgent, setGlobalDispatcher }
       ] = await Promise.all([
         import('@fastgpt/service/common/mongo/init'),
         import('@fastgpt/service/common/mongo/index'),
@@ -32,7 +33,8 @@ export async function register() {
         import('@/service/core/dataset/training/utils'),
         import('@fastgpt/service/worker/preload'),
         import('@fastgpt/service/core/ai/config/utils'),
-        import('@fastgpt/service/common/otel/trace/register')
+        import('@fastgpt/service/common/otel/trace/register'),
+        import('undici')
       ]);
 
       // connect to signoz
@@ -62,6 +64,11 @@ export async function register() {
       startMongoWatch();
       startCron();
       startTrainingQueue(true);
+
+      if (process.env.HTTP_PROXY) {
+        const httpDispatcher = new ProxyAgent(process.env.HTTP_PROXY as string);
+        setGlobalDispatcher(httpDispatcher);
+      }
 
       console.log('Init system success');
     }

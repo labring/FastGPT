@@ -27,13 +27,13 @@
     "eslint-config-next": "^14.1.0",
     "husky": "^8.0.3",
     "i18next": "23.16.8",
+    "js-yaml": "^4.1.0",
     "lint-staged": "^13.3.0",
+    "mongodb-memory-server": "^10.1.4",
     "next-i18next": "15.4.2",
     "prettier": "3.2.4",
     "react-i18next": "14.1.2",
     "vitest": "^3.0.9",
-    "js-yaml": "^4.1.0",
-    "mongodb-memory-server": "^10.1.4",
     "zhlint": "^0.7.4"
   },
   "lint-staged": {
@@ -61,5 +61,8 @@
       "name": "pnpm",
       "version": "9.15.9"
     }
+  },
+  "dependencies": {
+    "undici": "^7.13.0"
   }
 }
