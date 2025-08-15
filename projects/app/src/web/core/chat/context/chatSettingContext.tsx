@@ -98,7 +98,6 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
   );
 
   useEffect(() => {
-    console.log(Object.values(ChatSidebarPaneEnum));
     if (!Object.values(ChatSidebarPaneEnum).includes(pane)) {
       handlePaneChange(ChatSidebarPaneEnum.HOME);
     }
