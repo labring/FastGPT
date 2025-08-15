@@ -97,9 +97,11 @@ const EvaluationDetailModal = ({
   const {
     data: evalItemsList,
     Pagination,
+    pageSize,
+    total,
     getData: fetchData
   } = usePagination(getEvalItemsList, {
-    pageSize: 10,
+    defaultPageSize: 20,
     params: {
       evalId: evalDetail._id
     },
@@ -440,9 +442,11 @@ const EvaluationDetailModal = ({
                     })}
                   </Box>
 
-                  <Box px={6} py={3}>
-                    <Pagination />
-                  </Box>
+                  {total >= pageSize && (
+                    <Flex my={3} justifyContent={'center'}>
+                      <Pagination />
+                    </Flex>
+                  )}
                 </Box>
               </Flex>
               {evalItem ? (

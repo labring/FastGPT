@@ -149,11 +149,12 @@ const Header = () => {
             p={0.5}
             borderRadius={'sm'}
           >
-            <MyIcon
-              name={'common/leftArrowLight'}
-              w={6}
-              cursor={'pointer'}
-              onClick={isSaved ? onBack : onOpenBackConfirm}
+            <IconButton
+              icon={<MyIcon name={'common/leftArrowLight'} color={'myGray.600'} w={'0.8rem'} />}
+              aria-label={''}
+              size={'xs'}
+              w={'1rem'}
+              variant={'ghost'}
             />
           </Box>
 
@@ -213,8 +214,6 @@ const Header = () => {
     isPc,
     currentTab,
     isSaved,
-    onBack,
-    onOpenBackConfirm,
     isV2Workflow,
     t,
     showHistoryModal,

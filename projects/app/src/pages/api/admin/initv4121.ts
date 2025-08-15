@@ -7,6 +7,7 @@ import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { addLog } from '@fastgpt/service/common/system/log';
 import type { ChatSchemaType } from '@fastgpt/global/core/chat/type';
+import { surrenderProcess } from '@fastgpt/service/common/system/tools';
 
 export type SyncAppChatLogQuery = {};
 
@@ -63,7 +64,9 @@ async function handler(
 
 async function processChatRecord(chat: ChatSchemaType) {
   async function calculateChatItemStats() {
-    const chatItems = await MongoChatItem.find({ appId: chat.appId, chatId: chat.chatId }).lean();
+    const chatItems = await MongoChatItem.find({ appId: chat.appId, chatId: chat.chatId })
+      .limit(1000)
+      .lean();
 
     let chatItemCount = chatItems.length;
     let errorCount = 0;
@@ -73,6 +76,8 @@ async function processChatRecord(chat: ChatSchemaType) {
     let totalResponseTime = 0;
 
     for (const item of chatItems) {
+      await surrenderProcess();
+
       const itemData = item as any;
 
       if (itemData.userGoodFeedback && itemData.userGoodFeedback.trim() !== '') {

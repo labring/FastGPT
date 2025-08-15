@@ -42,6 +42,7 @@ import {
 } from '@fastgpt/global/core/app/logs/constants';
 import { formatDateByTimespan } from '@fastgpt/global/core/app/logs/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
 export type HeaderControlProps = {
   appId: string;
@@ -149,7 +150,7 @@ const LogChart = ({
 
   const [offset, setOffset] = useState<string>(offsetOptions[0].value);
 
-  const { data: chartData } = useRequest2(
+  const { data: chartData, loading } = useRequest2(
     async () => {
       return getAppChartData({
         appId,
@@ -331,7 +332,7 @@ const LogChart = ({
   ]);
 
   return (
-    <Flex flexDir={'column'} h={'full'}>
+    <MyBox isLoading={loading} display={'flex'} flexDir={'column'} h={'full'}>
       <HeaderControl
         appId={appId}
         chatSources={chatSources}
@@ -751,7 +752,7 @@ const LogChart = ({
           </AccordionItem>
         </Accordion>
       </Flex>
-    </Flex>
+    </MyBox>
   );
 };
 
