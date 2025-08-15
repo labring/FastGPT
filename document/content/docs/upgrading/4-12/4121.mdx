@@ -14,6 +14,22 @@ description: 'FastGPT V4.12.1 更新说明'
 - Sandbox 无需更新
 - AIProxy 无需更新
 
+### 2. 执行升级脚本
+
+该脚本仅需商业版用户执行。
+
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4121' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+**脚本功能**
+
+1. 将历史对话日志整理成新的日志看板数据。
+
 ## 🚀 新增内容
 
 1. Prompt 自动生成和优化。
