@@ -1,11 +1,11 @@
 export enum ChatSidebarPaneEnum {
-  SETTING = 'setting',
-  TEAM_APPS = 'team_apps',
-  RECENTLY_USED_APPS = 'recently_used_apps',
+  SETTING = 's',
+  TEAM_APPS = 'ta',
+  RECENTLY_USED_APPS = 'ra',
 
   // these two features are only available in the commercial version
-  HOME = 'home',
-  FAVORITE_APPS = 'favorite_apps'
+  HOME = 'h',
+  FAVORITE_APPS = 'fa'
 }
 
 /**

@@ -16,7 +16,7 @@ type ChatSettingReturnType = ChatSettingSchema | undefined;
 
 export type ChatSettingContextValue = {
   pane: ChatSidebarPaneEnum;
-  handlePaneChange: (pane: ChatSidebarPaneEnum) => void;
+  handlePaneChange: (pane: ChatSidebarPaneEnum, _id?: string) => void;
   collapse: CollapseStatusType;
   onTriggerCollapse: () => void;
   chatSettings: ChatSettingSchema | undefined;
@@ -41,47 +41,60 @@ export const ChatSettingContext = createContext<ChatSettingContextValue>({
 
 export const ChatSettingContextProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
-
   const { feConfigs } = useSystemStore();
-  const { appId, setLastPane, lastPane } = useChatStore();
+  const { appId, setLastPane, setLastChatAppId, lastPane } = useChatStore();
+
+  const { pane = lastPane || ChatSidebarPaneEnum.HOME } = router.query as {
+    pane: ChatSidebarPaneEnum;
+  };
 
   const [collapse, setCollapse] = useState<CollapseStatusType>(defaultCollapseStatus);
 
-  const { data: chatSettings, runAsync: refreshChatSetting } = useRequest2<
-    ChatSettingReturnType,
-    []
-  >(
+  const { data: chatSettings, runAsync: refreshChatSetting } = useRequest2(
     async () => {
       if (!feConfigs.isPlus) return;
-      const settings = await getChatSetting();
-      return settings;
+      return await getChatSetting();
     },
     {
       manual: false,
-      refreshDeps: [feConfigs.isPlus]
+      refreshDeps: [feConfigs.isPlus],
+      onSuccess(data) {
+        if (!data) return;
+
+        // Reset home page appId
+        if (pane === ChatSidebarPaneEnum.HOME && appId !== data.appId) {
+          handlePaneChange(ChatSidebarPaneEnum.HOME, data.appId);
+        }
+      }
     }
   );
 
-  const [pane, setPane] = useState<ChatSidebarPaneEnum>(
-    lastPane ??
-      (feConfigs.isPlus ? ChatSidebarPaneEnum.HOME : ChatSidebarPaneEnum.RECENTLY_USED_APPS)
-  );
   const handlePaneChange = useCallback(
-    (newPane: ChatSidebarPaneEnum) => {
-      // 如果切换到首页，且当前不是隐藏应用，则切换到隐藏应用
-      const hiddenAppId = chatSettings?.appId;
-      if (newPane === ChatSidebarPaneEnum.HOME && hiddenAppId && appId !== hiddenAppId) {
-        router.push({
-          query: {
-            ...router.query,
-            appId: hiddenAppId
-          }
-        });
-      }
-      setPane(newPane);
+    async (newPane: ChatSidebarPaneEnum, id?: string) => {
+      if (newPane === pane && !id) return;
+
+      const _id = (() => {
+        if (id) return id;
+
+        const hiddenAppId = chatSettings?.appId;
+        if (newPane === ChatSidebarPaneEnum.HOME && hiddenAppId) {
+          return hiddenAppId;
+        }
+
+        return '';
+      })();
+
+      await router.replace({
+        query: {
+          appId: _id,
+          pane: newPane
+        }
+      });
+
       setLastPane(newPane);
+      setLastChatAppId(_id);
     },
-    [setLastPane, chatSettings?.appId, appId, router]
+    [setLastPane, chatSettings?.appId, appId, router, pane]
   );
 
   const logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'> = useMemo(

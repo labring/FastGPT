@@ -157,7 +157,7 @@ async function processChatRecord(chat: ChatSchemaType) {
   };
 
   await MongoAppChatLog.updateOne(
-    { appId: chat.appId, chatId: chat.chatId },
+    { teamId: chat.teamId, appId: chat.appId, chatId: chat.chatId },
     { $set: chatLogData },
     { upsert: true }
   );

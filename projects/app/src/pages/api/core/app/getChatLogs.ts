@@ -52,8 +52,8 @@ async function handler(
       $gte: new Date(dateStart),
       $lte: new Date(dateEnd)
     },
-    ...(sources && { source: { $in: sources } }),
-    ...(tmbIds && { tmbId: { $in: tmbIds.map((item) => new Types.ObjectId(item)) } }),
+    source: sources ? { $in: sources } : { $exists: true },
+    tmbId: tmbIds ? { $in: tmbIds.map((item) => new Types.ObjectId(item)) } : { $exists: true },
     ...(chatSearch && {
       $or: [
         { chatId: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
