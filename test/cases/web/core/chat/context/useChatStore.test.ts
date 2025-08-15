@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { useChatStore, createCustomStorage } from '@/web/core/chat/context/useChatStore';
+import {
+  useChatStore,
+  createCustomStorage,
+  createStorageListener
+} from '@/web/core/chat/context/useChatStore';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 
@@ -18,6 +22,30 @@ const mockStorage = {
 
 vi.stubGlobal('sessionStorage', mockStorage);
 vi.stubGlobal('localStorage', mockStorage);
+
+// Mock window and StorageEvent
+const mockWindow = {
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  dispatchEvent: vi.fn()
+};
+
+vi.stubGlobal('window', mockWindow);
+
+class MockStorageEvent extends Event {
+  key: string;
+  newValue: string | null;
+  storageArea: Storage;
+
+  constructor(type: string, init: any) {
+    super(type);
+    this.key = init.key;
+    this.newValue = init.newValue;
+    this.storageArea = init.storageArea;
+  }
+}
+
+vi.stubGlobal('StorageEvent', MockStorageEvent);
 
 describe('useChatStore', () => {
   beforeEach(() => {
@@ -88,7 +116,6 @@ describe('useChatStore', () => {
     expect(useChatStore.getState().chatId).toBe('test');
   });
 
-  // The expected value should be 'test', not 'test-generated-id', since lastChatId is '${source}-test'
   it('should restore last chat when setting same source and lastChatId with id that matches getNanoid', () => {
     const store = useChatStore.getState();
     const source = ChatSourceEnum.share;
@@ -102,11 +129,9 @@ describe('useChatStore', () => {
     });
 
     store.setSource(source);
-    // It should restore chatId to 'test' from lastChatId, not 'test-generated-id'
     expect(useChatStore.getState().chatId).toBe('test');
   });
 
-  // SKIP: The test is inconsistent with the current implementation and should be skipped.
   it.skip('should restore last chatId as id-part from lastChatId when it is "test-generated-id"', () => {
     const store = useChatStore.getState();
     const source = ChatSourceEnum.share;
@@ -120,7 +145,6 @@ describe('useChatStore', () => {
     });
 
     store.setSource(source);
-    // It should restore chatId to 'test-generated-id' from lastChatId
     expect(useChatStore.getState().chatId).toBe('test-generated-id');
   });
 
@@ -134,7 +158,6 @@ describe('useChatStore', () => {
       lastChatAppId: 'test-app'
     });
     store.setSource(source);
-    // Should generate a new chatId, which is 'test-generated-id' due to our mock
     expect(useChatStore.getState().chatId).toBe('test-generated-id');
   });
 
@@ -250,5 +273,119 @@ describe('createCustomStorage', () => {
     storage.removeItem('test');
     expect(mockStorage.removeItem).toHaveBeenCalledTimes(2);
     expect(mockStorage.removeItem).toHaveBeenCalledWith('test');
+  });
+});
+
+describe('createStorageListener', () => {
+  let mockStore: any;
+  let cleanup: () => void;
+  let handleStorageChange: (e: StorageEvent) => void;
+
+  beforeEach(() => {
+    mockStore = {
+      getState: vi.fn(),
+      setState: vi.fn()
+    };
+
+    mockWindow.addEventListener.mockImplementation((event, handler) => {
+      handleStorageChange = handler;
+    });
+
+    cleanup = createStorageListener(mockStore);
+  });
+
+  it('should handle storage event with valid data', () => {
+    mockStore.getState.mockReturnValue({ lastChatId: 'old-id' });
+
+    handleStorageChange(
+      new MockStorageEvent('storage', {
+        key: 'chatStore',
+        newValue: JSON.stringify({
+          state: {
+            lastChatId: 'new-id',
+            lastPane: 'home'
+          }
+        }),
+        storageArea: localStorage
+      })
+    );
+
+    expect(mockStore.setState).toHaveBeenCalledWith({
+      lastChatId: 'new-id',
+      lastPane: 'home'
+    });
+  });
+
+  it('should not sync session data', () => {
+    mockStore.getState.mockReturnValue({ source: 'old-source', lastChatId: 'old-id' });
+
+    handleStorageChange(
+      new MockStorageEvent('storage', {
+        key: 'chatStore',
+        newValue: JSON.stringify({
+          state: {
+            source: 'new-source',
+            lastChatId: 'new-id'
+          }
+        }),
+        storageArea: localStorage
+      })
+    );
+
+    expect(mockStore.setState).toHaveBeenCalledWith({
+      lastChatId: 'new-id'
+    });
+  });
+
+  it('should not sync if no changes', () => {
+    mockStore.getState.mockReturnValue({ lastChatId: 'same-id' });
+
+    handleStorageChange(
+      new MockStorageEvent('storage', {
+        key: 'chatStore',
+        newValue: JSON.stringify({
+          state: {
+            lastChatId: 'same-id'
+          }
+        }),
+        storageArea: localStorage
+      })
+    );
+
+    expect(mockStore.setState).not.toHaveBeenCalled();
+  });
+
+  it('should handle invalid JSON data', () => {
+    const consoleSpy = vi.spyOn(console, 'warn');
+
+    handleStorageChange(
+      new MockStorageEvent('storage', {
+        key: 'chatStore',
+        newValue: 'invalid-json',
+        storageArea: localStorage
+      })
+    );
+
+    expect(consoleSpy).toHaveBeenCalled();
+    expect(mockStore.setState).not.toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+  });
+
+  it('should ignore non-chatStore events', () => {
+    handleStorageChange(
+      new MockStorageEvent('storage', {
+        key: 'otherStore',
+        newValue: JSON.stringify({ state: { lastChatId: 'new-id' } }),
+        storageArea: localStorage
+      })
+    );
+
+    expect(mockStore.setState).not.toHaveBeenCalled();
+  });
+
+  it('should cleanup listener on return function call', () => {
+    cleanup();
+    expect(mockWindow.removeEventListener).toHaveBeenCalledWith('storage', handleStorageChange);
   });
 });
