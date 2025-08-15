@@ -252,6 +252,7 @@ export const storeNodes2RuntimeNodes = (
         name: node.name,
         avatar: node.avatar,
         intro: node.intro,
+        toolDescription: node.toolDescription,
         flowNodeType: node.flowNodeType,
         showStatus: node.showStatus,
         isEntry: entryNodeIds.includes(node.nodeId),

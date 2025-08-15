@@ -314,7 +314,11 @@ export async function getChildAppPreviewNode({
                       }))
                   }
                 }
-              : { systemTool: { toolId: app.id } })
+              : {
+                  systemTool: {
+                    toolId: app.id
+                  }
+                })
           },
           showSourceHandle: app.isFolder ? false : true,
           showTargetHandle: app.isFolder ? false : true
@@ -368,6 +372,7 @@ export async function getChildAppPreviewNode({
     avatar: app.avatar,
     name: parseI18nString(app.name, lang),
     intro: parseI18nString(app.intro, lang),
+    toolDescription: app.toolDescription,
     courseUrl: app.courseUrl,
     userGuide: app.userGuide,
     showStatus: true,
@@ -462,8 +467,17 @@ export async function getChildAppRuntimeById({
 }
 
 const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplateItemType => {
-  const { name, avatar, intro, version, weight, templateType, associatedPluginId, userGuide } =
-    item.customConfig!;
+  const {
+    name,
+    avatar,
+    intro,
+    toolDescription,
+    version,
+    weight,
+    templateType,
+    associatedPluginId,
+    userGuide
+  } = item.customConfig!;
 
   return {
     id: item.pluginId,
@@ -475,6 +489,7 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplat
     name,
     avatar,
     intro,
+    toolDescription,
     weight,
     templateType,
     originCost: item.originCost,
@@ -556,6 +571,7 @@ export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> 
         name: item.name,
         avatar: item.avatar,
         intro: item.description,
+        toolDescription: item.toolDescription,
         author: item.author,
         courseUrl: item.courseUrl,
         instructions: dbPluginConfig?.customConfig?.userGuide,
