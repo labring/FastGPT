@@ -125,11 +125,11 @@ const HomeChatWindow = ({ myApps }: Props) => {
   }, [availableTools, selectedToolIds]);
   // If selected ToolIds not in availableTools, Remove it
   useEffect(() => {
-    if (availableTools.length === 0) return;
+    if (!chatSettings?.selectedTools) return;
     setSelectedToolIds(
       selectedToolIds.filter((id) => availableTools.some((tool) => tool.pluginId === id))
     );
-  }, [availableTools]);
+  }, [availableTools, chatSettings?.selectedTools]);
 
   // 初始化聊天数据
   const { loading } = useRequest2(
