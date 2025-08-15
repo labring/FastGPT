@@ -61,6 +61,12 @@ const FieldEditModal = ({
             defaultValueType: WorkflowIOValueTypeEnum.string
           },
           {
+            icon: 'core/workflow/inputType/password',
+            label: t('common:core.workflow.inputType.password'),
+            value: [FlowNodeInputTypeEnum.password, FlowNodeInputTypeEnum.reference],
+            defaultValueType: WorkflowIOValueTypeEnum.string
+          },
+          {
             icon: 'core/workflow/inputType/jsonEditor',
             label: t('common:core.workflow.inputType.JSON Editor'),
             value: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference],
@@ -303,11 +309,20 @@ const FieldEditModal = ({
                             w={'20px'}
                             mr={1.5}
                             color={isSelected ? 'primary.600' : 'myGray.400'}
+                            flexShrink={0}
                           />
-                          <Box as="span" color={isSelected ? 'myGray.900' : 'inherit'}>
+                          <Box
+                            as="span"
+                            color={isSelected ? 'myGray.900' : 'inherit'}
+                            flex={1}
+                            minW={0}
+                            whiteSpace={'nowrap'}
+                            overflow={'hidden'}
+                            textOverflow={'ellipsis'}
+                          >
                             {item.label}
                           </Box>
-                          {item.description && <QuestionTip label={item.description} ml={1} />}
+                          {item.description && <QuestionTip label={item.description} ml={'auto'} />}
                         </Box>
                       );
                     })}

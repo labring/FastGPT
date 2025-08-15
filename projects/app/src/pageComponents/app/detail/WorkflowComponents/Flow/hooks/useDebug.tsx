@@ -52,19 +52,26 @@ export const useDebug = () => {
 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
-  const { filteredVar, customVar, variables } = useMemo(() => {
+  const { normalVar, customVar, internalVar, variables } = useMemo(() => {
     const variables = appDetail.chatConfig?.variables || [];
-    return {
-      filteredVar: variables.filter((item) => item.type !== VariableInputEnum.custom) || [],
-      customVar: variables.filter((item) => item.type === VariableInputEnum.custom) || [],
-      variables
-    };
+    const customVar = variables.filter((item) => item.type === VariableInputEnum.custom) || [];
+    const internalVar = variables.filter((item) => item.type === VariableInputEnum.internal) || [];
+    const normalVar =
+      variables.filter(
+        (item) => item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
+      ) || [];
+    return { normalVar, customVar, internalVar, variables };
   }, [appDetail.chatConfig?.variables]);
 
   const [defaultGlobalVariables, setDefaultGlobalVariables] = useState<Record<string, any>>(
     variables.reduce(
       (acc, item) => {
-        acc[item.key] = item.defaultValue;
+        // Handle the default value of the multiple select box, ensure the array type is correct
+        if (item.type === VariableInputEnum.multipleSelect && Array.isArray(item.defaultValue)) {
+          acc[item.key] = item.defaultValue;
+        } else {
+          acc[item.key] = item.defaultValue;
+        }
         return acc;
       },
       {} as Record<string, any>
@@ -254,18 +261,7 @@ export const useDebug = () => {
             />
           )}
           <Box display={currentTab === TabEnum.global ? 'block' : 'none'}>
-            {customVar.map((item) => (
-              <LabelAndFormRender
-                {...item}
-                key={item.key}
-                formKey={`variables.${item.key}`}
-                placeholder={item.description}
-                inputType={variableInputTypeToInputType(item.type)}
-                variablesForm={variablesForm}
-                bg={'myGray.50'}
-              />
-            ))}
-            {filteredVar.map((item) => (
+            {[...customVar, ...normalVar, ...internalVar].map((item) => (
               <LabelAndFormRender
                 {...item}
                 key={item.key}
@@ -303,7 +299,8 @@ export const useDebug = () => {
     t,
     variables.length,
     customVar,
-    filteredVar,
+    normalVar,
+    internalVar,
     runtimeNodeId,
     onStartNodeDebug
   ]);

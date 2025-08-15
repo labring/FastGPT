@@ -30,6 +30,11 @@ type SpecificProps =
       ExtensionPopover?: EditorProps['ExtensionPopover'];
     })
   | {
+      // password
+      inputType: InputTypeEnum.password;
+      maxLength?: number;
+    }
+  | {
       // numberInput
       inputType: InputTypeEnum.numberInput;
       min?: number;

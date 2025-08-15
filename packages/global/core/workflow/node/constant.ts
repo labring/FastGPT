@@ -8,6 +8,7 @@ export enum FlowNodeInputTypeEnum { // render ui
   switch = 'switch', // true/false
   select = 'select',
   multipleSelect = 'multipleSelect',
+  password = 'password', // password input
 
   // editor
   JSONEditor = 'JSONEditor',
@@ -91,6 +92,9 @@ export const FlowNodeInputMap: Record<
   },
   [FlowNodeInputTypeEnum.textarea]: {
     icon: 'core/workflow/inputType/textarea'
+  },
+  [FlowNodeInputTypeEnum.password]: {
+    icon: 'core/workflow/inputType/password'
   },
   [FlowNodeInputTypeEnum.fileSelect]: {
     icon: 'core/workflow/inputType/file'

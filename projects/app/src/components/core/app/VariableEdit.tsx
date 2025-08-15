@@ -137,11 +137,16 @@ const VariableEdit = ({
         return;
       }
 
-      if (data.type !== VariableInputEnum.select && data.list) {
+      if (
+        data.type !== VariableInputEnum.select &&
+        data.type !== VariableInputEnum.multipleSelect &&
+        data.type !== VariableInputEnum.internal &&
+        data.list
+      ) {
         delete data.list;
       }
 
-      if (data.type === VariableInputEnum.custom) {
+      if (data.type === VariableInputEnum.custom || data.type === VariableInputEnum.internal) {
         data.required = false;
       } else {
         data.valueType = inputTypeList.find((item) => item.value === data.type)?.defaultValueType;
@@ -334,17 +339,21 @@ const VariableEdit = ({
                         w={'20px'}
                         mr={1.5}
                         color={isSelected ? 'primary.600' : 'myGray.400'}
+                        flexShrink={0}
                       />
                       <Box
                         as="span"
                         color={isSelected ? 'myGray.900' : 'inherit'}
-                        pr={4}
+                        flex={1}
+                        minW={0}
                         whiteSpace="nowrap"
+                        overflow="hidden"
+                        textOverflow="ellipsis"
                       >
                         {item.label}
                       </Box>
                       {item.description && (
-                        <QuestionTip label={item.description as string} ml={1} />
+                        <QuestionTip label={item.description as string} ml={'auto'} />
                       )}
                     </Box>
                   );

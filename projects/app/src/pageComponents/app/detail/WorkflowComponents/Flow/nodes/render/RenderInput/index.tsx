@@ -50,6 +50,9 @@ const RenderList: Record<
   [FlowNodeInputTypeEnum.input]: {
     Component: CommonInputForm
   },
+  [FlowNodeInputTypeEnum.password]: {
+    Component: CommonInputForm
+  },
   [FlowNodeInputTypeEnum.textarea]: {
     Component: CommonInputForm,
     LableRightComponent: dynamic(() =>
