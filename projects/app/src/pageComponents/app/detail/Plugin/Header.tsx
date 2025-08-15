@@ -155,6 +155,7 @@ const Header = () => {
               size={'xs'}
               w={'1rem'}
               variant={'ghost'}
+              onClick={isSaved ? onBack : onOpenBackConfirm}
             />
           </Box>
 
@@ -214,9 +215,11 @@ const Header = () => {
     isPc,
     currentTab,
     isSaved,
+    onBack,
+    onOpenBackConfirm,
     isV2Workflow,
-    t,
     showHistoryModal,
+    t,
     loading,
     onClickSave,
     setShowHistoryModal,
