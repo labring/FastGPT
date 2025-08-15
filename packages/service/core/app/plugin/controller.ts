@@ -314,11 +314,7 @@ export async function getChildAppPreviewNode({
                       }))
                   }
                 }
-              : {
-                  systemTool: {
-                    toolId: app.id
-                  }
-                })
+              : { systemTool: { toolId: app.id } })
           },
           showSourceHandle: app.isFolder ? false : true,
           showTargetHandle: app.isFolder ? false : true
@@ -540,23 +536,6 @@ export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> 
     // 从数据库里加载插件配置进行替换
     const systemToolsArray = await MongoSystemPlugin.find({}).lean();
     const systemTools = new Map(systemToolsArray.map((plugin) => [plugin.pluginId, plugin]));
-
-    // tools.forEach((tool) => {
-    //   // 如果有插件的配置信息，则需要进行替换
-    //   const dbPluginConfig = systemTools.get(tool.id);
-
-    //   if (dbPluginConfig) {
-    //     const children = tools.filter((item) => item.parentId === tool.id);
-    //     const list = [tool, ...children];
-    //     list.forEach((item) => {
-    //       item.isActive = dbPluginConfig.isActive ?? item.isActive ?? true;
-    //       item.originCost = dbPluginConfig.originCost ?? 0;
-    //       item.currentCost = dbPluginConfig.currentCost ?? 0;
-    //       item.hasTokenFee = dbPluginConfig.hasTokenFee ?? false;
-    //       item.pluginOrder = dbPluginConfig.pluginOrder ?? 0;
-    //     });
-    //   }
-    // });
 
     const formatTools = tools.map<SystemPluginTemplateItemType>((item) => {
       const dbPluginConfig = systemTools.get(item.id);

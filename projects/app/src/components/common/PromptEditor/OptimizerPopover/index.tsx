@@ -37,6 +37,8 @@ const OptimizerPopover = ({
   const { t } = useTranslation();
   const { llmModelList, defaultModels } = useSystemStore();
 
+  const InputRef = useRef<HTMLTextAreaElement>(null);
+
   const [optimizerInput, setOptimizerInput] = useState('');
   const [optimizedResult, setOptimizedResult] = useState('');
   const [selectedModel = '', setSelectedModel] = useLocalStorageState<string>(
@@ -122,7 +124,7 @@ const OptimizerPopover = ({
         Trigger={
           <Flex {...iconButtonStyle}>
             <MyTooltip label={t('app:Optimizer_Tooltip')}>
-              <MyIcon name={'optimizer'} w={'18px'} />
+              <MyIcon name={'optimizer'} w={'1.2rem'} />
             </MyTooltip>
           </Flex>
         }
@@ -135,6 +137,11 @@ const OptimizerPopover = ({
           } else {
             closePopoverRef.current?.();
           }
+        }}
+        onOpenFunc={() => {
+          setTimeout(() => {
+            InputRef.current?.focus();
+          }, 50);
         }}
       >
         {({ onClose }) => {
@@ -234,11 +241,13 @@ const OptimizerPopover = ({
               >
                 <MyIcon name={'optimizer'} alignSelf={'flex-start'} mt={0.5} w={5} />
                 <Textarea
+                  ref={InputRef}
                   placeholder={
                     !loading
                       ? t('app:Optimizer_Placeholder')
                       : t('app:Optimizer_Placeholder_loading')
                   }
+                  autoFocus
                   resize={'none'}
                   rows={1}
                   minHeight={'24px'}
@@ -246,14 +255,11 @@ const OptimizerPopover = ({
                   maxHeight={'96px'}
                   overflowY={'hidden'}
                   border={'none'}
-                  _focus={{
-                    boxShadow: 'none'
-                  }}
+                  boxShadow={'none !important'}
                   fontSize={'sm'}
                   p={0}
                   borderRadius={'none'}
                   value={optimizerInput}
-                  autoFocus
                   onKeyDown={handleKeyDown}
                   isDisabled={loading}
                   onChange={(e) => {

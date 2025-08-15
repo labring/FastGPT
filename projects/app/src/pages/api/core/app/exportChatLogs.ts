@@ -18,6 +18,8 @@ import { type ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
+import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 const formatJsonString = (data: any) => {
   if (data == null) return '';
@@ -47,7 +49,12 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     throw new Error('缺少参数');
   }
 
-  const { teamId } = await authApp({ req, authToken: true, appId, per: AppReadChatLogPerVal });
+  const { teamId, tmbId, app } = await authApp({
+    req,
+    authToken: true,
+    appId,
+    per: AppReadChatLogPerVal
+  });
 
   const teamMemberWithContact = await MongoTeamMember.aggregate([
     { $match: { teamId: new Types.ObjectId(teamId) } },
@@ -394,6 +401,18 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     res.status(500);
     res.end();
   });
+
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.EXPORT_APP_CHAT_LOG,
+      params: {
+        appName: app.name,
+        appType: getI18nAppType(app.type)
+      }
+    });
+  })();
 }
 
 export default NextAPI(

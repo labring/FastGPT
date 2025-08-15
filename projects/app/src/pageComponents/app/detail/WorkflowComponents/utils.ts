@@ -25,6 +25,7 @@ export const uiWorkflow2StoreWorkflow = ({
     parentNodeId: item.data.parentNodeId,
     name: item.data.name,
     intro: item.data.intro,
+    toolDescription: item.data.toolDescription,
     avatar: item.data.avatar,
     flowNodeType: item.data.flowNodeType,
     showStatus: item.data.showStatus,
