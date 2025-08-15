@@ -189,7 +189,7 @@ export const runToolWithFunctionCall = async (
 
     return {
       name: item.nodeId,
-      description: item.intro,
+      description: item.toolDescription || item.intro,
       parameters: {
         type: 'object',
         properties,
