@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
 const exactMap: Record<string, string> = {
+  '/docs': '/docs/introduction',
   '/docs/intro': '/docs/introduction',
   '/docs/guide/dashboard/workflow/coreferenceresolution':
     '/docs/introduction/guide/dashboard/workflow/coreferenceResolution',
