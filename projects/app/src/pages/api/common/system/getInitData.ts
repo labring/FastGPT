@@ -2,7 +2,6 @@ import type { NextApiResponse } from 'next';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type InitDateResponse } from '@/global/common/api/systemRes';
-import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 
 async function handler(
@@ -10,18 +9,6 @@ async function handler(
   res: NextApiResponse
 ): Promise<InitDateResponse> {
   const { bufferId } = req.query;
-
-  const activeModelList = global.systemActiveModelList.map((model) => ({
-    ...model,
-    defaultSystemChatPrompt: undefined,
-    fieldMap: undefined,
-    defaultConfig: undefined,
-    weight: undefined,
-    dbConfig: undefined,
-    queryConfig: undefined,
-    requestUrl: undefined,
-    requestAuth: undefined
-  })) as SystemModelItemType[];
 
   try {
     await authCert({ req, authToken: true });
@@ -38,7 +25,7 @@ async function handler(
       feConfigs: global.feConfigs,
       subPlans: global.subPlans,
       systemVersion: global.systemVersion,
-      activeModelList,
+      activeModelList: global.systemActiveDesensitizedModels,
       defaultModels: global.systemDefaultModel
     };
   } catch (error) {
@@ -47,7 +34,7 @@ async function handler(
       return {
         feConfigs: global.feConfigs,
         subPlans: global.subPlans,
-        activeModelList
+        activeModelList: global.systemActiveDesensitizedModels
       };
     }
 
