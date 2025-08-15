@@ -60,9 +60,10 @@ const BillTable = () => {
     isLoading,
     Pagination,
     getData,
-    total
+    total,
+    pageSize
   } = usePagination(getBills, {
-    pageSize: 20,
+    defaultPageSize: 20,
     params: {
       type: billType
     },
@@ -95,8 +96,8 @@ const BillTable = () => {
   }, [billType]);
 
   return (
-    <MyBox isLoading={isLoading} position={'relative'} h={'100%'} minH={'50vh'}>
-      <TableContainer>
+    <MyBox isLoading={isLoading} display={'flex'} flexDir={'column'} h={'100%'}>
+      <TableContainer flex={'1 0 0'} h={0} overflowY={'auto'}>
         <Table>
           <Thead>
             <Tr>
@@ -147,11 +148,6 @@ const BillTable = () => {
             ))}
           </Tbody>
         </Table>
-        {total >= 20 && (
-          <Flex mt={3} justifyContent={'flex-end'}>
-            <Pagination />
-          </Flex>
-        )}
         {!isLoading && bills.length === 0 && (
           <Flex
             mt={'20vh'}
@@ -167,6 +163,11 @@ const BillTable = () => {
         )}
       </TableContainer>
 
+      {total >= pageSize && (
+        <Flex mt={3} justifyContent={'center'}>
+          <Pagination />
+        </Flex>
+      )}
       {!!billDetail && (
         <BillDetailModal bill={billDetail} onClose={() => setBillDetail(undefined)} />
       )}

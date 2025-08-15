@@ -28,7 +28,7 @@ async function handler(
     simple = false
   } = req.body as GetDatasetCollectionsProps;
   let { pageSize, offset } = parsePaginationRequest(req);
-  pageSize = Math.min(pageSize, 30);
+  pageSize = Math.min(pageSize, 100);
   searchText = searchText?.replace(/'/g, '');
 
   // auth dataset and get my role

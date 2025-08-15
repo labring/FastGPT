@@ -1,4 +1,3 @@
-import type { NextApiRequest } from 'next';
 import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
 import { delCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
@@ -9,28 +8,50 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 
-async function handler(req: NextApiRequest) {
-  const { id: collectionId } = req.query as { id: string };
+export type DelCollectionBody = {
+  collectionIds: string[];
+};
 
-  if (!collectionId) {
+async function handler(req: ApiRequestProps<DelCollectionBody>) {
+  const { collectionIds } = req.body;
+
+  if (!collectionIds) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
-  const { teamId, collection, tmbId } = await authDatasetCollection({
-    req,
-    authToken: true,
-    authApiKey: true,
-    collectionId,
-    per: WritePermissionVal
-  });
+  const [{ teamId, collection, tmbId }] = await Promise.all(
+    collectionIds.map(async (collectionId) => {
+      return await authDatasetCollection({
+        req,
+        authToken: true,
+        authApiKey: true,
+        collectionId,
+        per: WritePermissionVal
+      });
+    })
+  );
 
   // find all delete id
-  const collections = await findCollectionAndChild({
-    teamId,
-    datasetId: collection.datasetId,
-    collectionId,
-    fields: '_id teamId datasetId fileId metadata'
+  const collections = await Promise.all(
+    collectionIds.map(async (collectionId) => {
+      return await findCollectionAndChild({
+        teamId,
+        datasetId: collection.datasetId,
+        collectionId,
+        fields: '_id teamId datasetId fileId metadata'
+      });
+    })
+  ).then((res) => {
+    const flattened = res.flat();
+    console.log(flattened.length, 22);
+    // Remove duplicates based on _id
+    const uniqueCollections = flattened.filter(
+      (collection, index, arr) =>
+        arr.findIndex((item) => item._id.toString() === collection._id.toString()) === index
+    );
+    return uniqueCollections;
   });
 
   // delete

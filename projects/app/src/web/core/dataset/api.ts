@@ -79,6 +79,7 @@ import type {
   GetApiDatasetPathBody,
   GetApiDatasetPathResponse
 } from '@/pages/api/core/dataset/apiDataset/getPathNames';
+import type { DelCollectionBody } from '@/pages/api/core/dataset/collection/delete';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -216,8 +217,8 @@ export const postCreateDatasetApiDatasetCollection = (
 
 export const putDatasetCollectionById = (data: UpdateDatasetCollectionParams) =>
   POST(`/core/dataset/collection/update`, data);
-export const delDatasetCollectionById = (params: { id: string }) =>
-  DELETE(`/core/dataset/collection/delete`, params);
+export const delDatasetCollectionById = (params: DelCollectionBody) =>
+  POST(`/core/dataset/collection/delete`, params);
 export const postLinkCollectionSync = (collectionId: string) =>
   POST<DatasetCollectionSyncResultEnum>(`/core/dataset/collection/sync`, {
     collectionId

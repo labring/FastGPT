@@ -46,9 +46,11 @@ const Evaluation = () => {
   const {
     data: evaluationList,
     Pagination,
-    getData: fetchData
+    getData: fetchData,
+    total,
+    pageSize
   } = usePagination(getEvaluationList, {
-    pageSize: 20,
+    defaultPageSize: 20,
     pollingInterval,
     pollingWhenHidden: true,
     params: {
@@ -185,90 +187,90 @@ const Evaluation = () => {
           <Flex h={'full'} bg={'white'} p={6} flexDirection="column">
             {renderHeader(MenuIcon)}
 
-            <MyBox flex={'1 0 0'} overflow="auto">
-              <TableContainer mt={3} fontSize={'sm'}>
-                <Table variant={'simple'}>
-                  <Thead>
-                    <Tr color={'myGray.600'}>
-                      <Th fontWeight={'400'}>{t('dashboard_evaluation:Task_name')}</Th>
-                      <Th fontWeight={'400'}>{t('dashboard_evaluation:Progress')}</Th>
-                      <Th fontWeight={'400'}>{t('dashboard_evaluation:Executor')}</Th>
-                      <Th fontWeight={'400'}>{t('dashboard_evaluation:Evaluation_app')}</Th>
-                      <Th fontWeight={'400'}>{t('dashboard_evaluation:Start_end_time')}</Th>
-                      <Th fontWeight={'400'}>{t('dashboard_evaluation:Overall_score')}</Th>
-                      <Th fontWeight={'400'}>{t('dashboard_evaluation:Action')}</Th>
-                    </Tr>
-                  </Thead>
-                  <Tbody>
-                    <Tr h={'5px'} />
-                    {evaluationList.map((item) => {
-                      return (
-                        <Tr key={item._id}>
-                          <Td fontWeight={'medium'} color={'myGray.900'}>
-                            {item.name}
-                          </Td>
-                          <Td>{renderProgress(item)}</Td>
-                          <Td>
-                            <Flex alignItems={'center'} gap={1.5}>
-                              <Avatar
-                                src={item.executorAvatar}
-                                w={5}
-                                borderRadius={'full'}
-                                border={'1px solid'}
-                                borderColor={'myGray.200'}
-                              />
-                              <Box color={'myGray.900'}>{item.executorName}</Box>
-                            </Flex>
-                          </Td>
-                          <Td>
-                            <Flex alignItems={'center'} gap={1.5}>
-                              <Avatar src={item.appAvatar} w={5} borderRadius={'4px'} />
-                              <Box color={'myGray.900'}>{item.appName}</Box>
-                            </Flex>
-                          </Td>
-                          <Td color={'myGray.900'}>
-                            <Box>{formatTime2YMDHM(item.createTime)}</Box>
-                            <Box>{formatTime2YMDHM(item.finishTime)}</Box>
-                          </Td>
-                          <Td color={item.score ? 'myGray.600' : 'myGray.900'}>
-                            {typeof item.score === 'number' ? (item.score * 100).toFixed(2) : '-'}
-                          </Td>
-                          <Td>
-                            <Button
-                              variant={'whiteBase'}
-                              leftIcon={<MyIcon name={'common/detail'} w={4} />}
-                              fontSize={'12px'}
-                              fontWeight={'medium'}
-                              mr={2}
-                              onClick={() => setEvalDetailId(item._id)}
-                            >
-                              {t('dashboard_evaluation:detail')}
-                            </Button>
-
-                            <PopoverConfirm
-                              type="delete"
-                              Trigger={
-                                <IconButton
-                                  aria-label="delete"
-                                  size={'mdSquare'}
-                                  variant={'whiteDanger'}
-                                  icon={<MyIcon name={'delete'} w={4} />}
-                                />
-                              }
-                              content={t('dashboard_evaluation:comfirm_delete_task')}
-                              onConfirm={() => onDeleteEval({ evalId: item._id })}
+            <TableContainer mt={3} fontSize={'sm'} flex={'1 0 0'} overflowY="auto">
+              <Table variant={'simple'}>
+                <Thead>
+                  <Tr color={'myGray.600'}>
+                    <Th fontWeight={'400'}>{t('dashboard_evaluation:Task_name')}</Th>
+                    <Th fontWeight={'400'}>{t('dashboard_evaluation:Progress')}</Th>
+                    <Th fontWeight={'400'}>{t('dashboard_evaluation:Executor')}</Th>
+                    <Th fontWeight={'400'}>{t('dashboard_evaluation:Evaluation_app')}</Th>
+                    <Th fontWeight={'400'}>{t('dashboard_evaluation:Start_end_time')}</Th>
+                    <Th fontWeight={'400'}>{t('dashboard_evaluation:Overall_score')}</Th>
+                    <Th fontWeight={'400'}>{t('dashboard_evaluation:Action')}</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  <Tr h={'5px'} />
+                  {evaluationList.map((item) => {
+                    return (
+                      <Tr key={item._id}>
+                        <Td fontWeight={'medium'} color={'myGray.900'}>
+                          {item.name}
+                        </Td>
+                        <Td>{renderProgress(item)}</Td>
+                        <Td>
+                          <Flex alignItems={'center'} gap={1.5}>
+                            <Avatar
+                              src={item.executorAvatar}
+                              w={5}
+                              borderRadius={'full'}
+                              border={'1px solid'}
+                              borderColor={'myGray.200'}
                             />
-                          </Td>
-                        </Tr>
-                      );
-                    })}
-                  </Tbody>
-                </Table>
-              </TableContainer>
-            </MyBox>
-            <Flex mt={4} justifyContent="center">
-              <Pagination />
-            </Flex>
+                            <Box color={'myGray.900'}>{item.executorName}</Box>
+                          </Flex>
+                        </Td>
+                        <Td>
+                          <Flex alignItems={'center'} gap={1.5}>
+                            <Avatar src={item.appAvatar} w={5} borderRadius={'4px'} />
+                            <Box color={'myGray.900'}>{item.appName}</Box>
+                          </Flex>
+                        </Td>
+                        <Td color={'myGray.900'}>
+                          <Box>{formatTime2YMDHM(item.createTime)}</Box>
+                          <Box>{formatTime2YMDHM(item.finishTime)}</Box>
+                        </Td>
+                        <Td color={item.score ? 'myGray.600' : 'myGray.900'}>
+                          {typeof item.score === 'number' ? (item.score * 100).toFixed(2) : '-'}
+                        </Td>
+                        <Td>
+                          <Button
+                            variant={'whiteBase'}
+                            leftIcon={<MyIcon name={'common/detail'} w={4} />}
+                            fontSize={'12px'}
+                            fontWeight={'medium'}
+                            mr={2}
+                            onClick={() => setEvalDetailId(item._id)}
+                          >
+                            {t('dashboard_evaluation:detail')}
+                          </Button>
+
+                          <PopoverConfirm
+                            type="delete"
+                            Trigger={
+                              <IconButton
+                                aria-label="delete"
+                                size={'mdSquare'}
+                                variant={'whiteDanger'}
+                                icon={<MyIcon name={'delete'} w={4} />}
+                              />
+                            }
+                            content={t('dashboard_evaluation:comfirm_delete_task')}
+                            onConfirm={() => onDeleteEval({ evalId: item._id })}
+                          />
+                        </Td>
+                      </Tr>
+                    );
+                  })}
+                </Tbody>
+              </Table>
+            </TableContainer>
+            {total >= pageSize && (
+              <Flex mt={4} justifyContent="center">
+                <Pagination />
+              </Flex>
+            )}
           </Flex>
         )}
       </DashboardContainer>
