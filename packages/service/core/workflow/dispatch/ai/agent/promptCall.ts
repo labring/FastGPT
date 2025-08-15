@@ -193,7 +193,7 @@ export const runToolWithPromptCall = async (
 
       return {
         toolId: item.nodeId,
-        description: item.intro,
+        description: item.toolDescription || item.intro,
         parameters: {
           type: 'object',
           properties,
