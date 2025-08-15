@@ -57,16 +57,103 @@
 /* 全局代码块样式 */
 pre,
 code {
-  font-size: 0.9rem !important;
-  line-height: 1.6 !important;
+  border-radius: 16px;
+  background: #F5F6F7;
+  font-family: Alef;
+  font-size: 1.0rem;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+.dark pre,
+.dark code {
+  background: #1e1e1e;
+}
+
+pre {
+  padding: 24px 0 24px 24px ;
+}
+
+pre code {
+  gap: 20px;
+}
+
+code span {
+  padding-left: 0;
+}
+
+/* 去除代码块内层边框 */
+.bg-fd-secondary.border {
+  border: none;
+}
+
+/* 去除代码块外层边框 */
+.shiki {
+  border: none;
+  padding: 0;
 }
 
 /* 行内代码样式 */
 /* 行内代码样式 */
 :not(pre) > code {
-  padding: 0.2em 0.4em !important;
-  margin: 0 0.2em !important;
-  color: #2563eb !important;
+  display: inline-block;
+  height: 25px;
+  padding: 0 10px;
+  margin: 0 0.2em;
+  color: #272727;
+  background: #f5f6f7;
+  font-family: "PingFang SC";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 180%; 
+  letter-spacing: 0.056px;
+  border: none;
+  border-radius: 8px;
+}
+
+.dark :not(pre) > code {
+  color: #E6E6E6 !important;
+  background: #282828 !important;
+}
+
+div[role="tablist"] ~ div:has(figure, p, ul) {
+  border-radius: 0 !important;
+  border: solid 0.5px #e5e5e5;
+  border-radius: 0.75rem !important;
+}
+
+/* 代码块下方的滚动条样式 */
+div.bg-fd-secondary:has(pre) {
+  padding: 0;
+}
+
+.dark div.bg-fd-secondary:has(pre) {
+  background-color: #1E1E1E;
+}
+
+div.bg-fd-secondary:has(pre)::-webkit-scrollbar-track {
+  background: #e8e8e8; 
+}
+
+div.bg-fd-secondary:has(pre)::-webkit-scrollbar-thumb {
+  background: #b0b0b0; 
+}
+
+div.bg-fd-secondary:has(pre)::-webkit-scrollbar-thumb:hover {
+  background: #909090; 
+}
+
+.dark div.bg-fd-secondary:has(pre)::-webkit-scrollbar-track {
+  background: #1a1a1a; 
+}
+
+.dark div.bg-fd-secondary:has(pre)::-webkit-scrollbar-thumb {
+  background: #404040; 
+}
+
+.dark div.bg-fd-secondary:has(pre)::-webkit-scrollbar-thumb:hover {
+  background: #606060; 
 }
 
 /* 代码块中的滚动条样式优化 */
@@ -153,11 +240,44 @@ div[data-state='open'].fixed.inset-0.z-50 {
   }
 }
 
-figure.shiki button[aria-label='Copy Text'] {
-  background-color: none !important;
+/* 复制按钮容器和按钮样式 */
+div[class*="bg-fd-card"]:has(button[aria-label='Copy Text']),
+div[class*="bg-fd-card"]:has(button[aria-label='Copied Text']) {
+  right: 26px;
+  top: 24px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #818181;
+  color: #818181;
+  border: none;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.01);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
   &:hover {
     cursor: pointer;
   }
+}
+
+/* 按钮内部样式 */
+div[class*="bg-fd-card"]:has(button[aria-label='Copy Text']) button[aria-label='Copy Text'],
+div[class*="bg-fd-card"]:has(button[aria-label='Copied Text']) button[aria-label='Copied Text']{
+  color: #818181;
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  &:hover {
+    cursor: pointer;
+  }
+}
+
+/* SVG 样式 */
+div[class*="bg-fd-card"]:has(button[aria-label='Copy Text']) button[aria-label='Copy Text'] svg,
+div[class*="bg-fd-card"]:has(button[aria-label='Copied Text']) button[aria-label='Copied Text'] svg {
+  background: transparent;
 }
 
 #nd-subnav > div:nth-of-type(1) button {
