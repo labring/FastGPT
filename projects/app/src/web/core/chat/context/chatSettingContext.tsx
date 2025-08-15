@@ -9,7 +9,7 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import type { ChatSettingSchema } from '@fastgpt/global/core/chat/setting/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
 
 type ChatSettingReturnType = ChatSettingSchema | undefined;
@@ -94,8 +94,14 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
       setLastPane(newPane);
       setLastChatAppId(_id);
     },
-    [setLastPane, chatSettings?.appId, appId, router, pane]
+    [pane, router, setLastPane, setLastChatAppId, chatSettings?.appId]
   );
+
+  useEffect(() => {
+    if (!Object.values(ChatSidebarPaneEnum).includes(pane)) {
+      handlePaneChange(ChatSidebarPaneEnum.HOME);
+    }
+  }, [pane]);
 
   const logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'> = useMemo(
     () => ({
