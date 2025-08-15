@@ -262,7 +262,9 @@ const SecretInputModal = ({
                               <Controller
                                 control={control}
                                 name={inputKey}
-                                rules={{ required: item.required }}
+                                rules={{
+                                  required: item.inputType === 'switch' ? false : item.required
+                                }}
                                 render={({ field: { onChange, value }, fieldState: { error } }) => (
                                   <InputRender
                                     inputType={secretInputTypeToInputType(item.inputType)}
@@ -292,7 +294,13 @@ const SecretInputModal = ({
         <Button mr={4} variant={'whiteBase'} onClick={onClose}>
           {t('common:Cancel')}
         </Button>
-        <Button variant={'primary'} onClick={handleSubmit(onSubmit)}>
+        <Button
+          variant={'primary'}
+          onClick={() => {
+            console.log(getValues());
+            handleSubmit(onSubmit)();
+          }}
+        >
           {t('common:Confirm')}
         </Button>
       </ModalFooter>
