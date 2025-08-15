@@ -178,6 +178,7 @@ export async function saveChat({
         ) || 0;
 
       const hasHistoryChat = await MongoAppChatLog.exists({
+        teamId,
         appId,
         userId,
         createTime: { $lt: now }
@@ -185,8 +186,9 @@ export async function saveChat({
 
       await MongoAppChatLog.updateOne(
         {
-          chatId,
+          teamId,
           appId,
+          chatId,
           updateTime: { $gte: fifteenMinutesAgo }
         },
         {
