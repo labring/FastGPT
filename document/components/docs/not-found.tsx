@@ -10,7 +10,7 @@ const exactMap: Record<string, string> = {
   '/docs/guide/admin/sso_dingtalk':
     '/docs/introduction/guide/admin/sso#/docs/introduction/guide/admin/sso#钉钉',
   '/docs/guide/knowledge_base/rag': '/docs/introduction/guide/knowledge_base/RAG',
-  '/docs/commercial/intro/': '/docs/introduction',
+  '/docs/commercial/intro/': '/docs/introduction/commercial',
   '/docs/upgrading/intro/': '/docs/upgrading',
   '/docs/introduction/shopping_cart/intro/': '/docs/introduction/commercial'
 };
