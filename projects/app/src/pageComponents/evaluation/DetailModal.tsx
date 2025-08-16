@@ -25,7 +25,7 @@ import {
   getEvalItemsList,
   retryEvalItem,
   updateEvalItem
-} from '@/web/core/app/api/evaluation';
+} from '@/web/core/evaluation/evaluation';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { downloadFetch } from '@/web/common/system/utils';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
@@ -35,9 +35,9 @@ import { useForm } from 'react-hook-form';
 import {
   EvaluationStatusMap,
   EvaluationStatusEnum
-} from '@fastgpt/global/core/app/evaluation/constants';
-import type { evaluationType, listEvalItemsItem } from '@fastgpt/global/core/app/evaluation/type';
-import type { updateEvalItemBody } from '@fastgpt/global/core/app/evaluation/api';
+} from '@fastgpt/global/core/evaluation/constants';
+import type { evaluationType, listEvalItemsItem } from '@fastgpt/global/core/evaluation/type';
+import type { updateEvalItemBody } from '@fastgpt/global/core/evaluation/api';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const formatEvaluationStatus = (item: { status: number; errorMessage?: string }, t: TFunction) => {
@@ -134,7 +134,7 @@ const EvaluationDetailModal = ({
 
   const { runAsync: exportEval, loading: isDownloading } = useRequest2(async () => {
     await downloadFetch({
-      url: `/api/proApi/core/app/evaluation/exportItems?evalId=${evalDetail._id}`,
+      url: `/api/core/evaluation/exportItems?evalId=${evalDetail._id}`,
       filename: `${evalDetail.name}.csv`,
       body: {
         title: t('dashboard_evaluation:evaluation_export_title'),

@@ -2,10 +2,10 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
-import { AppCollectionName } from '../schema';
-import type { EvaluationSchemaType } from '@fastgpt/global/core/app/evaluation/type';
-import { UsageCollectionName } from '../../../support/wallet/usage/schema';
+import { connectionMongo, getMongoModel } from '../../common/mongo';
+import { AppCollectionName } from '../app/schema';
+import type { EvaluationSchemaType } from '@fastgpt/global/core/evaluation/type';
+import { UsageCollectionName } from '../../support/wallet/usage/schema';
 const { Schema } = connectionMongo;
 
 export const EvaluationCollectionName = 'eval';
