@@ -1,4 +1,4 @@
-import type { VariableItemType } from '../type';
+import type { VariableItemType } from '../app/type';
 
 export const getEvaluationFileHeader = (appVariables?: VariableItemType[]) => {
   if (!appVariables || appVariables.length === 0) return '*q,*a,history';
