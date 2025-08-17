@@ -37,6 +37,7 @@ import { type WorkflowResponseType } from '../../type';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
 import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { createLLMResponse } from '@fastgpt/global/core/ai/request';
 
 type FunctionCallCompletion = {
   id: string;
@@ -256,80 +257,100 @@ export const runToolWithPromptCall = async (
     toolModel
   );
 
-  // console.log(JSON.stringify(requestMessages, null, 2));
-  /* Run llm */
-  const {
-    response: aiResponse,
+  let {
+    reasoning,
+    answer,
+    finish_reason,
+    inputTokens,
+    outputTokens,
     isStreamResponse,
     getEmptyResponseTip
-  } = await createChatCompletion({
-    body: requestBody,
-    userKey: externalProvider.openaiAccount,
-    options: {
-      headers: {
-        Accept: 'application/json, text/plain, */*'
+  }: {
+    reasoning: string;
+    answer: string;
+    finish_reason: CompletionFinishReason;
+    inputTokens: number;
+    outputTokens: number;
+    isStreamResponse: boolean;
+    getEmptyResponseTip: () => string;
+  } = {
+    reasoning: '',
+    answer: '',
+    finish_reason: 'close',
+    inputTokens: 0,
+    outputTokens: 0,
+    isStreamResponse: true,
+    getEmptyResponseTip: () => ''
+  };
+
+  if (res) {
+    const write = responseWriteController({
+      res,
+      readStream: stream
+    });
+
+    let startResponseWrite = false;
+    let answer = '';
+
+    const llmResponse = await createLLMResponse({
+      requestBody,
+      userKey: externalProvider.openaiAccount,
+      params: { abortSignal: res.closed, reasoning: aiChatReasoning, retainDatasetCite },
+      events: {
+        streamEvents: {
+          onReasoning({ reasoningContent }) {
+            workflowStreamResponse?.({
+              write,
+              event: SseResponseEventEnum.answer,
+              data: textAdaptGptResponse({
+                reasoning_content: reasoningContent
+              })
+            });
+          },
+          onStreaming({ responseContent, originContent }) {
+            answer += originContent;
+
+            if (startResponseWrite) {
+              if (responseContent) {
+                workflowStreamResponse?.({
+                  write,
+                  event: SseResponseEventEnum.answer,
+                  data: textAdaptGptResponse({
+                    text: responseContent
+                  })
+                });
+              }
+            } else if (answer.length >= 3) {
+              answer = answer.trimStart();
+              if (/0(:|：)/.test(answer)) {
+                startResponseWrite = true;
+
+                // find first : index
+                const firstIndex =
+                  answer.indexOf('0:') !== -1 ? answer.indexOf('0:') : answer.indexOf('0：');
+                answer = answer.substring(firstIndex + 2).trim();
+                workflowStreamResponse?.({
+                  write,
+                  event: SseResponseEventEnum.answer,
+                  data: textAdaptGptResponse({
+                    text: answer
+                  })
+                });
+              }
+            }
+          }
+        }
       }
-    }
-  });
+    });
 
-  let { answer, reasoning, finish_reason, inputTokens, outputTokens } = await (async () => {
-    if (isStreamResponse) {
-      if (!res || res.closed) {
-        return {
-          answer: '',
-          reasoning: '',
-          finish_reason: 'close' as const,
-          inputTokens: 0,
-          outputTokens: 0
-        };
-      }
-      const { answer, reasoning, finish_reason, usage } = await streamResponse({
-        res,
-        toolNodes,
-        stream: aiResponse,
-        workflowStreamResponse,
-        aiChatReasoning,
-        retainDatasetCite
-      });
-
-      return {
-        answer,
-        reasoning,
-        finish_reason,
-        inputTokens: usage.prompt_tokens,
-        outputTokens: usage.completion_tokens
-      };
-    } else {
-      const finish_reason = aiResponse.choices?.[0]?.finish_reason as CompletionFinishReason;
-      const content = aiResponse.choices?.[0]?.message?.content || '';
-      // @ts-ignore
-      const reasoningContent: string = aiResponse.choices?.[0]?.message?.reasoning_content || '';
-      const usage = aiResponse.usage;
-
-      const formatReasonContent = removeDatasetCiteText(reasoningContent, retainDatasetCite);
-      const formatContent = removeDatasetCiteText(content, retainDatasetCite);
-
-      // API already parse reasoning content
-      if (formatReasonContent || !aiChatReasoning) {
-        return {
-          answer: formatContent,
-          reasoning: formatReasonContent,
-          finish_reason,
-          inputTokens: usage?.prompt_tokens,
-          outputTokens: usage?.completion_tokens
-        };
-      }
-
-      const [think, answer] = parseReasoningContent(formatContent);
-      return {
-        answer,
-        reasoning: think,
-        finish_reason,
-        inputTokens: usage?.prompt_tokens,
-        outputTokens: usage?.completion_tokens
-      };
-    }
-  })();
+    reasoning = llmResponse.reasoningText;
+    answer = llmResponse.answerText;
+    finish_reason = llmResponse.finish_reason;
+    inputTokens = llmResponse.inputTokens || 0;
+    outputTokens = llmResponse.outputTokens || 0;
+    isStreamResponse = llmResponse.isStreamResponse;
+    getEmptyResponseTip = llmResponse.getEmptyResponseTip;
+  }
 
   if (stream && !isStreamResponse && aiChatReasoning && reasoning) {
     workflowStreamResponse?.({

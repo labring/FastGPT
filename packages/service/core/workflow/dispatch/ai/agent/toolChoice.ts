@@ -454,6 +454,7 @@ export const runToolWithToolChoice = async (
             });
           },
           onToolCalled({ toolCalls }) {
+            // rewrite tool call results
             return toolCalls.map((tool) => {
               const toolNode = toolNodes.find((item) => item.nodeId === tool.function?.name);
 

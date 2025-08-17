@@ -17,7 +17,7 @@ import { createChatCompletion } from '../../../service/core/ai/config';
 import type { OpenaiAccountType } from 'support/user/team/type';
 
 type BasicResponseParams = {
-  reasoning: boolean;
+  reasoning?: boolean;
   abortSignal?: boolean;
   retainDatasetCite?: boolean;
 };
@@ -34,6 +34,7 @@ type LLMResponse = {
   reasoningText: string;
   toolCallResults: ChatCompletionMessageToolCall[];
   finish_reason: CompletionFinishReason;
+  isStreamResponse: boolean;
   getEmptyResponseTip: () => string;
   inputTokens?: number;
   outputTokens?: number;
@@ -88,13 +89,16 @@ type CreateCompleteResopnseProps = {
   params: CreateCompleteResopnseParams;
 } & CreateCompleteResopnseEvents;
 
-type StreamResponse = Omit<LLMResponse, 'inputTokens' | 'outputTokens' | 'getEmptyResponseTip'> & {
+type StreamResponse = Omit<
+  LLMResponse,
+  'inputTokens' | 'outputTokens' | 'getEmptyResponseTip' | 'isStreamResponse'
+> & {
   usage?: CompletionUsage;
 };
 
 type CompleteResopnse = Omit<
   LLMResponse,
-  'inputTokens' | 'outputTokens' | 'getEmptyResponseTip'
+  'inputTokens' | 'outputTokens' | 'getEmptyResponseTip' | 'isStreamResponse'
 > & {
   usage?: CompletionUsage;
 };
@@ -121,6 +125,7 @@ export const createLLMResponse = async (args: CreateLLMResponseProps): Promise<L
     return {
       inputTokens: usage?.prompt_tokens,
       outputTokens: usage?.completion_tokens,
+      isStreamResponse,
       getEmptyResponseTip,
       ...streamResults
     };
@@ -133,6 +138,7 @@ export const createLLMResponse = async (args: CreateLLMResponseProps): Promise<L
     return {
       inputTokens: usage?.prompt_tokens,
       outputTokens: usage?.completion_tokens,
+      isStreamResponse,
       getEmptyResponseTip,
       ...completeResults
     };
