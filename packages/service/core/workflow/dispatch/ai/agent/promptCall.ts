@@ -1,18 +1,12 @@
-import { createChatCompletion } from '../../../../ai/config';
 import { filterGPTMessageByMaxContext, loadRequestMessages } from '../../../../chat/utils';
-import {
-  type StreamChatType,
-  type ChatCompletionMessageParam,
-  type CompletionFinishReason
+import type {
+  ChatCompletionMessageParam,
+  CompletionFinishReason
 } from '@fastgpt/global/core/ai/type';
-import { type NextApiResponse } from 'next';
 import { responseWriteController } from '../../../../../common/response';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
-import {
-  ChatCompletionRequestMessageRoleEnum,
-  getLLMDefaultUsage
-} from '@fastgpt/global/core/ai/constants';
+import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { dispatchWorkFlow } from '../../index';
 import { type DispatchToolModuleProps, type RunToolResponse, type ToolNodeItemType } from './type';
 import json5 from 'json5';
@@ -29,11 +23,8 @@ import { formatToolResponse, initToolCallEdges, initToolNodes } from './utils';
 import {
   computedMaxToken,
   llmCompletionsBodyFormat,
-  removeDatasetCiteText,
-  parseReasoningContent,
-  parseLLMStreamResponse
+  removeDatasetCiteText
 } from '../../../../ai/utils';
-import { type WorkflowResponseType } from '../../type';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
 import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -599,92 +590,6 @@ ANSWER: `;
     }
   );
 };
-
-async function streamResponse({
-  res,
-  stream,
-  workflowStreamResponse,
-  aiChatReasoning,
-  retainDatasetCite
-}: {
-  res: NextApiResponse;
-  toolNodes: ToolNodeItemType[];
-  stream: StreamChatType;
-  workflowStreamResponse?: WorkflowResponseType;
-  aiChatReasoning?: boolean;
-  retainDatasetCite?: boolean;
-}) {
-  const write = responseWriteController({
-    res,
-    readStream: stream
-  });
-
-  let startResponseWrite = false;
-  let answer = '';
-
-  const { parsePart, getResponseData, updateFinishReason } = parseLLMStreamResponse();
-
-  for await (const part of stream) {
-    if (res.closed) {
-      stream.controller?.abort();
-      updateFinishReason('close');
-      break;
-    }
-
-    const { reasoningContent, content, responseContent } = parsePart({
-      part,
-      parseThinkTag: aiChatReasoning,
-      retainDatasetCite
-    });
-    answer += content;
-
-    // Reasoning response
-    if (aiChatReasoning && reasoningContent) {
-      workflowStreamResponse?.({
-        write,
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          reasoning_content: reasoningContent
-        })
-      });
-    }
-
-    if (content) {
-      if (startResponseWrite) {
-        if (responseContent) {
-          workflowStreamResponse?.({
-            write,
-            event: SseResponseEventEnum.answer,
-            data: textAdaptGptResponse({
-              text: responseContent
-            })
-          });
-        }
-      } else if (answer.length >= 3) {
-        answer = answer.trimStart();
-        if (/0(:|：)/.test(answer)) {
-          startResponseWrite = true;
-
-          // find first : index
-          const firstIndex =
-            answer.indexOf('0:') !== -1 ? answer.indexOf('0:') : answer.indexOf('0：');
-          answer = answer.substring(firstIndex + 2).trim();
-          workflowStreamResponse?.({
-            write,
-            event: SseResponseEventEnum.answer,
-            data: textAdaptGptResponse({
-              text: answer
-            })
-          });
-        }
-      }
-    }
-  }
-
-  const { reasoningContent, content, finish_reason, usage } = getResponseData();
-
-  return { answer: content, reasoning: reasoningContent, finish_reason, usage };
-}
 
 const parseAnswer = (
   str: string

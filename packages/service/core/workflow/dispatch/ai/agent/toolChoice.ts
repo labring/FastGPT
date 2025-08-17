@@ -1,36 +1,27 @@
-import { createChatCompletion } from '../../../../ai/config';
 import { filterGPTMessageByMaxContext, loadRequestMessages } from '../../../../chat/utils';
-import {
-  type ChatCompletion,
-  type ChatCompletionMessageToolCall,
-  type StreamChatType,
-  type ChatCompletionToolMessageParam,
-  type ChatCompletionMessageParam,
-  type ChatCompletionTool,
-  type CompletionFinishReason
+import type {
+  ChatCompletionMessageToolCall,
+  ChatCompletionToolMessageParam,
+  ChatCompletionMessageParam,
+  ChatCompletionTool,
+  CompletionFinishReason
 } from '@fastgpt/global/core/ai/type';
-import { type NextApiResponse } from 'next';
 import { responseWriteController } from '../../../../../common/response';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { dispatchWorkFlow } from '../../index';
-import { type DispatchToolModuleProps, type RunToolResponse, type ToolNodeItemType } from './type';
+import type { DispatchToolModuleProps, RunToolResponse } from './type';
 import json5 from 'json5';
-import { type DispatchFlowResponse, type WorkflowResponseType } from '../../type';
+import type { DispatchFlowResponse } from '../../type';
 import { countGptMessagesTokens } from '../../../../../common/string/tiktoken/index';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import { type AIChatItemType } from '@fastgpt/global/core/chat/type';
+import type { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { formatToolResponse, initToolCallEdges, initToolNodes } from './utils';
-import {
-  computedMaxToken,
-  llmCompletionsBodyFormat,
-  removeDatasetCiteText,
-  parseLLMStreamResponse
-} from '../../../../ai/utils';
+import { computedMaxToken, llmCompletionsBodyFormat } from '../../../../ai/utils';
 import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
-import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { createLLMResponse } from '@fastgpt/global/core/ai/request';
