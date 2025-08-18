@@ -77,8 +77,6 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const { llmModelList, defaultModels, feConfigs } = useSystemStore();
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
-  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
-
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
@@ -89,7 +87,9 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
 
+  const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
   const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
+  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
@@ -101,6 +101,14 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const [selectedModel, setSelectedModel] = useLocalStorageState('chat_home_model', {
     defaultValue: defaultModels.llm?.model
   });
+  const selectedModelAvatar = useMemo(() => {
+    const modelData = getModelFromList(llmModelList, selectedModel || '');
+    return modelData?.avatar || HUGGING_FACE_ICON;
+  }, [selectedModel, llmModelList]);
+  const selectedModelButtonLabel = useMemo(() => {
+    const modelData = availableModels.find((model) => model.value === selectedModel);
+    return modelData?.label || selectedModel;
+  }, [selectedModel, availableModels]);
 
   const availableTools = useMemo(
     () => chatSettings?.selectedTools || [],
@@ -246,33 +254,38 @@ const HomeChatWindow = ({ myApps }: Props) => {
       <>
         {/* 模型选择 */}
         {availableModels.length > 0 && (
-          <Box flex={['1', '0']} w={[0, 'auto']}>
-            <AIModelSelector
-              h={['30px', '36px']}
-              boxShadow={'none'}
-              size="sm"
-              bg={'myGray.50'}
-              rounded="full"
-              list={availableModels}
-              value={selectedModel}
-              onChange={async (model) => {
-                setChatBoxData((state) => ({
-                  ...state,
-                  app: {
-                    ...state.app,
-                    chatConfig: {
-                      ...state.app.chatConfig,
-                      fileSelectConfig: {
-                        ...defaultFileSelectConfig,
-                        canSelectImg: !!getWebLLMModel(model).vision
-                      }
+          <AIModelSelector
+            h={['30px', '36px']}
+            boxShadow={'none'}
+            size="sm"
+            bg={'myGray.50'}
+            rounded="full"
+            list={availableModels}
+            value={selectedModel}
+            maxW={['114px', 'fit-content']}
+            valueLabel={
+              <Flex maxW={['74px', '100%']} alignItems={'center'} gap={1}>
+                {isPc && <Avatar src={selectedModelAvatar} w={4} h={4} />}
+                <Box className="textEllipsis">{selectedModelButtonLabel}</Box>
+              </Flex>
+            }
+            onChange={async (model) => {
+              setChatBoxData((state) => ({
+                ...state,
+                app: {
+                  ...state.app,
+                  chatConfig: {
+                    ...state.app.chatConfig,
+                    fileSelectConfig: {
+                      ...defaultFileSelectConfig,
+                      canSelectImg: !!getWebLLMModel(model).vision
                     }
                   }
-                }));
-                setSelectedModel(model);
-              }}
-            />
-          </Box>
+                }
+              }));
+              setSelectedModel(model);
+            }}
+          />
         )}
 
         {/* 工具选择下拉框 */}
@@ -348,7 +361,9 @@ const HomeChatWindow = ({ myApps }: Props) => {
       selectedToolIds,
       setSelectedToolIds,
       setChatBoxData,
-      isPc
+      isPc,
+      selectedModelAvatar,
+      selectedModelButtonLabel
     ]
   );
 
@@ -363,6 +378,9 @@ const HomeChatWindow = ({ myApps }: Props) => {
           <ChatHistorySlider
             customSliderTitle={t('chat:history_slider.home.title')}
             confirmClearText={t('common:core.chat.Confirm to clear history')}
+            pane={pane}
+            chatSettings={chatSettings}
+            onPaneChange={handlePaneChange}
           />
         </SideBar>
       ) : (
@@ -378,6 +396,9 @@ const HomeChatWindow = ({ myApps }: Props) => {
             <ChatHistorySlider
               customSliderTitle={t('chat:history_slider.home.title')}
               confirmClearText={t('common:core.chat.Confirm to clear history')}
+              pane={pane}
+              chatSettings={chatSettings}
+              onPaneChange={handlePaneChange}
             />
           </DrawerContent>
         </Drawer>
@@ -407,6 +428,8 @@ const HomeChatWindow = ({ myApps }: Props) => {
           )
         ) : (
           <ChatHeader
+            pane={pane}
+            chatSettings={chatSettings}
             showHistory
             apps={myApps}
             history={chatRecords}
