@@ -25,6 +25,7 @@ import {
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useContextSelector } from 'use-context-selector';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { usePathname } from 'next/navigation';
 
 type Props = {
   activeAppId: string;
@@ -326,6 +327,7 @@ const NavigationSection = () => {
 };
 
 const BottomSection = () => {
+  const pathname = usePathname();
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const isProVersion = !!feConfigs.isPlus;
@@ -335,6 +337,7 @@ const BottomSection = () => {
   const avatar = userInfo?.avatar;
   const username = userInfo?.username;
   const isAdmin = !!userInfo?.team.permission.hasManagePer;
+  const isShare = pathname === '/chat/share';
 
   const isCollapsed = useContextSelector(ChatSettingContext, (v) => v.collapse === 1);
   const isSettingActive = useContextSelector(
@@ -354,7 +357,7 @@ const BottomSection = () => {
         h={isCollapsed ? 'auto' : '40px'}
         minH="40px"
       >
-        {isAdmin && isProVersion && (
+        {isAdmin && isProVersion && !isShare && (
           <MotionBox
             order={isCollapsed ? 1 : 2}
             layout={false}
