@@ -30,13 +30,19 @@ import {
   DEFAULT_LOGO_BANNER_COLLAPSED_URL
 } from '@/pageComponents/chat/constants';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
+import { usePathname } from 'next/navigation';
+import type { ChatSettingSchema } from '@fastgpt/global/core/chat/setting/type';
 
 const ChatHeader = ({
   history,
   showHistory,
   apps,
-  totalRecordsCount
+  totalRecordsCount,
+  pane,
+  chatSettings
 }: {
+  pane: ChatSidebarPaneEnum;
+  chatSettings: ChatSettingSchema | undefined;
   history: ChatItemType[];
   showHistory?: boolean;
   apps?: AppListItemType[];
@@ -44,16 +50,14 @@ const ChatHeader = ({
 }) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
+  const pathname = usePathname();
 
   const chatData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const isVariableVisible = useContextSelector(ChatItemContext, (v) => v.isVariableVisible);
 
-  const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
-  const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
-
   const isPlugin = chatData.app.type === AppTypeEnum.plugin;
-  const router = useRouter();
-  const isChat = router.pathname === '/chat';
+  const isChat = pathname === '/chat';
+  const isShare = pathname === '/chat/share';
 
   return isPc && isPlugin ? null : (
     <Flex
@@ -79,12 +83,12 @@ const ChatHeader = ({
           apps={apps}
           appId={chatData.appId}
           name={
-            pane === ChatSidebarPaneEnum.HOME
+            pane === ChatSidebarPaneEnum.HOME && !isShare
               ? chatSettings?.homeTabTitle || 'FastGPT'
               : chatData.app.name
           }
           avatar={
-            pane === ChatSidebarPaneEnum.HOME
+            pane === ChatSidebarPaneEnum.HOME && !isShare
               ? chatSettings?.squareLogoUrl || DEFAULT_LOGO_BANNER_COLLAPSED_URL
               : chatData.app.avatar
           }

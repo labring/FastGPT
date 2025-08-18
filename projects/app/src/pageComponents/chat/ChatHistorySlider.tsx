@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Grid, Image, Box, Button, Flex, useTheme, IconButton, GridItem } from '@chakra-ui/react';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
@@ -19,6 +19,8 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useMemoizedFn } from 'ahooks';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import UserAvatarPopover from '@/pageComponents/chat/UserAvatarPopover';
+import { usePathname } from 'next/navigation';
+import type { ChatSettingSchema } from '@fastgpt/global/core/chat/setting/type';
 
 type HistoryItemType = {
   id: string;
@@ -30,12 +32,19 @@ type HistoryItemType = {
 
 const ChatHistorySlider = ({
   confirmClearText,
-  customSliderTitle
+  customSliderTitle,
+  pane,
+  chatSettings,
+  onPaneChange
 }: {
   confirmClearText: string;
   customSliderTitle?: string;
+  pane: ChatSidebarPaneEnum;
+  chatSettings: ChatSettingSchema | undefined;
+  onPaneChange?: (pane: ChatSidebarPaneEnum) => void;
 }) => {
   const theme = useTheme();
+  const pathname = usePathname();
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
@@ -54,11 +63,9 @@ const ChatHistorySlider = ({
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.avatar);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
-  const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
-  const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
-  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
+  const isActivePane = useCallback((active: ChatSidebarPaneEnum) => active === pane, [pane]);
 
-  const isActivePane = useMemoizedFn((active: ChatSidebarPaneEnum) => active === pane);
+  const isShare = pathname === '/chat/share';
 
   const concatHistory = useMemo(() => {
     const formatHistories: HistoryItemType[] = histories.map((item) => {
@@ -132,64 +139,69 @@ const ChatHistorySlider = ({
 
           <MyDivider h="0.5px" bg="myGray.100" my={2} mx={2} w="calc(100% - 16px)" />
 
-          <Grid templateRows="repeat(1, 1fr)" rowGap={2} py={2}>
-            <GridItem
-              onClick={() => {
-                handlePaneChange(ChatSidebarPaneEnum.HOME);
-                onCloseSlider();
-                setChatId();
-              }}
-            >
-              <Flex
-                p={2}
-                mx={2}
-                gap={2}
-                cursor={'pointer'}
-                borderRadius={'8px'}
-                alignItems={'center'}
-                bg={isActivePane(ChatSidebarPaneEnum.HOME) ? 'primary.100' : 'transparent'}
-                color={isActivePane(ChatSidebarPaneEnum.HOME) ? 'primary.600' : 'myGray.500'}
-                _hover={{
-                  bg: 'primary.100',
-                  color: 'primary.600'
-                }}
-              >
-                <MyIcon name="core/chat/sidebar/home" w="20px" h="20px" />
-                <Box fontSize="sm" fontWeight={500} flexShrink={0} whiteSpace="nowrap">
-                  {t('chat:sidebar.home')}
-                </Box>
-              </Flex>
-            </GridItem>
+          {!isShare && (
+            <>
+              <Grid templateRows="repeat(1, 1fr)" rowGap={2} py={2}>
+                <GridItem
+                  onClick={() => {
+                    onPaneChange?.(ChatSidebarPaneEnum.HOME);
+                    onCloseSlider();
+                    setChatId();
+                  }}
+                >
+                  <Flex
+                    p={2}
+                    mx={2}
+                    gap={2}
+                    cursor={'pointer'}
+                    borderRadius={'8px'}
+                    alignItems={'center'}
+                    bg={isActivePane(ChatSidebarPaneEnum.HOME) ? 'primary.100' : 'transparent'}
+                    color={isActivePane(ChatSidebarPaneEnum.HOME) ? 'primary.600' : 'myGray.500'}
+                    _hover={{
+                      bg: 'primary.100',
+                      color: 'primary.600'
+                    }}
+                  >
+                    <MyIcon name="core/chat/sidebar/home" w="20px" h="20px" />
+                    <Box fontSize="sm" fontWeight={500} flexShrink={0} whiteSpace="nowrap">
+                      {t('chat:sidebar.home')}
+                    </Box>
+                  </Flex>
+                </GridItem>
 
-            <GridItem
-              onClick={() => {
-                handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
-                onCloseSlider();
-              }}
-            >
-              <Flex
-                p={2}
-                mx={2}
-                gap={2}
-                cursor={'pointer'}
-                borderRadius={'8px'}
-                alignItems={'center'}
-                bg={isActivePane(ChatSidebarPaneEnum.TEAM_APPS) ? 'primary.100' : 'transparent'}
-                color={isActivePane(ChatSidebarPaneEnum.TEAM_APPS) ? 'primary.600' : 'myGray.500'}
-                _hover={{
-                  bg: 'primary.100',
-                  color: 'primary.600'
-                }}
-              >
-                <MyIcon name="common/app" w="20px" h="20px" />
-                <Box fontSize="sm" fontWeight={500} flexShrink={0} whiteSpace="nowrap">
-                  {t('chat:sidebar.team_apps')}
-                </Box>
-              </Flex>
-            </GridItem>
-          </Grid>
-
-          <MyDivider h="0.5px" bg="myGray.100" my={2} mx={2} w="calc(100% - 16px)" />
+                <GridItem
+                  onClick={() => {
+                    onPaneChange?.(ChatSidebarPaneEnum.TEAM_APPS);
+                    onCloseSlider();
+                  }}
+                >
+                  <Flex
+                    p={2}
+                    mx={2}
+                    gap={2}
+                    cursor={'pointer'}
+                    borderRadius={'8px'}
+                    alignItems={'center'}
+                    bg={isActivePane(ChatSidebarPaneEnum.TEAM_APPS) ? 'primary.100' : 'transparent'}
+                    color={
+                      isActivePane(ChatSidebarPaneEnum.TEAM_APPS) ? 'primary.600' : 'myGray.500'
+                    }
+                    _hover={{
+                      bg: 'primary.100',
+                      color: 'primary.600'
+                    }}
+                  >
+                    <MyIcon name="common/app" w="20px" h="20px" />
+                    <Box fontSize="sm" fontWeight={500} flexShrink={0} whiteSpace="nowrap">
+                      {t('chat:sidebar.team_apps')}
+                    </Box>
+                  </Flex>
+                </GridItem>
+              </Grid>
+              <MyDivider h="0.5px" bg="myGray.100" my={2} mx={2} w="calc(100% - 16px)" />
+            </>
+          )}
         </>
       )}
 
@@ -380,27 +392,29 @@ const ChatHistorySlider = ({
             </Flex>
           </UserAvatarPopover>
 
-          <Flex
-            _hover={{ bg: 'myGray.200' }}
-            bg={isActivePane(ChatSidebarPaneEnum.SETTING) ? 'myGray.200' : 'transparent'}
-            borderRadius={'8px'}
-            p={2}
-            cursor={'pointer'}
-            w="40px"
-            h="40px"
-            alignItems="center"
-            justifyContent="center"
-            onClick={() => {
-              handlePaneChange(ChatSidebarPaneEnum.SETTING);
-              onCloseSlider();
-            }}
-          >
-            <MyIcon
-              w="20px"
-              name="common/setting"
-              fill={isActivePane(ChatSidebarPaneEnum.SETTING) ? 'primary.500' : 'myGray.400'}
-            />
-          </Flex>
+          {!isShare && (
+            <Flex
+              _hover={{ bg: 'myGray.200' }}
+              bg={isActivePane(ChatSidebarPaneEnum.SETTING) ? 'myGray.200' : 'transparent'}
+              borderRadius={'8px'}
+              p={2}
+              cursor={'pointer'}
+              w="40px"
+              h="40px"
+              alignItems="center"
+              justifyContent="center"
+              onClick={() => {
+                onPaneChange?.(ChatSidebarPaneEnum.SETTING);
+                onCloseSlider();
+              }}
+            >
+              <MyIcon
+                w="20px"
+                name="common/setting"
+                fill={isActivePane(ChatSidebarPaneEnum.SETTING) ? 'primary.500' : 'myGray.400'}
+              />
+            </Flex>
+          )}
         </Flex>
       )}
 
