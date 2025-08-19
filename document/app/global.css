@@ -129,6 +129,10 @@ div[role="tablist"] ~ div:has(figure, p, ul) {
   border-radius: 0.75rem !important;
 }
 
+.dark div[role="tablist"] ~ div:has(figure, p, ul) {
+  border: solid 0.5px #1E1E1E;
+}
+
 /* 代码块下方的滚动条样式 */
 div.bg-fd-secondary:has(pre) {
   padding: 0;
@@ -286,7 +290,7 @@ button[aria-label='Copy Text'] svg {
 
 button[aria-label='Copy Text']::before {
   content: '';
-  background-image: url('../public/copy.svg');
+  background-image: url('../public/icons/copy.svg');
   width: 18px;
   height: 18px;
 }
@@ -382,16 +386,16 @@ div[data-rmiz-modal-overlay='visible'] {
 }
 
 .dark {
-  --color-fd-background: #060c1a;
+  --color-fd-background: #000000;
   --color-fd-foreground: hsl(220, 60%, 94.5%);
   --color-fd-muted: hsl(220, 50%, 10%);
-  --color-fd-muted-foreground: hsl(220, 30%, 65%);
+  --color-fd-muted-foreground: #B0B0B0;
   --color-fd-popover: hsl(220, 50%, 10%);
   --color-fd-popover-foreground: hsl(220, 60%, 94.5%);
   --color-fd-card: hsla(220, 56%, 15%, 0.4);
   --color-fd-card-foreground: hsl(220, 60%, 94.5%);
   --color-fd-border: hsla(220, 50%, 50%, 0.2);
-  --color-fd-primary: #3370ff; /* 文本高亮色 */
+  --color-fd-primary: #C2D3FF; /* 文本高亮色 */
   --color-fd-primary-foreground: hsl(0, 0%, 9%);
   --color-fd-secondary: hsl(220, 50%, 20%);
   --color-fd-secondary-foreground: hsl(220, 80%, 90%);
@@ -406,4 +410,9 @@ div[data-rmiz-modal-overlay='visible'] {
 
 button[data-search-full] {
   background-color: var(--color-fd-background);
+}
+
+.dark\:text-blue-400:where(.dark, .dark *) {
+  color: #C2D3FF;
+  background-color: #434548;
 }
