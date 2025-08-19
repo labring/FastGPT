@@ -406,6 +406,9 @@ const ChatInput = ({
       }}
     >
       {/* Real Chat Input */}
+      {/* <Box h="40px" bg="myGray.200">
+        abc
+      </Box> */}
       <Flex
         direction={'column'}
         minH={mobilePreSpeak ? '48px' : ['96px', '120px']}

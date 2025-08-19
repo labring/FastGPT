@@ -255,7 +255,6 @@ const ActionButton: React.FC<{
 const NavigationSection = () => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-  const isProVersion = !!feConfigs.isPlus;
 
   const isCollapsed = useContextSelector(ChatSettingContext, (v) => v.collapse === 1);
   const onTriggerCollapse = useContextSelector(ChatSettingContext, (v) => v.onTriggerCollapse);
@@ -267,7 +266,11 @@ const NavigationSection = () => {
     ChatSettingContext,
     (v) => v.pane === ChatSidebarPaneEnum.TEAM_APPS
   );
-  const onHomeClick = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
+  const isFavouriteAppsActive = useContextSelector(
+    ChatSettingContext,
+    (v) => v.pane === ChatSidebarPaneEnum.FAVORITE_APPS
+  );
+  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
 
   return (
     <Flex mt={4} flexDirection={'column'} gap={1} px={4}>
@@ -275,50 +278,67 @@ const NavigationSection = () => {
         <ActionButton isCollapsed icon="core/chat/sidebar/expand" onClick={onTriggerCollapse} />
       </AnimatedSection>
 
-      {isProVersion && (
-        <AnimatePresence mode="wait">
-          {isCollapsed ? (
-            <AnimatedSection show={true}>
-              <ActionButton
-                icon="core/chat/sidebar/home"
-                isCollapsed={true}
-                isActive={isHomeActive}
-                onClick={() => onHomeClick(ChatSidebarPaneEnum.HOME)}
-              />
-            </AnimatedSection>
-          ) : (
-            <AnimatedSection show={true}>
-              <ActionButton
-                icon="core/chat/sidebar/home"
-                text={t('chat:sidebar.home')}
-                isCollapsed={false}
-                isActive={isHomeActive}
-                onClick={() => onHomeClick(ChatSidebarPaneEnum.HOME)}
-              />
-            </AnimatedSection>
-          )}
-        </AnimatePresence>
-      )}
-
       <AnimatePresence mode="wait">
         {isCollapsed ? (
           <AnimatedSection show={true}>
-            <ActionButton
-              icon="common/app"
-              isCollapsed={true}
-              isActive={isTeamAppsActive}
-              onClick={() => onHomeClick(ChatSidebarPaneEnum.TEAM_APPS)}
-            />
+            <Flex flexDir="column" gap={2}>
+              {feConfigs.isPlus && (
+                <>
+                  <ActionButton
+                    icon="core/chat/sidebar/home"
+                    isCollapsed={true}
+                    isActive={isHomeActive}
+                    onClick={() => handlePaneChange(ChatSidebarPaneEnum.HOME)}
+                  />
+
+                  <ActionButton
+                    icon="core/chat/sidebar/star"
+                    isCollapsed={true}
+                    isActive={isFavouriteAppsActive}
+                    onClick={() => handlePaneChange(ChatSidebarPaneEnum.FAVORITE_APPS)}
+                  />
+                </>
+              )}
+
+              <ActionButton
+                icon="common/app"
+                isCollapsed={true}
+                isActive={isTeamAppsActive}
+                onClick={() => handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS)}
+              />
+            </Flex>
           </AnimatedSection>
         ) : (
           <AnimatedSection show={true}>
-            <ActionButton
-              icon="common/app"
-              text={t('chat:sidebar.team_apps')}
-              isCollapsed={false}
-              isActive={isTeamAppsActive}
-              onClick={() => onHomeClick(ChatSidebarPaneEnum.TEAM_APPS)}
-            />
+            <Flex flexDir="column" gap={2}>
+              {feConfigs.isPlus && (
+                <>
+                  <ActionButton
+                    icon="core/chat/sidebar/home"
+                    text={t('chat:sidebar.home')}
+                    isCollapsed={false}
+                    isActive={isHomeActive}
+                    onClick={() => handlePaneChange(ChatSidebarPaneEnum.HOME)}
+                  />
+
+                  <ActionButton
+                    icon="core/chat/sidebar/star"
+                    text={t('chat:sidebar.favourite_apps')}
+                    isCollapsed={false}
+                    isActive={isFavouriteAppsActive}
+                    onClick={() => handlePaneChange(ChatSidebarPaneEnum.FAVORITE_APPS)}
+                  />
+                </>
+              )}
+
+              <ActionButton
+                icon="common/app"
+                text={t('chat:sidebar.team_apps')}
+                isCollapsed={false}
+                isActive={isTeamAppsActive}
+                onClick={() => handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS)}
+              />
+            </Flex>
           </AnimatedSection>
         )}
       </AnimatePresence>

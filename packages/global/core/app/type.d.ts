@@ -51,6 +51,9 @@ export type AppSchema = {
 
   // abandon
   defaultPermission?: number;
+
+  // where the app is retrieved from, differenciate by module(domain)
+  favourite: boolean;
 };
 
 export type AppListItemType = {

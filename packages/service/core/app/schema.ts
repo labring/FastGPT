@@ -117,7 +117,10 @@ const AppSchema = new Schema(
     },
 
     // abandoned
-    defaultPermission: Number
+    defaultPermission: Number,
+
+    // where the app is retrieved from, differenciate by module(domain)
+    favourite: Boolean
   },
   {
     minimize: false

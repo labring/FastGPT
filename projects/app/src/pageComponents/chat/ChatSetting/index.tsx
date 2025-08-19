@@ -16,6 +16,9 @@ import { useTranslation } from 'react-i18next';
 const HomepageSetting = dynamic(() => import('@/pageComponents/chat/ChatSetting/HomepageSetting'));
 const LogDetails = dynamic(() => import('@/pageComponents/chat/ChatSetting/LogDetails'));
 const DataDashboard = dynamic(() => import('@/pageComponents/chat/ChatSetting/DataDashboard'));
+const FavouriteAppSetting = dynamic(
+  () => import('@/pageComponents/chat/ChatSetting/FavouriteAppSetting')
+);
 
 const ChatSetting = () => {
   const { t } = useTranslation();
@@ -72,6 +75,11 @@ const ChatSetting = () => {
 
       {/* log details */}
       {tab === ChatSettingTabOptionEnum.LOG_DETAILS && <LogDetails Header={SettingHeader} />}
+
+      {/* home chat logs */}
+      {tab === ChatSettingTabOptionEnum.FAVOURITE_APPS && (
+        <FavouriteAppSetting Header={SettingHeader} />
+      )}
 
       <DiagramModal show={isOpenDiagram} onShow={setIsOpenDiagram} />
     </>
