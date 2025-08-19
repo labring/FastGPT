@@ -18,8 +18,8 @@ const LogDetails = dynamic(() => import('@/pageComponents/chat/ChatSetting/LogDe
 const DataDashboard = dynamic(() => import('@/pageComponents/chat/ChatSetting/DataDashboard'));
 
 const ChatSetting = () => {
-  const { t } = useTranslation();
   const { isPc } = useSystem();
+  const { t } = useTranslation();
 
   const [isOpenDiagram, setIsOpenDiagram] = useState(false);
   const [tab, setTab] = useState<`${ChatSettingTabOptionEnum}`>('home');
