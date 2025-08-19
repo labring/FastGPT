@@ -10,7 +10,6 @@ import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type
 
 import PageContainer from '@/components/PageContainer';
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
-import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
 import { getInitOutLinkChatInfo } from '@/web/core/chat/api';
@@ -41,6 +40,8 @@ import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
+import ChatHistory from '@/pageComponents/chat/ChatHistory';
+import { ChatHistoryDrawer } from '@/pageComponents/chat/ChatHistory';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -220,10 +221,8 @@ const OutLink = (props: Props) => {
 
   const RenderHistoryList = useMemo(() => {
     const Children = (
-      <ChatHistorySlider
-        chatSettings={undefined}
-        pane={ChatSidebarPaneEnum.RECENTLY_USED_APPS}
-        confirmClearText={t('common:core.chat.Confirm to clear share chat history')}
+      <ChatHistory
+        menuConfirmButtonText={t('common:core.chat.Confirm to clear share chat history')}
       />
     );
 
@@ -232,20 +231,9 @@ const OutLink = (props: Props) => {
     return isPc ? (
       <SideBar externalTrigger={!!datasetCiteData}>{Children}</SideBar>
     ) : (
-      <Drawer
-        isOpen={isOpenSlider}
-        placement="left"
-        autoFocus={false}
-        size={'xs'}
-        onClose={onCloseSlider}
-      >
-        <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
-        <DrawerContent maxWidth={'75vw'} boxShadow={'2px 0 10px rgba(0,0,0,0.15)'}>
-          {Children}
-        </DrawerContent>
-      </Drawer>
+      <ChatHistoryDrawer />
     );
-  }, [isOpenSlider, isPc, onCloseSlider, datasetCiteData, showHistory, t]);
+  }, [isPc, datasetCiteData, showHistory, t]);
 
   return (
     <>

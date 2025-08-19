@@ -60,7 +60,7 @@ const OneRowSelector = ({ list, onChange, disableTip, ...props }: Props) => {
                 fallbackSrc={HUGGING_FACE_ICON}
               />
 
-              <Box>{modelData.name}</Box>
+              <Box noOfLines={1}>{modelData.name}</Box>
             </Flex>
           )
         };

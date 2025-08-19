@@ -38,11 +38,13 @@ const ChatHeader = ({
   showHistory,
   apps,
   totalRecordsCount,
+
   pane,
   chatSettings
 }: {
   pane: ChatSidebarPaneEnum;
   chatSettings: ChatSettingSchema | undefined;
+
   history: ChatItemType[];
   showHistory?: boolean;
   apps?: AppListItemType[];
@@ -51,13 +53,14 @@ const ChatHeader = ({
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const pathname = usePathname();
+  const { source } = useChatStore();
 
   const chatData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const isVariableVisible = useContextSelector(ChatItemContext, (v) => v.isVariableVisible);
 
   const isPlugin = chatData.app.type === AppTypeEnum.plugin;
   const isChat = pathname === '/chat';
-  const isShare = pathname === '/chat/share';
+  const isShare = source === 'share';
 
   return isPc && isPlugin ? null : (
     <Flex
