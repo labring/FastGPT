@@ -1,9 +1,9 @@
 import { i18nT } from '../../../../../../web/i18n/utils';
 import {
-  FlowNodeTemplateTypeEnum,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
-  WorkflowIOValueTypeEnum
+  WorkflowIOValueTypeEnum,
+  ToolTypeEnum
 } from '../../../constants';
 import {
   FlowNodeInputTypeEnum,
@@ -15,7 +15,7 @@ import { Output_Template_Error_Message } from '../../output';
 
 export const ReadFilesNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.readFiles,
-  templateType: FlowNodeTemplateTypeEnum.tools,
+  templateType: ToolTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.readFiles,
   showSourceHandle: true,
   showTargetHandle: true,

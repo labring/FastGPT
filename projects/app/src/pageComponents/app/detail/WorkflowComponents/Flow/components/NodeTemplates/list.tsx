@@ -45,6 +45,7 @@ import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workfl
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { WorkflowEventContext } from '../../../context/workflowEventContext';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import type { TGroupType } from '@fastgpt/service/core/app/plugin/type';
 
 export type TemplateListProps = {
   onAddNode: ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => void;
@@ -356,7 +357,22 @@ const NodeTemplateList = ({
           });
         }
 
-        const copy: NodeTemplateListType = cloneDeep(workflowNodeTemplateList).map((item) => ({
+        const extendedWorkflowNodeTemplateList = (() => {
+          const baseTypes = cloneDeep(workflowNodeTemplateList);
+
+          const systemPluginGroup = pluginGroups.find((group) => group.groupId === 'systemPlugin');
+          if (systemPluginGroup) {
+            const toolTypes = systemPluginGroup.groupTypes.map((type: TGroupType) => ({
+              type: type.typeId,
+              label: type.typeName
+            }));
+            return [...baseTypes, ...toolTypes];
+          }
+
+          return baseTypes;
+        })();
+
+        const copy: NodeTemplateListType = extendedWorkflowNodeTemplateList.map((item) => ({
           ...item,
           list: []
         }));

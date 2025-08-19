@@ -29,7 +29,8 @@ import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import {
   FlowNodeTemplateTypeEnum,
-  NodeInputKeyEnum
+  NodeInputKeyEnum,
+  ToolTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { APIGetSystemToolList } from '../tool/api';
@@ -241,7 +242,7 @@ export async function getChildAppPreviewNode({
         avatar: item.avatar,
         id: appId,
         name: tool.name,
-        templateType: FlowNodeTemplateTypeEnum.tools,
+        templateType: ToolTypeEnum.tools,
         workflow: {
           nodes: [
             getMCPToolRuntimeNode({

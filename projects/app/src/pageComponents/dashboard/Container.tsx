@@ -149,7 +149,7 @@ const DashboardContainer = ({
         groupName: t(group.groupName as any),
         children: group.groupTypes.map((type, index) => ({
           typeId: type.typeId,
-          typeName: t(type.typeName as any),
+          typeName: type.typeName,
           isActive: index === 0 && !currentType
         }))
       })),

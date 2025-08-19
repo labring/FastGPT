@@ -1,5 +1,6 @@
 import { i18nT } from '../../../web/i18n/utils';
 import type { JsonSchemaPropertiesItemType } from '../app/jsonschema';
+import { ToolTypeEnum, ToolTypeTranslations } from '@fastgpt-sdk/plugin';
 
 export enum FlowNodeTemplateTypeEnum {
   systemInput = 'systemInput',
@@ -7,23 +8,12 @@ export enum FlowNodeTemplateTypeEnum {
   function = 'function',
   interactive = 'interactive',
 
-  // System tool type
-  tools = 'tools',
-  search = 'search',
-  multimodal = 'multimodal',
-  communication = 'communication',
-  finance = 'finance',
-  design = 'design',
-  productivity = 'productivity',
-  news = 'news',
-  entertainment = 'entertainment',
-  social = 'social',
-  scientific = 'scientific',
-  other = 'other',
-
   // Team app type
   teamApp = 'teamApp'
 }
+
+// System tool type
+export { ToolTypeEnum, ToolTypeTranslations };
 
 export enum WorkflowIOValueTypeEnum {
   string = 'string',

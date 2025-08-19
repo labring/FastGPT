@@ -52,6 +52,9 @@ import { getNanoid } from '../../common/string/tools';
 import { ChatRoleEnum } from '../../core/chat/constants';
 import { runtimePrompt2ChatsValue } from '../../core/chat/adapt';
 import { getPluginRunContent } from '../../core/app/plugin/utils';
+import { ToolTypeTranslations } from '@fastgpt-sdk/plugin';
+import type { I18nStringType, localeType } from '../../common/i18n/type';
+import { parseI18nString } from '../../common/i18n/utils';
 
 export const getHandleId = (
   nodeId: string,
@@ -435,4 +438,27 @@ export const getPluginRunUserQuery = ({
       files
     })
   };
+};
+
+export const getToolTypeI18nString = (toolType: string): I18nStringType => {
+  const translations = ToolTypeTranslations[toolType as keyof typeof ToolTypeTranslations];
+
+  if (!translations) {
+    return { en: toolType };
+  }
+
+  return {
+    'zh-CN': translations['zh-CN'],
+    'zh-Hant': translations['zh-Hant'],
+    en: translations.en
+  };
+};
+
+export const getToolTypeName = (toolType: string, lang: localeType): string => {
+  if (!Object.keys(ToolTypeTranslations).includes(toolType)) {
+    return toolType;
+  }
+
+  const i18nString = getToolTypeI18nString(toolType);
+  return parseI18nString(i18nString, lang);
 };

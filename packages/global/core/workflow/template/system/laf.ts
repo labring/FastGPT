@@ -8,7 +8,7 @@ import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
-  FlowNodeTemplateTypeEnum
+  ToolTypeEnum
 } from '../../constants';
 import { Input_Template_DynamicInput } from '../input';
 import { Output_Template_AddOutput, Output_Template_Error_Message } from '../output';
@@ -22,7 +22,7 @@ export const nodeLafCustomInputConfig = {
 
 export const LafModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.lafModule,
-  templateType: FlowNodeTemplateTypeEnum.other,
+  templateType: ToolTypeEnum.other,
   flowNodeType: FlowNodeTypeEnum.lafModule,
   showSourceHandle: true,
   showTargetHandle: true,
