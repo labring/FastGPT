@@ -281,7 +281,7 @@ export const runToolWithPromptCall = async (
     });
 
     let startResponseWrite = false;
-    let answer = '';
+    let answerBuffer = '';
 
     const llmResponse = await createLLMResponse({
       requestBody,
@@ -299,7 +299,7 @@ export const runToolWithPromptCall = async (
             });
           },
           onStreaming({ responseContent, originContent }) {
-            answer += originContent;
+            answerBuffer += originContent;
 
             if (startResponseWrite) {
               if (responseContent) {
@@ -311,20 +311,22 @@ export const runToolWithPromptCall = async (
                   })
                 });
               }
-            } else if (answer.length >= 3) {
-              answer = answer.trimStart();
-              if (/0(:|：)/.test(answer)) {
+            } else if (answerBuffer.length >= 3) {
+              answerBuffer = answerBuffer.trimStart();
+              if (/0(:|：)/.test(answerBuffer)) {
                 startResponseWrite = true;
 
                 // find first : index
                 const firstIndex =
-                  answer.indexOf('0:') !== -1 ? answer.indexOf('0:') : answer.indexOf('0：');
-                answer = answer.substring(firstIndex + 2).trim();
+                  answerBuffer.indexOf('0:') !== -1
+                    ? answerBuffer.indexOf('0:')
+                    : answerBuffer.indexOf('0：');
+                answerBuffer = answerBuffer.substring(firstIndex + 2).trim();
                 workflowStreamResponse?.({
                   write,
                   event: SseResponseEventEnum.answer,
                   data: textAdaptGptResponse({
-                    text: answer
+                    text: answerBuffer
                   })
                 });
               }
