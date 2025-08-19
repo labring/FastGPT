@@ -11,6 +11,7 @@ import { useSystemStore } from '../system/useSystemStore';
 import { formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import type { OnOptimizePromptProps } from '@/components/common/PromptEditor/OptimizerPopover';
+import { OnOptimizeCodeProps } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderNodeCopilot/NodeCopilot';
 
 type StreamFetchProps = {
   url?: string;
@@ -288,6 +289,32 @@ export const onOptimizePrompt = async ({
       originalPrompt,
       optimizerInput: input,
       model
+    },
+    onMessage: ({ event, text }) => {
+      if (event === SseResponseEventEnum.answer && text) {
+        onResult(text);
+      }
+    },
+    abortCtrl: controller
+  });
+};
+
+export const onOptimizeCode = async ({
+  language,
+  optimizerInput,
+  model,
+  conversationHistory = [],
+  onResult,
+  abortController
+}: OnOptimizeCodeProps) => {
+  const controller = abortController || new AbortController();
+  await streamFetch({
+    url: '/api/core/ai/optimizeCode',
+    data: {
+      language,
+      optimizerInput,
+      model,
+      conversationHistory
     },
     onMessage: ({ event, text }) => {
       if (event === SseResponseEventEnum.answer && text) {

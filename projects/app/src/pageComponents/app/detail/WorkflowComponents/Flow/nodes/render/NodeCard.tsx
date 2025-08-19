@@ -41,6 +41,7 @@ import { formatToolError } from '@fastgpt/global/core/app/utils';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import SecretInputModal from '@/pageComponents/app/plugin/SecretInputModal';
+import NodeCopilot from './RenderNodeCopilot/NodeCopilot';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -52,6 +53,7 @@ type Props = FlowNodeItemType & {
   selected?: boolean;
   searchedText?: string;
   menuForbid?: {
+    copilot?: boolean;
     debug?: boolean;
     copy?: boolean;
     delete?: boolean;
@@ -452,9 +454,23 @@ const MenuRender = React.memo(function MenuRender({
   const { t } = useTranslation();
   const { openDebugNode, DebugInputModal } = useDebug();
 
+  const {
+    isOpen: isNodeCopilotOpen,
+    onOpen: onOpenNodeCopilot,
+    onClose: onCloseNodeCopilot
+  } = useDisclosure();
+
   const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
   const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
   const { computedNewNodeName } = useWorkflowUtils();
+
+  const currentNode = useMemo(() => {
+    return nodeList.find((node) => node.nodeId === nodeId);
+  }, [nodeList, nodeId]);
+
+  const isCodeNode = useMemo(() => {
+    return currentNode?.flowNodeType === FlowNodeTypeEnum.code;
+  }, [currentNode?.flowNodeType]);
 
   const onCopyNode = useCallback(
     (nodeId: string) => {
@@ -552,6 +568,16 @@ const MenuRender = React.memo(function MenuRender({
 
   const Render = useMemo(() => {
     const menuList = [
+      ...(menuForbid?.copilot || !isCodeNode
+        ? []
+        : [
+            {
+              icon: 'codeCopilot',
+              label: t('common:core.workflow.Copilot'),
+              variant: 'whiteBase',
+              onClick: () => onOpenNodeCopilot()
+            }
+          ]),
       ...(menuForbid?.debug
         ? []
         : [
@@ -616,9 +642,12 @@ const MenuRender = React.memo(function MenuRender({
           ))}
         </Box>
         <DebugInputModal />
+        {isNodeCopilotOpen && <NodeCopilot nodeId={nodeId} onClose={onCloseNodeCopilot} />}
       </>
     );
   }, [
+    menuForbid?.copilot,
+    isCodeNode,
     menuForbid?.debug,
     menuForbid?.copy,
     menuForbid?.delete,
@@ -627,7 +656,10 @@ const MenuRender = React.memo(function MenuRender({
     openDebugNode,
     nodeId,
     onCopyNode,
-    onDelNode
+    onDelNode,
+    onOpenNodeCopilot,
+    isNodeCopilotOpen,
+    onCloseNodeCopilot
   ]);
 
   return Render;
