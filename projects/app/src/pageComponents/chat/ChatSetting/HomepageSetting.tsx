@@ -110,7 +110,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
         selectedTools: values.selectedTools.map((tool) => ({
           pluginId: tool.pluginId,
           inputs: tool.inputs
-        }))
+        })) as unknown as ChatSettingSchema['selectedTools']
       });
     },
     {

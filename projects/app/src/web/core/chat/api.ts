@@ -34,6 +34,10 @@ import type {
   GetCollectionQuoteProps,
   GetCollectionQuoteRes
 } from '@/pages/api/core/chat/quote/getCollectionQuote';
+import type {
+  ChatFavouriteAppUpdateParams,
+  ChatFavouriteAppSchema
+} from '@fastgpt/global/core/chat/favouriteApp/type';
 
 /**
  * 获取初始化聊天内容
@@ -113,9 +117,24 @@ export const getCollectionQuote = (data: GetCollectionQuoteProps) =>
 
 /*---------- chat setting ------------*/
 export const getChatSetting = () => {
-  return GET<ChatSettingSchema>('/proApi/core/chat/setting/detail');
+  return GET<
+    Omit<ChatSettingSchema, 'categories'> & {
+      categories: (ChatSettingSchema['categories'][number] & { appIds: string[] })[];
+    }
+  >('/proApi/core/chat/setting/detail');
 };
 
 export const updateChatSetting = (data: ChatSettingUpdateParams) => {
   return POST<ChatSettingSchema>('/proApi/core/chat/setting/update', data);
+};
+
+export const getFavouriteApps = (data: { name?: string; category?: string }) => {
+  return GET<(ChatFavouriteAppSchema & { name: string; avatar: string; intro: string })[]>(
+    '/proApi/core/chat/setting/favourite/list',
+    data
+  );
+};
+
+export const updateAllFavouriteApp = (data: ChatFavouriteAppUpdateParams[]) => {
+  return POST<ChatFavouriteAppSchema[]>('/proApi/core/chat/setting/favourite/updateAll', data);
 };

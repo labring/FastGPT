@@ -966,12 +966,12 @@ const ChatBox = ({
     return (
       <ScrollData
         ScrollContainerRef={ScrollContainerRef}
-        flex={showHomeWelcome ? '0 0 50%' : '1 0 0'}
+        flex={showHomeWelcome ? ['0 0 38%', '0 0 42%'] : '1 0 0'}
         h={0}
         w={'100%'}
         overflow={'overlay'}
         px={[4, 0]}
-        pb={10}
+        pb={6}
       >
         <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
           {/* chat header */}

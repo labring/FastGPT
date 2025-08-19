@@ -26,7 +26,15 @@ const ChatSettingSchema = new Schema({
   },
   homeTabTitle: String,
   wideLogoUrl: String,
-  squareLogoUrl: String
+  squareLogoUrl: String,
+  quickApps: {
+    type: Array,
+    default: []
+  },
+  categories: {
+    type: Array,
+    default: []
+  }
 });
 
 ChatSettingSchema.index({ teamId: 1 });

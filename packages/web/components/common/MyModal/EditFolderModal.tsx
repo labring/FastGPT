@@ -30,7 +30,7 @@ const EditFolderModal = ({
 }) => {
   const { t } = useTranslation();
   const isEdit = !!id;
-  const { register, handleSubmit } = useForm<EditFolderFormType>({
+  const { registerSearchValue: register, handleSubmit } = useForm<EditFolderFormType>({
     defaultValues: {
       name,
       intro
