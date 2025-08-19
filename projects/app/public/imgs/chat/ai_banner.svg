@@ -1,0 +1,18 @@
+<svg width="147" height="36" xmlns="http://www.w3.org/2000/svg" fill="none">
+ <defs>
+  <linearGradient y2="1" x2="0" y1="0" x1="0" id="svg_13">
+   <stop stop-color="#326DFF"/>
+   <stop stop-color="#8EAEFF" offset="1"/>
+  </linearGradient>
+ </defs>
+ <g>
+  <title>background</title>
+  <rect fill="none" id="canvas_background" height="38" width="149" y="-1" x="-1"/>
+ </g>
+ <g>
+  <title>Layer 1</title>
+  <rect id="svg_1" fill="white" rx="8.625" height="35.25" width="35.25" y="0.375" x="0.375"/>
+  <rect id="svg_2" stroke-width="0.75" stroke="#ECECEC" rx="8.625" height="35.25" width="35.25" y="0.375" x="0.375"/>
+  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="24" id="svg_12" y="26.74999" x="7.677475" stroke-opacity="null" stroke-width="0" stroke="null" fill="url(#svg_13)">AI</text>
+ </g>
+</svg>

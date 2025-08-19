@@ -22,5 +22,5 @@ export enum ChatSettingTabOptionEnum {
   LOG_DETAILS = 'log_details'
 }
 
-export const DEFAULT_LOGO_BANNER_URL = '/imgs/chat/fastgpt_banner.svg';
-export const DEFAULT_LOGO_BANNER_COLLAPSED_URL = '/imgs/chat/fastgpt_banner_fold.svg';
+export const DEFAULT_LOGO_BANNER_URL = '/imgs/chat/ai_banner.svg';
+export const DEFAULT_LOGO_BANNER_COLLAPSED_URL = '/imgs/chat/ai_banner_fold.svg';
