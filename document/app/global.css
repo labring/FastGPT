@@ -1,6 +1,11 @@
 @import 'tailwindcss';
 @import 'fumadocs-ui/css/preset.css';
 
+@font-face {
+  font-family: 'Alef';
+  src: url('/fonts/Alef-Regular.ttf') format('truetype');
+}
+
 /* 在文件开头添加这些基础变量 */
 :root {
   /* 基础颜色 */
@@ -63,6 +68,7 @@ code {
   font-size: 1.0rem;
   font-weight: 400;
   line-height: 16px;
+  letter-spacing: 0.48px;
 }
 
 .dark pre,
@@ -79,7 +85,7 @@ pre code {
 }
 
 code span {
-  padding-left: 0;
+  padding-left: 0 !important;
 }
 
 /* 去除代码块内层边框 */
@@ -263,8 +269,8 @@ div[class*="bg-fd-card"]:has(button[aria-label='Copied Text']) {
 }
 
 /* 按钮内部样式 */
-div[class*="bg-fd-card"]:has(button[aria-label='Copy Text']) button[aria-label='Copy Text'],
-div[class*="bg-fd-card"]:has(button[aria-label='Copied Text']) button[aria-label='Copied Text']{
+button[aria-label='Copy Text'],
+button[aria-label='Copied Text'] {
   color: #818181;
   background-color: transparent;
   border: none;
@@ -274,10 +280,15 @@ div[class*="bg-fd-card"]:has(button[aria-label='Copied Text']) button[aria-label
   }
 }
 
-/* SVG 样式 */
-div[class*="bg-fd-card"]:has(button[aria-label='Copy Text']) button[aria-label='Copy Text'] svg,
-div[class*="bg-fd-card"]:has(button[aria-label='Copied Text']) button[aria-label='Copied Text'] svg {
-  background: transparent;
+button[aria-label='Copy Text'] svg {
+  display: none;
+}
+
+button[aria-label='Copy Text']::before {
+  content: '';
+  background-image: url('../public/copy.svg');
+  width: 18px;
+  height: 18px;
 }
 
 #nd-subnav > div:nth-of-type(1) button {
