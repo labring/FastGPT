@@ -14,10 +14,17 @@ import { Types } from 'mongoose';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatItemCollectionName } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { type ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
+import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+
+const formatJsonString = (data: any) => {
+  if (data == null) return '';
+  return JSON.stringify(data).replace(/\n/g, '\\n');
+};
 
 export type ExportChatLogsBody = GetAppChatLogsProps & {
   title: string;
@@ -42,7 +49,12 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     throw new Error('缺少参数');
   }
 
-  const { teamId } = await authApp({ req, authToken: true, appId, per: AppReadChatLogPerVal });
+  const { teamId, tmbId, app } = await authApp({
+    req,
+    authToken: true,
+    appId,
+    per: AppReadChatLogPerVal
+  });
 
   const teamMemberWithContact = await MongoTeamMember.aggregate([
     { $match: { teamId: new Types.ObjectId(teamId) } },
@@ -179,6 +191,35 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
         }
       },
       {
+        $lookup: {
+          from: ChatItemCollectionName,
+          let: { chatId: '$chatId' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$appId', new Types.ObjectId(appId)] },
+                    { $eq: ['$chatId', '$$chatId'] }
+                  ]
+                }
+              }
+            },
+            { $sort: { _id: 1 } },
+            {
+              $project: {
+                value: 1,
+                userGoodFeedback: 1,
+                userBadFeedback: 1,
+                customFeedbacks: 1,
+                adminFeedback: 1
+              }
+            }
+          ],
+          as: 'chatitems'
+        }
+      },
+      {
         $addFields: {
           messageCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.messageCount', 0] }, 0] },
           userGoodFeedbackCount: {
@@ -206,7 +247,45 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
             ]
           },
           errorCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.errorCount', 0] }, 0] },
-          totalPoints: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.totalPoints', 0] }, 0] }
+          totalPoints: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.totalPoints', 0] }, 0] },
+          userGoodFeedbackItems: {
+            $filter: {
+              input: '$chatitems',
+              as: 'item',
+              cond: { $ifNull: ['$$item.userGoodFeedback', false] }
+            }
+          },
+          userBadFeedbackItems: {
+            $filter: {
+              input: '$chatitems',
+              as: 'item',
+              cond: { $ifNull: ['$$item.userBadFeedback', false] }
+            }
+          },
+          customFeedbackItems: {
+            $filter: {
+              input: '$chatitems',
+              as: 'item',
+              cond: { $gt: [{ $size: { $ifNull: ['$$item.customFeedbacks', []] } }, 0] }
+            }
+          },
+          markItems: {
+            $filter: {
+              input: '$chatitems',
+              as: 'item',
+              cond: { $ifNull: ['$$item.adminFeedback', false] }
+            }
+          },
+          chatDetails: {
+            $map: {
+              input: { $slice: ['$chatitems', -1000] },
+              as: 'item',
+              in: {
+                id: '$$item._id',
+                value: '$$item.value'
+              }
+            }
+          }
         }
       },
       {
@@ -227,11 +306,18 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
           errorCount: 1,
           totalPoints: 1,
           outLinkUid: 1,
-          tmbId: 1
+          tmbId: 1,
+          userGoodFeedbackItems: 1,
+          userBadFeedbackItems: 1,
+          customFeedbackItems: 1,
+          markItems: 1,
+          chatDetails: 1
         }
       }
     ],
-    { ...readFromSecondary }
+    {
+      ...readFromSecondary
+    }
   ).cursor({ batchSize: 1000 });
 
   const write = responseWriteController({
@@ -254,7 +340,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
       ? doc.outLinkUid
       : teamMemberWithContact.find((member) => String(member.memberId) === String(doc.tmbId))?.name;
 
-    const valueMap: Partial<Record<AppLogKeysEnum, () => any>> = {
+    const valueMap: Record<string, () => any> = {
       [AppLogKeysEnum.SOURCE]: () => source,
       [AppLogKeysEnum.CREATED_TIME]: () => createdTime,
       [AppLogKeysEnum.LAST_CONVERSATION_TIME]: () => lastConversationTime,
@@ -263,21 +349,40 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
       [AppLogKeysEnum.SESSION_ID]: () => doc.id || '-',
       [AppLogKeysEnum.MESSAGE_COUNT]: () => doc.messageCount,
       [AppLogKeysEnum.FEEDBACK]: () => {
-        const good = doc.userGoodFeedbackCount || 0;
-        const bad = doc.userBadFeedbackCount || 0;
-        return `good: ${good}, bad: ${bad}`;
+        const goodItems = (doc.userGoodFeedbackItems || []).map((item: any) => ({
+          chatItemId: item._id,
+          feedback: item.userGoodFeedback
+        }));
+        const badItems = (doc.userBadFeedbackItems || []).map((item: any) => ({
+          chatItemId: item._id,
+          feedback: item.userBadFeedback
+        }));
+        return formatJsonString({ good: goodItems, bad: badItems });
       },
-      [AppLogKeysEnum.CUSTOM_FEEDBACK]: () => doc.customFeedbacksCount || 0,
-      [AppLogKeysEnum.ANNOTATED_COUNT]: () => doc.markCount || 0,
+      [AppLogKeysEnum.CUSTOM_FEEDBACK]: () => {
+        const customItems = (doc.customFeedbackItems || []).map((item: any) => ({
+          chatItemId: item._id,
+          feedbacks: item.customFeedbacks || []
+        }));
+        return formatJsonString(customItems);
+      },
+      [AppLogKeysEnum.ANNOTATED_COUNT]: () => {
+        const markItems = (doc.markItems || []).map((item: any) => ({
+          chatItemId: item._id,
+          feedback: item.adminFeedback
+        }));
+        return formatJsonString(markItems);
+      },
       [AppLogKeysEnum.RESPONSE_TIME]: () =>
         doc.averageResponseTime ? Number(doc.averageResponseTime).toFixed(2) : 0,
       [AppLogKeysEnum.ERROR_COUNT]: () => doc.errorCount || 0,
-      [AppLogKeysEnum.POINTS]: () => (doc.totalPoints ? Number(doc.totalPoints).toFixed(2) : 0)
+      [AppLogKeysEnum.POINTS]: () => (doc.totalPoints ? Number(doc.totalPoints).toFixed(2) : 0),
+      chatDetails: () => formatJsonString(doc.chatDetails || [])
     };
 
-    const row = logKeys
+    const row = [...logKeys, 'chatDetails']
       .map((key) => {
-        const getter = valueMap[key as AppLogKeysEnum];
+        const getter = valueMap[key];
         const val = getter ? getter() : '';
         return sanitizeCsvField(val ?? '');
       })
@@ -296,6 +401,18 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     res.status(500);
     res.end();
   });
+
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.EXPORT_APP_CHAT_LOG,
+      params: {
+        appName: app.name,
+        appType: getI18nAppType(app.type)
+      }
+    });
+  })();
 }
 
 export default NextAPI(

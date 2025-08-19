@@ -246,7 +246,7 @@ export const runToolWithToolChoice = async (
       type: 'function',
       function: {
         name: item.nodeId,
-        description: item.intro || item.name,
+        description: item.toolDescription || item.intro || item.name,
         parameters: {
           type: 'object',
           properties,

@@ -88,6 +88,7 @@ export async function rewriteAppWorkflowToDetail({
         node.isFolder = preview.isFolder;
 
         node.toolConfig = preview.toolConfig;
+        node.toolDescription = preview.toolDescription;
 
         // Latest version
         if (!node.version) {

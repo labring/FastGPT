@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "@fastgpt-sdk/plugin": "^0.1.8",
+    "@fastgpt-sdk/plugin": "^0.1.9",
     "@fastgpt/global": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.12.1",
     "@node-rs/jieba": "2.0.1",

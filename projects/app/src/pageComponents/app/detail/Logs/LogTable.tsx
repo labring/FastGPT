@@ -49,6 +49,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import dynamic from 'next/dynamic';
 import type { HeaderControlProps } from './LogChart';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
@@ -153,7 +154,7 @@ const LogTable = ({
           tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
           chatSearch,
 
-          title: headerTitle,
+          title: headerTitle + ',' + t('app:logs_keys_chatDetails'),
           logKeys: enabledKeys,
           sourcesMap: Object.fromEntries(
             Object.entries(ChatSourceMap).map(([key, config]) => [
@@ -196,9 +197,10 @@ const LogTable = ({
     Pagination,
     getData,
     pageNum,
-    total
+    total,
+    pageSize
   } = usePagination(getAppChatLogs, {
-    pageSize: 20,
+    defaultPageSize: 20,
     params,
     refreshDeps: [params]
   });
@@ -338,7 +340,7 @@ const LogTable = ({
   });
 
   return (
-    <Flex flexDir={'column'} h={'full'} overflow={'auto'} px={[4, 8]}>
+    <MyBox isLoading={isLoading} display={'flex'} flexDir={'column'} h={'full'} px={[4, 8]}>
       <Flex alignItems={'center'} gap={3} flexWrap={'wrap'}>
         {showSourceSelector && (
           <Flex>
@@ -465,7 +467,7 @@ const LogTable = ({
         />
       </Flex>
 
-      <TableContainer mt={[2, 4]} flex={['', '1 0 0']} h={['auto', 0]} overflowY={'auto'}>
+      <TableContainer mt={[2, 4]} flex={'1 0 0'} overflowY={'auto'}>
         <Table variant={'simple'} fontSize={'sm'}>
           <Thead>
             <Tr>
@@ -496,9 +498,11 @@ const LogTable = ({
         {logs.length === 0 && !isLoading && <EmptyTip text={t('app:logs_empty')}></EmptyTip>}
       </TableContainer>
 
-      <HStack w={'100%'} mt={3} justifyContent={'center'}>
-        <Pagination />
-      </HStack>
+      {total >= pageSize && (
+        <Flex mt={3} justifyContent={'center'}>
+          <Pagination />
+        </Flex>
+      )}
 
       {!!detailLogsId && (
         <DetailLogsModal
@@ -510,7 +514,7 @@ const LogTable = ({
           }}
         />
       )}
-    </Flex>
+    </MyBox>
   );
 };
 

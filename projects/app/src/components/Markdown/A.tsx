@@ -181,7 +181,7 @@ const A = ({
   showAnimation: boolean;
   [key: string]: any;
 }) => {
-  const content = useCreation(() => String(children), [children]);
+  const content = useMemo(() => (children === undefined ? '' : String(children)), [children]);
 
   // empty href link
   if (!props.href && typeof children?.[0] === 'string') {
@@ -203,7 +203,7 @@ const A = ({
     );
   }
 
-  return <Link {...props}>{children}</Link>;
+  return <Link {...props}>{content || props?.href}</Link>;
 };
 
 export default React.memo(A);

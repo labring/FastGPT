@@ -1,7 +1,5 @@
-import { getTmbInfoByTmbId } from '../../support/user/team/controller';
-import { getResourcePermission } from '../../support/permission/controller';
-import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
+import { authDatasetByTmbId } from '../../support/permission/dataset/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 // TODO: 需要优化成批量获取权限
 export const filterDatasetsByTmbId = async ({
@@ -11,26 +9,19 @@ export const filterDatasetsByTmbId = async ({
   datasetIds: string[];
   tmbId: string;
 }) => {
-  const { teamId, permission: tmbPer } = await getTmbInfoByTmbId({ tmbId });
-
-  // First get all permissions
   const permissions = await Promise.all(
     datasetIds.map(async (datasetId) => {
-      const role = await getResourcePermission({
-        teamId,
-        tmbId,
-        resourceId: datasetId,
-        resourceType: PerResourceTypeEnum.dataset
-      });
-
-      if (role === undefined) return false;
-
-      const datasetPer = new DatasetPermission({
-        role,
-        isOwner: tmbPer.isOwner
-      });
-
-      return datasetPer.hasReadPer;
+      try {
+        await authDatasetByTmbId({
+          tmbId,
+          datasetId,
+          per: ReadPermissionVal
+        });
+        return true;
+      } catch (error) {
+        console.log(`Dataset ${datasetId} access denied:`, error);
+        return false;
+      }
     })
   );
 

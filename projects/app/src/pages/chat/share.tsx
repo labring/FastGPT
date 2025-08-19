@@ -40,6 +40,7 @@ import { type AppSchema } from '@fastgpt/global/core/app/type';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
+import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -220,6 +221,8 @@ const OutLink = (props: Props) => {
   const RenderHistoryList = useMemo(() => {
     const Children = (
       <ChatHistorySlider
+        chatSettings={undefined}
+        pane={ChatSidebarPaneEnum.RECENTLY_USED_APPS}
         confirmClearText={t('common:core.chat.Confirm to clear share chat history')}
       />
     );
@@ -272,6 +275,8 @@ const OutLink = (props: Props) => {
                 {/* header */}
                 {showHead === '1' ? (
                   <ChatHeader
+                    chatSettings={undefined}
+                    pane={ChatSidebarPaneEnum.RECENTLY_USED_APPS}
                     history={chatRecords}
                     totalRecordsCount={totalRecordsCount}
                     showHistory={showHistory === '1'}

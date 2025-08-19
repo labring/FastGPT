@@ -95,13 +95,7 @@ const ListItem = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
                       }
                     });
                   } else {
-                    router.push({
-                      query: {
-                        ...router.query,
-                        appId: app._id
-                      }
-                    });
-                    handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS);
+                    handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, app._id);
                   }
                 }}
               >

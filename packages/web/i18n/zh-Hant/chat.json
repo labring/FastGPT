@@ -40,7 +40,7 @@
   "file_input": "檔案輸入",
   "file_input_tip": "可透過「外掛程式啟動」節點的「檔案連結」取得對應檔案的連結",
   "history_slider.home.title": "聊天",
-  "home.chat_app": "首页聊天-{{name}}",
+  "home.chat_app": "首页聊天",
   "home.chat_id": "會話ID",
   "home.no_available_tools": "暫無可用工具",
   "home.select_tools": "選擇工具",

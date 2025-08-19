@@ -173,6 +173,17 @@ export const loadSystemModels = async (init = false) => {
       const providerB = getModelProvider(b.provider);
       return providerA.order - providerB.order;
     });
+    global.systemActiveDesensitizedModels = global.systemActiveModelList.map((model) => ({
+      ...model,
+      defaultSystemChatPrompt: undefined,
+      fieldMap: undefined,
+      defaultConfig: undefined,
+      weight: undefined,
+      dbConfig: undefined,
+      queryConfig: undefined,
+      requestUrl: undefined,
+      requestAuth: undefined
+    })) as SystemModelItemType[];
 
     console.log(
       `Load models success, total: ${global.systemModelList.length}, active: ${global.systemActiveModelList.length}`,

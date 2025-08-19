@@ -549,25 +549,37 @@ const Checkbox = checkBoxMultiStyle({
   sizes: {
     sm: checkBoxPart({
       control: {
-        width: '18px',
-        height: '18px',
+        width: '16px',
+        height: '16px',
         borderWidth: '2px'
+      },
+      icon: {
+        fontSize: '10px'
       }
     }),
     md: checkBoxPart({
       control: {
-        width: '20px',
-        height: '20px',
+        width: '18px',
+        height: '18px',
         borderWidth: '2px'
+      },
+      icon: {
+        fontSize: '12px'
       }
     }),
     lg: checkBoxPart({
       control: {
-        width: '24px',
-        height: '24px',
+        width: '20px',
+        height: '20px',
         borderWidth: '2px'
+      },
+      icon: {
+        fontSize: '14px'
       }
     })
+  },
+  defaultProps: {
+    size: 'sm'
   }
 });
 

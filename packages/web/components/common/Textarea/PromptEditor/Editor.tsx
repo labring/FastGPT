@@ -6,7 +6,7 @@
  *
  */
 
-import { useState, useTransition } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -14,7 +14,7 @@ import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
 import VariableLabelPickerPlugin from './plugins/VariableLabelPickerPlugin';
-import { Box } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import styles from './index.module.scss';
 import VariablePlugin from './plugins/VariablePlugin';
 import { VariableNode } from './plugins/VariablePlugin/node';
@@ -32,36 +32,47 @@ import VariableLabelPlugin from './plugins/VariableLabelPlugin';
 import { useDeepCompareEffect } from 'ahooks';
 import VariablePickerPlugin from './plugins/VariablePickerPlugin';
 
+export type EditorProps = {
+  variables?: EditorVariablePickerType[];
+  variableLabels?: EditorVariableLabelPickerType[];
+  value?: string;
+  showOpenModal?: boolean;
+  minH?: number;
+  maxH?: number;
+  maxLength?: number;
+  placeholder?: string;
+  isInvalid?: boolean;
+
+  ExtensionPopover?: ((e: {
+    onChangeText: (text: string) => void;
+    iconButtonStyle: Record<string, any>;
+  }) => React.ReactNode)[];
+};
+
 export default function Editor({
   minH = 200,
   maxH = 400,
   maxLength,
   showOpenModal = true,
   onOpenModal,
-  variables,
-  variableLabels,
+  variables = [],
+  variableLabels = [],
   onChange,
+  onChangeText,
   onBlur,
   value,
   placeholder = '',
   bg = 'white',
+  isInvalid,
 
-  isInvalid
-}: {
-  minH?: number;
-  maxH?: number;
-  maxLength?: number;
-  showOpenModal?: boolean;
-  onOpenModal?: () => void;
-  variables: EditorVariablePickerType[];
-  variableLabels: EditorVariableLabelPickerType[];
-  onChange?: (editorState: EditorState, editor: LexicalEditor) => void;
-  onBlur?: (editor: LexicalEditor) => void;
-  value?: string;
-  placeholder?: string;
-
-  isInvalid?: boolean;
-} & FormPropsType) {
+  ExtensionPopover
+}: EditorProps &
+  FormPropsType & {
+    onOpenModal?: () => void;
+    onChange: (editorState: EditorState, editor: LexicalEditor) => void;
+    onChangeText?: ((text: string) => void) | undefined;
+    onBlur: (editor: LexicalEditor) => void;
+  }) {
   const [key, setKey] = useState(getNanoid(6));
   const [_, startSts] = useTransition();
   const [focus, setFocus] = useState(false);
@@ -80,6 +91,28 @@ export default function Editor({
     if (focus) return;
     setKey(getNanoid(6));
   }, [value, variables, variableLabels]);
+
+  const showFullScreenIcon = useMemo(() => {
+    return showOpenModal && scrollHeight > maxH;
+  }, [showOpenModal, scrollHeight, maxH]);
+
+  const iconButtonStyle = useMemo(
+    () => ({
+      position: 'absolute' as const,
+      bottom: 1,
+      right: showFullScreenIcon ? '34px' : 2,
+      zIndex: 10,
+      cursor: 'pointer',
+      borderRadius: '6px',
+      background: 'rgba(255, 255, 255, 0.01)',
+      backdropFilter: 'blur(6.6666669845581055px)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      w: 6,
+      h: 6
+    }),
+    [showFullScreenIcon]
+  );
 
   return (
     <Box
@@ -146,17 +179,15 @@ export default function Editor({
         <VariablePickerPlugin variables={variableLabels.length > 0 ? [] : variables} />
         <OnBlurPlugin onBlur={onBlur} />
       </LexicalComposer>
-      {showOpenModal && scrollHeight > maxH && (
-        <Box
-          zIndex={10}
-          position={'absolute'}
-          bottom={-1}
-          right={2}
-          cursor={'pointer'}
-          onClick={onOpenModal}
-        >
-          <MyIcon name={'common/fullScreenLight'} w={'14px'} color={'myGray.500'} />
-        </Box>
+
+      {onChangeText &&
+        ExtensionPopover?.map((Item, index) => (
+          <Item key={index} iconButtonStyle={iconButtonStyle} onChangeText={onChangeText} />
+        ))}
+      {showFullScreenIcon && (
+        <Flex onClick={onOpenModal} {...iconButtonStyle} right={2}>
+          <MyIcon name={'common/fullScreenLight'} w={'1rem'} color={'myGray.500'} />
+        </Flex>
       )}
     </Box>
   );

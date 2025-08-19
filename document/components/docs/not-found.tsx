@@ -3,13 +3,14 @@ import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
 const exactMap: Record<string, string> = {
+  '/docs': '/docs/introduction',
   '/docs/intro': '/docs/introduction',
   '/docs/guide/dashboard/workflow/coreferenceresolution':
     '/docs/introduction/guide/dashboard/workflow/coreferenceResolution',
   '/docs/guide/admin/sso_dingtalk':
     '/docs/introduction/guide/admin/sso#/docs/introduction/guide/admin/sso#钉钉',
   '/docs/guide/knowledge_base/rag': '/docs/introduction/guide/knowledge_base/RAG',
-  '/docs/commercial/intro/': '/docs/introduction',
+  '/docs/commercial/intro/': '/docs/introduction/commercial',
   '/docs/upgrading/intro/': '/docs/upgrading',
   '/docs/introduction/shopping_cart/intro/': '/docs/introduction/commercial'
 };

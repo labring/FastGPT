@@ -32,14 +32,15 @@ const InvoiceTable = () => {
     data: invoices,
     isLoading,
     Pagination,
-    total
+    total,
+    pageSize
   } = usePagination(getInvoiceRecords, {
-    pageSize: 20
+    defaultPageSize: 10
   });
 
   return (
-    <MyBox isLoading={isLoading} position={'relative'} h={'100%'} overflow={'overlay'}>
-      <TableContainer minH={'50vh'}>
+    <MyBox isLoading={isLoading} position={'relative'} minH={'50vh'} overflow={'overlay'}>
+      <TableContainer>
         <Table>
           <Thead h="3rem">
             <Tr>
@@ -101,11 +102,6 @@ const InvoiceTable = () => {
             ))}
           </Tbody>
         </Table>
-        {total >= 20 && (
-          <Flex mt={3} justifyContent={'flex-end'}>
-            <Pagination />
-          </Flex>
-        )}
         {!isLoading && invoices.length === 0 && (
           <Flex
             mt={'20vh'}
@@ -120,6 +116,11 @@ const InvoiceTable = () => {
           </Flex>
         )}
       </TableContainer>
+      {total >= pageSize && (
+        <Flex mt={3} justifyContent={'center'}>
+          <Pagination />
+        </Flex>
+      )}
       {!!invoiceDetailData && (
         <InvoiceDetailModal invoice={invoiceDetailData} onClose={() => setInvoiceDetailData('')} />
       )}

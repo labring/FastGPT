@@ -57,7 +57,7 @@ const MyModal = ({
       closeOnOverlayClick={closeOnOverlayClick}
       returnFocusOnClose={false}
     >
-      <ModalOverlay />
+      <ModalOverlay zIndex={props.zIndex} />
       <ModalContent
         w={w}
         minW={['90vw', '400px']}
@@ -65,6 +65,9 @@ const MyModal = ({
         position={'relative'}
         maxH={'85vh'}
         boxShadow={'7'}
+        containerProps={{
+          zIndex: props.zIndex
+        }}
         {...props}
       >
         {!title && onClose && showCloseButton && <ModalCloseButton zIndex={1} />}

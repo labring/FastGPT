@@ -37,6 +37,7 @@ export type WorkflowTemplateType = {
   avatar: string;
   name: I18nStringType | string;
   intro?: I18nStringType | string;
+  toolDescription?: string;
 
   author?: string;
   courseUrl?: string;

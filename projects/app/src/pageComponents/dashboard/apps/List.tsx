@@ -37,6 +37,7 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
 
 const ListItem = () => {
@@ -193,7 +194,10 @@ const ListItem = () => {
                   } else if (app.permission.hasWritePer || app.permission.hasReadChatLogPer) {
                     router.push(`/app/detail?appId=${app._id}`);
                   } else {
-                    window.open(`/chat?appId=${app._id}`, '_blank');
+                    window.open(
+                      `/chat?appId=${app._id}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`,
+                      '_blank'
+                    );
                   }
                 }}
                 {...getBoxProps({
@@ -271,7 +275,10 @@ const ListItem = () => {
                                         type: 'grayBg' as MenuItemType,
                                         label: t('app:go_to_chat'),
                                         onClick: () => {
-                                          window.open(`/chat?appId=${app._id}`, '_blank');
+                                          window.open(
+                                            `/chat?appId=${app._id}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`,
+                                            '_blank'
+                                          );
                                         }
                                       }
                                     ]
@@ -287,7 +294,10 @@ const ListItem = () => {
                                         type: 'grayBg' as MenuItemType,
                                         label: t('app:go_to_run'),
                                         onClick: () => {
-                                          window.open(`/chat?appId=${app._id}`, '_blank');
+                                          window.open(
+                                            `/chat?appId=${app._id}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`,
+                                            '_blank'
+                                          );
                                         }
                                       }
                                     ]

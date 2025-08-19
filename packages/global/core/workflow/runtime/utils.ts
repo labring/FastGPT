@@ -252,6 +252,7 @@ export const storeNodes2RuntimeNodes = (
         name: node.name,
         avatar: node.avatar,
         intro: node.intro,
+        toolDescription: node.toolDescription,
         flowNodeType: node.flowNodeType,
         showStatus: node.showStatus,
         isEntry: entryNodeIds.includes(node.nodeId),
@@ -467,27 +468,63 @@ export const formatVariableValByType = (val: any, valueType?: WorkflowIOValueTyp
 
   return val;
 };
+
 // replace {{$xx.xx$}} variables for text
 export function replaceEditorVariable({
   text,
   nodes,
-  variables
+  variables,
+  depth = 0
 }: {
   text: any;
   nodes: RuntimeNodeItemType[];
   variables: Record<string, any>; // global variables
+  depth?: number;
 }) {
   if (typeof text !== 'string') return text;
+  if (text === '') return text;
+
+  const MAX_REPLACEMENT_DEPTH = 10;
+  const processedVariables = new Set<string>();
+
+  // Prevent infinite recursion
+  if (depth > MAX_REPLACEMENT_DEPTH) {
+    return text;
+  }
 
   text = replaceVariable(text, variables);
+
+  // Check for circular references in variable values
+  const hasCircularReference = (value: any, targetKey: string): boolean => {
+    if (typeof value !== 'string') return false;
+
+    // Check if the value contains the target variable pattern (direct self-reference)
+    const selfRefPattern = new RegExp(
+      `\\{\\{\\$${targetKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\$\\}\\}`,
+      'g'
+    );
+    return selfRefPattern.test(value);
+  };
 
   const variablePattern = /\{\{\$([^.]+)\.([^$]+)\$\}\}/g;
   const matches = [...text.matchAll(variablePattern)];
   if (matches.length === 0) return text;
 
-  matches.forEach((match) => {
+  let result = text;
+  let hasReplacements = false;
+
+  // Build replacement map first to avoid modifying string during iteration
+  const replacements: Array<{ pattern: string; replacement: string }> = [];
+
+  for (const match of matches) {
     const nodeId = match[1];
     const id = match[2];
+    const variableKey = `${nodeId}.${id}`;
+
+    // Skip if already processed to avoid immediate circular reference
+    if (processedVariables.has(variableKey)) {
+      continue;
+    }
 
     const variableVal = (() => {
       if (nodeId === VARIABLE_NODE_ID) {
@@ -505,13 +542,35 @@ export function replaceEditorVariable({
       if (input) return getReferenceVariableValue({ value: input.value, nodes, variables });
     })();
 
-    const formatVal = valToStr(variableVal);
+    // Check for direct circular reference
+    if (hasCircularReference(String(variableVal), variableKey)) {
+      continue;
+    }
 
-    const regex = new RegExp(`\\{\\{\\$(${nodeId}\\.${id})\\$\\}\\}`, 'g');
-    text = text.replace(regex, () => formatVal);
+    const formatVal = valToStr(variableVal);
+    const escapedNodeId = nodeId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapedId = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    replacements.push({
+      pattern: `\\{\\{\\$(${escapedNodeId}\\.${escapedId})\\$\\}\\}`,
+      replacement: formatVal
+    });
+
+    processedVariables.add(variableKey);
+    hasReplacements = true;
+  }
+
+  // Apply all replacements
+  replacements.forEach(({ pattern, replacement }) => {
+    result = result.replace(new RegExp(pattern, 'g'), replacement);
   });
 
-  return text || '';
+  // If we made replacements and there might be nested variables, recursively process
+  if (hasReplacements && /\{\{\$[^.]+\.[^$]+\$\}\}/.test(result)) {
+    result = replaceEditorVariable({ text: result, nodes, variables, depth: depth + 1 });
+  }
+
+  return result || '';
 }
 
 export const textAdaptGptResponse = ({

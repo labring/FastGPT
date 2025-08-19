@@ -43,7 +43,7 @@ const Promotion = () => {
     pageSize,
     Pagination
   } = usePagination(getPromotionRecords, {
-    pageSize: 20
+    defaultPageSize: 20
   });
 
   const { data: { invitedAmount = 0, earningsAmount = 0 } = {} } = useQuery(
@@ -131,7 +131,7 @@ const Promotion = () => {
             <EmptyTip text={t('account_promotion:no_invite_records')}></EmptyTip>
           )}
           {total > pageSize && (
-            <Flex mt={4} justifyContent={'flex-end'}>
+            <Flex mt={3} justifyContent={'center'}>
               <Pagination />
             </Flex>
           )}

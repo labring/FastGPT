@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useTransition } from 'react';
+import React, { useCallback, useEffect, useMemo, useTransition } from 'react';
 import {
   Box,
   Flex,
@@ -31,6 +31,8 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from './components/ToolSelect';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -69,6 +71,7 @@ const EditForm = ({
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
+  const { llmModelList, defaultModels } = useSystemStore();
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -125,6 +128,27 @@ const EditForm = ({
       }));
     }
   }, [selectedModel, setAppForm]);
+
+  const OptimizerPopverComponent = useCallback(
+    ({ iconButtonStyle }: { iconButtonStyle: Record<string, any> }) => {
+      return (
+        <OptimizerPopover
+          iconButtonStyle={iconButtonStyle}
+          defaultPrompt={appForm.aiSettings.systemPrompt}
+          onChangeText={(e) => {
+            setAppForm((state) => ({
+              ...state,
+              aiSettings: {
+                ...state.aiSettings,
+                systemPrompt: e
+              }
+            }));
+          }}
+        />
+      );
+    },
+    [appForm.aiSettings.systemPrompt, setAppForm]
+  );
 
   return (
     <>
@@ -196,6 +220,7 @@ const EditForm = ({
                 variables={formatVariables}
                 placeholder={t('common:core.app.tip.systemPromptTip')}
                 title={t('common:core.ai.Prompt')}
+                ExtensionPopover={[OptimizerPopverComponent]}
               />
             </Box>
           </Box>

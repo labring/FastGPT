@@ -56,6 +56,7 @@ export type FlowNodeCommonType = {
   avatar?: string;
   name: string;
   intro?: string; // template list intro
+  toolDescription?: string;
   showStatus?: boolean; // chatting response step status
 
   version?: string;

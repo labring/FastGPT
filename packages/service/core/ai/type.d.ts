@@ -41,5 +41,6 @@ declare global {
   var reRankModelMap: Map<string, RerankModelItemType>;
 
   var systemActiveModelList: SystemModelItemType[];
+  var systemActiveDesensitizedModels: SystemModelItemType[];
   var systemDefaultModel: SystemDefaultModelType;
 }

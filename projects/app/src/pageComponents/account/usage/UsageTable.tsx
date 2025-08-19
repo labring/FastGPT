@@ -68,7 +68,7 @@ const UsageTableList = ({
     Pagination,
     total
   } = usePagination(getUserUsages, {
-    pageSize: 20,
+    defaultPageSize: 20,
     params: requestParams,
     refreshDeps: [requestParams]
   });
@@ -111,7 +111,7 @@ const UsageTableList = ({
   );
 
   return (
-    <>
+    <MyBox display={'flex'} flexDirection={'column'} h={'100%'} isLoading={isLoading}>
       <Box>{Tabs}</Box>
       <Flex mt={4} w={'100%'}>
         <Box>{Selectors}</Box>
@@ -123,54 +123,46 @@ const UsageTableList = ({
           onConfirm={exportUsage}
         />
       </Flex>
-      <MyBox mt={3} flex={'1 0 0'} h={0} isLoading={isLoading}>
-        <Box h={'100%'} overflow={'auto'}>
-          <TableContainer>
-            <Table>
-              <Thead>
-                <Tr>
-                  <Th>{t('common:user.Time')}</Th>
-                  <Th>{t('account_usage:member')}</Th>
-                  <Th>{t('account_usage:user_type')}</Th>
-                  <Th>{t('account_usage:project_name')}</Th>
-                  <Th>{t('account_usage:total_points')}</Th>
-                  <Th></Th>
-                </Tr>
-              </Thead>
-              <Tbody fontSize={'sm'}>
-                {usages.map((item) => (
-                  <Tr key={item.id}>
-                    <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm:ss')}</Td>
-                    <Td>
-                      <Flex alignItems={'center'} color={'myGray.500'}>
-                        <Avatar src={item.sourceMember.avatar} w={'20px'} mr={1} rounded={'full'} />
-                        {item.sourceMember.name}
-                      </Flex>
-                    </Td>
-                    <Td>{t(UsageSourceMap[item.source]?.label as any) || '-'}</Td>
-                    <Td className="textEllipsis" maxW={'400px'} title={t(item.appName as any)}>
-                      {t(item.appName as any) || '-'}
-                    </Td>
-                    <Td>{formatNumber(item.totalPoints) || 0}</Td>
-                    <Td>
-                      <Button
-                        size={'sm'}
-                        variant={'whitePrimary'}
-                        onClick={() => setUsageDetail(item)}
-                      >
-                        {t('account_usage:details')}
-                      </Button>
-                    </Td>
-                  </Tr>
-                ))}
-              </Tbody>
-            </Table>
-            {!isLoading && usages.length === 0 && (
-              <EmptyTip text={t('account_usage:no_usage_records')}></EmptyTip>
-            )}
-          </TableContainer>
-        </Box>
-      </MyBox>
+      <TableContainer mt={3} flex={'1 0 0'} h={0} overflowY={'auto'}>
+        <Table>
+          <Thead>
+            <Tr>
+              <Th>{t('common:user.Time')}</Th>
+              <Th>{t('account_usage:member')}</Th>
+              <Th>{t('account_usage:user_type')}</Th>
+              <Th>{t('account_usage:project_name')}</Th>
+              <Th>{t('account_usage:total_points')}</Th>
+              <Th></Th>
+            </Tr>
+          </Thead>
+          <Tbody fontSize={'sm'}>
+            {usages.map((item) => (
+              <Tr key={item.id}>
+                <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm:ss')}</Td>
+                <Td>
+                  <Flex alignItems={'center'} color={'myGray.500'}>
+                    <Avatar src={item.sourceMember.avatar} w={'20px'} mr={1} rounded={'full'} />
+                    {item.sourceMember.name}
+                  </Flex>
+                </Td>
+                <Td>{t(UsageSourceMap[item.source]?.label as any) || '-'}</Td>
+                <Td className="textEllipsis" maxW={'400px'} title={t(item.appName as any)}>
+                  {t(item.appName as any) || '-'}
+                </Td>
+                <Td>{formatNumber(item.totalPoints) || 0}</Td>
+                <Td>
+                  <Button size={'sm'} variant={'whitePrimary'} onClick={() => setUsageDetail(item)}>
+                    {t('account_usage:details')}
+                  </Button>
+                </Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+        {!isLoading && usages.length === 0 && (
+          <EmptyTip text={t('account_usage:no_usage_records')}></EmptyTip>
+        )}
+      </TableContainer>
       <Flex mt={3} justifyContent={'center'}>
         <Pagination />
       </Flex>
@@ -178,7 +170,7 @@ const UsageTableList = ({
       {!!usageDetail && (
         <UsageDetail usage={usageDetail} onClose={() => setUsageDetail(undefined)} />
       )}
-    </>
+    </MyBox>
   );
 };
 

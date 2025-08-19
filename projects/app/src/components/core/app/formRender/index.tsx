@@ -73,6 +73,7 @@ const InputRender = (props: InputRenderProps) => {
           maxLength={props.maxLength}
           minH={100}
           maxH={300}
+          ExtensionPopover={props.ExtensionPopover}
         />
       );
     }

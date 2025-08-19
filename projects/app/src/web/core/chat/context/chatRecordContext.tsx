@@ -77,8 +77,6 @@ const ChatRecordContextProvider = ({
         scrollToBottom();
       }
 
-      setIsChatRecordsLoaded(true);
-
       return {
         ...res,
         list: res.list.map((item) => ({
@@ -93,7 +91,10 @@ const ChatRecordContextProvider = ({
       refreshDeps: [params],
       params,
       scrollLoadType: 'top',
-      showErrorToast: false
+      showErrorToast: false,
+      onFinally() {
+        setIsChatRecordsLoaded(true);
+      }
     }
   );
 

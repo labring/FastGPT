@@ -77,8 +77,6 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const { llmModelList, defaultModels, feConfigs } = useSystemStore();
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
-  const onHomeClick = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
-
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
@@ -89,7 +87,9 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
 
+  const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
   const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
+  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
@@ -105,6 +105,10 @@ const HomeChatWindow = ({ myApps }: Props) => {
     const modelData = getModelFromList(llmModelList, selectedModel || '');
     return modelData?.avatar || HUGGING_FACE_ICON;
   }, [selectedModel, llmModelList]);
+  const selectedModelButtonLabel = useMemo(() => {
+    const modelData = availableModels.find((model) => model.value === selectedModel);
+    return modelData?.label || selectedModel;
+  }, [selectedModel, availableModels]);
 
   const availableTools = useMemo(
     () => chatSettings?.selectedTools || [],
@@ -121,16 +125,16 @@ const HomeChatWindow = ({ myApps }: Props) => {
   }, [availableTools, selectedToolIds]);
   // If selected ToolIds not in availableTools, Remove it
   useEffect(() => {
-    if (availableTools.length === 0) return;
+    if (!chatSettings?.selectedTools) return;
     setSelectedToolIds(
       selectedToolIds.filter((id) => availableTools.some((tool) => tool.pluginId === id))
     );
-  }, [availableTools]);
+  }, [availableTools, chatSettings?.selectedTools]);
 
   // 初始化聊天数据
   const { loading } = useRequest2(
     async () => {
-      if (!appId || forbidLoadChat.current) return;
+      if (!appId || forbidLoadChat.current || !feConfigs?.isPlus) return;
 
       const modelData = getWebLLMModel(selectedModel);
       const res = await getInitChatInfo({ appId, chatId });
@@ -167,13 +171,20 @@ const HomeChatWindow = ({ myApps }: Props) => {
       errorToast: '',
       onFinally() {
         forbidLoadChat.current = false;
+      },
+      onError() {
+        if (feConfigs.isPlus) {
+          handlePaneChange(ChatSidebarPaneEnum.HOME);
+        } else {
+          handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
+        }
       }
     }
   );
 
   useMount(() => {
     if (!feConfigs?.isPlus) {
-      onHomeClick(ChatSidebarPaneEnum.RECENTLY_USED_APPS);
+      handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
     }
   });
 
@@ -217,7 +228,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
           variables,
           responseChatItemId,
           appId,
-          appName: t('chat:home.chat_app', { name: 'FastGPT' }),
+          appName: t('chat:home.chat_app'),
           chatId,
           ...form2AppWorkflow(formData, t)
         },
@@ -253,9 +264,9 @@ const HomeChatWindow = ({ myApps }: Props) => {
             value={selectedModel}
             maxW={['114px', 'fit-content']}
             valueLabel={
-              <Flex className="textEllipsis" maxW={['74px', '100%']} alignItems={'center'} gap={1}>
+              <Flex maxW={['74px', '100%']} alignItems={'center'} gap={1}>
                 {isPc && <Avatar src={selectedModelAvatar} w={4} h={4} />}
-                <Box>{selectedModel}</Box>
+                <Box className="textEllipsis">{selectedModelButtonLabel}</Box>
               </Flex>
             }
             onChange={async (model) => {
@@ -351,7 +362,8 @@ const HomeChatWindow = ({ myApps }: Props) => {
       setSelectedToolIds,
       setChatBoxData,
       isPc,
-      selectedModelAvatar
+      selectedModelAvatar,
+      selectedModelButtonLabel
     ]
   );
 
@@ -366,6 +378,9 @@ const HomeChatWindow = ({ myApps }: Props) => {
           <ChatHistorySlider
             customSliderTitle={t('chat:history_slider.home.title')}
             confirmClearText={t('common:core.chat.Confirm to clear history')}
+            pane={pane}
+            chatSettings={chatSettings}
+            onPaneChange={handlePaneChange}
           />
         </SideBar>
       ) : (
@@ -381,6 +396,9 @@ const HomeChatWindow = ({ myApps }: Props) => {
             <ChatHistorySlider
               customSliderTitle={t('chat:history_slider.home.title')}
               confirmClearText={t('common:core.chat.Confirm to clear history')}
+              pane={pane}
+              chatSettings={chatSettings}
+              onPaneChange={handlePaneChange}
             />
           </DrawerContent>
         </Drawer>
@@ -395,39 +413,23 @@ const HomeChatWindow = ({ myApps }: Props) => {
         flexDirection={'column'}
       >
         {isPc ? (
-          chatRecords.length > 0 && (
+          chatBoxData?.title && (
             <Flex
-              py={4}
+              py={3}
               bg="white"
               fontWeight={500}
-              color="myGray.900"
+              color="myGray.600"
               alignItems="center"
               justifyContent="center"
-              position="relative"
-              h="56px"
               borderBottom="sm"
             >
-              <MyPopover
-                trigger="hover"
-                placement="bottom"
-                Trigger={
-                  <Flex
-                    flex="1"
-                    textAlign="center"
-                    cursor="pointer"
-                    alignItems="center"
-                    justifyContent="center"
-                  >
-                    {chatBoxData?.title}
-                  </Flex>
-                }
-              >
-                {() => `${t('chat:home.chat_id')}：${chatBoxData?.chatId}`}
-              </MyPopover>
+              {chatBoxData?.title}
             </Flex>
           )
         ) : (
           <ChatHeader
+            pane={pane}
+            chatSettings={chatSettings}
             showHistory
             apps={myApps}
             history={chatRecords}

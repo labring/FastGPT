@@ -10,14 +10,16 @@ import {
   Td,
   Tbody,
   MenuButton,
-  Switch
+  Switch,
+  Checkbox,
+  HStack,
+  Button
 } from '@chakra-ui/react';
 import {
   delDatasetCollectionById,
   putDatasetCollectionById,
   postLinkCollectionSync
 } from '@/web/core/dataset/api';
-import { useQuery } from '@tanstack/react-query';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -49,6 +51,7 @@ import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import TagsPopOver from './TagsPopOver';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import TrainingStates from './TrainingStates';
+import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 
 const Header = dynamic(() => import('./Header'));
 const EmptyCollectionTip = dynamic(() => import('./EmptyCollectionTip'));
@@ -103,6 +106,19 @@ const CollectionCard = () => {
     [collections, t]
   );
 
+  const {
+    selectedItems,
+    toggleSelect,
+    isSelected,
+    setSelectedItems,
+    FloatingActionBar,
+    isSelecteAll,
+    selectAllTrigger
+  } = useTableMultipleSelect({
+    list: formatCollections,
+    getItemId: (e) => e._id
+  });
+
   const [moveCollectionData, setMoveCollectionData] = useState<{ collectionId: string }>();
 
   const { onOpenModal: onOpenEditTitleModal, EditModal: EditTitleModal } = useEditTitle({
@@ -123,9 +139,9 @@ const CollectionCard = () => {
     type: 'delete'
   });
   const { runAsync: onDelCollection } = useRequest2(
-    (collectionId: string) => {
+    (collectionIds: string[]) => {
       return delDatasetCollectionById({
-        id: collectionId
+        collectionIds
       });
     },
     {
@@ -156,18 +172,17 @@ const CollectionCard = () => {
     [formatCollections]
   );
 
-  useQuery(
-    ['refreshCollection'],
-    () => {
+  useRequest2(
+    async () => {
+      if (!hasTrainingData && datasetDetail.status === DatasetStatusEnum.active) return;
       getData(pageNum);
       if (datasetDetail.status !== DatasetStatusEnum.active) {
         loadDatasetDetail(datasetDetail._id);
       }
-      return null;
     },
     {
-      refetchInterval: 6000,
-      enabled: hasTrainingData || datasetDetail.status !== DatasetStatusEnum.active
+      retryInterval: 6000,
+      refreshDeps: [hasTrainingData, datasetDetail.status]
     }
   );
 
@@ -186,21 +201,25 @@ const CollectionCard = () => {
     }
   });
 
-  const isLoading =
-    isUpdating || isSyncing || (isGetting && collections.length === 0) || isDropping;
+  const isLoading = isUpdating || isSyncing || isGetting || isDropping;
 
   return (
-    <MyBox isLoading={isLoading} h={'100%'} py={[2, 4]}>
+    <MyBox isLoading={isLoading} h={'100%'} py={[2, 4]} overflow={'hidden'}>
       <Flex ref={BoxRef} flexDirection={'column'} py={[1, 0]} h={'100%'} px={[2, 6]}>
         {/* header */}
         <Header hasTrainingData={hasTrainingData} />
 
         {/* collection table */}
-        <TableContainer mt={3} overflowY={'auto'} fontSize={'sm'}>
+        <TableContainer mt={3} overflowY={'auto'} fontSize={'sm'} flex={'1 0 0'} h={0}>
           <Table variant={'simple'} draggable={false}>
             <Thead draggable={false}>
               <Tr>
-                <Th py={4}>{t('common:Name')}</Th>
+                <Th py={4}>
+                  <HStack>
+                    <Checkbox isChecked={isSelecteAll} onChange={selectAllTrigger} />
+                    <Box>{t('common:Name')}</Box>
+                  </HStack>
+                </Th>
                 <Th py={4}>{t('dataset:collection.training_type')}</Th>
                 <Th py={4}>{t('dataset:collection_data_count')}</Th>
                 <Th py={4}>{t('dataset:collection.Create update time')}</Th>
@@ -241,17 +260,27 @@ const CollectionCard = () => {
                   }}
                 >
                   <Td minW={'150px'} maxW={['200px', '300px']} draggable py={2}>
-                    <Flex alignItems={'center'}>
-                      <MyIcon name={collection.icon as any} w={'1.25rem'} mr={2} />
-                      <MyTooltip label={t('common:click_drag_tip')} shouldWrapChildren={false}>
-                        <Box color={'myGray.900'} fontWeight={'500'} className="textEllipsis">
-                          {collection.name}
-                        </Box>
-                      </MyTooltip>
-                    </Flex>
-                    {feConfigs?.isPlus && !!collection.tags?.length && (
-                      <TagsPopOver currentCollection={collection} />
-                    )}
+                    <HStack>
+                      <Box onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          isChecked={isSelected(collection)}
+                          onChange={(e) => toggleSelect(collection)}
+                        />
+                      </Box>
+                      <Box>
+                        <Flex alignItems={'center'}>
+                          <MyIcon name={collection.icon as any} w={'1.25rem'} mr={2} />
+                          <MyTooltip label={t('common:click_drag_tip')} shouldWrapChildren={false}>
+                            <Box color={'myGray.900'} fontWeight={'500'} className="textEllipsis">
+                              {collection.name}
+                            </Box>
+                          </MyTooltip>
+                        </Flex>
+                        {feConfigs?.isPlus && !!collection.tags?.length && (
+                          <TagsPopOver currentCollection={collection} />
+                        )}
+                      </Box>
+                    </HStack>
                   </Td>
                   <Td py={2}>
                     {collection.trainingType
@@ -394,7 +423,7 @@ const CollectionCard = () => {
                                 type: 'danger',
                                 onClick: () =>
                                   openDeleteConfirm(
-                                    () => onDelCollection(collection._id),
+                                    () => onDelCollection([collection._id]),
                                     undefined,
                                     collection.type === DatasetCollectionTypeEnum.folder
                                       ? t('common:dataset.collections.Confirm to delete the folder')
@@ -411,13 +440,39 @@ const CollectionCard = () => {
               ))}
             </Tbody>
           </Table>
+
+          {total === 0 && <EmptyCollectionTip />}
+        </TableContainer>
+
+        <FloatingActionBar
+          Controler={
+            <HStack>
+              <Button
+                variant={'whiteBase'}
+                onClick={() =>
+                  openDeleteConfirm(
+                    () =>
+                      onDelCollection(selectedItems.map((e) => e._id)).then(() =>
+                        setSelectedItems([])
+                      ),
+                    undefined,
+                    t('dataset:confirm_delete_collection', {
+                      num: selectedItems.length
+                    })
+                  )()
+                }
+              >
+                {t('dataset:batch_delete')}
+              </Button>
+            </HStack>
+          }
+        >
           {total > pageSize && (
-            <Flex mt={2} justifyContent={'center'}>
+            <Flex justifyContent={'center'}>
               <Pagination />
             </Flex>
           )}
-          {total === 0 && <EmptyCollectionTip />}
-        </TableContainer>
+        </FloatingActionBar>
 
         <ConfirmDeleteModal />
         <ConfirmSyncModal />

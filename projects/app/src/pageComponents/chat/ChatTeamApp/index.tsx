@@ -28,7 +28,9 @@ const MyApps = () => {
     (v) => v
   );
 
+  const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
   const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
+  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
 
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
@@ -78,6 +80,9 @@ const MyApps = () => {
             <DrawerContent maxWidth="75vw">
               <ChatHistorySlider
                 confirmClearText={t('common:core.chat.Confirm to clear history')}
+                pane={pane}
+                chatSettings={chatSettings}
+                onPaneChange={handlePaneChange}
               />
             </DrawerContent>
           </Drawer>

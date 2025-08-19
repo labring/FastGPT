@@ -25,6 +25,7 @@ import {
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useContextSelector } from 'use-context-selector';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { usePathname } from 'next/navigation';
 
 type Props = {
   activeAppId: string;
@@ -326,6 +327,7 @@ const NavigationSection = () => {
 };
 
 const BottomSection = () => {
+  const pathname = usePathname();
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const isProVersion = !!feConfigs.isPlus;
@@ -335,6 +337,7 @@ const BottomSection = () => {
   const avatar = userInfo?.avatar;
   const username = userInfo?.username;
   const isAdmin = !!userInfo?.team.permission.hasManagePer;
+  const isShare = pathname === '/chat/share';
 
   const isCollapsed = useContextSelector(ChatSettingContext, (v) => v.collapse === 1);
   const isSettingActive = useContextSelector(
@@ -354,7 +357,7 @@ const BottomSection = () => {
         h={isCollapsed ? 'auto' : '40px'}
         minH="40px"
       >
-        {isAdmin && isProVersion && (
+        {isAdmin && isProVersion && !isShare && (
           <MotionBox
             order={isCollapsed ? 1 : 2}
             layout={false}
@@ -459,7 +462,6 @@ const BottomSection = () => {
 };
 
 const SliderApps = ({ apps, activeAppId }: Props) => {
-  const router = useRouter();
   const { t } = useTranslation();
 
   const isCollapsed = useContextSelector(ChatSettingContext, (v) => v.collapse === 1);
@@ -467,31 +469,8 @@ const SliderApps = ({ apps, activeAppId }: Props) => {
 
   const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
 
-  const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
-    return getMyApps({
-      parentId,
-      type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin]
-    }).then((res) =>
-      res.map<GetResourceListItemResponse>((item) => ({
-        id: item._id,
-        name: item.name,
-        avatar: item.avatar,
-        isFolder: item.type === AppTypeEnum.folder
-      }))
-    );
-  }, []);
-
   const isRecentlyUsedAppSelected = (id: string) =>
     pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && id === activeAppId;
-
-  const handleSelectRecentlyUsedApp = useCallback(
-    (id: string) => {
-      if (pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && id === activeAppId) return;
-      handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS);
-      router.replace({ query: { ...router.query, appId: id } });
-    },
-    [pane, router, activeAppId, handlePaneChange]
-  );
 
   return (
     <MotionFlex
@@ -544,7 +523,8 @@ const SliderApps = ({ apps, activeAppId }: Props) => {
                 ? { bg: 'primary.100', color: 'primary.600' }
                 : {
                     _hover: { bg: 'primary.100', color: 'primary.600' },
-                    onClick: () => handleSelectRecentlyUsedApp(item._id)
+                    onClick: () =>
+                      handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, item._id)
                   })}
             >
               <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'md'} />

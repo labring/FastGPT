@@ -17,6 +17,7 @@ export type SystemPluginConfigSchemaType = {
     name: string;
     avatar: string;
     intro?: string;
+    toolDescription?: string;
     version: string;
     weight?: number;
     templateType: string;

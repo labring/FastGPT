@@ -6,19 +6,18 @@ import {
   VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import {
-  DispatchNodeResponseKeyEnum,
-  SseResponseEventEnum
-} from '@fastgpt/global/core/workflow/runtime/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import axios from 'axios';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+import type {
+  ModuleDispatchProps,
+  RuntimeNodeItemType
+} from '@fastgpt/global/core/workflow/runtime/type';
 import {
   formatVariableValByType,
   getReferenceVariableValue,
-  replaceEditorVariable,
-  textAdaptGptResponse
+  replaceEditorVariable
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import json5 from 'json5';
 import { JSONPath } from 'jsonpath-plus';
@@ -121,96 +120,6 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       variables: allVariables
     });
   };
-  /* Replace the JSON string to reduce parsing errors
-    1. Replace undefined values with null
-    2. Replace newline strings
-  */
-  const replaceJsonBodyString = (text: string) => {
-    // Check if the variable is in quotes
-    const isVariableInQuotes = (text: string, variable: string) => {
-      const index = text.indexOf(variable);
-      if (index === -1) return false;
-
-      // 计算变量前面的引号数量
-      const textBeforeVar = text.substring(0, index);
-      const matches = textBeforeVar.match(/"/g) || [];
-
-      // 如果引号数量为奇数，则变量在引号内
-      return matches.length % 2 === 1;
-    };
-    const valToStr = (val: any, isQuoted = false) => {
-      if (val === undefined) return 'null';
-      if (val === null) return 'null';
-
-      if (typeof val === 'object') return JSON.stringify(val);
-
-      if (typeof val === 'string') {
-        if (isQuoted) {
-          // Replace newlines with escaped newlines
-          return val.replace(/\n/g, '\\n').replace(/(?<!\\)"/g, '\\"');
-        }
-        try {
-          JSON.parse(val);
-          return val;
-        } catch (error) {
-          const str = JSON.stringify(val);
-
-          return str.startsWith('"') && str.endsWith('"') ? str.slice(1, -1) : str;
-        }
-      }
-
-      return String(val);
-    };
-
-    // 1. Replace {{key.key}} variables
-    const regex1 = /\{\{\$([^.]+)\.([^$]+)\$\}\}/g;
-    const matches1 = [...text.matchAll(regex1)];
-    matches1.forEach((match) => {
-      const nodeId = match[1];
-      const id = match[2];
-      const fullMatch = match[0];
-
-      // 检查变量是否在引号内
-      const isInQuotes = isVariableInQuotes(text, fullMatch);
-
-      const variableVal = (() => {
-        if (nodeId === VARIABLE_NODE_ID) {
-          return variables[id];
-        }
-        // Find upstream node input/output
-        const node = runtimeNodes.find((node) => node.nodeId === nodeId);
-        if (!node) return;
-
-        const output = node.outputs.find((output) => output.id === id);
-        if (output) return formatVariableValByType(output.value, output.valueType);
-
-        const input = node.inputs.find((input) => input.key === id);
-        if (input)
-          return getReferenceVariableValue({ value: input.value, nodes: runtimeNodes, variables });
-      })();
-
-      const formatVal = valToStr(variableVal, isInQuotes);
-
-      const regex = new RegExp(`\\{\\{\\$(${nodeId}\\.${id})\\$\\}\\}`, '');
-      text = text.replace(regex, () => formatVal);
-    });
-
-    // 2. Replace {{key}} variables
-    const regex2 = /{{([^}]+)}}/g;
-    const matches2 = text.match(regex2) || [];
-    const uniqueKeys2 = [...new Set(matches2.map((match) => match.slice(2, -2)))];
-    for (const key of uniqueKeys2) {
-      const fullMatch = `{{${key}}}`;
-      // 检查变量是否在引号内
-      const isInQuotes = isVariableInQuotes(text, fullMatch);
-
-      text = text.replace(new RegExp(`{{(${key})}}`, ''), () =>
-        valToStr(allVariables[key], isInQuotes)
-      );
-    }
-
-    return text.replace(/(".*?")\s*:\s*undefined\b/g, '$1:null');
-  };
 
   httpReqUrl = replaceStringVariables(httpReqUrl);
 
@@ -273,7 +182,10 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       }
       if (!httpJsonBody) return {};
       if (httpContentType === ContentTypes.json) {
-        httpJsonBody = replaceJsonBodyString(httpJsonBody);
+        httpJsonBody = replaceJsonBodyString(
+          { text: httpJsonBody },
+          { variables, allVariables, runtimeNodes }
+        );
         return json5.parse(httpJsonBody);
       }
 
@@ -360,7 +272,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         Object.keys(results).length > 0 ? results : rawResponse
     };
   } catch (error) {
-    addLog.error('Http request error', error);
+    addLog.warn('Http request error', formatHttpError(error));
 
     // @adapt
     if (node.catchError === undefined) {
@@ -389,6 +301,187 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       }
     };
   }
+};
+
+/* Replace the JSON string to reduce parsing errors
+  1. Replace undefined values with null
+  2. Replace newline strings
+*/
+export const replaceJsonBodyString = (
+  { text, depth = 0 }: { text: string; depth?: number },
+  props: {
+    variables: Record<string, any>;
+    allVariables: Record<string, any>;
+    runtimeNodes: RuntimeNodeItemType[];
+  }
+) => {
+  const { variables, allVariables, runtimeNodes } = props;
+
+  const MAX_REPLACEMENT_DEPTH = 10;
+  const processedVariables = new Set<string>();
+
+  // Prevent infinite recursion
+  if (depth > MAX_REPLACEMENT_DEPTH) {
+    return text;
+  }
+
+  // Check if the variable is in quotes
+  const isVariableInQuotes = (text: string, variable: string) => {
+    const index = text.indexOf(variable);
+    if (index === -1) return false;
+
+    // 计算变量前面的引号数量
+    const textBeforeVar = text.substring(0, index);
+    const matches = textBeforeVar.match(/"/g) || [];
+
+    // 如果引号数量为奇数，则变量在引号内
+    return matches.length % 2 === 1;
+  };
+
+  const valToStr = (val: any, isQuoted = false) => {
+    if (val === undefined) return 'null';
+    if (val === null) return 'null';
+
+    if (typeof val === 'object') {
+      const jsonStr = JSON.stringify(val);
+      if (isQuoted) {
+        // Only escape quotes for JSON strings inside quotes (backslashes are already properly escaped by JSON.stringify)
+        return jsonStr.replace(/"/g, '\\"');
+      }
+      return jsonStr;
+    }
+
+    if (typeof val === 'string') {
+      if (isQuoted) {
+        const jsonStr = JSON.stringify(val);
+        return jsonStr.slice(1, -1); // 移除首尾的双引号
+      }
+      try {
+        JSON.parse(val);
+        return val;
+      } catch (error) {
+        const str = JSON.stringify(val);
+        return str.startsWith('"') && str.endsWith('"') ? str.slice(1, -1) : str;
+      }
+    }
+
+    return String(val);
+  };
+
+  // Check for circular references in variable values
+  const hasCircularReference = (value: any, targetKey: string): boolean => {
+    if (typeof value !== 'string') return false;
+
+    // Check if the value contains the target variable pattern (direct self-reference)
+    const selfRefPattern = new RegExp(
+      `\\{\\{${targetKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\}\\}`,
+      'g'
+    );
+    return selfRefPattern.test(value);
+  };
+
+  let result = text;
+  let hasReplacements = false;
+
+  // 1. Replace {{$nodeId.id$}} variables
+  const regex1 = /\{\{\$([^.]+)\.([^$]+)\$\}\}/g;
+  const matches1 = [...result.matchAll(regex1)];
+
+  // Build replacement map first to avoid modifying string during iteration
+  const replacements1: Array<{ pattern: string; replacement: string }> = [];
+
+  for (const match of matches1) {
+    const nodeId = match[1];
+    const id = match[2];
+    const fullMatch = match[0];
+    const variableKey = `${nodeId}.${id}`;
+
+    // Skip if already processed to avoid immediate circular reference
+    if (processedVariables.has(variableKey)) {
+      continue;
+    }
+
+    // 检查变量是否在引号内
+    const isInQuotes = isVariableInQuotes(result, fullMatch);
+
+    const variableVal = (() => {
+      if (nodeId === VARIABLE_NODE_ID) {
+        return variables[id];
+      }
+      // Find upstream node input/output
+      const node = runtimeNodes.find((node) => node.nodeId === nodeId);
+      if (!node) return;
+
+      const output = node.outputs.find((output) => output.id === id);
+      if (output) return formatVariableValByType(output.value, output.valueType);
+
+      const input = node.inputs.find((input) => input.key === id);
+      if (input)
+        return getReferenceVariableValue({ value: input.value, nodes: runtimeNodes, variables });
+    })();
+
+    const formatVal = valToStr(variableVal, isInQuotes);
+    // Check for direct circular reference
+    if (hasCircularReference(String(variableVal), variableKey)) {
+      continue;
+    }
+
+    const escapedPattern = `\\{\\{\\$(${nodeId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})\\$\\}\\}`;
+
+    replacements1.push({
+      pattern: escapedPattern,
+      replacement: formatVal
+    });
+
+    processedVariables.add(variableKey);
+    hasReplacements = true;
+  }
+  replacements1.forEach(({ pattern, replacement }) => {
+    result = result.replace(new RegExp(pattern, 'g'), replacement);
+  });
+
+  // 2. Replace {{key}} variables
+  const regex2 = /{{([^}]+)}}/g;
+  const matches2 = result.match(regex2) || [];
+  const uniqueKeys2 = [...new Set(matches2.map((match) => match.slice(2, -2)))];
+  // Build replacement map for simple variables
+  const replacements2: Array<{ pattern: string; replacement: string }> = [];
+  for (const key of uniqueKeys2) {
+    if (processedVariables.has(key)) {
+      continue;
+    }
+
+    const fullMatch = `{{${key}}}`;
+    const variableVal = allVariables[key];
+
+    // Check for direct circular reference
+    if (hasCircularReference(variableVal, key)) {
+      continue;
+    }
+
+    // 检查变量是否在引号内
+    const isInQuotes = isVariableInQuotes(result, fullMatch);
+    const formatVal = valToStr(variableVal, isInQuotes);
+    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    replacements2.push({
+      pattern: `{{(${escapedKey})}}`,
+      replacement: formatVal
+    });
+
+    processedVariables.add(key);
+    hasReplacements = true;
+  }
+  replacements2.forEach(({ pattern, replacement }) => {
+    result = result.replace(new RegExp(pattern, 'g'), replacement);
+  });
+
+  // If we made replacements and there might be nested variables, recursively process
+  if (hasReplacements && /\{\{[^}]*\}\}/.test(result)) {
+    result = replaceJsonBodyString({ text: result, depth: depth + 1 }, props);
+  }
+
+  return result.replace(/(".*?")\s*:\s*undefined\b/g, '$1:null');
 };
 
 async function fetchData({

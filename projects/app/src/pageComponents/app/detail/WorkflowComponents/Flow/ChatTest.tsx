@@ -38,7 +38,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
   const isPlugin = appDetail.type === AppTypeEnum.plugin;
   const { copyData } = useCopyData();
 
-  const { restartChat, ChatContainer, loading } = useChatTest({
+  const { restartChat, ChatContainer } = useChatTest({
     nodes,
     edges,
     chatConfig: appDetail.chatConfig,

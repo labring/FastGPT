@@ -44,7 +44,7 @@ const SaveButton = ({
         placement={'bottom-end'}
         hasArrow={false}
         offset={[2, 4]}
-        w={'116px'}
+        w={'124px'}
         onOpenFunc={() => setIsSave(true)}
         onCloseFunc={() => setIsSave(false)}
         trigger={'hover'}

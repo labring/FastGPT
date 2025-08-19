@@ -368,6 +368,7 @@ export async function getChildAppPreviewNode({
     avatar: app.avatar,
     name: parseI18nString(app.name, lang),
     intro: parseI18nString(app.intro, lang),
+    toolDescription: app.toolDescription,
     courseUrl: app.courseUrl,
     userGuide: app.userGuide,
     showStatus: true,
@@ -462,8 +463,17 @@ export async function getChildAppRuntimeById({
 }
 
 const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplateItemType => {
-  const { name, avatar, intro, version, weight, templateType, associatedPluginId, userGuide } =
-    item.customConfig!;
+  const {
+    name,
+    avatar,
+    intro,
+    toolDescription,
+    version,
+    weight,
+    templateType,
+    associatedPluginId,
+    userGuide
+  } = item.customConfig!;
 
   return {
     id: item.pluginId,
@@ -475,6 +485,7 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplat
     name,
     avatar,
     intro,
+    toolDescription,
     weight,
     templateType,
     originCost: item.originCost,
@@ -526,23 +537,6 @@ export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> 
     const systemToolsArray = await MongoSystemPlugin.find({}).lean();
     const systemTools = new Map(systemToolsArray.map((plugin) => [plugin.pluginId, plugin]));
 
-    // tools.forEach((tool) => {
-    //   // 如果有插件的配置信息，则需要进行替换
-    //   const dbPluginConfig = systemTools.get(tool.id);
-
-    //   if (dbPluginConfig) {
-    //     const children = tools.filter((item) => item.parentId === tool.id);
-    //     const list = [tool, ...children];
-    //     list.forEach((item) => {
-    //       item.isActive = dbPluginConfig.isActive ?? item.isActive ?? true;
-    //       item.originCost = dbPluginConfig.originCost ?? 0;
-    //       item.currentCost = dbPluginConfig.currentCost ?? 0;
-    //       item.hasTokenFee = dbPluginConfig.hasTokenFee ?? false;
-    //       item.pluginOrder = dbPluginConfig.pluginOrder ?? 0;
-    //     });
-    //   }
-    // });
-
     const formatTools = tools.map<SystemPluginTemplateItemType>((item) => {
       const dbPluginConfig = systemTools.get(item.id);
       const isFolder = tools.some((tool) => tool.parentId === item.id);
@@ -556,8 +550,10 @@ export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> 
         name: item.name,
         avatar: item.avatar,
         intro: item.description,
+        toolDescription: item.toolDescription,
         author: item.author,
         courseUrl: item.courseUrl,
+        instructions: dbPluginConfig?.customConfig?.userGuide,
         weight: item.weight,
         workflow: {
           nodes: [],

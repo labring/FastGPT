@@ -27,7 +27,10 @@ const ChatSetting = () => {
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
+
+  const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
   const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
+  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
 
   const SettingHeader = useCallback(
     ({ children }: { children?: React.ReactNode }) => (
@@ -65,6 +68,9 @@ const ChatSetting = () => {
             <DrawerContent maxWidth="75vw">
               <ChatHistorySlider
                 confirmClearText={t('common:core.chat.Confirm to clear history')}
+                pane={pane}
+                chatSettings={chatSettings}
+                onPaneChange={handlePaneChange}
               />
             </DrawerContent>
           </Drawer>

@@ -13,6 +13,8 @@ import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponen
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import { llmModelTypeFilterMap } from '@fastgpt/global/core/ai/constants';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 
 const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
@@ -80,6 +82,22 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
     return item.value;
   }, [inputType, item.value, defaultModel, handleChange]);
 
+  const canOptimizePrompt = item.key === NodeInputKeyEnum.aiSystemPrompt;
+  const OptimizerPopverComponent = useCallback(
+    ({ iconButtonStyle }: { iconButtonStyle: Record<string, any> }) => {
+      return (
+        <OptimizerPopover
+          iconButtonStyle={iconButtonStyle}
+          defaultPrompt={item.value}
+          onChangeText={(e) => {
+            handleChange(e);
+          }}
+        />
+      );
+    },
+    [item.value, handleChange]
+  );
+
   return (
     <InputRender
       inputType={inputType}
@@ -93,6 +111,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
       max={item.max}
       list={item.list}
       modelList={modelList}
+      ExtensionPopover={canOptimizePrompt ? [OptimizerPopverComponent] : undefined}
     />
   );
 };

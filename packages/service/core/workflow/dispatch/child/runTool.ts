@@ -110,7 +110,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         },
         onMessage: ({ type, content }) => {
           if (workflowStreamResponse && content) {
-            answerText = content;
+            answerText += content;
             workflowStreamResponse({
               event: type as unknown as SseResponseEventEnum,
               data: textAdaptGptResponse({

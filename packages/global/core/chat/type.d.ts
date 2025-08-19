@@ -20,7 +20,7 @@ import type { WorkflowInteractiveResponseType } from '../workflow/template/syste
 import type { FlowNodeInputItemType } from '../workflow/type/io';
 import type { FlowNodeTemplateType } from '../workflow/type/node.d';
 
-export type ChatSchema = {
+export type ChatSchemaType = {
   _id: string;
   chatId: string;
   userId: string;
@@ -33,6 +33,8 @@ export type ChatSchema = {
   customTitle: string;
   top: boolean;
   source: `${ChatSourceEnum}`;
+  sourceName?: string;
+
   shareId?: string;
   outLinkUid?: string;
 
@@ -43,7 +45,7 @@ export type ChatSchema = {
   metadata?: Record<string, any>;
 };
 
-export type ChatWithAppSchema = Omit<ChatSchema, 'appId'> & {
+export type ChatWithAppSchema = Omit<ChatSchemaType, 'appId'> & {
   appId: AppSchema;
 };
 

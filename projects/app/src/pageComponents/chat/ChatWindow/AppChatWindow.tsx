@@ -22,6 +22,8 @@ import { getInitChatInfo } from '@/web/core/chat/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRouter } from 'next/router';
 import NextHead from '@/components/common/NextHead';
+import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { ChatSidebarPaneEnum } from '../constants';
 
 type Props = {
   myApps: AppListItemType[];
@@ -48,6 +50,10 @@ const AppChatWindow = ({ myApps }: Props) => {
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
+  const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
+  const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
+  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
+
   const { loading } = useRequest2(
     async () => {
       if (!appId || forbidLoadChat.current) return;
@@ -68,12 +74,7 @@ const AppChatWindow = ({ myApps }: Props) => {
       errorToast: '',
       onError(e: any) {
         if (e?.code && e.code >= 502000) {
-          router.replace({
-            query: {
-              ...router.query,
-              appId: myApps[0]?._id
-            }
-          });
+          handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
         }
       },
       onFinally() {
@@ -124,7 +125,12 @@ const AppChatWindow = ({ myApps }: Props) => {
       {/* show history slider */}
       {isPc || !appId ? (
         <SideBar externalTrigger={Boolean(datasetCiteData)}>
-          <ChatHistorySlider confirmClearText={t('common:core.chat.Confirm to clear history')} />
+          <ChatHistorySlider
+            confirmClearText={t('common:core.chat.Confirm to clear history')}
+            pane={pane}
+            chatSettings={chatSettings}
+            onPaneChange={handlePaneChange}
+          />
         </SideBar>
       ) : (
         <Drawer
@@ -136,7 +142,12 @@ const AppChatWindow = ({ myApps }: Props) => {
         >
           <DrawerOverlay backgroundColor="rgba(255,255,255,0.5)" />
           <DrawerContent maxWidth="75vw">
-            <ChatHistorySlider confirmClearText={t('common:core.chat.Confirm to clear history')} />
+            <ChatHistorySlider
+              confirmClearText={t('common:core.chat.Confirm to clear history')}
+              pane={pane}
+              chatSettings={chatSettings}
+              onPaneChange={handlePaneChange}
+            />
           </DrawerContent>
         </Drawer>
       )}
@@ -150,6 +161,8 @@ const AppChatWindow = ({ myApps }: Props) => {
         flexDirection={'column'}
       >
         <ChatHeader
+          pane={pane}
+          chatSettings={chatSettings}
           showHistory
           apps={myApps}
           history={chatRecords}

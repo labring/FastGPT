@@ -34,15 +34,75 @@ export const valToStr = (val: any) => {
 };
 
 // replace {{variable}} to value
-export function replaceVariable(text: any, obj: Record<string, string | number | undefined>) {
+export function replaceVariable(
+  text: any,
+  obj: Record<string, string | number | undefined>,
+  depth = 0
+) {
   if (typeof text !== 'string') return text;
 
-  for (const key in obj) {
-    const val = obj[key];
-    const formatVal = valToStr(val);
-    text = text.replace(new RegExp(`{{(${key})}}`, 'g'), () => formatVal);
+  const MAX_REPLACEMENT_DEPTH = 10;
+  const processedVariables = new Set<string>();
+
+  // Prevent infinite recursion
+  if (depth > MAX_REPLACEMENT_DEPTH) {
+    return text;
   }
-  return text || '';
+
+  // Check for circular references in variable values
+  const hasCircularReference = (value: any, targetKey: string): boolean => {
+    if (typeof value !== 'string') return false;
+
+    // Check if the value contains the target variable pattern (direct self-reference)
+    const selfRefPattern = new RegExp(
+      `\\{\\{${targetKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\}\\}`,
+      'g'
+    );
+    return selfRefPattern.test(value);
+  };
+
+  let result = text;
+  let hasReplacements = false;
+
+  // Build replacement map first to avoid modifying string during iteration
+  const replacements: { pattern: string; replacement: string }[] = [];
+
+  for (const key in obj) {
+    // Skip if already processed to avoid immediate circular reference
+    if (processedVariables.has(key)) {
+      continue;
+    }
+
+    const val = obj[key];
+
+    // Check for direct circular reference
+    if (hasCircularReference(String(val), key)) {
+      continue;
+    }
+
+    const formatVal = valToStr(val);
+    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    replacements.push({
+      pattern: `{{(${escapedKey})}}`,
+      replacement: formatVal
+    });
+
+    processedVariables.add(key);
+    hasReplacements = true;
+  }
+
+  // Apply all replacements
+  replacements.forEach(({ pattern, replacement }) => {
+    result = result.replace(new RegExp(pattern, 'g'), () => replacement);
+  });
+
+  // If we made replacements and there might be nested variables, recursively process
+  if (hasReplacements && /\{\{[^}]+\}\}/.test(result)) {
+    result = replaceVariable(result, obj, depth + 1);
+  }
+
+  return result || '';
 }
 
 /* replace sensitive text */

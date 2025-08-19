@@ -5,13 +5,13 @@ import { AppCollectionName } from '../schema';
 export const ChatLogCollectionName = 'app_chat_logs';
 
 const ChatLogSchema = new Schema({
+  teamId: {
+    type: Schema.Types.ObjectId,
+    required: true
+  },
   appId: {
     type: Schema.Types.ObjectId,
     ref: AppCollectionName,
-    required: true
-  },
-  teamId: {
-    type: Schema.Types.ObjectId,
     required: true
   },
   chatId: {
@@ -68,8 +68,15 @@ const ChatLogSchema = new Schema({
   }
 });
 
+// Get chart data
 ChatLogSchema.index({ teamId: 1, appId: 1, source: 1, updateTime: -1 });
-ChatLogSchema.index({ userId: 1, appId: 1, source: 1, createTime: -1 });
+// Get chart data isFirstChat
+ChatLogSchema.index({ isFirstChat: 1, teamId: 1, appId: 1, source: 1, createTime: -1 });
+// Get userStats
+ChatLogSchema.index({ teamId: 1, appId: 1, userId: 1 });
+
+// Init shell
+ChatLogSchema.index({ teamId: 1, appId: 1, chatId: 1 });
 
 export const MongoAppChatLog = getMongoLogModel<AppChatLogSchema>(
   ChatLogCollectionName,
