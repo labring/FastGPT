@@ -19,16 +19,12 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { useRouter } from 'next/router';
 import NextHead from '@/components/common/NextHead';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 import { ChatSidebarPaneEnum } from '../constants';
-import ChatHistory, {
-  ChatHistoryDrawer,
-  FooterComponent,
-  PanelComponent
-} from '@/pageComponents/chat/ChatHistory';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
+import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 
 type Props = {
   myApps: AppListItemType[];
@@ -128,13 +124,16 @@ const AppChatWindow = ({ myApps }: Props) => {
       {/* show history slider */}
       {isPc ? (
         <SideBar externalTrigger={Boolean(datasetCiteData)}>
-          <ChatHistory menuConfirmButtonText={t('common:core.chat.Confirm to clear history')} />
+          <ChatHistorySidebar
+            menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
+          />
         </SideBar>
       ) : (
-        <ChatHistoryDrawer
+        <ChatSliderMobileDrawer
+          showHeader
+          showFooter
           banner={chatSettings?.wideLogoUrl}
-          PanelComponent={feConfigs.isPlus ? <PanelComponent /> : undefined}
-          FooterComponent={feConfigs.isPlus ? <FooterComponent /> : undefined}
+          menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
         />
       )}
 

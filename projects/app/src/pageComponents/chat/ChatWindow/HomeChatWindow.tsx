@@ -45,11 +45,8 @@ import type {
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatSidebarPaneEnum } from '../constants';
-import ChatHistory, {
-  FooterComponent,
-  PanelComponent,
-  ChatHistoryDrawer
-} from '@/pageComponents/chat/ChatHistory';
+import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
+import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 
 type Props = {
   myApps: AppListItemType[];
@@ -359,16 +356,17 @@ const HomeChatWindow = ({ myApps }: Props) => {
       {/* show history slider */}
       {isPc ? (
         <SideBar externalTrigger={Boolean(datasetCiteData)}>
-          <ChatHistory
+          <ChatHistorySidebar
             title={t('chat:history_slider.home.title')}
             menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
           />
         </SideBar>
       ) : (
-        <ChatHistoryDrawer
+        <ChatSliderMobileDrawer
+          showHeader
+          showFooter
           banner={chatSettings?.wideLogoUrl}
-          PanelComponent={<PanelComponent />}
-          FooterComponent={<FooterComponent />}
+          menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
         />
       )}
 

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Box, Flex, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { streamFetch } from '@/web/common/api/fetch';
 import SideBar from '@/components/SideBar';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
@@ -40,8 +40,8 @@ import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
-import ChatHistory from '@/pageComponents/chat/ChatHistory';
-import { ChatHistoryDrawer } from '@/pageComponents/chat/ChatHistory';
+import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
+import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -221,9 +221,7 @@ const OutLink = (props: Props) => {
 
   const RenderHistoryList = useMemo(() => {
     const Children = (
-      <ChatHistory
-        menuConfirmButtonText={t('common:core.chat.Confirm to clear share chat history')}
-      />
+      <ChatHistorySidebar menuConfirmButtonText={t('common:core.chat.Confirm to clear history')} />
     );
 
     if (showHistory !== '1') return null;
@@ -231,7 +229,9 @@ const OutLink = (props: Props) => {
     return isPc ? (
       <SideBar externalTrigger={!!datasetCiteData}>{Children}</SideBar>
     ) : (
-      <ChatHistoryDrawer />
+      <ChatSliderMobileDrawer
+        menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
+      />
     );
   }, [isPc, datasetCiteData, showHistory, t]);
 

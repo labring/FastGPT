@@ -10,17 +10,15 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import NextHead from '@/components/common/NextHead';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
-import {
-  ChatHistoryDrawer,
-  PanelComponent,
-  FooterComponent
-} from '@/pageComponents/chat/ChatHistory';
+import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
+import { useTranslation } from 'react-i18next';
 
 const HomepageSetting = dynamic(() => import('@/pageComponents/chat/ChatSetting/HomepageSetting'));
 const LogDetails = dynamic(() => import('@/pageComponents/chat/ChatSetting/LogDetails'));
 const DataDashboard = dynamic(() => import('@/pageComponents/chat/ChatSetting/DataDashboard'));
 
 const ChatSetting = () => {
+  const { t } = useTranslation();
   const { isPc } = useSystem();
 
   const [isOpenDiagram, setIsOpenDiagram] = useState(false);
@@ -55,10 +53,11 @@ const ChatSetting = () => {
             />
           </Flex>
 
-          <ChatHistoryDrawer
+          <ChatSliderMobileDrawer
+            showHeader
+            showFooter
             banner={chatSettings?.wideLogoUrl}
-            PanelComponent={<PanelComponent />}
-            FooterComponent={<FooterComponent />}
+            menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
           />
         </>
       )}
