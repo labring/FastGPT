@@ -1,7 +1,6 @@
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
-import { Flex, Box, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
-import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
+import { Flex, Box } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import SideBar from '@/components/SideBar';
@@ -20,26 +19,26 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { useRouter } from 'next/router';
 import NextHead from '@/components/common/NextHead';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 import { ChatSidebarPaneEnum } from '../constants';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
+import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 
 type Props = {
   myApps: AppListItemType[];
 };
 
 const AppChatWindow = ({ myApps }: Props) => {
-  const router = useRouter();
   const { userInfo } = useUserStore();
   const { chatId, appId, outLinkAuthData } = useChatStore();
+  const { feConfigs } = useSystemStore();
 
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
-  const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
-  const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
 
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
@@ -123,33 +122,19 @@ const AppChatWindow = ({ myApps }: Props) => {
       <NextHead title={chatBoxData.app.name} icon={chatBoxData.app.avatar} />
 
       {/* show history slider */}
-      {isPc || !appId ? (
+      {isPc ? (
         <SideBar externalTrigger={Boolean(datasetCiteData)}>
-          <ChatHistorySlider
-            confirmClearText={t('common:core.chat.Confirm to clear history')}
-            pane={pane}
-            chatSettings={chatSettings}
-            onPaneChange={handlePaneChange}
+          <ChatHistorySidebar
+            menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
           />
         </SideBar>
       ) : (
-        <Drawer
-          size="xs"
-          placement="left"
-          autoFocus={false}
-          isOpen={isOpenSlider}
-          onClose={onCloseSlider}
-        >
-          <DrawerOverlay backgroundColor="rgba(255,255,255,0.5)" />
-          <DrawerContent maxWidth="75vw">
-            <ChatHistorySlider
-              confirmClearText={t('common:core.chat.Confirm to clear history')}
-              pane={pane}
-              chatSettings={chatSettings}
-              onPaneChange={handlePaneChange}
-            />
-          </DrawerContent>
-        </Drawer>
+        <ChatSliderMobileDrawer
+          showHeader
+          showFooter
+          banner={chatSettings?.wideLogoUrl}
+          menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
+        />
       )}
 
       {/* chat container */}

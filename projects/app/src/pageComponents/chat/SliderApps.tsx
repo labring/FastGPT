@@ -397,6 +397,7 @@ const BottomSection = () => {
           display="flex"
           alignItems="center"
           justifyContent={'flex-start'}
+          maxW={isCollapsed ? 'fit-content' : 'calc(100% - 52px)'}
         >
           {isLoggedIn ? (
             <UserAvatarPopover
@@ -418,9 +419,6 @@ const BottomSection = () => {
                   flexGrow={1}
                   fontSize={'sm'}
                   fontWeight={500}
-                  overflow="hidden"
-                  whiteSpace="nowrap"
-                  textOverflow="ellipsis"
                   minW={0}
                 >
                   {username}

@@ -1,7 +1,5 @@
-'use client';
-
 import React, { useMemo, useState } from 'react';
-import { Box, Flex, Tab, TabIndicator, TabList, TabPanel, TabPanels, Tabs } from '@chakra-ui/react';
+import { Box, Flex, Tab, TabIndicator, TabList, Tabs } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import AppListContextProvider, { AppListContext } from '@/pageComponents/dashboard/apps/context';
@@ -13,27 +11,23 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import List from '@/pageComponents/chat/ChatTeamApp/List';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { Drawer, DrawerContent, DrawerOverlay } from '@chakra-ui/react';
-import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import NextHead from '@/components/common/NextHead';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 
 const MyApps = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
+
   const { paths, myApps, isFetchingApps, setSearchKey } = useContextSelector(
     AppListContext,
     (v) => v
   );
 
-  const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
   const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
-  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
 
-  const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
-  const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
 
   const map = useMemo(
@@ -69,23 +63,12 @@ const MyApps = () => {
             onClick={onOpenSlider}
           />
 
-          <Drawer
-            size="xs"
-            placement="left"
-            autoFocus={false}
-            isOpen={isOpenSlider}
-            onClose={onCloseSlider}
-          >
-            <DrawerOverlay backgroundColor="rgba(255,255,255,0.5)" />
-            <DrawerContent maxWidth="75vw">
-              <ChatHistorySlider
-                confirmClearText={t('common:core.chat.Confirm to clear history')}
-                pane={pane}
-                chatSettings={chatSettings}
-                onPaneChange={handlePaneChange}
-              />
-            </DrawerContent>
-          </Drawer>
+          <ChatSliderMobileDrawer
+            showHeader
+            showFooter
+            banner={chatSettings?.wideLogoUrl}
+            menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
+          />
         </Flex>
       )}
 

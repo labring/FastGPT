@@ -2,9 +2,6 @@ import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import {
   Flex,
   Box,
-  Drawer,
-  DrawerOverlay,
-  DrawerContent,
   Button,
   Menu,
   MenuButton,
@@ -12,7 +9,6 @@ import {
   MenuItem,
   Checkbox
 } from '@chakra-ui/react';
-import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
 import { useTranslation } from 'react-i18next';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import SideBar from '@/components/SideBar';
@@ -48,10 +44,9 @@ import type {
 } from '@fastgpt/global/core/app/type';
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
-import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
-import { getModelFromList } from '@fastgpt/global/core/ai/model';
-import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { ChatSidebarPaneEnum } from '../constants';
+import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
+import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 
 type Props = {
   myApps: AppListItemType[];
@@ -77,9 +72,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const { llmModelList, defaultModels, feConfigs } = useSystemStore();
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
-  const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
-  const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
 
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
@@ -101,14 +94,6 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const [selectedModel, setSelectedModel] = useLocalStorageState('chat_home_model', {
     defaultValue: defaultModels.llm?.model
   });
-  const selectedModelAvatar = useMemo(() => {
-    const modelData = getModelFromList(llmModelList, selectedModel || '');
-    return modelData?.avatar || HUGGING_FACE_ICON;
-  }, [selectedModel, llmModelList]);
-  const selectedModelButtonLabel = useMemo(() => {
-    const modelData = availableModels.find((model) => model.value === selectedModel);
-    return modelData?.label || selectedModel;
-  }, [selectedModel, availableModels]);
 
   const availableTools = useMemo(
     () => chatSettings?.selectedTools || [],
@@ -129,6 +114,8 @@ const HomeChatWindow = ({ myApps }: Props) => {
     setSelectedToolIds(
       selectedToolIds.filter((id) => availableTools.some((tool) => tool.pluginId === id))
     );
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availableTools, chatSettings?.selectedTools]);
 
   // 初始化聊天数据
@@ -254,38 +241,33 @@ const HomeChatWindow = ({ myApps }: Props) => {
       <>
         {/* 模型选择 */}
         {availableModels.length > 0 && (
-          <AIModelSelector
-            h={['30px', '36px']}
-            boxShadow={'none'}
-            size="sm"
-            bg={'myGray.50'}
-            rounded="full"
-            list={availableModels}
-            value={selectedModel}
-            maxW={['114px', 'fit-content']}
-            valueLabel={
-              <Flex maxW={['74px', '100%']} alignItems={'center'} gap={1}>
-                {isPc && <Avatar src={selectedModelAvatar} w={4} h={4} />}
-                <Box className="textEllipsis">{selectedModelButtonLabel}</Box>
-              </Flex>
-            }
-            onChange={async (model) => {
-              setChatBoxData((state) => ({
-                ...state,
-                app: {
-                  ...state.app,
-                  chatConfig: {
-                    ...state.app.chatConfig,
-                    fileSelectConfig: {
-                      ...defaultFileSelectConfig,
-                      canSelectImg: !!getWebLLMModel(model).vision
+          <Box w="auto">
+            <AIModelSelector
+              h={['30px', '36px']}
+              boxShadow={'none'}
+              size="sm"
+              bg={'myGray.50'}
+              rounded="full"
+              list={availableModels}
+              value={selectedModel}
+              onChange={async (model) => {
+                setChatBoxData((state) => ({
+                  ...state,
+                  app: {
+                    ...state.app,
+                    chatConfig: {
+                      ...state.app.chatConfig,
+                      fileSelectConfig: {
+                        ...defaultFileSelectConfig,
+                        canSelectImg: !!getWebLLMModel(model).vision
+                      }
                     }
                   }
-                }
-              }));
-              setSelectedModel(model);
-            }}
-          />
+                }));
+                setSelectedModel(model);
+              }}
+            />
+          </Box>
         )}
 
         {/* 工具选择下拉框 */}
@@ -299,6 +281,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
               rounded="full"
               variant="whiteBase"
               leftIcon={<MyIcon name="core/app/toolCall" w="14px" />}
+              flexShrink={0}
               _active={{
                 transform: 'none'
               }}
@@ -361,9 +344,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
       selectedToolIds,
       setSelectedToolIds,
       setChatBoxData,
-      isPc,
-      selectedModelAvatar,
-      selectedModelButtonLabel
+      isPc
     ]
   );
 
@@ -373,35 +354,20 @@ const HomeChatWindow = ({ myApps }: Props) => {
       <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} icon="/icon/logo.svg" />
 
       {/* show history slider */}
-      {isPc || !appId ? (
+      {isPc ? (
         <SideBar externalTrigger={Boolean(datasetCiteData)}>
-          <ChatHistorySlider
-            customSliderTitle={t('chat:history_slider.home.title')}
-            confirmClearText={t('common:core.chat.Confirm to clear history')}
-            pane={pane}
-            chatSettings={chatSettings}
-            onPaneChange={handlePaneChange}
+          <ChatHistorySidebar
+            title={t('chat:history_slider.home.title')}
+            menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
           />
         </SideBar>
       ) : (
-        <Drawer
-          size="xs"
-          placement="left"
-          autoFocus={false}
-          isOpen={isOpenSlider}
-          onClose={onCloseSlider}
-        >
-          <DrawerOverlay backgroundColor="rgba(255,255,255,0.5)" />
-          <DrawerContent maxWidth="75vw">
-            <ChatHistorySlider
-              customSliderTitle={t('chat:history_slider.home.title')}
-              confirmClearText={t('common:core.chat.Confirm to clear history')}
-              pane={pane}
-              chatSettings={chatSettings}
-              onPaneChange={handlePaneChange}
-            />
-          </DrawerContent>
-        </Drawer>
+        <ChatSliderMobileDrawer
+          showHeader
+          showFooter
+          banner={chatSettings?.wideLogoUrl}
+          menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
+        />
       )}
 
       {/* chat container */}

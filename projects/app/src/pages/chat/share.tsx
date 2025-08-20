@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Box, Flex, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { streamFetch } from '@/web/common/api/fetch';
 import SideBar from '@/components/SideBar';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
@@ -10,7 +10,6 @@ import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type
 
 import PageContainer from '@/components/PageContainer';
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
-import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
 import { getInitOutLinkChatInfo } from '@/web/core/chat/api';
@@ -41,6 +40,8 @@ import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
+import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
+import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -220,11 +221,7 @@ const OutLink = (props: Props) => {
 
   const RenderHistoryList = useMemo(() => {
     const Children = (
-      <ChatHistorySlider
-        chatSettings={undefined}
-        pane={ChatSidebarPaneEnum.RECENTLY_USED_APPS}
-        confirmClearText={t('common:core.chat.Confirm to clear share chat history')}
-      />
+      <ChatHistorySidebar menuConfirmButtonText={t('common:core.chat.Confirm to clear history')} />
     );
 
     if (showHistory !== '1') return null;
@@ -232,20 +229,11 @@ const OutLink = (props: Props) => {
     return isPc ? (
       <SideBar externalTrigger={!!datasetCiteData}>{Children}</SideBar>
     ) : (
-      <Drawer
-        isOpen={isOpenSlider}
-        placement="left"
-        autoFocus={false}
-        size={'xs'}
-        onClose={onCloseSlider}
-      >
-        <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
-        <DrawerContent maxWidth={'75vw'} boxShadow={'2px 0 10px rgba(0,0,0,0.15)'}>
-          {Children}
-        </DrawerContent>
-      </Drawer>
+      <ChatSliderMobileDrawer
+        menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
+      />
     );
-  }, [isOpenSlider, isPc, onCloseSlider, datasetCiteData, showHistory, t]);
+  }, [isPc, datasetCiteData, showHistory, t]);
 
   return (
     <>
