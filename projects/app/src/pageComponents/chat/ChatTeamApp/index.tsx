@@ -64,8 +64,8 @@ const MyApps = () => {
           />
 
           <ChatSliderMobileDrawer
-            showHeader
-            showFooter
+            showList={false}
+            showMenu={false}
             banner={chatSettings?.wideLogoUrl}
             menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
           />

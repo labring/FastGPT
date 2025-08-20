@@ -230,6 +230,8 @@ const OutLink = (props: Props) => {
       <SideBar externalTrigger={!!datasetCiteData}>{Children}</SideBar>
     ) : (
       <ChatSliderMobileDrawer
+        showHeader={false}
+        showFooter={false}
         menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
       />
     );

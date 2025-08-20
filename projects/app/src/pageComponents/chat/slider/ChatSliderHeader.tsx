@@ -115,8 +115,6 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
           </Flex>
         </GridItem>
       </Grid>
-
-      <MyDivider h="0.5px" bg="myGray.100" my={2} mx={2} w="calc(100% - 16px)" />
     </>
   );
 };
