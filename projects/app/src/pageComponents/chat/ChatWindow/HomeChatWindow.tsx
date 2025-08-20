@@ -241,7 +241,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
       <>
         {/* 模型选择 */}
         {availableModels.length > 0 && (
-          <Box w="auto">
+          <Box w={[0, 'auto']} flex={['1 0 0', '0 0 auto']}>
             <AIModelSelector
               h={['30px', '36px']}
               boxShadow={'none'}
