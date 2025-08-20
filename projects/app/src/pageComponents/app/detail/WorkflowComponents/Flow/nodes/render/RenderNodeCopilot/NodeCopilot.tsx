@@ -9,9 +9,20 @@ import Markdown from '@/components/Markdown';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { onOptimizeCode } from '@/web/common/api/fetch';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  ArrayTypeMap,
+  NodeInputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { WorkflowContext } from '../../../../context';
+import { WorkflowNodeEdgeContext } from '../../../../context/workflowInitContext';
 import { useTranslation } from 'next-i18next';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { nanoid } from 'nanoid';
 
 export type OnOptimizeCodeProps = {
   language: string;
@@ -24,8 +35,11 @@ export type OnOptimizeCodeProps = {
 
 const NodeCopilot = ({ nodeId, onClose }: { nodeId: string; onClose?: () => void }) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const { llmModelList, defaultModels } = useSystemStore();
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
 
   const [optimizerInput, setOptimizerInput] = useState('');
   const [codeResult, setCodeResult] = useState('');
@@ -35,6 +49,169 @@ const NodeCopilot = ({ nodeId, onClose }: { nodeId: string; onClose?: () => void
     Array<{ role: 'user' | 'assistant'; content: string }>
   >([]);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
+
+  const extractCodeFromMarkdown = (
+    markdown: string
+  ): {
+    code: string;
+    inputs: Array<{ label: string; type: string }>;
+    outputs: Array<{ label: string; type: string }>;
+  } => {
+    const codeBlockRegex = /```(?:\w+\n)?([\s\S]*?)```/;
+    const match = markdown.match(codeBlockRegex);
+    const code = match ? match[1].trim() : markdown.trim();
+
+    const inputs: Array<{ label: string; type: string }> = [];
+    const outputs: Array<{ label: string; type: string }> = [];
+
+    const paramRegex = /@param\s*\{([^}]+)\}\s*(\w+)\s*-?\s*.*/g;
+    let paramMatch;
+    while ((paramMatch = paramRegex.exec(code)) !== null) {
+      const type = paramMatch[1].trim();
+      const label = paramMatch[2].trim();
+      inputs.push({ label, type });
+    }
+
+    const propertyRegex = /@property\s*\{([^}]+)\}\s*(\w+)\s*-?\s*.*/g;
+    let propertyMatch;
+    while ((propertyMatch = propertyRegex.exec(code)) !== null) {
+      const type = propertyMatch[1].trim();
+      const label = propertyMatch[2].trim();
+      outputs.push({ label, type });
+    }
+
+    if (outputs.length === 0) {
+      const returnRegex = /return\s*\{\s*([^}]+)\s*\}/;
+      const returnMatch = code.match(returnRegex);
+      if (returnMatch) {
+        const returnContent = returnMatch[1];
+        const returnProperties = returnContent.split(',').map((prop) => prop.trim());
+        returnProperties.forEach((prop) => {
+          const cleanProp = prop.replace(/\s*:.*$/, '').trim();
+          if (cleanProp) {
+            outputs.push({ label: cleanProp, type: 'any' });
+          }
+        });
+      }
+    }
+
+    return { code, inputs, outputs };
+  };
+
+  const handleApplyCode = () => {
+    if (!codeResult) {
+      toast({
+        status: 'warning',
+        title: t('common:no_code_to_apply')
+      });
+      return;
+    }
+
+    try {
+      const extractedResult = extractCodeFromMarkdown(codeResult);
+      const { code, inputs, outputs } = extractedResult;
+
+      const currentNode = nodeList.find((node) => node.nodeId === nodeId);
+      const codeInput = currentNode?.inputs?.find((input) => input.key === NodeInputKeyEnum.code);
+
+      if (!codeInput || !currentNode) {
+        toast({
+          status: 'error',
+          title: t('common:apply_code_failed')
+        });
+        return;
+      }
+
+      onChangeNode({
+        nodeId,
+        type: 'updateInput',
+        key: NodeInputKeyEnum.code,
+        value: {
+          ...codeInput,
+          value: code
+        }
+      });
+
+      const dynamicInputs =
+        currentNode.inputs?.filter(
+          (input) =>
+            input.key !== 'system_addInputParam' &&
+            input.key !== 'codeType' &&
+            input.key !== NodeInputKeyEnum.code
+        ) || [];
+
+      dynamicInputs.forEach((input) => {
+        onChangeNode({
+          nodeId,
+          type: 'delInput',
+          key: input.key
+        });
+      });
+
+      inputs.forEach((input) => {
+        onChangeNode({
+          nodeId,
+          type: 'addInput',
+          value: {
+            renderTypeList: [FlowNodeInputTypeEnum.reference],
+            valueType: input.type as WorkflowIOValueTypeEnum,
+            canEdit: true,
+            key: input.label,
+            label: input.label,
+            customInputConfig: {
+              selectValueTypeList: Object.values(ArrayTypeMap),
+              showDescription: false,
+              showDefaultValue: true
+            },
+            required: true
+          }
+        });
+      });
+
+      const dynamicOutputs =
+        currentNode.outputs?.filter(
+          (output) =>
+            output.key !== 'system_rawResponse' &&
+            output.key !== 'error' &&
+            output.key !== 'system_addOutputParam'
+        ) || [];
+
+      dynamicOutputs.forEach((output) => {
+        onChangeNode({
+          nodeId,
+          type: 'delOutput',
+          key: output.key
+        });
+      });
+
+      outputs.forEach((output) => {
+        onChangeNode({
+          nodeId,
+          type: 'addOutput',
+          value: {
+            id: nanoid(),
+            type: FlowNodeOutputTypeEnum.dynamic,
+            key: output.label,
+            valueType: output.type as WorkflowIOValueTypeEnum,
+            label: output.label,
+            valueDesc: '',
+            description: ''
+          }
+        });
+      });
+
+      toast({
+        status: 'success',
+        title: t('common:code_applied_successfully')
+      });
+    } catch (error) {
+      console.error('应用代码失败:', error);
+      toast({
+        status: 'error',
+        title: t('common:apply_code_failed')
+      });
+    }
+  };
 
   const handleClose = () => {
     onClose?.();
@@ -235,7 +412,7 @@ const NodeCopilot = ({ nodeId, onClose }: { nodeId: string; onClose?: () => void
           <Button variant="whiteBase" size="md" h={10} px={5}>
             {t('app:test_code')}
           </Button>
-          <Button variant="primary" size="md" h={10} px={5} onClick={() => console.log('应用代码')}>
+          <Button variant="primary" size="md" h={10} px={5} onClick={handleApplyCode}>
             {t('app:apply_code')}
           </Button>
         </Flex>
