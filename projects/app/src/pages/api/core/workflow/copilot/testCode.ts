@@ -7,6 +7,12 @@ import { createChatCompletion } from '@fastgpt/service/core/ai/config';
 import { llmCompletionsBodyFormat, parseLLMStreamResponse } from '@fastgpt/service/core/ai/utils';
 import { loadRequestMessages } from '@fastgpt/service/core/chat/utils';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken';
+import { createUsage } from '@fastgpt/service/support/wallet/usage/controller';
+import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 
 export type TestCodeParams = {
   code: string;
@@ -39,17 +45,21 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { code, codeType, model, inputs, outputs }: TestCodeParams = req.body;
 
-    await authCert({
+    const { teamId, tmbId } = await authCert({
       req,
       authToken: true,
       authApiKey: true
     });
 
-    const testCases = await generateTestCases({ code, codeType, model, inputs, outputs });
-    console.log(testCases);
+    const { testCases, inputTokens, outputTokens } = await generateTestCases({
+      code,
+      codeType,
+      model,
+      inputs,
+      outputs
+    });
 
     const results = await runAndCompareTests({ code, codeType, testCases });
-    console.log(JSON.stringify(results, null, 2));
 
     const summary = {
       total: results.length,
@@ -57,6 +67,31 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       failed: results.filter((r) => !r.passed).length,
       successRate: results.length > 0 ? results.filter((r) => r.passed).length / results.length : 0
     };
+
+    const { totalPoints, modelName } = formatModelChars2Points({
+      model,
+      inputTokens,
+      outputTokens,
+      modelType: ModelTypeEnum.llm
+    });
+    console.log(totalPoints, modelName);
+
+    createUsage({
+      teamId,
+      tmbId,
+      appName: i18nT('common:support.wallet.usage.Code Test'),
+      totalPoints,
+      source: UsageSourceEnum.code_test,
+      list: [
+        {
+          moduleName: i18nT('common:support.wallet.usage.Code Test'),
+          amount: totalPoints,
+          model: modelName,
+          inputTokens,
+          outputTokens
+        }
+      ]
+    });
 
     return summary;
   } catch (error) {
@@ -76,7 +111,7 @@ async function generateTestCases({
   model: string;
   inputs: Array<{ label: string; type: string }>;
   outputs: Array<{ label: string; type: string }>;
-}): Promise<TestCase[]> {
+}): Promise<{ testCases: TestCase[]; inputTokens: number; outputTokens: number }> {
   const languageName = codeType === SandboxCodeTypeEnum.py ? 'Python' : 'JavaScript';
 
   const inputsDesc = inputs.map((i) => `${i.label}: ${i.type}`).join(', ');
@@ -144,24 +179,38 @@ IMPORTANT:
       )
     });
 
-    let content: string;
+    const { content, inputTokens, outputTokens } = await (async () => {
+      if (isStreamResponse) {
+        const { parsePart, getResponseData } = parseLLMStreamResponse();
 
-    if (isStreamResponse) {
-      const { parsePart, getResponseData } = parseLLMStreamResponse();
+        for await (const part of response) {
+          parsePart({
+            part,
+            parseThinkTag: false,
+            retainDatasetCite: false
+          });
+        }
 
-      for await (const part of response) {
-        parsePart({
-          part,
-          parseThinkTag: false,
-          retainDatasetCite: false
-        });
+        const { content: responseContent, usage } = getResponseData();
+        return {
+          content: responseContent,
+          inputTokens: usage?.prompt_tokens || (await countGptMessagesTokens(requestMessages)),
+          outputTokens:
+            usage?.completion_tokens ||
+            (await countGptMessagesTokens([{ role: 'assistant', content: responseContent }]))
+        };
+      } else {
+        const usage = response.usage;
+        const content = response.choices?.[0]?.message?.content || '';
+        return {
+          content,
+          inputTokens: usage?.prompt_tokens || (await countGptMessagesTokens(requestMessages)),
+          outputTokens:
+            usage?.completion_tokens ||
+            (await countGptMessagesTokens([{ role: 'assistant', content: content }]))
+        };
       }
-
-      const { content: responseContent } = getResponseData();
-      content = responseContent;
-    } else {
-      content = response.choices?.[0]?.message?.content || '';
-    }
+    })();
 
     const jsonMatch = content.match(/\[[\s\S]*?\]/);
 
@@ -180,7 +229,7 @@ IMPORTANT:
           );
 
           if (validTestCases.length > 0) {
-            return validTestCases.slice(0, 3);
+            return { testCases: validTestCases.slice(0, 3), inputTokens, outputTokens };
           }
         }
       } catch (parseError) {
@@ -188,9 +237,9 @@ IMPORTANT:
       }
     }
 
-    return [];
+    return { testCases: [], inputTokens, outputTokens };
   } catch (error) {
-    return [];
+    return { testCases: [], inputTokens: 0, outputTokens: 0 };
   }
 }
 
