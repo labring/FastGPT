@@ -4,17 +4,12 @@ import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MySelect, { type SelectProps } from '@fastgpt/web/components/common/MySelect';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
-import { Box, Flex, HStack } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import dynamic from 'next/dynamic';
 import { ModelProviderList } from '@fastgpt/global/core/ai/provider';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 import { getModelFromList } from '@fastgpt/global/core/ai/model';
-
-const ModelPriceModal = dynamic(() =>
-  import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
-);
 
 type Props = SelectProps & {
   disableTip?: string;
@@ -88,29 +83,22 @@ const OneRowSelector = ({ list, onChange, disableTip, ...props }: Props) => {
       }}
     >
       <MyTooltip label={disableTip}>
-        <ModelPriceModal>
-          {({ onOpen }) => (
-            <MySelect
-              className="nowheel"
-              isDisabled={!!disableTip}
-              list={avatarList}
-              placeholder={t('common:not_model_config')}
-              h={'40px'}
-              {...props}
-              onChange={(e) => {
-                if (e === 'price') {
-                  onOpen();
-                  return;
-                }
-                return onChange?.(e);
-              }}
-            />
-          )}
-        </ModelPriceModal>
+        <MySelect
+          className="nowheel"
+          isDisabled={!!disableTip}
+          list={avatarList}
+          placeholder={t('common:not_model_config')}
+          h={'40px'}
+          {...props}
+          onChange={(e) => {
+            return onChange?.(e);
+          }}
+        />
       </MyTooltip>
     </Box>
   );
 };
+
 const MultipleRowSelector = ({ list, onChange, disableTip, placeholder, ...props }: Props) => {
   const { t } = useTranslation();
   const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
@@ -184,7 +172,7 @@ const MultipleRowSelector = ({ list, onChange, disableTip, placeholder, ...props
     [onChange]
   );
 
-  const SelectedModel = useMemo(() => {
+  const SelectedLabel = useMemo(() => {
     if (!props.value) return <>{t('common:not_model_config')}</>;
     const modelData = getModelFromList(modelList, props.value);
 
@@ -193,7 +181,7 @@ const MultipleRowSelector = ({ list, onChange, disableTip, placeholder, ...props
     setValue([modelData.provider, props.value]);
 
     return (
-      <HStack spacing={1}>
+      <Flex alignItems={'center'} py={1}>
         <Avatar
           borderRadius={'0'}
           mr={2}
@@ -201,8 +189,8 @@ const MultipleRowSelector = ({ list, onChange, disableTip, placeholder, ...props
           fallbackSrc={HUGGING_FACE_ICON}
           w={avatarSize}
         />
-        <Box>{modelData?.name}</Box>
-      </HStack>
+        <Box noOfLines={1}>{modelData?.name}</Box>
+      </Flex>
     );
   }, [modelList, props.value, t, avatarSize]);
 
@@ -216,7 +204,7 @@ const MultipleRowSelector = ({ list, onChange, disableTip, placeholder, ...props
     >
       <MyTooltip label={disableTip}>
         <MultipleRowSelect
-          label={SelectedModel}
+          label={SelectedLabel}
           list={selectorList}
           onSelect={onSelect}
           value={value}
@@ -234,7 +222,7 @@ const MultipleRowSelector = ({ list, onChange, disableTip, placeholder, ...props
 };
 
 const AIModelSelector = (props: Props) => {
-  return props.list.length > 10 ? (
+  return props.list.length > 100 ? (
     <MultipleRowSelector {...props} />
   ) : (
     <OneRowSelector {...props} />
