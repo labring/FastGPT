@@ -21,6 +21,7 @@ import { useTranslation } from 'next-i18next';
 import type { useScrollPagination } from '../../../hooks/useScrollPagination';
 import MyDivider from '../MyDivider';
 import { shadowLight } from '../../../styles/theme';
+import { isArray } from 'lodash';
 
 const menuItemStyles: MenuItemProps = {
   borderRadius: 'sm',
@@ -100,6 +101,7 @@ const MultipleSelect = <T = any,>({
   const [overflowItems, setOverflowItems] = useState<SelectedItemType[]>([]);
 
   const selectedItems = useMemo(() => {
+    if (!value || !isArray(value)) return [];
     return value.map((val) => {
       const listItem = list.find((item) => item.value === val);
       return listItem || { value: val, label: String(val) };
