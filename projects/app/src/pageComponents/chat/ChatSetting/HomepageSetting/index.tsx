@@ -1,4 +1,4 @@
-import { Box, Button, Flex, Grid, Input } from '@chakra-ui/react';
+import { Box, Button, Flex, Grid, IconButton, Input, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
 import MyInput from '@/components/MyInput';
 import { useCallback, useState } from 'react';
@@ -9,9 +9,9 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import ImageUpload from '@/pageComponents/chat/ChatSetting/ImageUpload';
 import type {
   ChatSettingSchema,
-  ChatSettingUpdateParams
+  ChatSettingUpdateParams,
+  QuickApp
 } from '@fastgpt/global/core/chat/setting/type';
-import NextHead from '@/components/common/NextHead';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ToolSelectModal from '@/pageComponents/chat/ChatSetting/ToolSelectModal';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
@@ -25,6 +25,7 @@ import {
   DEFAULT_LOGO_BANNER_URL
 } from '@/pageComponents/chat/constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import AddQuickAppModal from '@/pageComponents/chat/ChatSetting/HomepageSetting/AddQuickAppModal';
 
 type Props = {
   Header: React.FC<{ children?: React.ReactNode }>;
@@ -42,6 +43,10 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
 
   const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
   const refreshChatSetting = useContextSelector(ChatSettingContext, (v) => v.refreshChatSetting);
+  const quickApps = useContextSelector(
+    ChatSettingContext,
+    (v) => v.chatSettings?.quickApps || []
+  ) as QuickApp[];
 
   const chatSettings2Form = useCallback(
     (data?: ChatSettingSchema) => {
@@ -121,6 +126,12 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
     }
   );
 
+  const {
+    isOpen: isOpenAddQuickApp,
+    onOpen: onOpenAddQuickApp,
+    onClose: onCloseAddQuickApp
+  } = useDisclosure();
+
   return (
     <Flex
       py={5}
@@ -158,6 +169,61 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
       >
         <Flex w={['100%', '630px']}>
           <Flex flexDir="column" gap={6} w="100%">
+            {/* QUICK APPS */}
+            <Box fontWeight={'500'}>
+              <Flex fontWeight={'500'} fontSize="14px" mb={2} alignItems={'center'} gap={2}>
+                <Box>{t('chat:setting.home.quick_apps')}</Box>
+              </Flex>
+
+              <Flex alignItems="center" gap={2}>
+                <Flex
+                  flex="1"
+                  minH="40px"
+                  border="sm"
+                  borderColor="myGray.200"
+                  borderRadius="6px"
+                  bg="myGray.50"
+                  p={2}
+                  alignItems="center"
+                  gap={2}
+                >
+                  {quickApps.length > 0 ? (
+                    <Flex flexWrap="wrap" gap={3}>
+                      {quickApps.map((q) => (
+                        <Flex
+                          key={q.id}
+                          alignItems="center"
+                          gap={1}
+                          _notLast={{
+                            pr: '3',
+                            borderRight: 'sm',
+                            borderColor: 'myGray.300'
+                          }}
+                        >
+                          <Avatar src={q.avatar} w={5} borderRadius="xs" />
+                          <Box fontSize="xs">{q.name}</Box>
+                        </Flex>
+                      ))}
+                    </Flex>
+                  ) : (
+                    <Box fontSize="xs" fontWeight="400" userSelect="none">
+                      {t('chat:setting.home.quick_apps.placeholder')}
+                    </Box>
+                  )}
+                </Flex>
+
+                <IconButton
+                  flexShrink="0"
+                  icon={<MyIcon name="common/setting" w="20px" color="myGray.500" />}
+                  aria-label="add quick apps"
+                  variant="ghost"
+                  size="sm"
+                  color="primary.700"
+                  onClick={onOpenAddQuickApp}
+                />
+              </Flex>
+            </Box>
+
             {/* AVAILABLE TOOLS */}
             <Box fontWeight={'500'}>
               <Flex
@@ -392,6 +458,13 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
           </Flex>
         </Flex>
       </Flex>
+
+      <AddQuickAppModal
+        quickApps={quickApps}
+        isOpen={isOpenAddQuickApp}
+        onClose={onCloseAddQuickApp}
+        onRefresh={refreshChatSetting}
+      />
     </Flex>
   );
 };

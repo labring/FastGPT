@@ -14,7 +14,10 @@ export type ChatSettingSchema = {
     avatar: string;
     inputs?: Record<`${NodeInputKeyEnum}` | string, any>;
   }[];
-  quickAppIds: string[];
+  quickApps: {
+    id: string;
+    order: number;
+  }[];
   categories: {
     id: string;
     name: string;
@@ -22,3 +25,6 @@ export type ChatSettingSchema = {
 };
 
 export type ChatSettingUpdateParams = Partial<Omit<ChatSettingSchema, '_id' | 'appId' | 'teamId'>>;
+
+export type QuickApp = ChatSettingSchema['quickApps'][number] & { name: string; avatar: string };
+export type Category = ChatSettingSchema['categories'][number] & { appIds: string[] };

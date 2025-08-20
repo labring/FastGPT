@@ -18,13 +18,11 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import type { ChatSettingUpdateParams } from '@fastgpt/global/core/chat/setting/type';
+import type { Category } from '@fastgpt/global/core/chat/setting/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getFavouriteApps, updateChatSetting, updateAllFavouriteApp } from '@/web/core/chat/api';
 import { useForm } from 'react-hook-form';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-
-type Category = NonNullable<ChatSettingUpdateParams['categories']>[number];
 
 type EditableCategoryItemProps = {
   category: Category;
@@ -371,7 +369,7 @@ const CategoryManageModal = ({ isOpen, onClose, onRefresh }: Props) => {
   const [currentDelCategory, setCurrentDelCategory] = useState<Category | null>(null);
   // sync local categories from server state when modal opens or data refreshes
   useEffect(() => {
-    setLocalCategories(categories);
+    setLocalCategories(categories as Category[]);
   }, [categories, isOpen]);
   // update categories
   const { loading: isUpdating, runAsync: updateCategories } = useRequest2(
@@ -391,7 +389,7 @@ const CategoryManageModal = ({ isOpen, onClose, onRefresh }: Props) => {
   const handleClickNewCategory = () => {
     const id = getNanoid(8);
     const next = [{ id, name: '' }, ...localCategories];
-    setLocalCategories(next);
+    setLocalCategories(next as Category[]);
     setIsEditing((prev) => [...prev, id]);
 
     // TODO: persist immediately so new category will be visible after refresh
@@ -433,7 +431,7 @@ const CategoryManageModal = ({ isOpen, onClose, onRefresh }: Props) => {
 
   const handleClose = useCallback(() => {
     setIsEditing([]);
-    setLocalCategories(categories);
+    setLocalCategories(categories as Category[]);
     // reset sub states when modal closes
     setCurrentDelCategory(null);
     setCurrentSaveCategoryForApp(null);

@@ -16,7 +16,7 @@ import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useRef, useState } from 'react';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { streamFetch } from '@/web/common/api/fetch';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
@@ -47,6 +47,14 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatSidebarPaneEnum } from '../constants';
 import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
+import ChatHistory, {
+  FooterComponent,
+  PanelComponent,
+  ChatHistoryDrawer
+} from '@/pageComponents/chat/ChatHistory';
+import type { QuickApp } from '@fastgpt/global/core/chat/setting/type';
+import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
+import { GetChatTypeEnum } from '@/global/core/chat/constants';
 
 type Props = {
   myApps: AppListItemType[];
@@ -74,6 +82,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
 
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
+  const onChangeGlobalAppId = useContextSelector(ChatContext, (v) => v.onChangeAppId);
 
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
@@ -83,9 +92,13 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
   const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
   const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
+  const hiddenAppId = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.appId);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
+
+  const [isQuickApp, setIsQuickApp] = useState(false);
+  const [currentAppId, setCurrentAppId] = useState(hiddenAppId);
 
   const availableModels = useMemo(
     () => llmModelList.map((model) => ({ value: model.model, label: model.name })),
@@ -121,28 +134,31 @@ const HomeChatWindow = ({ myApps }: Props) => {
   // 初始化聊天数据
   const { loading } = useRequest2(
     async () => {
-      if (!appId || forbidLoadChat.current || !feConfigs?.isPlus) return;
+      if (!currentAppId || forbidLoadChat.current || !feConfigs?.isPlus) return;
 
       const modelData = getWebLLMModel(selectedModel);
-      const res = await getInitChatInfo({ appId, chatId });
+      const res = await getInitChatInfo({ appId: currentAppId, chatId });
       res.userAvatar = userInfo?.avatar;
-      if (!res.app.chatConfig) {
-        res.app.chatConfig = {
-          fileSelectConfig: {
+
+      if (!isQuickApp) {
+        if (!res.app.chatConfig) {
+          res.app.chatConfig = {
+            fileSelectConfig: {
+              ...defaultFileSelectConfig,
+              canSelectImg: !!modelData.vision
+            },
+            whisperConfig: defaultWhisperConfig
+          };
+        } else {
+          res.app.chatConfig.fileSelectConfig = {
             ...defaultFileSelectConfig,
             canSelectImg: !!modelData.vision
-          },
-          whisperConfig: defaultWhisperConfig
-        };
-      } else {
-        res.app.chatConfig.fileSelectConfig = {
-          ...defaultFileSelectConfig,
-          canSelectImg: !!modelData.vision
-        };
-        res.app.chatConfig.whisperConfig = {
-          ...defaultWhisperConfig,
-          open: true
-        };
+          };
+          res.app.chatConfig.whisperConfig = {
+            ...defaultWhisperConfig,
+            open: true
+          };
+        }
       }
 
       setChatBoxData(res);
@@ -154,7 +170,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
     },
     {
       manual: false,
-      refreshDeps: [appId, chatId],
+      refreshDeps: [currentAppId, chatId],
       errorToast: '',
       onFinally() {
         forbidLoadChat.current = false;
@@ -169,13 +185,27 @@ const HomeChatWindow = ({ myApps }: Props) => {
     }
   );
 
+  const handleSwitchQuickApp = async (id: string) => {
+    // click the same quick app again => exit quick app mode back to default app
+    if (isQuickApp && currentAppId === id) {
+      setIsQuickApp(false);
+      setCurrentAppId(hiddenAppId);
+      onChangeGlobalAppId(hiddenAppId as string);
+      return;
+    }
+    // select or switch to another quick app => enter quick app mode and set current app id
+    setIsQuickApp(true);
+    setCurrentAppId(id);
+    onChangeGlobalAppId(id);
+  };
+
   useMount(() => {
     if (!feConfigs?.isPlus) {
       handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
     }
   });
 
-  // 使用类似AppChatWindow的对话逻辑
+  // 使用类似 AppChatWindow 的对话逻辑
   const onStartChat = useMemoizedFn(
     async ({
       messages,
@@ -184,13 +214,38 @@ const HomeChatWindow = ({ myApps }: Props) => {
       responseChatItemId,
       generatingMessage
     }: StartChatFnProps) => {
+      const histories = messages.slice(-1);
+
+      // using original workflow of quick app
+      if (isQuickApp && currentAppId) {
+        const { responseText } = await streamFetch({
+          data: {
+            messages: histories,
+            variables,
+            responseChatItemId,
+            appId: currentAppId,
+            chatId
+          },
+          abortCtrl: controller,
+          onMessage: generatingMessage
+        });
+
+        const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(histories)[0]);
+
+        onUpdateHistoryTitle({ chatId, newTitle });
+        setChatBoxData((state) => ({
+          ...state,
+          title: newTitle
+        }));
+
+        return { responseText, isNewChat: forbidLoadChat.current };
+      }
+
+      // not quick app, using model and tools selected on home page
       if (!selectedModel) {
         return Promise.reject('No model selected');
       }
 
-      const histories = messages.slice(-1);
-
-      // 根据所选工具 ID 动态拉取节点，并填充默认输入
       const tools: FlowNodeTemplateType[] = await Promise.all(
         selectedToolIds.map(async (toolId) => {
           const node = await getPreviewPluginNode({ appId: toolId });
@@ -240,8 +295,8 @@ const HomeChatWindow = ({ myApps }: Props) => {
     () => (
       <>
         {/* 模型选择 */}
-        {availableModels.length > 0 && (
-          <Box w={[0, 'auto']} flex={['1 0 0', '0 0 auto']}>
+        {!isQuickApp && availableModels.length > 0 && (
+          <Box w="auto">
             <AIModelSelector
               h={['30px', '36px']}
               boxShadow={'none'}
@@ -272,7 +327,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
         )}
 
         {/* 工具选择下拉框 */}
-        {availableTools.length > 0 && (
+        {!isQuickApp && availableTools.length > 0 && (
           <Menu isLazy closeOnSelect={false} autoSelect={false}>
             <MenuButton
               as={Button}
@@ -345,7 +400,8 @@ const HomeChatWindow = ({ myApps }: Props) => {
       selectedToolIds,
       setSelectedToolIds,
       setChatBoxData,
-      isPc
+      isPc,
+      isQuickApp
     ]
   );
 
@@ -404,17 +460,20 @@ const HomeChatWindow = ({ myApps }: Props) => {
 
         <Box flex={'1 0 0'} bg={'white'}>
           <ChatBox
-            appId={appId}
+            appId={currentAppId as string}
             chatId={chatId}
             isReady={!loading}
             feedbackType={'user'}
             chatType={ChatTypeEnum.home}
-            outLinkAuthData={outLinkAuthData}
-            onStartChat={onStartChat}
-            InputLeftComponent={InputLeftComponent}
-            dialogTips={chatSettings?.dialogTips}
-            wideLogo={chatSettings?.wideLogoUrl}
             slogan={chatSettings?.slogan}
+            outLinkAuthData={outLinkAuthData}
+            wideLogo={chatSettings?.wideLogoUrl}
+            dialogTips={chatSettings?.dialogTips}
+            InputLeftComponent={isQuickApp ? undefined : InputLeftComponent}
+            quickApps={(chatSettings?.quickApps as QuickApp[]) || []}
+            onStartChat={onStartChat}
+            onSwitchQuickApp={handleSwitchQuickApp}
+            currentQuickAppId={isQuickApp ? (currentAppId as string) : undefined}
           />
         </Box>
       </Flex>

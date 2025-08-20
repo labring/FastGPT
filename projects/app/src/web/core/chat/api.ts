@@ -1,8 +1,10 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type { ChatHistoryItemType, ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import type {
+  Category,
   ChatSettingSchema,
-  ChatSettingUpdateParams
+  ChatSettingUpdateParams,
+  QuickApp
 } from '@fastgpt/global/core/chat/setting/type';
 import type { getResDataQuery } from '@/pages/api/core/chat/getResData';
 import type {
@@ -118,8 +120,9 @@ export const getCollectionQuote = (data: GetCollectionQuoteProps) =>
 /*---------- chat setting ------------*/
 export const getChatSetting = () => {
   return GET<
-    Omit<ChatSettingSchema, 'categories'> & {
-      categories: (ChatSettingSchema['categories'][number] & { appIds: string[] })[];
+    Omit<ChatSettingSchema, 'categories' | 'quickApps'> & {
+      categories: Category[];
+      quickApps: QuickApp[];
     }
   >('/proApi/core/chat/setting/detail');
 };
