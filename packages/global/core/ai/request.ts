@@ -4,6 +4,7 @@ import type {
   ChatCompletionCreateParamsNonStreaming,
   ChatCompletionCreateParamsStreaming,
   ChatCompletionMessageToolCall,
+  ChatCompletionTool,
   CompletionFinishReason,
   CompletionUsage,
   StreamChatType
@@ -14,7 +15,9 @@ import {
   removeDatasetCiteText
 } from '../../../service/core/ai/utils';
 import { createChatCompletion } from '../../../service/core/ai/config';
+import type { ToolNodeItemType } from '../../../service/core/workflow/dispatch/ai/agent/type';
 import type { OpenaiAccountType } from 'support/user/team/type';
+import { toolValueTypeList, valueTypeJsonSchemaMap } from '../../core/workflow/constants';
 
 type BasicResponseParams = {
   reasoning?: boolean;
@@ -23,8 +26,22 @@ type BasicResponseParams = {
 };
 
 type CreateLLMResponseProps = {
-  requestBody: ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming;
+  llmOptions: Omit<
+    ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming,
+    'tools'
+  >;
   params: BasicResponseParams;
+  toolCallOptions?:
+    | {
+        mode?: 'function';
+        tools?: ChatCompletionTool[];
+        toolNodes?: ToolNodeItemType[];
+      }
+    | {
+        mode?: 'prompt';
+        tools?: ChatCompletionTool[];
+        toolNodes?: ToolNodeItemType[];
+      };
   userKey?: OpenaiAccountType;
   events?: CreateStreamResponseEvents & CreateCompleteResopnseEvents;
 };
@@ -36,6 +53,8 @@ type LLMResponse = {
   finish_reason: CompletionFinishReason;
   isStreamResponse: boolean;
   getEmptyResponseTip: () => string;
+  tools: ChatCompletionTool[];
+  toolsPrompt: string;
   inputTokens?: number;
   outputTokens?: number;
 };
@@ -89,25 +108,102 @@ type CreateCompleteResopnseProps = {
   params: CreateCompleteResopnseParams;
 } & CreateCompleteResopnseEvents;
 
-type StreamResponse = Omit<
+type StreamResponse = Pick<
   LLMResponse,
-  'inputTokens' | 'outputTokens' | 'getEmptyResponseTip' | 'isStreamResponse'
+  'answerText' | 'reasoningText' | 'toolCallResults' | 'finish_reason'
 > & {
   usage?: CompletionUsage;
 };
 
-type CompleteResopnse = Omit<
+type CompleteResopnse = Pick<
   LLMResponse,
-  'inputTokens' | 'outputTokens' | 'getEmptyResponseTip' | 'isStreamResponse'
+  'answerText' | 'reasoningText' | 'toolCallResults' | 'finish_reason'
 > & {
   usage?: CompletionUsage;
 };
 
 export const createLLMResponse = async (args: CreateLLMResponseProps): Promise<LLMResponse> => {
-  const { requestBody, userKey, params, events } = args;
+  const { llmOptions, toolCallOptions = { mode: 'function' }, userKey, params, events } = args;
+
+  const toolItems: ChatCompletionTool[] = [];
+  let toolsPrompt: string = '';
+
+  if (toolCallOptions) {
+    const { mode, toolNodes, tools } = toolCallOptions;
+    if (toolNodes) {
+      toolItems.push(
+        ...toolNodes.map((item) => {
+          if (item.jsonSchema) {
+            return {
+              type: 'function',
+              function: {
+                name: item.nodeId,
+                description: item.intro || item.name,
+                parameters: item.jsonSchema
+              }
+            } as ChatCompletionTool;
+          }
+
+          const properties: Record<
+            string,
+            {
+              type: string;
+              description: string;
+              enum?: string[];
+              required?: boolean;
+              items?: {
+                type: string;
+              };
+            }
+          > = {};
+          item.toolParams.forEach((item) => {
+            const jsonSchema = item.valueType
+              ? valueTypeJsonSchemaMap[item.valueType] || toolValueTypeList[0].jsonSchema
+              : toolValueTypeList[0].jsonSchema;
+
+            properties[item.key] = {
+              ...jsonSchema,
+              description: item.toolDescription || '',
+              enum: item.enum?.split('\n').filter(Boolean) || undefined
+            };
+          });
+
+          return {
+            type: 'function',
+            function: {
+              name: item.nodeId,
+              description: item.toolDescription || item.intro || item.name,
+              parameters: {
+                type: 'object',
+                properties,
+                required: item.toolParams.filter((item) => item.required).map((item) => item.key)
+              }
+            }
+          } as ChatCompletionTool;
+        })
+      );
+    }
+    if (tools) {
+      toolItems.push(
+        ...tools.map((t) => ({
+          type: t.type,
+          function: t.function
+        }))
+      );
+    }
+
+    if (mode === 'prompt') {
+      toolsPrompt = JSON.stringify(toolItems);
+    }
+  }
+
+  const body: ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming = {
+    tools: toolItems,
+    ...llmOptions
+  };
 
   const { response, isStreamResponse, getEmptyResponseTip } = await createChatCompletion({
-    body: requestBody,
+    body,
     userKey,
     options: {
       headers: {
@@ -127,6 +223,8 @@ export const createLLMResponse = async (args: CreateLLMResponseProps): Promise<L
       outputTokens: usage?.completion_tokens,
       isStreamResponse,
       getEmptyResponseTip,
+      tools: toolItems,
+      toolsPrompt,
       ...streamResults
     };
   } else {
@@ -140,6 +238,8 @@ export const createLLMResponse = async (args: CreateLLMResponseProps): Promise<L
       outputTokens: usage?.completion_tokens,
       isStreamResponse,
       getEmptyResponseTip,
+      tools: toolItems,
+      toolsPrompt,
       ...completeResults
     };
   }

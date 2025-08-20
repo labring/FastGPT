@@ -232,7 +232,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       });
 
       const llmResponse = await createLLMResponse({
-        requestBody,
+        llmOptions: requestBody,
         userKey: externalProvider.openaiAccount,
         params: { abortSignal: res.closed, reasoning: aiChatReasoning, retainDatasetCite },
         events: {

@@ -152,68 +152,6 @@ export const runToolWithPromptCall = async (
 
   const assistantResponses = response?.assistantResponses || [];
 
-  const toolsPrompt = JSON.stringify(
-    toolNodes.map((item) => {
-      if (item.jsonSchema) {
-        return {
-          toolId: item.nodeId,
-          description: item.intro,
-          parameters: item.jsonSchema
-        };
-      }
-
-      const properties: Record<
-        string,
-        {
-          type: string;
-          description: string;
-          required?: boolean;
-          enum?: string[];
-        }
-      > = {};
-      item.toolParams.forEach((item) => {
-        const jsonSchema = item.valueType
-          ? valueTypeJsonSchemaMap[item.valueType] || toolValueTypeList[0].jsonSchema
-          : toolValueTypeList[0].jsonSchema;
-
-        properties[item.key] = {
-          ...jsonSchema,
-          description: item.toolDescription || '',
-          enum: item.enum?.split('\n').filter(Boolean) || []
-        };
-      });
-
-      return {
-        toolId: item.nodeId,
-        description: item.toolDescription || item.intro,
-        parameters: {
-          type: 'object',
-          properties,
-          required: item.toolParams.filter((item) => item.required).map((item) => item.key)
-        }
-      };
-    })
-  );
-
-  const lastMessage = messages[messages.length - 1];
-  if (typeof lastMessage.content === 'string') {
-    lastMessage.content = replaceVariable(lastMessage.content, {
-      toolsPrompt
-    });
-  } else if (Array.isArray(lastMessage.content)) {
-    // array, replace last element
-    const lastText = lastMessage.content[lastMessage.content.length - 1];
-    if (lastText.type === 'text') {
-      lastText.text = replaceVariable(lastText.text, {
-        toolsPrompt
-      });
-    } else {
-      return Promise.reject('Prompt call invalid input');
-    }
-  } else {
-    return Promise.reject('Prompt call invalid input');
-  }
-
   const max_tokens = computedMaxToken({
     model: toolModel,
     maxToken,
@@ -255,6 +193,7 @@ export const runToolWithPromptCall = async (
     inputTokens,
     outputTokens,
     isStreamResponse,
+    toolsPrompt,
     getEmptyResponseTip
   }: {
     reasoning: string;
@@ -263,6 +202,7 @@ export const runToolWithPromptCall = async (
     inputTokens: number;
     outputTokens: number;
     isStreamResponse: boolean;
+    toolsPrompt: string;
     getEmptyResponseTip: () => string;
   } = {
     reasoning: '',
@@ -271,6 +211,7 @@ export const runToolWithPromptCall = async (
     inputTokens: 0,
     outputTokens: 0,
     isStreamResponse: true,
+    toolsPrompt: '',
     getEmptyResponseTip: () => ''
   };
 
@@ -284,7 +225,11 @@ export const runToolWithPromptCall = async (
     let answerBuffer = '';
 
     const llmResponse = await createLLMResponse({
-      requestBody,
+      llmOptions: requestBody,
+      toolCallOptions: {
+        mode: 'prompt',
+        toolNodes: toolNodes
+      },
       userKey: externalProvider.openaiAccount,
       params: { abortSignal: res.closed, reasoning: aiChatReasoning, retainDatasetCite },
       events: {
@@ -342,7 +287,27 @@ export const runToolWithPromptCall = async (
     inputTokens = llmResponse.inputTokens || 0;
     outputTokens = llmResponse.outputTokens || 0;
     isStreamResponse = llmResponse.isStreamResponse;
+    toolsPrompt = llmResponse.toolsPrompt;
     getEmptyResponseTip = llmResponse.getEmptyResponseTip;
+  }
+
+  const lastMessage = messages[messages.length - 1];
+  if (typeof lastMessage.content === 'string') {
+    lastMessage.content = replaceVariable(lastMessage.content, {
+      toolsPrompt
+    });
+  } else if (Array.isArray(lastMessage.content)) {
+    // array, replace last element
+    const lastText = lastMessage.content[lastMessage.content.length - 1];
+    if (lastText.type === 'text') {
+      lastText.text = replaceVariable(lastText.text, {
+        toolsPrompt
+      });
+    } else {
+      return Promise.reject('Prompt call invalid input');
+    }
+  } else {
+    return Promise.reject('Prompt call invalid input');
   }
 
   if (stream && !isStreamResponse && aiChatReasoning && reasoning) {

@@ -198,56 +198,6 @@ export const runToolWithToolChoice = async (
 
   const assistantResponses = response?.assistantResponses || [];
 
-  const tools: ChatCompletionTool[] = toolNodes.map((item) => {
-    if (item.jsonSchema) {
-      return {
-        type: 'function',
-        function: {
-          name: item.nodeId,
-          description: item.intro || item.name,
-          parameters: item.jsonSchema
-        }
-      };
-    }
-
-    const properties: Record<
-      string,
-      {
-        type: string;
-        description: string;
-        enum?: string[];
-        required?: boolean;
-        items?: {
-          type: string;
-        };
-      }
-    > = {};
-    item.toolParams.forEach((item) => {
-      const jsonSchema = item.valueType
-        ? valueTypeJsonSchemaMap[item.valueType] || toolValueTypeList[0].jsonSchema
-        : toolValueTypeList[0].jsonSchema;
-
-      properties[item.key] = {
-        ...jsonSchema,
-        description: item.toolDescription || '',
-        enum: item.enum?.split('\n').filter(Boolean) || undefined
-      };
-    });
-
-    return {
-      type: 'function',
-      function: {
-        name: item.nodeId,
-        description: item.toolDescription || item.intro || item.name,
-        parameters: {
-          type: 'object',
-          properties,
-          required: item.toolParams.filter((item) => item.required).map((item) => item.key)
-        }
-      }
-    };
-  });
-
   const max_tokens = computedMaxToken({
     model: toolModel,
     maxToken,
@@ -286,7 +236,6 @@ export const runToolWithToolChoice = async (
       model: toolModel.model,
       stream,
       messages: requestMessages,
-      tools,
       tool_choice: 'auto',
       parallel_tool_calls: true,
       temperature,
@@ -305,6 +254,7 @@ export const runToolWithToolChoice = async (
     reasoningContent,
     answer,
     toolCalls,
+    tools,
     finish_reason,
     inputTokens,
     outputTokens,
@@ -313,6 +263,7 @@ export const runToolWithToolChoice = async (
     reasoningContent: string;
     answer: string;
     toolCalls: ChatCompletionMessageToolCall[];
+    tools: ChatCompletionTool[];
     finish_reason: CompletionFinishReason;
     inputTokens: number;
     outputTokens: number;
@@ -321,6 +272,7 @@ export const runToolWithToolChoice = async (
     reasoningContent: '',
     answer: '',
     toolCalls: [],
+    tools: [],
     finish_reason: 'close',
     inputTokens: 0,
     outputTokens: 0,
@@ -334,7 +286,10 @@ export const runToolWithToolChoice = async (
     });
 
     const llmResponse = await createLLMResponse({
-      requestBody,
+      llmOptions: requestBody,
+      toolCallOptions: {
+        toolNodes
+      },
       userKey: externalProvider.openaiAccount,
       params: { abortSignal: res.closed, reasoning: aiChatReasoning, retainDatasetCite },
       events: {
@@ -486,6 +441,7 @@ export const runToolWithToolChoice = async (
     reasoningContent = llmResponse.reasoningText;
     answer = llmResponse.answerText;
     toolCalls = llmResponse.toolCallResults;
+    tools = llmResponse.tools;
     finish_reason = llmResponse.finish_reason;
     inputTokens = llmResponse.inputTokens || 0;
     outputTokens = llmResponse.outputTokens || 0;
