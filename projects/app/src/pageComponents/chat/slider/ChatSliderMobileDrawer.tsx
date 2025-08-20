@@ -7,6 +7,7 @@ import ChatSliderList from '@/pageComponents/chat/slider/ChatSliderList';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import ChatSliderFooter from '@/pageComponents/chat/slider/ChatSliderFooter';
+import MyDivider from '@fastgpt/web/components/common/MyDivider';
 
 type Props = {
   title?: string;
@@ -14,14 +15,18 @@ type Props = {
   menuConfirmButtonText?: string;
   showHeader?: boolean;
   showFooter?: boolean;
+  showList?: boolean;
+  showMenu?: boolean;
 };
 
 const ChatSliderMobileDrawer = ({
   title,
   banner,
   menuConfirmButtonText,
-  showHeader = false,
-  showFooter = false
+  showHeader = true,
+  showFooter = true,
+  showList = true,
+  showMenu = true
 }: Props) => {
   const theme = useTheme();
 
@@ -50,9 +55,10 @@ const ChatSliderMobileDrawer = ({
         >
           {showHeader && <ChatSliderHeader title={title} banner={banner} />}
 
-          <ChatSliderMenu menuConfirmButtonText={menuConfirmButtonText} />
+          {showMenu && <MyDivider h="0.5px" bg="myGray.100" my={2} mx={2} w="calc(100% - 16px)" />}
+          {showMenu && <ChatSliderMenu menuConfirmButtonText={menuConfirmButtonText} />}
 
-          <ChatSliderList />
+          {showList && <ChatSliderList />}
 
           {showFooter && <ChatSliderFooter />}
         </MyBox>

@@ -54,7 +54,7 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
   ) : (
     <>
       <Flex align={'center'} justify={'flex-start'} p={2}>
-        <Image src={banner || DEFAULT_LOGO_BANNER_URL} alt="banner" w="70%" />
+        <Image src={banner || DEFAULT_LOGO_BANNER_URL} alt="banner" w="60%" />
       </Flex>
 
       <MyDivider h="0.5px" bg="myGray.100" my={2} mx={2} w="calc(100% - 16px)" />
@@ -115,8 +115,6 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
           </Flex>
         </GridItem>
       </Grid>
-
-      <MyDivider h="0.5px" bg="myGray.100" my={2} mx={2} w="calc(100% - 16px)" />
     </>
   );
 };

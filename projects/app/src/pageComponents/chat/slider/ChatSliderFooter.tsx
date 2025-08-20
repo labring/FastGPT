@@ -21,7 +21,7 @@ const ChatSliderFooter = () => {
   const isSettingPane = pane === ChatSidebarPaneEnum.SETTING;
 
   return (
-    <Flex flexShrink={0} gap={2} alignItems="center" justifyContent="space-between" p={2}>
+    <Flex flexShrink={0} gap={2} alignItems="center" justifyContent="space-between" p={2} mt="auto">
       <UserAvatarPopover isCollapsed={false} placement="top-end">
         <Flex alignItems="center" gap={2} borderRadius="50%" p={2}>
           <Avatar src={userInfo?.avatar} w={8} h={8} borderRadius="50%" bg="myGray.200" />

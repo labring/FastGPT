@@ -130,8 +130,6 @@ const AppChatWindow = ({ myApps }: Props) => {
         </SideBar>
       ) : (
         <ChatSliderMobileDrawer
-          showHeader
-          showFooter
           banner={chatSettings?.wideLogoUrl}
           menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
         />
