@@ -12,6 +12,7 @@ import {
 import InputRender from '@/components/core/app/formRender';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 
 const DescriptionBox = React.memo(function DescriptionBox({
   description
@@ -38,33 +39,42 @@ export const SelectOptionsComponent = React.memo(function SelectOptionsComponent
   return (
     <Box maxW={'100%'}>
       <DescriptionBox description={description} />
-      <Flex flexDirection={'column'} gap={3} w={'250px'}>
-        {userSelectOptions.map((option: UserSelectOptionItemType) => {
-          const selected = option.value === userSelectedVal;
-
-          return (
-            <Button
-              key={option.key}
-              variant={'whitePrimary'}
-              whiteSpace={'pre-wrap'}
-              isDisabled={!!userSelectedVal}
-              {...(selected
-                ? {
-                    _disabled: {
-                      cursor: 'default',
-                      borderColor: 'primary.300',
-                      bg: 'primary.50 !important',
-                      color: 'primary.600'
-                    }
-                  }
-                : {})}
-              onClick={() => onSelect(option.value)}
-            >
-              {option.value}
-            </Button>
-          );
-        })}
-      </Flex>
+      <Box w={'250px'}>
+        <LeftRadio<string>
+          fontSize={'sm'}
+          // px={4}
+          py={3.5}
+          sx={{
+            '&': { gridGap: '12px' },
+            '& > * > div:first-of-type': {
+              alignItems: 'flex-start'
+            },
+            '& > * > div:first-of-type > div:first-of-type': {
+              marginTop: '0.1em'
+            }
+          }}
+          list={userSelectOptions.map((option: UserSelectOptionItemType) => ({
+            title: (
+              <Box
+                fontSize={'inherit'}
+                whiteSpace={'pre-wrap'}
+                wordBreak={'break-word'}
+                sx={{ overflowWrap: 'anywhere' }}
+              >
+                {option.value}
+              </Box>
+            ),
+            value: option.value
+          }))}
+          value={(userSelectedVal as any) ?? ('' as any)}
+          defaultBg={'white'}
+          activeBg={'white'}
+          onChange={(val) => {
+            if (userSelectedVal) return;
+            onSelect(val);
+          }}
+        />
+      </Box>
     </Box>
   );
 });

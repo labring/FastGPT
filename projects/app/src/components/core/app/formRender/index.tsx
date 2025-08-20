@@ -104,7 +104,21 @@ const InputRender = (props: InputRenderProps) => {
     if (inputType === InputTypeEnum.select) {
       const list =
         props.list || props.enums?.map((item) => ({ label: item.value, value: item.value })) || [];
-      return <MySelect {...commonProps} list={list} h={10} />;
+      const selectedOption = list.find((i) => i.value === value);
+      return (
+        <MySelect
+          {...commonProps}
+          list={list}
+          h={10}
+          valueLabel={
+            selectedOption ? (
+              <Box noOfLines={1} maxW={'calc(100%)'} title={String(selectedOption.label)}>
+                {selectedOption.label}
+              </Box>
+            ) : undefined
+          }
+        />
+      );
     }
 
     if (inputType === InputTypeEnum.multipleSelect) {
