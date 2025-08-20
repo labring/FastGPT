@@ -22,11 +22,14 @@ import { useMemo } from 'react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import NextHead from '@/components/common/NextHead';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
 const ChatFavouriteApp = () => {
   const { t } = useTranslation();
 
   const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
+  const homeTabTitle = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.homeTabTitle);
 
   const categories = useContextSelector(
     ChatSettingContext,
@@ -62,7 +65,7 @@ const ChatFavouriteApp = () => {
   const selectedCategory = watch('category');
 
   // load all favourites for checked state and saving
-  const { data: favouriteApps = [] } = useRequest2(
+  const { loading: isSearching, data: favouriteApps = [] } = useRequest2(
     async () => {
       return await getFavouriteApps({
         name: searchAppName,
@@ -98,7 +101,15 @@ const ChatFavouriteApp = () => {
   };
 
   return (
-    <Flex flexDirection={'column'} h={'100%'} pt={['46px', 0]}>
+    <MyBox
+      isLoading={isSearching}
+      display="flex"
+      flexDirection={'column'}
+      h={'100%'}
+      pt={['46px', 0]}
+    >
+      <NextHead title={homeTabTitle || 'FastGPT'} icon="/icon/logo.svg" />
+
       {/* header */}
       <Flex w="full" p="6" pb="0" justifyContent="space-between">
         {/* category tabs */}
@@ -204,7 +215,7 @@ const ChatFavouriteApp = () => {
           </GridItem>
         ))}
       </Grid>
-    </Flex>
+    </MyBox>
   );
 };
 
