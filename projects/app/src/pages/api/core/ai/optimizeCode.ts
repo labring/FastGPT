@@ -63,13 +63,14 @@ const getPromptNodeCopilotUserPrompt = (language: string, optimizerInput: string
   ## 强制约束：
   - 用 Markdown 的代码块格式输出代码
   - 函数名始终为 main，每次只生成一段完整代码，代码块中间不要包含其他内容
+  - 函数必须接收一个对象作为参数，对象包含所有输入参数
   - 代码必须返回对象格式的结果，例如：计算 a+b 的结果应该返回 {result: a+b}
-  - **必须**在函数开头添加完整的 JSDoc 注释，格式要求：
-    * 对每个入参使用 @param {类型} 参数名 - 参数描述
+  - **必须**在函数开头添加完整的注释，格式要求：
+    * 对每个入参对象中的字段使用 @param {类型} 参数名 - 参数描述
     * 对返回对象的每个属性使用 @property {类型} 属性名 - 属性描述
     * 数据类型严格限制为：string, number, boolean, object, Array<string>, Array<number>, Array<boolean>, Array<object>, Array<any>, any
   
-  ## JSDoc 注释示例：
+  ## 注释示例：
   \`\`\`javascript
   /**
    * 计算三个数字的各种组合和
@@ -81,7 +82,7 @@ const getPromptNodeCopilotUserPrompt = (language: string, optimizerInput: string
    * @property {number} acSum - a 和 c 的和
    * @property {number} bcSum - b 和 c 的和
    */
-  function main(a, b, c) {
+  function main({a, b, c}) {
     const abSum = Number(a) + Number(b);
     const acSum = Number(a) + Number(c);
     const bcSum = Number(b) + Number(c);
@@ -115,7 +116,6 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
         role: 'system',
         content: getPromptNodeCopilotSystemPrompt()
       },
-      // Add conversation history
       ...conversationHistory.map((msg) => ({
         role: msg.role as 'user' | 'assistant',
         content: msg.content
