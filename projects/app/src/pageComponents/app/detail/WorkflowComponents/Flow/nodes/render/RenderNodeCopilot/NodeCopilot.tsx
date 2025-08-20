@@ -8,6 +8,7 @@ import AIModelSelector from '@/components/Select/AIModelSelector';
 import Markdown from '@/components/Markdown';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { onOptimizeCode } from '@/web/common/api/fetch';
+import { testCode } from '@/web/core/workflow/api/copilot';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import {
   ArrayTypeMap,
@@ -64,12 +65,22 @@ const NodeCopilot = ({ nodeId, onClose }: { nodeId: string; onClose?: () => void
     const inputs: Array<{ label: string; type: string }> = [];
     const outputs: Array<{ label: string; type: string }> = [];
 
-    const paramRegex = /@param\s*\{([^}]+)\}\s*(\w+)\s*-?\s*.*/g;
-    let paramMatch;
-    while ((paramMatch = paramRegex.exec(code)) !== null) {
-      const type = paramMatch[1].trim();
-      const label = paramMatch[2].trim();
+    const nestedParamRegex = /@param\s*\{([^}]+)\}\s*params\.(\w+)\s*-?\s*.*/g;
+    let nestedParamMatch;
+    while ((nestedParamMatch = nestedParamRegex.exec(code)) !== null) {
+      const type = nestedParamMatch[1].trim();
+      const label = nestedParamMatch[2].trim();
       inputs.push({ label, type });
+    }
+
+    if (inputs.length === 0) {
+      const paramRegex = /@param\s*\{([^}]+)\}\s*(\w+)\s*-?\s*.*/g;
+      let paramMatch;
+      while ((paramMatch = paramRegex.exec(code)) !== null) {
+        const type = paramMatch[1].trim();
+        const label = paramMatch[2].trim();
+        inputs.push({ label, type });
+      }
     }
 
     const propertyRegex = /@property\s*\{([^}]+)\}\s*(\w+)\s*-?\s*.*/g;
@@ -279,8 +290,39 @@ const NodeCopilot = ({ nodeId, onClose }: { nodeId: string; onClose?: () => void
 
   const { runAsync: handleTestCode, loading: testCodeLoading } = useRequest2(async () => {
     if (!codeResult) return;
+    const { code, inputs, outputs } = extractCodeFromMarkdown(codeResult);
 
-    const currentNode = nodeList.find((node) => node.nodeId === nodeId);
+    if (!code || inputs.length === 0 || outputs.length === 0) {
+      toast({
+        status: 'warning',
+        title: t('app:test_code_incomplete')
+      });
+      return;
+    }
+
+    try {
+      const summary = await testCode({
+        code,
+        codeType: selectedLanguage,
+        model: selectedModel,
+        inputs,
+        outputs
+      });
+
+      const isAllPassed = summary.passed === summary.total;
+
+      toast({
+        status: isAllPassed ? 'success' : 'error',
+        title: isAllPassed
+          ? t('app:test_all_passed')
+          : `${t('app:test_failed_with_progress', { passed: summary.passed, total: summary.total })}`
+      });
+    } catch (error) {
+      toast({
+        status: 'error',
+        title: t('app:test_execution_failed')
+      });
+    }
   });
 
   const handleStopRequest = () => {
@@ -402,7 +444,15 @@ const NodeCopilot = ({ nodeId, onClose }: { nodeId: string; onClose?: () => void
 
       {codeResult && !loading && (
         <Flex gap={3} w="full" justifyContent={'end'}>
-          <Button variant="whiteBase" size="md" h={10} px={5}>
+          <Button
+            variant="whiteBase"
+            size="md"
+            h={10}
+            px={5}
+            isLoading={testCodeLoading}
+            loadingText={t('app:testing')}
+            onClick={handleTestCode}
+          >
             {t('app:test_code')}
           </Button>
           <Button variant="primary" size="md" h={10} px={5} onClick={handleApplyCode}>
