@@ -99,14 +99,6 @@ const NodeCopilot = ({ nodeId, onClose }: { nodeId: string; onClose?: () => void
   };
 
   const handleApplyCode = () => {
-    if (!codeResult) {
-      toast({
-        status: 'warning',
-        title: t('common:no_code_to_apply')
-      });
-      return;
-    }
-
     try {
       const extractedResult = extractCodeFromMarkdown(codeResult);
       const { code, inputs, outputs } = extractedResult;
@@ -115,10 +107,6 @@ const NodeCopilot = ({ nodeId, onClose }: { nodeId: string; onClose?: () => void
       const codeInput = currentNode?.inputs?.find((input) => input.key === NodeInputKeyEnum.code);
 
       if (!codeInput || !currentNode) {
-        toast({
-          status: 'error',
-          title: t('common:apply_code_failed')
-        });
         return;
       }
 
@@ -205,7 +193,6 @@ const NodeCopilot = ({ nodeId, onClose }: { nodeId: string; onClose?: () => void
         title: t('common:code_applied_successfully')
       });
     } catch (error) {
-      console.error('应用代码失败:', error);
       toast({
         status: 'error',
         title: t('common:apply_code_failed')
@@ -290,6 +277,12 @@ const NodeCopilot = ({ nodeId, onClose }: { nodeId: string; onClose?: () => void
     }
   });
 
+  const { runAsync: handleTestCode, loading: testCodeLoading } = useRequest2(async () => {
+    if (!codeResult) return;
+
+    const currentNode = nodeList.find((node) => node.nodeId === nodeId);
+  });
+
   const handleStopRequest = () => {
     if (abortController) {
       abortController.abort();
@@ -361,7 +354,7 @@ const NodeCopilot = ({ nodeId, onClose }: { nodeId: string; onClose?: () => void
         >
           <MyIcon name="optimizer" alignSelf={'flex-start'} mt={0.5} w={5} />
           <Textarea
-            placeholder="描述你需要生成的代码功能..."
+            placeholder={t('app:code_function_describe')}
             resize="none"
             rows={1}
             minHeight="24px"
@@ -400,7 +393,7 @@ const NodeCopilot = ({ nodeId, onClose }: { nodeId: string; onClose?: () => void
               if (loading) {
                 handleStopRequest();
               } else {
-                void handleSendOptimization();
+                handleSendOptimization();
               }
             }}
           />
