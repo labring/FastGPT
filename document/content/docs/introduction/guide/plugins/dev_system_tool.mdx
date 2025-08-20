@@ -16,11 +16,15 @@ FastGPT 系统工具项目从 4.10.0 版本后移动到独立的`fastgpt-plugin`
 
 ## 1. 准备工作
 
-- Fork[fastgpt-plugin 项目](https://github.com/labring/fastgpt-plugin)
-- 安装[Bun](https://bun.sh/)
-- 本地拉取项目进行 Dev 开发。
-  - bun install
-  - bun run dev
+- Fork [fastgpt-plugin 项目](https://github.com/labring/fastgpt-plugin)
+- 安装 [Bun](https://bun.sh/)
+- 部署一套 Minio，也可以直接使用 FastGPT 的 `docker-compose.yml` 中的 Minio。
+- 本地 clone 项目 `git clone git@github.com:[your-github-username]/fastgpt-plugin.git`
+- 拷贝示例环境变量文件，并修改连接到开发环境的 Minio `cp .env.example .env.local`
+- 安装依赖 `bun install`
+- 运行开发环境 `bun run dev`
+
+在 dev 环境下，Bun 将监听修改并热更新。
 
 ## 2. 初始化一个新的工具/工具集
 
@@ -32,7 +36,7 @@ bun run new:tool
 
 依据提示分别选择创建工具/工具集，以及目录名（使用 camelCase 小驼峰法命名）。
 
-执行完后，系统会在 `modules/tool/packages/[your-tool-name]`下生成一个工具/工具集的目录。
+执行完后，系统会在 `modules/tool/packages/[your-tool-name]` 下生成一个工具/工具集的目录。
 
 系统工具 (Tool) 文件结构如下:
 
