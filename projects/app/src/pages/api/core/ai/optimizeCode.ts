@@ -60,9 +60,39 @@ const getPromptNodeCopilotUserPrompt = (language: string, optimizerInput: string
   ${optimizerInput}
   </OptimizerInput>
 
-  ## 注意事项：
+  ## 强制约束：
   - 用 Markdown 的代码块格式输出代码
-  - 回答简洁精炼，不要添加过多的思考过程，直接输出最终结果以及相关解释
+  - 函数名始终为 main，每次只生成一段完整代码，代码块中间不要包含其他内容
+  - 代码必须返回对象格式的结果，例如：计算 a+b 的结果应该返回 {result: a+b}
+  - **必须**在函数开头添加完整的 JSDoc 注释，格式要求：
+    * 对每个入参使用 @param {类型} 参数名 - 参数描述
+    * 对返回对象的每个属性使用 @property {类型} 属性名 - 属性描述
+    * 数据类型严格限制为：string, number, boolean, object, Array<string>, Array<number>, Array<boolean>, Array<object>, Array<any>, any
+  
+  ## JSDoc 注释示例：
+  \`\`\`javascript
+  /**
+   * 计算三个数字的各种组合和
+   * @param {string} a - 第一个数字（字符串形式）
+   * @param {string} b - 第二个数字（字符串形式）  
+   * @param {string} c - 第三个数字（字符串形式）
+   * @returns {object} - 包含计算结果的对象
+   * @property {number} abSum - a 和 b 的和
+   * @property {number} acSum - a 和 c 的和
+   * @property {number} bcSum - b 和 c 的和
+   */
+  function main(a, b, c) {
+    const abSum = Number(a) + Number(b);
+    const acSum = Number(a) + Number(c);
+    const bcSum = Number(b) + Number(c);
+    return { abSum, acSum, bcSum };
+  }
+  \`\`\`
+
+  ## 注意事项：
+  - 回答简洁精炼，不要添加过多的思考过程，直接输出最终代码结果
+  - JSDoc 注释是**必需的**，缺少注释将导致解析失败
+  - @param 和 @property 的类型声明必须准确，系统会根据这些注释自动生成输入输出接口
   `;
 };
 
