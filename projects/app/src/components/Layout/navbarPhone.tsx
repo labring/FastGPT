@@ -99,7 +99,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
             onClick={() => {
               if (item.link === router.asPath) return;
               if (item.link.startsWith('/chat')) {
-                window.open(item.link, '_blank');
+                window.open(process.env.NEXT_PUBLIC_BASE_URL + item.link, '_blank');
                 return;
               }
               router.push(item.link);
