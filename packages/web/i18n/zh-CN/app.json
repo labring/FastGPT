@@ -50,7 +50,7 @@
   "chat_debug": "调试预览",
   "chat_logs": "对话日志",
   "chat_logs_tips": "日志会记录该应用的在线、分享和 API（需填写 chatId）对话记录",
-  "common.day": "日",
+  "code_function_describe": "描述你的代码功能，例如：生成一个求两数之和的函数",
   "config_ai_model_params": "点击配置 AI 模型相关属性",
   "config_file_upload": "点击配置文件上传规则",
   "config_question_guide": "配置猜你想问",

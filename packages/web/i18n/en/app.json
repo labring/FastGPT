@@ -51,6 +51,7 @@
   "chat_logs": "Logs",
   "chat_logs_tips": "Logs will record the online, shared, and API (requires chatId) conversation records of this app.",
   "common.day": "day",
+  "code_function_describe": "Describe your code function, for example: generate a function that finds the sum of two numbers",
   "config_ai_model_params": "Click to configure AI model related properties",
   "config_file_upload": "Click to Configure File Upload Rules",
   "config_question_guide": "Configuration guess you want to ask",

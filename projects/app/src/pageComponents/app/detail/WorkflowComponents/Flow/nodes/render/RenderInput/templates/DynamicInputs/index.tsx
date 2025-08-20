@@ -1,9 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../../type';
-import { Box, Button, Flex, HStack } from '@chakra-ui/react';
-import { SmallAddIcon } from '@chakra-ui/icons';
+import { Box, Flex, HStack, Input } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import dynamic from 'next/dynamic';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import {
   type FlowNodeInputItemType,
@@ -11,15 +9,24 @@ import {
 } from '@fastgpt/global/core/workflow/type/io';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
-import { defaultInput } from '../../FieldEditModal';
 import { getInputComponentProps } from '@/web/core/workflow/utils';
 import { ReferSelector, useReference } from '../Reference';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import ValueTypeLabel from '../../../ValueTypeLabel';
-import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  WorkflowIOValueTypeEnum,
+  toolValueTypeList
+} from '@fastgpt/global/core/workflow/constants';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 
-const FieldEditModal = dynamic(() => import('../../FieldEditModal'));
+const defaultInput: FlowNodeInputItemType = {
+  renderTypeList: [FlowNodeInputTypeEnum.reference],
+  valueType: WorkflowIOValueTypeEnum.any,
+  canEdit: true,
+  key: '',
+  label: ''
+};
 
 const DynamicInputs = (props: RenderInputProps) => {
   const { item, inputs = [], nodeId } = props;
@@ -30,8 +37,6 @@ const DynamicInputs = (props: RenderInputProps) => {
   const keys = useMemo(() => {
     return inputs.map((input) => input.key);
   }, [inputs]);
-
-  const [editField, setEditField] = useState<FlowNodeInputItemType>();
 
   const onAddField = useCallback(
     ({ data }: { data: FlowNodeInputItemType }) => {
@@ -59,97 +64,56 @@ const DynamicInputs = (props: RenderInputProps) => {
             <Box>{item.label || t('workflow:custom_input')}</Box>
             {item.description && <QuestionTip label={t(item.description as any)} />}
           </HStack>
-          <Box flex={'1 0 0'} />
-          <Button
-            variant={'whiteBase'}
-            leftIcon={<SmallAddIcon />}
-            iconSpacing={1}
-            size={'sm'}
-            onClick={() =>
-              setEditField({
-                ...defaultInput,
-                ...getInputComponentProps(item)
-              })
-            }
-          >
-            {t('common:add_new')}
-          </Button>
         </HStack>
         {/* field render */}
         <Box mt={2}>
-          {dynamicInputs.map((children) => (
-            <Box key={children.key} _notLast={{ mb: 3 }}>
-              <Reference {...props} inputChildren={children} />
+          {[...dynamicInputs, {} as FlowNodeInputItemType].map((children, index) => (
+            <Box key={children.key || `empty-${index}`} _notLast={{ mb: 3 }}>
+              <Reference {...props} inputChildren={children} isEmptyItem={!children.key} />
             </Box>
           ))}
         </Box>
-
-        {!!editField && !!item.customInputConfig && (
-          <FieldEditModal
-            defaultInput={editField}
-            customInputConfig={item.customInputConfig}
-            keys={keys}
-            onClose={() => setEditField(undefined)}
-            onSubmit={onAddField}
-          />
-        )}
       </Box>
     );
-  }, [editField, dynamicInputs, item, keys, onAddField, props, t]);
+  }, [dynamicInputs, item, keys, onAddField, props, t]);
 
   return Render;
 };
 
 export default React.memo(DynamicInputs);
 
-function Reference({
+const Reference = ({
   inputChildren,
+  isEmptyItem = false,
   ...props
 }: RenderInputProps & {
   inputChildren: FlowNodeInputItemType;
-}) {
+  isEmptyItem?: boolean;
+}) => {
   const { nodeId, inputs = [], item } = props;
   const { t } = useTranslation();
+  const { toast } = useToast();
 
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const keys = useMemo(() => {
     return inputs.map((input) => input.key);
   }, [inputs]);
-  const [editField, setEditField] = useState<FlowNodeInputItemType>();
 
-  const onSelect = useCallback(
-    (e?: ReferenceValueType) => {
-      if (!e) return;
-      onChangeNode({
-        nodeId,
-        type: 'replaceInput',
-        key: inputChildren.key,
-        value: {
-          ...inputChildren,
-          value: e
-        }
-      });
-    },
-    [inputChildren, nodeId, onChangeNode]
-  );
+  const [tempLabel, setTempLabel] = useState('');
 
   const { referenceList } = useReference({
     nodeId,
-    valueType: inputChildren.valueType
+    valueType: inputChildren.valueType || WorkflowIOValueTypeEnum.any
   });
 
-  const onUpdateField = useCallback(
-    ({ data }: { data: FlowNodeInputItemType }) => {
-      if (!data.key) return;
-      const oldType = inputChildren.valueType;
-      const newType = data.valueType;
-      let newValue = data.value;
-      if (oldType?.includes('array') && !newType?.includes('array')) {
-        newValue = data.value[0];
-      } else if (!oldType?.includes('array') && newType?.includes('array')) {
-        newValue = [data.value];
-      }
+  const onSelect = useCallback(
+    (e?: ReferenceValueType) => {
+      if (!e || isEmptyItem) return;
+
+      const referenceItem = referenceList
+        .find((item) => item.value === e[0])
+        ?.children.find((item) => item.value === e[1]);
 
       onChangeNode({
         nodeId,
@@ -157,15 +121,14 @@ function Reference({
         key: inputChildren.key,
         value: {
           ...inputChildren,
-          value: newValue,
-          key: data.key,
-          label: data.label,
-          valueType: data.valueType
+          value: e,
+          valueType: referenceItem?.valueType || WorkflowIOValueTypeEnum.any
         }
       });
     },
-    [inputChildren, nodeId, onChangeNode]
+    [inputChildren, nodeId, onChangeNode, isEmptyItem, referenceList]
   );
+
   const onDel = useCallback(() => {
     onChangeNode({
       nodeId,
@@ -174,60 +137,144 @@ function Reference({
     });
   }, [inputChildren.key, nodeId, onChangeNode]);
 
+  const handleLabelChange = useCallback(
+    (newLabel: string) => {
+      if (isEmptyItem) {
+        setTempLabel(newLabel);
+        return;
+      }
+      setTempLabel(newLabel);
+    },
+    [isEmptyItem]
+  );
+
+  const handleLabelBlur = useCallback(
+    (finalLabel: string) => {
+      onChangeNode({
+        nodeId,
+        type: 'replaceInput',
+        key: inputChildren.key,
+        value: {
+          ...inputChildren,
+          label: finalLabel,
+          key: finalLabel || inputChildren.key
+        }
+      });
+      setTempLabel('');
+    },
+    [inputChildren, nodeId, onChangeNode, isEmptyItem]
+  );
+
+  const handleCreateNewInput = useCallback(
+    (label: string) => {
+      if (!label.trim()) return;
+
+      if (keys.includes(label)) {
+        toast({
+          status: 'warning',
+          title: t('app:variable_repeat')
+        });
+        return;
+      }
+
+      const newInput: FlowNodeInputItemType = {
+        ...defaultInput,
+        ...getInputComponentProps(item),
+        key: label,
+        label: label,
+        valueType: WorkflowIOValueTypeEnum.any,
+        required: true
+      };
+
+      onChangeNode({
+        nodeId,
+        type: 'addInput',
+        value: newInput
+      });
+
+      setTempLabel('');
+    },
+    [keys, toast, t, item, onChangeNode, nodeId]
+  );
+
+  const handleValueTypeChange = useCallback(
+    (newValueType: string) => {
+      if (isEmptyItem) {
+        return;
+      }
+
+      onChangeNode({
+        nodeId,
+        type: 'replaceInput',
+        key: inputChildren.key,
+        value: {
+          ...inputChildren,
+          valueType: newValueType as WorkflowIOValueTypeEnum
+        }
+      });
+    },
+    [inputChildren, nodeId, onChangeNode, isEmptyItem]
+  );
+
   return (
-    <>
-      <Flex alignItems={'center'} mb={1}>
-        <FormLabel required={inputChildren.required}>{inputChildren.label}</FormLabel>
-        {inputChildren.description && (
-          <QuestionTip ml={1} label={inputChildren.description}></QuestionTip>
-        )}
-        {/* value */}
-        <ValueTypeLabel valueType={inputChildren.valueType} valueDesc={inputChildren.valueDesc} />
-
-        <MyIconButton
-          icon="common/settingLight"
-          ml={2}
-          color={'myGray.600'}
-          hoverBg="primary.50"
-          hoverColor="primary.500"
-          size={'14px'}
-          onClick={() => setEditField(inputChildren)}
+    <Flex alignItems={'center'} mb={1} gap={2}>
+      <Flex flex={'1'}>
+        <Input
+          placeholder={t('workflow:Variable_name')}
+          value={isEmptyItem ? tempLabel : tempLabel || inputChildren.label || ''}
+          onChange={(e) => handleLabelChange(e.target.value)}
+          onBlur={(e) => {
+            const value = e.target.value.trim();
+            if (isEmptyItem && value) {
+              handleCreateNewInput(value);
+            } else if (!isEmptyItem) {
+              handleLabelBlur(value);
+            }
+          }}
+          h={10}
+          borderRightRadius={'none'}
         />
-
-        <PopoverConfirm
-          Trigger={
-            <Box ml={1}>
-              <MyIconButton
-                icon="delete"
-                color={'myGray.600'}
-                hoverBg="red.50"
-                hoverColor="red.600"
-                size={'14px'}
-              />
-            </Box>
-          }
-          type={'delete'}
-          content={t('workflow:confirm_delete_field_tip')}
-          onConfirm={onDel}
+        <ReferSelector
+          placeholder={t('common:select_reference_variable')}
+          list={referenceList}
+          value={inputChildren.value}
+          onSelect={onSelect}
+          ButtonProps={{
+            bg: 'none',
+            borderRadius: 'none',
+            borderColor: 'myGray.200'
+          }}
+        />
+        <MySelect
+          h={10}
+          borderLeftRadius={'none'}
+          borderColor={'myGray.200'}
+          minW={'140px'}
+          value={inputChildren.valueType || WorkflowIOValueTypeEnum.any}
+          list={Object.values(WorkflowIOValueTypeEnum)
+            .filter((type) => type !== WorkflowIOValueTypeEnum.selectApp)
+            .map((item) => ({
+              label: item,
+              value: item
+            }))}
+          onChange={(value) => handleValueTypeChange(value)}
+          bg={'myGray.50'}
+          isDisabled={!inputChildren.key}
         />
       </Flex>
-      <ReferSelector
-        placeholder={t((inputChildren.referencePlaceholder as any) || 'select_reference_variable')}
-        list={referenceList}
-        value={inputChildren.value}
-        onSelect={onSelect}
-        isArray={inputChildren.valueType?.includes('array')}
-      />
-
-      {!!editField && !!item.customInputConfig && (
-        <FieldEditModal
-          defaultInput={editField}
-          customInputConfig={item.customInputConfig}
-          keys={keys}
-          onClose={() => setEditField(undefined)}
-          onSubmit={onUpdateField}
-        />
+      {!isEmptyItem && (
+        <Box w={6}>
+          <MyIconButton
+            icon="delete"
+            color={'myGray.600'}
+            hoverBg="red.50"
+            hoverColor="red.600"
+            size={'14px'}
+            onClick={onDel}
+          />
+        </Box>
       )}
-    </>
+      {isEmptyItem && <Box w={6} />}
+    </Flex>
   );
-}
+};
