@@ -128,7 +128,7 @@ export async function getResourceClbsAndGroups({
   ).lean();
 }
 
-export const getClbsAndGroupsWithInfo = async ({
+export const getClbsWithInfo = async ({
   resourceId,
   resourceType,
   teamId

@@ -6,6 +6,7 @@ import type { PermissionValueType } from './type';
 export type CollaboratorItemType = {
   teamId: string;
   permission: Permission;
+  selfPermission?: Permission;
   name: string;
   avatar: string;
 } & RequireOnlyOne<{
