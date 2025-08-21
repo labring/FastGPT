@@ -464,13 +464,10 @@ const MenuRender = React.memo(function MenuRender({
   const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
   const { computedNewNodeName } = useWorkflowUtils();
 
-  const currentNode = useMemo(() => {
-    return nodeList.find((node) => node.nodeId === nodeId);
-  }, [nodeList, nodeId]);
-
   const isCodeNode = useMemo(() => {
-    return currentNode?.flowNodeType === FlowNodeTypeEnum.code;
-  }, [currentNode?.flowNodeType]);
+    const node = nodeList.find((node) => node.nodeId === nodeId);
+    return node?.flowNodeType === FlowNodeTypeEnum.code;
+  }, [nodeList, nodeId]);
 
   const onCopyNode = useCallback(
     (nodeId: string) => {
