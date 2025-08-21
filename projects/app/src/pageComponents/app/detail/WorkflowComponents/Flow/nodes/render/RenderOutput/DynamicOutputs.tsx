@@ -9,23 +9,25 @@ import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { defaultOutput } from './FieldEditModal';
 
-interface DynamicOutputsProps {
+type DynamicOutputsProps = {
   nodeId: string;
   outputs: FlowNodeOutputItemType[];
-  addOutputConfig?: any;
   title?: string;
   description?: string;
-}
+};
 
-const DynamicOutputs = ({
-  nodeId,
-  outputs,
-  addOutputConfig,
-  title,
-  description
-}: DynamicOutputsProps) => {
+const defaultOutput: FlowNodeOutputItemType = {
+  id: '',
+  type: FlowNodeOutputTypeEnum.dynamic,
+  key: '',
+  label: '',
+  valueType: WorkflowIOValueTypeEnum.any,
+  valueDesc: '',
+  description: ''
+};
+
+const DynamicOutputs = ({ nodeId, outputs, title, description }: DynamicOutputsProps) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
@@ -74,16 +76,14 @@ const DynamicOutputs = ({
         </HStack>
         {/* field render */}
         <Box mt={2}>
-          {[...outputs, {} as FlowNodeOutputItemType].map((output, index) => (
-            <Box key={output.key || `empty-${index}`} _notLast={{ mb: 3 }}>
+          {[...outputs, defaultOutput].map((output, index) => (
+            <Box key={output.key} _notLast={{ mb: 3 }}>
               <DynamicOutputItem
                 output={output}
-                nodeId={nodeId}
-                isEmptyItem={!output.key}
+                outputs={outputs}
                 onUpdate={handleUpdateOutput}
                 onDelete={handleDeleteOutput}
                 onAdd={handleAddOutput}
-                addOutputConfig={addOutputConfig}
               />
             </Box>
           ))}
@@ -98,7 +98,6 @@ const DynamicOutputs = ({
     handleUpdateOutput,
     handleDeleteOutput,
     handleAddOutput,
-    addOutputConfig,
     t
   ]);
 
@@ -107,84 +106,65 @@ const DynamicOutputs = ({
 
 export default React.memo(DynamicOutputs);
 
-// Dynamic Output Item Component
 const DynamicOutputItem = ({
   output,
-  nodeId,
-  isEmptyItem = false,
+  outputs,
   onUpdate,
   onDelete,
-  onAdd,
-  addOutputConfig
+  onAdd
 }: {
-  output?: FlowNodeOutputItemType;
-  nodeId: string;
-  isEmptyItem?: boolean;
-  onUpdate?: (originalKey: string, output: FlowNodeOutputItemType) => void;
-  onDelete?: (key: string) => void;
-  onAdd?: (output: FlowNodeOutputItemType) => void;
-  addOutputConfig?: any;
+  output: FlowNodeOutputItemType;
+  outputs: FlowNodeOutputItemType[];
+  onUpdate: (originalKey: string, output: FlowNodeOutputItemType) => void;
+  onDelete: (key: string) => void;
+  onAdd: (output: FlowNodeOutputItemType) => void;
 }) => {
   const { t } = useTranslation();
   const [tempLabel, setTempLabel] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const isEmptyItem = !output?.key;
+  const valueTypeList = useMemo(() => {
+    return Object.values(WorkflowIOValueTypeEnum)
+      .filter((type) => type !== WorkflowIOValueTypeEnum.selectApp)
+      .map((item) => ({
+        label: item,
+        value: item
+      }));
+  }, []);
 
-  const handleValueTypeChange = useCallback(
-    (newValueType: string) => {
-      if (isEmptyItem) {
-        return;
-      }
-
-      if (output && onUpdate) {
-        onUpdate(output.key, {
-          ...output,
-          valueType: newValueType as WorkflowIOValueTypeEnum
-        });
-      }
+  const onChangeValueType = useCallback(
+    (valueType: WorkflowIOValueTypeEnum) => {
+      onUpdate(output.key, {
+        ...output,
+        valueType
+      });
     },
-    [output, onUpdate, isEmptyItem]
+    [output, onUpdate]
   );
 
-  const handleLabelChange = useCallback(
-    (newLabel: string) => {
-      if (isEmptyItem) {
-        setTempLabel(newLabel);
-        return;
-      }
-      setTempLabel(newLabel);
-    },
-    [isEmptyItem]
-  );
-
-  const handleLabelBlur = useCallback(
-    (finalLabel: string) => {
-      if (output && onUpdate) {
-        onUpdate(output.key, {
-          ...output,
-          label: finalLabel,
-          key: finalLabel || output.key
-        });
-      }
-      setTempLabel('');
-    },
-    [output, onUpdate, isEmptyItem]
-  );
-
-  const handleCreateNewOutput = useCallback(
+  const onLabelBlur = useCallback(
     (label: string) => {
-      if (!label.trim() || !onAdd) return;
-
-      const newOutput: FlowNodeOutputItemType = {
-        ...defaultOutput,
-        key: label,
-        label: label,
-        valueType: WorkflowIOValueTypeEnum.any,
-        type: FlowNodeOutputTypeEnum.dynamic
-      };
-
-      onAdd(newOutput);
+      setIsEditing(false);
+      if (!label.trim()) return;
+      if (outputs.find((output) => output.key === label)) return;
+      if (isEmptyItem && label) {
+        onAdd({
+          ...defaultOutput,
+          key: label,
+          label: label,
+          valueType: WorkflowIOValueTypeEnum.any,
+          type: FlowNodeOutputTypeEnum.dynamic
+        });
+      } else if (!isEmptyItem) {
+        onUpdate(output.key, {
+          ...output,
+          label,
+          key: label
+        });
+      }
       setTempLabel('');
     },
-    [onAdd]
+    [output, onUpdate, onAdd, isEmptyItem, outputs]
   );
 
   return (
@@ -192,16 +172,13 @@ const DynamicOutputItem = ({
       <Flex flex={'1'} minW={0}>
         <Input
           placeholder={t('workflow:Variable_name')}
-          value={isEmptyItem ? tempLabel : tempLabel || output?.label || ''}
-          onChange={(e) => handleLabelChange(e.target.value)}
-          onBlur={(e) => {
-            const value = e.target.value.trim();
-            if (isEmptyItem && value) {
-              handleCreateNewOutput(value);
-            } else if (!isEmptyItem) {
-              handleLabelBlur(value);
-            }
+          value={isEditing ? tempLabel : output?.label || ''}
+          onFocus={() => {
+            setTempLabel(output?.label || '');
+            setIsEditing(true);
           }}
+          onChange={(e) => setTempLabel(e.target.value.trim())}
+          onBlur={(e) => onLabelBlur(e.target.value.trim())}
           h={10}
           borderRightRadius={'none'}
           flex={1}
@@ -212,12 +189,9 @@ const DynamicOutputItem = ({
           borderLeftRadius={'none'}
           borderColor={'myGray.200'}
           minW={'140px'}
-          value={output?.valueType || WorkflowIOValueTypeEnum.any}
-          list={addOutputConfig?.selectValueTypeList?.map((type: string) => ({
-            label: type,
-            value: type
-          }))}
-          onChange={(value) => handleValueTypeChange(value)}
+          value={output?.valueType}
+          list={valueTypeList}
+          onChange={onChangeValueType}
           bg={'myGray.50'}
           isDisabled={!output?.key}
           borderLeftColor={'transparent'}
@@ -234,7 +208,7 @@ const DynamicOutputItem = ({
             hoverBg="red.50"
             hoverColor="red.600"
             size={'14px'}
-            onClick={() => output?.key && onDelete?.(output.key)}
+            onClick={() => onDelete(output.key)}
           />
         </Box>
       )}

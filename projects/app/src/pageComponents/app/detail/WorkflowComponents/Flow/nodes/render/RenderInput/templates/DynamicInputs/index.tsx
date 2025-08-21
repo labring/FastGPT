@@ -31,9 +31,6 @@ const DynamicInputs = (props: RenderInputProps) => {
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const dynamicInputs = useMemo(() => inputs.filter((item) => item.canEdit), [inputs]);
-  const keys = useMemo(() => {
-    return inputs.map((input) => input.key);
-  }, [inputs]);
 
   const onAddField = useCallback(
     ({ data }: { data: FlowNodeInputItemType }) => {
@@ -66,13 +63,13 @@ const DynamicInputs = (props: RenderInputProps) => {
         <Box mt={2}>
           {[...dynamicInputs, defaultInput].map((children) => (
             <Box key={children.key} _notLast={{ mb: 3 }}>
-              <Reference {...props} inputChildren={children} isEmptyItem={!children.key} />
+              <Reference {...props} inputChildren={children} />
             </Box>
           ))}
         </Box>
       </Box>
     );
-  }, [dynamicInputs, item, keys, onAddField, props, t]);
+  }, [dynamicInputs, item, onAddField, props, t]);
 
   return Render;
 };
@@ -81,30 +78,71 @@ export default React.memo(DynamicInputs);
 
 const Reference = ({
   inputChildren,
-  isEmptyItem = false,
   ...props
 }: RenderInputProps & {
   inputChildren: FlowNodeInputItemType;
-  isEmptyItem?: boolean;
 }) => {
-  const { nodeId, inputs = [], item } = props;
+  const { nodeId, inputs, item } = props;
   const { t } = useTranslation();
   const { toast } = useToast();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
-  const keys = useMemo(() => {
-    return inputs.map((input) => input.key);
-  }, [inputs]);
+  const isEmptyItem = !inputChildren.key;
 
   const [tempLabel, setTempLabel] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+
   const { referenceList } = useReference({
     nodeId,
     valueType: inputChildren.valueType || WorkflowIOValueTypeEnum.any
   });
+  const valueTypeList = useMemo(() => {
+    return Object.values(WorkflowIOValueTypeEnum)
+      .filter((type) => type !== WorkflowIOValueTypeEnum.selectApp)
+      .map((item) => ({
+        label: item,
+        value: item
+      }));
+  }, []);
 
-  const onSelect = useCallback(
+  const onlBlurLabel = useCallback(
+    (label: string) => {
+      setIsEditing(false);
+      if (!label.trim()) return;
+      if (inputs?.find((input) => input.key === label)) return;
+      if (isEmptyItem && label) {
+        const newInput: FlowNodeInputItemType = {
+          ...defaultInput,
+          ...getInputComponentProps(item),
+          key: label,
+          label: label,
+          valueType: WorkflowIOValueTypeEnum.any,
+          required: true
+        };
+        onChangeNode({
+          nodeId,
+          type: 'addInput',
+          value: newInput
+        });
+      } else if (!isEmptyItem) {
+        onChangeNode({
+          nodeId,
+          type: 'replaceInput',
+          key: inputChildren.key,
+          value: {
+            ...inputChildren,
+            label: label,
+            key: label || inputChildren.key
+          }
+        });
+      }
+      setTempLabel('');
+    },
+    [inputChildren, nodeId, onChangeNode, isEmptyItem, toast, t, item]
+  );
+  const onSelectReference = useCallback(
     (e?: ReferenceValueType) => {
-      if (!e || isEmptyItem) return;
+      if (!e) return;
 
       const referenceItem = referenceList
         .find((item) => item.value === e[0])
@@ -123,76 +161,7 @@ const Reference = ({
     },
     [inputChildren, nodeId, onChangeNode, isEmptyItem, referenceList]
   );
-
-  const onDel = useCallback(() => {
-    onChangeNode({
-      nodeId,
-      type: 'delInput',
-      key: inputChildren.key
-    });
-  }, [inputChildren.key, nodeId, onChangeNode]);
-
-  const handleLabelChange = useCallback(
-    (newLabel: string) => {
-      if (isEmptyItem) {
-        setTempLabel(newLabel);
-        return;
-      }
-      setTempLabel(newLabel);
-    },
-    [isEmptyItem]
-  );
-
-  const handleLabelBlur = useCallback(
-    (finalLabel: string) => {
-      onChangeNode({
-        nodeId,
-        type: 'replaceInput',
-        key: inputChildren.key,
-        value: {
-          ...inputChildren,
-          label: finalLabel,
-          key: finalLabel || inputChildren.key
-        }
-      });
-      setTempLabel('');
-    },
-    [inputChildren, nodeId, onChangeNode, isEmptyItem]
-  );
-
-  const handleCreateNewInput = useCallback(
-    (label: string) => {
-      if (!label.trim()) return;
-
-      if (keys.includes(label)) {
-        toast({
-          status: 'warning',
-          title: t('app:variable_repeat')
-        });
-        return;
-      }
-
-      const newInput: FlowNodeInputItemType = {
-        ...defaultInput,
-        ...getInputComponentProps(item),
-        key: label,
-        label: label,
-        valueType: WorkflowIOValueTypeEnum.any,
-        required: true
-      };
-
-      onChangeNode({
-        nodeId,
-        type: 'addInput',
-        value: newInput
-      });
-
-      setTempLabel('');
-    },
-    [keys, toast, t, item, onChangeNode, nodeId]
-  );
-
-  const handleValueTypeChange = useCallback(
+  const onlChangeValueType = useCallback(
     (newValueType: string) => {
       if (isEmptyItem) {
         return;
@@ -210,22 +179,26 @@ const Reference = ({
     },
     [inputChildren, nodeId, onChangeNode, isEmptyItem]
   );
+  const onDeleteInput = useCallback(() => {
+    onChangeNode({
+      nodeId,
+      type: 'delInput',
+      key: inputChildren.key
+    });
+  }, [inputChildren.key, nodeId, onChangeNode]);
 
   return (
     <Flex alignItems={'center'} mb={1} gap={2}>
       <Flex flex={'1'}>
         <Input
           placeholder={t('workflow:Variable_name')}
-          value={isEmptyItem ? tempLabel : tempLabel || inputChildren.label || ''}
-          onChange={(e) => handleLabelChange(e.target.value)}
-          onBlur={(e) => {
-            const value = e.target.value.trim();
-            if (isEmptyItem && value) {
-              handleCreateNewInput(value);
-            } else if (!isEmptyItem) {
-              handleLabelBlur(value);
-            }
+          value={isEditing ? tempLabel : inputChildren.label || ''}
+          onFocus={() => {
+            setTempLabel(inputChildren.label || '');
+            setIsEditing(true);
           }}
+          onChange={(e) => setTempLabel(e.target.value.trim())}
+          onBlur={(e) => onlBlurLabel(e.target.value.trim())}
           h={10}
           borderRightRadius={'none'}
         />
@@ -233,13 +206,14 @@ const Reference = ({
           placeholder={t('common:select_reference_variable')}
           list={referenceList}
           value={inputChildren.value}
-          onSelect={onSelect}
+          onSelect={onSelectReference}
           ButtonProps={{
             bg: 'none',
             borderRadius: 'none',
             borderColor: 'myGray.200',
             borderLeftColor: 'transparent',
             borderRightColor: 'transparent',
+            isDisabled: isEmptyItem,
             _hover: {
               borderColor: 'blue.300'
             }
@@ -251,26 +225,21 @@ const Reference = ({
           borderColor={'myGray.200'}
           minW={'140px'}
           value={inputChildren.valueType || WorkflowIOValueTypeEnum.any}
-          list={Object.values(WorkflowIOValueTypeEnum)
-            .filter((type) => type !== WorkflowIOValueTypeEnum.selectApp)
-            .map((item) => ({
-              label: item,
-              value: item
-            }))}
-          onChange={(value) => handleValueTypeChange(value)}
+          list={valueTypeList}
+          onChange={(value) => onlChangeValueType(value)}
           bg={'myGray.50'}
-          isDisabled={!inputChildren.key}
+          isDisabled={isEmptyItem}
         />
       </Flex>
       {!isEmptyItem && (
         <Box w={6}>
           <MyIconButton
-            icon="delete"
+            icon={'delete'}
             color={'myGray.600'}
-            hoverBg="red.50"
-            hoverColor="red.600"
+            hoverBg={'red.50'}
+            hoverColor={'red.600'}
             size={'14px'}
-            onClick={onDel}
+            onClick={onDeleteInput}
           />
         </Box>
       )}

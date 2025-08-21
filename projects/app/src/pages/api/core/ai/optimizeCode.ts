@@ -2,6 +2,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken';
@@ -15,10 +16,10 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { i18nT } from '@fastgpt/web/i18n/utils';
 
 type OptimizeCodeBody = {
-  language: string;
+  codeType: SandboxCodeTypeEnum;
   optimizerInput: string;
   model: string;
-  conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  conversationHistory?: Array<ChatCompletionMessageParam>;
 };
 
 const getPromptNodeCopilotSystemPrompt = () => {
@@ -54,8 +55,8 @@ const getPromptNodeCopilotSystemPrompt = () => {
 - 保持代码风格一致，符合行业标准`;
 };
 
-const getPromptNodeCopilotUserPrompt = (language: string, optimizerInput: string) => {
-  return `请严格遵循用户的需求，生成${language}代码: 
+const getPromptNodeCopilotUserPrompt = (codeType: string, optimizerInput: string) => {
+  return `请严格遵循用户的需求，生成${codeType}代码: 
   <OptimizerInput>
   ${optimizerInput}
   </OptimizerInput>
@@ -72,22 +73,17 @@ const getPromptNodeCopilotUserPrompt = (language: string, optimizerInput: string
   
   ## 注释示例：
   \`\`\`javascript
-  /**
-   * 计算三个数字的各种组合和
-   * @param {string} a - 第一个数字（字符串形式）
-   * @param {string} b - 第二个数字（字符串形式）  
-   * @param {string} c - 第三个数字（字符串形式）
-   * @returns {object} - 包含计算结果的对象
-   * @property {number} abSum - a 和 b 的和
-   * @property {number} acSum - a 和 c 的和
-   * @property {number} bcSum - b 和 c 的和
-   */
-  function main({a, b, c}) {
-    const abSum = Number(a) + Number(b);
-    const acSum = Number(a) + Number(c);
-    const bcSum = Number(b) + Number(c);
-    return { abSum, acSum, bcSum };
-  }
+    /**
+     * 计算两个数字的和
+     * @param {number} a - 第一个数字
+     * @param {number} b - 第二个数字
+     * @returns {object} - 包含计算结果的对象
+     * @property {number} result - a 和 b 的和
+     */
+    function main({a, b}) {
+    const result = a + b;
+    return { result };
+    }
   \`\`\`
 
   ## 注意事项：
@@ -99,7 +95,7 @@ const getPromptNodeCopilotUserPrompt = (language: string, optimizerInput: string
 
 async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseType) {
   try {
-    const { language, optimizerInput, model, conversationHistory = [] } = req.body;
+    const { codeType, optimizerInput, model, conversationHistory = [] } = req.body;
 
     const { teamId, tmbId } = await authCert({
       req,
@@ -116,13 +112,10 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
         role: 'system',
         content: getPromptNodeCopilotSystemPrompt()
       },
-      ...conversationHistory.map((msg) => ({
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content
-      })),
+      ...conversationHistory,
       {
         role: 'user',
-        content: getPromptNodeCopilotUserPrompt(language, optimizerInput)
+        content: getPromptNodeCopilotUserPrompt(codeType, optimizerInput)
       }
     ];
 
