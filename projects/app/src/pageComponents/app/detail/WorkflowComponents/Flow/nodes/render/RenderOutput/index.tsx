@@ -9,7 +9,6 @@ import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import DynamicOutputs from './DynamicOutputs';
-import { i18nT } from '@fastgpt/web/i18n/utils';
 
 const RenderOutput = ({
   nodeId,
@@ -32,7 +31,6 @@ const RenderOutput = ({
     const node = v.nodeList.find((node) => node.nodeId === nodeId);
     return JSON.stringify(node?.inputs);
   });
-
   useEffect(() => {
     flowOutputList.forEach((output) => {
       if (!output.invalidCondition || !inputs) return;
@@ -64,15 +62,10 @@ const RenderOutput = ({
       (item) => item.key !== NodeOutputKeyEnum.addOutputParam
     );
 
-    return !addOutput?.customFieldConfig ? null : (
-      <DynamicOutputs
-        nodeId={nodeId}
-        outputs={filterAddOutput}
-        title={t((addOutput.label || i18nT('common:core.workflow.Custom outputs')) as any)}
-        description={addOutput.description}
-      />
-    );
-  }, [copyOutputs, nodeId, t]);
+    return addOutput ? (
+      <DynamicOutputs nodeId={nodeId} outputs={filterAddOutput} addOutput={addOutput} />
+    ) : null;
+  }, [copyOutputs, nodeId]);
 
   const RenderCommonOutputs = useMemo(() => {
     const renderOutputs = copyOutputs.filter(

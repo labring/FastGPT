@@ -57,21 +57,21 @@ const getPromptNodeCopilotSystemPrompt = () => {
 
 const getPromptNodeCopilotUserPrompt = (codeType: string, optimizerInput: string) => {
   return `请严格遵循用户的需求，生成${codeType}代码: 
-  <OptimizerInput>
+  <用户要求>
   ${optimizerInput}
-  </OptimizerInput>
+  </用户要求>
 
   ## 强制约束：
   - 用 Markdown 的代码块格式输出代码
   - 函数名始终为 main，每次只生成一段完整代码，代码块中间不要包含其他内容
-  - 函数必须接收一个对象作为参数，对象包含所有输入参数
+  - 函数必须接收一个对象作为参数，对象包含所有输入参数，例如：main({a, b})
   - 代码必须返回对象格式的结果，例如：计算 a+b 的结果应该返回 {result: a+b}
   - **必须**在函数开头添加完整的注释，格式要求：
-    * 对每个入参对象中的字段使用 @param {类型} 参数名 - 参数描述
-    * 对返回对象的每个属性使用 @property {类型} 属性名 - 属性描述
-    * 数据类型严格限制为：string, number, boolean, object, Array<string>, Array<number>, Array<boolean>, Array<object>, Array<any>, any
+    * 对每个入参对象中的字段使用 @param {类型} 参数名 - 参数描述，例如： @param {number} a - 参数a的描述，而不是 @param {number} param.a
+    * 对返回对象的每个属性使用 @property {类型} 属性名 - 属性描述，例如： @property {number} result - 计算结果
+    * 数据类型严格限制为：string, number, boolean, object, arrayString, arrayNumber, arrayBoolean, arrayObject, arrayAny, any
   
-  ## 注释示例：
+  ## 严格参照代码示例：
   \`\`\`javascript
     /**
      * 计算两个数字的和
@@ -85,11 +85,6 @@ const getPromptNodeCopilotUserPrompt = (codeType: string, optimizerInput: string
     return { result };
     }
   \`\`\`
-
-  ## 注意事项：
-  - 回答简洁精炼，不要添加过多的思考过程，直接输出最终代码结果
-  - JSDoc 注释是**必需的**，缺少注释将导致解析失败
-  - @param 和 @property 的类型声明必须准确，系统会根据这些注释自动生成输入输出接口
   `;
 };
 

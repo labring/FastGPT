@@ -51,12 +51,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       authApiKey: true
     });
 
-    const { testCases, inputTokens, outputTokens } = await generateTestCases({
+    const testCases = await generateTestCases({
       code,
       codeType,
       model,
       inputs,
-      outputs
+      outputs,
+      teamId,
+      tmbId
     });
 
     const results = await runAndCompareTests({ code, codeType, testCases });
@@ -67,31 +69,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       failed: results.filter((r) => !r.passed).length,
       successRate: results.length > 0 ? results.filter((r) => r.passed).length / results.length : 0
     };
-
-    const { totalPoints, modelName } = formatModelChars2Points({
-      model,
-      inputTokens,
-      outputTokens,
-      modelType: ModelTypeEnum.llm
-    });
-    console.log(totalPoints, modelName);
-
-    createUsage({
-      teamId,
-      tmbId,
-      appName: i18nT('common:support.wallet.usage.Code Test'),
-      totalPoints,
-      source: UsageSourceEnum.code_test,
-      list: [
-        {
-          moduleName: i18nT('common:support.wallet.usage.Code Test'),
-          amount: totalPoints,
-          model: modelName,
-          inputTokens,
-          outputTokens
-        }
-      ]
-    });
 
     return summary;
   } catch (error) {
@@ -104,23 +81,25 @@ async function generateTestCases({
   codeType,
   model,
   inputs,
-  outputs
+  outputs,
+  teamId,
+  tmbId
 }: {
   code: string;
   codeType: string;
   model: string;
   inputs: Array<{ label: string; type: string }>;
   outputs: Array<{ label: string; type: string }>;
-}): Promise<{ testCases: TestCase[]; inputTokens: number; outputTokens: number }> {
-  const languageName = codeType === SandboxCodeTypeEnum.py ? 'Python' : 'JavaScript';
-
+  teamId: string;
+  tmbId: string;
+}): Promise<TestCase[]> {
   const inputsDesc = inputs.map((i) => `${i.label}: ${i.type}`).join(', ');
   const outputsDesc = outputs.map((o) => `${o.label}: ${o.type}`).join(', ');
 
-  const prompt = `Analyze the following ${languageName} code and generate 3 common test cases to verify its functionality.
+  const prompt = `Analyze the following ${codeType} code and generate 3 common test cases to verify its functionality.
 
 Code:
-\`\`\`${languageName.toLowerCase()}
+\`\`\`${codeType}
 ${code}
 \`\`\`
 
@@ -160,12 +139,10 @@ IMPORTANT:
 
   try {
     const messages: ChatCompletionMessageParam[] = [{ role: 'user', content: prompt }];
-
     const requestMessages = await loadRequestMessages({
       messages,
       useVision: false
     });
-
     const { response, isStreamResponse } = await createChatCompletion({
       body: llmCompletionsBodyFormat(
         {
@@ -212,6 +189,29 @@ IMPORTANT:
       }
     })();
 
+    const { totalPoints, modelName } = formatModelChars2Points({
+      model,
+      inputTokens,
+      outputTokens,
+      modelType: ModelTypeEnum.llm
+    });
+    createUsage({
+      teamId,
+      tmbId,
+      appName: i18nT('common:support.wallet.usage.Code Test'),
+      totalPoints,
+      source: UsageSourceEnum.code_test,
+      list: [
+        {
+          moduleName: i18nT('common:support.wallet.usage.Code Test'),
+          amount: totalPoints,
+          model: modelName,
+          inputTokens,
+          outputTokens
+        }
+      ]
+    });
+
     const jsonMatch = content.match(/\[[\s\S]*?\]/);
 
     if (jsonMatch) {
@@ -219,17 +219,17 @@ IMPORTANT:
         const testCases = JSON.parse(jsonMatch[0]);
         if (Array.isArray(testCases) && testCases.length >= 1) {
           const validTestCases = testCases.filter(
-            (tc) =>
-              tc.id &&
-              tc.name &&
-              tc.inputs &&
-              tc.expectedOutputs &&
-              typeof tc.inputs === 'object' &&
-              typeof tc.expectedOutputs === 'object'
+            (testCase) =>
+              testCase.id &&
+              testCase.name &&
+              testCase.inputs &&
+              testCase.expectedOutputs &&
+              typeof testCase.inputs === 'object' &&
+              typeof testCase.expectedOutputs === 'object'
           );
 
           if (validTestCases.length > 0) {
-            return { testCases: validTestCases.slice(0, 3), inputTokens, outputTokens };
+            return validTestCases.slice(0, 3);
           }
         }
       } catch (parseError) {
@@ -237,9 +237,9 @@ IMPORTANT:
       }
     }
 
-    return { testCases: [], inputTokens, outputTokens };
+    return [];
   } catch (error) {
-    return { testCases: [], inputTokens: 0, outputTokens: 0 };
+    return [];
   }
 }
 

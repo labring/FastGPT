@@ -13,8 +13,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 type DynamicOutputsProps = {
   nodeId: string;
   outputs: FlowNodeOutputItemType[];
-  title?: string;
-  description?: string;
+  addOutput: FlowNodeOutputItemType;
 };
 
 const defaultOutput: FlowNodeOutputItemType = {
@@ -27,7 +26,7 @@ const defaultOutput: FlowNodeOutputItemType = {
   description: ''
 };
 
-const DynamicOutputs = ({ nodeId, outputs, title, description }: DynamicOutputsProps) => {
+const DynamicOutputs = ({ nodeId, outputs, addOutput }: DynamicOutputsProps) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
@@ -70,11 +69,10 @@ const DynamicOutputs = ({ nodeId, outputs, title, description }: DynamicOutputsP
       <Box pb={3}>
         <HStack className="nodrag" cursor={'default'} position={'relative'}>
           <HStack spacing={1} position={'relative'} fontWeight={'medium'} color={'myGray.600'}>
-            <Box>{title || t('common:core.workflow.Custom outputs')}</Box>
-            {description && <QuestionTip label={description} />}
+            <Box>{addOutput.label || t('common:core.workflow.Custom outputs')}</Box>
+            {addOutput.description && <QuestionTip label={addOutput.description} />}
           </HStack>
         </HStack>
-        {/* field render */}
         <Box mt={2}>
           {[...outputs, defaultOutput].map((output, index) => (
             <Box key={output.key} _notLast={{ mb: 3 }}>
@@ -90,16 +88,7 @@ const DynamicOutputs = ({ nodeId, outputs, title, description }: DynamicOutputsP
         </Box>
       </Box>
     );
-  }, [
-    outputs,
-    title,
-    description,
-    nodeId,
-    handleUpdateOutput,
-    handleDeleteOutput,
-    handleAddOutput,
-    t
-  ]);
+  }, [outputs, addOutput, nodeId, handleUpdateOutput, handleDeleteOutput, handleAddOutput, t]);
 
   return Render;
 };
@@ -193,7 +182,7 @@ const DynamicOutputItem = ({
           list={valueTypeList}
           onChange={onChangeValueType}
           bg={'myGray.50'}
-          isDisabled={!output?.key}
+          isDisabled={isEmptyItem}
           borderLeftColor={'transparent'}
           _hover={{
             borderColor: 'primary.300'
@@ -203,10 +192,10 @@ const DynamicOutputItem = ({
       {!isEmptyItem && (
         <Box minW={6}>
           <MyIconButton
-            icon="delete"
+            icon={'delete'}
             color={'myGray.600'}
-            hoverBg="red.50"
-            hoverColor="red.600"
+            hoverBg={'red.50'}
+            hoverColor={'red.600'}
             size={'14px'}
             onClick={() => onDelete(output.key)}
           />
