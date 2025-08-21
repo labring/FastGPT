@@ -204,7 +204,7 @@ export function usePagination<DataT, ResT = {}>(
 
           <IconButton
             isDisabled={pageNum === maxPage}
-            icon="common/rightArrowLight"
+            icon="common/rightArrow"
             onClick={() => fetchData(pageNum + 1)}
           />
           {isPc && (

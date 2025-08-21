@@ -9,6 +9,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getSystemPluginPaths } from '@/web/core/app/api/plugin';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
+import { useDebounceEffect } from 'ahooks';
 
 export enum TemplateTypeEnum {
   'basic' = 'basic',
@@ -47,13 +48,19 @@ const NodeTemplateListHeader = ({
     setSearchKey('');
   }, [templateType]);
 
-  useEffect(() => {
-    loadNodeTemplates({
-      type: templateType,
-      parentId: '',
-      searchVal: searchKey
-    });
-  }, [searchKey, loadNodeTemplates, templateType]);
+  useDebounceEffect(
+    () => {
+      loadNodeTemplates({
+        type: templateType,
+        parentId: '',
+        searchVal: searchKey
+      });
+    },
+    [searchKey, loadNodeTemplates, templateType],
+    {
+      wait: 300
+    }
+  );
 
   // Get paths
   const { data: paths = [] } = useRequest2(
