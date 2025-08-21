@@ -1,10 +1,10 @@
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { type Node, useReactFlow } from 'reactflow';
-import { WorkflowInitContext, WorkflowNodeEdgeContext } from '../context/workflowInitContext';
+import { type Node } from 'reactflow';
+import { WorkflowNodeEdgeContext } from '../context/workflowInitContext';
 import { useMemoizedFn } from 'ahooks';
 import NodeTemplateListHeader from './components/NodeTemplates/header';
 import NodeTemplateList from './components/NodeTemplates/list';
