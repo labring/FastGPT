@@ -25,40 +25,6 @@ type BasicResponseParams = {
   retainDatasetCite?: boolean;
 };
 
-type CreateLLMResponseProps = {
-  llmOptions: Omit<
-    ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming,
-    'tools'
-  >;
-  params: BasicResponseParams;
-  toolCallOptions?:
-    | {
-        mode?: 'function';
-        tools?: ChatCompletionTool[];
-        toolNodes?: ToolNodeItemType[];
-      }
-    | {
-        mode?: 'prompt';
-        tools?: ChatCompletionTool[];
-        toolNodes?: ToolNodeItemType[];
-      };
-  userKey?: OpenaiAccountType;
-  events?: CreateStreamResponseEvents & CreateCompleteResopnseEvents;
-};
-
-type LLMResponse = {
-  answerText: string;
-  reasoningText: string;
-  toolCallResults: ChatCompletionMessageToolCall[];
-  finish_reason: CompletionFinishReason;
-  isStreamResponse: boolean;
-  getEmptyResponseTip: () => string;
-  tools: ChatCompletionTool[];
-  toolsPrompt: string;
-  inputTokens?: number;
-  outputTokens?: number;
-};
-
 type CreateStreamResponseParams = BasicResponseParams & {
   stream: StreamChatType;
 };
@@ -107,6 +73,40 @@ type CreateStreamResponseProps = {
 type CreateCompleteResopnseProps = {
   params: CreateCompleteResopnseParams;
 } & CreateCompleteResopnseEvents;
+
+type CreateLLMResponseProps = {
+  llmOptions: Omit<
+    ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming,
+    'tools'
+  >;
+  params: BasicResponseParams;
+  toolCallOptions?:
+    | {
+        mode?: 'function';
+        tools?: ChatCompletionTool[];
+        toolNodes?: ToolNodeItemType[];
+      }
+    | {
+        mode?: 'prompt';
+        tools?: ChatCompletionTool[];
+        toolNodes?: ToolNodeItemType[];
+      };
+  userKey?: OpenaiAccountType;
+  events?: CreateStreamResponseEvents & CreateCompleteResopnseEvents;
+};
+
+type LLMResponse = {
+  answerText: string;
+  reasoningText: string;
+  toolCallResults: ChatCompletionMessageToolCall[];
+  finish_reason: CompletionFinishReason;
+  isStreamResponse: boolean;
+  getEmptyResponseTip: () => string;
+  tools: ChatCompletionTool[];
+  toolsPrompt: string;
+  inputTokens: number;
+  outputTokens: number;
+};
 
 type StreamResponse = Pick<
   LLMResponse,
@@ -219,8 +219,8 @@ export const createLLMResponse = async (args: CreateLLMResponseProps): Promise<L
     });
 
     return {
-      inputTokens: usage?.prompt_tokens,
-      outputTokens: usage?.completion_tokens,
+      inputTokens: usage?.prompt_tokens ?? 0,
+      outputTokens: usage?.completion_tokens ?? 0,
       isStreamResponse,
       getEmptyResponseTip,
       tools: toolItems,
@@ -234,8 +234,8 @@ export const createLLMResponse = async (args: CreateLLMResponseProps): Promise<L
     });
 
     return {
-      inputTokens: usage?.prompt_tokens,
-      outputTokens: usage?.completion_tokens,
+      inputTokens: usage?.prompt_tokens ?? 0,
+      outputTokens: usage?.completion_tokens ?? 0,
       isStreamResponse,
       getEmptyResponseTip,
       tools: toolItems,
