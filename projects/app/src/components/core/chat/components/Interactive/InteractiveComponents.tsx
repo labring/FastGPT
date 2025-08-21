@@ -41,38 +41,24 @@ export const SelectOptionsComponent = React.memo(function SelectOptionsComponent
       <DescriptionBox description={description} />
       <Box w={'250px'}>
         <LeftRadio<string>
-          fontSize={'sm'}
-          // px={4}
           py={3.5}
-          sx={{
-            '&': { gridGap: '12px' },
-            '& > * > div:first-of-type': {
-              alignItems: 'flex-start'
-            },
-            '& > * > div:first-of-type > div:first-of-type': {
-              marginTop: '0.1em'
-            }
-          }}
+          align={'flex-top'}
           list={userSelectOptions.map((option: UserSelectOptionItemType) => ({
             title: (
-              <Box
-                fontSize={'inherit'}
-                whiteSpace={'pre-wrap'}
-                wordBreak={'break-word'}
-                sx={{ overflowWrap: 'anywhere' }}
-              >
+              <Box fontSize={'sm'} whiteSpace={'pre-wrap'} wordBreak={'break-word'}>
                 {option.value}
               </Box>
             ),
             value: option.value
           }))}
-          value={(userSelectedVal as any) ?? ('' as any)}
+          value={userSelectedVal || ''}
           defaultBg={'white'}
           activeBg={'white'}
           onChange={(val) => {
             if (userSelectedVal) return;
             onSelect(val);
           }}
+          isDisabled={!!userSelectedVal}
         />
       </Box>
     </Box>

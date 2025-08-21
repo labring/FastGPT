@@ -112,7 +112,7 @@ const InputRender = (props: InputRenderProps) => {
           h={10}
           valueLabel={
             selectedOption ? (
-              <Box noOfLines={1} maxW={'calc(100%)'} title={String(selectedOption.label)}>
+              <Box noOfLines={1} title={selectedOption.label}>
                 {selectedOption.label}
               </Box>
             ) : undefined

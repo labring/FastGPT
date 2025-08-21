@@ -16,110 +16,143 @@ type Props<T> = Omit<GridProps, 'onChange'> & {
   defaultBg?: string;
   activeBg?: string;
   onChange: (e: T) => void;
+  isDisabled?: boolean;
 };
 
 const LeftRadio = <T = any,>({
   list,
   value,
-  align = 'flex-top',
+  align = 'center',
   px = 3.5,
   py = 4,
   defaultBg = 'myGray.50',
   activeBg = 'primary.50',
   onChange,
+  isDisabled = false,
   ...props
 }: Props<T>) => {
   const { t } = useTranslation();
   const theme = useTheme();
 
   return (
-    <Grid gridGap={[3, 5]} fontSize={['sm', 'md']} {...props}>
-      {list.map((item) => (
-        <Box
-          key={item.value as any}
-          cursor={'pointer'}
-          userSelect={'none'}
-          px={px}
-          py={py}
-          border={'base'}
-          borderWidth={'1px'}
-          borderRadius={'md'}
-          position={'relative'}
-          {...(value === item.value
+    <Grid gridGap={'12px'} fontSize={['sm', 'md']} {...props}>
+      {list.map((item) => {
+        const isActive = value === item.value;
+        const isDisabledAndInactive = isDisabled && !isActive;
+
+        const containerCursor = isDisabledAndInactive ? 'not-allowed' : 'pointer';
+        const containerOpacity = isDisabledAndInactive ? 0.6 : 1;
+
+        const containerStyles = isDisabled
+          ? isActive
             ? {
-                borderColor: list.length > 1 ? 'primary.400' : '',
+                borderColor: 'primary.400',
                 bg: activeBg,
-                boxShadow: list.length > 1 ? 'focus' : 'none'
+                boxShadow: 'focus'
+              }
+            : {
+                bg: '#FAFBFC',
+                borderColor: 'myGray.200',
+                color: 'myGray.500'
+              }
+          : isActive
+            ? {
+                borderColor: 'primary.400',
+                bg: activeBg,
+                boxShadow: 'focus'
               }
             : {
                 bg: defaultBg,
                 _hover: {
                   borderColor: 'primary.300'
                 }
-              })}
-          onClick={() => onChange(item.value)}
-        >
-          {/* Circle */}
-          <Flex alignItems={'center'}>
-            {list.length > 1 && (
+              };
+
+        const outerBorderColor = isDisabledAndInactive
+          ? 'transparent'
+          : isActive
+            ? 'primary.015'
+            : 'transparent';
+
+        const innerBorderColor = isActive ? 'primary.600' : 'borderColor.high';
+        const innerBg = isActive ? 'primary.1' : 'transparent';
+        const dotBg = isActive ? 'primary.600' : 'transparent';
+
+        const titleColor = isDisabledAndInactive ? '#B1B6BE' : isActive ? '#3370FF' : 'myGray.900';
+
+        const descColor = isDisabledAndInactive ? '#B1B6BE' : isActive ? '#3370FF' : 'myGray.500';
+
+        return (
+          <Box
+            key={item.value as any}
+            cursor={containerCursor}
+            userSelect={'none'}
+            px={px}
+            py={py}
+            border={'base'}
+            borderWidth={'1px'}
+            borderRadius={'md'}
+            position={'relative'}
+            opacity={containerOpacity}
+            {...containerStyles}
+            onClick={() => !isDisabled && onChange(item.value)}
+          >
+            {/* Circle */}
+            <Flex alignItems={align}>
               <Box
                 w={'18px'}
                 h={'18px'}
                 borderWidth={'2.4px'}
-                borderColor={value === item.value ? 'primary.015' : 'transparent'}
+                borderColor={outerBorderColor}
                 borderRadius={'50%'}
                 mr={3}
+                my={'2px'}
               >
                 <Flex
                   w={'100%'}
                   h={'100%'}
                   borderWidth={'1px'}
-                  borderColor={value === item.value ? 'primary.600' : 'borderColor.high'}
-                  bg={value === item.value ? 'primary.1' : 'transparent'}
+                  borderColor={innerBorderColor}
+                  bg={innerBg}
                   borderRadius={'50%'}
                   alignItems={'center'}
                   justifyContent={'center'}
                 >
-                  <Box
-                    w={'5px'}
-                    h={'5px'}
-                    borderRadius={'50%'}
-                    bg={value === item.value ? 'primary.600' : 'transparent'}
-                  ></Box>
+                  <Box w={'5px'} h={'5px'} borderRadius={'50%'} bg={dotBg}></Box>
                 </Flex>
               </Box>
-            )}
-            <Box flex={'1 0 0'}>
-              {typeof item.title === 'string' ? (
-                <HStack
-                  spacing={1}
-                  color={'myGray.900'}
-                  fontWeight={item.desc ? '500' : 'normal'}
-                  whiteSpace={'nowrap'}
-                  fontSize={'sm'}
-                  lineHeight={1}
-                >
-                  <Box>{t(item.title as any)}</Box>
-                  {!!item.tooltip && <QuestionTip label={item.tooltip} color={'myGray.600'} />}
-                </HStack>
-              ) : (
-                item.title
-              )}
+              <Box flex={'1 0 0'}>
+                {typeof item.title === 'string' ? (
+                  <HStack
+                    spacing={1}
+                    color={titleColor}
+                    fontWeight={item.desc ? '500' : 'normal'}
+                    whiteSpace={'nowrap'}
+                    fontSize={'sm'}
+                    lineHeight={1}
+                  >
+                    <Box>{t(item.title as any)}</Box>
+                    {!!item.tooltip && <QuestionTip label={item.tooltip} color={'myGray.600'} />}
+                  </HStack>
+                ) : (
+                  item.title
+                )}
 
-              {!!item.desc && (
-                <Box fontSize={'xs'} color={'myGray.500'} mt={1.5} lineHeight={1.2}>
-                  {t(item.desc as any)}
-                </Box>
-              )}
-            </Box>
-          </Flex>
-          {item?.children && (
-            <Box mt={4} pt={4} borderTop={'base'} cursor={'default'}>
-              {item?.children}
-            </Box>
-          )}
-        </Box>
-      ))}
+                {!!item.desc && (
+                  <Box fontSize={'xs'} color={descColor} mt={1.5} lineHeight={1.2}>
+                    {t(item.desc as any)}
+                  </Box>
+                )}
+              </Box>
+            </Flex>
+            {item?.children && (
+              <Box mt={4} pt={4} borderTop={'base'} cursor={'default'}>
+                {item?.children}
+              </Box>
+            )}
+          </Box>
+        );
+      })}
     </Grid>
   );
 };
