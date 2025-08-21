@@ -19,7 +19,7 @@ import {
 } from '@chakra-ui/react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
@@ -67,7 +67,7 @@ const FavouriteAppSetting = ({ Header }: Props) => {
   // app's categories cache map
   const categoryCache = useContextSelector(ChatSettingContext, (v) =>
     (v.chatSettings?.categories || []).reduce<Record<string, Category>>((acc, category) => {
-      acc[category.id] = category;
+      acc[category.id] = { ...category };
       return acc;
     }, {})
   );

@@ -22,7 +22,8 @@ export const defaultApp: AppDetailType = {
   version: 'v2',
   permission: new AppPermission(),
   inheritPermission: false,
-  favourite: false
+  favourite: false,
+  quick: false
 };
 
 export const defaultOutLinkForm: OutLinkEditType = {

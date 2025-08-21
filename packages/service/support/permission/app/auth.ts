@@ -88,7 +88,7 @@ export const authAppByTmbId = async ({
       };
     }
 
-    if (app.favourite) {
+    if (app.favourite || app.quick) {
       return {
         ...app,
         permission: new AppPermission({ isOwner: false, role: ReadRoleVal })

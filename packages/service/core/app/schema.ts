@@ -119,8 +119,8 @@ const AppSchema = new Schema(
     // abandoned
     defaultPermission: Number,
 
-    // where the app is retrieved from, differenciate by module(domain)
-    favourite: Boolean
+    favourite: Boolean,
+    quick: Boolean
   },
   {
     minimize: false

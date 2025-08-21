@@ -54,6 +54,7 @@ export type AppSchema = {
 
   // where the app is retrieved from, differenciate by module(domain)
   favourite: boolean;
+  quick: boolean;
 };
 
 export type AppListItemType = {
