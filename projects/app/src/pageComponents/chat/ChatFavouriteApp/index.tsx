@@ -128,7 +128,7 @@ const ChatFavouriteApp = () => {
           />
 
           <Box w="70%">
-            <InputGroup maxW="300px">
+            <InputGroup w="100%">
               <InputLeftElement h="36px">
                 <MyIcon name="common/searchLight" w="16px" color="myGray.500" />
               </InputLeftElement>
@@ -196,7 +196,7 @@ const ChatFavouriteApp = () => {
       </Flex>
 
       {/* list */}
-      <Grid templateColumns={['1fr', 'repeat(3, 1fr)']} gap={4} p={['4', '6']}>
+      <Grid templateColumns={['1fr', 'repeat(3, 1fr)']} gap={4} p={['4', '6']} overflowY="auto">
         {favouriteApps.map((app) => (
           <GridItem key={app.appId} cursor="pointer">
             <Flex
