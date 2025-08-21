@@ -1,4 +1,9 @@
-import type { CollaboratorItemType } from './collaborator';
+import { getClientBuildManifest } from 'next/dist/client/route-loader';
+import type {
+  CollaboratorIdType,
+  CollaboratorItemDetailType,
+  CollaboratorItemType
+} from './collaborator';
 import { type PermissionValueType } from './type';
 /**
  * Sum the permission value.
@@ -35,31 +40,84 @@ export const checkRoleUpdateConflict = ({
     return false;
   }
 
-  // 1. find out which collaborator is changed
   // Use a Map for faster lookup by teamId
   const [oldClbRoleMap, parentClbRoleMap] = [
-    new Map(oldChildClbs.map((clb) => [clb.tmbId || clb.groupId || clb.orgId, clb.permission])),
-    new Map(parentClbs.map((clb) => [clb.tmbId || clb.groupId || clb.orgId, clb.permission]))
+    new Map(oldChildClbs.map((clb) => [getCollaboratorId(clb), clb])),
+    new Map(parentClbs.map((clb) => [getCollaboratorId(clb), clb]))
   ];
 
-  for (const newClb of newChildClbs) {
-    const key = newClb.tmbId || newClb.groupId || newClb.orgId;
-    if (!key) continue;
+  const changedClbs = getChangedCollaborators({
+    newClbs: newChildClbs,
+    oldClbs: oldChildClbs
+  });
 
-    const oldPermission = oldClbRoleMap.get(key);
-
-    if (oldPermission === newClb.permission) continue;
-
-    const changedPermission =
-      oldPermission !== undefined
-        ? oldPermission.role ^ newClb.permission.role
-        : newClb.permission.role;
-
-    const parentPermission = parentClbRoleMap.get(key);
-    if (parentPermission && (changedPermission & parentPermission.role) !== 0) {
+  console.log('changedClbs', changedClbs);
+  console.log('parentClbRoleMap', parentClbRoleMap);
+  for (const changedClb of changedClbs) {
+    const parent = parentClbRoleMap.get(getCollaboratorId(changedClb));
+    if (parent && (changedClb.changedRole & parent.permission) !== 0) {
       return true;
     }
   }
 
   return false;
 };
+
+/**
+ * Get changed collaborators.
+ * return empty array if all collaborators are unchanged.
+ * for each return item: {
+ *   id: string; // collaborator id
+ *   changedRole: number; // set bit means the role is changed
+ * }
+ * @param param0
+ */
+export const getChangedCollaborators = ({
+  oldClbs,
+  newClbs
+}: {
+  oldClbs: CollaboratorItemType[];
+  newClbs: CollaboratorItemType[];
+}) => {
+  if (oldClbs.length === 0) {
+    return newClbs.map((clb) => ({
+      ...clb,
+      changedRole: clb.permission
+    }));
+  }
+  const oldClbsMap = new Map(oldClbs.map((clb) => [getCollaboratorId(clb), clb]));
+  const changedClbs = [];
+  for (const newClb of newClbs) {
+    const oldClb = oldClbsMap.get(getCollaboratorId(newClb));
+    if (!oldClb) {
+      changedClbs.push({
+        ...newClb,
+        changedRole: newClb.permission
+      });
+      continue;
+    }
+    const changedRole = oldClb.permission ^ newClb.permission;
+    if (changedRole) {
+      changedClbs.push({
+        ...newClb,
+        changedRole
+      });
+    }
+  }
+
+  for (const oldClb of oldClbs) {
+    const newClb = newClbs.find((clb) => getCollaboratorId(clb) === getCollaboratorId(oldClb));
+    if (!newClb) {
+      changedClbs.push({
+        ...oldClb,
+        changedRole: oldClb.permission,
+        deleted: true
+      });
+    }
+  }
+
+  return changedClbs;
+};
+
+export const getCollaboratorId = (clb: CollaboratorItemType) =>
+  (clb.tmbId || clb.groupId || clb.orgId)!;
