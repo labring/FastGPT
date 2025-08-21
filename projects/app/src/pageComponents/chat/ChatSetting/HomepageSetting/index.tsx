@@ -10,7 +10,8 @@ import ImageUpload from '@/pageComponents/chat/ChatSetting/ImageUpload';
 import type {
   ChatSettingSchema,
   ChatSettingUpdateParams,
-  QuickApp
+  QuickApp,
+  SelectedTool
 } from '@fastgpt/global/core/chat/setting/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ToolSelectModal from '@/pageComponents/chat/ChatSetting/ToolSelectModal';
@@ -19,7 +20,10 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useMount } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
-import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import {
+  ChatSettingContext,
+  type ChatSettingReturnType
+} from '@/web/core/chat/context/chatSettingContext';
 import {
   DEFAULT_LOGO_BANNER_COLLAPSED_URL,
   DEFAULT_LOGO_BANNER_URL
@@ -32,8 +36,9 @@ type Props = {
   onDiagramShow: (show: boolean) => void;
 };
 
-type FormValues = Omit<ChatSettingUpdateParams, 'selectedTools'> & {
-  selectedTools: ChatSettingSchema['selectedTools'];
+type FormValues = Omit<ChatSettingUpdateParams, 'selectedTools' | 'quickApps'> & {
+  selectedTools: SelectedTool[];
+  quickApps: QuickApp[];
 };
 
 const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
@@ -43,20 +48,17 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
 
   const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
   const refreshChatSetting = useContextSelector(ChatSettingContext, (v) => v.refreshChatSetting);
-  const quickApps = useContextSelector(
-    ChatSettingContext,
-    (v) => v.chatSettings?.quickApps || []
-  ) as QuickApp[];
 
   const chatSettings2Form = useCallback(
-    (data?: ChatSettingSchema) => {
+    (data?: ChatSettingReturnType) => {
       return {
         slogan: data?.slogan || t('chat:setting.home.slogan.default'),
         dialogTips: data?.dialogTips || t('chat:setting.home.dialogue_tips.default'),
         homeTabTitle: data?.homeTabTitle || 'FastGPT',
         selectedTools: data?.selectedTools || [],
         wideLogoUrl: data?.wideLogoUrl,
-        squareLogoUrl: data?.squareLogoUrl
+        squareLogoUrl: data?.squareLogoUrl,
+        quickApps: (data?.quickApps as any as QuickApp[]) || []
       };
     },
     [t]
@@ -68,6 +70,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
 
   const wideLogoUrl = watch('wideLogoUrl');
   const squareLogoUrl = watch('squareLogoUrl');
+  const formQuickApps = watch('quickApps');
 
   useMount(async () => {
     reset(chatSettings2Form(await refreshChatSetting()));
@@ -112,6 +115,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
     async (values: FormValues) => {
       return updateChatSetting({
         ...values,
+        quickApps: values.quickApps.map((q) => q.id),
         selectedTools: values.selectedTools.map((tool) => ({
           pluginId: tool.pluginId,
           inputs: tool.inputs
@@ -133,18 +137,9 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
   } = useDisclosure();
 
   return (
-    <Flex
-      py={5}
-      pl={6}
-      pr={[0, 6]}
-      gap={['26px', '52px']}
-      flexDir="column"
-      mt={['46px', 0]}
-      h={['calc(100vh - 46px)', 'full']}
-    >
+    <Flex gap={['26px', '52px']} flexDir="column" h="100%">
       <Header>
         <Button
-          mr={[6, 0]}
           variant={'outline'}
           borderColor={'primary.300'}
           _hover={{ bg: 'primary.50' }}
@@ -158,7 +153,8 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
       </Header>
 
       <Flex
-        pr={[6, 0]}
+        pl={[2, 0]}
+        pr={[4, 0]}
         w="100%"
         flexGrow="1"
         overflowY="auto"
@@ -187,9 +183,9 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
                   alignItems="center"
                   gap={2}
                 >
-                  {quickApps.length > 0 ? (
+                  {(formQuickApps || []).length > 0 ? (
                     <Flex flexWrap="wrap" gap={3}>
-                      {quickApps.map((q) => (
+                      {formQuickApps.map((q) => (
                         <Flex
                           key={q.id}
                           alignItems="center"
@@ -460,10 +456,10 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
       </Flex>
 
       <AddQuickAppModal
-        quickApps={quickApps}
+        selectedIds={(formQuickApps || []).map((q) => q.id)}
         isOpen={isOpenAddQuickApp}
         onClose={onCloseAddQuickApp}
-        onRefresh={refreshChatSetting}
+        onConfirm={(list) => setValue('quickApps', list)}
       />
     </Flex>
   );

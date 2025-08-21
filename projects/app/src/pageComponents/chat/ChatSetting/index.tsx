@@ -4,7 +4,7 @@ import { ChatSettingTabOptionEnum } from '@/pageComponents/chat/constants';
 import dynamic from 'next/dynamic';
 import SettingTabs from '@/pageComponents/chat/ChatSetting/SettingTabs';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { Flex } from '@chakra-ui/react';
+import { Box, Flex, type FlexProps } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
@@ -32,8 +32,8 @@ const ChatSetting = () => {
   const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
 
   const SettingHeader = useCallback(
-    ({ children }: PropsWithChildren) => (
-      <SettingTabs tab={tab} onChange={setTab}>
+    ({ children, ...props }: PropsWithChildren & FlexProps) => (
+      <SettingTabs tab={tab} onTabChange={setTab} {...props}>
         {children}
       </SettingTabs>
     ),
@@ -44,42 +44,48 @@ const ChatSetting = () => {
     <>
       <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} icon="/icon/logo.svg" />
 
-      {!isPc && (
-        <>
-          <Flex h="46px" w="100vw" position="absolute" borderBottom="sm" color="myGray.900">
-            <MyIcon
-              ml={3}
-              w="20px"
-              color="myGray.900"
-              name="core/chat/sidebar/menu"
-              onClick={onOpenSlider}
+      <Flex flexDir="column" h="100%">
+        {!isPc && (
+          <>
+            <Flex borderBottom="sm" color="myGray.900" py={2} flexShrink="0">
+              <MyIcon
+                ml={3}
+                w="20px"
+                color="myGray.900"
+                name="core/chat/sidebar/menu"
+                onClick={onOpenSlider}
+              />
+            </Flex>
+
+            <ChatSliderMobileDrawer
+              showList={false}
+              showMenu={false}
+              banner={chatSettings?.wideLogoUrl}
+              menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
             />
-          </Flex>
+          </>
+        )}
 
-          <ChatSliderMobileDrawer
-            showList={false}
-            showMenu={false}
-            banner={chatSettings?.wideLogoUrl}
-            menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
-          />
-        </>
-      )}
+        <Box p={['16px 0 16px 0', 6]} h={['calc(100% - 37px)', '100%']} boxSizing="border-box">
+          {/* homepage setting */}
+          {tab === ChatSettingTabOptionEnum.HOME && (
+            <HomepageSetting Header={SettingHeader} onDiagramShow={setIsOpenDiagram} />
+          )}
 
-      {/* homepage setting */}
-      {tab === ChatSettingTabOptionEnum.HOME && (
-        <HomepageSetting Header={SettingHeader} onDiagramShow={setIsOpenDiagram} />
-      )}
+          {/* data dashboard */}
+          {tab === ChatSettingTabOptionEnum.DATA_DASHBOARD && (
+            <DataDashboard Header={SettingHeader} />
+          )}
 
-      {/* data dashboard */}
-      {tab === ChatSettingTabOptionEnum.DATA_DASHBOARD && <DataDashboard Header={SettingHeader} />}
+          {/* log details */}
+          {tab === ChatSettingTabOptionEnum.LOG_DETAILS && <LogDetails Header={SettingHeader} />}
 
-      {/* log details */}
-      {tab === ChatSettingTabOptionEnum.LOG_DETAILS && <LogDetails Header={SettingHeader} />}
-
-      {/* home chat logs */}
-      {tab === ChatSettingTabOptionEnum.FAVOURITE_APPS && (
-        <FavouriteAppSetting Header={SettingHeader} />
-      )}
+          {/* home chat logs */}
+          {tab === ChatSettingTabOptionEnum.FAVOURITE_APPS && (
+            <FavouriteAppSetting Header={SettingHeader} />
+          )}
+        </Box>
+      </Flex>
 
       <DiagramModal show={isOpenDiagram} onShow={setIsOpenDiagram} />
     </>

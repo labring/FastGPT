@@ -105,6 +105,7 @@
   "setting.favourite.categories_modal.delete_confirm": "Confirm deletion {{name}}? \nApps under this category will be moved to default",
   "setting.favourite.categories_modal.delete_confirm_button": "delete",
   "setting.favourite.categories_modal.delete_confirm_title": "Confirm deletion",
+  "setting.favourite.categories_modal.title": "Total {{num}} categories",
   "setting.favourite.category_all": "All Categories",
   "setting.favourite.category_placeholder": "Select a category",
   "setting.favourite.delete_app_cancel_button": "Cancel",

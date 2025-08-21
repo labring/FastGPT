@@ -97,8 +97,11 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
-  const [isQuickApp, setIsQuickApp] = useState(false);
-  const [currentAppId, setCurrentAppId] = useState(hiddenAppId);
+  const [currentAppId, setCurrentAppId] = useState<string | undefined>(appId);
+  const isQuickApp = useMemo(
+    () => chatSettings?.quickApps.some((app) => app.id === appId),
+    [chatSettings?.quickApps, appId]
+  );
 
   const availableModels = useMemo(
     () => llmModelList.map((model) => ({ value: model.model, label: model.name })),
@@ -188,13 +191,11 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const handleSwitchQuickApp = async (id: string) => {
     // click the same quick app again => exit quick app mode back to default app
     if (isQuickApp && currentAppId === id) {
-      setIsQuickApp(false);
       setCurrentAppId(hiddenAppId);
       onChangeGlobalAppId(hiddenAppId as string);
       return;
     }
     // select or switch to another quick app => enter quick app mode and set current app id
-    setIsQuickApp(true);
     setCurrentAppId(id);
     onChangeGlobalAppId(id);
   };
@@ -296,7 +297,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
       <>
         {/* 模型选择 */}
         {!isQuickApp && availableModels.length > 0 && (
-          <Box w="auto">
+          <Box w={[0, 'auto']} flex={['1 0 0', '0 0 auto']}>
             <AIModelSelector
               h={['30px', '36px']}
               boxShadow={'none'}
@@ -414,7 +415,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
       {isPc ? (
         <SideBar externalTrigger={Boolean(datasetCiteData)}>
           <ChatHistorySidebar
-            title={t('chat:history_slider.home.title')}
+            title={appId === hiddenAppId ? t('chat:history_slider.home.title') : undefined}
             menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
           />
         </SideBar>

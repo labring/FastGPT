@@ -6,21 +6,20 @@ import {
 } from '@/pageComponents/chat/constants';
 import { getChatSetting } from '@/web/core/chat/api';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import type { ChatSettingSchema } from '@fastgpt/global/core/chat/setting/type';
+import type { ChatSettingSchema, QuickApp } from '@fastgpt/global/core/chat/setting/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
-import { usePathname } from 'next/navigation';
 
-type ChatSettingReturnType = ChatSettingSchema | undefined;
+export type ChatSettingReturnType = Awaited<ReturnType<typeof getChatSetting>> | undefined;
 
 export type ChatSettingContextValue = {
   pane: ChatSidebarPaneEnum;
   handlePaneChange: (pane: ChatSidebarPaneEnum, _id?: string) => void;
   collapse: CollapseStatusType;
   onTriggerCollapse: () => void;
-  chatSettings: ChatSettingSchema | undefined;
+  chatSettings: ChatSettingReturnType | undefined;
   refreshChatSetting: () => Promise<ChatSettingReturnType>;
   logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'>;
 };
@@ -42,7 +41,6 @@ export const ChatSettingContext = createContext<ChatSettingContextValue>({
 
 export const ChatSettingContextProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
-  const pathname = usePathname();
   const { feConfigs } = useSystemStore();
   const { appId, setLastPane, setLastChatAppId, lastPane } = useChatStore();
 
@@ -59,15 +57,7 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
     },
     {
       manual: false,
-      refreshDeps: [feConfigs.isPlus],
-      onSuccess(data) {
-        if (!data) return;
-
-        // Reset home page appId
-        if (pane === ChatSidebarPaneEnum.HOME && appId !== data.appId) {
-          handlePaneChange(ChatSidebarPaneEnum.HOME, data.appId);
-        }
-      }
+      refreshDeps: [feConfigs.isPlus]
     }
   );
 

@@ -11,3 +11,9 @@ export type ChatFavouriteAppUpdateParams = {
   categories: string[];
   order: number;
 };
+
+export type ChatFavouriteApp = ChatFavouriteAppSchema & {
+  name: string;
+  avatar: string;
+  intro: string;
+};

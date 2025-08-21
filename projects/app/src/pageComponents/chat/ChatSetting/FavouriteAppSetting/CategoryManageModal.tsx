@@ -20,9 +20,10 @@ import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { Category } from '@fastgpt/global/core/chat/setting/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { getFavouriteApps, updateChatSetting, updateAllFavouriteApp } from '@/web/core/chat/api';
+import { getFavouriteApps, updateChatSetting, updateFavouriteApps } from '@/web/core/chat/api';
 import { useForm } from 'react-hook-form';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import type { ChatFavouriteApp } from '@fastgpt/global/core/chat/favouriteApp/type';
 
 type EditableCategoryItemProps = {
   category: Category;
@@ -194,10 +195,10 @@ const SaveCategoryForAppSubPanel = ({
     }
   );
 
-  const [localAllFavourites, setLocalAllFavourites] = React.useState<any[]>([]);
+  const [localAllFavourites, setLocalAllFavourites] = React.useState<ChatFavouriteApp[]>([]);
 
   React.useEffect(() => {
-    setLocalAllFavourites(favouriteApps as any[]);
+    setLocalAllFavourites(favouriteApps);
   }, [favouriteApps]);
 
   const checkedAppIds = React.useMemo(() => {
@@ -217,7 +218,7 @@ const SaveCategoryForAppSubPanel = ({
   const toggleAppChecked = React.useCallback(
     (appId: string) => {
       setLocalAllFavourites((prev) =>
-        (prev || []).map((item: any) => {
+        (prev || []).map((item) => {
           if (item.appId !== appId) return item;
           const categories: string[] = Array.isArray(item.categories) ? [...item.categories] : [];
           const idx = categories.indexOf(category.id);
@@ -233,15 +234,14 @@ const SaveCategoryForAppSubPanel = ({
     [category.id]
   );
 
-  // save all favourites (update categories) via updateAll
-  const { loading: isSaving, runAsync: saveAllFavourites } = useRequest2(
+  // save apps (update categories) via updateFavouriteApps
+  const { loading: isSaving, runAsync: saveApps } = useRequest2(
     async () => {
-      await updateAllFavouriteApp(
-        (localAllFavourites || []).map((item: any, idx: number) => ({
+      await updateFavouriteApps(
+        localAllFavourites.map((item) => ({
           appId: item.appId,
-          description: item.description,
-          categories: item.categories || [],
-          order: item.order ?? idx
+          order: item.order,
+          categories: item.categories
         }))
       );
       await onRefresh();
@@ -292,7 +292,7 @@ const SaveCategoryForAppSubPanel = ({
               variant="primary"
               isLoading={isSaving}
               isDisabled={isSearching}
-              onClick={() => saveAllFavourites()}
+              onClick={() => saveApps()}
             >
               {t('chat:setting.favourite.save_category_for_app_button')}
             </Button>
@@ -490,7 +490,6 @@ const CategoryManageModal = ({ isOpen, onClose, onRefresh }: Props) => {
                 </Flex>
 
                 <Button
-                  w="80px"
                   fontWeight="400"
                   variant="whitePrimary"
                   isDisabled={isLoading}

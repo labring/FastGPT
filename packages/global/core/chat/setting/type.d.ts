@@ -10,14 +10,9 @@ export type ChatSettingSchema = {
 
   selectedTools: {
     pluginId: string;
-    name: string;
-    avatar: string;
     inputs?: Record<`${NodeInputKeyEnum}` | string, any>;
   }[];
-  quickApps: {
-    id: string;
-    order: number;
-  }[];
+  quickApps: string[];
   categories: {
     id: string;
     name: string;
@@ -26,5 +21,9 @@ export type ChatSettingSchema = {
 
 export type ChatSettingUpdateParams = Partial<Omit<ChatSettingSchema, '_id' | 'appId' | 'teamId'>>;
 
-export type QuickApp = ChatSettingSchema['quickApps'][number] & { name: string; avatar: string };
-export type Category = ChatSettingSchema['categories'][number] & { appIds: string[] };
+export type QuickApp = { id: string; name: string; avatar: string };
+export type Category = ChatSettingSchema['categories'][number];
+export type SelectedTool = ChatSettingSchema['selectedTools'][number] & {
+  name: string;
+  avatar: string;
+};

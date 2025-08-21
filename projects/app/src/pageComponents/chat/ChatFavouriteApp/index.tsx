@@ -24,11 +24,18 @@ import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import NextHead from '@/components/common/NextHead';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { ChatContext } from '@/web/core/chat/context/chatContext';
 
 const ChatFavouriteApp = () => {
+  const { isPc } = useSystem();
   const { t } = useTranslation();
 
+  const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
+
   const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
+  const wideLogoUrl = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.wideLogoUrl);
   const homeTabTitle = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.homeTabTitle);
 
   const categories = useContextSelector(
@@ -68,8 +75,8 @@ const ChatFavouriteApp = () => {
   const { loading: isSearching, data: favouriteApps = [] } = useRequest2(
     async () => {
       return await getFavouriteApps({
-        name: searchAppName,
-        category: selectedCategory
+        name: searchAppName || undefined,
+        category: selectedCategory || undefined
       });
     },
     {
@@ -101,23 +108,66 @@ const ChatFavouriteApp = () => {
   };
 
   return (
-    <MyBox
-      isLoading={isSearching}
-      display="flex"
-      flexDirection={'column'}
-      h={'100%'}
-      pt={['46px', 0]}
-    >
+    <MyBox isLoading={isSearching} display="flex" flexDirection={'column'} h={'100%'}>
       <NextHead title={homeTabTitle || 'FastGPT'} icon="/icon/logo.svg" />
 
+      {!isPc && (
+        <Flex
+          py={4}
+          color="myGray.900"
+          gap={2}
+          alignItems={'center'}
+          px={4}
+          justifyContent={'space-between'}
+        >
+          <MyIcon
+            w="20px"
+            color="myGray.500"
+            name="core/chat/sidebar/menu"
+            onClick={onOpenSlider}
+          />
+
+          <Box w="70%">
+            <InputGroup maxW="300px">
+              <InputLeftElement h="36px">
+                <MyIcon name="common/searchLight" w="16px" color="myGray.500" />
+              </InputLeftElement>
+              <Input
+                placeholder={t('chat:setting.favourite.search_placeholder')}
+                {...register('name')}
+              />
+            </InputGroup>
+          </Box>
+
+          <ChatSliderMobileDrawer
+            showList={false}
+            showMenu={false}
+            banner={wideLogoUrl}
+            menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
+          />
+        </Flex>
+      )}
+
       {/* header */}
-      <Flex w="full" p="6" pb="0" justifyContent="space-between">
+      <Flex w="full" p={['0 16px 0 16px', '24px 24px 0 24px']} justifyContent="space-between">
         {/* category tabs */}
         <Tabs variant="unstyled">
-          <TabList gap={5}>
+          <TabList
+            gap={5}
+            overflowX="auto"
+            overflowY="hidden"
+            flexWrap="nowrap"
+            position="relative"
+            css={{
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              '&::-webkit-scrollbar': { display: 'none' }
+            }}
+          >
             {categoryOptions.map((option) => (
               <Tab
                 px={0}
+                flexShrink="0"
                 key={option.value}
                 value={option.value}
                 fontWeight={500}
@@ -127,24 +177,26 @@ const ChatFavouriteApp = () => {
                 {option.label}
               </Tab>
             ))}
+            <TabIndicator mt="36px" height="2px" bg="primary.600" borderRadius="1px" />
           </TabList>
-          <TabIndicator mt="-1.5px" height="2px" bg="primary.600" borderRadius="1px" />
         </Tabs>
 
         {/* search input */}
-        <InputGroup maxW="300px">
-          <InputLeftElement h="36px">
-            <MyIcon name="common/searchLight" w="16px" color="myGray.500" />
-          </InputLeftElement>
-          <Input
-            placeholder={t('chat:setting.favourite.search_placeholder')}
-            {...register('name')}
-          />
-        </InputGroup>
+        {isPc && (
+          <InputGroup maxW="300px">
+            <InputLeftElement h="36px">
+              <MyIcon name="common/searchLight" w="16px" color="myGray.500" />
+            </InputLeftElement>
+            <Input
+              placeholder={t('chat:setting.favourite.search_placeholder')}
+              {...register('name')}
+            />
+          </InputGroup>
+        )}
       </Flex>
 
       {/* list */}
-      <Grid templateColumns="repeat(3, 1fr)" gap={4} p={6}>
+      <Grid templateColumns={['1fr', 'repeat(3, 1fr)']} gap={4} p={['4', '6']}>
         {favouriteApps.map((app) => (
           <GridItem key={app.appId} cursor="pointer">
             <Flex

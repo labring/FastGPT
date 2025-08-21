@@ -24,14 +24,16 @@ import SelectOneResource from '@/components/common/folder/SelectOneResource';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import VariablePopover from '@/components/core/chat/ChatContainer/ChatBox/components/VariablePopover';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
-import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import {
+  ChatSettingContext,
+  type ChatSettingReturnType
+} from '@/web/core/chat/context/chatSettingContext';
 import {
   ChatSidebarPaneEnum,
   DEFAULT_LOGO_BANNER_COLLAPSED_URL
 } from '@/pageComponents/chat/constants';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { usePathname } from 'next/navigation';
-import type { ChatSettingSchema } from '@fastgpt/global/core/chat/setting/type';
 
 const ChatHeader = ({
   history,
@@ -43,7 +45,7 @@ const ChatHeader = ({
   chatSettings
 }: {
   pane: ChatSidebarPaneEnum;
-  chatSettings: ChatSettingSchema | undefined;
+  chatSettings: ChatSettingReturnType | undefined;
 
   history: ChatItemType[];
   showHistory?: boolean;

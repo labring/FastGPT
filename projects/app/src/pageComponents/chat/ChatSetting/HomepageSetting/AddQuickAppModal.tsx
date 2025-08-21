@@ -1,5 +1,4 @@
 import { getMyApps } from '@/web/core/app/api';
-import { updateChatSetting } from '@/web/core/chat/api';
 import {
   Box,
   Button,
@@ -24,48 +23,33 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 
 type Props = {
-  quickApps: QuickApp[];
+  // currently selected quick app ids (ordered)
+  selectedIds: string[];
   isOpen: boolean;
   onClose: () => void;
-  onRefresh: () => Promise<any>;
+  // confirm selection (ordered quick app list for display)
+  onConfirm: (list: QuickApp[]) => void;
 };
 
-const AddQuickAppModal = ({ quickApps, isOpen, onClose, onRefresh }: Props) => {
+const AddQuickAppModal = ({ selectedIds, isOpen, onClose, onConfirm }: Props) => {
   const { t } = useTranslation();
 
-  const [checkedIds, setCheckedIds] = useState<string[]>(quickApps.map((item) => item.id));
-  const [localQuickApps, setLocalQuickApps] = useState(quickApps);
+  // ordered selected ids
+  const [localSelectedIds, setLocalSelectedIds] = useState<string[]>(selectedIds);
 
-  const checkedQuickApps = useMemo(
-    () =>
-      localQuickApps
-        .filter((item) => checkedIds.includes(item.id))
-        .sort((a, b) => a.order - b.order),
-    [localQuickApps, checkedIds]
-  );
+  const checkedQuickApps = useMemo<QuickApp[]>(() => {
+    // map ids to QuickApp objects with only id, other fields filled when rendering
+    return localSelectedIds.map((id) => ({ id, name: '', avatar: '' }));
+  }, [localSelectedIds]);
 
   const handleCheck = useCallback((id: string) => {
-    setCheckedIds((prev) => {
-      const willAdd = !prev.includes(id);
-      if (willAdd) {
-        if (prev.length >= 4) return prev;
-
-        setLocalQuickApps((prevQuickApps) => {
-          const exists = prevQuickApps.some((q) => q.id === id);
-          if (exists) return prevQuickApps;
-          const maxOrder =
-            prevQuickApps.length > 0 ? Math.max(...prevQuickApps.map((q: any) => q.order ?? 0)) : 0;
-          const newQuickApp = {
-            id,
-            order: (maxOrder ?? 0) + 1
-          } as unknown as QuickApp;
-          return [...prevQuickApps, newQuickApp];
-        });
-        return [...prev, id];
-      } else {
-        setLocalQuickApps((prevQuickApps) => prevQuickApps.filter((q) => q.id !== id));
+    setLocalSelectedIds((prev) => {
+      const exists = prev.includes(id);
+      if (exists) {
         return prev.filter((v) => v !== id);
       }
+      if (prev.length >= 4) return prev;
+      return [...prev, id];
     });
   }, []);
 
@@ -92,31 +76,28 @@ const AddQuickAppModal = ({ quickApps, isOpen, onClose, onRefresh }: Props) => {
     return map;
   }, [availableApps]);
 
-  const { loading: isUpdating, runAsync: updateQuickApps } = useRequest2(
+  const { loading: isUpdating, runAsync: confirmSelect } = useRequest2(
     async () => {
-      await updateChatSetting({
-        quickApps: localQuickApps.map((q) => ({ id: q.id, order: q.order }))
-      });
-      await onRefresh();
+      const list: QuickApp[] = localSelectedIds
+        .map((id) => availableAppsMap.get(id)!)
+        .filter(Boolean)
+        .map((app) => ({ id: app._id, name: app.name, avatar: app.avatar }));
+      onConfirm(list);
       onClose();
     },
-    {
-      manual: true
-    }
+    { manual: true }
   );
 
   const handleClose = useCallback(() => {
     setValue('name', '');
-    setCheckedIds(quickApps.map((item) => item.id));
-    setLocalQuickApps(quickApps);
+    setLocalSelectedIds(selectedIds);
     onClose();
-  }, [onClose, quickApps, setValue]);
+  }, [onClose, selectedIds, setValue]);
 
   // keep checked state in sync with current quick apps
   useEffect(() => {
-    setCheckedIds(quickApps.map((item) => item.id));
-    setLocalQuickApps(quickApps);
-  }, [quickApps]);
+    setLocalSelectedIds(selectedIds);
+  }, [selectedIds]);
 
   return (
     <MyModal
@@ -163,7 +144,7 @@ const AddQuickAppModal = ({ quickApps, isOpen, onClose, onRefresh }: Props) => {
                 spacing={1}
                 alignItems="flex-start"
               >
-                <AppTree apps={availableApps} checkedIds={checkedIds} onCheck={handleCheck} />
+                <AppTree apps={availableApps} checkedIds={localSelectedIds} onCheck={handleCheck} />
               </VStack>
             </VStack>
           </GridItem>
@@ -180,9 +161,10 @@ const AddQuickAppModal = ({ quickApps, isOpen, onClose, onRefresh }: Props) => {
                 <DndDrag<QuickApp>
                   dataList={checkedQuickApps}
                   renderInnerPlaceholder={false}
-                  onDragEndCb={(list) =>
-                    setLocalQuickApps(list.map((item, idx) => ({ ...item, order: idx })))
-                  }
+                  onDragEndCb={(list) => {
+                    const newOrderIds = list.map((item) => item.id);
+                    setLocalSelectedIds(newOrderIds);
+                  }}
                 >
                   {({ provided }) => (
                     <VStack
@@ -223,13 +205,15 @@ const AddQuickAppModal = ({ quickApps, isOpen, onClose, onRefresh }: Props) => {
                                 <Box flex={1} className="textEllipsis" userSelect="none">
                                   {app.name}
                                 </Box>
-                                <Box
-                                  color="myGray.400"
-                                  fontSize="xs"
-                                  cursor="pointer"
-                                  onClick={() => handleCheck(q.id)}
-                                >
-                                  <MyIcon name="common/closeLight" w="16px" />
+                                <Box color="myGray.400" fontSize="xs">
+                                  <MyIcon
+                                    name="common/closeLight"
+                                    w="16px"
+                                    color="myGray.400"
+                                    cursor="pointer"
+                                    _hover={{ color: 'red.500' }}
+                                    onClick={() => handleCheck(q.id)}
+                                  />
                                 </Box>
                               </Flex>
                             )}
@@ -249,12 +233,7 @@ const AddQuickAppModal = ({ quickApps, isOpen, onClose, onRefresh }: Props) => {
           <Button variant="whitePrimary" isDisabled={isUpdating} onClick={handleClose}>
             取消
           </Button>
-          <Button
-            variant="primary"
-            isLoading={isUpdating}
-            isDisabled={checkedIds.length === 0}
-            onClick={updateQuickApps}
-          >
+          <Button variant="primary" isLoading={isUpdating} onClick={confirmSelect}>
             确定
           </Button>
         </HStack>

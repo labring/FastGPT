@@ -4,7 +4,8 @@ import type {
   Category,
   ChatSettingSchema,
   ChatSettingUpdateParams,
-  QuickApp
+  QuickApp,
+  SelectedTool
 } from '@fastgpt/global/core/chat/setting/type';
 import type { getResDataQuery } from '@/pages/api/core/chat/getResData';
 import type {
@@ -120,9 +121,9 @@ export const getCollectionQuote = (data: GetCollectionQuoteProps) =>
 /*---------- chat setting ------------*/
 export const getChatSetting = () => {
   return GET<
-    Omit<ChatSettingSchema, 'categories' | 'quickApps'> & {
-      categories: Category[];
+    Omit<ChatSettingSchema, 'quickApps' | 'selectedTools'> & {
       quickApps: QuickApp[];
+      selectedTools: SelectedTool[];
     }
   >('/proApi/core/chat/setting/detail');
 };
@@ -138,6 +139,14 @@ export const getFavouriteApps = (data: { name?: string; category?: string }) => 
   );
 };
 
-export const updateAllFavouriteApp = (data: ChatFavouriteAppUpdateParams[]) => {
-  return POST<ChatFavouriteAppSchema[]>('/proApi/core/chat/setting/favourite/updateAll', data);
+export const updateFavouriteApps = (data: ChatFavouriteAppUpdateParams[]) => {
+  return POST<ChatFavouriteAppSchema[]>('/proApi/core/chat/setting/favourite/update', data);
+};
+
+export const updateFavouriteAppOrder = (data: { id: string; order: number }[]) => {
+  return PUT<void>('/proApi/core/chat/setting/favourite/order', data);
+};
+
+export const deleteFavouriteApp = (id: string) => {
+  return DELETE<void>(`/proApi/core/chat/setting/favourite/delete?id=${id}`);
 };

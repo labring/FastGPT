@@ -104,6 +104,7 @@
   "setting.favourite.categories_modal.delete_confirm": "確認刪除 {{name}} ？\n該分類下的應用將被移動至默認",
   "setting.favourite.categories_modal.delete_confirm_button": "刪除",
   "setting.favourite.categories_modal.delete_confirm_title": "確認刪除",
+  "setting.favourite.categories_modal.title": "共 {{num}} 個分類",
   "setting.favourite.category_all": "全部分類",
   "setting.favourite.category_placeholder": "選擇分類",
   "setting.favourite.delete_app_cancel_button": "取消",

@@ -19,7 +19,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getMyApps } from '@/web/core/app/api';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { ChatFavouriteAppSchema } from '@fastgpt/global/core/chat/favouriteApp/type';
-import { updateAllFavouriteApp } from '@/web/core/chat/api';
+import { updateFavouriteApps } from '@/web/core/chat/api';
 import AppTree, { type App } from '@/pageComponents/chat/ChatSetting/AppTree';
 
 type Props = {
@@ -97,7 +97,7 @@ const AddFavouriteAppModal = ({ isOpen, favourites, onClose, onRefresh }: Props)
 
   const { run: updateFavourites, loading: isUpdating } = useRequest2(
     async () => {
-      await updateAllFavouriteApp(
+      await updateFavouriteApps(
         checkedFavouriteApps.map((item) => ({
           appId: item.appId,
           order: item.order,
@@ -112,8 +112,8 @@ const AddFavouriteAppModal = ({ isOpen, favourites, onClose, onRefresh }: Props)
     }
   );
 
+  // reset search and checked list to original favourites when closing
   const handleClose = useCallback(() => {
-    // reset search and checked list to original favourites when closing
     setSearchValue('name', '');
     setCheckedIds(favourites.map((item) => item.appId));
     setLocalFavourites(favourites);
@@ -185,29 +185,26 @@ const AddFavouriteAppModal = ({ isOpen, favourites, onClose, onRefresh }: Props)
               </Box>
 
               <Box>
-                <VStack spacing={0} alignItems="stretch" maxH={['50vh', '400px']} overflowY="auto">
+                <VStack spacing={2} alignItems="stretch" maxH={['50vh', '400px']} overflowY="auto">
                   {checkedFavouriteApps.map((fav) => {
                     const app = availableAppMap.get(fav.appId);
                     if (!app) return null;
                     return (
-                      <Flex
-                        key={fav.appId}
-                        alignItems="center"
-                        p={2}
-                        gap={2}
-                        _notLast={{ borderBottom: 'sm', borderColor: 'myGray.100' }}
-                      >
+                      <Flex key={fav.appId} alignItems="center" p={2} gap={2}>
                         <Avatar src={app.avatar} borderRadius={'md'} w="1.25rem" />
                         <Box flex={1} className="textEllipsis" userSelect="none">
                           {app.name}
                         </Box>
-                        <Box
-                          color="myGray.400"
-                          fontSize="xs"
-                          cursor="pointer"
-                          onClick={() => handleCheck(fav.appId)}
-                        >
-                          <MyIcon name="common/closeLight" w="16px" />
+
+                        <Box color="myGray.400" fontSize="xs">
+                          <MyIcon
+                            name="common/closeLight"
+                            w="16px"
+                            color="myGray.400"
+                            cursor="pointer"
+                            _hover={{ color: 'red.500' }}
+                            onClick={() => handleCheck(fav.appId)}
+                          />
                         </Box>
                       </Flex>
                     );
