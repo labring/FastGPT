@@ -774,6 +774,32 @@ export const compareSnapshot = (
   return isEqual(node1, node2);
 };
 
+export const extractCodeFromMarkdown = (
+  markdownContent: string
+): {
+  code: string;
+  inputs: Array<{ label: string; type: string }>;
+  outputs: Array<{ label: string; type: string }>;
+} => {
+  const codeBlockRegex = /```(?:\w+\n)?([\s\S]*?)```/;
+  const codeMatch = markdownContent.match(codeBlockRegex);
+  const code = codeMatch ? codeMatch[1].trim() : markdownContent.trim();
+
+  const paramMatches = [...code.matchAll(/@param\s*\{([^}]+)\}\s*(\w+)\s*-?\s*.*/g)];
+  const inputs = paramMatches.map((paramMatch) => ({
+    label: paramMatch[2].trim(),
+    type: paramMatch[1].trim()
+  }));
+
+  const propertyMatches = [...code.matchAll(/@property\s*\{([^}]+)\}\s*(\w+)\s*-?\s*.*/g)];
+  const outputs = propertyMatches.map((propertyMatch) => ({
+    label: propertyMatch[2].trim(),
+    type: propertyMatch[1].trim()
+  }));
+
+  return { code, inputs, outputs };
+};
+
 /* ====== Adapt ======= */
 // 给旧版的代码运行和 HTTP 节点，追加一个错误信息的连线
 export const adaptCatchError = (nodes: StoreNodeItemType[], edges: StoreEdgeItemType[]) => {

@@ -9,6 +9,7 @@ import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import DynamicOutputs from './DynamicOutputs';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 
 const RenderOutput = ({
   nodeId,
@@ -67,8 +68,7 @@ const RenderOutput = ({
       <DynamicOutputs
         nodeId={nodeId}
         outputs={filterAddOutput}
-        addOutputConfig={addOutput?.customFieldConfig}
-        title={t((addOutput.label || 'common:core.workflow.Custom outputs') as any)}
+        title={t((addOutput.label || i18nT('common:core.workflow.Custom outputs')) as any)}
         description={addOutput.description}
       />
     );

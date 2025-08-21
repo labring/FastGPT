@@ -300,7 +300,7 @@ export const onOptimizePrompt = async ({
 };
 
 export const onOptimizeCode = async ({
-  language,
+  codeType,
   optimizerInput,
   model,
   conversationHistory = [],
@@ -311,7 +311,7 @@ export const onOptimizeCode = async ({
   await streamFetch({
     url: '/api/core/ai/optimizeCode',
     data: {
-      language,
+      codeType,
       optimizerInput,
       model,
       conversationHistory
