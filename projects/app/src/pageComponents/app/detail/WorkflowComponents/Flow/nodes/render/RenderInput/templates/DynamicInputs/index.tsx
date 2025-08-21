@@ -14,10 +14,7 @@ import { ReferSelector, useReference } from '../Reference';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import {
-  WorkflowIOValueTypeEnum,
-  toolValueTypeList
-} from '@fastgpt/global/core/workflow/constants';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 
 const defaultInput: FlowNodeInputItemType = {
@@ -67,8 +64,8 @@ const DynamicInputs = (props: RenderInputProps) => {
         </HStack>
         {/* field render */}
         <Box mt={2}>
-          {[...dynamicInputs, {} as FlowNodeInputItemType].map((children, index) => (
-            <Box key={children.key || `empty-${index}`} _notLast={{ mb: 3 }}>
+          {[...dynamicInputs, defaultInput].map((children) => (
+            <Box key={children.key} _notLast={{ mb: 3 }}>
               <Reference {...props} inputChildren={children} isEmptyItem={!children.key} />
             </Box>
           ))}
@@ -93,7 +90,6 @@ const Reference = ({
   const { nodeId, inputs = [], item } = props;
   const { t } = useTranslation();
   const { toast } = useToast();
-
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const keys = useMemo(() => {
@@ -101,7 +97,6 @@ const Reference = ({
   }, [inputs]);
 
   const [tempLabel, setTempLabel] = useState('');
-
   const { referenceList } = useReference({
     nodeId,
     valueType: inputChildren.valueType || WorkflowIOValueTypeEnum.any
@@ -242,7 +237,12 @@ const Reference = ({
           ButtonProps={{
             bg: 'none',
             borderRadius: 'none',
-            borderColor: 'myGray.200'
+            borderColor: 'myGray.200',
+            borderLeftColor: 'transparent',
+            borderRightColor: 'transparent',
+            _hover: {
+              borderColor: 'blue.300'
+            }
           }}
         />
         <MySelect

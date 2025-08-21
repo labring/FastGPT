@@ -220,20 +220,12 @@ const DynamicOutputItem = ({
           onChange={(value) => handleValueTypeChange(value)}
           bg={'myGray.50'}
           isDisabled={!output?.key}
+          borderLeftColor={'transparent'}
+          _hover={{
+            borderColor: 'primary.300'
+          }}
         />
       </Flex>
-      {/* <Box
-        padding={'3px 6px'}
-        borderRadius={'6px'}
-        border={'1.401px solid'}
-        borderColor={'myGray.200'}
-        backgroundColor={'myGray.100'}
-        color={'myGray.500'}
-        fontSize={'14px'}
-        fontWeight={'500'}
-      >
-        {output?.valueType || WorkflowIOValueTypeEnum.any}
-      </Box> */}
       {!isEmptyItem && (
         <Box minW={6}>
           <MyIconButton
