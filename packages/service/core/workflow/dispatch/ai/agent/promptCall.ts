@@ -186,110 +186,76 @@ export const runToolWithPromptCall = async (
     toolModel
   );
 
+  const write = res ? responseWriteController({ res, readStream: stream }) : undefined;
+
+  let startResponseWrite = false;
+  let answerBuffer = '';
+
   let {
-    reasoning,
-    answer,
+    reasoningText: reasoning,
+    answerText: answer,
     finish_reason,
     inputTokens,
     outputTokens,
     isStreamResponse,
     toolsPrompt,
     getEmptyResponseTip
-  }: {
-    reasoning: string;
-    answer: string;
-    finish_reason: CompletionFinishReason;
-    inputTokens: number;
-    outputTokens: number;
-    isStreamResponse: boolean;
-    toolsPrompt: string;
-    getEmptyResponseTip: () => string;
-  } = {
-    reasoning: '',
-    answer: '',
-    finish_reason: 'close',
-    inputTokens: 0,
-    outputTokens: 0,
-    isStreamResponse: true,
-    toolsPrompt: '',
-    getEmptyResponseTip: () => ''
-  };
+  } = await createLLMResponse({
+    llmOptions: requestBody,
+    toolCallOptions: {
+      mode: 'prompt',
+      toolNodes: toolNodes
+    },
+    userKey: externalProvider.openaiAccount,
+    params: { abortSignal: res?.closed, reasoning: aiChatReasoning, retainDatasetCite },
+    events: {
+      streamEvents: {
+        onReasoning({ reasoningContent }) {
+          workflowStreamResponse?.({
+            write,
+            event: SseResponseEventEnum.answer,
+            data: textAdaptGptResponse({
+              reasoning_content: reasoningContent
+            })
+          });
+        },
+        onStreaming({ responseContent, originContent }) {
+          answerBuffer += originContent;
 
-  if (res) {
-    const write = responseWriteController({
-      res,
-      readStream: stream
-    });
+          if (startResponseWrite) {
+            if (responseContent) {
+              workflowStreamResponse?.({
+                write,
+                event: SseResponseEventEnum.answer,
+                data: textAdaptGptResponse({
+                  text: responseContent
+                })
+              });
+            }
+          } else if (answerBuffer.length >= 3) {
+            answerBuffer = answerBuffer.trimStart();
+            if (/0(:|：)/.test(answerBuffer)) {
+              startResponseWrite = true;
 
-    let startResponseWrite = false;
-    let answerBuffer = '';
-
-    const llmResponse = await createLLMResponse({
-      llmOptions: requestBody,
-      toolCallOptions: {
-        mode: 'prompt',
-        toolNodes: toolNodes
-      },
-      userKey: externalProvider.openaiAccount,
-      params: { abortSignal: res.closed, reasoning: aiChatReasoning, retainDatasetCite },
-      events: {
-        streamEvents: {
-          onReasoning({ reasoningContent }) {
-            workflowStreamResponse?.({
-              write,
-              event: SseResponseEventEnum.answer,
-              data: textAdaptGptResponse({
-                reasoning_content: reasoningContent
-              })
-            });
-          },
-          onStreaming({ responseContent, originContent }) {
-            answerBuffer += originContent;
-
-            if (startResponseWrite) {
-              if (responseContent) {
-                workflowStreamResponse?.({
-                  write,
-                  event: SseResponseEventEnum.answer,
-                  data: textAdaptGptResponse({
-                    text: responseContent
-                  })
-                });
-              }
-            } else if (answerBuffer.length >= 3) {
-              answerBuffer = answerBuffer.trimStart();
-              if (/0(:|：)/.test(answerBuffer)) {
-                startResponseWrite = true;
-
-                // find first : index
-                const firstIndex =
-                  answerBuffer.indexOf('0:') !== -1
-                    ? answerBuffer.indexOf('0:')
-                    : answerBuffer.indexOf('0：');
-                answerBuffer = answerBuffer.substring(firstIndex + 2).trim();
-                workflowStreamResponse?.({
-                  write,
-                  event: SseResponseEventEnum.answer,
-                  data: textAdaptGptResponse({
-                    text: answerBuffer
-                  })
-                });
-              }
+              // find first : index
+              const firstIndex =
+                answerBuffer.indexOf('0:') !== -1
+                  ? answerBuffer.indexOf('0:')
+                  : answerBuffer.indexOf('0：');
+              answerBuffer = answerBuffer.substring(firstIndex + 2).trim();
+              workflowStreamResponse?.({
+                write,
+                event: SseResponseEventEnum.answer,
+                data: textAdaptGptResponse({
+                  text: answerBuffer
+                })
+              });
             }
           }
         }
       }
-    });
-
-    reasoning = llmResponse.reasoningText;
-    answer = llmResponse.answerText;
-    finish_reason = llmResponse.finish_reason;
-    inputTokens = llmResponse.inputTokens || 0;
-    outputTokens = llmResponse.outputTokens || 0;
-    isStreamResponse = llmResponse.isStreamResponse;
-    toolsPrompt = llmResponse.toolsPrompt;
-    getEmptyResponseTip = llmResponse.getEmptyResponseTip;
-  }
+    }
+  });
 
   const lastMessage = messages[messages.length - 1];
   if (typeof lastMessage.content === 'string') {

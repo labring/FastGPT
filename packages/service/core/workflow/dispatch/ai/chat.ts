@@ -202,6 +202,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       modelConstantsData
     );
 
+    const write = res ? responseWriteController({ res, readStream: stream }) : undefined;
+
     let {
       reasoningText,
       answerText,
@@ -209,81 +211,51 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       inputTokens,
       outputTokens,
       getEmptyResponseTip
-    }: {
-      reasoningText: string;
-      answerText: string;
-      finish_reason: CompletionFinishReason;
-      inputTokens: number;
-      outputTokens: number;
-      getEmptyResponseTip: () => string;
-    } = {
-      reasoningText: '',
-      answerText: '',
-      finish_reason: 'close',
-      inputTokens: 0,
-      outputTokens: 0,
-      getEmptyResponseTip: () => ''
-    };
-
-    if (res) {
-      const write = responseWriteController({
-        res,
-        readStream: stream
-      });
-
-      const llmResponse = await createLLMResponse({
-        llmOptions: requestBody,
-        userKey: externalProvider.openaiAccount,
-        params: { abortSignal: res.closed, reasoning: aiChatReasoning, retainDatasetCite },
-        events: {
-          streamEvents: {
-            onReasoning({ reasoningContent }) {
-              workflowStreamResponse?.({
-                write,
-                event: SseResponseEventEnum.answer,
-                data: textAdaptGptResponse({
-                  reasoning_content: reasoningContent
-                })
-              });
-            },
-            onStreaming({ responseContent }) {
-              workflowStreamResponse?.({
-                write,
-                event: SseResponseEventEnum.answer,
-                data: textAdaptGptResponse({
-                  text: responseContent
-                })
-              });
-            }
+    } = await createLLMResponse({
+      llmOptions: requestBody,
+      userKey: externalProvider.openaiAccount,
+      params: { abortSignal: res?.closed, reasoning: aiChatReasoning, retainDatasetCite },
+      events: {
+        streamEvents: {
+          onReasoning({ reasoningContent }) {
+            workflowStreamResponse?.({
+              write,
+              event: SseResponseEventEnum.answer,
+              data: textAdaptGptResponse({
+                reasoning_content: reasoningContent
+              })
+            });
           },
-          completionEvents: {
-            onReasoned({ reasoningContent }) {
-              workflowStreamResponse?.({
-                event: SseResponseEventEnum.fastAnswer,
-                data: textAdaptGptResponse({
-                  reasoning_content: reasoningContent
-                })
-              });
-            },
-            onCompleted({ content }) {
-              workflowStreamResponse?.({
-                event: SseResponseEventEnum.fastAnswer,
-                data: textAdaptGptResponse({
-                  text: content
-                })
-              });
-            }
+          onStreaming({ responseContent }) {
+            workflowStreamResponse?.({
+              write,
+              event: SseResponseEventEnum.answer,
+              data: textAdaptGptResponse({
+                text: responseContent
+              })
+            });
+          }
+        },
+        completionEvents: {
+          onReasoned({ reasoningContent }) {
+            workflowStreamResponse?.({
+              event: SseResponseEventEnum.fastAnswer,
+              data: textAdaptGptResponse({
+                reasoning_content: reasoningContent
+              })
+            });
+          },
+          onCompleted({ content }) {
+            workflowStreamResponse?.({
+              event: SseResponseEventEnum.fastAnswer,
+              data: textAdaptGptResponse({
+                text: content
+              })
+            });
           }
         }
-      });
-
-      reasoningText = llmResponse.reasoningText;
-      answerText = llmResponse.answerText;
-      finish_reason = llmResponse.finish_reason;
-      inputTokens = llmResponse.inputTokens || 0;
-      outputTokens = llmResponse.outputTokens || 0;
-      getEmptyResponseTip = llmResponse.getEmptyResponseTip;
-    }
+      }
+    });
 
     if (!answerText && !reasoningText) {
       return getNodeErrResponse({ error: getEmptyResponseTip() });

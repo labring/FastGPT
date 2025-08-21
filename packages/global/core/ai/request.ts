@@ -256,20 +256,6 @@ export const createStreamResponse = async (
 
   let toolCallResults: ChatCompletionMessageToolCall[] = [];
 
-  if (abortSignal) {
-    return {
-      reasoningText: '',
-      answerText: '',
-      toolCallResults: [],
-      finish_reason: 'close',
-      usage: {
-        prompt_tokens: 0,
-        completion_tokens: 0,
-        total_tokens: 0
-      }
-    };
-  }
-
   for await (const part of stream) {
     if (abortSignal) {
       stream.controller?.abort();
