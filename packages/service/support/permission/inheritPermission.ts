@@ -1,21 +1,13 @@
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
-import {
-  NullPermissionVal,
-  NullRoleVal,
-  type PerResourceTypeEnum
-} from '@fastgpt/global/support/permission/constant';
-import type {
-  PermissionValueType,
-  ResourcePermissionType,
-  ResourceType
-} from '@fastgpt/global/support/permission/type';
+import { NullRoleVal, type PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 import type { ClientSession, Model } from 'mongoose';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
-import { getResourceClbsAndGroups } from './controller';
+import { getResourceClbs } from './controller';
 import { MongoResourcePermission } from './schema';
 import type { AnyBulkWriteOperation } from 'common/mongo';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
+import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 
 export type SyncChildrenPermissionResourceType = {
   _id: string;
@@ -23,13 +15,6 @@ export type SyncChildrenPermissionResourceType = {
   teamId: string;
   parentId?: ParentIdType;
 };
-export type UpdateCollaboratorItem = {
-  permission: PermissionValueType;
-} & RequireOnlyOne<{
-  tmbId: string;
-  groupId: string;
-  orgId: string;
-}>;
 
 /**
  * sync the permission to all children folders.
@@ -54,20 +39,20 @@ export async function syncChildrenPermission({
   // should be provided when inheritPermission is true
   session: ClientSession;
 
-  collaborators?: UpdateCollaboratorItem[];
+  collaborators?: CollaboratorItemType[];
 }) {
   // only folder has permission
   const isFolder = folderTypeList.includes(resource.type);
   const teamId = resource.teamId;
 
+  // If the 'root' is not a folder, which means the 'root' has no children, no need to sync.
   if (!isFolder) return;
 
-  // get all folders and the resource permission of the app
+  // get all the resource permission of the app
   const allResources = await resourceModel
     .find(
       {
         teamId,
-        // type: { $in: folderTypeList },
         inheritPermission: true
       },
       '_id parentId'
@@ -134,7 +119,6 @@ export async function syncChildrenPermission({
         ? resourceIdPermissionMap.get(String(parentResource._id)) || []
         : [];
 
-      console.log(childResource, parentResource, childClbs, parentClbs);
       if (parentResource) {
         for (const parentClb of parentClbs) {
           const childClb = childClbs.find(
@@ -223,7 +207,7 @@ export async function resumeInheritPermission({
 
     // Folder resource, need to sync children
     if (isFolder) {
-      const parentClbsAndGroups = await getResourceClbsAndGroups({
+      const parentClbsAndGroups = await getResourceClbs({
         resourceId: resource.parentId,
         teamId: resource.teamId,
         resourceType,
@@ -275,7 +259,7 @@ export async function syncCollaborators({
   resourceType: PerResourceTypeEnum;
   teamId: string;
   resourceId: string;
-  collaborators: UpdateCollaboratorItem[];
+  collaborators: CollaboratorItemType[];
   session: ClientSession;
 }) {
   await MongoResourcePermission.deleteMany(

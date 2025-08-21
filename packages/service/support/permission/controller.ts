@@ -22,6 +22,10 @@ import { type OrgSchemaType } from '@fastgpt/global/support/user/team/org/type';
 import { getOrgIdSetWithParentByTmbId } from './org/controllers';
 import { authUserSession } from '../user/session';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
+import {
+  CollaboratorItemDetailType,
+  SimpleCollaboratorItemType
+} from '@fastgpt/global/support/permission/collaborator';
 
 /** get resource permission for a team member
  * If there is no permission for the team member, it will return undefined
@@ -106,7 +110,7 @@ export const getResourcePermission = async ({
   return sumPer(...groupPers, ...orgPers);
 };
 
-export async function getResourceClbsAndGroups({
+export async function getResourceClbs({
   resourceId,
   resourceType,
   teamId,
@@ -115,7 +119,7 @@ export async function getResourceClbsAndGroups({
   resourceId: ParentIdType;
   resourceType: Omit<`${PerResourceTypeEnum}`, 'team'>;
   teamId: string;
-  session: ClientSession;
+  session?: ClientSession;
 }) {
   return MongoResourcePermission.find(
     {
@@ -124,7 +128,7 @@ export async function getResourceClbsAndGroups({
       teamId
     },
     undefined,
-    { session }
+    { ...(session ? { session } : {}) }
   ).lean();
 }
 

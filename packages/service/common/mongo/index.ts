@@ -66,6 +66,7 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
       next();
     });
 
+    // Convert _id to string
     schema.post(/^find/, function (docs) {
       if (!docs) return;
 
