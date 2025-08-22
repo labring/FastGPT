@@ -4,7 +4,7 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
-import type { createEvalDatasetCollectionBody } from '@fastgpt/global/core/evaluation/api';
+import type { createEvalDatasetCollectionBody } from '@fastgpt/global/core/evaluation/dataset/api';
 
 export type EvalDatasetCollectionCreateQuery = {};
 export type EvalDatasetCollectionCreateBody = createEvalDatasetCollectionBody;

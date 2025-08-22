@@ -7,8 +7,8 @@ import { MongoDatasetData } from '../../dataset/data/schema';
 import {
   EvalDatasetDataCreateFromEnum,
   EvalDatasetDataKeyEnum
-} from '@fastgpt/global/core/evaluation/constants';
-import type { EvalDatasetDataSchemaType } from '@fastgpt/global/core/evaluation/type';
+} from '@fastgpt/global/core/evaluation/dataset/constants';
+import type { EvalDatasetDataSchemaType } from '@fastgpt/global/core/evaluation/dataset/type';
 import {
   type EvalDatasetSmartGenerateData,
   getEvalDatasetSmartGenerateWorker

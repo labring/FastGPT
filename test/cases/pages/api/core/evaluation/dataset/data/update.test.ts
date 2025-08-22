@@ -5,7 +5,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/constants';
+import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
 import {
   removeEvalDatasetDataQualityJob,
   addEvalDatasetDataQualityJob

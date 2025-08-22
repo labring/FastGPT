@@ -3,7 +3,7 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
-import type { EvalDatasetCollectionSchemaType } from '@fastgpt/global/core/evaluation/type';
+import type { EvalDatasetCollectionSchemaType } from '@fastgpt/global/core/evaluation/dataset/type';
 
 const { Schema } = connectionMongo;
 
