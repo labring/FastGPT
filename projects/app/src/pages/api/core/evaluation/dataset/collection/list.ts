@@ -8,9 +8,9 @@ import { Types } from '@fastgpt/service/common/mongo';
 import type {
   listEvalDatasetCollectionBody,
   listEvalDatasetCollectionResponse
-} from '@fastgpt/global/core/evaluation/api';
-import type { EvalDatasetCollectionStatus } from '@fastgpt/global/core/evaluation/type';
-import { EvalDatasetCollectionStatusEnum } from '@fastgpt/global/core/evaluation/constants';
+} from '@fastgpt/global/core/evaluation/dataset/api';
+import type { EvalDatasetCollectionStatus } from '@fastgpt/global/core/evaluation/dataset/type';
+import { EvalDatasetCollectionStatusEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { evalDatasetDataSynthesizeQueue } from '@fastgpt/service/core/evaluation/dataset/dataSynthesizeMq';
 

@@ -7,7 +7,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 import type {
   listFailedTasksBody,
   listFailedTasksResponse
-} from '@fastgpt/global/core/evaluation/api';
+} from '@fastgpt/global/core/evaluation/dataset/api';
 import { evalDatasetDataSynthesizeQueue } from '@fastgpt/service/core/evaluation/dataset/dataSynthesizeMq';
 
 async function handler(

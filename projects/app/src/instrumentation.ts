@@ -15,7 +15,7 @@ export async function register() {
         { initVectorStore },
         { initRootUser },
         { startMongoWatch },
-        { initEvaluationWorker },
+        { initEvaluationWorkers },
         { startCron },
         { startTrainingQueue },
         { preLoadWorker },
@@ -62,7 +62,7 @@ export async function register() {
       initAppTemplateTypes();
       // getSystemPlugins(true);
       startMongoWatch();
-      initEvaluationWorker();
+      initEvaluationWorkers();
       startCron();
       startTrainingQueue(true);
 

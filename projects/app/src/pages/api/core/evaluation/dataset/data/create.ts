@@ -8,8 +8,8 @@ import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dat
 import {
   EvalDatasetDataCreateFromEnum,
   EvalDatasetDataKeyEnum
-} from '@fastgpt/global/core/evaluation/constants';
-import type { createEvalDatasetDataBody } from '@fastgpt/global/core/evaluation/api';
+} from '@fastgpt/global/core/evaluation/dataset/constants';
+import type { createEvalDatasetDataBody } from '@fastgpt/global/core/evaluation/dataset/api';
 
 export type EvalDatasetDataCreateQuery = {};
 export type EvalDatasetDataCreateBody = createEvalDatasetDataBody;

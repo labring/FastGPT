@@ -5,7 +5,7 @@ import { getEvalDatasetDataQualityWorker, type EvalDatasetDataQualityData } from
 import {
   EvalDatasetDataKeyEnum,
   EvalDatasetDataQualityStatusEnum
-} from '@fastgpt/global/core/evaluation/constants';
+} from '@fastgpt/global/core/evaluation/dataset/constants';
 
 // FastAPI service interface schemas
 export type InputData = {

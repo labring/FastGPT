@@ -39,7 +39,8 @@ export enum ChatSourceEnum {
   feishu = 'feishu',
   official_account = 'official_account',
   wecom = 'wecom',
-  mcp = 'mcp'
+  mcp = 'mcp',
+  evaluation = 'evaluation'
 }
 
 export const ChatSourceMap = {
@@ -82,6 +83,10 @@ export const ChatSourceMap = {
   [ChatSourceEnum.mcp]: {
     name: i18nT('common:core.chat.logs.mcp'),
     color: '#F97066'
+  },
+  [ChatSourceEnum.evaluation]: {
+    name: i18nT('common:core.chat.logs.evaluation'),
+    color: '#8B5CF6'
   }
 };
 

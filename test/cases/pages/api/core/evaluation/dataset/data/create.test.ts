@@ -8,7 +8,7 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import {
   EvalDatasetDataCreateFromEnum,
   EvalDatasetDataKeyEnum
-} from '@fastgpt/global/core/evaluation/constants';
+} from '@fastgpt/global/core/evaluation/dataset/constants';
 
 vi.mock('@fastgpt/service/support/permission/user/auth');
 vi.mock('@fastgpt/service/common/mongo/sessionRun');

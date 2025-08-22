@@ -5,7 +5,7 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import type { smartGenerateEvalDatasetBody } from '@fastgpt/global/core/evaluation/api';
+import type { smartGenerateEvalDatasetBody } from '@fastgpt/global/core/evaluation/dataset/api';
 import { addEvalDatasetSmartGenerateJob } from '@fastgpt/service/core/evaluation/dataset/smartGenerateMq';
 
 export type SmartGenerateEvalDatasetQuery = {};

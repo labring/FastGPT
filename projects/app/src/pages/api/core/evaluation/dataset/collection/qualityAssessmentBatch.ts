@@ -12,9 +12,9 @@ import {
 import type {
   qualityAssessmentBatchBody,
   qualityAssessmentBatchResponse
-} from '@fastgpt/global/core/evaluation/api';
+} from '@fastgpt/global/core/evaluation/dataset/api';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { EvalDatasetDataQualityStatusEnum } from '@fastgpt/global/core/evaluation/constants';
+import { EvalDatasetDataQualityStatusEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
 
 export type QualityAssessmentBatchQuery = {};
 export type QualityAssessmentBatchBody = qualityAssessmentBatchBody;

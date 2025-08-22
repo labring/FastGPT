@@ -5,7 +5,8 @@ export const evaluationFileErrors = i18nT('dashboard_evaluation:eval_file_check_
 export enum EvaluationStatusEnum {
   queuing = 0,
   evaluating = 1,
-  completed = 2
+  completed = 2,
+  error = 3
 }
 
 export const EvaluationStatusMap = {
@@ -17,38 +18,9 @@ export const EvaluationStatusMap = {
   },
   [EvaluationStatusEnum.completed]: {
     name: i18nT('dashboard_evaluation:completed')
+  },
+  [EvaluationStatusEnum.error]: {
+    name: i18nT('dashboard_evaluation:error')
   }
 };
 export const EvaluationStatusValues = Object.keys(EvaluationStatusMap).map(Number);
-
-export enum EvalDatasetDataCreateFromEnum {
-  manual = 'manual',
-  fileImport = 'file_import',
-  intelligentGeneration = 'intelligent_generation'
-}
-
-export const EvalDatasetDataCreateFromValues = Object.values(EvalDatasetDataCreateFromEnum);
-
-export enum EvalDatasetCollectionStatusEnum {
-  queuing = 'queuing',
-  processing = 'processing',
-  error = 'error',
-  ready = 'ready'
-}
-
-export enum EvalDatasetDataQualityStatusEnum {
-  queuing = 'queuing',
-  evaluating = 'evaluating',
-  error = 'error',
-  completed = 'completed'
-}
-
-export enum EvalDatasetDataKeyEnum {
-  UserInput = 'userInput',
-  ActualOutput = 'actualOutput',
-  ExpectedOutput = 'expectedOutput',
-  Context = 'context',
-  RetrievalContext = 'retrievalContext'
-}
-
-export const EvalDatasetDataQualityStatusValues = Object.values(EvalDatasetDataQualityStatusEnum);
