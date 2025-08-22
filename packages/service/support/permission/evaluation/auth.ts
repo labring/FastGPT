@@ -1,17 +1,7 @@
 import { parseHeaderCert } from '../controller';
-import { authAppByTmbId } from '../app/auth';
-import {
-  ManagePermissionVal,
-  ReadPermissionVal,
-  OwnerPermissionVal,
-  ReadRoleVal
-} from '@fastgpt/global/support/permission/constant';
-import type {
-  EvaluationSchemaType,
-  EvalDatasetCollectionSchemaType
-} from '@fastgpt/global/core/evaluation/type';
+import { OwnerPermissionVal, ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import type { EvalDatasetCollectionSchemaType } from '@fastgpt/global/core/evaluation/dataset/type';
 import type { AuthModeType, AuthResponseType } from '../type';
-import { MongoEvaluation } from '../../../core/evaluation/evalSchema';
 import { MongoEvalDatasetCollection } from '../../../core/evaluation/dataset/evalDatasetCollectionSchema';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
@@ -20,61 +10,6 @@ import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 import type { DatasetFileSchema } from '@fastgpt/global/core/dataset/type';
-
-export const authEval = async ({
-  evalId,
-  per = ReadPermissionVal,
-  ...props
-}: AuthModeType & {
-  evalId: string;
-}): Promise<{
-  evaluation: EvaluationSchemaType;
-  tmbId: string;
-  teamId: string;
-}> => {
-  const { teamId, tmbId, isRoot } = await parseHeaderCert(props);
-
-  const evaluation = await MongoEvaluation.findById(evalId, 'tmbId').lean();
-  if (!evaluation) {
-    return Promise.reject('Evaluation not found');
-  }
-
-  if (String(evaluation.tmbId) === tmbId) {
-    return {
-      teamId,
-      tmbId,
-      evaluation
-    };
-  }
-
-  // App read per
-  if (per === ReadPermissionVal) {
-    await authAppByTmbId({
-      tmbId,
-      appId: evaluation.appId,
-      per: ReadPermissionVal,
-      isRoot
-    });
-    return {
-      teamId,
-      tmbId,
-      evaluation
-    };
-  }
-
-  // Write per
-  await authAppByTmbId({
-    tmbId,
-    appId: evaluation.appId,
-    per: ManagePermissionVal,
-    isRoot
-  });
-  return {
-    teamId,
-    tmbId,
-    evaluation
-  };
-};
 
 export const authEvalDatasetCollectionByTmbId = async ({
   tmbId,

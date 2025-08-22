@@ -10,7 +10,7 @@ import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import {
   EvalDatasetDataCreateFromEnum,
   EvalDatasetDataKeyEnum
-} from '@fastgpt/global/core/evaluation/constants';
+} from '@fastgpt/global/core/evaluation/dataset/constants';
 import { addEvalDatasetDataQualityJob } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 
 vi.mock('@fastgpt/service/support/permission/evaluation/auth');

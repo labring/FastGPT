@@ -5,7 +5,7 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
-import type { deleteEvalDatasetDataQuery } from '@fastgpt/global/core/evaluation/api';
+import type { deleteEvalDatasetDataQuery } from '@fastgpt/global/core/evaluation/dataset/api';
 import {
   removeEvalDatasetDataQualityJob,
   checkEvalDatasetDataQualityJobActive

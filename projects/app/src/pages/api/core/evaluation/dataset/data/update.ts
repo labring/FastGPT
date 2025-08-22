@@ -5,13 +5,13 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
-import type { updateEvalDatasetDataBody } from '@fastgpt/global/core/evaluation/api';
+import type { updateEvalDatasetDataBody } from '@fastgpt/global/core/evaluation/dataset/api';
 import {
   removeEvalDatasetDataQualityJob,
   addEvalDatasetDataQualityJob
 } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/constants';
+import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
 
 export type EvalDatasetDataUpdateQuery = {};
 export type EvalDatasetDataUpdateBody = updateEvalDatasetDataBody;

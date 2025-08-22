@@ -9,8 +9,8 @@ import {
   removeEvalDatasetDataQualityJob,
   checkEvalDatasetDataQualityJobActive
 } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
-import type { qualityAssessmentBody } from '@fastgpt/global/core/evaluation/api';
-import { EvalDatasetDataQualityStatusEnum } from '@fastgpt/global/core/evaluation/constants';
+import type { qualityAssessmentBody } from '@fastgpt/global/core/evaluation/dataset/api';
+import { EvalDatasetDataQualityStatusEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
 
 export type QualityAssessmentQuery = {};
 export type QualityAssessmentBody = qualityAssessmentBody;

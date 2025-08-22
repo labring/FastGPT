@@ -382,6 +382,7 @@
   "core.chat.logs.team": "Team Space Chat",
   "core.chat.logs.test": "Online debugging",
   "core.chat.logs.wecom": "WeChat Work",
+  "core.chat.logs.evaluation": "Evaluation Test",
   "core.chat.markdown.Edit Question": "Edit Question",
   "core.chat.markdown.Quick Question": "Click to Ask Immediately",
   "core.chat.markdown.Send Question": "Send Question",

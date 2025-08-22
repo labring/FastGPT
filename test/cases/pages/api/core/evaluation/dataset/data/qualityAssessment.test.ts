@@ -9,7 +9,7 @@ import {
   checkEvalDatasetDataQualityJobActive
 } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { EvalDatasetDataQualityStatusEnum } from '@fastgpt/global/core/evaluation/constants';
+import { EvalDatasetDataQualityStatusEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
 
 vi.mock('@fastgpt/service/support/permission/user/auth');
 vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema', () => ({

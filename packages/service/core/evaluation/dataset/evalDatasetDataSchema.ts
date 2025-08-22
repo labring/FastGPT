@@ -1,11 +1,11 @@
-import type { EvalDatasetDataSchemaType } from '@fastgpt/global/core/evaluation/type';
+import type { EvalDatasetDataSchemaType } from '@fastgpt/global/core/evaluation/dataset/type';
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
 import { EvalDatasetCollectionName } from './evalDatasetCollectionSchema';
 import {
   EvalDatasetDataCreateFromEnum,
   EvalDatasetDataCreateFromValues,
   EvalDatasetDataKeyEnum
-} from '@fastgpt/global/core/evaluation/constants';
+} from '@fastgpt/global/core/evaluation/dataset/constants';
 import {
   TeamCollectionName,
   TeamMemberCollectionName

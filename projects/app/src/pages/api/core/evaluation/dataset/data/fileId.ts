@@ -7,10 +7,10 @@ import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/e
 import {
   EvalDatasetDataCreateFromEnum,
   EvalDatasetDataKeyEnum
-} from '@fastgpt/global/core/evaluation/constants';
+} from '@fastgpt/global/core/evaluation/dataset/constants';
 import { readFileContentFromMongo } from '@fastgpt/service/common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
-import type { importEvalDatasetFromFileBody } from '@fastgpt/global/core/evaluation/api';
+import type { importEvalDatasetFromFileBody } from '@fastgpt/global/core/evaluation/dataset/api';
 import { addEvalDatasetDataQualityJob } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import { authEvalDatasetCollectionFile } from '@fastgpt/service/support/permission/evaluation/auth';
 
