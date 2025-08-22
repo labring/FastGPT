@@ -67,7 +67,7 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
       edges,
       appDetail,
       t
-    });
+    }).filter((item) => item.parent.id !== nodeId);
   }, [nodeId, nodeList, edges, appDetail, t]);
 
   const codeType = useMemo(() => {
@@ -97,14 +97,41 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
     }));
   }, [llmModelList]);
 
+  const replaceVariables = (text: string): string => {
+    const variableRegex = /(\{\{([^}]+)\}\}|\$([^$]+)\$)/g;
+
+    return text.replace(variableRegex, (match) => {
+      const cleanRef = match.replace(/^\{\{\$|\$\}\}$/g, '');
+      const { nodeId, key } = cleanRef.includes('.')
+        ? { nodeId: cleanRef.split('.')[0], key: cleanRef.split('.')[1] }
+        : { nodeId: '', key: cleanRef };
+
+      const variable = editorVariables.find((v) => {
+        return nodeId ? v.key === key && v.parent.id === nodeId : v.key === key;
+      });
+
+      if (variable) {
+        const currentNode = nodeList.find((node) => node.nodeId === variable.parent.id);
+        const outputVar = currentNode?.outputs?.find((output) => output.id === variable.key);
+        const inputVar = currentNode?.inputs?.find((input) => input.key === variable.key);
+        const variableType = outputVar?.valueType || inputVar?.valueType;
+
+        return `[param: {paramName:${variable.parent.label}.${variable.label}, paramRefer:${cleanRef}, paramType:${variableType}}]`;
+      }
+      return match;
+    });
+  };
   const { runAsync: handleSendOptimization, loading } = useRequest2(async () => {
     setOptimizerInput('');
     setCodeResult('');
+
+    const processedInput = replaceVariables(optimizerInput);
+
     const newConversationHistory = [
       ...conversationHistory,
       {
         role: 'user' as const,
-        content: optimizerInput
+        content: processedInput
       }
     ];
     setConversationHistory(newConversationHistory);
@@ -115,7 +142,7 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
 
     await onOptimizeCode({
       codeType,
-      optimizerInput,
+      optimizerInput: processedInput,
       model: selectedModel,
       conversationHistory,
       onResult: (result: string) => {
@@ -196,6 +223,16 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
         onChangeNode({ nodeId, type: 'delInput', key: input.key });
       });
       inputs.forEach((input) => {
+        const referenceValue = (() => {
+          if (input.reference) {
+            const [sourceNodeId, outputKey] = input.reference.split('.');
+            if (sourceNodeId && outputKey) {
+              return [sourceNodeId, outputKey];
+            }
+          }
+          return [];
+        })();
+
         onChangeNode({
           nodeId,
           type: 'addInput',
@@ -205,6 +242,7 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
             canEdit: true,
             key: input.label,
             label: input.label,
+            value: referenceValue,
             customInputConfig: {
               selectValueTypeList: Object.values(ArrayTypeMap),
               showDescription: false,
@@ -288,7 +326,13 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
                 />
               )}
               <Box flex={1} />
-              <CloseButton onClick={onClose} />
+              <CloseButton
+                onClick={() => {
+                  setConversationHistory([]);
+                  setCodeResult('');
+                  onClose();
+                }}
+              />
             </Flex>
 
             <Box mb={3}>
@@ -316,15 +360,15 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
                     placeholderPadding="3px 4px"
                     value={optimizerInput}
                     onChange={setOptimizerInput}
-                    variables={editorVariables}
+                    variableLabels={editorVariables}
                     showOpenModal={false}
                     minH={24}
                     maxH={96}
                     isDisabled={loading}
-                    onKeyDown={handleKeyDown}
+                    // onKeyDown={handleKeyDown}
                     boxStyle={{
                       border: 'none',
-                      padding: '1px 0',
+                      padding: '0',
                       boxShadow: 'none'
                     }}
                   />

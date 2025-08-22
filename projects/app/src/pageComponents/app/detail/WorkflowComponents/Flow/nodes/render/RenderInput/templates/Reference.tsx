@@ -100,7 +100,7 @@ export const useReference = ({
             .map((output) => {
               return {
                 label: t(output.label as any),
-                value: output.id,
+                value: output.key,
                 valueType: output.valueType
               };
             })
