@@ -49,7 +49,8 @@ type LogDetailType = Omit<ChannelLogListItemType, 'model' | 'request_at'> & {
   response_body?: string;
 };
 const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
   const { userInfo } = useUserStore();
 
   const isRoot = userInfo?.username === 'root';
@@ -103,7 +104,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
   const modelList = useMemo(() => {
     const res = systemModelList
       .map((item) => {
-        const provider = getModelProvider(item.provider);
+        const provider = getModelProvider(item.provider, language);
 
         return {
           order: provider.order,

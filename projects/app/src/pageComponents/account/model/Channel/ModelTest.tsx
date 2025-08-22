@@ -45,7 +45,8 @@ const ModelTest = ({
   models: string[];
   onClose: () => void;
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
   const { toast } = useToast();
   const [testModelList, setTestModelList] = useState<ModelTestItem[]>([]);
 
@@ -76,7 +77,7 @@ const ModelTest = ({
         .map((model) => {
           const modelData = res.find((item) => item.model === model);
           if (!modelData) return null;
-          const provider = getModelProvider(modelData.provider);
+          const provider = getModelProvider(modelData.provider, language);
 
           return {
             label: (

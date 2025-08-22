@@ -56,7 +56,8 @@ export const defaultSTTModels: STTModelType[] = [
 
 export const getModelFromList = (
   modelList: { provider: ModelProviderIdType; name: string; model: string }[],
-  model: string
+  model: string,
+  language: string
 ):
   | {
       avatar: string;
@@ -69,7 +70,7 @@ export const getModelFromList = (
   if (!modelData) {
     return;
   }
-  const provider = getModelProvider(modelData.provider);
+  const provider = getModelProvider(modelData.provider, language);
   return {
     ...modelData,
     avatar: provider.avatar

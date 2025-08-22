@@ -13,7 +13,7 @@ export async function APIGetSystemToolList() {
         parentId: item.parentId ? `${PluginSourceEnum.systemTool}-${item.parentId}` : undefined,
         avatar:
           item.avatar && item.avatar.startsWith('/imgs/tools/')
-            ? `/api/system/pluginImgs/${item.avatar.replace('/imgs/tools/', '')}`
+            ? `/api/system/plugin/tools/${item.avatar.replace('/imgs/tools/', '')}`
             : item.avatar
       };
     });
