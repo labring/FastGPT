@@ -2,7 +2,7 @@ import { filterGPTMessageByMaxContext, loadRequestMessages } from '../../../../c
 import type {
   ChatCompletionToolMessageParam,
   ChatCompletionMessageParam,
-  ChatCompletionToolType
+  ChatCompletionTool
 } from '@fastgpt/global/core/ai/type';
 import { responseWriteController } from '../../../../../common/response';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -196,7 +196,7 @@ export const runToolWithToolChoice = async (
 
   const assistantResponses = response?.assistantResponses || [];
 
-  const tools: ChatCompletionToolType[] = toolNodes.map((item) => {
+  const tools: ChatCompletionTool[] = toolNodes.map((item) => {
     if (item.jsonSchema) {
       return {
         type: 'function',
@@ -204,9 +204,7 @@ export const runToolWithToolChoice = async (
           name: item.nodeId,
           description: item.intro || item.name,
           parameters: item.jsonSchema
-        },
-        toolName: item.name,
-        toolAvatar: item.avatar
+        }
       };
     }
 
@@ -244,9 +242,7 @@ export const runToolWithToolChoice = async (
           properties,
           required: item.toolParams.filter((item) => item.required).map((item) => item.key)
         }
-      },
-      toolName: item.name,
-      toolAvatar: item.avatar
+      }
     };
   });
 
