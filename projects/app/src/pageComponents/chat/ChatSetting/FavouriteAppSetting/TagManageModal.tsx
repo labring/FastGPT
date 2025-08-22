@@ -393,8 +393,10 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
   const tags = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.favouriteTags || []);
   // local editable tags list
   const [localTags, setLocalTags] = useState<ChatFavouriteTagType[]>(tags);
+
   // control the editable state
   const [isEditing, setIsEditing] = useState<string[]>([]);
+
   // update tags
   const { loading: isUpdating, runAsync: updateTags } = useRequest2(
     async (nextTags: ChatFavouriteTagType[]) => {
