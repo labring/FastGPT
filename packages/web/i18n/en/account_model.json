@@ -7,6 +7,7 @@
   "avg_ttfb": "Average first word duration (seconds)",
   "azure": "Azure",
   "base_url": "Base url",
+  "batch_size": "Number of concurrent requests",
   "channel_name": "Channel",
   "channel_priority": "Priority",
   "channel_priority_tip": "The higher the priority channel, the easier it is to be requested",

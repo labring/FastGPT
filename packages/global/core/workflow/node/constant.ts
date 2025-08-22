@@ -110,6 +110,8 @@ export enum FlowNodeTypeEnum {
   systemConfig = 'userGuide',
   pluginConfig = 'pluginConfig',
   globalVariable = 'globalVariable',
+  comment = 'comment',
+
   workflowStart = 'workflowStart',
   chatNode = 'chatNode',
 
@@ -141,7 +143,6 @@ export enum FlowNodeTypeEnum {
   loopStart = 'loopStart',
   loopEnd = 'loopEnd',
   formInput = 'formInput',
-  comment = 'comment',
   tool = 'tool',
   toolSet = 'toolSet'
 }
