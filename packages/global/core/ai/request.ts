@@ -14,7 +14,7 @@ import {
   removeDatasetCiteText
 } from '../../../service/core/ai/utils';
 import { createChatCompletion } from '../../../service/core/ai/config';
-import type { OpenaiAccountType } from 'support/user/team/type';
+import type { OpenaiAccountType } from '../../support/user/team/type';
 import { getNanoid } from '../../common/string/tools';
 
 type BasicResponseParams = {
