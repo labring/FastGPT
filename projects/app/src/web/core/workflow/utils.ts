@@ -381,6 +381,11 @@ export const getNodeAllSource = ({
 };
 
 /* ====== Connection ======= */
+// Connectivity check result type
+type ConnectivityIssue = {
+  nodeId: string;
+  issue: 'isolated' | 'no_input' | 'unreachable_from_start';
+};
 export const checkWorkflowNodeAndConnection = ({
   nodes,
   edges
@@ -388,7 +393,7 @@ export const checkWorkflowNodeAndConnection = ({
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge<any>[];
 }): string[] | undefined => {
-  // 1. reference check. Required value
+  // Node check
   for (const node of nodes) {
     const data = node.data;
     const inputs = data.inputs;
@@ -453,6 +458,15 @@ export const checkWorkflowNodeAndConnection = ({
         return [data.nodeId];
       }
     }
+    if (data.flowNodeType === FlowNodeTypeEnum.agent) {
+      const toolConnections = edges.filter(
+        (edge) =>
+          edge.source === data.nodeId && edge.sourceHandle === NodeOutputKeyEnum.selectedTools
+      );
+      if (toolConnections.length === 0) {
+        return [data.nodeId];
+      }
+    }
 
     // check node input
     if (
@@ -506,7 +520,7 @@ export const checkWorkflowNodeAndConnection = ({
       return [data.nodeId];
     }
 
-    // filter tools node edge
+    // Check node has invalid edge
     const edgeFilted = edges.filter(
       (edge) =>
         !(
@@ -514,13 +528,113 @@ export const checkWorkflowNodeAndConnection = ({
           edge.sourceHandle === NodeOutputKeyEnum.selectedTools
         )
     );
-    // check node has edge
+    // Check node has edge
     const hasEdge = edgeFilted.some(
       (edge) => edge.source === data.nodeId || edge.target === data.nodeId
     );
     if (!hasEdge) {
       return [data.nodeId];
     }
+  }
+
+  // Edge check
+
+  /**
+   * Check graph connectivity and identify connectivity issues
+   */
+  const checkConnectivity = (
+    nodes: Node<FlowNodeItemType, string | undefined>[],
+    edges: Edge<any>[]
+  ): string[] => {
+    // Find start node
+    const startNode = nodes.find(
+      (node) =>
+        node.data.flowNodeType === FlowNodeTypeEnum.workflowStart ||
+        node.data.flowNodeType === FlowNodeTypeEnum.pluginInput
+    );
+
+    if (!startNode) {
+      // No start node found - this is a critical issue
+      return nodes.map((node) => node.data.nodeId);
+    }
+
+    const issues: ConnectivityIssue[] = [];
+
+    // Build adjacency lists for both directions
+    const outgoing = new Map<string, string[]>();
+    const incoming = new Map<string, string[]>();
+
+    nodes.forEach((node) => {
+      outgoing.set(node.data.nodeId, []);
+      incoming.set(node.data.nodeId, []);
+    });
+
+    edges.forEach((edge) => {
+      const outList = outgoing.get(edge.source) || [];
+      outList.push(edge.target);
+      outgoing.set(edge.source, outList);
+
+      const inList = incoming.get(edge.target) || [];
+      inList.push(edge.source);
+      incoming.set(edge.target, inList);
+    });
+
+    // Check reachability from start node（Start node/Loop start 可以到达的地方）
+    const reachableFromStart = new Set<string>();
+    const dfsFromStart = (nodeId: string) => {
+      if (reachableFromStart.has(nodeId)) return;
+      reachableFromStart.add(nodeId);
+
+      const neighbors = outgoing.get(nodeId) || [];
+      neighbors.forEach((neighbor) => dfsFromStart(neighbor));
+    };
+    dfsFromStart(startNode.data.nodeId);
+    nodes.forEach((node) => {
+      if (node.data.flowNodeType === FlowNodeTypeEnum.loopStart) {
+        dfsFromStart(node.data.nodeId);
+      }
+    });
+
+    // Check each node for connectivity issues
+    for (const node of nodes) {
+      const nodeId = node.data.nodeId;
+      const nodeType = node.data.flowNodeType;
+
+      // Skip system nodes that don't need connectivity checks
+      if (
+        nodeType === FlowNodeTypeEnum.systemConfig ||
+        nodeType === FlowNodeTypeEnum.pluginConfig ||
+        nodeType === FlowNodeTypeEnum.comment ||
+        nodeType === FlowNodeTypeEnum.globalVariable ||
+        nodeType === FlowNodeTypeEnum.emptyNode
+      ) {
+        continue;
+      }
+
+      const hasIncoming = (incoming.get(nodeId) || []).length > 0;
+      const hasOutgoing = (outgoing.get(nodeId) || []).length > 0;
+      const isStartNode = [
+        FlowNodeTypeEnum.workflowStart,
+        FlowNodeTypeEnum.pluginInput,
+        FlowNodeTypeEnum.loopStart
+      ].includes(nodeType);
+
+      // Check if node is reachable from start
+      if (!isStartNode && !reachableFromStart.has(nodeId)) {
+        issues.push({
+          nodeId,
+          issue: 'unreachable_from_start'
+        });
+        break;
+      }
+    }
+
+    return issues.map((issue) => issue.nodeId);
+  };
+
+  const connectivityIssues = checkConnectivity(nodes, edges);
+  if (connectivityIssues.length > 0) {
+    return connectivityIssues;
   }
 };
 
