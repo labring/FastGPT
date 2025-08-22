@@ -2,7 +2,7 @@ export type ChatFavouriteAppSchema = {
   _id: string;
   teamId: string;
   appId: string;
-  tags: string[]; // tag id list
+  favouriteTags: string[]; // tag id list
   order: number;
 };
 

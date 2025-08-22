@@ -31,14 +31,15 @@ const ChatSettingSchema = new Schema({
     type: [String],
     default: []
   },
-  tags: {
+  favouriteTags: {
     type: [
       {
         id: String,
         name: String
       }
     ],
-    default: []
+    default: [],
+    _id: false
   }
 });
 

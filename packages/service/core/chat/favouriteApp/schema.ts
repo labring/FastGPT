@@ -18,7 +18,7 @@ const ChatFavouriteAppSchema = new Schema({
     ref: AppCollectionName,
     required: true
   },
-  tags: {
+  favouriteTags: {
     type: [String],
     default: []
   },

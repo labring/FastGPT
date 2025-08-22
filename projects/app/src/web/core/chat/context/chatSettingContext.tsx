@@ -1,4 +1,5 @@
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import type { ChatSettingTabOptionEnum } from '@/pageComponents/chat/constants';
 import {
   ChatSidebarPaneEnum,
   defaultCollapseStatus,
@@ -17,7 +18,11 @@ import { createContext } from 'use-context-selector';
 
 export type ChatSettingContextValue = {
   pane: ChatSidebarPaneEnum;
-  handlePaneChange: (pane: ChatSidebarPaneEnum, _id?: string) => void;
+  handlePaneChange: (
+    pane: ChatSidebarPaneEnum,
+    _id?: string,
+    _tab?: ChatSettingTabOptionEnum
+  ) => void;
   collapse: CollapseStatusType;
   onTriggerCollapse: () => void;
   chatSettings?: ChatSettingReturnType;
@@ -74,8 +79,8 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
   );
 
   const handlePaneChange = useCallback(
-    async (newPane: ChatSidebarPaneEnum, id?: string) => {
-      if (newPane === pane && !id) return;
+    async (newPane: ChatSidebarPaneEnum, id?: string, tab?: ChatSettingTabOptionEnum) => {
+      if (newPane === pane && !id && !tab) return;
 
       const _id = (() => {
         if (id) return id;
@@ -92,7 +97,8 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
         query: {
           ...router.query,
           appId: _id,
-          pane: newPane
+          pane: newPane,
+          tab
         }
       });
 
