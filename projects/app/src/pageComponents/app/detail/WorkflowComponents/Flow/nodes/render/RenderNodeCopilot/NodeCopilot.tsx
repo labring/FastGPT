@@ -295,6 +295,21 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
   };
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+      const typeaheadSelectors = [
+        '[data-lexical-typeahead-menu]',
+        '[role="listbox"]',
+        '.typeahead-popover',
+        '[data-cy="typeahead-menu"]'
+      ];
+
+      const hasActiveTypeahead = typeaheadSelectors.some((selector) =>
+        document.querySelector(selector)
+      );
+
+      if (hasActiveTypeahead) {
+        return;
+      }
+
       e.preventDefault();
       if (!loading && !isInputEmpty) {
         handleSendOptimization();
@@ -365,7 +380,7 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
                     minH={24}
                     maxH={96}
                     isDisabled={loading}
-                    // onKeyDown={handleKeyDown}
+                    onKeyDown={handleKeyDown}
                     boxStyle={{
                       border: 'none',
                       padding: '0',
