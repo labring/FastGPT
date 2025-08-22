@@ -18,3 +18,8 @@ export type updateEvalItemBody = {
   expectedResponse: string;
   variables: Record<string, string>;
 };
+
+export type createEvalDatasetCollectionBody = {
+  name: string;
+  description?: string;
+};
