@@ -115,9 +115,10 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
 
   const { runAsync: onSubmit, loading: isSaving } = useRequest2(
     async (values: FormValues) => {
+      const { quickAppList, ...params } = values;
       return updateChatSetting({
-        ...values,
-        quickAppIds: values.quickAppList.map((q) => q._id),
+        ...params,
+        quickAppIds: quickAppList.map((q) => q._id),
         selectedTools: values.selectedTools.map((tool) => ({
           pluginId: tool.pluginId,
           inputs: tool.inputs

@@ -1,7 +1,7 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type { ChatHistoryItemType, ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import type {
-  ChatTagType,
+  ChatFavouriteTagType,
   ChatSettingSchema,
   ChatSettingUpdateParams,
   QuickAppType,

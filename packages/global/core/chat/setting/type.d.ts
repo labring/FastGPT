@@ -13,7 +13,7 @@ export type ChatSettingSchema = {
     inputs?: Record<`${NodeInputKeyEnum}` | string, any>;
   }[];
   quickAppIds: string[];
-  tags: {
+  favouriteTags: {
     id: string;
     name: string;
   }[];
@@ -22,7 +22,7 @@ export type ChatSettingSchema = {
 export type ChatSettingUpdateParams = Partial<Omit<ChatSettingSchema, '_id' | 'appId' | 'teamId'>>;
 
 export type QuickAppType = { _id: string; name: string; avatar: string };
-export type ChatTagType = ChatSettingSchema['tags'][number];
+export type ChatFavouriteTagType = ChatSettingSchema['favouriteTags'][number];
 export type SelectedToolType = ChatSettingSchema['selectedTools'][number] & {
   name: string;
   avatar: string;
