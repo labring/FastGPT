@@ -71,6 +71,16 @@ code {
   letter-spacing: 0.48px;
 }
 
+div[role='tabpanel'] figure:has(+ p) pre,
+div[role='tabpanel'] figure:has(+ p) pre code {
+  background-color: #ececec;
+}
+
+.dark div[role='tabpanel'] figure:has(+ p) pre,
+.dark div[role='tabpanel'] figure:has(+ p) pre code {
+  background-color: #3d3d3d;
+}
+
 .dark pre,
 .dark code {
   background: #1e1e1e;
@@ -125,12 +135,16 @@ code span {
 
 div[role="tablist"] ~ div:has(figure, p, ul) {
   border-radius: 0 !important;
-  border: solid 0.5px #e5e5e5;
+  border: solid 1.5px #e5e5e5;
   border-radius: 0.75rem !important;
 }
 
 .dark div[role="tablist"] ~ div:has(figure, p, ul) {
-  border: solid 0.5px #1E1E1E;
+  border: solid 1.5px #535353;
+}
+
+.dark div[role="tablist"] {
+  background-color: #1E1E1E;
 }
 
 /* 代码块下方的滚动条样式 */
@@ -255,8 +269,6 @@ div[class*="bg-fd-card"]:has(button[aria-label='Copy Text']),
 div[class*="bg-fd-card"]:has(button[aria-label='Copied Text']) {
   right: 26px;
   top: 24px;
-  width: 18px;
-  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -291,8 +303,26 @@ button[aria-label='Copy Text'] svg {
 button[aria-label='Copy Text']::before {
   content: '';
   background-image: url('../public/icons/copy.svg');
-  width: 18px;
-  height: 18px;
+  width: 26px;
+  height: 26px;
+  transition: filter 0.2s ease; 
+}
+
+/* 鼠标悬停时使复制图标颜色变深 */
+button[aria-label='Copy Text']:hover::before {
+  filter: brightness(0.7); /* 降低亮度使颜色变深 */
+}
+
+button[aria-label='Copied Text'] {
+  width: 26px;
+  height: 26px;
+  /* transition: filter 0.2s ease; */
+}
+
+button[aria-label='Copied Text'] svg {
+  width: 20px;
+  height: 20px;
+  transition: filter 0.2s ease;
 }
 
 #nd-subnav > div:nth-of-type(1) button {
@@ -415,4 +445,34 @@ button[data-search-full] {
 .dark\:text-blue-400:where(.dark, .dark *) {
   color: #C2D3FF;
   background-color: #434548;
+}
+
+
+.dark div[role="tabpanel"].bg-fd-background {
+  background-color: #1E1E1E;
+}
+
+div[role="tabpanel"].bg-fd-background {
+  background-color: #F7F7F8;
+}
+
+div[role="tabpanel"].bg-fd-background > div > ul {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dark div[role="tabpanel"].bg-fd-background > div > ul {
+  margin: 0;
+  background-color: #1E1E1E;
+}
+
+div[role="tabpanel"].bg-fd-background > div > ul > li {
+  margin: 0;
+}
+
+button[role="tab"] {
+  padding-top: 16px;
+  padding-bottom: 16px;
 }
