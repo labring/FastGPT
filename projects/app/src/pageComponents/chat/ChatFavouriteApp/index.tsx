@@ -1,6 +1,7 @@
 import { getFavouriteApps } from '@/web/core/chat/api';
 import {
   Box,
+  Button,
   Flex,
   Grid,
   GridItem,
@@ -20,7 +21,7 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 import { useMemo } from 'react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
+import { ChatSettingTabOptionEnum, ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import NextHead from '@/components/common/NextHead';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -272,8 +273,22 @@ const ChatFavouriteApp = () => {
           ))}
         </Grid>
       ) : (
-        <Flex flex="1" justifyContent="center" alignItems="center">
-          <EmptyTip text={t('chat:setting.favourite.category.no_data')} />
+        <Flex flexDir="column" flex="1" justifyContent="center" alignItems="center" gap={4}>
+          <EmptyTip p="0" text={t('chat:setting.favourite.category.no_data')} />
+
+          <Button
+            variant="primary"
+            leftIcon={<MyIcon name="common/settingLight" w="16px" />}
+            onClick={() =>
+              handlePaneChange(
+                ChatSidebarPaneEnum.SETTING,
+                undefined,
+                ChatSettingTabOptionEnum.FAVOURITE_APPS
+              )
+            }
+          >
+            {t('chat:setting.favourite.goto_add')}
+          </Button>
         </Flex>
       )}
     </MyBox>

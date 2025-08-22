@@ -1,5 +1,5 @@
 import DiagramModal from '@/pageComponents/chat/ChatSetting/DiagramModal';
-import { type PropsWithChildren, useCallback, useState } from 'react';
+import { type PropsWithChildren, useCallback, useMemo, useState } from 'react';
 import { ChatSettingTabOptionEnum, ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import dynamic from 'next/dynamic';
 import SettingTabs from '@/pageComponents/chat/ChatSetting/SettingTabs';
@@ -14,6 +14,7 @@ import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobil
 import { useTranslation } from 'react-i18next';
 import { useMount } from 'ahooks';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useRouter } from 'next/router';
 
 const HomepageSetting = dynamic(() => import('@/pageComponents/chat/ChatSetting/HomepageSetting'));
 const LogDetails = dynamic(() => import('@/pageComponents/chat/ChatSetting/LogDetails'));
@@ -23,25 +24,39 @@ const FavouriteAppSetting = dynamic(
 );
 
 const ChatSetting = () => {
+  const router = useRouter();
   const { isPc } = useSystem();
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
+  const { tab: tabQuery } = router.query as { tab: ChatSettingTabOptionEnum };
   const [isOpenDiagram, setIsOpenDiagram] = useState(false);
-  const [tab, setTab] = useState<`${ChatSettingTabOptionEnum}`>('home');
-
+  const tab = useMemo(
+    () =>
+      Object.values(ChatSettingTabOptionEnum).includes(tabQuery)
+        ? tabQuery
+        : ChatSettingTabOptionEnum.HOME,
+    [tabQuery]
+  );
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
 
   const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
   const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
 
+  const handleTabChange = useCallback(
+    (tab: ChatSettingTabOptionEnum) => {
+      handlePaneChange(ChatSidebarPaneEnum.SETTING, undefined, tab);
+    },
+    [handlePaneChange]
+  );
+
   const SettingHeader = useCallback(
     ({ children }: PropsWithChildren) => (
-      <SettingTabs tab={tab} onTabChange={setTab}>
+      <SettingTabs tab={tab} onTabChange={handleTabChange}>
         {children}
       </SettingTabs>
     ),
-    [tab, setTab]
+    [tab, handleTabChange]
   );
 
   useMount(() => {
