@@ -116,6 +116,9 @@ const AppSchema = new Schema(
       default: true
     },
 
+    favourite: Boolean,
+    quick: Boolean,
+
     // abandoned
     defaultPermission: Number
   },

@@ -214,6 +214,7 @@ export const iconPaths = {
   'core/chat/sidebar/home': () => import('./icons/core/chat/sidebar/home.svg'),
   'core/chat/sidebar/logout': () => import('./icons/core/chat/sidebar/logout.svg'),
   'core/chat/sidebar/menu': () => import('./icons/core/chat/sidebar/menu.svg'),
+  'core/chat/sidebar/star': () => import('./icons/core/chat/sidebar/star.svg'),
   'core/chat/speaking': () => import('./icons/core/chat/speaking.svg'),
   'core/chat/stopSpeech': () => import('./icons/core/chat/stopSpeech.svg'),
   'core/chat/think': () => import('./icons/core/chat/think.svg'),
