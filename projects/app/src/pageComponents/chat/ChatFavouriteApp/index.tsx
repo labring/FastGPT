@@ -1,6 +1,7 @@
 import { getFavouriteApps } from '@/web/core/chat/api';
 import {
   Box,
+  Button,
   Flex,
   Grid,
   GridItem,
@@ -20,13 +21,14 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 import { useMemo } from 'react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
+import { ChatSettingTabOptionEnum, ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import NextHead from '@/components/common/NextHead';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 const ChatFavouriteApp = () => {
   const { isPc } = useSystem();
@@ -38,7 +40,7 @@ const ChatFavouriteApp = () => {
   const wideLogoUrl = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.wideLogoUrl);
   const homeTabTitle = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.homeTabTitle);
 
-  const tags = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.tags || []);
+  const tags = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.favouriteTags || []);
   const tagCache = useMemo(() => {
     return tags.reduce(
       (acc, tag) => {
@@ -50,7 +52,7 @@ const ChatFavouriteApp = () => {
   }, [tags]);
   const tagOptions = useMemo(
     () => [
-      { label: t('chat:setting.favourite.category_all'), value: '' },
+      { label: t('chat:setting.favourite.category_tab.all'), value: '' },
       ...tags.map((tag) => ({
         label: tag.name,
         value: tag.id
@@ -146,7 +148,12 @@ const ChatFavouriteApp = () => {
       )}
 
       {/* header */}
-      <Flex w="full" p={['0 16px 0 16px', '24px 24px 0 24px']} justifyContent="space-between">
+      <Flex
+        w="full"
+        p={['0 16px 0 16px', '24px 24px 0 24px']}
+        gap={4}
+        justifyContent="space-between"
+      >
         {/* tag tabs */}
         <Tabs variant="unstyled">
           <TabList
@@ -193,77 +200,97 @@ const ChatFavouriteApp = () => {
       </Flex>
 
       {/* list */}
-      <Grid templateColumns={['1fr', 'repeat(3, 1fr)']} gap={4} p={['4', '6']} overflowY="auto">
-        {favouriteApps.map((app) => (
-          <GridItem key={app.appId} cursor="pointer">
-            <Flex
-              flexDirection={'column'}
-              justifyContent="space-between"
-              gap={2}
-              p={4}
-              borderRadius={8}
-              border="sm"
-              borderColor="myGray.200"
-              boxShadow="sm"
-              minH="140px"
-              transition="all 0.1s ease-in-out"
-              _hover={{
-                borderColor: 'primary.300'
-              }}
-              onClick={() => handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, app.appId)}
-            >
-              <Box>
-                <Flex fontSize="16px" fontWeight="500" alignItems="center" gap={2}>
-                  <Avatar src={app.avatar} borderRadius={8} />
-                  <Flex>{app.name}</Flex>
+      {favouriteApps.length > 0 ? (
+        <Grid templateColumns={['1fr', 'repeat(3, 1fr)']} gap={4} p={['4', '6']} overflowY="auto">
+          {favouriteApps.map((app) => (
+            <GridItem key={app.appId} cursor="pointer">
+              <Flex
+                flexDirection={'column'}
+                justifyContent="space-between"
+                gap={2}
+                p={4}
+                borderRadius={8}
+                border="sm"
+                borderColor="myGray.200"
+                boxShadow="sm"
+                minH="140px"
+                transition="all 0.1s ease-in-out"
+                _hover={{
+                  borderColor: 'primary.300'
+                }}
+                onClick={() => handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, app.appId)}
+              >
+                <Box>
+                  <Flex fontSize="16px" fontWeight="500" alignItems="center" gap={2}>
+                    <Avatar src={app.avatar} borderRadius={8} />
+                    <Flex>{app.name}</Flex>
+                  </Flex>
+
+                  <Box fontSize="sm">{app.intro}</Box>
+                </Box>
+
+                <Flex gap="2" flexWrap="wrap">
+                  {app.favouriteTags.slice(0, 3).map((id) => (
+                    <TagBox key={id} id={id} />
+                  ))}
+
+                  {app.favouriteTags.length > 3 && (
+                    <MyPopover
+                      placement="bottom"
+                      trigger="hover"
+                      width="fit-content"
+                      Trigger={
+                        <Box
+                          fontSize="xs"
+                          borderRadius={8}
+                          bg="myGray.100"
+                          px="1.5"
+                          py="0.5"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          +{app.favouriteTags.length - 3}
+                        </Box>
+                      }
+                    >
+                      {() => (
+                        <Flex
+                          p="2"
+                          gap="2"
+                          flexWrap="wrap"
+                          maxW="200px"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {app.favouriteTags.slice(3).map((id) => (
+                            <TagBox key={id} id={id} />
+                          ))}
+                        </Flex>
+                      )}
+                    </MyPopover>
+                  )}
                 </Flex>
-
-                <Box fontSize="sm">{app.intro}</Box>
-              </Box>
-
-              <Flex gap="2" flexWrap="wrap">
-                {app.tags.slice(0, 3).map((id) => (
-                  <TagBox key={id} id={id} />
-                ))}
-
-                {app.tags.length > 3 && (
-                  <MyPopover
-                    placement="bottom"
-                    trigger="hover"
-                    width="fit-content"
-                    Trigger={
-                      <Box
-                        fontSize="xs"
-                        borderRadius={8}
-                        bg="myGray.100"
-                        px="1.5"
-                        py="0.5"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        +{app.tags.length - 3}
-                      </Box>
-                    }
-                  >
-                    {() => (
-                      <Flex
-                        p="2"
-                        gap="2"
-                        flexWrap="wrap"
-                        maxW="200px"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {app.tags.slice(3).map((id) => (
-                          <TagBox key={id} id={id} />
-                        ))}
-                      </Flex>
-                    )}
-                  </MyPopover>
-                )}
               </Flex>
-            </Flex>
-          </GridItem>
-        ))}
-      </Grid>
+            </GridItem>
+          ))}
+        </Grid>
+      ) : (
+        <Flex flexDir="column" flex="1" justifyContent="center" alignItems="center" gap={4}>
+          <EmptyTip p="0" text={t('chat:setting.favourite.category.no_data')} />
+
+          <Button
+            variant="primary"
+            leftIcon={<MyIcon name="common/settingLight" w="16px" />}
+            onClick={() =>
+              handlePaneChange(
+                ChatSidebarPaneEnum.SETTING,
+                undefined,
+                ChatSettingTabOptionEnum.FAVOURITE_APPS
+              )
+            }
+          >
+            {t('chat:setting.favourite.goto_add')}
+          </Button>
+        </Flex>
+      )}
     </MyBox>
   );
 };
