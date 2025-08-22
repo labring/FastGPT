@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
-import { Box, Button, Card, CloseButton, Code, Flex, Textarea } from '@chakra-ui/react';
+import React, { useMemo, useRef, useState } from 'react';
+import { Box, Button, CloseButton, Flex, Textarea } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import Markdown from '@/components/Markdown';
@@ -36,7 +37,7 @@ export type OnOptimizeCodeProps = {
   abortController?: AbortController;
 };
 
-const NodeCopilot = ({ nodeId, onClose }: { nodeId: string; onClose: () => void }) => {
+const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.ReactNode }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { llmModelList, defaultModels } = useSystemStore();
@@ -48,6 +49,7 @@ const NodeCopilot = ({ nodeId, onClose }: { nodeId: string; onClose: () => void 
   const [selectedModel, setSelectedModel] = useState(defaultModels.llm?.model || '');
   const [conversationHistory, setConversationHistory] = useState<ChatCompletionMessageParam[]>([]);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
+  const closePopoverRef = useRef<() => void>();
 
   const isInputEmpty = !optimizerInput.trim();
 
@@ -246,115 +248,120 @@ const NodeCopilot = ({ nodeId, onClose }: { nodeId: string; onClose: () => void 
   };
 
   return (
-    <Card
+    <MyPopover
+      Trigger={trigger}
+      trigger="click"
+      placement="right-start"
+      w="482px"
       className="nowheel"
-      position={'absolute'}
-      right={'-492px'}
-      top={0}
-      zIndex={10}
-      w={'482px'}
-      border={'base'}
-      p={4}
     >
-      <Flex align="center" pb={2}>
-        {modelOptions.length > 0 && (
-          <AIModelSelector
-            borderColor="transparent"
-            _hover={{ border: '1px solid', borderColor: 'primary.400' }}
-            size="sm"
-            value={selectedModel}
-            list={modelOptions}
-            onChange={setSelectedModel}
-          />
-        )}
-        <Box flex={1} />
-        <CloseButton onClick={onClose} />
-      </Flex>
+      {({ onClose }) => {
+        closePopoverRef.current = onClose;
+        return (
+          <Box p={4}>
+            <Flex align="center" pb={2}>
+              {modelOptions.length > 0 && (
+                <AIModelSelector
+                  borderColor="transparent"
+                  _hover={{ border: '1px solid', borderColor: 'primary.400' }}
+                  size="sm"
+                  value={selectedModel}
+                  list={modelOptions}
+                  onChange={setSelectedModel}
+                />
+              )}
+              <Box flex={1} />
+              <CloseButton onClick={onClose} />
+            </Flex>
 
-      <Box mb={3}>
-        {codeResult && (
-          <Box px={'10px'} maxHeight={'300px'} overflowY={'auto'} mb={4}>
-            <Markdown source={codeResult} />
+            <Box mb={3}>
+              {codeResult && (
+                <Box px={'10px'} maxHeight={'300px'} overflowY={'auto'} mb={4}>
+                  <Markdown source={codeResult} />
+                </Box>
+              )}
+              {loading && (
+                <Flex mb={3} ml={4}>
+                  <MyIcon name="common/ellipsis" w={6} color="myGray.400" />
+                </Flex>
+              )}
+              <Flex
+                gap={2}
+                border="base"
+                borderRadius="md"
+                p={2}
+                _focusWithin={{ borderColor: 'primary.600' }}
+              >
+                <MyIcon name="optimizer" alignSelf={'flex-start'} mt={0.5} w={5} />
+                <Textarea
+                  placeholder={t('app:code_function_describe')}
+                  resize="none"
+                  rows={1}
+                  minHeight="24px"
+                  lineHeight="24px"
+                  maxHeight="96px"
+                  overflowY="hidden"
+                  border="none"
+                  _focus={{ boxShadow: 'none' }}
+                  fontSize="sm"
+                  p={0}
+                  borderRadius="none"
+                  autoFocus
+                  value={optimizerInput}
+                  onKeyDown={handleKeyDown}
+                  isDisabled={loading}
+                  onChange={(e) => {
+                    const textarea = e.target;
+                    setOptimizerInput(e.target.value);
+
+                    textarea.style.height = '24px';
+                    const maxHeight = 96;
+                    const newHeight = Math.min(textarea.scrollHeight, maxHeight);
+                    textarea.style.height = `${newHeight}px`;
+                    textarea.style.overflowY =
+                      textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
+                  }}
+                />
+                <MyIcon
+                  name={loading ? 'stop' : 'core/chat/sendLight'}
+                  w="1rem"
+                  alignSelf="flex-end"
+                  mb={1}
+                  color={loading || !isInputEmpty ? 'primary.600' : 'gray.400'}
+                  cursor={loading || !isInputEmpty ? 'pointer' : 'not-allowed'}
+                  onClick={() => {
+                    if (loading) {
+                      handleStopRequest();
+                    } else {
+                      handleSendOptimization();
+                    }
+                  }}
+                />
+              </Flex>
+            </Box>
+
+            {codeResult && !loading && (
+              <Flex gap={3} w="full" justifyContent={'end'}>
+                <Button
+                  variant="whiteBase"
+                  size="md"
+                  h={10}
+                  px={5}
+                  isLoading={testCodeLoading}
+                  loadingText={t('app:testing')}
+                  onClick={handleTestCode}
+                >
+                  {t('app:test_code')}
+                </Button>
+                <Button variant="primary" size="md" h={10} px={5} onClick={handleApplyCode}>
+                  {t('app:apply_code')}
+                </Button>
+              </Flex>
+            )}
           </Box>
-        )}
-        {loading && (
-          <Flex mb={3} ml={4}>
-            <MyIcon name="common/ellipsis" w={6} color="myGray.400" />
-          </Flex>
-        )}
-        <Flex
-          gap={2}
-          border="base"
-          borderRadius="md"
-          p={2}
-          _focusWithin={{ borderColor: 'primary.600' }}
-        >
-          <MyIcon name="optimizer" alignSelf={'flex-start'} mt={0.5} w={5} />
-          <Textarea
-            placeholder={t('app:code_function_describe')}
-            resize="none"
-            rows={1}
-            minHeight="24px"
-            lineHeight="24px"
-            maxHeight="96px"
-            overflowY="hidden"
-            border="none"
-            _focus={{ boxShadow: 'none' }}
-            fontSize="sm"
-            p={0}
-            borderRadius="none"
-            autoFocus
-            value={optimizerInput}
-            onKeyDown={handleKeyDown}
-            isDisabled={loading}
-            onChange={(e) => {
-              const textarea = e.target;
-              setOptimizerInput(e.target.value);
-
-              textarea.style.height = '24px';
-              const maxHeight = 96;
-              const newHeight = Math.min(textarea.scrollHeight, maxHeight);
-              textarea.style.height = `${newHeight}px`;
-              textarea.style.overflowY = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
-            }}
-          />
-          <MyIcon
-            name={loading ? 'stop' : 'core/chat/sendLight'}
-            w="1rem"
-            alignSelf="flex-end"
-            mb={1}
-            color={loading || !isInputEmpty ? 'primary.600' : 'gray.400'}
-            cursor={loading || !isInputEmpty ? 'pointer' : 'not-allowed'}
-            onClick={() => {
-              if (loading) {
-                handleStopRequest();
-              } else {
-                handleSendOptimization();
-              }
-            }}
-          />
-        </Flex>
-      </Box>
-
-      {codeResult && !loading && (
-        <Flex gap={3} w="full" justifyContent={'end'}>
-          <Button
-            variant="whiteBase"
-            size="md"
-            h={10}
-            px={5}
-            isLoading={testCodeLoading}
-            loadingText={t('app:testing')}
-            onClick={handleTestCode}
-          >
-            {t('app:test_code')}
-          </Button>
-          <Button variant="primary" size="md" h={10} px={5} onClick={handleApplyCode}>
-            {t('app:apply_code')}
-          </Button>
-        </Flex>
-      )}
-    </Card>
+        );
+      }}
+    </MyPopover>
   );
 };
 

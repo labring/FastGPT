@@ -294,6 +294,24 @@ const NodeCard = (props: Props) => {
                   <Box color={'red.600'}>{t(error as any)}</Box>
                 </Flex>
               )}
+              {node?.flowNodeType === FlowNodeTypeEnum.code && (
+                <>
+                  <Box bg={'myGray.300'} w={'1px'} h={'12px'} mx={1} />
+                  <NodeCopilot
+                    nodeId={nodeId}
+                    trigger={
+                      <Button
+                        variant={'grayGhost'}
+                        leftIcon={<MyIcon name={'codeCopilot'} w={'16px'} h={'16px'} mr={-1} />}
+                        size={'xs'}
+                        px={1}
+                      >
+                        {t('common:core.workflow.Copilot')}
+                      </Button>
+                    }
+                  />
+                </>
+              )}
             </Flex>
             <NodeIntro nodeId={nodeId} intro={intro} />
           </Box>
@@ -464,11 +482,6 @@ const MenuRender = React.memo(function MenuRender({
   const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
   const { computedNewNodeName } = useWorkflowUtils();
 
-  const isCodeNode = useMemo(() => {
-    const node = nodeList.find((node) => node.nodeId === nodeId);
-    return node?.flowNodeType === FlowNodeTypeEnum.code;
-  }, [nodeList, nodeId]);
-
   const onCopyNode = useCallback(
     (nodeId: string) => {
       setNodes((state) => {
@@ -565,16 +578,6 @@ const MenuRender = React.memo(function MenuRender({
 
   const Render = useMemo(() => {
     const menuList = [
-      ...(menuForbid?.copilot || !isCodeNode
-        ? []
-        : [
-            {
-              icon: 'codeCopilot',
-              label: t('common:core.workflow.Copilot'),
-              variant: 'whiteBase',
-              onClick: () => onOpenNodeCopilot()
-            }
-          ]),
       ...(menuForbid?.debug
         ? []
         : [
@@ -639,12 +642,10 @@ const MenuRender = React.memo(function MenuRender({
           ))}
         </Box>
         <DebugInputModal />
-        {isNodeCopilotOpen && <NodeCopilot nodeId={nodeId} onClose={onCloseNodeCopilot} />}
       </>
     );
   }, [
     menuForbid?.copilot,
-    isCodeNode,
     menuForbid?.debug,
     menuForbid?.copy,
     menuForbid?.delete,
