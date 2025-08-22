@@ -189,7 +189,7 @@ const Reference = ({
 
   return (
     <Flex alignItems={'center'} mb={1} gap={2}>
-      <Flex flex={'1'}>
+      <Flex flex={'1'} bg={'white'} rounded={'md'}>
         <Input
           placeholder={t('workflow:Variable_name')}
           value={isEditing ? tempLabel : inputChildren.label || ''}
@@ -214,6 +214,7 @@ const Reference = ({
             borderLeftColor: 'transparent',
             borderRightColor: 'transparent',
             isDisabled: isEmptyItem,
+            minW: '240px',
             _hover: {
               borderColor: 'blue.300'
             }
@@ -227,7 +228,6 @@ const Reference = ({
           value={inputChildren.valueType || WorkflowIOValueTypeEnum.any}
           list={valueTypeList}
           onChange={(value) => onlChangeValueType(value)}
-          bg={'myGray.50'}
           isDisabled={isEmptyItem}
         />
       </Flex>

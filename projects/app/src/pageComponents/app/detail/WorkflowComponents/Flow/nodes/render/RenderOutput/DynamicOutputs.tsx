@@ -158,7 +158,7 @@ const DynamicOutputItem = ({
 
   return (
     <Flex alignItems={'center'} mb={1} gap={2}>
-      <Flex flex={'1'} minW={0}>
+      <Flex flex={'1'} bg={'white'} rounded={'md'}>
         <Input
           placeholder={t('workflow:Variable_name')}
           value={isEditing ? tempLabel : output?.label || ''}
@@ -171,22 +171,20 @@ const DynamicOutputItem = ({
           h={10}
           borderRightRadius={'none'}
           flex={1}
-          minW={'120px'}
         />
         <MySelect
           h={10}
           borderLeftRadius={'none'}
           borderColor={'myGray.200'}
-          minW={'140px'}
           value={output?.valueType}
           list={valueTypeList}
           onChange={onChangeValueType}
-          bg={'myGray.50'}
           isDisabled={isEmptyItem}
           borderLeftColor={'transparent'}
           _hover={{
             borderColor: 'primary.300'
           }}
+          minW={'240px'}
         />
       </Flex>
       {!isEmptyItem && (
