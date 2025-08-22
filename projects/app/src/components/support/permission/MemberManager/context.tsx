@@ -1,6 +1,7 @@
 import { useDisclosure } from '@chakra-ui/react';
 import type {
   CollaboratorItemDetailType,
+  CollaboratorListType,
   UpdateClbPermissionProps
 } from '@fastgpt/global/support/permission/collaborator';
 import { Permission } from '@fastgpt/global/support/permission/controller';
@@ -26,7 +27,7 @@ const MemberModal = dynamic(() => import('./MemberModal'));
 export type MemberManagerInputPropsType = {
   permission: Permission;
   defaultRole: RoleValueType;
-  onGetCollaboratorList: () => Promise<CollaboratorItemDetailType[]>;
+  onGetCollaboratorList: () => Promise<CollaboratorListType>;
   roleList?: RoleListType;
   onUpdateCollaborators: (props: UpdateClbPermissionProps) => Promise<any>;
   onDelOneCollaborator: (
@@ -35,8 +36,9 @@ export type MemberManagerInputPropsType = {
   refreshDeps?: any[];
 };
 
-export type MemberManagerPropsType = MemberManagerInputPropsType & {
+export type CollaboratorContextType = MemberManagerInputPropsType & {
   collaboratorList: CollaboratorItemDetailType[];
+  parentClbList: CollaboratorItemDetailType[];
   refetchCollaboratorList: () => void;
   isFetchingCollaborator: boolean;
   getRoleLabelList: (role: RoleValueType) => string[];
@@ -47,9 +49,10 @@ export type ChildrenProps = {
   MemberListCard: (props: MemberListCardProps) => JSX.Element;
 };
 
-export const CollaboratorContext = createContext<MemberManagerPropsType>({
+export const CollaboratorContext = createContext<CollaboratorContextType>({
   defaultRole: NullRoleVal,
   collaboratorList: [],
+  parentClbList: [],
   roleList: CommonRoleList,
   onUpdateCollaborators: () => {
     throw new Error('Function not implemented.');
@@ -79,9 +82,6 @@ const CollaboratorContextProvider = ({
   children,
   refetchResource,
   refreshDeps = [],
-  isInheritPermission,
-  hasParent,
-  addPermissionOnly,
   defaultRole
 }: MemberManagerInputPropsType & {
   children: (props: ChildrenProps) => ReactNode;
@@ -105,24 +105,31 @@ const CollaboratorContextProvider = ({
   const { feConfigs } = useSystemStore();
 
   const {
-    data: collaboratorList = [],
+    data: { clbs: collaboratorList = [], parentClbs: parentClbList = [] } = {
+      clbs: [],
+      parentClbs: []
+    },
     runAsync: refetchCollaboratorList,
     loading: isFetchingCollaborator
   } = useRequest2(
     async () => {
       if (feConfigs.isPlus) {
-        const data = await onGetCollaboratorList();
-        return data.map((item) => {
-          return {
-            ...item,
-            // because the permission is not initialized in the frontend, so we need to initialize it here
-            permission: new Permission({
-              role: item.permission.role
-            })
-          };
-        });
+        const { clbs, parentClbs } = await onGetCollaboratorList();
+        return {
+          clbs: clbs.map((clb) => ({
+            ...clb,
+            permission: new Permission({ role: clb.permission.role })
+          })),
+          parentClbs: parentClbs.map((clb) => ({
+            ...clb,
+            permission: new Permission({ role: clb.permission.role })
+          }))
+        };
       }
-      return [];
+      return {
+        clbs: [],
+        parentClbs: []
+      };
     },
     {
       manual: false,
@@ -178,7 +185,8 @@ const CollaboratorContextProvider = ({
     onUpdateCollaborators: onUpdateCollaboratorsThen,
     onDelOneCollaborator: onDelOneCollaboratorThen,
     getRoleLabelList,
-    defaultRole
+    defaultRole,
+    parentClbList
   };
 
   return (
