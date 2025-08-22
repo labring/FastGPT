@@ -256,7 +256,7 @@ const ChatInput = ({
         gap={[0, 1]}
       >
         {/* 左侧自定义按钮组 */}
-        <Flex alignItems={'center'} gap={2} flex={'1 0 0'} w={0}>
+        <Flex alignItems={'center'} gap={2}>
           {InputLeftComponent}
         </Flex>
 
@@ -376,10 +376,6 @@ const ChatInput = ({
 
   return (
     <Box
-      m={['0 auto 10px', '10px auto']}
-      w={'100%'}
-      maxW={['auto', 'min(820px, 100%)']}
-      px={[3, 5]}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
