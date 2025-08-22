@@ -83,15 +83,16 @@ const EvaluationDetailModal = ({
   onClose: () => void;
   fetchEvalList: () => void;
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [editing, setEditing] = useState(false);
   const [pollingInterval, setPollingInterval] = useState(10000);
 
   const { llmModelList } = useSystemStore();
   const modelData = useMemo(
-    () => getModelFromList(llmModelList, evalDetail.evalModel),
-    [evalDetail.evalModel, llmModelList]
+    () => getModelFromList(llmModelList, evalDetail.evalModel, language),
+    [evalDetail.evalModel, llmModelList, language]
   );
 
   const {

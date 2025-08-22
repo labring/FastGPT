@@ -6,7 +6,7 @@ import { FastGPTPluginUrl } from '@fastgpt/service/common/system/constants';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { path = [] } = req.query as any;
-    const requestPath = `/imgs/tools/${path?.join('/')}`;
+    const requestPath = `/imgs/${path?.join('/')}`;
 
     if (!requestPath) {
       throw new Error('url is empty');

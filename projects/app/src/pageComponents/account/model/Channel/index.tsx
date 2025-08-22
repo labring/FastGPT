@@ -44,7 +44,8 @@ const EditChannelModal = dynamic(() => import('./EditChannelModal'), { ssr: fals
 const ModelTest = dynamic(() => import('./ModelTest'), { ssr: false });
 
 const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
   const { userInfo } = useUserStore();
 
   const isRoot = userInfo?.username === 'root';
@@ -129,7 +130,7 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                   label: channelProviders[item.type]?.name || 'Invalid provider',
                   provider: 'Other'
                 };
-                const provider = getModelProvider(providerData?.provider);
+                const provider = getModelProvider(providerData?.provider, language);
 
                 return (
                   <Tr key={item.id} _hover={{ bg: 'myGray.100' }}>

@@ -18,9 +18,10 @@ type Props = SelectProps & {
 };
 
 const OneRowSelector = ({ list, onChange, disableTip, noOfLines, ...props }: Props) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
     useSystemStore();
+  const language = i18n.language;
 
   const avatarSize = useMemo(() => {
     const size = {
@@ -42,7 +43,7 @@ const OneRowSelector = ({ list, onChange, disableTip, noOfLines, ...props }: Pro
     ];
     return list
       .map((item) => {
-        const modelData = getModelFromList(allModels, item.value)!;
+        const modelData = getModelFromList(allModels, item.value, language)!;
         if (!modelData) return;
 
         return {
@@ -73,7 +74,8 @@ const OneRowSelector = ({ list, onChange, disableTip, noOfLines, ...props }: Pro
     ttsModelList,
     sttModelList,
     reRankModelList,
-    avatarSize
+    avatarSize,
+    language
   ]);
 
   return (
@@ -109,9 +111,10 @@ const MultipleRowSelector = ({
   noOfLines,
   ...props
 }: Props) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
     useSystemStore();
+  const language = i18n.language;
   const modelList = useMemo(() => {
     const allModels = [
       ...llmModelList,
@@ -121,8 +124,16 @@ const MultipleRowSelector = ({
       ...reRankModelList
     ];
 
-    return list.map((item) => getModelFromList(allModels, item.value)!).filter(Boolean);
-  }, [llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList, list]);
+    return list.map((item) => getModelFromList(allModels, item.value, language)!).filter(Boolean);
+  }, [
+    llmModelList,
+    embeddingModelList,
+    ttsModelList,
+    sttModelList,
+    reRankModelList,
+    list,
+    language
+  ]);
 
   const [value, setValue] = useState<string[]>([]);
 
@@ -137,7 +148,7 @@ const MultipleRowSelector = ({
   }, [props.size]);
 
   const selectorList = useMemo(() => {
-    const renderList = ModelProviderList.map<{
+    const renderList = ModelProviderList(language).map<{
       label: React.JSX.Element;
       value: string;
       children: { label: string | React.ReactNode; value: string }[];
@@ -159,7 +170,7 @@ const MultipleRowSelector = ({
     }));
 
     for (const item of list) {
-      const modelData = getModelFromList(modelList, item.value);
+      const modelData = getModelFromList(modelList, item.value, language);
       if (!modelData) continue;
       const provider =
         renderList.find((item) => item.value === (modelData?.provider || 'Other')) ??
@@ -172,7 +183,7 @@ const MultipleRowSelector = ({
     }
 
     return renderList.filter((item) => item.children.length > 0);
-  }, [avatarSize, list, modelList, t]);
+  }, [avatarSize, list, modelList, t, language]);
 
   const onSelect = useCallback(
     (e: string[]) => {
@@ -183,7 +194,7 @@ const MultipleRowSelector = ({
 
   const SelectedLabel = useMemo(() => {
     if (!props.value) return <>{t('common:not_model_config')}</>;
-    const modelData = getModelFromList(modelList, props.value);
+    const modelData = getModelFromList(modelList, props.value, language);
 
     if (!modelData) return <>{t('common:not_model_config')}</>;
 
@@ -201,7 +212,7 @@ const MultipleRowSelector = ({
         <Box noOfLines={noOfLines}>{modelData?.name}</Box>
       </Flex>
     );
-  }, [modelList, props.value, t, avatarSize]);
+  }, [modelList, props.value, t, avatarSize, language]);
 
   return (
     <Box
