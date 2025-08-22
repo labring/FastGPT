@@ -358,15 +358,12 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
   // get tags from db
   const tags = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.tags || []);
   // local editable tags list
-  const [localTags, setLocalTags] = useState<ChatTagType[]>([]);
+  const [localTags, setLocalTags] = useState<ChatTagType[]>(tags);
   // control the editable state
   const [isEditing, setIsEditing] = useState<string[]>([]);
   // delete confirm modal target
   const [currentDelTag, setCurrentDelTag] = useState<ChatTagType | null>(null);
-  // sync local tags from server state when modal opens or data refreshes
-  useEffect(() => {
-    setLocalTags(tags as ChatTagType[]);
-  }, [tags]);
+
   // update tags
   const { loading: isUpdating, runAsync: updateTags } = useRequest2(
     async (nextTags: ChatTagType[]) => {
@@ -381,6 +378,7 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
       }
     }
   );
+
   // handle click new tag button
   const handleClickNewTag = () => {
     const id = getNanoid(8);
@@ -391,6 +389,7 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
     // TODO: persist immediately so new tag will be visible after refresh
     // updateTags(next);
   };
+
   // handle commit updated tag to server
   const handleCommitTag = useCallback(
     async (updated: ChatTagType) => {
@@ -402,6 +401,7 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
     },
     [localTags, updateTags]
   );
+
   // delete tag
   const { loading: isDeleting, runAsync: deleteTag } = useRequest2(
     async (target: ChatTagType) => {
@@ -417,6 +417,7 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
       }
     }
   );
+
   const {
     isOpen: isSaveTagForAppSubPanelOpen,
     onOpen: onOpenSaveTagForAppSubPanel,
@@ -432,7 +433,7 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
     },
     [onOpenSaveTagForAppSubPanel]
   );
-
+  console.log(12121);
   const isLoading = isUpdating || isDeleting || isEditing.length > 0;
 
   return (
