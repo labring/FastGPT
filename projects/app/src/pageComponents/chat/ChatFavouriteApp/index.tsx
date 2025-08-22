@@ -38,58 +38,55 @@ const ChatFavouriteApp = () => {
   const wideLogoUrl = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.wideLogoUrl);
   const homeTabTitle = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.homeTabTitle);
 
-  const categories = useContextSelector(
-    ChatSettingContext,
-    (v) => v.chatSettings?.categories || []
-  );
-  const categoryCache = useMemo(() => {
-    return categories.reduce(
-      (acc, category) => {
-        acc[category.id] = category;
+  const tags = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.tags || []);
+  const tagCache = useMemo(() => {
+    return tags.reduce(
+      (acc, tag) => {
+        acc[tag.id] = tag;
         return acc;
       },
-      {} as Record<string, (typeof categories)[number]>
+      {} as Record<string, (typeof tags)[number]>
     );
-  }, [categories]);
-  const categoryOptions = useMemo(
+  }, [tags]);
+  const tagOptions = useMemo(
     () => [
       { label: t('chat:setting.favourite.category_all'), value: '' },
-      ...categories.map((category) => ({
-        label: category.name,
-        value: category.id
+      ...tags.map((tag) => ({
+        label: tag.name,
+        value: tag.id
       }))
     ],
-    [categories, t]
+    [tags, t]
   );
 
-  const { register, watch, setValue } = useForm<{ name: string; category: string }>({
+  const { register, watch, setValue } = useForm<{ name: string; tag: string }>({
     defaultValues: {
       name: '',
-      category: ''
+      tag: ''
     }
   });
   const searchAppName = watch('name');
-  const selectedCategory = watch('category');
+  const selectedTag = watch('tag');
 
   // load all favourites for checked state and saving
   const { loading: isSearching, data: favouriteApps = [] } = useRequest2(
     async () => {
       return await getFavouriteApps({
-        name: searchAppName || undefined,
-        category: selectedCategory || undefined
+        name: searchAppName,
+        tag: selectedTag
       });
     },
     {
       manual: false,
       throttleWait: 500,
-      refreshDeps: [searchAppName, selectedCategory]
+      refreshDeps: [searchAppName, selectedTag]
     }
   );
 
-  const CategoryBox = ({ id }: { id: string }) => {
-    const category = categoryCache[id];
+  const TagBox = ({ id }: { id: string }) => {
+    const tag = tagCache[id];
 
-    if (!category) return null;
+    if (!tag) return null;
 
     return (
       <Box
@@ -102,7 +99,7 @@ const ChatFavouriteApp = () => {
         cursor="text"
         onClick={(e) => e.stopPropagation()}
       >
-        {category.name}
+        {tag.name}
       </Box>
     );
   };
@@ -150,7 +147,7 @@ const ChatFavouriteApp = () => {
 
       {/* header */}
       <Flex w="full" p={['0 16px 0 16px', '24px 24px 0 24px']} justifyContent="space-between">
-        {/* category tabs */}
+        {/* tag tabs */}
         <Tabs variant="unstyled">
           <TabList
             gap={5}
@@ -164,15 +161,15 @@ const ChatFavouriteApp = () => {
               '&::-webkit-scrollbar': { display: 'none' }
             }}
           >
-            {categoryOptions.map((option) => (
+            {tagOptions.map((option) => (
               <Tab
                 px={0}
                 flexShrink="0"
                 key={option.value}
                 value={option.value}
                 fontWeight={500}
-                color={selectedCategory === option.value ? 'primary.700' : 'myGray.500'}
-                onClick={() => setValue('category', option.value)}
+                color={selectedTag === option.value ? 'primary.700' : 'myGray.500'}
+                onClick={() => setValue('tag', option.value)}
               >
                 {option.label}
               </Tab>
@@ -225,11 +222,11 @@ const ChatFavouriteApp = () => {
               </Box>
 
               <Flex gap="2" flexWrap="wrap">
-                {app.categories.slice(0, 3).map((id) => (
-                  <CategoryBox key={id} id={id} />
+                {app.tags.slice(0, 3).map((id) => (
+                  <TagBox key={id} id={id} />
                 ))}
 
-                {app.categories.length > 3 && (
+                {app.tags.length > 3 && (
                   <MyPopover
                     placement="bottom"
                     trigger="hover"
@@ -243,7 +240,7 @@ const ChatFavouriteApp = () => {
                         py="0.5"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        +{app.categories.length - 3}
+                        +{app.tags.length - 3}
                       </Box>
                     }
                   >
@@ -255,8 +252,8 @@ const ChatFavouriteApp = () => {
                         maxW="200px"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        {app.categories.slice(3).map((id) => (
-                          <CategoryBox key={id} id={id} />
+                        {app.tags.slice(3).map((id) => (
+                          <TagBox key={id} id={id} />
                         ))}
                       </Flex>
                     )}

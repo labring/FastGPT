@@ -18,26 +18,25 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import AppTree, { type App } from '@/pageComponents/chat/ChatSetting/AppTree';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import type { QuickApp } from '@fastgpt/global/core/chat/setting/type';
+import type { QuickAppType } from '@fastgpt/global/core/chat/setting/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 
 type Props = {
   // currently selected quick app ids (ordered)
   selectedIds: string[];
-  isOpen: boolean;
   onClose: () => void;
   // confirm selection (ordered quick app list for display)
-  onConfirm: (list: QuickApp[]) => void;
+  onConfirm: (list: QuickAppType[]) => void;
 };
 
-const AddQuickAppModal = ({ selectedIds, isOpen, onClose, onConfirm }: Props) => {
+const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
   const { t } = useTranslation();
 
   // ordered selected ids
   const [localSelectedIds, setLocalSelectedIds] = useState<string[]>(selectedIds);
 
-  const checkedQuickApps = useMemo<QuickApp[]>(() => {
+  const checkedQuickApps = useMemo<QuickAppType[]>(() => {
     // map ids to QuickApp objects with only id, other fields filled when rendering
     return localSelectedIds.map((id) => ({ id, name: '', avatar: '' }));
   }, [localSelectedIds]);
@@ -78,33 +77,24 @@ const AddQuickAppModal = ({ selectedIds, isOpen, onClose, onConfirm }: Props) =>
 
   const { loading: isUpdating, runAsync: confirmSelect } = useRequest2(
     async () => {
-      const list: QuickApp[] = localSelectedIds
+      const list: QuickAppType[] = localSelectedIds
         .map((id) => availableAppsMap.get(id)!)
         .filter(Boolean)
         .map((app) => ({ id: app._id, name: app.name, avatar: app.avatar }));
       onConfirm(list);
-      onClose();
     },
-    { manual: true }
+    {
+      manual: true,
+      onSuccess: onClose
+    }
   );
-
-  const handleClose = useCallback(() => {
-    setValue('name', '');
-    setLocalSelectedIds(selectedIds);
-    onClose();
-  }, [onClose, selectedIds, setValue]);
-
-  // keep checked state in sync with current quick apps
-  useEffect(() => {
-    setLocalSelectedIds(selectedIds);
-  }, [selectedIds]);
 
   return (
     <MyModal
       w={['auto', '680px']}
       maxW={['auto', '680px']}
-      isOpen={isOpen}
-      onClose={handleClose}
+      isOpen={true}
+      onClose={onClose}
       title={t('chat:setting.home.quick_apps.add')}
       iconSrc="/imgs/modal/add.svg"
     >
@@ -158,7 +148,7 @@ const AddQuickAppModal = ({ selectedIds, isOpen, onClose, onConfirm }: Props) =>
               </Box>
 
               <Box>
-                <DndDrag<QuickApp>
+                <DndDrag<QuickAppType>
                   dataList={checkedQuickApps}
                   renderInnerPlaceholder={false}
                   onDragEndCb={(list) => {
@@ -230,11 +220,11 @@ const AddQuickAppModal = ({ selectedIds, isOpen, onClose, onConfirm }: Props) =>
         </Grid>
 
         <HStack spacing={2} alignSelf="flex-end">
-          <Button variant="whitePrimary" isDisabled={isUpdating} onClick={handleClose}>
-            取消
+          <Button variant="whitePrimary" isDisabled={isUpdating} onClick={onClose}>
+            {t('chat:setting.home.cancel_button')}
           </Button>
           <Button variant="primary" isLoading={isUpdating} onClick={confirmSelect}>
-            确定
+            {t('chat:setting.home.confirm_button')}
           </Button>
         </HStack>
       </VStack>

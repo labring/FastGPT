@@ -29,8 +29,6 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
 
   const appName = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.name);
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.avatar);
-  console.log('appAvatar', appAvatar);
-  console.log('appName', appName);
 
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
 

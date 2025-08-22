@@ -49,12 +49,12 @@ export type AppSchema = {
   teamTags: string[];
   inheritPermission?: boolean;
 
+  // if access the app by favourite or quick
+  favourite?: boolean;
+  quick?: boolean;
+
   // abandon
   defaultPermission?: number;
-
-  // where the app is retrieved from, differenciate by module(domain)
-  favourite: boolean;
-  quick: boolean;
 };
 
 export type AppListItemType = {

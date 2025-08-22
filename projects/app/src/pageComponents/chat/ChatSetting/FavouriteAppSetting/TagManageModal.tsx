@@ -14,50 +14,50 @@ import {
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import type { Category } from '@fastgpt/global/core/chat/setting/type';
+import type { ChatTagType } from '@fastgpt/global/core/chat/setting/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { getFavouriteApps, updateChatSetting, updateFavouriteApps } from '@/web/core/chat/api';
+import { getFavouriteApps, updateChatSetting, updateFavouriteAppTags } from '@/web/core/chat/api';
 import { useForm } from 'react-hook-form';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { ChatFavouriteApp } from '@fastgpt/global/core/chat/favouriteApp/type';
 
-type EditableCategoryItemProps = {
-  category: Category;
+type EditableTagItemProps = {
+  tag: ChatTagType;
   isEditing: boolean;
   onStartEdit: () => void;
-  onCommit: (updated: Category) => Promise<void> | void;
-  onConfirmDelete: (category: Category) => void;
-  onSaveCategoryForApp: (category: Category) => void;
+  onCommit: (updated: ChatTagType) => Promise<void> | void;
+  onConfirmDelete: (tag: ChatTagType) => void;
+  onSaveTagForApp: (tag: ChatTagType) => void;
 };
 
-const EditableCategoryItem = React.memo(function EditableCategoryItem({
+const EditableTagItem = React.memo(function EditableTagItem({
   isEditing,
-  category: initialCategory,
+  tag: initialTag,
   onCommit,
   onStartEdit,
   onConfirmDelete,
-  onSaveCategoryForApp
-}: EditableCategoryItemProps) {
-  const [category, setCategory] = useState<Category>(initialCategory);
+  onSaveTagForApp
+}: EditableTagItemProps) {
+  const [tag, setTag] = useState<ChatTagType>(initialTag);
   const [isSelfEditing, setIsSelfEditing] = useState<boolean>(isEditing);
   const [isInValid, setIsInValid] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFinishEdit = useCallback(async () => {
-    if (category.name.trim() === '') {
+    if (tag.name.trim() === '') {
       setIsInValid(true);
       return;
     }
     setIsInValid(false);
     setIsSelfEditing(false);
-    await onCommit(category);
+    await onCommit(tag);
 
     if (inputRef.current) inputRef.current.blur();
-  }, [category, onCommit]);
+  }, [tag, onCommit]);
 
   useEffect(() => {
     setIsSelfEditing(isEditing);
@@ -66,8 +66,8 @@ const EditableCategoryItem = React.memo(function EditableCategoryItem({
   useEffect(() => {
     if (isSelfEditing) return;
     // sync from props when not editing
-    setCategory(initialCategory);
-  }, [initialCategory, isSelfEditing]);
+    setTag(initialTag);
+  }, [initialTag, isSelfEditing]);
 
   useEffect(() => {
     if (!inputRef.current || !isSelfEditing) return;
@@ -94,14 +94,14 @@ const EditableCategoryItem = React.memo(function EditableCategoryItem({
         {isSelfEditing ? (
           <Input
             ref={inputRef}
-            value={category.name}
+            value={tag.name}
             isInvalid={isInValid}
             errorBorderColor="red.400"
             onBlur={handleFinishEdit}
             onChange={(e) => {
               setIsInValid(false);
               const nextName = e.target.value;
-              setCategory({ ...category, name: nextName });
+              setTag({ ...tag, name: nextName });
             }}
             onKeyDown={(e) => {
               if (e.key.toLowerCase() !== 'enter') return;
@@ -110,7 +110,7 @@ const EditableCategoryItem = React.memo(function EditableCategoryItem({
           />
         ) : (
           <Box px="1.5" py="0.5" bg="myGray.200" rounded="xs">
-            {category.name}
+            {tag.name}
           </Box>
         )}
         {/* <Box userSelect="none">({category.appIds.length})</Box> */}
@@ -127,9 +127,9 @@ const EditableCategoryItem = React.memo(function EditableCategoryItem({
           <IconButton
             size="sm"
             variant="ghost"
-            aria-label="save category for app"
+            aria-label="save tag for app"
             icon={<MyIcon name="common/add2" color="myGray.500" w="14px" />}
-            onClick={() => onSaveCategoryForApp(category)}
+            onClick={() => onSaveTagForApp(tag)}
           />
 
           <IconButton
@@ -148,7 +148,7 @@ const EditableCategoryItem = React.memo(function EditableCategoryItem({
             variant="ghost"
             aria-label="delete"
             icon={<MyIcon name="common/trash" color="myGray.500" w="14px" />}
-            onClick={() => onConfirmDelete(category)}
+            onClick={() => onConfirmDelete(tag)}
           />
         </Flex>
       )}
@@ -156,12 +156,12 @@ const EditableCategoryItem = React.memo(function EditableCategoryItem({
   );
 });
 
-const SaveCategoryForAppSubPanel = ({
-  category,
+const SaveTagForAppSubPanel = ({
+  tag,
   onClose,
   onRefresh
 }: {
-  category: Category;
+  tag: ChatTagType;
   onClose: () => void;
   onRefresh: () => Promise<any>;
 }) => {
@@ -195,59 +195,59 @@ const SaveCategoryForAppSubPanel = ({
     }
   );
 
-  const [localAllFavourites, setLocalAllFavourites] = React.useState<ChatFavouriteApp[]>([]);
+  const [localAllFavourites, setLocalAllFavourites] = useState<ChatFavouriteApp[]>([]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setLocalAllFavourites(favouriteApps);
   }, [favouriteApps]);
 
-  const checkedAppIds = React.useMemo(() => {
+  const checkedAppIds = useMemo(() => {
     return (localAllFavourites || [])
-      .filter((fav: any) => Array.isArray(fav.categories) && fav.categories.includes(category.id))
-      .map((fav: any) => fav.appId);
-  }, [localAllFavourites, category.id]);
+      .filter((fav) => Array.isArray(fav.tags) && fav.tags.includes(tag.id))
+      .map((fav) => fav.appId);
+  }, [localAllFavourites, tag.id]);
 
-  const isAppChecked = React.useCallback(
+  const isAppChecked = useCallback(
     (appId: string) => {
-      const f = (localAllFavourites || []).find((v: any) => v.appId === appId);
-      return Array.isArray(f?.categories) && f.categories.includes(category.id);
+      const f = (localAllFavourites || []).find((f) => f.appId === appId);
+      return Array.isArray(f?.tags) && f.tags.includes(tag.id);
     },
-    [localAllFavourites, category.id]
+    [localAllFavourites, tag.id]
   );
 
-  const toggleAppChecked = React.useCallback(
+  const toggleAppChecked = useCallback(
     (appId: string) => {
       setLocalAllFavourites((prev) =>
         (prev || []).map((item) => {
           if (item.appId !== appId) return item;
-          const categories: string[] = Array.isArray(item.categories) ? [...item.categories] : [];
-          const idx = categories.indexOf(category.id);
+          const tags: string[] = Array.isArray(item.tags) ? [...item.tags] : [];
+          const idx = tags.indexOf(tag.id);
           if (idx >= 0) {
-            categories.splice(idx, 1);
+            tags.splice(idx, 1);
           } else {
-            categories.push(category.id);
+            tags.push(tag.id);
           }
-          return { ...item, categories };
+          return { ...item, tags };
         })
       );
     },
-    [category.id]
+    [tag.id]
   );
 
-  // save apps (update categories) via updateFavouriteApps
+  // save apps (update tags) via updateFavouriteApps
   const { loading: isSaving, runAsync: saveApps } = useRequest2(
     async () => {
-      await updateFavouriteApps(
-        localAllFavourites.map((item) => ({
-          appId: item.appId,
-          order: item.order,
-          categories: item.categories
-        }))
+      await updateFavouriteAppTags(
+        localAllFavourites.map((item) => ({ id: item._id, tags: item.tags }))
       );
-      await onRefresh();
-      onClose();
     },
-    { manual: true }
+    {
+      manual: true,
+      onSuccess: async () => {
+        await onRefresh();
+        onClose();
+      }
+    }
   );
 
   return (
@@ -271,7 +271,7 @@ const SaveCategoryForAppSubPanel = ({
 
             <Flex alignItems="center" gap="1">
               <Box bg="myGray.100" rounded="sm" p="1">
-                {category.name}
+                {tag.name}
               </Box>
               <Box>({checkedAppIds.length})</Box>
             </Flex>
@@ -346,111 +346,92 @@ const SaveCategoryForAppSubPanel = ({
 };
 
 type Props = {
-  isOpen: boolean;
   onClose: () => void;
   onRefresh: () => Promise<any>;
 };
 
-const CategoryManageModal = ({ isOpen, onClose, onRefresh }: Props) => {
+const TagManageModal = ({ onClose, onRefresh }: Props) => {
   const { t } = useTranslation();
 
   const refreshChatSetting = useContextSelector(ChatSettingContext, (v) => v.refreshChatSetting);
 
-  // get categories from db
-  const categories = useContextSelector(
-    ChatSettingContext,
-    (v) => v.chatSettings?.categories || []
-  );
-  // local editable categories list
-  const [localCategories, setLocalCategories] = useState<Category[]>([]);
+  // get tags from db
+  const tags = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.tags || []);
+  // local editable tags list
+  const [localTags, setLocalTags] = useState<ChatTagType[]>([]);
   // control the editable state
   const [isEditing, setIsEditing] = useState<string[]>([]);
   // delete confirm modal target
-  const [currentDelCategory, setCurrentDelCategory] = useState<Category | null>(null);
-  // sync local categories from server state when modal opens or data refreshes
+  const [currentDelTag, setCurrentDelTag] = useState<ChatTagType | null>(null);
+  // sync local tags from server state when modal opens or data refreshes
   useEffect(() => {
-    setLocalCategories(categories as Category[]);
-  }, [categories, isOpen]);
-  // update categories
-  const { loading: isUpdating, runAsync: updateCategories } = useRequest2(
-    async (nextCategories: Category[]) => {
-      await updateChatSetting({ categories: nextCategories });
-      await refreshChatSetting();
+    setLocalTags(tags as ChatTagType[]);
+  }, [tags]);
+  // update tags
+  const { loading: isUpdating, runAsync: updateTags } = useRequest2(
+    async (nextTags: ChatTagType[]) => {
+      await updateChatSetting({ tags: nextTags });
     },
     {
       manual: true,
-      onSuccess: () => {
+      onSuccess: async () => {
+        await refreshChatSetting();
         // after successful update, exit all editing states
         setIsEditing([]);
       }
     }
   );
-  // handle click new category button
-  const handleClickNewCategory = () => {
+  // handle click new tag button
+  const handleClickNewTag = () => {
     const id = getNanoid(8);
-    const next = [{ id, name: '' }, ...localCategories];
-    setLocalCategories(next as Category[]);
+    const next = [{ id, name: '' }, ...localTags];
+    setLocalTags(next as ChatTagType[]);
     setIsEditing((prev) => [...prev, id]);
 
-    // TODO: persist immediately so new category will be visible after refresh
-    // updateCategories(next);
+    // TODO: persist immediately so new tag will be visible after refresh
+    // updateTags(next);
   };
-  // handle commit updated category to server
-  const handleCommitCategory = useCallback(
-    async (updated: Category) => {
-      // compute next categories deterministically and use it for both state and request
-      const next = localCategories.map((c) => (c.id === updated.id ? updated : c));
-      setLocalCategories(next);
+  // handle commit updated tag to server
+  const handleCommitTag = useCallback(
+    async (updated: ChatTagType) => {
+      // compute next tags deterministically and use it for both state and request
+      const next = localTags.map((c) => (c.id === updated.id ? updated : c));
+      setLocalTags(next);
       setIsEditing((prev) => prev.filter((v) => v !== updated.id));
-      await updateCategories(next);
+      await updateTags(next);
     },
-    [localCategories, updateCategories]
+    [localTags, updateTags]
   );
-  // delete category
-  const { loading: isDeleting, runAsync: deleteCategory } = useRequest2(
-    async (target: Category) => {
-      const next = localCategories.filter((c) => c.id !== target.id);
-      setLocalCategories(next);
-      await updateCategories(next);
+  // delete tag
+  const { loading: isDeleting, runAsync: deleteTag } = useRequest2(
+    async (target: ChatTagType) => {
+      const next = localTags.filter((c) => c.id !== target.id);
+      setLocalTags(next);
+      await updateTags(next);
     },
     {
       manual: true,
       onFinally: () => {
-        // reset delete category after deletion
-        setCurrentDelCategory(null);
+        // reset delete tag after deletion
+        setCurrentDelTag(null);
       }
     }
   );
   const {
-    isOpen: isSaveCategoryForAppSubPanelOpen,
-    onOpen: onOpenSaveCategoryForAppSubPanel,
-    onClose: onCloseSaveCategoryForAppSubPanel
+    isOpen: isSaveTagForAppSubPanelOpen,
+    onOpen: onOpenSaveTagForAppSubPanel,
+    onClose: onCloseSaveTagForAppSubPanel
   } = useDisclosure();
 
-  const [currentSaveCategoryForApp, setCurrentSaveCategoryForApp] = useState<Category | null>(null);
+  const [currentSaveTagForApp, setCurrentSaveTagForApp] = useState<ChatTagType | null>(null);
 
-  const handleClose = useCallback(() => {
-    setIsEditing([]);
-    setLocalCategories(categories as Category[]);
-    // reset sub states when modal closes
-    setCurrentDelCategory(null);
-    setCurrentSaveCategoryForApp(null);
-    onCloseSaveCategoryForAppSubPanel();
-    onClose();
-  }, [categories, onClose, onCloseSaveCategoryForAppSubPanel]);
-
-  const handleOpenSaveCategoryForAppSubPanel = useCallback(
-    (category: Category) => {
-      setCurrentSaveCategoryForApp(category);
-      onOpenSaveCategoryForAppSubPanel();
+  const handleOpenSaveTagForAppSubPanel = useCallback(
+    (tag: ChatTagType) => {
+      setCurrentSaveTagForApp(tag);
+      onOpenSaveTagForAppSubPanel();
     },
-    [onOpenSaveCategoryForAppSubPanel]
+    [onOpenSaveTagForAppSubPanel]
   );
-
-  const handleCloseSaveCategoryForAppSubPanel = useCallback(() => {
-    setCurrentSaveCategoryForApp(null);
-    onCloseSaveCategoryForAppSubPanel();
-  }, [onCloseSaveCategoryForAppSubPanel]);
 
   const isLoading = isUpdating || isDeleting || isEditing.length > 0;
 
@@ -460,13 +441,13 @@ const CategoryManageModal = ({ isOpen, onClose, onRefresh }: Props) => {
         maxW={['90vw', '800px']}
         iconSrc="/imgs/modal/tag.svg"
         title={t('chat:setting.favourite.manage_categories_button')}
-        isOpen={isOpen}
-        onClose={handleClose}
+        isOpen={true}
+        onClose={onClose}
       >
-        {isSaveCategoryForAppSubPanelOpen ? (
-          <SaveCategoryForAppSubPanel
-            category={currentSaveCategoryForApp as Category}
-            onClose={handleCloseSaveCategoryForAppSubPanel}
+        {isSaveTagForAppSubPanelOpen ? (
+          <SaveTagForAppSubPanel
+            tag={currentSaveTagForApp as ChatTagType}
+            onClose={onCloseSaveTagForAppSubPanel}
             onRefresh={onRefresh}
           />
         ) : (
@@ -484,7 +465,7 @@ const CategoryManageModal = ({ isOpen, onClose, onRefresh }: Props) => {
                   <MyIcon name="menu" color="myGray.700" w="20px" />
                   <Box>
                     {t('chat:setting.favourite.categories_modal.title', {
-                      num: localCategories.length
+                      num: localTags.length
                     })}
                   </Box>
                 </Flex>
@@ -494,7 +475,7 @@ const CategoryManageModal = ({ isOpen, onClose, onRefresh }: Props) => {
                   variant="whitePrimary"
                   isDisabled={isLoading}
                   leftIcon={<AddIcon fontSize="xs" />}
-                  onClick={handleClickNewCategory}
+                  onClick={handleClickNewTag}
                 >
                   {t('common:new_create')}
                 </Button>
@@ -510,22 +491,22 @@ const CategoryManageModal = ({ isOpen, onClose, onRefresh }: Props) => {
               flexDir="column"
               gap="2"
             >
-              {localCategories.map((category) => (
+              {localTags.map((tag) => (
                 <Box
-                  key={category.id}
+                  key={tag.id}
                   pb="2"
                   _notLast={{
                     borderBottom: 'sm',
                     borderColor: 'myGray.200'
                   }}
                 >
-                  <EditableCategoryItem
-                    category={category}
-                    onCommit={handleCommitCategory}
-                    isEditing={isEditing.includes(category.id)}
-                    onStartEdit={() => setIsEditing((prev) => [...prev, category.id])}
-                    onConfirmDelete={(c) => setCurrentDelCategory(c)}
-                    onSaveCategoryForApp={handleOpenSaveCategoryForAppSubPanel}
+                  <EditableTagItem
+                    tag={tag}
+                    onCommit={handleCommitTag}
+                    isEditing={isEditing.includes(tag.id)}
+                    onStartEdit={() => setIsEditing((prev) => [...prev, tag.id])}
+                    onConfirmDelete={(c) => setCurrentDelTag(c)}
+                    onSaveTagForApp={handleOpenSaveTagForAppSubPanel}
                   />
                 </Box>
               ))}
@@ -535,27 +516,27 @@ const CategoryManageModal = ({ isOpen, onClose, onRefresh }: Props) => {
       </MyModal>
 
       <MyModal
-        isOpen={!!currentDelCategory}
+        isOpen={!!currentDelTag}
         iconSrc="/imgs/modal/warn.svg"
         title={t('chat:setting.favourite.categories_modal.delete_confirm_title')}
-        onClose={() => setCurrentDelCategory(null)}
+        onClose={() => setCurrentDelTag(null)}
       >
         <Flex p={4} w={['auto', '420px']} flexDir="column" gap={4}>
           <Box color={'myGray.900'} fontSize={'sm'}>
             {t('chat:setting.favourite.categories_modal.delete_confirm', {
-              name: currentDelCategory?.name
+              name: currentDelTag?.name
             })}
           </Box>
 
           <Flex justifyContent="flex-end" gap={3}>
-            <Button variant="whitePrimary" onClick={() => setCurrentDelCategory(null)}>
+            <Button variant="whitePrimary" onClick={() => setCurrentDelTag(null)}>
               {t('chat:setting.favourite.categories_modal.delete_cancel_button')}
             </Button>
 
             <Button
               variant="dangerFill"
               isLoading={isDeleting}
-              onClick={() => deleteCategory(currentDelCategory as Category)}
+              onClick={() => deleteTag(currentDelTag as ChatTagType)}
             >
               {t('chat:setting.favourite.categories_modal.delete_confirm_button')}
             </Button>
@@ -566,4 +547,4 @@ const CategoryManageModal = ({ isOpen, onClose, onRefresh }: Props) => {
   );
 };
 
-export default React.memo(CategoryManageModal);
+export default React.memo(TagManageModal);

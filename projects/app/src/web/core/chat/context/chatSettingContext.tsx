@@ -6,20 +6,21 @@ import {
 } from '@/pageComponents/chat/constants';
 import { getChatSetting } from '@/web/core/chat/api';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import type { ChatSettingSchema, QuickApp } from '@fastgpt/global/core/chat/setting/type';
+import type {
+  ChatSettingReturnType,
+  ChatSettingSchema
+} from '@fastgpt/global/core/chat/setting/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
-
-export type ChatSettingReturnType = Awaited<ReturnType<typeof getChatSetting>> | undefined;
 
 export type ChatSettingContextValue = {
   pane: ChatSidebarPaneEnum;
   handlePaneChange: (pane: ChatSidebarPaneEnum, _id?: string) => void;
   collapse: CollapseStatusType;
   onTriggerCollapse: () => void;
-  chatSettings: ChatSettingReturnType | undefined;
+  chatSettings?: ChatSettingReturnType;
   refreshChatSetting: () => Promise<ChatSettingReturnType>;
   logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'>;
 };
@@ -57,7 +58,18 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
     },
     {
       manual: false,
-      refreshDeps: [feConfigs.isPlus]
+      refreshDeps: [feConfigs.isPlus],
+      onSuccess: (data) => {
+        if (!data) return;
+
+        if (
+          pane === ChatSidebarPaneEnum.HOME &&
+          appId !== data.appId &&
+          data.quickApps.every((q) => q.id !== appId)
+        ) {
+          handlePaneChange(ChatSidebarPaneEnum.HOME, data.appId);
+        }
+      }
     }
   );
 

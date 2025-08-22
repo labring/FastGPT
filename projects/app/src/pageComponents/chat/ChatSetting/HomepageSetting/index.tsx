@@ -10,8 +10,8 @@ import ImageUpload from '@/pageComponents/chat/ChatSetting/ImageUpload';
 import type {
   ChatSettingSchema,
   ChatSettingUpdateParams,
-  QuickApp,
-  SelectedTool
+  QuickAppType,
+  SelectedToolType
 } from '@fastgpt/global/core/chat/setting/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ToolSelectModal from '@/pageComponents/chat/ChatSetting/ToolSelectModal';
@@ -20,16 +20,18 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useMount } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
-import {
-  ChatSettingContext,
-  type ChatSettingReturnType
-} from '@/web/core/chat/context/chatSettingContext';
+import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 import {
   DEFAULT_LOGO_BANNER_COLLAPSED_URL,
   DEFAULT_LOGO_BANNER_URL
 } from '@/pageComponents/chat/constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import AddQuickAppModal from '@/pageComponents/chat/ChatSetting/HomepageSetting/AddQuickAppModal';
+import dynamic from 'next/dynamic';
+import type { ChatSettingReturnType } from '@fastgpt/global/core/chat/setting/type';
+
+const AddQuickAppModal = dynamic(
+  () => import('@/pageComponents/chat/ChatSetting/HomepageSetting/AddQuickAppModal')
+);
 
 type Props = {
   Header: React.FC<{ children?: React.ReactNode }>;
@@ -37,8 +39,8 @@ type Props = {
 };
 
 type FormValues = Omit<ChatSettingUpdateParams, 'selectedTools' | 'quickApps'> & {
-  selectedTools: SelectedTool[];
-  quickApps: QuickApp[];
+  selectedTools: SelectedToolType[];
+  quickApps: QuickAppType[];
 };
 
 const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
@@ -58,7 +60,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
         selectedTools: data?.selectedTools || [],
         wideLogoUrl: data?.wideLogoUrl,
         squareLogoUrl: data?.squareLogoUrl,
-        quickApps: (data?.quickApps as any as QuickApp[]) || []
+        quickApps: (data?.quickApps as any as QuickAppType[]) || []
       };
     },
     [t]
@@ -119,7 +121,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
         selectedTools: values.selectedTools.map((tool) => ({
           pluginId: tool.pluginId,
           inputs: tool.inputs
-        })) as unknown as ChatSettingSchema['selectedTools']
+        }))
       });
     },
     {
@@ -455,12 +457,13 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
         </Flex>
       </Flex>
 
-      <AddQuickAppModal
-        selectedIds={(formQuickApps || []).map((q) => q.id)}
-        isOpen={isOpenAddQuickApp}
-        onClose={onCloseAddQuickApp}
-        onConfirm={(list) => setValue('quickApps', list)}
-      />
+      {isOpenAddQuickApp && (
+        <AddQuickAppModal
+          selectedIds={(formQuickApps || []).map((q) => q.id)}
+          onClose={onCloseAddQuickApp}
+          onConfirm={(list) => setValue('quickApps', list)}
+        />
+      )}
     </Flex>
   );
 };

@@ -18,14 +18,17 @@ const ChatFavouriteAppSchema = new Schema({
     ref: AppCollectionName,
     required: true
   },
-  categories: {
-    type: Array,
+  tags: {
+    type: [String],
     default: []
   },
-  order: Number
+  order: {
+    type: Number,
+    default: 10000000
+  }
 });
 
-ChatFavouriteAppSchema.index({ teamId: 1 });
+ChatFavouriteAppSchema.index({ teamId: 1, appId: 1 });
 
 export const MongoChatFavouriteApp = getMongoModel<ChatFavouriteAppType>(
   ChatFavouriteAppCollectionName,

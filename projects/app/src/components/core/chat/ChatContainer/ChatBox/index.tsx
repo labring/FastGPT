@@ -67,6 +67,7 @@ import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import WelcomeHomeBox from '@/components/core/chat/ChatContainer/ChatBox/components/WelcomeHomeBox';
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
+import ChatHomeVariablesForm from '@/components/core/chat/ChatContainer/ChatBox/components/ChatHomeVariablesForm';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
@@ -868,14 +869,10 @@ const ChatBox = ({
   const canSendPrompt = onStartChat && chatStarted && active && !isInteractive;
 
   // Home chat: only hide ChatInput when a quick app is selected AND it requires variables (not started yet)
-  const hasAnyVariables = useMemo(() => {
-    return (
-      (variableList && variableList.length > 0) ||
-      (allVariableList && allVariableList.some((i) => i.type === VariableInputEnum.custom))
-    );
-  }, [allVariableList, variableList]);
-
   const showChatInput = useMemo(() => {
+    const hasAnyVariables =
+      (variableList && variableList.length > 0) ||
+      (allVariableList && allVariableList.some((i) => i.type === VariableInputEnum.custom));
     if (chatType === ChatTypeEnum.home) {
       // Quick app selected
       if (currentQuickAppId) {
@@ -886,7 +883,7 @@ const ChatBox = ({
     }
     // Other chat types: keep original gating
     return Boolean(canSendPrompt);
-  }, [canSendPrompt, chatStarted, chatType, currentQuickAppId, hasAnyVariables]);
+  }, [canSendPrompt, chatStarted, chatType, currentQuickAppId, variableList, allVariableList]);
 
   // Add listener
   useEffect(() => {
@@ -1147,120 +1144,7 @@ const ChatBox = ({
         maxW={['auto', 'min(820px, 100%)']}
       >
         {/* Quick Apps Button Group */}
-        {chatType === ChatTypeEnum.home &&
-          chatRecords.length === 0 &&
-          quickApps &&
-          quickApps?.length > 0 && (
-            <>
-              <Flex mb="2" alignItems="center" gap={2} flexWrap="wrap">
-                {quickApps.map((q) => (
-                  <Flex
-                    key={q.id}
-                    alignItems="center"
-                    gap={1}
-                    border="sm"
-                    borderRadius="md"
-                    px={2}
-                    py={1}
-                    cursor="pointer"
-                    _hover={{ bg: 'myGray.50' }}
-                    bg={currentQuickAppId === q.id ? 'primary.50' : 'white'}
-                    color={currentQuickAppId === q.id ? 'primary.600' : 'myGray.600'}
-                    borderColor={currentQuickAppId === q.id ? 'primary.200' : 'myGray.200'}
-                    onClick={() => onSwitchQuickApp?.(q.id)}
-                  >
-                    <Avatar src={q.avatar} w={4} borderRadius="xs" />
-                    <Box fontSize="xs" fontWeight="500" userSelect="none">
-                      {q.name}
-                    </Box>
-                  </Flex>
-                ))}
-              </Flex>
-
-              {/* variables form for quick app */}
-              {chatType === ChatTypeEnum.home &&
-                !chatStarted &&
-                (variableList?.length > 0 ||
-                  allVariableList?.some((i) => i.type === VariableInputEnum.custom)) && (
-                  <Box mb={3}>
-                    <Card
-                      w={'full'}
-                      bg={'white'}
-                      border={'sm'}
-                      borderColor={'myGray.200'}
-                      boxShadow={'0 0 8px rgba(0,0,0,0.05)'}
-                    >
-                      <Box p={3}>
-                        {/* custom variables */}
-                        {allVariableList.filter((i) => i.type === VariableInputEnum.custom).length >
-                          0 && (
-                          <>
-                            <Flex
-                              color={'primary.600'}
-                              bg={'primary.100'}
-                              mb={3}
-                              px={3}
-                              py={1.5}
-                              gap={1}
-                              fontSize={'mini'}
-                              rounded={'sm'}
-                            >
-                              <MyIcon name={'common/info'} color={'primary.600'} w={4} />
-                              {t('chat:variable_invisable_in_share')}
-                            </Flex>
-                            {allVariableList
-                              .filter((i) => i.type === VariableInputEnum.custom)
-                              .map((item) => (
-                                <LabelAndFormRender
-                                  {...item}
-                                  key={item.key}
-                                  formKey={`variables.${item.key}`}
-                                  placeholder={item.description}
-                                  inputType={variableInputTypeToInputType(
-                                    item.type,
-                                    item.valueType
-                                  )}
-                                  variablesForm={variablesForm}
-                                  bg={'myGray.50'}
-                                />
-                              ))}
-                          </>
-                        )}
-                        {/* normal variables */}
-                        {variableList.length > 0 && (
-                          <>
-                            {variableList.map((item) => (
-                              <LabelAndFormRender
-                                {...item}
-                                key={item.key}
-                                formKey={`variables.${item.key}`}
-                                placeholder={item.description}
-                                inputType={variableInputTypeToInputType(item.type)}
-                                variablesForm={variablesForm}
-                                bg={'myGray.50'}
-                              />
-                            ))}
-                          </>
-                        )}
-                        {!chatStarted && (
-                          <Button
-                            leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
-                            size={'sm'}
-                            maxW={'100px'}
-                            mt={2}
-                            onClick={variablesForm.handleSubmit(() => {
-                              chatForm.setValue('chatStarted', true);
-                            })}
-                          >
-                            {t('chat:start_chat')}
-                          </Button>
-                        )}
-                      </Box>
-                    </Card>
-                  </Box>
-                )}
-            </>
-          )}
+        <ChatHomeVariablesForm chatType={chatType} chatForm={chatForm} chatStarted={chatStarted} />
 
         {/* message input */}
         {showChatInput && (

@@ -1,6 +1,6 @@
 import DiagramModal from '@/pageComponents/chat/ChatSetting/DiagramModal';
 import { type PropsWithChildren, useCallback, useState } from 'react';
-import { ChatSettingTabOptionEnum } from '@/pageComponents/chat/constants';
+import { ChatSettingTabOptionEnum, ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import dynamic from 'next/dynamic';
 import SettingTabs from '@/pageComponents/chat/ChatSetting/SettingTabs';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -12,6 +12,8 @@ import NextHead from '@/components/common/NextHead';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import { useTranslation } from 'react-i18next';
+import { useMount } from 'ahooks';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const HomepageSetting = dynamic(() => import('@/pageComponents/chat/ChatSetting/HomepageSetting'));
 const LogDetails = dynamic(() => import('@/pageComponents/chat/ChatSetting/LogDetails'));
@@ -23,6 +25,7 @@ const FavouriteAppSetting = dynamic(
 const ChatSetting = () => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
 
   const [isOpenDiagram, setIsOpenDiagram] = useState(false);
   const [tab, setTab] = useState<`${ChatSettingTabOptionEnum}`>('home');
@@ -30,6 +33,7 @@ const ChatSetting = () => {
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
 
   const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
+  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
 
   const SettingHeader = useCallback(
     ({ children, ...props }: PropsWithChildren & FlexProps) => (
@@ -39,6 +43,12 @@ const ChatSetting = () => {
     ),
     [tab, setTab]
   );
+
+  useMount(() => {
+    if (!feConfigs?.isPlus) {
+      handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
+    }
+  });
 
   return (
     <>
@@ -66,7 +76,7 @@ const ChatSetting = () => {
           </>
         )}
 
-        <Box p={['16px 0 16px 0', 6]} h={['calc(100% - 37px)', '100%']} boxSizing="border-box">
+        <Box p={['16px 0 16px 0', 6]} flex="1 0 0" h="0" boxSizing="border-box">
           {/* homepage setting */}
           {tab === ChatSettingTabOptionEnum.HOME && (
             <HomepageSetting Header={SettingHeader} onDiagramShow={setIsOpenDiagram} />

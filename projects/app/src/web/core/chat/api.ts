@@ -1,11 +1,12 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type { ChatHistoryItemType, ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import type {
-  Category,
+  ChatTagType,
   ChatSettingSchema,
   ChatSettingUpdateParams,
-  QuickApp,
-  SelectedTool
+  QuickAppType,
+  SelectedToolType,
+  ChatSettingReturnType
 } from '@fastgpt/global/core/chat/setting/type';
 import type { getResDataQuery } from '@/pages/api/core/chat/getResData';
 import type {
@@ -120,19 +121,14 @@ export const getCollectionQuote = (data: GetCollectionQuoteProps) =>
 
 /*---------- chat setting ------------*/
 export const getChatSetting = () => {
-  return GET<
-    Omit<ChatSettingSchema, 'quickApps' | 'selectedTools'> & {
-      quickApps: QuickApp[];
-      selectedTools: SelectedTool[];
-    }
-  >('/proApi/core/chat/setting/detail');
+  return GET<ChatSettingReturnType>('/proApi/core/chat/setting/detail');
 };
 
 export const updateChatSetting = (data: ChatSettingUpdateParams) => {
   return POST<ChatSettingSchema>('/proApi/core/chat/setting/update', data);
 };
 
-export const getFavouriteApps = (data: { name?: string; category?: string }) => {
+export const getFavouriteApps = (data: { name?: string; tag?: string }) => {
   return GET<(ChatFavouriteAppSchema & { name: string; avatar: string; intro: string })[]>(
     '/proApi/core/chat/setting/favourite/list',
     data
@@ -145,6 +141,10 @@ export const updateFavouriteApps = (data: ChatFavouriteAppUpdateParams[]) => {
 
 export const updateFavouriteAppOrder = (data: { id: string; order: number }[]) => {
   return PUT<void>('/proApi/core/chat/setting/favourite/order', data);
+};
+
+export const updateFavouriteAppTags = (data: { id: string; tags: string[] }[]) => {
+  return PUT<void>('/proApi/core/chat/setting/favourite/tags', data);
 };
 
 export const deleteFavouriteApp = (id: string) => {

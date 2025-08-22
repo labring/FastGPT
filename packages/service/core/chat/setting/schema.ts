@@ -28,10 +28,10 @@ const ChatSettingSchema = new Schema({
   wideLogoUrl: String,
   squareLogoUrl: String,
   quickApps: {
-    type: Array,
+    type: [String],
     default: []
   },
-  categories: {
+  tags: {
     type: Array,
     default: []
   }

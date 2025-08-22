@@ -23,20 +23,15 @@ import { updateFavouriteApps } from '@/web/core/chat/api';
 import AppTree, { type App } from '@/pageComponents/chat/ChatSetting/AppTree';
 
 type Props = {
-  isOpen: boolean;
   favourites: ChatFavouriteAppSchema[];
   onClose: () => void;
   onRefresh: () => Promise<any>;
 };
 
-const AddFavouriteAppModal = ({ isOpen, favourites, onClose, onRefresh }: Props) => {
+const AddFavouriteAppModal = ({ favourites, onClose, onRefresh }: Props) => {
   const { t } = useTranslation();
 
-  const {
-    register,
-    watch: watchSearchValue,
-    setValue: setSearchValue
-  } = useForm<{ name: string }>({
+  const { register, watch: watchSearchValue } = useForm<{ name: string }>({
     defaultValues: {
       name: ''
     }
@@ -76,7 +71,6 @@ const AddFavouriteAppModal = ({ isOpen, favourites, onClose, onRefresh }: Props)
             prevFavs.length > 0 ? Math.max(...prevFavs.map((f: any) => f.order ?? 0)) : 0;
           const newFav = {
             appId: id,
-            categories: [],
             order: (maxOrder ?? 0) + 1
           } as unknown as ChatFavouriteAppSchema;
           return [...prevFavs, newFav];
@@ -98,40 +92,24 @@ const AddFavouriteAppModal = ({ isOpen, favourites, onClose, onRefresh }: Props)
   const { run: updateFavourites, loading: isUpdating } = useRequest2(
     async () => {
       await updateFavouriteApps(
-        checkedFavouriteApps.map((item) => ({
-          appId: item.appId,
-          order: item.order,
-          categories: item.categories
-        }))
+        checkedFavouriteApps.map((item) => ({ appId: item.appId, order: item.order }))
       );
-      await onRefresh();
-      handleClose();
     },
     {
-      manual: true
+      manual: true,
+      onSuccess: async () => {
+        await onRefresh();
+        onClose();
+      }
     }
   );
-
-  // reset search and checked list to original favourites when closing
-  const handleClose = useCallback(() => {
-    setSearchValue('name', '');
-    setCheckedIds(favourites.map((item) => item.appId));
-    setLocalFavourites(favourites);
-    onClose();
-  }, [favourites, onClose, setSearchValue]);
-
-  // keep checked state in sync with current favourite apps
-  useEffect(() => {
-    setCheckedIds(favourites.map((item) => item.appId));
-    setLocalFavourites(favourites);
-  }, [favourites]);
 
   return (
     <MyModal
       w={['auto', '680px']}
       maxW={['auto', '680px']}
-      isOpen={isOpen}
-      onClose={handleClose}
+      isOpen={true}
+      onClose={onClose}
       title={t('chat:setting.favourite.add_new_app')}
       iconSrc="/imgs/modal/add.svg"
     >
@@ -216,8 +194,8 @@ const AddFavouriteAppModal = ({ isOpen, favourites, onClose, onRefresh }: Props)
         </Grid>
 
         <HStack spacing={2} alignSelf="flex-end">
-          <Button variant="whitePrimary" isDisabled={isUpdating} onClick={handleClose}>
-            取消
+          <Button variant="whitePrimary" isDisabled={isUpdating} onClick={onClose}>
+            {t('chat:setting.favourite.cancel_button')}
           </Button>
           <Button
             variant="primary"
@@ -225,7 +203,7 @@ const AddFavouriteAppModal = ({ isOpen, favourites, onClose, onRefresh }: Props)
             isDisabled={checkedIds.length === 0}
             onClick={updateFavourites}
           >
-            确定
+            {t('chat:setting.favourite.confirm_button')}
           </Button>
         </HStack>
       </VStack>

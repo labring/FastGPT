@@ -25,16 +25,25 @@ import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { AddIcon } from '@chakra-ui/icons';
-import CategoryManageModal from '@/pageComponents/chat/ChatSetting/FavouriteAppSetting/CategoryManageModal';
 import { deleteFavouriteApp, getFavouriteApps, updateFavouriteAppOrder } from '@/web/core/chat/api';
-import AddFavouriteAppModal from '@/pageComponents/chat/ChatSetting/FavouriteAppSetting/AddFavouriteAppModal';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { Box, Wrap } from '@chakra-ui/react';
 import type { ChatFavouriteApp } from '@fastgpt/global/core/chat/favouriteApp/type';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
-import type { Category } from '@fastgpt/global/core/chat/setting/type';
+import type { ChatTagType } from '@fastgpt/global/core/chat/setting/type';
+import dynamic from 'next/dynamic';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useMount } from 'ahooks';
+import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
+
+const TagManageModal = dynamic(
+  () => import('@/pageComponents/chat/ChatSetting/FavouriteAppSetting/TagManageModal')
+);
+const AddFavouriteAppModal = dynamic(
+  () => import('@/pageComponents/chat/ChatSetting/FavouriteAppSetting/AddFavouriteAppModal')
+);
 
 type Props = {
   Header: React.FC<{ children?: React.ReactNode }>;
@@ -42,48 +51,50 @@ type Props = {
 
 const FavouriteAppSetting = ({ Header }: Props) => {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
 
   // search apps input
   const {
     register,
     setValue: setSearchValue,
     watch: watchSearchValue
-  } = useForm<{ search: string; category: string }>({
+  } = useForm<{ search: string; tag: string }>({
     defaultValues: {
       search: '',
-      category: ''
+      tag: ''
     }
   });
   const searchAppNameValue = watchSearchValue('search');
-  const searchAppCategoryValue = watchSearchValue('category');
-  // apps' categories options
-  const categoryOptions = useContextSelector(ChatSettingContext, (v) => {
-    const categories = v.chatSettings?.categories || [];
+  const searchAppTagValue = watchSearchValue('tag');
+  // apps' tags options
+  const tagOptions = useContextSelector(ChatSettingContext, (v) => {
+    const tags = v.chatSettings?.tags || [];
     return [
       { label: t('chat:setting.favourite.category_all'), value: '' },
-      ...categories.map((c) => ({ label: c.name, value: c.id }))
+      ...tags.map((c) => ({ label: c.name, value: c.id }))
     ];
   });
-  // app's categories cache map
-  const categoryCache = useContextSelector(ChatSettingContext, (v) =>
-    (v.chatSettings?.categories || []).reduce<Record<string, Category>>((acc, category) => {
-      acc[category.id] = { ...category };
+  // app's tags cache map
+  const tagMap = useContextSelector(ChatSettingContext, (v) =>
+    (v.chatSettings?.tags || []).reduce<Record<string, ChatTagType>>((acc, tag) => {
+      acc[tag.id] = { ...tag };
       return acc;
     }, {})
   );
+  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
 
   const [localFavourites, setLocalFavourites] = useState<ChatFavouriteApp[]>([]);
   const allFavourites = useRef<ChatFavouriteApp[]>([]);
 
-  // search favourite apps by apps' name and category
+  // search favourite apps by apps' name and tag
   const { loading: isSearching, runAsync: getApps } = useRequest2(
     async () => {
       const apps = await getFavouriteApps({
-        name: searchAppNameValue || undefined,
-        category: searchAppCategoryValue || undefined
+        name: searchAppNameValue,
+        tag: searchAppTagValue
       });
 
-      if (!searchAppNameValue && !searchAppCategoryValue) {
+      if (!searchAppNameValue && !searchAppTagValue) {
         allFavourites.current = apps;
       }
       setLocalFavourites(apps);
@@ -93,7 +104,7 @@ const FavouriteAppSetting = ({ Header }: Props) => {
     {
       manual: false,
       throttleWait: 500,
-      refreshDeps: [searchAppNameValue, searchAppCategoryValue]
+      refreshDeps: [searchAppNameValue, searchAppTagValue]
     }
   );
 
@@ -120,11 +131,11 @@ const FavouriteAppSetting = ({ Header }: Props) => {
     { manual: true }
   );
 
-  // open category manage modal
+  // open tag manage modal
   const {
-    isOpen: isOpenCategoryManageModal,
-    onOpen: onOpenCategoryManageModal,
-    onClose: onCloseCategoryManageModal
+    isOpen: isOpenTagManageModal,
+    onOpen: onOpenTagManageModal,
+    onClose: onCloseTagManageModal
   } = useDisclosure();
 
   // open add app modal
@@ -134,10 +145,10 @@ const FavouriteAppSetting = ({ Header }: Props) => {
     onClose: onCloseAddAppModal
   } = useDisclosure();
 
-  const CategoryBox = ({ id }: { id: string }) => {
-    const category = categoryCache[id];
+  const TagBox = ({ id }: { id: string }) => {
+    const tag = tagMap[id];
 
-    if (!category) return null;
+    if (!tag) return null;
 
     return (
       <Box
@@ -150,10 +161,16 @@ const FavouriteAppSetting = ({ Header }: Props) => {
         cursor="text"
         onClick={(e) => e.stopPropagation()}
       >
-        {category.name}
+        {tag.name}
       </Box>
     );
   };
+
+  useMount(() => {
+    if (!feConfigs?.isPlus) {
+      handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
+    }
+  });
 
   return (
     <>
@@ -182,17 +199,17 @@ const FavouriteAppSetting = ({ Header }: Props) => {
               fontWeight="400"
               minW={['auto', '120px']}
               isDisabled={isSearching}
-              list={categoryOptions}
+              list={tagOptions}
               placeholder={t('chat:setting.favourite.category_placeholder')}
-              value={searchAppCategoryValue}
-              onChange={(category) => setSearchValue('category', category)}
+              value={searchAppTagValue}
+              onChange={(tag) => setSearchValue('tag', tag)}
             />
 
             <Button
               variant="whitePrimary"
               w={'auto'}
               fontWeight="400"
-              onClick={onOpenCategoryManageModal}
+              onClick={onOpenTagManageModal}
             >
               {t('chat:setting.favourite.manage_categories_button')}
             </Button>
@@ -273,14 +290,14 @@ const FavouriteAppSetting = ({ Header }: Props) => {
                               </Flex>
                             </Td>
 
-                            {/* category */}
+                            {/* tags */}
                             <Td>
                               <Wrap>
-                                {row.categories.slice(0, 3).map((id) => (
-                                  <CategoryBox key={id} id={id} />
+                                {row.tags.slice(0, 3).map((id) => (
+                                  <TagBox key={id} id={id} />
                                 ))}
 
-                                {row.categories.length > 3 && (
+                                {row.tags.length > 3 && (
                                   <MyPopover
                                     placement="bottom"
                                     trigger="hover"
@@ -295,7 +312,7 @@ const FavouriteAppSetting = ({ Header }: Props) => {
                                         cursor="pointer"
                                         onClick={(e) => e.stopPropagation()}
                                       >
-                                        +{row.categories.length - 3}
+                                        +{row.tags.length - 3}
                                       </Box>
                                     }
                                   >
@@ -307,8 +324,8 @@ const FavouriteAppSetting = ({ Header }: Props) => {
                                         maxW="200px"
                                         onClick={(e) => e.stopPropagation()}
                                       >
-                                        {row.categories.slice(3).map((id) => (
-                                          <CategoryBox key={id} id={id} />
+                                        {row.tags.slice(3).map((id) => (
+                                          <TagBox key={id} id={id} />
                                         ))}
                                       </Flex>
                                     )}
@@ -388,18 +405,17 @@ const FavouriteAppSetting = ({ Header }: Props) => {
         </Box>
       </MyBox>
 
-      <CategoryManageModal
-        isOpen={isOpenCategoryManageModal}
-        onClose={onCloseCategoryManageModal}
-        onRefresh={getApps}
-      />
+      {isOpenTagManageModal && (
+        <TagManageModal onClose={onCloseTagManageModal} onRefresh={getApps} />
+      )}
 
-      <AddFavouriteAppModal
-        isOpen={isOpenAddAppModal}
-        favourites={allFavourites.current || []}
-        onClose={onCloseAddAppModal}
-        onRefresh={getApps}
-      />
+      {isOpenAddAppModal && (
+        <AddFavouriteAppModal
+          favourites={allFavourites.current || []}
+          onClose={onCloseAddAppModal}
+          onRefresh={getApps}
+        />
+      )}
     </>
   );
 };

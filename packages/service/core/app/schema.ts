@@ -116,11 +116,11 @@ const AppSchema = new Schema(
       default: true
     },
 
-    // abandoned
-    defaultPermission: Number,
-
     favourite: Boolean,
-    quick: Boolean
+    quick: Boolean,
+
+    // abandoned
+    defaultPermission: Number
   },
   {
     minimize: false
