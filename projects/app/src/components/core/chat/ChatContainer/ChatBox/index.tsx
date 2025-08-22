@@ -14,7 +14,7 @@ import type {
 } from '@fastgpt/global/core/chat/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Box, Checkbox, Flex, Image } from '@chakra-ui/react';
+import { Box, Button, Card, Checkbox, Flex, Image } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { useForm } from 'react-hook-form';
@@ -27,9 +27,8 @@ import {
   updateChatUserFeedback
 } from '@/web/core/chat/api';
 import type { AdminMarkType } from './components/SelectMarkCollection';
-
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-
 import { postQuestionGuide } from '@/web/core/ai/api';
 import type { ChatBoxInputType, ChatBoxInputFormType, SendPromptFnType } from './type.d';
 import type { StartChatFnProps, generatingMessageProps } from '../type';
@@ -50,9 +49,7 @@ import {
 import { ChatTypeEnum, textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import ChatProvider, { ChatBoxContext, type ChatProviderProps } from './Provider';
-
 import ChatItem from './components/ChatItem';
-
 import dynamic from 'next/dynamic';
 import type { StreamResponseType } from '@/web/common/api/fetch';
 import { useContextSelector } from 'use-context-selector';
@@ -68,6 +65,9 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import WelcomeHomeBox from '@/components/core/chat/ChatContainer/ChatBox/components/WelcomeHomeBox';
+import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
+import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
+import ChatHomeVariablesForm from '@/components/core/chat/ChatContainer/ChatBox/components/ChatHomeVariablesForm';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
@@ -151,6 +151,10 @@ const ChatBox = ({
   const setAudioPlayingChatId = useContextSelector(ChatBoxContext, (v) => v.setAudioPlayingChatId);
   const splitText2Audio = useContextSelector(ChatBoxContext, (v) => v.splitText2Audio);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
+
+  const quickApps = useContextSelector(ChatBoxContext, (v) => v.quickApps);
+  const onSwitchQuickApp = useContextSelector(ChatBoxContext, (v) => v.onSwitchQuickApp);
+  const currentQuickAppId = useContextSelector(ChatBoxContext, (v) => v.currentQuickAppId);
 
   // Workflow running, there are user input or selection
   const isInteractive = useMemo(() => checkIsInteractiveByHistories(chatRecords), [chatRecords]);
@@ -864,6 +868,23 @@ const ChatBox = ({
 
   const canSendPrompt = onStartChat && chatStarted && active && !isInteractive;
 
+  // Home chat: only hide ChatInput when a quick app is selected AND it requires variables (not started yet)
+  const showChatInput = useMemo(() => {
+    const hasAnyVariables =
+      (variableList && variableList.length > 0) ||
+      (allVariableList && allVariableList.some((i) => i.type === VariableInputEnum.custom));
+    if (chatType === ChatTypeEnum.home) {
+      // Quick app selected
+      if (currentQuickAppId) {
+        return !(hasAnyVariables && !chatStarted);
+      }
+      // No quick app selected -> always show input
+      return true;
+    }
+    // Other chat types: keep original gating
+    return Boolean(canSendPrompt);
+  }, [canSendPrompt, chatStarted, chatType, currentQuickAppId, variableList, allVariableList]);
+
   // Add listener
   useEffect(() => {
     const windowMessage = ({ data }: MessageEvent<{ type: 'sendPrompt'; text: string }>) => {
@@ -966,28 +987,29 @@ const ChatBox = ({
     return (
       <ScrollData
         ScrollContainerRef={ScrollContainerRef}
-        flex={showHomeWelcome ? '0 0 50%' : '1 0 0'}
+        flex={showHomeWelcome ? ['0 0 38%', '0 0 42%'] : '1 0 0'}
         h={0}
         w={'100%'}
         overflow={'overlay'}
         px={[4, 0]}
-        pb={10}
+        pb={6}
       >
         <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
           {/* chat header */}
           {showHomeWelcome && <WelcomeHomeBox />}
           {showEmpty && <Empty />}
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
-          {/* variable input */}
-          {(!!variableList?.length || !!externalVariableList?.length) && (
-            <Box id="variable-input">
-              <VariableInputForm
-                chatStarted={chatStarted}
-                chatForm={chatForm}
-                showExternalVariables={[ChatTypeEnum.log, ChatTypeEnum.chat].includes(chatType)}
-              />
-            </Box>
-          )}
+          {/* variable input (hidden on home) */}
+          {chatType !== ChatTypeEnum.home &&
+            (!!variableList?.length || !!externalVariableList?.length) && (
+              <Box id="variable-input">
+                <VariableInputForm
+                  chatStarted={chatStarted}
+                  chatForm={chatForm}
+                  showExternalVariables={[ChatTypeEnum.log, ChatTypeEnum.chat].includes(chatType)}
+                />
+              </Box>
+            )}
           {/* chat history */}
           <Box id={'history'}>
             {chatRecords.map((item, index) => (
@@ -1114,16 +1136,28 @@ const ChatBox = ({
       <Script src={getWebReqUrl('/js/html2pdf.bundle.min.js')} strategy="lazyOnload"></Script>
       {/* chat box container */}
       {RenderRecords}
-      {/* message input */}
-      {canSendPrompt && (
-        <ChatInput
-          onSendMessage={sendPrompt}
-          onStop={() => chatController.current?.abort('stop')}
-          TextareaDom={TextareaDom}
-          resetInputVal={resetInputVal}
-          chatForm={chatForm}
-        />
-      )}
+
+      <Box
+        w={'100%'}
+        px={[3, 5]}
+        m={['0 auto 10px', '10px auto']}
+        maxW={['auto', 'min(820px, 100%)']}
+      >
+        {/* Quick Apps Button Group */}
+        <ChatHomeVariablesForm chatType={chatType} chatForm={chatForm} chatStarted={chatStarted} />
+
+        {/* message input */}
+        {showChatInput && (
+          <ChatInput
+            onSendMessage={sendPrompt}
+            onStop={() => chatController.current?.abort('stop')}
+            TextareaDom={TextareaDom}
+            resetInputVal={resetInputVal}
+            chatForm={chatForm}
+          />
+        )}
+      </Box>
+
       {/* user feedback modal */}
       {!!feedbackId && chatId && (
         <FeedbackModal
