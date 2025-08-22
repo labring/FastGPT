@@ -34,7 +34,7 @@ async function handler(
     (async () => {
       const versions = await MongoAppVersion.find(match)
         .sort({
-          time: -1
+          _id: -1
         })
         .skip(offset)
         .limit(pageSize)
