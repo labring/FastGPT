@@ -207,9 +207,7 @@ const AddFavouriteAppModal = ({ favourites, onClose, onRefresh }: Props) => {
                   align="stretch"
                   spacing={1.5}
                   flex={1}
-                  pl={4}
-                  pr={3}
-                  mr={1}
+                  px={4}
                   overflowY="auto"
                   h={0}
                   minH={0}
