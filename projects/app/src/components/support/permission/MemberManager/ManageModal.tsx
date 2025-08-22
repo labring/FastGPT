@@ -1,3 +1,6 @@
+/**
+ * @deprecated
+ */
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { Flex, ModalBody, Table, TableContainer, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';

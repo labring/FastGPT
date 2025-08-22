@@ -16,7 +16,7 @@ export type ResourceType = `${PerResourceTypeEnum}`;
 /**
  * Define the roles. Each role is a binary number, only one bit is set to 1.
  */
-export type RoleListType<T extends string | number | symbol> = Readonly<
+export type RoleListType<T extends string | number | symbol = CommonRoleKeyEnum> = Readonly<
   Record<
     T | CommonRoleKeyEnum,
     Readonly<{
@@ -41,7 +41,7 @@ export type RoleListType<T extends string | number | symbol> = Readonly<
  *   write: 0b110, // bad, should be 0b010
  * }
  */
-export type PermissionListType<T extends string | number | symbol> = Readonly<
+export type PermissionListType<T extends string | number | symbol = CommonPerKeyEnum> = Readonly<
   Record<T | CommonPerKeyEnum, PermissionValueType>
 >;
 

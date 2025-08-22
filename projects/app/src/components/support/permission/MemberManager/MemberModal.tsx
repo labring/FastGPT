@@ -3,18 +3,16 @@ import { getTeamMembers } from '@/web/support/user/team/api';
 import { getGroupList } from '@/web/support/user/team/group/api';
 import useOrg from '@/web/support/user/team/org/hooks/useOrg';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { ChevronDownIcon } from '@chakra-ui/icons';
-import { Box, Button, Flex, Grid, HStack, ModalBody, ModalFooter, Text } from '@chakra-ui/react';
+import { Box, Button, Flex, Grid, HStack, ModalBody, ModalFooter } from '@chakra-ui/react';
 import {
   DEFAULT_ORG_AVATAR,
   DEFAULT_TEAM_AVATAR,
   DEFAULT_USER_AVATAR
 } from '@fastgpt/global/common/system/constants';
-import { type UpdateClbPermissionProps } from '@fastgpt/global/support/permission/collaborator';
 import { type MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import { type OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
-import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import { TeamTmbItemType, type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
@@ -22,28 +20,28 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { useTranslation } from 'next-i18next';
-import { type ValueOf } from 'next/dist/shared/lib/constants';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { CollaboratorContext } from './context';
 import MemberItemCard from './MemberItemCard';
-import RoleSelect from './RoleSelect';
+import type {
+  CollaboratorItemDetailType,
+  CollaboratorItemType
+} from '@fastgpt/global/support/permission/collaborator';
+import type { RoleValueType } from '@fastgpt/global/support/permission/type';
+import { Permission } from '@fastgpt/global/support/permission/controller';
+import { getCollaboratorId } from '@fastgpt/global/support/permission/utils';
 
 const HoverBoxStyle = {
   bgColor: 'myGray.50',
   cursor: 'pointer'
 };
 
-function MemberModal({
-  onClose,
-  addPermissionOnly: addOnly = false
-}: {
-  onClose: () => void;
-  addPermissionOnly?: boolean;
-}) {
+function MemberModal({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
-  const collaboratorList = useContextSelector(CollaboratorContext, (v) => v.collaboratorList);
+  const collaboratorDetailList = useContextSelector(CollaboratorContext, (v) => v.collaboratorList);
+  const defaultRole = useContextSelector(CollaboratorContext, (v) => v.defaultRole);
   const [filterClass, setFilterClass] = useState<'member' | 'org' | 'group'>();
   const {
     paths,
@@ -91,20 +89,11 @@ function MemberModal({
     }
   );
 
-  const [selectedOrgList, setSelectedOrgIdList] = useState<OrgListItemType[]>([]);
+  const [editCollaborators, setCollaboratorList] = useState<CollaboratorItemDetailType[]>([]);
 
-  const [selectedMemberList, setSelectedMemberList] = useState<
-    Omit<TeamMemberItemType, 'permission' | 'teamId'>[]
-  >([]);
-
-  const [selectedGroupList, setSelectedGroupList] = useState<MemberGroupListItemType<false>[]>([]);
-  const roleList = useContextSelector(CollaboratorContext, (v) => v.roleList);
-  const getRoleLabelList = useContextSelector(CollaboratorContext, (v) => v.getRoleLabelList);
-  const [selectedRole, setSelectedRole] = useState<number | undefined>(roleList?.read?.value);
-  const roleLabel = useMemo(() => {
-    if (selectedRole === undefined) return '';
-    return getRoleLabelList(selectedRole!).join('、');
-  }, [getRoleLabelList, selectedRole]);
+  useEffect(() => {
+    setCollaboratorList(collaboratorDetailList);
+  }, [collaboratorDetailList]);
 
   const onUpdateCollaborators = useContextSelector(
     CollaboratorContext,
@@ -114,11 +103,16 @@ function MemberModal({
   const { runAsync: onConfirm, loading: isUpdating } = useRequest2(
     () =>
       onUpdateCollaborators({
-        members: selectedMemberList.map((item) => item.tmbId),
-        groups: selectedGroupList.map((item) => item._id),
-        orgs: selectedOrgList.map((item) => item._id),
-        permission: addOnly ? undefined : selectedRole!
-      } as UpdateClbPermissionProps<ValueOf<typeof addOnly>>),
+        collaborators: editCollaborators.map(
+          (clb) =>
+            ({
+              tmbId: clb.tmbId,
+              groupId: clb.groupId,
+              orgId: clb.orgId,
+              permission: clb.permission.role
+            }) as CollaboratorItemType
+        )
+      }),
     {
       successToast: t('common:add_success'),
       onSuccess() {
@@ -133,40 +127,13 @@ function MemberModal({
     { label: t('user:team.group.group'), icon: DEFAULT_TEAM_AVATAR, value: 'group' }
   ]);
 
-  const selectedList = useMemo(() => {
-    return [
-      ...selectedOrgList.map((item) => ({
-        id: `org-${item._id}`,
-        avatar: item.avatar,
-        name: item.name,
-        onDelete: () => setSelectedOrgIdList(selectedOrgList.filter((v) => v._id !== item._id)),
-        orgs: undefined
-      })),
-      ...selectedGroupList.map((item) => ({
-        id: `group-${item._id}`,
-        avatar: item.avatar,
-        name: item.name === DefaultGroupName ? userInfo?.team.teamName : item.name,
-        onDelete: () => setSelectedGroupList(selectedGroupList.filter((v) => v._id !== item._id)),
-        orgs: undefined
-      })),
-      ...selectedMemberList.map((item) => ({
-        id: `member-${item.tmbId}`,
-        avatar: item.avatar,
-        name: item.memberName,
-        onDelete: () =>
-          setSelectedMemberList(selectedMemberList.filter((v) => v.tmbId !== item.tmbId)),
-        orgs: item.orgs
-      }))
-    ];
-  }, [selectedOrgList, selectedGroupList, selectedMemberList, userInfo?.team.teamName]);
-
   return (
     <MyModal
       isOpen
       onClose={onClose}
-      iconSrc={addOnly ? 'keyPrimary' : 'modal/AddClb'}
-      title={addOnly ? t('user:team.add_permission') : t('user:team.add_collaborator')}
-      minW="800px"
+      iconSrc={'modal/AddClb'}
+      title={t('user:team.manage_collaborator')}
+      minW="900px"
       maxW={'60vw'}
       h={'100%'}
       maxH={'90vh'}
@@ -178,7 +145,7 @@ function MemberModal({
           border="1px solid"
           borderColor="myGray.200"
           borderRadius="0.5rem"
-          gridTemplateColumns="1fr 1fr"
+          gridTemplateColumns="40% 60%"
           h={'100%'}
         >
           <Flex
@@ -259,31 +226,16 @@ function MemberModal({
               )}
               {(filterClass === 'member' || searchKey) &&
                 (() => {
-                  const Members = members?.map((member) => {
-                    const onChange = () => {
-                      setSelectedMemberList((state) => {
-                        if (state.find((v) => v.tmbId === member.tmbId)) {
-                          return state.filter((v) => v.tmbId !== member.tmbId);
-                        }
-                        return [...state, member];
-                      });
-                    };
-                    const collaborator = collaboratorList?.find((v) => v.tmbId === member.tmbId);
-                    return (
-                      <MemberItemCard
-                        addOnly={addOnly}
-                        avatar={member.avatar}
-                        key={member.tmbId}
-                        name={member.memberName}
-                        role={collaborator?.permission.role}
-                        onChange={onChange}
-                        isChecked={!!selectedMemberList.find((v) => v.tmbId === member.tmbId)}
-                        orgs={member.orgs}
-                      />
-                    );
-                  });
+                  const MemberList = (
+                    <RenderMemberList
+                      members={members}
+                      setCollaboratorList={setCollaboratorList}
+                      editCollaborators={editCollaborators}
+                      defaultRole={defaultRole}
+                    />
+                  );
                   return searchKey ? (
-                    Members
+                    MemberList
                   ) : (
                     <TeamMemberScrollData
                       flexDirection={'column'}
@@ -291,31 +243,36 @@ function MemberModal({
                       userSelect={'none'}
                       height={'fit-content'}
                     >
-                      {Members}
+                      {MemberList}
                     </TeamMemberScrollData>
                   );
                 })()}
               {(filterClass === 'org' || searchKey) &&
                 (() => {
                   const Orgs = orgs?.map((org) => {
-                    const onChange = () => {
-                      setSelectedOrgIdList((state) => {
-                        if (state.find((v) => v._id === org._id)) {
-                          return state.filter((v) => v._id !== org._id);
+                    const addTheOrg = () => {
+                      setCollaboratorList((state) => {
+                        if (state.find((v) => v.orgId === org._id)) {
+                          return state.filter((v) => v.orgId !== org._id);
                         }
-                        return [...state, org];
+                        return [
+                          ...state,
+                          {
+                            ...org,
+                            orgId: org._id,
+                            permission: new Permission({ role: defaultRole })
+                          }
+                        ];
                       });
                     };
-                    const collaborator = collaboratorList?.find((v) => v.orgId === org._id);
+                    const isChecked = !!editCollaborators.find((v) => v.orgId === org._id);
                     return (
                       <MemberItemCard
                         avatar={org.avatar}
                         key={org._id}
                         name={org.name}
-                        onChange={onChange}
-                        addOnly={addOnly}
-                        role={collaborator?.permission.role}
-                        isChecked={!!selectedOrgList.find((v) => String(v._id) === String(org._id))}
+                        onChange={addTheOrg}
+                        isChecked={isChecked}
                         rightSlot={
                           org.total && (
                             <MyIcon
@@ -328,7 +285,6 @@ function MemberModal({
                               }}
                               onClick={(e) => {
                                 onClickOrg(org);
-                                // setPath(getOrgChildrenPath(org));
                                 e.stopPropagation();
                               }}
                             />
@@ -342,47 +298,33 @@ function MemberModal({
                   ) : (
                     <OrgMemberScrollData>
                       {Orgs}
-                      {orgMembers.map((member) => {
-                        const isChecked = !!selectedMemberList.find(
-                          (v) => v.tmbId === member.tmbId
-                        );
-                        const collaborator = collaboratorList?.find(
-                          (v) => v.tmbId === member.tmbId
-                        );
-                        return (
-                          <MemberItemCard
-                            avatar={member.avatar}
-                            key={member.tmbId}
-                            name={member.memberName}
-                            onChange={() => {
-                              setSelectedMemberList((state) => {
-                                if (state.find((v) => v.tmbId === member.tmbId)) {
-                                  return state.filter((v) => v.tmbId !== member.tmbId);
-                                }
-                                return [...state, member];
-                              });
-                            }}
-                            isChecked={isChecked}
-                            role={collaborator?.permission.role}
-                            addOnly={addOnly && !!member.permission.role}
-                            orgs={member.orgs}
-                          />
-                        );
-                      })}
+                      <RenderMemberList
+                        members={orgMembers}
+                        setCollaboratorList={setCollaboratorList}
+                        editCollaborators={editCollaborators}
+                        defaultRole={defaultRole}
+                      />
                     </OrgMemberScrollData>
                   );
                 })()}
               {(filterClass === 'group' || searchKey) &&
                 groups?.map((group) => {
-                  const onChange = () => {
-                    setSelectedGroupList((state) => {
-                      if (state.find((v) => v._id === group._id)) {
-                        return state.filter((v) => v._id !== group._id);
+                  const addGroup = () => {
+                    setCollaboratorList((state) => {
+                      if (state.find((v) => v.groupId === group._id)) {
+                        return state.filter((v) => v.groupId !== group._id);
                       }
-                      return [...state, group];
+                      return [
+                        ...state,
+                        {
+                          ...group,
+                          groupId: group._id,
+                          permission: new Permission({ role: defaultRole })
+                        }
+                      ];
                     });
                   };
-                  const collaborator = collaboratorList?.find((v) => v.groupId === group._id);
+                  const isChecked = !!editCollaborators.find((v) => v.groupId === group._id);
                   return (
                     <MemberItemCard
                       avatar={group.avatar}
@@ -390,10 +332,8 @@ function MemberModal({
                       name={
                         group.name === DefaultGroupName ? userInfo?.team.teamName ?? '' : group.name
                       }
-                      role={collaborator?.permission.role}
-                      onChange={onChange}
-                      isChecked={!!selectedGroupList.find((v) => v._id === group._id)}
-                      addOnly={addOnly}
+                      onChange={addGroup}
+                      isChecked={isChecked}
                     />
                   );
                 })}
@@ -403,18 +343,38 @@ function MemberModal({
           <Flex h={'100%'} p="4" flexDirection="column">
             <Box>
               {`${t('user:has_chosen')}: `}
-              {selectedMemberList.length + selectedGroupList.length + selectedOrgList.length}
+              {editCollaborators.length}
             </Box>
             <Flex flexDirection="column" mt="2" gap={1} overflow={'auto'} flex={'1 0 0'} h={0}>
-              {selectedList.map((item) => {
+              {editCollaborators.map((clb) => {
+                const onDelete = () => {
+                  setCollaboratorList((state) => {
+                    return state.filter((v) => v.tmbId !== clb.tmbId);
+                  });
+                };
+                const onRoleChange = (role: RoleValueType) => {
+                  setCollaboratorList((state) => {
+                    const index = state.findIndex((v) => v.tmbId === clb.tmbId);
+                    if (index === -1) return state;
+                    return [
+                      ...state.slice(0, index),
+                      {
+                        ...state[index],
+                        permission: new Permission({ role })
+                      },
+                      ...state.slice(index + 1)
+                    ];
+                  });
+                };
                 return (
                   <MemberItemCard
-                    key={item.id}
-                    avatar={item.avatar}
-                    name={item.name ?? ''}
-                    onChange={item.onDelete}
-                    onDelete={item.onDelete}
-                    orgs={item?.orgs}
+                    key={'chosen-' + getCollaboratorId(clb)}
+                    avatar={clb.avatar}
+                    name={clb.name ?? ''}
+                    onChange={() => {}}
+                    onDelete={onDelete}
+                    role={clb.permission.role}
+                    onRoleChange={onRoleChange}
                   />
                 );
               })}
@@ -423,32 +383,6 @@ function MemberModal({
         </Grid>
       </ModalBody>
       <ModalFooter>
-        {!addOnly && !!roleList && (
-          <RoleSelect
-            value={selectedRole}
-            Button={
-              <Flex
-                alignItems={'center'}
-                bg={'myGray.50'}
-                border="base"
-                fontSize={'sm'}
-                px={3}
-                borderRadius={'md'}
-                h={'32px'}
-              >
-                {roleLabel}
-                <ChevronDownIcon fontSize={'md'} />
-              </Flex>
-            }
-            onChange={(v) => setSelectedRole(v)}
-          />
-        )}
-        {addOnly && (
-          <HStack bg={'blue.50'} color={'blue.600'} padding={'6px 12px'} rounded={'5px'}>
-            <MyIcon name="common/info" w="1rem" h="1rem" />
-            <Text fontSize="12px">{t('user:permission_add_tip')}</Text>
-          </HStack>
-        )}
         <Button isLoading={isUpdating} ml="4" h={'32px'} onClick={onConfirm}>
           {t('common:Confirm')}
         </Button>
@@ -458,3 +392,51 @@ function MemberModal({
 }
 
 export default MemberModal;
+
+const RenderMemberList = ({
+  members,
+  setCollaboratorList,
+  editCollaborators,
+  defaultRole
+}: {
+  members: TeamMemberItemType[];
+  setCollaboratorList: React.Dispatch<React.SetStateAction<CollaboratorItemDetailType[]>>;
+  editCollaborators: CollaboratorItemDetailType[];
+  defaultRole: RoleValueType;
+}) => {
+  return (
+    <>
+      {members?.map((member) => {
+        const addTheMember = () => {
+          setCollaboratorList((state) => {
+            if (state.find((v) => v.tmbId === member.tmbId)) {
+              return state.filter((v) => v.tmbId !== member.tmbId);
+            }
+            return [
+              ...state,
+              {
+                tmbId: member.tmbId,
+                avatar: member.avatar,
+                name: member.memberName,
+                teamId: member.teamId,
+                permission: new Permission({ role: defaultRole })
+              }
+            ];
+          });
+        };
+        const isChecked = !!editCollaborators.find((v) => v.tmbId === member.tmbId);
+        return (
+          <MemberItemCard
+            role={member.permission.role}
+            avatar={member.avatar}
+            key={member.tmbId}
+            name={member.memberName}
+            onChange={addTheMember}
+            isChecked={isChecked}
+            orgs={member.orgs}
+          />
+        );
+      })}
+    </>
+  );
+};
