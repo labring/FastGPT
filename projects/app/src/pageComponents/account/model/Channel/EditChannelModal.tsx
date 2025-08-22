@@ -56,7 +56,8 @@ const EditChannelModal = ({
   onClose: () => void;
   onSuccess: () => void;
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
   const { defaultModels } = useSystemStore();
   const isEdit = defaultConfig.id !== 0;
 
@@ -74,7 +75,7 @@ const EditChannelModal = ({
               label: value.name,
               provider: 'Other'
             };
-            const provider = getModelProvider(mapData.provider);
+            const provider = getModelProvider(mapData.provider, language);
             return {
               order: provider.order,
               defaultBaseUrl: value.defaultBaseUrl,
@@ -127,11 +128,11 @@ const EditChannelModal = ({
     const currentProvider = aiproxyIdMap[providerType]?.provider;
     return systemModelList
       .map((item) => {
-        const provider = getModelProvider(item.provider);
+        const provider = getModelProvider(item.provider, language);
 
         return {
           provider: item.provider,
-          icon: provider.avatar,
+          icon: provider?.avatar,
           label: item.model,
           value: item.model
         };

@@ -26,7 +26,8 @@ const TTSSelect = ({
   value?: AppTTSConfigType;
   onChange: (e: AppTTSConfigType) => void;
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
   const { ttsModelList } = useSystemStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -37,7 +38,7 @@ const TTSSelect = ({
       { label: t('app:tts_close'), value: TTSTypeEnum.none, children: [] },
       { label: t('app:tts_browser'), value: TTSTypeEnum.web, children: [] },
       ...ttsModelList.map((model) => {
-        const providerData = getModelProvider(model.provider);
+        const providerData = getModelProvider(model.provider, language);
         return {
           label: (
             <HStack>

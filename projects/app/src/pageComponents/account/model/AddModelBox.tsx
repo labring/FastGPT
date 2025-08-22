@@ -95,7 +95,8 @@ export const ModelEditModal = ({
   onSuccess: () => void;
   onClose: () => void;
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
   const { feConfigs } = useSystemStore();
 
   const { register, getValues, setValue, handleSubmit, watch, reset } =
@@ -111,10 +112,10 @@ export const ModelEditModal = ({
   const isRerankModel = modelData?.type === ModelTypeEnum.rerank;
 
   const provider = watch('provider');
-  const providerData = useMemo(() => getModelProvider(provider), [provider]);
+  const providerData = useMemo(() => getModelProvider(provider, language), [provider, language]);
 
   const providerList = useRef<{ label: any; value: ModelProviderIdType }[]>(
-    ModelProviderList.map((item) => ({
+    ModelProviderList(language).map((item) => ({
       label: (
         <HStack>
           <Avatar src={item.avatar} w={'1rem'} />

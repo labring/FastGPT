@@ -66,7 +66,8 @@ const defaultWhisperConfig: AppWhisperConfigType = {
 };
 
 const HomeChatWindow = ({ myApps }: Props) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
   const { isPc } = useSystem();
 
   const { userInfo } = useUserStore();
