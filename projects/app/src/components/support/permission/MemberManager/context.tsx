@@ -1,6 +1,6 @@
 import { useDisclosure } from '@chakra-ui/react';
 import type {
-  CollaboratorItemType,
+  CollaboratorItemDetailType,
   UpdateClbPermissionProps
 } from '@fastgpt/global/support/permission/collaborator';
 import { Permission } from '@fastgpt/global/support/permission/controller';
@@ -19,14 +19,14 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { useTranslation } from 'next-i18next';
-import { CommonRoleList } from '@fastgpt/global/support/permission/constant';
+import { CommonRoleList, NullRoleVal } from '@fastgpt/global/support/permission/constant';
 
 const MemberModal = dynamic(() => import('./MemberModal'));
-const ManageModal = dynamic(() => import('./ManageModal'));
 
 export type MemberManagerInputPropsType = {
   permission: Permission;
-  onGetCollaboratorList: () => Promise<CollaboratorItemType[]>;
+  defaultRole: RoleValueType;
+  onGetCollaboratorList: () => Promise<CollaboratorItemDetailType[]>;
   roleList?: RoleListType;
   onUpdateCollaborators: (props: UpdateClbPermissionProps) => Promise<any>;
   onDelOneCollaborator: (
@@ -36,20 +36,19 @@ export type MemberManagerInputPropsType = {
 };
 
 export type MemberManagerPropsType = MemberManagerInputPropsType & {
-  collaboratorList: CollaboratorItemType[];
+  collaboratorList: CollaboratorItemDetailType[];
   refetchCollaboratorList: () => void;
   isFetchingCollaborator: boolean;
   getRoleLabelList: (role: RoleValueType) => string[];
 };
+
 export type ChildrenProps = {
-  onOpenAddMember: () => void;
   onOpenManageModal: () => void;
   MemberListCard: (props: MemberListCardProps) => JSX.Element;
 };
 
-type CollaboratorContextType = MemberManagerPropsType & {};
-
-export const CollaboratorContext = createContext<CollaboratorContextType>({
+export const CollaboratorContext = createContext<MemberManagerPropsType>({
+  defaultRole: NullRoleVal,
   collaboratorList: [],
   roleList: CommonRoleList,
   onUpdateCollaborators: () => {
@@ -64,7 +63,7 @@ export const CollaboratorContext = createContext<CollaboratorContextType>({
   refetchCollaboratorList: (): void => {
     throw new Error('Function not implemented.');
   },
-  onGetCollaboratorList: (): Promise<CollaboratorItemType[]> => {
+  onGetCollaboratorList: (): Promise<CollaboratorItemDetailType[]> => {
     throw new Error('Function not implemented.');
   },
   isFetchingCollaborator: false,
@@ -82,7 +81,8 @@ const CollaboratorContextProvider = ({
   refreshDeps = [],
   isInheritPermission,
   hasParent,
-  addPermissionOnly
+  addPermissionOnly,
+  defaultRole
 }: MemberManagerInputPropsType & {
   children: (props: ChildrenProps) => ReactNode;
   refetchResource?: () => void;
@@ -115,6 +115,7 @@ const CollaboratorContextProvider = ({
         return data.map((item) => {
           return {
             ...item,
+            // because the permission is not initialized in the frontend, so we need to initialize it here
             permission: new Permission({
               role: item.permission.role
             })
@@ -162,11 +163,6 @@ const CollaboratorContextProvider = ({
 
   const { ConfirmModal, openConfirm } = useConfirm({});
   const {
-    isOpen: isOpenAddMember,
-    onOpen: onOpenAddMember,
-    onClose: onCloseAddMember
-  } = useDisclosure();
-  const {
     isOpen: isOpenManageModal,
     onOpen: onOpenManageModal,
     onClose: onCloseManageModal
@@ -181,53 +177,18 @@ const CollaboratorContextProvider = ({
     roleList,
     onUpdateCollaborators: onUpdateCollaboratorsThen,
     onDelOneCollaborator: onDelOneCollaboratorThen,
-    getRoleLabelList
+    getRoleLabelList,
+    defaultRole
   };
 
-  const onOpenAddMemberModal = () => {
-    if (isInheritPermission && hasParent) {
-      openConfirm(
-        () => {
-          onOpenAddMember();
-        },
-        undefined,
-        t('common:permission.Remove InheritPermission Confirm')
-      )();
-    } else {
-      onOpenAddMember();
-    }
-  };
-  const onOpenManageModalModal = () => {
-    if (isInheritPermission && hasParent) {
-      openConfirm(
-        () => {
-          onOpenManageModal();
-        },
-        undefined,
-        t('common:permission.Remove InheritPermission Confirm')
-      )();
-    } else {
-      onOpenManageModal();
-    }
-  };
   return (
     <CollaboratorContext.Provider value={contextValue}>
       {children({
-        onOpenAddMember: onOpenAddMemberModal,
-        onOpenManageModal: onOpenManageModalModal,
+        onOpenManageModal,
         MemberListCard
       })}
-      {isOpenAddMember && (
-        <MemberModal
-          onClose={() => {
-            onCloseAddMember();
-            refetchResource?.();
-          }}
-          addPermissionOnly={addPermissionOnly}
-        />
-      )}
       {isOpenManageModal && (
-        <ManageModal
+        <MemberModal
           onClose={() => {
             onCloseManageModal();
             refetchResource?.();

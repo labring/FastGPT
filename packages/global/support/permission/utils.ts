@@ -119,5 +119,5 @@ export const getChangedCollaborators = ({
   return changedClbs;
 };
 
-export const getCollaboratorId = (clb: CollaboratorItemType) =>
+export const getCollaboratorId = (clb: CollaboratorIdType) =>
   (clb.tmbId || clb.groupId || clb.orgId)!;

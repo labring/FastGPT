@@ -67,7 +67,7 @@ const ConfigPerModal = ({
               isInheritPermission={isInheritPermission}
               hasParent={hasParent}
             >
-              {({ MemberListCard, onOpenManageModal, onOpenAddMember }) => {
+              {({ MemberListCard, onOpenManageModal }) => {
                 return (
                   <>
                     <Flex
@@ -77,24 +77,14 @@ const ConfigPerModal = ({
                       w="full"
                     >
                       <Box fontSize={'sm'}>{t('common:permission.Collaborator')}</Box>
-                      <Flex flexDirection="row" gap="2">
-                        <Button
-                          size="sm"
-                          variant="whitePrimary"
-                          leftIcon={<MyIcon w="4" name="common/settingLight" />}
-                          onClick={onOpenManageModal}
-                        >
-                          {t('common:permission.Manage')}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="whitePrimary"
-                          leftIcon={<MyIcon w="4" name="support/permission/collaborator" />}
-                          onClick={onOpenAddMember}
-                        >
-                          {t('common:Add')}
-                        </Button>
-                      </Flex>
+                      <Button
+                        size="sm"
+                        variant="whitePrimary"
+                        leftIcon={<MyIcon w="4" name="common/settingLight" />}
+                        onClick={onOpenManageModal}
+                      >
+                        {t('common:permission.Manage')}
+                      </Button>
                     </Flex>
                     <MemberListCard mt={2} p={1.5} bg="myGray.100" borderRadius="md" />
                   </>

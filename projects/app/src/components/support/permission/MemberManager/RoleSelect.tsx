@@ -18,6 +18,8 @@ import { Permission } from '@fastgpt/global/support/permission/controller';
 import { CollaboratorContext } from './context';
 import { useTranslation } from 'next-i18next';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 
 export type PermissionSelectProps = {
   value?: RoleValueType;
@@ -47,16 +49,15 @@ function RoleSelect({
   offset = [0, 5],
   Button,
   width = 'auto',
-  onDelete
+  onDelete,
+  disabled
 }: PermissionSelectProps) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<NodeJS.Timeout>();
 
-  const { permission, roleList: permissionList } = useContextSelector(
-    CollaboratorContext,
-    (v) => v
-  );
+  const { roleList: permissionList } = useContextSelector(CollaboratorContext, (v) => v);
+  const permission = useContextSelector(CollaboratorContext, (v) => v.permission);
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -120,6 +121,7 @@ function RoleSelect({
         ref={ref}
         w="fit-content"
         onMouseEnter={() => {
+          if (disabled) return;
           if (trigger === 'hover') {
             setIsOpen(true);
           }
@@ -135,8 +137,10 @@ function RoleSelect({
       >
         <MenuButton
           position={'relative'}
+          cursor={disabled ? 'not-allowed' : 'pointer'}
           onClickCapture={() => {
             if (trigger === 'click') {
+              if (disabled) return;
               setIsOpen(!isOpen);
             }
           }}
