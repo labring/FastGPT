@@ -49,3 +49,28 @@ export type evaluationType = Pick<
 export type listEvalItemsItem = EvalItemSchemaType & {
   evalItemId: string;
 };
+
+export type EvalDatasetCollectionSchemaType = {
+  _id: string;
+  teamId: string;
+  tmbId: string;
+  name: string;
+  description: string;
+  createTime: Date;
+  updateTime: Date;
+  dataCountByGen: number;
+  metadata: Record<string, any>;
+};
+
+export type EvalDatasetDataSchemaType = {
+  _id: string;
+  datasetId: string;
+  user_input: string;
+  actual_output: string;
+  expected_output: string;
+  context: string[];
+  retrieval_context: string[];
+  metadata: Record<string, any>;
+  createTime: Date;
+  updateTime: Date;
+};
