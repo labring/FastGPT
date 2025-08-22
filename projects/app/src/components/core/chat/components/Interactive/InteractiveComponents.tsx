@@ -42,6 +42,7 @@ export const SelectOptionsComponent = React.memo(function SelectOptionsComponent
       <Box w={'250px'}>
         <LeftRadio<string>
           py={3.5}
+          gridGap={3}
           align={'flex-top'}
           list={userSelectOptions.map((option: UserSelectOptionItemType) => ({
             title: (
@@ -54,10 +55,7 @@ export const SelectOptionsComponent = React.memo(function SelectOptionsComponent
           value={userSelectedVal || ''}
           defaultBg={'white'}
           activeBg={'white'}
-          onChange={(val) => {
-            if (userSelectedVal) return;
-            onSelect(val);
-          }}
+          onChange={(val) => onSelect(val)}
           isDisabled={!!userSelectedVal}
         />
       </Box>
