@@ -7,6 +7,7 @@
   "avg_ttfb": "平均首字時長 (秒)",
   "azure": "Azure",
   "base_url": "代理地址",
+  "batch_size": "並發請求數",
   "channel_name": "管道名稱",
   "channel_priority": "優先順序",
   "channel_priority_tip": "優先順序越高的管道，越容易被請求到",

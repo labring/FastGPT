@@ -23,8 +23,9 @@ export async function getVectorsByText({ model, input, type, headers }: GetVecto
 
   const formatInput = Array.isArray(input) ? input : [input];
 
-  // 20 size every request
-  const chunkSize = parseInt(process.env.EMBEDDING_CHUNK_SIZE || '10');
+  let chunkSize = Number(model.batchSize || 1);
+  chunkSize = isNaN(chunkSize) ? 1 : chunkSize;
+
   const chunks = [];
   for (let i = 0; i < formatInput.length; i += chunkSize) {
     chunks.push(formatInput.slice(i, i + chunkSize));
