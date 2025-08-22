@@ -18,46 +18,59 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import type { ChatTagType } from '@fastgpt/global/core/chat/setting/type';
+import type { ChatFavouriteTagType } from '@fastgpt/global/core/chat/setting/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getFavouriteApps, updateChatSetting, updateFavouriteAppTags } from '@/web/core/chat/api';
 import { useForm } from 'react-hook-form';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { ChatFavouriteApp } from '@fastgpt/global/core/chat/favouriteApp/type';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 type EditableTagItemProps = {
-  tag: ChatTagType;
+  tag: ChatFavouriteTagType;
   isEditing: boolean;
   onStartEdit: () => void;
-  onCommit: (updated: ChatTagType) => Promise<void> | void;
-  onConfirmDelete: (tag: ChatTagType) => void;
-  onSaveTagForApp: (tag: ChatTagType) => void;
+  onCommit: (updated: ChatFavouriteTagType) => Promise<void> | void;
+  onCancelNew: (tag: ChatFavouriteTagType) => void;
+  onExitEdit: (tag: ChatFavouriteTagType) => void;
+  onConfirmDelete: (tag: ChatFavouriteTagType) => void;
+  onSaveTagForApp: (tag: ChatFavouriteTagType) => void;
+  appCount?: number;
 };
 
 const EditableTagItem = React.memo(function EditableTagItem({
   isEditing,
   tag: initialTag,
   onCommit,
+  onCancelNew,
+  onExitEdit,
   onStartEdit,
   onConfirmDelete,
-  onSaveTagForApp
+  onSaveTagForApp,
+  appCount
 }: EditableTagItemProps) {
-  const [tag, setTag] = useState<ChatTagType>(initialTag);
+  const [tag, setTag] = useState<ChatFavouriteTagType>(initialTag);
   const [isSelfEditing, setIsSelfEditing] = useState<boolean>(isEditing);
-  const [isInValid, setIsInValid] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFinishEdit = useCallback(async () => {
+    // 取消或者复原 tag 的名称
     if (tag.name.trim() === '') {
-      setIsInValid(true);
+      if ((initialTag.name || '').trim() === '') {
+        onCancelNew(initialTag);
+      } else {
+        setTag(initialTag);
+        setIsSelfEditing(false);
+      }
+      onExitEdit(initialTag);
+      if (inputRef.current) inputRef.current.blur();
       return;
     }
-    setIsInValid(false);
     setIsSelfEditing(false);
     await onCommit(tag);
 
     if (inputRef.current) inputRef.current.blur();
-  }, [tag, onCommit]);
+  }, [tag, onCommit, onCancelNew, onExitEdit, initialTag]);
 
   useEffect(() => {
     setIsSelfEditing(isEditing);
@@ -95,11 +108,8 @@ const EditableTagItem = React.memo(function EditableTagItem({
           <Input
             ref={inputRef}
             value={tag.name}
-            isInvalid={isInValid}
-            errorBorderColor="red.400"
             onBlur={handleFinishEdit}
             onChange={(e) => {
-              setIsInValid(false);
               const nextName = e.target.value;
               setTag({ ...tag, name: nextName });
             }}
@@ -113,7 +123,7 @@ const EditableTagItem = React.memo(function EditableTagItem({
             {tag.name}
           </Box>
         )}
-        {/* <Box userSelect="none">({category.appIds.length})</Box> */}
+        <Box userSelect="none">({appCount ?? 0})</Box>
       </Flex>
 
       {!isSelfEditing && (
@@ -161,7 +171,7 @@ const SaveTagForAppSubPanel = ({
   onClose,
   onRefresh
 }: {
-  tag: ChatTagType;
+  tag: ChatFavouriteTagType;
   onClose: () => void;
   onRefresh: () => Promise<any>;
 }) => {
@@ -203,14 +213,14 @@ const SaveTagForAppSubPanel = ({
 
   const checkedAppIds = useMemo(() => {
     return (localAllFavourites || [])
-      .filter((fav) => Array.isArray(fav.tags) && fav.tags.includes(tag.id))
+      .filter((fav) => Array.isArray(fav.favouriteTags) && fav.favouriteTags.includes(tag.id))
       .map((fav) => fav.appId);
   }, [localAllFavourites, tag.id]);
 
   const isAppChecked = useCallback(
     (appId: string) => {
       const f = (localAllFavourites || []).find((f) => f.appId === appId);
-      return Array.isArray(f?.tags) && f.tags.includes(tag.id);
+      return Array.isArray(f?.favouriteTags) && f.favouriteTags.includes(tag.id);
     },
     [localAllFavourites, tag.id]
   );
@@ -220,14 +230,14 @@ const SaveTagForAppSubPanel = ({
       setLocalAllFavourites((prev) =>
         (prev || []).map((item) => {
           if (item.appId !== appId) return item;
-          const tags: string[] = Array.isArray(item.tags) ? [...item.tags] : [];
+          const tags: string[] = Array.isArray(item.favouriteTags) ? [...item.favouriteTags] : [];
           const idx = tags.indexOf(tag.id);
           if (idx >= 0) {
             tags.splice(idx, 1);
           } else {
             tags.push(tag.id);
           }
-          return { ...item, tags };
+          return { ...item, favouriteTags: tags };
         })
       );
     },
@@ -238,7 +248,7 @@ const SaveTagForAppSubPanel = ({
   const { loading: isSaving, runAsync: saveApps } = useRequest2(
     async () => {
       await updateFavouriteAppTags(
-        localAllFavourites.map((item) => ({ id: item._id, tags: item.tags }))
+        localAllFavourites.map((item) => ({ id: item._id, tags: item.favouriteTags }))
       );
     },
     {
@@ -270,7 +280,7 @@ const SaveTagForAppSubPanel = ({
             />
 
             <Flex alignItems="center" gap="1">
-              <Box bg="myGray.100" rounded="sm" p="1">
+              <Box bg="myGray.100" rounded="sm" p="1" minW="30px" textAlign="center">
                 {tag.name}
               </Box>
               <Box>({checkedAppIds.length})</Box>
@@ -300,47 +310,53 @@ const SaveTagForAppSubPanel = ({
         </Flex>
       </Box>
 
-      <VStack
-        w="100%"
-        maxH={['70vh', '500px']}
-        minH={['50vh', '200px']}
-        overflowY="auto"
-        spacing={1}
-        alignItems="flex-start"
-        px="3"
-      >
-        {visibleFavourites.map((fav: any) => (
-          <Flex
-            key={fav._id}
-            py="2"
-            gap={2}
-            w="100%"
-            alignItems="center"
-            color="myGray.700"
-            flexShrink="0"
-            borderRadius="sm"
-            px="1"
-            _hover={{ bg: 'myGray.50' }}
-            cursor="pointer"
-            onClick={() => toggleAppChecked(fav.appId)}
-          >
-            <Checkbox
-              isChecked={isAppChecked(fav.appId)}
-              onChange={(e) => {
-                e.stopPropagation();
-                toggleAppChecked(fav.appId);
-              }}
-              size="sm"
-            />
-            <Flex alignItems="center" gap={2} flex="1" userSelect="none">
-              <Avatar src={fav.avatar} borderRadius={'md'} w="1.5rem" />
-              <Box className="textEllipsis" flex="1" pr="1">
-                {fav.name || fav.appId}
-              </Box>
+      {visibleFavourites.length > 0 ? (
+        <VStack
+          w="100%"
+          maxH={['70vh', '500px']}
+          minH={['50vh', '200px']}
+          overflowY="auto"
+          spacing={1}
+          alignItems="flex-start"
+          px="3"
+        >
+          {visibleFavourites.map((fav: any) => (
+            <Flex
+              key={fav._id}
+              py="2"
+              gap={3}
+              w="100%"
+              alignItems="center"
+              color="myGray.700"
+              flexShrink="0"
+              borderRadius="sm"
+              px="1"
+              _hover={{ bg: 'myGray.50' }}
+              cursor="pointer"
+              onClick={() => toggleAppChecked(fav.appId)}
+            >
+              <Checkbox
+                isChecked={isAppChecked(fav.appId)}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  toggleAppChecked(fav.appId);
+                }}
+                size="sm"
+              />
+              <Flex alignItems="center" gap={2} flex="1" userSelect="none">
+                <Avatar src={fav.avatar} borderRadius="sm" w="6" />
+                <Box className="textEllipsis" flex="1" pr="1" fontSize="sm">
+                  {fav.name || fav.appId}
+                </Box>
+              </Flex>
             </Flex>
-          </Flex>
-        ))}
-      </VStack>
+          ))}
+        </VStack>
+      ) : (
+        <Box>
+          <EmptyTip text={t('chat:setting.favourite.category.no_data')} />
+        </Box>
+      )}
     </Flex>
   );
 };
@@ -356,18 +372,17 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
   const refreshChatSetting = useContextSelector(ChatSettingContext, (v) => v.refreshChatSetting);
 
   // get tags from db
-  const tags = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.tags || []);
+  const tags = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.favouriteTags || []);
   // local editable tags list
-  const [localTags, setLocalTags] = useState<ChatTagType[]>(tags);
+  const [localTags, setLocalTags] = useState<ChatFavouriteTagType[]>(tags);
   // control the editable state
   const [isEditing, setIsEditing] = useState<string[]>([]);
   // delete confirm modal target
-  const [currentDelTag, setCurrentDelTag] = useState<ChatTagType | null>(null);
-
+  const [currentDelTag, setCurrentDelTag] = useState<ChatFavouriteTagType | null>(null);
   // update tags
   const { loading: isUpdating, runAsync: updateTags } = useRequest2(
-    async (nextTags: ChatTagType[]) => {
-      await updateChatSetting({ tags: nextTags });
+    async (nextTags: ChatFavouriteTagType[]) => {
+      await updateChatSetting({ favouriteTags: nextTags });
     },
     {
       manual: true,
@@ -383,16 +398,13 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
   const handleClickNewTag = () => {
     const id = getNanoid(8);
     const next = [{ id, name: '' }, ...localTags];
-    setLocalTags(next as ChatTagType[]);
+    setLocalTags(next as ChatFavouriteTagType[]);
     setIsEditing((prev) => [...prev, id]);
-
-    // TODO: persist immediately so new tag will be visible after refresh
-    // updateTags(next);
   };
 
   // handle commit updated tag to server
   const handleCommitTag = useCallback(
-    async (updated: ChatTagType) => {
+    async (updated: ChatFavouriteTagType) => {
       // compute next tags deterministically and use it for both state and request
       const next = localTags.map((c) => (c.id === updated.id ? updated : c));
       setLocalTags(next);
@@ -402,9 +414,17 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
     [localTags, updateTags]
   );
 
+  const handleCancelNewTag = useCallback((target: ChatFavouriteTagType) => {
+    setLocalTags((prev) => prev.filter((c) => c.id !== target.id));
+    setIsEditing((prev) => prev.filter((v) => v !== target.id));
+  }, []);
+
+  const handleExitEdit = useCallback((target: ChatFavouriteTagType) => {
+    setIsEditing((prev) => prev.filter((v) => v !== target.id));
+  }, []);
   // delete tag
   const { loading: isDeleting, runAsync: deleteTag } = useRequest2(
-    async (target: ChatTagType) => {
+    async (target: ChatFavouriteTagType) => {
       const next = localTags.filter((c) => c.id !== target.id);
       setLocalTags(next);
       await updateTags(next);
@@ -424,10 +444,12 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
     onClose: onCloseSaveTagForAppSubPanel
   } = useDisclosure();
 
-  const [currentSaveTagForApp, setCurrentSaveTagForApp] = useState<ChatTagType | null>(null);
+  const [currentSaveTagForApp, setCurrentSaveTagForApp] = useState<ChatFavouriteTagType | null>(
+    null
+  );
 
   const handleOpenSaveTagForAppSubPanel = useCallback(
-    (tag: ChatTagType) => {
+    (tag: ChatFavouriteTagType) => {
       setCurrentSaveTagForApp(tag);
       onOpenSaveTagForAppSubPanel();
     },
@@ -435,6 +457,25 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
   );
   console.log(12121);
   const isLoading = isUpdating || isDeleting || isEditing.length > 0;
+
+  // counts
+  const { data: allFavourites = [] } = useRequest2(
+    async () => {
+      return await getFavouriteApps({ name: '' });
+    },
+    {
+      manual: false,
+      refreshDeps: [isSaveTagForAppSubPanelOpen]
+    }
+  );
+  const tagIdToCount = useMemo(() => {
+    const map = new Map<string, number>();
+    (allFavourites || []).forEach((fav: any) => {
+      const tags: string[] = Array.isArray(fav?.favouriteTags) ? fav.favouriteTags : [];
+      tags.forEach((tid) => map.set(tid, (map.get(tid) || 0) + 1));
+    });
+    return map;
+  }, [allFavourites]);
 
   return (
     <>
@@ -447,7 +488,7 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
       >
         {isSaveTagForAppSubPanelOpen ? (
           <SaveTagForAppSubPanel
-            tag={currentSaveTagForApp as ChatTagType}
+            tag={currentSaveTagForApp as ChatFavouriteTagType}
             onClose={onCloseSaveTagForAppSubPanel}
             onRefresh={onRefresh}
           />
@@ -483,35 +524,44 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
               </Flex>
             </Box>
 
-            <Flex
-              minH={['100px', '200px']}
-              maxH="400px"
-              overflowY="auto"
-              px="4"
-              mt="4"
-              flexDir="column"
-              gap="2"
-            >
-              {localTags.map((tag) => (
-                <Box
-                  key={tag.id}
-                  pb="2"
-                  _notLast={{
-                    borderBottom: 'sm',
-                    borderColor: 'myGray.200'
-                  }}
-                >
-                  <EditableTagItem
-                    tag={tag}
-                    onCommit={handleCommitTag}
-                    isEditing={isEditing.includes(tag.id)}
-                    onStartEdit={() => setIsEditing((prev) => [...prev, tag.id])}
-                    onConfirmDelete={(c) => setCurrentDelTag(c)}
-                    onSaveTagForApp={handleOpenSaveTagForAppSubPanel}
-                  />
-                </Box>
-              ))}
-            </Flex>
+            {localTags.length > 0 ? (
+              <Flex
+                minH={['100px', '200px']}
+                maxH="400px"
+                overflowY="auto"
+                px="4"
+                mt="4"
+                flexDir="column"
+                gap="2"
+              >
+                {localTags.map((tag) => (
+                  <Box
+                    key={tag.id}
+                    pb="2"
+                    _notLast={{
+                      borderBottom: 'sm',
+                      borderColor: 'myGray.200'
+                    }}
+                  >
+                    <EditableTagItem
+                      tag={tag}
+                      appCount={tagIdToCount.get(tag.id) || 0}
+                      onCommit={handleCommitTag}
+                      onCancelNew={handleCancelNewTag}
+                      onExitEdit={handleExitEdit}
+                      isEditing={isEditing.includes(tag.id)}
+                      onStartEdit={() => setIsEditing((prev) => [...prev, tag.id])}
+                      onConfirmDelete={(c) => setCurrentDelTag(c)}
+                      onSaveTagForApp={handleOpenSaveTagForAppSubPanel}
+                    />
+                  </Box>
+                ))}
+              </Flex>
+            ) : (
+              <Box>
+                <EmptyTip text={t('chat:setting.favourite.tag.no_data')} />
+              </Box>
+            )}
           </Flex>
         )}
       </MyModal>
@@ -537,7 +587,7 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
             <Button
               variant="dangerFill"
               isLoading={isDeleting}
-              onClick={() => deleteTag(currentDelTag as ChatTagType)}
+              onClick={() => deleteTag(currentDelTag as ChatFavouriteTagType)}
             >
               {t('chat:setting.favourite.categories_modal.delete_confirm_button')}
             </Button>
