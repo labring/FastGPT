@@ -1,6 +1,5 @@
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type {
-  ChatSettingTabOptionEnum} from '@/pageComponents/chat/constants';
+import type { ChatSettingTabOptionEnum } from '@/pageComponents/chat/constants';
 import {
   ChatSidebarPaneEnum,
   defaultCollapseStatus,

@@ -25,6 +25,7 @@ import { useForm } from 'react-hook-form';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { ChatFavouriteApp } from '@fastgpt/global/core/chat/favouriteApp/type';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 type EditableTagItemProps = {
   tag: ChatFavouriteTagType;
@@ -49,9 +50,24 @@ const EditableTagItem = React.memo(function EditableTagItem({
   onSaveTagForApp,
   appCount
 }: EditableTagItemProps) {
+  const { t } = useTranslation();
+
   const [tag, setTag] = useState<ChatFavouriteTagType>(initialTag);
   const [isSelfEditing, setIsSelfEditing] = useState<boolean>(isEditing);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const { ConfirmModal, openConfirm } = useConfirm({
+    type: 'delete',
+    content: t('chat:setting.favourite.categories_modal.delete_confirm', {
+      name: initialTag.name
+    })
+  });
+
+  const handleConfirmDelete = useCallback(() => {
+    openConfirm(() => {
+      onConfirmDelete(tag);
+    })();
+  }, [openConfirm, onConfirmDelete, tag]);
 
   const handleFinishEdit = useCallback(async () => {
     // 取消或者复原 tag 的名称
@@ -158,10 +174,12 @@ const EditableTagItem = React.memo(function EditableTagItem({
             variant="ghost"
             aria-label="delete"
             icon={<MyIcon name="common/trash" color="myGray.500" w="14px" />}
-            onClick={() => onConfirmDelete(tag)}
+            onClick={() => handleConfirmDelete()}
           />
         </Flex>
       )}
+
+      <ConfirmModal />
     </Flex>
   );
 });
@@ -377,8 +395,6 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
   const [localTags, setLocalTags] = useState<ChatFavouriteTagType[]>(tags);
   // control the editable state
   const [isEditing, setIsEditing] = useState<string[]>([]);
-  // delete confirm modal target
-  const [currentDelTag, setCurrentDelTag] = useState<ChatFavouriteTagType | null>(null);
   // update tags
   const { loading: isUpdating, runAsync: updateTags } = useRequest2(
     async (nextTags: ChatFavouriteTagType[]) => {
@@ -430,11 +446,7 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
       await updateTags(next);
     },
     {
-      manual: true,
-      onFinally: () => {
-        // reset delete tag after deletion
-        setCurrentDelTag(null);
-      }
+      manual: true
     }
   );
 
@@ -551,7 +563,7 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
                       onExitEdit={handleExitEdit}
                       isEditing={isEditing.includes(tag.id)}
                       onStartEdit={() => setIsEditing((prev) => [...prev, tag.id])}
-                      onConfirmDelete={(c) => setCurrentDelTag(c)}
+                      onConfirmDelete={(c) => deleteTag(c)}
                       onSaveTagForApp={handleOpenSaveTagForAppSubPanel}
                     />
                   </Box>
@@ -564,35 +576,6 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
             )}
           </Flex>
         )}
-      </MyModal>
-
-      <MyModal
-        isOpen={!!currentDelTag}
-        iconSrc="/imgs/modal/warn.svg"
-        title={t('chat:setting.favourite.categories_modal.delete_confirm_title')}
-        onClose={() => setCurrentDelTag(null)}
-      >
-        <Flex p={4} w={['auto', '420px']} flexDir="column" gap={4}>
-          <Box color={'myGray.900'} fontSize={'sm'}>
-            {t('chat:setting.favourite.categories_modal.delete_confirm', {
-              name: currentDelTag?.name
-            })}
-          </Box>
-
-          <Flex justifyContent="flex-end" gap={3}>
-            <Button variant="whitePrimary" onClick={() => setCurrentDelTag(null)}>
-              {t('chat:setting.favourite.categories_modal.delete_cancel_button')}
-            </Button>
-
-            <Button
-              variant="dangerFill"
-              isLoading={isDeleting}
-              onClick={() => deleteTag(currentDelTag as ChatFavouriteTagType)}
-            >
-              {t('chat:setting.favourite.categories_modal.delete_confirm_button')}
-            </Button>
-          </Flex>
-        </Flex>
       </MyModal>
     </>
   );
