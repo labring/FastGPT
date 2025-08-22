@@ -76,25 +76,27 @@ const ChatSetting = () => {
           </>
         )}
 
-        <Box p={['16px 0 16px 0', 6]} flex="1 0 0" h="0" boxSizing="border-box">
-          {/* homepage setting */}
-          {tab === ChatSettingTabOptionEnum.HOME && (
-            <HomepageSetting Header={SettingHeader} onDiagramShow={setIsOpenDiagram} />
-          )}
+        {chatSettings && (
+          <Box p={['16px 0 16px 0', 6]} flex="1 0 0" h="0" boxSizing="border-box">
+            {/* homepage setting */}
+            {tab === ChatSettingTabOptionEnum.HOME && (
+              <HomepageSetting Header={SettingHeader} onDiagramShow={setIsOpenDiagram} />
+            )}
 
-          {/* data dashboard */}
-          {tab === ChatSettingTabOptionEnum.DATA_DASHBOARD && (
-            <DataDashboard Header={SettingHeader} />
-          )}
+            {/* data dashboard */}
+            {tab === ChatSettingTabOptionEnum.DATA_DASHBOARD && (
+              <DataDashboard Header={SettingHeader} />
+            )}
 
-          {/* log details */}
-          {tab === ChatSettingTabOptionEnum.LOG_DETAILS && <LogDetails Header={SettingHeader} />}
+            {/* log details */}
+            {tab === ChatSettingTabOptionEnum.LOG_DETAILS && <LogDetails Header={SettingHeader} />}
 
-          {/* home chat logs */}
-          {tab === ChatSettingTabOptionEnum.FAVOURITE_APPS && (
-            <FavouriteAppSetting Header={SettingHeader} />
-          )}
-        </Box>
+            {/* home chat logs */}
+            {tab === ChatSettingTabOptionEnum.FAVOURITE_APPS && (
+              <FavouriteAppSetting Header={SettingHeader} />
+            )}
+          </Box>
+        )}
       </Flex>
 
       <DiagramModal show={isOpenDiagram} onShow={setIsOpenDiagram} />
