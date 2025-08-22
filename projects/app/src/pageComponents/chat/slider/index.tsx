@@ -2,7 +2,6 @@ import React, { useCallback } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
 import { Flex, Box, HStack, Image } from '@chakra-ui/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { type AppListItemType } from '@fastgpt/global/core/app/type';
@@ -11,12 +10,6 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import UserAvatarPopover from '@/pageComponents/chat/UserAvatarPopover';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import type {
-  GetResourceFolderListProps,
-  GetResourceListItemResponse
-} from '@fastgpt/global/common/parentFolder/type';
-import { getMyApps } from '@/web/core/app/api';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   ChatSidebarPaneEnum,
   DEFAULT_LOGO_BANNER_COLLAPSED_URL,
@@ -230,12 +223,18 @@ const ActionButton: React.FC<{
       borderRadius={'8px'}
       alignItems={'center'}
       justifyContent={isCollapsed ? 'center' : 'flex-start'}
-      bg={isActive ? 'primary.100' : 'transparent'}
-      color={isActive ? 'primary.600' : 'myGray.500'}
-      _hover={{
-        bg: isCollapsed ? 'myGray.200' : 'primary.100',
-        color: 'primary.600'
-      }}
+      {...(isActive
+        ? {
+            bg: 'primary.100',
+            color: 'primary.600'
+          }
+        : {
+            bg: 'transparent',
+            color: 'myGray.500',
+            _hover: {
+              bg: isCollapsed ? 'myGray.200' : 'primary.100'
+            }
+          })}
       onClick={onClick}
     >
       <MyIcon w="20px" h="20px" name={icon} viewBox="0 0 20 20" mr={isCollapsed ? 0 : 2} />
@@ -479,16 +478,13 @@ const BottomSection = () => {
   );
 };
 
-const SliderApps = ({ apps, activeAppId }: Props) => {
+const ChatSlider = ({ apps, activeAppId }: Props) => {
   const { t } = useTranslation();
 
   const isCollapsed = useContextSelector(ChatSettingContext, (v) => v.collapse === 1);
   const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
 
   const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
-
-  const isRecentlyUsedAppSelected = (id: string) =>
-    pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && id === activeAppId;
 
   return (
     <MotionFlex
@@ -505,6 +501,7 @@ const SliderApps = ({ apps, activeAppId }: Props) => {
       }}
       animate={isCollapsed ? 'folded' : 'expanded'}
       initial={false}
+      userSelect={'none'}
     >
       <LogoSection />
 
@@ -537,10 +534,10 @@ const SliderApps = ({ apps, activeAppId }: Props) => {
               borderRadius={'md'}
               alignItems={'center'}
               fontSize={'sm'}
-              {...(isRecentlyUsedAppSelected(item._id)
+              {...(pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && item._id === activeAppId
                 ? { bg: 'primary.100', color: 'primary.600' }
                 : {
-                    _hover: { bg: 'primary.100', color: 'primary.600' },
+                    _hover: { bg: 'primary.100' },
                     onClick: () =>
                       handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, item._id)
                   })}
@@ -559,4 +556,4 @@ const SliderApps = ({ apps, activeAppId }: Props) => {
   );
 };
 
-export default React.memo(SliderApps);
+export default React.memo(ChatSlider);
