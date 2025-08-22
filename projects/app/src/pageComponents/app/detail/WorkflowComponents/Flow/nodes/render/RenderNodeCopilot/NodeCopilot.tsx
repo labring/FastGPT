@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Box, Button, CloseButton, Flex, Textarea } from '@chakra-ui/react';
+import { Box, Button, CloseButton, Flex } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -19,6 +19,10 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowContext } from '../../../../context';
 import { useTranslation } from 'next-i18next';
+import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
+import { AppContext } from '../../../../../context';
+import { WorkflowNodeEdgeContext } from '../../../../context/workflowInitContext';
+import { useCreation } from 'ahooks';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   FlowNodeInputTypeEnum,
@@ -27,6 +31,7 @@ import {
 import { nanoid } from 'nanoid';
 import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
+import { getEditorVariables } from '../../../../utils';
 
 export type OnOptimizeCodeProps = {
   codeType: SandboxCodeTypeEnum;
@@ -43,6 +48,8 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
   const { llmModelList, defaultModels } = useSystemStore();
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
+  const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   const [optimizerInput, setOptimizerInput] = useState('');
   const [codeResult, setCodeResult] = useState('');
@@ -52,6 +59,16 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
   const closePopoverRef = useRef<() => void>();
 
   const isInputEmpty = !optimizerInput.trim();
+
+  const editorVariables = useCreation(() => {
+    return getEditorVariables({
+      nodeId,
+      nodeList,
+      edges,
+      appDetail,
+      t
+    });
+  }, [nodeId, nodeList, edges, appDetail, t]);
 
   const codeType = useMemo(() => {
     const currentNode = nodeList.find((node) => node.nodeId === nodeId);
@@ -293,35 +310,25 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
                 _focusWithin={{ borderColor: 'primary.600' }}
               >
                 <MyIcon name="optimizer" alignSelf={'flex-start'} mt={0.5} w={5} />
-                <Textarea
-                  placeholder={t('app:code_function_describe')}
-                  resize="none"
-                  rows={1}
-                  minHeight="24px"
-                  lineHeight="24px"
-                  maxHeight="96px"
-                  overflowY="hidden"
-                  border="none"
-                  _focus={{ boxShadow: 'none' }}
-                  fontSize="sm"
-                  p={0}
-                  borderRadius="none"
-                  autoFocus
-                  value={optimizerInput}
-                  onKeyDown={handleKeyDown}
-                  isDisabled={loading}
-                  onChange={(e) => {
-                    const textarea = e.target;
-                    setOptimizerInput(e.target.value);
-
-                    textarea.style.height = '24px';
-                    const maxHeight = 96;
-                    const newHeight = Math.min(textarea.scrollHeight, maxHeight);
-                    textarea.style.height = `${newHeight}px`;
-                    textarea.style.overflowY =
-                      textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
-                  }}
-                />
+                <Box flex={1}>
+                  <PromptEditor
+                    placeholder={t('app:code_function_describe')}
+                    placeholderPadding="3px 4px"
+                    value={optimizerInput}
+                    onChange={setOptimizerInput}
+                    variables={editorVariables}
+                    showOpenModal={false}
+                    minH={24}
+                    maxH={96}
+                    isDisabled={loading}
+                    onKeyDown={handleKeyDown}
+                    boxStyle={{
+                      border: 'none',
+                      padding: '1px 0',
+                      boxShadow: 'none'
+                    }}
+                  />
+                </Box>
                 <MyIcon
                   name={loading ? 'stop' : 'core/chat/sendLight'}
                   w="1rem"

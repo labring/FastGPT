@@ -6,7 +6,7 @@
  *
  */
 
-import { useMemo, useState, useTransition } from 'react';
+import { CSSProperties, useMemo, useState, useTransition } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
@@ -78,12 +78,14 @@ export type EditorProps = {
   maxH?: number;
   maxLength?: number;
   placeholder?: string;
+  placeholderPadding?: string;
   isInvalid?: boolean;
-
+  onKeyDown?: (e: React.KeyboardEvent) => void;
   ExtensionPopover?: ((e: {
     onChangeText: (text: string) => void;
     iconButtonStyle: Record<string, any>;
   }) => React.ReactNode)[];
+  boxStyle?: CSSProperties;
 };
 
 export default function Editor({
@@ -100,10 +102,12 @@ export default function Editor({
   onBlur,
   value,
   placeholder = '',
+  placeholderPadding = '12px 14px',
   bg = 'white',
   isInvalid,
-
-  ExtensionPopover
+  onKeyDown,
+  ExtensionPopover,
+  boxStyle
 }: EditorProps &
   FormPropsType & {
     onOpenModal?: () => void;
