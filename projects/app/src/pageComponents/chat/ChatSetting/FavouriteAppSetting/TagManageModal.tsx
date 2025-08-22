@@ -467,7 +467,7 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
     },
     [onOpenSaveTagForAppSubPanel]
   );
-  console.log(12121);
+
   const isLoading = isUpdating || isDeleting || isEditing.length > 0;
 
   // counts
