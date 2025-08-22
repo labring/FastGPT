@@ -38,9 +38,9 @@ type Props = {
   onDiagramShow: (show: boolean) => void;
 };
 
-type FormValues = Omit<ChatSettingUpdateParams, 'selectedTools' | 'quickApps'> & {
+type FormValues = Omit<ChatSettingUpdateParams, 'selectedTools' | 'quickAppIds'> & {
   selectedTools: SelectedToolType[];
-  quickApps: QuickAppType[];
+  quickAppList: QuickAppType[];
 };
 
 const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
@@ -60,7 +60,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
         selectedTools: data?.selectedTools || [],
         wideLogoUrl: data?.wideLogoUrl,
         squareLogoUrl: data?.squareLogoUrl,
-        quickApps: (data?.quickApps as any as QuickAppType[]) || []
+        quickAppList: data?.quickAppList || []
       };
     },
     [t]
@@ -72,7 +72,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
 
   const wideLogoUrl = watch('wideLogoUrl');
   const squareLogoUrl = watch('squareLogoUrl');
-  const formQuickApps = watch('quickApps');
+  const formQuickApps = watch('quickAppList');
 
   useMount(async () => {
     reset(chatSettings2Form(await refreshChatSetting()));
@@ -117,7 +117,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
     async (values: FormValues) => {
       return updateChatSetting({
         ...values,
-        quickApps: values.quickApps.map((q) => q.id),
+        quickAppIds: values.quickAppList.map((q) => q._id),
         selectedTools: values.selectedTools.map((tool) => ({
           pluginId: tool.pluginId,
           inputs: tool.inputs
@@ -189,7 +189,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
                     <Flex flexWrap="wrap" gap={3}>
                       {formQuickApps.map((q) => (
                         <Flex
-                          key={q.id}
+                          key={q._id}
                           alignItems="center"
                           gap={1}
                           _notLast={{
@@ -459,9 +459,9 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
 
       {isOpenAddQuickApp && (
         <AddQuickAppModal
-          selectedIds={(formQuickApps || []).map((q) => q.id)}
+          selectedIds={(formQuickApps || []).map((q) => q._id)}
           onClose={onCloseAddQuickApp}
-          onConfirm={(list) => setValue('quickApps', list)}
+          onConfirm={(list) => setValue('quickAppList', list)}
         />
       )}
     </Flex>
