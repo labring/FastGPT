@@ -40,7 +40,8 @@ import type {
 } from '@/pages/api/core/chat/quote/getCollectionQuote';
 import type {
   ChatFavouriteAppUpdateParams,
-  ChatFavouriteAppSchema
+  ChatFavouriteAppSchema,
+  ChatFavouriteApp
 } from '@fastgpt/global/core/chat/favouriteApp/type';
 
 /**
@@ -128,11 +129,8 @@ export const updateChatSetting = (data: ChatSettingUpdateParams) => {
   return POST<ChatSettingSchema>('/proApi/core/chat/setting/update', data);
 };
 
-export const getFavouriteApps = (data: { name?: string; tag?: string }) => {
-  return GET<(ChatFavouriteAppSchema & { name: string; avatar: string; intro: string })[]>(
-    '/proApi/core/chat/setting/favourite/list',
-    data
-  );
+export const getFavouriteApps = (data?: { name?: string; tag?: string }) => {
+  return GET<ChatFavouriteApp[]>('/proApi/core/chat/setting/favourite/list', data);
 };
 
 export const updateFavouriteApps = (data: ChatFavouriteAppUpdateParams[]) => {

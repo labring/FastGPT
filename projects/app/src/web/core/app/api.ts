@@ -10,7 +10,7 @@ import type { getBasicInfoResponse } from '@/pages/api/core/app/getBasicInfo';
  * 获取应用列表
  */
 export const getMyApps = (data?: ListAppBody) =>
-  POST<(AppListItemType & Pick<AppSchema, 'parentId' | 'type'>)[]>('/core/app/list', data, {
+  POST<AppListItemType[]>('/core/app/list', data, {
     maxQuantity: 1
   });
 
