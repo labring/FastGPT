@@ -27,14 +27,25 @@ const ChatSettingSchema = new Schema({
   homeTabTitle: String,
   wideLogoUrl: String,
   squareLogoUrl: String,
-  quickApps: {
+  quickAppIds: {
     type: [String],
     default: []
   },
   tags: {
-    type: Array,
+    type: [
+      {
+        id: String,
+        name: String
+      }
+    ],
     default: []
   }
+});
+
+ChatSettingSchema.virtual('quickAppList', {
+  ref: AppCollectionName,
+  localField: 'quickAppIds',
+  foreignField: '_id'
 });
 
 ChatSettingSchema.index({ teamId: 1 });

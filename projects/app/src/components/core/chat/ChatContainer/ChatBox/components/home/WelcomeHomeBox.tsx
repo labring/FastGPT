@@ -8,7 +8,7 @@ const WelcomeHomeBox = () => {
   const slogan = useContextSelector(ChatBoxContext, (v) => v.slogan);
 
   return (
-    <Flex flexDir="column" justifyContent="flex-end" alignItems="center" gap={4} h="full">
+    <Flex flexDir="column" justifyContent="flex-end" alignItems="center" gap={4}>
       <Image
         alt="fastgpt logo"
         maxW={['200px', '300px']}

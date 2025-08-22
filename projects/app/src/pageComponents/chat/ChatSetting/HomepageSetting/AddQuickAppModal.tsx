@@ -38,7 +38,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
 
   const checkedQuickApps = useMemo<QuickAppType[]>(() => {
     // map ids to QuickApp objects with only id, other fields filled when rendering
-    return localSelectedIds.map((id) => ({ id, name: '', avatar: '' }));
+    return localSelectedIds.map((_id) => ({ _id, name: '', avatar: '' }));
   }, [localSelectedIds]);
 
   const handleCheck = useCallback((id: string) => {
@@ -80,7 +80,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
       const list: QuickAppType[] = localSelectedIds
         .map((id) => availableAppsMap.get(id)!)
         .filter(Boolean)
-        .map((app) => ({ id: app._id, name: app.name, avatar: app.avatar }));
+        .map((app) => ({ _id: app._id, name: app.name, avatar: app.avatar }));
       onConfirm(list);
     },
     {
@@ -152,7 +152,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                   dataList={checkedQuickApps}
                   renderInnerPlaceholder={false}
                   onDragEndCb={(list) => {
-                    const newOrderIds = list.map((item) => item.id);
+                    const newOrderIds = list.map((item) => item._id);
                     setLocalSelectedIds(newOrderIds);
                   }}
                 >
@@ -166,10 +166,10 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                       overflowY="auto"
                     >
                       {checkedQuickApps.map((q, index) => {
-                        const app = availableAppsMap.get(q.id);
+                        const app = availableAppsMap.get(q._id);
                         if (!app) return null;
                         return (
-                          <Draggable key={q.id} draggableId={q.id} index={index}>
+                          <Draggable key={q._id} draggableId={q._id} index={index}>
                             {(provided, snapshot) => (
                               <Flex
                                 ref={provided.innerRef}
@@ -202,7 +202,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                                     color="myGray.400"
                                     cursor="pointer"
                                     _hover={{ color: 'red.500' }}
-                                    onClick={() => handleCheck(q.id)}
+                                    onClick={() => handleCheck(q._id)}
                                   />
                                 </Box>
                               </Flex>
