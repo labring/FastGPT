@@ -32,13 +32,14 @@ export type ChatProviderProps = {
   outLinkAuthData?: OutLinkChatAuthProps;
 
   InputLeftComponent?: React.ReactNode;
+
   chatType: ChatTypeEnum;
   dialogTips?: string;
   wideLogo?: string;
   slogan?: string;
 
   currentQuickAppId?: string;
-  quickApps?: QuickAppType[];
+  quickAppList?: QuickAppType[];
   onSwitchQuickApp?: (appId: string) => Promise<void>;
 };
 

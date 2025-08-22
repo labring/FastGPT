@@ -36,8 +36,8 @@ const ChatSetting = () => {
   const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
 
   const SettingHeader = useCallback(
-    ({ children, ...props }: PropsWithChildren & FlexProps) => (
-      <SettingTabs tab={tab} onTabChange={setTab} {...props}>
+    ({ children }: PropsWithChildren) => (
+      <SettingTabs tab={tab} onTabChange={setTab}>
         {children}
       </SettingTabs>
     ),

@@ -10,7 +10,7 @@ type Props = {
   children?: React.ReactNode;
 };
 
-const SettingTabs = ({ tab, children, onTabChange, ...props }: Props & FlexProps) => {
+const SettingTabs = ({ tab, children, onTabChange }: Props) => {
   const { t } = useTranslation();
 
   const tabOptions: Parameters<typeof FillRowTabs<`${ChatSettingTabOptionEnum}`>>[0]['list'] =
@@ -21,16 +21,16 @@ const SettingTabs = ({ tab, children, onTabChange, ...props }: Props & FlexProps
           value: ChatSettingTabOptionEnum.HOME
         },
         {
-          label: t('chat:setting.favourite.title'),
-          value: ChatSettingTabOptionEnum.FAVOURITE_APPS
-        },
-        {
           label: t('chat:setting.data_dashboard.title'),
           value: ChatSettingTabOptionEnum.DATA_DASHBOARD
         },
         {
           label: t('chat:setting.log_details.title'),
           value: ChatSettingTabOptionEnum.LOG_DETAILS
+        },
+        {
+          label: t('chat:setting.favourite.title'),
+          value: ChatSettingTabOptionEnum.FAVOURITE_APPS
         }
       ],
       [t]
@@ -44,7 +44,6 @@ const SettingTabs = ({ tab, children, onTabChange, ...props }: Props & FlexProps
       alignItems={'center'}
       flexWrap="wrap"
       px={[2, 0]}
-      {...props}
     >
       <FillRowTabs px={3} py={2} list={tabOptions} value={tab} onChange={onTabChange} />
 

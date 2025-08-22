@@ -202,7 +202,7 @@ export const onDelOneApp = async ({
       // 从快捷应用中移除对应应用
       await MongoChatSetting.updateMany(
         { teamId },
-        { $pull: { quickApps: { id: String(appId) } } }
+        { $pull: { quickAppIds: { id: String(appId) } } }
       ).session(session);
 
       await MongoResourcePermission.deleteMany({

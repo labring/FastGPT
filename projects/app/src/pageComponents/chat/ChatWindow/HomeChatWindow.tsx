@@ -91,8 +91,8 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
   const isQuickApp = useMemo(
-    () => chatSettings?.quickApps.some((app) => app.id === appId),
-    [chatSettings?.quickApps, appId]
+    () => chatSettings?.quickAppList.some((app) => app._id === appId),
+    [chatSettings?.quickAppList, appId]
   );
 
   const availableModels = useMemo(
@@ -460,7 +460,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
             dialogTips={chatSettings?.dialogTips}
             InputLeftComponent={InputLeftComponent}
             onStartChat={onStartChat}
-            quickApps={chatSettings?.quickApps || []}
+            quickAppList={chatSettings?.quickAppList || []}
             currentQuickAppId={isQuickApp ? appId : undefined}
             onSwitchQuickApp={handleSwitchQuickApp}
           />
