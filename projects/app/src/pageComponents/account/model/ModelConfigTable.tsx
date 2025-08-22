@@ -19,7 +19,7 @@ import {
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  ModelProviderList,
+  getModelProviders,
   type ModelProviderIdType,
   getModelProvider
 } from '@fastgpt/global/core/ai/provider';
@@ -67,13 +67,13 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   const isRoot = userInfo?.username === 'root';
 
   const [provider, setProvider] = useState<ModelProviderIdType | ''>('');
-  const providerList = useRef<{ label: any; value: ModelProviderIdType | '' }[]>([
+  const providerList = useRef<{ label: React.ReactNode; value: ModelProviderIdType | '' }[]>([
     { label: t('common:All'), value: '' },
-    ...ModelProviderList(language).map((item) => ({
+    ...getModelProviders(language).map((item) => ({
       label: (
         <HStack>
           <Avatar src={item.avatar} w={'1rem'} />
-          <Box>{t(item.name as any)}</Box>
+          <Box>{item.name}</Box>
         </HStack>
       ),
       value: item.id
@@ -240,7 +240,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     });
 
     return filterList;
-  }, [systemModelList, t, modelType, provider, search, showActive]);
+  }, [systemModelList, t, modelType, language, provider, search, showActive]);
   const activeModelLength = useMemo(() => {
     return modelList.filter((item) => item.isActive).length;
   }, [modelList]);

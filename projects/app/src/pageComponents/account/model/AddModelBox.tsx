@@ -19,7 +19,7 @@ import {
 import { useTranslation } from 'next-i18next';
 import React, { useMemo, useRef, useState } from 'react';
 import {
-  ModelProviderList,
+  getModelProviders,
   type ModelProviderIdType,
   getModelProvider
 } from '@fastgpt/global/core/ai/provider';
@@ -112,14 +112,13 @@ export const ModelEditModal = ({
   const isRerankModel = modelData?.type === ModelTypeEnum.rerank;
 
   const provider = watch('provider');
-  const providerData = useMemo(() => getModelProvider(provider, language), [provider, language]);
 
-  const providerList = useRef<{ label: any; value: ModelProviderIdType }[]>(
-    ModelProviderList(language).map((item) => ({
+  const providerList = useRef<{ label: React.ReactNode; value: ModelProviderIdType }[]>(
+    getModelProviders(language).map((item) => ({
       label: (
         <HStack>
           <Avatar src={item.avatar} w={'1rem'} />
-          <Box>{t(item.name as any)}</Box>
+          <Box>{item.name}</Box>
         </HStack>
       ),
       value: item.id
