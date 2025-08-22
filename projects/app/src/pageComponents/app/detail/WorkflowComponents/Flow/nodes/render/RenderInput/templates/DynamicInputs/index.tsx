@@ -61,8 +61,22 @@ const DynamicInputs = (props: RenderInputProps) => {
         </HStack>
         {/* field render */}
         <Box mt={2}>
+          <Flex alignItems={'center'} mb={2} gap={2} px={1}>
+            <Flex flex={'1'}>
+              <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} flex={1} px={3}>
+                {t('workflow:Variable_name')}
+              </Box>
+              <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} minW={'240px'} px={3}>
+                {t('common:reference_variable')}
+              </Box>
+              <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} minW={'140px'} px={3}>
+                {t('common:core.module.Data Type')}
+              </Box>
+            </Flex>
+            <Box w={6} />
+          </Flex>
           {[...dynamicInputs, defaultInput].map((children) => (
-            <Box key={children.key} _notLast={{ mb: 3 }}>
+            <Box key={children.key} _notLast={{ mb: 1.5 }}>
               <Reference {...props} inputChildren={children} />
             </Box>
           ))}
@@ -229,6 +243,7 @@ const Reference = ({
           list={valueTypeList}
           onChange={(value) => onlChangeValueType(value)}
           isDisabled={isEmptyItem}
+          className="nowheel"
         />
       </Flex>
       {!isEmptyItem && (

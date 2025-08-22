@@ -74,8 +74,19 @@ const DynamicOutputs = ({ nodeId, outputs, addOutput }: DynamicOutputsProps) => 
           </HStack>
         </HStack>
         <Box mt={2}>
+          <Flex alignItems={'center'} mb={2} gap={2} px={1}>
+            <Flex flex={'1'}>
+              <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} flex={1} px={3}>
+                {t('workflow:Variable_name')}
+              </Box>
+              <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} minW={'240px'} px={3}>
+                {t('common:core.module.Data Type')}
+              </Box>
+            </Flex>
+            <Box minW={6} />
+          </Flex>
           {[...outputs, defaultOutput].map((output, index) => (
-            <Box key={output.key} _notLast={{ mb: 3 }}>
+            <Box key={output.key} _notLast={{ mb: 1.5 }}>
               <DynamicOutputItem
                 output={output}
                 outputs={outputs}
@@ -185,6 +196,7 @@ const DynamicOutputItem = ({
             borderColor: 'primary.300'
           }}
           minW={'240px'}
+          className="nowheel"
         />
       </Flex>
       {!isEmptyItem && (
