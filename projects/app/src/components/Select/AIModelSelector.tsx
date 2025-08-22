@@ -10,12 +10,14 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { ModelProviderList } from '@fastgpt/global/core/ai/provider';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 import { getModelFromList } from '@fastgpt/global/core/ai/model';
+import type { ResponsiveValue } from '@chakra-ui/system';
 
 type Props = SelectProps & {
   disableTip?: string;
+  noOfLines?: ResponsiveValue<number>;
 };
 
-const OneRowSelector = ({ list, onChange, disableTip, ...props }: Props) => {
+const OneRowSelector = ({ list, onChange, disableTip, noOfLines, ...props }: Props) => {
   const { t } = useTranslation();
   const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
     useSystemStore();
@@ -55,7 +57,7 @@ const OneRowSelector = ({ list, onChange, disableTip, ...props }: Props) => {
                 fallbackSrc={HUGGING_FACE_ICON}
               />
 
-              <Box noOfLines={1}>{modelData.name}</Box>
+              <Box noOfLines={noOfLines}>{modelData.name}</Box>
             </Flex>
           )
         };
@@ -99,7 +101,14 @@ const OneRowSelector = ({ list, onChange, disableTip, ...props }: Props) => {
   );
 };
 
-const MultipleRowSelector = ({ list, onChange, disableTip, placeholder, ...props }: Props) => {
+const MultipleRowSelector = ({
+  list,
+  onChange,
+  disableTip,
+  placeholder,
+  noOfLines,
+  ...props
+}: Props) => {
   const { t } = useTranslation();
   const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
     useSystemStore();
@@ -189,7 +198,7 @@ const MultipleRowSelector = ({ list, onChange, disableTip, placeholder, ...props
           fallbackSrc={HUGGING_FACE_ICON}
           w={avatarSize}
         />
-        <Box noOfLines={1}>{modelData?.name}</Box>
+        <Box noOfLines={noOfLines}>{modelData?.name}</Box>
       </Flex>
     );
   }, [modelList, props.value, t, avatarSize]);
@@ -222,7 +231,7 @@ const MultipleRowSelector = ({ list, onChange, disableTip, placeholder, ...props
 };
 
 const AIModelSelector = (props: Props) => {
-  return props.list.length > 100 ? (
+  return props.list.length > 10 ? (
     <MultipleRowSelector {...props} />
   ) : (
     <OneRowSelector {...props} />

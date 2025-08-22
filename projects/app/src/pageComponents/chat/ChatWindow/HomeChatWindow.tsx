@@ -248,6 +248,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
               size="sm"
               bg={'myGray.50'}
               rounded="full"
+              noOfLines={[1, 3]}
               list={availableModels}
               value={selectedModel}
               onChange={async (model) => {
