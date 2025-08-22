@@ -41,18 +41,13 @@ export const checkRoleUpdateConflict = ({
   }
 
   // Use a Map for faster lookup by teamId
-  const [oldClbRoleMap, parentClbRoleMap] = [
-    new Map(oldChildClbs.map((clb) => [getCollaboratorId(clb), clb])),
-    new Map(parentClbs.map((clb) => [getCollaboratorId(clb), clb]))
-  ];
+  const parentClbRoleMap = new Map(parentClbs.map((clb) => [getCollaboratorId(clb), clb]));
 
   const changedClbs = getChangedCollaborators({
     newClbs: newChildClbs,
     oldClbs: oldChildClbs
   });
 
-  console.log('changedClbs', changedClbs);
-  console.log('parentClbRoleMap', parentClbRoleMap);
   for (const changedClb of changedClbs) {
     const parent = parentClbRoleMap.get(getCollaboratorId(changedClb));
     if (parent && (changedClb.changedRole & parent.permission) !== 0) {

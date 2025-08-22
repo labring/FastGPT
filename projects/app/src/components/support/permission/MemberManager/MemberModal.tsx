@@ -20,7 +20,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { useTranslation } from 'next-i18next';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { CollaboratorContext } from './context';
 import MemberItemCard from './MemberItemCard';
@@ -30,7 +30,11 @@ import type {
 } from '@fastgpt/global/support/permission/collaborator';
 import type { RoleValueType } from '@fastgpt/global/support/permission/type';
 import { Permission } from '@fastgpt/global/support/permission/controller';
-import { getCollaboratorId } from '@fastgpt/global/support/permission/utils';
+import {
+  checkRoleUpdateConflict,
+  getCollaboratorId
+} from '@fastgpt/global/support/permission/utils';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 const HoverBoxStyle = {
   bgColor: 'myGray.50',
@@ -100,7 +104,9 @@ function MemberModal({ onClose }: { onClose: () => void }) {
     (v) => v.onUpdateCollaborators
   );
 
-  const { runAsync: onConfirm, loading: isUpdating } = useRequest2(
+  const parentClbs = useContextSelector(CollaboratorContext, (v) => v.parentClbList);
+
+  const { runAsync: _onConfirm, loading: isUpdating } = useRequest2(
     () =>
       onUpdateCollaborators({
         collaborators: editCollaborators.map(
@@ -121,6 +127,40 @@ function MemberModal({ onClose }: { onClose: () => void }) {
     }
   );
 
+  // TODO: I18n
+  const { openConfirm: openConfirmDisableInheritPer, ConfirmModal: ConfirmDisableInheritPer } =
+    useConfirm({
+      content: t('permission.Remove InheritPermission Confirm')
+    });
+
+  const onConfirm = useCallback(() => {
+    const isConflict = checkRoleUpdateConflict({
+      parentClbs: parentClbs.map((clb) => ({
+        ...clb,
+        permission: clb.permission.role
+      })),
+      oldChildClbs: collaboratorDetailList.map((clb) => ({
+        ...clb,
+        permission: clb.permission.role
+      })),
+      newChildClbs: editCollaborators.map((clb) => ({
+        ...clb,
+        permission: clb.permission.role
+      }))
+    });
+    if (!isConflict) {
+      return _onConfirm();
+    } else {
+      openConfirmDisableInheritPer(_onConfirm)();
+    }
+  }, [
+    _onConfirm,
+    collaboratorDetailList,
+    editCollaborators,
+    openConfirmDisableInheritPer,
+    parentClbs
+  ]);
+
   const entryList = useRef([
     { label: t('user:team.group.members'), icon: DEFAULT_USER_AVATAR, value: 'member' },
     { label: t('user:team.org.org'), icon: DEFAULT_ORG_AVATAR, value: 'org' },
@@ -128,266 +168,272 @@ function MemberModal({ onClose }: { onClose: () => void }) {
   ]);
 
   return (
-    <MyModal
-      isOpen
-      onClose={onClose}
-      iconSrc={'modal/AddClb'}
-      title={t('user:team.manage_collaborator')}
-      minW="900px"
-      maxW={'60vw'}
-      h={'100%'}
-      maxH={'90vh'}
-      isCentered
-      isLoading={loadingGroupsAndOrgs}
-    >
-      <ModalBody flex={'1'}>
-        <Grid
-          border="1px solid"
-          borderColor="myGray.200"
-          borderRadius="0.5rem"
-          gridTemplateColumns="40% 60%"
-          h={'100%'}
-        >
-          <Flex
-            h={'100%'}
-            flexDirection="column"
-            borderRight="1px solid"
+    <>
+      <MyModal
+        isOpen
+        onClose={onClose}
+        iconSrc={'modal/AddClb'}
+        title={t('user:team.manage_collaborator')}
+        minW="900px"
+        maxW={'60vw'}
+        h={'100%'}
+        maxH={'90vh'}
+        isCentered
+        isLoading={loadingGroupsAndOrgs}
+      >
+        <ModalBody flex={'1'}>
+          <Grid
+            border="1px solid"
             borderColor="myGray.200"
-            p="4"
+            borderRadius="0.5rem"
+            gridTemplateColumns="40% 60%"
+            h={'100%'}
           >
-            <SearchInput
-              placeholder={t('user:search_group_org_user')}
-              bgColor="myGray.50"
-              onChange={(e) => setSearchKey(e.target.value)}
-            />
+            <Flex
+              h={'100%'}
+              flexDirection="column"
+              borderRight="1px solid"
+              borderColor="myGray.200"
+              p="4"
+            >
+              <SearchInput
+                placeholder={t('user:search_group_org_user')}
+                bgColor="myGray.50"
+                onChange={(e) => setSearchKey(e.target.value)}
+              />
 
-            <Flex flexDirection="column" mt="3" overflow={'auto'} flex={'1 0 0'} h={0}>
-              {/* Entry */}
-              {!searchKey && !filterClass && (
-                <>
-                  {entryList.current.map((item) => {
-                    return (
-                      <HStack
-                        key={item.value}
-                        justifyContent="space-between"
-                        py="2"
-                        px="3"
-                        borderRadius="sm"
-                        alignItems="center"
-                        _hover={HoverBoxStyle}
-                        _notLast={{ mb: 1 }}
-                        onClick={() => setFilterClass(item.value as any)}
-                      >
-                        <MyAvatar src={item.icon} w="1.5rem" borderRadius={'50%'} />
-                        <Box ml="2" w="full">
-                          {item.label}
-                        </Box>
-                        <MyIcon name="core/chat/chevronRight" w="16px" />
-                      </HStack>
-                    );
-                  })}
-                </>
-              )}
+              <Flex flexDirection="column" mt="3" overflow={'auto'} flex={'1 0 0'} h={0}>
+                {/* Entry */}
+                {!searchKey && !filterClass && (
+                  <>
+                    {entryList.current.map((item) => {
+                      return (
+                        <HStack
+                          key={item.value}
+                          justifyContent="space-between"
+                          py="2"
+                          px="3"
+                          borderRadius="sm"
+                          alignItems="center"
+                          _hover={HoverBoxStyle}
+                          _notLast={{ mb: 1 }}
+                          onClick={() => setFilterClass(item.value as any)}
+                        >
+                          <MyAvatar src={item.icon} w="1.5rem" borderRadius={'50%'} />
+                          <Box ml="2" w="full">
+                            {item.label}
+                          </Box>
+                          <MyIcon name="core/chat/chevronRight" w="16px" />
+                        </HStack>
+                      );
+                    })}
+                  </>
+                )}
 
-              {/* Path */}
-              {!searchKey && filterClass && (
-                <Box mb={1}>
-                  <Path
-                    paths={[
-                      {
-                        parentId: filterClass,
-                        parentName:
-                          filterClass === 'member'
-                            ? t('user:team.group.members')
-                            : filterClass === 'org'
-                              ? t('user:team.org.org')
-                              : t('user:team.group.group')
-                      },
-                      ...paths
-                    ]}
-                    onClick={(parentId) => {
-                      if (parentId === '') {
-                        setFilterClass(undefined);
-                        onPathClick('');
-                      } else if (
-                        parentId === 'member' ||
-                        parentId === 'org' ||
-                        parentId === 'group'
-                      ) {
-                        setFilterClass(parentId);
-                        onPathClick('');
-                      } else {
-                        onPathClick(parentId);
-                      }
-                    }}
-                    rootName={t('common:Team')}
-                  />
-                </Box>
-              )}
-              {(filterClass === 'member' || searchKey) &&
-                (() => {
-                  const MemberList = (
-                    <RenderMemberList
-                      members={members}
-                      setCollaboratorList={setCollaboratorList}
-                      editCollaborators={editCollaborators}
-                      defaultRole={defaultRole}
+                {/* Path */}
+                {!searchKey && filterClass && (
+                  <Box mb={1}>
+                    <Path
+                      paths={[
+                        {
+                          parentId: filterClass,
+                          parentName:
+                            filterClass === 'member'
+                              ? t('user:team.group.members')
+                              : filterClass === 'org'
+                                ? t('user:team.org.org')
+                                : t('user:team.group.group')
+                        },
+                        ...paths
+                      ]}
+                      onClick={(parentId) => {
+                        if (parentId === '') {
+                          setFilterClass(undefined);
+                          onPathClick('');
+                        } else if (
+                          parentId === 'member' ||
+                          parentId === 'org' ||
+                          parentId === 'group'
+                        ) {
+                          setFilterClass(parentId);
+                          onPathClick('');
+                        } else {
+                          onPathClick(parentId);
+                        }
+                      }}
+                      rootName={t('common:Team')}
                     />
-                  );
-                  return searchKey ? (
-                    MemberList
-                  ) : (
-                    <TeamMemberScrollData
-                      flexDirection={'column'}
-                      gap={1}
-                      userSelect={'none'}
-                      height={'fit-content'}
-                    >
-                      {MemberList}
-                    </TeamMemberScrollData>
-                  );
-                })()}
-              {(filterClass === 'org' || searchKey) &&
-                (() => {
-                  const Orgs = orgs?.map((org) => {
-                    const addTheOrg = () => {
+                  </Box>
+                )}
+                {(filterClass === 'member' || searchKey) &&
+                  (() => {
+                    const MemberList = (
+                      <RenderMemberList
+                        members={members}
+                        setCollaboratorList={setCollaboratorList}
+                        editCollaborators={editCollaborators}
+                        defaultRole={defaultRole}
+                      />
+                    );
+                    return searchKey ? (
+                      MemberList
+                    ) : (
+                      <TeamMemberScrollData
+                        flexDirection={'column'}
+                        gap={1}
+                        userSelect={'none'}
+                        height={'fit-content'}
+                      >
+                        {MemberList}
+                      </TeamMemberScrollData>
+                    );
+                  })()}
+                {(filterClass === 'org' || searchKey) &&
+                  (() => {
+                    const Orgs = orgs?.map((org) => {
+                      const addTheOrg = () => {
+                        setCollaboratorList((state) => {
+                          if (state.find((v) => v.orgId === org._id)) {
+                            return state.filter((v) => v.orgId !== org._id);
+                          }
+                          return [
+                            ...state,
+                            {
+                              ...org,
+                              orgId: org._id,
+                              permission: new Permission({ role: defaultRole })
+                            }
+                          ];
+                        });
+                      };
+                      const isChecked = !!editCollaborators.find((v) => v.orgId === org._id);
+                      return (
+                        <MemberItemCard
+                          avatar={org.avatar}
+                          key={org._id}
+                          name={org.name}
+                          onChange={addTheOrg}
+                          isChecked={isChecked}
+                          rightSlot={
+                            org.total && (
+                              <MyIcon
+                                name="core/chat/chevronRight"
+                                w="16px"
+                                p="4px"
+                                rounded={'6px'}
+                                _hover={{
+                                  bgColor: 'myGray.200'
+                                }}
+                                onClick={(e) => {
+                                  onClickOrg(org);
+                                  e.stopPropagation();
+                                }}
+                              />
+                            )
+                          }
+                        />
+                      );
+                    });
+                    return searchKey ? (
+                      Orgs
+                    ) : (
+                      <OrgMemberScrollData>
+                        {Orgs}
+                        <RenderMemberList
+                          members={orgMembers}
+                          setCollaboratorList={setCollaboratorList}
+                          editCollaborators={editCollaborators}
+                          defaultRole={defaultRole}
+                        />
+                      </OrgMemberScrollData>
+                    );
+                  })()}
+                {(filterClass === 'group' || searchKey) &&
+                  groups?.map((group) => {
+                    const addGroup = () => {
                       setCollaboratorList((state) => {
-                        if (state.find((v) => v.orgId === org._id)) {
-                          return state.filter((v) => v.orgId !== org._id);
+                        if (state.find((v) => v.groupId === group._id)) {
+                          return state.filter((v) => v.groupId !== group._id);
                         }
                         return [
                           ...state,
                           {
-                            ...org,
-                            orgId: org._id,
+                            ...group,
+                            groupId: group._id,
                             permission: new Permission({ role: defaultRole })
                           }
                         ];
                       });
                     };
-                    const isChecked = !!editCollaborators.find((v) => v.orgId === org._id);
+                    const isChecked = !!editCollaborators.find((v) => v.groupId === group._id);
                     return (
                       <MemberItemCard
-                        avatar={org.avatar}
-                        key={org._id}
-                        name={org.name}
-                        onChange={addTheOrg}
-                        isChecked={isChecked}
-                        rightSlot={
-                          org.total && (
-                            <MyIcon
-                              name="core/chat/chevronRight"
-                              w="16px"
-                              p="4px"
-                              rounded={'6px'}
-                              _hover={{
-                                bgColor: 'myGray.200'
-                              }}
-                              onClick={(e) => {
-                                onClickOrg(org);
-                                e.stopPropagation();
-                              }}
-                            />
-                          )
+                        avatar={group.avatar}
+                        key={group._id}
+                        name={
+                          group.name === DefaultGroupName
+                            ? userInfo?.team.teamName ?? ''
+                            : group.name
                         }
+                        onChange={addGroup}
+                        isChecked={isChecked}
                       />
                     );
-                  });
-                  return searchKey ? (
-                    Orgs
-                  ) : (
-                    <OrgMemberScrollData>
-                      {Orgs}
-                      <RenderMemberList
-                        members={orgMembers}
-                        setCollaboratorList={setCollaboratorList}
-                        editCollaborators={editCollaborators}
-                        defaultRole={defaultRole}
-                      />
-                    </OrgMemberScrollData>
-                  );
-                })()}
-              {(filterClass === 'group' || searchKey) &&
-                groups?.map((group) => {
-                  const addGroup = () => {
+                  })}
+              </Flex>
+            </Flex>
+
+            <Flex h={'100%'} p="4" flexDirection="column">
+              <Box>
+                {`${t('user:has_chosen')}: `}
+                {editCollaborators.length}
+              </Box>
+              <Flex flexDirection="column" mt="2" gap={1} overflow={'auto'} flex={'1 0 0'} h={0}>
+                {editCollaborators.map((clb) => {
+                  const onDelete = () => {
                     setCollaboratorList((state) => {
-                      if (state.find((v) => v.groupId === group._id)) {
-                        return state.filter((v) => v.groupId !== group._id);
-                      }
+                      return state.filter((v) => getCollaboratorId(v) !== getCollaboratorId(clb));
+                    });
+                  };
+                  const onRoleChange = (role: RoleValueType) => {
+                    setCollaboratorList((state) => {
+                      const index = state.findIndex(
+                        (v) => getCollaboratorId(v) === getCollaboratorId(clb)
+                      );
+                      if (index === -1) return state;
                       return [
-                        ...state,
+                        ...state.slice(0, index),
                         {
-                          ...group,
-                          groupId: group._id,
-                          permission: new Permission({ role: defaultRole })
-                        }
+                          ...state[index],
+                          permission: new Permission({ role })
+                        },
+                        ...state.slice(index + 1)
                       ];
                     });
                   };
-                  const isChecked = !!editCollaborators.find((v) => v.groupId === group._id);
                   return (
                     <MemberItemCard
-                      avatar={group.avatar}
-                      key={group._id}
-                      name={
-                        group.name === DefaultGroupName ? userInfo?.team.teamName ?? '' : group.name
-                      }
-                      onChange={addGroup}
-                      isChecked={isChecked}
+                      key={'chosen-' + getCollaboratorId(clb)}
+                      avatar={clb.avatar}
+                      name={clb.name ?? ''}
+                      onDelete={onDelete}
+                      role={clb.permission.role}
+                      onRoleChange={onRoleChange}
                     />
                   );
                 })}
+              </Flex>
             </Flex>
-          </Flex>
-
-          <Flex h={'100%'} p="4" flexDirection="column">
-            <Box>
-              {`${t('user:has_chosen')}: `}
-              {editCollaborators.length}
-            </Box>
-            <Flex flexDirection="column" mt="2" gap={1} overflow={'auto'} flex={'1 0 0'} h={0}>
-              {editCollaborators.map((clb) => {
-                const onDelete = () => {
-                  setCollaboratorList((state) => {
-                    return state.filter((v) => v.tmbId !== clb.tmbId);
-                  });
-                };
-                const onRoleChange = (role: RoleValueType) => {
-                  setCollaboratorList((state) => {
-                    const index = state.findIndex((v) => v.tmbId === clb.tmbId);
-                    if (index === -1) return state;
-                    return [
-                      ...state.slice(0, index),
-                      {
-                        ...state[index],
-                        permission: new Permission({ role })
-                      },
-                      ...state.slice(index + 1)
-                    ];
-                  });
-                };
-                return (
-                  <MemberItemCard
-                    key={'chosen-' + getCollaboratorId(clb)}
-                    avatar={clb.avatar}
-                    name={clb.name ?? ''}
-                    onChange={() => {}}
-                    onDelete={onDelete}
-                    role={clb.permission.role}
-                    onRoleChange={onRoleChange}
-                  />
-                );
-              })}
-            </Flex>
-          </Flex>
-        </Grid>
-      </ModalBody>
-      <ModalFooter>
-        <Button isLoading={isUpdating} ml="4" h={'32px'} onClick={onConfirm}>
-          {t('common:Confirm')}
-        </Button>
-      </ModalFooter>
-    </MyModal>
+          </Grid>
+        </ModalBody>
+        <ModalFooter>
+          <Button isLoading={isUpdating} ml="4" h={'32px'} onClick={onConfirm}>
+            {t('common:Confirm')}
+          </Button>
+        </ModalFooter>
+      </MyModal>
+      <ConfirmDisableInheritPer />
+    </>
   );
 }
 
