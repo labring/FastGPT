@@ -1,4 +1,4 @@
-import { aiproxyIdMap } from '@/global/aiproxy/constants';
+import { aiproxyIdMap } from '@fastgpt-sdk/plugin';
 import { type ChannelInfoType } from '@/global/aiproxy/type';
 import {
   Box,
@@ -39,6 +39,8 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { getChannelProviders, postCreateChannel, putChannel } from '@/web/core/ai/channel';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 
 const ModelEditModal = dynamic(() => import('../AddModelBox').then((mod) => mod.ModelEditModal));
 
@@ -57,7 +59,8 @@ const EditChannelModal = ({
   onSuccess: () => void;
 }) => {
   const { t, i18n } = useTranslation();
-  const language = i18n.language;
+  const language = i18n.language as localeType;
+
   const { defaultModels } = useSystemStore();
   const isEdit = defaultConfig.id !== 0;
 
@@ -72,16 +75,17 @@ const EditChannelModal = ({
         return Object.entries(res)
           .map(([key, value]) => {
             const mapData = aiproxyIdMap[key as any] ?? {
-              label: value.name,
+              name: value.name,
               provider: 'Other'
             };
             const provider = getModelProvider(mapData.provider, language);
+
             return {
               order: provider.order,
               defaultBaseUrl: value.defaultBaseUrl,
               keyHelp: value.keyHelp,
               icon: mapData?.avatar ?? provider.avatar,
-              label: t(mapData.label as any),
+              label: parseI18nString(mapData.name, language),
               value: Number(key)
             };
           })
@@ -143,7 +147,7 @@ const EditChannelModal = ({
         if (a.provider !== currentProvider && b.provider === currentProvider) return 1;
         return 0;
       });
-  }, [providerType, systemModelList]);
+  }, [language, providerType, systemModelList]);
 
   const modelMapping = watch('model_mapping');
 

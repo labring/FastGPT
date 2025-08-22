@@ -7,7 +7,7 @@ import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import { Box, Flex } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { ModelProviderList } from '@fastgpt/global/core/ai/provider';
+import { getModelProviders } from '@fastgpt/global/core/ai/provider';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 import { getModelFromList } from '@fastgpt/global/core/ai/model';
 import type { ResponsiveValue } from '@chakra-ui/system';
@@ -68,14 +68,15 @@ const OneRowSelector = ({ list, onChange, disableTip, noOfLines, ...props }: Pro
       label: React.JSX.Element;
     }[];
   }, [
-    list,
     llmModelList,
     embeddingModelList,
     ttsModelList,
     sttModelList,
     reRankModelList,
+    list,
+    language,
     avatarSize,
-    language
+    noOfLines
   ]);
 
   return (
@@ -148,7 +149,7 @@ const MultipleRowSelector = ({
   }, [props.size]);
 
   const selectorList = useMemo(() => {
-    const renderList = ModelProviderList(language).map<{
+    const renderList = getModelProviders(language).map<{
       label: React.JSX.Element;
       value: string;
       children: { label: string | React.ReactNode; value: string }[];
@@ -162,7 +163,7 @@ const MultipleRowSelector = ({
             fallbackSrc={HUGGING_FACE_ICON}
             w={avatarSize}
           />
-          <Box>{t(provider.name as any)}</Box>
+          <Box>{provider.name}</Box>
         </Flex>
       ),
       value: provider.id,
