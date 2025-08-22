@@ -19,7 +19,13 @@ export type updateEvalItemBody = {
   variables: Record<string, string>;
 };
 
-export type createEvalDatasetCollectionBody = {
+type EvalDatasetCollectionBase = {
   name: string;
   description?: string;
+};
+
+export type createEvalDatasetCollectionBody = EvalDatasetCollectionBase;
+
+export type updateEvalDatasetCollectionBody = EvalDatasetCollectionBase & {
+  collectionId: string;
 };
