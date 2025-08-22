@@ -1,12 +1,10 @@
 import React from 'react';
-import { useTranslation } from 'next-i18next';
 import { Box, Checkbox, Flex, HStack, VStack } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import RoleTags from './RoleTags';
 import type { RoleValueType } from '@fastgpt/global/support/permission/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import OrgTags from '../../user/team/OrgTags';
-import Tag from '@fastgpt/web/components/common/Tag';
 import RoleSelect from './RoleSelect';
 import { ChevronDownIcon } from '@chakra-ui/icons';
 import { OwnerRoleVal } from '@fastgpt/global/support/permission/constant';

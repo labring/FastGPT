@@ -27,3 +27,8 @@ export type UpdateClbPermissionProps = {
 };
 
 export type DeletePermissionQuery = CollaboratorIdType;
+
+export type CollaboratorListType = {
+  clbs: CollaboratorItemDetailType[];
+  parentClbs: CollaboratorItemDetailType[];
+};

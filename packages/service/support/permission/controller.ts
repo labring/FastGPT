@@ -22,10 +22,7 @@ import { type OrgSchemaType } from '@fastgpt/global/support/user/team/org/type';
 import { getOrgIdSetWithParentByTmbId } from './org/controllers';
 import { authUserSession } from '../user/session';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
-import {
-  CollaboratorItemDetailType,
-  SimpleCollaboratorItemType
-} from '@fastgpt/global/support/permission/collaborator';
+import { DEFAULT_ORG_AVATAR } from '@fastgpt/global/common/system/constants';
 
 /** get resource permission for a team member
  * If there is no permission for the team member, it will return undefined
@@ -135,9 +132,11 @@ export async function getResourceClbs({
 export const getClbsWithInfo = async ({
   resourceId,
   resourceType,
-  teamId
+  teamId,
+  tmbId
 }: {
   teamId: string;
+  tmbId?: string;
 } & (
   | {
       resourceId: ParentIdType;
@@ -147,42 +146,72 @@ export const getClbsWithInfo = async ({
       resourceType: 'team';
       resourceId?: undefined;
     }
-)) =>
-  Promise.all([
-    MongoResourcePermission.find({
-      teamId,
-      resourceId,
-      resourceType,
-      tmbId: {
-        $exists: true
-      }
-    })
-      .populate<{ tmb: TeamMemberSchema }>({
-        path: 'tmb',
-        select: 'name userId avatar'
+)) => {
+  if (!resourceId) {
+    return [];
+  }
+  return Promise.all([
+    ...(
+      await MongoResourcePermission.find({
+        teamId,
+        resourceId,
+        resourceType,
+        tmbId: {
+          $exists: true
+        }
       })
-      .lean(),
-    MongoResourcePermission.find({
-      teamId,
-      resourceId,
-      resourceType,
-      groupId: {
-        $exists: true
-      }
-    })
-      .populate<{ group: MemberGroupSchemaType }>('group', 'name avatar')
-      .lean(),
-    MongoResourcePermission.find({
-      teamId,
-      resourceId,
-      resourceType,
-      orgId: {
-        $exists: true
-      }
-    })
-      .populate<{ org: OrgSchemaType }>({ path: 'org', select: 'name avatar' })
-      .lean()
+        .populate<{ tmb: TeamMemberSchema }>({
+          path: 'tmb',
+          select: 'name userId avatar'
+        })
+        .lean()
+    )
+      .map((item) => ({
+        tmbId: item.tmb._id,
+        teamId: item.teamId,
+        permission: new Permission({ role: item.permission, isOwner: item.tmbId === tmbId }),
+        name: item.tmb.name,
+        avatar: item.tmb.avatar
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    ...(
+      await MongoResourcePermission.find({
+        teamId,
+        resourceId,
+        resourceType,
+        groupId: {
+          $exists: true
+        }
+      })
+        .populate<{ group: MemberGroupSchemaType }>('group', 'name avatar')
+        .lean()
+    ).map((item) => ({
+      groupId: item.group._id,
+      teamId: item.teamId,
+      permission: new Permission({ role: item.permission }),
+      name: item.group.name,
+      avatar: item.group.avatar
+    })),
+    ...(
+      await MongoResourcePermission.find({
+        teamId,
+        resourceId,
+        resourceType,
+        orgId: {
+          $exists: true
+        }
+      })
+        .populate<{ org: OrgSchemaType }>({ path: 'org', select: 'name avatar' })
+        .lean()
+    ).map((item) => ({
+      orgId: item.org._id,
+      teamId: item.teamId,
+      permission: new Permission({ role: item.permission }),
+      name: item.org.name,
+      avatar: item.org.avatar || DEFAULT_ORG_AVATAR
+    }))
   ]);
+};
 
 export const delResourcePermissionById = (id: string) => {
   return MongoResourcePermission.findByIdAndDelete(id);
