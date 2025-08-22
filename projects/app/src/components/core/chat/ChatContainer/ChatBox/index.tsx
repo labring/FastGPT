@@ -942,8 +942,10 @@ const ChatBox = ({
       const containerRect = container.getBoundingClientRect();
       const elementRect = variableInput.getBoundingClientRect();
 
+      if (elementRect.height === 0) return;
+
       setIsVariableVisible(
-        elementRect.bottom > containerRect.top && elementRect.top < containerRect.bottom
+        containerRect.top < elementRect.bottom && containerRect.bottom > elementRect.top
       );
     };
 
@@ -956,7 +958,7 @@ const ChatBox = ({
         container.removeEventListener('scroll', checkVariableVisibility);
       };
     }
-  }, [chatType, setIsVariableVisible]);
+  }, [ScrollContainerRef, setIsVariableVisible]);
 
   const isHomeRender = useMemo(() => {
     return chatType === ChatTypeEnum.home && chatRecords.length === 0 && !chatStartedWatch;
