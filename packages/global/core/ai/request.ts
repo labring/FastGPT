@@ -1,10 +1,9 @@
 import type {
   ChatCompletion,
-  ChatCompletionChunk,
   ChatCompletionCreateParamsNonStreaming,
   ChatCompletionCreateParamsStreaming,
   ChatCompletionMessageToolCall,
-  ChatCompletionTool,
+  ChatCompletionToolType,
   CompletionFinishReason,
   CompletionUsage,
   StreamChatType
@@ -15,13 +14,13 @@ import {
   removeDatasetCiteText
 } from '../../../service/core/ai/utils';
 import { createChatCompletion } from '../../../service/core/ai/config';
-import type { ToolNodeItemType } from '../../../service/core/workflow/dispatch/ai/agent/type';
 import type { OpenaiAccountType } from 'support/user/team/type';
-import { toolValueTypeList, valueTypeJsonSchemaMap } from '../../core/workflow/constants';
+import { getNanoid } from '../../common/string/tools';
 
 type BasicResponseParams = {
   reasoning?: boolean;
-  abortSignal?: boolean;
+  toolMode?: 'toolChoice' | 'prompt';
+  abortSignal?: () => boolean | undefined;
   retainDatasetCite?: boolean;
 };
 
@@ -33,46 +32,35 @@ type CreateCompleteResopnseParams = Omit<BasicResponseParams, 'abortSignal'> & {
   completion: ChatCompletion;
 };
 
-type CreateStreamResponseEvents = {
-  streamEvents?: {
-    onStreaming?: ({
-      responseContent,
-      originContent
-    }: {
-      responseContent: string;
-      originContent: string;
-    }) => void;
-    onReasoning?: ({ reasoningContent }: { reasoningContent: string }) => void;
-    onToolCalling?: ({
-      toolCalls,
-      toolCallResults
-    }: {
-      toolCalls: ChatCompletionChunk.Choice.Delta.ToolCall[];
-      toolCallResults: ChatCompletionMessageToolCall[];
-    }) => void;
-    onFinished?: () => void;
-  };
-};
-
-type CreateCompleteResopnseEvents = {
-  completionEvents?: {
-    onReasoned?: ({ reasoningContent }: { reasoningContent: string }) => void;
-    onToolCalled?: ({
-      toolCalls
-    }: {
-      toolCalls: ChatCompletionMessageToolCall[];
-    }) => ChatCompletionMessageToolCall[];
-    onCompleted?: ({ content }: { content: string }) => void;
-  };
+type ResponseEvents = {
+  onStreaming?: ({ responseContent }: { responseContent: string }) => void;
+  onReasoning?: ({ reasoningContent }: { reasoningContent: string }) => void;
+  onToolCalling?: ({
+    callingTool,
+    toolId
+  }: {
+    callingTool: { name: string; arguments: string };
+    toolId: string;
+  }) => void;
+  onToolParaming?: ({
+    currentTool,
+    params
+  }: {
+    currentTool: ChatCompletionMessageToolCall;
+    params: string;
+  }) => void;
+  onReasoned?: ({ reasoningContent }: { reasoningContent: string }) => void;
+  onToolCalled?: ({ calls }: { calls: ChatCompletionMessageToolCall[] }) => void;
+  onCompleted?: ({ responseContent }: { responseContent: string }) => void;
 };
 
 type CreateStreamResponseProps = {
   params: CreateStreamResponseParams;
-} & CreateStreamResponseEvents;
+} & ResponseEvents;
 
 type CreateCompleteResopnseProps = {
   params: CreateCompleteResopnseParams;
-} & CreateCompleteResopnseEvents;
+} & ResponseEvents;
 
 type CreateLLMResponseProps = {
   llmOptions: Omit<
@@ -80,125 +68,40 @@ type CreateLLMResponseProps = {
     'tools'
   >;
   params: BasicResponseParams;
-  toolCallOptions?:
-    | {
-        mode?: 'function';
-        tools?: ChatCompletionTool[];
-        toolNodes?: ToolNodeItemType[];
-      }
-    | {
-        mode?: 'prompt';
-        tools?: ChatCompletionTool[];
-        toolNodes?: ToolNodeItemType[];
-      };
+  tools: ChatCompletionToolType[];
   userKey?: OpenaiAccountType;
-  events?: CreateStreamResponseEvents & CreateCompleteResopnseEvents;
-};
+} & ResponseEvents;
 
 type LLMResponse = {
   answerText: string;
   reasoningText: string;
-  toolCallResults: ChatCompletionMessageToolCall[];
+  toolCalls: ChatCompletionMessageToolCall[];
   finish_reason: CompletionFinishReason;
   isStreamResponse: boolean;
   getEmptyResponseTip: () => string;
-  tools: ChatCompletionTool[];
-  toolsPrompt: string;
   inputTokens: number;
   outputTokens: number;
 };
 
 type StreamResponse = Pick<
   LLMResponse,
-  'answerText' | 'reasoningText' | 'toolCallResults' | 'finish_reason'
+  'answerText' | 'reasoningText' | 'toolCalls' | 'finish_reason'
 > & {
   usage?: CompletionUsage;
 };
 
 type CompleteResopnse = Pick<
   LLMResponse,
-  'answerText' | 'reasoningText' | 'toolCallResults' | 'finish_reason'
+  'answerText' | 'reasoningText' | 'toolCalls' | 'finish_reason'
 > & {
   usage?: CompletionUsage;
 };
 
 export const createLLMResponse = async (args: CreateLLMResponseProps): Promise<LLMResponse> => {
-  const { llmOptions, toolCallOptions = { mode: 'function' }, userKey, params, events } = args;
-
-  const toolItems: ChatCompletionTool[] = [];
-  let toolsPrompt: string = '';
-
-  if (toolCallOptions) {
-    const { mode, toolNodes, tools } = toolCallOptions;
-    if (toolNodes) {
-      toolItems.push(
-        ...toolNodes.map((item) => {
-          if (item.jsonSchema) {
-            return {
-              type: 'function',
-              function: {
-                name: item.nodeId,
-                description: item.intro || item.name,
-                parameters: item.jsonSchema
-              }
-            } as ChatCompletionTool;
-          }
-
-          const properties: Record<
-            string,
-            {
-              type: string;
-              description: string;
-              enum?: string[];
-              required?: boolean;
-              items?: {
-                type: string;
-              };
-            }
-          > = {};
-          item.toolParams.forEach((item) => {
-            const jsonSchema = item.valueType
-              ? valueTypeJsonSchemaMap[item.valueType] || toolValueTypeList[0].jsonSchema
-              : toolValueTypeList[0].jsonSchema;
-
-            properties[item.key] = {
-              ...jsonSchema,
-              description: item.toolDescription || '',
-              enum: item.enum?.split('\n').filter(Boolean) || undefined
-            };
-          });
-
-          return {
-            type: 'function',
-            function: {
-              name: item.nodeId,
-              description: item.toolDescription || item.intro || item.name,
-              parameters: {
-                type: 'object',
-                properties,
-                required: item.toolParams.filter((item) => item.required).map((item) => item.key)
-              }
-            }
-          } as ChatCompletionTool;
-        })
-      );
-    }
-    if (tools) {
-      toolItems.push(
-        ...tools.map((t) => ({
-          type: t.type,
-          function: t.function
-        }))
-      );
-    }
-
-    if (mode === 'prompt') {
-      toolsPrompt = JSON.stringify(toolItems);
-    }
-  }
+  const { llmOptions, tools, userKey, params, ...events } = args;
 
   const body: ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming = {
-    tools: toolItems,
+    tools,
     ...llmOptions
   };
 
@@ -223,8 +126,6 @@ export const createLLMResponse = async (args: CreateLLMResponseProps): Promise<L
       outputTokens: usage?.completion_tokens ?? 0,
       isStreamResponse,
       getEmptyResponseTip,
-      tools: toolItems,
-      toolsPrompt,
       ...streamResults
     };
   } else {
@@ -238,8 +139,6 @@ export const createLLMResponse = async (args: CreateLLMResponseProps): Promise<L
       outputTokens: usage?.completion_tokens ?? 0,
       isStreamResponse,
       getEmptyResponseTip,
-      tools: toolItems,
-      toolsPrompt,
       ...completeResults
     };
   }
@@ -250,14 +149,22 @@ export const createStreamResponse = async (
 ): Promise<StreamResponse> => {
   const { params, ...events } = args;
 
-  const { abortSignal, stream, reasoning, retainDatasetCite = true } = params;
+  const {
+    abortSignal,
+    stream,
+    reasoning,
+    retainDatasetCite = true,
+    toolMode = 'toolChoice'
+  } = params;
 
   const { parsePart, getResponseData, updateFinishReason } = parseLLMStreamResponse();
 
-  let toolCallResults: ChatCompletionMessageToolCall[] = [];
+  let calls: ChatCompletionMessageToolCall[] = [];
+  let startResponseWrite = false;
+  let answer = '';
 
   for await (const part of stream) {
-    if (abortSignal) {
+    if (abortSignal && abortSignal()) {
       stream.controller?.abort();
       updateFinishReason('close');
       break;
@@ -274,30 +181,85 @@ export const createStreamResponse = async (
       retainDatasetCite
     });
 
-    if (events?.streamEvents?.onReasoning && reasoning && reasoningContent) {
-      events?.streamEvents?.onReasoning({ reasoningContent });
+    if (reasoning && reasoningContent) {
+      events?.onReasoning?.({ reasoningContent });
     }
-    if (events?.streamEvents?.onStreaming && responseContent && originContent) {
-      events?.streamEvents?.onStreaming({ responseContent, originContent });
+    if (responseContent && originContent) {
+      if (toolMode === 'prompt') {
+        answer += originContent;
+        if (startResponseWrite) {
+          events?.onStreaming?.({ responseContent });
+        } else if (answer.length >= 3) {
+          answer = answer.trimStart();
+          if (/0(:|：)/.test(answer)) {
+            startResponseWrite = true;
+
+            // find first : index
+            const firstIndex =
+              answer.indexOf('0:') !== -1 ? answer.indexOf('0:') : answer.indexOf('0：');
+            answer = answer.substring(firstIndex + 2).trim();
+
+            events?.onStreaming?.({ responseContent: answer });
+          }
+        }
+      } else {
+        events?.onStreaming?.({ responseContent });
+      }
     }
-    if (events?.streamEvents?.onToolCalling && responseChoice?.tool_calls?.length) {
-      events?.streamEvents?.onToolCalling({
-        toolCalls: responseChoice.tool_calls,
-        toolCallResults
+    if (responseChoice?.tool_calls?.length) {
+      let callingTool: { name: string; arguments: string } | null = null;
+      responseChoice.tool_calls.forEach((toolCall, i) => {
+        const index = toolCall.index ?? i;
+
+        // Call new tool
+        const hasNewTool = toolCall?.function?.name || callingTool;
+        if (hasNewTool) {
+          // 有 function name，代表新 call 工具
+          if (toolCall?.function?.name) {
+            callingTool = {
+              name: toolCall.function?.name || '',
+              arguments: toolCall.function?.arguments || ''
+            };
+          } else if (callingTool) {
+            // Continue call(Perhaps the name of the previous function was incomplete)
+            callingTool.name += toolCall.function?.name || '';
+            callingTool.arguments += toolCall.function?.arguments || '';
+          }
+
+          if (!callingTool) {
+            return;
+          }
+
+          const toolId = getNanoid();
+
+          events?.onToolCalling?.({ callingTool, toolId });
+
+          calls[index] = {
+            ...toolCall,
+            id: toolId,
+            type: 'function',
+            function: callingTool
+          };
+          callingTool = null;
+        } else {
+          /* 追加到当前工具的参数里 */
+          const arg: string = toolCall?.function?.arguments ?? '';
+          const currentTool = calls[index];
+          if (currentTool && arg) {
+            currentTool.function.arguments += arg;
+            events?.onToolParaming?.({ currentTool, params: arg });
+          }
+        }
       });
     }
   }
 
   const { reasoningContent, content, finish_reason, usage } = getResponseData();
 
-  if (events?.streamEvents?.onFinished) {
-    events?.streamEvents?.onFinished();
-  }
-
   return {
     answerText: content,
     reasoningText: reasoningContent,
-    toolCallResults,
+    toolCalls: calls.filter(Boolean),
     finish_reason,
     usage
   };
@@ -311,8 +273,7 @@ export const createCompleteResponse = async (
   const { completion, reasoning, retainDatasetCite = true } = params;
 
   const finish_reason = completion.choices?.[0]?.finish_reason as CompletionFinishReason;
-  const toolCalls = completion.choices?.[0]?.message?.tool_calls || [];
-  let toolCallResults: ChatCompletionMessageToolCall[] = [];
+  const calls = completion.choices?.[0]?.message?.tool_calls || [];
   const usage = completion.usage;
 
   const { content, reasoningContent } = (() => {
@@ -338,20 +299,20 @@ export const createCompleteResponse = async (
   const formatReasonContent = removeDatasetCiteText(reasoningContent, retainDatasetCite);
   const formatContent = removeDatasetCiteText(content, retainDatasetCite);
 
-  if (events?.completionEvents?.onReasoned && reasoning && reasoningContent) {
-    events?.completionEvents?.onReasoned({ reasoningContent: formatReasonContent });
+  if (reasoning && reasoningContent) {
+    events?.onReasoned?.({ reasoningContent: formatReasonContent });
   }
-  if (events?.completionEvents?.onToolCalled && toolCalls.length !== 0) {
-    toolCallResults = events?.completionEvents?.onToolCalled({ toolCalls });
+  if (calls.length !== 0) {
+    events?.onToolCalled?.({ calls });
   }
-  if (events?.completionEvents?.onCompleted && content) {
-    events?.completionEvents?.onCompleted({ content: formatContent });
+  if (content) {
+    events?.onCompleted?.({ responseContent: formatContent });
   }
 
   return {
     reasoningText: formatReasonContent,
     answerText: formatContent,
-    toolCallResults,
+    toolCalls: calls,
     finish_reason,
     usage
   };

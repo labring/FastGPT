@@ -3,10 +3,7 @@ import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/co
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
-import type {
-  ChatCompletionMessageParam,
-  CompletionFinishReason
-} from '@fastgpt/global/core/ai/type.d';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
@@ -213,47 +210,42 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       getEmptyResponseTip
     } = await createLLMResponse({
       llmOptions: requestBody,
+      tools: [],
       userKey: externalProvider.openaiAccount,
-      params: { abortSignal: res?.closed, reasoning: aiChatReasoning, retainDatasetCite },
-      events: {
-        streamEvents: {
-          onReasoning({ reasoningContent }) {
-            workflowStreamResponse?.({
-              write,
-              event: SseResponseEventEnum.answer,
-              data: textAdaptGptResponse({
-                reasoning_content: reasoningContent
-              })
-            });
-          },
-          onStreaming({ responseContent }) {
-            workflowStreamResponse?.({
-              write,
-              event: SseResponseEventEnum.answer,
-              data: textAdaptGptResponse({
-                text: responseContent
-              })
-            });
-          }
-        },
-        completionEvents: {
-          onReasoned({ reasoningContent }) {
-            workflowStreamResponse?.({
-              event: SseResponseEventEnum.fastAnswer,
-              data: textAdaptGptResponse({
-                reasoning_content: reasoningContent
-              })
-            });
-          },
-          onCompleted({ content }) {
-            workflowStreamResponse?.({
-              event: SseResponseEventEnum.fastAnswer,
-              data: textAdaptGptResponse({
-                text: content
-              })
-            });
-          }
-        }
+      params: { abortSignal: () => res?.closed, reasoning: aiChatReasoning, retainDatasetCite },
+      onReasoning({ reasoningContent }) {
+        workflowStreamResponse?.({
+          write,
+          event: SseResponseEventEnum.answer,
+          data: textAdaptGptResponse({
+            reasoning_content: reasoningContent
+          })
+        });
+      },
+      onStreaming({ responseContent }) {
+        workflowStreamResponse?.({
+          write,
+          event: SseResponseEventEnum.answer,
+          data: textAdaptGptResponse({
+            text: responseContent
+          })
+        });
+      },
+      onReasoned({ reasoningContent }) {
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.fastAnswer,
+          data: textAdaptGptResponse({
+            reasoning_content: reasoningContent
+          })
+        });
+      },
+      onCompleted({ responseContent }) {
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.fastAnswer,
+          data: textAdaptGptResponse({
+            text: responseContent
+          })
+        });
       }
     });
 

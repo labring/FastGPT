@@ -1,8 +1,5 @@
 import { filterGPTMessageByMaxContext, loadRequestMessages } from '../../../../chat/utils';
-import type {
-  ChatCompletionMessageParam,
-  CompletionFinishReason
-} from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { responseWriteController } from '../../../../../common/response';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -25,10 +22,10 @@ import {
   llmCompletionsBodyFormat,
   removeDatasetCiteText
 } from '../../../../ai/utils';
-import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
 import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { createLLMResponse } from '@fastgpt/global/core/ai/request';
+import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
 
 type FunctionCallCompletion = {
   id: string;
@@ -152,6 +149,68 @@ export const runToolWithPromptCall = async (
 
   const assistantResponses = response?.assistantResponses || [];
 
+  const toolsPrompt = JSON.stringify(
+    toolNodes.map((item) => {
+      if (item.jsonSchema) {
+        return {
+          toolId: item.nodeId,
+          description: item.intro,
+          parameters: item.jsonSchema
+        };
+      }
+
+      const properties: Record<
+        string,
+        {
+          type: string;
+          description: string;
+          required?: boolean;
+          enum?: string[];
+        }
+      > = {};
+      item.toolParams.forEach((item) => {
+        const jsonSchema = item.valueType
+          ? valueTypeJsonSchemaMap[item.valueType] || toolValueTypeList[0].jsonSchema
+          : toolValueTypeList[0].jsonSchema;
+
+        properties[item.key] = {
+          ...jsonSchema,
+          description: item.toolDescription || '',
+          enum: item.enum?.split('\n').filter(Boolean) || []
+        };
+      });
+
+      return {
+        toolId: item.nodeId,
+        description: item.toolDescription || item.intro,
+        parameters: {
+          type: 'object',
+          properties,
+          required: item.toolParams.filter((item) => item.required).map((item) => item.key)
+        }
+      };
+    })
+  );
+
+  const lastMessage = messages[messages.length - 1];
+  if (typeof lastMessage.content === 'string') {
+    lastMessage.content = replaceVariable(lastMessage.content, {
+      toolsPrompt
+    });
+  } else if (Array.isArray(lastMessage.content)) {
+    // array, replace last element
+    const lastText = lastMessage.content[lastMessage.content.length - 1];
+    if (lastText.type === 'text') {
+      lastText.text = replaceVariable(lastText.text, {
+        toolsPrompt
+      });
+    } else {
+      return Promise.reject('Prompt call invalid input');
+    }
+  } else {
+    return Promise.reject('Prompt call invalid input');
+  }
+
   const max_tokens = computedMaxToken({
     model: toolModel,
     maxToken,
@@ -188,9 +247,6 @@ export const runToolWithPromptCall = async (
 
   const write = res ? responseWriteController({ res, readStream: stream }) : undefined;
 
-  let startResponseWrite = false;
-  let answerBuffer = '';
-
   let {
     reasoningText: reasoning,
     answerText: answer,
@@ -198,83 +254,36 @@ export const runToolWithPromptCall = async (
     inputTokens,
     outputTokens,
     isStreamResponse,
-    toolsPrompt,
     getEmptyResponseTip
   } = await createLLMResponse({
     llmOptions: requestBody,
-    toolCallOptions: {
-      mode: 'prompt',
-      toolNodes: toolNodes
-    },
+    tools: [],
     userKey: externalProvider.openaiAccount,
-    params: { abortSignal: res?.closed, reasoning: aiChatReasoning, retainDatasetCite },
-    events: {
-      streamEvents: {
-        onReasoning({ reasoningContent }) {
-          workflowStreamResponse?.({
-            write,
-            event: SseResponseEventEnum.answer,
-            data: textAdaptGptResponse({
-              reasoning_content: reasoningContent
-            })
-          });
-        },
-        onStreaming({ responseContent, originContent }) {
-          answerBuffer += originContent;
-
-          if (startResponseWrite) {
-            if (responseContent) {
-              workflowStreamResponse?.({
-                write,
-                event: SseResponseEventEnum.answer,
-                data: textAdaptGptResponse({
-                  text: responseContent
-                })
-              });
-            }
-          } else if (answerBuffer.length >= 3) {
-            answerBuffer = answerBuffer.trimStart();
-            if (/0(:|：)/.test(answerBuffer)) {
-              startResponseWrite = true;
-
-              // find first : index
-              const firstIndex =
-                answerBuffer.indexOf('0:') !== -1
-                  ? answerBuffer.indexOf('0:')
-                  : answerBuffer.indexOf('0：');
-              answerBuffer = answerBuffer.substring(firstIndex + 2).trim();
-              workflowStreamResponse?.({
-                write,
-                event: SseResponseEventEnum.answer,
-                data: textAdaptGptResponse({
-                  text: answerBuffer
-                })
-              });
-            }
-          }
-        }
-      }
+    params: {
+      abortSignal: () => res?.closed,
+      reasoning: aiChatReasoning,
+      retainDatasetCite,
+      toolMode: 'prompt'
+    },
+    onReasoning({ reasoningContent }) {
+      workflowStreamResponse?.({
+        write,
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          reasoning_content: reasoningContent
+        })
+      });
+    },
+    onStreaming({ responseContent }) {
+      workflowStreamResponse?.({
+        write,
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          text: responseContent
+        })
+      });
     }
   });
-
-  const lastMessage = messages[messages.length - 1];
-  if (typeof lastMessage.content === 'string') {
-    lastMessage.content = replaceVariable(lastMessage.content, {
-      toolsPrompt
-    });
-  } else if (Array.isArray(lastMessage.content)) {
-    // array, replace last element
-    const lastText = lastMessage.content[lastMessage.content.length - 1];
-    if (lastText.type === 'text') {
-      lastText.text = replaceVariable(lastText.text, {
-        toolsPrompt
-      });
-    } else {
-      return Promise.reject('Prompt call invalid input');
-    }
-  } else {
-    return Promise.reject('Prompt call invalid input');
-  }
 
   if (stream && !isStreamResponse && aiChatReasoning && reasoning) {
     workflowStreamResponse?.({
