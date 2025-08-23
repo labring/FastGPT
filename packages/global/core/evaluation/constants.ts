@@ -20,3 +20,11 @@ export const EvaluationStatusMap = {
   }
 };
 export const EvaluationStatusValues = Object.keys(EvaluationStatusMap).map(Number);
+
+export enum EvalDatasetDataCreateFromEnum {
+  manual = 'manual',
+  fileImport = 'file_import',
+  intelligentGeneration = 'intelligent_generation'
+}
+
+export const EvalDatasetDataCreateFromValues = Object.values(EvalDatasetDataCreateFromEnum);
