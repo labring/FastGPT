@@ -220,7 +220,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
           onMessage: generatingMessage
         });
 
-        const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(histories)[0]);
+        const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats({ messages: histories })[0]);
 
         onUpdateHistoryTitle({ chatId, newTitle });
         setChatBoxData((state) => ({
@@ -268,7 +268,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
         abortCtrl: controller
       });
 
-      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(histories)[0]);
+      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats({ messages: histories })[0]);
 
       onUpdateHistoryTitle({ chatId, newTitle });
       setChatBoxData((state) => ({

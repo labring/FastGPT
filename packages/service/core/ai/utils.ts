@@ -6,12 +6,14 @@ import type {
   StreamChatType,
   UnStreamChatType,
   CompletionUsage,
-  ChatCompletionMessageToolCall
+  ChatCompletionMessageToolCall,
+  ChatCompletionMessageParam
 } from '@fastgpt/global/core/ai/type';
 import { getLLMModel } from './model';
 import { getLLMDefaultUsage } from '@fastgpt/global/core/ai/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import json5 from 'json5';
+import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 
 /* 
   Count response max token
@@ -46,7 +48,7 @@ export const computedTemperature = ({
   return temperature;
 };
 
-type CompletionsBodyType =
+export type CompletionsBodyType =
   | ChatCompletionCreateParamsNonStreaming
   | ChatCompletionCreateParamsStreaming;
 type InferCompletionsBody<T> = T extends { stream: true }
@@ -55,13 +57,36 @@ type InferCompletionsBody<T> = T extends { stream: true }
     ? ChatCompletionCreateParamsNonStreaming
     : ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming;
 
-export const llmCompletionsBodyFormat = <T extends CompletionsBodyType>(
-  body: T & {
-    stop?: string;
-  },
-  model: string | LLMModelItemType
-): InferCompletionsBody<T> => {
-  const modelData = typeof model === 'string' ? getLLMModel(model) : model;
+export type LLMRequestBodyType<T> = Omit<T, 'model' | 'stop' | 'response_format' | 'messages'> & {
+  model: string | LLMModelItemType;
+  stop?: string;
+  response_format?: {
+    type?: string;
+    json_schema?: string;
+  };
+  messages: ChatCompletionMessageParam[];
+
+  // Custom field
+  retainDatasetCite?: boolean;
+  reasoning?: boolean; // Whether to response reasoning content
+  toolCallMode?: 'toolChoice' | 'prompt';
+  useVision?: boolean;
+  requestOrigin?: string;
+};
+
+export const llmCompletionsBodyFormat = async <T extends CompletionsBodyType>({
+  reasoning,
+  retainDatasetCite,
+  useVision,
+  requestOrigin,
+
+  tools,
+  tool_choice,
+  parallel_tool_calls,
+  toolCallMode,
+  ...body
+}: LLMRequestBodyType<T>): Promise<InferCompletionsBody<T>> => {
+  const modelData = getLLMModel(body.model);
   if (!modelData) {
     return body as unknown as InferCompletionsBody<T>;
   }
@@ -85,10 +110,9 @@ export const llmCompletionsBodyFormat = <T extends CompletionsBodyType>(
     }
     return undefined;
   })();
-
   const stop = body.stop ?? undefined;
 
-  const requestBody: T = {
+  const requestBody = {
     ...body,
     model: modelData.model,
     temperature:
@@ -100,8 +124,13 @@ export const llmCompletionsBodyFormat = <T extends CompletionsBodyType>(
         : undefined,
     ...modelData?.defaultConfig,
     response_format,
-    stop: stop?.split('|')
-  };
+    stop: stop?.split('|'),
+    ...(toolCallMode === 'toolChoice' && {
+      tools,
+      tool_choice,
+      parallel_tool_calls
+    })
+  } as T;
 
   // field map
   if (modelData.fieldMap) {
@@ -225,14 +254,6 @@ export const parseReasoningContent = (text: string): [string, string] => {
   return [thinkContent, answerContent];
 };
 
-export const removeDatasetCiteText = (text: string, retainDatasetCite: boolean) => {
-  return retainDatasetCite
-    ? text.replace(/[\[【]id[\]】]\(CITE\)/g, '')
-    : text
-        .replace(/[\[【]([a-f0-9]{24})[\]】](?:\([^\)]*\)?)?/g, '')
-        .replace(/[\[【]id[\]】]\(CITE\)/g, '');
-};
-
 // Parse llm stream part
 export const parseLLMStreamResponse = () => {
   let isInThinkTag: boolean | undefined = undefined;
@@ -274,8 +295,8 @@ export const parseLLMStreamResponse = () => {
     retainDatasetCite?: boolean;
   }): {
     reasoningContent: string;
-    content: string;
-    responseContent: string;
+    content: string; // 原始内容，不去掉 cite
+    responseContent: string; // 响应的内容，会去掉 cite
     finishReason: CompletionFinishReason;
   } => {
     const data = (() => {

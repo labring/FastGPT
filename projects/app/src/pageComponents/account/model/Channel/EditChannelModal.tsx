@@ -1,4 +1,4 @@
-import { aiproxyIdMap } from '@fastgpt-sdk/plugin';
+import { aiproxyIdMap } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { type ChannelInfoType } from '@/global/aiproxy/type';
 import {
   Box,

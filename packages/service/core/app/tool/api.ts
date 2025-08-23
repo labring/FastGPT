@@ -1,4 +1,4 @@
-import { RunToolWithStream } from '@fastgpt-sdk/plugin';
+import { RunToolWithStream } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { pluginClient, BASE_URL, TOKEN } from '../../../thirdProvider/fastgptPlugin';
 

@@ -26,7 +26,7 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { type ChannelInfoType } from '@/global/aiproxy/type';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import { aiproxyIdMap } from '@fastgpt-sdk/plugin';
+import { aiproxyIdMap } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { ChannelStatusEnum, ChannelStautsMap, defaultChannel } from '@/global/aiproxy/constants';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import dynamic from 'next/dynamic';

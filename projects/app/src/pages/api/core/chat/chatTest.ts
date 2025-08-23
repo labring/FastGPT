@@ -83,7 +83,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (!Array.isArray(edges)) {
       throw new Error('Edges is not array');
     }
-    const chatMessages = GPTMessages2Chats(messages);
+    const chatMessages = GPTMessages2Chats({ messages });
     // console.log(JSON.stringify(chatMessages, null, 2), '====', chatMessages.length);
 
     /* user auth */

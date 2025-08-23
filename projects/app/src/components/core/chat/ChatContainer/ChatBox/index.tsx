@@ -412,7 +412,7 @@ const ChatBox = ({
   /**
    * user confirm send prompt
    */
-  const sendPrompt: SendPromptFnType = useMemoizedFn(
+  const sendPrompt = useMemoizedFn<SendPromptFnType>(
     ({
       text = '',
       files = [],

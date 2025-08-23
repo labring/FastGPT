@@ -59,6 +59,7 @@ export type AppSchema = {
 
 export type AppListItemType = {
   _id: string;
+  parentId: ParentIdType;
   tmbId: string;
   name: string;
   avatar: string;
