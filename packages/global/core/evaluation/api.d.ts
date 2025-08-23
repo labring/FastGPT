@@ -81,3 +81,8 @@ export type listEvalDatasetDataResponse = PaginationResponse<
     | 'updateTime'
   >
 >;
+
+export type qualityAssessmentBody = {
+  dataId: string;
+  evalModel: string;
+};

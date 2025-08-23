@@ -40,6 +40,8 @@ import { delay } from '@fastgpt/global/common/system/utils';
 import { removeDatasetCiteText } from '../../core/ai/utils';
 import { getUserChatInfoAndAuthTeamPoints } from '../../support/permission/auth/team';
 import { getRunningUserInfoByTmbId } from '../../support/user/team/utils';
+import { getEvalDatasetDataQualityWorker } from './dataQualityMq';
+import { processEvalDatasetDataQuality } from './dataQualityProcessor';
 
 type AppContextType = {
   appData: AppSchema;
@@ -52,7 +54,8 @@ type AppContextType = {
 
 export const initEvaluationWorker = () => {
   addLog.info('Init Evaluation Worker...');
-  return getEvaluationWorker(processor);
+  getEvalDatasetDataQualityWorker(processEvalDatasetDataQuality);
+  getEvaluationWorker(processor);
 };
 
 const dealAiPointCheckError = async (evalId: string, error: any) => {
