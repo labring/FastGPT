@@ -277,7 +277,7 @@ const CollectionCard = () => {
                           </MyTooltip>
                         </Flex>
                         {feConfigs?.isPlus && !!collection.tags?.length && (
-                          <TagsPopOver currentCollection={collection} />
+                          <TagsPopOver currentCollection={collection} hoverBg={'white'} />
                         )}
                       </Box>
                     </HStack>
