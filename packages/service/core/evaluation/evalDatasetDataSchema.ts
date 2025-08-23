@@ -1,6 +1,10 @@
 import type { EvalDatasetDataSchemaType } from '@fastgpt/global/core/evaluation/type';
 import { connectionMongo, getMongoModel } from '../../common/mongo';
 import { EvalDatasetCollectionName } from './evalDatasetCollectionSchema';
+import {
+  EvalDatasetDataCreateFromEnum,
+  EvalDatasetDataCreateFromValues
+} from '@fastgpt/global/core/evaluation/constants';
 
 const { Schema } = connectionMongo;
 
@@ -53,6 +57,13 @@ const EvalDatasetDataSchema = new Schema({
   metadata: {
     type: Schema.Types.Mixed,
     default: {}
+  },
+  createFrom: {
+    type: String,
+    enum: EvalDatasetDataCreateFromValues,
+    default: EvalDatasetDataCreateFromEnum.manual,
+    required: true,
+    index: true
   },
   createTime: {
     type: Date,

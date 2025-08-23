@@ -1,4 +1,4 @@
-import type { EvaluationStatusEnum } from './constants';
+import type { EvaluationStatusEnum, EvalDatasetDataCreateFromEnum } from './constants';
 
 export type EvaluationSchemaType = {
   _id: string;
@@ -71,6 +71,7 @@ export type EvalDatasetDataSchemaType = {
   context: string[];
   retrieval_context: string[];
   metadata: Record<string, any>;
+  createFrom: EvalDatasetDataCreateFromEnum;
   createTime: Date;
   updateTime: Date;
 };
