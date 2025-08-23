@@ -64,6 +64,11 @@ export type ChatCompletionMessageToolCall = ChatCompletionMessageToolCall & {
   toolName?: string;
   toolAvatar?: string;
 };
+export type ChatCompletionToolType = ChatCompletionTool & {
+  index?: number;
+  toolName?: string;
+  toolAvatar?: string;
+};
 export type ChatCompletionMessageFunctionCall =
   SdkChatCompletionAssistantMessageParam.FunctionCall & {
     id?: string;
