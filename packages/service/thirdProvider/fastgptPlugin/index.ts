@@ -1,4 +1,4 @@
-import createClient from '@fastgpt-sdk/plugin';
+import { createClient } from '@fastgpt/global/sdk/fastgpt-plugin';
 
 export const BASE_URL = process.env.PLUGIN_BASE_URL || '';
 export const TOKEN = process.env.PLUGIN_TOKEN || '';

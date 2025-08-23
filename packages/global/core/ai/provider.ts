@@ -1,4 +1,4 @@
-import { ModelProviders } from '@fastgpt-sdk/plugin';
+import { ModelProviders } from '../../sdk/fastgpt-plugin';
 
 export type ModelProviderIdType = keyof typeof ModelProviders;
 type ProviderValueTypes = (typeof ModelProviders)[ModelProviderIdType];

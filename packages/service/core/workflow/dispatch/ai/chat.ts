@@ -1,17 +1,13 @@
-import { filterGPTMessageByMaxContext, loadRequestMessages } from '../../../chat/utils';
+import { filterGPTMessageByMaxContext } from '../../../ai/llm/utils';
 import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
-import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import type {
   ChatDispatchProps,
   DispatchNodeResultType
 } from '@fastgpt/global/core/workflow/runtime/type';
-import { countGptMessagesTokens } from '../../../../common/string/tiktoken/index';
 import {
   chats2GPTMessages,
   chatValue2RuntimePrompt,
@@ -36,15 +32,15 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { checkQuoteQAValue, getNodeErrResponse, getHistories } from '../utils';
 import { filterSearchResultsByMaxChars } from '../../utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
-import { computedMaxToken, llmCompletionsBodyFormat } from '../../../ai/utils';
+import { computedMaxToken } from '../../../ai/utils';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import type { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
 import { getFileContentFromLinks, getHistoryFileLinks } from '../tools/readFiles';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { i18nT } from '../../../../../web/i18n/utils';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { postTextCensor } from '../../../chat/postTextCensor';
-import { createLLMResponse } from '@fastgpt/global/core/ai/request';
+import { createLLMResponse } from '../../../ai/llm/request';
+import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
@@ -112,7 +108,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
   try {
     aiChatVision = modelConstantsData.vision && aiChatVision;
-    aiChatReasoning = !!aiChatReasoning && !!modelConstantsData.reasoning;
     // Check fileLinks is reference variable
     const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
     if (!fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0) {
@@ -176,74 +171,50 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       })()
     ]);
 
-    const requestMessages = await loadRequestMessages({
-      messages: filterMessages,
-      useVision: aiChatVision,
-      origin: requestOrigin
-    });
+    const write = res ? responseWriteController({ res, readStream: stream }) : undefined;
 
-    const requestBody = llmCompletionsBodyFormat(
-      {
+    const {
+      completeMessages,
+      reasoningText,
+      answerText,
+      finish_reason,
+      getEmptyResponseTip,
+      usage
+    } = await createLLMResponse({
+      body: {
         model: modelConstantsData.model,
         stream,
-        messages: requestMessages,
+        reasoning: aiChatReasoning,
+        messages: filterMessages,
         temperature,
         max_tokens,
         top_p: aiChatTopP,
         stop: aiChatStopSign,
         response_format: {
-          type: aiChatResponseFormat as any,
+          type: aiChatResponseFormat,
           json_schema: aiChatJsonSchema
-        }
+        },
+        retainDatasetCite,
+        useVision: aiChatVision,
+        requestOrigin
       },
-      modelConstantsData
-    );
-
-    const write = res ? responseWriteController({ res, readStream: stream }) : undefined;
-
-    let {
-      reasoningText,
-      answerText,
-      finish_reason,
-      inputTokens,
-      outputTokens,
-      getEmptyResponseTip
-    } = await createLLMResponse({
-      llmOptions: requestBody,
-      tools: [],
       userKey: externalProvider.openaiAccount,
-      params: { abortSignal: () => res?.closed, reasoning: aiChatReasoning, retainDatasetCite },
-      onReasoning({ reasoningContent }) {
+      isAborted: () => res?.closed,
+      onReasoning({ text }) {
         workflowStreamResponse?.({
           write,
           event: SseResponseEventEnum.answer,
           data: textAdaptGptResponse({
-            reasoning_content: reasoningContent
+            reasoning_content: text
           })
         });
       },
-      onStreaming({ responseContent }) {
+      onStreaming({ text }) {
         workflowStreamResponse?.({
           write,
           event: SseResponseEventEnum.answer,
           data: textAdaptGptResponse({
-            text: responseContent
-          })
-        });
-      },
-      onReasoned({ reasoningContent }) {
-        workflowStreamResponse?.({
-          event: SseResponseEventEnum.fastAnswer,
-          data: textAdaptGptResponse({
-            reasoning_content: reasoningContent
-          })
-        });
-      },
-      onCompleted({ responseContent }) {
-        workflowStreamResponse?.({
-          event: SseResponseEventEnum.fastAnswer,
-          data: textAdaptGptResponse({
-            text: responseContent
+            text
           })
         });
       }
@@ -253,42 +224,29 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       return getNodeErrResponse({ error: getEmptyResponseTip() });
     }
 
-    const AIMessages: ChatCompletionMessageParam[] = [
-      {
-        role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        content: answerText,
-        reasoning_text: reasoningText // reasoning_text is only recorded for response, but not for request
-      }
-    ];
-
-    const completeMessages = [...requestMessages, ...AIMessages];
-    const chatCompleteMessages = GPTMessages2Chats(completeMessages);
-
-    inputTokens = inputTokens || (await countGptMessagesTokens(requestMessages));
-    outputTokens = outputTokens || (await countGptMessagesTokens(AIMessages));
-
     const { totalPoints, modelName } = formatModelChars2Points({
-      model,
-      inputTokens,
-      outputTokens,
-      modelType: ModelTypeEnum.llm
+      model: modelConstantsData.model,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens
     });
+    const points = externalProvider.openaiAccount?.key ? 0 : totalPoints;
 
-    const trimAnswer = answerText.trim();
+    const chatCompleteMessages = GPTMessages2Chats({ messages: completeMessages });
+
     return {
       data: {
-        answerText: trimAnswer,
+        answerText: answerText,
         reasoningText,
         history: chatCompleteMessages
       },
-      [DispatchNodeResponseKeyEnum.answerText]: isResponseAnswerText ? trimAnswer : undefined,
+      [DispatchNodeResponseKeyEnum.answerText]: isResponseAnswerText ? answerText : undefined,
       [DispatchNodeResponseKeyEnum.reasoningText]: aiChatReasoning ? reasoningText : undefined,
 
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
+        totalPoints: points,
         model: modelName,
-        inputTokens: inputTokens,
-        outputTokens: outputTokens,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
         query: `${userChatInput}`,
         maxToken: max_tokens,
         reasoningText,
@@ -299,10 +257,10 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
         {
           moduleName: name,
-          totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
+          totalPoints: points,
           model: modelName,
-          inputTokens: inputTokens,
-          outputTokens: outputTokens
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens
         }
       ],
       [DispatchNodeResponseKeyEnum.toolResponses]: answerText

@@ -1,17 +1,14 @@
 import { findAIModel } from '../../../core/ai/model';
-import type { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 
 export const formatModelChars2Points = ({
   model,
   inputTokens = 0,
   outputTokens = 0,
-  modelType,
   multiple = 1000
 }: {
   model: string;
   inputTokens?: number;
   outputTokens?: number;
-  modelType: `${ModelTypeEnum}`;
   multiple?: number;
 }) => {
   const modelData = findAIModel(model);

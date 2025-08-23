@@ -1,14 +1,11 @@
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
-import { createChatCompletion } from '../config';
-import { countGptMessagesTokens, countPromptTokens } from '../../../common/string/tiktoken/index';
-import { loadRequestMessages } from '../../chat/utils';
-import { llmCompletionsBodyFormat, formatLLMResponse } from '../utils';
 import {
   QuestionGuidePrompt,
   QuestionGuideFooterPrompt
 } from '@fastgpt/global/core/ai/prompt/agent';
 import { addLog } from '../../../common/system/log';
 import json5 from 'json5';
+import { createLLMResponse } from '../llm/request';
 
 export async function createQuestionGuide({
   messages,
@@ -30,30 +27,22 @@ export async function createQuestionGuide({
       content: `${customPrompt || QuestionGuidePrompt}\n${QuestionGuideFooterPrompt}`
     }
   ];
-  const requestMessages = await loadRequestMessages({
-    messages: concatMessages,
-    useVision: false
-  });
 
-  const { response } = await createChatCompletion({
-    body: llmCompletionsBodyFormat(
-      {
-        model,
-        temperature: 0.1,
-        max_tokens: 200,
-        messages: requestMessages,
-        stream: true
-      },
-      model
-    )
+  const {
+    answerText: answer,
+    usage: { inputTokens, outputTokens }
+  } = await createLLMResponse({
+    body: {
+      model,
+      temperature: 0.1,
+      max_tokens: 200,
+      messages: concatMessages,
+      stream: true
+    }
   });
-  const { text: answer, usage } = await formatLLMResponse(response);
 
   const start = answer.indexOf('[');
   const end = answer.lastIndexOf(']');
-
-  const inputTokens = usage?.prompt_tokens || (await countGptMessagesTokens(requestMessages));
-  const outputTokens = usage?.completion_tokens || (await countPromptTokens(answer));
 
   if (start === -1 || end === -1) {
     addLog.warn('Create question guide error', { answer });

@@ -541,11 +541,11 @@ const TrainingStates = ({
     }
   );
 
-  const errorCounts = (Object.values(trainingDetail?.errorCounts || {}) as number[]).reduce(
+  const errorCounts = Object.values(trainingDetail?.errorCounts || {}).reduce(
     (acc, count) => acc + count,
     0
   );
-
+  console.log(errorCounts);
   return (
     <MyModal
       isOpen

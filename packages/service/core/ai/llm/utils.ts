@@ -1,4 +1,4 @@
-import { countGptMessagesTokens } from '../../common/string/tiktoken/index';
+import { countGptMessagesTokens } from '../../../common/string/tiktoken/index';
 import type {
   ChatCompletionAssistantMessageParam,
   ChatCompletionContentPart,
@@ -9,9 +9,9 @@ import type {
 } from '@fastgpt/global/core/ai/type.d';
 import axios from 'axios';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import { i18nT } from '../../../web/i18n/utils';
-import { addLog } from '../../common/system/log';
-import { getImageBase64 } from '../../common/file/image/utils';
+import { i18nT } from '../../../../web/i18n/utils';
+import { addLog } from '../../../common/system/log';
+import { getImageBase64 } from '../../../common/file/image/utils';
 
 export const filterGPTMessageByMaxContext = async ({
   messages = [],
@@ -106,7 +106,7 @@ export const loadRequestMessages = async ({
     const arrayContent = content
       .filter((item) => item.text)
       .map((item) => item.text)
-      .join('\n');
+      .join('\n\n');
 
     return arrayContent;
   };

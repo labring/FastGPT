@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Flex, type BoxProps, useDisclosure, HStack } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
-import { useTranslation } from 'next-i18next';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Markdown from '@/components/Markdown';
@@ -18,6 +17,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 type sideTabItemType = {
   moduleLogo?: string;
@@ -41,7 +41,7 @@ export const WholeResponseContent = ({
   dataId?: string;
   chatTime?: Date;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
 
   // Auto scroll to top
   const ContentRef = useRef<HTMLDivElement>(null);
@@ -462,7 +462,7 @@ const SideTabItem = ({
   value: string;
   index: number;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
 
   if (!sideBarItem) return null;
 
@@ -617,7 +617,7 @@ export const ResponseBox = React.memo(function ResponseBox({
   hideTabs?: boolean;
   useMobile?: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { isPc } = useSystem();
 
   const flattedResponse = useMemo(() => {
@@ -825,7 +825,7 @@ const WholeResponseModal = ({
   dataId: string;
   chatTime: Date;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
 
   const { getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
   const { loading: isLoading, data: response } = useRequest2(

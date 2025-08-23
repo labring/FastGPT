@@ -7,7 +7,7 @@ import type {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { getLLMModel } from '../../../../ai/model';
 import { filterToolNodeIdByEdges, getNodeErrResponse, getHistories } from '../../utils';
-import { runToolWithToolChoice } from './toolChoice';
+import { runToolCall } from './toolCall';
 import { type DispatchToolModuleProps, type ToolNodeItemType } from './type';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -20,15 +20,12 @@ import {
 } from '@fastgpt/global/core/chat/adapt';
 import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
-import { runToolWithFunctionCall } from './functionCall';
-import { runToolWithPromptCall } from './promptCall';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { getMultiplePrompt, Prompt_Tool_Call } from './constants';
+import { getMultiplePrompt } from './constants';
 import { filterToolResponseToPreview } from './utils';
 import { getFileContentFromLinks, getHistoryFileLinks } from '../../tools/readFiles';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { getDocumentQuotePrompt } from '@fastgpt/global/core/ai/prompt/AIChat';
 import { postTextCensor } from '../../../../chat/postTextCensor';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
@@ -180,8 +177,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     const {
       toolWorkflowInteractiveResponse,
       dispatchFlowResponse, // tool flow response
-      toolNodeInputTokens,
-      toolNodeOutputTokens,
+      toolCallInputTokens,
+      toolCallOutputTokens,
       completeMessages = [], // The actual message sent to AI(just save text)
       assistantResponses = [], // FastGPT system store assistant.value response
       runTimes,
@@ -201,64 +198,25 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         interactiveEntryToolParams: lastInteractive?.toolParams
       };
 
-      if (toolModel.toolChoice) {
-        return runToolWithToolChoice({
-          ...props,
-          ...requestParams,
-          maxRunToolTimes: 30
-        });
-      }
-      if (toolModel.functionCall) {
-        return runToolWithFunctionCall({
-          ...props,
-          ...requestParams
-        });
-      }
-
-      const lastMessage = adaptMessages[adaptMessages.length - 1];
-      if (typeof lastMessage?.content === 'string') {
-        lastMessage.content = replaceVariable(Prompt_Tool_Call, {
-          question: lastMessage.content
-        });
-      } else if (Array.isArray(lastMessage.content)) {
-        // array, replace last element
-        const lastText = lastMessage.content[lastMessage.content.length - 1];
-        if (lastText.type === 'text') {
-          lastText.text = replaceVariable(Prompt_Tool_Call, {
-            question: lastText.text
-          });
-        } else {
-          return Promise.reject('Prompt call invalid input');
-        }
-      } else {
-        return Promise.reject('Prompt call invalid input');
-      }
-
-      return runToolWithPromptCall({
+      return runToolCall({
         ...props,
-        ...requestParams
+        ...requestParams,
+        maxRunToolTimes: 30
       });
     })();
 
-    const { totalPoints, modelName } = formatModelChars2Points({
+    const { totalPoints: modelTotalPoints, modelName } = formatModelChars2Points({
       model,
-      inputTokens: toolNodeInputTokens,
-      outputTokens: toolNodeOutputTokens,
-      modelType: ModelTypeEnum.llm
+      inputTokens: toolCallInputTokens,
+      outputTokens: toolCallOutputTokens
     });
-    const toolAIUsage = externalProvider.openaiAccount?.key ? 0 : totalPoints;
+    const modelUsage = externalProvider.openaiAccount?.key ? 0 : modelTotalPoints;
 
-    // flat child tool response
-    const childToolResponse = dispatchFlowResponse.map((item) => item.flowResponses).flat();
+    const toolUsages = dispatchFlowResponse.map((item) => item.flowUsages).flat();
+    const toolTotalPoints = toolUsages.reduce((sum, item) => sum + item.totalPoints, 0);
 
     // concat tool usage
-    const totalPointsUsage =
-      toolAIUsage +
-      dispatchFlowResponse.reduce((sum, item) => {
-        const childrenTotal = item.flowUsages.reduce((sum, item) => sum + item.totalPoints, 0);
-        return sum + childrenTotal;
-      }, 0);
-    const flatUsages = dispatchFlowResponse.map((item) => item.flowUsages).flat();
+    const totalPointsUsage = modelUsage + toolTotalPoints;
 
     const previewAssistantResponses = filterToolResponseToPreview(assistantResponses);
 
@@ -274,31 +232,31 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         // 展示的积分消耗
         totalPoints: totalPointsUsage,
-        toolCallInputTokens: toolNodeInputTokens,
-        toolCallOutputTokens: toolNodeOutputTokens,
-        childTotalPoints: flatUsages.reduce((sum, item) => sum + item.totalPoints, 0),
+        toolCallInputTokens: toolCallInputTokens,
+        toolCallOutputTokens: toolCallOutputTokens,
+        childTotalPoints: toolTotalPoints,
         model: modelName,
         query: userChatInput,
         historyPreview: getHistoryPreview(
-          GPTMessages2Chats(completeMessages, false),
+          GPTMessages2Chats({ messages: completeMessages, reserveTool: false }),
           10000,
           useVision
         ),
-        toolDetail: childToolResponse,
+        toolDetail: dispatchFlowResponse.map((item) => item.flowResponses).flat(),
         mergeSignId: nodeId,
         finishReason: finish_reason
       },
       [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-        // 工具调用本身的积分消耗
+        // 模型本身的积分消耗
         {
           moduleName: name,
           model: modelName,
-          totalPoints: toolAIUsage,
-          inputTokens: toolNodeInputTokens,
-          outputTokens: toolNodeOutputTokens
+          totalPoints: modelUsage,
+          inputTokens: toolCallInputTokens,
+          outputTokens: toolCallOutputTokens
         },
         // 工具的消耗
-        ...flatUsages
+        ...toolUsages
       ],
       [DispatchNodeResponseKeyEnum.interactive]: toolWorkflowInteractiveResponse
     };

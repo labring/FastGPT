@@ -173,7 +173,7 @@ const OutLink = (props: Props) => {
         abortCtrl: controller
       });
 
-      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(histories)[0]);
+      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats({ messages: histories })[0]);
 
       // new chat
       if (completionChatId !== chatId) {

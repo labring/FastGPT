@@ -42,8 +42,8 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
 
 export type RunToolResponse = {
   dispatchFlowResponse: DispatchFlowResponse[];
-  toolNodeInputTokens: number;
-  toolNodeOutputTokens: number;
+  toolCallInputTokens: number;
+  toolCallOutputTokens: number;
   completeMessages?: ChatCompletionMessageParam[];
   assistantResponses?: AIChatItemValueItemType[];
   toolWorkflowInteractiveResponse?: WorkflowInteractiveResponseType;
