@@ -63,6 +63,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       # Add kubeconfig setup step to handle encoding issues
       - name: Setup kubeconfig
