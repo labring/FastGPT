@@ -5,7 +5,7 @@ export function useSafeTranslation() {
   const { t: originalT, ...rest } = useNextTranslation();
 
   const t = (key: any, ...args: any[]): string => {
-    if (typeof key !== 'string') return key;
+    if (typeof key !== 'string') return String(key);
     if (!key) return '';
 
     const ns = key.split(':')[0];
