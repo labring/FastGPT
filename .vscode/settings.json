@@ -3,6 +3,7 @@
     "editor.mouseWheelZoom": true,
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "prettier.prettierPath": "node_modules/prettier",
+    "typescript.preferences.includePackageJsonAutoImports": "on",
     "typescript.tsdk": "node_modules/typescript/lib",
     "i18n-ally.localesPaths": [
         "packages/web/i18n",
