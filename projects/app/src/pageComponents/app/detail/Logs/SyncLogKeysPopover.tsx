@@ -19,7 +19,7 @@ const SyncLogKeysPopover = ({
   fetchLogKeys
 }: {
   logKeys: AppLogKeysType[];
-  setLogKeys: (value?: SetState<AppLogKeysType[]> | undefined) => void;
+  setLogKeys: (value: SetState<AppLogKeysType[]>) => void;
   teamLogKeys: AppLogKeysType[];
   fetchLogKeys: () => Promise<getLogKeysResponse>;
 }) => {
