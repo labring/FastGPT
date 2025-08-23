@@ -545,7 +545,7 @@ const TrainingStates = ({
     (acc, count) => acc + count,
     0
   );
-  console.log(errorCounts);
+
   return (
     <MyModal
       isOpen
