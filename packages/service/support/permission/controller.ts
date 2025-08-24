@@ -468,7 +468,6 @@ export const createResourceDefaultCollaborators = async ({
   session: ClientSession;
   tmbId: string;
 }) => {
-  console.log('resource', resource);
   const parentClbs = await getResourceClbs({
     resourceId: resource.parentId,
     resourceType,

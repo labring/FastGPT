@@ -11,10 +11,8 @@ import {
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { getResourceClbsAndGroups } from '@fastgpt/service/support/permission/controller';
+import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { syncCollaborators } from '@fastgpt/service/support/permission/inheritPermission';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
@@ -62,37 +60,14 @@ async function handler(
       type: DatasetTypeEnum.folder
     });
 
-    if (parentId) {
-      const parentClbsAndGroups = await getResourceClbsAndGroups({
-        teamId,
-        resourceId: parentId,
-        resourceType: PerResourceTypeEnum.dataset,
-        session
-      });
-
-      await syncCollaborators({
-        resourceType: PerResourceTypeEnum.dataset,
-        teamId,
-        resourceId: dataset._id,
-        collaborators: parentClbsAndGroups,
-        session
-      });
-    }
-
-    if (!parentId) {
-      await MongoResourcePermission.create(
-        [
-          {
-            resourceType: PerResourceTypeEnum.dataset,
-            teamId,
-            resourceId: dataset._id,
-            tmbId,
-            permission: OwnerPermissionVal
-          }
-        ],
-        { session, ordered: true }
-      );
-    }
+    await createResourceDefaultCollaborators({
+      folderTypeList: [DatasetTypeEnum.folder],
+      tmbId,
+      session,
+      resource: dataset,
+      resourceModel: MongoDataset,
+      resourceType: PerResourceTypeEnum.dataset
+    });
   });
   (async () => {
     addAuditLog({
