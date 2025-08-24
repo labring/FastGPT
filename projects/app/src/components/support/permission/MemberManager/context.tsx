@@ -10,7 +10,7 @@ import type {
   RoleListType,
   RoleValueType
 } from '@fastgpt/global/support/permission/type';
-import { type ReactNode, useCallback } from 'react';
+import { type ReactNode, useCallback, useMemo } from 'react';
 import { createContext } from 'use-context-selector';
 import dynamic from 'next/dynamic';
 
@@ -21,6 +21,7 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { useTranslation } from 'next-i18next';
 import { CommonRoleList, NullRoleVal } from '@fastgpt/global/support/permission/constant';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const MemberModal = dynamic(() => import('./MemberModal'));
 
@@ -39,6 +40,7 @@ export type MemberManagerInputPropsType = {
 export type CollaboratorContextType = MemberManagerInputPropsType & {
   collaboratorList: CollaboratorItemDetailType[];
   parentClbList: CollaboratorItemDetailType[];
+  myRole: Permission;
   refetchCollaboratorList: () => void;
   isFetchingCollaborator: boolean;
   getRoleLabelList: (role: RoleValueType) => string[];
@@ -66,7 +68,7 @@ export const CollaboratorContext = createContext<CollaboratorContextType>({
   refetchCollaboratorList: (): void => {
     throw new Error('Function not implemented.');
   },
-  onGetCollaboratorList: (): Promise<CollaboratorItemDetailType[]> => {
+  onGetCollaboratorList: (): Promise<CollaboratorListType> => {
     throw new Error('Function not implemented.');
   },
   isFetchingCollaborator: false,
@@ -168,12 +170,19 @@ const CollaboratorContextProvider = ({
     [roleList]
   );
 
-  const { ConfirmModal, openConfirm } = useConfirm({});
   const {
     isOpen: isOpenManageModal,
     onOpen: onOpenManageModal,
     onClose: onCloseManageModal
   } = useDisclosure();
+
+  const { userInfo } = useUserStore();
+  const myRole = useMemo(() => {
+    return (
+      collaboratorList.find((v) => v.tmbId === userInfo?.team?.tmbId)?.permission ??
+      new Permission()
+    );
+  }, [collaboratorList, userInfo?.team?.tmbId]);
 
   const contextValue = {
     permission,
@@ -186,7 +195,8 @@ const CollaboratorContextProvider = ({
     onDelOneCollaborator: onDelOneCollaboratorThen,
     getRoleLabelList,
     defaultRole,
-    parentClbList
+    parentClbList,
+    myRole
   };
 
   return (
@@ -203,7 +213,6 @@ const CollaboratorContextProvider = ({
           }}
         />
       )}
-      <ConfirmModal />
     </CollaboratorContext.Provider>
   );
 };

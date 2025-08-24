@@ -1,7 +1,8 @@
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import {
+  ManageRoleVal,
   NullPermissionVal,
-  NullRoleVal,
+  OwnerRoleVal,
   type PerResourceTypeEnum
 } from '@fastgpt/global/support/permission/constant';
 import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
@@ -9,7 +10,6 @@ import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getResourceClbs } from './controller';
 import { MongoResourcePermission } from './schema';
 import type { ClientSession, Model, AnyBulkWriteOperation } from '../../common/mongo';
-import { Types } from '../../common/mongo';
 import { getCollaboratorId, sumPer } from '@fastgpt/global/support/permission/utils';
 import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 import { pickCollaboratorIdFields } from './utils';
@@ -46,7 +46,6 @@ export async function syncChildrenPermission({
 
   collaborators?: CollaboratorItemType[];
 }) {
-  console.log('collaborators', collaborators);
   // only folder has permission
   const isFolder = folderTypeList.includes(resource.type);
   const teamId = resource.teamId;
@@ -241,8 +240,6 @@ export async function resumeInheritPermission({
   resourceModel: typeof Model;
   session?: ClientSession;
 }) {
-  const isFolder = folderTypeList.includes(resource.type);
-
   const fn = async (session: ClientSession) => {
     // update the resource permission
     await resourceModel.updateOne(
@@ -292,8 +289,8 @@ export async function resumeInheritPermission({
 }
 
 /**
-  Delete all the collaborators and then insert the new collaborators.
-*/
+ * sync parent collaborators to children.
+ */
 export async function syncCollaborators({
   resourceType,
   teamId,
@@ -307,6 +304,12 @@ export async function syncCollaborators({
   collaborators: CollaboratorItemType[];
   session: ClientSession;
 }) {
+  // should change parent owner permission into manage
+  collaborators.forEach((clb) => {
+    if (clb.permission === OwnerRoleVal) {
+      clb.permission = ManageRoleVal;
+    }
+  });
   const parentClbMap = new Map(collaborators.map((clb) => [getCollaboratorId(clb), clb]));
   const clbsNow = await MongoResourcePermission.find({
     resourceType,

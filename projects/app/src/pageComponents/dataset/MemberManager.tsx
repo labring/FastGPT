@@ -11,7 +11,7 @@ function MemberManager({ managePer }: { managePer: MemberManagerInputPropsType }
   return (
     <Box>
       <CollaboratorContextProvider {...managePer}>
-        {({ MemberListCard, onOpenManageModal, onOpenAddMember }) => {
+        {({ MemberListCard, onOpenManageModal }) => {
           return (
             <>
               <Flex alignItems="center" flexDirection="row" justifyContent="space-between" w="full">
