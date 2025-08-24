@@ -24,6 +24,11 @@ import { type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { saveChat } from '@fastgpt/service/core/chat/saveChat';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { AppItemType } from '@/types/app';
+import { AppSchema } from '@fastgpt/global/core/app/type';
+import { getResourceClbs } from '@fastgpt/service/support/permission/controller';
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 
 export const getScheduleTriggerApp = async () => {
   addLog.info('Schedule trigger app');
