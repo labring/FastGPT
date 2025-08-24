@@ -1,9 +1,4 @@
-import { getClientBuildManifest } from 'next/dist/client/route-loader';
-import type {
-  CollaboratorIdType,
-  CollaboratorItemDetailType,
-  CollaboratorItemType
-} from './collaborator';
+import type { CollaboratorIdType, CollaboratorItemType } from './collaborator';
 import { type PermissionValueType } from './type';
 /**
  * Sum the permission value.
@@ -29,13 +24,14 @@ export const sumPer = (...per: PermissionValueType[]) => {
  */
 export const checkRoleUpdateConflict = ({
   parentClbs,
-  oldChildClbs,
+  oldRealClbs,
   newChildClbs
 }: {
   parentClbs: CollaboratorItemType[];
-  oldChildClbs: CollaboratorItemType[];
+  oldRealClbs: CollaboratorItemType[];
   newChildClbs: CollaboratorItemType[];
 }): boolean => {
+  console.log('checkRoleUpdateConflict', parentClbs, oldRealClbs, newChildClbs);
   if (parentClbs.length === 0) {
     return false;
   }
@@ -44,8 +40,8 @@ export const checkRoleUpdateConflict = ({
   const parentClbRoleMap = new Map(parentClbs.map((clb) => [getCollaboratorId(clb), clb]));
 
   const changedClbs = getChangedCollaborators({
-    newClbs: newChildClbs,
-    oldClbs: oldChildClbs
+    newRealClbs: newChildClbs,
+    oldRealClbs: oldRealClbs
   });
 
   for (const changedClb of changedClbs) {
@@ -65,24 +61,25 @@ export const checkRoleUpdateConflict = ({
  *   id: string; // collaborator id
  *   changedRole: number; // set bit means the role is changed
  * }
+ * special: for low 3 bit: always get the lowest change, unset the higher change.
  * @param param0
  */
 export const getChangedCollaborators = ({
-  oldClbs,
-  newClbs
+  oldRealClbs,
+  newRealClbs
 }: {
-  oldClbs: CollaboratorItemType[];
-  newClbs: CollaboratorItemType[];
+  oldRealClbs: CollaboratorItemType[];
+  newRealClbs: CollaboratorItemType[];
 }) => {
-  if (oldClbs.length === 0) {
-    return newClbs.map((clb) => ({
+  if (oldRealClbs.length === 0) {
+    return newRealClbs.map((clb) => ({
       ...clb,
       changedRole: clb.permission
     }));
   }
-  const oldClbsMap = new Map(oldClbs.map((clb) => [getCollaboratorId(clb), clb]));
+  const oldClbsMap = new Map(oldRealClbs.map((clb) => [getCollaboratorId(clb), clb]));
   const changedClbs = [];
-  for (const newClb of newClbs) {
+  for (const newClb of newRealClbs) {
     const oldClb = oldClbsMap.get(getCollaboratorId(newClb));
     if (!oldClb) {
       changedClbs.push({
@@ -100,8 +97,8 @@ export const getChangedCollaborators = ({
     }
   }
 
-  for (const oldClb of oldClbs) {
-    const newClb = newClbs.find((clb) => getCollaboratorId(clb) === getCollaboratorId(oldClb));
+  for (const oldClb of oldRealClbs) {
+    const newClb = newRealClbs.find((clb) => getCollaboratorId(clb) === getCollaboratorId(oldClb));
     if (!newClb) {
       changedClbs.push({
         ...oldClb,
@@ -110,6 +107,13 @@ export const getChangedCollaborators = ({
       });
     }
   }
+
+  changedClbs.forEach((clb) => {
+    // For the lowest 3 bits, only keep the lowest set bit as 1, clear other lower bits, keep higher bits unchanged
+    const low3 = clb.changedRole & 0b111;
+    const lowestBit = low3 & -low3;
+    clb.changedRole = (clb.changedRole & ~0b111) | lowestBit;
+  });
 
   return changedClbs;
 };

@@ -19,7 +19,8 @@ function MemberItemCard({
   role,
   orgs,
   rightSlot,
-  onRoleChange
+  onRoleChange,
+  disabled = false
 }: {
   avatar: string;
   key: string;
@@ -31,8 +32,8 @@ function MemberItemCard({
   role?: RoleValueType;
   orgs?: string[];
   rightSlot?: React.ReactNode;
+  disabled?: boolean;
 }) {
-  const isDisabled = role === OwnerRoleVal;
   return (
     <HStack
       justifyContent="space-between"
@@ -45,9 +46,9 @@ function MemberItemCard({
         bgColor: 'myGray.50',
         cursor: 'pointer'
       }}
-      cursor={isDisabled ? 'not-allowed' : 'pointer'}
+      cursor={disabled ? 'not-allowed' : 'pointer'}
       onClick={() => {
-        if (isDisabled) return;
+        if (disabled) return;
         onChange?.();
       }}
     >
@@ -62,7 +63,7 @@ function MemberItemCard({
       </Box>
       {role !== undefined && !!onRoleChange && (
         <RoleSelect
-          disabled={role === OwnerRoleVal}
+          disabled={disabled}
           value={role}
           Button={
             <Flex
@@ -89,12 +90,12 @@ function MemberItemCard({
         <MyIcon
           name="common/closeLight"
           w="1rem"
-          cursor={'pointer'}
+          cursor={disabled ? 'not-allowed' : 'pointer'}
           _hover={{
             color: 'red.600'
           }}
           onClick={() => {
-            if (isDisabled) return;
+            if (disabled) return;
             onDelete?.();
           }}
         />

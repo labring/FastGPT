@@ -9,10 +9,8 @@ import {
   DEFAULT_TEAM_AVATAR,
   DEFAULT_USER_AVATAR
 } from '@fastgpt/global/common/system/constants';
-import { type MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
-import { type OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
-import { TeamTmbItemType, type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
@@ -20,7 +18,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { useTranslation } from 'next-i18next';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { CollaboratorContext } from './context';
 import MemberItemCard from './MemberItemCard';
@@ -35,6 +33,7 @@ import {
   getCollaboratorId
 } from '@fastgpt/global/support/permission/utils';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { OwnerRoleVal } from '@fastgpt/global/support/permission/constant';
 
 const HoverBoxStyle = {
   bgColor: 'myGray.50',
@@ -105,6 +104,7 @@ function MemberModal({ onClose }: { onClose: () => void }) {
   );
 
   const parentClbs = useContextSelector(CollaboratorContext, (v) => v.parentClbList);
+  const myRole = useContextSelector(CollaboratorContext, (v) => v.myRole);
 
   const { runAsync: _onConfirm, loading: isUpdating } = useRequest2(
     () =>
@@ -139,7 +139,7 @@ function MemberModal({ onClose }: { onClose: () => void }) {
         ...clb,
         permission: clb.permission.role
       })),
-      oldChildClbs: collaboratorDetailList.map((clb) => ({
+      oldRealClbs: collaboratorDetailList.map((clb) => ({
         ...clb,
         permission: clb.permission.role
       })),
@@ -172,8 +172,8 @@ function MemberModal({ onClose }: { onClose: () => void }) {
       <MyModal
         isOpen
         onClose={onClose}
-        iconSrc={'modal/AddClb'}
-        title={t('user:team.manage_collaborator')}
+        iconSrc={'common/settingLight'}
+        title={t('user:team.manage_collaborators')}
         minW="900px"
         maxW={'60vw'}
         h={'100%'}
@@ -419,6 +419,11 @@ function MemberModal({ onClose }: { onClose: () => void }) {
                       onDelete={onDelete}
                       role={clb.permission.role}
                       onRoleChange={onRoleChange}
+                      disabled={
+                        clb.permission.role === OwnerRoleVal ||
+                        clb.tmbId === userInfo?.team.tmbId ||
+                        (clb.permission.hasManagePer && !myRole.isOwner)
+                      }
                     />
                   );
                 })}
@@ -450,6 +455,7 @@ const RenderMemberList = ({
   editCollaborators: CollaboratorItemDetailType[];
   defaultRole: RoleValueType;
 }) => {
+  const { userInfo } = useUserStore();
   return (
     <>
       {members?.map((member) => {
@@ -480,6 +486,9 @@ const RenderMemberList = ({
             onChange={addTheMember}
             isChecked={isChecked}
             orgs={member.orgs}
+            disabled={
+              member.permission.role === OwnerRoleVal || member.tmbId === userInfo?.team.tmbId
+            }
           />
         );
       })}

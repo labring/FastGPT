@@ -1,15 +1,22 @@
 import Cookie from 'cookie';
+import type { ClientSession, Model, AnyBulkWriteOperation } from '../../common/mongo';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import jwt from 'jsonwebtoken';
 import { type NextApiResponse, type NextApiRequest } from 'next';
 import type { AuthModeType, ReqHeaderAuthType } from './type.d';
 import type { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
+import {
+  AuthUserTypeEnum,
+  ManagePermissionVal,
+  ManageRoleVal,
+  NullRoleVal,
+  OwnerRoleVal
+} from '@fastgpt/global/support/permission/constant';
 import { authOpenApiKey } from '../openapi/auth';
 import { type FileTokenQuery } from '@fastgpt/global/common/file/type';
 import { MongoResourcePermission } from './schema';
-import { type ClientSession } from 'mongoose';
-import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
+import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
+import { ResourceType, type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { bucketNameMap } from '@fastgpt/global/common/file/constants';
 import { addMinutes } from 'date-fns';
 import { getGroupsByTmbId } from './memberGroup/controllers';
@@ -21,8 +28,12 @@ import { type TeamMemberSchema } from '@fastgpt/global/support/user/team/type';
 import { type OrgSchemaType } from '@fastgpt/global/support/user/team/org/type';
 import { getOrgIdSetWithParentByTmbId } from './org/controllers';
 import { authUserSession } from '../user/session';
-import { sumPer } from '@fastgpt/global/support/permission/utils';
+import { getCollaboratorId, sumPer } from '@fastgpt/global/support/permission/utils';
 import { DEFAULT_ORG_AVATAR } from '@fastgpt/global/common/system/constants';
+import { syncCollaborators, type SyncChildrenPermissionResourceType } from './inheritPermission';
+import { pickCollaboratorIdFields } from './utils';
+import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
+import { CollaboratorIdType } from '@fastgpt/global/support/permission/collaborator';
 
 /** get resource permission for a team member
  * If there is no permission for the team member, it will return undefined
@@ -436,3 +447,110 @@ export const authFileToken = (token?: string) =>
       });
     });
   });
+
+export const createResourceDefaultCollaborators = async ({
+  resource,
+  folderTypeList,
+  resourceType,
+  resourceModel,
+  session,
+  tmbId
+}: {
+  resource: SyncChildrenPermissionResourceType;
+
+  // when the resource is a folder
+  folderTypeList: string[];
+
+  resourceModel: typeof Model;
+  resourceType: PerResourceTypeEnum;
+
+  // should be provided when inheritPermission is true
+  session: ClientSession;
+  tmbId: string;
+}) => {
+  console.log('resource', resource);
+  const parentClbs = await getResourceClbs({
+    resourceId: resource.parentId,
+    resourceType,
+    teamId: resource.teamId,
+    session
+  });
+  // 1. add owner into the permission list with owner per
+  // 2. remove parent's owner permission, instead of manager
+
+  const collaborators: CollaboratorItemType[] = [
+    ...parentClbs
+      .filter((item) => item.tmbId !== tmbId)
+      .map((clb) => {
+        if (clb.permission === OwnerRoleVal) {
+          clb.permission = ManageRoleVal;
+          clb.selfPermission = NullRoleVal;
+        }
+        return clb;
+      }),
+    {
+      tmbId,
+      permission: OwnerRoleVal
+    }
+  ];
+
+  const ops: AnyBulkWriteOperation<ResourcePermissionType>[] = [];
+
+  for (const clb of collaborators) {
+    ops.push({
+      insertOne: {
+        document: {
+          ...pickCollaboratorIdFields(clb),
+          teamId: resource.teamId,
+          resourceId: resource._id,
+          permission: clb.permission,
+          selfPermission: NullRoleVal,
+          resourceType
+        } as ResourcePermissionType
+      }
+    });
+  }
+
+  // for (const parentClb of parentClbs) {
+  //   ops.push({
+  //     insertOne: {
+  //       document: {
+  //         ...pickCollaboratorIdFields(parentClb),
+  //         teamId: resource.teamId,
+  //         resourceId: resource._id,
+  //         permission: parentClb.permission === OwnerRoleVal ? ManageRoleVal : parentClb.permission,
+  //         selfPermission: NullRoleVal,
+  //         resourceType
+  //       } as ResourcePermissionType
+  //     }
+  //   });
+  // }
+
+  // ops.push({
+  //   updateOne: {
+  //     filter: {
+  //       resourceId: resource._id,
+  //       teamId: resource.teamId,
+  //       resourceType,
+  //       tmbId
+  //     },
+  //     update: {
+  //       permission: OwnerRoleVal,
+  //       selfPermission: OwnerRoleVal
+  //     },
+  //     upsert: true
+  //   }
+  // });
+
+  await MongoResourcePermission.bulkWrite(ops, { session });
+
+  // if (resource.type in folderTypeList) {
+  //   await syncCollaborators({
+  //     collaborators,
+  //     resourceId: resource._id,
+  //     resourceType,
+  //     session,
+  //     teamId: resource.teamId
+  //   });
+  // }
+};
