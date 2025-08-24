@@ -30,5 +30,5 @@ export type DeletePermissionQuery = CollaboratorIdType;
 
 export type CollaboratorListType = {
   clbs: CollaboratorItemDetailType[];
-  parentClbs: CollaboratorItemDetailType[];
+  parentClbs?: CollaboratorItemDetailType[];
 };

@@ -116,7 +116,7 @@ const CollaboratorContextProvider = ({
   } = useRequest2(
     async () => {
       if (feConfigs.isPlus) {
-        const { clbs, parentClbs } = await onGetCollaboratorList();
+        const { clbs, parentClbs = [] } = await onGetCollaboratorList();
         return {
           clbs: clbs.map((clb) => ({
             ...clb,

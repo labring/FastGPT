@@ -119,16 +119,23 @@ export const getResourcePermission = async ({
 };
 
 export async function getResourceClbs({
-  resourceId,
   resourceType,
   teamId,
+  resourceId,
   session
 }: {
-  resourceId: ParentIdType;
-  resourceType: Omit<`${PerResourceTypeEnum}`, 'team'>;
   teamId: string;
   session?: ClientSession;
-}) {
+} & (
+  | {
+      resourceType: 'team';
+      resourceId?: undefined;
+    }
+  | {
+      resourceType: Omit<PerResourceTypeEnum, 'team'>;
+      resourceId: ParentIdType;
+    }
+)) {
   return MongoResourcePermission.find(
     {
       resourceId,
@@ -158,7 +165,7 @@ export const getClbsWithInfo = async ({
       resourceId?: undefined;
     }
 )) => {
-  if (!resourceId) {
+  if (!resourceId && resourceType !== 'team') {
     return [];
   }
   return Promise.all([
