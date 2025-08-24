@@ -31,7 +31,6 @@ export const checkRoleUpdateConflict = ({
   oldRealClbs: CollaboratorItemType[];
   newChildClbs: CollaboratorItemType[];
 }): boolean => {
-  console.log('checkRoleUpdateConflict', parentClbs, oldRealClbs, newChildClbs);
   if (parentClbs.length === 0) {
     return false;
   }
