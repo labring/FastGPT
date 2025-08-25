@@ -7,7 +7,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import OrgTags from '../../user/team/OrgTags';
 import RoleSelect from './RoleSelect';
 import { ChevronDownIcon } from '@chakra-ui/icons';
-import { OwnerRoleVal } from '@fastgpt/global/support/permission/constant';
 
 function MemberItemCard({
   avatar,
@@ -34,17 +33,18 @@ function MemberItemCard({
   rightSlot?: React.ReactNode;
   disabled?: boolean;
 }) {
+  const showRoleSelect = onRoleChange !== undefined;
   return (
-    <HStack
+    <Flex
       justifyContent="space-between"
-      alignItems="center"
+      alignItems="start"
       key={key}
       px="3"
       py="2"
+      gap="4"
       borderRadius="sm"
       _hover={{
-        bgColor: 'myGray.50',
-        cursor: 'pointer'
+        bgColor: 'myGray.50'
       }}
       cursor={disabled ? 'not-allowed' : 'pointer'}
       onClick={() => {
@@ -52,56 +52,64 @@ function MemberItemCard({
         onChange?.();
       }}
     >
-      {isChecked !== undefined && <Checkbox isChecked={isChecked} pointerEvents="none" />}
-      <Avatar src={avatar} w="1.5rem" borderRadius={'50%'} />
-
-      <Box w="full">
-        <Box fontSize={'sm'} className="textEllipsis" maxW="300px">
+      <Flex
+        flexDirection={'row'}
+        h={showRoleSelect ? '50px' : 'unset'}
+        p="2"
+        alignItems={'center'}
+        gap="2"
+        w="full"
+      >
+        {isChecked !== undefined && <Checkbox isChecked={isChecked} pointerEvents="none" />}
+        <Avatar src={avatar} w="1.5rem" borderRadius={'50%'} />
+        <Box fontSize={'sm'} className="textEllipsis" maxW={'100px'}>
           {name}
         </Box>
         <Box lineHeight={1}>{orgs && orgs.length > 0 && <OrgTags orgs={orgs} />}</Box>
-      </Box>
-      {role !== undefined && !!onRoleChange && (
+      </Flex>
+      {showRoleSelect && (
         <RoleSelect
           disabled={disabled}
           value={role}
           Button={
             <Flex
-              alignItems={'center'}
               bg={'myGray.50'}
               border="base"
               fontSize={'sm'}
-              px={3}
               borderRadius={'md'}
-              h={'40px'}
+              minH={'50px'}
+              w="250px"
+              p="2"
+              alignItems={'end'}
+              justifyContent={'space-between'}
             >
-              {role && (
-                <Box py={2}>
-                  <RoleTags permission={role} />
-                </Box>
-              )}
-              <ChevronDownIcon fontSize={'md'} />
+              <RoleTags permission={role} />
+              <Flex h="32px" alignItems={'center'} justifyContent={'center'}>
+                <ChevronDownIcon fontSize="lg" />
+              </Flex>
             </Flex>
           }
           onChange={onRoleChange}
         />
       )}
       {onDelete !== undefined && (
-        <MyIcon
-          name="common/closeLight"
-          w="1rem"
-          cursor={disabled ? 'not-allowed' : 'pointer'}
-          _hover={{
-            color: 'red.600'
-          }}
-          onClick={() => {
-            if (disabled) return;
-            onDelete?.();
-          }}
-        />
+        <Flex flexDirection={'row'} h={showRoleSelect ? '50px' : 'unset'} alignItems={'center'}>
+          <MyIcon
+            name="common/closeLight"
+            w="1rem"
+            cursor={disabled ? 'not-allowed' : 'pointer'}
+            _hover={{
+              color: 'red.600'
+            }}
+            onClick={() => {
+              if (disabled) return;
+              onDelete?.();
+            }}
+          />
+        </Flex>
       )}
       {rightSlot}
-    </HStack>
+    </Flex>
   );
 }
 

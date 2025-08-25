@@ -52,6 +52,7 @@ export type ChildrenProps = {
 };
 
 export const CollaboratorContext = createContext<CollaboratorContextType>({
+  myRole: new Permission(),
   defaultRole: NullRoleVal,
   collaboratorList: [],
   parentClbList: [],
@@ -180,9 +181,11 @@ const CollaboratorContextProvider = ({
   const myRole = useMemo(() => {
     return (
       collaboratorList.find((v) => v.tmbId === userInfo?.team?.tmbId)?.permission ??
-      new Permission()
+      new Permission({
+        isOwner: userInfo?.team.permission.isOwner
+      })
     );
-  }, [collaboratorList, userInfo?.team?.tmbId]);
+  }, [collaboratorList, userInfo?.team.permission.isOwner, userInfo?.team?.tmbId]);
 
   const contextValue = {
     permission,

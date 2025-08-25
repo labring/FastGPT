@@ -177,7 +177,7 @@ function MemberModal({ onClose }: { onClose: () => void }) {
         minW="900px"
         maxW={'60vw'}
         h={'100%'}
-        maxH={'90vh'}
+        maxH={'50vh'}
         isCentered
         isLoading={loadingGroupsAndOrgs}
       >
@@ -188,6 +188,7 @@ function MemberModal({ onClose }: { onClose: () => void }) {
             borderRadius="0.5rem"
             gridTemplateColumns="40% 60%"
             h={'100%'}
+            gap="4"
           >
             <Flex
               h={'100%'}
@@ -383,12 +384,12 @@ function MemberModal({ onClose }: { onClose: () => void }) {
               </Flex>
             </Flex>
 
-            <Flex h={'100%'} p="4" flexDirection="column">
+            <Flex h={'100%'} flexDirection="column" overflow={'auto'}>
               <Box>
                 {`${t('user:has_chosen')}: `}
                 {editCollaborators.length}
               </Box>
-              <Flex flexDirection="column" mt="2" gap={1} overflow={'auto'} flex={'1 0 0'} h={0}>
+              <Flex flexDirection="column" mt="2" gap={1} flex={'1 0 0'} h={0}>
                 {editCollaborators.map((clb) => {
                   const onDelete = () => {
                     setCollaboratorList((state) => {
@@ -456,6 +457,7 @@ const RenderMemberList = ({
   defaultRole: RoleValueType;
 }) => {
   const { userInfo } = useUserStore();
+  const myRole = useContextSelector(CollaboratorContext, (v) => v.myRole);
   return (
     <>
       {members?.map((member) => {
@@ -487,7 +489,9 @@ const RenderMemberList = ({
             isChecked={isChecked}
             orgs={member.orgs}
             disabled={
-              member.permission.role === OwnerRoleVal || member.tmbId === userInfo?.team.tmbId
+              member.permission.role === OwnerRoleVal ||
+              member.tmbId === userInfo?.team.tmbId ||
+              (member.permission.hasManagePer && !myRole.isOwner)
             }
           />
         );
