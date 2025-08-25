@@ -45,20 +45,26 @@ export type listEvalDatasetCollectionResponse = PaginationResponse<
   }
 >;
 
-export type importEvalDatasetFromFileBody = {
-  fileId: string;
-  collectionId: string;
+type QualityEvaluationBase = {
   enableQualityEvaluation: boolean;
   qualityEvaluationModel?: string;
 };
 
-export type createEvalDatasetDataBody = {
+export type importEvalDatasetFromFileBody = {
+  fileId: string;
   collectionId: string;
+} & QualityEvaluationBase;
+
+type EvalDatasetDataBase = {
   user_input: string;
   actual_output?: string;
   expected_output: string;
   context?: string[];
   retrieval_context?: string[];
+};
+
+export type createEvalDatasetDataBody = EvalDatasetDataBase & {
+  collectionId: string;
 };
 
 export type listEvalDatasetDataBody = PaginationProps<{
@@ -82,7 +88,16 @@ export type listEvalDatasetDataResponse = PaginationResponse<
   >
 >;
 
+export type updateEvalDatasetDataBody = EvalDatasetDataBase &
+  QualityEvaluationBase & {
+    dataId: string;
+  };
+
 export type qualityAssessmentBody = {
   dataId: string;
   evalModel: string;
+};
+
+export type deleteEvalDatasetDataQuery = {
+  dataId: string;
 };
