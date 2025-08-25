@@ -10,6 +10,7 @@ import { readFileContentFromMongo } from '@fastgpt/service/common/file/gridfs/co
 import { authCollectionFile } from '@fastgpt/service/support/permission/auth/file';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import type { importEvalDatasetFromFileBody } from '@fastgpt/global/core/evaluation/api';
+import { addEvalDatasetDataQualityJob } from '@fastgpt/service/core/evaluation/dataQualityMq';
 
 export type EvalDatasetImportFromFileQuery = {};
 export type EvalDatasetImportFromFileBody = importEvalDatasetFromFileBody;
@@ -293,39 +294,27 @@ async function handler(
       };
     });
 
-    // Bulk insert evaluation dataset data
-    await mongoSessionRun(async (session) => {
-      await MongoEvalDatasetData.insertMany(evalDatasetRecords, {
+    // Bulk insert evaluation dataset data and get inserted documents
+    const insertedRecords = await mongoSessionRun(async (session) => {
+      return await MongoEvalDatasetData.insertMany(evalDatasetRecords, {
         session,
         ordered: false // Continue if some documents fail
       });
     });
 
-    // TODO: Add to quality evaluation queue if enabled
+    // Add to quality evaluation queue if enabled
     if (enableQualityEvaluation && qualityEvaluationModel) {
-      // Queue implementation would go here
-      // This would involve:
-      // 1. Creating evaluation tasks for each imported row
-      // 2. Adding tasks to evaluation queue
-      // 3. Handling queue processing for quality assessment
-      // 4. Updating evaluation results back to database
-      // 5. Implementing billing logic for evaluation
-      console.log('Quality evaluation queuing not implemented yet');
+      const evaluationJobs = insertedRecords.map((record) =>
+        addEvalDatasetDataQualityJob({
+          dataId: record._id.toString(),
+          evalModel: qualityEvaluationModel
+        })
+      );
+      await Promise.allSettled(evaluationJobs);
     }
 
     // TODO: Add audit log for import operation
-    // This would track:
-    // - Who performed the import
-    // - What file was imported
-    // - How many records were imported
-    // - When the import occurred
-    // - Success/failure status
-
     // TODO: Add tracking for import metrics
-    // This would include:
-    // - Import performance metrics
-    // - Success/failure rates
-    // - Data volume statistics
 
     return 'success';
   } catch (error: any) {
