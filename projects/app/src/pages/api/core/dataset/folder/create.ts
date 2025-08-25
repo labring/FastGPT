@@ -4,7 +4,6 @@ import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
-  OwnerPermissionVal,
   PerResourceTypeEnum,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
@@ -61,11 +60,9 @@ async function handler(
     });
 
     await createResourceDefaultCollaborators({
-      folderTypeList: [DatasetTypeEnum.folder],
       tmbId,
       session,
       resource: dataset,
-      resourceModel: MongoDataset,
       resourceType: PerResourceTypeEnum.dataset
     });
   });

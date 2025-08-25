@@ -48,11 +48,9 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
     });
 
     await createResourceDefaultCollaborators({
-      folderTypeList: AppFolderTypeList,
       tmbId,
       session,
       resource: app,
-      resourceModel: MongoApp,
       resourceType: PerResourceTypeEnum.app
     });
   });

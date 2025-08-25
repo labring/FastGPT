@@ -159,11 +159,9 @@ export const onCreateApp = async ({
     }
 
     await createResourceDefaultCollaborators({
-      folderTypeList: AppFolderTypeList,
       tmbId,
       session,
       resource: app,
-      resourceModel: MongoApp,
       resourceType: PerResourceTypeEnum.app
     });
     (async () => {

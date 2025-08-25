@@ -5,7 +5,7 @@ describe('Test checkRoleUpdateConflict', () => {
   it('There is no any old collaborator, should return false', () => {
     const result = checkRoleUpdateConflict({
       parentClbs: [],
-      oldChildClbs: [],
+      oldRealClbs: [],
       newChildClbs: [{ permission: 0b001, tmbId: 'fakeTmbId1' }]
     });
     expect(result).toBe(false);
@@ -13,7 +13,7 @@ describe('Test checkRoleUpdateConflict', () => {
   it('There is no parent collaborator, should return false', () => {
     const result = checkRoleUpdateConflict({
       parentClbs: [],
-      oldChildClbs: [{ permission: 0b011, tmbId: 'fakeTmbId1' }],
+      oldRealClbs: [{ permission: 0b011, tmbId: 'fakeTmbId1' }],
       newChildClbs: [{ permission: 0b001, tmbId: 'fakeTmbId2' }]
     });
     expect(result).toBe(false);
@@ -21,7 +21,7 @@ describe('Test checkRoleUpdateConflict', () => {
   it("Edit parent's permission, should return true", () => {
     const result = checkRoleUpdateConflict({
       parentClbs: [{ permission: 0b011, tmbId: 'fakeTmbId1' }],
-      oldChildClbs: [{ permission: 0b011, tmbId: 'fakeTmbId1' }],
+      oldRealClbs: [{ permission: 0b011, tmbId: 'fakeTmbId1' }],
       newChildClbs: [{ permission: 0b010, tmbId: 'fakeTmbId1' }]
     });
     expect(result).toBe(true);
@@ -29,7 +29,7 @@ describe('Test checkRoleUpdateConflict', () => {
   it("Edit permission but parent's permission bit is not set, should return false", () => {
     const result = checkRoleUpdateConflict({
       parentClbs: [{ permission: 0b1001, tmbId: 'fakeTmbId1' }],
-      oldChildClbs: [{ permission: 0b1111, tmbId: 'fakeTmbId1' }],
+      oldRealClbs: [{ permission: 0b1111, tmbId: 'fakeTmbId1' }],
       newChildClbs: [{ permission: 0b1001, tmbId: 'fakeTmbId1' }]
     });
     expect(result).toBe(false);
@@ -37,7 +37,7 @@ describe('Test checkRoleUpdateConflict', () => {
   it('add new clb, should return false', () => {
     const result = checkRoleUpdateConflict({
       parentClbs: [{ permission: 0b1001, tmbId: 'fakeTmbId1' }],
-      oldChildClbs: [{ permission: 0b1111, tmbId: 'fakeTmbId1' }],
+      oldRealClbs: [{ permission: 0b1111, tmbId: 'fakeTmbId1' }],
       newChildClbs: [
         { permission: 0b1111, tmbId: 'fakeTmbId1' },
         { permission: 0b1001, tmbId: 'fakeTmbId2' }
@@ -45,18 +45,18 @@ describe('Test checkRoleUpdateConflict', () => {
     });
     expect(result).toBe(false);
   });
-  it('add clb, no oldChildClbs', () => {
+  it('add clb, no oldRealClbs', () => {
     const result = checkRoleUpdateConflict({
       parentClbs: [{ permission: 0b1001, tmbId: 'fakeTmbId1' }],
-      oldChildClbs: [],
+      oldRealClbs: [],
       newChildClbs: [{ permission: 0b1001, tmbId: 'fakeTmbId1' }]
     });
     expect(result).toBe(true);
   });
-  it('add clb, no oldChildClbs, false', () => {
+  it('add clb, no oldRealClbs, false', () => {
     const result = checkRoleUpdateConflict({
       parentClbs: [{ permission: 0b1001, tmbId: 'fakeTmbId1' }],
-      oldChildClbs: [],
+      oldRealClbs: [],
       newChildClbs: [{ permission: 0b0110, tmbId: 'fakeTmbId1' }]
     });
     expect(result).toBe(false);
