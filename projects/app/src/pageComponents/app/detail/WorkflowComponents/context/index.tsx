@@ -157,6 +157,7 @@ type WorkflowContextType = {
   nodeList: FlowNodeItemType[];
 
   onUpdateNodeError: (node: string, isError: Boolean) => void;
+  onRemoveError: () => void;
   onResetNode: (e: { id: string; node: FlowNodeTemplateType }) => void;
   onChangeNode: (e: FlowNodeChangeProps) => void;
   getNodeDynamicInputs: (nodeId: string) => FlowNodeInputItemType[];
@@ -401,6 +402,9 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     isSaved?: boolean;
   }): boolean {
     throw new Error('Function not implemented.');
+  },
+  onRemoveError: function (): void {
+    throw new Error('Function not implemented.');
   }
 });
 
@@ -468,6 +472,17 @@ const WorkflowContextProvider = ({
           item.selected = true;
           //@ts-ignore
           item.data.isError = isError;
+        }
+        return item;
+      });
+    });
+  });
+  const onRemoveError = useMemoizedFn(() => {
+    setNodes((state) => {
+      return state.map((item) => {
+        if (item.data.isError) {
+          item.data.isError = false;
+          item.selected = false;
         }
         return item;
       });
@@ -625,6 +640,7 @@ const WorkflowContextProvider = ({
     const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
 
     if (!checkResults) {
+      onRemoveError();
       const storeWorkflow = uiWorkflow2StoreWorkflow({ nodes, edges });
 
       return storeWorkflow;
@@ -1025,6 +1041,7 @@ const WorkflowContextProvider = ({
       // node
       nodeList,
       onUpdateNodeError,
+      onRemoveError,
       onResetNode,
       onChangeNode,
       getNodeDynamicInputs,
@@ -1075,6 +1092,7 @@ const WorkflowContextProvider = ({
       onChangeNode,
       onDelEdge,
       onNextNodeDebug,
+      onRemoveError,
       onResetNode,
       onStartNodeDebug,
       onStopNodeDebug,

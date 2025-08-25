@@ -11,6 +11,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
+import { usePathname } from 'next/navigation';
 
 type ChatSettingReturnType = ChatSettingSchema | undefined;
 
@@ -41,6 +42,7 @@ export const ChatSettingContext = createContext<ChatSettingContextValue>({
 
 export const ChatSettingContextProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
+  const pathname = usePathname();
   const { feConfigs } = useSystemStore();
   const { appId, setLastPane, setLastChatAppId, lastPane } = useChatStore();
 
@@ -86,6 +88,7 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
 
       await router.replace({
         query: {
+          ...router.query,
           appId: _id,
           pane: newPane
         }
@@ -101,7 +104,7 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
     if (!Object.values(ChatSidebarPaneEnum).includes(pane)) {
       handlePaneChange(ChatSidebarPaneEnum.HOME);
     }
-  }, [pane]);
+  }, [pane, handlePaneChange]);
 
   const logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'> = useMemo(
     () => ({

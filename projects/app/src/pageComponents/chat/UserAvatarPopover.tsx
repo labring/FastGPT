@@ -33,7 +33,11 @@ const UserAvatarPopover = ({
   return (
     <>
       <MyPopover
-        Trigger={<Box cursor="pointer">{children}</Box>}
+        Trigger={
+          <Box cursor="pointer" w="full">
+            {children}
+          </Box>
+        }
         trigger="hover"
         placement={placement}
         w="160px"
@@ -59,7 +63,9 @@ const UserAvatarPopover = ({
                   gap={2}
                 >
                   <Avatar src={userInfo?.avatar} bg="myGray.200" borderRadius="50%" w={5} h={5} />
-                  <Box>{userInfo?.username ?? '-'}</Box>
+                  <Box w="full" className="textEllipsis">
+                    {userInfo?.username ?? '-'}
+                  </Box>
                 </Flex>
               )}
 
@@ -75,7 +81,7 @@ const UserAvatarPopover = ({
                 w="100%"
               >
                 <MyIcon name="core/chat/sidebar/logout" />
-                <Text fontSize="14px"> {t('common:logout')}</Text>
+                <Text fontSize="14px">{t('common:logout')}</Text>
               </Flex>
             </Flex>
           );

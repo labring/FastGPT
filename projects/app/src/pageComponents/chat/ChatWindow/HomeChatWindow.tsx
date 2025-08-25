@@ -2,9 +2,6 @@ import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import {
   Flex,
   Box,
-  Drawer,
-  DrawerOverlay,
-  DrawerContent,
   Button,
   Menu,
   MenuButton,
@@ -12,7 +9,6 @@ import {
   MenuItem,
   Checkbox
 } from '@chakra-ui/react';
-import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
 import { useTranslation } from 'react-i18next';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import SideBar from '@/components/SideBar';
@@ -48,10 +44,9 @@ import type {
 } from '@fastgpt/global/core/app/type';
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
-import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
-import { getModelFromList } from '@fastgpt/global/core/ai/model';
-import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { ChatSidebarPaneEnum } from '../constants';
+import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
+import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 
 type Props = {
   myApps: AppListItemType[];
@@ -77,11 +72,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const { llmModelList, defaultModels, feConfigs } = useSystemStore();
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
-  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
-
-  const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
-  const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
 
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
@@ -89,7 +80,9 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
 
+  const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
   const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
+  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
@@ -121,6 +114,8 @@ const HomeChatWindow = ({ myApps }: Props) => {
     setSelectedToolIds(
       selectedToolIds.filter((id) => availableTools.some((tool) => tool.pluginId === id))
     );
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availableTools, chatSettings?.selectedTools]);
 
   // 初始化聊天数据
@@ -246,13 +241,14 @@ const HomeChatWindow = ({ myApps }: Props) => {
       <>
         {/* 模型选择 */}
         {availableModels.length > 0 && (
-          <Box flex={['1', '0']} w={[0, 'auto']}>
+          <Box w={[0, 'auto']} flex={['1 0 0', '0 0 auto']}>
             <AIModelSelector
               h={['30px', '36px']}
               boxShadow={'none'}
               size="sm"
               bg={'myGray.50'}
               rounded="full"
+              noOfLines={[1, 3]}
               list={availableModels}
               value={selectedModel}
               onChange={async (model) => {
@@ -286,6 +282,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
               rounded="full"
               variant="whiteBase"
               leftIcon={<MyIcon name="core/app/toolCall" w="14px" />}
+              flexShrink={0}
               _active={{
                 transform: 'none'
               }}
@@ -358,29 +355,18 @@ const HomeChatWindow = ({ myApps }: Props) => {
       <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} icon="/icon/logo.svg" />
 
       {/* show history slider */}
-      {isPc || !appId ? (
+      {isPc ? (
         <SideBar externalTrigger={Boolean(datasetCiteData)}>
-          <ChatHistorySlider
-            customSliderTitle={t('chat:history_slider.home.title')}
-            confirmClearText={t('common:core.chat.Confirm to clear history')}
+          <ChatHistorySidebar
+            title={t('chat:history_slider.home.title')}
+            menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
           />
         </SideBar>
       ) : (
-        <Drawer
-          size="xs"
-          placement="left"
-          autoFocus={false}
-          isOpen={isOpenSlider}
-          onClose={onCloseSlider}
-        >
-          <DrawerOverlay backgroundColor="rgba(255,255,255,0.5)" />
-          <DrawerContent maxWidth="75vw">
-            <ChatHistorySlider
-              customSliderTitle={t('chat:history_slider.home.title')}
-              confirmClearText={t('common:core.chat.Confirm to clear history')}
-            />
-          </DrawerContent>
-        </Drawer>
+        <ChatSliderMobileDrawer
+          banner={chatSettings?.wideLogoUrl}
+          menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
+        />
       )}
 
       {/* chat container */}
@@ -407,6 +393,8 @@ const HomeChatWindow = ({ myApps }: Props) => {
           )
         ) : (
           <ChatHeader
+            pane={pane}
+            chatSettings={chatSettings}
             showHistory
             apps={myApps}
             history={chatRecords}

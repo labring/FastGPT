@@ -7,6 +7,7 @@
   "avg_ttfb": "平均首字时长 (秒)",
   "azure": "微软 Azure",
   "base_url": "代理地址",
+  "batch_size": "并发请求数",
   "channel_name": "渠道名",
   "channel_priority": "优先级",
   "channel_priority_tip": "优先级越高的渠道，越容易被请求到",

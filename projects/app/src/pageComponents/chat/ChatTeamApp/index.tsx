@@ -1,7 +1,5 @@
-'use client';
-
 import React, { useMemo, useState } from 'react';
-import { Box, Flex, Tab, TabIndicator, TabList, TabPanel, TabPanels, Tabs } from '@chakra-ui/react';
+import { Box, Flex, Tab, TabIndicator, TabList, Tabs } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import AppListContextProvider, { AppListContext } from '@/pageComponents/dashboard/apps/context';
@@ -13,16 +11,16 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import List from '@/pageComponents/chat/ChatTeamApp/List';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { Drawer, DrawerContent, DrawerOverlay } from '@chakra-ui/react';
-import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import NextHead from '@/components/common/NextHead';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 
 const MyApps = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
+
   const { paths, myApps, isFetchingApps, setSearchKey } = useContextSelector(
     AppListContext,
     (v) => v
@@ -30,8 +28,6 @@ const MyApps = () => {
 
   const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
 
-  const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
-  const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
 
   const map = useMemo(
@@ -54,33 +50,40 @@ const MyApps = () => {
   const tabs = ['all' as const, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin];
 
   return (
-    <Flex flexDirection={'column'} h={'100%'} pt={['46px', 0]}>
+    <Flex flexDirection={'column'} h={'100%'}>
       <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} icon="/icon/logo.svg" />
 
       {!isPc && (
-        <Flex h="46px" w="100vw" top="0" position="absolute" borderBottom="sm" color="myGray.900">
+        <Flex
+          py={4}
+          color="myGray.900"
+          gap={2}
+          alignItems={'center'}
+          pr={2}
+          justifyContent={'space-between'}
+        >
           <MyIcon
             ml={3}
             w="20px"
-            color="myGray.900"
+            color="myGray.500"
             name="core/chat/sidebar/menu"
             onClick={onOpenSlider}
           />
 
-          <Drawer
-            size="xs"
-            placement="left"
-            autoFocus={false}
-            isOpen={isOpenSlider}
-            onClose={onCloseSlider}
-          >
-            <DrawerOverlay backgroundColor="rgba(255,255,255,0.5)" />
-            <DrawerContent maxWidth="75vw">
-              <ChatHistorySlider
-                confirmClearText={t('common:core.chat.Confirm to clear history')}
-              />
-            </DrawerContent>
-          </Drawer>
+          <Box w="70%">
+            <SearchInput
+              onChange={(e) => setSearchKey(e.target.value)}
+              placeholder={t('app:search_app')}
+              maxLength={30}
+            />
+          </Box>
+
+          <ChatSliderMobileDrawer
+            showList={false}
+            showMenu={false}
+            banner={chatSettings?.wideLogoUrl}
+            menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
+          />
         </Flex>
       )}
 
@@ -101,6 +104,7 @@ const MyApps = () => {
           />
         </Box>
       )}
+
       <Flex gap={5} flex={'1 0 0'} h={0}>
         <Flex
           px={[3, 6]}
@@ -110,7 +114,7 @@ const MyApps = () => {
           overflowY={'auto'}
           overflowX={'hidden'}
         >
-          <Flex pt={paths.length > 0 ? 3 : [4, 6]} alignItems={'center'} gap={3}>
+          <Flex pt={paths.length > 0 ? 3 : [0, 6]} alignItems={'center'} gap={3}>
             {isPc && (
               <Tabs variant="unstyled" onChange={(index) => setAppType(tabs[index])}>
                 <TabList gap={5}>
@@ -139,19 +143,6 @@ const MyApps = () => {
               />
             )}
           </Flex>
-
-          {!isPc && (
-            <Box mt={2}>
-              {
-                <SearchInput
-                  maxW={['auto', '250px']}
-                  onChange={(e) => setSearchKey(e.target.value)}
-                  placeholder={t('app:search_app')}
-                  maxLength={30}
-                />
-              }
-            </Box>
-          )}
 
           <MyBox flex={'1 0 0'} isLoading={myApps.length === 0 && isFetchingApps}>
             <List appType={appType} />

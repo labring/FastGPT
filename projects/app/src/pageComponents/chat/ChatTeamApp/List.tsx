@@ -42,7 +42,7 @@ const ListItem = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   return (
     <>
       <Grid
-        py={4}
+        py={[0, 4]}
         gridTemplateColumns={[
           '1fr',
           'repeat(2,1fr)',

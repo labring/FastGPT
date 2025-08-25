@@ -479,6 +479,26 @@ export const ModelEditModal = ({
                     <Tr>
                       <Td>
                         <HStack spacing={1}>
+                          <Box>{t('account_model:batch_size')}</Box>
+                        </HStack>
+                      </Td>
+                      <Td textAlign={'right'}>
+                        <Flex justifyContent={'flex-end'}>
+                          <MyNumberInput
+                            defaultValue={1}
+                            register={register}
+                            name="batchSize"
+                            min={1}
+                            step={1}
+                            isRequired
+                            {...InputStyles}
+                          />
+                        </Flex>
+                      </Td>
+                    </Tr>
+                    <Tr>
+                      <Td>
+                        <HStack spacing={1}>
                           <Box>{t('account:model.default_token')}</Box>
                           <QuestionTip label={t('account:model.default_token_tip')} />
                         </HStack>

@@ -48,6 +48,7 @@ export const useDebug = () => {
   const getNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.getNodes);
   const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
   const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
+  const onRemoveError = useContextSelector(WorkflowContext, (v) => v.onRemoveError);
   const onStartNodeDebug = useContextSelector(WorkflowContext, (v) => v.onStartNodeDebug);
 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
@@ -80,6 +81,7 @@ export const useDebug = () => {
 
     const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
     if (!checkResults) {
+      onRemoveError();
       const storeNodes = uiWorkflow2StoreWorkflow({ nodes, edges });
 
       return JSON.stringify(storeNodes);

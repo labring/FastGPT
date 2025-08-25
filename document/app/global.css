@@ -1,6 +1,11 @@
 @import 'tailwindcss';
 @import 'fumadocs-ui/css/preset.css';
 
+@font-face {
+  font-family: 'Alef';
+  src: url('/fonts/Alef-Regular.ttf') format('truetype');
+}
+
 /* 在文件开头添加这些基础变量 */
 :root {
   /* 基础颜色 */
@@ -57,16 +62,122 @@
 /* 全局代码块样式 */
 pre,
 code {
-  font-size: 0.9rem !important;
-  line-height: 1.6 !important;
+  border-radius: 16px;
+  background: #F5F6F7;
+  font-family: Alef;
+  font-size: 1.0rem;
+  font-weight: 400;
+  line-height: 16px;
+  letter-spacing: 0.48px;
+}
+
+div[role='tabpanel'] figure:has(+ p) pre,
+div[role='tabpanel'] figure:has(+ p) pre code {
+  background-color: #ececec;
+}
+
+.dark div[role='tabpanel'] figure:has(+ p) pre,
+.dark div[role='tabpanel'] figure:has(+ p) pre code {
+  background-color: #3d3d3d;
+}
+
+.dark pre,
+.dark code {
+  background: #1e1e1e;
+}
+
+pre {
+  padding: 24px 0 24px 24px ;
+}
+
+pre code {
+  gap: 20px;
+}
+
+code span {
+  padding-left: 0 !important;
+}
+
+/* 去除代码块内层边框 */
+.bg-fd-secondary.border {
+  border: none;
+}
+
+/* 去除代码块外层边框 */
+.shiki {
+  border: none;
+  padding: 0;
 }
 
 /* 行内代码样式 */
 /* 行内代码样式 */
 :not(pre) > code {
-  padding: 0.2em 0.4em !important;
-  margin: 0 0.2em !important;
-  color: #2563eb !important;
+  display: inline-block;
+  height: 25px;
+  padding: 0 10px;
+  margin: 0 0.2em;
+  color: #272727;
+  background: #f5f6f7;
+  font-family: "PingFang SC";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 180%; 
+  letter-spacing: 0.056px;
+  border: none;
+  border-radius: 8px;
+}
+
+.dark :not(pre) > code {
+  color: #E6E6E6 !important;
+  background: #282828 !important;
+}
+
+div[role="tablist"] ~ div:has(figure, p, ul) {
+  border-radius: 0 !important;
+  border: solid 1.5px #e5e5e5;
+  border-radius: 0.75rem !important;
+}
+
+.dark div[role="tablist"] ~ div:has(figure, p, ul) {
+  border: solid 1.5px #535353;
+}
+
+.dark div[role="tablist"] {
+  background-color: #1E1E1E;
+}
+
+/* 代码块下方的滚动条样式 */
+div.bg-fd-secondary:has(pre) {
+  padding: 0;
+}
+
+.dark div.bg-fd-secondary:has(pre) {
+  background-color: #1E1E1E;
+}
+
+div.bg-fd-secondary:has(pre)::-webkit-scrollbar-track {
+  background: #e8e8e8; 
+}
+
+div.bg-fd-secondary:has(pre)::-webkit-scrollbar-thumb {
+  background: #b0b0b0; 
+}
+
+div.bg-fd-secondary:has(pre)::-webkit-scrollbar-thumb:hover {
+  background: #909090; 
+}
+
+.dark div.bg-fd-secondary:has(pre)::-webkit-scrollbar-track {
+  background: #1a1a1a; 
+}
+
+.dark div.bg-fd-secondary:has(pre)::-webkit-scrollbar-thumb {
+  background: #404040; 
+}
+
+.dark div.bg-fd-secondary:has(pre)::-webkit-scrollbar-thumb:hover {
+  background: #606060; 
 }
 
 /* 代码块中的滚动条样式优化 */
@@ -153,11 +264,65 @@ div[data-state='open'].fixed.inset-0.z-50 {
   }
 }
 
-figure.shiki button[aria-label='Copy Text'] {
-  background-color: none !important;
+/* 复制按钮容器和按钮样式 */
+div[class*="bg-fd-card"]:has(button[aria-label='Copy Text']),
+div[class*="bg-fd-card"]:has(button[aria-label='Copied Text']) {
+  right: 26px;
+  top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #818181;
+  color: #818181;
+  border: none;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.01);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
   &:hover {
     cursor: pointer;
   }
+}
+
+/* 按钮内部样式 */
+button[aria-label='Copy Text'],
+button[aria-label='Copied Text'] {
+  color: #818181;
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  &:hover {
+    cursor: pointer;
+  }
+}
+
+button[aria-label='Copy Text'] svg {
+  display: none;
+}
+
+button[aria-label='Copy Text']::before {
+  content: '';
+  background-image: url('../public/icons/copy.svg');
+  width: 26px;
+  height: 26px;
+  transition: filter 0.2s ease; 
+}
+
+/* 鼠标悬停时使复制图标颜色变深 */
+button[aria-label='Copy Text']:hover::before {
+  filter: brightness(0.7); /* 降低亮度使颜色变深 */
+}
+
+button[aria-label='Copied Text'] {
+  width: 26px;
+  height: 26px;
+  /* transition: filter 0.2s ease; */
+}
+
+button[aria-label='Copied Text'] svg {
+  width: 20px;
+  height: 20px;
+  transition: filter 0.2s ease;
 }
 
 #nd-subnav > div:nth-of-type(1) button {
@@ -251,16 +416,16 @@ div[data-rmiz-modal-overlay='visible'] {
 }
 
 .dark {
-  --color-fd-background: #060c1a;
+  --color-fd-background: #000000;
   --color-fd-foreground: hsl(220, 60%, 94.5%);
   --color-fd-muted: hsl(220, 50%, 10%);
-  --color-fd-muted-foreground: hsl(220, 30%, 65%);
+  --color-fd-muted-foreground: #B0B0B0;
   --color-fd-popover: hsl(220, 50%, 10%);
   --color-fd-popover-foreground: hsl(220, 60%, 94.5%);
   --color-fd-card: hsla(220, 56%, 15%, 0.4);
   --color-fd-card-foreground: hsl(220, 60%, 94.5%);
   --color-fd-border: hsla(220, 50%, 50%, 0.2);
-  --color-fd-primary: #3370ff; /* 文本高亮色 */
+  --color-fd-primary: #C2D3FF; /* 文本高亮色 */
   --color-fd-primary-foreground: hsl(0, 0%, 9%);
   --color-fd-secondary: hsl(220, 50%, 20%);
   --color-fd-secondary-foreground: hsl(220, 80%, 90%);
@@ -275,4 +440,39 @@ div[data-rmiz-modal-overlay='visible'] {
 
 button[data-search-full] {
   background-color: var(--color-fd-background);
+}
+
+.dark\:text-blue-400:where(.dark, .dark *) {
+  color: #C2D3FF;
+  background-color: #434548;
+}
+
+
+.dark div[role="tabpanel"].bg-fd-background {
+  background-color: #1E1E1E;
+}
+
+div[role="tabpanel"].bg-fd-background {
+  background-color: #F7F7F8;
+}
+
+div[role="tabpanel"].bg-fd-background > div > ul {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dark div[role="tabpanel"].bg-fd-background > div > ul {
+  margin: 0;
+  background-color: #1E1E1E;
+}
+
+div[role="tabpanel"].bg-fd-background > div > ul > li {
+  margin: 0;
+}
+
+button[role="tab"] {
+  padding-top: 16px;
+  padding-bottom: 16px;
 }

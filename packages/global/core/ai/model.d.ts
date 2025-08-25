@@ -65,6 +65,7 @@ export type EmbeddingModelItemType = PriceType &
     weight: number; // training weight
     hidden?: boolean; // Disallow creation
     normalization?: boolean; // normalization processing
+    batchSize?: number;
     defaultConfig?: Record<string, any>; // post request config
     dbConfig?: Record<string, any>; // Custom parameters for storage
     queryConfig?: Record<string, any>; // Custom parameters for query
