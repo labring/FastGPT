@@ -7,8 +7,8 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import { encryptSecretValue, storeSecretValue } from '../../common/secret/utils';
 import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
 import { type ClientSession } from '../../common/mongo';
-import { MongoEvaluation } from './evaluation/evalSchema';
-import { removeEvaluationJob } from './evaluation/mq';
+import { MongoEvaluation } from '../evaluation/evalSchema';
+import { removeEvaluationJob } from '../evaluation/mq';
 import { deleteChatFiles } from '../chat/controller';
 import { MongoChatItem } from '../chat/chatItemSchema';
 import { MongoChat } from '../chat/chatSchema';

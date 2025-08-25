@@ -15,6 +15,7 @@ export async function register() {
         { initVectorStore },
         { initRootUser },
         { startMongoWatch },
+        { initEvaluationWorker },
         { startCron },
         { startTrainingQueue },
         { preLoadWorker },
@@ -29,6 +30,7 @@ export async function register() {
         import('@fastgpt/service/common/vectorDB/controller'),
         import('@/service/mongo'),
         import('@/service/common/system/volumnMongoWatch'),
+        import('@fastgpt/service/core/evaluation'),
         import('@/service/common/system/cron'),
         import('@/service/core/dataset/training/utils'),
         import('@fastgpt/service/worker/preload'),
@@ -59,6 +61,7 @@ export async function register() {
       ]);
 
       startMongoWatch();
+      initEvaluationWorker();
       startCron();
       startTrainingQueue(true);
 

@@ -1,8 +1,15 @@
-import { evaluationFileErrors } from '@fastgpt/global/core/app/evaluation/constants';
-import { getEvaluationFileHeader } from '@fastgpt/global/core/app/evaluation/utils';
-import type { VariableItemType } from '@fastgpt/global/core/app/type';
-import { addLog } from '../../../common/system/log';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import { evaluationFileErrors } from '@fastgpt/global/core/evaluation/constants';
+import { getEvaluationFileHeader } from '@fastgpt/global/core/evaluation/utils';
+import type { VariableItemType } from '@fastgpt/global/core/app/type';
+// import { addLog } from '@fastgpt/service/common/system/log';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { Types } from 'mongoose';
+import { retryFn } from '@fastgpt/global/common/system/utils';
+import { i18nT } from '../../../web/i18n/utils';
+import { addLog } from '../../common/system/log';
+import { MongoEvaluation } from './evalSchema';
+import { addEvaluationJob } from './mq';
 import Papa from 'papaparse';
 
 export const parseEvaluationCSV = (rawText: string) => {
@@ -24,15 +31,27 @@ export const validateEvaluationFile = async (
   rawText: string,
   appVariables?: VariableItemType[]
 ) => {
-  // Parse CSV using Papa Parse
-  const csvData = parseEvaluationCSV(rawText);
-  const dataLength = csvData.length;
+  // const lines = rawText.trim().split('\r\n');
+  // const dataLength = lines.length;
+
+  // 使用正则表达式分割所有类型的换行符（\r\n、\n、\r）
+  const lines = rawText.trim().split(/\r?\n|\r/);
+  const dataLength = lines.length;
+
+  // 过滤可能的空行（处理文件末尾可能的空行）
+  const nonEmptyLines = lines.filter((line) => line.trim() !== '');
+  if (nonEmptyLines.length === 0) {
+    addLog.error('File is empty');
+    return Promise.reject(evaluationFileErrors);
+  }
 
   // Validate file header
   const expectedHeader = getEvaluationFileHeader(appVariables);
-  const actualHeader = csvData[0]?.join(',') || '';
+  // 去除头部可能的空白字符（如BOM头或空格）
+  const actualHeader = nonEmptyLines[0].trim();
+
   if (actualHeader !== expectedHeader) {
-    addLog.error(`Header mismatch. Expected: ${expectedHeader}, Got: ${actualHeader}`);
+    addLog.error(`Header mismatch. Expected: "${expectedHeader}", Got: "${actualHeader}"`);
     return Promise.reject(evaluationFileErrors);
   }
 
@@ -48,7 +67,7 @@ export const validateEvaluationFile = async (
     return Promise.reject(evaluationFileErrors);
   }
 
-  const headers = csvData[0];
+  const headers = lines[0].split(',');
 
   // Get required field indices
   const requiredFields = headers
@@ -58,8 +77,8 @@ export const validateEvaluationFile = async (
   const errors: string[] = [];
 
   // Validate each data row
-  for (let i = 1; i < csvData.length; i++) {
-    const values = csvData[i];
+  for (let i = 1; i < lines.length; i++) {
+    const values = lines[i].trim().split(',');
 
     // Check required fields
     requiredFields.forEach(({ header, index }) => {
@@ -84,7 +103,7 @@ export const validateEvaluationFile = async (
     return Promise.reject(evaluationFileErrors);
   }
 
-  return { csvData, dataLength };
+  return { lines, dataLength };
 };
 
 const validateRowVariables = ({
@@ -144,4 +163,39 @@ const validateRowVariables = ({
         break;
     }
   });
+};
+
+export const checkTeamHasRunningEvaluation = async (teamId: string) => {
+  const runningEvaluation = await MongoEvaluation.findOne(
+    {
+      teamId: new Types.ObjectId(teamId),
+      finishTime: { $exists: false }
+    },
+    '_id'
+  ).lean();
+
+  if (runningEvaluation) {
+    return Promise.reject(i18nT('dashboard_evaluation:team_has_running_evaluation'));
+  }
+};
+
+export const resumePausedEvaluations = async (teamId: string): Promise<any> => {
+  return retryFn(async () => {
+    const pausedEvaluations = await MongoEvaluation.find({
+      teamId: new Types.ObjectId(teamId),
+      errorMessage: TeamErrEnum.aiPointsNotEnough,
+      finishTime: { $exists: false }
+    }).lean();
+
+    if (pausedEvaluations.length === 0) {
+      return;
+    }
+
+    for (const evaluation of pausedEvaluations) {
+      await MongoEvaluation.updateOne({ _id: evaluation._id }, { $unset: { errorMessage: 1 } });
+      await addEvaluationJob({ evalId: String(evaluation._id) });
+    }
+
+    addLog.info('Resumed paused evaluations', { teamId, count: pausedEvaluations.length });
+  }, 3);
 };

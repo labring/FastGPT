@@ -4,8 +4,8 @@ import type {
   listEvaluationsBody,
   retryEvalItemBody,
   updateEvalItemBody
-} from '@fastgpt/global/core/app/evaluation/api';
-import type { evaluationType, listEvalItemsItem } from '@fastgpt/global/core/app/evaluation/type';
+} from '@fastgpt/global/core/evaluation/api';
+import type { evaluationType, listEvalItemsItem } from '@fastgpt/global/core/evaluation/type';
 import type { PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
 export const postCreateEvaluation = ({
@@ -25,7 +25,7 @@ export const postCreateEvaluation = ({
   formData.append('file', file, encodeURIComponent(file.name));
   formData.append('data', JSON.stringify({ name, evalModel, appId }));
 
-  return POST(`/proApi/core/app/evaluation/create`, formData, {
+  return POST(`/core/evaluation/create`, formData, {
     timeout: 600000,
     onUploadProgress: (e) => {
       if (!e.total) return;
@@ -40,19 +40,18 @@ export const postCreateEvaluation = ({
 };
 
 export const getEvaluationList = (data: listEvaluationsBody) =>
-  POST<PaginationResponse<evaluationType>>('/proApi/core/app/evaluation/list', data);
+  POST<PaginationResponse<evaluationType>>('/core/evaluation/list', data);
 
 export const deleteEvaluation = (data: { evalId: string }) =>
-  DELETE('/proApi/core/app/evaluation/delete', data);
+  DELETE('/core/evaluation/delete', data);
 
 export const getEvalItemsList = (data: listEvalItemsBody) =>
-  POST<PaginationResponse<listEvalItemsItem>>('/proApi/core/app/evaluation/listItems', data);
+  POST<PaginationResponse<listEvalItemsItem>>('/core/evaluation/listItems', data);
 
 export const deleteEvalItem = (data: { evalItemId: string }) =>
-  DELETE('/proApi/core/app/evaluation/deleteItem', data);
+  DELETE('/core/evaluation/deleteItem', data);
 
-export const retryEvalItem = (data: retryEvalItemBody) =>
-  POST('/proApi/core/app/evaluation/retryItem', data);
+export const retryEvalItem = (data: retryEvalItemBody) => POST('/core/evaluation/retryItem', data);
 
 export const updateEvalItem = (data: updateEvalItemBody) =>
-  POST('/proApi/core/app/evaluation/updateItem', data);
+  POST('/core/evaluation/updateItem', data);
