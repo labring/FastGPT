@@ -56,7 +56,7 @@ function List() {
   const router = useRouter();
   const { parentId = null } = router.query as { parentId?: string | null };
   const parentDataset = useMemo(
-    () => myDatasets.find((item) => String(item._id) === parentId),
+    () => myDatasets.find((item) => item._id === parentId),
     [parentId, myDatasets]
   );
 
@@ -83,7 +83,7 @@ function List() {
   });
 
   const editPerDataset = useMemo(
-    () => myDatasets.find((item) => String(item._id) === String(editPerDatasetId)),
+    () => myDatasets.find((item) => item._id === editPerDatasetId),
     [editPerDatasetId, myDatasets]
   );
 
