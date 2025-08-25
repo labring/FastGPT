@@ -45,12 +45,9 @@ export const getRedisCache = async (key: string) => {
 
 // Add value to cache
 export const incrValueToCache = async (key: string, increment: number) => {
-  if (!increment || increment === 0) return;
+  if (typeof increment !== 'number' || increment === 0) return;
   const redis = getGlobalRedisConnection();
   try {
-    const exists = await redis.exists(getCacheKey(key));
-    if (!exists) return;
-
     await retryFn(() => redis.incrbyfloat(getCacheKey(key), increment));
   } catch (error) {}
 };
