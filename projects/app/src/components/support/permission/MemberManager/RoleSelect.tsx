@@ -206,8 +206,8 @@ function RoleSelect({
           )}
 
           {roleOptions.checkboxList.map((item) => {
-            const change = (e: React.MouseEvent<HTMLElement>) => {
-              if (e.target.tagName === 'INPUT') return;
+            const change = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+              if ((e.target as HTMLElement).tagName === 'INPUT') return;
               const per = new Permission({ role });
               if (per.checkRole(item.value)) {
                 per.removeRole(item.value);

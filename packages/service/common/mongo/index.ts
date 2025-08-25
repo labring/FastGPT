@@ -2,7 +2,6 @@ import { isTestEnv } from '@fastgpt/global/common/system/constants';
 import { addLog } from '../../common/system/log';
 import type { Model } from 'mongoose';
 import mongoose, { Mongoose } from 'mongoose';
-import { objectIdToStringPlugin } from './plugin';
 
 export default mongoose;
 export * from 'mongoose';
