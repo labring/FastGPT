@@ -100,13 +100,15 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
   );
 
   const checkedQuickApps = useMemo<QuickAppType[]>(() => {
-    return localSelectedIds.map((id) => {
-      const cached = selectedInfo[id];
-      if (cached) return cached;
-      const app = availableAppsMap.get(id);
-      if (app) return { _id: app._id, name: app.name, avatar: app.avatar };
-      return { _id: id, name: '', avatar: '' };
-    });
+    return localSelectedIds
+      .map((id) => {
+        const cached = selectedInfo[id];
+        if (cached) return cached;
+
+        const app = availableAppsMap.get(id);
+        if (app) return { _id: app._id, name: app.name, avatar: app.avatar };
+      })
+      .filter(Boolean) as QuickAppType[];
   }, [localSelectedIds, selectedInfo, availableAppsMap]);
 
   useEffect(() => {
@@ -127,16 +129,10 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
 
   const { loading: isUpdating, runAsync: confirmSelect } = useRequest2(
     async () => {
-      const list: QuickAppType[] = localSelectedIds.map((id) => {
-        const cached = selectedInfo[id];
-        if (cached) return cached;
-        const app = availableAppsMap.get(id);
-        if (app) return { _id: app._id, name: app.name, avatar: app.avatar };
-        return { _id: id, name: '', avatar: '' };
-      });
-      onConfirm(list);
+      onConfirm(checkedQuickApps);
     },
     {
+      refreshDeps: [checkedQuickApps],
       manual: true,
       onSuccess: onClose
     }
