@@ -10,5 +10,9 @@ export enum InputTypeEnum {
 
   selectLLMModel = 'selectLLMModel',
 
-  fileSelect = 'fileSelect'
+  fileSelect = 'fileSelect',
+
+  dateTimePicker = 'dateTimePicker',
+  dateTimeRangePicker = 'dateTimeRangePicker',
+  datasetSelect = 'datasetSelect'
 }

@@ -313,6 +313,7 @@
   "un_auth": "無權限",
   "upload_file_max_amount": "最大檔案數量",
   "upload_file_max_amount_tip": "單輪對話中最大上傳檔案數量",
+  "variable.internal_type_desc": "僅在工作流內部使用，不會出現在對話框中",
   "variable.select type_desc": "可以為工作流程定義全域變數，常用於暫存。賦值的方式包括：\n1. 從對話頁面的 query 參數取得。\n2. 透過 API 的 variables 物件傳遞。\n3. 透過【變數更新】節點進行賦值。",
   "variable.textarea_type_desc": "允許使用者最多輸入 4000 字的對話框。",
   "variable_name_required": "變量名必填",

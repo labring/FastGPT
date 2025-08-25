@@ -332,9 +332,21 @@ export enum VariableInputEnum {
   input = 'input',
   textarea = 'textarea',
   numberInput = 'numberInput',
+  JSONEditor = 'JSONEditor',
   select = 'select',
-  custom = 'custom'
+  multipleSelect = 'multipleSelect',
+  TimeSelect = 'dateSelect',
+  switch = 'switch',
+  password = 'password',
+  file = 'file',
+
+  modelSelect = 'modelSelect',
+  datasetSelect = 'datasetSelect',
+
+  custom = 'custom',
+  internal = 'internal'
 }
+
 export const variableMap: Record<
   VariableInputEnum,
   {
@@ -370,14 +382,93 @@ export const variableMap: Record<
     value: VariableInputEnum.select,
     defaultValueType: WorkflowIOValueTypeEnum.string
   },
+  [VariableInputEnum.multipleSelect]: {
+    icon: 'core/workflow/inputType/multipleSelect',
+    label: i18nT('common:core.workflow.inputType.multipleSelect'),
+    value: VariableInputEnum.multipleSelect,
+    defaultValueType: WorkflowIOValueTypeEnum.arrayString
+  },
+  [VariableInputEnum.JSONEditor]: {
+    icon: 'core/workflow/inputType/jsonEditor',
+    label: i18nT('common:core.workflow.inputType.jsonEditor'),
+    value: VariableInputEnum.JSONEditor,
+    defaultValueType: WorkflowIOValueTypeEnum.object
+  },
+  [VariableInputEnum.TimeSelect]: {
+    icon: 'core/workflow/inputType/dateSelect',
+    label: i18nT('common:core.workflow.inputType.dateSelect'),
+    value: VariableInputEnum.TimeSelect,
+    defaultValueType: WorkflowIOValueTypeEnum.string
+  },
+  [VariableInputEnum.switch]: {
+    icon: 'core/workflow/inputType/switch',
+    label: i18nT('common:core.workflow.inputType.switch'),
+    value: VariableInputEnum.switch,
+    defaultValueType: WorkflowIOValueTypeEnum.boolean
+  },
+  [VariableInputEnum.password]: {
+    icon: 'core/workflow/inputType/password',
+    label: i18nT('common:core.workflow.inputType.password'),
+    value: VariableInputEnum.password,
+    defaultValueType: WorkflowIOValueTypeEnum.string
+  },
+  [VariableInputEnum.file]: {
+    icon: 'core/workflow/inputType/file',
+    label: i18nT('common:core.workflow.inputType.file'),
+    value: VariableInputEnum.file,
+    defaultValueType: WorkflowIOValueTypeEnum.arrayString
+  },
+  [VariableInputEnum.modelSelect]: {
+    icon: 'core/workflow/inputType/model',
+    label: i18nT('common:core.workflow.inputType.modelSelect'),
+    value: VariableInputEnum.modelSelect,
+    defaultValueType: WorkflowIOValueTypeEnum.string
+  },
+  [VariableInputEnum.datasetSelect]: {
+    icon: 'core/workflow/inputType/dataset',
+    label: i18nT('common:core.workflow.inputType.datasetSelect'),
+    value: VariableInputEnum.datasetSelect,
+    defaultValueType: WorkflowIOValueTypeEnum.arrayString
+  },
   [VariableInputEnum.custom]: {
-    icon: 'core/workflow/inputType/customVariable',
+    icon: 'core/workflow/inputType/external',
     label: i18nT('common:core.workflow.inputType.custom'),
     value: VariableInputEnum.custom,
     defaultValueType: WorkflowIOValueTypeEnum.string,
     description: i18nT('app:variable.select type_desc')
+  },
+  [VariableInputEnum.internal]: {
+    icon: 'core/workflow/inputType/internal',
+    label: i18nT('common:core.workflow.inputType.internal'),
+    value: VariableInputEnum.internal,
+    defaultValueType: WorkflowIOValueTypeEnum.string,
+    description: i18nT('app:variable.internal_type_desc')
   }
 };
+
+export const variableMapGroups: Array<
+  Array<{
+    icon: string;
+    label: string;
+    value: VariableInputEnum;
+    defaultValueType: WorkflowIOValueTypeEnum;
+    description?: string;
+  }>
+> = [
+  [
+    variableMap[VariableInputEnum.input],
+    variableMap[VariableInputEnum.numberInput],
+    variableMap[VariableInputEnum.JSONEditor],
+    variableMap[VariableInputEnum.select],
+    variableMap[VariableInputEnum.multipleSelect],
+    variableMap[VariableInputEnum.switch],
+    variableMap[VariableInputEnum.TimeSelect],
+    variableMap[VariableInputEnum.file],
+    variableMap[VariableInputEnum.password]
+  ],
+  [variableMap[VariableInputEnum.modelSelect], variableMap[VariableInputEnum.datasetSelect]],
+  [variableMap[VariableInputEnum.custom], variableMap[VariableInputEnum.internal]]
+];
 
 /* run time */
 export enum RuntimeEdgeStatusEnum {
