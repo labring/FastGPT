@@ -10,13 +10,14 @@ import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import React from 'react';
 import type { AppLogKeysType } from '@fastgpt/global/core/app/logs/type';
+import type { SetState } from 'ahooks/lib/createUseStorageState';
 
 const LogKeysConfigPopover = ({
   logKeysList,
   setLogKeysList
 }: {
   logKeysList: AppLogKeysType[];
-  setLogKeysList: (logKeysList: AppLogKeysType[] | undefined) => void;
+  setLogKeysList: (value: SetState<AppLogKeysType[]>) => void;
 }) => {
   const { t } = useTranslation();
   return (

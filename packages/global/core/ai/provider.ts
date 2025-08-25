@@ -1,224 +1,77 @@
-import { i18nT } from '../../../web/i18n/utils';
+import { ModelProviders } from '../../sdk/fastgpt-plugin';
 
-export type ModelProviderIdType =
-  | 'OpenAI'
-  | 'Claude'
-  | 'Gemini'
-  | 'Meta'
-  | 'MistralAI'
-  | 'Groq'
-  | 'Grok'
-  | 'Jina'
-  | 'AliCloud'
-  | 'Qwen'
-  | 'Doubao'
-  | 'DeepSeek'
-  | 'ChatGLM'
-  | 'Ernie'
-  | 'Moonshot'
-  | 'MiniMax'
-  | 'SparkDesk'
-  | 'Hunyuan'
-  | 'Baichuan'
-  | 'StepFun'
-  | 'ai360'
-  | 'Yi'
-  | 'Siliconflow'
-  | 'PPIO'
-  | 'OpenRouter'
-  | 'Ollama'
-  | 'novita'
-  | 'vertexai'
-  | 'BAAI'
-  | 'FishAudio'
-  | 'Intern'
-  | 'Moka'
-  | 'Jina'
-  | 'Other';
+export type ModelProviderIdType = keyof typeof ModelProviders;
+type ProviderValueTypes = (typeof ModelProviders)[ModelProviderIdType];
+type langType = 'en' | 'zh-CN' | 'zh-Hant';
 
 export type ModelProviderType = {
   id: ModelProviderIdType;
   name: any;
   avatar: string;
+  order: number;
 };
 
-export const ModelProviderList: ModelProviderType[] = [
-  {
-    id: 'OpenAI',
-    name: 'OpenAI',
-    avatar: 'model/openai'
-  },
-  {
-    id: 'Claude',
-    name: 'Claude',
-    avatar: 'model/claude'
-  },
-  {
-    id: 'Gemini',
-    name: 'Gemini',
-    avatar: 'model/gemini'
-  },
-  {
-    id: 'Meta',
-    name: 'Meta',
-    avatar: 'model/meta'
-  },
-  {
-    id: 'MistralAI',
-    name: 'MistralAI',
-    avatar: 'model/mistral'
-  },
-  {
-    id: 'Grok',
-    name: 'Grok',
-    avatar: 'model/grok'
-  },
-  {
-    id: 'Groq',
-    name: 'Groq',
-    avatar: 'model/groq'
-  },
-  {
-    id: 'Jina',
-    name: 'Jina',
-    avatar: 'model/jina'
-  },
-  {
-    id: 'Qwen',
-    name: i18nT('common:model_qwen'),
-    avatar: 'model/qwen'
-  },
-  {
-    id: 'Doubao',
-    name: i18nT('common:model_doubao'),
-    avatar: 'model/doubao'
-  },
-  {
-    id: 'DeepSeek',
-    name: 'DeepSeek',
-    avatar: 'model/deepseek'
-  },
-  {
-    id: 'ChatGLM',
-    name: i18nT('common:model_chatglm'),
-    avatar: 'model/chatglm'
-  },
-  {
-    id: 'Ernie',
-    name: i18nT('common:model_ernie'),
-    avatar: 'model/ernie'
-  },
-  {
-    id: 'Moonshot',
-    name: i18nT('common:model_moonshot'),
-    avatar: 'model/moonshot'
-  },
-  {
-    id: 'MiniMax',
-    name: 'MiniMax',
-    avatar: 'model/minimax'
-  },
-  {
-    id: 'SparkDesk',
-    name: i18nT('common:model_sparkdesk'),
-    avatar: 'model/sparkDesk'
-  },
-  {
-    id: 'Hunyuan',
-    name: i18nT('common:model_hunyuan'),
-    avatar: 'model/hunyuan'
-  },
-  {
-    id: 'Baichuan',
-    name: i18nT('common:model_baichuan'),
-    avatar: 'model/baichuan'
-  },
-  {
-    id: 'StepFun',
-    name: i18nT('common:model_stepfun'),
-    avatar: 'model/stepfun'
-  },
-  {
-    id: 'ai360',
-    name: '360 AI',
-    avatar: 'model/ai360'
-  },
-  {
-    id: 'Yi',
-    name: i18nT('common:model_yi'),
-    avatar: 'model/yi'
-  },
-  {
-    id: 'BAAI',
-    name: i18nT('common:model_baai'),
-    avatar: 'model/BAAI'
-  },
-  {
-    id: 'FishAudio',
-    name: 'FishAudio',
-    avatar: 'model/fishaudio'
-  },
-  {
-    id: 'Intern',
-    name: i18nT('common:model_intern'),
-    avatar: 'model/intern'
-  },
-  {
-    id: 'Moka',
-    name: i18nT('common:model_moka'),
-    avatar: 'model/moka'
-  },
-  {
-    id: 'Ollama',
-    name: 'Ollama',
-    avatar: 'model/ollama'
-  },
-  {
-    id: 'OpenRouter',
-    name: 'OpenRouter',
-    avatar: 'model/openrouter'
-  },
-  {
-    id: 'vertexai',
-    name: 'vertexai',
-    avatar: 'model/vertexai'
-  },
-  {
-    id: 'novita',
-    name: 'novita',
-    avatar: 'model/novita'
-  },
-  {
-    id: 'Jina',
-    name: 'Jina',
-    avatar: 'model/jina'
-  },
-  {
-    id: 'AliCloud',
-    name: i18nT('common:model_alicloud'),
-    avatar: 'model/alicloud'
-  },
-  {
-    id: 'Siliconflow',
-    name: i18nT('common:model_siliconflow'),
-    avatar: 'model/siliconflow'
-  },
-  {
-    id: 'PPIO',
-    name: i18nT('common:model_ppio'),
-    avatar: 'model/ppio'
-  },
-  {
-    id: 'Other',
-    name: i18nT('common:model_other'),
-    avatar: 'model/huggingface'
-  }
-];
-export const ModelProviderMap = Object.fromEntries(
-  ModelProviderList.map((item, index) => [item.id, { ...item, order: index }])
-);
+const getLocalizedName = (translations: ProviderValueTypes, language = 'en'): string => {
+  return translations[language as langType];
+};
 
-export const getModelProvider = (provider?: ModelProviderIdType) => {
-  if (!provider) return ModelProviderMap.Other;
-  return ModelProviderMap[provider] ?? ModelProviderMap.Other;
+export const formatModelProviderList = (language?: string) => {
+  return Object.entries(ModelProviders).map(([id, translations], index) => ({
+    id: id as ModelProviderIdType,
+    name: getLocalizedName(translations, language),
+    avatar: `/api/system/plugin/models/${id}.svg`,
+    order: index
+  }));
+};
+export const formatModelProviderMap = (language?: string) => {
+  const provider = {} as Record<
+    ModelProviderIdType,
+    {
+      id: string;
+      name: string;
+      avatar: string;
+      order: number;
+    }
+  >;
+
+  Object.entries(ModelProviders).forEach(([id, translations], index) => {
+    provider[id as ModelProviderIdType] = {
+      id: id as ModelProviderIdType,
+      name: getLocalizedName(translations, language),
+      avatar: `/api/system/plugin/models/${id}.svg`,
+      order: index
+    };
+  });
+
+  return provider;
+};
+
+const ModelProviderListCache = {
+  en: formatModelProviderList('en'),
+  'zh-CN': formatModelProviderList('zh-CN'),
+  'zh-Hant': formatModelProviderList('zh-Hant')
+};
+const ModelProviderMapCache = {
+  en: formatModelProviderMap('en'),
+  'zh-CN': formatModelProviderMap('zh-CN'),
+  'zh-Hant': formatModelProviderMap('zh-Hant')
+};
+
+const defaultProvider = {
+  id: 'Other' as ModelProviderIdType,
+  name: 'Other',
+  avatar: 'model/other',
+  order: 0
+};
+
+export const getModelProviders = (language = 'en') => {
+  return ModelProviderListCache[language as langType];
+};
+
+export const getModelProvider = (provider?: ModelProviderIdType, language = 'en') => {
+  if (!provider) {
+    return defaultProvider;
+  }
+
+  return ModelProviderMapCache[language as langType][provider] ?? defaultProvider;
 };

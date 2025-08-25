@@ -16,6 +16,8 @@ import { MongoOutLink } from '../../support/outLink/schema';
 import { MongoOpenApi } from '../../support/openapi/schema';
 import { MongoAppVersion } from './version/schema';
 import { MongoChatInputGuide } from '../chat/inputGuide/schema';
+import { MongoChatFavouriteApp } from '../chat/favouriteApp/schema';
+import { MongoChatSetting } from '../chat/setting/schema';
 import { MongoResourcePermission } from '../../support/permission/schema';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { removeImageByPath } from '../../common/file/image/controller';
@@ -190,6 +192,18 @@ export const onDelOneApp = async ({
       await MongoChatInputGuide.deleteMany({
         appId
       }).session(session);
+
+      // 删除精选应用记录
+      await MongoChatFavouriteApp.deleteMany({
+        teamId,
+        appId
+      }).session(session);
+
+      // 从快捷应用中移除对应应用
+      await MongoChatSetting.updateMany(
+        { teamId },
+        { $pull: { quickAppIds: { id: String(appId) } } }
+      ).session(session);
 
       await MongoResourcePermission.deleteMany({
         resourceType: PerResourceTypeEnum.app,

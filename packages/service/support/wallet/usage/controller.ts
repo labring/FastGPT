@@ -218,7 +218,6 @@ export const pushLLMTrainingUsage = async ({
   // Compute points
   const { totalPoints } = formatModelChars2Points({
     model,
-    modelType: ModelTypeEnum.llm,
     inputTokens,
     outputTokens
   });

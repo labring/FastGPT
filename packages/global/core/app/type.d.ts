@@ -49,12 +49,17 @@ export type AppSchema = {
   teamTags: string[];
   inheritPermission?: boolean;
 
+  // if access the app by favourite or quick
+  favourite?: boolean;
+  quick?: boolean;
+
   // abandon
   defaultPermission?: number;
 };
 
 export type AppListItemType = {
   _id: string;
+  parentId: ParentIdType;
   tmbId: string;
   name: string;
   avatar: string;

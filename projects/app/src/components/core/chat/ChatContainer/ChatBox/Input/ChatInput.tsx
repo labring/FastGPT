@@ -376,10 +376,6 @@ const ChatInput = ({
 
   return (
     <Box
-      m={['0 auto 10px', '10px auto']}
-      w={'100%'}
-      maxW={['auto', 'min(820px, 100%)']}
-      px={[3, 5]}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();

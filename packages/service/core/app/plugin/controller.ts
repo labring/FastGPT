@@ -42,7 +42,7 @@ import type {
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
-import { getMCPParentId, getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
+import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getMCPChildren } from '../mcp';
 import { cloneDeep } from 'lodash';

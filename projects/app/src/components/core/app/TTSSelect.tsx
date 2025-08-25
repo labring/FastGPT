@@ -26,7 +26,8 @@ const TTSSelect = ({
   value?: AppTTSConfigType;
   onChange: (e: AppTTSConfigType) => void;
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
   const { ttsModelList } = useSystemStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -37,7 +38,7 @@ const TTSSelect = ({
       { label: t('app:tts_close'), value: TTSTypeEnum.none, children: [] },
       { label: t('app:tts_browser'), value: TTSTypeEnum.web, children: [] },
       ...ttsModelList.map((model) => {
-        const providerData = getModelProvider(model.provider);
+        const providerData = getModelProvider(model.provider, language);
         return {
           label: (
             <HStack>
@@ -71,9 +72,9 @@ const TTSSelect = ({
     const provider = selectorList.find((item) => item.value === formatValue[0]) || selectorList[0];
     const voice = provider.children.find((item) => item.value === formatValue[1]);
     return (
-      <Box maxW={'220px'} className="textEllipsis">
+      <Box>
         {voice ? (
-          <Flex alignItems={'center'}>
+          <Flex maxW={['200px', '250px']} overflow={'hidden'} alignItems={'center'}>
             <Box>{provider.label}</Box>
             <Box>/</Box>
             <Box>{voice.label}</Box>

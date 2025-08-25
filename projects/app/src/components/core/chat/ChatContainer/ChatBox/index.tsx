@@ -14,7 +14,7 @@ import type {
 } from '@fastgpt/global/core/chat/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Box, Checkbox, Flex, Image } from '@chakra-ui/react';
+import { Box, Checkbox, Flex } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { useForm } from 'react-hook-form';
@@ -27,9 +27,7 @@ import {
   updateChatUserFeedback
 } from '@/web/core/chat/api';
 import type { AdminMarkType } from './components/SelectMarkCollection';
-
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-
 import { postQuestionGuide } from '@/web/core/ai/api';
 import type { ChatBoxInputType, ChatBoxInputFormType, SendPromptFnType } from './type.d';
 import type { StartChatFnProps, generatingMessageProps } from '../type';
@@ -50,9 +48,7 @@ import {
 import { ChatTypeEnum, textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import ChatProvider, { ChatBoxContext, type ChatProviderProps } from './Provider';
-
 import ChatItem from './components/ChatItem';
-
 import dynamic from 'next/dynamic';
 import type { StreamResponseType } from '@/web/common/api/fetch';
 import { useContextSelector } from 'use-context-selector';
@@ -67,7 +63,6 @@ import TimeBox from './components/TimeBox';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
-import WelcomeHomeBox from '@/components/core/chat/ChatContainer/ChatBox/components/WelcomeHomeBox';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
@@ -75,6 +70,9 @@ const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollec
 const Empty = dynamic(() => import('./components/Empty'));
 const WelcomeBox = dynamic(() => import('./components/WelcomeBox'));
 const VariableInputForm = dynamic(() => import('./components/VariableInputForm'));
+const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVariablesForm'));
+const WelcomeHomeBox = dynamic(() => import('./components/home/WelcomeHomeBox'));
+const QuickApps = dynamic(() => import('./components/home/QuickApps'));
 
 enum FeedbackTypeEnum {
   user = 'user',
@@ -134,6 +132,7 @@ const ChatBox = ({
   const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
   const setIsVariableVisible = useContextSelector(ChatItemContext, (v) => v.setIsVariableVisible);
 
+  const isLoadingRecords = useContextSelector(ChatRecordContext, (v) => v.isLoadingRecords);
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
@@ -171,10 +170,12 @@ const ChatBox = ({
   });
   const { setValue, watch } = chatForm;
   const chatStartedWatch = watch('chatStarted');
+
+  // 可以进入对话框对话
   const chatStarted =
     chatBoxData?.appId === appId &&
-    (chatStartedWatch ||
-      chatRecords.length > 0 ||
+    (chatRecords.length > 0 ||
+      chatStartedWatch ||
       [...variableList, ...externalVariableList].length === 0);
 
   // 滚动到底部
@@ -411,7 +412,7 @@ const ChatBox = ({
   /**
    * user confirm send prompt
    */
-  const sendPrompt: SendPromptFnType = useMemoizedFn(
+  const sendPrompt = useMemoizedFn<SendPromptFnType>(
     ({
       text = '',
       files = [],
@@ -820,11 +821,6 @@ const ChatBox = ({
     };
   });
 
-  const showHomeWelcome = useMemo(
-    () => chatRecords.length === 0 && chatType === ChatTypeEnum.home,
-    [chatRecords.length, chatType]
-  );
-
   const showEmpty = useMemo(
     () =>
       chatType !== ChatTypeEnum.home &&
@@ -946,8 +942,10 @@ const ChatBox = ({
       const containerRect = container.getBoundingClientRect();
       const elementRect = variableInput.getBoundingClientRect();
 
+      if (elementRect.height === 0) return;
+
       setIsVariableVisible(
-        elementRect.bottom > containerRect.top && elementRect.top < containerRect.bottom
+        containerRect.top < elementRect.bottom && containerRect.bottom > elementRect.top
       );
     };
 
@@ -960,24 +958,130 @@ const ChatBox = ({
         container.removeEventListener('scroll', checkVariableVisibility);
       };
     }
-  }, [chatType, setIsVariableVisible]);
+  }, [ScrollContainerRef, setIsVariableVisible]);
 
-  const RenderRecords = useMemo(() => {
+  const isHomeRender = useMemo(() => {
+    return chatType === ChatTypeEnum.home && chatRecords.length === 0 && !chatStartedWatch;
+  }, [chatType, chatRecords.length, chatStartedWatch]);
+
+  //chat history
+  const RecordsBox = useMemo(() => {
+    return (
+      <Box id={'history'}>
+        {chatRecords.map((item, index) => (
+          <Box key={item.dataId}>
+            {/* 并且时间和上一条的time相差超过十分钟 */}
+            {index !== 0 &&
+              item.time &&
+              chatRecords[index - 1].time !== undefined &&
+              new Date(item.time).getTime() - new Date(chatRecords[index - 1].time!).getTime() >
+                10 * 60 * 1000 && <TimeBox time={item.time} />}
+
+            <Box py={item.hideInUI ? 0 : 6}>
+              {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
+                <ChatItem
+                  type={item.obj}
+                  avatar={userAvatar}
+                  chat={item}
+                  onRetry={retryInput(item.dataId)}
+                  onDelete={delOneMessage(item.dataId)}
+                  isLastChild={index === chatRecords.length - 1}
+                />
+              )}
+              {item.obj === ChatRoleEnum.AI && (
+                <ChatItem
+                  type={item.obj}
+                  avatar={appAvatar}
+                  chat={item}
+                  isLastChild={index === chatRecords.length - 1}
+                  {...{
+                    showVoiceIcon,
+                    statusBoxData,
+                    questionGuides,
+                    onMark: onMark(
+                      item,
+                      formatChatValue2InputType(chatRecords[index - 1]?.value)?.text
+                    ),
+                    onAddUserLike: onAddUserLike(item),
+                    onCloseUserLike: onCloseUserLike(item),
+                    onAddUserDislike: onAddUserDislike(item),
+                    onReadUserDislike: onReadUserDislike(item)
+                  }}
+                >
+                  {/* custom feedback */}
+                  {item.customFeedbacks && item.customFeedbacks.length > 0 && (
+                    <Box>
+                      <ChatBoxDivider
+                        icon={'core/app/customFeedback'}
+                        text={t('common:core.app.feedback.Custom feedback')}
+                      />
+                      {item.customFeedbacks.map((text, i) => (
+                        <Box key={i}>
+                          <MyTooltip label={t('common:core.app.feedback.close custom feedback')}>
+                            <Checkbox
+                              onChange={onCloseCustomFeedback(item, i)}
+                              icon={<MyIcon name={'common/check'} w={'12px'} />}
+                            >
+                              {text}
+                            </Checkbox>
+                          </MyTooltip>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                  {/* admin mark content */}
+                  {showMarkIcon && item.adminFeedback && (
+                    <Box fontSize={'sm'}>
+                      <ChatBoxDivider
+                        icon="core/app/markLight"
+                        text={t('common:core.chat.Admin Mark Content')}
+                      />
+                      <Box whiteSpace={'pre-wrap'}>
+                        <Box color={'black'}>{item.adminFeedback.q}</Box>
+                        <Box color={'myGray.600'}>{item.adminFeedback.a}</Box>
+                      </Box>
+                    </Box>
+                  )}
+                </ChatItem>
+              )}
+            </Box>
+          </Box>
+        ))}
+      </Box>
+    );
+  }, [
+    chatRecords,
+    userAvatar,
+    retryInput,
+    delOneMessage,
+    appAvatar,
+    showVoiceIcon,
+    statusBoxData,
+    questionGuides,
+    onMark,
+    onAddUserLike,
+    onCloseUserLike,
+    onAddUserDislike,
+    onReadUserDislike,
+    t,
+    showMarkIcon,
+    onCloseCustomFeedback
+  ]);
+  const AppChatRenderBox = useMemo(() => {
     return (
       <ScrollData
         ScrollContainerRef={ScrollContainerRef}
-        flex={showHomeWelcome ? '0 0 50%' : '1 0 0'}
+        flex={'1 0 0'}
         h={0}
         w={'100%'}
         overflow={'overlay'}
         px={[4, 0]}
-        pb={10}
+        pb={6}
       >
         <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
-          {/* chat header */}
-          {showHomeWelcome && <WelcomeHomeBox />}
           {showEmpty && <Empty />}
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
+
           {/* variable input */}
           {(!!variableList?.length || !!externalVariableList?.length) && (
             <Box id="variable-input">
@@ -988,120 +1092,33 @@ const ChatBox = ({
               />
             </Box>
           )}
-          {/* chat history */}
-          <Box id={'history'}>
-            {chatRecords.map((item, index) => (
-              <Box key={item.dataId}>
-                {/* 并且时间和上一条的time相差超过十分钟 */}
-                {index !== 0 &&
-                  item.time &&
-                  chatRecords[index - 1].time !== undefined &&
-                  new Date(item.time).getTime() - new Date(chatRecords[index - 1].time!).getTime() >
-                    10 * 60 * 1000 && <TimeBox time={item.time} />}
 
-                <Box py={item.hideInUI ? 0 : 6}>
-                  {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
-                    <ChatItem
-                      type={item.obj}
-                      avatar={userAvatar}
-                      chat={item}
-                      onRetry={retryInput(item.dataId)}
-                      onDelete={delOneMessage(item.dataId)}
-                      isLastChild={index === chatRecords.length - 1}
-                    />
-                  )}
-                  {item.obj === ChatRoleEnum.AI && (
-                    <ChatItem
-                      type={item.obj}
-                      avatar={appAvatar}
-                      chat={item}
-                      isLastChild={index === chatRecords.length - 1}
-                      {...{
-                        showVoiceIcon,
-                        statusBoxData,
-                        questionGuides,
-                        onMark: onMark(
-                          item,
-                          formatChatValue2InputType(chatRecords[index - 1]?.value)?.text
-                        ),
-                        onAddUserLike: onAddUserLike(item),
-                        onCloseUserLike: onCloseUserLike(item),
-                        onAddUserDislike: onAddUserDislike(item),
-                        onReadUserDislike: onReadUserDislike(item)
-                      }}
-                    >
-                      {/* custom feedback */}
-                      {item.customFeedbacks && item.customFeedbacks.length > 0 && (
-                        <Box>
-                          <ChatBoxDivider
-                            icon={'core/app/customFeedback'}
-                            text={t('common:core.app.feedback.Custom feedback')}
-                          />
-                          {item.customFeedbacks.map((text, i) => (
-                            <Box key={i}>
-                              <MyTooltip
-                                label={t('common:core.app.feedback.close custom feedback')}
-                              >
-                                <Checkbox
-                                  onChange={onCloseCustomFeedback(item, i)}
-                                  icon={<MyIcon name={'common/check'} w={'12px'} />}
-                                >
-                                  {text}
-                                </Checkbox>
-                              </MyTooltip>
-                            </Box>
-                          ))}
-                        </Box>
-                      )}
-                      {/* admin mark content */}
-                      {showMarkIcon && item.adminFeedback && (
-                        <Box fontSize={'sm'}>
-                          <ChatBoxDivider
-                            icon="core/app/markLight"
-                            text={t('common:core.chat.Admin Mark Content')}
-                          />
-                          <Box whiteSpace={'pre-wrap'}>
-                            <Box color={'black'}>{item.adminFeedback.q}</Box>
-                            <Box color={'myGray.600'}>{item.adminFeedback.a}</Box>
-                          </Box>
-                        </Box>
-                      )}
-                    </ChatItem>
-                  )}
-                </Box>
-              </Box>
-            ))}
-          </Box>
+          {RecordsBox}
         </Box>
       </ScrollData>
     );
   }, [
     ScrollData,
-    appAvatar,
-    chatForm,
-    chatRecords,
-    chatStarted,
-    chatType,
-    delOneMessage,
-    externalVariableList?.length,
-    onAddUserDislike,
-    onAddUserLike,
-    onCloseCustomFeedback,
-    onCloseUserLike,
-    onMark,
-    onReadUserDislike,
-    questionGuides,
-    retryInput,
     showEmpty,
-    showHomeWelcome,
-    showMarkIcon,
-    showVoiceIcon,
-    statusBoxData,
-    t,
-    userAvatar,
-    variableList?.length,
-    welcomeText
+    welcomeText,
+    variableList,
+    externalVariableList,
+    chatStarted,
+    chatForm,
+    chatType,
+    RecordsBox
   ]);
+  const HomeChatRenderBox = useMemo(() => {
+    return (
+      <>
+        <WelcomeHomeBox />
+
+        <Box mt={5} w={'100%'}>
+          <QuickApps />
+        </Box>
+      </>
+    );
+  }, []);
 
   return (
     <MyBox
@@ -1113,17 +1130,55 @@ const ChatBox = ({
     >
       <Script src={getWebReqUrl('/js/html2pdf.bundle.min.js')} strategy="lazyOnload"></Script>
       {/* chat box container */}
-      {RenderRecords}
-      {/* message input */}
-      {canSendPrompt && (
-        <ChatInput
-          onSendMessage={sendPrompt}
-          onStop={() => chatController.current?.abort('stop')}
-          TextareaDom={TextareaDom}
-          resetInputVal={resetInputVal}
-          chatForm={chatForm}
-        />
+      {isHomeRender ? (
+        <MyBox
+          isLoading={isLoadingRecords}
+          flex={'1 0 0'}
+          h={0}
+          px={[2, 4]}
+          w="100%"
+          maxW={['auto', 'min(820px, 100%)']}
+          mx={'auto'}
+        >
+          <Flex h={'100%'} flexDir={'column'} justifyContent={'center'} w={'100%'}>
+            {HomeChatRenderBox}
+            {allVariableList.length > 0 ? (
+              <Box w={'100%'}>
+                <ChatHomeVariablesForm chatForm={chatForm} />
+              </Box>
+            ) : (
+              <ChatInput
+                onSendMessage={sendPrompt}
+                onStop={() => chatController.current?.abort('stop')}
+                TextareaDom={TextareaDom}
+                resetInputVal={resetInputVal}
+                chatForm={chatForm}
+              />
+            )}
+          </Flex>
+        </MyBox>
+      ) : (
+        <>
+          {AppChatRenderBox}
+          {canSendPrompt && (
+            <Box
+              px={[3, 5]}
+              m={['0 auto 10px', '10px auto']}
+              w={'100%'}
+              maxW={['auto', 'min(820px, 100%)']}
+            >
+              <ChatInput
+                onSendMessage={sendPrompt}
+                onStop={() => chatController.current?.abort('stop')}
+                TextareaDom={TextareaDom}
+                resetInputVal={resetInputVal}
+                chatForm={chatForm}
+              />
+            </Box>
+          )}
+        </>
       )}
+
       {/* user feedback modal */}
       {!!feedbackId && chatId && (
         <FeedbackModal

@@ -24,17 +24,23 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { useCreation } from 'ahooks';
 import type { ChatTypeEnum } from './constants';
+import type { QuickAppType } from '@fastgpt/global/core/chat/setting/type';
 
 export type ChatProviderProps = {
   appId: string;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
 
-  chatType: ChatTypeEnum;
   InputLeftComponent?: React.ReactNode;
+
+  chatType: ChatTypeEnum;
   dialogTips?: string;
   wideLogo?: string;
   slogan?: string;
+
+  currentQuickAppId?: string;
+  quickAppList?: QuickAppType[];
+  onSwitchQuickApp?: (appId: string) => Promise<void>;
 };
 
 type useChatStoreType = ChatProviderProps & {

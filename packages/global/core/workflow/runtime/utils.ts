@@ -20,6 +20,17 @@ import type { StoreNodeItemType } from '../type/node';
 import { isValidReferenceValueFormat } from '../utils';
 import type { RuntimeEdgeItemType, RuntimeNodeItemType } from './type';
 
+export const checkIsBranchNode = (node: RuntimeNodeItemType) => {
+  if (node.catchError) return true;
+
+  const map: Record<any, boolean> = {
+    [FlowNodeTypeEnum.classifyQuestion]: true,
+    [FlowNodeTypeEnum.userSelect]: true,
+    [FlowNodeTypeEnum.ifElseNode]: true
+  };
+  return !!map[node.flowNodeType];
+};
+
 export const extractDeepestInteractive = (
   interactive: WorkflowInteractiveResponseType
 ): WorkflowInteractiveResponseType => {
@@ -276,35 +287,41 @@ export const filterWorkflowEdges = (edges: RuntimeEdgeItemType[]) => {
 };
 
 /*
-  1. 输入线分类：普通线和递归线（可以追溯到自身）
-  2. 起始线全部非 waiting 执行，或递归线全部非 waiting 执行
+  1. 输入线分类：普通线(实际上就是从 start 直接过来的分支）和递归线（可以追溯到自身的分支）
+  2. 递归线，会根据最近的一个 target 分支进行分类，同一个分支的属于一组
+  2. 起始线全部非 waiting 执行，或递归线任意一组全部非 waiting 执行
 */
 export const checkNodeRunStatus = ({
+  nodesMap,
   node,
   runtimeEdges
 }: {
+  nodesMap: Map<string, RuntimeNodeItemType>;
   node: RuntimeNodeItemType;
   runtimeEdges: RuntimeEdgeItemType[];
 }) => {
-  /*
-    区分普通连线和递归连线
-    递归连线：可以通过往上查询 nodes，最终追溯到自身
-  */
-  const splitEdges2WorkflowEdges = ({
-    sourceEdges,
-    allEdges,
-    currentNode
-  }: {
-    sourceEdges: RuntimeEdgeItemType[];
-    allEdges: RuntimeEdgeItemType[];
-    currentNode: RuntimeNodeItemType;
-  }) => {
-    const commonEdges: RuntimeEdgeItemType[] = [];
-    const recursiveEdges: RuntimeEdgeItemType[] = [];
+  const filterRuntimeEdges = filterWorkflowEdges(runtimeEdges);
 
-    const checkIsCircular = (startEdge: RuntimeEdgeItemType, initialVisited: string[]): boolean => {
-      const stack: Array<{ edge: RuntimeEdgeItemType; visited: Set<string> }> = [
-        { edge: startEdge, visited: new Set(initialVisited) }
+  const splitNodeEdges = (targetNode: RuntimeNodeItemType) => {
+    const commonEdges: RuntimeEdgeItemType[] = [];
+    const recursiveEdgeGroupsMap = new Map<string, RuntimeEdgeItemType[]>();
+
+    const getEdgeLastBranchHandle = ({
+      startEdge,
+      targetNodeId
+    }: {
+      startEdge: RuntimeEdgeItemType;
+      targetNodeId: string;
+    }): string | '' | undefined => {
+      const stack: Array<{
+        edge: RuntimeEdgeItemType;
+        visited: Set<string>;
+        lasestBranchHandle?: string;
+      }> = [
+        {
+          edge: startEdge,
+          visited: new Set([targetNodeId])
+        }
       ];
 
       const MAX_DEPTH = 3000;
@@ -312,11 +329,18 @@ export const checkNodeRunStatus = ({
 
       while (stack.length > 0 && iterations < MAX_DEPTH) {
         iterations++;
+        const { edge, visited, lasestBranchHandle } = stack.pop()!;
 
-        const { edge, visited } = stack.pop()!;
+        // Circle
+        if (edge.source === targetNode.nodeId) {
+          // 检查自身是否为分支节点
+          const node = nodesMap.get(edge.source);
+          if (!node) return '';
+          const isBranch = checkIsBranchNode(node);
+          if (isBranch) return edge.sourceHandle;
 
-        if (edge.source === currentNode.nodeId) {
-          return true; // 检测到环,并且环中包含当前节点
+          // 检测到环,并且环中包含当前节点. 空字符代表是一个无分支循环，属于死循环，则忽略这个边。
+          return lasestBranchHandle ?? '';
         }
 
         if (visited.has(edge.source)) {
@@ -327,54 +351,70 @@ export const checkNodeRunStatus = ({
         newVisited.add(edge.source);
 
         // 查找目标节点的 source edges 并加入栈中
-        const nextEdges = allEdges.filter((item) => item.target === edge.source);
+        const nextEdges = filterRuntimeEdges.filter((item) => item.target === edge.source);
         for (const nextEdge of nextEdges) {
-          stack.push({ edge: nextEdge, visited: newVisited });
+          const node = nodesMap.get(nextEdge.target);
+          if (!node) continue;
+          const isBranch = checkIsBranchNode(node);
+
+          stack.push({
+            edge: nextEdge,
+            visited: newVisited,
+            lasestBranchHandle: isBranch ? edge.sourceHandle : lasestBranchHandle
+          });
         }
       }
 
-      return false;
+      return;
     };
 
+    const sourceEdges = filterRuntimeEdges.filter((item) => item.target === targetNode.nodeId);
     sourceEdges.forEach((edge) => {
-      if (checkIsCircular(edge, [currentNode.nodeId])) {
-        recursiveEdges.push(edge);
-      } else {
+      const lastBranchHandle = getEdgeLastBranchHandle({
+        startEdge: edge,
+        targetNodeId: targetNode.nodeId
+      });
+
+      // 无效的循环，这条边则忽略
+      if (lastBranchHandle === '') return;
+
+      // 有效循环，则加入递归组
+      if (lastBranchHandle) {
+        recursiveEdgeGroupsMap.set(lastBranchHandle, [
+          ...(recursiveEdgeGroupsMap.get(lastBranchHandle) || []),
+          edge
+        ]);
+      }
+      // 无循环的连线，则加入普通组
+      else {
         commonEdges.push(edge);
       }
     });
 
-    return { commonEdges, recursiveEdges };
+    return { commonEdges, recursiveEdgeGroups: Array.from(recursiveEdgeGroupsMap.values()) };
   };
 
-  const runtimeNodeSourceEdge = filterWorkflowEdges(runtimeEdges).filter(
-    (item) => item.target === node.nodeId
-  );
+  // Classify edges
+  const { commonEdges, recursiveEdgeGroups } = splitNodeEdges(node);
 
   // Entry
-  if (runtimeNodeSourceEdge.length === 0) {
+  if (commonEdges.length === 0 && recursiveEdgeGroups.length === 0) {
     return 'run';
   }
 
-  // Classify edges
-  const { commonEdges, recursiveEdges } = splitEdges2WorkflowEdges({
-    sourceEdges: runtimeNodeSourceEdge,
-    allEdges: runtimeEdges,
-    currentNode: node
-  });
-
   // check active（其中一组边，至少有一个 active，且没有 waiting 即可运行）
   if (
-    commonEdges.length > 0 &&
     commonEdges.some((item) => item.status === 'active') &&
     commonEdges.every((item) => item.status !== 'waiting')
   ) {
     return 'run';
   }
   if (
-    recursiveEdges.length > 0 &&
-    recursiveEdges.some((item) => item.status === 'active') &&
-    recursiveEdges.every((item) => item.status !== 'waiting')
+    recursiveEdgeGroups.some(
+      (item) =>
+        item.some((item) => item.status === 'active') &&
+        item.every((item) => item.status !== 'waiting')
+    )
   ) {
     return 'run';
   }
@@ -383,7 +423,10 @@ export const checkNodeRunStatus = ({
   if (commonEdges.length > 0 && commonEdges.every((item) => item.status === 'skipped')) {
     return 'skip';
   }
-  if (recursiveEdges.length > 0 && recursiveEdges.every((item) => item.status === 'skipped')) {
+  if (
+    recursiveEdgeGroups.length > 0 &&
+    recursiveEdgeGroups.some((item) => item.every((item) => item.status === 'skipped'))
+  ) {
     return 'skip';
   }
 

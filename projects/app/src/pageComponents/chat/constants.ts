@@ -16,10 +16,10 @@ export type CollapseStatusType = 0 | 1;
 export const defaultCollapseStatus: CollapseStatusType = 0; // default expanded
 
 export enum ChatSettingTabOptionEnum {
-  HOME = 'home',
-  FAVORITE_APPS = 'favorite_apps',
-  DATA_DASHBOARD = 'data_dashboard',
-  LOG_DETAILS = 'log_details'
+  HOME = 'h',
+  DATA_DASHBOARD = 'd',
+  LOG_DETAILS = 'l',
+  FAVOURITE_APPS = 'f'
 }
 
 export const DEFAULT_LOGO_BANNER_URL = '/imgs/chat/fastgpt_banner.svg';

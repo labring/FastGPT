@@ -3,7 +3,7 @@ import NextHead from '@/components/common/NextHead';
 import { Box, Flex } from '@chakra-ui/react';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import PageContainer from '@/components/PageContainer';
-import SliderApps from '@/pageComponents/chat/SliderApps';
+import ChatSlider from '@/pageComponents/chat/slider';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
@@ -26,6 +26,7 @@ import {
   ChatSettingContextProvider
 } from '@/web/core/chat/context/chatSettingContext';
 import ChatTeamApp from '@/pageComponents/chat/ChatTeamApp';
+import ChatFavouriteApp from '@/pageComponents/chat/ChatFavouriteApp';
 
 const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const { isPc } = useSystem();
@@ -49,7 +50,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
           overflow={'hidden'}
           transition={'width 0.1s ease-in-out'}
         >
-          <SliderApps apps={myApps} activeAppId={appId} />
+          <ChatSlider apps={myApps} activeAppId={appId} />
         </Box>
       )}
 
@@ -58,11 +59,14 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
           {/* home chat window */}
           {pane === ChatSidebarPaneEnum.HOME && <HomeChatWindow myApps={myApps} />}
 
-          {/* recently used apps chat window */}
-          {pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && <AppChatWindow myApps={myApps} />}
+          {/* favourite apps */}
+          {pane === ChatSidebarPaneEnum.FAVORITE_APPS && <ChatFavouriteApp />}
 
           {/* team apps */}
           {pane === ChatSidebarPaneEnum.TEAM_APPS && <ChatTeamApp />}
+
+          {/* recently used apps chat window */}
+          {pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && <AppChatWindow myApps={myApps} />}
 
           {/* setting */}
           {pane === ChatSidebarPaneEnum.SETTING && <ChatSetting />}
