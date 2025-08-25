@@ -16,7 +16,6 @@ import { reRankRecall } from '@fastgpt/service/core/ai/rerank';
 import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import * as fs from 'fs';
-import { llmCompletionsBodyFormat, formatLLMResponse } from '@fastgpt/service/core/ai/utils';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 
 export type testQuery = { model: string; channelId?: number };

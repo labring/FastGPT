@@ -10,8 +10,7 @@ import type {
   StreamChatType,
   UnStreamChatType
 } from '@fastgpt/global/core/ai/type';
-import type { CompletionsBodyType, LLMRequestBodyType } from '../utils';
-import { llmCompletionsBodyFormat, parseLLMStreamResponse, parseReasoningContent } from '../utils';
+import { computedTemperature, parseLLMStreamResponse, parseReasoningContent } from '../utils';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { getAIApi } from '../config';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
@@ -25,6 +24,7 @@ import { addLog } from '../../../common/system/log';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { i18nT } from '../../../../web/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import json5 from 'json5';
 
 type ResponseEvents = {
   onStreaming?: ({ text }: { text: string }) => void;
@@ -449,6 +449,101 @@ export const createCompleteResponse = async ({
   };
 };
 
+type CompletionsBodyType =
+  | ChatCompletionCreateParamsNonStreaming
+  | ChatCompletionCreateParamsStreaming;
+type InferCompletionsBody<T> = T extends { stream: true }
+  ? ChatCompletionCreateParamsStreaming
+  : T extends { stream: false }
+    ? ChatCompletionCreateParamsNonStreaming
+    : ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming;
+
+type LLMRequestBodyType<T> = Omit<T, 'model' | 'stop' | 'response_format' | 'messages'> & {
+  model: string | LLMModelItemType;
+  stop?: string;
+  response_format?: {
+    type?: string;
+    json_schema?: string;
+  };
+  messages: ChatCompletionMessageParam[];
+
+  // Custom field
+  retainDatasetCite?: boolean;
+  reasoning?: boolean; // Whether to response reasoning content
+  toolCallMode?: 'toolChoice' | 'prompt';
+  useVision?: boolean;
+  requestOrigin?: string;
+};
+const llmCompletionsBodyFormat = async <T extends CompletionsBodyType>({
+  reasoning,
+  retainDatasetCite,
+  useVision,
+  requestOrigin,
+
+  tools,
+  tool_choice,
+  parallel_tool_calls,
+  toolCallMode,
+  ...body
+}: LLMRequestBodyType<T>): Promise<InferCompletionsBody<T>> => {
+  const modelData = getLLMModel(body.model);
+  if (!modelData) {
+    return body as unknown as InferCompletionsBody<T>;
+  }
+
+  const response_format = (() => {
+    if (!body.response_format?.type) return undefined;
+    if (body.response_format.type === 'json_schema') {
+      try {
+        return {
+          type: 'json_schema',
+          json_schema: json5.parse(body.response_format?.json_schema as unknown as string)
+        };
+      } catch (error) {
+        throw new Error('Json schema error');
+      }
+    }
+    if (body.response_format.type) {
+      return {
+        type: body.response_format.type
+      };
+    }
+    return undefined;
+  })();
+  const stop = body.stop ?? undefined;
+
+  const requestBody = {
+    ...body,
+    model: modelData.model,
+    temperature:
+      typeof body.temperature === 'number'
+        ? computedTemperature({
+            model: modelData,
+            temperature: body.temperature
+          })
+        : undefined,
+    ...modelData?.defaultConfig,
+    response_format,
+    stop: stop?.split('|'),
+    ...(toolCallMode === 'toolChoice' && {
+      tools,
+      tool_choice,
+      parallel_tool_calls
+    })
+  } as T;
+
+  // field map
+  if (modelData.fieldMap) {
+    Object.entries(modelData.fieldMap).forEach(([sourceKey, targetKey]) => {
+      // @ts-ignore
+      requestBody[targetKey] = body[sourceKey];
+      // @ts-ignore
+      delete requestBody[sourceKey];
+    });
+  }
+
+  return requestBody as unknown as InferCompletionsBody<T>;
+};
 const createChatCompletion = async ({
   modelData,
   body,
