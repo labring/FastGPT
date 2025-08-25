@@ -1,8 +1,8 @@
 import {
-  FlowNodeTemplateTypeEnum,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
-  WorkflowIOValueTypeEnum
+  WorkflowIOValueTypeEnum,
+  ToolTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -34,7 +34,7 @@ export const getGlobalVariableNode = ({
 }) => {
   const template: FlowNodeTemplateType = {
     id: FlowNodeTypeEnum.globalVariable,
-    templateType: FlowNodeTemplateTypeEnum.other,
+    templateType: ToolTypeEnum.other,
     flowNodeType: FlowNodeTypeEnum.emptyNode,
     showSourceHandle: false,
     showTargetHandle: false,

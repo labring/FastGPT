@@ -21,6 +21,7 @@ import {
   type CreateUsageProps
 } from '@fastgpt/global/support/wallet/usage/api';
 import { isProVersion } from './constants';
+import { ToolTypeTranslations } from '@fastgpt/global/core/workflow/constants';
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');
@@ -172,7 +173,13 @@ export async function initSystemPluginGroups() {
         groupId: defaultGroup.groupId
       },
       {
-        $set: restDefaultGroup
+        $set: {
+          ...restDefaultGroup,
+          groupTypes: Object.keys(ToolTypeTranslations).map((typeId) => ({
+            typeId,
+            typeName: typeId
+          }))
+        }
       },
       {
         upsert: true

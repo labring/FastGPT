@@ -8,7 +8,7 @@ import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
-  FlowNodeTemplateTypeEnum
+  ToolTypeEnum
 } from '../../constants';
 import {
   Input_Template_History,
@@ -19,7 +19,7 @@ import { i18nT } from '../../../../../web/i18n/utils';
 
 export const AiQueryExtension: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.queryExtension,
-  templateType: FlowNodeTemplateTypeEnum.other,
+  templateType: ToolTypeEnum.other,
   flowNodeType: FlowNodeTypeEnum.queryExtension,
   showSourceHandle: true,
   showTargetHandle: true,

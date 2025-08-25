@@ -9,14 +9,14 @@ import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
-  FlowNodeTemplateTypeEnum
+  ToolTypeEnum
 } from '../../../../constants';
 import { Input_Template_History, Input_Template_UserChatInput } from '../../../input';
 import { i18nT } from '../../../../../../../web/i18n/utils';
 
 export const RunAppModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.runApp,
-  templateType: FlowNodeTemplateTypeEnum.tools,
+  templateType: ToolTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.runApp,
   showSourceHandle: true,
   showTargetHandle: true,

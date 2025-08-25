@@ -9,7 +9,7 @@ import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
-  FlowNodeTemplateTypeEnum
+  ToolTypeEnum
 } from '../../constants';
 import { getNanoid } from '../../../../common/string/tools';
 import { type FlowNodeInputItemType } from '../../type/io.d';
@@ -33,7 +33,7 @@ export const getOneQuoteInputTemplate = ({
 export const DatasetConcatModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.datasetConcatNode,
   flowNodeType: FlowNodeTypeEnum.datasetConcatNode,
-  templateType: FlowNodeTemplateTypeEnum.other,
+  templateType: ToolTypeEnum.other,
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/datasetConcat',
