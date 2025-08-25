@@ -35,7 +35,11 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
   const { data: appData = { apps: [], paths: [] }, loading: isFetching } = useRequest2(
     async () => {
       const [apps, paths] = await Promise.all([
-        getMyApps({ parentId, searchKey: searchAppNameValue }),
+        getMyApps({
+          parentId,
+          searchKey: searchAppNameValue,
+          type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin]
+        }),
         searchAppNameValue.trim()
           ? Promise.resolve([])
           : getAppFolderPath({ sourceId: parentId, type: 'current' })
