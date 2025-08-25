@@ -125,7 +125,7 @@ export type DatasetCollectionSchemaType = ChunkSettingsType & {
   };
 
   // Parse settings
-  customPdfParse?: boolean;
+  customPdfParse?: string;
   trainingType: DatasetCollectionDataProcessModeEnum;
 };
 

@@ -420,7 +420,7 @@ async function getMultiInput({
   stringQuoteText?: string; // file quote
   requestOrigin?: string;
   maxFiles: number;
-  customPdfParse?: boolean;
+  customPdfParse?: string;
   runningUserInfo: ChatDispatchProps['runningUserInfo'];
 }) {
   // 旧版本适配====>

@@ -80,7 +80,7 @@ const DatasetCollectionSchema = new Schema({
   forbid: Boolean,
 
   // Parse settings
-  customPdfParse: Boolean,
+  customPdfParse: String,
   apiFileParentId: String,
 
   // Chunk settings
