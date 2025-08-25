@@ -32,6 +32,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import SideTag from './SideTag';
 import { getModelProvider } from '@fastgpt/global/core/ai/provider';
 import UserBox from '@fastgpt/web/components/common/UserBox';
+import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 
@@ -55,7 +56,7 @@ function List() {
   const router = useRouter();
   const { parentId = null } = router.query as { parentId?: string | null };
   const parentDataset = useMemo(
-    () => myDatasets.find((item) => String(item._id) === parentId),
+    () => myDatasets.find((item) => item._id === parentId),
     [parentId, myDatasets]
   );
 
@@ -82,7 +83,7 @@ function List() {
   });
 
   const editPerDataset = useMemo(
-    () => myDatasets.find((item) => String(item._id) === String(editPerDatasetId)),
+    () => myDatasets.find((item) => item._id === editPerDatasetId),
     [editPerDatasetId, myDatasets]
   );
 
@@ -434,6 +435,7 @@ function List() {
           avatar={editPerDataset.avatar}
           name={editPerDataset.name}
           managePer={{
+            defaultRole: ReadRoleVal,
             permission: editPerDataset.permission,
             onGetCollaboratorList: () => getCollaboratorList(editPerDataset._id),
             roleList: DatasetRoleList,
