@@ -26,6 +26,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { ChatFavouriteApp } from '@fastgpt/global/core/chat/favouriteApp/type';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 
 type EditableTagItemProps = {
   tag: ChatFavouriteTagType;
@@ -111,13 +112,6 @@ const EditableTagItem = React.memo(function EditableTagItem({
       alignItems="center"
       justifyContent="space-between"
       bg={isSelfEditing ? 'myGray.50' : 'transparent'}
-      transition="all 0.2s ease-in-out"
-      _hover={{
-        bg: 'myGray.50',
-        '#_ca': {
-          opacity: 1
-        }
-      }}
     >
       <Flex alignItems="center" gap="1" fontSize="sm">
         {isSelfEditing ? (
@@ -143,13 +137,7 @@ const EditableTagItem = React.memo(function EditableTagItem({
       </Flex>
 
       {!isSelfEditing && (
-        <Flex
-          id="_ca"
-          flexShrink={0}
-          alignItems="center"
-          opacity={isSelfEditing ? 1 : 0}
-          transition="all 0.2s ease-in-out"
-        >
+        <Flex id="_ca" flexShrink={0} alignItems="center" opacity={isSelfEditing ? 1 : 0}>
           <IconButton
             size="sm"
             variant="ghost"
@@ -548,28 +536,65 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
                 flexDir="column"
                 gap="2"
               >
-                {localTags.map((tag) => (
-                  <Box
-                    key={tag.id}
-                    pb="2"
-                    _notLast={{
-                      borderBottom: 'sm',
-                      borderColor: 'myGray.200'
-                    }}
-                  >
-                    <EditableTagItem
-                      tag={tag}
-                      appCount={tagIdToCount.get(tag.id) || 0}
-                      onCommit={handleCommitTag}
-                      onCancelNew={handleCancelNewTag}
-                      onExitEdit={handleExitEdit}
-                      isEditing={isEditing.includes(tag.id)}
-                      onStartEdit={() => setIsEditing((prev) => [...prev, tag.id])}
-                      onConfirmDelete={(c) => deleteTag(c)}
-                      onSaveTagForApp={handleOpenSaveTagForAppSubPanel}
-                    />
-                  </Box>
-                ))}
+                <DndDrag<ChatFavouriteTagType>
+                  dataList={localTags}
+                  renderInnerPlaceholder={false}
+                  onDragEndCb={(list) => {
+                    setLocalTags(list);
+                    updateTags(list);
+                  }}
+                >
+                  {({ provided }) => (
+                    <VStack
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      spacing={0}
+                      alignItems="stretch"
+                    >
+                      {localTags.map((tag, index) => (
+                        <Draggable key={tag.id} draggableId={tag.id} index={index}>
+                          {(provided, snapshot) => (
+                            <Box
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              mb="2"
+                              borderRadius="sm"
+                              _hover={{ bg: 'myGray.50', '#_ca': { opacity: 1 } }}
+                            >
+                              <Flex alignItems="center">
+                                <Box {...provided.dragHandleProps}>
+                                  <MyIcon
+                                    name={'drag'}
+                                    cursor={'pointer'}
+                                    p={2}
+                                    borderRadius={'md'}
+                                    color={'myGray.500'}
+                                    _hover={{ bg: 'myGray.50' }}
+                                    w={'16px'}
+                                  />
+                                </Box>
+                                <Box flex={1}>
+                                  <EditableTagItem
+                                    tag={tag}
+                                    appCount={tagIdToCount.get(tag.id) || 0}
+                                    onCommit={handleCommitTag}
+                                    onCancelNew={handleCancelNewTag}
+                                    onExitEdit={handleExitEdit}
+                                    isEditing={isEditing.includes(tag.id)}
+                                    onStartEdit={() => setIsEditing((prev) => [...prev, tag.id])}
+                                    onConfirmDelete={(c) => deleteTag(c)}
+                                    onSaveTagForApp={handleOpenSaveTagForAppSubPanel}
+                                  />
+                                </Box>
+                              </Flex>
+                            </Box>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </VStack>
+                  )}
+                </DndDrag>
               </Flex>
             ) : (
               <Box>
