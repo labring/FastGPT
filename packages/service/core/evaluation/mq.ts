@@ -1,6 +1,6 @@
-import { getQueue, getWorker, QueueNames } from '../../../common/bullmq';
+import { getQueue, getWorker, QueueNames } from '../../common/bullmq';
 import { type Processor } from 'bullmq';
-import { addLog } from '../../../common/system/log';
+import { addLog } from '../../common/system/log';
 
 export type EvaluationJobData = {
   evalId: string;

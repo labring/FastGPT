@@ -193,26 +193,14 @@ const DashboardContainer = ({
         groupName: t('common:mcp_server'),
         children: []
       },
-      ...(feConfigs?.isPlus
-        ? [
-            {
-              groupId: TabEnum.evaluation,
-              groupAvatar: 'kbTest',
-              groupName: t('common:app_evaluation'),
-              children: []
-            }
-          ]
-        : [])
+      {
+        groupId: TabEnum.evaluation,
+        groupAvatar: 'kbTest',
+        groupName: t('common:app_evaluation'),
+        children: []
+      }
     ];
-  }, [
-    currentType,
-    feConfigs.appTemplateCourse,
-    feConfigs?.isPlus,
-    pluginGroups,
-    t,
-    templateList,
-    templateTags
-  ]);
+  }, [currentType, feConfigs.appTemplateCourse, pluginGroups, t, templateList, templateTags]);
 
   const MenuIcon = useMemo(
     () => (
