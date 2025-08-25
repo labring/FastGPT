@@ -95,11 +95,9 @@ async function handler(
     );
 
     await createResourceDefaultCollaborators({
-      folderTypeList: [DatasetTypeEnum.folder],
       tmbId,
       session,
       resource: dataset,
-      resourceModel: MongoDataset,
       resourceType: PerResourceTypeEnum.dataset
     });
 
