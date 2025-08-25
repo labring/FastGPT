@@ -373,6 +373,7 @@
   "core.chat.feedback.No Content": "User Did Not Provide Specific Feedback Content",
   "core.chat.feedback.Read User dislike": "User Disagrees\nClick to View Content",
   "core.chat.logs.api": "API Call",
+  "core.chat.logs.evaluation": "Evaluation Test",
   "core.chat.logs.feishu": "Feishu",
   "core.chat.logs.free_login": "No login link",
   "core.chat.logs.mcp": "MCP call",

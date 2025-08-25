@@ -7,8 +7,7 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import { encryptSecretValue, storeSecretValue } from '../../common/secret/utils';
 import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
 import { type ClientSession } from '../../common/mongo';
-import { MongoEvaluation } from './evaluation/evalSchema';
-import { removeEvaluationJob } from './evaluation/mq';
+import { EvaluationTaskService } from '../evaluation/task';
 import { deleteChatFiles } from '../chat/controller';
 import { MongoChatItem } from '../chat/chatItemSchema';
 import { MongoChat } from '../chat/chatSchema';
@@ -146,14 +145,9 @@ export const onDelOneApp = async ({
     .filter((app) => app.type !== AppTypeEnum.folder)
     .map((app) => String(app._id));
 
-  // Remove eval job
-  const evalJobs = await MongoEvaluation.find(
-    {
-      appId: { $in: apps.map((app) => app._id) }
-    },
-    '_id'
-  ).lean();
-  await Promise.all(evalJobs.map((evalJob) => removeEvaluationJob(evalJob._id)));
+  // 清理评估相关任务
+  const appIds = apps.map((app) => String(app._id));
+  await EvaluationTaskService.deleteAppHook(appIds);
 
   const del = async (session: ClientSession) => {
     for await (const app of apps) {

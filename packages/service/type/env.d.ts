@@ -46,6 +46,10 @@ declare global {
       CHAT_LOG_SOURCE_ID_PREFIX?: string;
 
       NEXT_PUBLIC_BASE_URL: string;
+
+      // evaluations settings
+      EVAL_CONCURRENCY?: string;
+      EVAL_LINE_LIMIT?: string;
     }
   }
 }

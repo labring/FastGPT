@@ -1,12 +1,8 @@
 import { parseHeaderCert } from '../controller';
-import { authAppByTmbId } from '../app/auth';
-import {
-  ManagePermissionVal,
-  ReadPermissionVal
-} from '@fastgpt/global/support/permission/constant';
-import type { EvaluationSchemaType } from '@fastgpt/global/core/app/evaluation/type';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import type { EvaluationSchemaType } from '@fastgpt/global/core/evaluation/type';
 import type { AuthModeType } from '../type';
-import { MongoEvaluation } from '../../../core/app/evaluation/evalSchema';
+import { MongoEvaluation } from '../../../core/evaluation/evalSchema';
 
 export const authEval = async ({
   evalId,
@@ -21,27 +17,18 @@ export const authEval = async ({
 }> => {
   const { teamId, tmbId, isRoot } = await parseHeaderCert(props);
 
-  const evaluation = await MongoEvaluation.findById(evalId, 'tmbId').lean();
+  const evaluation = await MongoEvaluation.findById(evalId).lean();
   if (!evaluation) {
     return Promise.reject('Evaluation not found');
   }
 
-  if (String(evaluation.tmbId) === tmbId) {
-    return {
-      teamId,
-      tmbId,
-      evaluation
-    };
+  // 检查评估是否属于当前团队
+  if (String(evaluation.teamId) !== teamId) {
+    return Promise.reject('Evaluation not found');
   }
 
-  // App read per
+  // 对于读权限，只要属于同一团队即可
   if (per === ReadPermissionVal) {
-    await authAppByTmbId({
-      tmbId,
-      appId: evaluation.appId,
-      per: ReadPermissionVal,
-      isRoot
-    });
     return {
       teamId,
       tmbId,
@@ -49,16 +36,14 @@ export const authEval = async ({
     };
   }
 
-  // Write per
-  await authAppByTmbId({
-    tmbId,
-    appId: evaluation.appId,
-    per: ManagePermissionVal,
-    isRoot
-  });
-  return {
-    teamId,
-    tmbId,
-    evaluation
-  };
+  // 对于写权限，只有创建者或root用户可以操作
+  if (String(evaluation.tmbId) === tmbId || isRoot) {
+    return {
+      teamId,
+      tmbId,
+      evaluation
+    };
+  }
+
+  return Promise.reject('Permission denied');
 };
