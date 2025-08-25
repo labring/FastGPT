@@ -19,7 +19,7 @@ import {
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  ModelProviderList,
+  getModelProviders,
   type ModelProviderIdType,
   getModelProvider
 } from '@fastgpt/global/core/ai/provider';
@@ -59,20 +59,21 @@ const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 const ModelEditModal = dynamic(() => import('./AddModelBox').then((mod) => mod.ModelEditModal));
 
 const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
   const { userInfo } = useUserStore();
   const { defaultModels, feConfigs } = useSystemStore();
 
   const isRoot = userInfo?.username === 'root';
 
   const [provider, setProvider] = useState<ModelProviderIdType | ''>('');
-  const providerList = useRef<{ label: any; value: ModelProviderIdType | '' }[]>([
+  const providerList = useRef<{ label: React.ReactNode; value: ModelProviderIdType | '' }[]>([
     { label: t('common:All'), value: '' },
-    ...ModelProviderList.map((item) => ({
+    ...getModelProviders(language).map((item) => ({
       label: (
         <HStack>
           <Avatar src={item.avatar} w={'1rem'} />
-          <Box>{t(item.name as any)}</Box>
+          <Box>{item.name}</Box>
         </HStack>
       ),
       value: item.id
@@ -216,7 +217,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     })();
 
     const formatList = list.map((item) => {
-      const provider = getModelProvider(item.provider);
+      const provider = getModelProvider(item.provider, language);
       return {
         ...item,
         avatar: provider.avatar,
@@ -239,7 +240,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     });
 
     return filterList;
-  }, [systemModelList, t, modelType, provider, search, showActive]);
+  }, [systemModelList, t, modelType, language, provider, search, showActive]);
   const activeModelLength = useMemo(() => {
     return modelList.filter((item) => item.isActive).length;
   }, [modelList]);

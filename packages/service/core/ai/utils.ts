@@ -1,17 +1,7 @@
 import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
-import type {
-  ChatCompletionCreateParamsNonStreaming,
-  ChatCompletionCreateParamsStreaming,
-  CompletionFinishReason,
-  StreamChatType,
-  UnStreamChatType,
-  CompletionUsage,
-  ChatCompletionMessageToolCall
-} from '@fastgpt/global/core/ai/type';
-import { getLLMModel } from './model';
+import type { CompletionFinishReason, CompletionUsage } from '@fastgpt/global/core/ai/type';
 import { getLLMDefaultUsage } from '@fastgpt/global/core/ai/constants';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import json5 from 'json5';
+import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 
 /* 
   Count response max token
@@ -46,168 +36,7 @@ export const computedTemperature = ({
   return temperature;
 };
 
-type CompletionsBodyType =
-  | ChatCompletionCreateParamsNonStreaming
-  | ChatCompletionCreateParamsStreaming;
-type InferCompletionsBody<T> = T extends { stream: true }
-  ? ChatCompletionCreateParamsStreaming
-  : T extends { stream: false }
-    ? ChatCompletionCreateParamsNonStreaming
-    : ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming;
-
-export const llmCompletionsBodyFormat = <T extends CompletionsBodyType>(
-  body: T & {
-    stop?: string;
-  },
-  model: string | LLMModelItemType
-): InferCompletionsBody<T> => {
-  const modelData = typeof model === 'string' ? getLLMModel(model) : model;
-  if (!modelData) {
-    return body as unknown as InferCompletionsBody<T>;
-  }
-
-  const response_format = (() => {
-    if (!body.response_format?.type) return undefined;
-    if (body.response_format.type === 'json_schema') {
-      try {
-        return {
-          type: 'json_schema',
-          json_schema: json5.parse(body.response_format?.json_schema as unknown as string)
-        };
-      } catch (error) {
-        throw new Error('Json schema error');
-      }
-    }
-    if (body.response_format.type) {
-      return {
-        type: body.response_format.type
-      };
-    }
-    return undefined;
-  })();
-
-  const stop = body.stop ?? undefined;
-
-  const requestBody: T = {
-    ...body,
-    model: modelData.model,
-    temperature:
-      typeof body.temperature === 'number'
-        ? computedTemperature({
-            model: modelData,
-            temperature: body.temperature
-          })
-        : undefined,
-    ...modelData?.defaultConfig,
-    response_format,
-    stop: stop?.split('|')
-  };
-
-  // field map
-  if (modelData.fieldMap) {
-    Object.entries(modelData.fieldMap).forEach(([sourceKey, targetKey]) => {
-      // @ts-ignore
-      requestBody[targetKey] = body[sourceKey];
-      // @ts-ignore
-      delete requestBody[sourceKey];
-    });
-  }
-
-  return requestBody as unknown as InferCompletionsBody<T>;
-};
-
-export const llmStreamResponseToAnswerText = async (
-  response: StreamChatType
-): Promise<{
-  text: string;
-  usage?: CompletionUsage;
-  toolCalls?: ChatCompletionMessageToolCall[];
-}> => {
-  let answer = '';
-  let usage = getLLMDefaultUsage();
-  let toolCalls: ChatCompletionMessageToolCall[] = [];
-  let callingTool: { name: string; arguments: string } | null = null;
-
-  for await (const part of response) {
-    usage = part.usage || usage;
-    const responseChoice = part.choices?.[0]?.delta;
-
-    const content = responseChoice?.content || '';
-    answer += content;
-
-    // Tool calls
-    if (responseChoice?.tool_calls?.length) {
-      responseChoice.tool_calls.forEach((toolCall, i) => {
-        const index = toolCall.index ?? i;
-
-        // Call new tool
-        const hasNewTool = toolCall?.function?.name || callingTool;
-        if (hasNewTool) {
-          // 有 function name，代表新 call 工具
-          if (toolCall?.function?.name) {
-            callingTool = {
-              name: toolCall.function?.name || '',
-              arguments: toolCall.function?.arguments || ''
-            };
-          } else if (callingTool) {
-            // Continue call(Perhaps the name of the previous function was incomplete)
-            callingTool.name += toolCall.function?.name || '';
-            callingTool.arguments += toolCall.function?.arguments || '';
-          }
-
-          if (!callingTool) {
-            return;
-          }
-
-          // New tool, add to list.
-          const toolId = getNanoid();
-          toolCalls[index] = {
-            ...toolCall,
-            id: toolId,
-            type: 'function',
-            function: callingTool
-          };
-          callingTool = null;
-        } else {
-          /* arg 追加到当前工具的参数里 */
-          const arg: string = toolCall?.function?.arguments ?? '';
-          const currentTool = toolCalls[index];
-          if (currentTool && arg) {
-            currentTool.function.arguments += arg;
-          }
-        }
-      });
-    }
-  }
-  return {
-    text: removeDatasetCiteText(parseReasoningContent(answer)[1], false),
-    usage,
-    toolCalls
-  };
-};
-export const llmUnStreamResponseToAnswerText = async (
-  response: UnStreamChatType
-): Promise<{
-  text: string;
-  toolCalls?: ChatCompletionMessageToolCall[];
-  usage?: CompletionUsage;
-}> => {
-  const answer = response.choices?.[0]?.message?.content || '';
-  const toolCalls = response.choices?.[0]?.message?.tool_calls;
-
-  return {
-    text: removeDatasetCiteText(parseReasoningContent(answer)[1], false),
-    usage: response.usage,
-    toolCalls
-  };
-};
-export const formatLLMResponse = async (response: StreamChatType | UnStreamChatType) => {
-  if ('iterator' in response) {
-    return llmStreamResponseToAnswerText(response);
-  }
-  return llmUnStreamResponseToAnswerText(response);
-};
-
+// LLM utils
 // Parse <think></think> tags to think and answer - unstream response
 export const parseReasoningContent = (text: string): [string, string] => {
   const regex = /<think>([\s\S]*?)<\/think>/;
@@ -223,14 +52,6 @@ export const parseReasoningContent = (text: string): [string, string] => {
   const answerContent = text.slice(match.index! + match[0].length);
 
   return [thinkContent, answerContent];
-};
-
-export const removeDatasetCiteText = (text: string, retainDatasetCite: boolean) => {
-  return retainDatasetCite
-    ? text.replace(/[\[【]id[\]】]\(CITE\)/g, '')
-    : text
-        .replace(/[\[【]([a-f0-9]{24})[\]】](?:\([^\)]*\)?)?/g, '')
-        .replace(/[\[【]id[\]】]\(CITE\)/g, '');
 };
 
 // Parse llm stream part
@@ -274,8 +95,8 @@ export const parseLLMStreamResponse = () => {
     retainDatasetCite?: boolean;
   }): {
     reasoningContent: string;
-    content: string;
-    responseContent: string;
+    content: string; // 原始内容，不去掉 cite
+    responseContent: string; // 响应的内容，会去掉 cite
     finishReason: CompletionFinishReason;
   } => {
     const data = (() => {

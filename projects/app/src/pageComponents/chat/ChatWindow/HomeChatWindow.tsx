@@ -16,7 +16,7 @@ import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useRef, useState } from 'react';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { streamFetch } from '@/web/common/api/fetch';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
@@ -47,6 +47,7 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatSidebarPaneEnum } from '../constants';
 import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
+import type { QuickAppType } from '@fastgpt/global/core/chat/setting/type';
 
 type Props = {
   myApps: AppListItemType[];
@@ -65,7 +66,8 @@ const defaultWhisperConfig: AppWhisperConfigType = {
 };
 
 const HomeChatWindow = ({ myApps }: Props) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
   const { isPc } = useSystem();
 
   const { userInfo } = useUserStore();
@@ -74,6 +76,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
 
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
+  const onChangeGlobalAppId = useContextSelector(ChatContext, (v) => v.onChangeAppId);
 
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
@@ -83,9 +86,15 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
   const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
   const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
+  const homeAppId = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.appId || '');
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
+
+  const isQuickApp = useMemo(
+    () => chatSettings?.quickAppList.some((app) => app._id === appId),
+    [chatSettings?.quickAppList, appId]
+  );
 
   const availableModels = useMemo(
     () => llmModelList.map((model) => ({ value: model.model, label: model.name })),
@@ -126,23 +135,26 @@ const HomeChatWindow = ({ myApps }: Props) => {
       const modelData = getWebLLMModel(selectedModel);
       const res = await getInitChatInfo({ appId, chatId });
       res.userAvatar = userInfo?.avatar;
-      if (!res.app.chatConfig) {
-        res.app.chatConfig = {
-          fileSelectConfig: {
+
+      if (!isQuickApp) {
+        if (!res.app.chatConfig) {
+          res.app.chatConfig = {
+            fileSelectConfig: {
+              ...defaultFileSelectConfig,
+              canSelectImg: !!modelData.vision
+            },
+            whisperConfig: defaultWhisperConfig
+          };
+        } else {
+          res.app.chatConfig.fileSelectConfig = {
             ...defaultFileSelectConfig,
             canSelectImg: !!modelData.vision
-          },
-          whisperConfig: defaultWhisperConfig
-        };
-      } else {
-        res.app.chatConfig.fileSelectConfig = {
-          ...defaultFileSelectConfig,
-          canSelectImg: !!modelData.vision
-        };
-        res.app.chatConfig.whisperConfig = {
-          ...defaultWhisperConfig,
-          open: true
-        };
+          };
+          res.app.chatConfig.whisperConfig = {
+            ...defaultWhisperConfig,
+            open: true
+          };
+        }
       }
 
       setChatBoxData(res);
@@ -169,13 +181,21 @@ const HomeChatWindow = ({ myApps }: Props) => {
     }
   );
 
+  const handleSwitchQuickApp = async (id: string) => {
+    if (isQuickApp && appId === id) {
+      onChangeGlobalAppId(homeAppId);
+      return;
+    }
+    onChangeGlobalAppId(id);
+  };
+
   useMount(() => {
     if (!feConfigs?.isPlus) {
       handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
     }
   });
 
-  // 使用类似AppChatWindow的对话逻辑
+  // 使用类似 AppChatWindow 的对话逻辑
   const onStartChat = useMemoizedFn(
     async ({
       messages,
@@ -184,13 +204,38 @@ const HomeChatWindow = ({ myApps }: Props) => {
       responseChatItemId,
       generatingMessage
     }: StartChatFnProps) => {
+      const histories = messages.slice(-1);
+
+      // using original workflow of quick app
+      if (isQuickApp && appId) {
+        const { responseText } = await streamFetch({
+          data: {
+            messages: histories,
+            variables,
+            responseChatItemId,
+            appId,
+            chatId
+          },
+          abortCtrl: controller,
+          onMessage: generatingMessage
+        });
+
+        const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats({ messages: histories })[0]);
+
+        onUpdateHistoryTitle({ chatId, newTitle });
+        setChatBoxData((state) => ({
+          ...state,
+          title: newTitle
+        }));
+
+        return { responseText, isNewChat: forbidLoadChat.current };
+      }
+
+      // not quick app, using model and tools selected on home page
       if (!selectedModel) {
         return Promise.reject('No model selected');
       }
 
-      const histories = messages.slice(-1);
-
-      // 根据所选工具 ID 动态拉取节点，并填充默认输入
       const tools: FlowNodeTemplateType[] = await Promise.all(
         selectedToolIds.map(async (toolId) => {
           const node = await getPreviewPluginNode({ appId: toolId });
@@ -223,7 +268,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
         abortCtrl: controller
       });
 
-      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(histories)[0]);
+      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats({ messages: histories })[0]);
 
       onUpdateHistoryTitle({ chatId, newTitle });
       setChatBoxData((state) => ({
@@ -237,104 +282,104 @@ const HomeChatWindow = ({ myApps }: Props) => {
 
   // 自定义按钮组（模型选择和工具选择）
   const InputLeftComponent = useMemo(
-    () => (
-      <>
-        {/* 模型选择 */}
-        {availableModels.length > 0 && (
-          <Box w={[0, 'auto']} flex={['1 0 0', '0 0 auto']}>
-            <AIModelSelector
-              h={['30px', '36px']}
-              boxShadow={'none'}
-              size="sm"
-              bg={'myGray.50'}
-              rounded="full"
-              noOfLines={[1, 3]}
-              list={availableModels}
-              value={selectedModel}
-              onChange={async (model) => {
-                setChatBoxData((state) => ({
-                  ...state,
-                  app: {
-                    ...state.app,
-                    chatConfig: {
-                      ...state.app.chatConfig,
-                      fileSelectConfig: {
-                        ...defaultFileSelectConfig,
-                        canSelectImg: !!getWebLLMModel(model).vision
+    () =>
+      isQuickApp ? undefined : (
+        <>
+          {/* 模型选择 */}
+          {availableModels.length > 0 && (
+            <Box w={[0, 'auto']} flex={['1 0 0', '0 0 auto']}>
+              <AIModelSelector
+                h={['30px', '36px']}
+                boxShadow={'none'}
+                size="sm"
+                bg={'myGray.50'}
+                rounded="full"
+                list={availableModels}
+                value={selectedModel}
+                onChange={async (model) => {
+                  setChatBoxData((state) => ({
+                    ...state,
+                    app: {
+                      ...state.app,
+                      chatConfig: {
+                        ...state.app.chatConfig,
+                        fileSelectConfig: {
+                          ...defaultFileSelectConfig,
+                          canSelectImg: !!getWebLLMModel(model).vision
+                        }
                       }
                     }
-                  }
-                }));
-                setSelectedModel(model);
-              }}
-            />
-          </Box>
-        )}
+                  }));
+                  setSelectedModel(model);
+                }}
+              />
+            </Box>
+          )}
 
-        {/* 工具选择下拉框 */}
-        {availableTools.length > 0 && (
-          <Menu isLazy closeOnSelect={false} autoSelect={false}>
-            <MenuButton
-              as={Button}
-              h={['30px', '36px']}
-              boxShadow={'none'}
-              size="sm"
-              rounded="full"
-              variant="whiteBase"
-              leftIcon={<MyIcon name="core/app/toolCall" w="14px" />}
-              flexShrink={0}
-              _active={{
-                transform: 'none'
-              }}
-              {...(selectedTools.length > 0 && {
-                color: 'primary.600',
-                bg: 'primary.50',
-                borderColor: 'primary.200'
-              })}
-            >
-              {isPc
-                ? selectedTools.length > 0
-                  ? t('chat:home.tools', { num: selectedTools.length })
-                  : t('chat:home.select_tools')
-                : `：${selectedTools.length}`}
-            </MenuButton>
-            <MenuList px={2}>
-              {availableTools.map((tool) => {
-                const toolId = tool.pluginId || '';
-                const isSelected = selectedToolIds.includes(toolId);
+          {/* 工具选择下拉框 */}
+          {availableTools.length > 0 && (
+            <Menu isLazy closeOnSelect={false} autoSelect={false}>
+              <MenuButton
+                as={Button}
+                h={['30px', '36px']}
+                boxShadow={'none'}
+                size="sm"
+                rounded="full"
+                variant="whiteBase"
+                leftIcon={<MyIcon name="core/app/toolCall" w="14px" />}
+                flexShrink={0}
+                _active={{
+                  transform: 'none'
+                }}
+                {...(selectedTools.length > 0 && {
+                  color: 'primary.600',
+                  bg: 'primary.50',
+                  borderColor: 'primary.200'
+                })}
+              >
+                {isPc
+                  ? selectedTools.length > 0
+                    ? t('chat:home.tools', { num: selectedTools.length })
+                    : t('chat:home.select_tools')
+                  : `：${selectedTools.length}`}
+              </MenuButton>
+              <MenuList px={2}>
+                {availableTools.map((tool) => {
+                  const toolId = tool.pluginId || '';
+                  const isSelected = selectedToolIds.includes(toolId);
 
-                return (
-                  <MenuItem
-                    key={toolId}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      setSelectedToolIds(
-                        selectedToolIds.includes(toolId)
-                          ? selectedToolIds.filter((id) => id !== toolId)
-                          : [...selectedToolIds, toolId]
-                      );
-                    }}
-                    closeOnSelect={false}
-                    _hover={{
-                      bg: 'primary.50'
-                    }}
-                    _notLast={{ mb: 1 }}
-                    borderRadius={'md'}
-                  >
-                    <Checkbox size={'sm'} isChecked={isSelected} mr={3} />
-                    <Flex alignItems="center" gap={2}>
-                      <Avatar src={tool.avatar} w={5} borderRadius="xs" />
-                      <Box fontSize="sm">{tool.name}</Box>
-                    </Flex>
-                  </MenuItem>
-                );
-              })}
-            </MenuList>
-          </Menu>
-        )}
-      </>
-    ),
+                  return (
+                    <MenuItem
+                      key={toolId}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        setSelectedToolIds(
+                          selectedToolIds.includes(toolId)
+                            ? selectedToolIds.filter((id) => id !== toolId)
+                            : [...selectedToolIds, toolId]
+                        );
+                      }}
+                      closeOnSelect={false}
+                      _hover={{
+                        bg: 'primary.50'
+                      }}
+                      _notLast={{ mb: 1 }}
+                      borderRadius={'md'}
+                    >
+                      <Checkbox size={'sm'} isChecked={isSelected} mr={3} />
+                      <Flex alignItems="center" gap={2}>
+                        <Avatar src={tool.avatar} w={5} borderRadius="xs" />
+                        <Box fontSize="sm">{tool.name}</Box>
+                      </Flex>
+                    </MenuItem>
+                  );
+                })}
+              </MenuList>
+            </Menu>
+          )}
+        </>
+      ),
     [
       availableModels,
       selectedModel,
@@ -345,7 +390,8 @@ const HomeChatWindow = ({ myApps }: Props) => {
       selectedToolIds,
       setSelectedToolIds,
       setChatBoxData,
-      isPc
+      isPc,
+      isQuickApp
     ]
   );
 
@@ -358,7 +404,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
       {isPc ? (
         <SideBar externalTrigger={Boolean(datasetCiteData)}>
           <ChatHistorySidebar
-            title={t('chat:history_slider.home.title')}
+            title={appId === homeAppId ? t('chat:history_slider.home.title') : undefined}
             menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
           />
         </SideBar>
@@ -409,12 +455,15 @@ const HomeChatWindow = ({ myApps }: Props) => {
             isReady={!loading}
             feedbackType={'user'}
             chatType={ChatTypeEnum.home}
-            outLinkAuthData={outLinkAuthData}
-            onStartChat={onStartChat}
-            InputLeftComponent={InputLeftComponent}
-            dialogTips={chatSettings?.dialogTips}
-            wideLogo={chatSettings?.wideLogoUrl}
             slogan={chatSettings?.slogan}
+            outLinkAuthData={outLinkAuthData}
+            wideLogo={chatSettings?.wideLogoUrl}
+            dialogTips={chatSettings?.dialogTips}
+            InputLeftComponent={InputLeftComponent}
+            onStartChat={onStartChat}
+            quickAppList={chatSettings?.quickAppList || []}
+            currentQuickAppId={isQuickApp ? appId : undefined}
+            onSwitchQuickApp={handleSwitchQuickApp}
           />
         </Box>
       </Flex>

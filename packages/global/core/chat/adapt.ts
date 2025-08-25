@@ -171,10 +171,15 @@ export const chats2GPTMessages = ({
 
   return results;
 };
-export const GPTMessages2Chats = (
-  messages: ChatCompletionMessageParam[],
-  reserveTool = true
-): ChatItemType[] => {
+export const GPTMessages2Chats = ({
+  messages,
+  reserveTool = true,
+  getToolInfo
+}: {
+  messages: ChatCompletionMessageParam[];
+  reserveTool?: boolean;
+  getToolInfo?: (name: string) => { name: string; avatar: string };
+}): ChatItemType[] => {
   const chatMessages = messages
     .map((item) => {
       const obj = GPT2Chat[item.role];
@@ -280,10 +285,12 @@ export const GPTMessages2Chats = (
                 toolResponse =
                   typeof toolResponse === 'string' ? toolResponse : JSON.stringify(toolResponse);
 
+                const toolInfo = getToolInfo?.(tool.function.name);
+
                 return {
                   id: tool.id,
-                  toolName: tool.toolName || '',
-                  toolAvatar: tool.toolAvatar || '',
+                  toolName: toolInfo?.name || '',
+                  toolAvatar: toolInfo?.avatar || '',
                   functionName: tool.function.name,
                   params: tool.function.arguments,
                   response: toolResponse as string

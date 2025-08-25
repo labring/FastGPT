@@ -15,7 +15,7 @@ import {
 import { useTranslation } from 'next-i18next';
 import React, { useMemo, useRef, useState } from 'react';
 import {
-  ModelProviderList,
+  getModelProviders,
   type ModelProviderIdType,
   getModelProvider
 } from '@fastgpt/global/core/ai/provider';
@@ -31,15 +31,16 @@ import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
 const ModelTable = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
   const [provider, setProvider] = useState<ModelProviderIdType | ''>('');
   const providerList = useRef<{ label: any; value: ModelProviderIdType | '' }[]>([
     { label: t('common:All'), value: '' },
-    ...ModelProviderList.map((item) => ({
+    ...getModelProviders(language).map((item) => ({
       label: (
         <HStack>
           <Avatar src={item.avatar} w={'1rem'} />
-          <Box>{t(item.name as any)}</Box>
+          <Box>{item.name}</Box>
         </HStack>
       ),
       value: item.id
@@ -162,7 +163,7 @@ const ModelTable = () => {
       ];
     })();
     const formatList = list.map((item) => {
-      const provider = getModelProvider(item.provider);
+      const provider = getModelProvider(item.provider, language);
       return {
         name: item.name,
         avatar: provider.avatar,
@@ -195,7 +196,8 @@ const ModelTable = () => {
     t,
     modelType,
     provider,
-    search
+    search,
+    language
   ]);
 
   const filterProviderList = useMemo(() => {

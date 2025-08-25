@@ -697,6 +697,7 @@ const WorkflowContextProvider = ({
         .map((node) => {
           const status = checkNodeRunStatus({
             node,
+            nodesMap: new Map(runtimeNodes.map((item) => [item.nodeId, item])),
             runtimeEdges: debugData?.runtimeEdges || []
           });
 

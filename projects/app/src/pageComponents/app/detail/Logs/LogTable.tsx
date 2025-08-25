@@ -61,7 +61,8 @@ const LogTable = ({
   setIsSelectAllSource,
   dateRange,
   setDateRange,
-  showSourceSelector = true
+  showSourceSelector = true,
+  px = [4, 8]
 }: HeaderControlProps) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -340,7 +341,7 @@ const LogTable = ({
   });
 
   return (
-    <MyBox isLoading={isLoading} display={'flex'} flexDir={'column'} h={'full'} px={[4, 8]}>
+    <MyBox isLoading={isLoading} display={'flex'} flexDir={'column'} h={'full'} px={px}>
       <Flex alignItems={'center'} gap={3} flexWrap={'wrap'}>
         {showSourceSelector && (
           <Flex>

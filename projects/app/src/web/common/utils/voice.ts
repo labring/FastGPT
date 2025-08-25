@@ -111,9 +111,9 @@ export const useAudioPlay = (
   /* Perform a voice playback */
   const playAudioByText = useCallback(
     async ({ text, buffer }: { text: string; buffer?: Uint8Array }) => {
-      const playAudioBuffer = (buffer: Uint8Array) => {
+      const playAudioBuffer = (audioBuffer: Uint8Array) => {
         if (!audioRef.current) return;
-        const audioUrl = URL.createObjectURL(new Blob([buffer], { type: contentType }));
+        const audioUrl = URL.createObjectURL(new Blob([audioBuffer], { type: contentType }));
         audioRef.current.src = audioUrl;
         audioRef.current.play();
       };

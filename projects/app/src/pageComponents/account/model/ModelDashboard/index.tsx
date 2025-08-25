@@ -57,7 +57,8 @@ const getDefaultDateRange = (): DateRangeType => {
 };
 
 const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
   const theme = useTheme();
   const { feConfigs } = useSystemStore();
 
@@ -113,7 +114,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   const modelList = useMemo(() => {
     const res = systemModelList
       .map((item) => {
-        const provider = getModelProvider(item.provider);
+        const provider = getModelProvider(item.provider, language);
         return {
           order: provider.order,
           icon: provider.avatar,

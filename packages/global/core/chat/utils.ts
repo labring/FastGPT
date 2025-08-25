@@ -9,7 +9,7 @@ import {
 } from './type.d';
 import { sliceStrStartEnd } from '../../common/string/tools';
 import { PublishChannelEnum } from '../../support/outLink/constant';
-import { removeDatasetCiteText } from '../../../service/core/ai/utils';
+import { removeDatasetCiteText } from '../ai/llm/utils';
 
 // Concat 2 -> 1, and sort by role
 export const concatHistories = (histories1: ChatItemType[], histories2: ChatItemType[]) => {

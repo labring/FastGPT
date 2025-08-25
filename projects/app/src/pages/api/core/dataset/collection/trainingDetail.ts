@@ -112,7 +112,7 @@ async function handler(
         {
           $match: {
             ...match,
-            retryCount: { $lte: 0 },
+            // retryCount: { $lte: 0 },
             errorMsg: { $exists: true }
           }
         },

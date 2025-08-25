@@ -45,7 +45,11 @@ const testWorkflow = async (path: string) => {
     },
     runningUserInfo: {
       tmbId: 'test',
-      teamId: 'test'
+      teamId: 'test',
+      username: 'test',
+      teamName: 'test',
+      memberName: 'test',
+      contact: 'test'
     },
     timezone: 'Asia/Shanghai',
     externalProvider: {},

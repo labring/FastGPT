@@ -53,6 +53,7 @@ export type HeaderControlProps = {
   setIsSelectAllSource: React.Dispatch<React.SetStateAction<boolean>>;
   dateRange: DateRangeType;
   setDateRange: (value: DateRangeType) => void;
+  px?: [number, number];
 };
 
 const chartBoxStyles = {
@@ -138,7 +139,8 @@ const LogChart = ({
   setIsSelectAllSource,
   dateRange,
   setDateRange,
-  showSourceSelector = true
+  showSourceSelector = true,
+  px = [4, 8]
 }: HeaderControlProps) => {
   const { t } = useTranslation();
 
@@ -334,6 +336,7 @@ const LogChart = ({
   return (
     <MyBox isLoading={loading} display={'flex'} flexDir={'column'} h={'full'}>
       <HeaderControl
+        px={px}
         appId={appId}
         chatSources={chatSources}
         setChatSources={setChatSources}
@@ -343,7 +346,7 @@ const LogChart = ({
         setDateRange={setDateRange}
         showSourceSelector={showSourceSelector}
       />
-      <Flex flexDir={'column'} flex={'1 0 0'} h={0} overflowY={'auto'} px={[4, 8]}>
+      <Flex flexDir={'column'} flex={'1 0 0'} h={0} overflowY={'auto'} px={px}>
         <TotalData appId={appId} />
         <Accordion defaultIndex={[0, 1, 2]} allowMultiple reduceMotion>
           <AccordionItem border={'none'}>
@@ -765,7 +768,8 @@ const HeaderControl = ({
   setIsSelectAllSource,
   dateRange,
   setDateRange,
-  showSourceSelector = true
+  showSourceSelector = true,
+  px = [4, 8]
 }: HeaderControlProps) => {
   const { t } = useTranslation();
 
@@ -780,13 +784,7 @@ const HeaderControl = ({
 
   console.log(showSourceSelector);
   return (
-    <Flex
-      flexDir={['column', 'row']}
-      alignItems={['flex-start', 'center']}
-      gap={3}
-      pb={2}
-      px={[4, 8]}
-    >
+    <Flex flexDir={['column', 'row']} alignItems={['flex-start', 'center']} gap={3} pb={2} px={px}>
       {showSourceSelector && (
         <Flex>
           <MultipleSelect<ChatSourceEnum>

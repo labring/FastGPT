@@ -19,7 +19,7 @@ import { delay } from '@fastgpt/global/common/system/utils';
 import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
 import { setCron } from '../../../common/system/cron';
 
-export const loadSystemModels = async (init = false) => {
+export const loadSystemModels = async (init = false, language = 'en') => {
   const pushModel = (model: SystemModelItemType) => {
     global.systemModelList.push(model);
 
@@ -113,7 +113,10 @@ export const loadSystemModels = async (init = false) => {
         const modelData: any = {
           ...model,
           ...dbModel?.metadata,
-          provider: getModelProvider(dbModel?.metadata?.provider || (model.provider as any)).id,
+          provider: getModelProvider(
+            dbModel?.metadata?.provider || (model.provider as any),
+            language
+          ).id,
           type: dbModel?.metadata?.type || model.type,
           isCustom: false,
 
@@ -169,8 +172,8 @@ export const loadSystemModels = async (init = false) => {
 
     // Sort model list
     global.systemActiveModelList.sort((a, b) => {
-      const providerA = getModelProvider(a.provider);
-      const providerB = getModelProvider(b.provider);
+      const providerA = getModelProvider(a.provider, language);
+      const providerB = getModelProvider(b.provider, language);
       return providerA.order - providerB.order;
     });
     global.systemActiveDesensitizedModels = global.systemActiveModelList.map((model) => ({

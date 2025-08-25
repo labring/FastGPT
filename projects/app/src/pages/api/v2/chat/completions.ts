@@ -132,7 +132,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       API params: chatId + [Human]
       API params: [histories, Human]
     */
-    const chatMessages = GPTMessages2Chats(messages);
+    const chatMessages = GPTMessages2Chats({ messages });
 
     // Computed start hook params
     const startHookText = (() => {

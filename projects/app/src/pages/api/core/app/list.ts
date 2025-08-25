@@ -217,6 +217,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
 
       return {
         ...rest,
+        parentId: app.parentId,
         permission: Per,
         private: privateApp,
         hasInteractiveNode

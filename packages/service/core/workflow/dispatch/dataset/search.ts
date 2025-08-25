@@ -169,8 +169,7 @@ export async function dispatchDatasetSearch(
     const { totalPoints: embeddingTotalPoints, modelName: embeddingModelName } =
       formatModelChars2Points({
         model: vectorModel.model,
-        inputTokens: embeddingTokens,
-        modelType: ModelTypeEnum.embedding
+        inputTokens: embeddingTokens
       });
     nodeDispatchUsages.push({
       totalPoints: embeddingTotalPoints,
@@ -181,8 +180,7 @@ export async function dispatchDatasetSearch(
     // Rerank
     const { totalPoints: reRankTotalPoints, modelName: reRankModelName } = formatModelChars2Points({
       model: rerankModelData?.model,
-      inputTokens: reRankInputTokens,
-      modelType: ModelTypeEnum.rerank
+      inputTokens: reRankInputTokens
     });
     if (usingReRank) {
       nodeDispatchUsages.push({
@@ -198,8 +196,7 @@ export async function dispatchDatasetSearch(
         const { totalPoints, modelName } = formatModelChars2Points({
           model: queryExtensionResult.model,
           inputTokens: queryExtensionResult.inputTokens,
-          outputTokens: queryExtensionResult.outputTokens,
-          modelType: ModelTypeEnum.llm
+          outputTokens: queryExtensionResult.outputTokens
         });
         nodeDispatchUsages.push({
           totalPoints,
@@ -222,8 +219,7 @@ export async function dispatchDatasetSearch(
         const { totalPoints, modelName } = formatModelChars2Points({
           model: deepSearchResult.model,
           inputTokens: deepSearchResult.inputTokens,
-          outputTokens: deepSearchResult.outputTokens,
-          modelType: ModelTypeEnum.llm
+          outputTokens: deepSearchResult.outputTokens
         });
         nodeDispatchUsages.push({
           totalPoints,

@@ -26,12 +26,8 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { type ChannelInfoType } from '@/global/aiproxy/type';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import {
-  aiproxyIdMap,
-  ChannelStatusEnum,
-  ChannelStautsMap,
-  defaultChannel
-} from '@/global/aiproxy/constants';
+import { aiproxyIdMap } from '@fastgpt/global/sdk/fastgpt-plugin';
+import { ChannelStatusEnum, ChannelStautsMap, defaultChannel } from '@/global/aiproxy/constants';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import dynamic from 'next/dynamic';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -39,12 +35,16 @@ import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { getModelProvider } from '@fastgpt/global/core/ai/provider';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 
 const EditChannelModal = dynamic(() => import('./EditChannelModal'), { ssr: false });
 const ModelTest = dynamic(() => import('./ModelTest'), { ssr: false });
 
 const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.language as localeType;
   const { userInfo } = useUserStore();
 
   const isRoot = userInfo?.username === 'root';
@@ -126,10 +126,10 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
             <Tbody>
               {channelList.map((item) => {
                 const providerData = aiproxyIdMap[item.type] || {
-                  label: channelProviders[item.type]?.name || 'Invalid provider',
+                  name: channelProviders[item.type]?.name || 'Invalid provider',
                   provider: 'Other'
                 };
-                const provider = getModelProvider(providerData?.provider);
+                const provider = getModelProvider(providerData?.provider, language);
 
                 return (
                   <Tr key={item.id} _hover={{ bg: 'myGray.100' }}>
@@ -137,11 +137,8 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                     <Td>{item.name}</Td>
                     <Td>
                       <HStack>
-                        <MyIcon
-                          name={(providerData?.avatar || provider?.avatar) as any}
-                          w={'1rem'}
-                        />
-                        <Box>{t(providerData?.label as any)}</Box>
+                        <Avatar src={providerData?.avatar || provider?.avatar} w={'1rem'} />
+                        <Box>{parseI18nString(providerData.name, language)}</Box>
                       </HStack>
                     </Td>
                     <Td>
