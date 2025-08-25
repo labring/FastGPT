@@ -5,6 +5,7 @@ export function useSafeTranslation() {
   const { t: originalT, ...rest } = useNextTranslation();
 
   const t = (key: any, ...args: any[]): string => {
+    if (key === null || key === undefined) return '';
     if (typeof key !== 'string') return String(key);
     if (!key) return '';
 
