@@ -18,8 +18,7 @@ import { Permission } from '@fastgpt/global/support/permission/controller';
 import { CollaboratorContext } from './context';
 import { useTranslation } from 'next-i18next';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
+import { ManageRoleVal } from '@fastgpt/global/support/permission/constant';
 
 export type PermissionSelectProps = {
   value?: RoleValueType;
@@ -57,7 +56,7 @@ function RoleSelect({
   const closeTimer = useRef<NodeJS.Timeout>();
 
   const { roleList: permissionList } = useContextSelector(CollaboratorContext, (v) => v);
-  const permission = useContextSelector(CollaboratorContext, (v) => v.permission);
+  const myRole = useContextSelector(CollaboratorContext, (v) => v.myRole);
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -73,15 +72,18 @@ function RoleSelect({
       };
     });
 
+    const singleOptions = list.filter((item) => item.checkBoxType === 'single');
+    const per = new Permission({ role });
+
     return {
-      singleOptions: list.filter(
-        (item) =>
-          item.checkBoxType === 'single' &&
-          (permission.isOwner || item.value !== permissionList['manage'].value)
-      ),
+      singleOptions: myRole.isOwner
+        ? singleOptions
+        : myRole.hasManagePer && !per.hasManagePer
+          ? singleOptions.filter((item) => item.value !== ManageRoleVal)
+          : [],
       checkboxList: list.filter((item) => item.checkBoxType === 'multiple')
     };
-  }, [permission.isOwner, permissionList]);
+  }, [myRole.hasManagePer, myRole.isOwner, permissionList, role]);
   const selectedSingleValue = useMemo(() => {
     if (!permissionList) return undefined;
 
@@ -162,6 +164,9 @@ function RoleSelect({
           {/* The list of single select permissions */}
           {roleOptions.singleOptions.map((item) => {
             const change = () => {
+              if (disabled) {
+                return;
+              }
               const per = new Permission({ role });
               per.removeRole(selectedSingleValue);
               per.addRole(item.value);
@@ -191,7 +196,7 @@ function RoleSelect({
             );
           })}
 
-          {roleOptions.checkboxList.length > 0 && (
+          {roleOptions.checkboxList.length > 0 && roleOptions.singleOptions.length > 0 && (
             <>
               <MyDivider />
               <Box pb="2" px="3" fontSize={'sm'} color={'myGray.900'}>
@@ -201,7 +206,8 @@ function RoleSelect({
           )}
 
           {roleOptions.checkboxList.map((item) => {
-            const change = () => {
+            const change = (e: React.MouseEvent<HTMLElement>) => {
+              if (e.target.tagName === 'INPUT') return;
               const per = new Permission({ role });
               if (per.checkRole(item.value)) {
                 per.removeRole(item.value);
@@ -220,9 +226,13 @@ function RoleSelect({
                     }
                   : {})}
                 {...MenuStyle}
+                onClick={(e) => {
+                  if (disabled) return;
+                  change(e);
+                }}
               >
-                <Checkbox size="sm" isChecked={isChecked} onChange={change} />
-                <Flex ml={4} flexDirection="column" flex={'1 0 0'} onClick={change}>
+                <Checkbox size="sm" isChecked={isChecked} />
+                <Flex ml={4} flexDirection="column" flex={'1 0 0'}>
                   <Box>{t(item.name as any)}</Box>
                   <Box color={'myGray.500'} fontSize={'mini'}>
                     {t(item.description as any)}

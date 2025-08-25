@@ -30,17 +30,6 @@ function MemberManager({ managePer }: { managePer: MemberManagerInputPropsType }
                       _hover={{ color: 'primary.500' }}
                     />
                   </Box>
-                  <Box>
-                    <MyIcon
-                      cursor={'pointer'}
-                      onClick={onOpenAddMember}
-                      name="common/addUser"
-                      _hover={{ color: 'primary.500' }}
-                      w={'1rem'}
-                      h={'1rem'}
-                      color={'myGray.600'}
-                    />
-                  </Box>
                 </Flex>
               </Flex>
               <MemberListCard mt={2} p={1.5} bg="myGray.100" borderRadius="md" />
