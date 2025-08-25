@@ -311,9 +311,15 @@ export const createStreamResponse = async ({
                 answer.indexOf('0:') !== -1 ? answer.indexOf('0:') : answer.indexOf('0：');
               answer = answer.substring(firstIndex + 2).trim();
 
-              if (answer) {
-                onStreaming?.({ text: answer });
-              }
+              onStreaming?.({ text: answer });
+            }
+            // Not response tool
+            else if (/1(:|：)/.test(answer)) {
+            }
+            // Not start 1/0, start response
+            else {
+              startResponseWrite = true;
+              onStreaming?.({ text: answer });
             }
           }
         }
