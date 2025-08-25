@@ -45,7 +45,11 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
   } = useRequest2(
     async () => {
       const [apps, paths] = await Promise.all([
-        getMyApps({ parentId, searchKey: searchAppName }),
+        getMyApps({
+          parentId,
+          searchKey: searchAppName,
+          type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
+        }),
         searchAppName.trim()
           ? Promise.resolve([])
           : getAppFolderPath({ sourceId: parentId, type: 'current' })
@@ -123,10 +127,13 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
 
   const { loading: isUpdating, runAsync: confirmSelect } = useRequest2(
     async () => {
-      const list: QuickAppType[] = localSelectedIds
-        .map((id) => availableAppsMap.get(id)!)
-        .filter(Boolean)
-        .map((app) => ({ _id: app._id, name: app.name, avatar: app.avatar }));
+      const list: QuickAppType[] = localSelectedIds.map((id) => {
+        const cached = selectedInfo[id];
+        if (cached) return cached;
+        const app = availableAppsMap.get(id);
+        if (app) return { _id: app._id, name: app.name, avatar: app.avatar };
+        return { _id: id, name: '', avatar: '' };
+      });
       onConfirm(list);
     },
     {
