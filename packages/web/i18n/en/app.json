@@ -313,6 +313,7 @@
   "un_auth": "No permission",
   "upload_file_max_amount": "Maximum File Quantity",
   "upload_file_max_amount_tip": "Maximum number of files uploaded in a single round of conversation",
+  "variable.internal_type_desc": "Use only inside the workflow and will not appear in the dialog box",
   "variable.select type_desc": "You can define a global variable that does not need to be filled in by the user.\n\nThe value of this variable can come from the API interface, the Query of the shared link, or assigned through the [Variable Update] module.",
   "variable.textarea_type_desc": "Allows users to input up to 4000 characters in the dialogue box.",
   "variable_name_required": "Required variable name",

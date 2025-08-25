@@ -247,7 +247,7 @@ export const appData2FlowNodeIO = ({
   const variableInput = !chatConfig?.variables
     ? []
     : chatConfig.variables.map((item) => {
-        const renderTypeMap = {
+        const renderTypeMap: Record<VariableInputEnum, FlowNodeInputTypeEnum[]> = {
           [VariableInputEnum.input]: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
           [VariableInputEnum.textarea]: [
             FlowNodeInputTypeEnum.textarea,
@@ -255,16 +255,12 @@ export const appData2FlowNodeIO = ({
           ],
           [VariableInputEnum.numberInput]: [FlowNodeInputTypeEnum.numberInput],
           [VariableInputEnum.select]: [FlowNodeInputTypeEnum.select],
-          [VariableInputEnum.custom]: [
-            FlowNodeInputTypeEnum.input,
-            FlowNodeInputTypeEnum.reference
-          ],
-          default: [FlowNodeInputTypeEnum.reference]
+          [VariableInputEnum.custom]: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
         };
 
         return {
           key: item.key,
-          renderTypeList: renderTypeMap[item.type] || renderTypeMap.default,
+          renderTypeList: renderTypeMap[item.type] || [FlowNodeInputTypeEnum.reference],
           label: item.label,
           debugLabel: item.label,
           description: '',

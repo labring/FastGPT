@@ -15,7 +15,7 @@ import {
 import { SmallAddIcon } from '@chakra-ui/icons';
 import {
   VariableInputEnum,
-  variableMap,
+  variableMapGroups,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type.d';
@@ -69,22 +69,24 @@ const VariableEdit = ({
   const value = getValues();
   const type = watch('type');
 
-  const inputTypeList = useMemo(
-    () =>
-      Object.values(variableMap)
-        .filter((item) => item.value !== VariableInputEnum.textarea)
-        .map((item) => ({
-          icon: item.icon,
-          label: t(item.label as any),
-          value: item.value,
-          defaultValueType: item.defaultValueType,
-          description: item.description ? t(item.description as any) : ''
-        })),
-    [t]
-  );
+  const inputTypeList = useMemo(() => {
+    return variableMapGroups
+      .map((group) =>
+        group
+          .filter((item) => item && item.value !== VariableInputEnum.textarea)
+          .map((item) => ({
+            icon: item.icon,
+            label: t(item.label as any),
+            value: item.value,
+            defaultValueType: item.defaultValueType,
+            description: item.description ? t(item.description as any) : ''
+          }))
+      )
+      .filter((group) => group.length > 0);
+  }, [t]);
 
   const defaultValueType = useMemo(() => {
-    const item = inputTypeList.find((item) => item.value === type);
+    const item = inputTypeList.flat().find((item) => item.value === type);
     return item?.defaultValueType;
   }, [inputTypeList, type]);
 
@@ -144,7 +146,9 @@ const VariableEdit = ({
       if (data.type === VariableInputEnum.custom) {
         data.required = false;
       } else {
-        data.valueType = inputTypeList.find((item) => item.value === data.type)?.defaultValueType;
+        data.valueType = inputTypeList
+          .flat()
+          .find((item) => item.value === data.type)?.defaultValueType;
       }
 
       const onChangeVariable = (() => {
@@ -282,7 +286,7 @@ const VariableEdit = ({
           title={t('common:core.module.Variable Setting')}
           isOpen={true}
           onClose={() => reset({})}
-          maxW={['90vw', '928px']}
+          maxW={['90vw', '1028px']}
           w={'100%'}
           isCentered
         >
@@ -291,65 +295,78 @@ const VariableEdit = ({
               <FormLabel color={'myGray.600'} fontWeight={'medium'}>
                 {t('workflow:Variable.Variable type')}
               </FormLabel>
-              <Flex flexDirection={'column'} gap={4}></Flex>
-              <Box display={'grid'} gridTemplateColumns={'repeat(2, 1fr)'} gap={4}>
-                {inputTypeList.map((item) => {
-                  const isSelected = type === item.value;
+              <Flex flexDirection={'column'} gap={4}>
+                {inputTypeList.map((list, index) => {
                   return (
                     <Box
-                      display={'flex'}
-                      key={item.label}
-                      border={isSelected ? '1px solid #3370FF' : '1px solid #DFE2EA'}
-                      p={3}
-                      rounded={'6px'}
-                      fontWeight={'medium'}
-                      fontSize={'14px'}
-                      alignItems={'center'}
-                      cursor={'pointer'}
-                      boxShadow={isSelected ? '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)' : 'none'}
-                      _hover={{
-                        '& > svg': {
-                          color: 'primary.600'
-                        },
-                        '& > span': {
-                          color: 'myGray.900'
-                        },
-                        border: '1px solid #3370FF',
-                        boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
-                      }}
-                      onClick={() => {
-                        const defaultValIsNumber = !isNaN(Number(value.defaultValue));
-                        // 如果切换到 numberInput，不是数字，则清空
-                        if (
-                          item.value === VariableInputEnum.select ||
-                          (item.value === VariableInputEnum.numberInput && !defaultValIsNumber)
-                        ) {
-                          setValue('defaultValue', '');
-                        }
-                        setValue('type', item.value);
-                      }}
+                      key={index}
+                      display={'grid'}
+                      gridTemplateColumns={'repeat(3, 1fr)'}
+                      gap={4}
+                      mt={3}
                     >
-                      <MyIcon
-                        name={item.icon as any}
-                        w={'20px'}
-                        mr={1.5}
-                        color={isSelected ? 'primary.600' : 'myGray.400'}
-                      />
-                      <Box
-                        as="span"
-                        color={isSelected ? 'myGray.900' : 'inherit'}
-                        pr={4}
-                        whiteSpace="nowrap"
-                      >
-                        {item.label}
-                      </Box>
-                      {item.description && (
-                        <QuestionTip label={item.description as string} ml={1} />
-                      )}
+                      {list.map((item) => {
+                        const isSelected = type === item.value;
+                        return (
+                          <Box
+                            display={'flex'}
+                            key={item.label}
+                            border={isSelected ? '1px solid #3370FF' : '1px solid #DFE2EA'}
+                            p={3}
+                            rounded={'6px'}
+                            fontWeight={'medium'}
+                            fontSize={'14px'}
+                            alignItems={'center'}
+                            cursor={'pointer'}
+                            boxShadow={
+                              isSelected ? '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)' : 'none'
+                            }
+                            _hover={{
+                              '& > svg': {
+                                color: 'primary.600'
+                              },
+                              '& > span': {
+                                color: 'myGray.900'
+                              },
+                              border: '1px solid #3370FF',
+                              boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
+                            }}
+                            onClick={() => {
+                              const defaultValIsNumber = !isNaN(Number(value.defaultValue));
+                              // 如果切换到 numberInput，不是数字，则清空
+                              if (
+                                item.value === VariableInputEnum.select ||
+                                (item.value === VariableInputEnum.numberInput &&
+                                  !defaultValIsNumber)
+                              ) {
+                                setValue('defaultValue', '');
+                              }
+                              setValue('type', item.value);
+                            }}
+                          >
+                            <MyIcon
+                              name={item.icon as any}
+                              w={'20px'}
+                              mr={1.5}
+                              color={isSelected ? 'primary.600' : 'myGray.400'}
+                            />
+                            <Box
+                              as="span"
+                              color={isSelected ? 'myGray.900' : 'inherit'}
+                              whiteSpace="nowrap"
+                            >
+                              {item.label}
+                            </Box>
+                            {item.description && (
+                              <QuestionTip label={item.description as string} ml={1} />
+                            )}
+                          </Box>
+                        );
+                      })}
                     </Box>
                   );
                 })}
-              </Box>
+              </Flex>
             </Stack>
             <InputTypeConfig
               form={form}
