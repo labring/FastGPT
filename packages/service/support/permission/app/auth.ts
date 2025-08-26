@@ -90,53 +90,15 @@ export const authAppByTmbId = async ({
 
     const isOwner = tmbPer.isOwner || String(app.tmbId) === String(tmbId);
 
-    const { Per } = await (async () => {
-      if (isOwner) {
-        return {
-          Per: new AppPermission({ isOwner: true })
-        };
-      }
-
-      if (
-        AppFolderTypeList.includes(app.type) ||
-        app.inheritPermission === false ||
-        !app.parentId
-      ) {
-        // 1. is a folder. (Folders have completely permission)
-        // 2. inheritPermission is false.
-        // 3. is root folder/app.
-        const role = await getResourcePermission({
-          teamId,
-          tmbId,
-          resourceId: appId,
-          resourceType: PerResourceTypeEnum.app
-        });
-        const Per = new AppPermission({ role, isOwner });
-
-        if (app.favourite || app.quick) {
-          Per.addRole(ReadRoleVal);
-        }
-
-        return {
-          Per
-        };
-      } else {
-        // is not folder and inheritPermission is true and is not root folder.
-        const { app: parent } = await authAppByTmbId({
-          tmbId,
-          appId: app.parentId,
-          per
-        });
-
-        const Per = new AppPermission({
-          role: parent.permission.role,
-          isOwner
-        });
-        return {
-          Per
-        };
-      }
-    })();
+    const Per = new AppPermission({
+      role: await getResourcePermission({
+        teamId,
+        tmbId,
+        resourceId: appId,
+        resourceType: PerResourceTypeEnum.app
+      }),
+      isOwner
+    });
 
     if (!Per.checkPer(per)) {
       return Promise.reject(AppErrEnum.unAuthApp);
