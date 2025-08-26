@@ -71,7 +71,6 @@ const EditForm = ({
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
-  const { llmModelList, defaultModels } = useSystemStore();
 
   const {
     isOpen: isOpenDatasetSelect,

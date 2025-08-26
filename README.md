@@ -48,10 +48,9 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 `1` 应用编排能力
    - [x] 对话工作流、插件工作流，包含基础的 RPA 节点。
-   - [x] Agent 调用
-   - [x] 用户交互节点
+   - [x] 用户交互
    - [x] 双向 MCP 
-   - [ ] 上下文管理
+   - [ ] Agent 模式
    - [ ] AI 生成工作流
 
 `2` 应用调试能力
@@ -75,13 +74,13 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
    - [x] completions 接口 (chat 模式对齐 GPT 接口)
    - [x] 知识库 CRUD
    - [x] 对话 CRUD
-   - [ ] 完整 API Documents
+   - [ ] 自动化 OpenAPI 接口
   
 `5` 运营能力
    - [x] 免登录分享窗口
    - [x] Iframe 一键嵌入
    - [x] 统一查阅对话记录，并对数据进行标注
-   - [ ] 应用运营日志
+   - [x] 应用运营日志
    
 `6` 其他
    - [x] 可视化模型配置。

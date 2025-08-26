@@ -46,7 +46,7 @@ const ReTraining = () => {
       ]);
 
       processParamsForm.reset({
-        customPdfParse: collection.customPdfParse || false,
+        customPdfParse: collection.customPdfParse ?? defaultFormData.customPdfParse,
         trainingType: collection.trainingType,
 
         chunkTriggerType: collection.chunkTriggerType || defaultFormData.chunkTriggerType,
