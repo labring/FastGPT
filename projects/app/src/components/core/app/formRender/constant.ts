@@ -5,6 +5,7 @@ export enum InputTypeEnum {
   switch = 'switch',
   select = 'select',
   multipleSelect = 'multipleSelect',
+  password = 'password',
 
   JSONEditor = 'JSONEditor',
 

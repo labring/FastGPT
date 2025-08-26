@@ -162,6 +162,8 @@ export type VariableItemType = {
 
   // input
   maxLength?: number;
+  // password
+  minLength?: number;
   // numberInput
   max?: number;
   min?: number;

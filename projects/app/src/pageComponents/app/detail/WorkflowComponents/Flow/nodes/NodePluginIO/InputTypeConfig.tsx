@@ -81,6 +81,7 @@ const InputTypeConfig = ({
   const maxLength = watch('maxLength');
   const max = watch('max');
   const min = watch('min');
+  const minLength = watch('minLength');
   const defaultValue = watch('defaultValue');
   const valueType = watch('valueType');
 
@@ -583,6 +584,22 @@ const InputTypeConfig = ({
               </Box>
             </Box>
           </>
+        )}
+
+        {inputType === VariableInputEnum.password && (
+          <Flex alignItems={'center'}>
+            <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
+              {t('common:core.module.Min Length')}
+            </FormLabel>
+            <MyNumberInput
+              value={minLength}
+              min={1}
+              max={50}
+              onChange={(e) => {
+                setValue('minLength', e);
+              }}
+            />
+          </Flex>
         )}
       </Flex>
 
