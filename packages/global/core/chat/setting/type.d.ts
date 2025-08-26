@@ -4,6 +4,7 @@ export type ChatSettingSchema = {
   teamId: string;
   slogan: string;
   dialogTips: string;
+  enableHome: boolean;
   homeTabTitle: string;
   wideLogoUrl?: string;
   squareLogoUrl?: string;
