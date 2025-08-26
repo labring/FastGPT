@@ -158,7 +158,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
     if (searchKey) return 50;
     return;
   })();
-  console.log(findAppsQuery);
+
   const myApps = await MongoApp.find(
     findAppsQuery,
     '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission modules',
