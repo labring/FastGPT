@@ -24,9 +24,11 @@ const NodeTemplatesPopover = () => {
   const {
     templateType,
     parentId,
+    searchKey,
+    setSearchKey,
     templatesIsLoading,
     templates,
-    loadNodeTemplates,
+    onUpdateTemplateType,
     onUpdateParentId
   } = useNodeTemplates();
 
@@ -116,9 +118,11 @@ const NodeTemplatesPopover = () => {
             <NodeTemplateListHeader
               isPopover={true}
               templateType={templateType}
-              loadNodeTemplates={loadNodeTemplates}
-              parentId={parentId || ''}
+              onUpdateTemplateType={onUpdateTemplateType}
+              parentId={parentId}
               onUpdateParentId={onUpdateParentId}
+              searchKey={searchKey}
+              setSearchKey={setSearchKey}
             />
             <NodeTemplateList
               onAddNode={onAddNode}
