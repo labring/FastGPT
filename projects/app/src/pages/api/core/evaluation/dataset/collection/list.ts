@@ -14,7 +14,7 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 async function handler(
   req: ApiRequestProps<listEvalDatasetCollectionBody, {}>
 ): Promise<listEvalDatasetCollectionResponse> {
-  const { teamId } = await authUserPer({
+  const { teamId, tmbId } = await authUserPer({
     req,
     authToken: true,
     authApiKey: true,

@@ -100,7 +100,7 @@ async function handler(
     });
   }
 
-  const { teamId } = await authUserPer({
+  const { teamId, tmbId } = await authUserPer({
     req,
     authToken: true,
     authApiKey: true,

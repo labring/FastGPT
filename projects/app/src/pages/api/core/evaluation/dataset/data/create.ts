@@ -71,7 +71,7 @@ async function handler(
     });
   }
 
-  const { teamId } = await authUserPer({
+  const { teamId, tmbId } = await authUserPer({
     req,
     authToken: true,
     authApiKey: true,
@@ -95,6 +95,8 @@ async function handler(
     const [{ _id }] = await MongoEvalDatasetData.create(
       [
         {
+          teamId,
+          tmbId,
           datasetId: collectionId,
           user_input: user_input.trim(),
           actual_output: actual_output?.trim() || '',
