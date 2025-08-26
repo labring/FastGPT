@@ -280,7 +280,7 @@ const getMultiInput = async ({
   fileLinks?: string[];
   requestOrigin?: string;
   maxFiles: number;
-  customPdfParse?: boolean;
+  customPdfParse?: string;
   inputFiles: UserChatItemValueItemType['file'][];
   hasReadFilesTool: boolean;
 }) => {

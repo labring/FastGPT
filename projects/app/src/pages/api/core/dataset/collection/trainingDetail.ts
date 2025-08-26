@@ -17,7 +17,7 @@ type getTrainingDetailParams = {
 export type getTrainingDetailResponse = {
   trainingType: DatasetCollectionDataProcessModeEnum;
   advancedTraining: {
-    customPdfParse: boolean;
+    customPdfParse: string;
     imageIndex: boolean;
     autoIndexes: boolean;
   };
@@ -158,7 +158,7 @@ async function handler(
   return {
     trainingType: collection.trainingType,
     advancedTraining: {
-      customPdfParse: !!collection.customPdfParse,
+      customPdfParse: collection.customPdfParse || '',
       imageIndex: !!collection.imageIndex,
       autoIndexes: !!collection.autoIndexes
     },

@@ -22,7 +22,7 @@ import { chunkAutoChunkSize, getAutoIndexSize } from '@fastgpt/global/core/datas
 import { type CollectionChunkFormType } from '../Form/CollectionChunkForm';
 
 export type ImportFormType = {
-  customPdfParse: boolean;
+  customPdfParse: string;
   webSelector: string;
 } & CollectionChunkFormType;
 
@@ -38,7 +38,7 @@ type DatasetImportContextType = {
 };
 
 export const defaultFormData: ImportFormType = {
-  customPdfParse: false,
+  customPdfParse: '',
 
   trainingType: DatasetCollectionDataProcessModeEnum.chunk,
 

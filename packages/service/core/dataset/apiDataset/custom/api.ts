@@ -131,7 +131,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     teamId: string;
     tmbId: string;
     apiFileId: string;
-    customPdfParse?: boolean;
+    customPdfParse?: string;
   }): Promise<ApiFileReadContentResponse> => {
     const data = await request<
       {
