@@ -475,13 +475,11 @@ type LLMRequestBodyType<T> = Omit<T, 'model' | 'stop' | 'response_format' | 'mes
 
   // Custom field
   retainDatasetCite?: boolean;
-  reasoning?: boolean; // Whether to response reasoning content
   toolCallMode?: 'toolChoice' | 'prompt';
   useVision?: boolean;
   requestOrigin?: string;
 };
 const llmCompletionsBodyFormat = async <T extends CompletionsBodyType>({
-  reasoning,
   retainDatasetCite,
   useVision,
   requestOrigin,
