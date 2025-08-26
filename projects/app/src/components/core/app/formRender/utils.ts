@@ -18,7 +18,8 @@ export const variableInputTypeToInputType = (
   if (inputType === VariableInputEnum.switch) return InputTypeEnum.switch;
   if (inputType === VariableInputEnum.password) return InputTypeEnum.password;
   if (inputType === VariableInputEnum.TimeSelect) return InputTypeEnum.dateTimePicker;
-  if (inputType === VariableInputEnum.custom) return valueTypeToInputType(valueType);
+  if (inputType === VariableInputEnum.custom || inputType === VariableInputEnum.internal)
+    return valueTypeToInputType(valueType);
   return InputTypeEnum.JSONEditor;
 };
 

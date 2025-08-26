@@ -727,7 +727,7 @@
   "core.workflow.inputType.Manual input": "手動輸入",
   "core.workflow.inputType.Manual select": "手動選擇",
   "core.workflow.inputType.Reference": "變數引用",
-  "core.workflow.inputType.custom": "自訂變數",
+  "core.workflow.inputType.custom": "外部變數",
   "core.workflow.inputType.dateSelect": "時間選擇器",
   "core.workflow.inputType.dynamicTargetInput": "動態外部資料",
   "core.workflow.inputType.file": "文件上傳",
