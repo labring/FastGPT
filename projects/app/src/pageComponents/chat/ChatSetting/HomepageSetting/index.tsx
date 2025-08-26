@@ -1,4 +1,13 @@
-import { Box, Button, Flex, Grid, IconButton, Input, useDisclosure } from '@chakra-ui/react';
+import {
+  Switch,
+  Box,
+  Button,
+  Flex,
+  Grid,
+  IconButton,
+  Input,
+  useDisclosure
+} from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
 import MyInput from '@/components/MyInput';
 import { useCallback, useState } from 'react';
@@ -8,7 +17,6 @@ import { updateChatSetting } from '@/web/core/chat/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import ImageUpload from '@/pageComponents/chat/ChatSetting/ImageUpload';
 import type {
-  ChatSettingSchema,
   ChatSettingUpdateParams,
   QuickAppType,
   SelectedToolType
@@ -28,6 +36,7 @@ import {
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import dynamic from 'next/dynamic';
 import type { ChatSettingReturnType } from '@fastgpt/global/core/chat/setting/type';
+import MyPopover from '@fastgpt/web/components/common/MyPopover';
 
 const AddQuickAppModal = dynamic(
   () => import('@/pageComponents/chat/ChatSetting/HomepageSetting/AddQuickAppModal')
@@ -54,6 +63,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
   const chatSettings2Form = useCallback(
     (data?: ChatSettingReturnType) => {
       return {
+        enableHome: data?.enableHome,
         slogan: data?.slogan || t('chat:setting.home.slogan.default'),
         dialogTips: data?.dialogTips || t('chat:setting.home.dialogue_tips.default'),
         homeTabTitle: data?.homeTabTitle || 'FastGPT',
@@ -168,6 +178,14 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
       >
         <Flex w={['100%', '630px']}>
           <Flex flexDir="column" gap={6} w="100%">
+            {/* ENABLE HOME */}
+            <Box fontWeight={'500'}>
+              <Flex fontWeight={'500'} fontSize="14px" alignItems={'center'} gap={2}>
+                <Box>{t('chat:setting.home.enable')}</Box>
+                <Switch size="sm" {...register('enableHome')} />
+              </Flex>
+            </Box>
+
             {/* QUICK APPS */}
             <Box fontWeight={'500'}>
               <Flex fontWeight={'500'} fontSize="14px" mb={2} alignItems={'center'} gap={2}>

@@ -18,6 +18,10 @@ const ChatSettingSchema = new Schema({
     ref: AppCollectionName,
     required: true
   },
+  enableHome: {
+    type: Boolean,
+    default: true
+  },
   slogan: String,
   dialogTips: String,
   selectedTools: {

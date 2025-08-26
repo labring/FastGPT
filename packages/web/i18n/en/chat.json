@@ -135,6 +135,7 @@
   "setting.home.dialogue_tips": "Dialog prompt text",
   "setting.home.dialogue_tips.default": "You can ask me any questions",
   "setting.home.dialogue_tips_placeholder": "Please enter the prompt text of the dialog box",
+  "setting.home.enable": "Enable home page",
   "setting.home.home_tab_title": "Home Page Title",
   "setting.home.home_tab_title_placeholder": "Please enter the title of the homepage",
   "setting.home.no_selected_app": "No selected App",

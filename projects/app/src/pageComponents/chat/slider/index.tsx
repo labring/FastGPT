@@ -255,6 +255,7 @@ const NavigationSection = () => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
+  const isEnableHome = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.enableHome);
   const isCollapsed = useContextSelector(ChatSettingContext, (v) => v.collapse === 1);
   const onTriggerCollapse = useContextSelector(ChatSettingContext, (v) => v.onTriggerCollapse);
   const isHomeActive = useContextSelector(
@@ -283,12 +284,14 @@ const NavigationSection = () => {
             <Flex flexDir="column" gap={2}>
               {feConfigs.isPlus && (
                 <>
-                  <ActionButton
-                    icon="core/chat/sidebar/home"
-                    isCollapsed={true}
-                    isActive={isHomeActive}
-                    onClick={() => handlePaneChange(ChatSidebarPaneEnum.HOME)}
-                  />
+                  {isEnableHome && (
+                    <ActionButton
+                      icon="core/chat/sidebar/home"
+                      isCollapsed={true}
+                      isActive={isHomeActive}
+                      onClick={() => handlePaneChange(ChatSidebarPaneEnum.HOME)}
+                    />
+                  )}
 
                   <ActionButton
                     icon="core/chat/sidebar/star"
@@ -312,13 +315,15 @@ const NavigationSection = () => {
             <Flex flexDir="column" gap={2}>
               {feConfigs.isPlus && (
                 <>
-                  <ActionButton
-                    icon="core/chat/sidebar/home"
-                    text={t('chat:sidebar.home')}
-                    isCollapsed={false}
-                    isActive={isHomeActive}
-                    onClick={() => handlePaneChange(ChatSidebarPaneEnum.HOME)}
-                  />
+                  {isEnableHome && (
+                    <ActionButton
+                      icon="core/chat/sidebar/home"
+                      text={t('chat:sidebar.home')}
+                      isCollapsed={false}
+                      isActive={isHomeActive}
+                      onClick={() => handlePaneChange(ChatSidebarPaneEnum.HOME)}
+                    />
+                  )}
 
                   <ActionButton
                     icon="core/chat/sidebar/star"
