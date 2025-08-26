@@ -283,6 +283,8 @@ async function handler(
       }
 
       return {
+        teamId,
+        tmbId,
         datasetId: datasetCollectionId,
         user_input: row.user_input,
         expected_output: row.expected_output,

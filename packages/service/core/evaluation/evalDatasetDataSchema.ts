@@ -5,12 +5,27 @@ import {
   EvalDatasetDataCreateFromEnum,
   EvalDatasetDataCreateFromValues
 } from '@fastgpt/global/core/evaluation/constants';
+import {
+  TeamCollectionName,
+  TeamMemberCollectionName
+} from '@fastgpt/global/support/user/team/constant';
 
 const { Schema } = connectionMongo;
 
-export const EvalDatasetDataCollectionName = 'eval_dataset_data';
+export const EvalDatasetDataCollectionName = 'eval_dataset_datas';
 
 const EvalDatasetDataSchema = new Schema({
+  teamId: {
+    type: Schema.Types.ObjectId,
+    ref: TeamCollectionName,
+    required: true,
+    index: true
+  },
+  tmbId: {
+    type: Schema.Types.ObjectId,
+    ref: TeamMemberCollectionName,
+    required: true
+  },
   datasetId: {
     type: Schema.Types.ObjectId,
     ref: EvalDatasetCollectionName,
