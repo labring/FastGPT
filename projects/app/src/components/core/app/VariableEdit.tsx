@@ -143,7 +143,7 @@ const VariableEdit = ({
         delete data.list;
       }
 
-      if (data.type === VariableInputEnum.custom) {
+      if (data.type === VariableInputEnum.custom || data.type === VariableInputEnum.internal) {
         data.required = false;
       } else {
         data.valueType = inputTypeList

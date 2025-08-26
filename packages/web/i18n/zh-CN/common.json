@@ -728,7 +728,7 @@
   "core.workflow.inputType.Manual input": "手动输入",
   "core.workflow.inputType.Manual select": "手动选择",
   "core.workflow.inputType.Reference": "变量引用",
-  "core.workflow.inputType.custom": "自定义变量",
+  "core.workflow.inputType.custom": "外部变量",
   "core.workflow.inputType.datasetSelect": "知识库选择",
   "core.workflow.inputType.dateSelect": "时间选择器",
   "core.workflow.inputType.dynamicTargetInput": "动态外部数据",

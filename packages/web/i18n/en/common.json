@@ -728,7 +728,7 @@
   "core.workflow.inputType.Manual input": "Manual Input",
   "core.workflow.inputType.Manual select": "Manual Select",
   "core.workflow.inputType.Reference": "Variable Reference",
-  "core.workflow.inputType.custom": "Custom Variable",
+  "core.workflow.inputType.custom": "External Variable",
   "core.workflow.inputType.dateSelect": "Time selector",
   "core.workflow.inputType.dynamicTargetInput": "Dynamic External Data",
   "core.workflow.inputType.file": "File upload",
