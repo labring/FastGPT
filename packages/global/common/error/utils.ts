@@ -18,6 +18,11 @@ export const getErrText = (err: any, def = ''): any => {
     return ERROR_RESPONSE[msg].message;
   }
 
+  // Axios special
+  if (err?.errors && Array.isArray(err.errors) && err.errors.length > 0) {
+    return err.errors[0].message;
+  }
+
   // msg && console.log('error =>', msg);
   return replaceSensitiveText(msg);
 };

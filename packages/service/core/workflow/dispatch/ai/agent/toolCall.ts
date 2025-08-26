@@ -287,7 +287,6 @@ export const runToolCall = async (
     body: {
       model: toolModel.model,
       stream,
-      reasoning: aiChatReasoning,
       messages: filterMessages,
       tool_choice: 'auto',
       toolCallMode: toolModel.toolChoice ? 'toolChoice' : 'prompt',
@@ -308,6 +307,7 @@ export const runToolCall = async (
     isAborted: () => res?.closed,
     userKey: externalProvider.openaiAccount,
     onReasoning({ text }) {
+      if (!aiChatReasoning) return;
       workflowStreamResponse?.({
         write,
         event: SseResponseEventEnum.answer,

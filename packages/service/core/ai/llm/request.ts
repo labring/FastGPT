@@ -67,8 +67,6 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
   const { body, custonHeaders, userKey } = args;
   const { messages, useVision, requestOrigin, tools, toolCallMode } = body;
 
-  const modelData = getLLMModel(body.model);
-
   // Messages process
   const requestMessages = await loadRequestMessages({
     messages,
@@ -475,13 +473,11 @@ type LLMRequestBodyType<T> = Omit<T, 'model' | 'stop' | 'response_format' | 'mes
 
   // Custom field
   retainDatasetCite?: boolean;
-  reasoning?: boolean; // Whether to response reasoning content
   toolCallMode?: 'toolChoice' | 'prompt';
   useVision?: boolean;
   requestOrigin?: string;
 };
 const llmCompletionsBodyFormat = async <T extends CompletionsBodyType>({
-  reasoning,
   retainDatasetCite,
   useVision,
   requestOrigin,

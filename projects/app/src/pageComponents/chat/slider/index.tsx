@@ -362,7 +362,6 @@ const BottomSection = () => {
   const { userInfo } = useUserStore();
   const isLoggedIn = !!userInfo;
   const avatar = userInfo?.avatar;
-  const username = userInfo?.username;
   const isAdmin = !!userInfo?.team.permission.hasManagePer;
   const isShare = pathname === '/chat/share';
 
@@ -448,7 +447,7 @@ const BottomSection = () => {
                   fontWeight={500}
                   minW={0}
                 >
-                  {username}
+                  {userInfo?.team?.memberName}
                 </AnimatedText>
               </Flex>
             </UserAvatarPopover>
