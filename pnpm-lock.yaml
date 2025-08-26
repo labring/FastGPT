@@ -9927,8 +9927,8 @@ packages:
     resolution: {integrity: sha512-GCPAHLvrIH13+c0SuacwvRYj2SxJXQ4kaVTT5xgL3kPrz56XxkF21IGhjSE1+W0aw7gpBWRGXLCPnPby6lSpmQ==}
     engines: {node: '>=12'}
 
-  xlsx@https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz:
-    resolution: {tarball: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz}
+  xlsx@file:/app/xlsx-0.20.2.tgz:
+    resolution: {tarball: file:/app/xlsx-0.20.2.tgz}
     version: 0.20.2
     engines: {node: '>=0.8'}
     hasBin: true
@@ -18550,7 +18550,7 @@ snapshots:
 
   node-xlsx@0.24.0:
     dependencies:
-      xlsx: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
+      xlsx: file:/app/xlsx-0.20.2.tgz
 
   non-layered-tidy-tree-layout@2.0.2: {}
 
@@ -21187,7 +21187,7 @@ snapshots:
 
   xdg-basedir@5.1.0: {}
 
-  xlsx@https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz: {}
+  xlsx@file:/app/xlsx-0.20.2.tgz: {}
 
   xmlbuilder@10.1.1: {}
 

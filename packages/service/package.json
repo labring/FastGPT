@@ -47,7 +47,7 @@
     "next": "14.2.28",
     "nextjs-cors": "^2.2.0",
     "node-cron": "^3.0.3",
-    "node-xlsx": "^0.24.0",
+    "node-xlsx": "file:/app/node-xlsx-0.24.0.tgz",
     "papaparse": "5.4.1",
     "pdfjs-dist": "4.10.38",
     "pg": "^8.10.0",
