@@ -6,6 +6,7 @@ import mysql, {
 } from 'mysql2/promise';
 import { addLog } from '../../system/log';
 import { OCEANBASE_ADDRESS } from '../constants';
+import { delay } from '@fastgpt/global/common/system/utils';
 
 export const getClient = async (): Promise<Pool> => {
   if (!OCEANBASE_ADDRESS) {
@@ -27,9 +28,22 @@ export const getClient = async (): Promise<Pool> => {
     keepAliveInitialDelay: 0
   });
 
-  addLog.info(`oceanbase connected`);
+  try {
+    // Test the connection with a simple query instead of calling connect()
+    await global.obClient.query('SELECT 1');
+    addLog.info(`oceanbase connected`);
+    return global.obClient;
+  } catch (error) {
+    addLog.error(`oceanbase connect error`, error);
 
-  return global.obClient;
+    global.obClient?.end();
+    global.obClient = null;
+
+    await delay(1000);
+    addLog.info(`Retry connect oceanbase`);
+
+    return getClient();
+  }
 };
 
 type WhereProps = (string | [string, string | number])[];
@@ -118,9 +132,9 @@ class ObClass {
     `;
 
     const client = await getClient();
-    return client
-      .query<({ count: number } & RowDataPacket)[]>(sql)
-      .then(([rows]) => Number(rows[0]?.count || 0));
+    return client.query<({ count: number } & RowDataPacket)[]>(sql).then(([res]) => {
+      return res[0]?.['COUNT(*)'] || 0;
+    });
   }
   async delete(table: string, props: DeleteProps) {
     const sql = `DELETE FROM ${table} ${this.getWhereStr(props.where)}`;
@@ -140,24 +154,73 @@ class ObClass {
     const client = await getClient();
     return client.query(sql);
   }
+  /**
+   * 批量插入数据并获取自增 ID
+   * 在 OceanBase 多副本环境下使用 LAST_INSERT_ID() 获取准确的自增 ID
+   *
+   * 原理说明：
+   * 1. OceanBase 的 LAST_INSERT_ID() 返回当前会话最后一次插入操作的第一个自增 ID
+   * 2. 批量插入时，ID 是连续的：first_id, first_id+1, first_id+2, ...
+   * 3. 这种方法在多副本环境下是可靠的，因为每个连接会话是独立的
+   */
   async insert(table: string, props: InsertProps) {
     if (props.values.length === 0) {
       return {
         rowCount: 0,
-        rows: []
+        insertIds: []
       };
     }
 
     const fields = props.values[0].map((item) => item.key).join(',');
     const sql = `INSERT INTO ${table} (${fields}) VALUES ${this.getInsertValStr(props.values)}`;
 
-    const client = await getClient();
-    return client.query<ResultSetHeader>(sql).then(([result]) => {
+    // 获取专用连接而不是从连接池获取
+    const connection = await (await getClient()).getConnection();
+
+    try {
+      const result = await connection.query<ResultSetHeader>(sql);
+
+      if (result[0].affectedRows > 0) {
+        // 在同一个连接上获取LAST_INSERT_ID，确保会话一致性
+        const [lastIdResult] = await connection.query<RowDataPacket[]>(
+          'SELECT LAST_INSERT_ID() as firstId'
+        );
+        const firstId = lastIdResult[0]?.firstId;
+
+        if (firstId && typeof firstId === 'number') {
+          const count = result[0].affectedRows;
+          // Generate consecutive IDs: firstId, firstId+1, firstId+2, ...
+          const ids = Array.from({ length: count }, (_, i) => String(firstId + i));
+
+          return {
+            rowCount: result[0].affectedRows,
+            insertIds: ids
+          };
+        }
+
+        // Fallback: try to use insertId from ResultSetHeader if LAST_INSERT_ID() fails
+        if (result[0].insertId) {
+          const startId = result[0].insertId;
+          const count = result[0].affectedRows;
+          const ids = Array.from({ length: count }, (_, i) => String(startId + i));
+
+          return {
+            rowCount: result[0].affectedRows,
+            insertIds: ids
+          };
+        }
+      }
+
       return {
-        rowCount: result.affectedRows,
-        rows: [{ id: String(result.insertId) }]
+        rowCount: result[0].affectedRows || 0,
+        insertIds: []
       };
-    });
+    } catch (error) {
+      addLog.error(`OceanBase batch insert error: ${error}`);
+      throw error;
+    } finally {
+      connection.release(); // 释放连接回连接池
+    }
   }
   async query<T extends QueryResult = any>(sql: string) {
     const client = await getClient();
