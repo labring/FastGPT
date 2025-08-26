@@ -4,7 +4,7 @@ node_modules/
 .next/
 out/
 # production
-build/
+# build/
 .astro/
 
 # misc
