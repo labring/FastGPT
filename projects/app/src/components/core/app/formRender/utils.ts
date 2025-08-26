@@ -17,6 +17,7 @@ export const variableInputTypeToInputType = (
   if (inputType === VariableInputEnum.multipleSelect) return InputTypeEnum.multipleSelect;
   if (inputType === VariableInputEnum.switch) return InputTypeEnum.switch;
   if (inputType === VariableInputEnum.password) return InputTypeEnum.password;
+  if (inputType === VariableInputEnum.file) return InputTypeEnum.fileSelect;
   if (inputType === VariableInputEnum.TimeSelect) return InputTypeEnum.dateTimePicker;
   if (inputType === VariableInputEnum.custom || inputType === VariableInputEnum.internal)
     return valueTypeToInputType(valueType);

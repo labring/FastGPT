@@ -171,6 +171,10 @@ export type VariableItemType = {
   list?: { label: string; value: string }[];
   // @deprecated
   enums?: { value: string; label: string }[];
+  // file
+  canSelectFile?: boolean;
+  canSelectImg?: boolean;
+  maxFiles?: number;
 };
 // tts
 export type AppTTSConfigType = {

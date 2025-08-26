@@ -129,7 +129,7 @@ const ChatTest = ({
                         key={paramName}
                         inputType={inputType}
                         formKey={paramName}
-                        variablesForm={form}
+                        form={form}
                         placeholder={paramInfo.description}
                       />
                     );
