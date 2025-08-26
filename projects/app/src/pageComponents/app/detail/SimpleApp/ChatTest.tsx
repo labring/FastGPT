@@ -45,7 +45,7 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
     setRenderEdit(!datasetCiteData);
   }, [datasetCiteData, setRenderEdit]);
 
-  const { ChatContainer, restartChat, loading } = useChatTest({
+  const { ChatContainer, restartChat } = useChatTest({
     ...workflowData,
     chatConfig: appForm.chatConfig,
     isReady: true
