@@ -103,7 +103,7 @@ describe('Metric API Handler Tests (Direct Function Calls)', () => {
       );
       expect(result).toEqual(mockMetric);
       expect(addLog.info).toHaveBeenCalledWith(
-        '[Evaluation Metric] 指标创建成功',
+        '[Evaluation Metric] Metric created successfully',
         expect.objectContaining({
           metricId: mockMetric._id,
           name: mockMetric.name,

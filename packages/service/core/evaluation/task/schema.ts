@@ -5,7 +5,7 @@ import {
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
 import type {
   EvaluationSchemaType,
-  EvalItemSchemaType
+  EvaluationItemSchemaType
 } from '@fastgpt/global/core/evaluation/type';
 import { UsageCollectionName } from '../../../support/wallet/usage/schema';
 import {
@@ -16,8 +16,7 @@ import { EvalDatasetCollectionName } from '../dataset/schema';
 
 const { Schema } = connectionMongo;
 
-// Common target schema definition
-const TargetSchema = new Schema(
+export const EvaluationTargetSchema = new Schema(
   {
     type: {
       type: String,
@@ -42,8 +41,7 @@ const TargetSchema = new Schema(
   { _id: false }
 );
 
-// Evaluator schema definition
-const EvaluatorSchema = new Schema(
+export const EvaluationEvaluatorSchema = new Schema(
   {
     metric: {
       type: Schema.Types.Mixed,
@@ -58,12 +56,10 @@ const EvaluatorSchema = new Schema(
   { _id: false }
 );
 
-// Collection names
 export const EvaluationCollectionName = 'eval';
 export const EvalItemCollectionName = 'eval_items';
 
-// Evaluation Schema
-const EvaluationSchema = new Schema({
+export const EvaluationTaskSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
@@ -84,8 +80,8 @@ const EvaluationSchema = new Schema({
     ref: EvalDatasetCollectionName,
     required: true
   },
-  target: TargetSchema,
-  evaluators: [EvaluatorSchema],
+  target: EvaluationTargetSchema,
+  evaluators: [EvaluationEvaluatorSchema],
   usageId: {
     type: Schema.Types.ObjectId,
     ref: UsageCollectionName,
@@ -106,25 +102,25 @@ const EvaluationSchema = new Schema({
   errorMessage: String
 });
 
-EvaluationSchema.index({ teamId: 1 });
-EvaluationSchema.index({ status: 1, createTime: -1 });
-EvaluationSchema.index({ teamId: 1, status: 1 });
+EvaluationTaskSchema.index({ teamId: 1 });
+EvaluationTaskSchema.index({ status: 1, createTime: -1 });
+EvaluationTaskSchema.index({ teamId: 1, status: 1 });
 
-// Evaluation Item Schema (原子性：一个dataItem + 一个target + 一个evaluator)
-const EvalItemSchema = new Schema({
+// Atomic evaluation item: one dataItem + one target + one evaluator
+export const EvaluationItemSchema = new Schema({
   evalId: {
     type: Schema.Types.ObjectId,
     ref: EvaluationCollectionName,
     required: true
   },
-  // 依赖的组件配置
+  // Dependent component configurations
   dataItem: {
     type: Object,
     required: true
   },
-  target: TargetSchema,
-  evaluator: EvaluatorSchema, // 单个evaluator配置
-  // 运行结果
+  target: EvaluationTargetSchema,
+  evaluator: EvaluationEvaluatorSchema, // Single evaluator configuration
+  // Execution results
   target_output: {
     actualOutput: String,
     retrievalContext: [String],
@@ -132,7 +128,7 @@ const EvalItemSchema = new Schema({
     responseTime: Number
   },
   evaluator_output: {
-    // 单个evaluator的结果
+    // Single evaluator result
     metricId: String,
     metricName: String,
     score: Number,
@@ -152,17 +148,16 @@ const EvalItemSchema = new Schema({
   errorMessage: String
 });
 
-EvalItemSchema.index({ evalId: 1, status: 1 });
-EvalItemSchema.index({ status: 1, retry: 1 });
-EvalItemSchema.index({ evalId: 1, finishTime: -1 });
+EvaluationItemSchema.index({ evalId: 1, status: 1 });
+EvaluationItemSchema.index({ status: 1, retry: 1 });
+EvaluationItemSchema.index({ evalId: 1, finishTime: -1 });
 
-// Export models
 export const MongoEvaluation = getMongoModel<EvaluationSchemaType>(
   EvaluationCollectionName,
-  EvaluationSchema
+  EvaluationTaskSchema
 );
 
-export const MongoEvalItem = getMongoModel<EvalItemSchemaType>(
+export const MongoEvalItem = getMongoModel<EvaluationItemSchemaType>(
   EvalItemCollectionName,
-  EvalItemSchema
+  EvaluationItemSchema
 );

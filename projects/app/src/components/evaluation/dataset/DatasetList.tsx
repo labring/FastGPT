@@ -23,7 +23,7 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { useEvaluationStore } from '@/web/core/evaluation/store/evaluation';
 import { getDatasetList, deleteDataset } from '@/web/core/evaluation/dataset';
-import type { EvalDatasetSchemaType } from '@fastgpt/global/core/evaluation/type';
+import type { EvaluationDatasetSchemaType } from '@fastgpt/global/core/evaluation/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
 interface DatasetListProps {
@@ -43,7 +43,7 @@ const DatasetList: React.FC<DatasetListProps> = ({ searchKey, onSearchChange }) 
     getData: fetchData,
     total,
     pageSize
-  } = usePagination(
+  } = usePagination<any, EvaluationDatasetSchemaType>(
     (params) =>
       getDatasetList({
         ...params,
@@ -73,7 +73,7 @@ const DatasetList: React.FC<DatasetListProps> = ({ searchKey, onSearchChange }) 
     }
   });
 
-  const handleEdit = (dataset: EvalDatasetSchemaType) => {
+  const handleEdit = (dataset: EvaluationDatasetSchemaType) => {
     openDatasetModal(dataset);
   };
 
@@ -118,7 +118,7 @@ const DatasetList: React.FC<DatasetListProps> = ({ searchKey, onSearchChange }) 
             </Tr>
           </Thead>
           <Tbody>
-            {datasets.map((dataset: EvalDatasetSchemaType) => (
+            {datasets.map((dataset: EvaluationDatasetSchemaType) => (
               <Tr key={dataset._id}>
                 <Td fontWeight="medium">{dataset.name}</Td>
                 <Td color="gray.600" maxW="200px" noOfLines={2}>

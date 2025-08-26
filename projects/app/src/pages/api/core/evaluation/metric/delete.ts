@@ -17,13 +17,13 @@ async function handler(req: ApiRequestProps<{}, MetricDeleteQuery>): Promise<Del
       authToken: true
     });
 
-    addLog.info('[Evaluation Metric] 指标删除成功', {
+    addLog.info('[Evaluation Metric] Metric deleted successfully', {
       metricId: id
     });
 
     return { message: 'Metric deleted successfully' };
   } catch (error) {
-    addLog.error('[Evaluation Metric] 删除指标失败', {
+    addLog.error('[Evaluation Metric] Failed to delete metric', {
       metricId: req.query.id,
       error
     });

@@ -1,6 +1,6 @@
 import { MongoEvalDataset } from './schema';
 import type {
-  EvalDatasetSchemaType,
+  EvaluationDatasetSchemaType,
   CreateDatasetParams,
   UpdateDatasetParams,
   ValidationResult,
@@ -17,13 +17,13 @@ import {
   checkUpdateResult,
   checkDeleteResult
 } from '../common';
+import Papa from 'papaparse';
 
 export class EvaluationDatasetService {
-  // 创建数据集
   static async createDataset(
     params: CreateDatasetParams,
     auth: AuthModeType
-  ): Promise<EvalDatasetSchemaType> {
+  ): Promise<EvaluationDatasetSchemaType> {
     const { teamId, tmbId } = await validateResourceCreate(auth);
 
     const dataset = await MongoEvalDataset.create({
@@ -36,8 +36,10 @@ export class EvaluationDatasetService {
     return dataset.toObject();
   }
 
-  // 获取数据集
-  static async getDataset(datasetId: string, auth: AuthModeType): Promise<EvalDatasetSchemaType> {
+  static async getDataset(
+    datasetId: string,
+    auth: AuthModeType
+  ): Promise<EvaluationDatasetSchemaType> {
     const { resourceFilter, notFoundError } = await validateResourceAccess(
       datasetId,
       auth,
@@ -53,7 +55,6 @@ export class EvaluationDatasetService {
     return dataset;
   }
 
-  // 更新数据集
   static async updateDataset(
     datasetId: string,
     updates: UpdateDatasetParams,
@@ -66,7 +67,6 @@ export class EvaluationDatasetService {
     checkUpdateResult(result, 'Dataset');
   }
 
-  // 删除数据集
   static async deleteDataset(datasetId: string, auth: AuthModeType): Promise<void> {
     const { resourceFilter } = await validateResourceAccess(datasetId, auth, 'Dataset');
 
@@ -75,14 +75,13 @@ export class EvaluationDatasetService {
     checkDeleteResult(result, 'Dataset');
   }
 
-  // 获取数据集列表
   static async listDatasets(
     auth: AuthModeType,
     page: number = 1,
     pageSize: number = 20,
     searchKey?: string
   ): Promise<{
-    datasets: EvalDatasetSchemaType[];
+    datasets: EvaluationDatasetSchemaType[];
     total: number;
   }> {
     const { filter, skip, limit, sort } = await validateListAccess(auth, searchKey, page, pageSize);
@@ -95,7 +94,6 @@ export class EvaluationDatasetService {
     return { datasets, total };
   }
 
-  // 验证数据格式
   static async validateDataFormat(
     data: any[],
     columns: DatasetColumn[]
@@ -116,14 +114,12 @@ export class EvaluationDatasetService {
         return;
       }
 
-      // 检查必填字段
       requiredColumns.forEach((col) => {
         if (!(col.name in item) || item[col.name] === null || item[col.name] === undefined) {
           errors.push(`Row ${index + 1}: Missing required field '${col.name}'`);
         }
       });
 
-      // 检查数据类型
       Object.keys(item).forEach((key) => {
         const column = columns.find((col) => col.name === key);
         if (!column) {
@@ -161,7 +157,99 @@ export class EvaluationDatasetService {
     };
   }
 
-  // 导入数据
+  static async parseFileContent(
+    fileContent: Buffer,
+    fileName: string,
+    mimeType: string
+  ): Promise<any[]> {
+    let parsedData: any[];
+
+    if (mimeType === 'application/json' || fileName?.endsWith('.json')) {
+      try {
+        const jsonContent = fileContent.toString('utf-8');
+        parsedData = JSON.parse(jsonContent);
+
+        if (!Array.isArray(parsedData)) {
+          throw new Error('JSON file must contain an array of objects');
+        }
+      } catch (error) {
+        throw new Error(
+          `Invalid JSON format: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    } else if (
+      mimeType === 'text/csv' ||
+      mimeType === 'application/csv' ||
+      fileName?.endsWith('.csv')
+    ) {
+      try {
+        const csvContent = fileContent.toString('utf-8');
+
+        const parseResult = Papa.parse(csvContent, {
+          header: true,
+          skipEmptyLines: true,
+          transform: (value: string) => {
+            if (value === '') return null;
+            if (value === 'true') return true;
+            if (value === 'false') return false;
+
+            const num = Number(value);
+            if (!isNaN(num) && value.trim() !== '') {
+              return num;
+            }
+
+            return value;
+          }
+        });
+
+        if (parseResult.errors.length > 0) {
+          const errorMessages = parseResult.errors.map(
+            (err: any) => `Row ${err.row}: ${err.message}`
+          );
+          throw new Error(`CSV parsing errors: ${errorMessages.join('; ')}`);
+        }
+
+        parsedData = parseResult.data;
+
+        if (parsedData.length === 0) {
+          throw new Error('CSV file contains no data rows');
+        }
+      } catch (error) {
+        throw new Error(
+          `Invalid CSV format: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    } else {
+      throw new Error('Unsupported file format. Only JSON and CSV files are supported.');
+    }
+
+    if (!parsedData || parsedData.length === 0) {
+      throw new Error('File contains no data');
+    }
+
+    return parsedData;
+  }
+
+  static async importDataFromFile(
+    datasetId: string,
+    fileContent: Buffer,
+    fileName: string,
+    mimeType: string,
+    auth: AuthModeType
+  ): Promise<ImportResult> {
+    try {
+      const parsedData = await this.parseFileContent(fileContent, fileName, mimeType);
+
+      return await this.importData(datasetId, parsedData, auth);
+    } catch (error) {
+      return {
+        success: false,
+        importedCount: 0,
+        errors: [error instanceof Error ? error.message : String(error)]
+      };
+    }
+  }
+
   static async importData(
     datasetId: string,
     data: DatasetItem[],
@@ -180,7 +268,6 @@ export class EvaluationDatasetService {
         throw new Error(notFoundError);
       }
 
-      // 验证数据格式
       const validation = await this.validateDataFormat(data, dataset.columns);
       if (!validation.isValid) {
         return {
@@ -190,7 +277,6 @@ export class EvaluationDatasetService {
         };
       }
 
-      // 更新数据集
       await MongoEvalDataset.updateOne(
         { _id: new Types.ObjectId(datasetId) },
         {
@@ -204,7 +290,7 @@ export class EvaluationDatasetService {
       return {
         success: true,
         importedCount: data.length,
-        errors: validation.warnings // 将警告作为非致命错误返回
+        errors: validation.warnings
       };
     } catch (error) {
       return {
@@ -215,7 +301,6 @@ export class EvaluationDatasetService {
     }
   }
 
-  // 导出数据
   static async exportData(
     datasetId: string,
     format: 'csv' | 'json',
@@ -226,7 +311,6 @@ export class EvaluationDatasetService {
     if (format === 'json') {
       return Buffer.from(JSON.stringify(dataset.dataItems, null, 2));
     } else {
-      // CSV 格式
       if (dataset.dataItems.length === 0) {
         return Buffer.from('');
       }
@@ -240,7 +324,6 @@ export class EvaluationDatasetService {
           if (value === null || value === undefined) {
             return '';
           }
-          // 处理包含逗号或引号的值
           const stringValue = String(value);
           if (
             stringValue.includes(',') ||

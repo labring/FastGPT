@@ -1,6 +1,6 @@
 import type { EvaluationStatusEnum } from './constants';
 
-// 数据集相关类型
+// Dataset related types
 export interface DatasetColumn {
   name: string;
   type: 'string' | 'number' | 'boolean';
@@ -13,10 +13,10 @@ export interface DatasetItem {
   expectedOutput: string;
   context?: string[];
   globalVariables?: Record<string, any>;
-  [key: string]: any; // 支持自定义字段
+  [key: string]: any; // Support custom fields
 }
 
-export interface EvalDatasetSchemaType {
+export interface EvaluationDatasetSchemaType {
   _id: string;
   teamId: string;
   tmbId: string;
@@ -29,7 +29,7 @@ export interface EvalDatasetSchemaType {
   updateTime: Date;
 }
 
-// 评估目标相关类型
+// Evaluation target related types
 export interface WorkflowConfig {
   appId: string;
   chatConfig?: any;
@@ -47,7 +47,7 @@ export interface AiModelConfig {
 
 type MetricDependency = 'llm' | 'embedding';
 
-export interface EvalMetricSchemaType {
+export interface EvaluationMetricSchemaType {
   _id: string;
   teamId: string;
   tmbId: string;
@@ -60,28 +60,28 @@ export interface EvalMetricSchemaType {
   updateTime: Date;
 }
 
-// 运行时配置类型
+// Runtime configuration types
 export interface RuntimeConfig {
-  llm?: string; // LLM模型选择
-  embedding?: string; // Embedding模型选择
+  llm?: string; // LLM model selection
+  embedding?: string; // Embedding model selection
 }
 
-// Evaluator配置类型
+// Evaluator configuration types
 export interface EvaluatorSchema {
-  metric: EvalMetricSchemaType; // 包含完整的metric配置
-  runtimeConfig: RuntimeConfig; // 运行时配置，如llm模型等
+  metric: EvaluationMetricSchemaType; // Contains complete metric configuration
+  runtimeConfig: RuntimeConfig; // Runtime configuration including LLM model
 }
 
-// 改进后的评估任务类型
+// Improved evaluation task types
 export type EvaluationSchemaType = {
   _id: string;
   teamId: string;
   tmbId: string;
   name: string;
   description?: string;
-  datasetId: string; // 关联数据集
-  target: EvalTarget; // 嵌入式评估目标
-  evaluators: EvaluatorSchema[]; // 评估器配置数组
+  datasetId: string; // Associated dataset
+  target: EvalTarget; // Embedded evaluation target
+  evaluators: EvaluatorSchema[]; // Array of evaluator configurations
   usageId: string;
   status: EvaluationStatusEnum;
   createTime: Date;
@@ -90,24 +90,24 @@ export type EvaluationSchemaType = {
   errorMessage?: string;
 };
 
-// 评估项类型（原子性：一个dataItem + 一个target + 一个evaluator）
-export type EvalItemSchemaType = {
+// Evaluation item types (atomic: one dataItem + one target + one evaluator)
+export type EvaluationItemSchemaType = {
   _id: string;
   evalId: string;
-  // 依赖的组件配置
+  // Dependent component configurations
   dataItem: DatasetItem;
   target: EvalTarget;
-  evaluator: EvaluatorSchema; // 单个评估器配置
-  // 运行结果
-  target_output?: TargetOutput; // target的实际输出
-  evaluator_output?: MetricResult; // 单个评估器的结果
+  evaluator: EvaluatorSchema; // Single evaluator configuration
+  // Execution results
+  target_output?: TargetOutput; // Actual output from target
+  evaluator_output?: MetricResult; // Result from single evaluator
   status: EvaluationStatusEnum;
   retry: number;
   finishTime?: Date;
   errorMessage?: string;
 };
 
-// 指标结果类型
+// Metric result types
 export interface MetricResult {
   metricId: string;
   metricName: string;
@@ -116,7 +116,7 @@ export interface MetricResult {
   error?: string;
 }
 
-// 评估用例类型
+// Evaluation case types
 export interface EvalCase {
   userInput?: string;
   expectedOutput?: string;
@@ -125,7 +125,7 @@ export interface EvalCase {
   retrievalContext?: string[];
 }
 
-// 评估目标输入输出类型
+// Evaluation target input/output types
 export interface TargetInput {
   userInput: string;
   context?: string[];
@@ -156,18 +156,18 @@ export type EvaluationDisplayType = Pick<
   totalCount: number;
 };
 
-export type EvaluationItemDisplayType = EvalItemSchemaType & {
+export type EvaluationItemDisplayType = EvaluationItemSchemaType & {
   evalItemId: string;
 };
 
-// 验证结果类型
+// Validation result types
 export interface ValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
 }
 
-// 导入结果类型
+// Import result types
 export interface ImportResult {
   success: boolean;
   importedCount: number;
@@ -193,19 +193,19 @@ export interface CreateMetricParams {
   name: string;
   description?: string;
   type: 'ai_model';
-  dependencies?: MetricDependency[]; // 添加依赖声明
-  config?: AiModelConfig; // 改为可选
+  dependencies?: MetricDependency[]; // Add dependency declarations
+  config?: AiModelConfig; // Make optional
 }
 
 export interface CreateEvaluationParams {
   name: string;
   description?: string;
   datasetId: string;
-  target: EvalTarget; // 仅支持workflow类型的target配置
-  evaluators: EvaluatorSchema[]; // 替换metricIds为evaluators
+  target: EvalTarget; // Only supports workflow type target configuration
+  evaluators: EvaluatorSchema[]; // Replace metricIds with evaluators
 }
 
-// 队列作业数据类型
+// Queue job data types
 export interface EvaluationTaskJobData {
   evalId: string;
 }

@@ -8,7 +8,6 @@ import type {
 } from '@fastgpt/global/core/evaluation/type';
 import type { AuthModeType } from '@fastgpt/service/support/permission/type';
 import { Types } from '@fastgpt/service/common/mongo';
-// 移除未使用的导入
 
 vi.mock('@fastgpt/service/support/permission/controller', () => ({
   parseHeaderCert: vi.fn()

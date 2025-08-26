@@ -22,7 +22,7 @@ async function handler(
       authToken: true
     });
 
-    addLog.info('[Evaluation] 评估任务统计信息查询成功', {
+    addLog.info('[Evaluation] Evaluation task statistics query successful', {
       evaluationId,
       total: stats.total,
       completed: stats.completed,
@@ -31,7 +31,7 @@ async function handler(
 
     return stats;
   } catch (error) {
-    addLog.error('[Evaluation] 查询评估任务统计信息失败', {
+    addLog.error('[Evaluation] Failed to query evaluation task statistics', {
       evaluationId: req.query?.evaluationId,
       error
     });

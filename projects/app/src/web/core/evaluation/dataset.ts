@@ -1,28 +1,25 @@
 import { DELETE, GET, POST, PUT } from '@/web/common/api/request';
+import type { ListDatasetsResponse } from '@fastgpt/global/core/evaluation/api';
+import type { ListDatasetsRequest } from '@fastgpt/global/core/evaluation/api';
 import type {
   CreateDatasetParams,
   UpdateDatasetParams,
-  EvalDatasetSchemaType,
+  EvaluationDatasetSchemaType,
   ImportResult
 } from '@fastgpt/global/core/evaluation/type';
-import type { PaginationResponse, PaginationProps } from '@fastgpt/web/common/fetch/type';
-
 // ==================== 数据集管理 API ====================
 
 export const createDataset = (data: CreateDatasetParams) =>
-  POST<EvalDatasetSchemaType>('/core/evaluation/dataset/create', data);
+  POST<EvaluationDatasetSchemaType>('/core/evaluation/dataset/create', data);
 
-export const getDatasetList = (
-  data: PaginationProps<{
-    searchKey?: string;
-  }>
-) => POST<PaginationResponse<EvalDatasetSchemaType>>('/core/evaluation/dataset/list', data);
+export const getDatasetList = (data: ListDatasetsRequest) =>
+  POST<ListDatasetsResponse>('/core/evaluation/dataset/list', data);
 
 export const getDatasetDetail = (datasetId: string) =>
-  GET<EvalDatasetSchemaType>(`/core/evaluation/dataset/detail?id=${datasetId}`);
+  GET<EvaluationDatasetSchemaType>(`/core/evaluation/dataset/detail?id=${datasetId}`);
 
 export const updateDataset = (datasetId: string, data: UpdateDatasetParams) =>
-  PUT<EvalDatasetSchemaType>(`/core/evaluation/dataset/update?id=${datasetId}`, data);
+  PUT<EvaluationDatasetSchemaType>(`/core/evaluation/dataset/update?id=${datasetId}`, data);
 
 export const deleteDataset = (datasetId: string) =>
   DELETE(`/core/evaluation/dataset/delete?id=${datasetId}`);

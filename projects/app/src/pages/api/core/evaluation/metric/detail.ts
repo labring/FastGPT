@@ -17,7 +17,7 @@ async function handler(req: ApiRequestProps<{}, MetricDetailQuery>): Promise<Met
       authToken: true
     });
 
-    addLog.info('[Evaluation Metric] 指标详情查询成功', {
+    addLog.info('[Evaluation Metric] Metric details retrieved successfully', {
       metricId: id,
       name: metric.name,
       type: metric.type
@@ -25,7 +25,7 @@ async function handler(req: ApiRequestProps<{}, MetricDetailQuery>): Promise<Met
 
     return metric;
   } catch (error) {
-    addLog.error('[Evaluation Metric] 获取指标详情失败', {
+    addLog.error('[Evaluation Metric] Failed to get metric details', {
       metricId: req.query.id,
       error
     });

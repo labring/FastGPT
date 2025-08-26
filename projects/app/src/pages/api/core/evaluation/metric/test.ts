@@ -2,10 +2,10 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { EvaluationMetricService } from '@fastgpt/service/core/evaluation/metric';
 import { createEvaluatorInstance } from '@fastgpt/service/core/evaluation/evaluator';
-import type { TestMetricBody, TestMetricResponse } from '@fastgpt/global/core/evaluation/api';
+import type { TestMetricRequest, TestMetricResponse } from '@fastgpt/global/core/evaluation/api';
 import { addLog } from '@fastgpt/service/common/system/log';
 
-async function handler(req: ApiRequestProps<TestMetricBody>) {
+async function handler(req: ApiRequestProps<TestMetricRequest>) {
   try {
     if (req.method !== 'POST') {
       return Promise.reject('Method not allowed');
@@ -13,7 +13,6 @@ async function handler(req: ApiRequestProps<TestMetricBody>) {
 
     const { metricId, testCase } = req.body;
 
-    // 验证必填字段
     if (!metricId) {
       return Promise.reject('Metric ID is required');
     }
@@ -21,8 +20,6 @@ async function handler(req: ApiRequestProps<TestMetricBody>) {
     if (!testCase) {
       return Promise.reject('Test case is required');
     }
-
-    // 验证测试用例格式
     if (!testCase.userInput) {
       return Promise.reject('Test case must include userInput');
     }
@@ -35,22 +32,20 @@ async function handler(req: ApiRequestProps<TestMetricBody>) {
       return Promise.reject('Test case must include actualOutput');
     }
 
-    // 获取metric配置
     const metric = await EvaluationMetricService.getMetric(metricId, {
       req,
       authToken: true
     });
 
-    // 创建evaluator进行测试，使用默认的运行时配置
     const evaluatorConfig = {
       metric,
-      runtimeConfig: {} // 测试时使用默认配置
+      runtimeConfig: {}
     };
 
     const evaluatorInstance = createEvaluatorInstance(evaluatorConfig);
     const result = await evaluatorInstance.evaluate(testCase);
 
-    addLog.info('[Evaluation Metric] 指标测试成功', {
+    addLog.info('[Evaluation Metric] Metric test completed successfully', {
       metricId,
       score: result.score,
       hasError: !!result.error
@@ -58,7 +53,7 @@ async function handler(req: ApiRequestProps<TestMetricBody>) {
 
     return result;
   } catch (error) {
-    addLog.error('[Evaluation Metric] 指标测试失败', {
+    addLog.error('[Evaluation Metric] Failed to test metric', {
       metricId: req.body?.metricId,
       error
     });

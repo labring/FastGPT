@@ -45,7 +45,7 @@ import type {
   EvaluationDisplayType,
   EvaluationItemDisplayType
 } from '@fastgpt/global/core/evaluation/type';
-import type { UpdateEvaluationItemBody } from '@fastgpt/global/core/evaluation/api';
+import type { UpdateEvaluationItemRequest } from '@fastgpt/global/core/evaluation/api';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const formatEvaluationStatus = (item: { status: number; errorMessage?: string }, t: TFunction) => {
@@ -111,7 +111,7 @@ const EvaluationDetailModal = ({
     pageSize,
     total,
     getData: fetchData
-  } = usePagination(getEvalItemsList, {
+  } = usePagination<any, EvaluationItemDisplayType>(getEvalItemsList, {
     defaultPageSize: 20,
     params: {
       evalId: evalDetail._id,
@@ -171,7 +171,7 @@ const EvaluationDetailModal = ({
   });
 
   const { runAsync: updateItem, loading: isLoadingUpdate } = useRequest2(
-    async (data: UpdateEvaluationItemBody) => {
+    async (data: UpdateEvaluationItemRequest) => {
       await updateEvalItem({ ...data, evalItemId: evalItem.evalItemId });
     },
     {
@@ -182,7 +182,7 @@ const EvaluationDetailModal = ({
     }
   );
 
-  const { register, handleSubmit } = useForm<UpdateEvaluationItemBody>();
+  const { register, handleSubmit } = useForm<UpdateEvaluationItemRequest>();
 
   return (
     <>

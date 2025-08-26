@@ -2,15 +2,17 @@ import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fe
 import type {
   CreateEvaluationParams,
   EvaluationSchemaType,
-  EvalItemSchemaType,
+  EvaluationItemSchemaType,
   CreateMetricParams,
-  EvalMetricSchemaType,
+  EvaluationMetricSchemaType,
   CreateDatasetParams,
-  EvalDatasetSchemaType,
+  EvaluationDatasetSchemaType,
   UpdateDatasetParams,
   MetricResult,
   ImportResult,
-  EvalCase
+  EvalCase,
+  EvaluationDisplayType,
+  EvaluationItemDisplayType
 } from './type';
 
 // ===== Common Utility Types =====
@@ -19,26 +21,27 @@ export type IdQuery = { id: string };
 
 // ===== Evaluation API Types =====
 
-export type CreateEvaluationBody = CreateEvaluationParams;
+export type CreateEvaluationRequest = CreateEvaluationParams;
 export type CreateEvaluationResponse = EvaluationSchemaType;
 
-export type UpdateEvaluationBody = Partial<CreateEvaluationParams>;
+export type UpdateEvaluationRequest = Partial<CreateEvaluationParams>;
 export type UpdateEvaluationResponse = MessageResponse;
 
 export type EvaluationDetailResponse = EvaluationSchemaType;
 
 export type DeleteEvaluationResponse = MessageResponse;
 
-export type ListEvaluationsBody = PaginationProps<{
+export type ListEvaluationsRequest = PaginationProps<{
   searchKey?: string;
 }>;
+export type ListEvaluationsResponse = PaginationResponse<EvaluationDisplayType>;
 
-export type StartEvaluationBody = {
+export type StartEvaluationRequest = {
   evaluationId: string;
 };
 export type StartEvaluationResponse = MessageResponse;
 
-export type StopEvaluationBody = {
+export type StopEvaluationRequest = {
   evaluationId: string;
 };
 export type StopEvaluationResponse = MessageResponse;
@@ -54,11 +57,12 @@ export type EvaluationStatsResponse = {
 
 // ===== Evaluation Item API Types =====
 
-export type ListEvaluationItemsBody = PaginationProps<{
+export type ListEvaluationItemsRequest = PaginationProps<{
   evalId: string;
 }>;
+export type ListEvaluationItemsResponse = PaginationResponse<EvaluationItemDisplayType>;
 
-export type UpdateEvaluationItemBody = {
+export type UpdateEvaluationItemRequest = {
   evalItemId: string;
   userInput?: string;
   expectedOutput?: string;
@@ -67,14 +71,14 @@ export type UpdateEvaluationItemBody = {
 export type UpdateEvaluationItemResponse = MessageResponse;
 
 export type EvaluationItemDetailResponse = {
-  item: EvalItemSchemaType;
+  item: EvaluationItemSchemaType;
   dataItem: any;
   response?: string;
   result?: any;
   score?: number;
 };
 
-export type RetryEvaluationItemBody = {
+export type RetryEvaluationItemRequest = {
   evalItemId: string;
 };
 export type RetryEvaluationItemResponse = MessageResponse;
@@ -83,21 +87,22 @@ export type DeleteEvaluationItemResponse = MessageResponse;
 
 // ===== Metric API Types =====
 
-export type CreateMetricBody = CreateMetricParams;
-export type CreateMetricResponse = EvalMetricSchemaType;
+export type CreateMetricRequest = CreateMetricParams;
+export type CreateMetricResponse = EvaluationMetricSchemaType;
 
-export type UpdateMetricBody = Partial<CreateMetricParams>;
+export type UpdateMetricRequest = Partial<CreateMetricParams>;
 export type UpdateMetricResponse = MessageResponse;
 
-export type MetricDetailResponse = EvalMetricSchemaType;
+export type MetricDetailResponse = EvaluationMetricSchemaType;
 
 export type DeleteMetricResponse = MessageResponse;
 
-export type ListMetricsBody = PaginationProps<{
+export type ListMetricsRequest = PaginationProps<{
   searchKey?: string;
 }>;
+export type ListMetricsResponse = PaginationResponse<EvaluationMetricSchemaType>;
 
-export type TestMetricBody = {
+export type TestMetricRequest = {
   metricId: string;
   testCase: EvalCase;
 };
@@ -105,19 +110,20 @@ export type TestMetricResponse = MetricResult;
 
 // ===== Dataset API Types =====
 
-export type CreateDatasetBody = CreateDatasetParams;
-export type CreateDatasetResponse = EvalDatasetSchemaType;
+export type CreateDatasetRequest = CreateDatasetParams;
+export type CreateDatasetResponse = EvaluationDatasetSchemaType;
 
-export type UpdateDatasetBody = UpdateDatasetParams;
+export type UpdateDatasetRequest = UpdateDatasetParams;
 export type UpdateDatasetResponse = MessageResponse;
 
-export type DatasetDetailResponse = EvalDatasetSchemaType;
+export type DatasetDetailResponse = EvaluationDatasetSchemaType;
 
 export type DeleteDatasetResponse = MessageResponse;
 
-export type ListDatasetsBody = PaginationProps<{
+export type ListDatasetsRequest = PaginationProps<{
   searchKey?: string;
 }>;
+export type ListDatasetsResponse = PaginationResponse<EvaluationDatasetSchemaType>;
 
 export type ImportDatasetResponse = ImportResult;
 
@@ -145,4 +151,12 @@ export type DeleteEvaluationItemQuery = {
 export type ExportEvaluationItemsQuery = {
   evaluationId: string;
   format?: string;
+};
+export type RetryFailedItemsBody = {
+  evaluationId: string;
+};
+
+export type RetryFailedItemsResponse = {
+  message: string;
+  retryCount: number;
 };

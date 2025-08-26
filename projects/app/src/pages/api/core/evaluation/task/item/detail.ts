@@ -22,7 +22,7 @@ async function handler(
       authToken: true
     });
 
-    addLog.info('[Evaluation] 评估项详情查询成功', {
+    addLog.info('[Evaluation] Evaluation item details query successful', {
       evalItemId: id,
       hasResponse: !!result.response,
       score: result.score
@@ -30,7 +30,7 @@ async function handler(
 
     return result;
   } catch (error) {
-    addLog.error('[Evaluation] 查询评估项详情失败', {
+    addLog.error('[Evaluation] Failed to query evaluation item details', {
       evalItemId: req.query?.id,
       error
     });

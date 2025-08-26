@@ -2,13 +2,13 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { EvaluationTaskService } from '@fastgpt/service/core/evaluation/task';
 import type {
-  StartEvaluationBody,
+  StartEvaluationRequest,
   StartEvaluationResponse
 } from '@fastgpt/global/core/evaluation/api';
 import { addLog } from '@fastgpt/service/common/system/log';
 
 async function handler(
-  req: ApiRequestProps<StartEvaluationBody>
+  req: ApiRequestProps<StartEvaluationRequest>
 ): Promise<StartEvaluationResponse> {
   try {
     if (req.method !== 'POST') {
@@ -26,13 +26,13 @@ async function handler(
       authToken: true
     });
 
-    addLog.info('[Evaluation] 评估任务启动成功', {
+    addLog.info('[Evaluation] Evaluation task started successfully', {
       evaluationId
     });
 
     return { message: 'Evaluation started successfully' };
   } catch (error) {
-    addLog.error('[Evaluation] 启动评估任务失败', {
+    addLog.error('[Evaluation] Failed to start evaluation task', {
       evaluationId: req.body?.evaluationId,
       error
     });

@@ -116,7 +116,6 @@ describe('Task API Handler Tests (Direct Function Calls)', () => {
 
       const result = await createHandler(mockReq);
 
-      expect(checkTeamAIPoints).toHaveBeenCalled();
       expect(EvaluationTaskService.createEvaluation).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'Test Evaluation',
@@ -132,7 +131,7 @@ describe('Task API Handler Tests (Direct Function Calls)', () => {
       );
       expect(result).toEqual(mockEvaluation);
       expect(addLog.info).toHaveBeenCalledWith(
-        '[Evaluation] 评估任务创建成功',
+        '[Evaluation] Evaluation task created successfully',
         expect.objectContaining({
           evaluationId: mockEvaluation._id,
           name: mockEvaluation.name

@@ -7,7 +7,6 @@ import type {
 import { evaluationItemQueue, getEvaluationTaskWorker, getEvaluationItemWorker } from '../mq';
 import { MongoEvaluation, MongoEvalItem } from '../task/schema';
 import { MongoEvalDataset } from '../dataset/schema';
-import { MongoEvalMetric } from '../metric/schema';
 import { createTargetInstance } from '../target';
 import { createEvaluatorInstance } from '../evaluator';
 import { Types } from 'mongoose';
@@ -18,7 +17,7 @@ import { concatUsage } from '../../../support/wallet/usage/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { MetricResult } from '@fastgpt/global/core/evaluation/type';
 
-// 初始化评估 Workers
+// Initialize evaluation workers
 export const initEvaluationWorkers = () => {
   addLog.info('Init Evaluation Workers...');
 
@@ -28,31 +27,31 @@ export const initEvaluationWorkers = () => {
   return { taskWorker, itemWorker };
 };
 
-// 处理 AI Points 不足错误
+// Handle AI Points insufficient error
 const handleAiPointsError = async (evalId: string, error: any) => {
   if (error === TeamErrEnum.aiPointsNotEnough) {
     await MongoEvaluation.updateOne(
       { _id: new Types.ObjectId(evalId) },
       {
         $set: {
-          errorMessage: 'AI Points 余额不足，评估已暂停',
+          errorMessage: 'AI Points balance insufficient, evaluation paused',
           status: EvaluationStatusEnum.error
         }
       }
     );
 
-    // TODO: 发送通知给团队
-    addLog.warn(`[Evaluation] AI Points不足，评估任务暂停: ${evalId}`);
+    // TODO: Send notification to team
+    addLog.warn(`[Evaluation] AI Points insufficient, evaluation task paused: ${evalId}`);
     return;
   }
 
   throw error;
 };
 
-// 完成评估任务 - 简化版本，基于状态枚举统计
+// Complete evaluation task - simplified version based on status enum statistics
 const finishEvaluationTask = async (evalId: string) => {
   try {
-    // 简化的聚合查询：只基于状态统计
+    // Simplified aggregation query: based only on status statistics
     const [statsResult] = await MongoEvalItem.aggregate([
       {
         $match: { evalId: new Types.ObjectId(evalId) }
@@ -61,7 +60,7 @@ const finishEvaluationTask = async (evalId: string) => {
         $group: {
           _id: null,
           totalCount: { $sum: 1 },
-          // 各状态统计
+          // Statistics by status
           completedCount: {
             $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.completed] }, 1, 0] }
           },
@@ -74,7 +73,7 @@ const finishEvaluationTask = async (evalId: string) => {
           queuingCount: {
             $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.queuing] }, 1, 0] }
           },
-          // 只计算成功完成项的平均分
+          // Calculate average score only for successfully completed items
           avgScore: {
             $avg: {
               $cond: [
@@ -88,9 +87,9 @@ const finishEvaluationTask = async (evalId: string) => {
       }
     ]);
 
-    // 如果没有数据，返回（不应该发生）
+    // If no data, return (should not happen)
     if (!statsResult) {
-      addLog.warn(`[Evaluation] 评估任务无评估项数据: ${evalId}`);
+      addLog.warn(`[Evaluation] Evaluation task has no evaluation item data: ${evalId}`);
       return;
     }
 
@@ -103,39 +102,41 @@ const finishEvaluationTask = async (evalId: string) => {
       avgScore = 0
     } = statsResult;
 
-    // 检查是否真正完成
+    // Check if truly completed
     const pendingCount = evaluatingCount + queuingCount;
     if (pendingCount > 0) {
-      addLog.debug(`[Evaluation] 任务尚未完成: ${evalId}, 待处理项: ${pendingCount}`);
-      return; // 还有未完成的项，不更新任务状态
+      addLog.debug(
+        `[Evaluation] Task not yet completed: ${evalId}, pending items: ${pendingCount}`
+      );
+      return; // Still have incomplete items, do not update task status
     }
 
-    // 确定任务状态 - 基于状态枚举的简化逻辑
+    // Determine task status - simplified logic based on status enum
     let taskStatus: EvaluationStatusEnum;
     let errorMessage: string | undefined;
 
     if (errorCount === 0) {
-      // 没有失败项，全部成功
+      // No failed items, all successful
       taskStatus = EvaluationStatusEnum.completed;
     } else if (completedCount === 0) {
-      // 没有成功项，全部失败
+      // No successful items, all failed
       taskStatus = EvaluationStatusEnum.error;
-      errorMessage = `所有 ${totalCount} 个评估项都失败了`;
+      errorMessage = `All ${totalCount} evaluation items failed`;
     } else {
-      // 部分失败
+      // Partial failure
       const successRate = Math.round((completedCount / totalCount) * 100);
       if (successRate >= 80) {
-        // 成功率>=80%，标记为完成但记录错误
+        // Success rate >=80%, mark as completed but record error
         taskStatus = EvaluationStatusEnum.completed;
-        errorMessage = `${errorCount} 个评估项失败（成功率: ${successRate}%）`;
+        errorMessage = `${errorCount} evaluation items failed (success rate: ${successRate}%)`;
       } else {
-        // 成功率<80%，标记为错误
+        // Success rate <80%, mark as error
         taskStatus = EvaluationStatusEnum.error;
-        errorMessage = `${errorCount} 个评估项失败，成功率过低: ${successRate}%`;
+        errorMessage = `${errorCount} evaluation items failed, success rate too low: ${successRate}%`;
       }
     }
 
-    // 更新任务状态
+    // Update task status
     await MongoEvaluation.updateOne(
       { _id: new Types.ObjectId(evalId) },
       {
@@ -149,13 +150,13 @@ const finishEvaluationTask = async (evalId: string) => {
     );
 
     addLog.info(
-      `[Evaluation] 任务完成: ${evalId}, 状态: ${taskStatus}, 总数: ${totalCount}, ` +
-        `成功: ${completedCount}, 失败: ${errorCount}, 平均分: ${avgScore ? avgScore.toFixed(2) : 'N/A'}`
+      `[Evaluation] Task completed: ${evalId}, status: ${taskStatus}, total: ${totalCount}, ` +
+        `success: ${completedCount}, failed: ${errorCount}, avg score: ${avgScore ? avgScore.toFixed(2) : 'N/A'}`
     );
   } catch (error) {
-    addLog.error(`[Evaluation] 完成任务时发生错误: ${evalId}`, error);
+    addLog.error(`[Evaluation] Error occurred while completing task: ${evalId}`, error);
 
-    // 发生错误时，将任务标记为错误状态
+    // When error occurs, mark task as error status
     try {
       await MongoEvaluation.updateOne(
         { _id: new Types.ObjectId(evalId) },
@@ -163,24 +164,24 @@ const finishEvaluationTask = async (evalId: string) => {
           $set: {
             status: EvaluationStatusEnum.error,
             finishTime: new Date(),
-            errorMessage: `任务完成时发生系统错误: ${error instanceof Error ? error.message : '未知错误'}`
+            errorMessage: `System error occurred while completing task: ${error instanceof Error ? error.message : 'Unknown error'}`
           }
         }
       );
     } catch (updateError) {
-      addLog.error(`[Evaluation] 更新任务错误状态失败: ${evalId}`, updateError);
+      addLog.error(`[Evaluation] Failed to update task error status: ${evalId}`, updateError);
     }
   }
 };
 
-// 处理评估项错误
+// Handle evaluation item error
 const handleEvalItemError = async (evalItemId: string, error: any) => {
   const errorMessage = getErrText(error);
 
-  // 获取当前重试次数
+  // Get current retry count
   const evalItem = await MongoEvalItem.findById(evalItemId, 'retry');
   if (!evalItem) {
-    addLog.error(`[Evaluation] 评估项不存在: ${evalItemId}`);
+    addLog.error(`[Evaluation] Evaluation item does not exist: ${evalItemId}`);
     return;
   }
 
@@ -199,10 +200,13 @@ const handleEvalItemError = async (evalItemId: string, error: any) => {
     }
   );
 
-  addLog.error(`[Evaluation] 评估项处理失败: ${evalItemId}, 剩余重试次数: ${newRetryCount}`, error);
+  addLog.error(
+    `[Evaluation] Evaluation item processing failed: ${evalItemId}, remaining retries: ${newRetryCount}`,
+    error
+  );
 };
 
-// 创建合并的评估用量记录
+// Create merged evaluation usage record
 const createMergedEvaluationUsage = async (params: {
   evalId: string;
   teamId: string;
@@ -228,43 +232,43 @@ const createMergedEvaluationUsage = async (params: {
     listIndex
   });
 
-  addLog.debug(`[Evaluation] 记录用量: ${evalId}, ${type}, ${totalPoints}点`);
+  addLog.debug(`[Evaluation] Record usage: ${evalId}, ${type}, ${totalPoints} points`);
 };
 
-// 评估任务处理器
+// Evaluation task processor
 const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
   const { evalId } = job.data;
 
-  addLog.info(`[Evaluation] 开始处理评估任务: ${evalId}`);
+  addLog.info(`[Evaluation] Start processing evaluation task: ${evalId}`);
 
   try {
-    // 获取评估任务信息
+    // Get evaluation task information
     const evaluation = await MongoEvaluation.findById(evalId).lean();
     if (!evaluation) {
-      addLog.warn(`[Evaluation] 评估任务不存在: ${evalId}`);
+      addLog.warn(`[Evaluation] Evaluation task does not exist: ${evalId}`);
       return;
     }
 
-    // 加载数据集
+    // Load dataset
     const dataset = await MongoEvalDataset.findOne({
       _id: new Types.ObjectId(evaluation.datasetId),
       teamId: evaluation.teamId
     }).lean();
 
     if (!dataset) {
-      throw new Error('数据集加载失败');
+      throw new Error('Dataset loading failed');
     }
 
-    // 验证 target 和 evaluators 配置
+    // Validate target and evaluators configuration
     if (!evaluation.target || !evaluation.target.type || !evaluation.target.config) {
-      throw new Error('Target 配置无效');
+      throw new Error('Target configuration invalid');
     }
 
     if (!evaluation.evaluators || evaluation.evaluators.length === 0) {
-      throw new Error('Evaluators 配置无效');
+      throw new Error('Evaluators configuration invalid');
     }
 
-    // 为每个 dataItem 和每个 evaluator 创建评估项（原子性结构）
+    // Create evaluation items for each dataItem and each evaluator (atomic structure)
     const evalItems = [];
     for (const dataItem of dataset.dataItems) {
       for (const evaluator of evaluation.evaluators) {
@@ -279,11 +283,11 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
       }
     }
 
-    // 批量插入评估项
+    // Batch insert evaluation items
     const insertedItems = await MongoEvalItem.insertMany(evalItems);
-    addLog.info(`[Evaluation] 创建了 ${insertedItems.length} 个原子评估项`);
+    addLog.info(`[Evaluation] Created ${insertedItems.length} atomic evaluation items`);
 
-    // 提交到评估项队列进行并发处理
+    // Submit to evaluation item queue for concurrent processing
     const jobs = insertedItems.map((item, index) => ({
       name: `eval_item_${evalId}_${index}`,
       data: {
@@ -291,17 +295,19 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
         evalItemId: item._id.toString()
       },
       opts: {
-        delay: index * 100 // 添加小延迟避免同时启动过多任务
+        delay: index * 100 // Add small delay to avoid starting too many tasks simultaneously
       }
     }));
 
     await evaluationItemQueue.addBulk(jobs);
 
-    addLog.info(`[Evaluation] 任务分解完成: ${evalId}, 提交 ${jobs.length} 个评估项到队列`);
+    addLog.info(
+      `[Evaluation] Task decomposition completed: ${evalId}, submitted ${jobs.length} evaluation items to queue`
+    );
   } catch (error) {
-    addLog.error(`[Evaluation] 任务处理失败: ${evalId}`, error);
+    addLog.error(`[Evaluation] Task processing failed: ${evalId}`, error);
 
-    // 标记任务失败
+    // Mark task as failed
     await MongoEvaluation.updateOne(
       { _id: new Types.ObjectId(evalId) },
       {
@@ -315,35 +321,35 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
   }
 };
 
-// 评估项处理器
+// Evaluation item processor
 const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
   const { evalId, evalItemId } = job.data;
 
-  addLog.debug(`[Evaluation] 开始处理评估项: ${evalItemId}`);
+  addLog.debug(`[Evaluation] Start processing evaluation item: ${evalItemId}`);
 
   try {
-    // 获取评估项信息
+    // Get evaluation item information
     const evalItem = await MongoEvalItem.findById(evalItemId);
     if (!evalItem) {
-      throw new Error('评估项不存在');
+      throw new Error('Evaluation item does not exist');
     }
 
-    // 获取 evaluation 信息用于检查 AI Points
+    // Get evaluation information for AI Points check
     const evaluation = await MongoEvaluation.findById(evalId, 'teamId tmbId usageId');
     if (!evaluation) {
-      throw new Error('评估任务不存在');
+      throw new Error('Evaluation task does not exist');
     }
 
-    // 检查 AI Points
+    // Check AI Points
     await checkTeamAIPoints(evaluation.teamId);
 
-    // 更新状态为处理中
+    // Update status to processing
     await MongoEvalItem.updateOne(
       { _id: new Types.ObjectId(evalItemId) },
       { $set: { status: EvaluationStatusEnum.evaluating } }
     );
 
-    // 1. 调用评估目标
+    // 1. Call evaluation target
     const targetInstance = createTargetInstance(evalItem.target);
     const output = await targetInstance.execute({
       userInput: evalItem.dataItem.userInput,
@@ -351,7 +357,7 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
       globalVariables: evalItem.dataItem.globalVariables
     });
 
-    // 记录目标调用的用量
+    // Record usage from target call
     if (output.usage) {
       const totalPoints = output.usage.reduce(
         (sum: number, item: any) => sum + (item.totalPoints || 0),
@@ -367,7 +373,7 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
       });
     }
 
-    // 2. 执行评估器
+    // 2. Execute evaluator
     let result: MetricResult;
     let totalMetricPoints = 0;
 
@@ -382,12 +388,12 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
         retrievalContext: output.retrievalContext
       });
 
-      // 如果是 AI 模型指标，记录用量
+      // If it's an AI model metric, record usage
       if (evalItem.evaluator.metric.type === 'ai_model' && result.details?.usage) {
         totalMetricPoints += result.details.usage.totalPoints || 0;
       }
     } catch (error) {
-      // 评估器失败
+      // Evaluator failed
       result = {
         metricId: evalItem.evaluator.metric._id,
         metricName: evalItem.evaluator.metric.name,
@@ -396,7 +402,7 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
       };
     }
 
-    // 记录指标评估的用量
+    // Record usage from metric evaluation
     if (totalMetricPoints > 0) {
       await createMergedEvaluationUsage({
         evalId,
@@ -408,7 +414,7 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
       });
     }
 
-    // 3. 存储结果
+    // 3. Store results
     await MongoEvalItem.updateOne(
       { _id: new Types.ObjectId(evalItemId) },
       {
@@ -421,17 +427,17 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
       }
     );
 
-    addLog.debug(`[Evaluation] 评估项完成: ${evalItemId}, 分数: ${result.score}`);
+    addLog.debug(`[Evaluation] Evaluation item completed: ${evalItemId}, score: ${result.score}`);
   } catch (error) {
     await handleEvalItemError(evalItemId, error);
 
-    // 如果是 AI Points 不足，暂停整个任务
+    // If AI Points insufficient, pause entire task
     if (error === TeamErrEnum.aiPointsNotEnough) {
       await handleAiPointsError(evalId, error);
     }
   }
 
-  // 在 try-catch 之后检查是否所有评估项都完成了
+  // After try-catch, check if all evaluation items are completed
   try {
     const pendingCount = await MongoEvalItem.countDocuments({
       evalId: new Types.ObjectId(evalId),
@@ -442,6 +448,9 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
       await finishEvaluationTask(evalId);
     }
   } catch (finishError) {
-    addLog.error(`[Evaluation] 检查任务完成状态时发生错误: ${evalId}`, finishError);
+    addLog.error(
+      `[Evaluation] Error occurred while checking task completion status: ${evalId}`,
+      finishError
+    );
   }
 };

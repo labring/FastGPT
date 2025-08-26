@@ -2,7 +2,6 @@ import { beforeAll, afterAll, beforeEach, describe, test, expect, vi } from 'vit
 import { EvaluationTaskService } from '@fastgpt/service/core/evaluation/task';
 import { MongoEvaluation, MongoEvalItem } from '@fastgpt/service/core/evaluation/task/schema';
 import { MongoEvalDataset } from '@fastgpt/service/core/evaluation/dataset/schema';
-// MongoEvalTarget 已删除，Target现在嵌入在Evaluation中
 import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema';
 import type {
   CreateEvaluationParams,
@@ -313,7 +312,7 @@ describe('EvaluationTaskService', () => {
       });
 
       expect(addLog.info).toHaveBeenCalledWith(
-        expect.stringContaining(`任务已提交到队列: ${created._id}`)
+        expect.stringContaining(`Task submitted to queue: ${created._id}`)
       );
     });
 
@@ -394,7 +393,7 @@ describe('EvaluationTaskService', () => {
       });
 
       expect(addLog.info).toHaveBeenCalledWith(
-        expect.stringContaining(`任务已手动停止，并从队列中移除: ${testEvaluationId}`)
+        expect.stringContaining(`Task manually stopped and removed from queue: ${testEvaluationId}`)
       );
     });
   });
@@ -633,7 +632,9 @@ describe('EvaluationTaskService', () => {
         expect(retriedItem.retry).toBeGreaterThanOrEqual(1);
 
         expect(addLog.info).toHaveBeenCalledWith(
-          expect.stringContaining(`[Evaluation] 评估项已重置为排队状态并重新提交: ${itemId}`)
+          expect.stringContaining(
+            `Evaluation item reset to queuing status and resubmitted: ${itemId}`
+          )
         );
       });
 
@@ -1032,7 +1033,7 @@ describe('EvaluationTaskService', () => {
       expect(successItem?.evaluator_output?.score).toBe(90);
 
       expect(addLog.info).toHaveBeenCalledWith(
-        expect.stringContaining(`批量重试失败项: ${testEvaluationId}, 影响数量: 2`)
+        expect.stringContaining(`Batch retry failed items: ${testEvaluationId}, affected count: 2`)
       );
     });
   });

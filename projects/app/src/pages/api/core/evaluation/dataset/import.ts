@@ -5,7 +5,6 @@ import { getUploadModel } from '@fastgpt/service/common/file/multer';
 import { addLog } from '@fastgpt/service/common/system/log';
 import type { ImportDatasetResponse } from '@fastgpt/global/core/evaluation/api';
 import fs from 'fs';
-import Papa from 'papaparse';
 
 export const config = {
   api: {
@@ -23,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const upload = getUploadModel({
-      maxSize: 20 // 20MB
+      maxSize: 20
     });
 
     const { file } = await upload.getUploadFile(req, res);
@@ -36,97 +35,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    addLog.info('[Evaluation Dataset] 开始导入数据', {
+    addLog.info('[Evaluation Dataset] Starting data import', {
       datasetId,
       fileName: file.originalname,
       fileSize: file.size,
       mimeType: file.mimetype
     });
 
-    // 读取并解析文件内容
     const fileContent = fs.readFileSync(file.path);
-    let parsedData: any[];
-
-    if (file.mimetype === 'application/json' || file.originalname?.endsWith('.json')) {
-      try {
-        const jsonContent = fileContent.toString('utf-8');
-        parsedData = JSON.parse(jsonContent);
-
-        if (!Array.isArray(parsedData)) {
-          throw new Error('JSON file must contain an array of objects');
-        }
-      } catch (error) {
-        throw new Error(
-          `Invalid JSON format: ${error instanceof Error ? error.message : String(error)}`
-        );
+    const result = await EvaluationDatasetService.importDataFromFile(
+      datasetId,
+      fileContent,
+      file.originalname || '',
+      file.mimetype || '',
+      {
+        req,
+        authToken: true
       }
-    } else if (
-      file.mimetype === 'text/csv' ||
-      file.mimetype === 'application/csv' ||
-      file.originalname?.endsWith('.csv')
-    ) {
-      try {
-        const csvContent = fileContent.toString('utf-8');
+    );
 
-        // 使用 Papa Parse 进行更可靠的CSV解析
-        const parseResult = Papa.parse(csvContent, {
-          header: true,
-          skipEmptyLines: true,
-          transform: (value: string) => {
-            // 尝试转换数据类型
-            if (value === '') return null;
-            if (value === 'true') return true;
-            if (value === 'false') return false;
-
-            const num = Number(value);
-            if (!isNaN(num) && value.trim() !== '') {
-              return num;
-            }
-
-            return value;
-          }
-        });
-
-        if (parseResult.errors.length > 0) {
-          const errorMessages = parseResult.errors.map(
-            (err: any) => `Row ${err.row}: ${err.message}`
-          );
-          throw new Error(`CSV parsing errors: ${errorMessages.join('; ')}`);
-        }
-
-        parsedData = parseResult.data;
-
-        if (parsedData.length === 0) {
-          throw new Error('CSV file contains no data rows');
-        }
-      } catch (error) {
-        throw new Error(
-          `Invalid CSV format: ${error instanceof Error ? error.message : String(error)}`
-        );
-      }
-    } else {
-      throw new Error('Unsupported file format. Only JSON and CSV files are supported.');
-    }
-
-    // 验证数据不为空
-    if (!parsedData || parsedData.length === 0) {
-      throw new Error('File contains no data');
-    }
-
-    // 导入数据
-    const result = await EvaluationDatasetService.importData(datasetId, parsedData, {
-      req,
-      authToken: true
-    });
-
-    // 清理临时文件
     try {
       fs.unlinkSync(file.path);
     } catch (cleanupError: unknown) {
-      addLog.warn('[Evaluation Dataset] 临时文件清理失败', cleanupError as Record<string, any>);
+      addLog.warn(
+        '[Evaluation Dataset] Failed to clean up temporary file',
+        cleanupError as Record<string, any>
+      );
     }
 
-    addLog.info('[Evaluation Dataset] 数据导入完成', {
+    addLog.info('[Evaluation Dataset] Data import completed', {
       datasetId,
       fileName: file.originalname,
       success: result.success,
@@ -138,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       data: result
     });
   } catch (err) {
-    addLog.error('[Evaluation Dataset] 数据导入失败', {
+    addLog.error('[Evaluation Dataset] Failed to import data', {
       error: err,
       datasetId: req.body?.datasetId
     });

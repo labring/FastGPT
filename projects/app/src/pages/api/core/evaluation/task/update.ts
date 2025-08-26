@@ -2,14 +2,14 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { EvaluationTaskService } from '@fastgpt/service/core/evaluation/task';
 import type {
-  UpdateEvaluationBody,
+  UpdateEvaluationRequest,
   UpdateEvaluationResponse,
   UpdateEvaluationQuery
 } from '@fastgpt/global/core/evaluation/api';
 import { addLog } from '@fastgpt/service/common/system/log';
 
 async function handler(
-  req: ApiRequestProps<UpdateEvaluationBody, UpdateEvaluationQuery>
+  req: ApiRequestProps<UpdateEvaluationRequest, UpdateEvaluationQuery>
 ): Promise<UpdateEvaluationResponse> {
   try {
     const { id } = req.query;
@@ -19,7 +19,6 @@ async function handler(
       return Promise.reject('Evaluation ID is required');
     }
 
-    // 验证更新参数
     if (name !== undefined && !name?.trim()) {
       return Promise.reject('Evaluation name cannot be empty');
     }
@@ -36,14 +35,14 @@ async function handler(
       }
     );
 
-    addLog.info('[Evaluation] 评估任务更新成功', {
+    addLog.info('[Evaluation] Evaluation task updated successfully', {
       evaluationId: id,
       updates: { name, description }
     });
 
     return { message: 'Evaluation updated successfully' };
   } catch (error) {
-    addLog.error('[Evaluation] 更新评估任务失败', {
+    addLog.error('[Evaluation] Failed to update evaluation task', {
       evaluationId: req.query.id,
       error
     });

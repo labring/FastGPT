@@ -28,7 +28,6 @@ async function handler(
       format as 'json' | 'csv'
     );
 
-    // 设置响应头
     if (format === 'csv') {
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename=evaluation-${evaluationId}.csv`);
@@ -37,7 +36,7 @@ async function handler(
       res.setHeader('Content-Disposition', `attachment; filename=evaluation-${evaluationId}.json`);
     }
 
-    addLog.info('[Evaluation] 评估项导出成功', {
+    addLog.info('[Evaluation] Evaluation items exported successfully', {
       evaluationId,
       format,
       size: results.length
@@ -46,7 +45,7 @@ async function handler(
     res.write(results);
     res.end();
   } catch (error) {
-    addLog.error('[Evaluation] 导出评估项失败', {
+    addLog.error('[Evaluation] Failed to export evaluation items', {
       evaluationId: req.query?.evaluationId,
       format: req.query?.format,
       error

@@ -1,14 +1,17 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { EvaluationDatasetService } from '@fastgpt/service/core/evaluation/dataset';
-import type { CreateDatasetBody, CreateDatasetResponse } from '@fastgpt/global/core/evaluation/api';
+import type {
+  CreateDatasetRequest,
+  CreateDatasetResponse
+} from '@fastgpt/global/core/evaluation/api';
 import { addLog } from '@fastgpt/service/common/system/log';
 
-async function handler(req: ApiRequestProps<CreateDatasetBody>): Promise<CreateDatasetResponse> {
+async function handler(req: ApiRequestProps<CreateDatasetRequest>): Promise<CreateDatasetResponse> {
   try {
     const { name, description, dataFormat, columns } = req.body;
 
-    // 验证必填字段
+    // Validate required fields
     if (!name?.trim()) {
       return Promise.reject('Dataset name is required');
     }
@@ -17,7 +20,7 @@ async function handler(req: ApiRequestProps<CreateDatasetBody>): Promise<CreateD
       return Promise.reject('Dataset columns are required');
     }
 
-    // 验证列定义
+    // Validate column definitions
     for (const column of columns) {
       if (!column.name?.trim()) {
         return Promise.reject('Column name is required');
@@ -27,7 +30,7 @@ async function handler(req: ApiRequestProps<CreateDatasetBody>): Promise<CreateD
       }
     }
 
-    // 检查列名重复
+    // Check for duplicate column names
     const columnNames = columns.map((col) => col.name.trim());
     const uniqueNames = new Set(columnNames);
     if (columnNames.length !== uniqueNames.size) {
@@ -47,7 +50,7 @@ async function handler(req: ApiRequestProps<CreateDatasetBody>): Promise<CreateD
       }
     );
 
-    addLog.info('[Evaluation Dataset] 数据集创建成功', {
+    addLog.info('[Evaluation Dataset] Dataset created successfully', {
       datasetId: dataset._id,
       name: dataset.name,
       columnCount: dataset.columns.length
@@ -55,7 +58,7 @@ async function handler(req: ApiRequestProps<CreateDatasetBody>): Promise<CreateD
 
     return dataset;
   } catch (error) {
-    addLog.error('[Evaluation Dataset] 创建数据集失败', error);
+    addLog.error('[Evaluation Dataset] Failed to create dataset', error);
     return Promise.reject(error);
   }
 }

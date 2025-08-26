@@ -1,15 +1,15 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { EvaluationTaskService } from '@fastgpt/service/core/evaluation/task';
-import type { EvalItemSchemaType } from '@fastgpt/global/core/evaluation/type';
+import type { EvaluationItemSchemaType } from '@fastgpt/global/core/evaluation/type';
 import type {
-  UpdateEvaluationItemBody,
+  UpdateEvaluationItemRequest,
   UpdateEvaluationItemResponse
 } from '@fastgpt/global/core/evaluation/api';
 import { addLog } from '@fastgpt/service/common/system/log';
 
 async function handler(
-  req: ApiRequestProps<UpdateEvaluationItemBody>
+  req: ApiRequestProps<UpdateEvaluationItemRequest>
 ): Promise<UpdateEvaluationItemResponse> {
   try {
     if (req.method !== 'PUT') {
@@ -22,8 +22,7 @@ async function handler(
       return Promise.reject('Evaluation item ID is required');
     }
 
-    // 构建更新对象
-    const updates: Partial<EvalItemSchemaType> = {};
+    const updates: Partial<EvaluationItemSchemaType> = {};
 
     if (userInput !== undefined || expectedOutput !== undefined || variables !== undefined) {
       updates.dataItem = {
@@ -40,14 +39,14 @@ async function handler(
       authToken: true
     });
 
-    addLog.info('[Evaluation] 评估项更新成功', {
+    addLog.info('[Evaluation] Evaluation item updated successfully', {
       evalItemId,
       updates: { userInput, expectedOutput, variables }
     });
 
     return { message: 'Evaluation item updated successfully' };
   } catch (error) {
-    addLog.error('[Evaluation] 更新评估项失败', {
+    addLog.error('[Evaluation] Failed to update evaluation item', {
       evalItemId: req.body?.evalItemId,
       error
     });

@@ -5,20 +5,11 @@ import { getFakeUsers } from '@test/datas/users';
 import { EvaluationDatasetService } from '@fastgpt/service/core/evaluation/dataset';
 import { EvaluationMetricService } from '@fastgpt/service/core/evaluation/metric';
 import { EvaluationTaskService } from '@fastgpt/service/core/evaluation/task';
-import {
-  evaluationTaskQueue,
-  evaluationItemQueue,
-  getEvaluationTaskWorker,
-  getEvaluationItemWorker
-} from '@fastgpt/service/core/evaluation/mq';
-
-// Processors
-import { initEvaluationWorkers } from '@fastgpt/service/core/evaluation/processor';
+import { evaluationTaskQueue, evaluationItemQueue } from '@fastgpt/service/core/evaluation/mq';
 
 // Schemas
 import { MongoEvaluation, MongoEvalItem } from '@fastgpt/service/core/evaluation/task/schema';
 import { MongoEvalDataset } from '@fastgpt/service/core/evaluation/dataset/schema';
-// MongoEvalTarget 已删除，Target现在嵌入在Evaluation中
 import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema';
 
 // Types

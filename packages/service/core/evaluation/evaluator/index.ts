@@ -6,7 +6,6 @@ import type {
 } from '@fastgpt/global/core/evaluation/type';
 import { getAppEvaluationScore } from './scoring';
 
-// 评估器基类
 export abstract class Evaluator {
   protected config: any;
   protected metricId: string;
@@ -25,7 +24,6 @@ export abstract class Evaluator {
   abstract validate(): Promise<boolean>;
 }
 
-// AI 模型评估器实现
 export class AiModelEvaluator extends Evaluator {
   protected config: AiModelConfig;
   protected runtimeConfig: { llm?: string };
@@ -38,14 +36,12 @@ export class AiModelEvaluator extends Evaluator {
 
   async evaluate(evalCase: EvalCase): Promise<MetricResult> {
     try {
-      // 使用运行时配置的模型，如果没有则使用配置中的模型
       const modelToUse = this.runtimeConfig.llm || this.config.llm;
 
       if (!modelToUse) {
         throw new Error('No LLM model specified in runtime config or metric config');
       }
 
-      // 使用现有的 AI 评估功能
       const { score, usage } = await getAppEvaluationScore({
         userInput: evalCase.userInput || '',
         appAnswer: evalCase.actualOutput || '',
@@ -80,7 +76,6 @@ export class AiModelEvaluator extends Evaluator {
 
   async validate(): Promise<boolean> {
     try {
-      // 检查是否有可用的模型配置
       const hasModel = this.runtimeConfig.llm || this.config.llm;
       return Boolean(hasModel);
     } catch (error) {
@@ -89,7 +84,6 @@ export class AiModelEvaluator extends Evaluator {
   }
 }
 
-// 评估器工厂 - 当前仅支持ai_model类型
 export function createEvaluatorInstance(evaluatorConfig: EvaluatorSchema): Evaluator {
   switch (evaluatorConfig.metric.type) {
     case 'ai_model':

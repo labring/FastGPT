@@ -1,18 +1,17 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { EvaluationDatasetService } from '@fastgpt/service/core/evaluation/dataset';
-import type { EvalDatasetSchemaType } from '@fastgpt/global/core/evaluation/type';
-import type { PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import type { ListDatasetsBody } from '@fastgpt/global/core/evaluation/api';
+import type {
+  ListDatasetsRequest,
+  ListDatasetsResponse
+} from '@fastgpt/global/core/evaluation/api';
 import { addLog } from '@fastgpt/service/common/system/log';
 
-async function handler(
-  req: ApiRequestProps<ListDatasetsBody>
-): Promise<PaginationResponse<EvalDatasetSchemaType>> {
+async function handler(req: ApiRequestProps<ListDatasetsRequest>): Promise<ListDatasetsResponse> {
   try {
     const { pageNum = 1, pageSize = 20, searchKey } = req.body;
 
-    // 验证分页参数
+    // Validate pagination parameters
     const pageNumInt = Number(pageNum);
     const pageSizeInt = Number(pageSize);
 
@@ -34,7 +33,7 @@ async function handler(
       searchKey?.trim()
     );
 
-    addLog.info('[Evaluation Dataset] 数据集列表查询成功', {
+    addLog.info('[Evaluation Dataset] Dataset list query successful', {
       pageNum: pageNumInt,
       pageSize: pageSizeInt,
       searchKey: searchKey?.trim(),
@@ -47,7 +46,7 @@ async function handler(
       total: result.total
     };
   } catch (error) {
-    addLog.error('[Evaluation Dataset] 查询数据集列表失败', error);
+    addLog.error('[Evaluation Dataset] Failed to query dataset list', error);
     return Promise.reject(error);
   }
 }

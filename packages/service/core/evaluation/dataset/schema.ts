@@ -3,17 +3,17 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
-import type { EvalDatasetSchemaType } from '@fastgpt/global/core/evaluation/type';
+import type { EvaluationDatasetSchemaType } from '@fastgpt/global/core/evaluation/type';
 const { Schema } = connectionMongo;
 
-const DatasetColumnSchema = new Schema({
+export const EvaluationDatasetColumnSchema = new Schema({
   name: { type: String, required: true },
   type: { type: String, enum: ['string', 'number', 'boolean'], required: true },
   required: { type: Boolean, default: false },
   description: String
 });
 
-const DatasetItemSchema = new Schema(
+export const EvaluationDatasetItemSchema = new Schema(
   {
     userInput: { type: String, required: true },
     expectedOutput: { type: String, required: true },
@@ -21,9 +21,9 @@ const DatasetItemSchema = new Schema(
     globalVariables: { type: Object, default: {} }
   },
   { strict: false }
-); // 允许动态字段
+); // Allow dynamic fields
 
-const EvalDatasetSchema = new Schema({
+export const EvaluationDatasetSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
@@ -38,30 +38,29 @@ const EvalDatasetSchema = new Schema({
   name: { type: String, required: true },
   description: String,
   dataFormat: { type: String, enum: ['csv', 'json'], default: 'csv' },
-  columns: [DatasetColumnSchema],
-  dataItems: [DatasetItemSchema],
+  columns: [EvaluationDatasetColumnSchema],
+  dataItems: [EvaluationDatasetItemSchema],
   createTime: { type: Date, default: () => new Date() },
   updateTime: { type: Date, default: () => new Date() }
 });
 
-// 索引
-EvalDatasetSchema.index({ teamId: 1, name: 1 });
-EvalDatasetSchema.index({ createTime: -1 });
+EvaluationDatasetSchema.index({ teamId: 1, name: 1 });
+EvaluationDatasetSchema.index({ createTime: -1 });
 
-// 中间件：更新时自动设置 updateTime
-EvalDatasetSchema.pre('save', function (next) {
+// Automatically set updateTime on update
+EvaluationDatasetSchema.pre('save', function (next) {
   this.updateTime = new Date();
   next();
 });
 
-EvalDatasetSchema.pre(['updateOne', 'updateMany', 'findOneAndUpdate'], function (next) {
+EvaluationDatasetSchema.pre(['updateOne', 'updateMany', 'findOneAndUpdate'], function (next) {
   this.set({ updateTime: new Date() });
   next();
 });
 
 export const EvalDatasetCollectionName = 'eval_datasets';
 
-export const MongoEvalDataset = getMongoModel<EvalDatasetSchemaType>(
+export const MongoEvalDataset = getMongoModel<EvaluationDatasetSchemaType>(
   EvalDatasetCollectionName,
-  EvalDatasetSchema
+  EvaluationDatasetSchema
 );

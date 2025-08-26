@@ -1,18 +1,14 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { EvaluationMetricService } from '@fastgpt/service/core/evaluation/metric';
-import type { EvalMetricSchemaType } from '@fastgpt/global/core/evaluation/type';
-import type { PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import type { ListMetricsBody } from '@fastgpt/global/core/evaluation/api';
+import type { ListMetricsRequest, ListMetricsResponse } from '@fastgpt/global/core/evaluation/api';
 import { addLog } from '@fastgpt/service/common/system/log';
 
-async function handler(
-  req: ApiRequestProps<ListMetricsBody>
-): Promise<PaginationResponse<EvalMetricSchemaType>> {
+async function handler(req: ApiRequestProps<ListMetricsRequest>): Promise<ListMetricsResponse> {
   try {
     const { pageNum = 1, pageSize = 20, searchKey } = req.body;
 
-    // 验证分页参数
+    // Validate pagination parameters
     const pageNumInt = Number(pageNum);
     const pageSizeInt = Number(pageSize);
 
@@ -34,7 +30,7 @@ async function handler(
       searchKey?.trim()
     );
 
-    addLog.info('[Evaluation Metric] 指标列表查询成功', {
+    addLog.info('[Evaluation Metric] Metric list query successful', {
       pageNum: pageNumInt,
       pageSize: pageSizeInt,
       searchKey: searchKey?.trim(),
@@ -47,7 +43,7 @@ async function handler(
       total: result.total
     };
   } catch (error) {
-    addLog.error('[Evaluation Metric] 查询指标列表失败', error);
+    addLog.error('[Evaluation Metric] Failed to query metric list', error);
     return Promise.reject(error);
   }
 }

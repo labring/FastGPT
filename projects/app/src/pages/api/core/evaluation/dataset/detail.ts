@@ -22,7 +22,7 @@ async function handler(
       authToken: true
     });
 
-    addLog.info('[Evaluation Dataset] 数据集详情查询成功', {
+    addLog.info('[Evaluation Dataset] Dataset details retrieved successfully', {
       datasetId: id,
       name: dataset.name,
       itemCount: dataset.dataItems?.length || 0
@@ -30,7 +30,7 @@ async function handler(
 
     return dataset;
   } catch (error) {
-    addLog.error('[Evaluation Dataset] 获取数据集详情失败', {
+    addLog.error('[Evaluation Dataset] Failed to get dataset details', {
       datasetId: req.query.id,
       error
     });

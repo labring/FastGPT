@@ -43,11 +43,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useEvaluationStore } from '@/web/core/evaluation/store/evaluation';
 import { createDataset, updateDataset, importDataset } from '@/web/core/evaluation/dataset';
-import type {
-  CreateDatasetParams,
-  DatasetColumn,
-  ImportResult
-} from '@fastgpt/global/core/evaluation/type';
+import type { CreateDatasetParams, ImportResult } from '@fastgpt/global/core/evaluation/type';
 
 const DatasetModal: React.FC = () => {
   const { t } = useTranslation();

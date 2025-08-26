@@ -5,20 +5,19 @@ import { EvaluationTaskService } from '@fastgpt/service/core/evaluation/task';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 import type { EvalTarget } from '@fastgpt/global/core/evaluation/type';
 import type {
-  CreateEvaluationBody,
+  CreateEvaluationRequest,
   CreateEvaluationResponse
 } from '@fastgpt/global/core/evaluation/api';
 import { validateTargetConfig } from '@fastgpt/service/core/evaluation/target';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 
 async function handler(
-  req: ApiRequestProps<CreateEvaluationBody>
+  req: ApiRequestProps<CreateEvaluationRequest>
 ): Promise<CreateEvaluationResponse> {
   try {
-    const { teamId } = await authCert({ req, authToken: true });
     const { name, description, datasetId, target, evaluators } = req.body;
 
-    // 验证必填字段
+    // Validate required fields
     if (!name?.trim()) {
       return Promise.reject('Evaluation name is required');
     }
@@ -36,17 +35,14 @@ async function handler(
       return Promise.reject('At least one evaluator is required');
     }
 
-    // 验证evaluators配置
+    // Validate evaluators configuration
     for (const evaluator of evaluators) {
       if (!evaluator.metric || !evaluator.metric._id || !evaluator.metric.type) {
         return Promise.reject('Each evaluator must contain a valid metric configuration');
       }
     }
 
-    // 检查 AI Points 余额
-    await checkTeamAIPoints(teamId);
-
-    // 创建评估任务
+    // Create evaluation task
     const evaluation = await EvaluationTaskService.createEvaluation(
       {
         name: name.trim(),
@@ -61,7 +57,7 @@ async function handler(
       }
     );
 
-    addLog.info('[Evaluation] 评估任务创建成功', {
+    addLog.info('[Evaluation] Evaluation task created successfully', {
       evaluationId: evaluation._id,
       name: evaluation.name,
       datasetId,
@@ -72,7 +68,7 @@ async function handler(
 
     return evaluation;
   } catch (error) {
-    addLog.error('[Evaluation] 创建评估任务失败', error);
+    addLog.error('[Evaluation] Failed to create evaluation task', error);
     return Promise.reject(error);
   }
 }

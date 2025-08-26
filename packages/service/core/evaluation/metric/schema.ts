@@ -3,10 +3,10 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
-import type { EvalMetricSchemaType } from '@fastgpt/global/core/evaluation/type';
+import type { EvaluationMetricSchemaType } from '@fastgpt/global/core/evaluation/type';
 const { Schema } = connectionMongo;
 
-const EvalMetricSchema = new Schema({
+export const EvaluationMetricSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
@@ -35,25 +35,24 @@ const EvalMetricSchema = new Schema({
   updateTime: { type: Date, default: () => new Date() }
 });
 
-// 索引
-EvalMetricSchema.index({ teamId: 1, name: 1 });
-EvalMetricSchema.index({ type: 1 });
-EvalMetricSchema.index({ createTime: -1 });
+EvaluationMetricSchema.index({ teamId: 1, name: 1 });
+EvaluationMetricSchema.index({ type: 1 });
+EvaluationMetricSchema.index({ createTime: -1 });
 
-// 中间件：更新时自动设置 updateTime
-EvalMetricSchema.pre('save', function (next) {
+// Automatically set updateTime on update
+EvaluationMetricSchema.pre('save', function (next) {
   this.updateTime = new Date();
   next();
 });
 
-EvalMetricSchema.pre(['updateOne', 'updateMany', 'findOneAndUpdate'], function (next) {
+EvaluationMetricSchema.pre(['updateOne', 'updateMany', 'findOneAndUpdate'], function (next) {
   this.set({ updateTime: new Date() });
   next();
 });
 
 export const EvalMetricCollectionName = 'eval_metrics';
 
-export const MongoEvalMetric = getMongoModel<EvalMetricSchemaType>(
+export const MongoEvalMetric = getMongoModel<EvaluationMetricSchemaType>(
   EvalMetricCollectionName,
-  EvalMetricSchema
+  EvaluationMetricSchema
 );

@@ -25,7 +25,7 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { useEvaluationStore } from '@/web/core/evaluation/store/evaluation';
 import { getMetricList, deleteMetric, testMetric } from '@/web/core/evaluation/metric';
-import type { EvalMetricSchemaType } from '@fastgpt/global/core/evaluation/type';
+import type { EvaluationMetricSchemaType } from '@fastgpt/global/core/evaluation/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
 interface MetricListProps {
@@ -63,7 +63,7 @@ const MetricList: React.FC<MetricListProps> = ({ searchKey, onSearchChange }) =>
     getData: fetchData,
     total,
     pageSize
-  } = usePagination(
+  } = usePagination<any, EvaluationMetricSchemaType>(
     (params) =>
       getMetricList({
         ...params,
@@ -102,7 +102,7 @@ const MetricList: React.FC<MetricListProps> = ({ searchKey, onSearchChange }) =>
     }
   });
 
-  const handleEdit = (metric: EvalMetricSchemaType) => {
+  const handleEdit = (metric: EvaluationMetricSchemaType) => {
     openMetricModal(metric);
   };
 
@@ -157,7 +157,7 @@ const MetricList: React.FC<MetricListProps> = ({ searchKey, onSearchChange }) =>
             </Tr>
           </Thead>
           <Tbody>
-            {metrics.map((metric: EvalMetricSchemaType) => (
+            {metrics.map((metric: EvaluationMetricSchemaType) => (
               <Tr key={metric._id}>
                 <Td fontWeight="medium">{metric.name}</Td>
                 <Td>

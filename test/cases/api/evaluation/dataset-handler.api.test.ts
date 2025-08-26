@@ -7,7 +7,6 @@ import { handler as listHandler } from '@/pages/api/core/evaluation/dataset/list
 import { handler as detailHandler } from '@/pages/api/core/evaluation/dataset/detail';
 import { handler as updateHandler } from '@/pages/api/core/evaluation/dataset/update';
 import { handler as deleteHandler } from '@/pages/api/core/evaluation/dataset/delete';
-import importHandler from '@/pages/api/core/evaluation/dataset/import';
 
 // Mock dependencies
 vi.mock('@fastgpt/service/core/evaluation/dataset', () => ({
@@ -109,7 +108,7 @@ describe('Dataset API Handler Tests (Direct Function Calls)', () => {
       );
       expect(result).toEqual(mockDataset);
       expect(addLog.info).toHaveBeenCalledWith(
-        '[Evaluation Dataset] 数据集创建成功',
+        '[Evaluation Dataset] Dataset created successfully',
         expect.objectContaining({
           datasetId: mockDataset._id,
           name: mockDataset.name,

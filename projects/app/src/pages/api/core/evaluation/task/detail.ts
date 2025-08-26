@@ -22,7 +22,7 @@ async function handler(
       authToken: true
     });
 
-    addLog.info('[Evaluation] 评估任务详情查询成功', {
+    addLog.info('[Evaluation] Evaluation task details retrieved successfully', {
       evaluationId: id,
       name: evaluation.name,
       status: evaluation.status
@@ -30,7 +30,7 @@ async function handler(
 
     return evaluation;
   } catch (error) {
-    addLog.error('[Evaluation] 获取评估任务详情失败', {
+    addLog.error('[Evaluation] Failed to get evaluation task details', {
       evaluationId: req.query.id,
       error
     });

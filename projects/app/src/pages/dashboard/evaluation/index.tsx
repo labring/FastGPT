@@ -73,7 +73,7 @@ const Evaluation = () => {
     getData: fetchTaskData,
     total,
     pageSize
-  } = usePagination(
+  } = usePagination<any, EvaluationDisplayType>(
     (params) =>
       getEvaluationList({
         ...params,

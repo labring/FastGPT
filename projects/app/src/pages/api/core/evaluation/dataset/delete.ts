@@ -22,13 +22,13 @@ async function handler(
       authToken: true
     });
 
-    addLog.info('[Evaluation Dataset] 数据集删除成功', {
+    addLog.info('[Evaluation Dataset] Dataset deleted successfully', {
       datasetId: id
     });
 
     return { message: 'Dataset deleted successfully' };
   } catch (error) {
-    addLog.error('[Evaluation Dataset] 删除数据集失败', {
+    addLog.error('[Evaluation Dataset] Failed to delete dataset', {
       datasetId: req.query.id,
       error
     });

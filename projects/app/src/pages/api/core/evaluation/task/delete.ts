@@ -22,13 +22,13 @@ async function handler(
       authToken: true
     });
 
-    addLog.info('[Evaluation] 评估任务删除成功', {
+    addLog.info('[Evaluation] Evaluation task deleted successfully', {
       evaluationId: id
     });
 
     return { message: 'Evaluation deleted successfully' };
   } catch (error) {
-    addLog.error('[Evaluation] 删除评估任务失败', {
+    addLog.error('[Evaluation] Failed to delete evaluation task', {
       evaluationId: req.query.id,
       error
     });

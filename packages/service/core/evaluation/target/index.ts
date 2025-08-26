@@ -32,13 +32,13 @@ import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
-// 评估目标基类
+// Evaluation target base class
 export abstract class EvaluationTarget {
   abstract execute(input: TargetInput): Promise<TargetOutput>;
   abstract validate(): Promise<boolean>;
 }
 
-// 工作流目标实现
+// Workflow target implementation
 export class WorkflowTarget extends EvaluationTarget {
   private config: WorkflowConfig;
 
@@ -50,19 +50,19 @@ export class WorkflowTarget extends EvaluationTarget {
   async execute(input: TargetInput): Promise<TargetOutput> {
     const startTime = Date.now();
 
-    // 获取应用信息
+    // Get application information
     const appData = await MongoApp.findById(this.config.appId);
     if (!appData) {
       throw new Error('App not found');
     }
 
-    // 获取用户信息和权限
+    // Get user information and permissions
     const [{ timezone, externalProvider }, { nodes, edges, chatConfig }] = await Promise.all([
       getUserChatInfoAndAuthTeamPoints(appData.tmbId),
       getAppLatestVersion(appData._id, appData)
     ]);
 
-    // 构造查询
+    // Construct query
     const query: UserChatItemValueItemType[] = [
       {
         type: ChatItemValueTypeEnum.text,
@@ -72,12 +72,12 @@ export class WorkflowTarget extends EvaluationTarget {
       }
     ];
 
-    // TODO: 将来可以根据 input.context 构造历史对话
+    // TODO: In the future, construct conversation history based on input.context
     const histories: any[] = [];
 
     const chatId = getNanoid();
 
-    // 执行工作流
+    // Execute workflow
     const { assistantResponses, flowUsages, flowResponses, system_memories, durationSeconds } =
       await dispatchWorkFlow({
         chatId,
@@ -103,13 +103,13 @@ export class WorkflowTarget extends EvaluationTarget {
 
     const response = removeDatasetCiteText(assistantResponses[0]?.text?.content || '', false);
 
-    // 构造用户问题对象
+    // Construct user question object
     const userQuestion: UserChatItemType = {
       obj: ChatRoleEnum.Human,
       value: query
     };
 
-    // 构造AI回答对象
+    // Construct AI response object
     const aiResponse: AIChatItemType = {
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
@@ -117,7 +117,7 @@ export class WorkflowTarget extends EvaluationTarget {
       [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
     };
 
-    // 保存聊天记录
+    // Save chat record
     await saveChat({
       chatId,
       appId: appData._id,
@@ -135,7 +135,7 @@ export class WorkflowTarget extends EvaluationTarget {
 
     return {
       actualOutput: response,
-      retrievalContext: [], // TODO: 从 workflow 结果中提取 retrieval context
+      retrievalContext: [], // TODO: Extract retrieval context from workflow results
       usage: flowUsages,
       responseTime: Date.now() - startTime
     };
@@ -151,7 +151,7 @@ export class WorkflowTarget extends EvaluationTarget {
   }
 }
 
-// 目标工厂 - 当前仅支持workflow类型
+// Target factory - currently only supports workflow type
 export function createTargetInstance(targetConfig: EvalTarget): EvaluationTarget {
   switch (targetConfig.type) {
     case 'workflow':
@@ -163,7 +163,7 @@ export function createTargetInstance(targetConfig: EvalTarget): EvaluationTarget
   }
 }
 
-// 工具函数 - 测试target配置的有效性
+// Utility function - test the validity of target configuration
 export async function validateTargetConfig(
   targetConfig: EvalTarget
 ): Promise<{ success: boolean; message: string }> {

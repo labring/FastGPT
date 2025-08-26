@@ -3,13 +3,13 @@ import { NextAPI } from '@/service/middleware/entry';
 import { EvaluationDatasetService } from '@fastgpt/service/core/evaluation/dataset';
 import type {
   DatasetUpdateQuery,
-  UpdateDatasetBody,
+  UpdateDatasetRequest,
   UpdateDatasetResponse
 } from '@fastgpt/global/core/evaluation/api';
 import { addLog } from '@fastgpt/service/common/system/log';
 
 async function handler(
-  req: ApiRequestProps<UpdateDatasetBody, DatasetUpdateQuery>
+  req: ApiRequestProps<UpdateDatasetRequest, DatasetUpdateQuery>
 ): Promise<UpdateDatasetResponse> {
   try {
     const { id } = req.query;
@@ -19,7 +19,7 @@ async function handler(
       return Promise.reject('Dataset ID is required');
     }
 
-    // 验证更新参数
+    // Validate update parameters
     if (name !== undefined && !name?.trim()) {
       return Promise.reject('Dataset name cannot be empty');
     }
@@ -29,7 +29,7 @@ async function handler(
         return Promise.reject('Dataset columns are required');
       }
 
-      // 验证列定义
+      // Validate column definitions
       for (const column of columns) {
         if (!column.name?.trim()) {
           return Promise.reject('Column name is required');
@@ -39,7 +39,7 @@ async function handler(
         }
       }
 
-      // 检查列名重复
+      // Check for duplicate column names
       const columnNames = columns.map((col) => col.name.trim());
       const uniqueNames = new Set(columnNames);
       if (columnNames.length !== uniqueNames.size) {
@@ -60,14 +60,14 @@ async function handler(
       }
     );
 
-    addLog.info('[Evaluation Dataset] 数据集更新成功', {
+    addLog.info('[Evaluation Dataset] Dataset updated successfully', {
       datasetId: id,
       updates: { name, description, columnCount: columns?.length }
     });
 
     return { message: 'Dataset updated successfully' };
   } catch (error) {
-    addLog.error('[Evaluation Dataset] 更新数据集失败', {
+    addLog.error('[Evaluation Dataset] Failed to update dataset', {
       datasetId: req.query.id,
       error
     });

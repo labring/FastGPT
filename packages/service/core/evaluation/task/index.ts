@@ -1,8 +1,7 @@
 import { MongoEvaluation, MongoEvalItem } from './schema';
-import { MongoEvalMetric } from '../metric/schema';
 import type {
   EvaluationSchemaType,
-  EvalItemSchemaType,
+  EvaluationItemSchemaType,
   CreateEvaluationParams,
   EvaluationDisplayType,
   EvaluationItemDisplayType
@@ -25,16 +24,19 @@ import {
 import { createTrainingUsage } from '../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { addLog } from '../../../common/system/log';
+import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 
 export class EvaluationTaskService {
-  // 创建评估任务
   static async createEvaluation(
     params: CreateEvaluationParams,
     auth: AuthModeType
   ): Promise<EvaluationSchemaType> {
     const { teamId, tmbId } = await validateResourceCreate(auth);
 
-    // 创建用量记录
+    // Check AI Points balance
+    await checkTeamAIPoints(teamId);
+
+    // Create usage record
     const { billId } = await createTrainingUsage({
       teamId,
       tmbId,
@@ -54,7 +56,6 @@ export class EvaluationTaskService {
     return evaluation.toObject();
   }
 
-  // 获取评估任务
   static async getEvaluation(
     evaluationId: string,
     auth: AuthModeType
@@ -74,7 +75,6 @@ export class EvaluationTaskService {
     return evaluation;
   }
 
-  // 更新评估任务
   static async updateEvaluation(
     evaluationId: string,
     updates: Partial<CreateEvaluationParams>,
@@ -87,27 +87,25 @@ export class EvaluationTaskService {
     checkUpdateResult(result, 'Evaluation');
   }
 
-  // 删除评估任务
   static async deleteEvaluation(evaluationId: string, auth: AuthModeType): Promise<void> {
     const { resourceFilter } = await validateResourceAccess(evaluationId, auth, 'Evaluation');
 
-    // 先从队列中移除相关任务，防止继续处理
+    // Remove related tasks from queue to prevent further processing
     await Promise.all([
       removeEvaluationTaskJob(evaluationId),
       removeEvaluationItemJobs(evaluationId)
     ]);
 
-    // 删除评估任务的所有评估项
+    // Delete all evaluation items for this evaluation task
     await MongoEvalItem.deleteMany({ evalId: evaluationId });
 
     const result = await MongoEvaluation.deleteOne(resourceFilter);
 
     checkDeleteResult(result, 'Evaluation');
 
-    addLog.info(`[Evaluation] 评估任务已删除，包含队列清理: ${evaluationId}`);
+    addLog.info(`[Evaluation] Evaluation task deleted including queue cleanup: ${evaluationId}`);
   }
 
-  // 获取评估任务列表
   static async listEvaluations(
     auth: AuthModeType,
     page: number = 1,
@@ -130,8 +128,6 @@ export class EvaluationTaskService {
             as: 'dataset'
           }
         },
-        // Target 信息已嵌入，不需要 lookup
-        // 不再需要lookup metrics，因为现在使用evaluators
         {
           $lookup: {
             from: 'teammembers',
@@ -223,7 +219,6 @@ export class EvaluationTaskService {
     return { evaluations, total };
   }
 
-  // 获取评估项列表
   static async listEvaluationItems(
     evaluationId: string,
     auth: AuthModeType,
@@ -233,7 +228,6 @@ export class EvaluationTaskService {
     items: EvaluationItemDisplayType[];
     total: number;
   }> {
-    // 验证评估任务访问权限
     await this.getEvaluation(evaluationId, auth);
 
     const skip = (page - 1) * pageSize;
@@ -257,7 +251,6 @@ export class EvaluationTaskService {
     return { items, total };
   }
 
-  // 启动评估任务
   static async startEvaluation(evaluationId: string, auth: AuthModeType): Promise<void> {
     const evaluation = await this.getEvaluation(evaluationId, auth);
 
@@ -265,21 +258,20 @@ export class EvaluationTaskService {
       throw new Error('Only queuing evaluations can be started');
     }
 
-    // 更新状态为处理中
+    // Update status to processing
     await MongoEvaluation.updateOne(
       { _id: evaluationId },
       { $set: { status: EvaluationStatusEnum.evaluating } }
     );
 
-    // 提交到队列
+    // Submit to queue
     await evaluationTaskQueue.add(`eval_task_${evaluationId}`, {
       evalId: evaluationId
     });
 
-    addLog.info(`[Evaluation] 任务已提交到队列: ${evaluationId}`);
+    addLog.info(`[Evaluation] Task submitted to queue: ${evaluationId}`);
   }
 
-  // 停止评估任务
   static async stopEvaluation(evaluationId: string, auth: AuthModeType): Promise<void> {
     const evaluation = await this.getEvaluation(evaluationId, auth);
 
@@ -289,13 +281,13 @@ export class EvaluationTaskService {
       throw new Error('Only running or queuing evaluations can be stopped');
     }
 
-    // 从队列中移除相关任务
+    // Remove related tasks from queue
     await Promise.all([
       removeEvaluationTaskJob(evaluationId),
       removeEvaluationItemJobs(evaluationId)
     ]);
 
-    // 更新状态为异常（手动停止）
+    // Update status to error (manually stopped)
     await MongoEvaluation.updateOne(
       { _id: evaluationId },
       {
@@ -307,7 +299,7 @@ export class EvaluationTaskService {
       }
     );
 
-    // 停止所有相关的评估项
+    // Stop all related evaluation items
     await MongoEvalItem.updateMany(
       {
         evalId: evaluationId,
@@ -322,10 +314,9 @@ export class EvaluationTaskService {
       }
     );
 
-    addLog.info(`[Evaluation] 任务已手动停止，并从队列中移除: ${evaluationId}`);
+    addLog.info(`[Evaluation] Task manually stopped and removed from queue: ${evaluationId}`);
   }
 
-  // 获取评估任务统计信息
   static async getEvaluationStats(
     evaluationId: string,
     auth: AuthModeType
@@ -377,7 +368,7 @@ export class EvaluationTaskService {
       }
     });
 
-    // 统计错误项
+    // Count error items
     result.error = await MongoEvalItem.countDocuments({
       evalId: evaluationId,
       errorMessage: { $ne: null }
@@ -386,26 +377,27 @@ export class EvaluationTaskService {
     return result;
   }
 
-  // ========================= 评估项相关接口 =========================
+  // ========================= Evaluation Item Related APIs =========================
 
-  // 获取评估项详情
-  static async getEvaluationItem(itemId: string, auth: AuthModeType): Promise<EvalItemSchemaType> {
+  static async getEvaluationItem(
+    itemId: string,
+    auth: AuthModeType
+  ): Promise<EvaluationItemSchemaType> {
     const item = await MongoEvalItem.findById(itemId).lean();
 
     if (!item) {
       throw new Error('Evaluation item not found');
     }
 
-    // 验证评估任务的访问权限
+    // Validate access permission for evaluation task
     await this.getEvaluation(item.evalId, auth);
 
     return item;
   }
 
-  // 更新评估项
   static async updateEvaluationItem(
     itemId: string,
-    updates: Partial<EvalItemSchemaType>,
+    updates: Partial<EvaluationItemSchemaType>,
     auth: AuthModeType
   ): Promise<void> {
     await this.getEvaluationItem(itemId, auth);
@@ -415,7 +407,6 @@ export class EvaluationTaskService {
     checkUpdateResult(result, 'Evaluation item');
   }
 
-  // 删除评估项
   static async deleteEvaluationItem(itemId: string, auth: AuthModeType): Promise<void> {
     await this.getEvaluationItem(itemId, auth);
 
@@ -424,21 +415,20 @@ export class EvaluationTaskService {
     checkDeleteResult(result, 'Evaluation item');
   }
 
-  // 重试评估项
   static async retryEvaluationItem(itemId: string, auth: AuthModeType): Promise<void> {
     const item = await this.getEvaluationItem(itemId, auth);
 
-    // 只有已完成且无错误的评估项不能重试
+    // Only completed evaluation items without errors cannot be retried
     if (item.status === EvaluationStatusEnum.completed && !item.errorMessage) {
       throw new Error('Only failed evaluation items can be retried');
     }
 
-    // 检查是否有错误信息或者处于可重试状态
+    // Check if there is error message or in retryable status
     if (!item.errorMessage && item.status !== EvaluationStatusEnum.queuing) {
       throw new Error('Evaluation item has no error to retry');
     }
 
-    // 更新状态
+    // Update status
     await MongoEvalItem.updateOne(
       { _id: itemId },
       {
@@ -448,32 +438,31 @@ export class EvaluationTaskService {
           evaluator_output: null,
           finishTime: null,
           errorMessage: null,
-          retry: Math.max(item.retry || 0, 1) // 确保至少有1次重试机会
+          retry: Math.max(item.retry || 0, 1) // Ensure at least 1 retry chance
         }
       }
     );
 
-    // 重新提交到队列
+    // Resubmit to queue
     await evaluationItemQueue.add(`eval_item_retry_${itemId}`, {
       evalId: item.evalId,
       evalItemId: itemId
     });
 
-    addLog.info(`[Evaluation] 评估项已重置为排队状态并重新提交: ${itemId}`);
+    addLog.info(`[Evaluation] Evaluation item reset to queuing status and resubmitted: ${itemId}`);
   }
 
-  // 批量重试失败的评估项
   static async retryFailedItems(evaluationId: string, auth: AuthModeType): Promise<number> {
     await this.getEvaluation(evaluationId, auth);
 
-    // 查找需要重试的项目
+    // Find items that need to be retried
     const itemsToRetry = await MongoEvalItem.find(
       {
         evalId: evaluationId,
         $or: [
-          // 失败状态的项
+          // Items with failed status
           { status: EvaluationStatusEnum.error },
-          // 或者有错误信息的项（不管状态）
+          // Or items with error messages (regardless of status)
           { errorMessage: { $ne: null } }
         ]
       },
@@ -484,7 +473,7 @@ export class EvaluationTaskService {
       return 0;
     }
 
-    // 批量更新状态
+    // Batch update status
     await MongoEvalItem.updateMany(
       {
         _id: { $in: itemsToRetry.map((item) => item._id) }
@@ -503,7 +492,7 @@ export class EvaluationTaskService {
       }
     );
 
-    // 批量重新提交到队列
+    // Batch resubmit to queue
     const jobs = itemsToRetry.map((item, index) => ({
       name: `eval_item_batch_retry_${evaluationId}_${index}`,
       data: {
@@ -511,23 +500,24 @@ export class EvaluationTaskService {
         evalItemId: item._id.toString()
       },
       opts: {
-        delay: index * 100 // 添加小延迟避免同时启动过多任务
+        delay: index * 100 // Add small delay to avoid starting too many tasks simultaneously
       }
     }));
 
     await evaluationItemQueue.addBulk(jobs);
 
-    addLog.info(`[Evaluation] 批量重试失败项: ${evaluationId}, 影响数量: ${itemsToRetry.length}`);
+    addLog.info(
+      `[Evaluation] Batch retry failed items: ${evaluationId}, affected count: ${itemsToRetry.length}`
+    );
 
     return itemsToRetry.length;
   }
 
-  // 获取评估项的详细结果
   static async getEvaluationItemResult(
     itemId: string,
     auth: AuthModeType
   ): Promise<{
-    item: EvalItemSchemaType;
+    item: EvaluationItemSchemaType;
     dataItem: any;
     response?: string;
     result?: any;
@@ -544,9 +534,9 @@ export class EvaluationTaskService {
     };
   }
 
-  // 删除应用时的清理钩子函数
+  // Cleanup hook function when deleting apps
   static async deleteAppHook(appIds: string[]): Promise<void> {
-    // 查找所有使用这些应用作为workflow目标的评估任务
+    // Find all evaluation tasks using these apps as workflow targets
     const evalJobs = await MongoEvaluation.find(
       {
         'target.type': 'workflow',
@@ -555,18 +545,18 @@ export class EvaluationTaskService {
       '_id status'
     ).lean();
 
-    // 处理每个评估任务
+    // Process each evaluation task
     for (const evalJob of evalJobs) {
       try {
         const evaluationId = String(evalJob._id);
 
-        // 从队列中移除相关任务
+        // Remove related tasks from queue
         await Promise.all([
           removeEvaluationTaskJob(evaluationId),
           removeEvaluationItemJobs(evaluationId)
         ]);
 
-        // 如果评估任务还在运行中，更新状态为错误（应用被删除）
+        // If evaluation task is still running, update status to error (app deleted)
         if (
           [EvaluationStatusEnum.evaluating, EvaluationStatusEnum.queuing].includes(evalJob.status)
         ) {
@@ -581,7 +571,7 @@ export class EvaluationTaskService {
             }
           );
 
-          // 停止所有相关的评估项
+          // Stop all related evaluation items
           await MongoEvalItem.updateMany(
             {
               evalId: evaluationId,
@@ -597,15 +587,15 @@ export class EvaluationTaskService {
           );
         }
 
-        addLog.info(`[Evaluation] 应用删除时清理评估任务: ${evaluationId}`);
+        addLog.info(`[Evaluation] Cleanup evaluation task when app deleted: ${evaluationId}`);
       } catch (error) {
-        addLog.error(`[Evaluation] 清理评估任务失败: ${evalJob._id}`, error);
+        addLog.error(`[Evaluation] Failed to cleanup evaluation task: ${evalJob._id}`, error);
         // Continue processing other evaluations even if one fails
       }
     }
   }
 
-  // 搜索评估项
+  // Search evaluation items
   static async searchEvaluationItems(
     evaluationId: string,
     auth: AuthModeType,
@@ -625,7 +615,7 @@ export class EvaluationTaskService {
 
     const { status, hasError, scoreRange, keyword, page = 1, pageSize = 20 } = options;
 
-    // 构建查询条件
+    // Build query conditions
     const filter: any = { evalId: evaluationId };
 
     if (status !== undefined) {
@@ -679,7 +669,7 @@ export class EvaluationTaskService {
     return { items, total };
   }
 
-  // 导出评估项结果
+  // Export evaluation item results
   static async exportEvaluationResults(
     evaluationId: string,
     auth: AuthModeType,
@@ -705,7 +695,7 @@ export class EvaluationTaskService {
 
       return Buffer.from(JSON.stringify(results, null, 2));
     } else {
-      // CSV格式
+      // CSV format
       if (items.length === 0) {
         return Buffer.from('');
       }
@@ -741,3 +731,4 @@ export class EvaluationTaskService {
     }
   }
 }
+export { MongoEvaluation };

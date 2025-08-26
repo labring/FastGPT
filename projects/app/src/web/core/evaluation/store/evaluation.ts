@@ -1,14 +1,14 @@
 import { create, devtools, immer } from '@fastgpt/web/common/zustand';
 import type {
-  EvalDatasetSchemaType,
-  EvalMetricSchemaType,
+  EvaluationDatasetSchemaType,
+  EvaluationMetricSchemaType,
   EvaluationDisplayType
 } from '@fastgpt/global/core/evaluation/type';
 
 export interface EvaluationState {
   // Data
-  datasets: EvalDatasetSchemaType[];
-  metrics: EvalMetricSchemaType[];
+  datasets: EvaluationDatasetSchemaType[];
+  metrics: EvaluationMetricSchemaType[];
   tasks: EvaluationDisplayType[];
 
   // UI State
@@ -26,20 +26,24 @@ export interface EvaluationState {
   showDatasetModal: boolean;
   showMetricModal: boolean;
   showTaskModal: boolean;
-  editingItem: EvalDatasetSchemaType | EvalMetricSchemaType | EvaluationDisplayType | null;
+  editingItem:
+    | EvaluationDatasetSchemaType
+    | EvaluationMetricSchemaType
+    | EvaluationDisplayType
+    | null;
 }
 
 export interface EvaluationActions {
   // Dataset actions
-  setDatasets: (datasets: EvalDatasetSchemaType[]) => void;
-  addDataset: (dataset: EvalDatasetSchemaType) => void;
-  updateDataset: (id: string, dataset: Partial<EvalDatasetSchemaType>) => void;
+  setDatasets: (datasets: EvaluationDatasetSchemaType[]) => void;
+  addDataset: (dataset: EvaluationDatasetSchemaType) => void;
+  updateDataset: (id: string, dataset: Partial<EvaluationDatasetSchemaType>) => void;
   removeDataset: (id: string) => void;
 
   // Metric actions
-  setMetrics: (metrics: EvalMetricSchemaType[]) => void;
-  addMetric: (metric: EvalMetricSchemaType) => void;
-  updateMetric: (id: string, metric: Partial<EvalMetricSchemaType>) => void;
+  setMetrics: (metrics: EvaluationMetricSchemaType[]) => void;
+  addMetric: (metric: EvaluationMetricSchemaType) => void;
+  updateMetric: (id: string, metric: Partial<EvaluationMetricSchemaType>) => void;
   removeMetric: (id: string) => void;
 
   // Task actions
@@ -57,9 +61,9 @@ export interface EvaluationActions {
   setLoading: (key: keyof EvaluationState['loading'], loading: boolean) => void;
 
   // Modal actions
-  openDatasetModal: (item?: EvalDatasetSchemaType) => void;
+  openDatasetModal: (item?: EvaluationDatasetSchemaType) => void;
   closeDatasetModal: () => void;
-  openMetricModal: (item?: EvalMetricSchemaType) => void;
+  openMetricModal: (item?: EvaluationMetricSchemaType) => void;
   closeMetricModal: () => void;
   openTaskModal: (item?: EvaluationDisplayType) => void;
   closeTaskModal: () => void;
@@ -85,19 +89,21 @@ export const useEvaluationStore = create<EvaluationState & EvaluationActions>()(
       editingItem: null,
 
       // Dataset actions
-      setDatasets: (datasets: EvalDatasetSchemaType[]) =>
+      setDatasets: (datasets: EvaluationDatasetSchemaType[]) =>
         set((state: EvaluationState & EvaluationActions) => {
           state.datasets = datasets;
         }),
 
-      addDataset: (dataset: EvalDatasetSchemaType) =>
+      addDataset: (dataset: EvaluationDatasetSchemaType) =>
         set((state: EvaluationState & EvaluationActions) => {
           state.datasets.push(dataset);
         }),
 
-      updateDataset: (id: string, dataset: Partial<EvalDatasetSchemaType>) =>
+      updateDataset: (id: string, dataset: Partial<EvaluationDatasetSchemaType>) =>
         set((state: EvaluationState & EvaluationActions) => {
-          const index = state.datasets.findIndex((item: EvalDatasetSchemaType) => item._id === id);
+          const index = state.datasets.findIndex(
+            (item: EvaluationDatasetSchemaType) => item._id === id
+          );
           if (index !== -1) {
             state.datasets[index] = { ...state.datasets[index], ...dataset };
           }
@@ -105,23 +111,27 @@ export const useEvaluationStore = create<EvaluationState & EvaluationActions>()(
 
       removeDataset: (id: string) =>
         set((state: EvaluationState & EvaluationActions) => {
-          state.datasets = state.datasets.filter((item: EvalDatasetSchemaType) => item._id !== id);
+          state.datasets = state.datasets.filter(
+            (item: EvaluationDatasetSchemaType) => item._id !== id
+          );
         }),
 
       // Metric actions
-      setMetrics: (metrics: EvalMetricSchemaType[]) =>
+      setMetrics: (metrics: EvaluationMetricSchemaType[]) =>
         set((state: EvaluationState & EvaluationActions) => {
           state.metrics = metrics;
         }),
 
-      addMetric: (metric: EvalMetricSchemaType) =>
+      addMetric: (metric: EvaluationMetricSchemaType) =>
         set((state: EvaluationState & EvaluationActions) => {
           state.metrics.push(metric);
         }),
 
-      updateMetric: (id: string, metric: Partial<EvalMetricSchemaType>) =>
+      updateMetric: (id: string, metric: Partial<EvaluationMetricSchemaType>) =>
         set((state: EvaluationState & EvaluationActions) => {
-          const index = state.metrics.findIndex((item: EvalMetricSchemaType) => item._id === id);
+          const index = state.metrics.findIndex(
+            (item: EvaluationMetricSchemaType) => item._id === id
+          );
           if (index !== -1) {
             state.metrics[index] = { ...state.metrics[index], ...metric };
           }
@@ -129,7 +139,9 @@ export const useEvaluationStore = create<EvaluationState & EvaluationActions>()(
 
       removeMetric: (id: string) =>
         set((state: EvaluationState & EvaluationActions) => {
-          state.metrics = state.metrics.filter((item: EvalMetricSchemaType) => item._id !== id);
+          state.metrics = state.metrics.filter(
+            (item: EvaluationMetricSchemaType) => item._id !== id
+          );
         }),
 
       // Task actions
@@ -180,7 +192,7 @@ export const useEvaluationStore = create<EvaluationState & EvaluationActions>()(
         }),
 
       // Modal actions
-      openDatasetModal: (item?: EvalDatasetSchemaType) =>
+      openDatasetModal: (item?: EvaluationDatasetSchemaType) =>
         set((state: EvaluationState & EvaluationActions) => {
           state.showDatasetModal = true;
           state.editingItem = item || null;
@@ -192,7 +204,7 @@ export const useEvaluationStore = create<EvaluationState & EvaluationActions>()(
           state.editingItem = null;
         }),
 
-      openMetricModal: (item?: EvalMetricSchemaType) =>
+      openMetricModal: (item?: EvaluationMetricSchemaType) =>
         set((state: EvaluationState & EvaluationActions) => {
           state.showMetricModal = true;
           state.editingItem = item || null;

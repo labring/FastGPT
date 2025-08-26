@@ -1,14 +1,15 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { EvaluationTaskService } from '@fastgpt/service/core/evaluation/task';
-import type { EvaluationItemDisplayType } from '@fastgpt/global/core/evaluation/type';
-import type { ListEvaluationItemsBody } from '@fastgpt/global/core/evaluation/api';
-import type { PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type {
+  ListEvaluationItemsRequest,
+  ListEvaluationItemsResponse
+} from '@fastgpt/global/core/evaluation/api';
 import { addLog } from '@fastgpt/service/common/system/log';
 
 async function handler(
-  req: ApiRequestProps<ListEvaluationItemsBody>
-): Promise<PaginationResponse<EvaluationItemDisplayType>> {
+  req: ApiRequestProps<ListEvaluationItemsRequest>
+): Promise<ListEvaluationItemsResponse> {
   try {
     const { evalId, pageNum = 1, pageSize = 20 } = req.body;
 
@@ -16,7 +17,6 @@ async function handler(
       return Promise.reject('Evaluation ID is required');
     }
 
-    // 验证分页参数
     const pageNumInt = Number(pageNum);
     const pageSizeInt = Number(pageSize);
 
@@ -38,7 +38,7 @@ async function handler(
       pageSizeInt
     );
 
-    addLog.info('[Evaluation] 评估项列表查询成功', {
+    addLog.info('[Evaluation] Evaluation items list query successful', {
       evalId,
       pageNum: pageNumInt,
       pageSize: pageSizeInt,
@@ -51,7 +51,7 @@ async function handler(
       total: result.total
     };
   } catch (error) {
-    addLog.error('[Evaluation] 查询评估项列表失败', {
+    addLog.error('[Evaluation] Failed to query evaluation items list', {
       evalId: req.body?.evalId,
       error
     });

@@ -1,6 +1,6 @@
 import { MongoEvalMetric } from './schema';
 import type {
-  EvalMetricSchemaType,
+  EvaluationMetricSchemaType,
   CreateMetricParams
 } from '@fastgpt/global/core/evaluation/type';
 import type { AuthModeType } from '../../../support/permission/type';
@@ -13,13 +13,11 @@ import {
   checkDeleteResult
 } from '../common';
 
-// 评估指标服务
 export class EvaluationMetricService {
-  // 创建评估指标
   static async createMetric(
     params: CreateMetricParams,
     auth: AuthModeType
-  ): Promise<EvalMetricSchemaType> {
+  ): Promise<EvaluationMetricSchemaType> {
     const { teamId, tmbId } = await validateResourceCreate(auth);
 
     const metric = await MongoEvalMetric.create({
@@ -31,8 +29,10 @@ export class EvaluationMetricService {
     return metric.toObject();
   }
 
-  // 获取评估指标
-  static async getMetric(metricId: string, auth: AuthModeType): Promise<EvalMetricSchemaType> {
+  static async getMetric(
+    metricId: string,
+    auth: AuthModeType
+  ): Promise<EvaluationMetricSchemaType> {
     const { resourceFilter, notFoundError } = await validateResourceAccess(
       metricId,
       auth,
@@ -48,11 +48,10 @@ export class EvaluationMetricService {
     return metric;
   }
 
-  // 批量获取评估指标
   static async getMetrics(
     metricIds: string[],
     auth: AuthModeType
-  ): Promise<EvalMetricSchemaType[]> {
+  ): Promise<EvaluationMetricSchemaType[]> {
     if (metricIds.length === 0) return [];
 
     const { resourceFilter } = await validateResourcesAccess(metricIds, auth, 'Metric');
@@ -62,7 +61,6 @@ export class EvaluationMetricService {
     return metrics;
   }
 
-  // 更新评估指标
   static async updateMetric(
     metricId: string,
     updates: Partial<CreateMetricParams>,
@@ -75,7 +73,6 @@ export class EvaluationMetricService {
     checkUpdateResult(result, 'Metric');
   }
 
-  // 删除评估指标
   static async deleteMetric(metricId: string, auth: AuthModeType): Promise<void> {
     const { resourceFilter } = await validateResourceAccess(metricId, auth, 'Metric');
 
@@ -84,14 +81,13 @@ export class EvaluationMetricService {
     checkDeleteResult(result, 'Metric');
   }
 
-  // 获取指标列表
   static async listMetrics(
     auth: AuthModeType,
     page: number = 1,
     pageSize: number = 20,
     searchKey?: string
   ): Promise<{
-    metrics: EvalMetricSchemaType[];
+    metrics: EvaluationMetricSchemaType[];
     total: number;
   }> {
     const { filter, skip, limit, sort } = await validateListAccess(auth, searchKey, page, pageSize);

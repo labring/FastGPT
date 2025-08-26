@@ -2,15 +2,10 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { EvaluationTaskService } from '@fastgpt/service/core/evaluation/task';
 import { addLog } from '@fastgpt/service/common/system/log';
-
-export type RetryFailedItemsBody = {
-  evaluationId: string;
-};
-
-export type RetryFailedItemsResponse = {
-  message: string;
-  retryCount: number;
-};
+import type {
+  RetryFailedItemsBody,
+  RetryFailedItemsResponse
+} from '@fastgpt/global/core/evaluation/api';
 
 async function handler(
   req: ApiRequestProps<RetryFailedItemsBody>
@@ -31,7 +26,7 @@ async function handler(
       authToken: true
     });
 
-    addLog.info('[Evaluation] 批量重试失败项成功', {
+    addLog.info('[Evaluation] Failed items retry batch started successfully', {
       evaluationId,
       retryCount
     });
@@ -41,7 +36,7 @@ async function handler(
       retryCount
     };
   } catch (error) {
-    addLog.error('[Evaluation] 批量重试失败项失败', {
+    addLog.error('[Evaluation] Failed to retry failed items batch', {
       evaluationId: req.body?.evaluationId,
       error
     });
