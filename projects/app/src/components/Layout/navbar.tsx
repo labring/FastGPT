@@ -11,6 +11,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 export enum NavbarTypeEnum {
   normal = 'normal',
@@ -147,7 +148,7 @@ const Navbar = ({ unread }: { unread: number }) => {
                 ? {
                     onClick: () => {
                       if (item.link.startsWith('/chat')) {
-                        window.open(item.link, '_blank', 'noopener,noreferrer');
+                        window.open(getWebReqUrl(item.link), '_blank', 'noopener,noreferrer');
                         return;
                       }
                       router.push(item.link);
