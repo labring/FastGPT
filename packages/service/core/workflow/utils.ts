@@ -48,7 +48,7 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
     (item) => item.parentId === systemToolId && item.isActive !== false
   );
   const nodes = await Promise.all(
-    children.map(async (child) => {
+    children.map(async (child, index) => {
       const toolListItem = toolSetNode.toolConfig?.systemToolSet?.toolList.find(
         (item) => item.toolId === child.id
       );
@@ -70,7 +70,7 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
         name: toolListItem?.name || parseI18nString(tool.name, lang),
         intro: toolListItem?.description || parseI18nString(tool.intro, lang),
         flowNodeType: FlowNodeTypeEnum.tool,
-        nodeId: getNanoid(),
+        nodeId: `${toolSetNode.nodeId}${index}`,
         toolConfig: {
           systemTool: {
             toolId: child.id

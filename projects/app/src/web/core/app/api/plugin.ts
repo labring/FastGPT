@@ -29,7 +29,10 @@ import type {
   getToolVersionListProps,
   getToolVersionResponse
 } from '@/pages/api/core/app/plugin/getVersionList';
-import type { McpGetChildrenmResponse } from '@/pages/api/core/app/mcpTools/getChildren';
+import type {
+  McpGetChildrenmQuery,
+  McpGetChildrenmResponse
+} from '@/pages/api/core/app/mcpTools/getChildren';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = async (data?: {
@@ -40,7 +43,7 @@ export const getTeamPlugTemplates = async (data?: {
     // handle get mcptools
     const app = await getAppDetailById(data.parentId);
     if (app.type === AppTypeEnum.toolSet) {
-      const children = await getMcpChildren(data.parentId);
+      const children = await getMcpChildren({ id: data.parentId, searchKey: data.searchKey });
       return children.map((item) => ({
         ...item,
         flowNodeType: FlowNodeTypeEnum.tool,
@@ -109,8 +112,8 @@ export const getMCPTools = (data: getMCPToolsBody) =>
 export const postRunMCPTool = (data: RunMCPToolBody) =>
   POST('/support/mcp/client/runTool', data, { timeout: 300000 });
 
-export const getMcpChildren = (id: string) =>
-  GET<McpGetChildrenmResponse>('/core/app/mcpTools/getChildren', { id });
+export const getMcpChildren = (data: McpGetChildrenmQuery) =>
+  GET<McpGetChildrenmResponse>('/core/app/mcpTools/getChildren', data);
 
 /* ============ http plugin ============== */
 export const postCreateHttpPlugin = (data: createHttpPluginBody) =>
