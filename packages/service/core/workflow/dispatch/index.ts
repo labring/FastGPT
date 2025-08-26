@@ -776,14 +776,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     });
   });
 
-  // Focus try to run pluginOutput
-  const pluginOutputModule = runtimeNodes.find(
-    (item) => item.flowNodeType === FlowNodeTypeEnum.pluginOutput
-  );
-  if (pluginOutputModule && data.mode !== 'debug') {
-    workflowQueue.nodeRunWithActive(pluginOutputModule);
-  }
-
   // Get interactive node response.
   const interactiveResult = (() => {
     if (workflowQueue.nodeInteractiveResponse) {

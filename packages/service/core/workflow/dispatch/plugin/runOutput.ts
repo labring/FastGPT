@@ -12,7 +12,6 @@ export const dispatchPluginOutput = (props: PluginOutputProps): PluginOutputResp
 
   return {
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      totalPoints: 0,
       pluginOutput: params
     }
   };
