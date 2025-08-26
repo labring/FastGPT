@@ -168,6 +168,10 @@ export const FlowValueTypeMap: Record<
     label: 'Boolean',
     value: WorkflowIOValueTypeEnum.boolean
   },
+  [WorkflowIOValueTypeEnum.date]: {
+    label: 'Date',
+    value: WorkflowIOValueTypeEnum.date
+  },
   [WorkflowIOValueTypeEnum.object]: {
     label: 'Object',
     value: WorkflowIOValueTypeEnum.object

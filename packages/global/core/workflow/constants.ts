@@ -30,6 +30,7 @@ export enum WorkflowIOValueTypeEnum {
   number = 'number',
   boolean = 'boolean',
   object = 'object',
+  date = 'date',
 
   arrayString = 'arrayString',
   arrayNumber = 'arrayNumber',
@@ -398,7 +399,7 @@ export const variableMap: Record<
     icon: 'core/workflow/inputType/dateSelect',
     label: i18nT('common:core.workflow.inputType.dateSelect'),
     value: VariableInputEnum.TimeSelect,
-    defaultValueType: WorkflowIOValueTypeEnum.string
+    defaultValueType: WorkflowIOValueTypeEnum.date
   },
   [VariableInputEnum.switch]: {
     icon: 'core/workflow/inputType/switch',
@@ -495,6 +496,7 @@ export const ArrayTypeMap: Record<WorkflowIOValueTypeEnum, WorkflowIOValueTypeEn
   [WorkflowIOValueTypeEnum.number]: WorkflowIOValueTypeEnum.arrayNumber,
   [WorkflowIOValueTypeEnum.boolean]: WorkflowIOValueTypeEnum.arrayBoolean,
   [WorkflowIOValueTypeEnum.object]: WorkflowIOValueTypeEnum.arrayObject,
+  [WorkflowIOValueTypeEnum.date]: WorkflowIOValueTypeEnum.arrayString,
   [WorkflowIOValueTypeEnum.arrayString]: WorkflowIOValueTypeEnum.arrayString,
   [WorkflowIOValueTypeEnum.arrayNumber]: WorkflowIOValueTypeEnum.arrayNumber,
   [WorkflowIOValueTypeEnum.arrayBoolean]: WorkflowIOValueTypeEnum.arrayBoolean,
