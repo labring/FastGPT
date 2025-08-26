@@ -56,6 +56,7 @@ import {
 } from '@fastgpt/global/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
+import { decryptPasswordVariables, encryptPasswordVariables } from '@fastgpt/service/core/chat/utils/passwordVariables';
 import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
@@ -234,12 +235,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       MongoChat.findOne({ appId: app._id, chatId }, 'source variableList variables')
     ]);
 
-    // Get store variables(Api variable precedence)
+    // Get store variables(Api variable precedence) and decrypt passwords
     if (chatDetail?.variables) {
-      variables = {
-        ...chatDetail.variables,
-        ...variables
-      };
+      variables = decryptPasswordVariables(
+        {
+          ...chatDetail.variables,
+          ...variables
+        },
+        chatDetail?.variableList
+      );
     }
 
     // Get chat histories
@@ -347,7 +351,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         appId: app._id,
         userInteractiveVal,
         aiResponse,
-        newVariables,
+        newVariables: encryptPasswordVariables(newVariables, chatDetail?.variableList),
         durationSeconds
       });
     } else {
@@ -358,7 +362,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         tmbId: tmbId,
         nodes,
         appChatConfig: chatConfig,
-        variables: newVariables,
+        variables: encryptPasswordVariables(newVariables, chatDetail?.variableList),
         isUpdateUseTime: isOwnerUse && source === ChatSourceEnum.online, // owner update use time
         newTitle,
         shareId,

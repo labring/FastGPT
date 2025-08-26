@@ -47,6 +47,8 @@ const LabelAndFormRender = ({
   BoxProps) => {
   const { control } = variablesForm;
 
+  const minLength = inputType === 'password' ? (props as any).minLength : undefined;
+
   return (
     <Box _notLast={{ mb: 4 }}>
       <Flex alignItems={'center'} mb={1}>
@@ -58,7 +60,13 @@ const LabelAndFormRender = ({
         control={control}
         name={formKey}
         rules={{
-          required
+          required,
+          ...(minLength && {
+            minLength: {
+              value: minLength,
+              message: `最少需要 ${minLength} 位字符`
+            }
+          })
         }}
         render={({ field: { onChange, value }, fieldState: { error } }) => {
           return (

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Switch } from '@chakra-ui/react';
+import { Box, Input, Switch } from '@chakra-ui/react';
 import type { InputRenderProps } from './type';
 import { InputTypeEnum } from './constant';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
@@ -76,6 +76,10 @@ const InputRender = (props: InputRenderProps) => {
           ExtensionPopover={props.ExtensionPopover}
         />
       );
+    }
+
+    if (inputType === InputTypeEnum.password) {
+      return <Input {...commonProps} type="password" minLength={props.minLength} />;
     }
 
     if (inputType === InputTypeEnum.numberInput) {
