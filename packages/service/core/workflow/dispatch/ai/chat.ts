@@ -184,7 +184,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       body: {
         model: modelConstantsData.model,
         stream,
-        reasoning: aiChatReasoning,
         messages: filterMessages,
         temperature,
         max_tokens,
@@ -201,6 +200,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       userKey: externalProvider.openaiAccount,
       isAborted: () => res?.closed,
       onReasoning({ text }) {
+        if (!aiChatReasoning) return;
         workflowStreamResponse?.({
           write,
           event: SseResponseEventEnum.answer,
@@ -210,6 +210,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         });
       },
       onStreaming({ text }) {
+        if (!isResponseAnswerText) return;
         workflowStreamResponse?.({
           write,
           event: SseResponseEventEnum.answer,

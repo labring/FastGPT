@@ -210,17 +210,22 @@ export const rewriteRuntimeWorkFlow = async ({
       if (!app) continue;
       const toolList = await getMCPChildren(app);
 
-      for (const tool of toolList) {
+      const parentId = mcpToolsetVal.toolId ?? toolSetNode.pluginId;
+      toolList.forEach((tool, index) => {
         const newToolNode = getMCPToolRuntimeNode({
           avatar: toolSetNode.avatar,
           tool,
           // New ?? Old
-          parentId: mcpToolsetVal.toolId ?? toolSetNode.pluginId
+          parentId
         });
+        newToolNode.nodeId = `${parentId}${index}`; // ID 不能随机，否则下次生成时候就和之前的记录对不上
 
-        nodes.push({ ...newToolNode, name: `${toolSetNode.name}/${tool.name}` });
+        nodes.push({
+          ...newToolNode,
+          name: `${toolSetNode.name}/${tool.name}`
+        });
         pushEdges(newToolNode.nodeId);
-      }
+      });
     }
   }
 

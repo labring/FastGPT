@@ -152,11 +152,13 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     方案：
       - 采用回调的方式，避免深度递归。
       - 使用 activeRunQueue 记录待运行检查的节点（可能可以运行），并控制并发数量。
-      - 每次添加新节点，以及节点运行结束后，均会执行一次 processNextNode 方法。 processNextNode 方法，如果没触发跳出条件，则必定会取一个 activeRunQueue 继续检查处理。
+      - 每次添加新节点，以及节点运行结束后，均会执行一次 processActiveNode 方法。 processActiveNode 方法，如果没触发跳出条件，则必定会取一个 activeRunQueue 继续检查处理。
       - checkNodeCanRun 会检查该节点状态
         - 没满足运行条件：跳出函数
         - 运行：执行节点逻辑，并返回结果，将 target node 加入到 activeRunQueue 中，等待队列处理。
         - 跳过：执行跳过逻辑，并将其后续的 target node 也进行一次检查。
+    特殊情况：
+      - 触发交互节点后，需要跳过所有 skip 节点，避免后续执行了 skipNode。
   */
   class WorkflowQueue {
     // Workflow variables
@@ -176,6 +178,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
     // Queue variables
     private activeRunQueue = new Set<string>();
+    private skipNodeQueue: { node: RuntimeNodeItemType; skippedNodeIdList: Set<string> }[] = [];
     private runningNodeCount = 0;
     private maxConcurrency: number;
     private resolve: (e: WorkflowQueue) => void;
@@ -198,13 +201,17 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       }
       this.activeRunQueue.add(nodeId);
 
-      this.processNextNode();
+      this.processActiveNode();
     }
     // Process next active node
-    private processNextNode() {
+    private processActiveNode() {
       // Finish
       if (this.activeRunQueue.size === 0 && this.runningNodeCount === 0) {
-        this.resolve(this);
+        if (this.skipNodeQueue.length > 0 && !this.nodeInteractiveResponse) {
+          this.processSkipNodes();
+        } else {
+          this.resolve(this);
+        }
         return;
       }
 
@@ -224,12 +231,26 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
         this.checkNodeCanRun(node).finally(() => {
           this.runningNodeCount--;
-          this.processNextNode();
+          this.processActiveNode();
         });
       }
       // 兜底，除非极端情况，否则不可能触发
       else {
-        this.processNextNode();
+        this.processActiveNode();
+      }
+    }
+
+    private addSkipNode(node: RuntimeNodeItemType, skippedNodeIdList: Set<string>) {
+      this.skipNodeQueue.push({ node, skippedNodeIdList });
+    }
+    private processSkipNodes() {
+      const skipItem = this.skipNodeQueue.shift();
+      if (skipItem) {
+        this.checkNodeCanRun(skipItem.node, skipItem.skippedNodeIdList).finally(() => {
+          this.processActiveNode();
+        });
+      } else {
+        this.processActiveNode();
       }
     }
 
@@ -695,9 +716,9 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         nodeRunResult.result
       );
 
-      await Promise.all(
-        nextStepSkipNodes.map((node) => this.checkNodeCanRun(node, skippedNodeIdList))
-      );
+      nextStepSkipNodes.forEach((node) => {
+        this.addSkipNode(node, skippedNodeIdList);
+      });
 
       // Run next nodes
       nextStepActiveNodes.forEach((node) => {
