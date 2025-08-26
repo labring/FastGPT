@@ -63,52 +63,15 @@ export const authDatasetByTmbId = async ({
     const isOwner = tmbPer.isOwner || String(dataset.tmbId) === String(tmbId);
 
     // get dataset permission or inherit permission from parent folder.
-    const { Per } = await (async () => {
-      if (isOwner) {
-        return {
-          Per: new DatasetPermission({ isOwner: true })
-        };
-      }
-      if (
-        dataset.type === DatasetTypeEnum.folder ||
-        dataset.inheritPermission === false ||
-        !dataset.parentId
-      ) {
-        // 1. is a folder. (Folders have completely permission)
-        // 2. inheritPermission is false.
-        // 3. is root folder/dataset.
-        const rp = await getResourcePermission({
-          teamId,
-          tmbId,
-          resourceId: datasetId,
-          resourceType: PerResourceTypeEnum.dataset
-        });
-        const Per = new DatasetPermission({
-          role: rp,
-          isOwner
-        });
-        return {
-          Per
-        };
-      } else {
-        // is not folder and inheritPermission is true and is not root folder.
-        const { dataset: parent } = await authDatasetByTmbId({
-          tmbId,
-          datasetId: dataset.parentId,
-          per,
-          isRoot
-        });
-
-        const Per = new DatasetPermission({
-          role: parent.permission.role,
-          isOwner
-        });
-
-        return {
-          Per
-        };
-      }
-    })();
+    const Per = new DatasetPermission({
+      role: await getResourcePermission({
+        teamId,
+        tmbId,
+        resourceId: datasetId,
+        resourceType: PerResourceTypeEnum.dataset
+      }),
+      isOwner
+    });
 
     if (!Per.checkPer(per)) {
       return Promise.reject(DatasetErrEnum.unAuthDataset);

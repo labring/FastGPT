@@ -188,14 +188,13 @@ function MemberModal({ onClose }: { onClose: () => void }) {
             borderRadius="0.5rem"
             gridTemplateColumns="40% 60%"
             h={'100%'}
-            gap="4"
           >
             <Flex
               h={'100%'}
               flexDirection="column"
               borderRight="1px solid"
               borderColor="myGray.200"
-              p="4"
+              p="2"
             >
               <SearchInput
                 placeholder={t('user:search_group_org_user')}
@@ -384,7 +383,7 @@ function MemberModal({ onClose }: { onClose: () => void }) {
               </Flex>
             </Flex>
 
-            <Flex h={'100%'} flexDirection="column" overflow={'auto'}>
+            <Flex h={'100%'} flexDirection="column" overflow={'auto'} p="2">
               <Box>
                 {`${t('user:has_chosen')}: `}
                 {editCollaborators.length}
