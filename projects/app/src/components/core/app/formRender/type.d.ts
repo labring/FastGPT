@@ -3,6 +3,7 @@ import type {
   EditorVariablePickerType
 } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import type { InputTypeEnum } from './constant';
+import type { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { UseFormReturn } from 'react-hook-form';
 import type { BoxProps } from '@chakra-ui/react';
 import type { EditorProps } from '@fastgpt/web/components/common/Textarea/PromptEditor/Editor';
@@ -71,6 +72,13 @@ type SpecificProps =
 
       form?: UseFormReturn<any>;
       fieldName?: string;
+    }
+  | {
+      inputType: VariableInputEnum.TimeSelect | InputTypeEnum.dateTimePicker;
+      timeGranularity?: 'day' | 'hour' | 'minute' | 'second';
+      timeType?: 'point' | 'range';
+      timeRangeStart?: string;
+      timeRangeEnd?: string;
     };
 
 export type InputRenderProps = CommonRenderProps & SpecificProps;

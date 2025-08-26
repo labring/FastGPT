@@ -286,7 +286,7 @@ const VariableEdit = ({
           title={t('common:core.module.Variable Setting')}
           isOpen={true}
           onClose={() => reset({})}
-          maxW={['90vw', '1028px']}
+          maxW={['90vw', '1078px']}
           w={'100%'}
           isCentered
         >

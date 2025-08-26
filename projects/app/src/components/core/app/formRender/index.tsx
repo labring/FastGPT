@@ -11,6 +11,7 @@ import MultipleSelect, {
 import JSONEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import AIModelSelector from '../../../Select/AIModelSelector';
 import FileSelector from '../../../Select/FileSelector';
+import TimeInput from './TimeInput';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const InputRender = (props: InputRenderProps) => {
@@ -163,6 +164,55 @@ const InputRender = (props: InputRenderProps) => {
           fieldName={props.fieldName}
         />
       );
+    }
+
+    if (inputType === InputTypeEnum.dateTimePicker) {
+      const {
+        timeGranularity = 'second',
+        timeType = 'point',
+        timeRangeStart,
+        timeRangeEnd
+      } = props;
+
+      if (timeType === 'point') {
+        return (
+          <TimeInput
+            value={value ? new Date(value) : undefined}
+            onDateTimeChange={(date) => onChange(date.toISOString())}
+            timeGranularity={timeGranularity}
+          />
+        );
+      } else {
+        const rangeValue = value || {};
+        return (
+          <Box>
+            <Box mb={2}>
+              <Box fontSize="12px" color="myGray.500" mb={1}>
+                {t('app:time_range_start')}
+              </Box>
+              <TimeInput
+                value={rangeValue.start ? new Date(rangeValue.start) : undefined}
+                onDateTimeChange={(date) => onChange({ ...rangeValue, start: date.toISOString() })}
+                timeGranularity={timeGranularity}
+                maxDate={rangeValue.end ? new Date(rangeValue.end) : (timeRangeEnd ? new Date(timeRangeEnd) : undefined)}
+                minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
+              />
+            </Box>
+            <Box>
+              <Box fontSize="12px" color="myGray.500" mb={1}>
+                {t('app:time_range_end')}
+              </Box>
+              <TimeInput
+                value={rangeValue.end ? new Date(rangeValue.end) : undefined}
+                onDateTimeChange={(date) => onChange({ ...rangeValue, end: date.toISOString() })}
+                timeGranularity={timeGranularity}
+                minDate={rangeValue.start ? new Date(rangeValue.start) : (timeRangeStart ? new Date(timeRangeStart) : undefined)}
+                maxDate={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
+              />
+            </Box>
+          </Box>
+        );
+      }
     }
 
     return null;

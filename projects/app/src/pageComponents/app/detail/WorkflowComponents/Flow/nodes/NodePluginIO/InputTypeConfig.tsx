@@ -23,18 +23,20 @@ import MultipleSelect, {
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { useFieldArray, type UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import TimeInput from '@/components/core/app/formRender/TimeInput';
 
 import ChatFunctionTip from '@/components/core/app/Tip';
 import MySlider from '@/components/Slider';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
 
 const InputTypeConfig = ({
   form,
@@ -85,6 +87,11 @@ const InputTypeConfig = ({
   const defaultValue = watch('defaultValue');
   const valueType = watch('valueType');
 
+  const timeGranularity = watch('timeGranularity');
+  const timeType = watch('timeType');
+  const timeRangeStart = watch('timeRangeStart');
+  const timeRangeEnd = watch('timeRangeEnd');
+
   const selectValueTypeList = watch('customInputConfig.selectValueTypeList');
   const { isSelectAll: isSelectAllValueType, setIsSelectAll: setIsSelectAllValueType } =
     useMultipleSelect(selectValueTypeList, false);
@@ -123,6 +130,7 @@ const InputTypeConfig = ({
     const list = [
       FlowNodeInputTypeEnum.addInputParam,
       FlowNodeInputTypeEnum.customVariable,
+      VariableInputEnum.TimeSelect,
       VariableInputEnum.custom
     ];
     return !list.includes(inputType);
@@ -147,6 +155,7 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.select,
       FlowNodeInputTypeEnum.multipleSelect,
       VariableInputEnum.custom
+      // VariableInputEnum.TimeSelect
     ];
 
     return list.includes(inputType as FlowNodeInputTypeEnum);
@@ -168,6 +177,44 @@ const InputTypeConfig = ({
   // File select
   const maxFiles = watch('maxFiles');
   const maxSelectFiles = Math.min(feConfigs?.uploadFileMaxAmount ?? 20, 50);
+
+  useEffect(() => {
+    if (inputType === VariableInputEnum.TimeSelect) {
+      if (!timeGranularity) {
+        setValue('timeGranularity', 'day');
+      }
+      if (!timeType) {
+        setValue('timeType', 'point');
+      }
+
+      if (!timeRangeEnd) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        setValue('timeRangeEnd', today);
+      }
+
+      if (!timeRangeStart) {
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        oneWeekAgo.setHours(0, 0, 0, 0);
+        setValue('timeRangeStart', oneWeekAgo);
+      }
+
+      if (!defaultValue) {
+        if (timeType === 'point') {
+          setValue('defaultValue', new Date().toISOString());
+        } else {
+          const defaultStart =
+            timeRangeStart || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+          const defaultEnd = timeRangeEnd || new Date().toISOString();
+          setValue('defaultValue', {
+            start: defaultStart,
+            end: defaultEnd
+          });
+        }
+      }
+    }
+  }, [inputType, timeGranularity, timeType, timeRangeStart, timeRangeEnd, defaultValue, setValue]);
 
   return (
     <Stack flex={1} borderLeft={'1px solid #F0F1F6'} justifyContent={'space-between'}>
@@ -218,14 +265,14 @@ const InputTypeConfig = ({
                 />
               </Box>
             ) : (
-              <Box fontSize={'14px'} mb={2}>
+              <Box fontSize={'14px'}>
                 {defaultValueType ? t(FlowValueTypeMap[defaultValueType]?.label as any) : ''}
               </Box>
             )}
           </Flex>
         )}
         {showRequired && (
-          <Flex alignItems={'center'} minH={'40px'}>
+          <Flex alignItems={'center'}>
             <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
               {t('workflow:field_required')}
             </FormLabel>
@@ -235,7 +282,7 @@ const InputTypeConfig = ({
         {/* reference */}
         {showIsToolInput && (
           <>
-            <Flex alignItems={'center'} minH={'40px'}>
+            <Flex alignItems={'center'}>
               <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
                 {t('workflow:field_used_as_tool_input')}
               </FormLabel>
@@ -291,6 +338,74 @@ const InputTypeConfig = ({
                   setValue('min', e ?? '');
                 }}
               />
+            </Flex>
+          </>
+        )}
+
+        {inputType === VariableInputEnum.TimeSelect && (
+          <>
+            <Flex>
+              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
+                {t('app:time_granularity')}
+              </FormLabel>
+              <RadioGroup
+                list={[
+                  { title: t('common:day'), value: 'day' },
+                  { title: t('common:hour'), value: 'hour' },
+                  { title: t('common:minute'), value: 'minute' },
+                  { title: t('common:second'), value: 'second' }
+                ]}
+                value={timeGranularity || 'day'}
+                onChange={(value) => setValue('timeGranularity', value)}
+              />
+            </Flex>
+            <Flex>
+              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
+                {t('app:time_type')}
+              </FormLabel>
+              <RadioGroup
+                list={[
+                  { title: t('common:time_point'), value: 'point' },
+                  { title: t('common:time_range'), value: 'range' }
+                ]}
+                value={timeType || 'point'}
+                onChange={(value) => setValue('timeType', value)}
+              />
+            </Flex>
+            <Flex alignItems={'flex-top'}>
+              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
+                {t('app:time_range_limit')}
+              </FormLabel>
+              <Flex flexDirection={'column'} gap={3}>
+                <Box>
+                  <Box color={'myGray.500'} fontSize="12px" mb={1}>
+                    {t('app:time_range_start')}
+                  </Box>
+                  <TimeInput
+                    value={timeRangeStart ? new Date(timeRangeStart) : undefined}
+                    onDateTimeChange={(date) => {
+                      setValue('timeRangeStart', date);
+                    }}
+                    popPosition="top"
+                    timeGranularity={timeGranularity}
+                    maxDate={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
+                  />
+                </Box>
+                <Box>
+                  <Box color={'myGray.500'} fontSize="12px" mb={1}>
+                    {t('app:time_range_end')}
+                  </Box>
+                  <TimeInput
+                    value={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
+                    onDateTimeChange={(date) => {
+                      setValue('timeRangeEnd', date);
+                    }}
+                    popPosition="top"
+                    timeGranularity={timeGranularity}
+                    minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
+                  />
+                </Box>
+              </Flex>
             </Flex>
           </>
         )}
@@ -387,6 +502,62 @@ const InputTypeConfig = ({
                   }
                 />
               )}
+              {/* {inputType === VariableInputEnum.TimeSelect && (
+                <Box w={'full'}>
+                  {timeType === 'point' ? (
+                    <TimeInput
+                      value={defaultValue ? new Date(defaultValue) : undefined}
+                      onDateTimeChange={(date) => setValue('defaultValue', date.toISOString())}
+                      timeGranularity={timeGranularity}
+                    />
+                  ) : (
+                    <Box>
+                      <Box mb={2}>
+                        <Box color={'myGray.500'} fontSize="12px" mb={1}>
+                          {t('app:time_range_start')}
+                        </Box>
+                        <TimeInput
+                          value={defaultValue?.start ? new Date(defaultValue.start) : undefined}
+                          onDateTimeChange={(date) => {
+                            const newValue = { ...(defaultValue || {}), start: date.toISOString() };
+                            setValue('defaultValue', newValue);
+                          }}
+                          timeGranularity={timeGranularity}
+                          maxDate={
+                            defaultValue?.end
+                              ? new Date(defaultValue.end)
+                              : timeRangeEnd
+                                ? new Date(timeRangeEnd)
+                                : undefined
+                          }
+                          minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
+                        />
+                      </Box>
+                      <Box>
+                        <Box color={'myGray.500'} fontSize="12px" mb={1}>
+                          {t('app:time_range_end')}
+                        </Box>
+                        <TimeInput
+                          value={defaultValue?.end ? new Date(defaultValue.end) : undefined}
+                          onDateTimeChange={(date) => {
+                            const newValue = { ...(defaultValue || {}), end: date.toISOString() };
+                            setValue('defaultValue', newValue);
+                          }}
+                          timeGranularity={timeGranularity}
+                          minDate={
+                            defaultValue?.start
+                              ? new Date(defaultValue.start)
+                              : timeRangeStart
+                                ? new Date(timeRangeStart)
+                                : undefined
+                          }
+                          maxDate={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
+                        />
+                      </Box>
+                    </Box>
+                  )}
+                </Box>
+              )} */}
             </Flex>
           </Flex>
         )}
