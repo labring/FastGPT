@@ -147,6 +147,7 @@
   "setting.home.cancel_button": "取消",
   "setting.home.confirm_button": "确定",
   "setting.home.no_selected_app": "未选择应用",
+  "setting.home.enable": "启用首页",
   "setting.incorrect_plan": "当前套餐不支持该功能，请升级订阅套餐",
   "setting.incorrect_version": "当前版本不支持该功能",
   "setting.log_details.title": "首页日志",

@@ -134,6 +134,7 @@
   "setting.home.dialogue_tips": "對話框提示文字",
   "setting.home.dialogue_tips.default": "你可以問我任何問題",
   "setting.home.dialogue_tips_placeholder": "請輸入對話框提示文字",
+  "setting.home.enable": "啟用首頁",
   "setting.home.home_tab_title": "首頁標題",
   "setting.home.home_tab_title_placeholder": "請輸入首頁標題",
   "setting.home.no_selected_app": "未選擇應用",
