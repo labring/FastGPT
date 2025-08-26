@@ -1,14 +1,20 @@
 import Cookie from 'cookie';
+import type { ClientSession, AnyBulkWriteOperation } from '../../common/mongo';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import jwt from 'jsonwebtoken';
-import { type NextApiResponse, type NextApiRequest } from 'next';
+import { type NextApiResponse } from 'next';
 import type { AuthModeType, ReqHeaderAuthType } from './type.d';
 import type { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
+import {
+  AuthUserTypeEnum,
+  ManageRoleVal,
+  NullRoleVal,
+  OwnerRoleVal
+} from '@fastgpt/global/support/permission/constant';
 import { authOpenApiKey } from '../openapi/auth';
 import { type FileTokenQuery } from '@fastgpt/global/common/file/type';
 import { MongoResourcePermission } from './schema';
-import { type ClientSession } from 'mongoose';
+import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { bucketNameMap } from '@fastgpt/global/common/file/constants';
 import { addMinutes } from 'date-fns';
@@ -22,6 +28,10 @@ import { type OrgSchemaType } from '@fastgpt/global/support/user/team/org/type';
 import { getOrgIdSetWithParentByTmbId } from './org/controllers';
 import { authUserSession } from '../user/session';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
+import { DEFAULT_ORG_AVATAR } from '@fastgpt/global/common/system/constants';
+import { type SyncChildrenPermissionResourceType } from './inheritPermission';
+import { pickCollaboratorIdFields } from './utils';
+import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 
 /** get resource permission for a team member
  * If there is no permission for the team member, it will return undefined
@@ -106,17 +116,24 @@ export const getResourcePermission = async ({
   return sumPer(...groupPers, ...orgPers);
 };
 
-export async function getResourceClbsAndGroups({
-  resourceId,
+export async function getResourceClbs({
   resourceType,
   teamId,
+  resourceId,
   session
 }: {
-  resourceId: ParentIdType;
-  resourceType: Omit<`${PerResourceTypeEnum}`, 'team'>;
   teamId: string;
-  session: ClientSession;
-}) {
+  session?: ClientSession;
+} & (
+  | {
+      resourceType: 'team';
+      resourceId?: undefined;
+    }
+  | {
+      resourceType: Omit<PerResourceTypeEnum, 'team'>;
+      resourceId: ParentIdType;
+    }
+)) {
   return MongoResourcePermission.find(
     {
       resourceId,
@@ -124,16 +141,18 @@ export async function getResourceClbsAndGroups({
       teamId
     },
     undefined,
-    { session }
+    { ...(session ? { session } : {}) }
   ).lean();
 }
 
-export const getClbsAndGroupsWithInfo = async ({
+export const getClbsWithInfo = async ({
   resourceId,
   resourceType,
-  teamId
+  teamId,
+  tmbId
 }: {
   teamId: string;
+  tmbId?: string;
 } & (
   | {
       resourceId: ParentIdType;
@@ -143,42 +162,72 @@ export const getClbsAndGroupsWithInfo = async ({
       resourceType: 'team';
       resourceId?: undefined;
     }
-)) =>
-  Promise.all([
-    MongoResourcePermission.find({
-      teamId,
-      resourceId,
-      resourceType,
-      tmbId: {
-        $exists: true
-      }
-    })
-      .populate<{ tmb: TeamMemberSchema }>({
-        path: 'tmb',
-        select: 'name userId avatar'
+)) => {
+  if (!resourceId && resourceType !== 'team') {
+    return [];
+  }
+  return Promise.all([
+    ...(
+      await MongoResourcePermission.find({
+        teamId,
+        resourceId,
+        resourceType,
+        tmbId: {
+          $exists: true
+        }
       })
-      .lean(),
-    MongoResourcePermission.find({
-      teamId,
-      resourceId,
-      resourceType,
-      groupId: {
-        $exists: true
-      }
-    })
-      .populate<{ group: MemberGroupSchemaType }>('group', 'name avatar')
-      .lean(),
-    MongoResourcePermission.find({
-      teamId,
-      resourceId,
-      resourceType,
-      orgId: {
-        $exists: true
-      }
-    })
-      .populate<{ org: OrgSchemaType }>({ path: 'org', select: 'name avatar' })
-      .lean()
+        .populate<{ tmb: TeamMemberSchema }>({
+          path: 'tmb',
+          select: 'name userId avatar'
+        })
+        .lean()
+    )
+      .map((item) => ({
+        tmbId: item.tmb._id,
+        teamId: item.teamId,
+        permission: new Permission({ role: item.permission, isOwner: item.tmbId === tmbId }),
+        name: item.tmb.name,
+        avatar: item.tmb.avatar
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    ...(
+      await MongoResourcePermission.find({
+        teamId,
+        resourceId,
+        resourceType,
+        groupId: {
+          $exists: true
+        }
+      })
+        .populate<{ group: MemberGroupSchemaType }>('group', 'name avatar')
+        .lean()
+    ).map((item) => ({
+      groupId: item.group._id,
+      teamId: item.teamId,
+      permission: new Permission({ role: item.permission }),
+      name: item.group.name,
+      avatar: item.group.avatar
+    })),
+    ...(
+      await MongoResourcePermission.find({
+        teamId,
+        resourceId,
+        resourceType,
+        orgId: {
+          $exists: true
+        }
+      })
+        .populate<{ org: OrgSchemaType }>({ path: 'org', select: 'name avatar' })
+        .lean()
+    ).map((item) => ({
+      orgId: item.org._id,
+      teamId: item.teamId,
+      permission: new Permission({ role: item.permission }),
+      name: item.org.name,
+      avatar: item.org.avatar || DEFAULT_ORG_AVATAR
+    }))
   ]);
+};
 
 export const delResourcePermissionById = (id: string) => {
   return MongoResourcePermission.findByIdAndDelete(id);
@@ -403,3 +452,66 @@ export const authFileToken = (token?: string) =>
       });
     });
   });
+
+export const createResourceDefaultCollaborators = async ({
+  resource,
+  resourceType,
+  session,
+  tmbId
+}: {
+  resource: SyncChildrenPermissionResourceType;
+  resourceType: PerResourceTypeEnum;
+
+  // should be provided when inheritPermission is true
+  session: ClientSession;
+  tmbId: string;
+}) => {
+  const parentClbs = await getResourceClbs({
+    resourceId: resource.parentId,
+    resourceType,
+    teamId: resource.teamId,
+    session
+  });
+  // 1. add owner into the permission list with owner per
+  // 2. remove parent's owner permission, instead of manager
+
+  const collaborators: CollaboratorItemType[] = [
+    ...parentClbs
+      .filter((item) => item.tmbId !== tmbId)
+      .map((clb) => {
+        if (clb.permission === OwnerRoleVal) {
+          clb.permission = ManageRoleVal;
+          clb.selfPermission = NullRoleVal;
+        }
+        return clb;
+      }),
+    {
+      tmbId,
+      permission: OwnerRoleVal
+    }
+  ];
+
+  const ops: AnyBulkWriteOperation<ResourcePermissionType>[] = [];
+
+  for (const clb of collaborators) {
+    ops.push({
+      updateOne: {
+        filter: {
+          ...pickCollaboratorIdFields(clb),
+          teamId: resource.teamId,
+          resourceId: resource._id,
+          resourceType
+        },
+        update: {
+          $set: {
+            permission: clb.permission,
+            selfPermission: NullRoleVal
+          }
+        },
+        upsert: true
+      }
+    });
+  }
+
+  await MongoResourcePermission.bulkWrite(ops, { session });
+};
