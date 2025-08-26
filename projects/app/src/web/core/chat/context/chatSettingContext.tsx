@@ -67,6 +67,11 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
       onSuccess: (data) => {
         if (!data) return;
 
+        if (!data.enableHome && pane === ChatSidebarPaneEnum.HOME) {
+          handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
+          return;
+        }
+
         if (
           pane === ChatSidebarPaneEnum.HOME &&
           appId !== data.appId &&

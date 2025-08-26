@@ -190,7 +190,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
   };
 
   useMount(() => {
-    if (!feConfigs?.isPlus || !chatSettings?.enableHome) {
+    if (!feConfigs?.isPlus) {
       handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
     }
   });
