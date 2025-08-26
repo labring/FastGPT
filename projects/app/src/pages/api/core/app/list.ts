@@ -106,7 +106,9 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
     // Filter apps by permission, if not owner, only get apps that I have permission to access
     const idList = { _id: { $in: myPerList.map((item) => item.resourceId) } };
     const appPerQuery = teamPer.isOwner
-      ? {}
+      ? {
+          parentId: parentId ? parseParentIdInMongo(parentId) : null
+        }
       : parentId
         ? {
             $or: [idList, parseParentIdInMongo(parentId)]
@@ -138,6 +140,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
         ...searchMatch,
         type: _type
       };
+
       // @ts-ignore
       delete data.parentId;
       return data;
@@ -155,7 +158,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
     if (searchKey) return 50;
     return;
   })();
-
+  console.log(findAppsQuery);
   const myApps = await MongoApp.find(
     findAppsQuery,
     '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission modules',
