@@ -41,7 +41,6 @@ async function handler(
     }))
     .filter((item) => {
       if (searchKey) {
-        if (item.isFolder) return false;
         const regx = new RegExp(`${replaceRegChars(searchKey)}`, 'i');
         return regx.test(String(item.name)) || regx.test(String(item.intro || ''));
       }

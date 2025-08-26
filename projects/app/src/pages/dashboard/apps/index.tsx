@@ -56,7 +56,8 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     isFetchingApps,
     folderDetail,
     refetchFolderDetail,
-    setSearchKey
+    setSearchKey,
+    searchKey
   } = useContextSelector(AppListContext, (v) => v);
   const { userInfo } = useUserStore();
 
@@ -164,6 +165,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
             {isPc && (
               <SearchInput
                 maxW={['auto', '250px']}
+                value={searchKey}
                 onChange={(e) => setSearchKey(e.target.value)}
                 placeholder={t('app:search_app')}
                 maxLength={30}
@@ -244,6 +246,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               {
                 <SearchInput
                   maxW={['auto', '250px']}
+                  value={searchKey}
                   onChange={(e) => setSearchKey(e.target.value)}
                   placeholder={t('app:search_app')}
                   maxLength={30}
