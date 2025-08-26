@@ -88,13 +88,6 @@ export const authAppByTmbId = async ({
       };
     }
 
-    if (app.favourite || app.quick) {
-      return {
-        ...app,
-        permission: new AppPermission({ isOwner: false, role: ReadRoleVal })
-      };
-    }
-
     const isOwner = tmbPer.isOwner || String(app.tmbId) === String(tmbId);
 
     const { Per } = await (async () => {
@@ -119,6 +112,11 @@ export const authAppByTmbId = async ({
           resourceType: PerResourceTypeEnum.app
         });
         const Per = new AppPermission({ role, isOwner });
+
+        if (app.favourite || app.quick) {
+          Per.addRole(ReadRoleVal);
+        }
+
         return {
           Per
         };

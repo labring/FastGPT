@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { useMount } from 'ahooks';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const HomepageSetting = dynamic(() => import('@/pageComponents/chat/ChatSetting/HomepageSetting'));
 const LogDetails = dynamic(() => import('@/pageComponents/chat/ChatSetting/LogDetails'));
@@ -28,6 +29,7 @@ const ChatSetting = () => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
+  const { userInfo } = useUserStore();
 
   const { tab: tabQuery } = router.query as { tab: ChatSettingTabOptionEnum };
   const [isOpenDiagram, setIsOpenDiagram] = useState(false);
@@ -60,7 +62,7 @@ const ChatSetting = () => {
   );
 
   useMount(() => {
-    if (!feConfigs?.isPlus) {
+    if (!feConfigs?.isPlus || !userInfo?.team.permission.hasManagePer) {
       handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
     }
   });
