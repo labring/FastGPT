@@ -77,7 +77,7 @@ const VariablePopover = ({
                   formKey={`variables.${item.key}`}
                   placeholder={item.description}
                   inputType={variableInputTypeToInputType(item.type)}
-                  variablesForm={variablesForm}
+                  form={variablesForm}
                   bg={'myGray.50'}
                 />
               ))}
@@ -93,7 +93,7 @@ const VariablePopover = ({
                   formKey={`variables.${item.key}`}
                   placeholder={item.description}
                   inputType={variableInputTypeToInputType(item.type)}
-                  variablesForm={variablesForm}
+                  form={variablesForm}
                   bg={'myGray.50'}
                 />
               ))}

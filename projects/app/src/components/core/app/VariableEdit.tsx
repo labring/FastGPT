@@ -44,7 +44,10 @@ export const defaultVariable: VariableItemType = {
   type: VariableInputEnum.input,
   description: '',
   required: true,
-  valueType: WorkflowIOValueTypeEnum.string
+  valueType: WorkflowIOValueTypeEnum.string,
+  canSelectFile: true,
+  canSelectImg: true,
+  maxFiles: 5
 };
 
 export const addVariable = () => {
@@ -141,6 +144,12 @@ const VariableEdit = ({
 
       if (data.type !== VariableInputEnum.select && data.list) {
         delete data.list;
+      }
+
+      if (data.type !== VariableInputEnum.file) {
+        delete data.canSelectFile;
+        delete data.canSelectImg;
+        delete data.maxFiles;
       }
 
       if (data.type === VariableInputEnum.custom || data.type === VariableInputEnum.internal) {

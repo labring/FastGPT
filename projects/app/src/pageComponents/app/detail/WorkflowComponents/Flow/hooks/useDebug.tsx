@@ -268,7 +268,7 @@ export const useDebug = () => {
                 formKey={`variables.${item.key}`}
                 placeholder={item.description}
                 inputType={variableInputTypeToInputType(item.type)}
-                variablesForm={variablesForm}
+                form={variablesForm}
                 bg={'myGray.50'}
               />
             ))}
@@ -279,7 +279,7 @@ export const useDebug = () => {
                 formKey={`variables.${item.key}`}
                 placeholder={item.description}
                 inputType={variableInputTypeToInputType(item.type)}
-                variablesForm={variablesForm}
+                form={variablesForm}
                 bg={'myGray.50'}
               />
             ))}
@@ -290,7 +290,7 @@ export const useDebug = () => {
                 formKey={`variables.${item.key}`}
                 placeholder={item.description}
                 inputType={variableInputTypeToInputType(item.type)}
-                variablesForm={variablesForm}
+                form={variablesForm}
                 bg={'myGray.50'}
               />
             ))}
@@ -303,7 +303,7 @@ export const useDebug = () => {
                 formKey={`nodeVariables.${item.key}`}
                 placeholder={item.placeholder || item.description}
                 inputType={nodeInputTypeToInputType(item.renderTypeList)}
-                variablesForm={variablesForm}
+                form={variablesForm}
                 bg={'myGray.50'}
               />
             ))}

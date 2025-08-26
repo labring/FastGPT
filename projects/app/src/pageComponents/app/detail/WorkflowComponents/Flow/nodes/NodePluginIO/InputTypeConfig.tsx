@@ -718,7 +718,7 @@ const InputTypeConfig = ({
           </>
         )}
 
-        {inputType === FlowNodeInputTypeEnum.fileSelect && (
+        {(inputType === FlowNodeInputTypeEnum.fileSelect || inputType === VariableInputEnum.file) && (
           <>
             <Flex alignItems={'center'} minH={'40px'}>
               <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>

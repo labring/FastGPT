@@ -87,7 +87,7 @@ const VariableInput = ({
                   formKey={`variables.${item.key}`}
                   placeholder={item.description}
                   inputType={variableInputTypeToInputType(item.type, item.valueType)}
-                  variablesForm={variablesForm}
+                  form={variablesForm}
                   bg={'myGray.50'}
                 />
               );
@@ -130,8 +130,9 @@ const VariableInput = ({
                   formKey={`variables.${item.key}`}
                   placeholder={item.description}
                   inputType={variableInputTypeToInputType(item.type)}
-                  variablesForm={variablesForm}
                   bg={'myGray.50'}
+                  form={variablesForm}
+                  fieldName={`variables.${item.key}`}
                 />
               );
             })}

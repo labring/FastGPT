@@ -33,7 +33,6 @@ const LabelAndFormRender = ({
   required,
   placeholder,
   inputType,
-  variablesForm,
   showValueType,
   ...props
 }: {
@@ -41,11 +40,11 @@ const LabelAndFormRender = ({
   label: string | React.ReactNode;
   required?: boolean;
   placeholder?: string;
-  variablesForm: UseFormReturn<any>;
   showValueType?: boolean;
+  form: UseFormReturn<any>;
 } & SpecificProps &
   BoxProps) => {
-  const { control } = variablesForm;
+  const { control } = props.form;
 
   const minLength = inputType === 'password' ? (props as any).minLength : undefined;
 
