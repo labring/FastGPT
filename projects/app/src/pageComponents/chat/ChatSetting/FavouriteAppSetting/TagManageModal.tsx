@@ -129,7 +129,7 @@ const EditableTagItem = React.memo(function EditableTagItem({
             }}
           />
         ) : (
-          <Box px="1.5" py="0.5" bg="myGray.200" rounded="xs">
+          <Box px="1.5" py="0.5" bg="myGray.200" rounded="xs" minW="40px" textAlign="center">
             {tag.name}
           </Box>
         )}
