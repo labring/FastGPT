@@ -7,6 +7,7 @@ import type { UseFormReturn } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
 import InputRender from '.';
 import type { SpecificProps } from './type';
+import { InputTypeEnum } from './constant';
 
 // Helper function to flatten error object keys
 const getFlattenedErrorKeys = (errors: any, prefix = ''): string[] => {
@@ -45,7 +46,7 @@ const LabelAndFormRender = ({
   BoxProps) => {
   const { control } = props.form;
 
-  const minLength = inputType === 'password' ? (props as any).minLength : undefined;
+  const minLength = inputType === InputTypeEnum.password ? (props as any).minLength : undefined;
 
   return (
     <Box _notLast={{ mb: 4 }}>
@@ -61,8 +62,7 @@ const LabelAndFormRender = ({
           required,
           ...(minLength && {
             minLength: {
-              value: minLength,
-              message: `最少需要 ${minLength} 位字符`
+              value: minLength
             }
           })
         }}

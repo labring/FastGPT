@@ -166,35 +166,22 @@ const InputRender = (props: InputRenderProps) => {
       );
     }
 
-    if (inputType === InputTypeEnum.dateTimePicker) {
-      const {
-        timeGranularity = 'second',
-        timeType = 'point',
-        timeRangeStart,
-        timeRangeEnd
-      } = props;
+    if (inputType === InputTypeEnum.dateSelect) {
+      const { timeRangeStart, timeRangeEnd } = props;
 
-      if (timeType === 'point') {
+      if (props.timeType === 'point') {
         return (
           <TimeInput
-            value={value ? new Date(value) : undefined}
+            value={new Date(value)}
             onDateTimeChange={(date) => onChange(date.toISOString())}
-            timeGranularity={timeGranularity}
-            minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
-            maxDate={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
+            timeGranularity={props.timeGranularity}
+            minDate={new Date(timeRangeStart || '')}
+            maxDate={new Date(timeRangeEnd || '')}
           />
         );
       } else {
-        // For time range, use array format: [dateStart, dateEnd]
         const rangeArray = Array.isArray(value) ? value : [null, null];
         const [startDate, endDate] = rangeArray;
-
-        const updateRange = (index: number, newDate: string) => {
-          const newArray = [...rangeArray];
-          newArray[index] = newDate;
-          onChange(newArray);
-        };
-
         return (
           <Box>
             <Box mb={2}>
@@ -202,13 +189,15 @@ const InputRender = (props: InputRenderProps) => {
                 {t('app:time_range_start')}
               </Box>
               <TimeInput
-                value={startDate ? new Date(startDate) : undefined}
-                onDateTimeChange={(date) => updateRange(0, date.toISOString())}
-                timeGranularity={timeGranularity}
-                maxDate={
-                  endDate ? new Date(endDate) : timeRangeEnd ? new Date(timeRangeEnd) : undefined
-                }
-                minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
+                value={new Date(startDate || '')}
+                onDateTimeChange={(date) => {
+                  const newArray = [...rangeArray];
+                  newArray[0] = date.toISOString();
+                  onChange(newArray);
+                }}
+                timeGranularity={props.timeGranularity}
+                maxDate={endDate ? new Date(endDate) : new Date(timeRangeEnd || '')}
+                minDate={new Date(timeRangeStart || '')}
               />
             </Box>
             <Box>
@@ -216,17 +205,15 @@ const InputRender = (props: InputRenderProps) => {
                 {t('app:time_range_end')}
               </Box>
               <TimeInput
-                value={endDate ? new Date(endDate) : undefined}
-                onDateTimeChange={(date) => updateRange(1, date.toISOString())}
-                timeGranularity={timeGranularity}
-                minDate={
-                  startDate
-                    ? new Date(startDate)
-                    : timeRangeStart
-                      ? new Date(timeRangeStart)
-                      : undefined
-                }
-                maxDate={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
+                value={new Date(endDate || '')}
+                onDateTimeChange={(date) => {
+                  const newArray = [...rangeArray];
+                  newArray[1] = date.toISOString();
+                  onChange(newArray);
+                }}
+                timeGranularity={props.timeGranularity}
+                minDate={startDate ? new Date(startDate) : new Date(timeRangeStart || '')}
+                maxDate={new Date(timeRangeEnd || '')}
               />
             </Box>
           </Box>

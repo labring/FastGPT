@@ -6,13 +6,11 @@ export enum InputTypeEnum {
   select = 'select',
   multipleSelect = 'multipleSelect',
   password = 'password',
-
+  dateSelect = 'dateSelect',
   JSONEditor = 'JSONEditor',
 
   selectLLMModel = 'selectLLMModel',
+  selectDataset = 'selectDataset',
 
-  fileSelect = 'fileSelect',
-
-  dateTimePicker = 'dateTimePicker',
-  datasetSelect = 'datasetSelect'
+  fileSelect = 'fileSelect'
 }
