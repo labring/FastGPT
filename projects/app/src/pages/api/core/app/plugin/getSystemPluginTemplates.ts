@@ -3,7 +3,6 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
-import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
@@ -32,7 +31,7 @@ async function handler(
     .map<NodeTemplateListItemType>((plugin) => ({
       ...plugin,
       parentId: plugin.parentId === undefined ? null : plugin.parentId,
-      templateType: plugin.templateType ?? FlowNodeTemplateTypeEnum.other,
+      templateType: plugin.templateType ?? 'other',
       flowNodeType: plugin.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
       name: parseI18nString(plugin.name, lang),
       intro: parseI18nString(plugin.intro ?? '', lang),

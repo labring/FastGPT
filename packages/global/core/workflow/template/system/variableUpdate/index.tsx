@@ -1,15 +1,11 @@
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../../node/constant';
 import { type FlowNodeTemplateType } from '../../../type/node.d';
-import {
-  FlowNodeTemplateTypeEnum,
-  NodeInputKeyEnum,
-  WorkflowIOValueTypeEnum
-} from '../../../constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../../../constants';
 import { i18nT } from '../../../../../../web/i18n/utils';
 
 export const VariableUpdateNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.variableUpdate,
-  templateType: FlowNodeTemplateTypeEnum.tools,
+  templateType: 'tools',
   flowNodeType: FlowNodeTypeEnum.variableUpdate,
   showSourceHandle: true,
   showTargetHandle: true,

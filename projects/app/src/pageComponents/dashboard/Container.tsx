@@ -11,12 +11,11 @@ import { navbarWidth } from '@/components/Layout';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getTemplateMarketItemList, getTemplateTagList } from '@/web/core/app/api/template';
-import {
-  type AppTemplateSchemaType,
-  type TemplateTypeSchemaType
-} from '@fastgpt/global/core/app/type';
+import type { AppTemplateSchemaType, TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
 import { getPluginGroups } from '@/web/core/app/api/plugin';
-import { type PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
+import type { PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 
 export enum TabEnum {
   apps = 'apps',
@@ -37,7 +36,8 @@ const DashboardContainer = ({
   }) => React.ReactNode;
 }) => {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language as localeType;
   const { isPc } = useSystem();
   const { feConfigs } = useSystemStore();
   const { isOpen: isOpenSidebar, onOpen: onOpenSidebar, onClose: onCloseSidebar } = useDisclosure();
@@ -149,7 +149,7 @@ const DashboardContainer = ({
         groupName: t(group.groupName as any),
         children: group.groupTypes.map((type, index) => ({
           typeId: type.typeId,
-          typeName: t(type.typeName as any),
+          typeName: parseI18nString(type.typeName, lang),
           isActive: index === 0 && !currentType
         }))
       })),

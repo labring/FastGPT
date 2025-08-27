@@ -241,7 +241,7 @@ export async function getChildAppPreviewNode({
         avatar: item.avatar,
         id: appId,
         name: tool.name,
-        templateType: FlowNodeTemplateTypeEnum.tools,
+        templateType: 'tools',
         workflow: {
           nodes: [
             getMCPToolRuntimeNode({
