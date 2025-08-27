@@ -201,7 +201,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       return runToolCall({
         ...props,
         ...requestParams,
-        maxRunToolTimes: 30
+        maxRunToolTimes: 100
       });
     })();
 
