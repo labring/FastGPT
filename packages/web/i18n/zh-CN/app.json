@@ -329,7 +329,7 @@
   "upload_file_max_amount": "最大文件数量",
   "upload_file_max_amount_tip": "单轮对话中最大上传文件数量",
   "variable.internal_type_desc": "仅在工作流内部使用，不会出现在对话框中",
-  "variable.select type_desc": "在对话开始前需要用户填写的变量，会在站内对话和运行预览中显示输入框。赋值方式包括：\n1. 用户在对话框中填写\n2. 通过 API 的 variables 对象传递\n3. 通过【变量更新】节点进行赋值\n注意：在分享链接中不会显示此变量",
+  "variable.select type_desc": "会在站内对话和运行预览中显示输入框，在分享链接中不会显示此变量",
   "variable.textarea_type_desc": "允许用户最多输入4000字的对话框。",
   "variable_name_required": "变量名必填",
   "variable_repeat": "该变量名已被占用，无法使用",

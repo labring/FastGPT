@@ -317,7 +317,7 @@
   "upload_file_max_amount": "最大檔案數量",
   "upload_file_max_amount_tip": "單輪對話中最大上傳檔案數量",
   "variable.internal_type_desc": "僅在工作流內部使用，不會出現在對話框中",
-  "variable.select type_desc": "在對話開始前需要使用者填寫的變數，會在站內對話和執行預覽中顯示輸入框。賦值方式包括：\n1. 使用者在對話框中填寫\n2. 透過 API 的 variables 物件傳遞\n3. 透過【變數更新】節點進行賦值\n注意：在分享連結中不會顯示此變數",
+  "variable.select type_desc": "會在站內對話和運行預覽中顯示輸入框，在分享鏈接中不會顯示此變量",
   "variable.textarea_type_desc": "允許使用者最多輸入 4000 字的對話框。",
   "variable_name_required": "變量名必填",
   "variable_repeat": "該變量名已被佔用，無法使用",
