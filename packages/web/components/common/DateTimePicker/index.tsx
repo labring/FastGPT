@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
 import { Box, Card, Flex, useOutsideClick, Button, Input, HStack } from '@chakra-ui/react';
 import { format } from 'date-fns';
-import { DayPicker } from 'react-day-picker';
+import { DayPicker, Matcher } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import zhCN from 'date-fns/locale/zh-CN';
 import { useTranslation } from 'next-i18next';
@@ -24,7 +24,7 @@ const DateTimePicker = ({
   defaultDate?: Date;
   selectedDateTime?: Date;
   formLabel?: string;
-  disabled?: Date[] | ((date: Date) => boolean);
+  disabled?: Matcher[];
 } & Omit<BoxProps, 'onChange'>) => {
   const { t } = useTranslation();
   const OutRangeRef = useRef(null);

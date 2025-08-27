@@ -28,7 +28,6 @@ const getFlattenedErrorKeys = (errors: any, prefix = ''): string[] => {
 };
 
 const LabelAndFormRender = ({
-  formKey,
   label,
   required,
   placeholder,
@@ -36,12 +35,12 @@ const LabelAndFormRender = ({
   showValueType,
   ...props
 }: {
-  formKey: string;
   label: string | React.ReactNode;
   required?: boolean;
   placeholder?: string;
   showValueType?: boolean;
   form: UseFormReturn<any>;
+  fieldName: string;
 } & SpecificProps &
   BoxProps) => {
   const { control } = props.form;
@@ -57,7 +56,7 @@ const LabelAndFormRender = ({
 
       <Controller
         control={control}
-        name={formKey}
+        name={props.fieldName}
         rules={{
           required,
           ...(minLength && {

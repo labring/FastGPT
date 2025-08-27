@@ -175,6 +175,11 @@ export type VariableItemType = {
   canSelectFile?: boolean;
   canSelectImg?: boolean;
   maxFiles?: number;
+  // timeSelect
+  timeGranularity?: 'second' | 'minute' | 'hour' | 'day';
+  timeType?: 'point' | 'range';
+  timeRangeStart?: string;
+  timeRangeEnd?: string;
 };
 // tts
 export type AppTTSConfigType = {

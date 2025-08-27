@@ -69,12 +69,12 @@ type SpecificProps =
       canSelectImg?: boolean;
       maxFiles?: number;
       setUploading?: React.Dispatch<React.SetStateAction<boolean>>;
-
       form?: UseFormReturn<any>;
       fieldName?: string;
     }
   | {
-      inputType: VariableInputEnum.TimeSelect | InputTypeEnum.dateTimePicker;
+      // dateTimePicker
+      inputType: InputTypeEnum.dateTimePicker;
       timeGranularity?: 'day' | 'hour' | 'minute' | 'second';
       timeType?: 'point' | 'range';
       timeRangeStart?: string;

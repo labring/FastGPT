@@ -265,10 +265,10 @@ export const useDebug = () => {
               <LabelAndFormRender
                 {...item}
                 key={item.key}
-                formKey={`variables.${item.key}`}
                 placeholder={item.description}
                 inputType={variableInputTypeToInputType(item.type)}
                 form={variablesForm}
+                fieldName={`variables.${item.key}`}
                 bg={'myGray.50'}
               />
             ))}
@@ -276,10 +276,10 @@ export const useDebug = () => {
               <LabelAndFormRender
                 {...item}
                 key={item.key}
-                formKey={`variables.${item.key}`}
                 placeholder={item.description}
                 inputType={variableInputTypeToInputType(item.type)}
                 form={variablesForm}
+                fieldName={`variables.${item.key}`}
                 bg={'myGray.50'}
               />
             ))}
@@ -287,10 +287,10 @@ export const useDebug = () => {
               <LabelAndFormRender
                 {...item}
                 key={item.key}
-                formKey={`variables.${item.key}`}
                 placeholder={item.description}
                 inputType={variableInputTypeToInputType(item.type)}
                 form={variablesForm}
+                fieldName={`variables.${item.key}`}
                 bg={'myGray.50'}
               />
             ))}
@@ -300,10 +300,10 @@ export const useDebug = () => {
               <LabelAndFormRender
                 {...item}
                 key={item.key}
-                formKey={`nodeVariables.${item.key}`}
                 placeholder={item.placeholder || item.description}
                 inputType={nodeInputTypeToInputType(item.renderTypeList)}
                 form={variablesForm}
+                fieldName={`nodeVariables.${item.key}`}
                 bg={'myGray.50'}
               />
             ))}
