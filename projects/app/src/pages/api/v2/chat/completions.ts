@@ -238,7 +238,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       MongoChat.findOne({ appId: app._id, chatId }, 'source variableList variables')
     ]);
 
-    // Get store variables(Api variable precedence) and decrypt passwords
+    // Get store variables(Api variable precedence)
     if (chatDetail?.variables) {
       variables = decryptPasswordVariables(
         {

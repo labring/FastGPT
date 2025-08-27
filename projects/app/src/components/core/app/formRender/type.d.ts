@@ -73,8 +73,8 @@ type SpecificProps =
       fieldName?: string;
     }
   | {
-      // dateTimePicker
-      inputType: InputTypeEnum.dateTimePicker;
+      // dateSelect
+      inputType: InputTypeEnum.dateSelect;
       timeGranularity?: 'day' | 'hour' | 'minute' | 'second';
       timeType?: 'point' | 'range';
       timeRangeStart?: string;

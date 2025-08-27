@@ -81,7 +81,7 @@ const TimeInput: React.FC<TimeInputProps> = ({
         borderColor={'myGray.200'}
         bg={'white'}
       />
-      <Box position="relative">
+      <Box position={'relative'}>
         <MyNumberInput
           value={hour}
           onChange={handleHourChange}
@@ -99,26 +99,26 @@ const TimeInput: React.FC<TimeInputProps> = ({
           }}
         />
         <Box
-          position="absolute"
-          right="2"
-          top="50%"
-          transform="translateY(-50%)"
-          fontSize="12px"
+          position={'absolute'}
+          right={'2'}
+          top={'50%'}
+          transform={'translateY(-50%)'}
+          fontSize={'12px'}
           color={enableHour ? 'myGray.500' : 'myGray.300'}
-          pointerEvents="none"
+          pointerEvents={'none'}
           zIndex={1}
         >
           {t('common:hour_unit')}
         </Box>
       </Box>
-      <Box position="relative">
+      <Box position={'relative'}>
         <MyNumberInput
           value={minute}
           onChange={handleMinuteChange}
           min={0}
           max={59}
           w={'48px'}
-          size="sm"
+          size={'sm'}
           hideStepper
           isDisabled={!enableMinute}
           inputFieldProps={{
@@ -129,26 +129,26 @@ const TimeInput: React.FC<TimeInputProps> = ({
           }}
         />
         <Box
-          position="absolute"
-          right="2"
-          top="50%"
-          transform="translateY(-50%)"
-          fontSize="12px"
+          position={'absolute'}
+          right={'2'}
+          top={'50%'}
+          transform={'translateY(-50%)'}
+          fontSize={'12px'}
           color={enableMinute ? 'myGray.500' : 'myGray.300'}
-          pointerEvents="none"
+          pointerEvents={'none'}
           zIndex={1}
         >
           {t('common:minute_unit')}
         </Box>
       </Box>
-      <Box position="relative">
+      <Box position={'relative'}>
         <MyNumberInput
           value={second}
           onChange={handleSecondChange}
           min={0}
           max={59}
           w={'48px'}
-          size="sm"
+          size={'sm'}
           hideStepper
           isDisabled={!enableSecond}
           inputFieldProps={{
@@ -159,13 +159,13 @@ const TimeInput: React.FC<TimeInputProps> = ({
           }}
         />
         <Box
-          position="absolute"
-          right="2"
-          top="50%"
-          transform="translateY(-50%)"
-          fontSize="12px"
+          position={'absolute'}
+          right={'2'}
+          top={'50%'}
+          transform={'translateY(-50%)'}
+          fontSize={'12px'}
           color={enableSecond ? 'myGray.500' : 'myGray.300'}
-          pointerEvents="none"
+          pointerEvents={'none'}
           zIndex={1}
         >
           {t('common:second_unit')}
