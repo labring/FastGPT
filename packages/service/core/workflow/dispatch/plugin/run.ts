@@ -20,7 +20,7 @@ import { filterSystemVariables, getNodeErrResponse } from '../utils';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getChildAppRuntimeById } from '../../../app/plugin/controller';
-import { dispatchWorkFlow } from '../index';
+import { runWorkflow } from '../index';
 import { getUserChatInfoAndAuthTeamPoints } from '../../../../support/permission/auth/team';
 import { dispatchRunTool } from '../child/runTool';
 import type { PluginRuntimeType } from '@fastgpt/global/core/app/plugin/type';
@@ -118,7 +118,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       ...(externalProvider ? externalProvider.externalWorkflowVariables : {})
     };
     const { flowResponses, flowUsages, assistantResponses, runTimes, system_memories } =
-      await dispatchWorkFlow({
+      await runWorkflow({
         ...props,
         // Rewrite stream mode
         ...(system_forbid_stream

@@ -8,7 +8,7 @@ import { responseWriteController } from '../../../../../common/response';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import { dispatchWorkFlow } from '../../index';
+import { runWorkflow } from '../../index';
 import type { DispatchToolModuleProps, RunToolResponse, ToolNodeItemType } from './type';
 import json5 from 'json5';
 import type { DispatchFlowResponse } from '../../type';
@@ -110,7 +110,7 @@ export const runToolCall = async (
     initToolCallEdges(runtimeEdges, interactiveEntryToolParams.entryNodeIds);
 
     // Run entry tool
-    const toolRunResponse = await dispatchWorkFlow({
+    const toolRunResponse = await runWorkflow({
       ...workflowProps,
       isToolCall: true
     });
@@ -383,7 +383,7 @@ export const runToolCall = async (
       })();
 
       initToolNodes(runtimeNodes, [toolNode.nodeId], startParams);
-      const toolRunResponse = await dispatchWorkFlow({
+      const toolRunResponse = await runWorkflow({
         ...workflowProps,
         isToolCall: true
       });

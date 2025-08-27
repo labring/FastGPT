@@ -324,7 +324,11 @@ export const createStreamResponse = async ({
       }
 
       const { reasoningContent, content, finish_reason, usage } = getResponseData();
-      const { answer: llmAnswer, toolCalls } = parsePromptToolCall(content);
+      const { answer: llmAnswer, streamAnswer, toolCalls } = parsePromptToolCall(content);
+
+      if (streamAnswer) {
+        onStreaming?.({ text: streamAnswer });
+      }
 
       toolCalls?.forEach((call) => {
         onToolCall?.({ call });
