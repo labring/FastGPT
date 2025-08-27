@@ -336,7 +336,7 @@ export enum VariableInputEnum {
   JSONEditor = 'JSONEditor',
   select = 'select',
   multipleSelect = 'multipleSelect',
-  TimeSelect = 'dateSelect',
+  dateSelect = 'dateSelect',
   switch = 'switch',
   password = 'password',
   file = 'file',
@@ -395,10 +395,10 @@ export const variableMap: Record<
     value: VariableInputEnum.JSONEditor,
     defaultValueType: WorkflowIOValueTypeEnum.object
   },
-  [VariableInputEnum.TimeSelect]: {
+  [VariableInputEnum.dateSelect]: {
     icon: 'core/workflow/inputType/dateSelect',
     label: i18nT('common:core.workflow.inputType.dateSelect'),
-    value: VariableInputEnum.TimeSelect,
+    value: VariableInputEnum.dateSelect,
     defaultValueType: WorkflowIOValueTypeEnum.date
   },
   [VariableInputEnum.switch]: {
@@ -463,7 +463,7 @@ export const variableMapGroups: Array<
     variableMap[VariableInputEnum.select],
     variableMap[VariableInputEnum.multipleSelect],
     variableMap[VariableInputEnum.switch],
-    variableMap[VariableInputEnum.TimeSelect],
+    variableMap[VariableInputEnum.dateSelect],
     variableMap[VariableInputEnum.file],
     variableMap[VariableInputEnum.password]
   ],

@@ -47,7 +47,13 @@ export const defaultVariable: VariableItemType = {
   valueType: WorkflowIOValueTypeEnum.string,
   canSelectFile: true,
   canSelectImg: true,
-  maxFiles: 5
+  maxFiles: 5,
+  timeGranularity: 'day',
+  timeType: 'point',
+  timeRangeStart: new Date(
+    new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).setHours(0, 0, 0, 0)
+  ).toISOString(),
+  timeRangeEnd: new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
 };
 
 export const addVariable = () => {
@@ -150,6 +156,24 @@ const VariableEdit = ({
         delete data.canSelectFile;
         delete data.canSelectImg;
         delete data.maxFiles;
+      }
+
+      if (data.type !== VariableInputEnum.dateSelect) {
+        delete data.timeGranularity;
+        delete data.timeType;
+        delete data.timeRangeStart;
+        delete data.timeRangeEnd;
+      } else {
+        data.defaultValue =
+          data.timeType === 'point'
+            ? new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
+            : [
+                data.timeRangeStart ||
+                  new Date(
+                    new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).setHours(0, 0, 0, 0)
+                  ).toISOString(),
+                data.timeRangeEnd || new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
+              ];
       }
 
       if (data.type === VariableInputEnum.custom || data.type === VariableInputEnum.internal) {

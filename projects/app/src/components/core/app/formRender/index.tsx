@@ -180,19 +180,21 @@ const InputRender = (props: InputRenderProps) => {
             value={value ? new Date(value) : undefined}
             onDateTimeChange={(date) => onChange(date.toISOString())}
             timeGranularity={timeGranularity}
+            minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
+            maxDate={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
           />
         );
       } else {
         // For time range, use array format: [dateStart, dateEnd]
         const rangeArray = Array.isArray(value) ? value : [null, null];
         const [startDate, endDate] = rangeArray;
-        
+
         const updateRange = (index: number, newDate: string) => {
           const newArray = [...rangeArray];
           newArray[index] = newDate;
           onChange(newArray);
         };
-        
+
         return (
           <Box>
             <Box mb={2}>
@@ -204,11 +206,7 @@ const InputRender = (props: InputRenderProps) => {
                 onDateTimeChange={(date) => updateRange(0, date.toISOString())}
                 timeGranularity={timeGranularity}
                 maxDate={
-                  endDate
-                    ? new Date(endDate)
-                    : timeRangeEnd
-                      ? new Date(timeRangeEnd)
-                      : undefined
+                  endDate ? new Date(endDate) : timeRangeEnd ? new Date(timeRangeEnd) : undefined
                 }
                 minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
               />

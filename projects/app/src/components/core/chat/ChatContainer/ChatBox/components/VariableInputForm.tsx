@@ -84,10 +84,10 @@ const VariableInput = ({
                 <LabelAndFormRender
                   {...item}
                   key={item.key}
-                  formKey={`variables.${item.key}`}
                   placeholder={item.description}
                   inputType={variableInputTypeToInputType(item.type, item.valueType)}
                   form={variablesForm}
+                  fieldName={`variables.${item.key}`}
                   bg={'myGray.50'}
                 />
               );
@@ -120,14 +120,10 @@ const VariableInput = ({
             boxShadow={'0 0 8px rgba(0,0,0,0.15)'}
           >
             {variableList.map((item) => {
-              if (item.type === VariableInputEnum.TimeSelect) {
-                console.log('TimeSelect variable:', item);
-              }
               return (
                 <LabelAndFormRender
                   {...item}
                   key={item.key}
-                  formKey={`variables.${item.key}`}
                   placeholder={item.description}
                   inputType={variableInputTypeToInputType(item.type)}
                   bg={'myGray.50'}

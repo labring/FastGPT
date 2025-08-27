@@ -72,6 +72,10 @@ const TimeInput: React.FC<TimeInputProps> = ({
         selectedDateTime={value && !isNaN(value.getTime()) ? value : undefined}
         onChange={handleDateChange}
         popPosition={popPosition}
+        disabled={[
+          ...(minDate ? [{ before: minDate }] : []),
+          ...(maxDate ? [{ after: maxDate }] : [])
+        ]}
         w={'168px'}
         h={8}
         borderColor={'myGray.200'}

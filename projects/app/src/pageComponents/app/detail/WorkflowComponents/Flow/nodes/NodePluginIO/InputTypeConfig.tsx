@@ -92,6 +92,9 @@ const InputTypeConfig = ({
   const timeRangeStart = watch('timeRangeStart');
   const timeRangeEnd = watch('timeRangeEnd');
 
+  const maxFiles = watch('maxFiles');
+  const maxSelectFiles = Math.min(feConfigs?.uploadFileMaxAmount ?? 20, 50);
+
   const selectValueTypeList = watch('customInputConfig.selectValueTypeList');
   const { isSelectAll: isSelectAllValueType, setIsSelectAll: setIsSelectAllValueType } =
     useMultipleSelect(selectValueTypeList, false);
@@ -131,7 +134,7 @@ const InputTypeConfig = ({
     const list = [
       FlowNodeInputTypeEnum.addInputParam,
       FlowNodeInputTypeEnum.customVariable,
-      VariableInputEnum.TimeSelect,
+      VariableInputEnum.dateSelect,
       VariableInputEnum.custom,
       VariableInputEnum.internal
     ];
@@ -175,45 +178,6 @@ const InputTypeConfig = ({
     ];
     return type === 'plugin' && list.includes(inputType as FlowNodeInputTypeEnum);
   }, [inputType, type]);
-
-  // File select
-  const maxFiles = watch('maxFiles');
-  const maxSelectFiles = Math.min(feConfigs?.uploadFileMaxAmount ?? 20, 50);
-
-  useEffect(() => {
-    if (inputType === VariableInputEnum.TimeSelect) {
-      if (!timeGranularity) {
-        setValue('timeGranularity', 'day');
-      }
-      if (!timeType) {
-        setValue('timeType', 'point');
-      }
-
-      if (!timeRangeEnd) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        setValue('timeRangeEnd', today);
-      }
-
-      if (!timeRangeStart) {
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-        oneWeekAgo.setHours(0, 0, 0, 0);
-        setValue('timeRangeStart', oneWeekAgo);
-      }
-
-      if (!defaultValue) {
-        if (timeType === 'point') {
-          setValue('defaultValue', new Date().toISOString());
-        } else {
-          const defaultStart =
-            timeRangeStart || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-          const defaultEnd = timeRangeEnd || new Date().toISOString();
-          setValue('defaultValue', [defaultStart, defaultEnd]);
-        }
-      }
-    }
-  }, [inputType, timeGranularity, timeType, timeRangeStart, timeRangeEnd, defaultValue, setValue]);
 
   return (
     <Stack flex={1} borderLeft={'1px solid #F0F1F6'} justifyContent={'space-between'}>
@@ -341,7 +305,7 @@ const InputTypeConfig = ({
           </>
         )}
 
-        {inputType === VariableInputEnum.TimeSelect && (
+        {inputType === VariableInputEnum.dateSelect && (
           <>
             <Flex>
               <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>

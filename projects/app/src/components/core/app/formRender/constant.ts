@@ -14,6 +14,5 @@ export enum InputTypeEnum {
   fileSelect = 'fileSelect',
 
   dateTimePicker = 'dateTimePicker',
-  dateTimeRangePicker = 'dateTimeRangePicker',
   datasetSelect = 'datasetSelect'
 }
