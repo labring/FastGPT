@@ -2,7 +2,7 @@
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { type SelectAppItemType } from '@fastgpt/global/core/workflow/template/system/abandoned/runApp/type';
-import { dispatchWorkFlow } from '../index';
+import { runWorkflow } from '../index';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
@@ -59,27 +59,25 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const chatHistories = getHistories(history, histories);
   const { files } = chatValue2RuntimePrompt(query);
 
-  const { flowResponses, flowUsages, assistantResponses, system_memories } = await dispatchWorkFlow(
-    {
-      ...props,
-      runningAppInfo: {
-        id: String(appData._id),
-        teamId: String(appData.teamId),
-        tmbId: String(appData.tmbId)
-      },
-      runtimeNodes: storeNodes2RuntimeNodes(
-        appData.modules,
-        getWorkflowEntryNodeIds(appData.modules)
-      ),
-      runtimeEdges: storeEdges2RuntimeEdges(appData.edges),
-      histories: chatHistories,
-      query: runtimePrompt2ChatsValue({
-        files,
-        text: userChatInput
-      }),
-      variables: props.variables
-    }
-  );
+  const { flowResponses, flowUsages, assistantResponses, system_memories } = await runWorkflow({
+    ...props,
+    runningAppInfo: {
+      id: String(appData._id),
+      teamId: String(appData.teamId),
+      tmbId: String(appData.tmbId)
+    },
+    runtimeNodes: storeNodes2RuntimeNodes(
+      appData.modules,
+      getWorkflowEntryNodeIds(appData.modules)
+    ),
+    runtimeEdges: storeEdges2RuntimeEdges(appData.edges),
+    histories: chatHistories,
+    query: runtimePrompt2ChatsValue({
+      files,
+      text: userChatInput
+    }),
+    variables: props.variables
+  });
 
   const completeMessages = chatHistories.concat([
     {

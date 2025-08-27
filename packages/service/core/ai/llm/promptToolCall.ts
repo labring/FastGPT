@@ -66,11 +66,12 @@ export const promptToolCallMessageRewrite = (
   return cloneMessages;
 };
 
-const ERROR_TEXT = 'Tool run error';
+const ERROR_TEXT = 'Tool call error';
 export const parsePromptToolCall = (
   str: string
 ): {
   answer: string;
+  streamAnswer?: string;
   toolCalls?: ChatCompletionMessageToolCall[];
 } => {
   str = str.trim();
@@ -99,11 +100,13 @@ export const parsePromptToolCall = (
     } catch (error) {
       if (prefixReg.test(str)) {
         return {
-          answer: ERROR_TEXT
+          answer: `${ERROR_TEXT}: ${str}`,
+          streamAnswer: `${ERROR_TEXT}: ${str}`
         };
       } else {
         return {
-          answer: str
+          answer: str,
+          streamAnswer: str
         };
       }
     }

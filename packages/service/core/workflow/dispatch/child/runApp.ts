@@ -1,6 +1,6 @@
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { dispatchWorkFlow } from '../index';
+import { runWorkflow } from '../index';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
@@ -132,7 +132,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       runTimes,
       workflowInteractiveResponse,
       system_memories
-    } = await dispatchWorkFlow({
+    } = await runWorkflow({
       ...props,
       lastInteractive: childrenInteractive,
       // Rewrite stream mode

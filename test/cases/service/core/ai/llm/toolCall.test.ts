@@ -141,18 +141,20 @@ describe('parsePromptToolCall function tests', () => {
       const input = '1: {"name": "tool", "arguments": invalid json}';
       const result = parsePromptToolCall(input);
 
-      expect(result).toEqual({
-        answer: 'Tool run error'
-      });
+      expect(result.answer).toEqual(
+        'Tool call error: 1: {"name": "tool", "arguments": invalid json}'
+      );
+      expect(result.streamAnswer).toEqual(
+        'Tool call error: 1: {"name": "tool", "arguments": invalid json}'
+      );
     });
 
     it('should return error message for incomplete JSON with 1:', () => {
       const input = '1: {"name": "tool"';
       const result = parsePromptToolCall(input);
 
-      expect(result).toEqual({
-        answer: 'Tool run error'
-      });
+      expect(result.answer).toEqual('Tool call error: 1: {"name": "tool"');
+      expect(result.streamAnswer).toEqual('Tool call error: 1: {"name": "tool"');
     });
 
     it('should handle empty JSON object with 1: (creates tool call with undefined properties)', () => {
@@ -187,18 +189,16 @@ describe('parsePromptToolCall function tests', () => {
       const input = '1:';
       const result = parsePromptToolCall(input);
 
-      expect(result).toEqual({
-        answer: 'Tool run error'
-      });
+      expect(result.answer).toEqual('Tool call error: 1:');
+      expect(result.streamAnswer).toEqual('Tool call error: 1:');
     });
 
     it('should handle input with only prefix and whitespace', () => {
       const input = '1:   ';
       const result = parsePromptToolCall(input);
 
-      expect(result).toEqual({
-        answer: 'Tool run error'
-      });
+      expect(result.answer).toEqual('Tool call error: 1:');
+      expect(result.streamAnswer).toEqual('Tool call error: 1:');
     });
 
     it('should handle JSON5 syntax in tool call', () => {
@@ -244,9 +244,12 @@ describe('parsePromptToolCall function tests', () => {
       const result = parsePromptToolCall(input);
 
       // The sliceJsonStr function can't properly extract JSON when there's extra text after
-      expect(result).toEqual({
-        answer: 'Tool run error'
-      });
+      expect(result.answer).toEqual(
+        'Tool call error: Text 1: {"name": "tool1", "arguments": {"param": "value"}} more text 1: {"name": "tool2", "arguments": {}}'
+      );
+      expect(result.streamAnswer).toEqual(
+        'Tool call error: Text 1: {"name": "tool1", "arguments": {"param": "value"}} more text 1: {"name": "tool2", "arguments": {}}'
+      );
     });
 
     it('should handle tool name with underscores and numbers', () => {
