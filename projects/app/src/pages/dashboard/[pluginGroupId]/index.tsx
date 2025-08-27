@@ -154,8 +154,8 @@ const SystemTools = () => {
       })
       .filter((item) => {
         if (!searchKey) return true;
-        const regx = new RegExp(searchKey, 'i');
-        return regx.test(`${item.name}${item.intro}${item.instructions}`);
+        const regex = new RegExp(searchKey, 'i');
+        return regex.test(`${item.name}${item.intro}${item.instructions}`);
       });
   }, [plugins, searchKey, type]);
 
@@ -225,33 +225,33 @@ const SystemTools = () => {
                 {filterPluginsByGroup.length === 0 && <EmptyTip />}
               </Box>
             </MyBox>
-                <Box flex={'0 0 200px'}>
-                  <SearchInput
-                    value={searchKey}
-                    onChange={(e) => setSearchKey(e.target.value)}
-                    placeholder={t('common:search_tool')}
-                  />
-                </Box>
-              </Flex>
-              <Grid
-                gridTemplateColumns={[
-                  '1fr',
-                  'repeat(2,1fr)',
-                  'repeat(2,1fr)',
-                  'repeat(3,1fr)',
-                  'repeat(4,1fr)'
-                ]}
-                gridGap={4}
-                alignItems={'stretch'}
-                py={5}
-              >
-                {filterPluginsByGroup.map((item) => (
-                  <PluginCard key={item.id} item={item} groups={pluginGroups} />
-                ))}
-              </Grid>
-              {filterPluginsByGroup.length === 0 && <EmptyTip />}
+            <Box flex={'0 0 200px'}>
+              <SearchInput
+                value={searchKey}
+                onChange={(e) => setSearchKey(e.target.value)}
+                placeholder={t('common:search_tool')}
+              />
             </Box>
-          </MyBox>
+            {/*</Flex>*/}
+            <Grid
+              gridTemplateColumns={[
+                '1fr',
+                'repeat(2,1fr)',
+                'repeat(2,1fr)',
+                'repeat(3,1fr)',
+                'repeat(4,1fr)'
+              ]}
+              gridGap={4}
+              alignItems={'stretch'}
+              py={5}
+            >
+              {filterPluginsByGroup.map((item) => (
+                <PluginCard key={item.id} item={item} groups={pluginGroups} />
+              ))}
+            </Grid>
+            {filterPluginsByGroup.length === 0 && <EmptyTip />}
+            {/*</Box>*/}
+            {/*</MyBox>*/}
             <MyModal
               title={t('file:common.upload_system_tools')}
               isOpen={isOpen}
