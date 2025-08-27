@@ -47,7 +47,7 @@ import { removeSystemVariable, rewriteRuntimeWorkFlow } from './utils';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { callbackMap } from './constants';
 
-type Props = ChatDispatchProps & {
+type Props = Omit<ChatDispatchProps, 'workflowDispatchDeep'> & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
 };
@@ -58,62 +58,16 @@ type NodeResponseCompleteType = Omit<NodeResponseType, 'responseData'> & {
   [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType;
 };
 
-/* running */
+// Run workflow
 export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowResponse> {
-  let {
-    res,
-    runtimeNodes = [],
-    runtimeEdges = [],
-    histories = [],
-    variables = {},
-    externalProvider,
-    stream = false,
-    retainDatasetCite = true,
-    version = 'v1',
-    responseDetail = true,
-    responseAllData = true
-  } = data;
-  const startTime = Date.now();
+  const { res, stream, externalProvider } = data;
 
-  await rewriteRuntimeWorkFlow({ nodes: runtimeNodes, edges: runtimeEdges, lang: data.lang });
-
-  // 初始化深度和自动增加深度，避免无限嵌套
-  if (!data.workflowDispatchDeep) {
-    data.workflowDispatchDeep = 1;
-  } else {
-    data.workflowDispatchDeep += 1;
-  }
-  const isRootRuntime = data.workflowDispatchDeep === 1;
-
-  // 初始化 runtimeNodesMap
-  const runtimeNodesMap = new Map(runtimeNodes.map((item) => [item.nodeId, item]));
-
-  // Over max depth
-  if (data.workflowDispatchDeep > 20) {
-    return {
-      flowResponses: [],
-      flowUsages: [],
-      debugResponse: {
-        finishedNodes: [],
-        finishedEdges: [],
-        nextStepRunNodes: []
-      },
-      [DispatchNodeResponseKeyEnum.runTimes]: 1,
-      [DispatchNodeResponseKeyEnum.assistantResponses]: [],
-      [DispatchNodeResponseKeyEnum.toolResponses]: null,
-      newVariables: removeSystemVariable(variables, externalProvider.externalWorkflowVariables),
-      durationSeconds: 0
-    };
-  }
-
-  let workflowRunTimes = 0;
   let streamCheckTimer: NodeJS.Timeout | null = null;
 
-  // Init
-  if (isRootRuntime) {
-    // set sse response headers
-    res?.setHeader('Connection', 'keep-alive'); // Set keepalive for long connection
-    if (stream && res) {
+  // set sse response headers
+  if (res) {
+    res.setHeader('Connection', 'keep-alive'); // Set keepalive for long connection
+    if (stream) {
       res.on('close', () => res.end());
       res.on('error', () => {
         addLog.error('Request error');
@@ -135,13 +89,67 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         });
       }, 10000);
     }
+  }
 
-    // Get default variables
-    variables = {
-      ...externalProvider.externalWorkflowVariables,
-      ...getSystemVariables(data)
+  // Get default variables
+  const defaultVariables = {
+    ...externalProvider.externalWorkflowVariables,
+    ...getSystemVariables(data)
+  };
+
+  // Init some props
+  return runWorkflow({
+    ...data,
+    variables: defaultVariables,
+    workflowDispatchDeep: 0
+  }).finally(() => {
+    if (streamCheckTimer) {
+      clearInterval(streamCheckTimer);
+    }
+  });
+}
+
+type RunWorkflowProps = ChatDispatchProps & {
+  runtimeNodes: RuntimeNodeItemType[];
+  runtimeEdges: RuntimeEdgeItemType[];
+};
+export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowResponse> => {
+  let {
+    res,
+    runtimeNodes = [],
+    runtimeEdges = [],
+    histories = [],
+    variables = {},
+    externalProvider,
+    retainDatasetCite = true,
+    version = 'v1',
+    responseDetail = true,
+    responseAllData = true
+  } = data;
+
+  // Over max depth
+  data.workflowDispatchDeep++;
+  const isRootRuntime = data.workflowDispatchDeep === 1;
+  if (data.workflowDispatchDeep > 20) {
+    return {
+      flowResponses: [],
+      flowUsages: [],
+      debugResponse: {
+        finishedNodes: [],
+        finishedEdges: [],
+        nextStepRunNodes: []
+      },
+      [DispatchNodeResponseKeyEnum.runTimes]: 1,
+      [DispatchNodeResponseKeyEnum.assistantResponses]: [],
+      [DispatchNodeResponseKeyEnum.toolResponses]: null,
+      newVariables: removeSystemVariable(variables, externalProvider.externalWorkflowVariables),
+      durationSeconds: 0
     };
   }
+
+  const startTime = Date.now();
+
+  await rewriteRuntimeWorkFlow({ nodes: runtimeNodes, edges: runtimeEdges, lang: data.lang });
 
   /* 
     工作流队列控制
@@ -161,7 +169,9 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       - 触发交互节点后，需要跳过所有 skip 节点，避免后续执行了 skipNode。
   */
   class WorkflowQueue {
+    runtimeNodesMap = new Map(runtimeNodes.map((item) => [item.nodeId, item]));
     // Workflow variables
+    workflowRunTimes = 0;
     chatResponses: ChatHistoryItemResType[] = []; // response request and save to database
     chatAssistantResponse: AIChatItemValueItemType[] = []; // The value will be returned to the user
     chatNodeUsages: ChatNodeUsageType[] = [];
@@ -221,7 +231,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       }
 
       const nodeId = this.activeRunQueue.keys().next().value;
-      const node = nodeId ? runtimeNodesMap.get(nodeId) : undefined;
+      const node = nodeId ? this.runtimeNodesMap.get(nodeId) : undefined;
 
       if (nodeId) {
         this.activeRunQueue.delete(nodeId);
@@ -501,7 +511,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         system_memories: newMemories
       }: NodeResponseCompleteType) => {
         // Add run times
-        workflowRunTimes += runTimes;
+        this.workflowRunTimes += runTimes;
         data.maxRunTimes -= runTimes;
 
         if (newMemories) {
@@ -650,7 +660,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
       // Get node run status by edges
       const status = checkNodeRunStatus({
-        nodesMap: runtimeNodesMap,
+        nodesMap: this.runtimeNodesMap,
         node,
         runtimeEdges
       });
@@ -820,10 +830,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     });
   }
 
-  if (streamCheckTimer) {
-    clearInterval(streamCheckTimer);
-  }
-
   return {
     flowResponses: workflowQueue.chatResponses,
     flowUsages: workflowQueue.chatNodeUsages,
@@ -833,7 +839,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       nextStepRunNodes: workflowQueue.debugNextStepRunNodes
     },
     workflowInteractiveResponse: interactiveResult,
-    [DispatchNodeResponseKeyEnum.runTimes]: workflowRunTimes,
+    [DispatchNodeResponseKeyEnum.runTimes]: workflowQueue.workflowRunTimes,
     [DispatchNodeResponseKeyEnum.assistantResponses]: mergeAssistantResponseAnswerText(
       workflowQueue.chatAssistantResponse
     ),
@@ -848,7 +854,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         : undefined,
     durationSeconds
   };
-}
+};
 
 /* get system variable */
 const getSystemVariables = ({
