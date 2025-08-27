@@ -52,10 +52,10 @@ const ChatHomeVariablesForm = ({ chatForm }: Props) => {
                 <LabelAndFormRender
                   {...item}
                   key={item.key}
-                  formKey={`variables.${item.key}`}
+                  fieldName={`variables.${item.key}`}
                   placeholder={item.description}
                   inputType={variableInputTypeToInputType(item.type, item.valueType)}
-                  variablesForm={variablesForm}
+                  form={variablesForm}
                   bg={'myGray.50'}
                 />
               ))}
@@ -68,10 +68,10 @@ const ChatHomeVariablesForm = ({ chatForm }: Props) => {
               <LabelAndFormRender
                 {...item}
                 key={item.key}
-                formKey={`variables.${item.key}`}
+                fieldName={`variables.${item.key}`}
                 placeholder={item.description}
                 inputType={variableInputTypeToInputType(item.type)}
-                variablesForm={variablesForm}
+                form={variablesForm}
                 bg={'myGray.50'}
               />
             ))}
