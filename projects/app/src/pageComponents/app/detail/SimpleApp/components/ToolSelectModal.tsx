@@ -2,6 +2,8 @@ import React, { useCallback, useMemo, useState } from 'react';
 
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 import {
   Accordion,
   AccordionButton,
@@ -220,7 +222,8 @@ const RenderList = React.memo(function RenderList({
   type: TemplateTypeEnum;
   setParentId: (parentId: ParentIdType) => any;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language as localeType;
   const [configTool, setConfigTool] = useState<FlowNodeTemplateType>();
   const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
   const { toast } = useToast();
@@ -325,7 +328,7 @@ const RenderList = React.memo(function RenderList({
           const copy: NodeTemplateListType = group.groupTypes.map((type) => ({
             list: [],
             type: type.typeId,
-            label: type.typeName
+            label: parseI18nString(type.typeName, lang)
           }));
           templates.forEach((item) => {
             const index = copy.findIndex((template) => template.type === item.templateType);

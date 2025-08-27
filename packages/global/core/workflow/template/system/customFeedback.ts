@@ -1,15 +1,11 @@
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
 import { type FlowNodeTemplateType } from '../../type/node.d';
-import {
-  WorkflowIOValueTypeEnum,
-  FlowNodeTemplateTypeEnum,
-  NodeInputKeyEnum
-} from '../../constants';
+import { WorkflowIOValueTypeEnum, NodeInputKeyEnum } from '../../constants';
 import { i18nT } from '../../../../../web/i18n/utils';
 
 export const CustomFeedbackNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.customFeedback,
-  templateType: FlowNodeTemplateTypeEnum.other,
+  templateType: 'other',
   flowNodeType: FlowNodeTypeEnum.customFeedback,
   showSourceHandle: true,
   showTargetHandle: true,

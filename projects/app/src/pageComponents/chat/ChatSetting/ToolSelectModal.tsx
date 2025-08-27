@@ -14,6 +14,8 @@ import {
   Flex,
   Grid
 } from '@chakra-ui/react';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -159,7 +161,8 @@ const RenderList = React.memo(function RenderList({
   templates: NodeTemplateListItemType[];
   setParentId: (parentId: ParentIdType) => any;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language as localeType;
   const [configTool, setConfigTool] = useState<FlowNodeTemplateType>();
   const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
   const { toast } = useToast();
@@ -262,7 +265,7 @@ const RenderList = React.memo(function RenderList({
       const copy: NodeTemplateListType = group.groupTypes.map((type) => ({
         list: [],
         type: type.typeId,
-        label: type.typeName
+        label: parseI18nString(type.typeName, lang)
       }));
       templates.forEach((item) => {
         const index = copy.findIndex((template) => template.type === item.templateType);

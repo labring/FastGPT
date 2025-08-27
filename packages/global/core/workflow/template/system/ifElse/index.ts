@@ -1,10 +1,5 @@
 import { i18nT } from '../../../../../../web/i18n/utils';
-import {
-  FlowNodeTemplateTypeEnum,
-  NodeInputKeyEnum,
-  NodeOutputKeyEnum,
-  WorkflowIOValueTypeEnum
-} from '../../../constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../../../constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
@@ -14,7 +9,7 @@ import { type FlowNodeTemplateType } from '../../../type/node';
 
 export const IfElseNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.ifElseNode,
-  templateType: FlowNodeTemplateTypeEnum.tools,
+  templateType: 'tools',
   flowNodeType: FlowNodeTypeEnum.ifElseNode,
   showSourceHandle: false,
   showTargetHandle: true,

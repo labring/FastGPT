@@ -1,5 +1,4 @@
 import {
-  FlowNodeTemplateTypeEnum,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
@@ -34,7 +33,7 @@ export const getGlobalVariableNode = ({
 }) => {
   const template: FlowNodeTemplateType = {
     id: FlowNodeTypeEnum.globalVariable,
-    templateType: FlowNodeTemplateTypeEnum.other,
+    templateType: 'other',
     flowNodeType: FlowNodeTypeEnum.emptyNode,
     showSourceHandle: false,
     showTargetHandle: false,

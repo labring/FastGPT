@@ -38,7 +38,11 @@ export type SystemPluginConfigSchemaType = {
 };
 
 export type TGroupType = {
-  typeName: string;
+  typeName: {
+    en: string;
+    'zh-CN': string;
+    'zh-Hant': string;
+  };
   typeId: string;
 };
 
