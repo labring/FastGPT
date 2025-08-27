@@ -1,10 +1,8 @@
 import { Client } from 'minio';
 import {
-  PluginFilePath,
-  PluginTypeEnum,
   type FileMetadataType,
   type PresignedUrlInput as UploadPresignedURLProps,
-  type PresignedUrlResponse,
+  type UploadPresignedURLResponse,
   type S3ServiceConfig
 } from './type';
 import { defualtS3Config } from './config';
@@ -14,6 +12,7 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 import { extname } from 'path';
 import { addLog } from 'common/system/log';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { mimeMap } from './const';
 
 // export const connectionMinio = (() => {
 //   if (!global.minioClient) {
@@ -91,26 +90,6 @@ export class S3Service {
     await this.init();
     const inferContentType = (filename: string) => {
       const ext = extname(filename).toLowerCase();
-      const mimeMap: Record<string, string> = {
-        '.jpg': 'image/jpeg',
-        '.jpeg': 'image/jpeg',
-        '.png': 'image/png',
-        '.gif': 'image/gif',
-        '.webp': 'image/webp',
-        '.svg': 'image/svg+xml',
-        '.pdf': 'application/pdf',
-        '.txt': 'text/plain',
-        '.json': 'application/json',
-        '.csv': 'text/csv',
-        '.zip': 'application/zip',
-        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-        '.doc': 'application/msword',
-        '.xls': 'application/vnd.ms-excel',
-        '.ppt': 'application/vnd.ms-powerpoint'
-      };
-
       return mimeMap[ext] || 'application/octet-stream';
     };
 
@@ -149,7 +128,7 @@ export class S3Service {
     contentType,
     metadata,
     filename: customFileName
-  }: UploadPresignedURLProps): Promise<PresignedUrlResponse> => {
+  }: UploadPresignedURLProps): Promise<UploadPresignedURLResponse> => {
     await this.init();
     const filename = filepath + '/' + (customFileName ?? this.generateFileId());
 
@@ -174,7 +153,7 @@ export class S3Service {
 
       const { postURL, formData } = await this.client.presignedPostPolicy(policy);
 
-      const response: PresignedUrlResponse = {
+      const response: UploadPresignedURLResponse = {
         objectName: filename,
         uploadUrl: postURL,
         formData

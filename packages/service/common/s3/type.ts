@@ -6,6 +6,9 @@ export type S3ServiceConfig = {
   secretKey: string;
   bucket: string;
   customEndpoint?: string;
+  /**
+   * Unit: Byte
+   */
   maxFileSize?: number;
   initFunction?: () => Promise<any>;
 };
@@ -26,7 +29,7 @@ export type PresignedUrlInput = {
   metadata?: Record<string, string>;
 };
 
-export type PresignedUrlResponse = {
+export type UploadPresignedURLResponse = {
   objectName: string;
   uploadUrl: string;
   formData: Record<string, string>;

@@ -19,7 +19,7 @@ import { serviceSideProps } from '@/web/common/i18n/utils';
 import { getSystemPlugTemplates } from '@/web/core/app/api/plugin';
 import {
   postUploadFileAndUrl,
-  postPresignedUrl,
+  getPluginUploadPresignedURL,
   postConfirmUpload,
   postS3UploadFile,
   postDeletePlugin
@@ -71,12 +71,8 @@ const SystemTools = () => {
     async () => {
       const file = selectFiles[0];
 
-      const presignedData = await postPresignedUrl({
-        filename: file.name,
-        contentType: file.file.type,
-        metadata: {
-          size: String(file.file.size)
-        }
+      const presignedData = await getPluginUploadPresignedURL({
+        filename: file.name
       });
 
       const formData = new FormData();
