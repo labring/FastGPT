@@ -185,7 +185,7 @@ ${JSON.stringify(item.interactive, null, 2)}
       question,
       answer,
       chatId,
-      responseTime: responseTime * 1000,
+      responseTime: parseFloat(responseTime.toFixed(2)) * 1000,
       metadata: metadataString,
       sourceName: chat.source ?? '-',
       // @ts-ignore
