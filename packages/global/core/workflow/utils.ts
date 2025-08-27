@@ -18,7 +18,6 @@ import {
   type ReferenceArrayValueType,
   type ReferenceItemValueType
 } from './type/io.d';
-import type { NodeToolConfigType } from './type/node';
 import { type StoreNodeItemType } from './type/node';
 import type {
   VariableItemType,
@@ -255,6 +254,15 @@ export const appData2FlowNodeIO = ({
           ],
           [VariableInputEnum.numberInput]: [FlowNodeInputTypeEnum.numberInput],
           [VariableInputEnum.select]: [FlowNodeInputTypeEnum.select],
+          [VariableInputEnum.multipleSelect]: [FlowNodeInputTypeEnum.multipleSelect],
+          [VariableInputEnum.JSONEditor]: [FlowNodeInputTypeEnum.JSONEditor],
+          [VariableInputEnum.dateSelect]: [FlowNodeInputTypeEnum.dateSelect],
+          [VariableInputEnum.switch]: [FlowNodeInputTypeEnum.switch],
+          [VariableInputEnum.password]: [FlowNodeInputTypeEnum.password],
+          [VariableInputEnum.file]: [FlowNodeInputTypeEnum.fileSelect],
+          [VariableInputEnum.modelSelect]: [FlowNodeInputTypeEnum.selectLLMModel],
+          [VariableInputEnum.datasetSelect]: [FlowNodeInputTypeEnum.selectDataset],
+          [VariableInputEnum.internal]: [FlowNodeInputTypeEnum.hidden],
           [VariableInputEnum.custom]: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
         };
 

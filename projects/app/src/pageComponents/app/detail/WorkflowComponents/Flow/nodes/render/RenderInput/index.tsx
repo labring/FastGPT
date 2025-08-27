@@ -74,6 +74,12 @@ const RenderList: Record<
   [FlowNodeInputTypeEnum.selectLLMModel]: {
     Component: CommonInputForm
   },
+  [FlowNodeInputTypeEnum.dateSelect]: {
+    Component: CommonInputForm
+  },
+  [FlowNodeInputTypeEnum.password]: {
+    Component: CommonInputForm
+  },
 
   [FlowNodeInputTypeEnum.customVariable]: undefined,
   [FlowNodeInputTypeEnum.hidden]: undefined,

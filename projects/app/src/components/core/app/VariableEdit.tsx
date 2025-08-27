@@ -15,7 +15,7 @@ import {
 import { SmallAddIcon } from '@chakra-ui/icons';
 import {
   VariableInputEnum,
-  variableMapGroups,
+  variableConfigs,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type.d';
@@ -79,7 +79,7 @@ const VariableEdit = ({
   const type = watch('type');
 
   const inputTypeList = useMemo(() => {
-    return variableMapGroups
+    return variableConfigs
       .map((group) =>
         group
           .filter((item) => item && item.value !== VariableInputEnum.textarea)

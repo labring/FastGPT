@@ -30,7 +30,9 @@ export enum FlowNodeInputTypeEnum { // render ui
   hidden = 'hidden',
   custom = 'custom',
 
-  fileSelect = 'fileSelect'
+  fileSelect = 'fileSelect',
+  dateSelect = 'dateSelect',
+  password = 'password'
 }
 export const FlowNodeInputMap: Record<
   FlowNodeInputTypeEnum,
@@ -94,6 +96,12 @@ export const FlowNodeInputMap: Record<
   },
   [FlowNodeInputTypeEnum.fileSelect]: {
     icon: 'core/workflow/inputType/file'
+  },
+  [FlowNodeInputTypeEnum.dateSelect]: {
+    icon: 'core/workflow/inputType/dateSelect'
+  },
+  [FlowNodeInputTypeEnum.password]: {
+    icon: 'core/workflow/inputType/password'
   }
 };
 

@@ -63,7 +63,10 @@ import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/u
 import { type ExternalProviderType } from '@fastgpt/global/core/workflow/runtime/type';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
-import { decryptPasswordVariables, encryptPasswordVariables } from '@fastgpt/service/core/chat/utils/passwordVariables';
+import {
+  decryptPasswordVariables,
+  encryptPasswordVariables
+} from '@fastgpt/service/core/app/utils';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -349,7 +352,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         appId: app._id,
         userInteractiveVal,
         aiResponse,
-        newVariables: encryptPasswordVariables(newVariables, chatDetail?.variableList),
+        newVariables: encryptPasswordVariables(newVariables, app.chatConfig.variables),
         durationSeconds
       });
     } else {
@@ -360,7 +363,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         tmbId: tmbId,
         nodes,
         appChatConfig: chatConfig,
-        variables: encryptPasswordVariables(newVariables, chatDetail?.variableList),
+        variables: encryptPasswordVariables(newVariables, app.chatConfig.variables),
         isUpdateUseTime: isOwnerUse && source === ChatSourceEnum.online, // owner update use time
         newTitle,
         shareId,
