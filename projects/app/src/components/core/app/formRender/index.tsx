@@ -183,7 +183,16 @@ const InputRender = (props: InputRenderProps) => {
           />
         );
       } else {
-        const rangeValue = value || {};
+        // For time range, use array format: [dateStart, dateEnd]
+        const rangeArray = Array.isArray(value) ? value : [null, null];
+        const [startDate, endDate] = rangeArray;
+        
+        const updateRange = (index: number, newDate: string) => {
+          const newArray = [...rangeArray];
+          newArray[index] = newDate;
+          onChange(newArray);
+        };
+        
         return (
           <Box>
             <Box mb={2}>
@@ -191,12 +200,12 @@ const InputRender = (props: InputRenderProps) => {
                 {t('app:time_range_start')}
               </Box>
               <TimeInput
-                value={rangeValue.start ? new Date(rangeValue.start) : undefined}
-                onDateTimeChange={(date) => onChange({ ...rangeValue, start: date.toISOString() })}
+                value={startDate ? new Date(startDate) : undefined}
+                onDateTimeChange={(date) => updateRange(0, date.toISOString())}
                 timeGranularity={timeGranularity}
                 maxDate={
-                  rangeValue.end
-                    ? new Date(rangeValue.end)
+                  endDate
+                    ? new Date(endDate)
                     : timeRangeEnd
                       ? new Date(timeRangeEnd)
                       : undefined
@@ -209,12 +218,12 @@ const InputRender = (props: InputRenderProps) => {
                 {t('app:time_range_end')}
               </Box>
               <TimeInput
-                value={rangeValue.end ? new Date(rangeValue.end) : undefined}
-                onDateTimeChange={(date) => onChange({ ...rangeValue, end: date.toISOString() })}
+                value={endDate ? new Date(endDate) : undefined}
+                onDateTimeChange={(date) => updateRange(1, date.toISOString())}
                 timeGranularity={timeGranularity}
                 minDate={
-                  rangeValue.start
-                    ? new Date(rangeValue.start)
+                  startDate
+                    ? new Date(startDate)
                     : timeRangeStart
                       ? new Date(timeRangeStart)
                       : undefined

@@ -158,7 +158,6 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.multipleSelect,
       VariableInputEnum.custom,
       VariableInputEnum.internal
-      // VariableInputEnum.TimeSelect
     ];
 
     return list.includes(inputType as FlowNodeInputTypeEnum);
@@ -210,10 +209,7 @@ const InputTypeConfig = ({
           const defaultStart =
             timeRangeStart || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
           const defaultEnd = timeRangeEnd || new Date().toISOString();
-          setValue('defaultValue', {
-            start: defaultStart,
-            end: defaultEnd
-          });
+          setValue('defaultValue', [defaultStart, defaultEnd]);
         }
       }
     }
@@ -467,7 +463,9 @@ const InputTypeConfig = ({
                 ((inputType === VariableInputEnum.custom ||
                   inputType === VariableInputEnum.internal) &&
                   valueType === WorkflowIOValueTypeEnum.boolean)) && (
-                <Switch {...register('defaultValue')} />
+                <Flex h={10} alignItems={'center'}>
+                  <Switch {...register('defaultValue')} />
+                </Flex>
               )}
               {inputType === FlowNodeInputTypeEnum.select && (
                 <MySelect<string>
@@ -509,62 +507,6 @@ const InputTypeConfig = ({
                   }
                 />
               )}
-              {/* {inputType === VariableInputEnum.TimeSelect && (
-                <Box w={'full'}>
-                  {timeType === 'point' ? (
-                    <TimeInput
-                      value={defaultValue ? new Date(defaultValue) : undefined}
-                      onDateTimeChange={(date) => setValue('defaultValue', date.toISOString())}
-                      timeGranularity={timeGranularity}
-                    />
-                  ) : (
-                    <Box>
-                      <Box mb={2}>
-                        <Box color={'myGray.500'} fontSize="12px" mb={1}>
-                          {t('app:time_range_start')}
-                        </Box>
-                        <TimeInput
-                          value={defaultValue?.start ? new Date(defaultValue.start) : undefined}
-                          onDateTimeChange={(date) => {
-                            const newValue = { ...(defaultValue || {}), start: date.toISOString() };
-                            setValue('defaultValue', newValue);
-                          }}
-                          timeGranularity={timeGranularity}
-                          maxDate={
-                            defaultValue?.end
-                              ? new Date(defaultValue.end)
-                              : timeRangeEnd
-                                ? new Date(timeRangeEnd)
-                                : undefined
-                          }
-                          minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
-                        />
-                      </Box>
-                      <Box>
-                        <Box color={'myGray.500'} fontSize="12px" mb={1}>
-                          {t('app:time_range_end')}
-                        </Box>
-                        <TimeInput
-                          value={defaultValue?.end ? new Date(defaultValue.end) : undefined}
-                          onDateTimeChange={(date) => {
-                            const newValue = { ...(defaultValue || {}), end: date.toISOString() };
-                            setValue('defaultValue', newValue);
-                          }}
-                          timeGranularity={timeGranularity}
-                          minDate={
-                            defaultValue?.start
-                              ? new Date(defaultValue.start)
-                              : timeRangeStart
-                                ? new Date(timeRangeStart)
-                                : undefined
-                          }
-                          maxDate={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
-                        />
-                      </Box>
-                    </Box>
-                  )}
-                </Box>
-              )} */}
             </Flex>
           </Flex>
         )}
@@ -718,7 +660,8 @@ const InputTypeConfig = ({
           </>
         )}
 
-        {(inputType === FlowNodeInputTypeEnum.fileSelect || inputType === VariableInputEnum.file) && (
+        {(inputType === FlowNodeInputTypeEnum.fileSelect ||
+          inputType === VariableInputEnum.file) && (
           <>
             <Flex alignItems={'center'} minH={'40px'}>
               <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
