@@ -19,17 +19,11 @@ async function handler(
     req.body;
 
   if (!collectionId || typeof collectionId !== 'string') {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'collectionId is required and must be a string'
-    });
+    return Promise.reject('collectionId is required and must be a string');
   }
 
   if (!user_input || typeof user_input !== 'string' || user_input.trim().length === 0) {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'user_input is required and must be a non-empty string'
-    });
+    return Promise.reject('user_input is required and must be a non-empty string');
   }
 
   if (
@@ -37,27 +31,18 @@ async function handler(
     typeof expected_output !== 'string' ||
     expected_output.trim().length === 0
   ) {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'expected_output is required and must be a non-empty string'
-    });
+    return Promise.reject('expected_output is required and must be a non-empty string');
   }
 
   if (actual_output !== undefined && typeof actual_output !== 'string') {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'actual_output must be a string if provided'
-    });
+    return Promise.reject('actual_output must be a string if provided');
   }
 
   if (
     context !== undefined &&
     (!Array.isArray(context) || !context.every((item) => typeof item === 'string'))
   ) {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'context must be an array of strings if provided'
-    });
+    return Promise.reject('context must be an array of strings if provided');
   }
 
   if (
@@ -65,10 +50,7 @@ async function handler(
     (!Array.isArray(retrieval_context) ||
       !retrieval_context.every((item) => typeof item === 'string'))
   ) {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'retrieval_context must be an array of strings if provided'
-    });
+    return Promise.reject('retrieval_context must be an array of strings if provided');
   }
 
   const { teamId, tmbId } = await authUserPer({
@@ -85,10 +67,7 @@ async function handler(
   });
 
   if (!collection) {
-    return Promise.reject({
-      statusCode: 404,
-      message: 'Dataset collection not found or access denied'
-    });
+    return Promise.reject('Dataset collection not found or access denied');
   }
 
   const dataId = await mongoSessionRun(async (session) => {

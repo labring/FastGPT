@@ -17,31 +17,19 @@ async function handler(
 
   // Parameter validation
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'Name is required and must be a non-empty string'
-    });
+    return Promise.reject('Name is required and must be a non-empty string');
   }
 
   if (name.trim().length > 100) {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'Name must be less than 100 characters'
-    });
+    return Promise.reject('Name must be less than 100 characters');
   }
 
   if (description && typeof description !== 'string') {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'Description must be a string'
-    });
+    return Promise.reject('Description must be a string');
   }
 
   if (description && description.length > 500) {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'Description must be less than 500 characters'
-    });
+    return Promise.reject('Description must be less than 500 characters');
   }
 
   // Authentication and authorization
@@ -59,10 +47,7 @@ async function handler(
   });
 
   if (existingDataset) {
-    return Promise.reject({
-      statusCode: 409,
-      message: 'A dataset with this name already exists'
-    });
+    return Promise.reject('A dataset with this name already exists');
   }
 
   // Create dataset collection

@@ -31,17 +31,11 @@ async function handler(
   } = req.body;
 
   if (!dataId || typeof dataId !== 'string') {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'dataId is required and must be a string'
-    });
+    return Promise.reject('dataId is required and must be a string');
   }
 
   if (!user_input || typeof user_input !== 'string' || user_input.trim().length === 0) {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'user_input is required and must be a non-empty string'
-    });
+    return Promise.reject('user_input is required and must be a non-empty string');
   }
 
   if (
@@ -49,27 +43,18 @@ async function handler(
     typeof expected_output !== 'string' ||
     expected_output.trim().length === 0
   ) {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'expected_output is required and must be a non-empty string'
-    });
+    return Promise.reject('expected_output is required and must be a non-empty string');
   }
 
   if (actual_output !== undefined && typeof actual_output !== 'string') {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'actual_output must be a string if provided'
-    });
+    return Promise.reject('actual_output must be a string if provided');
   }
 
   if (
     context !== undefined &&
     (!Array.isArray(context) || !context.every((item) => typeof item === 'string'))
   ) {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'context must be an array of strings if provided'
-    });
+    return Promise.reject('context must be an array of strings if provided');
   }
 
   if (
@@ -77,27 +62,20 @@ async function handler(
     (!Array.isArray(retrieval_context) ||
       !retrieval_context.every((item) => typeof item === 'string'))
   ) {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'retrieval_context must be an array of strings if provided'
-    });
+    return Promise.reject('retrieval_context must be an array of strings if provided');
   }
 
   if (typeof enableQualityEvaluation !== 'boolean') {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'enableQualityEvaluation is required and must be a boolean'
-    });
+    return Promise.reject('enableQualityEvaluation is required and must be a boolean');
   }
 
   if (
     enableQualityEvaluation &&
     (!qualityEvaluationModel || typeof qualityEvaluationModel !== 'string')
   ) {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'qualityEvaluationModel is required when enableQualityEvaluation is true'
-    });
+    return Promise.reject(
+      'qualityEvaluationModel is required when enableQualityEvaluation is true'
+    );
   }
 
   const { teamId, tmbId } = await authUserPer({
@@ -111,10 +89,7 @@ async function handler(
     const existingData = await MongoEvalDatasetData.findById(dataId).session(session);
 
     if (!existingData) {
-      return Promise.reject({
-        statusCode: 404,
-        message: 'Dataset data not found'
-      });
+      return Promise.reject('Dataset data not found');
     }
 
     const collection = await MongoEvalDatasetCollection.findOne({
@@ -123,10 +98,7 @@ async function handler(
     }).session(session);
 
     if (!collection) {
-      return Promise.reject({
-        statusCode: 403,
-        message: 'Access denied or dataset collection not found'
-      });
+      return Promise.reject('Access denied or dataset collection not found');
     }
 
     await MongoEvalDatasetData.updateOne(

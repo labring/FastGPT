@@ -101,3 +101,10 @@ export type qualityAssessmentBody = {
 export type deleteEvalDatasetDataQuery = {
   dataId: string;
 };
+
+export type smartGenerateEvalDatasetBody = {
+  collectionId: string;
+  datasetCollectionIds: string[];
+  count?: number;
+  intelligentGenerationModel: string;
+};

@@ -22,10 +22,7 @@ async function handler(
   const { dataId } = req.query;
 
   if (!dataId || typeof dataId !== 'string') {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'dataId is required and must be a string'
-    });
+    return Promise.reject('dataId is required and must be a string');
   }
 
   const { teamId, tmbId } = await authUserPer({
@@ -39,10 +36,7 @@ async function handler(
     const existingData = await MongoEvalDatasetData.findById(dataId).session(session);
 
     if (!existingData) {
-      return Promise.reject({
-        statusCode: 404,
-        message: 'Dataset data not found'
-      });
+      return Promise.reject('Dataset data not found');
     }
 
     const collection = await MongoEvalDatasetCollection.findOne({
@@ -51,10 +45,7 @@ async function handler(
     }).session(session);
 
     if (!collection) {
-      return Promise.reject({
-        statusCode: 403,
-        message: 'Access denied or dataset collection not found'
-      });
+      return Promise.reject('Access denied or dataset collection not found');
     }
 
     const hasActiveQualityJob = await checkEvalDatasetDataQualityJobActive(dataId);

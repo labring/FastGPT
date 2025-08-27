@@ -16,38 +16,23 @@ async function handler(
 
   // Parameter validation
   if (!collectionId || typeof collectionId !== 'string' || collectionId.trim().length === 0) {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'Collection ID is required and must be a non-empty string'
-    });
+    return Promise.reject('Collection ID is required and must be a non-empty string');
   }
 
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'Name is required and must be a non-empty string'
-    });
+    return Promise.reject('Name is required and must be a non-empty string');
   }
 
   if (name.trim().length > 100) {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'Name must be less than 100 characters'
-    });
+    return Promise.reject('Name must be less than 100 characters');
   }
 
   if (description && typeof description !== 'string') {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'Description must be a string'
-    });
+    return Promise.reject('Description must be a string');
   }
 
   if (description && description.length > 500) {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'Description must be less than 500 characters'
-    });
+    return Promise.reject('Description must be less than 500 characters');
   }
 
   // TODO: Authentication check - verify user is authenticated via cookie or token
@@ -68,10 +53,7 @@ async function handler(
   });
 
   if (!existingCollection) {
-    return Promise.reject({
-      statusCode: 404,
-      message: 'Dataset collection not found'
-    });
+    return Promise.reject('Dataset collection not found');
   }
 
   // Check for name conflicts within team (excluding current collection)
@@ -82,10 +64,7 @@ async function handler(
   });
 
   if (nameConflict) {
-    return Promise.reject({
-      statusCode: 500,
-      message: 'A dataset with this name already exists'
-    });
+    return Promise.reject('A dataset with this name already exists');
   }
 
   // Update dataset collection
@@ -106,10 +85,7 @@ async function handler(
 
     return 'success';
   } catch (error) {
-    return Promise.reject({
-      statusCode: 500,
-      message: 'Failed to update dataset collection'
-    });
+    return Promise.reject('Failed to update dataset collection');
   }
 }
 

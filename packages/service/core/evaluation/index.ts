@@ -42,6 +42,8 @@ import { getUserChatInfoAndAuthTeamPoints } from '../../support/permission/auth/
 import { getRunningUserInfoByTmbId } from '../../support/user/team/utils';
 import { getEvalDatasetDataQualityWorker } from './dataQualityMq';
 import { processEvalDatasetDataQuality } from './dataQualityProcessor';
+import { getEvalDatasetSmartGenerateWorker } from './smartGenerateMq';
+import { getEvalDatasetDataSynthesizeWorker } from './dataSynthesizeMq';
 
 type AppContextType = {
   appData: AppSchema;
@@ -56,6 +58,24 @@ export const initEvaluationWorker = () => {
   addLog.info('Init Evaluation Worker...');
   getEvalDatasetDataQualityWorker(processEvalDatasetDataQuality);
   getEvaluationWorker(processor);
+
+  import('./smartGenerateProcessor')
+    .then(({ initEvalDatasetSmartGenerateWorker }) => {
+      initEvalDatasetSmartGenerateWorker();
+      addLog.info('Smart generate worker initialized');
+    })
+    .catch((error) => {
+      addLog.error('Failed to init smart generate worker', { error });
+    });
+
+  import('./dataSynthesizeProcessor')
+    .then(({ initEvalDatasetDataSynthesizeWorker }) => {
+      initEvalDatasetDataSynthesizeWorker();
+      addLog.info('Data synthesize worker initialized');
+    })
+    .catch((error) => {
+      addLog.error('Failed to init data synthesize worker', { error });
+    });
 };
 
 const dealAiPointCheckError = async (evalId: string, error: any) => {

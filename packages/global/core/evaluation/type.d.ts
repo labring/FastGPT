@@ -64,6 +64,8 @@ export type EvalDatasetCollectionSchemaType = {
 
 export type EvalDatasetDataSchemaType = {
   _id: string;
+  teamId: string;
+  tmbId: string;
   datasetId: string;
   user_input: string;
   actual_output: string;
