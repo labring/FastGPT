@@ -1,7 +1,6 @@
 import type { FlexProps } from '@chakra-ui/react';
 import {
   Box,
-  Button,
   type ButtonProps,
   Checkbox,
   Flex,
@@ -23,19 +22,6 @@ import MyDivider from '../MyDivider';
 import { shadowLight } from '../../../styles/theme';
 import { isArray } from 'lodash';
 import { useMount } from 'ahooks';
-
-const menuItemStyles: MenuItemProps = {
-  borderRadius: 'sm',
-  py: 2,
-  display: 'flex',
-  alignItems: 'center',
-  _hover: {
-    backgroundColor: 'myGray.100'
-  },
-  _notLast: {
-    mb: 2
-  }
-};
 
 const menuItemStyles: MenuItemProps = {
   borderRadius: 'sm',
