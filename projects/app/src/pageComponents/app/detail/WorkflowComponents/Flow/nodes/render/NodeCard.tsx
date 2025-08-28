@@ -38,6 +38,7 @@ import { formatToolError } from '@fastgpt/global/core/app/utils';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import SecretInputModal from '@/pageComponents/app/plugin/SecretInputModal';
+import NodeCopilot from './RenderNodeCopilot/NodeCopilot';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -49,6 +50,7 @@ type Props = FlowNodeItemType & {
   selected?: boolean;
   searchedText?: string;
   menuForbid?: {
+    copilot?: boolean;
     debug?: boolean;
     copy?: boolean;
     delete?: boolean;
@@ -289,6 +291,24 @@ const NodeCard = (props: Props) => {
                   <Box color={'red.600'}>{t(error as any)}</Box>
                 </Flex>
               )}
+              {node?.flowNodeType === FlowNodeTypeEnum.code && (
+                <>
+                  <Box bg={'myGray.300'} w={'1px'} h={'12px'} mx={1} />
+                  <NodeCopilot
+                    nodeId={nodeId}
+                    trigger={
+                      <Button
+                        variant={'grayGhost'}
+                        leftIcon={<MyIcon name={'codeCopilot'} w={'16px'} h={'16px'} mr={-1} />}
+                        size={'xs'}
+                        px={1}
+                      >
+                        {t('common:core.workflow.Copilot')}
+                      </Button>
+                    }
+                  />
+                </>
+              )}
             </Flex>
             <NodeIntro nodeId={nodeId} intro={intro} />
           </Box>
@@ -449,6 +469,12 @@ const MenuRender = React.memo(function MenuRender({
   const { t } = useTranslation();
   const { openDebugNode, DebugInputModal } = useDebug();
 
+  const {
+    isOpen: isNodeCopilotOpen,
+    onOpen: onOpenNodeCopilot,
+    onClose: onCloseNodeCopilot
+  } = useDisclosure();
+
   const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
   const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
   const { computedNewNodeName } = useWorkflowUtils();
@@ -599,6 +625,7 @@ const MenuRender = React.memo(function MenuRender({
       </>
     );
   }, [
+    menuForbid?.copilot,
     menuForbid?.debug,
     menuForbid?.copy,
     menuForbid?.delete,
@@ -607,7 +634,10 @@ const MenuRender = React.memo(function MenuRender({
     openDebugNode,
     nodeId,
     onCopyNode,
-    onDelNode
+    onDelNode,
+    onOpenNodeCopilot,
+    isNodeCopilotOpen,
+    onCloseNodeCopilot
   ]);
 
   return Render;

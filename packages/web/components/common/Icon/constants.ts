@@ -13,6 +13,7 @@ export const iconPaths = {
   close: () => import('./icons/close.svg'),
   closeSolid: () => import('./icons/closeSolid.svg'),
   code: () => import('./icons/code.svg'),
+  codeCopilot: () => import('./icons/codeCopilot.svg'),
   collectionLight: () => import('./icons/collectionLight.svg'),
   collectionSolid: () => import('./icons/collectionSolid.svg'),
   comment: () => import('./icons/comment.svg'),
