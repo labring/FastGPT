@@ -1,9 +1,10 @@
 import type { EvalDatasetDataSchemaType } from '@fastgpt/global/core/evaluation/type';
-import { connectionMongo, getMongoModel } from '../../common/mongo';
+import { connectionMongo, getMongoModel } from '../../../common/mongo';
 import { EvalDatasetCollectionName } from './evalDatasetCollectionSchema';
 import {
   EvalDatasetDataCreateFromEnum,
-  EvalDatasetDataCreateFromValues
+  EvalDatasetDataCreateFromValues,
+  EvalDatasetDataKeyEnum
 } from '@fastgpt/global/core/evaluation/constants';
 import {
   TeamCollectionName,
@@ -32,22 +33,22 @@ const EvalDatasetDataSchema = new Schema({
     required: true,
     index: true
   },
-  user_input: {
+  [EvalDatasetDataKeyEnum.UserInput]: {
     type: String,
     default: '',
     trim: true
   },
-  actual_output: {
+  [EvalDatasetDataKeyEnum.ActualOutput]: {
     type: String,
     default: '',
     trim: true
   },
-  expected_output: {
+  [EvalDatasetDataKeyEnum.ExpectedOutput]: {
     type: String,
     default: '',
     trim: true
   },
-  context: {
+  [EvalDatasetDataKeyEnum.Context]: {
     type: [
       {
         type: String,
@@ -60,7 +61,7 @@ const EvalDatasetDataSchema = new Schema({
       message: 'Context array cannot exceed 100 items'
     }
   },
-  retrieval_context: {
+  [EvalDatasetDataKeyEnum.RetrievalContext]: {
     type: [
       {
         type: String,
@@ -97,9 +98,9 @@ EvalDatasetDataSchema.index({ datasetId: 1, updateTime: -1 });
 
 // Text search index for searching within inputs and outputs
 EvalDatasetDataSchema.index({
-  user_input: 'text',
-  expected_output: 'text',
-  actual_output: 'text'
+  [EvalDatasetDataKeyEnum.UserInput]: 'text',
+  [EvalDatasetDataKeyEnum.ExpectedOutput]: 'text',
+  [EvalDatasetDataKeyEnum.ActualOutput]: 'text'
 });
 
 // Update the updateTime on save

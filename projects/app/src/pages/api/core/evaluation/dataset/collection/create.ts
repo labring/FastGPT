@@ -3,7 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/evalDatasetCollectionSchema';
+import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import type { createEvalDatasetCollectionBody } from '@fastgpt/global/core/evaluation/api';
 
 export type EvalDatasetCollectionCreateQuery = {};
@@ -15,7 +15,6 @@ async function handler(
 ): Promise<EvalDatasetCollectionCreateResponse> {
   const { name, description = '' } = req.body;
 
-  // Parameter validation
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return Promise.reject('Name is required and must be a non-empty string');
   }
@@ -28,8 +27,8 @@ async function handler(
     return Promise.reject('Description must be a string');
   }
 
-  if (description && description.length > 500) {
-    return Promise.reject('Description must be less than 500 characters');
+  if (description && description.length > 100) {
+    return Promise.reject('Description must be less than 100 characters');
   }
 
   // Authentication and authorization
@@ -50,7 +49,6 @@ async function handler(
     return Promise.reject('A dataset with this name already exists');
   }
 
-  // Create dataset collection
   const datasetId = await mongoSessionRun(async (session) => {
     const [{ _id }] = await MongoEvalDatasetCollection.create(
       [

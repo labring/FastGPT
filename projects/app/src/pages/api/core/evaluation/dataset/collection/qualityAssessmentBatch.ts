@@ -2,18 +2,19 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/evalDatasetDataSchema';
-import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/evalDatasetCollectionSchema';
+import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
+import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import {
   addEvalDatasetDataQualityJob,
   removeEvalDatasetDataQualityJob,
   evalDatasetDataQualityQueue
-} from '@fastgpt/service/core/evaluation/dataQualityMq';
+} from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import type {
   qualityAssessmentBatchBody,
   qualityAssessmentBatchResponse
 } from '@fastgpt/global/core/evaluation/api';
 import { addLog } from '@fastgpt/service/common/system/log';
+import { EvalDatasetDataQualityStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 
 export type QualityAssessmentBatchQuery = {};
 export type QualityAssessmentBatchBody = qualityAssessmentBatchBody;
@@ -116,7 +117,7 @@ async function handler(
         // Update metadata
         await MongoEvalDatasetData.findByIdAndUpdate(dataId, {
           $set: {
-            'metadata.qualityStatus': 'queuing',
+            'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.queuing,
             'metadata.qualityModel': evalModel,
             'metadata.qualityQueueTime': new Date()
           }
@@ -156,7 +157,7 @@ async function handler(
         // Update metadata
         await MongoEvalDatasetData.findByIdAndUpdate(dataId, {
           $set: {
-            'metadata.qualityStatus': 'queuing',
+            'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.queuing,
             'metadata.qualityModel': evalModel,
             'metadata.qualityQueueTime': new Date()
           }

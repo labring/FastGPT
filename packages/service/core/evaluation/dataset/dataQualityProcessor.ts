@@ -1,15 +1,19 @@
 import type { Job } from 'bullmq';
-import { addLog } from '../../common/system/log';
+import { addLog } from '../../../common/system/log';
 import { MongoEvalDatasetData } from './evalDatasetDataSchema';
 import type { EvalDatasetDataQualityData } from './dataQualityMq';
+import {
+  EvalDatasetDataKeyEnum,
+  EvalDatasetDataQualityStatusEnum
+} from '@fastgpt/global/core/evaluation/constants';
 
 // FastAPI service interface schemas
 export type InputData = {
-  user_input?: string;
-  actual_output?: string;
-  expected_output?: string;
-  context?: string[];
-  retrieval_context?: string[];
+  [EvalDatasetDataKeyEnum.UserInput]?: string;
+  [EvalDatasetDataKeyEnum.ActualOutput]?: string;
+  [EvalDatasetDataKeyEnum.ExpectedOutput]?: string;
+  [EvalDatasetDataKeyEnum.Context]?: string[];
+  [EvalDatasetDataKeyEnum.RetrievalContext]?: string[];
   metadata?: Record<string, any>;
 };
 
@@ -99,7 +103,7 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
   try {
     await MongoEvalDatasetData.findByIdAndUpdate(DataId, {
       $set: {
-        'metadata.qualityStatus': 'evaluating',
+        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.evaluating,
         'metadata.qualityStartTime': new Date()
       }
     });
@@ -127,11 +131,11 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
         metric_name: 'quality_assessment'
       },
       input_data: {
-        user_input: datasetData.user_input,
-        actual_output: datasetData.actual_output,
-        expected_output: datasetData.expected_output,
-        context: datasetData.context,
-        retrieval_context: datasetData.retrieval_context,
+        [EvalDatasetDataKeyEnum.UserInput]: datasetData.userInput,
+        [EvalDatasetDataKeyEnum.ActualOutput]: datasetData.actualOutput,
+        [EvalDatasetDataKeyEnum.ExpectedOutput]: datasetData.expectedOutput,
+        [EvalDatasetDataKeyEnum.Context]: datasetData.context,
+        [EvalDatasetDataKeyEnum.RetrievalContext]: datasetData.retrievalContext,
         metadata: {
           ...datasetData.metadata,
           request_id: `${DataId}-${Date.now()}`
@@ -146,7 +150,7 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
       // Update dataset data with successful evaluation result
       await MongoEvalDatasetData.findByIdAndUpdate(DataId, {
         $set: {
-          'metadata.qualityStatus': 'completed',
+          'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.completed,
           'metadata.qualityScore': evaluationResult.data.score,
           'metadata.qualityReason': evaluationResult.data.reason,
           'metadata.qualityRunLogs': evaluationResult.data.run_logs,
@@ -169,7 +173,7 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
     // Update status to failed
     await MongoEvalDatasetData.findByIdAndUpdate(DataId, {
       $set: {
-        'metadata.qualityStatus': 'failed',
+        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.error,
         'metadata.qualityError': error instanceof Error ? error.message : 'Unknown error',
         'metadata.qualityFinishTime': new Date()
       }

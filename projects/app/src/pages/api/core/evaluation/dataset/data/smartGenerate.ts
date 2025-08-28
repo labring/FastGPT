@@ -2,11 +2,11 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/evalDatasetCollectionSchema';
+import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import type { smartGenerateEvalDatasetBody } from '@fastgpt/global/core/evaluation/api';
-import { addEvalDatasetSmartGenerateJob } from '@fastgpt/service/core/evaluation/smartGenerateMq';
+import { addEvalDatasetSmartGenerateJob } from '@fastgpt/service/core/evaluation/dataset/smartGenerateMq';
 
 export type SmartGenerateEvalDatasetQuery = {};
 export type SmartGenerateEvalDatasetBody = smartGenerateEvalDatasetBody;
@@ -89,10 +89,6 @@ async function handler(
       count: finalCount,
       intelligentGenerationModel,
       evalDatasetCollectionId: collectionId
-    });
-
-    await MongoEvalDatasetCollection.findByIdAndUpdate(collectionId, {
-      $inc: { dataCountByGen: finalCount }
     });
 
     // TODO: Add audit log for smart generation operation

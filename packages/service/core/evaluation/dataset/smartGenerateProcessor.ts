@@ -1,10 +1,13 @@
 import type { Job } from 'bullmq';
 import type { HydratedDocument } from 'mongoose';
-import { addLog } from '../../common/system/log';
+import { addLog } from '../../../common/system/log';
 import { MongoEvalDatasetCollection } from './evalDatasetCollectionSchema';
 import { MongoEvalDatasetData } from './evalDatasetDataSchema';
-import { MongoDatasetData } from '../dataset/data/schema';
-import { EvalDatasetDataCreateFromEnum } from '@fastgpt/global/core/evaluation/constants';
+import { MongoDatasetData } from '../../dataset/data/schema';
+import {
+  EvalDatasetDataCreateFromEnum,
+  EvalDatasetDataKeyEnum
+} from '@fastgpt/global/core/evaluation/constants';
 import type { EvalDatasetDataSchemaType } from '@fastgpt/global/core/evaluation/type';
 import {
   type EvalDatasetSmartGenerateData,
@@ -70,11 +73,11 @@ async function processor(job: Job<EvalDatasetSmartGenerateData>) {
           teamId: evalDatasetCollection.teamId,
           tmbId: evalDatasetCollection.tmbId,
           datasetId: evalDatasetCollectionId,
-          user_input: sample.q,
-          expected_output: sample.a,
-          actual_output: '',
-          context: [],
-          retrieval_context: [],
+          [EvalDatasetDataKeyEnum.UserInput]: sample.q,
+          [EvalDatasetDataKeyEnum.ExpectedOutput]: sample.a,
+          [EvalDatasetDataKeyEnum.ActualOutput]: '',
+          [EvalDatasetDataKeyEnum.Context]: [],
+          [EvalDatasetDataKeyEnum.RetrievalContext]: [],
           metadata: {
             sourceDataId: sample._id,
             sourceDatasetId: sample.datasetId,
@@ -122,11 +125,6 @@ async function processor(job: Job<EvalDatasetSmartGenerateData>) {
       });
     }
 
-    // If all data is complete (no synthesis needed), update dataset status
-    if (synthesisData.length === 0) {
-      await checkAndUpdateDatasetStatus(evalDatasetCollectionId);
-    }
-
     // TODO: Add audit log
     // TODO: Add tracking metrics
 
@@ -152,33 +150,6 @@ async function processor(job: Job<EvalDatasetSmartGenerateData>) {
 
     // TODO: Update dataset status to error
     throw error;
-  }
-}
-
-async function checkAndUpdateDatasetStatus(evalDatasetCollectionId: string) {
-  try {
-    const evalDatasetCollection =
-      await MongoEvalDatasetCollection.findById(evalDatasetCollectionId);
-    if (!evalDatasetCollection) return;
-
-    const actualCount = await MongoEvalDatasetData.countDocuments({
-      datasetId: evalDatasetCollectionId,
-      createFrom: EvalDatasetDataCreateFromEnum.intelligentGeneration
-    });
-
-    if (actualCount >= evalDatasetCollection.dataCountByGen) {
-      // TODO: Update dataset status to ready/completed
-      addLog.info('Eval dataset generation completed', {
-        evalDatasetCollectionId: evalDatasetCollectionId,
-        actualCount,
-        expectedCount: evalDatasetCollection.dataCountByGen
-      });
-    }
-  } catch (error) {
-    addLog.error('Failed to check dataset status', {
-      evalDatasetCollectionId: evalDatasetCollectionId,
-      error
-    });
   }
 }
 

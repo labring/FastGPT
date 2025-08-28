@@ -2,7 +2,7 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import { connectionMongo, getMongoModel } from '../../common/mongo';
+import { connectionMongo, getMongoModel } from '../../../common/mongo';
 import type { EvalDatasetCollectionSchemaType } from '@fastgpt/global/core/evaluation/type';
 
 const { Schema } = connectionMongo;
@@ -31,7 +31,7 @@ const EvalDatasetCollectionSchema = new Schema({
     type: String,
     default: '',
     trim: true,
-    maxlength: 500
+    maxlength: 100
   },
   createTime: {
     type: Date,
@@ -41,11 +41,6 @@ const EvalDatasetCollectionSchema = new Schema({
   updateTime: {
     type: Date,
     default: Date.now
-  },
-  dataCountByGen: {
-    type: Number,
-    default: 0,
-    min: 0
   },
   metadata: {
     type: Schema.Types.Mixed,

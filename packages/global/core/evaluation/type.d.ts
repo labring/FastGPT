@@ -1,10 +1,13 @@
 import type {
   EvaluationStatusEnum,
   EvalDatasetDataCreateFromEnum,
-  EvalDatasetCollectionStatusEnum
+  EvalDatasetCollectionStatusEnum,
+  EvalDatasetDataQualityStatusEnum,
+  EvalDatasetDataKeyEnum
 } from './constants';
 
 export type EvalDatasetCollectionStatus = EvalDatasetCollectionStatusEnum;
+export type EvalDatasetDataQualityStatus = EvalDatasetDataQualityStatusEnum;
 
 export type EvaluationSchemaType = {
   _id: string;
@@ -64,7 +67,6 @@ export type EvalDatasetCollectionSchemaType = {
   description: string;
   createTime: Date;
   updateTime: Date;
-  dataCountByGen: number;
   metadata: Record<string, any>;
 };
 
@@ -73,11 +75,11 @@ export type EvalDatasetDataSchemaType = {
   teamId: string;
   tmbId: string;
   datasetId: string;
-  user_input: string;
-  actual_output: string;
-  expected_output: string;
-  context: string[];
-  retrieval_context: string[];
+  [EvalDatasetDataKeyEnum.UserInput]: string;
+  [EvalDatasetDataKeyEnum.ActualOutput]: string;
+  [EvalDatasetDataKeyEnum.ExpectedOutput]: string;
+  [EvalDatasetDataKeyEnum.Context]: string[];
+  [EvalDatasetDataKeyEnum.RetrievalContext]: string[];
   metadata: Record<string, any>;
   createFrom: EvalDatasetDataCreateFromEnum;
   createTime: Date;

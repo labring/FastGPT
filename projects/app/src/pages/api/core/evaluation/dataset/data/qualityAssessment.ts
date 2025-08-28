@@ -2,14 +2,15 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/evalDatasetDataSchema';
-import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/evalDatasetCollectionSchema';
+import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
+import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import {
   addEvalDatasetDataQualityJob,
   removeEvalDatasetDataQualityJob,
   checkEvalDatasetDataQualityJobActive
-} from '@fastgpt/service/core/evaluation/dataQualityMq';
+} from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import type { qualityAssessmentBody } from '@fastgpt/global/core/evaluation/api';
+import { EvalDatasetDataQualityStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 
 export type QualityAssessmentQuery = {};
 export type QualityAssessmentBody = qualityAssessmentBody;
@@ -62,7 +63,7 @@ async function handler(
 
     await MongoEvalDatasetData.findByIdAndUpdate(dataId, {
       $set: {
-        'metadata.qualityStatus': 'queuing',
+        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.queuing,
         'metadata.qualityModel': evalModel,
         'metadata.qualityQueueTime': new Date()
       }

@@ -40,10 +40,8 @@ import { delay } from '@fastgpt/global/common/system/utils';
 import { removeDatasetCiteText } from '../../core/ai/utils';
 import { getUserChatInfoAndAuthTeamPoints } from '../../support/permission/auth/team';
 import { getRunningUserInfoByTmbId } from '../../support/user/team/utils';
-import { getEvalDatasetDataQualityWorker } from './dataQualityMq';
-import { processEvalDatasetDataQuality } from './dataQualityProcessor';
-import { getEvalDatasetSmartGenerateWorker } from './smartGenerateMq';
-import { getEvalDatasetDataSynthesizeWorker } from './dataSynthesizeMq';
+import { getEvalDatasetDataQualityWorker } from './dataset/dataQualityMq';
+import { processEvalDatasetDataQuality } from './dataset/dataQualityProcessor';
 
 type AppContextType = {
   appData: AppSchema;
@@ -59,7 +57,7 @@ export const initEvaluationWorker = () => {
   getEvalDatasetDataQualityWorker(processEvalDatasetDataQuality);
   getEvaluationWorker(processor);
 
-  import('./smartGenerateProcessor')
+  import('./dataset/smartGenerateProcessor')
     .then(({ initEvalDatasetSmartGenerateWorker }) => {
       initEvalDatasetSmartGenerateWorker();
       addLog.info('Smart generate worker initialized');
@@ -68,7 +66,7 @@ export const initEvaluationWorker = () => {
       addLog.error('Failed to init smart generate worker', { error });
     });
 
-  import('./dataSynthesizeProcessor')
+  import('./dataset/dataSynthesizeProcessor')
     .then(({ initEvalDatasetDataSynthesizeWorker }) => {
       initEvalDatasetDataSynthesizeWorker();
       addLog.info('Data synthesize worker initialized');

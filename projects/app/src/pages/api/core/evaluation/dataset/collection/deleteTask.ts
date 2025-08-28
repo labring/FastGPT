@@ -2,10 +2,10 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/evalDatasetCollectionSchema';
+import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { Types } from '@fastgpt/service/common/mongo';
 import type { deleteTaskBody } from '@fastgpt/global/core/evaluation/api';
-import { evalDatasetDataSynthesizeQueue } from '@fastgpt/service/core/evaluation/dataSynthesizeMq';
+import { evalDatasetDataSynthesizeQueue } from '@fastgpt/service/core/evaluation/dataset/dataSynthesizeMq';
 import { addLog } from '@fastgpt/service/common/system/log';
 
 async function handler(

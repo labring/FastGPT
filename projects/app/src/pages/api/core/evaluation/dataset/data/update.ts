@@ -3,14 +3,15 @@ import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/evalDatasetDataSchema';
-import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/evalDatasetCollectionSchema';
+import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
+import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import type { updateEvalDatasetDataBody } from '@fastgpt/global/core/evaluation/api';
 import {
   removeEvalDatasetDataQualityJob,
   addEvalDatasetDataQualityJob
-} from '@fastgpt/service/core/evaluation/dataQualityMq';
+} from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import { addLog } from '@fastgpt/service/common/system/log';
+import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/constants';
 
 export type EvalDatasetDataUpdateQuery = {};
 export type EvalDatasetDataUpdateBody = updateEvalDatasetDataBody;
@@ -21,11 +22,11 @@ async function handler(
 ): Promise<EvalDatasetDataUpdateResponse> {
   const {
     dataId,
-    user_input,
-    actual_output,
-    expected_output,
+    userInput,
+    actualOutput,
+    expectedOutput,
     context,
-    retrieval_context,
+    retrievalContext,
     enableQualityEvaluation,
     qualityEvaluationModel
   } = req.body;
@@ -34,20 +35,16 @@ async function handler(
     return Promise.reject('dataId is required and must be a string');
   }
 
-  if (!user_input || typeof user_input !== 'string' || user_input.trim().length === 0) {
-    return Promise.reject('user_input is required and must be a non-empty string');
+  if (!userInput || typeof userInput !== 'string' || userInput.trim().length === 0) {
+    return Promise.reject('userInput is required and must be a non-empty string');
   }
 
-  if (
-    !expected_output ||
-    typeof expected_output !== 'string' ||
-    expected_output.trim().length === 0
-  ) {
-    return Promise.reject('expected_output is required and must be a non-empty string');
+  if (!expectedOutput || typeof expectedOutput !== 'string' || expectedOutput.trim().length === 0) {
+    return Promise.reject('expectedOutput is required and must be a non-empty string');
   }
 
-  if (actual_output !== undefined && typeof actual_output !== 'string') {
-    return Promise.reject('actual_output must be a string if provided');
+  if (actualOutput !== undefined && typeof actualOutput !== 'string') {
+    return Promise.reject('actualOutput must be a string if provided');
   }
 
   if (
@@ -58,11 +55,11 @@ async function handler(
   }
 
   if (
-    retrieval_context !== undefined &&
-    (!Array.isArray(retrieval_context) ||
-      !retrieval_context.every((item) => typeof item === 'string'))
+    retrievalContext !== undefined &&
+    (!Array.isArray(retrievalContext) ||
+      !retrievalContext.every((item) => typeof item === 'string'))
   ) {
-    return Promise.reject('retrieval_context must be an array of strings if provided');
+    return Promise.reject('retrievalContext must be an array of strings if provided');
   }
 
   if (typeof enableQualityEvaluation !== 'boolean') {
@@ -104,11 +101,11 @@ async function handler(
     await MongoEvalDatasetData.updateOne(
       { _id: dataId },
       {
-        user_input: user_input.trim(),
-        actual_output: actual_output?.trim() || '',
-        expected_output: expected_output.trim(),
-        context: context || [],
-        retrieval_context: retrieval_context || [],
+        [EvalDatasetDataKeyEnum.UserInput]: userInput.trim(),
+        [EvalDatasetDataKeyEnum.ActualOutput]: actualOutput?.trim() || '',
+        [EvalDatasetDataKeyEnum.ExpectedOutput]: expectedOutput.trim(),
+        [EvalDatasetDataKeyEnum.Context]: context || [],
+        [EvalDatasetDataKeyEnum.RetrievalContext]: retrievalContext || [],
         updateTime: new Date()
       },
       { session }

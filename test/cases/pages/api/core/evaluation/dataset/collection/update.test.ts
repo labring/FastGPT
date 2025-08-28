@@ -2,12 +2,12 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler_test } from '@/pages/api/core/evaluation/dataset/collection/update';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/evalDatasetCollectionSchema';
+import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 vi.mock('@fastgpt/service/support/permission/user/auth');
 vi.mock('@fastgpt/service/common/mongo/sessionRun');
-vi.mock('@fastgpt/service/core/evaluation/evalDatasetCollectionSchema', () => ({
+vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
   MongoEvalDatasetCollection: {
     findOne: vi.fn(),
     updateOne: vi.fn()
@@ -55,10 +55,9 @@ describe('EvalDatasetCollection Update API', () => {
         body: { name: 'Updated Name', description: 'Updated description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 400,
-        message: 'Collection ID is required and must be a non-empty string'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual(
+        'Collection ID is required and must be a non-empty string'
+      );
     });
 
     it('should reject when collectionId is empty string', async () => {
@@ -66,10 +65,9 @@ describe('EvalDatasetCollection Update API', () => {
         body: { collectionId: '', name: 'Updated Name', description: 'Updated description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 400,
-        message: 'Collection ID is required and must be a non-empty string'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual(
+        'Collection ID is required and must be a non-empty string'
+      );
     });
 
     it('should reject when collectionId is only whitespace', async () => {
@@ -77,10 +75,9 @@ describe('EvalDatasetCollection Update API', () => {
         body: { collectionId: '   ', name: 'Updated Name', description: 'Updated description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 400,
-        message: 'Collection ID is required and must be a non-empty string'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual(
+        'Collection ID is required and must be a non-empty string'
+      );
     });
 
     it('should reject when collectionId is not a string', async () => {
@@ -88,10 +85,9 @@ describe('EvalDatasetCollection Update API', () => {
         body: { collectionId: 123, name: 'Updated Name', description: 'Updated description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 400,
-        message: 'Collection ID is required and must be a non-empty string'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual(
+        'Collection ID is required and must be a non-empty string'
+      );
     });
 
     it('should reject when name is missing', async () => {
@@ -99,10 +95,9 @@ describe('EvalDatasetCollection Update API', () => {
         body: { collectionId: mockCollectionId, description: 'Updated description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 400,
-        message: 'Name is required and must be a non-empty string'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual(
+        'Name is required and must be a non-empty string'
+      );
     });
 
     it('should reject when name is empty string', async () => {
@@ -110,10 +105,9 @@ describe('EvalDatasetCollection Update API', () => {
         body: { collectionId: mockCollectionId, name: '', description: 'Updated description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 400,
-        message: 'Name is required and must be a non-empty string'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual(
+        'Name is required and must be a non-empty string'
+      );
     });
 
     it('should reject when name is only whitespace', async () => {
@@ -121,10 +115,9 @@ describe('EvalDatasetCollection Update API', () => {
         body: { collectionId: mockCollectionId, name: '   ', description: 'Updated description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 400,
-        message: 'Name is required and must be a non-empty string'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual(
+        'Name is required and must be a non-empty string'
+      );
     });
 
     it('should reject when name is not a string', async () => {
@@ -132,10 +125,9 @@ describe('EvalDatasetCollection Update API', () => {
         body: { collectionId: mockCollectionId, name: 123, description: 'Updated description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 400,
-        message: 'Name is required and must be a non-empty string'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual(
+        'Name is required and must be a non-empty string'
+      );
     });
 
     it('should reject when name exceeds 100 characters', async () => {
@@ -144,10 +136,9 @@ describe('EvalDatasetCollection Update API', () => {
         body: { collectionId: mockCollectionId, name: longName, description: 'Updated description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 400,
-        message: 'Name must be less than 100 characters'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual(
+        'Name must be less than 100 characters'
+      );
     });
 
     it('should reject when description is not a string', async () => {
@@ -155,22 +146,18 @@ describe('EvalDatasetCollection Update API', () => {
         body: { collectionId: mockCollectionId, name: 'Updated Name', description: 123 }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 400,
-        message: 'Description must be a string'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual('Description must be a string');
     });
 
-    it('should reject when description exceeds 500 characters', async () => {
-      const longDescription = 'a'.repeat(501);
+    it('should reject when description exceeds 100 characters', async () => {
+      const longDescription = 'a'.repeat(101);
       const req = {
         body: { collectionId: mockCollectionId, name: 'Updated Name', description: longDescription }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 400,
-        message: 'Description must be less than 500 characters'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual(
+        'Description must be less than 100 characters'
+      );
     });
 
     it('should accept valid parameters', async () => {
@@ -255,10 +242,7 @@ describe('EvalDatasetCollection Update API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 404,
-        message: 'Dataset collection not found'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual('Dataset collection not found');
 
       expect(mockMongoEvalDatasetCollection.findOne).toHaveBeenCalledWith({
         _id: mockCollectionId,
@@ -279,10 +263,7 @@ describe('EvalDatasetCollection Update API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 404,
-        message: 'Dataset collection not found'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual('Dataset collection not found');
     });
 
     it('should proceed when collection exists and belongs to team', async () => {
@@ -321,10 +302,9 @@ describe('EvalDatasetCollection Update API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 500,
-        message: 'A dataset with this name already exists'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual(
+        'A dataset with this name already exists'
+      );
 
       expect(mockMongoEvalDatasetCollection.findOne).toHaveBeenCalledWith({
         teamId: validTeamId,
@@ -500,10 +480,7 @@ describe('EvalDatasetCollection Update API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 500,
-        message: 'Failed to update dataset collection'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual('Failed to update dataset collection');
     });
   });
 
@@ -522,8 +499,8 @@ describe('EvalDatasetCollection Update API', () => {
       expect(result).toBe('success');
     });
 
-    it('should handle exactly 500 character description', async () => {
-      const exactDescription = 'a'.repeat(500);
+    it('should handle exactly 100 character description', async () => {
+      const exactDescription = 'a'.repeat(100);
       const req = {
         body: {
           collectionId: mockCollectionId,

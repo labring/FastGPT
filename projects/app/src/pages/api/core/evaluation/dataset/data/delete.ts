@@ -3,13 +3,13 @@ import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/evalDatasetDataSchema';
-import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/evalDatasetCollectionSchema';
+import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
+import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import type { deleteEvalDatasetDataQuery } from '@fastgpt/global/core/evaluation/api';
 import {
   removeEvalDatasetDataQualityJob,
   checkEvalDatasetDataQualityJobActive
-} from '@fastgpt/service/core/evaluation/dataQualityMq';
+} from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import { addLog } from '@fastgpt/service/common/system/log';
 
 export type EvalDatasetDataDeleteQuery = deleteEvalDatasetDataQuery;
@@ -21,7 +21,7 @@ async function handler(
 ): Promise<EvalDatasetDataDeleteResponse> {
   const { dataId } = req.query;
 
-  if (!dataId || typeof dataId !== 'string') {
+  if (!dataId || typeof dataId !== 'string' || dataId.trim().length === 0) {
     return Promise.reject('dataId is required and must be a string');
   }
 

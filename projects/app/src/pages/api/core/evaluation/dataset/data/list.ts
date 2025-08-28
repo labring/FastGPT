@@ -2,8 +2,8 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/evalDatasetDataSchema';
-import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/evalDatasetCollectionSchema';
+import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
+import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { Types } from '@fastgpt/service/common/mongo';
 import type {
@@ -11,6 +11,7 @@ import type {
   listEvalDatasetDataResponse
 } from '@fastgpt/global/core/evaluation/api';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/constants';
 
 async function handler(
   req: ApiRequestProps<listEvalDatasetDataBody, {}>
@@ -53,9 +54,9 @@ async function handler(
   if (searchKey && typeof searchKey === 'string' && searchKey.trim().length > 0) {
     const searchRegex = new RegExp(`${replaceRegChars(searchKey.trim())}`, 'i');
     match.$or = [
-      { user_input: { $regex: searchRegex } },
-      { expected_output: { $regex: searchRegex } },
-      { actual_output: { $regex: searchRegex } }
+      { [EvalDatasetDataKeyEnum.UserInput]: { $regex: searchRegex } },
+      { [EvalDatasetDataKeyEnum.ExpectedOutput]: { $regex: searchRegex } },
+      { [EvalDatasetDataKeyEnum.ActualOutput]: { $regex: searchRegex } }
     ];
   }
 
@@ -80,11 +81,11 @@ async function handler(
       total,
       list: dataList.map((item) => ({
         _id: String(item._id),
-        user_input: item.user_input,
-        actual_output: item.actual_output || '',
-        expected_output: item.expected_output,
-        context: item.context || [],
-        retrieval_context: item.retrieval_context || [],
+        [EvalDatasetDataKeyEnum.UserInput]: item.userInput,
+        [EvalDatasetDataKeyEnum.ActualOutput]: item.actualOutput || '',
+        [EvalDatasetDataKeyEnum.ExpectedOutput]: item.expectedOutput,
+        [EvalDatasetDataKeyEnum.Context]: item.context || [],
+        [EvalDatasetDataKeyEnum.RetrievalContext]: item.retrievalContext || [],
         metadata: item.metadata || {},
         createFrom: item.createFrom,
         createTime: item.createTime,
@@ -115,11 +116,11 @@ const buildPipeline = (match: Record<string, any>, offset: number, pageSize: num
   {
     $project: {
       _id: 1,
-      user_input: 1,
-      actual_output: 1,
-      expected_output: 1,
-      context: 1,
-      retrieval_context: 1,
+      [EvalDatasetDataKeyEnum.UserInput]: 1,
+      [EvalDatasetDataKeyEnum.ActualOutput]: 1,
+      [EvalDatasetDataKeyEnum.ExpectedOutput]: 1,
+      [EvalDatasetDataKeyEnum.Context]: 1,
+      [EvalDatasetDataKeyEnum.RetrievalContext]: 1,
       metadata: 1,
       createFrom: 1,
       createTime: 1,

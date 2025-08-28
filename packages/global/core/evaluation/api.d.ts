@@ -4,6 +4,7 @@ import type {
   EvalDatasetDataSchemaType,
   EvalDatasetCollectionStatus
 } from './type';
+import type { EvalDatasetDataKeyEnum } from './constants';
 
 export type listEvaluationsBody = PaginationProps<{
   searchKey?: string;
@@ -42,7 +43,7 @@ export type listEvalDatasetCollectionBody = PaginationProps<{
 export type listEvalDatasetCollectionResponse = PaginationResponse<
   Pick<
     EvalDatasetCollectionSchemaType,
-    '_id' | 'name' | 'description' | 'createTime' | 'updateTime' | 'dataCountByGen'
+    '_id' | 'name' | 'description' | 'createTime' | 'updateTime'
   > & {
     creatorAvatar?: string;
     creatorName?: string;
@@ -61,11 +62,11 @@ export type importEvalDatasetFromFileBody = {
 } & QualityEvaluationBase;
 
 type EvalDatasetDataBase = {
-  user_input: string;
-  actual_output?: string;
-  expected_output: string;
-  context?: string[];
-  retrieval_context?: string[];
+  [EvalDatasetDataKeyEnum.UserInput]: string;
+  [EvalDatasetDataKeyEnum.ActualOutput]?: string;
+  [EvalDatasetDataKeyEnum.ExpectedOutput]: string;
+  [EvalDatasetDataKeyEnum.Context]?: string[];
+  [EvalDatasetDataKeyEnum.RetrievalContext]?: string[];
 };
 
 export type createEvalDatasetDataBody = EvalDatasetDataBase & {
@@ -81,11 +82,11 @@ export type listEvalDatasetDataResponse = PaginationResponse<
   Pick<
     EvalDatasetDataSchemaType,
     | '_id'
-    | 'user_input'
-    | 'actual_output'
-    | 'expected_output'
-    | 'context'
-    | 'retrieval_context'
+    | EvalDatasetDataKeyEnum.UserInput
+    | EvalDatasetDataKeyEnum.ActualOutput
+    | EvalDatasetDataKeyEnum.ExpectedOutput
+    | EvalDatasetDataKeyEnum.Context
+    | EvalDatasetDataKeyEnum.RetrievalContext
     | 'metadata'
     | 'createFrom'
     | 'createTime'

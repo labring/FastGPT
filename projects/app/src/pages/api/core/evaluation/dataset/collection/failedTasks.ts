@@ -2,13 +2,13 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/evalDatasetCollectionSchema';
+import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { Types } from '@fastgpt/service/common/mongo';
 import type {
   listFailedTasksBody,
   listFailedTasksResponse
 } from '@fastgpt/global/core/evaluation/api';
-import { evalDatasetDataSynthesizeQueue } from '@fastgpt/service/core/evaluation/dataSynthesizeMq';
+import { evalDatasetDataSynthesizeQueue } from '@fastgpt/service/core/evaluation/dataset/dataSynthesizeMq';
 
 async function handler(
   req: ApiRequestProps<listFailedTasksBody, {}>

@@ -2,7 +2,7 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/evalDatasetCollectionSchema';
+import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { Types } from '@fastgpt/service/common/mongo';
 import type {
@@ -12,7 +12,7 @@ import type {
 import type { EvalDatasetCollectionStatus } from '@fastgpt/global/core/evaluation/type';
 import { EvalDatasetCollectionStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
-import { evalDatasetDataSynthesizeQueue } from '@fastgpt/service/core/evaluation/dataSynthesizeMq';
+import { evalDatasetDataSynthesizeQueue } from '@fastgpt/service/core/evaluation/dataset/dataSynthesizeMq';
 
 async function getCollectionStatus(collectionId: string): Promise<EvalDatasetCollectionStatus> {
   try {
@@ -37,7 +37,7 @@ async function getCollectionStatus(collectionId: string): Promise<EvalDatasetCol
     }
 
     if (collectionJobs.some((job) => job.isWaiting() || job.isDelayed())) {
-      return EvalDatasetCollectionStatusEnum.queued;
+      return EvalDatasetCollectionStatusEnum.queuing;
     }
 
     return EvalDatasetCollectionStatusEnum.ready;
@@ -87,7 +87,6 @@ async function handler(
           description: item.description || '',
           createTime: item.createTime,
           updateTime: item.updateTime,
-          dataCountByGen: item.dataCountByGen || 0,
           creatorAvatar: item.teamMember?.avatar,
           creatorName: item.teamMember?.name,
           status
@@ -130,7 +129,6 @@ const buildPipeline = (match: Record<string, any>, offset: number, pageSize: num
       description: 1,
       createTime: 1,
       updateTime: 1,
-      dataCountByGen: 1,
       teamMember: {
         avatar: 1,
         name: 1

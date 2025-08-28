@@ -3,14 +3,17 @@ import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/evalDatasetCollectionSchema';
-import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/evalDatasetDataSchema';
-import { EvalDatasetDataCreateFromEnum } from '@fastgpt/global/core/evaluation/constants';
+import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
+import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
+import {
+  EvalDatasetDataCreateFromEnum,
+  EvalDatasetDataKeyEnum
+} from '@fastgpt/global/core/evaluation/constants';
 import { readFileContentFromMongo } from '@fastgpt/service/common/file/gridfs/controller';
 import { authCollectionFile } from '@fastgpt/service/support/permission/auth/file';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import type { importEvalDatasetFromFileBody } from '@fastgpt/global/core/evaluation/api';
-import { addEvalDatasetDataQualityJob } from '@fastgpt/service/core/evaluation/dataQualityMq';
+import { addEvalDatasetDataQualityJob } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 
 export type EvalDatasetImportFromFileQuery = {};
 export type EvalDatasetImportFromFileBody = importEvalDatasetFromFileBody;
@@ -21,6 +24,14 @@ const REQUIRED_CSV_COLUMNS = ['user_input', 'expected_output'] as const;
 const OPTIONAL_CSV_COLUMNS = ['actual_output', 'context', 'retrieval_context', 'metadata'] as const;
 
 const CSV_COLUMNS = [...REQUIRED_CSV_COLUMNS, ...OPTIONAL_CSV_COLUMNS] as const;
+
+const ENUM_TO_CSV_MAPPING = {
+  [EvalDatasetDataKeyEnum.UserInput]: 'user_input',
+  [EvalDatasetDataKeyEnum.ExpectedOutput]: 'expected_output',
+  [EvalDatasetDataKeyEnum.ActualOutput]: 'actual_output',
+  [EvalDatasetDataKeyEnum.Context]: 'context',
+  [EvalDatasetDataKeyEnum.RetrievalContext]: 'retrieval_context'
+} as const;
 
 interface CSVRow {
   user_input: string;
@@ -62,6 +73,14 @@ function parseCSVLine(line: string): string[] {
   return result;
 }
 
+function normalizeHeaderName(header: string): string {
+  const enumValue = header as keyof typeof ENUM_TO_CSV_MAPPING;
+  if (ENUM_TO_CSV_MAPPING[enumValue]) {
+    return ENUM_TO_CSV_MAPPING[enumValue];
+  }
+  return header;
+}
+
 function parseCSVContent(csvContent: string): CSVRow[] {
   const lines = csvContent.split('\n').filter((line) => line.trim());
 
@@ -71,7 +90,8 @@ function parseCSVContent(csvContent: string): CSVRow[] {
 
   // Parse header
   const headerLine = lines[0];
-  const headers = parseCSVLine(headerLine).map((h) => h.replace(/^"|"$/g, ''));
+  const rawHeaders = parseCSVLine(headerLine).map((h) => h.replace(/^"|"$/g, ''));
+  const headers = rawHeaders.map(normalizeHeaderName);
 
   // Validate CSV structure
   const missingColumns = REQUIRED_CSV_COLUMNS.filter((col) => !headers.includes(col));
@@ -128,18 +148,13 @@ function parseCSVContent(csvContent: string): CSVRow[] {
 async function handler(
   req: ApiRequestProps<EvalDatasetImportFromFileBody, EvalDatasetImportFromFileQuery>
 ): Promise<EvalDatasetImportFromFileResponse> {
-  const {
-    fileId,
-    collectionId: datasetCollectionId,
-    enableQualityEvaluation,
-    qualityEvaluationModel
-  } = req.body;
+  const { fileId, collectionId, enableQualityEvaluation, qualityEvaluationModel } = req.body;
 
   if (!fileId || typeof fileId !== 'string') {
     return 'fileId is required and must be a string';
   }
 
-  if (!datasetCollectionId || typeof datasetCollectionId !== 'string') {
+  if (!collectionId || typeof collectionId !== 'string') {
     return 'datasetCollectionId is required and must be a string';
   }
 
@@ -175,7 +190,7 @@ async function handler(
   }
 
   // Verify dataset collection exists and belongs to team
-  const datasetCollection = await MongoEvalDatasetCollection.findById(datasetCollectionId);
+  const datasetCollection = await MongoEvalDatasetCollection.findById(collectionId);
   if (!datasetCollection) {
     return 'Evaluation dataset collection not found';
   }
@@ -258,12 +273,12 @@ async function handler(
       return {
         teamId,
         tmbId,
-        datasetId: datasetCollectionId,
-        user_input: row.user_input,
-        expected_output: row.expected_output,
-        actual_output: row.actual_output || '',
-        context: contextArray,
-        retrieval_context: retrievalContextArray,
+        datasetId: collectionId,
+        [EvalDatasetDataKeyEnum.UserInput]: row.user_input,
+        [EvalDatasetDataKeyEnum.ExpectedOutput]: row.expected_output,
+        [EvalDatasetDataKeyEnum.ActualOutput]: row.actual_output || '',
+        [EvalDatasetDataKeyEnum.Context]: contextArray,
+        [EvalDatasetDataKeyEnum.RetrievalContext]: retrievalContextArray,
         metadata: metadataObj,
         createFrom: EvalDatasetDataCreateFromEnum.fileImport
       };

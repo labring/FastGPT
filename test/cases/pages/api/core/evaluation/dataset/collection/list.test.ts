@@ -1,12 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler_test } from '@/pages/api/core/evaluation/dataset/collection/list';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/evalDatasetCollectionSchema';
+import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { Types } from '@fastgpt/service/common/mongo';
 
 vi.mock('@fastgpt/service/support/permission/user/auth');
-vi.mock('@fastgpt/service/core/evaluation/evalDatasetCollectionSchema', () => ({
+vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
   MongoEvalDatasetCollection: {
     aggregate: vi.fn(),
     countDocuments: vi.fn()
@@ -26,7 +26,6 @@ describe('EvalDatasetCollection List API', () => {
       description: 'First dataset',
       createTime: new Date('2024-01-01'),
       updateTime: new Date('2024-01-02'),
-      dataCountByGen: 5,
       teamMember: {
         avatar: 'avatar1.jpg',
         name: 'User One'
@@ -38,7 +37,6 @@ describe('EvalDatasetCollection List API', () => {
       description: 'Second dataset',
       createTime: new Date('2024-01-03'),
       updateTime: new Date('2024-01-04'),
-      dataCountByGen: 10,
       teamMember: {
         avatar: 'avatar2.jpg',
         name: 'User Two'
@@ -260,7 +258,6 @@ describe('EvalDatasetCollection List API', () => {
             description: 1,
             createTime: 1,
             updateTime: 1,
-            dataCountByGen: 1,
             teamMember: {
               avatar: 1,
               name: 1
@@ -304,20 +301,20 @@ describe('EvalDatasetCollection List API', () => {
           {
             _id: '65f5b5b5b5b5b5b5b5b5b5b1',
             name: 'Dataset 1',
+            status: 'ready',
             description: 'First dataset',
             createTime: expect.any(Date),
             updateTime: expect.any(Date),
-            dataCountByGen: 5,
             creatorAvatar: 'avatar1.jpg',
             creatorName: 'User One'
           },
           {
             _id: '65f5b5b5b5b5b5b5b5b5b5b2',
             name: 'Dataset 2',
+            status: 'ready',
             description: 'Second dataset',
             createTime: expect.any(Date),
             updateTime: expect.any(Date),
-            dataCountByGen: 10,
             creatorAvatar: 'avatar2.jpg',
             creatorName: 'User Two'
           }
@@ -333,7 +330,6 @@ describe('EvalDatasetCollection List API', () => {
           description: 'First dataset',
           createTime: new Date('2024-01-01'),
           updateTime: new Date('2024-01-02'),
-          dataCountByGen: 5,
           teamMember: null
         }
       ];
@@ -350,10 +346,10 @@ describe('EvalDatasetCollection List API', () => {
       expect(result.list[0]).toEqual({
         _id: '65f5b5b5b5b5b5b5b5b5b5b1',
         name: 'Dataset 1',
+        status: 'ready',
         description: 'First dataset',
         createTime: expect.any(Date),
         updateTime: expect.any(Date),
-        dataCountByGen: 5,
         creatorAvatar: undefined,
         creatorName: undefined
       });
@@ -366,7 +362,6 @@ describe('EvalDatasetCollection List API', () => {
           name: 'Dataset 1',
           createTime: new Date('2024-01-01'),
           updateTime: new Date('2024-01-02'),
-          dataCountByGen: 5,
           teamMember: {
             avatar: 'avatar1.jpg',
             name: 'User One'
@@ -384,33 +379,6 @@ describe('EvalDatasetCollection List API', () => {
       const result = await handler_test(req as any);
 
       expect(result.list[0].description).toBe('');
-    });
-
-    it('should handle missing dataCountByGen', async () => {
-      const collectionsWithoutDataCount = [
-        {
-          _id: '65f5b5b5b5b5b5b5b5b5b5b1',
-          name: 'Dataset 1',
-          description: 'First dataset',
-          createTime: new Date('2024-01-01'),
-          updateTime: new Date('2024-01-02'),
-          teamMember: {
-            avatar: 'avatar1.jpg',
-            name: 'User One'
-          }
-        }
-      ];
-
-      mockMongoEvalDatasetCollection.aggregate.mockResolvedValue(collectionsWithoutDataCount);
-      mockMongoEvalDatasetCollection.countDocuments.mockResolvedValue(1);
-
-      const req = {
-        body: { pageNum: 1, pageSize: 10 }
-      };
-
-      const result = await handler_test(req as any);
-
-      expect(result.list[0].dataCountByGen).toBe(0);
     });
 
     it('should convert ObjectId to string', async () => {

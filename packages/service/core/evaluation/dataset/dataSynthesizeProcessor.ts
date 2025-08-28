@@ -1,10 +1,13 @@
 import type { Job } from 'bullmq';
 import type { HydratedDocument } from 'mongoose';
-import { addLog } from '../../common/system/log';
+import { addLog } from '../../../common/system/log';
 import { MongoEvalDatasetCollection } from './evalDatasetCollectionSchema';
 import { MongoEvalDatasetData } from './evalDatasetDataSchema';
-import { MongoDatasetData } from '../dataset/data/schema';
-import { EvalDatasetDataCreateFromEnum } from '@fastgpt/global/core/evaluation/constants';
+import { MongoDatasetData } from '../../dataset/data/schema';
+import {
+  EvalDatasetDataCreateFromEnum,
+  EvalDatasetDataKeyEnum
+} from '@fastgpt/global/core/evaluation/constants';
 import type { EvalDatasetDataSchemaType } from '@fastgpt/global/core/evaluation/type';
 import {
   type EvalDatasetDataSynthesizeData,
@@ -35,7 +38,7 @@ async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
 
     // TODO: Implement AI model call for synthesis
     // This is where we would call the intelligent generation model
-    // to generate expected_output based on user_input
+    // to generate expectedOutput based on userInput
     const synthesizedOutput = await synthesizeExpectedOutput(
       sourceData.q,
       intelligentGenerationModel
@@ -46,11 +49,11 @@ async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
       teamId: evalDatasetCollection.teamId,
       tmbId: evalDatasetCollection.tmbId,
       datasetId: evalDatasetCollectionId,
-      user_input: sourceData.q,
-      expected_output: synthesizedOutput,
-      actual_output: '',
-      context: [],
-      retrieval_context: [],
+      [EvalDatasetDataKeyEnum.UserInput]: sourceData.q,
+      [EvalDatasetDataKeyEnum.ExpectedOutput]: synthesizedOutput,
+      [EvalDatasetDataKeyEnum.ActualOutput]: '',
+      [EvalDatasetDataKeyEnum.Context]: [],
+      [EvalDatasetDataKeyEnum.RetrievalContext]: [],
       metadata: {
         sourceDataId: sourceData._id,
         sourceDatasetId: sourceData.datasetId,
@@ -70,8 +73,6 @@ async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
       insertedRecordId: insertedRecord._id,
       synthesizedLength: synthesizedOutput.length
     });
-
-    await checkAndUpdateDatasetStatus(evalDatasetCollectionId);
 
     // TODO: Add audit log
     // TODO: Add tracking metrics
@@ -109,40 +110,6 @@ async function synthesizeExpectedOutput(
 
   // For now, return a synthesized placeholder
   return `[AI Generated Answer for: ${userInput.substring(0, 100)}${userInput.length > 100 ? '...' : ''}]`;
-}
-
-async function checkAndUpdateDatasetStatus(evalDatasetCollectionId: string) {
-  try {
-    const evalDatasetCollection =
-      await MongoEvalDatasetCollection.findById(evalDatasetCollectionId);
-    if (!evalDatasetCollection) return;
-
-    const totalGeneratedCount = await MongoEvalDatasetData.countDocuments({
-      datasetId: evalDatasetCollectionId,
-      createFrom: EvalDatasetDataCreateFromEnum.intelligentGeneration
-    });
-
-    addLog.info('Dataset synthesis status check', {
-      evalDatasetCollectionId: evalDatasetCollectionId,
-      totalGeneratedCount,
-      expectedCount: evalDatasetCollection.dataCountByGen
-    });
-
-    // If we have reached expected count, mark as ready
-    if (totalGeneratedCount >= evalDatasetCollection.dataCountByGen) {
-      // TODO: Update dataset status to ready/completed
-      addLog.info('Eval dataset synthesis completed', {
-        evalDatasetCollectionId: evalDatasetCollectionId,
-        totalGeneratedCount,
-        expectedCount: evalDatasetCollection.dataCountByGen
-      });
-    }
-  } catch (error) {
-    addLog.error('Failed to check synthesis status', {
-      evalDatasetCollectionId: evalDatasetCollectionId,
-      error
-    });
-  }
 }
 
 // Initialize worker

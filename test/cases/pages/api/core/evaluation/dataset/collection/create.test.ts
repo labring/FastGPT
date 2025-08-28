@@ -2,12 +2,12 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler_test } from '@/pages/api/core/evaluation/dataset/collection/create';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/evalDatasetCollectionSchema';
+import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 vi.mock('@fastgpt/service/support/permission/user/auth');
 vi.mock('@fastgpt/service/common/mongo/sessionRun');
-vi.mock('@fastgpt/service/core/evaluation/evalDatasetCollectionSchema', () => ({
+vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
   MongoEvalDatasetCollection: {
     findOne: vi.fn(),
     create: vi.fn()
@@ -46,10 +46,9 @@ describe('EvalDatasetCollection Create API', () => {
         body: { description: 'Test description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 400,
-        message: 'Name is required and must be a non-empty string'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual(
+        'Name is required and must be a non-empty string'
+      );
     });
 
     it('should reject when name is empty string', async () => {
@@ -57,10 +56,9 @@ describe('EvalDatasetCollection Create API', () => {
         body: { name: '', description: 'Test description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 400,
-        message: 'Name is required and must be a non-empty string'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual(
+        'Name is required and must be a non-empty string'
+      );
     });
 
     it('should reject when name is only whitespace', async () => {
@@ -68,10 +66,9 @@ describe('EvalDatasetCollection Create API', () => {
         body: { name: '   ', description: 'Test description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 400,
-        message: 'Name is required and must be a non-empty string'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual(
+        'Name is required and must be a non-empty string'
+      );
     });
 
     it('should reject when name is not a string', async () => {
@@ -79,10 +76,9 @@ describe('EvalDatasetCollection Create API', () => {
         body: { name: 123, description: 'Test description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 400,
-        message: 'Name is required and must be a non-empty string'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual(
+        'Name is required and must be a non-empty string'
+      );
     });
 
     it('should reject when name exceeds 100 characters', async () => {
@@ -91,10 +87,9 @@ describe('EvalDatasetCollection Create API', () => {
         body: { name: longName, description: 'Test description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 400,
-        message: 'Name must be less than 100 characters'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual(
+        'Name must be less than 100 characters'
+      );
     });
 
     it('should reject when description is not a string', async () => {
@@ -102,22 +97,18 @@ describe('EvalDatasetCollection Create API', () => {
         body: { name: 'Test Dataset', description: 123 }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 400,
-        message: 'Description must be a string'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual('Description must be a string');
     });
 
-    it('should reject when description exceeds 500 characters', async () => {
-      const longDescription = 'a'.repeat(501);
+    it('should reject when description exceeds 100 characters', async () => {
+      const longDescription = 'a'.repeat(101);
       const req = {
         body: { name: 'Test Dataset', description: longDescription }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 400,
-        message: 'Description must be less than 500 characters'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual(
+        'Description must be less than 100 characters'
+      );
     });
 
     it('should accept valid name without description', async () => {
@@ -179,10 +170,9 @@ describe('EvalDatasetCollection Create API', () => {
         body: { name: 'Test Dataset', description: 'Test description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual({
-        statusCode: 409,
-        message: 'A dataset with this name already exists'
-      });
+      await expect(handler_test(req as any)).rejects.toEqual(
+        'A dataset with this name already exists'
+      );
 
       expect(mockMongoEvalDatasetCollection.findOne).toHaveBeenCalledWith({
         teamId: validTeamId,
@@ -320,8 +310,8 @@ describe('EvalDatasetCollection Create API', () => {
       expect(result).toBe(mockDatasetId);
     });
 
-    it('should handle exactly 500 character description', async () => {
-      const exactDescription = 'a'.repeat(500);
+    it('should handle exactly 100 character description', async () => {
+      const exactDescription = 'a'.repeat(100);
       const req = {
         body: { name: 'Test Dataset', description: exactDescription }
       };
