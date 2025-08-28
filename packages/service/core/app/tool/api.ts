@@ -21,6 +21,10 @@ export async function APIGetSystemToolList() {
 
   return Promise.reject(res.body);
 }
+export async function APIGetTemplate() {
+  const res = await pluginClient.tool.getTemplate();
+  return res.body;
+}
 
 const runToolInstance = new RunToolWithStream({
   baseUrl: BASE_URL,
