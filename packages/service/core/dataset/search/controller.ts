@@ -784,10 +784,10 @@ export async function searchDatasetData(
 
     // rrf concat
     const rrfEmbRecall = datasetSearchResultConcat(
-      embeddingRecallResults.map((list) => ({ k: 60, list }))
+      embeddingRecallResults.map((list) => ({ weight: 1, list }))
     ).slice(0, embeddingLimit);
     const rrfFTRecall = datasetSearchResultConcat(
-      fullTextRecallResults.map((list) => ({ k: 60, list }))
+      fullTextRecallResults.map((list) => ({ weight: 1, list }))
     ).slice(0, fullTextLimit);
 
     return {
@@ -850,24 +850,22 @@ export async function searchDatasetData(
   })();
 
   // embedding recall and fullText recall rrf concat
-  const baseK = 120;
-  const embK = Math.round(baseK * (1 - embeddingWeight)); // 搜索结果的 k 值
-  const fullTextK = Math.round(baseK * embeddingWeight); // rerank 结果的 k 值
+  const embWeight = embeddingWeight; // 向量索引的 weight 大小
+  const fullTextWeight = 1 - embeddingWeight; // 全文索引的 weight 大小
 
   const rrfSearchResult = datasetSearchResultConcat([
-    { k: embK, list: embeddingRecallResults },
-    { k: fullTextK, list: fullTextRecallResults }
+    { weight: embWeight, list: embeddingRecallResults },
+    { weight: fullTextWeight, list: fullTextRecallResults }
   ]);
   const rrfConcatResults = (() => {
     if (reRankResults.length === 0) return rrfSearchResult;
     if (rerankWeight === 1) return reRankResults;
 
-    const searchK = Math.round(baseK * rerankWeight); // 搜索结果的 k 值
-    const rerankK = Math.round(baseK * (1 - rerankWeight)); // rerank 结果的 k 值
+    const searchWeight = 1 - rerankWeight; // 搜索结果的 weight 大小
 
     return datasetSearchResultConcat([
-      { k: searchK, list: rrfSearchResult },
-      { k: rerankK, list: reRankResults }
+      { weight: searchWeight, list: rrfSearchResult },
+      { weight: rerankWeight, list: reRankResults }
     ]);
   })();
 
