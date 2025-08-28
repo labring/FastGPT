@@ -9,7 +9,43 @@ import type {
   listEvalDatasetCollectionBody,
   listEvalDatasetCollectionResponse
 } from '@fastgpt/global/core/evaluation/api';
+import type { EvalDatasetCollectionStatus } from '@fastgpt/global/core/evaluation/type';
+import { EvalDatasetCollectionStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import { evalDatasetDataSynthesizeQueue } from '@fastgpt/service/core/evaluation/dataSynthesizeMq';
+
+async function getCollectionStatus(collectionId: string): Promise<EvalDatasetCollectionStatus> {
+  try {
+    const jobs = await evalDatasetDataSynthesizeQueue.getJobs([
+      'waiting',
+      'active',
+      'delayed',
+      'failed'
+    ]);
+    const collectionJobs = jobs.filter((job) => job.data.evalDatasetCollectionId === collectionId);
+
+    if (collectionJobs.length === 0) {
+      return EvalDatasetCollectionStatusEnum.ready;
+    }
+
+    if (collectionJobs.some((job) => job.isFailed())) {
+      return EvalDatasetCollectionStatusEnum.error;
+    }
+
+    if (collectionJobs.some((job) => job.isActive())) {
+      return EvalDatasetCollectionStatusEnum.processing;
+    }
+
+    if (collectionJobs.some((job) => job.isWaiting() || job.isDelayed())) {
+      return EvalDatasetCollectionStatusEnum.queued;
+    }
+
+    return EvalDatasetCollectionStatusEnum.ready;
+  } catch (error) {
+    console.error('Error getting collection status:', error);
+    return EvalDatasetCollectionStatusEnum.ready;
+  }
+}
 
 async function handler(
   req: ApiRequestProps<listEvalDatasetCollectionBody, {}>
@@ -21,11 +57,9 @@ async function handler(
     per: ReadPermissionVal
   });
 
-  // Parse request parameters
   const { offset, pageSize } = parsePaginationRequest(req);
   const { searchKey } = req.body;
 
-  // Build MongoDB pipeline
   const match: Record<string, any> = {
     teamId: new Types.ObjectId(teamId)
   };
@@ -44,18 +78,26 @@ async function handler(
 
     // TODO: Audit Log - Log successful response
 
+    const collectionsWithStatus = await Promise.all(
+      collections.map(async (item) => {
+        const status = await getCollectionStatus(String(item._id));
+        return {
+          _id: String(item._id),
+          name: item.name,
+          description: item.description || '',
+          createTime: item.createTime,
+          updateTime: item.updateTime,
+          dataCountByGen: item.dataCountByGen || 0,
+          creatorAvatar: item.teamMember?.avatar,
+          creatorName: item.teamMember?.name,
+          status
+        };
+      })
+    );
+
     return {
       total,
-      list: collections.map((item) => ({
-        _id: String(item._id),
-        name: item.name,
-        description: item.description || '',
-        createTime: item.createTime,
-        updateTime: item.updateTime,
-        dataCountByGen: item.dataCountByGen || 0,
-        creatorAvatar: item.teamMember?.avatar,
-        creatorName: item.teamMember?.name
-      }))
+      list: collectionsWithStatus
     };
   } catch (error) {
     console.error('Database error in eval dataset collection list:', error);

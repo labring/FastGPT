@@ -1,4 +1,10 @@
-import type { EvaluationStatusEnum, EvalDatasetDataCreateFromEnum } from './constants';
+import type {
+  EvaluationStatusEnum,
+  EvalDatasetDataCreateFromEnum,
+  EvalDatasetCollectionStatusEnum
+} from './constants';
+
+export type EvalDatasetCollectionStatus = EvalDatasetCollectionStatusEnum;
 
 export type EvaluationSchemaType = {
   _id: string;

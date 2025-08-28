@@ -15,7 +15,7 @@ export type SmartGenerateEvalDatasetResponse = string;
 async function handler(
   req: ApiRequestProps<SmartGenerateEvalDatasetBody, SmartGenerateEvalDatasetQuery>
 ): Promise<SmartGenerateEvalDatasetResponse> {
-  const { collectionId, datasetCollectionIds, count = 0, intelligentGenerationModel } = req.body;
+  const { collectionId, datasetCollectionIds, count, intelligentGenerationModel } = req.body;
 
   // Parameter validation
   if (!collectionId || typeof collectionId !== 'string') {
@@ -28,10 +28,6 @@ async function handler(
     datasetCollectionIds.length === 0
   ) {
     return Promise.reject('datasetCollectionIds is required and must be a non-empty array');
-  }
-
-  if (count < 1) {
-    return Promise.reject('count must be large 1');
   }
 
   if (!intelligentGenerationModel || typeof intelligentGenerationModel !== 'string') {
@@ -63,7 +59,7 @@ async function handler(
     return Promise.reject('One or more dataset collections not found or no permission');
   }
 
-  // Calculate total data count from selected collections for validation
+  // Calculate total data count from selected collections
   const totalDataCount = await MongoDatasetData.countDocuments({
     teamId,
     collectionId: { $in: datasetCollectionIds }
@@ -73,22 +69,30 @@ async function handler(
     return Promise.reject('Selected dataset collections contain no data');
   }
 
-  if (count > totalDataCount) {
+  // Use totalDataCount as default when count is undefined
+  const finalCount = count !== undefined ? count : totalDataCount;
+
+  // Validate count after setting default
+  if (finalCount < 1) {
+    return Promise.reject('count must be greater than 0');
+  }
+
+  if (finalCount > totalDataCount) {
     return Promise.reject(
-      `Requested count (${count}) exceeds available data count (${totalDataCount}) in selected collections`
+      `Requested count (${finalCount}) exceeds available data count (${totalDataCount}) in selected collections`
     );
   }
 
   try {
     const job = await addEvalDatasetSmartGenerateJob({
       datasetCollectionIds,
-      count,
+      count: finalCount,
       intelligentGenerationModel,
       evalDatasetCollectionId: collectionId
     });
 
     await MongoEvalDatasetCollection.findByIdAndUpdate(collectionId, {
-      $inc: { dataCountByGen: count }
+      $inc: { dataCountByGen: finalCount }
     });
 
     // TODO: Add audit log for smart generation operation

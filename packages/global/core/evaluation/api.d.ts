@@ -1,5 +1,9 @@
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import type { EvalDatasetCollectionSchemaType, EvalDatasetDataSchemaType } from './type';
+import type {
+  EvalDatasetCollectionSchemaType,
+  EvalDatasetDataSchemaType,
+  EvalDatasetCollectionStatus
+} from './type';
 
 export type listEvaluationsBody = PaginationProps<{
   searchKey?: string;
@@ -42,6 +46,7 @@ export type listEvalDatasetCollectionResponse = PaginationResponse<
   > & {
     creatorAvatar?: string;
     creatorName?: string;
+    status: EvalDatasetCollectionStatus;
   }
 >;
 
@@ -107,4 +112,29 @@ export type smartGenerateEvalDatasetBody = {
   datasetCollectionIds: string[];
   count?: number;
   intelligentGenerationModel: string;
+};
+
+export type listFailedTasksBody = {
+  collectionId: string;
+};
+
+export type listFailedTasksResponse = {
+  tasks: Array<{
+    jobId: string;
+    dataId: string;
+    errorMessage: string;
+    failedAt: Date;
+    attemptsMade: number;
+    maxAttempts: number;
+  }>;
+};
+
+export type retryTaskBody = {
+  collectionId: string;
+  jobId: string;
+};
+
+export type deleteTaskBody = {
+  collectionId: string;
+  jobId: string;
 };

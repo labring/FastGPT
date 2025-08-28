@@ -28,3 +28,10 @@ export enum EvalDatasetDataCreateFromEnum {
 }
 
 export const EvalDatasetDataCreateFromValues = Object.values(EvalDatasetDataCreateFromEnum);
+
+export enum EvalDatasetCollectionStatusEnum {
+  queued = 'queued',
+  processing = 'processing',
+  error = 'error',
+  ready = 'ready'
+}
