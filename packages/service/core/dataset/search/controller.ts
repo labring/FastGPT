@@ -849,22 +849,16 @@ export async function searchDatasetData(
     }
   })();
 
-  // embedding recall and fullText recall rrf concat
-  const embWeight = embeddingWeight; // 向量索引的 weight 大小
-  const fullTextWeight = 1 - embeddingWeight; // 全文索引的 weight 大小
-
   const rrfSearchResult = datasetSearchResultConcat([
-    { weight: embWeight, list: embeddingRecallResults },
-    { weight: fullTextWeight, list: fullTextRecallResults }
+    { weight: embeddingWeight, list: embeddingRecallResults },
+    { weight: 1 - embeddingWeight, list: fullTextRecallResults }
   ]);
   const rrfConcatResults = (() => {
     if (reRankResults.length === 0) return rrfSearchResult;
     if (rerankWeight === 1) return reRankResults;
 
-    const searchWeight = 1 - rerankWeight; // 搜索结果的 weight 大小
-
     return datasetSearchResultConcat([
-      { weight: searchWeight, list: rrfSearchResult },
+      { weight: 1 - rerankWeight, list: rrfSearchResult },
       { weight: rerankWeight, list: reRankResults }
     ]);
   })();

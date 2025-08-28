@@ -18,7 +18,7 @@ export const datasetSearchResultConcat = (
 
     item.list.forEach((data, index) => {
       const rank = index + 1;
-      const score = (weight * 1) / (60 + rank);
+      const score = weight * (1 / (60 + rank));
       const record = map.get(data.id);
       if (record) {
         // 合并两个score,有相同type的score,取最大值
@@ -64,8 +64,9 @@ export const datasetSearchResultConcat = (
       });
     }
 
-    // @ts-ignore
-    delete item.rrfScore;
-    return item;
+    return {
+      ...item,
+      rrfScore: undefined
+    };
   });
 };
