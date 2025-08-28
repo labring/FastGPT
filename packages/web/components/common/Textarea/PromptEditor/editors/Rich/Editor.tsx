@@ -8,29 +8,40 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
-import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
+import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
+import { ListPlugin } from '@lexical/react/LexicalListPlugin';
+import { CheckListPlugin } from '@lexical/react/LexicalCheckListPlugin';
+import { TabIndentationPlugin } from '@lexical/react/LexicalTabIndentationPlugin';
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
-import VariableLabelPickerPlugin from './plugins/VariableLabelPickerPlugin';
+import { HeadingNode, QuoteNode } from '@lexical/rich-text';
+import { ListItemNode, ListNode } from '@lexical/list';
+import { CodeHighlightNode, CodeNode } from '@lexical/code';
 import { Box, Flex } from '@chakra-ui/react';
-import styles from './index.module.scss';
-import VariablePlugin from './plugins/VariablePlugin';
-import { VariableNode } from './plugins/VariablePlugin/node';
+import styles from '../../index.module.scss';
 import type { EditorState, LexicalEditor } from 'lexical';
-import OnBlurPlugin from './plugins/OnBlurPlugin';
-import MyIcon from '../../Icon';
-import type { FormPropsType } from './type.d';
-import { type EditorVariableLabelPickerType, type EditorVariablePickerType } from './type.d';
+import MyIcon from '../../../../Icon';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import FocusPlugin from './plugins/FocusPlugin';
-import { textToEditorState } from './utils';
-import { MaxLengthPlugin } from './plugins/MaxLengthPlugin';
-import { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
-import VariableLabelPlugin from './plugins/VariableLabelPlugin';
+import { textToEditorState } from '../../utils';
 import { useDeepCompareEffect } from 'ahooks';
-import VariablePickerPlugin from './plugins/VariablePickerPlugin';
+import MarkdownPlugin from '../../plugins/MarkdownPlugin';
+import { MaxLengthPlugin } from '../../plugins/MaxLengthPlugin';
+import VariableLabelPickerPlugin from '../../plugins/VariableLabelPickerPlugin';
+import VariablePlugin from '../../plugins/VariablePlugin';
+import { VariableNode } from '../../plugins/VariablePlugin/node';
+import VariableLabelPlugin from '../../plugins/VariableLabelPlugin';
+import { VariableLabelNode } from '../../plugins/VariableLabelPlugin/node';
+import VariablePickerPlugin from '../../plugins/VariablePickerPlugin';
+import FocusPlugin from '../../plugins/FocusPlugin';
+import OnBlurPlugin from '../../plugins/OnBlurPlugin';
+import type {
+  FormPropsType} from '../../type';
+import {
+  type EditorVariableLabelPickerType,
+  type EditorVariablePickerType
+} from '../../type';
 
 export type EditorProps = {
   variables?: EditorVariablePickerType[];
@@ -50,13 +61,13 @@ export type EditorProps = {
 };
 
 export default function Editor({
+  variables = [],
+  variableLabels = [],
   minH = 200,
   maxH = 400,
   maxLength,
   showOpenModal = true,
   onOpenModal,
-  variables = [],
-  variableLabels = [],
   onChange,
   onChangeText,
   onBlur,
@@ -64,14 +75,13 @@ export default function Editor({
   placeholder = '',
   bg = 'white',
   isInvalid,
-
   ExtensionPopover
 }: EditorProps &
   FormPropsType & {
     onOpenModal?: () => void;
     onChange: (editorState: EditorState, editor: LexicalEditor) => void;
     onChangeText?: ((text: string) => void) | undefined;
-    onBlur: (editor: LexicalEditor) => void;
+    onBlur?: (editor: LexicalEditor) => void;
   }) {
   const [key, setKey] = useState(getNanoid(6));
   const [_, startSts] = useTransition();
@@ -79,8 +89,17 @@ export default function Editor({
   const [scrollHeight, setScrollHeight] = useState(0);
 
   const initialConfig = {
-    namespace: 'promptEditor',
-    nodes: [VariableNode, VariableLabelNode],
+    namespace: 'richPromptEditor',
+    nodes: [
+      HeadingNode,
+      ListNode,
+      ListItemNode,
+      QuoteNode,
+      CodeNode,
+      CodeHighlightNode,
+      VariableNode,
+      VariableLabelNode
+    ],
     editorState: textToEditorState(value),
     onError: (error: Error) => {
       throw error;
@@ -125,14 +144,16 @@ export default function Editor({
       borderRadius={'md'}
     >
       <LexicalComposer initialConfig={initialConfig} key={key}>
-        <PlainTextPlugin
+        <RichTextPlugin
           contentEditable={
             <ContentEditable
-              className={isInvalid ? styles.contentEditable_invalid : styles.contentEditable}
+              className={`${isInvalid ? styles.contentEditable_invalid : styles.contentEditable} ${styles.richText}`}
               style={{
                 minHeight: `${minH}px`,
                 maxHeight: `${maxH}px`
               }}
+              onFocus={() => setFocus(true)}
+              onBlur={() => setFocus(false)}
             />
           }
           placeholder={
@@ -162,8 +183,17 @@ export default function Editor({
           ErrorBoundary={LexicalErrorBoundary}
         />
         <HistoryPlugin />
+        <ListPlugin />
+        <CheckListPlugin />
+        <MarkdownPlugin />
         <MaxLengthPlugin maxLength={maxLength || 999999} />
         <FocusPlugin focus={focus} setFocus={setFocus} />
+        <VariableLabelPlugin variables={variableLabels} />
+        <VariablePlugin variables={variables} />
+        <VariableLabelPickerPlugin variables={variableLabels} isFocus={focus} />
+        <VariablePickerPlugin variables={variableLabels.length > 0 ? [] : variables} />
+        <TabIndentationPlugin />
+        <OnBlurPlugin onBlur={onBlur} />
         <OnChangePlugin
           onChange={(editorState, editor) => {
             const rootElement = editor.getRootElement();
@@ -173,11 +203,6 @@ export default function Editor({
             });
           }}
         />
-        <VariableLabelPlugin variables={variableLabels} />
-        <VariablePlugin variables={variables} />
-        <VariableLabelPickerPlugin variables={variableLabels} isFocus={focus} />
-        <VariablePickerPlugin variables={variableLabels.length > 0 ? [] : variables} />
-        <OnBlurPlugin onBlur={onBlur} />
       </LexicalComposer>
 
       {onChangeText &&
