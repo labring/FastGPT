@@ -8,7 +8,6 @@ import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
-  FlowNodeTemplateTypeEnum,
   ContentTypes
 } from '../../constants';
 import { Input_Template_DynamicInput } from '../input';
@@ -17,7 +16,7 @@ import { i18nT } from '../../../../../web/i18n/utils';
 
 export const HttpNode468: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.httpRequest468,
-  templateType: FlowNodeTemplateTypeEnum.tools,
+  templateType: 'tools',
   flowNodeType: FlowNodeTypeEnum.httpRequest468,
   showSourceHandle: true,
   showTargetHandle: true,

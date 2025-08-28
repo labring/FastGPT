@@ -21,6 +21,7 @@ import {
   type CreateUsageProps
 } from '@fastgpt/global/support/wallet/usage/api';
 import { isProVersion } from './constants';
+import { APIGetToolTypes } from '@fastgpt/service/core/app/tool/api';
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');
@@ -167,12 +168,21 @@ export async function initSystemConfig() {
 export async function initSystemPluginGroups() {
   try {
     const { groupOrder, ...restDefaultGroup } = defaultGroup;
+
+    const toolTypes = await APIGetToolTypes();
+
     await MongoPluginGroups.updateOne(
       {
         groupId: defaultGroup.groupId
       },
       {
-        $set: restDefaultGroup
+        $set: {
+          ...restDefaultGroup,
+          groupTypes: toolTypes.map((toolType) => ({
+            typeId: toolType.type,
+            typeName: toolType.name
+          }))
+        }
       },
       {
         upsert: true

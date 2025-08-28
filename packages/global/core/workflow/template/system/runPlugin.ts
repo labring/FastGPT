@@ -1,10 +1,9 @@
-import { FlowNodeTemplateTypeEnum } from '../../constants';
 import { FlowNodeTypeEnum } from '../../node/constant';
 import { type FlowNodeTemplateType } from '../../type/node';
 
 export const RunPluginModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.pluginModule,
-  templateType: FlowNodeTemplateTypeEnum.other,
+  templateType: 'other',
   flowNodeType: FlowNodeTypeEnum.pluginModule,
   showSourceHandle: true,
   showTargetHandle: true,

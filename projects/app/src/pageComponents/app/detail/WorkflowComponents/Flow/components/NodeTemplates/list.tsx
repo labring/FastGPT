@@ -40,11 +40,15 @@ import { useWorkflowUtils } from '../../hooks/useUtils';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
 import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/loopEnd';
-import { useReactFlow, type Node } from 'reactflow';
+import { useReactFlow } from 'reactflow';
+import type { Node } from 'reactflow';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { WorkflowEventContext } from '../../../context/workflowEventContext';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import type { TGroupType } from '@fastgpt/service/core/app/plugin/type';
+import { type localeType } from '@fastgpt/global/common/i18n/type';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 
 export type TemplateListProps = {
   onAddNode: ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => void;
@@ -206,7 +210,8 @@ const NodeTemplateList = ({
   templateType,
   onUpdateParentId
 }: TemplateListProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
   const { toast } = useToast();
   const { computedNewNodeName } = useWorkflowUtils();
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
@@ -356,7 +361,22 @@ const NodeTemplateList = ({
           });
         }
 
-        const copy: NodeTemplateListType = cloneDeep(workflowNodeTemplateList).map((item) => ({
+        const extendedWorkflowNodeTemplateList = (() => {
+          const baseTypes = cloneDeep(workflowNodeTemplateList);
+
+          const systemPluginGroup = pluginGroups.find((group) => group.groupId === 'systemPlugin');
+          if (systemPluginGroup) {
+            const toolTypes = systemPluginGroup.groupTypes.map((type: TGroupType) => ({
+              type: type.typeId,
+              label: parseI18nString(type.typeName, lang as localeType)
+            }));
+            return [...baseTypes, ...toolTypes];
+          }
+
+          return baseTypes;
+        })();
+
+        const copy: NodeTemplateListType = extendedWorkflowNodeTemplateList.map((item) => ({
           ...item,
           list: []
         }));
