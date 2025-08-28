@@ -38,5 +38,3 @@ files/helm/fastgpt/charts/*.tgz
 tmp/
 coverage
 document/.source
-
-bun.lock
