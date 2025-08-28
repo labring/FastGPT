@@ -14,11 +14,6 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import React, { useMemo, useRef, useState } from 'react';
-import {
-  getModelProviders,
-  type ModelProviderIdType,
-  getModelProvider
-} from '@fastgpt/global/core/ai/provider';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
@@ -27,25 +22,31 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import dynamic from 'next/dynamic';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
+import type { I18nStringType } from '@fastgpt/global/common/i18n/type';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
 const ModelTable = () => {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
-  const [provider, setProvider] = useState<ModelProviderIdType | ''>('');
-  const providerList = useRef<{ label: any; value: ModelProviderIdType | '' }[]>([
-    { label: t('common:All'), value: '' },
-    ...getModelProviders(language).map((item) => ({
-      label: (
-        <HStack>
-          <Avatar src={item.avatar} w={'1rem'} />
-          <Box>{item.name}</Box>
-        </HStack>
-      ),
-      value: item.id
-    }))
-  ]);
+  const [provider, setProvider] = useState<string | ''>('');
+  const { modelProviders } = useSystemStore();
+
+  const providerList = useMemo(() => {
+    const providers = modelProviders?.listData;
+    return [
+      { label: t('common:All'), value: '' },
+      ...providers.map((item) => ({
+        label: (
+          <HStack>
+            <Avatar src={item.avatar} w={'1rem'} />
+            <Box>{item.name[language as keyof I18nStringType]}</Box>
+          </HStack>
+        ),
+        value: item.id
+      }))
+    ];
+  }, [modelProviders, t]);
 
   const [modelType, setModelType] = useState<ModelTypeEnum | ''>('');
   const selectModelTypeList = useRef<{ label: string; value: ModelTypeEnum | '' }[]>([
@@ -163,19 +164,19 @@ const ModelTable = () => {
       ];
     })();
     const formatList = list.map((item) => {
-      const provider = getModelProvider(item.provider, language);
+      const provider = modelProviders.listData.find((p) => p.id === item.provider);
       return {
         name: item.name,
-        avatar: provider.avatar,
-        providerId: provider.id,
-        providerName: t(provider.name as any),
+        avatar: provider?.avatar,
+        providerId: provider?.id,
+        providerName: t(provider?.name as any),
         typeLabel: item.typeLabel,
         priceLabel: item.priceLabel,
-        order: provider.order,
+        order: provider?.order,
         tagColor: item.tagColor
       };
     });
-    formatList.sort((a, b) => a.order - b.order);
+    formatList.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
     const filterList = formatList.filter((item) => {
       const providerFilter = provider ? item.providerId === provider : true;
@@ -197,7 +198,8 @@ const ModelTable = () => {
     modelType,
     provider,
     search,
-    language
+    language,
+    modelProviders
   ]);
 
   const filterProviderList = useMemo(() => {
@@ -209,10 +211,8 @@ const ModelTable = () => {
       ...reRankModelList
     ].map((model) => model.provider);
 
-    return providerList.current.filter(
-      (item) => allProviderIds.includes(item.value) || item.value === ''
-    );
-  }, [ttsModelList, llmModelList, embeddingModelList, sttModelList, reRankModelList]);
+    return providerList.filter((item) => allProviderIds.includes(item.value) || item.value === '');
+  }, [ttsModelList, llmModelList, embeddingModelList, sttModelList, reRankModelList, providerList]);
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>

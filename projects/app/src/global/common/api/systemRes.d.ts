@@ -9,6 +9,7 @@ import type {
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import type { SystemDefaultModelType, SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import type { ModelProviderCacheType } from '@fastgpt/global/core/app/model/type';
 
 export type InitDateResponse = {
   bufferId?: string;
@@ -19,4 +20,5 @@ export type InitDateResponse = {
 
   activeModelList?: SystemModelItemType[];
   defaultModels?: SystemDefaultModelType;
+  modelProviders?: ModelProviderCacheType;
 };

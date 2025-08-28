@@ -13,7 +13,6 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { getChannelList, getDashboardV2 } from '@/web/core/ai/channel';
 import { getSystemModelList } from '@/web/core/ai/config';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
 import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartComponent';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -60,7 +59,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
   const theme = useTheme();
-  const { feConfigs } = useSystemStore();
+  const { feConfigs, modelProviders } = useSystemStore();
 
   const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
 
@@ -114,23 +113,27 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   const modelList = useMemo(() => {
     const res = systemModelList
       .map((item) => {
-        const provider = getModelProvider(item.provider, language);
+        const provider = modelProviders?.listData?.find((p) => p.id === item.provider);
+
         return {
-          order: provider.order,
-          icon: provider.avatar,
+          order: provider?.order,
+          icon: provider?.avatar,
           label: item.model,
           value: item.model
         };
       })
-      .sort((a, b) => a.order - b.order);
-    return [
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    const result = [
       {
         label: t('common:All'),
         value: ''
       },
       ...res
     ];
-  }, [systemModelList, t]);
+
+    return result;
+  }, [systemModelList, t, modelProviders]);
   // Model price map
   const modelPriceMap = useMemo(() => {
     const map = new Map<
