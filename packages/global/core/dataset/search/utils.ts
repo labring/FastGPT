@@ -64,9 +64,7 @@ export const datasetSearchResultConcat = (
       });
     }
 
-    return {
-      ...item,
-      rrfScore: undefined
-    };
+    const { rrfScore: _, ...result } = item;
+    return result;
   });
 };
