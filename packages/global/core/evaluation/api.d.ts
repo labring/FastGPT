@@ -103,6 +103,19 @@ export type qualityAssessmentBody = {
   evalModel: string;
 };
 
+export type qualityAssessmentBatchBody = {
+  collectionId: string;
+  evalModel: string;
+};
+
+export type qualityAssessmentBatchResponse = {
+  success: boolean;
+  message: string;
+  processedCount: number;
+  skippedCount: number;
+  errorCount: number;
+};
+
 export type deleteEvalDatasetDataQuery = {
   dataId: string;
 };

@@ -21,17 +21,11 @@ async function handler(
   const { dataId, evalModel } = req.body;
 
   if (!dataId || typeof dataId !== 'string') {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'dataId is required and must be a string'
-    });
+    return 'dataId is required and must be a string';
   }
 
   if (!evalModel || typeof evalModel !== 'string') {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'evalModel is required and must be a string'
-    });
+    return 'evalModel is required and must be a string';
   }
 
   const { teamId, tmbId } = await authUserPer({
@@ -43,10 +37,7 @@ async function handler(
 
   const datasetData = await MongoEvalDatasetData.findById(dataId);
   if (!datasetData) {
-    return Promise.reject({
-      statusCode: 404,
-      message: 'Dataset data not found'
-    });
+    return 'Dataset data not found';
   }
 
   const collection = await MongoEvalDatasetCollection.findOne({
@@ -55,10 +46,7 @@ async function handler(
   });
 
   if (!collection) {
-    return Promise.reject({
-      statusCode: 404,
-      message: 'Dataset collection not found or access denied'
-    });
+    return 'Dataset collection not found or access denied';
   }
 
   try {
@@ -85,10 +73,7 @@ async function handler(
 
     return 'success';
   } catch (error) {
-    return Promise.reject({
-      statusCode: 500,
-      message: error instanceof Error ? error.message : 'Failed to queue quality assessment job'
-    });
+    return error instanceof Error ? error.message : 'Failed to queue quality assessment job';
   }
 }
 

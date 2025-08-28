@@ -136,34 +136,22 @@ async function handler(
   } = req.body;
 
   if (!fileId || typeof fileId !== 'string') {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'fileId is required and must be a string'
-    });
+    return 'fileId is required and must be a string';
   }
 
   if (!datasetCollectionId || typeof datasetCollectionId !== 'string') {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'datasetCollectionId is required and must be a string'
-    });
+    return 'datasetCollectionId is required and must be a string';
   }
 
   if (typeof enableQualityEvaluation !== 'boolean') {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'enableQualityEvaluation is required and must be a boolean'
-    });
+    return 'enableQualityEvaluation is required and must be a boolean';
   }
 
   if (
     enableQualityEvaluation &&
     (!qualityEvaluationModel || typeof qualityEvaluationModel !== 'string')
   ) {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'qualityEvaluationModel is required when enableQualityEvaluation is true'
-    });
+    return 'qualityEvaluationModel is required when enableQualityEvaluation is true';
   }
 
   const { teamId, tmbId } = await authUserPer({
@@ -183,26 +171,17 @@ async function handler(
 
   const filename = file.filename?.toLowerCase() || '';
   if (!filename.endsWith('.csv')) {
-    return Promise.reject({
-      statusCode: 400,
-      message: 'File must be a CSV file'
-    });
+    return 'File must be a CSV file';
   }
 
   // Verify dataset collection exists and belongs to team
   const datasetCollection = await MongoEvalDatasetCollection.findById(datasetCollectionId);
   if (!datasetCollection) {
-    return Promise.reject({
-      statusCode: 404,
-      message: 'Evaluation dataset collection not found'
-    });
+    return 'Evaluation dataset collection not found';
   }
 
   if (String(datasetCollection.teamId) !== teamId) {
-    return Promise.reject({
-      statusCode: 403,
-      message: 'No permission to access this dataset collection'
-    });
+    return 'No permission to access this dataset collection';
   }
 
   try {
@@ -218,18 +197,12 @@ async function handler(
     const csvRows = parseCSVContent(rawText);
 
     if (csvRows.length === 0) {
-      return Promise.reject({
-        statusCode: 400,
-        message: 'CSV file contains no data rows'
-      });
+      return 'CSV file contains no data rows';
     }
 
     // Validate row limit (prevent memory issues)
     if (csvRows.length > 10000) {
-      return Promise.reject({
-        statusCode: 400,
-        message: 'CSV file cannot contain more than 10,000 rows'
-      });
+      return 'CSV file cannot contain more than 10,000 rows';
     }
 
     // Prepare data for bulk insert
@@ -322,10 +295,7 @@ async function handler(
   } catch (error: any) {
     // Handle parsing errors
     if (error.message && typeof error.message === 'string') {
-      return Promise.reject({
-        statusCode: 400,
-        message: `CSV parsing error: ${error.message}`
-      });
+      return `CSV parsing error: ${error.message}`;
     }
 
     // Re-throw other errors
