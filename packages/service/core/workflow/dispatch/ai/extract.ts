@@ -248,8 +248,10 @@ const toolChoice = async (props: ActionProps) => {
     temperature: 0.01,
     messages: filterMessages,
     tools,
-    tool_choice: { type: 'function', function: { name: agentFunName } }
+    tool_choice: { type: 'function', function: { name: agentFunName } },
+    toolCallMode: 'toolChoice'
   } as const;
+
   const {
     answerText: text,
     toolCalls,
