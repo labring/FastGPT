@@ -21,7 +21,7 @@ type CommonRenderProps = {
 type SpecificProps =
   | ({
       // input & textarea
-      inputType: InputTypeEnum.input | InputTypeEnum.textarea;
+      inputType: InputTypeEnum.input | InputTypeEnum.textarea | InputTypeEnum.richTextPrompt;
       variables?: EditorVariablePickerType[];
       variableLabels?: EditorVariableLabelPickerType[];
       title?: string;
