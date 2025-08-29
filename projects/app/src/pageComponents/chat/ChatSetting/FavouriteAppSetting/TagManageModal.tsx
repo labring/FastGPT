@@ -129,9 +129,9 @@ const EditableTagItem = React.memo(function EditableTagItem({
             }}
           />
         ) : (
-          <Box px="1.5" py="0.5" bg="myGray.200" rounded="xs">
+          <Flex px="1.5" py="0.5" bg="myGray.200" rounded="xs" minW="40px" justifyContent="center">
             {tag.name}
-          </Box>
+          </Flex>
         )}
         <Box userSelect="none">({appCount ?? 0})</Box>
       </Flex>
@@ -286,9 +286,9 @@ const SaveTagForAppSubPanel = ({
             />
 
             <Flex alignItems="center" gap="1">
-              <Box bg="myGray.100" rounded="sm" p="1" minW="30px" textAlign="center">
+              <Flex bg="myGray.100" rounded="sm" p="1" minW="30px" justifyContent="center">
                 {tag.name}
-              </Box>
+              </Flex>
               <Box>({checkedAppIds.length})</Box>
             </Flex>
           </Flex>

@@ -148,18 +148,22 @@ const FavouriteAppSetting = ({ Header }: Props) => {
     if (!tag) return null;
 
     return (
-      <Box
+      <Flex
+        maxW="full"
         key={id}
         fontSize="xs"
-        borderRadius={8}
+        borderRadius="sm"
         bg="myGray.100"
         px="1.5"
         py="0.5"
+        noOfLines={1}
         cursor="text"
+        minW="40px"
+        justifyContent="center"
         onClick={(e) => e.stopPropagation()}
       >
         {tag.name}
-      </Box>
+      </Flex>
     );
   };
 
@@ -264,23 +268,23 @@ const FavouriteAppSetting = ({ Header }: Props) => {
                           </Td>
 
                           {/* name */}
-                          <Td>
-                            <HStack spacing={2} maxW="520px">
+                          <Td w="0">
+                            <HStack spacing={2} w="200px">
                               <Avatar src={row.avatar} borderRadius={'sm'} w="20px" />
                               <Flex className="textEllipsis">{row.name || ''}</Flex>
                             </HStack>
                           </Td>
 
                           {/* intro */}
-                          <Td maxW="520px">
-                            <Flex className="textEllipsis" color={'myGray.600'}>
+                          <Td w="0">
+                            <Box noOfLines={1} color={'myGray.600'} w="500px">
                               {row.intro || ''}
-                            </Flex>
+                            </Box>
                           </Td>
 
                           {/* tags */}
-                          <Td>
-                            <Wrap>
+                          <Td w="0">
+                            <Wrap w="200px">
                               {row.favouriteTags.slice(0, 3).map((id) => (
                                 <TagBox key={id} id={id} />
                               ))}
@@ -293,11 +297,13 @@ const FavouriteAppSetting = ({ Header }: Props) => {
                                   Trigger={
                                     <Box
                                       fontSize="xs"
-                                      borderRadius={8}
+                                      borderRadius="sm"
                                       bg="myGray.100"
                                       px="1.5"
                                       py="0.5"
                                       cursor="pointer"
+                                      minW="40px"
+                                      textAlign="center"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       +{row.favouriteTags.length - 3}
@@ -323,7 +329,7 @@ const FavouriteAppSetting = ({ Header }: Props) => {
                           </Td>
 
                           {/* action */}
-                          <Td p="0" textAlign="center">
+                          <Td p="0" w="0" textAlign="center">
                             <PopoverConfirm
                               type="delete"
                               content={t('chat:setting.favourite.delete_app_confirm')}
@@ -340,13 +346,17 @@ const FavouriteAppSetting = ({ Header }: Props) => {
                                 });
                               }}
                               Trigger={
-                                <IconButton
-                                  size="sm"
-                                  aria-label="delete"
-                                  variant="grayGhost"
-                                  color="myGray.500"
-                                  icon={<MyIcon name="common/trash" w="20px" color="myGray.400" />}
-                                />
+                                <Box w="158px">
+                                  <IconButton
+                                    size="sm"
+                                    aria-label="delete"
+                                    variant="grayGhost"
+                                    color="myGray.500"
+                                    icon={
+                                      <MyIcon name="common/trash" w="20px" color="myGray.400" />
+                                    }
+                                  />
+                                </Box>
                               }
                             />
                           </Td>
