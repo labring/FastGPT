@@ -54,10 +54,10 @@ export const dispatchRunAgents = async (props: DispatchAgentModuleProps): Promis
       history = 6,
       fileUrlList: fileLinks,
       aiChatVision,
-      aiChatReasoning,
-      subConfig,
-      planConfig,
-      modelConfig
+      aiChatReasoning
+      // subConfig,
+      // planConfig,
+      // modelConfig
     }
   } = props;
 
