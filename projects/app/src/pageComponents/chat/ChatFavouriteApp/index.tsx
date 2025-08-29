@@ -96,7 +96,7 @@ const ChatFavouriteApp = () => {
     if (!tag) return null;
 
     return (
-      <Box
+      <Flex
         key={id}
         fontSize="xs"
         borderRadius="sm"
@@ -105,11 +105,11 @@ const ChatFavouriteApp = () => {
         py="0.5"
         cursor="text"
         minW="40px"
-        textAlign="center"
+        justifyContent="center"
         onClick={(e) => e.stopPropagation()}
       >
         {tag.name}
-      </Box>
+      </Flex>
     );
   };
 
@@ -237,7 +237,7 @@ const ChatFavouriteApp = () => {
                 </Flex>
 
                 <Box fontSize="xs" color="myGray.500" minH="0" noOfLines={2} overflow="hidden">
-                  {app.intro || '暂无介绍'}
+                  {app.intro || t('common:no_intro')}
                 </Box>
 
                 <Flex gap="2" flexWrap="wrap" mt="auto">

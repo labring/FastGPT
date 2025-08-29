@@ -148,20 +148,22 @@ const FavouriteAppSetting = ({ Header }: Props) => {
     if (!tag) return null;
 
     return (
-      <Box
+      <Flex
+        maxW="full"
         key={id}
         fontSize="xs"
         borderRadius="sm"
         bg="myGray.100"
         px="1.5"
         py="0.5"
+        noOfLines={1}
         cursor="text"
         minW="40px"
-        textAlign="center"
+        justifyContent="center"
         onClick={(e) => e.stopPropagation()}
       >
         {tag.name}
-      </Box>
+      </Flex>
     );
   };
 
