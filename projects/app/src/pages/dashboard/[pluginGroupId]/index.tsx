@@ -18,7 +18,6 @@ import PluginCard from '@/pageComponents/dashboard/SystemPlugin/ToolCard';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { getSystemPlugTemplates } from '@/web/core/app/api/plugin';
 import {
-  postUploadFileAndUrl,
   getPluginUploadPresignedURL,
   postConfirmUpload,
   postS3UploadFile,
@@ -56,7 +55,6 @@ const SystemTools = () => {
     data: plugins = [],
     loading: isLoading,
     runAsync: refreshPlugins
-    // refreshAsync: refreshPlugins
   } = useRequest2(getSystemPlugTemplates, {
     manual: false
   });
@@ -81,16 +79,13 @@ const SystemTools = () => {
       });
       formData.append('file', file.file);
 
-      await postS3UploadFile(presignedData.uploadUrl, formData, (progress) => {
-        console.log('Upload progress:', progress);
+      await postS3UploadFile(presignedData.uploadUrl, formData);
+
+      await postConfirmUpload({
+        objectName: presignedData.objectName
       });
 
-      const fileUrl = await postConfirmUpload({
-        objectName: presignedData.objectName,
-        size: String(file.file.size)
-      });
-
-      await postUploadFileAndUrl(fileUrl);
+      // await postUploadFileAndUrl(fileUrl);
       await refreshPlugins({ parentId: null });
     },
     {
@@ -186,7 +181,7 @@ const SystemTools = () => {
                   ) : (
                     MenuIcon
                   )}
-                  <Flex alignItems={'center'}>
+                  <Flex alignItems={'center'} gap={4}>
                     <Box flex={'0 0 200px'}>
                       <SearchInput
                         value={searchKey}
@@ -221,33 +216,6 @@ const SystemTools = () => {
                 {filterPluginsByGroup.length === 0 && <EmptyTip />}
               </Box>
             </MyBox>
-            <Box flex={'0 0 200px'}>
-              <SearchInput
-                value={searchKey}
-                onChange={(e) => setSearchKey(e.target.value)}
-                placeholder={t('common:search_tool')}
-              />
-            </Box>
-            {/*</Flex>*/}
-            <Grid
-              gridTemplateColumns={[
-                '1fr',
-                'repeat(2,1fr)',
-                'repeat(2,1fr)',
-                'repeat(3,1fr)',
-                'repeat(4,1fr)'
-              ]}
-              gridGap={4}
-              alignItems={'stretch'}
-              py={5}
-            >
-              {filterPluginsByGroup.map((item) => (
-                <PluginCard key={item.id} item={item} groups={pluginGroups} />
-              ))}
-            </Grid>
-            {filterPluginsByGroup.length === 0 && <EmptyTip />}
-            {/*</Box>*/}
-            {/*</MyBox>*/}
             <MyModal
               title={t('file:common.upload_system_tools')}
               isOpen={isOpen}

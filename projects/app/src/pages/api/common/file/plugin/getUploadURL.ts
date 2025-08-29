@@ -21,7 +21,8 @@ async function handler(
 
   const presignedData = await PluginS3Service.generateUploadPresignedURL({
     filepath: 'tools',
-    contentType: mimeMap['.js']
+    contentType: mimeMap['.js'],
+    filename
   });
 
   return presignedData;

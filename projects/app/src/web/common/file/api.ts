@@ -23,7 +23,7 @@ export const postUploadFiles = (
 export const postS3UploadFile = (
   postURL: string,
   form: FormData,
-  onUploadProgress: (progressEvent: AxiosProgressEvent) => void
+  onUploadProgress?: (progressEvent: AxiosProgressEvent) => void
 ) =>
   POST(postURL, form, {
     timeout: 600000,
@@ -38,12 +38,9 @@ export const getPluginUploadPresignedURL = (data: { filename: string }) =>
 export const postConfirmUpload = (data: { objectName: string }) =>
   GET<string>('/common/file/plugin/confirmUpload', data);
 
-export const postUploadFileAndUrl = (url: string) =>
-  POST<void>('/plugin/upload', {
-    url: url
-  });
+// export const postUploadFileAndUrl = (url: string) => POST('/plugin/upload', { url });
 
 export const postDeletePlugin = (toolId: string) =>
-  DELETE<void>('/plugin/delete', {
+  DELETE('/plugin/delete', {
     toolId
   });

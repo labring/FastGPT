@@ -10,31 +10,14 @@ import { randomBytes } from 'crypto';
 import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { extname } from 'path';
-import { addLog } from 'common/system/log';
+import { addLog } from '../../common/system/log';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { mimeMap } from './const';
-
-// export const connectionMinio = (() => {
-//   if (!global.minioClient) {
-//     global.minioClient = new Client({
-//       endPoint: S3_ENDPOINT,
-//       port: S3_PORT,
-//       useSSL: S3_USE_SSL,
-//       accessKey: S3_ACCESS_KEY,
-//       secretKey: S3_SECRET_KEY
-//     });
-//   }
-//   return global.minioClient;
-// })();
-
-// export const getMinioClient = () => connectionMinio;
-
-// export default connectionMinio;
 
 export class S3Service {
   private client: Client;
   private config: S3ServiceConfig;
-  private inited: boolean = false;
+  private initialized: boolean = false;
   initFunction?: () => Promise<any>;
 
   constructor(config?: Partial<S3ServiceConfig>) {
@@ -54,18 +37,17 @@ export class S3Service {
     });
 
     this.initFunction = config?.initFunction;
-    this.initFunction?.();
   }
 
   public async init() {
-    if (!this.inited) {
-      if (!this.client.bucketExists) {
+    if (!this.initialized) {
+      if (!(await this.client.bucketExists(this.config.bucket))) {
         addLog.info(`Creating bucket: ${this.config.bucket}`);
-        this.client.makeBucket(this.config.bucket);
+        await this.client.makeBucket(this.config.bucket);
       }
 
       await this.initFunction?.();
-      this.inited = true;
+      this.initialized = true;
     }
   }
 
