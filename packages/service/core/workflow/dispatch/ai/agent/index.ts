@@ -2,13 +2,12 @@ import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workfl
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type {
   ChatDispatchProps,
-  DispatchNodeResultType,
-  RuntimeNodeItemType
+  DispatchNodeResultType
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { getLLMModel } from '../../../../ai/model';
 import { filterToolNodeIdByEdges, getNodeErrResponse, getHistories } from '../../utils';
 import { runToolCall } from './toolCall';
-import type { DispatchToolModuleProps, ToolNodeItemType } from './type';
+import type { DispatchToolModuleProps } from './type';
 import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
@@ -27,9 +26,6 @@ import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getDocumentQuotePrompt } from '@fastgpt/global/core/ai/prompt/AIChat';
 import { postTextCensor } from '../../../../chat/postTextCensor';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
-import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;

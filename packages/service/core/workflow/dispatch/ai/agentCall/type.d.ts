@@ -33,10 +33,15 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiChatStopSign]?: string;
   [NodeInputKeyEnum.aiChatResponseFormat]?: string;
   [NodeInputKeyEnum.aiChatJsonSchema]?: string;
+
+  [NodeInputKeyEnum.subAgentConfig]?: Record<string, any>;
+  [NodeInputKeyEnum.planAgentConfig]?: Record<string, any>;
+  [NodeInputKeyEnum.modelAgentConfig]?: Record<string, any>;
 }> & {
   messages: ChatCompletionMessageParam[];
   toolNodes: ToolNodeItemType[];
   agentModel: LLMModelItemType;
+  maxRunAgentTimes: number;
   interactiveEntryToolParams?: WorkflowInteractiveResponseType['toolParams'];
 };
 

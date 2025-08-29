@@ -35,7 +35,7 @@ type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
 }>;
 
-export const dispatchAgentCall = async (props: DispatchAgentModuleProps): Promise<Response> => {
+export const dispatchRunAgents = async (props: DispatchAgentModuleProps): Promise<Response> => {
   let {
     node: { nodeId, name, isEntry, version, inputs },
     runtimeNodes,
@@ -54,7 +54,10 @@ export const dispatchAgentCall = async (props: DispatchAgentModuleProps): Promis
       history = 6,
       fileUrlList: fileLinks,
       aiChatVision,
-      aiChatReasoning
+      aiChatReasoning,
+      subConfig,
+      planConfig,
+      modelConfig
     }
   } = props;
 

@@ -29,11 +29,7 @@ type ToolRunResponseType = {
   toolMsgParams: ChatCompletionToolMessageParam;
 }[];
 
-export const runAgentCall = async (
-  props: DispatchAgentModuleProps & {
-    maxRunAgentTimes: number;
-  }
-): Promise<RunAgentResponse> => {
+export const runAgentCall = async (props: DispatchAgentModuleProps): Promise<RunAgentResponse> => {
   const {
     messages,
     toolNodes,
@@ -60,7 +56,10 @@ export const runAgentCall = async (
       aiChatStopSign,
       aiChatResponseFormat,
       aiChatJsonSchema,
-      aiChatReasoning
+      aiChatReasoning,
+      subConfig,
+      planConfig,
+      modelConfig
     }
   } = workflowProps;
 
@@ -242,7 +241,6 @@ export const runAgentCall = async (
       const toolNode = toolNodesMap.get(tool.function?.name);
       let toolRunResponse, stringToolResponse;
 
-      // TODO: need handle plan agent & call model
       try {
         if (!toolNode) continue;
 
@@ -256,6 +254,7 @@ export const runAgentCall = async (
 
         initToolNodes(runtimeNodes, [toolNode.nodeId], startParams);
 
+        // TODO: 需要传递 sub apps config参数, 运行 sub agent 获取结果. 并考虑计费问题
         toolRunResponse = await runWorkflow({
           ...workflowProps,
           isToolCall: true
@@ -428,13 +427,13 @@ const createToolFromToolNodes = (toolNodes: ToolNodeItemType[]): ChatCompletionT
 //       type: 'function',
 //       function: {
 //         name: 'plan_agent',
-//         description: '专门处理计划表的智能体, 可以新建或者更新计划表',
+//         description: '',
 //         parameters: {
 //           type: 'object',
 //           properties: {
 //             instruction: {
 //               type: 'string',
-//               description: '本次要进行的操作说明'
+//               description: ''
 //             }
 //           },
 //           required: ['instruction']
