@@ -26,7 +26,7 @@ export async function APIGetSystemToolList() {
 }
 
 export async function deleteSystemTool(toolId: string) {
-  const res = await client.tool.delete({ body: { toolId } });
+  const res = await pluginClient.tool.delete({ body: { toolId } });
 
   if (res.status === 200) {
     return res.body;
@@ -36,7 +36,7 @@ export async function deleteSystemTool(toolId: string) {
 }
 
 export async function uploadSystemTool(url: string) {
-  const res = await client.tool.upload({ body: { url } });
+  const res = await pluginClient.tool.upload({ body: { url } });
 
   if (res.status === 200) {
     return res.body;
