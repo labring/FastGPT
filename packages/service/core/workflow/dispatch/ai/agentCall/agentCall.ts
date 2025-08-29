@@ -64,90 +64,11 @@ export const runAgentCall = async (
     }
   } = workflowProps;
 
-  // Interactive mode handling
-  // if (interactiveEntryToolParams) {
-  //   initToolNodes(runtimeNodes, interactiveEntryToolParams.entryNodeIds);
-  //   initToolCallEdges(runtimeEdges, interactiveEntryToolParams.entryNodeIds);
-
-  //   const toolRunResponse = await dispatchWorkFlow({
-  //     ...workflowProps,
-  //     isToolCall: true
-  //   });
-
-  //   const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
-
-  //   workflowStreamResponse?.({
-  //     event: SseResponseEventEnum.toolResponse,
-  //     data: {
-  //       tool: {
-  //         id: interactiveEntryToolParams.toolCallId,
-  //         toolName: '',
-  //         toolAvatar: '',
-  //         params: '',
-  //         response: sliceStrStartEnd(stringToolResponse, 5000, 5000)
-  //       }
-  //     }
-  //   });
-
-  //   const hasStopSignal = toolRunResponse.flowResponses?.some((item) => item.toolStop);
-  //   const workflowInteractiveResponse = toolRunResponse.workflowInteractiveResponse;
-
-  //   const requestMessages = [
-  //     ...messages,
-  //     ...interactiveEntryToolParams.memoryMessages.map((item: any) =>
-  //       item.role === 'tool' && item.tool_call_id === interactiveEntryToolParams.toolCallId
-  //         ? { ...item, content: stringToolResponse }
-  //         : item
-  //     )
-  //   ];
-
-  //   if (hasStopSignal || workflowInteractiveResponse) {
-  //     const agentWorkflowInteractiveResponse: WorkflowInteractiveResponseType | undefined =
-  //       workflowInteractiveResponse
-  //         ? {
-  //             ...workflowInteractiveResponse,
-  //             toolParams: {
-  //               entryNodeIds: workflowInteractiveResponse.entryNodeIds,
-  //               toolCallId: interactiveEntryToolParams.toolCallId,
-  //               memoryMessages: interactiveEntryToolParams.memoryMessages
-  //             }
-  //           }
-  //         : undefined;
-
-  //     return {
-  //       dispatchFlowResponse: [toolRunResponse],
-  //       agentCallInputTokens: 0,
-  //       agentCallOutputTokens: 0,
-  //       completeMessages: requestMessages,
-  //       assistantResponses: toolRunResponse.assistantResponses,
-  //       runTimes: toolRunResponse.runTimes,
-  //       agentWorkflowInteractiveResponse
-  //     };
-  //   }
-
-  //   // 递归继续执行
-  //   return runAgentCall(
-  //     {
-  //       ...props,
-  //       interactiveEntryToolParams: undefined,
-  //       maxRunAgentTimes: maxRunAgentTimes - 1,
-  //       messages: requestMessages
-  //     },
-  //     {
-  //       dispatchFlowResponse: [toolRunResponse],
-  //       agentCallInputTokens: 0,
-  //       agentCallOutputTokens: 0,
-  //       assistantResponses: toolRunResponse.assistantResponses,
-  //       runTimes: toolRunResponse.runTimes
-  //     }
-  //   );
-  // }
-
   const toolNodesMap = new Map<string, ToolNodeItemType>(
     toolNodes.map((item) => [item.nodeId, item])
   );
   const tools: ChatCompletionTool[] = [
-    ...createBuiltinTools(),
+    // ...createBuiltinTools(),
     ...createToolFromToolNodes(toolNodes)
   ];
 
@@ -158,6 +79,9 @@ export const runAgentCall = async (
   });
 
   const write = res ? responseWriteController({ res, readStream: stream }) : undefined;
+
+  // Interactive mode 状态
+  let currentInteractiveParams = interactiveEntryToolParams;
 
   // 统计信息
   const allToolsRunResponse: ToolRunResponseType = [];
@@ -174,10 +98,69 @@ export const runAgentCall = async (
   while (currRunAgentTimes > 0) {
     const currToolsRunResponse: ToolRunResponseType = [];
 
-    // Context检测和压缩
-    // if (triggerContext) {
-    //   const compressedMessages = await compressContext();
-    // }
+    // Interactive mode handling
+    if (currentInteractiveParams) {
+      initToolNodes(runtimeNodes, currentInteractiveParams.entryNodeIds);
+      initToolCallEdges(runtimeEdges, currentInteractiveParams.entryNodeIds);
+
+      const toolRunResponse = await runWorkflow({
+        ...workflowProps,
+        isToolCall: true
+      });
+
+      const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
+
+      workflowStreamResponse?.({
+        event: SseResponseEventEnum.toolResponse,
+        data: {
+          tool: {
+            id: currentInteractiveParams.toolCallId,
+            toolName: '',
+            toolAvatar: '',
+            params: '',
+            response: sliceStrStartEnd(stringToolResponse, 5000, 5000)
+          }
+        }
+      });
+
+      const hasStopSignal = toolRunResponse.flowResponses?.some((item) => item.toolStop);
+      const workflowInteractiveResponse = toolRunResponse.workflowInteractiveResponse;
+
+      allCompleteMessages.push(
+        ...currentInteractiveParams.memoryMessages.map((item) =>
+          item.role === 'tool' && item.tool_call_id === currentInteractiveParams?.toolCallId
+            ? { ...item, content: stringToolResponse }
+            : item
+        )
+      );
+
+      // 累积 interactive 工具的结果
+      dispatchFlowResponse.push(toolRunResponse);
+      assistantResponses.push(...toolRunResponse.assistantResponses);
+      runTimes += toolRunResponse.runTimes;
+
+      if (hasStopSignal || workflowInteractiveResponse) {
+        if (workflowInteractiveResponse) {
+          agentWorkflowInteractiveResponse = {
+            ...workflowInteractiveResponse,
+            toolParams: {
+              entryNodeIds: workflowInteractiveResponse.entryNodeIds,
+              toolCallId: currentInteractiveParams?.toolCallId || '',
+              memoryMessages: currentInteractiveParams?.memoryMessages || []
+            }
+          };
+        }
+        break;
+      }
+
+      currentInteractiveParams = undefined;
+      currRunAgentTimes--;
+      continue;
+    }
+
+    // ------------------------------------------------------------
+
+    // TODO: Context agent compression
 
     let {
       reasoningText: reasoningContent,
@@ -259,6 +242,7 @@ export const runAgentCall = async (
       const toolNode = toolNodesMap.get(tool.function?.name);
       let toolRunResponse, stringToolResponse;
 
+      // TODO: need handle plan agent & call model
       try {
         if (!toolNode) continue;
 
@@ -309,12 +293,12 @@ export const runAgentCall = async (
       .flatMap((item) => item.toolRunResponse ?? [])
       .filter(Boolean);
 
+    // 累积工具调用的响应结果
     allToolsRunResponse.push(...currToolsRunResponse);
     dispatchFlowResponse.push(...currFlatToolsResponseData);
     inputTokens += usage.inputTokens;
     outputTokens += usage.outputTokens;
     finish_reason = currFinishReason;
-    runTimes++;
 
     // handle sub apps
     if (toolCalls.length > 0) {
@@ -379,6 +363,7 @@ export const runAgentCall = async (
         messages: assistantMessage
       })[0] as AIChatItemType;
       assistantResponses.push(...agentNodeAssistant.value);
+      runTimes++;
 
       break;
     }
@@ -437,24 +422,24 @@ const createToolFromToolNodes = (toolNodes: ToolNodeItemType[]): ChatCompletionT
   });
 };
 
-const createBuiltinTools = (): ChatCompletionTool[] => {
-  return [
-    {
-      type: 'function',
-      function: {
-        name: 'plan_agent',
-        description: '专门处理计划表的智能体, 可以新建或者更新计划表',
-        parameters: {
-          type: 'object',
-          properties: {
-            instruction: {
-              type: 'string',
-              description: '本次要进行的操作说明'
-            }
-          },
-          required: ['instruction']
-        }
-      }
-    }
-  ];
-};
+// const createBuiltinTools = (): ChatCompletionTool[] => {
+//   return [
+//     {
+//       type: 'function',
+//       function: {
+//         name: 'plan_agent',
+//         description: '专门处理计划表的智能体, 可以新建或者更新计划表',
+//         parameters: {
+//           type: 'object',
+//           properties: {
+//             instruction: {
+//               type: 'string',
+//               description: '本次要进行的操作说明'
+//             }
+//           },
+//           required: ['instruction']
+//         }
+//       }
+//     }
+//   ];
+// };
