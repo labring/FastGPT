@@ -8,9 +8,9 @@ import type {
 import { getLLMModel } from '../../../../ai/model';
 import { filterToolNodeIdByEdges, getNodeErrResponse, getHistories } from '../../utils';
 import { runToolCall } from './toolCall';
-import { type DispatchToolModuleProps, type ToolNodeItemType } from './type';
-import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type { DispatchToolModuleProps, ToolNodeItemType } from './type';
+import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   GPTMessages2Chats,
   chatValue2RuntimePrompt,
@@ -21,8 +21,7 @@ import {
 import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { getMultiplePrompt } from './constants';
-import { filterToolResponseToPreview } from './utils';
+import { filterToolResponseToPreview, toolCallMessagesAdapt, getToolNodesByIds } from './utils';
 import { getFileContentFromLinks, getHistoryFileLinks } from '../../tools/readFiles';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -72,35 +71,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     }
 
     const toolNodeIds = filterToolNodeIdByEdges({ nodeId, edges: runtimeEdges });
-
-    // Gets the module to which the tool is connected
-    const toolNodes = toolNodeIds
-      .map((nodeId) => {
-        const tool = runtimeNodes.find((item) => item.nodeId === nodeId);
-        return tool;
-      })
-      .filter(Boolean)
-      .map<ToolNodeItemType>((tool) => {
-        const toolParams: FlowNodeInputItemType[] = [];
-        // Raw json schema(MCP tool)
-        let jsonSchema: JSONSchemaInputType | undefined = undefined;
-        tool?.inputs.forEach((input) => {
-          if (input.toolDescription) {
-            toolParams.push(input);
-          }
-
-          if (input.key === NodeInputKeyEnum.toolData || input.key === 'toolData') {
-            const value = input.value as McpToolDataType;
-            jsonSchema = value.inputSchema;
-          }
-        });
-
-        return {
-          ...(tool as RuntimeNodeItemType),
-          toolParams,
-          jsonSchema
-        };
-      });
+    const toolNodes = getToolNodesByIds({ toolNodeIds, runtimeNodes });
 
     // Check interactive entry
     props.node.isEntry = false;
@@ -317,53 +288,4 @@ const getMultiInput = async ({
     documentQuoteText: text,
     userFiles: fileLinks.map((url) => parseUrlToFileType(url)).filter(Boolean)
   };
-};
-
-/*
-Tool call， auth add file prompt to question。
-Guide the LLM to call tool.
-*/
-const toolCallMessagesAdapt = ({
-  userInput,
-  skip
-}: {
-  userInput: UserChatItemValueItemType[];
-  skip?: boolean;
-}): UserChatItemValueItemType[] => {
-  if (skip) return userInput;
-
-  const files = userInput.filter((item) => item.type === 'file');
-
-  if (files.length > 0) {
-    const filesCount = files.filter((file) => file.file?.type === 'file').length;
-    const imgCount = files.filter((file) => file.file?.type === 'image').length;
-
-    if (userInput.some((item) => item.type === 'text')) {
-      return userInput.map((item) => {
-        if (item.type === 'text') {
-          const text = item.text?.content || '';
-
-          return {
-            ...item,
-            text: {
-              content: getMultiplePrompt({ fileCount: filesCount, imgCount, question: text })
-            }
-          };
-        }
-        return item;
-      });
-    }
-
-    // Every input is a file
-    return [
-      {
-        type: ChatItemValueTypeEnum.text,
-        text: {
-          content: getMultiplePrompt({ fileCount: filesCount, imgCount, question: '' })
-        }
-      }
-    ];
-  }
-
-  return userInput;
 };

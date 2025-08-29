@@ -307,14 +307,15 @@ export const runToolCall = async (
     isAborted: () => res?.closed,
     userKey: externalProvider.openaiAccount,
     onReasoning({ text }) {
-      if (!aiChatReasoning) return;
-      workflowStreamResponse?.({
-        write,
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          reasoning_content: text
-        })
-      });
+      if (aiChatReasoning) {
+        workflowStreamResponse?.({
+          write,
+          event: SseResponseEventEnum.answer,
+          data: textAdaptGptResponse({
+            reasoning_content: text
+          })
+        });
+      }
     },
     onStreaming({ text }) {
       workflowStreamResponse?.({

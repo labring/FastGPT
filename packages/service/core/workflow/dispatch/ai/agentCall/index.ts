@@ -2,15 +2,14 @@ import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workfl
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type {
   ChatDispatchProps,
-  DispatchNodeResultType,
-  RuntimeNodeItemType
+  DispatchNodeResultType
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { getLLMModel } from '../../../../ai/model';
 import { filterToolNodeIdByEdges, getNodeErrResponse, getHistories } from '../../utils';
 import { runAgentCall } from './agentCall';
-import { type DispatchAgentModuleProps, type ToolNodeItemType } from './type';
+import { type DispatchAgentModuleProps } from './type';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   GPTMessages2Chats,
   chatValue2RuntimePrompt,
@@ -21,16 +20,16 @@ import {
 import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { getMultiplePrompt } from '../agent/constants';
-import { filterToolResponseToPreview } from '../agent/utils';
+import {
+  filterToolResponseToPreview,
+  getToolNodesByIds,
+  toolCallMessagesAdapt
+} from '../agent/utils';
 import { getFileContentFromLinks, getHistoryFileLinks } from '../../tools/readFiles';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getDocumentQuotePrompt } from '@fastgpt/global/core/ai/prompt/AIChat';
 import { postTextCensor } from '../../../../chat/postTextCensor';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
-import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -73,35 +72,7 @@ export const dispatchAgentCall = async (props: DispatchAgentModuleProps): Promis
     }
 
     const toolNodeIds = filterToolNodeIdByEdges({ nodeId, edges: runtimeEdges });
-
-    // Gets the modules to which the tools are connected
-    const toolNodes = toolNodeIds
-      .map((nodeId) => {
-        const tool = runtimeNodes.find((item) => item.nodeId === nodeId);
-        return tool;
-      })
-      .filter(Boolean)
-      .map<ToolNodeItemType>((tool) => {
-        const toolParams: FlowNodeInputItemType[] = [];
-        let jsonSchema: JSONSchemaInputType | undefined = undefined;
-
-        tool?.inputs.forEach((input) => {
-          if (input.toolDescription) {
-            toolParams.push(input);
-          }
-
-          if (input.key === NodeInputKeyEnum.toolData || input.key === 'toolData') {
-            const value = input.value as McpToolDataType;
-            jsonSchema = value.inputSchema;
-          }
-        });
-
-        return {
-          ...(tool as RuntimeNodeItemType),
-          toolParams,
-          jsonSchema
-        };
-      });
+    const toolNodes = getToolNodesByIds({ toolNodeIds, runtimeNodes });
 
     // Check interactive entry
     props.node.isEntry = false;
@@ -121,46 +92,22 @@ export const dispatchAgentCall = async (props: DispatchAgentModuleProps): Promis
       hasReadFilesTool
     });
 
-    // 构建 Agent 专用的系统提示词
-    const agentSystemPrompt = buildAgentSystemPrompt({
-      model: agentModel,
-      systemPrompt,
-      documentQuoteText,
-      version
-    });
-
-    const messages: ChatItemType[] = (() => {
-      const value: ChatItemType[] = [
-        ...getSystemPrompt_ChatItemType(agentSystemPrompt),
-        // Add file input prompt to histories
-        ...chatHistories.map((item) => {
-          if (item.obj === ChatRoleEnum.Human) {
-            return {
-              ...item,
-              value: agentCallMessagesAdapt({
-                userInput: item.value,
-                skip: !hasReadFilesTool
-              })
-            };
-          }
-          return item;
-        }),
-        {
-          obj: ChatRoleEnum.Human,
-          value: agentCallMessagesAdapt({
-            skip: !hasReadFilesTool,
-            userInput: runtimePrompt2ChatsValue({
-              text: userChatInput,
-              files: userFiles
-            })
-          })
-        }
-      ];
-      if (lastInteractive && isEntry) {
-        return value.slice(0, -2);
+    const messages: ChatItemType[] = prepareAgentMessages({
+      systemPromptParams: {
+        model: agentModel,
+        systemPrompt,
+        documentQuoteText,
+        version
+      },
+      conversationParams: {
+        chatHistories,
+        hasReadFilesTool,
+        userChatInput,
+        userFiles,
+        lastInteractive,
+        isEntry: isEntry ?? false
       }
-      return value;
-    })();
+    });
 
     // censor model and system key
     if (agentModel.censor && !externalProvider.openaiAccount?.key) {
@@ -171,35 +118,33 @@ export const dispatchAgentCall = async (props: DispatchAgentModuleProps): Promis
       });
     }
 
+    const adaptMessages = chats2GPTMessages({
+      messages,
+      reserveId: false
+    });
+    const requestParams = {
+      runtimeNodes,
+      runtimeEdges,
+      toolNodes,
+      agentModel,
+      messages: adaptMessages,
+      interactiveEntryToolParams: lastInteractive?.toolParams
+    };
+
     const {
       agentWorkflowInteractiveResponse,
-      dispatchFlowResponse, // agent flow response
+      dispatchFlowResponse,
       agentCallInputTokens,
       agentCallOutputTokens,
-      completeMessages = [], // The actual message sent to AI(just save text)
-      assistantResponses = [], // FastGPT system store assistant.value response
+      completeMessages = [],
+      assistantResponses = [],
       runTimes,
       finish_reason
-    } = await (async () => {
-      const adaptMessages = chats2GPTMessages({
-        messages,
-        reserveId: false
-      });
-      const requestParams = {
-        runtimeNodes,
-        runtimeEdges,
-        toolNodes,
-        agentModel,
-        messages: adaptMessages,
-        interactiveEntryToolParams: lastInteractive?.toolParams
-      };
-
-      return runAgentCall({
-        ...props,
-        ...requestParams,
-        maxRunAgentTimes: 10 // Agent 最大运行次数
-      });
-    })();
+    } = await runAgentCall({
+      ...props,
+      ...requestParams,
+      maxRunAgentTimes: 100
+    });
 
     const { totalPoints: modelTotalPoints, modelName } = formatModelChars2Points({
       model,
@@ -315,19 +260,32 @@ const getMultiInput = async ({
   };
 };
 
-// 构建 Agent 专用的系统提示词
-function buildAgentSystemPrompt({
-  model,
-  systemPrompt,
-  documentQuoteText,
-  version
+const prepareAgentMessages = ({
+  systemPromptParams,
+  conversationParams
 }: {
-  model: any;
-  systemPrompt: string;
-  documentQuoteText: string;
-  version?: string;
-}) {
-  const agentPrompt = `你是一个智能 Agent，具备以下核心能力：
+  systemPromptParams: {
+    model: ReturnType<typeof getLLMModel>;
+    systemPrompt: string;
+    documentQuoteText: string;
+    version?: string;
+  };
+  conversationParams: {
+    chatHistories: ChatItemType[];
+    hasReadFilesTool: boolean;
+    userChatInput: string;
+    userFiles: UserChatItemValueItemType['file'][];
+    isEntry: boolean;
+    lastInteractive?: any;
+  };
+}): ChatItemType[] => {
+  const { model, systemPrompt, documentQuoteText, version } = systemPromptParams;
+  const { chatHistories, hasReadFilesTool, userChatInput, userFiles, lastInteractive, isEntry } =
+    conversationParams;
+
+  const agentPrompt =
+    systemPrompt ||
+    `你是一位Supervisor Agent，具备以下核心能力：
 
 ## 核心能力
 1. **计划制定与管理**：根据用户需求制定详细的执行计划，并实时跟踪和调整计划进度
@@ -351,10 +309,9 @@ function buildAgentSystemPrompt({
 
 请始终保持专业、准确、有条理的回答风格，确保用户能够清楚了解执行进度和结果。`;
 
-  return [
+  const finalSystemPrompt = [
     model.defaultSystemChatPrompt,
     agentPrompt,
-    systemPrompt,
     documentQuoteText
       ? replaceVariable(getDocumentQuotePrompt(version || ''), {
           quote: documentQuoteText
@@ -363,53 +320,38 @@ function buildAgentSystemPrompt({
   ]
     .filter(Boolean)
     .join('\n\n===---===---===\n\n');
-}
 
-/*
-Agent call，auth add file prompt to question。
-Guide the Agent to use tools effectively.
-*/
-const agentCallMessagesAdapt = ({
-  userInput,
-  skip
-}: {
-  userInput: UserChatItemValueItemType[];
-  skip?: boolean;
-}): UserChatItemValueItemType[] => {
-  if (skip) return userInput;
+  const systemMessages = getSystemPrompt_ChatItemType(finalSystemPrompt);
 
-  const files = userInput.filter((item) => item.type === 'file');
+  const processedHistories = chatHistories.map((item) => {
+    if (item.obj !== ChatRoleEnum.Human) return item;
 
-  if (files.length > 0) {
-    const filesCount = files.filter((file) => file.file?.type === 'file').length;
-    const imgCount = files.filter((file) => file.file?.type === 'image').length;
+    return {
+      ...item,
+      value: toolCallMessagesAdapt({
+        userInput: item.value,
+        skip: !hasReadFilesTool
+      })
+    };
+  });
 
-    if (userInput.some((item) => item.type === 'text')) {
-      return userInput.map((item) => {
-        if (item.type === 'text') {
-          const text = item.text?.content || '';
+  const currentUserMessage: ChatItemType = {
+    obj: ChatRoleEnum.Human,
+    value: toolCallMessagesAdapt({
+      skip: !hasReadFilesTool,
+      userInput: runtimePrompt2ChatsValue({
+        text: userChatInput,
+        files: userFiles
+      })
+    })
+  };
 
-          return {
-            ...item,
-            text: {
-              content: getMultiplePrompt({ fileCount: filesCount, imgCount, question: text })
-            }
-          };
-        }
-        return item;
-      });
-    }
+  const allMessages: ChatItemType[] = [
+    ...systemMessages,
+    ...processedHistories,
+    currentUserMessage
+  ];
 
-    // Every input is a file
-    return [
-      {
-        type: ChatItemValueTypeEnum.text,
-        text: {
-          content: getMultiplePrompt({ fileCount: filesCount, imgCount, question: '' })
-        }
-      }
-    ];
-  }
-
-  return userInput;
+  // 交互模式下且为入口节点时，移除最后两条消息
+  return lastInteractive && isEntry ? allMessages.slice(0, -2) : allMessages;
 };
