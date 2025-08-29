@@ -18,11 +18,6 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import React, { useMemo, useRef, useState } from 'react';
-import {
-  getModelProviders,
-  type ModelProviderIdType,
-  getModelProvider
-} from '@fastgpt/global/core/ai/provider';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -38,6 +33,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import type { I18nStringType } from '@fastgpt/global/common/i18n/type';
 
 export const AddModelButton = ({
   onCreate,
@@ -113,16 +109,20 @@ export const ModelEditModal = ({
 
   const provider = watch('provider');
 
-  const providerList = useRef<{ label: React.ReactNode; value: ModelProviderIdType }[]>(
-    getModelProviders(language).map((item) => ({
-      label: (
-        <HStack>
-          <Avatar src={item.avatar} w={'1rem'} />
-          <Box>{item.name}</Box>
-        </HStack>
-      ),
-      value: item.id
-    }))
+  const { modelProviders } = useSystemStore();
+
+  const providerList = useMemo(
+    () =>
+      modelProviders.listData.map((item) => ({
+        label: (
+          <HStack>
+            <Avatar src={item.avatar} w={'1rem'} />
+            <Box>{item.name[language as keyof I18nStringType]}</Box>
+          </HStack>
+        ),
+        value: item.id
+      })),
+    [modelProviders]
   );
 
   const priceUnit = useMemo(() => {
@@ -244,7 +244,7 @@ export const ModelEditModal = ({
                     <MySelect
                       value={provider}
                       onChange={(value) => setValue('provider', value)}
-                      list={providerList.current}
+                      list={providerList}
                       {...InputStyles}
                     />
                   </Td>

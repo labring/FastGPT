@@ -7,10 +7,9 @@ import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import { Box, Flex } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { getModelProviders } from '@fastgpt/global/core/ai/provider';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
-import { getModelFromList } from '@fastgpt/global/core/ai/model';
 import type { ResponsiveValue } from '@chakra-ui/system';
+import type { I18nStringType } from '@fastgpt/global/common/i18n/type';
 
 type Props = SelectProps & {
   disableTip?: string;
@@ -19,8 +18,14 @@ type Props = SelectProps & {
 
 const OneRowSelector = ({ list, onChange, disableTip, noOfLines, ...props }: Props) => {
   const { t, i18n } = useTranslation();
-  const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
-    useSystemStore();
+  const {
+    llmModelList,
+    embeddingModelList,
+    ttsModelList,
+    sttModelList,
+    reRankModelList,
+    modelProviders
+  } = useSystemStore();
   const language = i18n.language;
 
   const avatarSize = useMemo(() => {
@@ -43,8 +48,10 @@ const OneRowSelector = ({ list, onChange, disableTip, noOfLines, ...props }: Pro
     ];
     return list
       .map((item) => {
-        const modelData = getModelFromList(allModels, item.value, language)!;
+        const modelData = allModels.find((model) => model.model === item.value);
         if (!modelData) return;
+
+        const provider = modelProviders.listData.find((p) => p.id === modelData.provider);
 
         return {
           value: item.value,
@@ -53,7 +60,7 @@ const OneRowSelector = ({ list, onChange, disableTip, noOfLines, ...props }: Pro
               <Avatar
                 borderRadius={'0'}
                 mr={2}
-                src={modelData?.avatar || HUGGING_FACE_ICON}
+                src={provider?.avatar || HUGGING_FACE_ICON}
                 w={avatarSize}
                 fallbackSrc={HUGGING_FACE_ICON}
               />
@@ -74,9 +81,9 @@ const OneRowSelector = ({ list, onChange, disableTip, noOfLines, ...props }: Pro
     sttModelList,
     reRankModelList,
     list,
-    language,
     avatarSize,
-    noOfLines
+    noOfLines,
+    modelProviders
   ]);
 
   return (
@@ -113,8 +120,14 @@ const MultipleRowSelector = ({
   ...props
 }: Props) => {
   const { t, i18n } = useTranslation();
-  const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
-    useSystemStore();
+  const {
+    llmModelList,
+    embeddingModelList,
+    ttsModelList,
+    sttModelList,
+    reRankModelList,
+    modelProviders
+  } = useSystemStore();
   const language = i18n.language;
   const modelList = useMemo(() => {
     const allModels = [
@@ -125,7 +138,9 @@ const MultipleRowSelector = ({
       ...reRankModelList
     ];
 
-    return list.map((item) => getModelFromList(allModels, item.value, language)!).filter(Boolean);
+    return list
+      .map((item) => allModels.find((model) => model.model === item.value))
+      .filter(Boolean);
   }, [
     llmModelList,
     embeddingModelList,
@@ -149,7 +164,7 @@ const MultipleRowSelector = ({
   }, [props.size]);
 
   const selectorList = useMemo(() => {
-    const renderList = getModelProviders(language).map<{
+    const renderList = modelProviders.listData.map<{
       label: React.JSX.Element;
       value: string;
       children: { label: string | React.ReactNode; value: string }[];
@@ -163,7 +178,7 @@ const MultipleRowSelector = ({
             fallbackSrc={HUGGING_FACE_ICON}
             w={avatarSize}
           />
-          <Box>{provider.name}</Box>
+          <Box>{provider.name[language as keyof I18nStringType]}</Box>
         </Flex>
       ),
       value: provider.id,
@@ -171,7 +186,7 @@ const MultipleRowSelector = ({
     }));
 
     for (const item of list) {
-      const modelData = getModelFromList(modelList, item.value, language);
+      const modelData = modelList.find((model) => model?.model === item.value);
       if (!modelData) continue;
       const provider =
         renderList.find((item) => item.value === (modelData?.provider || 'Other')) ??
@@ -184,7 +199,7 @@ const MultipleRowSelector = ({
     }
 
     return renderList.filter((item) => item.children.length > 0);
-  }, [avatarSize, list, modelList, t, language]);
+  }, [avatarSize, list, modelList, language, modelProviders]);
 
   const onSelect = useCallback(
     (e: string[]) => {
@@ -195,7 +210,7 @@ const MultipleRowSelector = ({
 
   const SelectedLabel = useMemo(() => {
     if (!props.value) return <>{t('common:not_model_config')}</>;
-    const modelData = getModelFromList(modelList, props.value, language);
+    const modelData = modelList.find((model) => model?.model === props.value);
 
     if (!modelData) return <>{t('common:not_model_config')}</>;
 

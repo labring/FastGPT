@@ -14,6 +14,7 @@ import { type SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import type { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { type SystemDefaultModelType } from '@fastgpt/service/core/ai/type';
+import type { ModelProviderListType, ModelProviderType } from '@fastgpt/global/core/app/model/type';
 
 type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
 
@@ -56,6 +57,11 @@ type State = {
   ttsModelList: TTSModelType[];
   reRankModelList: RerankModelItemType[];
   sttModelList: STTModelType[];
+  modelProviders: {
+    expires: number;
+    listData: Array<ModelProviderType>;
+    mapData: Array<ModelProviderListType>;
+  };
   initStaticData: (e: InitDateResponse) => void;
   appType?: string;
   setAppType: (e?: string) => void;
@@ -133,6 +139,7 @@ export const useSystemStore = create<State>()(
         ttsModelList: [],
         reRankModelList: [],
         sttModelList: [],
+        modelProviders: { expires: 0, listData: [], mapData: [] },
         getVlmModelList: () => {
           return get().llmModelList.filter((item) => item.vision);
         },
@@ -162,6 +169,7 @@ export const useSystemStore = create<State>()(
               state.sttModelList;
 
             state.defaultModels = res.defaultModels ?? state.defaultModels;
+            state.modelProviders = res.modelProviders ?? state.modelProviders;
           });
         }
       })),
@@ -179,7 +187,8 @@ export const useSystemStore = create<State>()(
           embeddingModelList: state.embeddingModelList,
           ttsModelList: state.ttsModelList,
           reRankModelList: state.reRankModelList,
-          sttModelList: state.sttModelList
+          sttModelList: state.sttModelList,
+          modelProviders: state.modelProviders
         })
       }
     )

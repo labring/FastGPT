@@ -9,7 +9,6 @@ import {
   type RerankModelItemType
 } from '@fastgpt/global/core/ai/model.d';
 import { debounce } from 'lodash';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
 import { findModelFromAlldata } from '../model';
 import {
   reloadFastGPTConfigBuffer,
@@ -18,6 +17,7 @@ import {
 import { delay } from '@fastgpt/global/common/system/utils';
 import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
 import { setCron } from '../../../common/system/cron';
+import { getModelProvider } from '@fastgpt/global/core/app/model/controller';
 
 export const loadSystemModels = async (init = false, language = 'en') => {
   const pushModel = (model: SystemModelItemType) => {
@@ -113,9 +113,8 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         const modelData: any = {
           ...model,
           ...dbModel?.metadata,
-          provider: getModelProvider(
-            dbModel?.metadata?.provider || (model.provider as any),
-            language
+          provider: (
+            await getModelProvider(dbModel?.metadata?.provider || model.provider, language)
           ).id,
           type: dbModel?.metadata?.type || model.type,
           isCustom: false,
@@ -171,10 +170,15 @@ export const loadSystemModels = async (init = false, language = 'en') => {
     }
 
     // Sort model list
+    const providerOrderMap = new Map<string, number>();
+    for (const model of global.systemActiveModelList) {
+      const provider = await getModelProvider(model.provider, language);
+      providerOrderMap.set(model.provider, provider.order);
+    }
     global.systemActiveModelList.sort((a, b) => {
-      const providerA = getModelProvider(a.provider, language);
-      const providerB = getModelProvider(b.provider, language);
-      return providerA.order - providerB.order;
+      const orderA = providerOrderMap.get(a.provider) ?? 0;
+      const orderB = providerOrderMap.get(b.provider) ?? 0;
+      return orderA - orderB;
     });
     global.systemActiveDesensitizedModels = global.systemActiveModelList.map((model) => ({
       ...model,

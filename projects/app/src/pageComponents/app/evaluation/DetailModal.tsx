@@ -13,7 +13,6 @@ import {
   AccordionIcon,
   Input
 } from '@chakra-ui/react';
-import { getModelFromList } from '@fastgpt/global/core/ai/model';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -89,11 +88,20 @@ const EvaluationDetailModal = ({
   const [editing, setEditing] = useState(false);
   const [pollingInterval, setPollingInterval] = useState(10000);
 
-  const { llmModelList } = useSystemStore();
-  const modelData = useMemo(
-    () => getModelFromList(llmModelList, evalDetail.evalModel, language),
-    [evalDetail.evalModel, llmModelList, language]
-  );
+  const { llmModelList, modelProviders } = useSystemStore();
+  const modelData = useMemo(() => {
+    const model = llmModelList.find((item) => item.model === evalDetail.evalModel);
+    if (!model) return undefined;
+
+    const provider = modelProviders.listData.find((p) => p.id === model.provider);
+
+    return {
+      avatar: provider?.avatar || '',
+      provider: model.provider,
+      name: model.name,
+      model: model.model
+    };
+  }, [evalDetail.evalModel, llmModelList, modelProviders.listData]);
 
   const {
     data: evalItemsList,

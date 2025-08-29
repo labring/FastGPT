@@ -1,6 +1,7 @@
 import { getChannelList, getChannelLog, getLogDetail } from '@/web/core/ai/channel';
 import { getSystemModelList } from '@/web/core/ai/config';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
   Table,
   Thead,
@@ -18,7 +19,6 @@ import {
   GridItem,
   type BoxProps
 } from '@chakra-ui/react';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
 import DateRangePicker, {
   type DateRangeType
 } from '@fastgpt/web/components/common/DateRangePicker';
@@ -52,6 +52,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
   const { userInfo } = useUserStore();
+  const { modelProviders } = useSystemStore();
 
   const isRoot = userInfo?.username === 'root';
   const [filterProps, setFilterProps] = useState<{
@@ -104,11 +105,11 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
   const modelList = useMemo(() => {
     const res = systemModelList
       .map((item) => {
-        const provider = getModelProvider(item.provider, language);
+        const provider = modelProviders.listData.find((p) => p.id === item.provider);
 
         return {
-          order: provider.order,
-          icon: provider.avatar,
+          order: provider?.order || 0,
+          icon: provider?.avatar,
           label: item.model,
           value: item.model
         };
@@ -121,7 +122,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
       },
       ...res
     ];
-  }, [systemModelList, t]);
+  }, [systemModelList, t, modelProviders]);
 
   const { data, isLoading, ScrollData } = useScrollPagination(getChannelLog, {
     pageSize: 20,
@@ -144,7 +145,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
       const channelName = channelList.find((channel) => channel.value === `${item.channel}`)?.label;
 
       const model = systemModelList.find((model) => model.model === item.model);
-      const provider = getModelProvider(model?.provider);
+      const provider = modelProviders.listData.find((p) => p.id === model?.provider);
 
       return {
         ...item,
@@ -160,7 +161,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
         ttfb_milliseconds: item.ttfb_milliseconds ? item.ttfb_milliseconds / 1000 : 0
       };
     });
-  }, [channelList, data, systemModelList]);
+  }, [channelList, data, systemModelList, modelProviders]);
 
   const [logDetail, setLogDetail] = useState<LogDetailType>();
 

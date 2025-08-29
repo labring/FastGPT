@@ -1,4 +1,3 @@
-import { aiproxyIdMap } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { type ChannelInfoType } from '@/global/aiproxy/type';
 import {
   Box,
@@ -21,7 +20,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useTranslation } from 'next-i18next';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { AddModelButton } from '../AddModelBox';
 import dynamic from 'next/dynamic';
@@ -30,7 +29,6 @@ import type { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getSystemModelList } from '@/web/core/ai/config';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -61,7 +59,7 @@ const EditChannelModal = ({
   const { t, i18n } = useTranslation();
   const language = i18n.language as localeType;
 
-  const { defaultModels } = useSystemStore();
+  const { defaultModels, modelProviders } = useSystemStore();
   const isEdit = defaultConfig.id !== 0;
 
   const { register, handleSubmit, watch, setValue } = useForm({
@@ -70,27 +68,35 @@ const EditChannelModal = ({
 
   const providerType = watch('type');
   const { data: providerList = [] } = useRequest2(
-    () =>
-      getChannelProviders().then((res) => {
-        return Object.entries(res)
-          .map(([key, value]) => {
-            const mapData = aiproxyIdMap[key as any] ?? {
-              name: value.name,
-              provider: 'Other'
-            };
-            const provider = getModelProvider(mapData.provider, language);
+    async () => {
+      const res = await getChannelProviders();
+      const aiproxyIdMap = Object.fromEntries(
+        modelProviders.mapData.map((item) => [item.id, item])
+      );
 
-            return {
-              order: provider.order,
-              defaultBaseUrl: value.defaultBaseUrl,
-              keyHelp: value.keyHelp,
-              icon: mapData?.avatar ?? provider.avatar,
-              label: parseI18nString(mapData.name, language),
-              value: Number(key)
-            };
-          })
-          .sort((a, b) => a.order - b.order);
-      }),
+      const providerListMap = Object.fromEntries(
+        modelProviders.listData.map((item) => [item.id, item])
+      );
+
+      const list = Object.entries(res).map(([key, value]) => {
+        const mapData = aiproxyIdMap[key as any] ?? {
+          name: value.name,
+          provider: 'Other'
+        };
+        const provider = providerListMap[mapData.provider];
+
+        return {
+          order: provider.order,
+          defaultBaseUrl: value.defaultBaseUrl,
+          keyHelp: value.keyHelp,
+          icon: mapData?.avatar ?? provider.avatar,
+          label: parseI18nString(mapData.name, language),
+          value: Number(key)
+        };
+      });
+
+      return list.sort((a, b) => a.order - b.order);
+    },
     {
       manual: false
     }
@@ -128,25 +134,49 @@ const EditChannelModal = ({
   } = useRequest2(getSystemModelList, {
     manual: false
   });
-  const modelList = useMemo(() => {
-    const currentProvider = aiproxyIdMap[providerType]?.provider;
-    return systemModelList
-      .map((item) => {
-        const provider = getModelProvider(item.provider, language);
+  const [modelList, setModelList] = useState<
+    Array<{
+      provider: string;
+      icon?: string;
+      label: string;
+      value: string;
+    }>
+  >([]);
 
+  useEffect(() => {
+    const loadModelList = () => {
+      if (!systemModelList.length) return;
+
+      const aiproxyIdMap = Object.fromEntries(
+        modelProviders.mapData.map((item) => [item.id, item])
+      );
+      const currentProvider = aiproxyIdMap[providerType]?.provider;
+
+      const providerListMap = Object.fromEntries(
+        modelProviders.listData.map((item) => [item.id, item])
+      );
+
+      const list = systemModelList.map((item) => {
+        const provider = providerListMap[item.provider];
         return {
           provider: item.provider,
           icon: provider?.avatar,
           label: item.model,
           value: item.model
         };
-      })
-      .sort((a, b) => {
+      });
+
+      const sortedList = list.sort((a, b) => {
         // sort by provider, same provider first
         if (a.provider === currentProvider && b.provider !== currentProvider) return -1;
         if (a.provider !== currentProvider && b.provider === currentProvider) return 1;
         return 0;
       });
+
+      setModelList(sortedList);
+    };
+
+    loadModelList();
   }, [language, providerType, systemModelList]);
 
   const modelMapping = watch('model_mapping');

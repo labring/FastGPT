@@ -3,6 +3,7 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type InitDateResponse } from '@/global/common/api/systemRes';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { preloadModelProviders } from '@fastgpt/global/core/app/model/controller';
 
 async function handler(
   req: ApiRequestProps<{}, { bufferId?: string }>,
@@ -16,9 +17,12 @@ async function handler(
     if (bufferId && global.systemInitBufferId && global.systemInitBufferId === bufferId) {
       return {
         bufferId: global.systemInitBufferId,
-        systemVersion: global.systemVersion
+        systemVersion: global.systemVersion,
+        modelProviders: global.modelProviders_cache
       };
     }
+
+    await preloadModelProviders();
 
     return {
       bufferId: global.systemInitBufferId,
@@ -26,7 +30,8 @@ async function handler(
       subPlans: global.subPlans,
       systemVersion: global.systemVersion,
       activeModelList: global.systemActiveDesensitizedModels,
-      defaultModels: global.systemDefaultModel
+      defaultModels: global.systemDefaultModel,
+      modelProviders: global.modelProviders_cache
     };
   } catch (error) {
     const referer = req.headers.referer;
