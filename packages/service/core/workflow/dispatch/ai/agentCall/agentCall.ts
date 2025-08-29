@@ -56,10 +56,10 @@ export const runAgentCall = async (props: DispatchAgentModuleProps): Promise<Run
       aiChatStopSign,
       aiChatResponseFormat,
       aiChatJsonSchema,
-      aiChatReasoning,
-      subConfig,
-      planConfig,
-      modelConfig
+      aiChatReasoning
+      // subConfig,
+      // planConfig,
+      // modelConfig
     }
   } = workflowProps;
 
