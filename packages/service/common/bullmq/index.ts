@@ -21,6 +21,8 @@ const defaultWorkerOpts: Omit<ConnectionOptions, 'connection'> = {
 export enum QueueNames {
   datasetSync = 'datasetSync',
   evaluation = 'evaluation',
+  evaluation_task = 'evaluation_task',
+  evaluation_item = 'evaluation_item',
   // abondoned
   websiteSync = 'websiteSync'
 }
@@ -79,7 +81,7 @@ export function getWorker<DataType, ReturnType = void>(
   newWorker.on('error', (error) => {
     addLog.error(`MQ Worker [${name}]: ${error.message}`, error);
   });
-  newWorker.on('failed', (jobId, error) => {
+  newWorker.on('failed', (_, error) => {
     addLog.error(`MQ Worker [${name}]: ${error.message}`, error);
   });
   workers.set(name, newWorker);
