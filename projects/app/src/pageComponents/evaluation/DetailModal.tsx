@@ -11,7 +11,12 @@ import {
   AccordionButton,
   AccordionPanel,
   AccordionIcon,
-  Input
+  Input,
+  Tabs,
+  TabList,
+  TabPanels,
+  Tab,
+  TabPanel
 } from '@chakra-ui/react';
 import { getModelFromList } from '@fastgpt/global/core/ai/model';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -25,7 +30,7 @@ import {
   getEvalItemsList,
   retryEvalItem,
   updateEvalItem
-} from '@/web/core/evaluation/evaluation';
+} from '@/web/core/evaluation/task';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { downloadFetch } from '@/web/common/system/utils';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
@@ -36,8 +41,11 @@ import {
   EvaluationStatusMap,
   EvaluationStatusEnum
 } from '@fastgpt/global/core/evaluation/constants';
-import type { evaluationType, listEvalItemsItem } from '@fastgpt/global/core/evaluation/type';
-import type { updateEvalItemBody } from '@fastgpt/global/core/evaluation/api';
+import type {
+  EvaluationDisplayType,
+  EvaluationItemDisplayType
+} from '@fastgpt/global/core/evaluation/type';
+import type { UpdateEvaluationItemRequest } from '@fastgpt/global/core/evaluation/api';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const formatEvaluationStatus = (item: { status: number; errorMessage?: string }, t: TFunction) => {
@@ -79,7 +87,7 @@ const EvaluationDetailModal = ({
   onClose,
   fetchEvalList
 }: {
-  evalDetail: evaluationType;
+  evalDetail: EvaluationDisplayType;
   onClose: () => void;
   fetchEvalList: () => void;
 }) => {
@@ -87,12 +95,15 @@ const EvaluationDetailModal = ({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [editing, setEditing] = useState(false);
   const [pollingInterval, setPollingInterval] = useState(10000);
+  const [activeMetricTab, setActiveMetricTab] = useState(0);
+
+  // 获取指标列表（从evalDetail推断）
+  const metricTabs = evalDetail?.metricNames || [];
 
   const { llmModelList } = useSystemStore();
-  const modelData = useMemo(
-    () => getModelFromList(llmModelList, evalDetail.evalModel),
-    [evalDetail.evalModel, llmModelList]
-  );
+  const modelData = useMemo(() => getModelFromList(llmModelList, 'gpt-3.5-turbo'), [llmModelList]);
+
+  const currentMetricName = metricTabs[activeMetricTab];
 
   const {
     data: evalItemsList,
@@ -100,12 +111,14 @@ const EvaluationDetailModal = ({
     pageSize,
     total,
     getData: fetchData
-  } = usePagination(getEvalItemsList, {
+  } = usePagination<any, EvaluationItemDisplayType>(getEvalItemsList, {
     defaultPageSize: 20,
     params: {
-      evalId: evalDetail._id
+      evalId: evalDetail._id,
+      metricName: currentMetricName // 添加指标过滤
     },
-    pollingInterval
+    pollingInterval,
+    refreshDeps: [activeMetricTab] // 指标切换时重新获取数据
   });
 
   useEffect(() => {
@@ -158,7 +171,7 @@ const EvaluationDetailModal = ({
   });
 
   const { runAsync: updateItem, loading: isLoadingUpdate } = useRequest2(
-    async (data: updateEvalItemBody) => {
+    async (data: UpdateEvaluationItemRequest) => {
       await updateEvalItem({ ...data, evalItemId: evalItem.evalItemId });
     },
     {
@@ -169,7 +182,7 @@ const EvaluationDetailModal = ({
     }
   );
 
-  const { register, handleSubmit } = useForm<updateEvalItemBody>();
+  const { register, handleSubmit } = useForm<UpdateEvaluationItemRequest>();
 
   return (
     <>
@@ -221,9 +234,9 @@ const EvaluationDetailModal = ({
                 {t('dashboard_evaluation:Evaluation_app')}
               </Box>
               <Flex gap={1.5}>
-                <Avatar src={evalDetail?.appAvatar} w={5} borderRadius={'4px'} />
+                <Avatar src={evalDetail?.executorAvatar} w={5} borderRadius={'4px'} />
                 <Box color={'myGray.900'} fontWeight={'medium'}>
-                  {evalDetail?.appName}
+                  {evalDetail?.executorName}
                 </Box>
               </Flex>
             </Box>
@@ -251,7 +264,9 @@ const EvaluationDetailModal = ({
                 {t('dashboard_evaluation:Overall_score')}
               </Box>
               <Box color={'myGray.900'} fontWeight={'medium'}>
-                {typeof evalDetail.score === 'number' ? (evalDetail.score * 100).toFixed(2) : '-'}
+                {typeof evalDetail.avgScore === 'number'
+                  ? (evalDetail.avgScore * 100).toFixed(2)
+                  : '-'}
               </Box>
             </Box>
           </Flex>
@@ -264,6 +279,21 @@ const EvaluationDetailModal = ({
             flex={'1 0 0'}
             h={0}
           >
+            {/* Metric Tabs */}
+            {metricTabs.length > 1 && (
+              <Box borderBottom={'1px solid'} borderColor={'myGray.200'}>
+                <Tabs index={activeMetricTab} onChange={setActiveMetricTab}>
+                  <TabList>
+                    {metricTabs.map((metricName, index) => (
+                      <Tab key={index} fontSize="sm">
+                        {metricName}
+                      </Tab>
+                    ))}
+                  </TabList>
+                </Tabs>
+              </Box>
+            )}
+
             <Flex h={16} w={'full'} borderBottom={'1px solid'} borderColor={'myGray.200'}>
               <Flex
                 alignItems={'center'}
@@ -280,7 +310,7 @@ const EvaluationDetailModal = ({
                     fontSize={14}
                     color={'myGray.900'}
                     fontWeight={'medium'}
-                  >{`${t('dashboard_evaluation:data_list')}: ${evalDetail?.totalCount}`}</Box>
+                  >{`${t('dashboard_evaluation:data_list')}: ${evalDetail?.totalCount} ${currentMetricName ? `(${currentMetricName})` : ''}`}</Box>
                 </Flex>
 
                 <Button
@@ -362,7 +392,7 @@ const EvaluationDetailModal = ({
                             }
                             type="delete"
                             content={t('dashboard_evaluation:comfirm_delete_item')}
-                            onConfirm={() => delEvalItem({ evalItemId: evalItem.evalItemId })}
+                            onConfirm={() => delEvalItem(evalItem.evalItemId)}
                           />
                         )}
                       </>
@@ -402,7 +432,7 @@ const EvaluationDetailModal = ({
                   </Flex>
 
                   <Box flex={1} overflow={'auto'} px={6}>
-                    {evalItemsList.map((item: listEvalItemsItem, index: number) => {
+                    {evalItemsList.map((item: EvaluationItemDisplayType, index: number) => {
                       const formattedStatus = formatEvaluationStatus(item, t);
 
                       return (
@@ -427,7 +457,7 @@ const EvaluationDetailModal = ({
                                 {index < 9 ? `0${index + 1}` : index + 1}
                               </Box>
                               <Box noOfLines={3} textOverflow="ellipsis" overflow="hidden">
-                                {item.question}
+                                {item.dataItem.userInput}
                               </Box>
                             </Flex>
                           </Box>
@@ -435,7 +465,9 @@ const EvaluationDetailModal = ({
                             {formattedStatus}
                           </Box>
                           <Box flex={2} px={4} color={'myGray.600'}>
-                            {typeof item.score === 'number' ? (item.score * 100).toFixed(2) : '-'}
+                            {typeof item.evaluatorOutput?.score === 'number'
+                              ? (item.evaluatorOutput.score * 100).toFixed(2)
+                              : '-'}
                           </Box>
                         </Flex>
                       );
@@ -471,7 +503,7 @@ const EvaluationDetailModal = ({
                       {evalItem?.errorMessage}
                     </Box>
                   )}
-                  {Object.keys(evalItem?.globalVariables || {}).length > 0 && (
+                  {Object.keys(evalItem?.dataItem.globalVariables || {}).length > 0 && (
                     <Box borderBottom={'1px solid'} borderColor={'myGray.200'} mb={5}>
                       <Accordion allowToggle defaultIndex={[0]}>
                         <AccordionItem border={'none'}>
@@ -487,7 +519,7 @@ const EvaluationDetailModal = ({
                             <AccordionIcon />
                           </AccordionButton>
                           <AccordionPanel px={0} py={3}>
-                            {Object.entries(evalItem?.globalVariables || {}).map(
+                            {Object.entries(evalItem?.dataItem.globalVariables || {}).map(
                               ([key, value], index, arr) => (
                                 <Flex
                                   key={key}
@@ -512,12 +544,12 @@ const EvaluationDetailModal = ({
                                       <Input
                                         {...register(`variables.${key}`)}
                                         bg={'myGray.25'}
-                                        defaultValue={value}
+                                        defaultValue={String(value)}
                                         border={'none'}
                                       />
                                     ) : (
                                       <Box color={'myGray.900'} px={3} py={2}>
-                                        {value}
+                                        {String(value)}
                                       </Box>
                                     )}
                                   </Box>
@@ -533,13 +565,13 @@ const EvaluationDetailModal = ({
                     <Box>{t('dashboard_evaluation:question')}</Box>
                     {editing ? (
                       <Textarea
-                        {...register('question')}
+                        {...register('userInput')}
                         bg={'myGray.25'}
-                        defaultValue={evalItem?.question}
+                        defaultValue={evalItem?.dataItem.userInput}
                       />
                     ) : (
                       <Box color={'myGray.900'} mt={3}>
-                        {evalItem?.question}
+                        {evalItem?.dataItem.userInput}
                       </Box>
                     )}
                   </Box>
@@ -548,13 +580,13 @@ const EvaluationDetailModal = ({
                     <Box>{t('dashboard_evaluation:standard_response')}</Box>
                     {editing ? (
                       <Textarea
-                        {...register('expectedResponse')}
+                        {...register('expectedOutput')}
                         bg={'myGray.25'}
-                        defaultValue={evalItem?.expectedResponse}
+                        defaultValue={evalItem?.dataItem.expectedOutput}
                       />
                     ) : (
                       <Box color={'myGray.900'} mt={3}>
-                        {evalItem?.expectedResponse}
+                        {evalItem?.dataItem.expectedOutput}
                       </Box>
                     )}
                   </Box>
@@ -563,7 +595,7 @@ const EvaluationDetailModal = ({
                     <Box borderBottom={'1px solid'} borderColor={'myGray.200'} py={5}>
                       <Box>{t('dashboard_evaluation:app_response')}</Box>
                       <Box color={'myGray.900'} mt={3}>
-                        {evalItem?.response}
+                        {evalItem?.targetOutput?.actualOutput}
                       </Box>
                     </Box>
                   )}

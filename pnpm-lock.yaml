@@ -22,7 +22,7 @@ importers:
         version: 6.21.0(eslint@8.57.1)(typescript@5.8.2)
       '@vitest/coverage-v8':
         specifier: ^3.0.9
-        version: 3.1.1(vitest@3.1.1(@types/debug@4.1.12)(@types/node@20.17.24)(sass@1.85.1)(terser@5.39.0))
+        version: 3.1.1(vitest@3.1.1(@types/debug@4.1.12)(@types/node@24.3.0)(sass@1.85.1)(terser@5.39.0))
       eslint:
         specifier: ^8.57.0
         version: 8.57.1
@@ -55,10 +55,10 @@ importers:
         version: 14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       vitest:
         specifier: ^3.0.9
-        version: 3.1.1(@types/debug@4.1.12)(@types/node@20.17.24)(sass@1.85.1)(terser@5.39.0)
+        version: 3.1.1(@types/debug@4.1.12)(@types/node@24.3.0)(sass@1.85.1)(terser@5.39.0)
       zhlint:
         specifier: ^0.7.4
-        version: 0.7.4(@types/node@20.17.24)(sass@1.85.1)(terser@5.39.0)(typescript@5.8.2)
+        version: 0.7.4(@types/node@24.3.0)(sass@1.85.1)(terser@5.39.0)(typescript@5.8.2)
 
   packages/global:
     dependencies:
@@ -122,7 +122,7 @@ importers:
     dependencies:
       '@fastgpt-sdk/plugin':
         specifier: ^0.1.9
-        version: 0.1.9(@types/node@20.17.24)
+        version: 0.1.9(@types/node@24.3.0)
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../global
@@ -3528,6 +3528,9 @@ packages:
 
   '@types/node@20.17.24':
     resolution: {integrity: sha512-d7fGCyB96w9BnWQrOsJtpyiSaBcAYYr75bnK6ZRjDbql2cGLj/3GsL5OYmLPNq76l7Gf2q4Rv9J2o6h5CrD9sA==}
+
+  '@types/node@24.3.0':
+    resolution: {integrity: sha512-aPTXCrfwnDLj4VvXrm+UUCQjNEvJgNA8s5F1cvwQU+3KNltTOkBm1j30uNLyqqPNe7gE3KFzImYoZEfLhp4Yow==}
 
   '@types/nprogress@0.2.3':
     resolution: {integrity: sha512-k7kRA033QNtC+gLc4VPlfnue58CM1iQLgn1IMAU8VPHGOj7oIHPp9UlhedEnD/Gl8evoCjwkZjlBORtZ3JByUA==}
@@ -9277,6 +9280,9 @@ packages:
   undici-types@6.19.8:
     resolution: {integrity: sha512-ve2KP6f/JnbPBFyobGHuerC9g1FYGn/F8n1LWTwNxCEzd6IfqTwUQcNXgEtmmQ6DlRrC1hrSrBnCZPokRrDHjw==}
 
+  undici-types@7.10.0:
+    resolution: {integrity: sha512-t5Fy/nfn+14LuOc2KNYg75vZqClpAiqscVvMygNnlsHBFpSXdJaYtXMcdNLpl/Qvc3P2cB3s6lOV51nqsFq4ag==}
+
   unherit@1.1.3:
     resolution: {integrity: sha512-Ft16BJcnapDKp0+J/rqFC3Rrk6Y/Ng4nzsC028k2jdDII/rdZ7Wd3pPT/6+vIIxRagwRc9K0IUX0Ra4fKvw+WQ==}
 
@@ -11212,10 +11218,10 @@ snapshots:
 
   '@eslint/js@8.57.1': {}
 
-  '@fastgpt-sdk/plugin@0.1.9(@types/node@20.17.24)':
+  '@fastgpt-sdk/plugin@0.1.9(@types/node@24.3.0)':
     dependencies:
       '@fortaine/fetch-event-source': 3.0.6
-      '@ts-rest/core': 3.52.1(@types/node@20.17.24)(zod@3.25.51)
+      '@ts-rest/core': 3.52.1(@types/node@24.3.0)(zod@3.25.51)
       zod: 3.25.51
     transitivePeerDependencies:
       - '@types/node'
@@ -12580,9 +12586,9 @@ snapshots:
 
   '@trysound/sax@0.2.0': {}
 
-  '@ts-rest/core@3.52.1(@types/node@20.17.24)(zod@3.25.51)':
+  '@ts-rest/core@3.52.1(@types/node@24.3.0)(zod@3.25.51)':
     optionalDependencies:
-      '@types/node': 20.17.24
+      '@types/node': 24.3.0
       zod: 3.25.51
 
   '@tsconfig/node10@1.0.11': {}
@@ -12895,6 +12901,11 @@ snapshots:
     dependencies:
       undici-types: 6.19.8
 
+  '@types/node@24.3.0':
+    dependencies:
+      undici-types: 7.10.0
+    optional: true
+
   '@types/nprogress@0.2.3': {}
 
   '@types/papaparse@5.3.7':
@@ -13157,7 +13168,7 @@ snapshots:
       '@opentelemetry/sdk-metrics': 2.0.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-base': 2.0.1(@opentelemetry/api@1.9.0)
 
-  '@vitest/coverage-v8@3.1.1(vitest@3.1.1(@types/debug@4.1.12)(@types/node@20.17.24)(sass@1.85.1)(terser@5.39.0))':
+  '@vitest/coverage-v8@3.1.1(vitest@3.1.1(@types/debug@4.1.12)(@types/node@24.3.0)(sass@1.85.1)(terser@5.39.0))':
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 1.0.2
@@ -13171,7 +13182,7 @@ snapshots:
       std-env: 3.8.1
       test-exclude: 7.0.1
       tinyrainbow: 2.0.0
-      vitest: 3.1.1(@types/debug@4.1.12)(@types/node@20.17.24)(sass@1.85.1)(terser@5.39.0)
+      vitest: 3.1.1(@types/debug@4.1.12)(@types/node@24.3.0)(sass@1.85.1)(terser@5.39.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -13195,6 +13206,14 @@ snapshots:
       magic-string: 0.30.17
     optionalDependencies:
       vite: 6.2.2(@types/node@20.17.24)(sass@1.85.1)(terser@5.39.0)
+
+  '@vitest/mocker@3.1.1(vite@6.2.2(@types/node@24.3.0)(sass@1.85.1)(terser@5.39.0))':
+    dependencies:
+      '@vitest/spy': 3.1.1
+      estree-walker: 3.0.3
+      magic-string: 0.30.17
+    optionalDependencies:
+      vite: 6.2.2(@types/node@24.3.0)(sass@1.85.1)(terser@5.39.0)
 
   '@vitest/pretty-format@3.1.1':
     dependencies:
@@ -20253,6 +20272,9 @@ snapshots:
 
   undici-types@6.19.8: {}
 
+  undici-types@7.10.0:
+    optional: true
+
   unherit@1.1.3:
     dependencies:
       inherits: 2.0.4
@@ -20506,13 +20528,13 @@ snapshots:
       d3-time: 3.1.0
       d3-timer: 3.0.1
 
-  vite-node@1.6.1(@types/node@20.17.24)(sass@1.85.1)(terser@5.39.0):
+  vite-node@1.6.1(@types/node@24.3.0)(sass@1.85.1)(terser@5.39.0):
     dependencies:
       cac: 6.7.14
       debug: 4.4.0
       pathe: 1.1.2
       picocolors: 1.1.1
-      vite: 5.4.14(@types/node@20.17.24)(sass@1.85.1)(terser@5.39.0)
+      vite: 5.4.14(@types/node@24.3.0)(sass@1.85.1)(terser@5.39.0)
     transitivePeerDependencies:
       - '@types/node'
       - less
@@ -20545,13 +20567,34 @@ snapshots:
       - tsx
       - yaml
 
-  vite@5.4.14(@types/node@20.17.24)(sass@1.85.1)(terser@5.39.0):
+  vite-node@3.1.1(@types/node@24.3.0)(sass@1.85.1)(terser@5.39.0):
+    dependencies:
+      cac: 6.7.14
+      debug: 4.4.0
+      es-module-lexer: 1.6.0
+      pathe: 2.0.3
+      vite: 6.2.2(@types/node@24.3.0)(sass@1.85.1)(terser@5.39.0)
+    transitivePeerDependencies:
+      - '@types/node'
+      - jiti
+      - less
+      - lightningcss
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - supports-color
+      - terser
+      - tsx
+      - yaml
+
+  vite@5.4.14(@types/node@24.3.0)(sass@1.85.1)(terser@5.39.0):
     dependencies:
       esbuild: 0.21.5
       postcss: 8.5.3
       rollup: 4.35.0
     optionalDependencies:
-      '@types/node': 20.17.24
+      '@types/node': 24.3.0
       fsevents: 2.3.3
       sass: 1.85.1
       terser: 5.39.0
@@ -20567,7 +20610,18 @@ snapshots:
       sass: 1.85.1
       terser: 5.39.0
 
-  vitest@1.6.1(@types/node@20.17.24)(sass@1.85.1)(terser@5.39.0):
+  vite@6.2.2(@types/node@24.3.0)(sass@1.85.1)(terser@5.39.0):
+    dependencies:
+      esbuild: 0.25.1
+      postcss: 8.5.3
+      rollup: 4.35.0
+    optionalDependencies:
+      '@types/node': 24.3.0
+      fsevents: 2.3.3
+      sass: 1.85.1
+      terser: 5.39.0
+
+  vitest@1.6.1(@types/node@24.3.0)(sass@1.85.1)(terser@5.39.0):
     dependencies:
       '@vitest/expect': 1.6.1
       '@vitest/runner': 1.6.1
@@ -20586,11 +20640,11 @@ snapshots:
       strip-literal: 2.1.1
       tinybench: 2.9.0
       tinypool: 0.8.4
-      vite: 5.4.14(@types/node@20.17.24)(sass@1.85.1)(terser@5.39.0)
-      vite-node: 1.6.1(@types/node@20.17.24)(sass@1.85.1)(terser@5.39.0)
+      vite: 5.4.14(@types/node@24.3.0)(sass@1.85.1)(terser@5.39.0)
+      vite-node: 1.6.1(@types/node@24.3.0)(sass@1.85.1)(terser@5.39.0)
       why-is-node-running: 2.3.0
     optionalDependencies:
-      '@types/node': 20.17.24
+      '@types/node': 24.3.0
     transitivePeerDependencies:
       - less
       - lightningcss
@@ -20626,6 +20680,45 @@ snapshots:
     optionalDependencies:
       '@types/debug': 4.1.12
       '@types/node': 20.17.24
+    transitivePeerDependencies:
+      - jiti
+      - less
+      - lightningcss
+      - msw
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - supports-color
+      - terser
+      - tsx
+      - yaml
+
+  vitest@3.1.1(@types/debug@4.1.12)(@types/node@24.3.0)(sass@1.85.1)(terser@5.39.0):
+    dependencies:
+      '@vitest/expect': 3.1.1
+      '@vitest/mocker': 3.1.1(vite@6.2.2(@types/node@24.3.0)(sass@1.85.1)(terser@5.39.0))
+      '@vitest/pretty-format': 3.1.1
+      '@vitest/runner': 3.1.1
+      '@vitest/snapshot': 3.1.1
+      '@vitest/spy': 3.1.1
+      '@vitest/utils': 3.1.1
+      chai: 5.2.0
+      debug: 4.4.0
+      expect-type: 1.2.0
+      magic-string: 0.30.17
+      pathe: 2.0.3
+      std-env: 3.8.1
+      tinybench: 2.9.0
+      tinyexec: 0.3.2
+      tinypool: 1.0.2
+      tinyrainbow: 2.0.0
+      vite: 6.2.2(@types/node@24.3.0)(sass@1.85.1)(terser@5.39.0)
+      vite-node: 3.1.1(@types/node@24.3.0)(sass@1.85.1)(terser@5.39.0)
+      why-is-node-running: 2.3.0
+    optionalDependencies:
+      '@types/debug': 4.1.12
+      '@types/node': 24.3.0
     transitivePeerDependencies:
       - jiti
       - less
@@ -20904,7 +20997,7 @@ snapshots:
 
   yocto-queue@1.2.0: {}
 
-  zhlint@0.7.4(@types/node@20.17.24)(sass@1.85.1)(terser@5.39.0)(typescript@5.8.2):
+  zhlint@0.7.4(@types/node@24.3.0)(sass@1.85.1)(terser@5.39.0)(typescript@5.8.2):
     dependencies:
       chalk: 4.1.2
       glob: 10.4.5
@@ -20913,7 +21006,7 @@ snapshots:
       remark-frontmatter: 1.3.3
       remark-parse: 7.0.2
       unified: 8.4.2
-      vitest: 1.6.1(@types/node@20.17.24)(sass@1.85.1)(terser@5.39.0)
+      vitest: 1.6.1(@types/node@24.3.0)(sass@1.85.1)(terser@5.39.0)
       vue: 3.5.13(typescript@5.8.2)
     transitivePeerDependencies:
       - '@edge-runtime/vm'
