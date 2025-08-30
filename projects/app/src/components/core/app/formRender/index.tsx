@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Switch } from '@chakra-ui/react';
+import { Box, Input, Switch } from '@chakra-ui/react';
 import type { InputRenderProps } from './type';
 import { InputTypeEnum } from './constant';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
@@ -11,6 +11,7 @@ import MultipleSelect, {
 import JSONEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import AIModelSelector from '../../../Select/AIModelSelector';
 import FileSelector from '../../../Select/FileSelector';
+import TimeInput from './TimeInput';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const InputRender = (props: InputRenderProps) => {
@@ -76,6 +77,10 @@ const InputRender = (props: InputRenderProps) => {
           ExtensionPopover={props.ExtensionPopover}
         />
       );
+    }
+
+    if (inputType === InputTypeEnum.password) {
+      return <Input {...commonProps} type="password" minLength={props.minLength} />;
     }
 
     if (inputType === InputTypeEnum.numberInput) {
@@ -159,6 +164,61 @@ const InputRender = (props: InputRenderProps) => {
           fieldName={props.fieldName}
         />
       );
+    }
+
+    if (inputType === InputTypeEnum.dateSelect) {
+      const { timeRangeStart, timeRangeEnd } = props;
+
+      if (props.timeType === 'point') {
+        return (
+          <TimeInput
+            value={new Date(value)}
+            onDateTimeChange={(date) => onChange(date.toISOString())}
+            timeGranularity={props.timeGranularity}
+            minDate={new Date(timeRangeStart || '')}
+            maxDate={new Date(timeRangeEnd || '')}
+          />
+        );
+      } else {
+        const rangeArray = Array.isArray(value) ? value : [null, null];
+        const [startDate, endDate] = rangeArray;
+        return (
+          <Box>
+            <Box mb={2}>
+              <Box fontSize="12px" color="myGray.500" mb={1}>
+                {t('app:time_range_start')}
+              </Box>
+              <TimeInput
+                value={new Date(startDate || '')}
+                onDateTimeChange={(date) => {
+                  const newArray = [...rangeArray];
+                  newArray[0] = date.toISOString();
+                  onChange(newArray);
+                }}
+                timeGranularity={props.timeGranularity}
+                maxDate={endDate ? new Date(endDate) : new Date(timeRangeEnd || '')}
+                minDate={new Date(timeRangeStart || '')}
+              />
+            </Box>
+            <Box>
+              <Box fontSize="12px" color="myGray.500" mb={1}>
+                {t('app:time_range_end')}
+              </Box>
+              <TimeInput
+                value={new Date(endDate || '')}
+                onDateTimeChange={(date) => {
+                  const newArray = [...rangeArray];
+                  newArray[1] = date.toISOString();
+                  onChange(newArray);
+                }}
+                timeGranularity={props.timeGranularity}
+                minDate={startDate ? new Date(startDate) : new Date(timeRangeStart || '')}
+                maxDate={new Date(timeRangeEnd || '')}
+              />
+            </Box>
+          </Box>
+        );
+      }
     }
 
     return null;

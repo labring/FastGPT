@@ -3,6 +3,7 @@ import type {
   EditorVariablePickerType
 } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import type { InputTypeEnum } from './constant';
+import type { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { UseFormReturn } from 'react-hook-form';
 import type { BoxProps } from '@chakra-ui/react';
 import type { EditorProps } from '@fastgpt/web/components/common/Textarea/PromptEditor/Editor';
@@ -29,6 +30,11 @@ type SpecificProps =
     } & {
       ExtensionPopover?: EditorProps['ExtensionPopover'];
     })
+  | {
+      // password
+      inputType: InputTypeEnum.password;
+      minLength?: number;
+    }
   | {
       // numberInput
       inputType: InputTypeEnum.numberInput;
@@ -63,9 +69,16 @@ type SpecificProps =
       canSelectImg?: boolean;
       maxFiles?: number;
       setUploading?: React.Dispatch<React.SetStateAction<boolean>>;
-
       form?: UseFormReturn<any>;
       fieldName?: string;
+    }
+  | {
+      // dateSelect
+      inputType: InputTypeEnum.dateSelect;
+      timeGranularity?: 'day' | 'hour' | 'minute' | 'second';
+      timeType?: 'point' | 'range';
+      timeRangeStart?: string;
+      timeRangeEnd?: string;
     };
 
 export type InputRenderProps = CommonRenderProps & SpecificProps;

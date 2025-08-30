@@ -7,7 +7,7 @@ import type {
   ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type.d';
 import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -870,8 +870,12 @@ const getSystemVariables = ({
   // Get global variables(Label -> key; Key -> key)
   const globalVariables = chatConfig?.variables || [];
   const variablesMap = globalVariables.reduce<Record<string, any>>((acc, item) => {
+    // For internal variables, ignore external input and use default value
+    if (item.type === VariableInputEnum.internal) {
+      acc[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
+    }
     // API
-    if (variables[item.label] !== undefined) {
+    else if (variables[item.label] !== undefined) {
       acc[item.key] = valueTypeFormat(variables[item.label], item.valueType);
     }
     // Web

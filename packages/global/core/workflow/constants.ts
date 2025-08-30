@@ -30,6 +30,7 @@ export enum WorkflowIOValueTypeEnum {
   number = 'number',
   boolean = 'boolean',
   object = 'object',
+  date = 'date',
 
   arrayString = 'arrayString',
   arrayNumber = 'arrayNumber',
@@ -332,52 +333,136 @@ export enum VariableInputEnum {
   input = 'input',
   textarea = 'textarea',
   numberInput = 'numberInput',
+  JSONEditor = 'JSONEditor',
   select = 'select',
-  custom = 'custom'
+  multipleSelect = 'multipleSelect',
+  dateSelect = 'dateSelect',
+  switch = 'switch',
+  password = 'password',
+  file = 'file',
+
+  modelSelect = 'modelSelect',
+  datasetSelect = 'datasetSelect',
+
+  custom = 'custom',
+  internal = 'internal'
 }
-export const variableMap: Record<
-  VariableInputEnum,
-  {
-    icon: string;
-    label: string;
-    value: VariableInputEnum;
-    defaultValueType: WorkflowIOValueTypeEnum;
-    description?: string;
-  }
-> = {
-  [VariableInputEnum.input]: {
-    icon: 'core/workflow/inputType/input',
-    label: i18nT('common:core.workflow.inputType.textInput'),
-    value: VariableInputEnum.input,
-    defaultValueType: WorkflowIOValueTypeEnum.string
-  },
+
+type VariableConfigType = {
+  icon: string;
+  label: string;
+  value: VariableInputEnum;
+  defaultValueType: WorkflowIOValueTypeEnum;
+  description?: string;
+};
+
+export const variableConfigs: VariableConfigType[][] = [
+  [
+    {
+      icon: 'core/workflow/inputType/input',
+      label: i18nT('common:core.workflow.inputType.textInput'),
+      value: VariableInputEnum.input,
+      defaultValueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      icon: 'core/workflow/inputType/numberInput',
+      label: i18nT('common:core.workflow.inputType.number input'),
+      value: VariableInputEnum.numberInput,
+      defaultValueType: WorkflowIOValueTypeEnum.number
+    },
+    {
+      icon: 'core/workflow/inputType/jsonEditor',
+      label: i18nT('common:core.workflow.inputType.jsonEditor'),
+      value: VariableInputEnum.JSONEditor,
+      defaultValueType: WorkflowIOValueTypeEnum.object
+    },
+    {
+      icon: 'core/workflow/inputType/option',
+      label: i18nT('common:core.workflow.inputType.select'),
+      value: VariableInputEnum.select,
+      defaultValueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      icon: 'core/workflow/inputType/multipleSelect',
+      label: i18nT('common:core.workflow.inputType.multipleSelect'),
+      value: VariableInputEnum.multipleSelect,
+      defaultValueType: WorkflowIOValueTypeEnum.arrayString
+    },
+    {
+      icon: 'core/workflow/inputType/switch',
+      label: i18nT('common:core.workflow.inputType.switch'),
+      value: VariableInputEnum.switch,
+      defaultValueType: WorkflowIOValueTypeEnum.boolean
+    },
+    {
+      icon: 'core/workflow/inputType/dateSelect',
+      label: i18nT('common:core.workflow.inputType.dateSelect'),
+      value: VariableInputEnum.dateSelect,
+      defaultValueType: WorkflowIOValueTypeEnum.date
+    },
+    {
+      icon: 'core/workflow/inputType/file',
+      label: i18nT('common:core.workflow.inputType.file'),
+      value: VariableInputEnum.file,
+      defaultValueType: WorkflowIOValueTypeEnum.arrayString
+    },
+    {
+      icon: 'core/workflow/inputType/password',
+      label: i18nT('common:core.workflow.inputType.password'),
+      value: VariableInputEnum.password,
+      defaultValueType: WorkflowIOValueTypeEnum.string
+    }
+  ],
+  [
+    {
+      icon: 'core/workflow/inputType/model',
+      label: i18nT('common:core.workflow.inputType.modelSelect'),
+      value: VariableInputEnum.modelSelect,
+      defaultValueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      icon: 'core/workflow/inputType/dataset',
+      label: i18nT('common:core.workflow.inputType.datasetSelect'),
+      value: VariableInputEnum.datasetSelect,
+      defaultValueType: WorkflowIOValueTypeEnum.arrayString
+    }
+  ],
+  [
+    {
+      icon: 'core/workflow/inputType/external',
+      label: i18nT('common:core.workflow.inputType.custom'),
+      value: VariableInputEnum.custom,
+      defaultValueType: WorkflowIOValueTypeEnum.string,
+      description: i18nT('app:variable.select type_desc')
+    },
+    {
+      icon: 'core/workflow/inputType/internal',
+      label: i18nT('common:core.workflow.inputType.internal'),
+      value: VariableInputEnum.internal,
+      defaultValueType: WorkflowIOValueTypeEnum.string,
+      description: i18nT('app:variable.internal_type_desc')
+    }
+  ]
+];
+
+export const variableMap: Record<VariableInputEnum, VariableConfigType> = {
+  ...variableConfigs
+    .flat()
+    .reduce(
+      (acc, config) => ({ ...acc, [config.value]: config }),
+      {} as Record<VariableInputEnum, VariableConfigType>
+    ),
   [VariableInputEnum.textarea]: {
     icon: 'core/workflow/inputType/textarea',
     label: i18nT('common:core.workflow.inputType.textarea'),
     value: VariableInputEnum.textarea,
     defaultValueType: WorkflowIOValueTypeEnum.string,
     description: i18nT('app:variable.textarea_type_desc')
-  },
-  [VariableInputEnum.numberInput]: {
-    icon: 'core/workflow/inputType/numberInput',
-    label: i18nT('common:core.workflow.inputType.number input'),
-    value: VariableInputEnum.numberInput,
-    defaultValueType: WorkflowIOValueTypeEnum.number
-  },
-  [VariableInputEnum.select]: {
-    icon: 'core/workflow/inputType/option',
-    label: i18nT('common:core.workflow.inputType.select'),
-    value: VariableInputEnum.select,
-    defaultValueType: WorkflowIOValueTypeEnum.string
-  },
-  [VariableInputEnum.custom]: {
-    icon: 'core/workflow/inputType/customVariable',
-    label: i18nT('common:core.workflow.inputType.custom'),
-    value: VariableInputEnum.custom,
-    defaultValueType: WorkflowIOValueTypeEnum.string,
-    description: i18nT('app:variable.select type_desc')
   }
 };
+
+// Keep backward compatibility
+export const variableMapGroups = variableConfigs;
 
 /* run time */
 export enum RuntimeEdgeStatusEnum {
@@ -404,6 +489,7 @@ export const ArrayTypeMap: Record<WorkflowIOValueTypeEnum, WorkflowIOValueTypeEn
   [WorkflowIOValueTypeEnum.number]: WorkflowIOValueTypeEnum.arrayNumber,
   [WorkflowIOValueTypeEnum.boolean]: WorkflowIOValueTypeEnum.arrayBoolean,
   [WorkflowIOValueTypeEnum.object]: WorkflowIOValueTypeEnum.arrayObject,
+  [WorkflowIOValueTypeEnum.date]: WorkflowIOValueTypeEnum.arrayString,
   [WorkflowIOValueTypeEnum.arrayString]: WorkflowIOValueTypeEnum.arrayString,
   [WorkflowIOValueTypeEnum.arrayNumber]: WorkflowIOValueTypeEnum.arrayNumber,
   [WorkflowIOValueTypeEnum.arrayBoolean]: WorkflowIOValueTypeEnum.arrayBoolean,

@@ -63,6 +63,10 @@ import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/u
 import { type ExternalProviderType } from '@fastgpt/global/core/workflow/runtime/type';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
+import {
+  decryptPasswordVariables,
+  encryptPasswordVariables
+} from '@fastgpt/service/core/app/utils';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -236,10 +240,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Get store variables(Api variable precedence)
     if (chatDetail?.variables) {
-      variables = {
-        ...chatDetail.variables,
-        ...variables
-      };
+      variables = decryptPasswordVariables(
+        {
+          ...chatDetail.variables,
+          ...variables
+        },
+        chatDetail?.variableList
+      );
     }
 
     // Get chat histories
@@ -345,7 +352,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         appId: app._id,
         userInteractiveVal,
         aiResponse,
-        newVariables,
+        newVariables: encryptPasswordVariables(newVariables, app.chatConfig.variables),
         durationSeconds
       });
     } else {
@@ -356,7 +363,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         tmbId: tmbId,
         nodes,
         appChatConfig: chatConfig,
-        variables: newVariables,
+        variables: encryptPasswordVariables(newVariables, app.chatConfig.variables),
         isUpdateUseTime: isOwnerUse && source === ChatSourceEnum.online, // owner update use time
         newTitle,
         shareId,

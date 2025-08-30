@@ -84,10 +84,10 @@ const VariableInput = ({
                 <LabelAndFormRender
                   {...item}
                   key={item.key}
-                  formKey={`variables.${item.key}`}
                   placeholder={item.description}
                   inputType={variableInputTypeToInputType(item.type, item.valueType)}
-                  variablesForm={variablesForm}
+                  form={variablesForm}
+                  fieldName={`variables.${item.key}`}
                   bg={'myGray.50'}
                 />
               );
@@ -119,17 +119,19 @@ const VariableInput = ({
             bg={'white'}
             boxShadow={'0 0 8px rgba(0,0,0,0.15)'}
           >
-            {variableList.map((item) => (
-              <LabelAndFormRender
-                {...item}
-                key={item.key}
-                formKey={`variables.${item.key}`}
-                placeholder={item.description}
-                inputType={variableInputTypeToInputType(item.type)}
-                variablesForm={variablesForm}
-                bg={'myGray.50'}
-              />
-            ))}
+            {variableList.map((item) => {
+              return (
+                <LabelAndFormRender
+                  {...item}
+                  key={item.key}
+                  placeholder={item.description}
+                  inputType={variableInputTypeToInputType(item.type)}
+                  bg={'myGray.50'}
+                  form={variablesForm}
+                  fieldName={`variables.${item.key}`}
+                />
+              );
+            })}
             {!chatStarted && (
               <Button
                 leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}

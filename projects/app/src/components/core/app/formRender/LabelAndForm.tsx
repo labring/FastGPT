@@ -7,6 +7,7 @@ import type { UseFormReturn } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
 import InputRender from '.';
 import type { SpecificProps } from './type';
+import { InputTypeEnum } from './constant';
 
 // Helper function to flatten error object keys
 const getFlattenedErrorKeys = (errors: any, prefix = ''): string[] => {
@@ -28,24 +29,24 @@ const getFlattenedErrorKeys = (errors: any, prefix = ''): string[] => {
 };
 
 const LabelAndFormRender = ({
-  formKey,
   label,
   required,
   placeholder,
   inputType,
-  variablesForm,
   showValueType,
   ...props
 }: {
-  formKey: string;
   label: string | React.ReactNode;
   required?: boolean;
   placeholder?: string;
-  variablesForm: UseFormReturn<any>;
   showValueType?: boolean;
+  form: UseFormReturn<any>;
+  fieldName: string;
 } & SpecificProps &
   BoxProps) => {
-  const { control } = variablesForm;
+  const { control } = props.form;
+
+  const minLength = inputType === InputTypeEnum.password ? (props as any).minLength : undefined;
 
   return (
     <Box _notLast={{ mb: 4 }}>
@@ -56,9 +57,14 @@ const LabelAndFormRender = ({
 
       <Controller
         control={control}
-        name={formKey}
+        name={props.fieldName}
         rules={{
-          required
+          required,
+          ...(minLength && {
+            minLength: {
+              value: minLength
+            }
+          })
         }}
         render={({ field: { onChange, value }, fieldState: { error } }) => {
           return (

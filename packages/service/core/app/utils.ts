@@ -1,7 +1,7 @@
 import { MongoDataset } from '../dataset/schema';
 import { getEmbeddingModel } from '../ai/model';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getChildAppPreviewNode } from './plugin/controller';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
@@ -10,6 +10,8 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
+import type { VariableItemType } from '@fastgpt/global/core/app/type';
+import { decryptSecret, encryptSecret } from '../../common/secret/aes256gcm';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
   teamId,
@@ -204,3 +206,70 @@ export async function rewriteAppWorkflowToDetail({
 
   return nodes;
 }
+
+const isEncryptedPassword = (value: string): boolean => {
+  // Check if input is a non-empty string
+  if (typeof value !== 'string' || !value) {
+    return false;
+  }
+  // Encrypted password format: iv:encrypted:authTag (three colon-separated hex strings)
+  const parts = value.split(':');
+  if (parts.length !== 3) {
+    return false;
+  }
+  const [ivHex, encryptedHex, authTagHex] = parts;
+  // Validate that each part is a valid hexadecimal string
+  const hexPattern = /^[0-9a-fA-F]+$/;
+  if (!hexPattern.test(ivHex) || !hexPattern.test(encryptedHex) || !hexPattern.test(authTagHex)) {
+    return false;
+  }
+  // Validate lengths: IV fixed 32 chars (16 bytes), AuthTag fixed 32 chars (16 bytes), Encrypted at least 2 chars (1 byte)
+  return (
+    ivHex.length === 32 &&
+    authTagHex.length === 32 &&
+    encryptedHex.length >= 2 &&
+    encryptedHex.length % 2 === 0
+  );
+};
+
+export const decryptPasswordVariables = (
+  variables: Record<string, any>,
+  variableList?: VariableItemType[]
+): Record<string, any> => {
+  if (!variableList || !Array.isArray(variableList)) return variables;
+
+  const result = { ...variables };
+  variableList.forEach((variable) => {
+    if (variable.type === VariableInputEnum.password && isEncryptedPassword(result[variable.key])) {
+      try {
+        result[variable.key] = decryptSecret(result[variable.key]);
+      } catch (error) {
+        console.warn(`Failed to decrypt password variable ${variable.key}:`, error);
+        result[variable.key] = '';
+      }
+    }
+  });
+
+  return result;
+};
+
+export const encryptPasswordVariables = (
+  variables: Record<string, any>,
+  variableList?: VariableItemType[]
+): Record<string, any> => {
+  if (!variableList || !Array.isArray(variableList)) return variables;
+
+  const result = { ...variables };
+  variableList.forEach((variable) => {
+    if (variable.type === VariableInputEnum.password) {
+      try {
+        result[variable.key] = encryptSecret(result[variable.key]);
+      } catch (error) {
+        console.warn(`Failed to encrypt password variable ${variable.key}:`, error);
+        result[variable.key] = '';
+      }
+    }
+  });
+
+  return result;
+};

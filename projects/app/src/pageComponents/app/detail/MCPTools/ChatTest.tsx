@@ -128,8 +128,8 @@ const ChatTest = ({
                         required={required}
                         key={paramName}
                         inputType={inputType}
-                        formKey={paramName}
-                        variablesForm={form}
+                        form={form}
+                        fieldName={paramName}
                         placeholder={paramInfo.description}
                       />
                     );
