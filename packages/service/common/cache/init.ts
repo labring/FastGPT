@@ -1,10 +1,12 @@
 import { SystemCacheKeyEnum } from './type';
 import { refreshSystemTools } from '../../core/app/plugin/controller';
 
-global.systemCache = {
-  [SystemCacheKeyEnum.systemTool]: {
-    syncKey: '',
-    data: [],
-    refreshFunc: refreshSystemTools
-  }
+export const initCache = () => {
+  global.systemCache = {
+    [SystemCacheKeyEnum.systemTool]: {
+      syncKey: '',
+      data: [],
+      refreshFunc: refreshSystemTools
+    }
+  };
 };

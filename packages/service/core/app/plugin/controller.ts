@@ -47,7 +47,7 @@ import { getMCPChildren } from '../mcp';
 import { cloneDeep } from 'lodash';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getCachedData } from '../../../common/cache';
-import { SystemCacheKeyEnum } from 'common/cache/type';
+import { SystemCacheKeyEnum } from '../../../common/cache/type';
 
 type ChildAppType = SystemPluginTemplateItemType & {
   teamId?: string;
