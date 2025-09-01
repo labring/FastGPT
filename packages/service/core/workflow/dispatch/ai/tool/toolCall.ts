@@ -14,7 +14,7 @@ import json5 from 'json5';
 import type { DispatchFlowResponse } from '../../type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import type { AIChatItemType } from '@fastgpt/global/core/chat/type';
-import { formatToolResponse, initToolCallEdges, initToolNodes } from './utils';
+import { formatToolResponse, initToolCallEdges, initToolNodes } from '../utils';
 import { computedMaxToken } from '../../../../ai/utils';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -327,21 +327,20 @@ export const runToolCall = async (
     },
     onToolCall({ call }) {
       const toolNode = toolNodesMap.get(call.function.name);
-      if (toolNode) {
-        workflowStreamResponse?.({
-          event: SseResponseEventEnum.toolCall,
-          data: {
-            tool: {
-              id: call.id,
-              toolName: toolNode.name,
-              toolAvatar: toolNode.avatar,
-              functionName: call.function.name,
-              params: call.function.arguments ?? '',
-              response: ''
-            }
+      if (!toolNode) return;
+      workflowStreamResponse?.({
+        event: SseResponseEventEnum.toolCall,
+        data: {
+          tool: {
+            id: call.id,
+            toolName: toolNode.name,
+            toolAvatar: toolNode.avatar,
+            functionName: call.function.name,
+            params: call.function.arguments ?? '',
+            response: ''
           }
-        });
-      }
+        }
+      });
     },
     onToolParam({ tool, params }) {
       workflowStreamResponse?.({
