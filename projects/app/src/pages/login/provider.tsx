@@ -19,6 +19,7 @@ import {
   getSourceDomain,
   removeFastGPTSem
 } from '@/web/support/marketing/utils';
+import { postAcceptInvitationLink } from '@/web/support/user/team/api';
 
 let isOauthLogging = false;
 
@@ -35,11 +36,31 @@ const provider = () => {
     : '/dashboard/apps';
   const errorRedirectPage = lastRoute.startsWith('/chat') ? lastRoute : '/login';
 
-  const loginSuccess = useCallback(
-    (res: ResLogin) => {
-      setUserInfo(res.user);
+  // const loginSuccess = useCallback(async () => {
+  //   const decodeLastRoute = decodeURIComponent(lastRoute);
 
-      router.replace(lastRoute);
+  //   router.push(navigateTo);
+  // }, [lastRoute, router]);
+
+  const loginSuccess = useCallback(
+    async (res: ResLogin) => {
+      const decodeLastRoute = decodeURIComponent(lastRoute);
+      setUserInfo(res.user);
+      const navigateTo = await (async () => {
+        if (res.user.team.status !== 'active') {
+          if (decodeLastRoute.includes('/account/team?invitelinkid=')) {
+            const id = decodeLastRoute.split('invitelinkid=')[1];
+            await postAcceptInvitationLink(id);
+            return '/dashboard/apps';
+          }
+        }
+        return decodeLastRoute &&
+          !decodeLastRoute.includes('/login') &&
+          decodeLastRoute.startsWith('/')
+          ? lastRoute
+          : '/dashboard/apps';
+      })();
+      router.replace(navigateTo);
     },
     [setUserInfo, router, lastRoute]
   );
@@ -94,7 +115,6 @@ const provider = () => {
       return;
     }
 
-    console.log('SSO', { initd, loginStore, props, state });
     if (!props || !initd) return;
 
     if (isOauthLogging) return;
