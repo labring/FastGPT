@@ -16,6 +16,7 @@ import { useMount } from 'ahooks';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 const HomepageSetting = dynamic(() => import('@/pageComponents/chat/ChatSetting/HomepageSetting'));
 const LogDetails = dynamic(() => import('@/pageComponents/chat/ChatSetting/LogDetails'));
@@ -69,7 +70,7 @@ const ChatSetting = () => {
 
   return (
     <>
-      <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} icon="/icon/logo.svg" />
+      <NextHead title={chatSettings?.homeTabTitle} icon={getWebReqUrl(feConfigs?.favicon)} />
 
       <Flex flexDir="column" h="100%">
         {!isPc && (

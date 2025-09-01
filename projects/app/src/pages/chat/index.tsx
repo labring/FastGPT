@@ -109,7 +109,7 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
   if (!isInitedUser) {
     return (
       <PageContainer isLoading flex={'1'} p={4}>
-        <NextHead title={feConfigs?.systemTitle}></NextHead>
+        <NextHead title={feConfigs?.systemTitle} icon={feConfigs?.favicon} />
       </PageContainer>
     );
   }

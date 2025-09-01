@@ -29,10 +29,15 @@ import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobil
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const ChatFavouriteApp = () => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
+  const { userInfo } = useUserStore();
 
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
 
@@ -91,24 +96,26 @@ const ChatFavouriteApp = () => {
     if (!tag) return null;
 
     return (
-      <Box
+      <Flex
         key={id}
         fontSize="xs"
-        borderRadius={8}
+        borderRadius="sm"
         bg="myGray.100"
         px="1.5"
         py="0.5"
         cursor="text"
+        minW="40px"
+        justifyContent="center"
         onClick={(e) => e.stopPropagation()}
       >
         {tag.name}
-      </Box>
+      </Flex>
     );
   };
 
   return (
     <MyBox isLoading={isSearching} display="flex" flexDirection={'column'} h={'100%'}>
-      <NextHead title={homeTabTitle || 'FastGPT'} icon="/icon/logo.svg" />
+      <NextHead title={homeTabTitle} icon={getWebReqUrl(feConfigs?.favicon)} />
 
       {!isPc && (
         <Flex
@@ -206,30 +213,31 @@ const ChatFavouriteApp = () => {
             <GridItem key={app.appId} cursor="pointer">
               <Flex
                 flexDirection={'column'}
-                justifyContent="space-between"
+                justifyContent="flex-start"
                 gap={2}
                 p={4}
                 borderRadius={8}
                 border="sm"
                 borderColor="myGray.200"
                 boxShadow="sm"
-                minH="140px"
+                bg="white"
+                h="160px"
                 transition="all 0.1s ease-in-out"
                 _hover={{
                   borderColor: 'primary.300'
                 }}
                 onClick={() => handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, app.appId)}
               >
-                <Box>
-                  <Flex fontSize="16px" fontWeight="500" alignItems="center" gap={2}>
-                    <Avatar src={app.avatar} borderRadius={8} />
-                    <Flex>{app.name}</Flex>
-                  </Flex>
+                <Flex fontSize="16px" fontWeight="500" alignItems="center" gap={2}>
+                  <Avatar src={app.avatar} borderRadius={8} />
+                  <Flex>{app.name}</Flex>
+                </Flex>
 
-                  <Box fontSize="sm">{app.intro}</Box>
+                <Box fontSize="xs" color="myGray.500" minH="0" noOfLines={2} overflow="hidden">
+                  {app.intro || t('common:no_intro')}
                 </Box>
 
-                <Flex gap="2" flexWrap="wrap">
+                <Flex gap="2" flexWrap="wrap" mt="auto">
                   {app.favouriteTags.slice(0, 3).map((id) => (
                     <TagBox key={id} id={id} />
                   ))}
@@ -276,19 +284,21 @@ const ChatFavouriteApp = () => {
         <Flex flexDir="column" flex="1" justifyContent="center" alignItems="center" gap={4}>
           <EmptyTip p="0" text={t('chat:setting.favourite.category.no_data')} />
 
-          <Button
-            variant="primary"
-            leftIcon={<MyIcon name="common/settingLight" w="16px" />}
-            onClick={() =>
-              handlePaneChange(
-                ChatSidebarPaneEnum.SETTING,
-                undefined,
-                ChatSettingTabOptionEnum.FAVOURITE_APPS
-              )
-            }
-          >
-            {t('chat:setting.favourite.goto_add')}
-          </Button>
+          {userInfo?.permission.hasManagePer && (
+            <Button
+              variant="primary"
+              leftIcon={<MyIcon name="common/settingLight" w="16px" />}
+              onClick={() =>
+                handlePaneChange(
+                  ChatSidebarPaneEnum.SETTING,
+                  undefined,
+                  ChatSettingTabOptionEnum.FAVOURITE_APPS
+                )
+              }
+            >
+              {t('chat:setting.favourite.goto_add')}
+            </Button>
+          )}
         </Flex>
       )}
     </MyBox>
