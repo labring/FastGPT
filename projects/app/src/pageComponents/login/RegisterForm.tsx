@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { postRegister } from '@/web/support/user/api';
 import { useSendCode } from '@/web/support/user/hooks/useSendCode';
-import type { ResLogin } from '@/global/support/api/userRes';
+import type { LoginSuccessResponse } from '@/global/support/api/userRes';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { postCreateApp } from '@/web/core/app/api';
 import { emptyTemplates } from '@/web/core/app/templates';
@@ -23,7 +23,7 @@ import {
 import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 
 interface Props {
-  loginSuccess: (e: ResLogin) => void;
+  loginSuccess: (e: LoginSuccessResponse) => void;
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
 }
 

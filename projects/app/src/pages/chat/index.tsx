@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { Box, Flex } from '@chakra-ui/react';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
@@ -27,6 +27,8 @@ import {
 } from '@/web/core/chat/context/chatSettingContext';
 import ChatTeamApp from '@/pageComponents/chat/ChatTeamApp';
 import ChatFavouriteApp from '@/pageComponents/chat/ChatFavouriteApp';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import type { LoginSuccessResponse } from '@/global/support/api/userRes';
 
 const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const { isPc } = useSystem();
@@ -89,6 +91,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 const Render = (props: { appId: string; isStandalone?: string }) => {
   const { appId, isStandalone } = props;
   const { chatId } = useChatStore();
+  const { setUserInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
   const { isInitedUser, userInfo, myApps } = useChat(appId);
 
@@ -105,6 +108,10 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
     };
   }, [appId, chatId]);
 
+  const loginSuccess = useCallback(async (res: LoginSuccessResponse) => {
+    setUserInfo(res.user);
+  }, []);
+
   // Waiting for user info to be initialized
   if (!isInitedUser) {
     return (
@@ -120,7 +127,7 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
       <>
         <NextHead title={feConfigs?.systemTitle}></NextHead>
 
-        <LoginModal />
+        <LoginModal onSuccess={loginSuccess} />
       </>
     );
   }
