@@ -30,15 +30,13 @@ type ToolRunResponseType = {
 }[];
 
 type RunAgentCallProps = {
-  workflowProps: {
-    messages: ChatCompletionMessageParam[];
-    agentModel: LLMModelItemType;
-    toolNodes: ToolNodeItemType[];
-    maxRunAgentTimes: number;
-    res?: NextApiResponse;
-    workflowStreamResponse?: WorkflowResponseType;
-    interactiveEntryToolParams?: WorkflowInteractiveResponseType['toolParams'];
-  };
+  messages: ChatCompletionMessageParam[];
+  agentModel: LLMModelItemType;
+  toolNodes: ToolNodeItemType[];
+  maxRunAgentTimes: number;
+  res?: NextApiResponse;
+  workflowStreamResponse?: WorkflowResponseType;
+  interactiveEntryToolParams?: WorkflowInteractiveResponseType['toolParams'];
   requestParams: {
     temperature: number;
     maxToken: number;
@@ -59,7 +57,7 @@ type RunAgentCallProps = {
 };
 
 export const runAgentCall = async (props: RunAgentCallProps): Promise<RunAgentResponse> => {
-  const { workflowProps, requestParams, handleToolResponse } = props;
+  const { requestParams, handleToolResponse, ...workflowProps } = props;
   const {
     messages,
     agentModel,

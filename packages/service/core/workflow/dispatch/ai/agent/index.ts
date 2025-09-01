@@ -53,6 +53,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     runningUserInfo,
     externalProvider,
     stream,
+    res,
+    workflowStreamResponse,
     params: {
       model,
       systemPrompt,
@@ -160,13 +162,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       runTimes,
       finish_reason
     } = await runAgentCall({
-      workflowProps: {
-        messages: adaptMessages,
-        toolNodes,
-        agentModel,
-        maxRunAgentTimes: 100,
-        ...props
-      },
+      messages: adaptMessages,
+      toolNodes,
+      agentModel,
+      maxRunAgentTimes: 100,
+      res,
+      workflowStreamResponse,
+      interactiveEntryToolParams: lastInteractive?.toolParams,
       requestParams,
       handleToolResponse: async ({ args, nodeId }) => {
         const startParams = (() => {
