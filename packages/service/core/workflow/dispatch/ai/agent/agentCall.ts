@@ -60,8 +60,15 @@ type RunAgentCallProps = {
 
 export const runAgentCall = async (props: RunAgentCallProps): Promise<RunAgentResponse> => {
   const { workflowProps, requestParams, handleToolResponse } = props;
-  const { messages, agentModel, toolNodes, maxRunAgentTimes, res, workflowStreamResponse } =
-    workflowProps;
+  const {
+    messages,
+    agentModel,
+    toolNodes,
+    interactiveEntryToolParams,
+    maxRunAgentTimes,
+    res,
+    workflowStreamResponse
+  } = workflowProps;
   const { stream, maxToken, externalProvider, reasoning } = requestParams;
 
   const toolNodesMap = new Map<string, ToolNodeItemType>(
@@ -92,58 +99,54 @@ export const runAgentCall = async (props: RunAgentCallProps): Promise<RunAgentRe
   let outputTokens: number = 0;
   let runTimes: number = 0;
 
-  // if (interactiveEntryToolParams) {
-  //   const toolRunResponse = await runWorkflow({
-  //     ...workflowProps,
-  //     isToolCall: true
-  //   });
+  if (interactiveEntryToolParams) {
+    // TODO: mock data, wait for ask interactive node implemented
+    const interactiveResponse = '';
 
-  //   const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
+    workflowStreamResponse?.({
+      event: SseResponseEventEnum.toolResponse,
+      data: {
+        tool: {
+          id: interactiveEntryToolParams.toolCallId,
+          toolName: '',
+          toolAvatar: '',
+          params: '',
+          response: sliceStrStartEnd(interactiveResponse, 5000, 5000)
+        }
+      }
+    });
 
-  //   workflowStreamResponse?.({
-  //     event: SseResponseEventEnum.toolResponse,
-  //     data: {
-  //       tool: {
-  //         id: interactiveEntryToolParams.toolCallId,
-  //         toolName: '',
-  //         toolAvatar: '',
-  //         params: '',
-  //         response: sliceStrStartEnd(stringToolResponse, 5000, 5000)
-  //       }
-  //     }
-  //   });
+    // const hasStopSignal = toolRunResponse.flowResponses?.some((item) => item.toolStop);
+    // const workflowInteractiveResponse = toolRunResponse.workflowInteractiveResponse;
 
-  //   const hasStopSignal = toolRunResponse.flowResponses?.some((item) => item.toolStop);
-  //   const workflowInteractiveResponse = toolRunResponse.workflowInteractiveResponse;
+    allCompleteMessages.push(
+      ...interactiveEntryToolParams.memoryMessages.map((item) =>
+        item.role === 'tool' && item.tool_call_id === interactiveEntryToolParams?.toolCallId
+          ? { ...item, content: interactiveResponse }
+          : item
+      )
+    );
 
-  //   allCompleteMessages.push(
-  //     ...interactiveEntryToolParams.memoryMessages.map((item) =>
-  //       item.role === 'tool' && item.tool_call_id === interactiveEntryToolParams?.toolCallId
-  //         ? { ...item, content: stringToolResponse }
-  //         : item
-  //     )
-  //   );
+    // 累积 interactive 工具的结果
+    // dispatchFlowResponse.push(toolRunResponse);
+    // assistantResponses.push(...toolRunResponse.assistantResponses);
+    // runTimes += toolRunResponse.runTimes;
 
-  //   // 累积 interactive 工具的结果
-  //   dispatchFlowResponse.push(toolRunResponse);
-  //   assistantResponses.push(...toolRunResponse.assistantResponses);
-  //   runTimes += toolRunResponse.runTimes;
+    // if (hasStopSignal || workflowInteractiveResponse) {
+    //   if (workflowInteractiveResponse) {
+    //     agentWorkflowInteractiveResponse = {
+    //       ...workflowInteractiveResponse,
+    //       toolParams: {
+    //         entryNodeIds: workflowInteractiveResponse.entryNodeIds,
+    //         toolCallId: interactiveEntryToolParams?.toolCallId || '',
+    //         memoryMessages: interactiveEntryToolParams?.memoryMessages || []
+    //       }
+    //     };
+    //   }
+    // }
 
-  //   if (hasStopSignal || workflowInteractiveResponse) {
-  //     if (workflowInteractiveResponse) {
-  //       agentWorkflowInteractiveResponse = {
-  //         ...workflowInteractiveResponse,
-  //         toolParams: {
-  //           entryNodeIds: workflowInteractiveResponse.entryNodeIds,
-  //           toolCallId: interactiveEntryToolParams?.toolCallId || '',
-  //           memoryMessages: interactiveEntryToolParams?.memoryMessages || []
-  //         }
-  //       };
-  //     }
-  //   }
-
-  //   currRunAgentTimes--;
-  // }
+    currRunAgentTimes--;
+  }
 
   // ------------------------------------------------------------
 
