@@ -893,7 +893,6 @@
   "model.type.reRank": "重排模型",
   "model.type.stt": "语音识别",
   "model.type.tts": "语音合成",
-
   "month": "月",
   "move.confirm": "确认移动",
   "move_success": "移动成功",
@@ -915,6 +914,7 @@
   "no_more_data": "没有更多了~",
   "no_pay_way": "系统无合适的支付渠道",
   "no_select_data": "没有可选值",
+  "not_active_team": "你没有可用的团队",
   "not_model_config": "未配置相关模型",
   "not_open": "未开启",
   "not_permission": "当前订阅套餐不支持团队操作日志",

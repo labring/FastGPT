@@ -10,7 +10,7 @@ import {
 } from '@chakra-ui/react';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { ResLogin } from '@/global/support/api/userRes.d';
+import type { LoginSuccessResponse } from '@/global/support/api/userRes.d';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import dynamic from 'next/dynamic';
@@ -21,8 +21,6 @@ import { useTranslation } from 'next-i18next';
 import LoginForm from '@/pageComponents/login/LoginForm/LoginForm';
 import { GET } from '@/web/common/api/request';
 import { getDocPath } from '@/web/common/system/doc';
-import { postAcceptInvitationLink } from '@/web/support/user/team/api';
-import { useRouter } from 'next/router';
 
 const RegisterForm = dynamic(() => import('@/pageComponents/login/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('@/pageComponents/login/ForgetPasswordForm'));
@@ -187,25 +185,21 @@ export const LoginContainer = ({
   onSuccess
 }: {
   children?: React.ReactNode;
-  onSuccess?: (res: ResLogin) => void;
+  onSuccess: (res: LoginSuccessResponse) => void;
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-  const { setUserInfo } = useUserStore();
   const { setLastChatAppId } = useChatStore();
 
   const [pageType, setPageType] = useState<`${LoginPageTypeEnum}` | null>(null);
   const [showCommunityModal, setShowCommunityModal] = useState(false);
-  const router = useRouter();
-  const { lastRoute = '' } = router.query as { lastRoute: string };
 
   // login success handler
   const loginSuccess = useCallback(
-    async (res: ResLogin) => {
-      setUserInfo(res.user);
+    (res: LoginSuccessResponse) => {
       onSuccess?.(res);
     },
-    [setUserInfo, onSuccess]
+    [onSuccess]
   );
 
   // initialization logic
