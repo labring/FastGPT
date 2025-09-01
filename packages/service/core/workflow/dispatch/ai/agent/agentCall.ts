@@ -42,12 +42,10 @@ export const runAgentCall = async (props: DispatchAgentModuleProps): Promise<Run
     res,
     requestOrigin,
     runtimeNodes,
-    runtimeEdges,
     stream,
     retainDatasetCite = true,
     externalProvider,
     workflowStreamResponse,
-    runningUserInfo,
     params: {
       temperature,
       maxToken,
@@ -79,9 +77,6 @@ export const runAgentCall = async (props: DispatchAgentModuleProps): Promise<Run
 
   const write = res ? responseWriteController({ res, readStream: stream }) : undefined;
 
-  // Interactive mode 状态
-  let currentInteractiveParams = interactiveEntryToolParams;
-
   // 统计信息
   const allToolsRunResponse: ToolRunResponseType = [];
   const assistantResponses: AIChatItemValueItemType[] = [];
@@ -94,70 +89,63 @@ export const runAgentCall = async (props: DispatchAgentModuleProps): Promise<Run
   let outputTokens: number = 0;
   let runTimes: number = 0;
 
-  while (currRunAgentTimes > 0) {
-    const currToolsRunResponse: ToolRunResponseType = [];
+  if (interactiveEntryToolParams) {
+    const toolRunResponse = await runWorkflow({
+      ...workflowProps,
+      isToolCall: true
+    });
 
-    // Interactive mode handling
-    if (currentInteractiveParams) {
-      initToolNodes(runtimeNodes, currentInteractiveParams.entryNodeIds);
-      initToolCallEdges(runtimeEdges, currentInteractiveParams.entryNodeIds);
+    const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
 
-      const toolRunResponse = await runWorkflow({
-        ...workflowProps,
-        isToolCall: true
-      });
-
-      const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
-
-      workflowStreamResponse?.({
-        event: SseResponseEventEnum.toolResponse,
-        data: {
-          tool: {
-            id: currentInteractiveParams.toolCallId,
-            toolName: '',
-            toolAvatar: '',
-            params: '',
-            response: sliceStrStartEnd(stringToolResponse, 5000, 5000)
-          }
+    workflowStreamResponse?.({
+      event: SseResponseEventEnum.toolResponse,
+      data: {
+        tool: {
+          id: interactiveEntryToolParams.toolCallId,
+          toolName: '',
+          toolAvatar: '',
+          params: '',
+          response: sliceStrStartEnd(stringToolResponse, 5000, 5000)
         }
-      });
-
-      const hasStopSignal = toolRunResponse.flowResponses?.some((item) => item.toolStop);
-      const workflowInteractiveResponse = toolRunResponse.workflowInteractiveResponse;
-
-      allCompleteMessages.push(
-        ...currentInteractiveParams.memoryMessages.map((item) =>
-          item.role === 'tool' && item.tool_call_id === currentInteractiveParams?.toolCallId
-            ? { ...item, content: stringToolResponse }
-            : item
-        )
-      );
-
-      // 累积 interactive 工具的结果
-      dispatchFlowResponse.push(toolRunResponse);
-      assistantResponses.push(...toolRunResponse.assistantResponses);
-      runTimes += toolRunResponse.runTimes;
-
-      if (hasStopSignal || workflowInteractiveResponse) {
-        if (workflowInteractiveResponse) {
-          agentWorkflowInteractiveResponse = {
-            ...workflowInteractiveResponse,
-            toolParams: {
-              entryNodeIds: workflowInteractiveResponse.entryNodeIds,
-              toolCallId: currentInteractiveParams?.toolCallId || '',
-              memoryMessages: currentInteractiveParams?.memoryMessages || []
-            }
-          };
-        }
-        break;
       }
+    });
 
-      currentInteractiveParams = undefined;
-      currRunAgentTimes--;
-      continue;
+    const hasStopSignal = toolRunResponse.flowResponses?.some((item) => item.toolStop);
+    const workflowInteractiveResponse = toolRunResponse.workflowInteractiveResponse;
+
+    allCompleteMessages.push(
+      ...interactiveEntryToolParams.memoryMessages.map((item) =>
+        item.role === 'tool' && item.tool_call_id === interactiveEntryToolParams?.toolCallId
+          ? { ...item, content: stringToolResponse }
+          : item
+      )
+    );
+
+    // 累积 interactive 工具的结果
+    dispatchFlowResponse.push(toolRunResponse);
+    assistantResponses.push(...toolRunResponse.assistantResponses);
+    runTimes += toolRunResponse.runTimes;
+
+    if (hasStopSignal || workflowInteractiveResponse) {
+      if (workflowInteractiveResponse) {
+        agentWorkflowInteractiveResponse = {
+          ...workflowInteractiveResponse,
+          toolParams: {
+            entryNodeIds: workflowInteractiveResponse.entryNodeIds,
+            toolCallId: interactiveEntryToolParams?.toolCallId || '',
+            memoryMessages: interactiveEntryToolParams?.memoryMessages || []
+          }
+        };
+      }
     }
 
-    // ------------------------------------------------------------
+    currRunAgentTimes--;
+  }
+
+  // ------------------------------------------------------------
+
+  while (currRunAgentTimes > 0) {
+    const currToolsRunResponse: ToolRunResponseType = [];
 
     // TODO: Context agent compression
 

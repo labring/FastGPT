@@ -123,7 +123,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
     const requestParams = {
       runtimeNodes,
-      runtimeEdges,
       toolNodes,
       agentModel,
       messages: adaptMessages,
