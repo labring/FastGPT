@@ -21,6 +21,8 @@ import { useTranslation } from 'next-i18next';
 import LoginForm from '@/pageComponents/login/LoginForm/LoginForm';
 import { GET } from '@/web/common/api/request';
 import { getDocPath } from '@/web/common/system/doc';
+import { postAcceptInvitationLink } from '@/web/support/user/team/api';
+import { useRouter } from 'next/router';
 
 const RegisterForm = dynamic(() => import('@/pageComponents/login/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('@/pageComponents/login/ForgetPasswordForm'));
@@ -194,10 +196,12 @@ export const LoginContainer = ({
 
   const [pageType, setPageType] = useState<`${LoginPageTypeEnum}` | null>(null);
   const [showCommunityModal, setShowCommunityModal] = useState(false);
+  const router = useRouter();
+  const { lastRoute = '' } = router.query as { lastRoute: string };
 
   // login success handler
   const loginSuccess = useCallback(
-    (res: ResLogin) => {
+    async (res: ResLogin) => {
       setUserInfo(res.user);
       onSuccess?.(res);
     },
