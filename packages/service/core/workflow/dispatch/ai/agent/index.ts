@@ -133,7 +133,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       messages,
       reserveId: false
     });
-    const requestProps = {
+    const requestParams = {
       temperature,
       maxToken,
       stream,
@@ -160,14 +160,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       runTimes,
       finish_reason
     } = await runAgentCall({
-      messages: adaptMessages,
-      toolNodes,
-      agentModel,
-      maxRunAgentTimes: 100,
       workflowProps: {
+        messages: adaptMessages,
+        toolNodes,
+        agentModel,
+        maxRunAgentTimes: 100,
         ...props
       },
-      requestProps,
+      requestParams,
       handleToolResponse: async ({ args, nodeId }) => {
         const startParams = (() => {
           try {

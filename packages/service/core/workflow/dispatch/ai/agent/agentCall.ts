@@ -30,16 +30,16 @@ type ToolRunResponseType = {
 }[];
 
 type RunAgentCallProps = {
-  messages: ChatCompletionMessageParam[];
-  toolNodes: ToolNodeItemType[];
-  agentModel: LLMModelItemType;
-  maxRunAgentTimes: number;
-  interactiveEntryToolParams?: WorkflowInteractiveResponseType['toolParams'];
   workflowProps: {
+    messages: ChatCompletionMessageParam[];
+    agentModel: LLMModelItemType;
+    toolNodes: ToolNodeItemType[];
+    maxRunAgentTimes: number;
     res?: NextApiResponse;
     workflowStreamResponse?: WorkflowResponseType;
+    interactiveEntryToolParams?: WorkflowInteractiveResponseType['toolParams'];
   };
-  requestProps: {
+  requestParams: {
     temperature: number;
     maxToken: number;
     externalProvider: ExternalProviderType;
@@ -59,18 +59,10 @@ type RunAgentCallProps = {
 };
 
 export const runAgentCall = async (props: RunAgentCallProps): Promise<RunAgentResponse> => {
-  const {
-    messages,
-    toolNodes,
-    agentModel,
-    maxRunAgentTimes,
-    interactiveEntryToolParams,
-    workflowProps,
-    requestProps,
-    handleToolResponse
-  } = props;
-  const { res, workflowStreamResponse } = workflowProps;
-  const { stream, maxToken, externalProvider, reasoning } = requestProps;
+  const { workflowProps, requestParams, handleToolResponse } = props;
+  const { messages, agentModel, toolNodes, maxRunAgentTimes, res, workflowStreamResponse } =
+    workflowProps;
+  const { stream, maxToken, externalProvider, reasoning } = requestParams;
 
   const toolNodesMap = new Map<string, ToolNodeItemType>(
     toolNodes.map((item) => [item.nodeId, item])
@@ -172,24 +164,13 @@ export const runAgentCall = async (props: RunAgentCallProps): Promise<RunAgentRe
     } = await createLLMResponse({
       body: {
         model: agentModel.model,
-        // stream,
         messages: allCompleteMessages,
         tool_choice: 'auto',
         toolCallMode: agentModel.toolChoice ? 'toolChoice' : 'prompt',
         tools,
         parallel_tool_calls: true,
-        // temperature,
         max_tokens,
-        // top_p: aiChatTopP,
-        // stop: aiChatStopSign,
-        // response_format: {
-        //   type: aiChatResponseFormat as any,
-        //   json_schema: aiChatJsonSchema
-        // },
-        // retainDatasetCite,
-        // useVision: aiChatVision,
-        // requestOrigin
-        ...requestProps
+        ...requestParams
       },
       userKey: externalProvider.openaiAccount,
       isAborted: () => res?.closed,

@@ -37,13 +37,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.subAgentConfig]?: Record<string, any>;
   [NodeInputKeyEnum.planAgentConfig]?: Record<string, any>;
   [NodeInputKeyEnum.modelAgentConfig]?: Record<string, any>;
-}> & {
-  messages: ChatCompletionMessageParam[];
-  toolNodes: ToolNodeItemType[];
-  agentModel: LLMModelItemType;
-  maxRunAgentTimes: number;
-  interactiveEntryToolParams?: WorkflowInteractiveResponseType['toolParams'];
-};
+}>;
 
 export type RunAgentResponse = {
   dispatchFlowResponse: DispatchFlowResponse[];
@@ -59,11 +53,4 @@ export type RunAgentResponse = {
 export type ToolNodeItemType = RuntimeNodeItemType & {
   toolParams: RuntimeNodeItemType['inputs'];
   jsonSchema?: JSONSchemaInputType;
-};
-
-export type AgentPlan = {
-  id: string;
-  description: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  result?: any;
 };
