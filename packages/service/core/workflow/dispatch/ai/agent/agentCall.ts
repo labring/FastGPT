@@ -99,7 +99,7 @@ export const runAgentCall = async (props: RunAgentCallProps): Promise<RunAgentRe
 
   if (interactiveEntryToolParams) {
     // TODO: mock data, wait for ask interactive node implemented
-    const interactiveResponse = '';
+    const interactiveResponse = ' ';
 
     workflowStreamResponse?.({
       event: SseResponseEventEnum.toolResponse,
