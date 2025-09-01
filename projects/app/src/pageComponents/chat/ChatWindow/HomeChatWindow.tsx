@@ -48,6 +48,7 @@ import { ChatSidebarPaneEnum } from '../constants';
 import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import type { QuickAppType } from '@fastgpt/global/core/chat/setting/type';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 type Props = {
   myApps: AppListItemType[];
@@ -66,8 +67,7 @@ const defaultWhisperConfig: AppWhisperConfigType = {
 };
 
 const HomeChatWindow = ({ myApps }: Props) => {
-  const { t, i18n } = useTranslation();
-  const language = i18n.language;
+  const { t } = useTranslation();
   const { isPc } = useSystem();
 
   const { userInfo } = useUserStore();
@@ -398,7 +398,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
   return (
     <Flex h={'100%'} flexDirection={['column', 'row']}>
       {/* set window title and icon */}
-      <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} icon="/icon/logo.svg" />
+      <NextHead title={chatSettings?.homeTabTitle} icon={getWebReqUrl(feConfigs?.favicon)} />
 
       {/* show history slider */}
       {isPc ? (

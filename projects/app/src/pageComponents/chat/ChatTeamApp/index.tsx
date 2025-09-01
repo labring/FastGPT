@@ -15,11 +15,14 @@ import { ChatContext } from '@/web/core/chat/context/chatContext';
 import NextHead from '@/components/common/NextHead';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 const MyApps = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
+  const { feConfigs } = useSystemStore();
 
   const { paths, myApps, isFetchingApps, setSearchKey } = useContextSelector(
     AppListContext,
@@ -51,7 +54,7 @@ const MyApps = () => {
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} icon="/icon/logo.svg" />
+      <NextHead title={chatSettings?.homeTabTitle} icon={getWebReqUrl(feConfigs?.favicon)} />
 
       {!isPc && (
         <Flex
