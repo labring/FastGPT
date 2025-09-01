@@ -2,9 +2,9 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { dispatchAppRequest } from './abandoned/runApp';
 import { dispatchClassifyQuestion } from './ai/classifyQuestion';
 import { dispatchContentExtract } from './ai/extract';
-import { dispatchRunTools } from './ai/agent/index';
-import { dispatchStopToolCall } from './ai/agent/stopTool';
-import { dispatchToolParams } from './ai/agent/toolParams';
+import { dispatchRunTools } from './ai/tool/index';
+import { dispatchStopToolCall } from './ai/tool/stopTool';
+import { dispatchToolParams } from './ai/tool/toolParams';
 import { dispatchChatCompletion } from './ai/chat';
 import { dispatchCodeSandbox } from './tools/codeSandbox';
 import { dispatchDatasetConcat } from './dataset/concat';
@@ -30,6 +30,7 @@ import { dispatchIfElse } from './tools/runIfElse';
 import { dispatchLafRequest } from './tools/runLaf';
 import { dispatchUpdateVariable } from './tools/runUpdateVar';
 import { dispatchTextEditor } from './tools/textEditor';
+import { dispatchRunAgent } from './ai/agent';
 
 export const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -45,7 +46,8 @@ export const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
   [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,
   [FlowNodeTypeEnum.queryExtension]: dispatchQueryExtension,
-  [FlowNodeTypeEnum.agent]: dispatchRunTools,
+  [FlowNodeTypeEnum.agent]: dispatchRunAgent,
+  [FlowNodeTypeEnum.toolCall]: dispatchRunTools,
   [FlowNodeTypeEnum.stopTool]: dispatchStopToolCall,
   [FlowNodeTypeEnum.toolParams]: dispatchToolParams,
   [FlowNodeTypeEnum.lafModule]: dispatchLafRequest,
