@@ -115,10 +115,7 @@ const ChatFavouriteApp = () => {
 
   return (
     <MyBox isLoading={isSearching} display="flex" flexDirection={'column'} h={'100%'}>
-      <NextHead
-        title={homeTabTitle || 'FastGPT'}
-        icon={getWebReqUrl(feConfigs?.favicon) || '/icon/logo.svg'}
-      />
+      <NextHead title={homeTabTitle} icon={getWebReqUrl(feConfigs?.favicon)} />
 
       {!isPc && (
         <Flex
