@@ -330,23 +330,23 @@ const FavouriteAppSetting = ({ Header }: Props) => {
 
                           {/* action */}
                           <Td p="0" w="0" textAlign="center">
-                            <PopoverConfirm
-                              type="delete"
-                              content={t('chat:setting.favourite.delete_app_confirm')}
-                              onConfirm={() => {
-                                setLocalFavourites((prev) => {
-                                  const next = prev.filter((_, i) => i !== index);
-                                  // reset order
-                                  const ordered = next.map((item, idx) => ({
-                                    ...item,
-                                    order: idx
-                                  }));
-                                  deleteApp(row._id);
-                                  return ordered;
-                                });
-                              }}
-                              Trigger={
-                                <Box w="158px">
+                            <Box w="158px">
+                              <PopoverConfirm
+                                type="delete"
+                                content={t('chat:setting.favourite.delete_app_confirm')}
+                                onConfirm={() => {
+                                  setLocalFavourites((prev) => {
+                                    const next = prev.filter((_, i) => i !== index);
+                                    // reset order
+                                    const ordered = next.map((item, idx) => ({
+                                      ...item,
+                                      order: idx
+                                    }));
+                                    deleteApp(row._id);
+                                    return ordered;
+                                  });
+                                }}
+                                Trigger={
                                   <IconButton
                                     size="sm"
                                     aria-label="delete"
@@ -356,9 +356,9 @@ const FavouriteAppSetting = ({ Header }: Props) => {
                                       <MyIcon name="common/trash" w="20px" color="myGray.400" />
                                     }
                                   />
-                                </Box>
-                              }
-                            />
+                                }
+                              />
+                            </Box>
                           </Td>
                         </Tr>
                       )}
