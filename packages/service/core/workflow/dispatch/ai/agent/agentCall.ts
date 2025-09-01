@@ -9,57 +9,77 @@ import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/cons
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { runWorkflow } from '../../index';
-import type { DispatchAgentModuleProps, ToolNodeItemType } from './type';
+import type { ToolNodeItemType } from './type';
 import json5 from 'json5';
-import type { DispatchFlowResponse } from '../../type';
+import type { DispatchFlowResponse, WorkflowResponseType } from '../../type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import type { AIChatItemType, AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { formatToolResponse, initToolCallEdges, initToolNodes } from '../utils';
+import { formatToolResponse, initToolNodes } from '../utils';
 import { computedMaxToken } from '../../../../ai/utils';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { createLLMResponse } from '../../../../ai/llm/request';
-import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
+import {
+  toolValueTypeList,
+  valueTypeJsonSchemaMap,
+  type NodeInputKeyEnum
+} from '@fastgpt/global/core/workflow/constants';
 import type { RunAgentResponse } from './type';
+import type {
+  ExternalProviderType,
+  RuntimeNodeItemType
+} from '@fastgpt/global/core/workflow/runtime/type';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { NextApiResponse } from 'next/types';
 
 type ToolRunResponseType = {
   toolRunResponse?: DispatchFlowResponse;
   toolMsgParams: ChatCompletionToolMessageParam;
 }[];
 
-export const runAgentCall = async (props: DispatchAgentModuleProps): Promise<RunAgentResponse> => {
+type RunAgentCallProps = {
+  messages: ChatCompletionMessageParam[];
+  toolNodes: ToolNodeItemType[];
+  agentModel: LLMModelItemType;
+  maxRunAgentTimes: number;
+  interactiveEntryToolParams?: WorkflowInteractiveResponseType['toolParams'];
+  workflowProps: {
+    runtimeNodes: RuntimeNodeItemType[];
+    res?: NextApiResponse;
+    workflowStreamResponse?: WorkflowResponseType;
+  };
+  requestProps: {
+    temperature: number;
+    maxToken: number;
+    externalProvider: ExternalProviderType;
+    requestOrigin?: string;
+    stream?: boolean;
+    retainDatasetCite?: boolean;
+    useVision?: boolean;
+    top_p?: number;
+    response_format?: {
+      type?: string;
+      json_schema?: string;
+    };
+    stop?: string;
+    reasoning?: boolean;
+  };
+};
+
+export const runAgentCall = async (props: RunAgentCallProps): Promise<RunAgentResponse> => {
   const {
     messages,
     toolNodes,
     agentModel,
     maxRunAgentTimes,
     interactiveEntryToolParams,
-    ...workflowProps
+    workflowProps,
+    requestProps
   } = props;
-  let {
-    res,
-    requestOrigin,
-    runtimeNodes,
-    stream,
-    retainDatasetCite = true,
-    externalProvider,
-    workflowStreamResponse,
-    params: {
-      temperature,
-      maxToken,
-      aiChatVision,
-      aiChatTopP,
-      aiChatStopSign,
-      aiChatResponseFormat,
-      aiChatJsonSchema,
-      aiChatReasoning
-      // subConfig,
-      // planConfig,
-      // modelConfig
-    }
-  } = workflowProps;
+  const { res, runtimeNodes, workflowStreamResponse } = workflowProps;
+  const { stream, maxToken, externalProvider, reasoning } = requestProps;
 
   const toolNodesMap = new Map<string, ToolNodeItemType>(
     toolNodes.map((item) => [item.nodeId, item])
@@ -71,7 +91,7 @@ export const runAgentCall = async (props: DispatchAgentModuleProps): Promise<Run
 
   const max_tokens = computedMaxToken({
     model: agentModel,
-    maxToken,
+    maxToken: maxToken,
     min: 100
   });
 
@@ -89,58 +109,58 @@ export const runAgentCall = async (props: DispatchAgentModuleProps): Promise<Run
   let outputTokens: number = 0;
   let runTimes: number = 0;
 
-  if (interactiveEntryToolParams) {
-    const toolRunResponse = await runWorkflow({
-      ...workflowProps,
-      isToolCall: true
-    });
+  // if (interactiveEntryToolParams) {
+  //   const toolRunResponse = await runWorkflow({
+  //     ...workflowProps,
+  //     isToolCall: true
+  //   });
 
-    const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
+  //   const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
 
-    workflowStreamResponse?.({
-      event: SseResponseEventEnum.toolResponse,
-      data: {
-        tool: {
-          id: interactiveEntryToolParams.toolCallId,
-          toolName: '',
-          toolAvatar: '',
-          params: '',
-          response: sliceStrStartEnd(stringToolResponse, 5000, 5000)
-        }
-      }
-    });
+  //   workflowStreamResponse?.({
+  //     event: SseResponseEventEnum.toolResponse,
+  //     data: {
+  //       tool: {
+  //         id: interactiveEntryToolParams.toolCallId,
+  //         toolName: '',
+  //         toolAvatar: '',
+  //         params: '',
+  //         response: sliceStrStartEnd(stringToolResponse, 5000, 5000)
+  //       }
+  //     }
+  //   });
 
-    const hasStopSignal = toolRunResponse.flowResponses?.some((item) => item.toolStop);
-    const workflowInteractiveResponse = toolRunResponse.workflowInteractiveResponse;
+  //   const hasStopSignal = toolRunResponse.flowResponses?.some((item) => item.toolStop);
+  //   const workflowInteractiveResponse = toolRunResponse.workflowInteractiveResponse;
 
-    allCompleteMessages.push(
-      ...interactiveEntryToolParams.memoryMessages.map((item) =>
-        item.role === 'tool' && item.tool_call_id === interactiveEntryToolParams?.toolCallId
-          ? { ...item, content: stringToolResponse }
-          : item
-      )
-    );
+  //   allCompleteMessages.push(
+  //     ...interactiveEntryToolParams.memoryMessages.map((item) =>
+  //       item.role === 'tool' && item.tool_call_id === interactiveEntryToolParams?.toolCallId
+  //         ? { ...item, content: stringToolResponse }
+  //         : item
+  //     )
+  //   );
 
-    // 累积 interactive 工具的结果
-    dispatchFlowResponse.push(toolRunResponse);
-    assistantResponses.push(...toolRunResponse.assistantResponses);
-    runTimes += toolRunResponse.runTimes;
+  //   // 累积 interactive 工具的结果
+  //   dispatchFlowResponse.push(toolRunResponse);
+  //   assistantResponses.push(...toolRunResponse.assistantResponses);
+  //   runTimes += toolRunResponse.runTimes;
 
-    if (hasStopSignal || workflowInteractiveResponse) {
-      if (workflowInteractiveResponse) {
-        agentWorkflowInteractiveResponse = {
-          ...workflowInteractiveResponse,
-          toolParams: {
-            entryNodeIds: workflowInteractiveResponse.entryNodeIds,
-            toolCallId: interactiveEntryToolParams?.toolCallId || '',
-            memoryMessages: interactiveEntryToolParams?.memoryMessages || []
-          }
-        };
-      }
-    }
+  //   if (hasStopSignal || workflowInteractiveResponse) {
+  //     if (workflowInteractiveResponse) {
+  //       agentWorkflowInteractiveResponse = {
+  //         ...workflowInteractiveResponse,
+  //         toolParams: {
+  //           entryNodeIds: workflowInteractiveResponse.entryNodeIds,
+  //           toolCallId: interactiveEntryToolParams?.toolCallId || '',
+  //           memoryMessages: interactiveEntryToolParams?.memoryMessages || []
+  //         }
+  //       };
+  //     }
+  //   }
 
-    currRunAgentTimes--;
-  }
+  //   currRunAgentTimes--;
+  // }
 
   // ------------------------------------------------------------
 
@@ -161,28 +181,29 @@ export const runAgentCall = async (props: DispatchAgentModuleProps): Promise<Run
     } = await createLLMResponse({
       body: {
         model: agentModel.model,
-        stream,
+        // stream,
         messages: allCompleteMessages,
         tool_choice: 'auto',
         toolCallMode: agentModel.toolChoice ? 'toolChoice' : 'prompt',
         tools,
         parallel_tool_calls: true,
-        temperature,
+        // temperature,
         max_tokens,
-        top_p: aiChatTopP,
-        stop: aiChatStopSign,
-        response_format: {
-          type: aiChatResponseFormat as any,
-          json_schema: aiChatJsonSchema
-        },
-        retainDatasetCite,
-        useVision: aiChatVision,
-        requestOrigin
+        // top_p: aiChatTopP,
+        // stop: aiChatStopSign,
+        // response_format: {
+        //   type: aiChatResponseFormat as any,
+        //   json_schema: aiChatJsonSchema
+        // },
+        // retainDatasetCite,
+        // useVision: aiChatVision,
+        // requestOrigin
+        ...requestProps
       },
       userKey: externalProvider.openaiAccount,
       isAborted: () => res?.closed,
       onReasoning({ text }) {
-        if (!aiChatReasoning) return;
+        if (!reasoning) return;
         workflowStreamResponse?.({
           write,
           event: SseResponseEventEnum.answer,
@@ -241,10 +262,10 @@ export const runAgentCall = async (props: DispatchAgentModuleProps): Promise<Run
         initToolNodes(runtimeNodes, [toolNode.nodeId], startParams);
 
         // TODO: 需要传递 sub apps config参数, 运行 sub agent 获取结果. 并考虑计费问题
-        toolRunResponse = await runWorkflow({
-          ...workflowProps,
-          isToolCall: true
-        });
+        // toolRunResponse = await runWorkflow({
+        //   ...workflowProps,
+        //   isToolCall: true
+        // });
 
         stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
       } catch (error) {

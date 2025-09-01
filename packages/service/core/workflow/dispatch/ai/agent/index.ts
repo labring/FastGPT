@@ -44,6 +44,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     lastInteractive,
     runningUserInfo,
     externalProvider,
+    stream,
     params: {
       model,
       systemPrompt,
@@ -51,10 +52,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       history = 6,
       fileUrlList: fileLinks,
       aiChatVision,
-      aiChatReasoning
-      // subConfig,
-      // planConfig,
-      // modelConfig
+      aiChatReasoning,
+      temperature,
+      maxToken,
+      aiChatTopP,
+      aiChatResponseFormat,
+      aiChatJsonSchema,
+      aiChatStopSign
     }
   } = props;
 
@@ -139,9 +143,29 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       runTimes,
       finish_reason
     } = await runAgentCall({
-      ...props,
-      ...requestParams,
-      maxRunAgentTimes: 100
+      messages: adaptMessages,
+      toolNodes,
+      agentModel,
+      maxRunAgentTimes: 100,
+      workflowProps: {
+        ...props
+      },
+      requestProps: {
+        temperature,
+        maxToken,
+        stream,
+        requestOrigin,
+        externalProvider,
+        retainDatasetCite: true,
+        useVision: aiChatVision,
+        top_p: aiChatTopP,
+        response_format: {
+          type: aiChatResponseFormat,
+          json_schema: aiChatJsonSchema
+        },
+        stop: aiChatStopSign,
+        reasoning: aiChatReasoning
+      }
     });
 
     const { totalPoints: modelTotalPoints, modelName } = formatModelChars2Points({
