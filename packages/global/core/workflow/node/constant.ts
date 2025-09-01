@@ -129,7 +129,7 @@ export enum FlowNodeTypeEnum {
   pluginOutput = 'pluginOutput',
   queryExtension = 'cfr',
   agent = 'agent',
-  toolCall = 'toolCall',
+  toolCall = 'tools',
   stopTool = 'stopTool',
   toolParams = 'toolParams',
   lafModule = 'lafModule',
