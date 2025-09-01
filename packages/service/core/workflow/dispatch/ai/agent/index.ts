@@ -20,13 +20,21 @@ import {
 import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { filterToolResponseToPreview, getToolNodesByIds, toolCallMessagesAdapt } from '../utils';
+import {
+  filterToolResponseToPreview,
+  formatToolResponse,
+  getToolNodesByIds,
+  initToolNodes,
+  toolCallMessagesAdapt
+} from '../utils';
 import { getFileContentFromLinks, getHistoryFileLinks } from '../../tools/readFiles';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getDocumentQuotePrompt } from '@fastgpt/global/core/ai/prompt/AIChat';
 import { postTextCensor } from '../../../../chat/postTextCensor';
 import { getTopAgentDefaultPrompt } from './constants';
+import { runWorkflow } from '../..';
+import json5 from 'json5';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -125,12 +133,21 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       messages,
       reserveId: false
     });
-    const requestParams = {
-      runtimeNodes,
-      toolNodes,
-      agentModel,
-      messages: adaptMessages,
-      interactiveEntryToolParams: lastInteractive?.toolParams
+    const requestProps = {
+      temperature,
+      maxToken,
+      stream,
+      requestOrigin,
+      externalProvider,
+      retainDatasetCite: true,
+      useVision: aiChatVision,
+      top_p: aiChatTopP,
+      response_format: {
+        type: aiChatResponseFormat,
+        json_schema: aiChatJsonSchema
+      },
+      stop: aiChatStopSign,
+      reasoning: aiChatReasoning
     };
 
     const {
@@ -150,21 +167,21 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       workflowProps: {
         ...props
       },
-      requestProps: {
-        temperature,
-        maxToken,
-        stream,
-        requestOrigin,
-        externalProvider,
-        retainDatasetCite: true,
-        useVision: aiChatVision,
-        top_p: aiChatTopP,
-        response_format: {
-          type: aiChatResponseFormat,
-          json_schema: aiChatJsonSchema
-        },
-        stop: aiChatStopSign,
-        reasoning: aiChatReasoning
+      requestProps,
+      handleToolResponse: async ({ args, nodeId }) => {
+        const startParams = (() => {
+          try {
+            return json5.parse(args);
+          } catch {
+            return {};
+          }
+        })();
+        initToolNodes(runtimeNodes, [nodeId], startParams);
+        const toolRunResponse = await runWorkflow({
+          ...props,
+          isToolCall: true
+        });
+        return formatToolResponse(toolRunResponse.toolResponses);
       }
     });
 

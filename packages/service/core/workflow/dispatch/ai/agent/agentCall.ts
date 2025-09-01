@@ -8,29 +8,19 @@ import { responseWriteController } from '../../../../../common/response';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import { runWorkflow } from '../../index';
 import type { ToolNodeItemType } from './type';
-import json5 from 'json5';
 import type { DispatchFlowResponse, WorkflowResponseType } from '../../type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import type { AIChatItemType, AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { formatToolResponse, initToolNodes } from '../utils';
 import { computedMaxToken } from '../../../../ai/utils';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { createLLMResponse } from '../../../../ai/llm/request';
-import {
-  toolValueTypeList,
-  valueTypeJsonSchemaMap,
-  type NodeInputKeyEnum
-} from '@fastgpt/global/core/workflow/constants';
+import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
 import type { RunAgentResponse } from './type';
-import type {
-  ExternalProviderType,
-  RuntimeNodeItemType
-} from '@fastgpt/global/core/workflow/runtime/type';
+import type { ExternalProviderType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import type { NextApiResponse } from 'next/types';
 
@@ -46,7 +36,6 @@ type RunAgentCallProps = {
   maxRunAgentTimes: number;
   interactiveEntryToolParams?: WorkflowInteractiveResponseType['toolParams'];
   workflowProps: {
-    runtimeNodes: RuntimeNodeItemType[];
     res?: NextApiResponse;
     workflowStreamResponse?: WorkflowResponseType;
   };
@@ -66,6 +55,7 @@ type RunAgentCallProps = {
     stop?: string;
     reasoning?: boolean;
   };
+  handleToolResponse: ({ args, nodeId }: { args: string; nodeId: string }) => Promise<string>;
 };
 
 export const runAgentCall = async (props: RunAgentCallProps): Promise<RunAgentResponse> => {
@@ -76,9 +66,10 @@ export const runAgentCall = async (props: RunAgentCallProps): Promise<RunAgentRe
     maxRunAgentTimes,
     interactiveEntryToolParams,
     workflowProps,
-    requestProps
+    requestProps,
+    handleToolResponse
   } = props;
-  const { res, runtimeNodes, workflowStreamResponse } = workflowProps;
+  const { res, workflowStreamResponse } = workflowProps;
   const { stream, maxToken, externalProvider, reasoning } = requestProps;
 
   const toolNodesMap = new Map<string, ToolNodeItemType>(
@@ -250,24 +241,10 @@ export const runAgentCall = async (props: RunAgentCallProps): Promise<RunAgentRe
 
       try {
         if (!toolNode) continue;
-
-        const startParams = (() => {
-          try {
-            return json5.parse(tool.function.arguments);
-          } catch {
-            return {};
-          }
-        })();
-
-        initToolNodes(runtimeNodes, [toolNode.nodeId], startParams);
-
-        // TODO: 需要传递 sub apps config参数, 运行 sub agent 获取结果. 并考虑计费问题
-        // toolRunResponse = await runWorkflow({
-        //   ...workflowProps,
-        //   isToolCall: true
-        // });
-
-        stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
+        stringToolResponse = handleToolResponse({
+          args: tool.function.arguments,
+          nodeId: toolNode.nodeId
+        });
       } catch (error) {
         stringToolResponse = getErrText(error);
       }
