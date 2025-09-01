@@ -6,7 +6,7 @@ import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type {
   ModuleDispatchProps,
-  DispatchNodeResultType
+  DispatchNodeResponseType
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
@@ -18,7 +18,7 @@ import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workf
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 
-export type DispatchAgentModuleProps = ModuleDispatchProps<{
+export type DispatchToolModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
   [NodeInputKeyEnum.userChatInput]: string;
 
@@ -33,37 +33,24 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiChatStopSign]?: string;
   [NodeInputKeyEnum.aiChatResponseFormat]?: string;
   [NodeInputKeyEnum.aiChatJsonSchema]?: string;
-
-  [NodeInputKeyEnum.subAgentConfig]?: Record<string, any>;
-  [NodeInputKeyEnum.planAgentConfig]?: Record<string, any>;
-  [NodeInputKeyEnum.modelAgentConfig]?: Record<string, any>;
 }> & {
   messages: ChatCompletionMessageParam[];
   toolNodes: ToolNodeItemType[];
-  agentModel: LLMModelItemType;
-  maxRunAgentTimes: number;
+  toolModel: LLMModelItemType;
   interactiveEntryToolParams?: WorkflowInteractiveResponseType['toolParams'];
 };
 
-export type RunAgentResponse = {
+export type RunToolResponse = {
   dispatchFlowResponse: DispatchFlowResponse[];
-  agentCallInputTokens: number;
-  agentCallOutputTokens: number;
+  toolCallInputTokens: number;
+  toolCallOutputTokens: number;
   completeMessages?: ChatCompletionMessageParam[];
   assistantResponses?: AIChatItemValueItemType[];
-  agentWorkflowInteractiveResponse?: WorkflowInteractiveResponseType;
+  toolWorkflowInteractiveResponse?: WorkflowInteractiveResponseType;
   [DispatchNodeResponseKeyEnum.runTimes]: number;
   finish_reason?: CompletionFinishReason;
 };
-
 export type ToolNodeItemType = RuntimeNodeItemType & {
   toolParams: RuntimeNodeItemType['inputs'];
   jsonSchema?: JSONSchemaInputType;
-};
-
-export type AgentPlan = {
-  id: string;
-  description: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  result?: any;
 };

@@ -6,9 +6,9 @@ import type {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { getLLMModel } from '../../../../ai/model';
 import { filterToolNodeIdByEdges, getNodeErrResponse, getHistories } from '../../utils';
-import { runToolCall } from './toolCall';
-import type { DispatchToolModuleProps } from './type';
-import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { runAgentCall } from './agentCall';
+import { type DispatchAgentModuleProps } from './type';
+import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   GPTMessages2Chats,
@@ -20,18 +20,19 @@ import {
 import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { filterToolResponseToPreview, toolCallMessagesAdapt, getToolNodesByIds } from '../utils';
+import { filterToolResponseToPreview, getToolNodesByIds, toolCallMessagesAdapt } from '../utils';
 import { getFileContentFromLinks, getHistoryFileLinks } from '../../tools/readFiles';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getDocumentQuotePrompt } from '@fastgpt/global/core/ai/prompt/AIChat';
 import { postTextCensor } from '../../../../chat/postTextCensor';
+import { getTopAgentDefaultPrompt } from './constants';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
 }>;
 
-export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
+export const dispatchRunAgents = async (props: DispatchAgentModuleProps): Promise<Response> => {
   let {
     node: { nodeId, name, isEntry, version, inputs },
     runtimeNodes,
@@ -51,16 +52,20 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       fileUrlList: fileLinks,
       aiChatVision,
       aiChatReasoning
+      // subConfig,
+      // planConfig,
+      // modelConfig
     }
   } = props;
 
   try {
-    const toolModel = getLLMModel(model);
-    const useVision = aiChatVision && toolModel.vision;
+    const agentModel = getLLMModel(model);
+    const useVision = aiChatVision && agentModel.vision;
     const chatHistories = getHistories(history, histories);
 
-    props.params.aiChatVision = aiChatVision && toolModel.vision;
-    props.params.aiChatReasoning = aiChatReasoning && toolModel.reasoning;
+    props.params.aiChatVision = aiChatVision && agentModel.vision;
+    props.params.aiChatReasoning = aiChatReasoning && agentModel.reasoning;
+
     const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
     if (!fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0) {
       fileLinks = undefined;
@@ -87,53 +92,24 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       hasReadFilesTool
     });
 
-    const concatenateSystemPrompt = [
-      toolModel.defaultSystemChatPrompt,
-      systemPrompt,
-      documentQuoteText
-        ? replaceVariable(getDocumentQuotePrompt(version), {
-            quote: documentQuoteText
-          })
-        : ''
-    ]
-      .filter(Boolean)
-      .join('\n\n===---===---===\n\n');
-
-    const messages: ChatItemType[] = (() => {
-      const value: ChatItemType[] = [
-        ...getSystemPrompt_ChatItemType(concatenateSystemPrompt),
-        // Add file input prompt to histories
-        ...chatHistories.map((item) => {
-          if (item.obj === ChatRoleEnum.Human) {
-            return {
-              ...item,
-              value: toolCallMessagesAdapt({
-                userInput: item.value,
-                skip: !hasReadFilesTool
-              })
-            };
-          }
-          return item;
-        }),
-        {
-          obj: ChatRoleEnum.Human,
-          value: toolCallMessagesAdapt({
-            skip: !hasReadFilesTool,
-            userInput: runtimePrompt2ChatsValue({
-              text: userChatInput,
-              files: userFiles
-            })
-          })
-        }
-      ];
-      if (lastInteractive && isEntry) {
-        return value.slice(0, -2);
+    const messages: ChatItemType[] = prepareAgentMessages({
+      systemPromptParams: {
+        systemPrompt,
+        documentQuoteText,
+        version
+      },
+      conversationParams: {
+        chatHistories,
+        hasReadFilesTool,
+        userChatInput,
+        userFiles,
+        lastInteractive,
+        isEntry: isEntry ?? false
       }
-      return value;
-    })();
+    });
 
     // censor model and system key
-    if (toolModel.censor && !externalProvider.openaiAccount?.key) {
+    if (agentModel.censor && !externalProvider.openaiAccount?.key) {
       await postTextCensor({
         text: `${systemPrompt}
           ${userChatInput}
@@ -141,41 +117,38 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       });
     }
 
+    const adaptMessages = chats2GPTMessages({
+      messages,
+      reserveId: false
+    });
+    const requestParams = {
+      runtimeNodes,
+      runtimeEdges,
+      toolNodes,
+      agentModel,
+      messages: adaptMessages,
+      interactiveEntryToolParams: lastInteractive?.toolParams
+    };
+
     const {
-      toolWorkflowInteractiveResponse,
-      dispatchFlowResponse, // tool flow response
-      toolCallInputTokens,
-      toolCallOutputTokens,
-      completeMessages = [], // The actual message sent to AI(just save text)
-      assistantResponses = [], // FastGPT system store assistant.value response
+      agentWorkflowInteractiveResponse,
+      dispatchFlowResponse,
+      agentCallInputTokens,
+      agentCallOutputTokens,
+      completeMessages = [],
+      assistantResponses = [],
       runTimes,
       finish_reason
-    } = await (async () => {
-      const adaptMessages = chats2GPTMessages({
-        messages,
-        reserveId: false
-        // reserveTool: !!toolModel.toolChoice
-      });
-      const requestParams = {
-        runtimeNodes,
-        runtimeEdges,
-        toolNodes,
-        toolModel,
-        messages: adaptMessages,
-        interactiveEntryToolParams: lastInteractive?.toolParams
-      };
-
-      return runToolCall({
-        ...props,
-        ...requestParams,
-        maxRunToolTimes: 100
-      });
-    })();
+    } = await runAgentCall({
+      ...props,
+      ...requestParams,
+      maxRunAgentTimes: 100
+    });
 
     const { totalPoints: modelTotalPoints, modelName } = formatModelChars2Points({
       model,
-      inputTokens: toolCallInputTokens,
-      outputTokens: toolCallOutputTokens
+      inputTokens: agentCallInputTokens,
+      outputTokens: agentCallOutputTokens
     });
     const modelUsage = externalProvider.openaiAccount?.key ? 0 : modelTotalPoints;
 
@@ -199,8 +172,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         // 展示的积分消耗
         totalPoints: totalPointsUsage,
-        toolCallInputTokens: toolCallInputTokens,
-        toolCallOutputTokens: toolCallOutputTokens,
+        toolCallInputTokens: agentCallInputTokens,
+        toolCallOutputTokens: agentCallOutputTokens,
         childTotalPoints: toolTotalPoints,
         model: modelName,
         query: userChatInput,
@@ -219,13 +192,13 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
           moduleName: name,
           model: modelName,
           totalPoints: modelUsage,
-          inputTokens: toolCallInputTokens,
-          outputTokens: toolCallOutputTokens
+          inputTokens: agentCallInputTokens,
+          outputTokens: agentCallOutputTokens
         },
         // 工具的消耗
         ...toolUsages
       ],
-      [DispatchNodeResponseKeyEnum.interactive]: toolWorkflowInteractiveResponse
+      [DispatchNodeResponseKeyEnum.interactive]: agentWorkflowInteractiveResponse
     };
   } catch (error) {
     return getNodeErrResponse({ error });
@@ -284,4 +257,74 @@ const getMultiInput = async ({
     documentQuoteText: text,
     userFiles: fileLinks.map((url) => parseUrlToFileType(url)).filter(Boolean)
   };
+};
+
+const prepareAgentMessages = ({
+  systemPromptParams,
+  conversationParams
+}: {
+  systemPromptParams: {
+    systemPrompt: string;
+    documentQuoteText: string;
+    version?: string;
+  };
+  conversationParams: {
+    chatHistories: ChatItemType[];
+    hasReadFilesTool: boolean;
+    userChatInput: string;
+    userFiles: UserChatItemValueItemType['file'][];
+    isEntry: boolean;
+    lastInteractive?: any;
+  };
+}): ChatItemType[] => {
+  const { systemPrompt, documentQuoteText, version } = systemPromptParams;
+  const { chatHistories, hasReadFilesTool, userChatInput, userFiles, lastInteractive, isEntry } =
+    conversationParams;
+
+  const agentPrompt = systemPrompt || getTopAgentDefaultPrompt();
+
+  const finalSystemPrompt = [
+    agentPrompt,
+    documentQuoteText
+      ? replaceVariable(getDocumentQuotePrompt(version || ''), {
+          quote: documentQuoteText
+        })
+      : ''
+  ]
+    .filter(Boolean)
+    .join('\n\n===---===---===\n\n');
+
+  const systemMessages = getSystemPrompt_ChatItemType(finalSystemPrompt);
+
+  const processedHistories = chatHistories.map((item) => {
+    if (item.obj !== ChatRoleEnum.Human) return item;
+
+    return {
+      ...item,
+      value: toolCallMessagesAdapt({
+        userInput: item.value,
+        skip: !hasReadFilesTool
+      })
+    };
+  });
+
+  const currentUserMessage: ChatItemType = {
+    obj: ChatRoleEnum.Human,
+    value: toolCallMessagesAdapt({
+      skip: !hasReadFilesTool,
+      userInput: runtimePrompt2ChatsValue({
+        text: userChatInput,
+        files: userFiles
+      })
+    })
+  };
+
+  const allMessages: ChatItemType[] = [
+    ...systemMessages,
+    ...processedHistories,
+    currentUserMessage
+  ];
+
+  // 交互模式下且为入口节点时，移除最后两条消息
+  return lastInteractive && isEntry ? allMessages.slice(0, -2) : allMessages;
 };
