@@ -24,10 +24,7 @@ import type {
 } from '@fastgpt/global/core/evaluation/type';
 import type { Document } from 'mongoose';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import {
-  InformLevelEnum,
-  SendInformTemplateCodeEnum
-} from '@fastgpt/global/support/user/inform/constants';
+import { InformLevelEnum } from '@fastgpt/global/support/user/inform/constants';
 import type { AppChatConfigType, AppSchema } from '@fastgpt/global/core/app/type';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -40,8 +37,9 @@ import { delay } from '@fastgpt/global/common/system/utils';
 import { removeDatasetCiteText } from '../../core/ai/utils';
 import { getUserChatInfoAndAuthTeamPoints } from '../../support/permission/auth/team';
 import { getRunningUserInfoByTmbId } from '../../support/user/team/utils';
-import { getEvalDatasetDataQualityWorker } from './dataset/dataQualityMq';
-import { processEvalDatasetDataQuality } from './dataset/dataQualityProcessor';
+import { initEvalDatasetDataQualityWorker } from './dataset/dataQualityProcessor';
+import { initEvalDatasetSmartGenerateWorker } from './dataset/smartGenerateProcessor';
+import { initEvalDatasetDataSynthesizeWorker } from './dataset/dataSynthesizeProcessor';
 
 type AppContextType = {
   appData: AppSchema;
@@ -54,26 +52,10 @@ type AppContextType = {
 
 export const initEvaluationWorker = () => {
   addLog.info('Init Evaluation Worker...');
-  getEvalDatasetDataQualityWorker(processEvalDatasetDataQuality);
+  initEvalDatasetDataQualityWorker();
+  initEvalDatasetSmartGenerateWorker();
+  initEvalDatasetDataSynthesizeWorker();
   getEvaluationWorker(processor);
-
-  import('./dataset/smartGenerateProcessor')
-    .then(({ initEvalDatasetSmartGenerateWorker }) => {
-      initEvalDatasetSmartGenerateWorker();
-      addLog.info('Smart generate worker initialized');
-    })
-    .catch((error) => {
-      addLog.error('Failed to init smart generate worker', { error });
-    });
-
-  import('./dataset/dataSynthesizeProcessor')
-    .then(({ initEvalDatasetDataSynthesizeWorker }) => {
-      initEvalDatasetDataSynthesizeWorker();
-      addLog.info('Data synthesize worker initialized');
-    })
-    .catch((error) => {
-      addLog.error('Failed to init data synthesize worker', { error });
-    });
 };
 
 const dealAiPointCheckError = async (evalId: string, error: any) => {

@@ -1,7 +1,6 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
@@ -10,10 +9,10 @@ import {
   EvalDatasetDataKeyEnum
 } from '@fastgpt/global/core/evaluation/constants';
 import { readFileContentFromMongo } from '@fastgpt/service/common/file/gridfs/controller';
-import { authCollectionFile } from '@fastgpt/service/support/permission/auth/file';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import type { importEvalDatasetFromFileBody } from '@fastgpt/global/core/evaluation/api';
 import { addEvalDatasetDataQualityJob } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
+import { authEvalDatasetCollectionFile } from '@fastgpt/service/support/permission/evaluation/auth';
 
 export type EvalDatasetImportFromFileQuery = {};
 export type EvalDatasetImportFromFileBody = importEvalDatasetFromFileBody;
@@ -169,14 +168,7 @@ async function handler(
     return 'qualityEvaluationModel is required when enableQualityEvaluation is true';
   }
 
-  const { teamId, tmbId } = await authUserPer({
-    req,
-    authToken: true,
-    authApiKey: true,
-    per: WritePermissionVal
-  });
-
-  const { file } = await authCollectionFile({
+  const { file, teamId, tmbId } = await authEvalDatasetCollectionFile({
     req,
     authToken: true,
     authApiKey: true,
@@ -204,7 +196,7 @@ async function handler(
     const { rawText } = await readFileContentFromMongo({
       teamId,
       tmbId,
-      bucketName: BucketNameEnum.dataset,
+      bucketName: BucketNameEnum.evaluation,
       fileId,
       getFormatText: false
     });

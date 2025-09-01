@@ -1,5 +1,4 @@
 import type { Job } from 'bullmq';
-import type { HydratedDocument } from 'mongoose';
 import { addLog } from '../../../common/system/log';
 import { MongoEvalDatasetCollection } from './evalDatasetCollectionSchema';
 import { MongoEvalDatasetData } from './evalDatasetDataSchema';

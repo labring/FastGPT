@@ -1,7 +1,7 @@
 import type { Job } from 'bullmq';
 import { addLog } from '../../../common/system/log';
 import { MongoEvalDatasetData } from './evalDatasetDataSchema';
-import type { EvalDatasetDataQualityData } from './dataQualityMq';
+import { getEvalDatasetDataQualityWorker, type EvalDatasetDataQualityData } from './dataQualityMq';
 import {
   EvalDatasetDataKeyEnum,
   EvalDatasetDataQualityStatusEnum
@@ -181,4 +181,9 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
 
     throw error;
   }
+};
+
+// Initialize worker
+export const initEvalDatasetDataQualityWorker = () => {
+  return getEvalDatasetDataQualityWorker(processEvalDatasetDataQuality);
 };

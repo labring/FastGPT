@@ -1,7 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler_test } from '@/pages/api/core/evaluation/dataset/data/fileId';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { authCollectionFile } from '@fastgpt/service/support/permission/auth/file';
+import { authEvalDatasetCollectionFile } from '@fastgpt/service/support/permission/evaluation/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
@@ -14,8 +13,7 @@ import {
 } from '@fastgpt/global/core/evaluation/constants';
 import { addEvalDatasetDataQualityJob } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 
-vi.mock('@fastgpt/service/support/permission/user/auth');
-vi.mock('@fastgpt/service/support/permission/auth/file');
+vi.mock('@fastgpt/service/support/permission/evaluation/auth');
 vi.mock('@fastgpt/service/common/mongo/sessionRun');
 vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema', () => ({
   MongoEvalDatasetData: {
@@ -34,8 +32,7 @@ vi.mock('@fastgpt/service/core/evaluation/dataset/dataQualityMq', () => ({
   addEvalDatasetDataQualityJob: vi.fn()
 }));
 
-const mockAuthUserPer = vi.mocked(authUserPer);
-const mockAuthCollectionFile = vi.mocked(authCollectionFile);
+const mockAuthEvalDatasetCollectionFile = vi.mocked(authEvalDatasetCollectionFile);
 const mockMongoSessionRun = vi.mocked(mongoSessionRun);
 const mockMongoEvalDatasetData = vi.mocked(MongoEvalDatasetData);
 const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
@@ -59,12 +56,7 @@ describe('EvalDatasetData FileId Import API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockAuthUserPer.mockResolvedValue({
-      teamId: validTeamId,
-      tmbId: validTmbId
-    });
-
-    mockAuthCollectionFile.mockResolvedValue({
+    mockAuthEvalDatasetCollectionFile.mockResolvedValue({
       teamId: validTeamId,
       tmbId: validTmbId,
       file: {
@@ -204,7 +196,7 @@ describe('EvalDatasetData FileId Import API', () => {
   });
 
   describe('Authentication and Authorization', () => {
-    it('should call authUserPer with correct parameters', async () => {
+    it('should call authEvalCollectionFile with correct parameters', async () => {
       const req = {
         body: {
           fileId: validFileId,
@@ -215,26 +207,7 @@ describe('EvalDatasetData FileId Import API', () => {
 
       await handler_test(req as any);
 
-      expect(mockAuthUserPer).toHaveBeenCalledWith({
-        req,
-        authToken: true,
-        authApiKey: true,
-        per: WritePermissionVal
-      });
-    });
-
-    it('should call authCollectionFile with correct parameters', async () => {
-      const req = {
-        body: {
-          fileId: validFileId,
-          collectionId: validCollectionId,
-          enableQualityEvaluation: false
-        }
-      };
-
-      await handler_test(req as any);
-
-      expect(mockAuthCollectionFile).toHaveBeenCalledWith({
+      expect(mockAuthEvalDatasetCollectionFile).toHaveBeenCalledWith({
         req,
         authToken: true,
         authApiKey: true,
@@ -244,8 +217,8 @@ describe('EvalDatasetData FileId Import API', () => {
     });
 
     it('should propagate authentication errors', async () => {
-      const authError = new Error('Authentication failed');
-      mockAuthUserPer.mockRejectedValue(authError);
+      const authError = new Error('unAuthorization');
+      mockAuthEvalDatasetCollectionFile.mockRejectedValue(authError);
 
       const req = {
         body: {
@@ -255,12 +228,12 @@ describe('EvalDatasetData FileId Import API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toBe(authError);
+      await expect(handler_test(req as any)).rejects.toThrow('unAuthorization');
     });
 
     it('should propagate file authentication errors', async () => {
-      const fileAuthError = new Error('File authentication failed');
-      mockAuthCollectionFile.mockRejectedValue(fileAuthError);
+      const fileAuthError = new Error('unAuthorization');
+      mockAuthEvalDatasetCollectionFile.mockRejectedValue(fileAuthError);
 
       const req = {
         body: {
@@ -270,13 +243,13 @@ describe('EvalDatasetData FileId Import API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toBe(fileAuthError);
+      await expect(handler_test(req as any)).rejects.toThrow('unAuthorization');
     });
   });
 
   describe('File Validation', () => {
     it('should reject non-CSV files', async () => {
-      mockAuthCollectionFile.mockResolvedValue({
+      mockAuthEvalDatasetCollectionFile.mockResolvedValue({
         teamId: validTeamId,
         tmbId: validTmbId,
         file: {
@@ -299,7 +272,7 @@ describe('EvalDatasetData FileId Import API', () => {
     });
 
     it('should handle files with uppercase CSV extension', async () => {
-      mockAuthCollectionFile.mockResolvedValue({
+      mockAuthEvalDatasetCollectionFile.mockResolvedValue({
         teamId: validTeamId,
         tmbId: validTmbId,
         file: {
@@ -329,7 +302,7 @@ describe('EvalDatasetData FileId Import API', () => {
     });
 
     it('should handle files without filename', async () => {
-      mockAuthCollectionFile.mockResolvedValue({
+      mockAuthEvalDatasetCollectionFile.mockResolvedValue({
         teamId: validTeamId,
         tmbId: validTmbId,
         file: {
@@ -407,7 +380,7 @@ describe('EvalDatasetData FileId Import API', () => {
       expect(mockReadFileContentFromMongo).toHaveBeenCalledWith({
         teamId: validTeamId,
         tmbId: validTmbId,
-        bucketName: BucketNameEnum.dataset,
+        bucketName: BucketNameEnum.evaluation,
         fileId: validFileId,
         getFormatText: false
       });

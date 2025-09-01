@@ -11,6 +11,7 @@ import { authFrequencyLimit } from '@/service/common/frequencyLimit/api';
 import { addSeconds } from 'date-fns';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { authEvalDatasetCollection } from '@fastgpt/service/support/permission/evaluation/auth';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
@@ -19,6 +20,9 @@ export type UploadChatFileProps = {
 } & OutLinkChatAuthProps;
 export type UploadDatasetFileProps = {
   datasetId: string;
+};
+export type UploadEvaluationFileProps = {
+  collectionId: string;
 };
 
 const authUploadLimit = (tmbId: string) => {
@@ -39,7 +43,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
       maxSize: global.feConfigs?.uploadFileMaxSize
     });
     const { file, bucketName, metadata, data } = await upload.getUploadFile<
-      UploadChatFileProps | UploadDatasetFileProps
+      UploadChatFileProps | UploadDatasetFileProps | UploadEvaluationFileProps
     >(req, res);
     filePaths.push(file.path);
 
@@ -61,6 +65,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
         const chatData = data as UploadDatasetFileProps;
         const authData = await authDataset({
           datasetId: chatData.datasetId,
+          per: WritePermissionVal,
+          req,
+          authToken: true,
+          authApiKey: true
+        });
+        return {
+          teamId: authData.teamId,
+          uid: authData.tmbId
+        };
+      }
+      if (bucketName === 'evaluation') {
+        const evalData = data as UploadEvaluationFileProps;
+        const authData = await authEvalDatasetCollection({
+          collectionId: evalData.collectionId,
           per: WritePermissionVal,
           req,
           authToken: true,
