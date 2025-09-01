@@ -194,15 +194,14 @@ export const runAgentCall = async (props: DispatchAgentModuleProps): Promise<Run
       userKey: externalProvider.openaiAccount,
       isAborted: () => res?.closed,
       onReasoning({ text }) {
-        if (aiChatReasoning) {
-          workflowStreamResponse?.({
-            write,
-            event: SseResponseEventEnum.answer,
-            data: textAdaptGptResponse({
-              reasoning_content: text
-            })
-          });
-        }
+        if (!aiChatReasoning) return;
+        workflowStreamResponse?.({
+          write,
+          event: SseResponseEventEnum.answer,
+          data: textAdaptGptResponse({
+            reasoning_content: text
+          })
+        });
       },
       onStreaming({ text }) {
         workflowStreamResponse?.({
@@ -215,21 +214,20 @@ export const runAgentCall = async (props: DispatchAgentModuleProps): Promise<Run
       },
       onToolCall({ call }) {
         const toolNode = toolNodesMap.get(call.function.name);
-        if (toolNode) {
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.toolCall,
-            data: {
-              tool: {
-                id: call.id,
-                toolName: toolNode?.name || call.function.name,
-                toolAvatar: toolNode?.avatar || '',
-                functionName: call.function.name,
-                params: call.function.arguments ?? '',
-                response: ''
-              }
+        if (!toolNode) return;
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.toolCall,
+          data: {
+            tool: {
+              id: call.id,
+              toolName: toolNode?.name || call.function.name,
+              toolAvatar: toolNode?.avatar || '',
+              functionName: call.function.name,
+              params: call.function.arguments ?? '',
+              response: ''
             }
-          });
-        }
+          }
+        });
       }
     });
 

@@ -93,7 +93,6 @@ export const dispatchRunAgents = async (props: DispatchAgentModuleProps): Promis
 
     const messages: ChatItemType[] = prepareAgentMessages({
       systemPromptParams: {
-        model: agentModel,
         systemPrompt,
         documentQuoteText,
         version
@@ -264,7 +263,6 @@ const prepareAgentMessages = ({
   conversationParams
 }: {
   systemPromptParams: {
-    model: ReturnType<typeof getLLMModel>;
     systemPrompt: string;
     documentQuoteText: string;
     version?: string;
@@ -278,7 +276,7 @@ const prepareAgentMessages = ({
     lastInteractive?: any;
   };
 }): ChatItemType[] => {
-  const { model, systemPrompt, documentQuoteText, version } = systemPromptParams;
+  const { systemPrompt, documentQuoteText, version } = systemPromptParams;
   const { chatHistories, hasReadFilesTool, userChatInput, userFiles, lastInteractive, isEntry } =
     conversationParams;
 
@@ -309,7 +307,6 @@ const prepareAgentMessages = ({
 请始终保持专业、准确、有条理的回答风格，确保用户能够清楚了解执行进度和结果。`;
 
   const finalSystemPrompt = [
-    model.defaultSystemChatPrompt,
     agentPrompt,
     documentQuoteText
       ? replaceVariable(getDocumentQuotePrompt(version || ''), {

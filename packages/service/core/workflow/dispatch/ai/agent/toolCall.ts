@@ -307,15 +307,14 @@ export const runToolCall = async (
     isAborted: () => res?.closed,
     userKey: externalProvider.openaiAccount,
     onReasoning({ text }) {
-      if (aiChatReasoning) {
-        workflowStreamResponse?.({
-          write,
-          event: SseResponseEventEnum.answer,
-          data: textAdaptGptResponse({
-            reasoning_content: text
-          })
-        });
-      }
+      if (!aiChatReasoning) return;
+      workflowStreamResponse?.({
+        write,
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          reasoning_content: text
+        })
+      });
     },
     onStreaming({ text }) {
       workflowStreamResponse?.({
@@ -328,21 +327,20 @@ export const runToolCall = async (
     },
     onToolCall({ call }) {
       const toolNode = toolNodesMap.get(call.function.name);
-      if (toolNode) {
-        workflowStreamResponse?.({
-          event: SseResponseEventEnum.toolCall,
-          data: {
-            tool: {
-              id: call.id,
-              toolName: toolNode.name,
-              toolAvatar: toolNode.avatar,
-              functionName: call.function.name,
-              params: call.function.arguments ?? '',
-              response: ''
-            }
+      if (!toolNode) return;
+      workflowStreamResponse?.({
+        event: SseResponseEventEnum.toolCall,
+        data: {
+          tool: {
+            id: call.id,
+            toolName: toolNode.name,
+            toolAvatar: toolNode.avatar,
+            functionName: call.function.name,
+            params: call.function.arguments ?? '',
+            response: ''
           }
-        });
-      }
+        }
+      });
     },
     onToolParam({ tool, params }) {
       workflowStreamResponse?.({
