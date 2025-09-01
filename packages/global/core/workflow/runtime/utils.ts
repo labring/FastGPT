@@ -7,6 +7,7 @@ import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
   VARIABLE_NODE_ID,
+  VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '../constants';
 import { FlowNodeTypeEnum } from '../node/constant';
@@ -67,7 +68,11 @@ export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number 
 };
 
 /* value type format */
-export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
+export const valueTypeFormat = (
+  value: any,
+  valueType?: WorkflowIOValueTypeEnum,
+  type?: VariableInputEnum
+) => {
   const isObjectString = (value: any) => {
     if (typeof value === 'string' && value !== 'false' && value !== 'true') {
       const trimmedValue = value.trim();
@@ -81,34 +86,39 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
 
   // 1. any值，忽略格式化
   if (value === undefined || value === null) return value;
-  if (!type || type === WorkflowIOValueTypeEnum.any) return value;
+  if (
+    !valueType ||
+    valueType === WorkflowIOValueTypeEnum.any ||
+    type === VariableInputEnum.password
+  )
+    return value;
 
   // 2. 如果值已经符合目标类型，直接返回
   if (
-    (type === WorkflowIOValueTypeEnum.string && typeof value === 'string') ||
-    (type === WorkflowIOValueTypeEnum.number && typeof value === 'number') ||
-    (type === WorkflowIOValueTypeEnum.boolean && typeof value === 'boolean') ||
-    (type.startsWith('array') && Array.isArray(value)) ||
-    (type === WorkflowIOValueTypeEnum.object && typeof value === 'object') ||
-    (type === WorkflowIOValueTypeEnum.chatHistory &&
+    (valueType === WorkflowIOValueTypeEnum.string && typeof value === 'string') ||
+    (valueType === WorkflowIOValueTypeEnum.number && typeof value === 'number') ||
+    (valueType === WorkflowIOValueTypeEnum.boolean && typeof value === 'boolean') ||
+    (valueType.startsWith('array') && Array.isArray(value)) ||
+    (valueType === WorkflowIOValueTypeEnum.object && typeof value === 'object') ||
+    (valueType === WorkflowIOValueTypeEnum.chatHistory &&
       (Array.isArray(value) || typeof value === 'number')) ||
-    (type === WorkflowIOValueTypeEnum.datasetQuote && Array.isArray(value)) ||
-    (type === WorkflowIOValueTypeEnum.selectDataset && Array.isArray(value)) ||
-    (type === WorkflowIOValueTypeEnum.selectApp && typeof value === 'object')
+    (valueType === WorkflowIOValueTypeEnum.datasetQuote && Array.isArray(value)) ||
+    (valueType === WorkflowIOValueTypeEnum.selectDataset && Array.isArray(value)) ||
+    (valueType === WorkflowIOValueTypeEnum.selectApp && typeof value === 'object')
   ) {
     return value;
   }
 
   // 4. 按目标类型，进行格式转化
   // 4.1 基本类型转换
-  if (type === WorkflowIOValueTypeEnum.string) {
+  if (valueType === WorkflowIOValueTypeEnum.string) {
     return typeof value === 'object' ? JSON.stringify(value) : String(value);
   }
-  if (type === WorkflowIOValueTypeEnum.number) {
+  if (valueType === WorkflowIOValueTypeEnum.number) {
     if (value === '') return undefined;
     return Number(value);
   }
-  if (type === WorkflowIOValueTypeEnum.boolean) {
+  if (valueType === WorkflowIOValueTypeEnum.boolean) {
     if (typeof value === 'string') {
       return value.toLowerCase() === 'true';
     }
@@ -116,7 +126,7 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
   }
 
   // 4.3 字符串转对象
-  if (type === WorkflowIOValueTypeEnum.object) {
+  if (valueType === WorkflowIOValueTypeEnum.object) {
     if (isObjectString(value)) {
       const trimmedValue = value.trim();
       try {
@@ -127,7 +137,7 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
   }
 
   // 4.4 数组类型(这里 value 不是数组类型)（TODO: 嵌套数据类型转化）
-  if (type.startsWith('array')) {
+  if (valueType.startsWith('array')) {
     if (isObjectString(value)) {
       try {
         return json5.parse(value);
@@ -142,7 +152,7 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
       WorkflowIOValueTypeEnum.datasetQuote,
       WorkflowIOValueTypeEnum.selectDataset,
       WorkflowIOValueTypeEnum.selectApp
-    ].includes(type)
+    ].includes(valueType)
   ) {
     if (isObjectString(value)) {
       try {
@@ -153,7 +163,7 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
   }
 
   // Invalid history type
-  if (type === WorkflowIOValueTypeEnum.chatHistory) {
+  if (valueType === WorkflowIOValueTypeEnum.chatHistory) {
     if (isObjectString(value)) {
       try {
         return json5.parse(value);

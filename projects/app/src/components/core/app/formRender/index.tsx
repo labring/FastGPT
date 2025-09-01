@@ -1,5 +1,6 @@
-import React from 'react';
-import { Box, Input, Switch } from '@chakra-ui/react';
+import React, { useState } from 'react';
+import { Box, Input, Switch, Flex, IconButton } from '@chakra-ui/react';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { InputRenderProps } from './type';
 import { InputTypeEnum } from './constant';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
@@ -25,6 +26,9 @@ const InputRender = (props: InputRenderProps) => {
     placeholder,
     bg = 'white'
   } = props;
+
+  const [isPasswordEditing, setIsPasswordEditing] = useState(false);
+
   if (customRender) {
     return <>{customRender(props)}</>;
   }
@@ -80,7 +84,54 @@ const InputRender = (props: InputRenderProps) => {
     }
 
     if (inputType === InputTypeEnum.password) {
-      return <Input {...commonProps} type="password" minLength={props.minLength} />;
+      const isPasswordConfigured = typeof value === 'object' && value !== null && value.secret;
+      return !isPasswordConfigured || isPasswordEditing ? (
+        <Input
+          {...commonProps}
+          type="password"
+          value={typeof value === 'string' ? value : ''}
+          autoFocus={isPasswordEditing}
+          onBlur={() => setIsPasswordEditing(false)}
+        />
+      ) : (
+        <Flex alignItems="center" gap={2}>
+          <Flex
+            flex={1}
+            borderRadius={'6px'}
+            border={'0.5px solid'}
+            borderColor={isDisabled ? 'myGray.200' : 'primary.200'}
+            bg={isDisabled ? 'myGray.50' : 'primary.50'}
+            h={9}
+            px={3}
+            alignItems={'center'}
+            gap={1}
+            opacity={isDisabled ? 0.6 : 1}
+          >
+            <MyIcon
+              name="checkCircle"
+              w={'16px'}
+              color={isDisabled ? 'myGray.500' : 'primary.600'}
+            />
+            <Box
+              fontSize={'sm'}
+              fontWeight={'medium'}
+              color={isDisabled ? 'myGray.500' : 'primary.600'}
+            >
+              {t('common:had_auth_value')}
+            </Box>
+          </Flex>
+          <IconButton
+            aria-label="Edit password"
+            icon={<MyIcon name="edit" w={'16px'} />}
+            size="sm"
+            variant="ghost"
+            color={'myGray.500'}
+            _hover={{ color: 'primary.600' }}
+            isDisabled={isDisabled}
+            onClick={() => setIsPasswordEditing(true)}
+          />
+        </Flex>
+      );
     }
 
     if (inputType === InputTypeEnum.numberInput) {

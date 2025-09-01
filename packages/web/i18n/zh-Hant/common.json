@@ -891,6 +891,7 @@
   "max_quote_tokens_tips": "單次搜尋最大的 token 數量，中文約 1 字=1.7 tokens，英文約 1 字=1 token",
   "mcp_server": "MCP 服務",
   "member": "成員",
+  "min_length": "最少需要 {{minLenth}} 個字符",
   "min_similarity": "最低相關度",
   "min_similarity_tip": "不同索引模型的相關度有區別，請透過搜尋測試來選擇合適的數值。\n使用 結果重排 時，使用重排結果過濾。",
   "minute": "分鐘",
@@ -905,7 +906,6 @@
   "model.type.reRank": "重排模型",
   "model.type.stt": "語音辨識",
   "model.type.tts": "語音合成",
-
   "month": "月",
   "move.confirm": "確認移動",
   "move_success": "移動成功",

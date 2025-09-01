@@ -207,31 +207,6 @@ export async function rewriteAppWorkflowToDetail({
   return nodes;
 }
 
-const isEncryptedPassword = (value: string): boolean => {
-  // Check if input is a non-empty string
-  if (typeof value !== 'string' || !value) {
-    return false;
-  }
-  // Encrypted password format: iv:encrypted:authTag (three colon-separated hex strings)
-  const parts = value.split(':');
-  if (parts.length !== 3) {
-    return false;
-  }
-  const [ivHex, encryptedHex, authTagHex] = parts;
-  // Validate that each part is a valid hexadecimal string
-  const hexPattern = /^[0-9a-fA-F]+$/;
-  if (!hexPattern.test(ivHex) || !hexPattern.test(encryptedHex) || !hexPattern.test(authTagHex)) {
-    return false;
-  }
-  // Validate lengths: IV fixed 32 chars (16 bytes), AuthTag fixed 32 chars (16 bytes), Encrypted at least 2 chars (1 byte)
-  return (
-    ivHex.length === 32 &&
-    authTagHex.length === 32 &&
-    encryptedHex.length >= 2 &&
-    encryptedHex.length % 2 === 0
-  );
-};
-
 export const decryptPasswordVariables = (
   variables: Record<string, any>,
   variableList?: VariableItemType[]
@@ -240,13 +215,10 @@ export const decryptPasswordVariables = (
 
   const result = { ...variables };
   variableList.forEach((variable) => {
-    if (variable.type === VariableInputEnum.password && isEncryptedPassword(result[variable.key])) {
-      try {
-        result[variable.key] = decryptSecret(result[variable.key]);
-      } catch (error) {
-        console.warn(`Failed to decrypt password variable ${variable.key}:`, error);
-        result[variable.key] = '';
-      }
+    if (variable.type === VariableInputEnum.password && typeof result[variable.key] === 'object') {
+      const password = result[variable.key];
+      const actualValue = password.value || decryptSecret(password.secret);
+      result[variable.key] = actualValue;
     }
   });
 
@@ -262,12 +234,11 @@ export const encryptPasswordVariables = (
   const result = { ...variables };
   variableList.forEach((variable) => {
     if (variable.type === VariableInputEnum.password) {
-      try {
-        result[variable.key] = encryptSecret(result[variable.key]);
-      } catch (error) {
-        console.warn(`Failed to encrypt password variable ${variable.key}:`, error);
-        result[variable.key] = '';
-      }
+      const password = result[variable.key];
+      result[variable.key] = {
+        value: '',
+        secret: encryptSecret(password)
+      };
     }
   });
 

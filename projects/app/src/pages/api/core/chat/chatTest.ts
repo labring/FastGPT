@@ -51,10 +51,6 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
-import {
-  decryptPasswordVariables,
-  encryptPasswordVariables
-} from '@fastgpt/service/core/app/utils';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
@@ -143,13 +139,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     ]);
 
     if (chatDetail?.variables) {
-      variables = decryptPasswordVariables(
-        {
-          ...chatDetail.variables,
-          ...variables
-        },
-        chatDetail?.variableList
-      );
+      variables = {
+        ...chatDetail.variables,
+        ...variables
+      };
     }
 
     const newHistories = concatHistories(histories, chatMessages);
@@ -245,7 +238,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         appId: app._id,
         userInteractiveVal,
         aiResponse,
-        newVariables: encryptPasswordVariables(newVariables, app.chatConfig.variables),
+        newVariables,
         durationSeconds
       });
     } else {
@@ -256,7 +249,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         tmbId: tmbId,
         nodes,
         appChatConfig: chatConfig,
-        variables: encryptPasswordVariables(newVariables, app.chatConfig.variables),
+        variables: newVariables,
         isUpdateUseTime: false, // owner update use time
         newTitle,
         source: ChatSourceEnum.test,

@@ -22,7 +22,16 @@ type Props = Omit<NumberInputProps, 'onChange' | 'onBlur'> & {
 };
 
 const MyNumberInput = (props: Props) => {
-  const { register, name, onChange, onBlur, placeholder, inputFieldProps, hideStepper, ...restProps } = props;
+  const {
+    register,
+    name,
+    onChange,
+    onBlur,
+    placeholder,
+    inputFieldProps,
+    hideStepper = false,
+    ...restProps
+  } = props;
 
   return (
     <NumberInput

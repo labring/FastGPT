@@ -169,8 +169,6 @@ export type VariableItemType = {
   min?: number;
   // select
   list?: { label: string; value: string }[];
-  // @deprecated
-  enums?: { value: string; label: string }[];
   // file
   canSelectFile?: boolean;
   canSelectImg?: boolean;
@@ -180,6 +178,9 @@ export type VariableItemType = {
   timeType?: 'point' | 'range';
   timeRangeStart?: string;
   timeRangeEnd?: string;
+
+  // @deprecated
+  enums?: { value: string; label: string }[];
 };
 // tts
 export type AppTTSConfigType = {

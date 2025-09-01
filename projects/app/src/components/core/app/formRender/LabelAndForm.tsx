@@ -8,6 +8,7 @@ import { Controller } from 'react-hook-form';
 import InputRender from '.';
 import type { SpecificProps } from './type';
 import { InputTypeEnum } from './constant';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 // Helper function to flatten error object keys
 const getFlattenedErrorKeys = (errors: any, prefix = ''): string[] => {
@@ -42,11 +43,12 @@ const LabelAndFormRender = ({
   showValueType?: boolean;
   form: UseFormReturn<any>;
   fieldName: string;
+
+  minLength?: number;
 } & SpecificProps &
   BoxProps) => {
+  const { t } = useSafeTranslation();
   const { control } = props.form;
-
-  const minLength = inputType === InputTypeEnum.password ? (props as any).minLength : undefined;
 
   return (
     <Box _notLast={{ mb: 4 }}>
@@ -60,11 +62,14 @@ const LabelAndFormRender = ({
         name={props.fieldName}
         rules={{
           required,
-          ...(minLength && {
-            minLength: {
-              value: minLength
-            }
-          })
+          ...(!!props?.minLength
+            ? {
+                minLength: {
+                  value: props.minLength,
+                  message: t(`common:min_length`, { minLength: props.minLength })
+                }
+              }
+            : {})
         }}
         render={({ field: { onChange, value }, fieldState: { error } }) => {
           return (

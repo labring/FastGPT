@@ -56,10 +56,7 @@ import {
 } from '@fastgpt/global/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
-import {
-  decryptPasswordVariables,
-  encryptPasswordVariables
-} from '@fastgpt/service/core/app/utils';
+
 import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
@@ -240,13 +237,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Get store variables(Api variable precedence)
     if (chatDetail?.variables) {
-      variables = decryptPasswordVariables(
-        {
-          ...chatDetail.variables,
-          ...variables
-        },
-        chatDetail?.variableList
-      );
+      variables = {
+        ...chatDetail.variables,
+        ...variables
+      };
     }
 
     // Get chat histories
@@ -354,7 +348,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         appId: app._id,
         userInteractiveVal,
         aiResponse,
-        newVariables: encryptPasswordVariables(newVariables, app.chatConfig.variables),
+        newVariables,
         durationSeconds
       });
     } else {
@@ -365,7 +359,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         tmbId: tmbId,
         nodes,
         appChatConfig: chatConfig,
-        variables: encryptPasswordVariables(newVariables, app.chatConfig.variables),
+        variables: newVariables,
         isUpdateUseTime: isOwnerUse && source === ChatSourceEnum.online, // owner update use time
         newTitle,
         shareId,

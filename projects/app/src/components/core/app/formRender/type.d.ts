@@ -33,7 +33,6 @@ type SpecificProps =
   | {
       // password
       inputType: InputTypeEnum.password;
-      minLength?: number;
     }
   | {
       // numberInput

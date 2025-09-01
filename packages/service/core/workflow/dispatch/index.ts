@@ -8,6 +8,7 @@ import type {
 } from '@fastgpt/global/core/chat/type.d';
 import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeInputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import { decryptPasswordVariables, encryptPasswordVariables } from '../../app/utils';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -60,7 +61,7 @@ type NodeResponseCompleteType = Omit<NodeResponseType, 'responseData'> & {
 
 // Run workflow
 export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowResponse> {
-  const { res, stream, externalProvider } = data;
+  const { res, stream, externalProvider, chatConfig } = data;
 
   let streamCheckTimer: NodeJS.Timeout | null = null;
 
@@ -91,10 +92,12 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     }
   }
 
+  const decryptedVariables = decryptPasswordVariables(data.variables, chatConfig?.variables);
+
   // Get default variables
   const defaultVariables = {
     ...externalProvider.externalWorkflowVariables,
-    ...getSystemVariables(data)
+    ...getSystemVariables({ ...data, variables: decryptedVariables })
   };
 
   // Init some props
@@ -830,6 +833,15 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     });
   }
 
+  const newVariablesWithoutSystem = removeSystemVariable(
+    variables,
+    externalProvider.externalWorkflowVariables
+  );
+  const encryptedNewVariables = encryptPasswordVariables(
+    newVariablesWithoutSystem,
+    data.chatConfig?.variables
+  );
+
   return {
     flowResponses: workflowQueue.chatResponses,
     flowUsages: workflowQueue.chatNodeUsages,
@@ -844,10 +856,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       workflowQueue.chatAssistantResponse
     ),
     [DispatchNodeResponseKeyEnum.toolResponses]: workflowQueue.toolRunResponse,
-    [DispatchNodeResponseKeyEnum.newVariables]: removeSystemVariable(
-      variables,
-      externalProvider.externalWorkflowVariables
-    ),
+    [DispatchNodeResponseKeyEnum.newVariables]: encryptedNewVariables,
     [DispatchNodeResponseKeyEnum.memories]:
       Object.keys(workflowQueue.system_memories).length > 0
         ? workflowQueue.system_memories

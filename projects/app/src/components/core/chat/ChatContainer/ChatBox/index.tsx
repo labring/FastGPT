@@ -456,7 +456,7 @@ const ChatBox = ({
               variables[item.key] === null
                 ? item.defaultValue
                 : variables[item.key];
-            requestVariables[item.key] = valueTypeFormat(val, item.valueType);
+            requestVariables[item.key] = valueTypeFormat(val, item.valueType, item.type);
           });
 
           const responseChatId = getNanoid(24);

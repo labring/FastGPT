@@ -892,6 +892,7 @@
   "max_quote_tokens_tips": "The maximum number of tokens in a single search, about 1 character in Chinese = 1.7 tokens, and about 1 character in English = 1 token",
   "mcp_server": "MCP Services",
   "member": "member",
+  "min_length": "At least {{minLenth}} characters are required",
   "min_similarity": "lowest correlation",
   "min_similarity_tip": "The relevance of different index models is different. Please select the appropriate value through search testing. \nWhen using Result Rearrange , use the rearranged results for filtering.",
   "minute": "Minute",
@@ -906,7 +907,6 @@
   "model.type.reRank": "ReRank",
   "model.type.stt": "STT",
   "model.type.tts": "TTS",
-
   "month": "Month",
   "move.confirm": "Confirm move",
   "move_success": "Moved Successfully",
