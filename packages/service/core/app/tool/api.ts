@@ -35,8 +35,8 @@ export async function deleteSystemTool(toolId: string) {
   return Promise.reject(res.body);
 }
 
-export async function uploadSystemTool(url: string) {
-  const res = await pluginClient.tool.upload({ body: { url } });
+export async function uploadSystemTool(objectName: string) {
+  const res = await pluginClient.tool.upload({ body: { objectName } });
 
   if (res.status === 200) {
     return res.body;

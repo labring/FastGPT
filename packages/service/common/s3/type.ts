@@ -24,7 +24,7 @@ export type FileMetadataType = {
 
 export type PresignedUrlInput = {
   filepath: string;
-  filename?: string;
+  filename: string;
   contentType?: string;
   metadata?: Record<string, string>;
 };

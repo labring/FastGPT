@@ -42,8 +42,8 @@ async function handler(
     }))
     .filter((item) => {
       if (searchKey) {
-        const regx = new RegExp(`${replaceRegChars(searchKey)}`, 'i');
-        return regx.test(String(item.name)) || regx.test(String(item.intro || ''));
+        const regex = new RegExp(`${replaceRegChars(searchKey)}`, 'i');
+        return regex.test(String(item.name)) || regex.test(String(item.intro || ''));
       }
       return item.parentId === formatParentId;
     });

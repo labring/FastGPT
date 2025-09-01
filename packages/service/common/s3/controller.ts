@@ -109,16 +109,16 @@ export class S3Service {
     filepath,
     contentType,
     metadata,
-    filename: customFileName
+    filename
   }: UploadPresignedURLProps): Promise<UploadPresignedURLResponse> => {
     await this.init();
-    const filename = filepath + '/' + (customFileName ?? this.generateFileId());
+    const objectName = `${filepath}/${filename}`;
 
     try {
       const policy = this.client.newPostPolicy();
 
       policy.setBucket(this.config.bucket);
-      policy.setKey(filename);
+      policy.setKey(objectName);
       if (contentType) {
         policy.setContentType(contentType);
       }
@@ -136,7 +136,7 @@ export class S3Service {
       const { postURL, formData } = await this.client.presignedPostPolicy(policy);
 
       const response: UploadPresignedURLResponse = {
-        objectName: filename,
+        objectName,
         uploadUrl: postURL,
         formData
       };
