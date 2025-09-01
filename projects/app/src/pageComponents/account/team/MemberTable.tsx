@@ -77,10 +77,14 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
       label: t('account_team:leave'),
       value: 'leave'
     },
-    {
-      label: t('account_team:forbidden'),
-      value: 'forbidden'
-    }
+    ...(isSyncMode
+      ? [
+          {
+            label: t('account_team:forbidden'),
+            value: 'forbidden'
+          }
+        ]
+      : [])
   ];
   const [status, setStatus] = useState<string>();
 
