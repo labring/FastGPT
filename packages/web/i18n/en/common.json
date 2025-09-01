@@ -893,7 +893,6 @@
   "model.type.reRank": "ReRank",
   "model.type.stt": "STT",
   "model.type.tts": "TTS",
-
   "month": "Month",
   "move.confirm": "Confirm move",
   "move_success": "Moved Successfully",
@@ -915,6 +914,7 @@
   "no_more_data": "No More Data",
   "no_pay_way": "There is no suitable payment channel in the system",
   "no_select_data": "No Data Available",
+  "not_active_team": "You have no available team",
   "not_model_config": "No related model configured",
   "not_open": "Not Open",
   "not_permission": "The current subscription package does not support team operation logs",

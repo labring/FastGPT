@@ -1,6 +1,6 @@
 import { GET, POST, PUT } from '@/web/common/api/request';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import type { ResLogin } from '@/global/support/api/userRes.d';
+import type { LoginSuccessResponse } from '@/global/support/api/userRes.d';
 import type { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import type { UserUpdateParams } from '@/types/user';
 import type { UserType } from '@fastgpt/global/support/user/type.d';
@@ -27,10 +27,11 @@ export const sendAuthCode = (data: {
 export const getTokenLogin = () =>
   GET<UserType>('/support/user/account/tokenLogin', {}, { maxQuantity: 1 });
 export const oauthLogin = (params: OauthLoginProps) =>
-  POST<ResLogin>('/proApi/support/user/account/login/oauth', params);
+  POST<LoginSuccessResponse>('/proApi/support/user/account/login/oauth', params);
 export const postFastLogin = (params: FastLoginProps) =>
-  POST<ResLogin>('/proApi/support/user/account/login/fastLogin', params);
-export const ssoLogin = (params: any) => GET<ResLogin>('/proApi/support/user/account/sso', params);
+  POST<LoginSuccessResponse>('/proApi/support/user/account/login/fastLogin', params);
+export const ssoLogin = (params: any) =>
+  GET<LoginSuccessResponse>('/proApi/support/user/account/sso', params);
 
 export const postRegister = ({
   username,
@@ -41,7 +42,7 @@ export const postRegister = ({
   msclkid,
   fastgpt_sem
 }: AccountRegisterBody) =>
-  POST<ResLogin>(`/proApi/support/user/account/register/emailAndPhone`, {
+  POST<LoginSuccessResponse>(`/proApi/support/user/account/register/emailAndPhone`, {
     username,
     code,
     inviterId,
@@ -60,7 +61,7 @@ export const postFindPassword = ({
   code: string;
   password: string;
 }) =>
-  POST<ResLogin>(`/proApi/support/user/account/password/updateByCode`, {
+  POST<LoginSuccessResponse>(`/proApi/support/user/account/password/updateByCode`, {
     username,
     code,
     password: hashStr(password)
@@ -88,7 +89,7 @@ export const updateContact = (data: { contact: string; verifyCode: string }) => 
 };
 
 export const postLogin = ({ password, ...props }: PostLoginProps) =>
-  POST<ResLogin>('/support/user/account/loginByPassword', {
+  POST<LoginSuccessResponse>('/support/user/account/loginByPassword', {
     ...props,
     password: hashStr(password)
   });
@@ -101,7 +102,7 @@ export const getWXLoginQR = () =>
   GET<GetWXLoginQRResponse>('/proApi/support/user/account/login/wx/getQR');
 
 export const getWXLoginResult = (params: WxLoginProps) =>
-  POST<ResLogin>(`/proApi/support/user/account/login/wx/getResult`, params);
+  POST<LoginSuccessResponse>(`/proApi/support/user/account/login/wx/getResult`, params);
 
 export const getCaptchaPic = (username: string) =>
   GET<{

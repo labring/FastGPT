@@ -892,7 +892,6 @@
   "model.type.reRank": "重排模型",
   "model.type.stt": "語音辨識",
   "model.type.tts": "語音合成",
-
   "month": "月",
   "move.confirm": "確認移動",
   "move_success": "移動成功",
@@ -914,6 +913,7 @@
   "no_more_data": "沒有更多資料了",
   "no_pay_way": "系統無合適的支付渠道",
   "no_select_data": "沒有可選擇的資料",
+  "not_active_team": "你沒有可用的團隊",
   "not_model_config": "未設定相關模型",
   "not_open": "未開啟",
   "not_permission": "當前訂閱套餐不支持團隊操作日誌",

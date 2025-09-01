@@ -5,14 +5,22 @@ import { clearToken } from '@/web/support/user/auth';
 import { useMount } from 'ahooks';
 import LoginModal from '@/pageComponents/login/LoginModal';
 import { postAcceptInvitationLink } from '@/web/support/user/team/api';
-import type { ResLogin } from '@/global/support/api/userRes';
+import type { LoginSuccessResponse } from '@/global/support/api/userRes';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useTranslation } from 'next-i18next';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const Login = () => {
   const router = useRouter();
   const { lastRoute = '' } = router.query as { lastRoute: string };
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const { setUserInfo } = useUserStore();
 
   const loginSuccess = useCallback(
-    async (res: ResLogin) => {
+    async (res: LoginSuccessResponse) => {
+      setUserInfo(res.user);
+
       const decodeLastRoute = decodeURIComponent(lastRoute);
       const navigateTo = await (async () => {
         if (res.user.team.status !== 'active') {
@@ -20,8 +28,14 @@ const Login = () => {
             const id = decodeLastRoute.split('invitelinkid=')[1];
             await postAcceptInvitationLink(id);
             return '/dashboard/apps';
+          } else {
+            toast({
+              status: 'warning',
+              title: t('common:not_active_team')
+            });
           }
         }
+
         return decodeLastRoute &&
           !decodeLastRoute.includes('/login') &&
           decodeLastRoute.startsWith('/')
@@ -29,7 +43,7 @@ const Login = () => {
           : '/dashboard/apps';
       })();
 
-      router.replace(navigateTo);
+      navigateTo && router.replace(navigateTo);
     },
     [lastRoute, router]
   );
