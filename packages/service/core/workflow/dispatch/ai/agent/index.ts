@@ -32,7 +32,7 @@ type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
 }>;
 
-export const dispatchRunAgents = async (props: DispatchAgentModuleProps): Promise<Response> => {
+export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise<Response> => {
   let {
     node: { nodeId, name, isEntry, version, inputs },
     runtimeNodes,

@@ -30,7 +30,7 @@ import { dispatchIfElse } from './tools/runIfElse';
 import { dispatchLafRequest } from './tools/runLaf';
 import { dispatchUpdateVariable } from './tools/runUpdateVar';
 import { dispatchTextEditor } from './tools/textEditor';
-import { dispatchRunAgents } from './ai/agent';
+import { dispatchRunAgent } from './ai/agent';
 
 export const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -46,8 +46,8 @@ export const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
   [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,
   [FlowNodeTypeEnum.queryExtension]: dispatchQueryExtension,
-  [FlowNodeTypeEnum.agents]: dispatchRunAgents,
-  [FlowNodeTypeEnum.agent]: dispatchRunTools,
+  [FlowNodeTypeEnum.agent]: dispatchRunAgent,
+  [FlowNodeTypeEnum.toolCall]: dispatchRunTools,
   [FlowNodeTypeEnum.stopTool]: dispatchStopToolCall,
   [FlowNodeTypeEnum.toolParams]: dispatchToolParams,
   [FlowNodeTypeEnum.lafModule]: dispatchLafRequest,
