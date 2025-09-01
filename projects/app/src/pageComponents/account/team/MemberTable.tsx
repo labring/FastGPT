@@ -23,7 +23,6 @@ import {
   postRestoreMember
 } from '@/web/support/user/team/api';
 import Tag from '@fastgpt/web/components/common/Tag';
-import Icon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
 import { TeamContext } from './context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -60,7 +59,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { toast } = useToast();
   const { userInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
-  const isSyncMember = feConfigs?.register_method?.includes('sync');
+  const isSyncMode = feConfigs?.register_method?.includes('sync');
 
   const { myTeams, onSwitchTeam } = useContextSelector(TeamContext, (v) => v);
 
@@ -76,8 +75,16 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     },
     {
       label: t('account_team:leave'),
-      value: 'inactive'
-    }
+      value: 'leave'
+    },
+    ...(isSyncMode
+      ? [
+          {
+            label: t('account_team:forbidden'),
+            value: 'forbidden'
+          }
+        ]
+      : [])
   ];
   const [status, setStatus] = useState<string>();
 
@@ -192,7 +199,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               {t('account_team:label_sync')}
             </Button>
           )}
-          {userInfo?.team.permission.hasManagePer && isSyncMember && (
+          {userInfo?.team.permission.hasManagePer && isSyncMode && (
             <Button
               variant={'primary'}
               size="md"
@@ -206,7 +213,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               {t('account_team:sync_immediately')}
             </Button>
           )}
-          {userInfo?.team.permission.hasManagePer && !isSyncMember && (
+          {userInfo?.team.permission.hasManagePer && !isSyncMode && (
             <Button
               variant={'primary'}
               size="md"
@@ -218,7 +225,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               {t('account_team:user_team_invite_member')}
             </Button>
           )}
-          {userInfo?.team.permission.isOwner && isSyncMember && (
+          {userInfo?.team.permission.isOwner && isSyncMode && (
             <Button
               variant={'whitePrimary'}
               size="md"
@@ -235,7 +242,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               {t('account_team:export_members')}
             </Button>
           )}
-          {!userInfo?.team.permission.isOwner && (
+          {!userInfo?.team.permission.isOwner && !isSyncMode && (
             <PopoverConfirm
               Trigger={
                 <Button
@@ -285,7 +292,9 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                           {member.memberName}
                           {member.status !== 'active' && (
                             <Tag ml="2" colorSchema="gray" bg={'myGray.100'} color={'myGray.700'}>
-                              {t('account_team:leave')}
+                              {member.status === 'forbidden'
+                                ? t('account_team:forbidden')
+                                : t('account_team:leave')}
                             </Tag>
                           )}
                         </Box>
@@ -331,31 +340,35 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                                 </Box>
                               }
                               type="delete"
-                              content={t('account_team:remove_tip', {
-                                username: member.memberName
-                              })}
+                              content={
+                                isSyncMode
+                                  ? t('account_team:forbidden_tip', {
+                                      username: member.memberName
+                                    })
+                                  : t('account_team:remove_tip', {
+                                      username: member.memberName
+                                    })
+                              }
                               onConfirm={() => onRemoveMember(member.tmbId)}
                             />
                           </HStack>
                         ) : (
-                          member.status === TeamMemberStatusEnum.forbidden && (
-                            <PopoverConfirm
-                              Trigger={
-                                <Box display={'inline-block'}>
-                                  <MyIconButton
-                                    icon={'common/confirm/restoreTip'}
-                                    size={'1rem'}
-                                    hoverColor={'primary.500'}
-                                  />
-                                </Box>
-                              }
-                              type="info"
-                              content={t('account_team:restore_tip', {
-                                username: member.memberName
-                              })}
-                              onConfirm={() => onRestore(member.tmbId)}
-                            />
-                          )
+                          <PopoverConfirm
+                            Trigger={
+                              <Box display={'inline-block'}>
+                                <MyIconButton
+                                  icon={'common/confirm/restoreTip'}
+                                  size={'1rem'}
+                                  hoverColor={'primary.500'}
+                                />
+                              </Box>
+                            }
+                            type="info"
+                            content={t('account_team:restore_tip', {
+                              username: member.memberName
+                            })}
+                            onConfirm={() => onRestore(member.tmbId)}
+                          />
                         ))}
                     </Td>
                   </Tr>
