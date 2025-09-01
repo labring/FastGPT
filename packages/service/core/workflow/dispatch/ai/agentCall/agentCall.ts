@@ -14,7 +14,7 @@ import json5 from 'json5';
 import type { DispatchFlowResponse } from '../../type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import type { AIChatItemType, AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { formatToolResponse, initToolCallEdges, initToolNodes } from '../agent/utils';
+import { formatToolResponse, initToolCallEdges, initToolNodes } from '../utils';
 import { computedMaxToken } from '../../../../ai/utils';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';

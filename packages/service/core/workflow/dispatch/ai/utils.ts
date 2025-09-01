@@ -10,8 +10,8 @@ import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
-import { getMultiplePrompt } from './constants';
-import type { ToolNodeItemType } from './type';
+import { getMultiplePrompt } from './agent/constants';
+import type { ToolNodeItemType } from './agent/type';
 
 export const updateToolInputValue = ({
   params,

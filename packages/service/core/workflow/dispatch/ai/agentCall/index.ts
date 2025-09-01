@@ -20,11 +20,7 @@ import {
 import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import {
-  filterToolResponseToPreview,
-  getToolNodesByIds,
-  toolCallMessagesAdapt
-} from '../agent/utils';
+import { filterToolResponseToPreview, getToolNodesByIds, toolCallMessagesAdapt } from '../utils';
 import { getFileContentFromLinks, getHistoryFileLinks } from '../../tools/readFiles';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
