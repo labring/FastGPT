@@ -1,0 +1,24 @@
+repos:
+  - repo: local
+    hooks:
+      - id: format
+        name: Format
+        entry: make
+        args: [format]
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: lint
+        name: Lint
+        entry: make
+        args: [lint]
+        types: [python]
+        language: system
+        pass_filenames: false
+      - id: typecheck
+        name: Typecheck
+        entry: make
+        args: [typecheck]
+        language: system
+        types: [python]
+        pass_filenames: false

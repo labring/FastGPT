@@ -1,0 +1,100 @@
+[project]
+name = "diting"
+version = "0.1.0"
+description = "Diting: A unified framework for evaluation and data generation, consisting of core engine (diting-core) and API server (diting-server)."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "diting-core",
+  "diting-server",
+]
+
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning>=0.7.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.uv-dynamic-versioning]
+vcs = "git"
+style = "pep440"
+bump = true
+
+[tool.hatch.build.targets.wheel]
+only-include = ["/README.md"]
+
+[tool.uv.sources]
+diting-core = { workspace = true }
+diting-server = { workspace = true}
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[dependency-groups]
+dev = [
+    "coverage>=7.9.1",
+    "pre-commit>=4.2.0",
+    "pytest>=8.4.1",
+]
+lint = [
+    "mypy>=1.16.1",
+    "pyright>=1.1.402",
+    "ruff>=0.12.1",
+]
+
+[tool.ruff.format]
+line-ending = "lf"
+
+[tool.uv]
+index-url = "http://mirrors.sangfor.org/pypi/simple/"
+
+# https://coverage.readthedocs.io/en/latest/config.html#run
+[tool.coverage.run]
+# required to avoid warnings about files created by create_module fixture
+include = [
+    "packages/**/*.py",
+    "tests/**/*.py",
+]
+branch = true
+
+# https://coverage.readthedocs.io/en/latest/config.html#report
+[tool.coverage.report]
+skip_covered = true
+show_missing = true
+ignore_errors = true
+precision = 2
+exclude_lines = [
+    # `# pragma: no cover` is standard marker for code that's not covered, this will error if code is covered
+    'pragma: no cover',
+    # use `# pragma: lax no cover` if you want to ignore cases where (some of) the code is covered
+    'pragma: lax no cover',
+    'raise NotImplementedError',
+    'if TYPE_CHECKING:',
+    'if typing.TYPE_CHECKING:',
+    '@overload',
+    '@deprecated',
+    '@typing.overload',
+    '@abstractmethod',
+    '\(Protocol\):$',
+    'typing.assert_never',
+    '$\s*assert_never\(',
+    'if __name__ == .__main__.:',
+    'except ImportError as _import_error:',
+    '$\s*pass$',
+    'assert False',
+]
+
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+reportUnnecessaryIsInstance = false
+reportUnnecessaryTypeIgnoreComment = true
+reportMissingModuleSource = false
+include = [
+    "packages",
+    # "tests",
+]
+venvPath = '.'
+venv = ".venv"
