@@ -1,5 +1,11 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 
+export enum SubAgentIds {
+  plan = 'plan_agent',
+  stop = 'stop_agent',
+  fileRead = 'file_read'
+}
+
 export const getTopAgentDefaultPrompt = () => {
   return `你是一位Supervisor Agent，具备以下核心能力：
 
@@ -29,22 +35,31 @@ export const getTopAgentDefaultPrompt = () => {
 export const PlanAgentTool: ChatCompletionTool = {
   type: 'function',
   function: {
-    name: 'plan_agent',
+    name: SubAgentIds.plan,
     description:
-      '如果用户的任务非常复杂，可以先使用 plan_agent 制定计划，然后根据计划使用其他工具来完成任务。'
+      '如果用户的任务非常复杂，可以先使用 plan_agent 制定计划，然后根据计划使用其他工具来完成任务。同时，plan_agent 负责维护整个任务的上下文和状态。可以更新或修改计划中的内容',
+    parameters: {
+      type: 'object',
+      properties: {
+        instruction: {
+          type: 'string',
+          description: ''
+        }
+      },
+      required: ['instruction']
+    }
   }
 };
 
-export const StopAgentId = 'stop_agent';
 export const StopAgentTool: ChatCompletionTool = {
   type: 'function',
   function: {
-    name: StopAgentId,
-    description: '如果完成了所有的任务，可调用次工具。'
+    name: SubAgentIds.stop,
+    description: '如果完成了所有的任务，可调用此工具。'
   }
 };
 
-/* 
+/*
   结构：
   [url1,url2,url2]
   [
@@ -52,7 +67,7 @@ export const StopAgentTool: ChatCompletionTool = {
     {id:2,url: url2}
   ]
 */
-export const getFileReadTool = (urls: string[]): ChatCompletionTool => {
+export const getFileReadTool = (urls?: string[]): ChatCompletionTool => {
   return {
     type: 'function',
     function: {
@@ -64,7 +79,7 @@ export const getFileReadTool = (urls: string[]): ChatCompletionTool => {
           file_path: {
             type: 'string',
             description: '文件ID',
-            enum: urls.map((url, index) => `${index + 1}`)
+            enum: urls?.map((_, index) => `${index + 1}`)
           }
         },
         required: ['file_path']
