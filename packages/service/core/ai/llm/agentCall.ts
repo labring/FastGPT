@@ -72,17 +72,6 @@ export const runAgentCall = async ({
 
   let requestMessages = messages;
 
-  console.log(
-    JSON.stringify(
-      {
-        messages: requestMessages,
-        tools: subApps
-      },
-      null,
-      2
-    )
-  );
-
   let inputTokens: number = 0;
   let outputTokens: number = 0;
   const subAppUsages: ChatNodeUsageType[] = [];
@@ -95,6 +84,7 @@ export const runAgentCall = async ({
 
     // TODO: Context agent compression
 
+    // console.log(JSON.stringify(requestMessages, null, 2));
     // Request LLM
     let {
       reasoningText: reasoningContent,
@@ -153,13 +143,16 @@ export const runAgentCall = async ({
       messages: requestMessages.slice(requestMessagesLength),
       getToolInfo
     })[0] as AIChatItemType;
-    assistantResponses.push(...currentAssistantResponses.value);
+
+    if (currentAssistantResponses) {
+      assistantResponses.push(...currentAssistantResponses.value);
+    }
 
     // Usage concat
     inputTokens += usage.inputTokens;
     outputTokens += usage.outputTokens;
 
-    if (isEndSign) {
+    if (isEndSign || toolCalls.length === 0) {
       break;
     }
   }
