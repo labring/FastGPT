@@ -19,4 +19,12 @@ export type InitDateResponse = {
 
   activeModelList?: SystemModelItemType[];
   defaultModels?: SystemDefaultModelType;
+  modelProviders?: {
+    listData: ModelProviderType[];
+    mapData: Map<string, ModelProviderType>;
+  };
+  aiproxyIdMap?: {
+    listData: ModelProviderListType[];
+    mapData: Map<string, ModelProviderListType>;
+  };
 };

@@ -13,7 +13,6 @@ import {
   AccordionIcon,
   Input
 } from '@chakra-ui/react';
-import { getModelFromList } from '@fastgpt/global/core/ai/model';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -39,6 +38,8 @@ import {
 import type { evaluationType, listEvalItemsItem } from '@fastgpt/global/core/app/evaluation/type';
 import type { updateEvalItemBody } from '@fastgpt/global/core/app/evaluation/api';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import type { I18nStringType } from '@fastgpt/global/common/i18n/type';
+import type { ModelProviderType } from '@fastgpt/global/core/app/model/type';
 
 const formatEvaluationStatus = (item: { status: number; errorMessage?: string }, t: TFunction) => {
   if (item.errorMessage) {
@@ -89,9 +90,9 @@ const EvaluationDetailModal = ({
   const [editing, setEditing] = useState(false);
   const [pollingInterval, setPollingInterval] = useState(10000);
 
-  const { llmModelList } = useSystemStore();
+  const { llmModelList, ModelProviders } = useSystemStore();
   const modelData = useMemo(
-    () => getModelFromList(llmModelList, evalDetail.evalModel, language),
+    () => ModelProviders.mapData.get(evalDetail.evalModel),
     [evalDetail.evalModel, llmModelList, language]
   );
 
@@ -213,7 +214,7 @@ const EvaluationDetailModal = ({
               <Flex gap={1.5}>
                 <Avatar src={modelData?.avatar} w={5} />
                 <Box color={'myGray.900'} fontWeight={'medium'}>
-                  {modelData?.name}
+                  {modelData?.name[language as keyof I18nStringType]}
                 </Box>
               </Flex>
             </Box>

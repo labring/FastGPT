@@ -16,7 +16,7 @@ import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
+import { getModelProvider } from '@/web/common/system/controller';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 
 const TTSSelect = ({

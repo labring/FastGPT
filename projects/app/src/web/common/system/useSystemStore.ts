@@ -14,6 +14,8 @@ import { type SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import type { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { type SystemDefaultModelType } from '@fastgpt/service/core/ai/type';
+import type { ModelProviderListType, ModelProviderType } from '@fastgpt/global/core/app/model/type';
+import { defaultProvider, defaultMapData } from '@fastgpt/service/core/app/provider/controller';
 
 type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
 
@@ -56,6 +58,11 @@ type State = {
   ttsModelList: TTSModelType[];
   reRankModelList: RerankModelItemType[];
   sttModelList: STTModelType[];
+  ModelProviders: { listData: Array<ModelProviderType>; mapData: Map<string, ModelProviderType> };
+  aiproxyIdMap: {
+    listData: Array<ModelProviderListType>;
+    mapData: Map<string, ModelProviderListType>;
+  };
   initStaticData: (e: InitDateResponse) => void;
   appType?: string;
   setAppType: (e?: string) => void;
@@ -133,6 +140,14 @@ export const useSystemStore = create<State>()(
         ttsModelList: [],
         reRankModelList: [],
         sttModelList: [],
+        ModelProviders: {
+          listData: [defaultProvider],
+          mapData: new Map([[defaultProvider.id, defaultProvider]])
+        },
+        aiproxyIdMap: {
+          listData: defaultMapData,
+          mapData: new Map([[defaultMapData[0].id, defaultMapData[0]]])
+        },
         getVlmModelList: () => {
           return get().llmModelList.filter((item) => item.vision);
         },
@@ -162,6 +177,14 @@ export const useSystemStore = create<State>()(
               state.sttModelList;
 
             state.defaultModels = res.defaultModels ?? state.defaultModels;
+            state.ModelProviders = {
+              listData: res.modelProviders?.listData ?? state.ModelProviders.listData,
+              mapData: res.modelProviders?.mapData ?? state.ModelProviders.mapData
+            };
+            state.aiproxyIdMap = {
+              listData: res.aiproxyIdMap?.listData ?? state.aiproxyIdMap.listData,
+              mapData: res.aiproxyIdMap?.mapData ?? state.aiproxyIdMap.mapData
+            };
           });
         }
       })),
@@ -179,7 +202,9 @@ export const useSystemStore = create<State>()(
           embeddingModelList: state.embeddingModelList,
           ttsModelList: state.ttsModelList,
           reRankModelList: state.reRankModelList,
-          sttModelList: state.sttModelList
+          sttModelList: state.sttModelList,
+          ModelProviders: state.ModelProviders,
+          aiproxyIdMap: state.aiproxyIdMap
         })
       }
     )

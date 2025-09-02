@@ -14,7 +14,7 @@ import {
   ModalBody,
   ModalFooter
 } from '@chakra-ui/react';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
+import { getModelProvider } from '@/web/common/system/controller';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import React, { useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
