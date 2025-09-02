@@ -16,6 +16,7 @@ import { useTranslation } from 'next-i18next';
 type ResourceItemType = GetResourceListItemResponse & {
   open: boolean;
   children?: ResourceItemType[];
+  showAvatar?: boolean;
 };
 
 const rootId = 'root';
@@ -24,28 +25,33 @@ const SelectOneResource = ({
   server,
   value,
   onSelect,
-  maxH = ['80vh', '600px']
+  maxH = ['80vh', '600px'],
+  showRoot = true
 }: {
   server: (e: GetResourceFolderListProps) => Promise<GetResourceListItemResponse[]>;
   value?: ParentIdType;
   onSelect: (e?: ResourceItemType) => any;
   maxH?: BoxProps['maxH'];
+  showRoot?: boolean;
 }) => {
   const { t } = useTranslation();
   const [dataList, setDataList] = useState<ResourceItemType[]>([]);
   const [requestingIdList, setRequestingIdList] = useState<ParentIdType[]>([]);
 
   const concatRoot = useMemo(() => {
-    const root: ResourceItemType = {
-      id: rootId,
-      open: true,
-      avatar: FolderImgUrl,
-      name: t('common:root_folder'),
-      isFolder: true,
-      children: dataList
-    };
-    return [root];
-  }, [dataList, t]);
+    if (showRoot) {
+      const root: ResourceItemType = {
+        id: rootId,
+        open: true,
+        avatar: FolderImgUrl,
+        name: t('common:root_folder'),
+        isFolder: true,
+        children: dataList
+      };
+      return [root];
+    }
+    return dataList;
+  }, [dataList, t, showRoot]);
 
   const { runAsync: requestServer } = useRequest2((e: GetResourceFolderListProps) => {
     if (requestingIdList.includes(e.parentId)) return Promise.reject(null);
@@ -78,7 +84,7 @@ const SelectOneResource = ({
                 alignItems={'center'}
                 cursor={'pointer'}
                 py={1}
-                pl={index === 0 ? '0.5rem' : `${1.75 * (index - 1) + 0.5}rem`}
+                pl={index === 0 && showRoot ? '0.5rem' : `${1.75 * (index - 1) + 0.5}rem`}
                 pr={2}
                 borderRadius={'md'}
                 _hover={{
@@ -110,7 +116,7 @@ const SelectOneResource = ({
                       }
                     })}
               >
-                {index !== 0 && (
+                {(index !== 0 || !showRoot) && (
                   <Flex
                     alignItems={'center'}
                     justifyContent={'center'}
@@ -135,12 +141,14 @@ const SelectOneResource = ({
                     />
                   </Flex>
                 )}
-                <Avatar
-                  ml={index !== 0 ? '0.5rem' : 0}
-                  src={item.avatar}
-                  w={'1.25rem'}
-                  borderRadius={'sm'}
-                />
+                {item.showAvatar !== false && (
+                  <Avatar
+                    ml={index !== 0 || !showRoot ? '0.5rem' : 0}
+                    src={item.avatar}
+                    w={'1.25rem'}
+                    borderRadius={'sm'}
+                  />
+                )}
                 <Box fontSize={['md', 'sm']} ml={2} className="textEllipsis">
                   {item.name}
                 </Box>
