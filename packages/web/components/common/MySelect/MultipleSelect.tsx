@@ -1,7 +1,6 @@
 import type { FlexProps } from '@chakra-ui/react';
 import {
   Box,
-  Button,
   type ButtonProps,
   Checkbox,
   Flex,
