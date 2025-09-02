@@ -1,4 +1,4 @@
-import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
+import { replaceVariable, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type {
   AIChatItemValueItemType,
@@ -10,21 +10,7 @@ import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
-import { getMultiplePrompt } from './tool/constants';
 import type { ToolNodeItemType } from './tool/type';
-
-export const updateToolInputValue = ({
-  params,
-  inputs
-}: {
-  params: Record<string, any>;
-  inputs: FlowNodeInputItemType[];
-}) => {
-  return inputs.map((input) => ({
-    ...input,
-    value: params[input.key] ?? input.value
-  }));
-};
 
 export const filterToolResponseToPreview = (response: AIChatItemValueItemType[]) => {
   return response.map((item) => {
@@ -67,6 +53,19 @@ export const initToolNodes = (
   entryNodeIds: string[],
   startParams?: Record<string, any>
 ) => {
+  const updateToolInputValue = ({
+    params,
+    inputs
+  }: {
+    params: Record<string, any>;
+    inputs: FlowNodeInputItemType[];
+  }) => {
+    return inputs.map((input) => ({
+      ...input,
+      value: params[input.key] ?? input.value
+    }));
+  };
+
   nodes.forEach((node) => {
     if (entryNodeIds.includes(node.nodeId)) {
       node.isEntry = true;
@@ -78,8 +77,8 @@ export const initToolNodes = (
 };
 
 /*
-Tool call， auth add file prompt to question。
-Guide the LLM to call tool.
+  Tool call， auth add file prompt to question。
+  Guide the LLM to call tool.
 */
 export const toolCallMessagesAdapt = ({
   userInput,
@@ -88,6 +87,15 @@ export const toolCallMessagesAdapt = ({
   userInput: UserChatItemValueItemType[];
   skip?: boolean;
 }): UserChatItemValueItemType[] => {
+  const getMultiplePrompt = (obj: { fileCount: number; imgCount: number; question: string }) => {
+    const prompt = `Number of session file inputs：
+  Document：{{fileCount}}
+  Image：{{imgCount}}
+  ------
+  {{question}}`;
+    return replaceVariable(prompt, obj);
+  };
+
   if (skip) return userInput;
 
   const files = userInput.filter((item) => item.type === 'file');
@@ -136,8 +144,8 @@ export const getToolNodesByIds = ({
   const nodeMap = new Map(runtimeNodes.map((node) => [node.nodeId, node]));
 
   return toolNodeIds
-    .map((nodeId) => nodeMap.get(nodeId))
-    .filter((tool): tool is RuntimeNodeItemType => Boolean(tool))
+    .map((nodeId) => nodeMap.get(nodeId)!)
+    .filter((tool) => Boolean(tool))
     .map((tool) => {
       const toolParams: FlowNodeInputItemType[] = [];
       let jsonSchema: JSONSchemaInputType | undefined;

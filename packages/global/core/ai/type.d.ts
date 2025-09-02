@@ -2,7 +2,6 @@ import openai from 'openai';
 import type {
   ChatCompletionMessageToolCall,
   ChatCompletionMessageParam as SdkChatCompletionMessageParam,
-  ChatCompletionToolMessageParam,
   ChatCompletionContentPart as SdkChatCompletionContentPart,
   ChatCompletionUserMessageParam as SdkChatCompletionUserMessageParam,
   ChatCompletionToolMessageParam as SdkChatCompletionToolMessageParam,
@@ -28,7 +27,7 @@ type CustomChatCompletionUserMessageParam = Omit<ChatCompletionUserMessageParam,
   role: 'user';
   content: string | Array<ChatCompletionContentPart>;
 };
-type CustomChatCompletionToolMessageParam = SdkChatCompletionToolMessageParam & {
+export type CustomChatCompletionToolMessageParam = SdkChatCompletionToolMessageParam & {
   role: 'tool';
   name?: string;
 };
@@ -55,7 +54,6 @@ export type ChatCompletionMessageParam = (
 export type SdkChatCompletionMessageParam = SdkChatCompletionMessageParam;
 
 /* ToolChoice and functionCall extension */
-export type ChatCompletionToolMessageParam = ChatCompletionToolMessageParam & { name: string };
 export type ChatCompletionAssistantToolParam = {
   role: 'assistant';
   tool_calls: ChatCompletionMessageToolCall[];
