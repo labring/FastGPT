@@ -38,6 +38,7 @@ import json5 from 'json5';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import type { ToolNodeItemType } from './type';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
+import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -192,10 +193,25 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             isToolCall: true
           });
           dispatchFlowResponse.push(...flowResponses);
+
+          const response = formatToolResponse(toolResponses);
+          workflowStreamResponse?.({
+            event: SseResponseEventEnum.toolResponse,
+            data: {
+              tool: {
+                id: call.id,
+                toolName: '',
+                toolAvatar: '',
+                params: '',
+                response: sliceStrStartEnd(response, 5000, 5000)
+              }
+            }
+          });
+
           // TODO: 推送账单
 
           return {
-            response: formatToolResponse(toolResponses),
+            response,
             usages: flowUsages,
             isEnd: false
           };
