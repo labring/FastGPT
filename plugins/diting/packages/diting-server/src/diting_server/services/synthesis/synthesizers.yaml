@@ -1,0 +1,4 @@
+synthesizers:
+  - name: "q_a_synthesizer"
+    description: "Generates question-answer pairs from given context and themes for dataset creation."
+    required_input: ["context", "themes"]
