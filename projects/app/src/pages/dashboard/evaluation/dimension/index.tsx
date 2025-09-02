@@ -75,8 +75,8 @@ const EvaluationDimensions = ({ Tab }: { Tab: React.ReactNode }) => {
     onSuccess: () => {
       fetchData();
     },
-    errorToast: t('evaluation_dimension:delete_failed'),
-    successToast: t('evaluation_dimension:delete_success')
+    errorToast: t('dashboard_evaluation:delete_failed'),
+    successToast: t('dashboard_evaluation:delete_success')
   });
 
   const handleDeleteDimension = (dimensionId: string) => {
@@ -94,7 +94,7 @@ const EvaluationDimensions = ({ Tab }: { Tab: React.ReactNode }) => {
               <MyIcon name={'common/searchLight'} w={'16px'} color={'myGray.500'} />
             </InputLeftElement>
             <Input
-              placeholder={t('evaluation_dimension:search_dimension')}
+              placeholder={t('dashboard_evaluation:search_dimension')}
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
               bg={'white'}
@@ -108,7 +108,7 @@ const EvaluationDimensions = ({ Tab }: { Tab: React.ReactNode }) => {
             px={4}
             flexShrink={0}
           >
-            {t('evaluation_dimension:create_dimension')}
+            {t('dashboard_evaluation:create_dimension')}
           </Button>
         </HStack>
       </Flex>
@@ -118,10 +118,10 @@ const EvaluationDimensions = ({ Tab }: { Tab: React.ReactNode }) => {
           <Table>
             <Thead>
               <Tr>
-                <Th>{t('evaluation_dimension:dimension_name')}</Th>
-                <Th>{t('evaluation_dimension:description')}</Th>
-                <Th>{t('evaluation_dimension:create_update_time')}</Th>
-                <Th>{t('evaluation_dimension:creator')}</Th>
+                <Th>{t('dashboard_evaluation:dimension_name')}</Th>
+                <Th>{t('dashboard_evaluation:description')}</Th>
+                <Th>{t('dashboard_evaluation:create_update_time')}</Th>
+                <Th>{t('dashboard_evaluation:creator')}</Th>
                 <Th></Th>
               </Tr>
             </Thead>
@@ -146,7 +146,7 @@ const EvaluationDimensions = ({ Tab }: { Tab: React.ReactNode }) => {
                     <HStack spacing={2}>
                       <Text>{dimension.name}</Text>
                       {dimension.type === EvalMetricTypeEnum.Builtin && (
-                        <MyTag colorSchema="gray">{t('evaluation_dimension:builtin')}</MyTag>
+                        <MyTag colorSchema="gray">{t('dashboard_evaluation:builtin')}</MyTag>
                       )}
                     </HStack>
                   </Td>
@@ -182,7 +182,7 @@ const EvaluationDimensions = ({ Tab }: { Tab: React.ReactNode }) => {
                               await handleDeleteDimension(dimension._id);
                             },
                             undefined,
-                            t('evaluation_dimension:confirm_delete_dimension')
+                            t('dashboard_evaluation:confirm_delete_dimension')
                           )()
                         }
                       />
