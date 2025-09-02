@@ -34,22 +34,28 @@ import { dispatchRunAgent } from './ai/agent';
 
 export const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
-  [FlowNodeTypeEnum.answerNode]: dispatchAnswer,
-  [FlowNodeTypeEnum.chatNode]: dispatchChatCompletion,
-  [FlowNodeTypeEnum.datasetSearchNode]: dispatchDatasetSearch,
-  [FlowNodeTypeEnum.datasetConcatNode]: dispatchDatasetConcat,
-  [FlowNodeTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
-  [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,
-  [FlowNodeTypeEnum.httpRequest468]: dispatchHttp468Request,
+
+  // Child
   [FlowNodeTypeEnum.appModule]: dispatchRunAppNode,
   [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
   [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
   [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,
-  [FlowNodeTypeEnum.queryExtension]: dispatchQueryExtension,
+
+  // AI
   [FlowNodeTypeEnum.agent]: dispatchRunAgent,
+  [FlowNodeTypeEnum.chatNode]: dispatchChatCompletion,
+  [FlowNodeTypeEnum.datasetSearchNode]: dispatchDatasetSearch,
+  [FlowNodeTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
+  [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,
+  [FlowNodeTypeEnum.queryExtension]: dispatchQueryExtension,
+  // Tool call
   [FlowNodeTypeEnum.toolCall]: dispatchRunTools,
   [FlowNodeTypeEnum.stopTool]: dispatchStopToolCall,
   [FlowNodeTypeEnum.toolParams]: dispatchToolParams,
+
+  [FlowNodeTypeEnum.answerNode]: dispatchAnswer,
+  [FlowNodeTypeEnum.datasetConcatNode]: dispatchDatasetConcat,
+  [FlowNodeTypeEnum.httpRequest468]: dispatchHttp468Request,
   [FlowNodeTypeEnum.lafModule]: dispatchLafRequest,
   [FlowNodeTypeEnum.ifElseNode]: dispatchIfElse,
   [FlowNodeTypeEnum.variableUpdate]: dispatchUpdateVariable,
