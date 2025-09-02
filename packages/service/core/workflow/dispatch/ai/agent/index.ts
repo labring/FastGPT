@@ -32,13 +32,20 @@ import {
   getToolNodesByIds,
   initToolNodes
 } from '../utils';
-import { getTopAgentDefaultPrompt, StopAgentId, StopAgentTool } from './constants';
+import {
+  getFileReadTool,
+  getTopAgentDefaultPrompt,
+  PlanAgentTool,
+  StopAgentTool,
+  SubAgentIds
+} from './constants';
 import { runWorkflow } from '../..';
 import json5 from 'json5';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import type { ToolNodeItemType } from './type';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
+import { transferPlanAgent } from '../sub/plan';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -110,7 +117,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       };
     };
 
-    const subApps = getSubApps({ toolNodes });
+    const subApps = getSubApps({ toolNodes, urls: fileLinks });
 
     // TODO: 把 files 加入 query 中。
     const messages: ChatItemType[] = (() => {
@@ -162,11 +169,36 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         handleToolResponse: async (call) => {
           const toolId = call.function.name;
 
-          if (toolId === StopAgentId) {
+          if (toolId === SubAgentIds.stop) {
             return {
               response: '',
               usages: [],
               isEnd: true
+            };
+          } else if (toolId === SubAgentIds.plan) {
+            const { content, inputTokens, outputTokens } = await transferPlanAgent({
+              model,
+              toolArgs: { instruction: call.function.arguments },
+              sharedContext: [],
+              onStreaming({ text }) {
+                workflowStreamResponse?.({
+                  event: SseResponseEventEnum.toolResponse,
+                  data: {
+                    tool: {
+                      id: call.id,
+                      toolName: '',
+                      toolAvatar: '',
+                      params: '',
+                      response: sliceStrStartEnd(text, 5000, 5000)
+                    }
+                  }
+                });
+              }
+            });
+            return {
+              response: content,
+              usages: [],
+              isEnd: false
             };
           }
 
@@ -323,9 +355,15 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   }
 };
 
-const getSubApps = ({ toolNodes }: { toolNodes: ToolNodeItemType[] }): ChatCompletionTool[] => {
+const getSubApps = ({
+  toolNodes,
+  urls
+}: {
+  toolNodes: ToolNodeItemType[];
+  urls?: string[];
+}): ChatCompletionTool[] => {
   // System Tools: Plan Agent, stop sign, model agent.
-  const systemTools: ChatCompletionTool[] = [];
+  const systemTools: ChatCompletionTool[] = [PlanAgentTool, StopAgentTool, getFileReadTool(urls)];
 
   // Node Tools
   const nodeTools = toolNodes.map<ChatCompletionTool>((item: ToolNodeItemType) => {
