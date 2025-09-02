@@ -126,6 +126,8 @@ services:
       - AIPROXY_API_ENDPOINT=http://aiproxy:3000
       # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
       - AIPROXY_API_TOKEN=aiproxy
+      # diting 地址
+      - DITING_BASE_URL=http://diting:3000
 
       # 数据库最大连接数
       - DB_MAX_LINK=30
@@ -237,6 +239,24 @@ services:
       POSTGRES_PASSWORD: aiproxy
     healthcheck:
       test: ['CMD', 'pg_isready', '-U', 'postgres', '-d', 'aiproxy']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      
+  # diting
+  diting:
+    image: ghcr.io/labring/diting:v0.1.0
+    container_name: diting
+    restart: unless-stopped
+    networks:
+      - fastgpt
+    environment:
+      # 对应fastgpt中的aiproxy的AIPROXY_API_ENDPOINT
+      - AIPROXY_API_ENDPOINT=http://aiproxy:3000
+      # 对应fastgpt中的aiproxy的AIPROXY_API_TOKEN
+      - AIPROXY_API_TOKEN=aiproxy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/api/v1/healthz']
       interval: 5s
       timeout: 5s
       retries: 10

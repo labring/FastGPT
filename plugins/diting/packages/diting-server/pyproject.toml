@@ -1,0 +1,33 @@
+[project]
+name = "diting-server"
+version = "0.1.0"
+description = "DiTing Server Module"
+requires-python = ">=3.11"
+dependencies = [
+    "diting-core",
+    "fastapi>=0.116.1",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.10.1",
+    "pyyaml>=6.0.2",
+    "structlog>=25.4.0",
+    "tiktoken>=0.9.0",
+    "uvicorn>=0.35.0",
+]
+
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning>=0.7.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.uv-dynamic-versioning]
+vcs = "git"
+style = "pep440"
+bump = true
+
+[tool.uv.sources]
+diting-core = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/diting_server"]
