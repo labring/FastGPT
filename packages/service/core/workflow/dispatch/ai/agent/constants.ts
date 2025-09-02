@@ -1,6 +1,6 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 
-export enum SubAgentIds {
+export enum SubAppIds {
   plan = 'plan_agent',
   stop = 'stop_agent',
   model = 'model_agent',
@@ -36,7 +36,7 @@ export const getTopAgentDefaultPrompt = () => {
 export const PlanAgentTool: ChatCompletionTool = {
   type: 'function',
   function: {
-    name: SubAgentIds.plan,
+    name: SubAppIds.plan,
     description:
       '如果用户的任务非常复杂，可以先使用 plan_agent 制定计划，然后根据计划使用其他工具来完成任务。同时，plan_agent 负责维护整个任务的上下文和状态。可以更新或修改计划中的内容',
     parameters: {
@@ -55,7 +55,7 @@ export const PlanAgentTool: ChatCompletionTool = {
 export const StopAgentTool: ChatCompletionTool = {
   type: 'function',
   function: {
-    name: SubAgentIds.stop,
+    name: SubAppIds.stop,
     description: '如果完成了所有的任务，可调用此工具。'
   }
 };
@@ -63,7 +63,7 @@ export const StopAgentTool: ChatCompletionTool = {
 export const ModelAgentTool: ChatCompletionTool = {
   type: 'function',
   function: {
-    name: SubAgentIds.model,
+    name: SubAppIds.model,
     description: '完成一些简单通用型任务, 可以调用此工具。',
     parameters: {
       type: 'object',
