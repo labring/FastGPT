@@ -17,6 +17,10 @@ export type updateEvalDatasetCollectionBody = EvalDatasetCollectionBase & {
   collectionId: string;
 };
 
+export type deleteEvalDatasetCollectionQuery = {
+  collectionId: string;
+};
+
 export type listEvalDatasetCollectionBody = PaginationProps<{
   searchKey?: string;
 }>;

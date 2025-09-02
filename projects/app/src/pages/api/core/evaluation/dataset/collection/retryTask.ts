@@ -7,11 +7,13 @@ import { Types } from '@fastgpt/service/common/mongo';
 import type { retryTaskBody } from '@fastgpt/global/core/evaluation/dataset/api';
 import { evalDatasetDataSynthesizeQueue } from '@fastgpt/service/core/evaluation/dataset/dataSynthesizeMq';
 import { addLog } from '@fastgpt/service/common/system/log';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(
   req: ApiRequestProps<retryTaskBody, {}>
 ): Promise<{ success: boolean; message: string }> {
-  const { teamId } = await authUserPer({
+  const { teamId, tmbId } = await authUserPer({
     req,
     authToken: true,
     authApiKey: true,
@@ -60,6 +62,17 @@ async function handler(
       collectionId,
       teamId
     });
+
+    (async () => {
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.RETRY_EVALUATION_DATASET_TASK,
+        params: {
+          collectionName: collection.name
+        }
+      });
+    })();
 
     return {
       success: true,

@@ -1,6 +1,7 @@
 import { getQueue, getWorker, QueueNames } from '../../../common/bullmq';
 import { type Processor } from 'bullmq';
 import { addLog } from '../../../common/system/log';
+import { createJobCleaner, type JobCleanupResult, type JobCleanupOptions } from './jobCleanup';
 
 export type EvalDatasetDataSynthesizeData = {
   dataId: string;
@@ -59,31 +60,26 @@ export const checkEvalDatasetDataSynthesizeJobActive = async (
   }
 };
 
-export const removeEvalDatasetDataSynthesizeJobs = async (
-  evalDatasetCollectionId: string
-): Promise<boolean> => {
-  try {
-    const jobs = await evalDatasetDataSynthesizeQueue.getJobs([
-      'waiting',
-      'delayed',
-      'prioritized'
-    ]);
-    const jobsToRemove = jobs.filter(
-      (job) => job.data.evalDatasetCollectionId === evalDatasetCollectionId
-    );
+export const removeEvalDatasetDataSynthesizeJobsRobust = async (
+  evalDatasetCollectionIds: string[],
+  options?: JobCleanupOptions
+): Promise<JobCleanupResult> => {
+  const cleaner = createJobCleaner(options);
 
-    await Promise.all(jobsToRemove.map((job) => job.remove()));
+  const filterFn = (job: any) => {
+    return evalDatasetCollectionIds.includes(String(job.data?.evalDatasetCollectionId));
+  };
 
-    addLog.info('Data synthesize jobs removed successfully', {
-      evalDatasetCollectionId: evalDatasetCollectionId,
-      removedCount: jobsToRemove.length
-    });
-    return true;
-  } catch (error) {
-    addLog.error('Failed to remove data synthesize jobs', {
-      evalDatasetCollectionId: evalDatasetCollectionId,
-      error
-    });
-    return false;
-  }
+  const result = await cleaner.cleanAllJobsByFilter(
+    evalDatasetDataSynthesizeQueue,
+    filterFn,
+    QueueNames.evalDatasetDataSynthesize
+  );
+
+  addLog.info('Evaluation DatasetData synthesize jobs cleanup completed', {
+    evalDatasetCollectionIds: evalDatasetCollectionIds.length,
+    result
+  });
+
+  return result;
 };

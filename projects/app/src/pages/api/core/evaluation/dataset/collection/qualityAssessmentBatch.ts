@@ -6,8 +6,8 @@ import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/e
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import {
   addEvalDatasetDataQualityJob,
-  removeEvalDatasetDataQualityJob,
-  evalDatasetDataQualityQueue
+  evalDatasetDataQualityQueue,
+  removeEvalDatasetDataQualityJobsRobust
 } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import type {
   qualityAssessmentBatchBody,
@@ -15,6 +15,8 @@ import type {
 } from '@fastgpt/global/core/evaluation/dataset/api';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { EvalDatasetDataQualityStatusEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 export type QualityAssessmentBatchQuery = {};
 export type QualityAssessmentBatchBody = qualityAssessmentBatchBody;
@@ -106,7 +108,7 @@ async function handler(
           jobId,
           collectionId
         });
-        await removeEvalDatasetDataQualityJob(dataId);
+        await removeEvalDatasetDataQualityJobsRobust([dataId]);
 
         // Create new job
         await addEvalDatasetDataQualityJob({
@@ -145,7 +147,7 @@ async function handler(
 
         // Remove existing job if any (for completed/failed states)
         if (jobId) {
-          await removeEvalDatasetDataQualityJob(dataId);
+          await removeEvalDatasetDataQualityJobsRobust([dataId]);
         }
 
         // Create new job
@@ -185,6 +187,17 @@ async function handler(
     errorCount,
     totalItems: dataItems.length
   });
+
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.QUALITY_ASSESSMENT_EVALUATION_DATA,
+      params: {
+        collectionName: collection.name
+      }
+    });
+  })();
 
   return {
     success: errorCount === 0 || processedCount > 0,

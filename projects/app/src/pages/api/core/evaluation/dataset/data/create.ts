@@ -10,6 +10,8 @@ import {
   EvalDatasetDataKeyEnum
 } from '@fastgpt/global/core/evaluation/dataset/constants';
 import type { createEvalDatasetDataBody } from '@fastgpt/global/core/evaluation/dataset/api';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 export type EvalDatasetDataCreateQuery = {};
 export type EvalDatasetDataCreateBody = createEvalDatasetDataBody;
@@ -90,8 +92,16 @@ async function handler(
     return _id;
   });
 
-  // TODO: Add audit log for data creation
-  // TODO: Add tracking for data creation metrics
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.CREATE_EVALUATION_DATASET_DATA,
+      params: {
+        collectionName: collection.name
+      }
+    });
+  })();
 
   return dataId.toString();
 }

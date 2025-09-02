@@ -442,6 +442,96 @@ export const auditLogMap = {
       datasetType: string;
     }
   },
+  //Evaluation Dataset
+  [AuditEventEnum.CREATE_EVALUATION_DATASET_COLLECTION]: {
+    content: i18nT('account_team:log_create_evaluation_dataset_collection'),
+    typeLabel: i18nT('account_team:create_evaluation_dataset_collection'),
+    params: {} as {
+      name?: string;
+      collectionName: string;
+    }
+  },
+  [AuditEventEnum.UPDATE_EVALUATION_DATASET_COLLECTION]: {
+    content: i18nT('account_team:log_update_evaluation_dataset_collection'),
+    typeLabel: i18nT('account_team:update_evaluation_dataset_collection'),
+    params: {} as {
+      name?: string;
+      collectionName: string;
+    }
+  },
+  [AuditEventEnum.DELETE_EVALUATION_DATASET_COLLECTION]: {
+    content: i18nT('account_team:log_delete_evaluation_dataset_collection'),
+    typeLabel: i18nT('account_team:delete_evaluation_dataset_collection'),
+    params: {} as {
+      name?: string;
+      collectionName: string;
+    }
+  },
+  [AuditEventEnum.CREATE_EVALUATION_DATASET_DATA]: {
+    content: i18nT('account_team:log_create_evaluation_dataset_data'),
+    typeLabel: i18nT('account_team:create_evaluation_dataset_data'),
+    params: {} as {
+      name?: string;
+      collectionName: string;
+    }
+  },
+  [AuditEventEnum.UPDATE_EVALUATION_DATASET_DATA]: {
+    content: i18nT('account_team:log_update_evaluation_dataset_data'),
+    typeLabel: i18nT('account_team:update_evaluation_dataset_data'),
+    params: {} as {
+      name?: string;
+      collectionName: string;
+    }
+  },
+  [AuditEventEnum.DELETE_EVALUATION_DATASET_DATA]: {
+    content: i18nT('account_team:log_delete_evaluation_dataset_data'),
+    typeLabel: i18nT('account_team:delete_evaluation_dataset_data'),
+    params: {} as {
+      name?: string;
+      collectionName: string;
+    }
+  },
+  [AuditEventEnum.QUALITY_ASSESSMENT_EVALUATION_DATA]: {
+    content: i18nT('account_team:log_quality_assessment_evaluation_data'),
+    typeLabel: i18nT('account_team:quality_assessment_evaluation_data'),
+    params: {} as {
+      name?: string;
+      collectionName: string;
+    }
+  },
+  [AuditEventEnum.SMART_GENERATE_EVALUATION_DATA]: {
+    content: i18nT('account_team:log_smart_generate_evaluation_data'),
+    typeLabel: i18nT('account_team:smart_generate_evaluation_data'),
+    params: {} as {
+      name?: string;
+      collectionName: string;
+    }
+  },
+  [AuditEventEnum.DELETE_EVALUATION_DATASET_TASK]: {
+    content: i18nT('account_team:log_delete_evaluation_dataset_task'),
+    typeLabel: i18nT('account_team:delete_evaluation_dataset_task'),
+    params: {} as {
+      name?: string;
+      collectionName: string;
+    }
+  },
+  [AuditEventEnum.RETRY_EVALUATION_DATASET_TASK]: {
+    content: i18nT('account_team:log_retry_evaluation_dataset_task'),
+    typeLabel: i18nT('account_team:retry_evaluation_dataset_task'),
+    params: {} as {
+      name?: string;
+      collectionName: string;
+    }
+  },
+  [AuditEventEnum.IMPORT_EVALUATION_DATASET_DATA]: {
+    content: i18nT('account_team:log_import_evaluation_dataset_data'),
+    typeLabel: i18nT('account_team:import_evaluation_dataset_data'),
+    params: {} as {
+      name?: string;
+      collectionName: string;
+      recordCount?: number;
+    }
+  },
   //SearchTest
   [AuditEventEnum.SEARCH_TEST]: {
     content: i18nT('account_team:log_search_test'),
