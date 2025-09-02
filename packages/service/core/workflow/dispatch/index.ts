@@ -717,6 +717,14 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           entryNodeIds: [nodeRunResult.node.nodeId],
           interactiveResponse
         };
+
+        // Execute all pending skip nodes before entering interactive state
+        while (this.skipNodeQueue.length > 0) {
+          const skipItem = this.skipNodeQueue.shift();
+          if (skipItem) {
+            await this.checkNodeCanRun(skipItem.node, skipItem.skippedNodeIdList);
+          }
+        }
         return;
       }
 
