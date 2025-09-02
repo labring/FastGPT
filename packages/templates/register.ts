@@ -1,36 +1,11 @@
-import fs from 'fs';
-import path from 'path';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
-
-const getTemplateNameList = () => {
-  const currentFileUrl = new URL(import.meta.url);
-  const filePath = decodeURIComponent(
-    process.platform === 'win32'
-      ? currentFileUrl.pathname.substring(1) // Remove leading slash on Windows
-      : currentFileUrl.pathname
-  );
-  const templatesPath = path.join(path.dirname(filePath), 'src');
-
-  return fs.promises.readdir(templatesPath);
-};
+import { APIGetTemplate } from '@fastgpt/service/core/app/tool/api';
 
 const getFileTemplates = async (): Promise<AppTemplateSchemaType[]> => {
-  const templateNames = await getTemplateNameList();
-
-  return Promise.all(
-    templateNames.map<Promise<AppTemplateSchemaType>>(async (name) => {
-      const fileContent = (await import(`./src/${name}/template.json`))?.default;
-
-      return {
-        ...fileContent,
-        templateId: `${PluginSourceEnum.community}-${name}`,
-        isActive: true
-      };
-    })
-  );
+  return (await APIGetTemplate()) as AppTemplateSchemaType[];
 };
 
 const getAppTemplates = async () => {

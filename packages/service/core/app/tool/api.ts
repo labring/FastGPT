@@ -24,6 +24,19 @@ export async function APIGetSystemToolList() {
 
   return Promise.reject(res.body);
 }
+export async function APIGetTemplate() {
+  const res = await pluginClient.tool.getTemplateList();
+  if (res.status === 200) {
+    return res.body.map((item) => {
+      return {
+        ...item,
+        templateId: `community-${item.templateId}`
+      };
+    });
+  }
+
+  return Promise.reject(res.body);
+}
 
 const runToolInstance = new RunToolWithStream({
   baseUrl: BASE_URL,
