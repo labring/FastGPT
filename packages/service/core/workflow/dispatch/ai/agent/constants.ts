@@ -3,6 +3,7 @@ import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 export enum SubAgentIds {
   plan = 'plan_agent',
   stop = 'stop_agent',
+  model = 'model_agent',
   fileRead = 'file_read'
 }
 
@@ -56,6 +57,28 @@ export const StopAgentTool: ChatCompletionTool = {
   function: {
     name: SubAgentIds.stop,
     description: '如果完成了所有的任务，可调用此工具。'
+  }
+};
+
+export const ModelAgentTool: ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: SubAgentIds.model,
+    description: '完成一些简单通用型任务, 可以调用此工具。',
+    parameters: {
+      type: 'object',
+      properties: {
+        systemPrompt: {
+          type: 'string',
+          description: ' 注入给此 agent 的系统提示词'
+        },
+        task: {
+          type: 'string',
+          description: '此 agent 本轮需要完成的任务'
+        }
+      },
+      required: ['systemPrompt', 'task']
+    }
   }
 };
 

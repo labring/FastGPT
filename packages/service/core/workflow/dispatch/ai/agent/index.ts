@@ -30,22 +30,24 @@ import {
   filterToolResponseToPreview,
   formatToolResponse,
   getToolNodesByIds,
-  initToolNodes
+  initToolNodes,
+  parseToolArgs
 } from '../utils';
 import {
   getFileReadTool,
   getTopAgentDefaultPrompt,
+  ModelAgentTool,
   PlanAgentTool,
   StopAgentTool,
   SubAgentIds
 } from './constants';
 import { runWorkflow } from '../..';
-import json5 from 'json5';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import type { ToolNodeItemType } from './type';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { transferPlanAgent } from '../sub/plan';
+import { transferModelAgent } from '../sub/model';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -88,7 +90,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       history = 6,
       fileUrlList: fileLinks,
       temperature,
-      aiChatTopP
+      aiChatTopP,
+      planConfig
     }
   } = props;
 
@@ -176,10 +179,43 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               isEnd: true
             };
           } else if (toolId === SubAgentIds.plan) {
+            const planModel = planConfig?.model ?? model;
+            const { instruction } = parseToolArgs<{ instruction: string }>(call.function.arguments);
+
             const { content, inputTokens, outputTokens } = await transferPlanAgent({
+              model: planModel,
+              instruction,
+              sharedContext: [], // 暂不确定要不要, 如果要和 Top 同步上下文就需要传这个
+              onStreaming({ text }) {
+                //TODO: 需要一个新的 plan sse event
+                workflowStreamResponse?.({
+                  event: SseResponseEventEnum.toolResponse,
+                  data: {
+                    tool: {
+                      id: call.id,
+                      toolName: '',
+                      toolAvatar: '',
+                      params: '',
+                      response: sliceStrStartEnd(text, 5000, 5000)
+                    }
+                  }
+                });
+              }
+            });
+            return {
+              response: content,
+              usages: [],
+              isEnd: false
+            };
+          } else if (toolId === SubAgentIds.model) {
+            const { systemPrompt, task } = parseToolArgs<{ systemPrompt: string; task: string }>(
+              call.function.arguments
+            );
+
+            const { content, inputTokens, outputTokens } = await transferModelAgent({
               model,
-              toolArgs: { instruction: call.function.arguments },
-              sharedContext: [],
+              systemPrompt,
+              task,
               onStreaming({ text }) {
                 workflowStreamResponse?.({
                   event: SseResponseEventEnum.toolResponse,
@@ -211,14 +247,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             };
           }
 
-          const startParams = (() => {
-            try {
-              return json5.parse(call.function.arguments);
-            } catch {
-              return {};
-            }
-          })();
-
+          const startParams = parseToolArgs(call.function.arguments);
           initToolNodes(runtimeNodes, [node.nodeId], startParams);
           const { toolResponses, flowUsages, flowResponses } = await runWorkflow({
             ...props,
@@ -363,7 +392,12 @@ const getSubApps = ({
   urls?: string[];
 }): ChatCompletionTool[] => {
   // System Tools: Plan Agent, stop sign, model agent.
-  const systemTools: ChatCompletionTool[] = [PlanAgentTool, StopAgentTool, getFileReadTool(urls)];
+  const systemTools: ChatCompletionTool[] = [
+    PlanAgentTool,
+    StopAgentTool,
+    ModelAgentTool,
+    getFileReadTool(urls)
+  ];
 
   // Node Tools
   const nodeTools = toolNodes.map<ChatCompletionTool>((item: ToolNodeItemType) => {

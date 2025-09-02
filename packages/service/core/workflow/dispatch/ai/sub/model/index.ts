@@ -1,36 +1,33 @@
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
 import { addLog } from '../../../../../../common/system/log';
 import { createLLMResponse, type ResponseEvents } from '../../../../../ai/llm/request';
-import { defaultGeneratePlanPrompt } from './prompt';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 
-type PlanAgentConfig = {
+type ModelAgentConfig = {
   model: string;
-  customSystemPrompt?: string;
   temperature?: number;
   top_p?: number;
   stream?: boolean;
 };
 
-type transferPlanAgentProps = {
-  sharedContext: ChatCompletionMessageParam[];
-  instruction?: string;
-} & PlanAgentConfig &
+type transferModelAgentProps = {
+  systemPrompt?: string;
+  task?: string;
+} & ModelAgentConfig &
   Pick<ResponseEvents, 'onStreaming' | 'onReasoning'>;
 
-export async function transferPlanAgent({
-  instruction = '',
-  sharedContext,
+export async function transferModelAgent({
+  systemPrompt = '',
+  task = '',
 
   onStreaming,
   onReasoning,
 
   model,
-  customSystemPrompt,
-  temperature = 0,
+  temperature = 0.7,
   top_p,
   stream = true
-}: transferPlanAgentProps): Promise<{
+}: transferModelAgentProps): Promise<{
   content: string;
   inputTokens: number;
   outputTokens: number;
@@ -39,12 +36,11 @@ export async function transferPlanAgent({
     const messages: ChatCompletionMessageParam[] = [
       {
         role: ChatCompletionRequestMessageRoleEnum.System,
-        content: customSystemPrompt || defaultGeneratePlanPrompt
+        content: systemPrompt
       },
-      ...sharedContext.filter((item) => item.role !== 'system'),
       {
         role: 'user',
-        content: instruction
+        content: task
       }
     ];
 
@@ -69,7 +65,7 @@ export async function transferPlanAgent({
       outputTokens
     };
   } catch (error) {
-    addLog.warn('call plan_agent failed');
+    addLog.warn('call model_agent failed');
     return {
       content: '',
       inputTokens: 0,
