@@ -7,6 +7,8 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import type { smartGenerateEvalDatasetBody } from '@fastgpt/global/core/evaluation/dataset/api';
 import { addEvalDatasetSmartGenerateJob } from '@fastgpt/service/core/evaluation/dataset/smartGenerateMq';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 export type SmartGenerateEvalDatasetQuery = {};
 export type SmartGenerateEvalDatasetBody = smartGenerateEvalDatasetBody;
@@ -91,8 +93,16 @@ async function handler(
       evalDatasetCollectionId: collectionId
     });
 
-    // TODO: Add audit log for smart generation operation
-    // TODO: Add tracking metrics for smart generation
+    (async () => {
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.SMART_GENERATE_EVALUATION_DATA,
+        params: {
+          collectionName: evalDatasetCollection.name
+        }
+      });
+    })();
 
     return job.id || 'queued';
   } catch (error: any) {

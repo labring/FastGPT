@@ -31,6 +31,9 @@ vi.mock('@fastgpt/service/common/file/gridfs/controller', () => ({
 vi.mock('@fastgpt/service/core/evaluation/dataset/dataQualityMq', () => ({
   addEvalDatasetDataQualityJob: vi.fn()
 }));
+vi.mock('@fastgpt/service/support/user/audit/util', () => ({
+  addAuditLog: vi.fn()
+}));
 
 const mockAuthEvalDatasetCollectionFile = vi.mocked(authEvalDatasetCollectionFile);
 const mockMongoSessionRun = vi.mocked(mongoSessionRun);

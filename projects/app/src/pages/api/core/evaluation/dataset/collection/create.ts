@@ -5,6 +5,8 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import type { createEvalDatasetCollectionBody } from '@fastgpt/global/core/evaluation/dataset/api';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 export type EvalDatasetCollectionCreateQuery = {};
 export type EvalDatasetCollectionCreateBody = createEvalDatasetCollectionBody;
@@ -65,7 +67,16 @@ async function handler(
     return _id;
   });
 
-  // TODO: Add audit log
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.CREATE_EVALUATION_DATASET_COLLECTION,
+      params: {
+        collectionName: name.trim()
+      }
+    });
+  })();
 
   return datasetId.toString();
 }

@@ -22,6 +22,9 @@ vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', 
     findOne: vi.fn()
   }
 }));
+vi.mock('@fastgpt/service/support/user/audit/util', () => ({
+  addAuditLog: vi.fn()
+}));
 
 const mockAuthUserPer = vi.mocked(authUserPer);
 const mockMongoSessionRun = vi.mocked(mongoSessionRun);

@@ -5,7 +5,7 @@ import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/e
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import {
   addEvalDatasetDataQualityJob,
-  removeEvalDatasetDataQualityJob,
+  removeEvalDatasetDataQualityJobsRobust,
   checkEvalDatasetDataQualityJobActive
 } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -25,15 +25,20 @@ vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', 
 }));
 vi.mock('@fastgpt/service/core/evaluation/dataset/dataQualityMq', () => ({
   addEvalDatasetDataQualityJob: vi.fn(),
-  removeEvalDatasetDataQualityJob: vi.fn(),
+  removeEvalDatasetDataQualityJobsRobust: vi.fn(),
   checkEvalDatasetDataQualityJobActive: vi.fn()
+}));
+vi.mock('@fastgpt/service/support/user/audit/util', () => ({
+  addAuditLog: vi.fn()
 }));
 
 const mockAuthUserPer = vi.mocked(authUserPer);
 const mockMongoEvalDatasetData = vi.mocked(MongoEvalDatasetData);
 const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
 const mockAddEvalDatasetDataQualityJob = vi.mocked(addEvalDatasetDataQualityJob);
-const mockRemoveEvalDatasetDataQualityJob = vi.mocked(removeEvalDatasetDataQualityJob);
+const mockRemoveEvalDatasetDataQualityJobsRobust = vi.mocked(
+  removeEvalDatasetDataQualityJobsRobust
+);
 const mockCheckEvalDatasetDataQualityJobActive = vi.mocked(checkEvalDatasetDataQualityJobActive);
 
 describe('QualityAssessment API', () => {
@@ -256,7 +261,7 @@ describe('QualityAssessment API', () => {
 
       await handler_test(req as any);
 
-      expect(mockRemoveEvalDatasetDataQualityJob).toHaveBeenCalledWith(validDataId);
+      expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalledWith([validDataId]);
     });
 
     it('should not remove job if none exists', async () => {
@@ -271,7 +276,7 @@ describe('QualityAssessment API', () => {
 
       await handler_test(req as any);
 
-      expect(mockRemoveEvalDatasetDataQualityJob).not.toHaveBeenCalled();
+      expect(mockRemoveEvalDatasetDataQualityJobsRobust).not.toHaveBeenCalled();
     });
 
     it('should add new quality assessment job', async () => {
@@ -326,7 +331,7 @@ describe('QualityAssessment API', () => {
     it('should handle job removal errors and return error message', async () => {
       const jobError = new Error('Failed to remove job');
       mockCheckEvalDatasetDataQualityJobActive.mockResolvedValue(true);
-      mockRemoveEvalDatasetDataQualityJob.mockRejectedValue(jobError);
+      mockRemoveEvalDatasetDataQualityJobsRobust.mockRejectedValue(jobError);
 
       const req = {
         body: {
@@ -522,7 +527,7 @@ describe('QualityAssessment API', () => {
       } as any);
 
       mockCheckEvalDatasetDataQualityJobActive.mockResolvedValue(true);
-      mockRemoveEvalDatasetDataQualityJob.mockResolvedValue(undefined);
+      mockRemoveEvalDatasetDataQualityJobsRobust.mockResolvedValue(undefined);
       mockAddEvalDatasetDataQualityJob.mockResolvedValue({} as any);
       mockMongoEvalDatasetData.findByIdAndUpdate.mockResolvedValue({} as any);
 
@@ -547,7 +552,7 @@ describe('QualityAssessment API', () => {
         teamId: validTeamId
       });
       expect(mockCheckEvalDatasetDataQualityJobActive).toHaveBeenCalledWith(validDataId);
-      expect(mockRemoveEvalDatasetDataQualityJob).toHaveBeenCalledWith(validDataId);
+      expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalledWith([validDataId]);
       expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledWith({
         dataId: validDataId,
         evalModel: validEvalModel
@@ -586,7 +591,7 @@ describe('QualityAssessment API', () => {
         teamId: validTeamId
       });
       expect(mockCheckEvalDatasetDataQualityJobActive).toHaveBeenCalledWith(validDataId);
-      expect(mockRemoveEvalDatasetDataQualityJob).not.toHaveBeenCalled();
+      expect(mockRemoveEvalDatasetDataQualityJobsRobust).not.toHaveBeenCalled();
       expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledWith({
         dataId: validDataId,
         evalModel: validEvalModel
