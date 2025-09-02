@@ -63,7 +63,11 @@ const Navbar = ({ unread }: { unread: number }) => {
           '/dashboard/[pluginGroupId]',
           '/dashboard/mcpServer',
           '/dashboard/evaluation',
-          '/dashboard/evaluation/create'
+          '/dashboard/evaluation/task/detail',
+          '/dashboard/evaluation/dataset/fileImport',
+          '/dashboard/evaluation/dataset/detail',
+          '/dashboard/evaluation/dimension/create',
+          '/dashboard/evaluation/dimension/edit'
         ]
       },
       {
