@@ -4,7 +4,6 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/type';
-import { responseWriteController } from '../../../../../common/response';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
@@ -272,8 +271,6 @@ export const runToolCall = async (
     return item;
   });
 
-  const write = res ? responseWriteController({ res, readStream: stream }) : undefined;
-
   let {
     reasoningText: reasoningContent,
     answerText: answer,
@@ -309,7 +306,6 @@ export const runToolCall = async (
     onReasoning({ text }) {
       if (!aiChatReasoning) return;
       workflowStreamResponse?.({
-        write,
         event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
           reasoning_content: text
@@ -318,7 +314,6 @@ export const runToolCall = async (
     },
     onStreaming({ text }) {
       workflowStreamResponse?.({
-        write,
         event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
           text
@@ -344,7 +339,6 @@ export const runToolCall = async (
     },
     onToolParam({ tool, params }) {
       workflowStreamResponse?.({
-        write,
         event: SseResponseEventEnum.toolParams,
         data: {
           tool: {
@@ -392,7 +386,6 @@ export const runToolCall = async (
       const toolMsgParams: ChatCompletionToolMessageParam = {
         tool_call_id: tool.id,
         role: ChatCompletionRequestMessageRoleEnum.Tool,
-        name: tool.function.name,
         content: stringToolResponse
       };
 
@@ -433,7 +426,6 @@ export const runToolCall = async (
         toolMsgParams: {
           tool_call_id: tool.id,
           role: ChatCompletionRequestMessageRoleEnum.Tool,
-          name: tool.function.name,
           content: sliceStrStartEnd(err, 5000, 5000)
         }
       });
