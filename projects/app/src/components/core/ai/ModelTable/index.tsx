@@ -14,11 +14,7 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import React, { useMemo, useRef, useState } from 'react';
-import {
-  getModelProviders,
-  type ModelProviderIdType,
-  getModelProvider
-} from '@fastgpt/global/core/ai/provider';
+import { getModelProviders, getModelProvider } from '@/web/common/system/controller';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
@@ -27,20 +23,20 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import dynamic from 'next/dynamic';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
-
+import type { I18nStringType } from '@fastgpt/global/common/i18n/type';
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
 const ModelTable = () => {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
-  const [provider, setProvider] = useState<ModelProviderIdType | ''>('');
-  const providerList = useRef<{ label: any; value: ModelProviderIdType | '' }[]>([
+  const [provider, setProvider] = useState<string | ''>('');
+  const providerList = useRef<{ label: any; value: string | '' }[]>([
     { label: t('common:All'), value: '' },
-    ...getModelProviders(language).map((item) => ({
+    ...getModelProviders().providerList.map((item) => ({
       label: (
         <HStack>
           <Avatar src={item.avatar} w={'1rem'} />
-          <Box>{item.name}</Box>
+          <Box>{item.name[language as keyof I18nStringType]}</Box>
         </HStack>
       ),
       value: item.id
@@ -168,7 +164,7 @@ const ModelTable = () => {
         name: item.name,
         avatar: provider.avatar,
         providerId: provider.id,
-        providerName: t(provider.name as any),
+        providerName: provider.name,
         typeLabel: item.typeLabel,
         priceLabel: item.priceLabel,
         order: provider.order,

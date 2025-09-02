@@ -9,7 +9,7 @@ import {
   type RerankModelItemType
 } from '@fastgpt/global/core/ai/model.d';
 import { debounce } from 'lodash';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
+import { getModelProvider } from '../../../core/app/provider/controller';
 import { findModelFromAlldata } from '../model';
 import {
   reloadFastGPTConfigBuffer,
@@ -18,6 +18,7 @@ import {
 import { delay } from '@fastgpt/global/common/system/utils';
 import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
 import { setCron } from '../../../common/system/cron';
+import { preloadModelProviders } from '../../../core/app/provider/controller';
 
 export const loadSystemModels = async (init = false, language = 'en') => {
   const pushModel = (model: SystemModelItemType) => {
@@ -258,6 +259,7 @@ export const cronRefreshModels = async () => {
   setCron('*/5 * * * *', async () => {
     // 1. 更新模型（所有节点都会触发）
     await loadSystemModels(true);
+    await preloadModelProviders();
     // 2. 更新缓存（仅主节点触发）
     await updateFastGPTConfigBuffer();
   });

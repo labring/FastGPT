@@ -1,4 +1,3 @@
-import { aiproxyIdMap } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { type ChannelInfoType } from '@/global/aiproxy/type';
 import {
   Box,
@@ -30,7 +29,7 @@ import type { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getSystemModelList } from '@/web/core/ai/config';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
+import { getModelProvider } from '@/web/common/system/controller';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -41,6 +40,7 @@ import { getChannelProviders, postCreateChannel, putChannel } from '@/web/core/a
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
+import { defaultMapData } from '@fastgpt/service/core/app/provider/controller';
 
 const ModelEditModal = dynamic(() => import('../AddModelBox').then((mod) => mod.ModelEditModal));
 
@@ -61,7 +61,7 @@ const EditChannelModal = ({
   const { t, i18n } = useTranslation();
   const language = i18n.language as localeType;
 
-  const { defaultModels } = useSystemStore();
+  const { defaultModels, aiproxyIdMap } = useSystemStore();
   const isEdit = defaultConfig.id !== 0;
 
   const { register, handleSubmit, watch, setValue } = useForm({
@@ -74,7 +74,7 @@ const EditChannelModal = ({
       getChannelProviders().then((res) => {
         return Object.entries(res)
           .map(([key, value]) => {
-            const mapData = aiproxyIdMap[key as any] ?? {
+            const mapData = aiproxyIdMap.mapData.get(key as any) ?? {
               name: value.name,
               provider: 'Other'
             };
@@ -84,7 +84,7 @@ const EditChannelModal = ({
               order: provider.order,
               defaultBaseUrl: value.defaultBaseUrl,
               keyHelp: value.keyHelp,
-              icon: mapData?.avatar ?? provider.avatar,
+              icon: provider.avatar,
               label: parseI18nString(mapData.name, language),
               value: Number(key)
             };
@@ -129,7 +129,7 @@ const EditChannelModal = ({
     manual: false
   });
   const modelList = useMemo(() => {
-    const currentProvider = aiproxyIdMap[providerType]?.provider;
+    const currentProvider = aiproxyIdMap.mapData.get(providerType.toString()) ?? defaultMapData[0];
     return systemModelList
       .map((item) => {
         const provider = getModelProvider(item.provider, language);
@@ -143,8 +143,10 @@ const EditChannelModal = ({
       })
       .sort((a, b) => {
         // sort by provider, same provider first
-        if (a.provider === currentProvider && b.provider !== currentProvider) return -1;
-        if (a.provider !== currentProvider && b.provider === currentProvider) return 1;
+        if (a.provider === currentProvider.provider && b.provider !== currentProvider.provider)
+          return -1;
+        if (a.provider !== currentProvider.provider && b.provider === currentProvider.provider)
+          return 1;
         return 0;
       });
   }, [language, providerType, systemModelList]);

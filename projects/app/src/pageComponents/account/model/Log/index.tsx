@@ -18,7 +18,7 @@ import {
   GridItem,
   type BoxProps
 } from '@chakra-ui/react';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
+import { getModelProvider } from '@/web/common/system/controller';
 import DateRangePicker, {
   type DateRangeType
 } from '@fastgpt/web/components/common/DateRangePicker';
