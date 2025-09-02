@@ -6,7 +6,7 @@ import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/e
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import {
-  removeEvalDatasetDataQualityJob,
+  removeEvalDatasetDataQualityJobsRobust,
   checkEvalDatasetDataQualityJobActive
 } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import { addLog } from '@fastgpt/service/common/system/log';
@@ -26,12 +26,17 @@ vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', 
 }));
 vi.mock('@fastgpt/service/core/evaluation/dataset/dataQualityMq');
 vi.mock('@fastgpt/service/common/system/log');
+vi.mock('@fastgpt/service/support/user/audit/util', () => ({
+  addAuditLog: vi.fn()
+}));
 
 const mockAuthUserPer = vi.mocked(authUserPer);
 const mockMongoSessionRun = vi.mocked(mongoSessionRun);
 const mockMongoEvalDatasetData = vi.mocked(MongoEvalDatasetData);
 const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
-const mockRemoveEvalDatasetDataQualityJob = vi.mocked(removeEvalDatasetDataQualityJob);
+const mockRemoveEvalDatasetDataQualityJobsRobust = vi.mocked(
+  removeEvalDatasetDataQualityJobsRobust
+);
 const mockCheckEvalDatasetDataQualityJobActive = vi.mocked(checkEvalDatasetDataQualityJobActive);
 const mockAddLog = vi.mocked(addLog);
 
@@ -247,7 +252,7 @@ describe('EvalDatasetData Delete API', () => {
 
       await handler_test(req as any);
 
-      expect(mockRemoveEvalDatasetDataQualityJob).toHaveBeenCalledWith(validDataId);
+      expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalledWith([validDataId]);
       expect(mockAddLog.info).toHaveBeenCalledWith(
         'Removing active quality evaluation job before deletion',
         {
@@ -267,7 +272,7 @@ describe('EvalDatasetData Delete API', () => {
     it('should continue deletion if quality job removal fails', async () => {
       mockCheckEvalDatasetDataQualityJobActive.mockResolvedValue(true);
       const jobError = new Error('Failed to remove job');
-      mockRemoveEvalDatasetDataQualityJob.mockRejectedValue(jobError);
+      mockRemoveEvalDatasetDataQualityJobsRobust.mockRejectedValue(jobError);
 
       const req = {
         query: { dataId: validDataId }
@@ -296,7 +301,7 @@ describe('EvalDatasetData Delete API', () => {
 
       await handler_test(req as any);
 
-      expect(mockRemoveEvalDatasetDataQualityJob).not.toHaveBeenCalled();
+      expect(mockRemoveEvalDatasetDataQualityJobsRobust).not.toHaveBeenCalled();
       expect(mockAddLog.info).not.toHaveBeenCalledWith(
         'Removing active quality evaluation job before deletion',
         expect.any(Object)
@@ -525,7 +530,7 @@ describe('EvalDatasetData Delete API', () => {
       expect(mockMongoEvalDatasetData.findById).toHaveBeenCalled();
       expect(mockMongoEvalDatasetCollection.findOne).toHaveBeenCalled();
       expect(mockCheckEvalDatasetDataQualityJobActive).toHaveBeenCalled();
-      expect(mockRemoveEvalDatasetDataQualityJob).toHaveBeenCalled();
+      expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalled();
       expect(mockMongoEvalDatasetData.deleteOne).toHaveBeenCalled();
       expect(result).toBe('success');
     });
@@ -544,7 +549,7 @@ describe('EvalDatasetData Delete API', () => {
       expect(mockMongoEvalDatasetData.findById).toHaveBeenCalled();
       expect(mockMongoEvalDatasetCollection.findOne).toHaveBeenCalled();
       expect(mockCheckEvalDatasetDataQualityJobActive).toHaveBeenCalled();
-      expect(mockRemoveEvalDatasetDataQualityJob).not.toHaveBeenCalled();
+      expect(mockRemoveEvalDatasetDataQualityJobsRobust).not.toHaveBeenCalled();
       expect(mockMongoEvalDatasetData.deleteOne).toHaveBeenCalled();
       expect(result).toBe('success');
     });

@@ -7,11 +7,13 @@ import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/e
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import type { updateEvalDatasetDataBody } from '@fastgpt/global/core/evaluation/dataset/api';
 import {
-  removeEvalDatasetDataQualityJob,
-  addEvalDatasetDataQualityJob
+  addEvalDatasetDataQualityJob,
+  removeEvalDatasetDataQualityJobsRobust
 } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 export type EvalDatasetDataUpdateQuery = {};
 export type EvalDatasetDataUpdateBody = updateEvalDatasetDataBody;
@@ -82,6 +84,8 @@ async function handler(
     per: WritePermissionVal
   });
 
+  let collectionName = '';
+
   await mongoSessionRun(async (session) => {
     const existingData = await MongoEvalDatasetData.findById(dataId).session(session);
 
@@ -97,6 +101,8 @@ async function handler(
     if (!collection) {
       return Promise.reject('Access denied or dataset collection not found');
     }
+
+    collectionName = collection.name;
 
     await MongoEvalDatasetData.updateOne(
       { _id: dataId },
@@ -114,7 +120,7 @@ async function handler(
     if (enableQualityEvaluation && qualityEvaluationModel) {
       try {
         // Remove existing quality assessment task if any
-        await removeEvalDatasetDataQualityJob(dataId);
+        await removeEvalDatasetDataQualityJobsRobust([dataId]);
 
         // Enqueue new quality assessment task
         await addEvalDatasetDataQualityJob({
@@ -139,6 +145,17 @@ async function handler(
       }
     }
   });
+
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.UPDATE_EVALUATION_DATASET_DATA,
+      params: {
+        collectionName
+      }
+    });
+  })();
 
   return 'success';
 }

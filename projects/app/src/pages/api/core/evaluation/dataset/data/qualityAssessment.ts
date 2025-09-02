@@ -6,11 +6,13 @@ import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/e
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import {
   addEvalDatasetDataQualityJob,
-  removeEvalDatasetDataQualityJob,
-  checkEvalDatasetDataQualityJobActive
+  checkEvalDatasetDataQualityJobActive,
+  removeEvalDatasetDataQualityJobsRobust
 } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import type { qualityAssessmentBody } from '@fastgpt/global/core/evaluation/dataset/api';
 import { EvalDatasetDataQualityStatusEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 export type QualityAssessmentQuery = {};
 export type QualityAssessmentBody = qualityAssessmentBody;
@@ -53,7 +55,7 @@ async function handler(
   try {
     const isJobActive = await checkEvalDatasetDataQualityJobActive(dataId);
     if (isJobActive) {
-      await removeEvalDatasetDataQualityJob(dataId);
+      await removeEvalDatasetDataQualityJobsRobust([dataId]);
     }
 
     await addEvalDatasetDataQualityJob({
@@ -69,8 +71,16 @@ async function handler(
       }
     });
 
-    // TODO: Add audit log for quality assessment request
-    // TODO: Add tracking for quality assessment metrics
+    (async () => {
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.QUALITY_ASSESSMENT_EVALUATION_DATA,
+        params: {
+          collectionName: collection.name
+        }
+      });
+    })();
 
     return 'success';
   } catch (error) {

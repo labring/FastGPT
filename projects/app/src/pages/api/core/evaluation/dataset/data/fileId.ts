@@ -13,6 +13,8 @@ import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import type { importEvalDatasetFromFileBody } from '@fastgpt/global/core/evaluation/dataset/api';
 import { addEvalDatasetDataQualityJob } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import { authEvalDatasetCollectionFile } from '@fastgpt/service/support/permission/evaluation/auth';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 export type EvalDatasetImportFromFileQuery = {};
 export type EvalDatasetImportFromFileBody = importEvalDatasetFromFileBody;
@@ -295,8 +297,17 @@ async function handler(
       await Promise.allSettled(evaluationJobs);
     }
 
-    // TODO: Add audit log for import operation
-    // TODO: Add tracking for import metrics
+    (async () => {
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.IMPORT_EVALUATION_DATASET_DATA,
+        params: {
+          collectionName: datasetCollection.name,
+          recordCount: insertedRecords.length
+        }
+      });
+    })();
 
     return 'success';
   } catch (error: any) {

@@ -1,6 +1,7 @@
 import { getQueue, getWorker, QueueNames } from '../../../common/bullmq';
 import { type Processor } from 'bullmq';
 import { addLog } from '../../../common/system/log';
+import { createJobCleaner, type JobCleanupResult, type JobCleanupOptions } from './jobCleanup';
 
 export type EvalDatasetDataQualityData = {
   dataId: string;
@@ -57,37 +58,26 @@ export const checkEvalDatasetDataQualityJobActive = async (dataId: string): Prom
   }
 };
 
-export const removeEvalDatasetDataQualityJob = async (dataId: string): Promise<boolean> => {
-  const formatDataId = String(dataId);
-  try {
-    const jobId = await evalDatasetDataQualityQueue.getDeduplicationJobId(formatDataId);
-    if (!jobId) {
-      addLog.warn('No job found to remove', { dataId });
-      return false;
-    }
+export const removeEvalDatasetDataQualityJobsRobust = async (
+  dataIds: string[],
+  options?: JobCleanupOptions
+): Promise<JobCleanupResult> => {
+  const cleaner = createJobCleaner(options);
 
-    const job = await evalDatasetDataQualityQueue.getJob(jobId);
-    if (!job) {
-      addLog.warn('Job not found in queue', { dataId, jobId });
-      return false;
-    }
+  const filterFn = (job: any) => {
+    return dataIds.includes(String(job.data?.dataId));
+  };
 
-    const jobState = await job.getState();
+  const result = await cleaner.cleanAllJobsByFilter(
+    evalDatasetDataQualityQueue,
+    filterFn,
+    QueueNames.evalDatasetDataQuality
+  );
 
-    if (['waiting', 'delayed', 'prioritized'].includes(jobState)) {
-      await job.remove();
-      addLog.info('Eval dataset data quality job removed successfully', {
-        dataId,
-        jobId,
-        jobState
-      });
-      return true;
-    } else {
-      addLog.warn('Cannot remove active or completed job', { dataId, jobId, jobState });
-      return false;
-    }
-  } catch (error) {
-    addLog.error('Failed to remove eval dataset data quality job', { dataId, error });
-    return false;
-  }
+  addLog.info('Evaluation DatasetData quality jobs cleanup completed', {
+    dataIds: dataIds.length,
+    result
+  });
+
+  return result;
 };

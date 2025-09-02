@@ -7,7 +7,7 @@ import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dat
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
 import {
-  removeEvalDatasetDataQualityJob,
+  removeEvalDatasetDataQualityJobsRobust,
   addEvalDatasetDataQualityJob
 } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import { addLog } from '@fastgpt/service/common/system/log';
@@ -26,7 +26,7 @@ vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', 
   }
 }));
 vi.mock('@fastgpt/service/core/evaluation/dataset/dataQualityMq', () => ({
-  removeEvalDatasetDataQualityJob: vi.fn(),
+  removeEvalDatasetDataQualityJobsRobust: vi.fn(),
   addEvalDatasetDataQualityJob: vi.fn()
 }));
 vi.mock('@fastgpt/service/common/system/log', () => ({
@@ -35,12 +35,17 @@ vi.mock('@fastgpt/service/common/system/log', () => ({
     error: vi.fn()
   }
 }));
+vi.mock('@fastgpt/service/support/user/audit/util', () => ({
+  addAuditLog: vi.fn()
+}));
 
 const mockAuthUserPer = vi.mocked(authUserPer);
 const mockMongoSessionRun = vi.mocked(mongoSessionRun);
 const mockMongoEvalDatasetData = vi.mocked(MongoEvalDatasetData);
 const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
-const mockRemoveEvalDatasetDataQualityJob = vi.mocked(removeEvalDatasetDataQualityJob);
+const mockRemoveEvalDatasetDataQualityJobsRobust = vi.mocked(
+  removeEvalDatasetDataQualityJobsRobust
+);
 const mockAddEvalDatasetDataQualityJob = vi.mocked(addEvalDatasetDataQualityJob);
 const mockAddLog = vi.mocked(addLog);
 
@@ -82,7 +87,7 @@ describe('EvalDatasetData Update API', () => {
       return callback({} as any);
     });
 
-    mockRemoveEvalDatasetDataQualityJob.mockResolvedValue(true);
+    mockRemoveEvalDatasetDataQualityJobsRobust.mockResolvedValue(true);
     mockAddEvalDatasetDataQualityJob.mockResolvedValue({} as any);
   });
 
@@ -718,7 +723,7 @@ describe('EvalDatasetData Update API', () => {
 
       await handler_test(req as any);
 
-      expect(mockRemoveEvalDatasetDataQualityJob).not.toHaveBeenCalled();
+      expect(mockRemoveEvalDatasetDataQualityJobsRobust).not.toHaveBeenCalled();
       expect(mockAddEvalDatasetDataQualityJob).not.toHaveBeenCalled();
       expect(mockAddLog.info).not.toHaveBeenCalled();
     });
@@ -737,7 +742,7 @@ describe('EvalDatasetData Update API', () => {
 
       await handler_test(req as any);
 
-      expect(mockRemoveEvalDatasetDataQualityJob).toHaveBeenCalledWith(validDataId);
+      expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalledWith([validDataId]);
       expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledWith({
         dataId: validDataId,
         evalModel: qualityEvaluationModel
@@ -755,7 +760,7 @@ describe('EvalDatasetData Update API', () => {
     it('should handle quality evaluation job removal failure gracefully', async () => {
       const qualityEvaluationModel = 'gpt-4';
       const jobError = new Error('Failed to remove job');
-      mockRemoveEvalDatasetDataQualityJob.mockRejectedValue(jobError);
+      mockRemoveEvalDatasetDataQualityJobsRobust.mockRejectedValue(jobError);
 
       const req = {
         body: {

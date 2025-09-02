@@ -5,6 +5,8 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import type { updateEvalDatasetCollectionBody } from '@fastgpt/global/core/evaluation/dataset/api';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 export type EvalDatasetCollectionUpdateQuery = {};
 export type EvalDatasetCollectionUpdateBody = updateEvalDatasetCollectionBody;
@@ -43,8 +45,6 @@ async function handler(
     per: WritePermissionVal
   });
 
-  // TODO: Audit log - record the update operation for compliance and tracking
-
   // Check if collection exists and belongs to the team
   const existingCollection = await MongoEvalDatasetCollection.findOne({
     _id: collectionId,
@@ -80,6 +80,17 @@ async function handler(
         { session }
       );
     });
+
+    (async () => {
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.UPDATE_EVALUATION_DATASET_COLLECTION,
+        params: {
+          collectionName: name.trim()
+        }
+      });
+    })();
 
     return 'success';
   } catch (error) {
