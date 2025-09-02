@@ -20,6 +20,8 @@ import type chat from './zh-CN/chat.json';
 import type login from './zh-CN/login.json';
 import type account_model from './zh-CN/account_model.json';
 import type dashboard_mcp from './zh-CN/dashboard_mcp.json';
+import type evaluation_dimension from './zh-CN/evaluation_dimension.json';
+import type evaluation_dataset from './zh-CN/evaluation_dataset.json';
 import type { I18N_NAMESPACES } from './constants';
 
 export interface I18nNamespaces {
@@ -45,6 +47,8 @@ export interface I18nNamespaces {
   account_model: typeof account_model;
   dashboard_mcp: typeof dashboard_mcp;
   dashboard_evaluation: typeof dashboard_evaluation;
+  evaluation_dataset: typeof evaluation_dataset;
+  evaluation_dimension: typeof evaluation_dimension;
 }
 
 export type I18nNsType = (keyof I18nNamespaces)[];

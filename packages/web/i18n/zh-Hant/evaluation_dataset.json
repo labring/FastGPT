@@ -1,0 +1,22 @@
+{
+  "dataset_name_placeholder": "名稱",
+  "create_new_dataset": "新建數據集",
+  "smart_generation": "智能生成",
+  "file_import": "文件導入",
+  "rename": "重命名",
+  "delete": "刪除",
+  "confirm_delete_dataset": "確認刪除該數據集嗎？",
+  "error_details": "異常詳情",
+  "status_queuing": "排隊中",
+  "status_parsing": "文件解析中",
+  "status_generating": "數據生成中",
+  "status_generate_error": "生成異常",
+  "status_ready": "已就緒",
+  "status_parse_error": "解析異常",
+  "click_to_view_details": "點擊查看詳情",
+  "table_header_name": "名稱",
+  "table_header_data_count": "數據量",
+  "table_header_time": "創建/更新時間",
+  "table_header_status": "狀態",
+  "table_header_creator": "創建人"
+}
