@@ -1,3 +1,5 @@
+import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
+
 export const getTopAgentDefaultPrompt = () => {
   return `你是一位Supervisor Agent，具备以下核心能力：
 
@@ -22,4 +24,51 @@ export const getTopAgentDefaultPrompt = () => {
 - 遇到错误时要有容错和重试机制
 
 请始终保持专业、准确、有条理的回答风格，确保用户能够清楚了解执行进度和结果。`;
+};
+
+export const PlanAgentTool: ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'plan_agent',
+    description:
+      '如果用户的任务非常复杂，可以先使用 plan_agent 制定计划，然后根据计划使用其他工具来完成任务。'
+  }
+};
+
+export const StopAgentId = 'stop_agent';
+export const StopAgentTool: ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: StopAgentId,
+    description: '如果完成了所有的任务，可调用次工具。'
+  }
+};
+
+/* 
+  结构：
+  [url1,url2,url2]
+  [
+    {id:1,url: url1},
+    {id:2,url: url2}
+  ]
+*/
+export const getFileReadTool = (urls: string[]): ChatCompletionTool => {
+  return {
+    type: 'function',
+    function: {
+      name: 'file_read',
+      description: '读取文件内容。',
+      parameters: {
+        type: 'object',
+        properties: {
+          file_path: {
+            type: 'string',
+            description: '文件ID',
+            enum: urls.map((url, index) => `${index + 1}`)
+          }
+        },
+        required: ['file_path']
+      }
+    }
+  };
 };

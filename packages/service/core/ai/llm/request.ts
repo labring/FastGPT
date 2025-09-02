@@ -26,14 +26,14 @@ import { i18nT } from '../../../../web/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import json5 from 'json5';
 
-type ResponseEvents = {
-  onStreaming?: ({ text }: { text: string }) => void;
-  onReasoning?: ({ text }: { text: string }) => void;
-  onToolCall?: ({ call }: { call: ChatCompletionMessageToolCall }) => void;
-  onToolParam?: ({ tool, params }: { tool: ChatCompletionMessageToolCall; params: string }) => void;
+export type ResponseEvents = {
+  onStreaming?: (e: { text: string }) => void;
+  onReasoning?: (e: { text: string }) => void;
+  onToolCall?: (e: { call: ChatCompletionMessageToolCall }) => void;
+  onToolParam?: (e: { tool: ChatCompletionMessageToolCall; params: string }) => void;
 };
 
-type CreateLLMResponseProps<T extends CompletionsBodyType> = {
+export type CreateLLMResponseProps<T extends CompletionsBodyType = CompletionsBodyType> = {
   userKey?: OpenaiAccountType;
   body: LLMRequestBodyType<T>;
   isAborted?: () => boolean | undefined;
