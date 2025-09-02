@@ -16,7 +16,9 @@ async function handler(
     if (bufferId && global.systemInitBufferId && global.systemInitBufferId === bufferId) {
       return {
         bufferId: global.systemInitBufferId,
-        systemVersion: global.systemVersion
+        systemVersion: global.systemVersion,
+        modelProviders: global.ModelProviders_cache,
+        aiproxyIdMap: global.aiproxyIdMap_cache
       };
     }
 
@@ -26,7 +28,9 @@ async function handler(
       subPlans: global.subPlans,
       systemVersion: global.systemVersion,
       activeModelList: global.systemActiveDesensitizedModels,
-      defaultModels: global.systemDefaultModel
+      defaultModels: global.systemDefaultModel,
+      modelProviders: global.ModelProviders_cache,
+      aiproxyIdMap: global.aiproxyIdMap_cache
     };
   } catch (error) {
     const referer = req.headers.referer;
