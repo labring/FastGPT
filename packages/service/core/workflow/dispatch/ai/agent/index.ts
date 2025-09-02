@@ -39,7 +39,7 @@ import {
   ModelAgentTool,
   PlanAgentTool,
   StopAgentTool,
-  SubAgentIds
+  SubAppIds
 } from './constants';
 import { runWorkflow } from '../..';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
@@ -172,13 +172,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         handleToolResponse: async (call) => {
           const toolId = call.function.name;
 
-          if (toolId === SubAgentIds.stop) {
+          if (toolId === SubAppIds.stop) {
             return {
               response: '',
               usages: [],
               isEnd: true
             };
-          } else if (toolId === SubAgentIds.plan) {
+          } else if (toolId === SubAppIds.plan) {
             const planModel = planConfig?.model ?? model;
             const { instruction } = parseToolArgs<{ instruction: string }>(call.function.arguments);
 
@@ -207,7 +207,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               usages: [],
               isEnd: false
             };
-          } else if (toolId === SubAgentIds.model) {
+          } else if (toolId === SubAppIds.model) {
             const { systemPrompt, task } = parseToolArgs<{ systemPrompt: string; task: string }>(
               call.function.arguments
             );
