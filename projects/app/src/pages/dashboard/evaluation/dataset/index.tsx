@@ -203,27 +203,27 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
   // 状态配置
   const statusConfig = {
     queuing: {
-      label: t('evaluation_dataset:status_queuing'),
+      label: t('dashboard_evaluation:status_queuing'),
       colorSchema: 'gray'
     },
     parsing: {
-      label: t('evaluation_dataset:status_parsing'),
+      label: t('dashboard_evaluation:status_parsing'),
       colorSchema: 'blue'
     },
     generating: {
-      label: t('evaluation_dataset:status_generating'),
+      label: t('dashboard_evaluation:status_generating'),
       colorSchema: 'blue'
     },
     generateError: {
-      label: t('evaluation_dataset:status_generate_error'),
+      label: t('dashboard_evaluation:status_generate_error'),
       colorSchema: 'red'
     },
     ready: {
-      label: t('evaluation_dataset:status_ready'),
+      label: t('dashboard_evaluation:status_ready'),
       colorSchema: 'green'
     },
     parseError: {
-      label: t('evaluation_dataset:status_parse_error'),
+      label: t('dashboard_evaluation:status_parse_error'),
       colorSchema: 'red'
     }
   };
@@ -233,7 +233,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
   });
 
   const { onOpenModal: onOpenEditTitleModal, EditModal: EditTitleModal } = useEditTitle({
-    title: t('evaluation_dataset:rename')
+    title: t('dashboard_evaluation:rename')
   });
 
   // 模拟更新数据集名称的请求
@@ -260,7 +260,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
 
     return (
       <MyTooltip
-        label={isErrorStatus ? t('evaluation_dataset:click_to_view_details') : undefined}
+        label={isErrorStatus ? t('dashboard_evaluation:click_to_view_details') : undefined}
         isDisabled={!isErrorStatus}
       >
         <MyTag
@@ -333,7 +333,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
               <MyIcon name={'common/searchLight'} w={'16px'} color={'myGray.500'} />
             </InputLeftElement>
             <Input
-              placeholder={t('evaluation_dataset:dataset_name_placeholder')}
+              placeholder={t('dashboard_evaluation:dataset_name_placeholder')}
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
               bg={'white'}
@@ -355,7 +355,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
                 }}
               >
                 <Box h={'20px'} fontSize={'sm'} fontWeight={'500'}>
-                  {t('evaluation_dataset:create_new_dataset')}
+                  {t('dashboard_evaluation:create_new_dataset')}
                 </Box>
               </Flex>
             }
@@ -366,7 +366,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
                     label: (
                       <Flex>
                         <MyIcon name={'core/app/simpleMode/ai'} w={'20px'} mr={2} />
-                        {t('evaluation_dataset:smart_generation')}
+                        {t('dashboard_evaluation:smart_generation')}
                       </Flex>
                     ),
                     onClick: () => handleCreateDataset('smart')
@@ -375,7 +375,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
                     label: (
                       <Flex>
                         <MyIcon name={'core/dataset/tableCollection'} mr={2} w={'20px'} />
-                        {t('evaluation_dataset:file_import')}
+                        {t('dashboard_evaluation:file_import')}
                       </Flex>
                     ),
                     onClick: () => handleCreateDataset('import')
@@ -392,11 +392,11 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
           <Table>
             <Thead>
               <Tr>
-                <Th>{t('evaluation_dataset:table_header_name')}</Th>
-                <Th>{t('evaluation_dataset:table_header_data_count')}</Th>
-                <Th>{t('evaluation_dataset:table_header_time')}</Th>
-                <Th>{t('evaluation_dataset:table_header_status')}</Th>
-                <Th>{t('evaluation_dataset:table_header_creator')}</Th>
+                <Th>{t('dashboard_evaluation:table_header_name')}</Th>
+                <Th>{t('dashboard_evaluation:table_header_data_count')}</Th>
+                <Th>{t('dashboard_evaluation:table_header_time')}</Th>
+                <Th>{t('dashboard_evaluation:table_header_status')}</Th>
+                <Th>{t('dashboard_evaluation:table_header_creator')}</Th>
                 <Th></Th>
               </Tr>
             </Thead>
@@ -429,13 +429,13 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
                           children: [
                             {
                               icon: 'edit',
-                              label: t('evaluation_dataset:rename'),
+                              label: t('dashboard_evaluation:rename'),
                               onClick: () => handleRenameDataset(dataset)
                             },
                             {
                               type: 'danger',
                               icon: 'delete',
-                              label: t('evaluation_dataset:delete'),
+                              label: t('dashboard_evaluation:delete'),
                               onClick: () =>
                                 openConfirm(
                                   async () => {
@@ -443,7 +443,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
                                     fetchData();
                                   },
                                   undefined,
-                                  t('evaluation_dataset:confirm_delete_dataset')
+                                  t('dashboard_evaluation:confirm_delete_dataset')
                                 )()
                             }
                           ]
@@ -467,7 +467,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
       <Modal isOpen={isErrorModalOpen} onClose={onCloseErrorModal}>
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>{t('evaluation_dataset:error_details')}</ModalHeader>
+          <ModalHeader>{t('dashboard_evaluation:error_details')}</ModalHeader>
           <ModalCloseButton />
           <ModalBody pb={6}>
             <Text color="red.600">{selectedError}</Text>
