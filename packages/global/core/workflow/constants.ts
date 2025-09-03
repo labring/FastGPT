@@ -419,20 +419,20 @@ export const variableConfigs: VariableConfigType[][] = [
       defaultValueType: WorkflowIOValueTypeEnum.string
     }
   ],
-  [
-    {
-      icon: 'core/workflow/inputType/model',
-      label: i18nT('common:core.workflow.inputType.modelSelect'),
-      value: VariableInputEnum.modelSelect,
-      defaultValueType: WorkflowIOValueTypeEnum.string
-    },
-    {
-      icon: 'core/workflow/inputType/dataset',
-      label: i18nT('common:core.workflow.inputType.datasetSelect'),
-      value: VariableInputEnum.datasetSelect,
-      defaultValueType: WorkflowIOValueTypeEnum.arrayString
-    }
-  ],
+  // [
+  //   {
+  //     icon: 'core/workflow/inputType/model',
+  //     label: i18nT('common:core.workflow.inputType.modelSelect'),
+  //     value: VariableInputEnum.modelSelect,
+  //     defaultValueType: WorkflowIOValueTypeEnum.string
+  //   },
+  //   {
+  //     icon: 'core/workflow/inputType/dataset',
+  //     label: i18nT('common:core.workflow.inputType.datasetSelect'),
+  //     value: VariableInputEnum.datasetSelect,
+  //     defaultValueType: WorkflowIOValueTypeEnum.arrayString
+  //   }
+  // ],
   [
     {
       icon: 'core/workflow/inputType/external',

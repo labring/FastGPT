@@ -99,6 +99,49 @@ const VariableEdit = ({
     return item?.defaultValueType;
   }, [inputTypeList, type]);
 
+  const handleTypeChange = useCallback(
+    (newType: VariableInputEnum) => {
+      const defaultValIsNumber = !isNaN(Number(value.defaultValue));
+      const currentType = value.type;
+
+      const isCurrentTimeType =
+        currentType === VariableInputEnum.timePointSelect ||
+        currentType === VariableInputEnum.timeRangeSelect;
+      const isNewTimeType =
+        newType === VariableInputEnum.timePointSelect ||
+        newType === VariableInputEnum.timeRangeSelect;
+
+      if (
+        newType === VariableInputEnum.select ||
+        newType === VariableInputEnum.multipleSelect ||
+        (newType === VariableInputEnum.numberInput && !defaultValIsNumber)
+      ) {
+        setValue('defaultValue', '');
+      }
+
+      // Set time-related default values when switching from non-time type to time type
+      if (!isCurrentTimeType && isNewTimeType) {
+        setValue('defaultValue', '');
+        setValue('timeGranularity', 'day');
+        setValue(
+          'timeRangeStart',
+          new Date(
+            new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).setHours(0, 0, 0, 0)
+          ).toISOString()
+        );
+        setValue('timeRangeEnd', new Date(new Date().setHours(0, 0, 0, 0)).toISOString());
+      }
+
+      // Clear default value when switching from time type to other types
+      if (isCurrentTimeType && !isNewTimeType) {
+        setValue('defaultValue', '');
+      }
+
+      setValue('type', newType);
+    },
+    [setValue, value.defaultValue, value.type]
+  );
+
   const formatVariables = useMemo(() => {
     const results = formatEditorVariablePickerIcon(variables);
     return results.map<VariableItemType & { icon?: string }>((item) => {
@@ -148,7 +191,11 @@ const VariableEdit = ({
         return;
       }
 
-      if (data.type !== VariableInputEnum.select && data.list) {
+      if (
+        data.type !== VariableInputEnum.select &&
+        data.type !== VariableInputEnum.multipleSelect &&
+        data.list
+      ) {
         delete data.list;
       }
 
@@ -365,18 +412,7 @@ const VariableEdit = ({
                               border: '1px solid #3370FF',
                               boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
                             }}
-                            onClick={() => {
-                              const defaultValIsNumber = !isNaN(Number(value.defaultValue));
-                              // 如果切换到 numberInput，不是数字，则清空
-                              if (
-                                item.value === VariableInputEnum.select ||
-                                (item.value === VariableInputEnum.numberInput &&
-                                  !defaultValIsNumber)
-                              ) {
-                                setValue('defaultValue', '');
-                              }
-                              setValue('type', item.value);
-                            }}
+                            onClick={() => handleTypeChange(item.value)}
                           >
                             <MyIcon
                               name={item.icon as any}
