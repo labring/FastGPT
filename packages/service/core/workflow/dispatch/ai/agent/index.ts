@@ -185,7 +185,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             const { content, inputTokens, outputTokens } = await transferPlanAgent({
               model: planModel,
               instruction,
-              sharedContext: [], // 暂不确定要不要, 如果要和 Top 同步上下文就需要传这个
+              histories: [],
               onStreaming({ text }) {
                 //TODO: 需要一个新的 plan sse event
                 workflowStreamResponse?.({

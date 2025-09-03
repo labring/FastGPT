@@ -1,8 +1,9 @@
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
 import { addLog } from '../../../../../../common/system/log';
 import { createLLMResponse, type ResponseEvents } from '../../../../../ai/llm/request';
-import { defaultGeneratePlanPrompt } from './prompt';
+import { defaultPlanAgentPrompt } from './prompt';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import { replaceVariable } from '@fastgpt/global/common/string/tools';
 
 type PlanAgentConfig = {
   model: string;
@@ -13,14 +14,14 @@ type PlanAgentConfig = {
 };
 
 type transferPlanAgentProps = {
-  sharedContext: ChatCompletionMessageParam[];
+  histories: ChatCompletionMessageParam[];
   instruction?: string;
 } & PlanAgentConfig &
   Pick<ResponseEvents, 'onStreaming' | 'onReasoning'>;
 
 export async function transferPlanAgent({
   instruction = '',
-  sharedContext,
+  histories,
 
   onStreaming,
   onReasoning,
@@ -36,12 +37,19 @@ export async function transferPlanAgent({
   outputTokens: number;
 }> {
   try {
+    console.log(
+      replaceVariable(defaultPlanAgentPrompt, {
+        userRole: customSystemPrompt
+      })
+    );
     const messages: ChatCompletionMessageParam[] = [
       {
         role: ChatCompletionRequestMessageRoleEnum.System,
-        content: customSystemPrompt || defaultGeneratePlanPrompt
+        content: replaceVariable(defaultPlanAgentPrompt, {
+          userRole: customSystemPrompt
+        })
       },
-      ...sharedContext.filter((item) => item.role !== 'system'),
+      ...histories.filter((item) => item.role !== 'system'),
       {
         role: 'user',
         content: instruction
