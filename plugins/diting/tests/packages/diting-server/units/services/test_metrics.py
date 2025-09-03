@@ -12,8 +12,8 @@ import unittest
 class TestDiscoverMetrics:
     """Test cases for discover_metrics function."""
 
-    @patch("diting_engine.services.evaluation.metrics.importlib.import_module")
-    @patch("diting_engine.services.evaluation.metrics.pkgutil.walk_packages")
+    @patch("diting_server.services.evaluation.metrics.importlib.import_module")
+    @patch("diting_server.services.evaluation.metrics.pkgutil.walk_packages")
     def test_discover_metrics_success(self, mock_walk_packages, mock_import_module):
         """Test successful metrics discovery."""
         # Mock base module
@@ -37,7 +37,7 @@ class TestDiscoverMetrics:
         assert isinstance(result, dict)
         mock_import_module.assert_called_once_with(_diting_metric_module_name)
 
-    @patch("diting_engine.services.evaluation.metrics.importlib.import_module")
+    @patch("diting_server.services.evaluation.metrics.importlib.import_module")
     def test_discover_metrics_import_error(self, mock_import_module):
         """Test metrics discovery with import error."""
         mock_import_module.side_effect = ImportError("Module not found")
@@ -46,8 +46,8 @@ class TestDiscoverMetrics:
 
         assert result == {}
 
-    @patch("diting_engine.services.evaluation.metrics.importlib.import_module")
-    @patch("diting_engine.services.evaluation.metrics.pkgutil.walk_packages")
+    @patch("diting_server.services.evaluation.metrics.importlib.import_module")
+    @patch("diting_server.services.evaluation.metrics.pkgutil.walk_packages")
     def test_discover_metrics_with_submodules(
         self, mock_walk_packages, mock_import_module
     ):
@@ -77,8 +77,8 @@ class TestDiscoverMetrics:
 
         assert isinstance(result, dict)
 
-    @patch("diting_engine.services.evaluation.metrics.importlib.import_module")
-    @patch("diting_engine.services.evaluation.metrics.pkgutil.walk_packages")
+    @patch("diting_server.services.evaluation.metrics.importlib.import_module")
+    @patch("diting_server.services.evaluation.metrics.pkgutil.walk_packages")
     def test_discover_metrics_include_abstract(
         self, mock_walk_packages, mock_import_module
     ):
@@ -114,7 +114,7 @@ class TestDiscoverMetrics:
         result_without_abstract = discover_metrics(include_abstract=False)
         assert isinstance(result_without_abstract, dict)
 
-    @patch("diting_engine.services.evaluation.metrics.importlib.import_module")
+    @patch("diting_server.services.evaluation.metrics.importlib.import_module")
     def test_discover_metrics_non_recursive(self, mock_import_module):
         """Test metrics discovery without recursive search."""
         # Mock base module
@@ -137,7 +137,7 @@ class TestMetricFactory(unittest.TestCase):
     def test_init(self):
         """Test MetricFactory initialization."""
         with patch(
-            "diting_engine.services.evaluation.metrics.discover_metrics"
+            "diting_server.services.evaluation.metrics.discover_metrics"
         ) as mock_discover:
             mock_metric = MagicMock()
             mock_discover.return_value = {"test_metric": mock_metric}
@@ -153,7 +153,7 @@ class TestMetricFactory(unittest.TestCase):
         mock_metrics = {"test_metric": mock_metric_class}
 
         with patch(
-            "diting_engine.services.evaluation.metrics.discover_metrics"
+            "diting_server.services.evaluation.metrics.discover_metrics"
         ) as mock_discover:
             mock_discover.return_value = mock_metrics
             factory = MetricFactory()
@@ -166,7 +166,7 @@ class TestMetricFactory(unittest.TestCase):
         mock_metrics = {"existing_metric": MagicMock()}
 
         with patch(
-            "diting_engine.services.evaluation.metrics.discover_metrics"
+            "diting_server.services.evaluation.metrics.discover_metrics"
         ) as mock_discover:
             mock_discover.return_value = mock_metrics
             factory = MetricFactory()
@@ -179,7 +179,7 @@ class TestMetricFactory(unittest.TestCase):
     def test_create_with_empty_metrics(self):
         """Test creating metric with empty metrics dict."""
         with patch(
-            "diting_engine.services.evaluation.metrics.discover_metrics"
+            "diting_server.services.evaluation.metrics.discover_metrics"
         ) as mock_discover:
             mock_discover.return_value = {}
             factory = MetricFactory()
@@ -194,7 +194,7 @@ class TestMetricFactory(unittest.TestCase):
         mock_metrics = {"metric1": mock_metric1, "metric2": mock_metric2}
 
         with patch(
-            "diting_engine.services.evaluation.metrics.discover_metrics"
+            "diting_server.services.evaluation.metrics.discover_metrics"
         ) as mock_discover:
             mock_discover.return_value = mock_metrics
             factory = MetricFactory()
@@ -211,7 +211,7 @@ class TestMetricFactory(unittest.TestCase):
         mock_metrics = {"TestMetric": mock_metric_class}
 
         with patch(
-            "diting_engine.services.evaluation.metrics.discover_metrics"
+            "diting_server.services.evaluation.metrics.discover_metrics"
         ) as mock_discover:
             mock_discover.return_value = mock_metrics
             factory = MetricFactory()

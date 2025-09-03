@@ -147,7 +147,7 @@ class TestGetEmbedTokenCallbackHandler(unittest.IsolatedAsyncioTestCase):
         inputs = {"embed_input": "test input"}
         run_id = uuid4()
 
-        with patch("diting_engine.common.callback.count_tokens", return_value=10):
+        with patch("diting_server.common.callback.count_tokens", return_value=10):
             await handler.on_chain_end(
                 outputs=outputs,
                 run_id=run_id,
@@ -185,7 +185,7 @@ class TestGetEmbedTokenCallbackHandler(unittest.IsolatedAsyncioTestCase):
         inputs = {"embed_input": "test input"}
         run_id = uuid4()
 
-        with patch("diting_engine.common.callback.count_tokens", return_value=5):
+        with patch("diting_server.common.callback.count_tokens", return_value=5):
             await handler.on_chain_end(
                 outputs=outputs,
                 run_id=run_id,
@@ -251,7 +251,7 @@ class TestGetLLMTokenCallbackHandler(unittest.IsolatedAsyncioTestCase):
         inputs = {"prompt": "test prompt"}
         run_id = uuid4()
 
-        with patch("diting_engine.common.callback.count_tokens", side_effect=[10, 5]):
+        with patch("diting_server.common.callback.count_tokens", side_effect=[10, 5]):
             await handler.on_chain_end(
                 outputs=outputs, run_id=run_id, chain_type=ChainType.LLM, inputs=inputs
             )
@@ -296,7 +296,7 @@ class TestGetLLMTokenCallbackHandler(unittest.IsolatedAsyncioTestCase):
         inputs = {"prompt": "test prompt"}
         run_id = uuid4()
 
-        with patch("diting_engine.common.callback.count_tokens", side_effect=[8, 8]):
+        with patch("diting_server.common.callback.count_tokens", side_effect=[8, 8]):
             await handler.on_chain_end(
                 outputs=outputs, run_id=run_id, chain_type=ChainType.LLM, inputs=inputs
             )
@@ -326,7 +326,7 @@ class TestGetLLMTokenCallbackHandler(unittest.IsolatedAsyncioTestCase):
         inputs = {}
         run_id = uuid4()
 
-        with patch("diting_engine.common.callback.count_tokens", return_value=3):
+        with patch("diting_server.common.callback.count_tokens", return_value=3):
             await handler.on_chain_end(
                 outputs=outputs, run_id=run_id, chain_type=ChainType.LLM, inputs=inputs
             )
