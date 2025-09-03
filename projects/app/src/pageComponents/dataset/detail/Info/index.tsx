@@ -111,6 +111,14 @@ const Info = ({ datasetId }: { datasetId: string }) => {
 
   const isTraining = rebuildingCount > 0 || trainingCount > 0;
 
+  const {
+    agentModel: showAgentModelConfig,
+    vectorModel: showVectorModel,
+    vlmModel: showVlmModel
+  } = DatasetTypeMap[datasetDetail.type]?.formConfig || {};
+
+  const isDatabase = datasetDetail?.type === DatasetTypeEnum.database;
+
   return (
     <Box w={'100%'} h={'100%'} p={6}>
       <Box>
@@ -164,92 +172,98 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           <Box fontSize={'mini'}>{datasetDetail._id}</Box>
         </Flex>
 
-        <Box mt={5} w={'100%'}>
-          <Flex alignItems={'center'}>
-            <FormLabel fontWeight={'500'} flex={'1 0 0'} fontSize={'mini'}>
-              {t('common:core.ai.model.Vector Model')}
+        {!showVectorModel?.isHidden && (
+          <Box mt={5} w={'100%'}>
+            <Flex alignItems={'center'}>
+              <FormLabel fontWeight={'500'} flex={'1 0 0'} fontSize={'mini'}>
+                {t('common:core.ai.model.Vector Model')}
+              </FormLabel>
+              <MyTooltip label={t('dataset:vector_model_max_tokens_tip')}>
+                <Box fontSize={'mini'}>
+                  {t('dataset:chunk_max_tokens')}: {vectorModel.maxToken}
+                </Box>
+              </MyTooltip>
+            </Flex>
+            <Box pt={2}>
+              <AIModelSelector
+                w={'100%'}
+                value={vectorModel.model}
+                fontSize={'mini'}
+                disableTip={
+                  isTraining
+                    ? t(
+                        'dataset:the_knowledge_base_has_indexes_that_are_being_trained_or_being_rebuilt'
+                      )
+                    : undefined
+                }
+                list={embeddingModelList.map((item) => ({
+                  label: item.name,
+                  value: item.model
+                }))}
+                onChange={(e) => {
+                  const vectorModel = embeddingModelList.find((item) => item.model === e);
+                  if (!vectorModel) return;
+                  return onOpenConfirmRebuild(async () => {
+                    await onRebuilding(vectorModel);
+                    setValue('vectorModel', vectorModel);
+                  })();
+                }}
+              />
+            </Box>
+          </Box>
+        )}
+
+        {!showAgentModelConfig?.isHidden && (
+          <Box pt={5}>
+            <FormLabel fontSize={'mini'} fontWeight={'500'}>
+              {t('common:core.ai.model.Dataset Agent Model')}
             </FormLabel>
-            <MyTooltip label={t('dataset:vector_model_max_tokens_tip')}>
-              <Box fontSize={'mini'}>
-                {t('dataset:chunk_max_tokens')}: {vectorModel.maxToken}
-              </Box>
-            </MyTooltip>
-          </Flex>
-          <Box pt={2}>
-            <AIModelSelector
-              w={'100%'}
-              value={vectorModel.model}
-              fontSize={'mini'}
-              disableTip={
-                isTraining
-                  ? t(
-                      'dataset:the_knowledge_base_has_indexes_that_are_being_trained_or_being_rebuilt'
-                    )
-                  : undefined
-              }
-              list={embeddingModelList.map((item) => ({
-                label: item.name,
-                value: item.model
-              }))}
-              onChange={(e) => {
-                const vectorModel = embeddingModelList.find((item) => item.model === e);
-                if (!vectorModel) return;
-                return onOpenConfirmRebuild(async () => {
-                  await onRebuilding(vectorModel);
-                  setValue('vectorModel', vectorModel);
-                })();
-              }}
-            />
+            <Box pt={2}>
+              <AIModelSelector
+                w={'100%'}
+                value={agentModel.model}
+                list={datasetModelList.map((item) => ({
+                  label: item.name,
+                  value: item.model
+                }))}
+                fontSize={'mini'}
+                onChange={(e) => {
+                  const agentModel = datasetModelList.find((item) => item.model === e);
+                  if (!agentModel) return;
+                  setValue('agentModel', agentModel);
+                  return handleSubmit((data) => onSave({ ...data, agentModel: agentModel }))();
+                }}
+              />
+            </Box>
           </Box>
-        </Box>
+        )}
 
-        <Box pt={5}>
-          <FormLabel fontSize={'mini'} fontWeight={'500'}>
-            {t('common:core.ai.model.Dataset Agent Model')}
-          </FormLabel>
-          <Box pt={2}>
-            <AIModelSelector
-              w={'100%'}
-              value={agentModel.model}
-              list={datasetModelList.map((item) => ({
-                label: item.name,
-                value: item.model
-              }))}
-              fontSize={'mini'}
-              onChange={(e) => {
-                const agentModel = datasetModelList.find((item) => item.model === e);
-                if (!agentModel) return;
-                setValue('agentModel', agentModel);
-                return handleSubmit((data) => onSave({ ...data, agentModel: agentModel }))();
-              }}
-            />
+        {!showVlmModel?.isHidden && (
+          <Box pt={5}>
+            <FormLabel fontSize={'mini'} fontWeight={'500'}>
+              {t('dataset:vllm_model')}
+            </FormLabel>
+            <Box pt={2}>
+              <AIModelSelector
+                w={'100%'}
+                value={vlmModel?.model}
+                list={vllmModelList.map((item) => ({
+                  label: item.name,
+                  value: item.model
+                }))}
+                fontSize={'mini'}
+                onChange={(e) => {
+                  const vlmModel = vllmModelList.find((item) => item.model === e);
+                  if (!vlmModel) return;
+                  setValue('vlmModel', vlmModel);
+                  return handleSubmit((data) => onSave({ ...data, vlmModel }))();
+                }}
+              />
+            </Box>
           </Box>
-        </Box>
+        )}
 
-        <Box pt={5}>
-          <FormLabel fontSize={'mini'} fontWeight={'500'}>
-            {t('dataset:vllm_model')}
-          </FormLabel>
-          <Box pt={2}>
-            <AIModelSelector
-              w={'100%'}
-              value={vlmModel?.model}
-              list={vllmModelList.map((item) => ({
-                label: item.name,
-                value: item.model
-              }))}
-              fontSize={'mini'}
-              onChange={(e) => {
-                const vlmModel = vllmModelList.find((item) => item.model === e);
-                if (!vlmModel) return;
-                setValue('vlmModel', vlmModel);
-                return handleSubmit((data) => onSave({ ...data, vlmModel }))();
-              }}
-            />
-          </Box>
-        </Box>
-
-        {feConfigs?.isPlus && (
+        {feConfigs?.isPlus && !isDatabase && (
           <Flex alignItems={'center'} pt={5}>
             <FormLabel fontSize={'mini'} fontWeight={'500'}>
               {t('dataset:sync_schedule')}

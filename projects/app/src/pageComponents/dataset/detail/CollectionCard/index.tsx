@@ -13,7 +13,9 @@ import {
   Switch,
   Checkbox,
   HStack,
-  Button
+  Button,
+  Alert,
+  AlertIcon
 } from '@chakra-ui/react';
 import {
   delDatasetCollectionById,
@@ -31,7 +33,8 @@ import {
   DatasetCollectionTypeEnum,
   DatasetStatusEnum,
   DatasetCollectionSyncResultMap,
-  DatasetCollectionDataProcessModeMap
+  DatasetCollectionDataProcessModeMap,
+  DatasetTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import { TabEnum } from '../../../../pages/dataset/detail/index';
@@ -203,9 +206,18 @@ const CollectionCard = () => {
 
   const isLoading = isUpdating || isSyncing || isGetting || isDropping;
 
+  const isDatabase = datasetDetail?.type === DatasetTypeEnum.database;
+
   return (
     <MyBox isLoading={isLoading} h={'100%'} py={[2, 4]} overflow={'hidden'}>
       <Flex ref={BoxRef} flexDirection={'column'} py={[1, 0]} h={'100%'} px={[2, 6]}>
+        {/* banner */}
+        {isDatabase && (
+          <Alert status="info" mb={4} borderRadius="md">
+            <AlertIcon />
+            <Box fontSize="sm">{t('dataset:database_structure_change_tip')}</Box>
+          </Alert>
+        )}
         {/* header */}
         <Header hasTrainingData={hasTrainingData} />
 

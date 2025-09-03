@@ -9,7 +9,7 @@ import {
   ParagraphChunkAIModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { useMyStep } from '@fastgpt/web/hooks/useStep';
-import { Box, Button, Flex, IconButton } from '@chakra-ui/react';
+import { Box, Button, Flex, IconButton, Divider, Text } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { TabEnum } from '../NavBar';
 import { ChunkSettingModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -20,6 +20,7 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import { DataChunkSplitModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { chunkAutoChunkSize, getAutoIndexSize } from '@fastgpt/global/core/dataset/training/utils';
 import { type CollectionChunkFormType } from '../Form/CollectionChunkForm';
+import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 
 export type ImportFormType = {
   customPdfParse: boolean;
@@ -30,11 +31,14 @@ type DatasetImportContextType = {
   importSource: ImportDataSourceEnum;
   parentId: string | undefined;
   activeStep: number;
+  tab: number;
+  isEditMode: boolean;
   goToNext: () => void;
 
   processParamsForm: UseFormReturn<ImportFormType, any>;
   sources: ImportSourceItemType[];
   setSources: React.Dispatch<React.SetStateAction<ImportSourceItemType[]>>;
+  setTab: React.Dispatch<React.SetStateAction<number>>;
 };
 
 export const defaultFormData: ImportFormType = {
@@ -89,9 +93,14 @@ export const DatasetImportContext = createContext<DatasetImportContextType>({
 const DatasetImportContextProvider = ({ children }: { children: React.ReactNode }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { source = ImportDataSourceEnum.fileLocal, parentId } = (router.query || {}) as {
+  const {
+    source = ImportDataSourceEnum.fileLocal,
+    parentId,
+    mode
+  } = (router.query || {}) as {
     source: ImportDataSourceEnum;
     parentId?: string;
+    mode: 'create' | 'edit';
   };
 
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
@@ -188,6 +197,14 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
       {
         title: t('dataset:import_confirm')
       }
+    ],
+    [ImportDataSourceEnum.database]: [
+      {
+        title: t('dataset:connect_database')
+      },
+      {
+        title: t('dataset:data_config')
+      }
     ]
   };
   const steps = modeSteps[source];
@@ -207,22 +224,90 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
 
   const [sources, setSources] = useState<ImportSourceItemType[]>([]);
 
+  const [tab, setTab] = useState<number>(0);
+
   const contextValue = {
     importSource: source,
     parentId,
     activeStep,
+    tab,
+    isEditMode: mode === 'edit',
     goToNext,
 
     processParamsForm,
     sources,
-    setSources
+    setSources,
+    setTab
   };
 
-  return (
-    <DatasetImportContext.Provider value={contextValue}>
-      <Flex>
-        {activeStep === 0 ? (
-          <Flex alignItems={'center'}>
+  const renderCreateStatusStep = () => {
+    return (
+      <>
+        <Flex>
+          {activeStep === 0 ? (
+            <Flex alignItems={'center'}>
+              <IconButton
+                icon={<MyIcon name={'common/backFill'} w={'14px'} />}
+                aria-label={''}
+                size={'smSquare'}
+                borderRadius={'50%'}
+                variant={'whiteBase'}
+                mr={2}
+                onClick={() =>
+                  router.replace({
+                    query: {
+                      ...router.query,
+                      currentTab: TabEnum.collectionCard
+                    }
+                  })
+                }
+              />
+              {t('common:Exit')}
+            </Flex>
+          ) : (
+            <Button
+              variant={'whiteBase'}
+              leftIcon={<MyIcon name={'common/backFill'} w={'14px'} />}
+              onClick={goToPrevious}
+            >
+              {t('common:last_step')}
+            </Button>
+          )}
+          <Box flex={1} />
+        </Flex>
+        {/* step */}
+        {source !== ImportDataSourceEnum.imageDataset && (
+          <Box
+            mt={4}
+            mb={5}
+            px={3}
+            py={[2, 4]}
+            bg={'myGray.50'}
+            borderWidth={'1px'}
+            borderColor={'borderColor.low'}
+            borderRadius={'md'}
+          >
+            <Box maxW={['100%', '900px']} mx={'auto'}>
+              <MyStep />
+            </Box>
+          </Box>
+        )}
+      </>
+    );
+  };
+
+  const renderUpdateStatusStep = () => {
+    return (
+      <>
+        <Box position="relative">
+          <Box
+            position="absolute"
+            alignItems={'center'}
+            top="50%"
+            left="16px"
+            display={'flex'}
+            transform="translateY(-50%)"
+          >
             <IconButton
               icon={<MyIcon name={'common/backFill'} w={'14px'} />}
               aria-label={''}
@@ -239,36 +324,45 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
                 })
               }
             />
-            {t('common:Exit')}
-          </Flex>
-        ) : (
-          <Button
-            variant={'whiteBase'}
-            leftIcon={<MyIcon name={'common/backFill'} w={'14px'} />}
-            onClick={goToPrevious}
-          >
-            {t('common:last_step')}
-          </Button>
-        )}
-        <Box flex={1} />
-      </Flex>
-      {/* step */}
-      {source !== ImportDataSourceEnum.imageDataset && (
-        <Box
-          mt={4}
-          mb={5}
-          px={3}
-          py={[2, 4]}
-          bg={'myGray.50'}
-          borderWidth={'1px'}
-          borderColor={'borderColor.low'}
-          borderRadius={'md'}
-        >
-          <Box maxW={['100%', '900px']} mx={'auto'}>
-            <MyStep />
+            <Text>{t('common:Exit')}</Text>
           </Box>
+          <Flex flex="1" justifyContent="center" mr="70px">
+            <Box>
+              <LightRowTabs
+                px={4}
+                py={1}
+                flex={1}
+                mx={'auto'}
+                w={'100%'}
+                list={steps.map((v, i) => ({ label: v.title, value: i }))}
+                activeColor="primary.700"
+                value={tab}
+                onChange={(e) => setTab(Number(e))}
+                inlineStyles={{
+                  fontSize: '1rem',
+                  lineHeight: '1.5rem',
+                  fontWeight: 500,
+                  border: 'none',
+                  _hover: {
+                    bg: 'myGray.05'
+                  },
+                  borderRadius: '6px'
+                }}
+              />
+            </Box>
+          </Flex>
         </Box>
-      )}
+
+        <Divider mb={3} mt={3} />
+      </>
+    );
+  };
+
+  const renderStep = () => (mode === 'edit' ? renderUpdateStatusStep() : renderCreateStatusStep());
+
+  return (
+    <DatasetImportContext.Provider value={contextValue}>
+      {renderStep()}
       {children}
     </DatasetImportContext.Provider>
   );
