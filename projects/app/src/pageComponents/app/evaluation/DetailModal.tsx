@@ -1,4 +1,3 @@
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
   Box,
   Button,
@@ -26,7 +25,7 @@ import {
   updateEvalItem
 } from '@/web/core/app/api/evaluation';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import { downloadFetch } from '@/web/common/system/utils';
+import { downloadFetch, getWebLLMModel } from '@/web/common/system/utils';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { type TFunction } from 'i18next';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -38,8 +37,6 @@ import {
 import type { evaluationType, listEvalItemsItem } from '@fastgpt/global/core/app/evaluation/type';
 import type { updateEvalItemBody } from '@fastgpt/global/core/app/evaluation/api';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import type { I18nStringType } from '@fastgpt/global/common/i18n/type';
-import type { ModelProviderType } from '@fastgpt/global/core/app/model/type';
 
 const formatEvaluationStatus = (item: { status: number; errorMessage?: string }, t: TFunction) => {
   if (item.errorMessage) {
@@ -90,11 +87,7 @@ const EvaluationDetailModal = ({
   const [editing, setEditing] = useState(false);
   const [pollingInterval, setPollingInterval] = useState(10000);
 
-  const { llmModelList, ModelProviders } = useSystemStore();
-  const modelData = useMemo(
-    () => ModelProviders.mapData.get(evalDetail.evalModel),
-    [evalDetail.evalModel, llmModelList, language]
-  );
+  const modelData = useMemo(() => getWebLLMModel(evalDetail.evalModel), [evalDetail.evalModel]);
 
   const {
     data: evalItemsList,
@@ -214,7 +207,7 @@ const EvaluationDetailModal = ({
               <Flex gap={1.5}>
                 <Avatar src={modelData?.avatar} w={5} />
                 <Box color={'myGray.900'} fontWeight={'medium'}>
-                  {modelData?.name[language as keyof I18nStringType]}
+                  {modelData?.name}
                 </Box>
               </Flex>
             </Box>

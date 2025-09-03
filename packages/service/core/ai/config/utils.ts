@@ -78,6 +78,8 @@ export const loadSystemModels = async (init = false, language = 'en') => {
 
   if (!init && global.systemModelList) return;
 
+  await preloadModelProviders();
+
   global.systemModelList = [];
   global.systemActiveModelList = [];
   global.llmModelMap = new Map<string, LLMModelItemType>();
@@ -110,14 +112,13 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         };
 
         const dbModel = dbModels.find((item) => item.model === model.model);
+        const provider = getModelProvider(dbModel?.metadata?.provider || model.provider, language);
 
         const modelData: any = {
           ...model,
           ...dbModel?.metadata,
-          provider: getModelProvider(
-            dbModel?.metadata?.provider || (model.provider as any),
-            language
-          ).id,
+          provider: provider.id,
+          avatar: provider.avatar,
           type: dbModel?.metadata?.type || model.type,
           isCustom: false,
 
@@ -259,7 +260,6 @@ export const cronRefreshModels = async () => {
   setCron('*/5 * * * *', async () => {
     // 1. 更新模型（所有节点都会触发）
     await loadSystemModels(true);
-    await preloadModelProviders();
     // 2. 更新缓存（仅主节点触发）
     await updateFastGPTConfigBuffer();
   });

@@ -419,6 +419,7 @@ export const iconPaths = {
   'model/cloudflare': () => import('./icons/model/cloudflare.svg'),
   'model/cohere': () => import('./icons/model/cohere.svg'),
   'model/coze': () => import('./icons/model/coze.svg'),
+  'model/huggingface': () => import('./icons/model/huggingface.svg'),
   more: () => import('./icons/more.svg'),
   moreLine: () => import('./icons/moreLine.svg'),
   optimizer: () => import('./icons/optimizer.svg'),
