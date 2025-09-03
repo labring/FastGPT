@@ -2,6 +2,9 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d'
 import { addLog } from '../../../../../../common/system/log';
 import { createLLMResponse, type ResponseEvents } from '../../../../../ai/llm/request';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import { chats2GPTMessages, getSystemPrompt_ChatItemType } from '@fastgpt/global/core/chat/adapt';
+import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 
 type ModelAgentConfig = {
   model: string;
@@ -33,16 +36,24 @@ export async function transferModelAgent({
   outputTokens: number;
 }> {
   try {
-    const messages: ChatCompletionMessageParam[] = [
+    const messages: ChatItemType[] = [
+      ...getSystemPrompt_ChatItemType(systemPrompt),
       {
-        role: ChatCompletionRequestMessageRoleEnum.System,
-        content: systemPrompt
-      },
-      {
-        role: 'user',
-        content: task
+        obj: ChatRoleEnum.Human,
+        value: [
+          {
+            type: ChatItemValueTypeEnum.text,
+            text: {
+              content: task
+            }
+          }
+        ]
       }
     ];
+    const adaptedMessages: ChatCompletionMessageParam[] = chats2GPTMessages({
+      messages,
+      reserveId: false
+    });
 
     const {
       answerText,
@@ -51,7 +62,7 @@ export async function transferModelAgent({
       body: {
         model,
         temperature,
-        messages,
+        messages: adaptedMessages,
         top_p,
         stream
       },

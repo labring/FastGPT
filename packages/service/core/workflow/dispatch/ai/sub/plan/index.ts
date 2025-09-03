@@ -4,6 +4,9 @@ import { createLLMResponse, type ResponseEvents } from '../../../../../ai/llm/re
 import { defaultPlanAgentPrompt } from './prompt';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
+import { chats2GPTMessages, getSystemPrompt_ChatItemType } from '@fastgpt/global/core/chat/adapt';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 
 type PlanAgentConfig = {
   model: string;
@@ -14,7 +17,7 @@ type PlanAgentConfig = {
 };
 
 type transferPlanAgentProps = {
-  histories: ChatCompletionMessageParam[];
+  histories: ChatItemType[];
   instruction?: string;
 } & PlanAgentConfig &
   Pick<ResponseEvents, 'onStreaming' | 'onReasoning'>;
@@ -37,24 +40,29 @@ export async function transferPlanAgent({
   outputTokens: number;
 }> {
   try {
-    console.log(
-      replaceVariable(defaultPlanAgentPrompt, {
-        userRole: customSystemPrompt
-      })
-    );
-    const messages: ChatCompletionMessageParam[] = [
-      {
-        role: ChatCompletionRequestMessageRoleEnum.System,
-        content: replaceVariable(defaultPlanAgentPrompt, {
+    const messages: ChatItemType[] = [
+      ...getSystemPrompt_ChatItemType(
+        replaceVariable(defaultPlanAgentPrompt, {
           userRole: customSystemPrompt
         })
-      },
-      ...histories.filter((item) => item.role !== 'system'),
+      ),
+      ...histories,
       {
-        role: 'user',
-        content: instruction
+        obj: ChatRoleEnum.Human,
+        value: [
+          {
+            type: ChatItemValueTypeEnum.text,
+            text: {
+              content: instruction
+            }
+          }
+        ]
       }
     ];
+    const adaptedMessages: ChatCompletionMessageParam[] = chats2GPTMessages({
+      messages,
+      reserveId: false
+    });
 
     const {
       answerText,
@@ -63,7 +71,7 @@ export async function transferPlanAgent({
       body: {
         model,
         temperature,
-        messages,
+        messages: adaptedMessages,
         top_p,
         stream
       },
