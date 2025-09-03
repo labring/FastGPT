@@ -78,7 +78,12 @@
 }
 
 .richText {
-  ul {
+  ul,
+  ol {
     padding-left: 16px;
+
+    li::marker {
+      color: var(--chakra-colors-primary-600);
+    }
   }
 }
