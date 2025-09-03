@@ -21,6 +21,7 @@ import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListItemNode, ListNode } from '@lexical/list';
 import { CodeHighlightNode, CodeNode } from '@lexical/code';
 import VariableLabelPickerPlugin from './plugins/VariableLabelPickerPlugin';
+import ListDisplayFixPlugin from './plugins/ListDisplayFixPlugin';
 import { Box, Flex } from '@chakra-ui/react';
 import styles from './index.module.scss';
 import VariablePlugin from './plugins/VariablePlugin';
@@ -245,6 +246,7 @@ export default function Editor({
         )}
         {renderPlugin('TabIndentationPlugin', <TabIndentationPlugin />)}
         {renderPlugin('OnBlurPlugin', <OnBlurPlugin onBlur={onBlur} />)}
+        <ListDisplayFixPlugin />
         <OnChangePlugin
           onChange={(editorState, editor) => {
             const rootElement = editor.getRootElement();
