@@ -42,7 +42,9 @@ const InputRender = (props: InputRenderProps) => {
     setIsSelectAll
   } = useMultipleSelect<string>(
     value,
-    inputType === InputTypeEnum.multipleSelect && value.length === (props.list?.length || 0)
+    inputType === InputTypeEnum.multipleSelect &&
+      Array.isArray(value) &&
+      value.length === (props.list?.length || 0)
   );
 
   const commonProps = {

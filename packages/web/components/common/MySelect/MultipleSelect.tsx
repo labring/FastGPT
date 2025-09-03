@@ -116,7 +116,7 @@ const MultipleSelect = <T = any,>({
         onSelect(newValue);
       }
     },
-    [inputValue, value, isSelectAll, onSelect]
+    [inputValue, value, onSelect]
   );
   useEffect(() => {
     if (!isOpen) {
@@ -172,7 +172,7 @@ const MultipleSelect = <T = any,>({
         onSelect([...value, val]);
       }
     },
-    [value, isSelectAll, onSelect, setIsSelectAll]
+    [isSelectAll, value, onSelect, list, setIsSelectAll]
   );
 
   const onSelectAll = useCallback(() => {
@@ -180,7 +180,7 @@ const MultipleSelect = <T = any,>({
     onSelect(hasSelected ? [] : list.map((item) => item.value));
 
     setIsSelectAll?.((state) => !state);
-  }, [value, list, setIsSelectAll, onSelect]);
+  }, [isSelectAll, value.length, onSelect, list, setIsSelectAll]);
 
   const ListRender = useMemo(() => {
     return (
@@ -215,7 +215,7 @@ const MultipleSelect = <T = any,>({
         })}
       </>
     );
-  }, [value, list, isSelectAll]);
+  }, [list, isSelectAll, value, onclickItem]);
 
   return (
     <Box h={'100%'} w={'100%'}>

@@ -5,29 +5,59 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
+import { ChatTypeEnum } from '../ChatBox/constants';
+import type { VariableItemType } from '@fastgpt/global/core/app/type';
 
-const VariablePopover = ({
-  showExternalVariables = false
-}: {
-  showExternalVariables?: boolean;
-}) => {
+const VariablePopover = ({ chatType }: { chatType: ChatTypeEnum }) => {
   const { t } = useTranslation();
   const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
   const variables = useContextSelector(
     ChatItemContext,
     (v) => v.chatBoxData?.app?.chatConfig?.variables ?? []
   );
-  const variableList = variables.filter((item) => item.type !== VariableInputEnum.custom);
-  const externalVariableList = variables.filter((item) =>
-    showExternalVariables ? item.type === VariableInputEnum.custom : false
-  );
 
-  const hasExternalVariable = externalVariableList.length > 0;
-  const hasVariable = variableList.length > 0;
+  const showExternalVariables = [ChatTypeEnum.log, ChatTypeEnum.test, ChatTypeEnum.chat].includes(
+    chatType
+  );
+  const showInternalVariables = [ChatTypeEnum.log, ChatTypeEnum.test].includes(chatType);
+  const { commonVariableList, externalVariableList, internalVariableList } = useMemo(() => {
+    const {
+      commonVariableList,
+      externalVariableList,
+      internalVariableList
+    }: {
+      commonVariableList: VariableItemType[];
+      externalVariableList: VariableItemType[];
+      internalVariableList: VariableItemType[];
+    } = {
+      commonVariableList: [],
+      externalVariableList: [],
+      internalVariableList: []
+    };
+    variables.forEach((item) => {
+      if (item.type === VariableInputEnum.custom) {
+        externalVariableList.push(item);
+      } else if (item.type === VariableInputEnum.internal) {
+        internalVariableList.push(item);
+      } else {
+        commonVariableList.push(item);
+      }
+    });
+    return {
+      externalVariableList: showExternalVariables ? externalVariableList : [],
+      internalVariableList: showInternalVariables ? internalVariableList : [],
+      commonVariableList
+    };
+  }, [showExternalVariables, showInternalVariables, variables]);
+
+  const hasVariables =
+    commonVariableList.length > 0 ||
+    internalVariableList.length > 0 ||
+    externalVariableList.length > 0;
 
   const { getValues, reset } = variablesForm;
 
@@ -42,7 +72,7 @@ const VariablePopover = ({
     reset(values);
   }, [getValues, reset, variables]);
 
-  return (
+  return hasVariables ? (
     <MyPopover
       placement="bottom"
       trigger={'click'}
@@ -55,7 +85,38 @@ const VariablePopover = ({
     >
       {({ onClose }) => (
         <Box p={4} maxH={'60vh'} overflow={'auto'}>
-          {hasExternalVariable && (
+          {internalVariableList.length > 0 && (
+            <Box textAlign={'left'}>
+              <Flex
+                color={'primary.600'}
+                bg={'primary.100'}
+                mb={3}
+                px={3}
+                py={1.5}
+                gap={1}
+                fontSize={'mini'}
+                rounded={'sm'}
+              >
+                <MyIcon name={'common/info'} color={'primary.600'} w={4} />
+                {t('chat:internal_variables_tip')}
+              </Flex>
+              {internalVariableList.map((item) => (
+                <LabelAndFormRender
+                  {...item}
+                  key={item.key}
+                  placeholder={item.description}
+                  inputType={variableInputTypeToInputType(item.type)}
+                  form={variablesForm}
+                  fieldName={`variables.${item.key}`}
+                  bg={'myGray.50'}
+                />
+              ))}
+            </Box>
+          )}
+          {internalVariableList.length > 0 &&
+            [...commonVariableList, externalVariableList].length > 0 && <MyDivider h={'1px'} />}
+
+          {externalVariableList.length > 0 && (
             <Box textAlign={'left'}>
               <Flex
                 color={'primary.600'}
@@ -83,10 +144,13 @@ const VariablePopover = ({
               ))}
             </Box>
           )}
-          {hasExternalVariable && hasVariable && <MyDivider h={'1px'} />}
-          {hasVariable && (
+          {externalVariableList.length > 0 && commonVariableList.length > 0 && (
+            <MyDivider h={'1px'} />
+          )}
+
+          {commonVariableList.length > 0 && (
             <Box>
-              {variableList.map((item) => (
+              {commonVariableList.map((item) => (
                 <LabelAndFormRender
                   {...item}
                   key={item.key}
@@ -102,7 +166,7 @@ const VariablePopover = ({
         </Box>
       )}
     </MyPopover>
-  );
+  ) : null;
 };
 
 export default VariablePopover;

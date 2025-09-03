@@ -365,17 +365,23 @@ export const variableConfigs: VariableConfigType[][] = [
       defaultValueType: WorkflowIOValueTypeEnum.string
     },
     {
+      icon: 'core/workflow/inputType/password',
+      label: i18nT('common:core.workflow.inputType.password'),
+      value: VariableInputEnum.password,
+      defaultValueType: WorkflowIOValueTypeEnum.string
+    },
+    {
       icon: 'core/workflow/inputType/numberInput',
       label: i18nT('common:core.workflow.inputType.number input'),
       value: VariableInputEnum.numberInput,
       defaultValueType: WorkflowIOValueTypeEnum.number
     },
-    {
-      icon: 'core/workflow/inputType/jsonEditor',
-      label: i18nT('common:core.workflow.inputType.jsonEditor'),
-      value: VariableInputEnum.JSONEditor,
-      defaultValueType: WorkflowIOValueTypeEnum.object
-    },
+    // {
+    //   icon: 'core/workflow/inputType/jsonEditor',
+    //   label: i18nT('common:core.workflow.inputType.jsonEditor'),
+    //   value: VariableInputEnum.JSONEditor,
+    //   defaultValueType: WorkflowIOValueTypeEnum.object
+    // },
     {
       icon: 'core/workflow/inputType/option',
       label: i18nT('common:core.workflow.inputType.select'),
@@ -393,31 +399,25 @@ export const variableConfigs: VariableConfigType[][] = [
       label: i18nT('common:core.workflow.inputType.switch'),
       value: VariableInputEnum.switch,
       defaultValueType: WorkflowIOValueTypeEnum.boolean
-    },
-    {
-      icon: 'core/workflow/inputType/timePointSelect',
-      label: i18nT('common:core.workflow.inputType.timePointSelect'),
-      value: VariableInputEnum.timePointSelect,
-      defaultValueType: WorkflowIOValueTypeEnum.string
-    },
-    {
-      icon: 'core/workflow/inputType/timeRangeSelect',
-      label: i18nT('common:core.workflow.inputType.timeRangeSelect'),
-      value: VariableInputEnum.timeRangeSelect,
-      defaultValueType: WorkflowIOValueTypeEnum.arrayString
-    },
-    {
-      icon: 'core/workflow/inputType/file',
-      label: i18nT('common:core.workflow.inputType.file'),
-      value: VariableInputEnum.file,
-      defaultValueType: WorkflowIOValueTypeEnum.arrayString
-    },
-    {
-      icon: 'core/workflow/inputType/password',
-      label: i18nT('common:core.workflow.inputType.password'),
-      value: VariableInputEnum.password,
-      defaultValueType: WorkflowIOValueTypeEnum.string
     }
+    // {
+    //   icon: 'core/workflow/inputType/timePointSelect',
+    //   label: i18nT('common:core.workflow.inputType.timePointSelect'),
+    //   value: VariableInputEnum.timePointSelect,
+    //   defaultValueType: WorkflowIOValueTypeEnum.string
+    // },
+    // {
+    //   icon: 'core/workflow/inputType/timeRangeSelect',
+    //   label: i18nT('common:core.workflow.inputType.timeRangeSelect'),
+    //   value: VariableInputEnum.timeRangeSelect,
+    //   defaultValueType: WorkflowIOValueTypeEnum.arrayString
+    // }
+    // {
+    //   icon: 'core/workflow/inputType/file',
+    //   label: i18nT('common:core.workflow.inputType.file'),
+    //   value: VariableInputEnum.file,
+    //   defaultValueType: WorkflowIOValueTypeEnum.arrayString
+    // }
   ],
   // [
   //   {

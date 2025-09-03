@@ -949,9 +949,7 @@ const getSystemVariables = ({
 
   const variablesMap = variablesConfig.reduce<Record<string, any>>((acc, item) => {
     // For internal variables, ignore external input and use default value
-    if (item.type === VariableInputEnum.internal) {
-      acc[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
-    } else if (item.type === VariableInputEnum.password) {
+    if (item.type === VariableInputEnum.password) {
       const val = variables[item.label] || variables[item.key] || item.defaultValue;
       const actualValue = anyValueDecrypt(val);
       acc[item.key] = valueTypeFormat(actualValue, item.valueType);
