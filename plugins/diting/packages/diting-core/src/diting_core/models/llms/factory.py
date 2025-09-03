@@ -12,15 +12,16 @@ def llm_factory(
     model: str = "gpt-4o-mini",
     base_url: Optional[str] = None,
     api_key: Optional[str] = None,
+    timeout: Optional[float] = None,
     is_guided_json_support: bool = False,
     **kwargs: Any,
 ) -> BaseLLM:
     if api_key:
         llm = ChatOpenAI(
-            model=model, base_url=base_url, api_key=SecretStr(api_key), **kwargs
+            model=model, base_url=base_url, api_key=SecretStr(api_key), timeout=timeout, **kwargs
         )
     else:
-        llm = ChatOpenAI(model=model, base_url=base_url, **kwargs)
+        llm = ChatOpenAI(model=model, base_url=base_url, timeout=timeout, **kwargs)
     return LangchainLLMWrapper(
         llm=llm,
         is_guided_json_support=is_guided_json_support,

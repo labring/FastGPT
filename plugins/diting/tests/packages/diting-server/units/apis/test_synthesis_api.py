@@ -60,7 +60,7 @@ class TestSynthesisAPI(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch(
-            "diting_engine.apis.v1.synthesis.api.synthesizer_service.run_synthesizer",
+            "diting_server.apis.v1.synthesis.api.synthesizer_service.run_synthesizer",
             return_value=mock_response,
         ) as mock_service:
             response = await run_synthesis(DatasetSynthesisRequest(**request_data))
@@ -86,7 +86,7 @@ class TestSynthesisAPI(unittest.IsolatedAsyncioTestCase):
 
         # Mock service to raise exception
         with patch(
-            "diting_engine.apis.v1.synthesis.api.synthesizer_service.run_synthesizer",
+            "diting_server.apis.v1.synthesis.api.synthesizer_service.run_synthesizer",
             side_effect=Exception("Service error"),
         ):
             with self.assertRaises(Exception):
@@ -117,7 +117,7 @@ class TestSynthesisAPI(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch(
-            "diting_engine.apis.v1.synthesis.api.synthesizer_service.run_synthesizer",
+            "diting_server.apis.v1.synthesis.api.synthesizer_service.run_synthesizer",
             return_value=mock_response,
         ):
             response = self.client.post(
@@ -140,7 +140,7 @@ class TestSynthesisAPI(unittest.IsolatedAsyncioTestCase):
         }
 
         with patch(
-            "diting_engine.apis.v1.synthesis.api.synthesizer_service.run_synthesizer",
+            "diting_server.apis.v1.synthesis.api.synthesizer_service.run_synthesizer",
             side_effect=Exception("Service error"),
         ):
             response = self.client.post(
@@ -194,7 +194,7 @@ class TestSynthesisAPI(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch(
-            "diting_engine.apis.v1.synthesis.api.synthesizer_service.run_synthesizer",
+            "diting_server.apis.v1.synthesis.api.synthesizer_service.run_synthesizer",
             return_value=mock_response,
         ):
             response = self.client.post(
@@ -232,7 +232,7 @@ class TestSynthesisAPI(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch(
-            "diting_engine.apis.v1.synthesis.api.synthesizer_service.run_synthesizer",
+            "diting_server.apis.v1.synthesis.api.synthesizer_service.run_synthesizer",
             return_value=mock_response,
         ):
             response = self.client.post(
@@ -264,10 +264,10 @@ class TestSynthesisAPI(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch(
-            "diting_engine.apis.v1.synthesis.api.synthesizer_service.run_synthesizer",
+            "diting_server.apis.v1.synthesis.api.synthesizer_service.run_synthesizer",
             return_value=mock_response,
         ) as _mock_service:
-            with patch("diting_engine.apis.v1.synthesis.api.logger") as mock_logger:
+            with patch("diting_server.apis.v1.synthesis.api.logger") as mock_logger:
                 response = self.client.post(
                     "/api/v1/dataset-synthesis/runs", json=request_data
                 )
@@ -300,10 +300,10 @@ class TestSynthesisAPI(unittest.IsolatedAsyncioTestCase):
         }
 
         with patch(
-            "diting_engine.apis.v1.synthesis.api.synthesizer_service.run_synthesizer",
+            "diting_server.apis.v1.synthesis.api.synthesizer_service.run_synthesizer",
             side_effect=Exception("Service error"),
         ):
-            with patch("diting_engine.apis.v1.synthesis.api.logger") as mock_logger:
+            with patch("diting_server.apis.v1.synthesis.api.logger") as mock_logger:
                 response = self.client.post(
                     "/api/v1/dataset-synthesis/runs", json=request_data
                 )
@@ -340,7 +340,7 @@ class TestSynthesisAPI(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch(
-            "diting_engine.apis.v1.synthesis.api.synthesizer_service.run_synthesizer",
+            "diting_server.apis.v1.synthesis.api.synthesizer_service.run_synthesizer",
             return_value=mock_response,
         ):
             response = self.client.post(
