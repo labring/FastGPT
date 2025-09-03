@@ -434,6 +434,8 @@
   "type.MCP tools": "MCP Toolset",
   "type.MCP_tools_url": "MCP Address",
   "type.Plugin": "Plugin",
+  "select_app_type": "Select App Type",
+  "change_app_type": "Change App Type",
   "type.Simple bot": "Simple App",
   "type.Tool": "Tool",
   "type.Tool set": "Toolset",

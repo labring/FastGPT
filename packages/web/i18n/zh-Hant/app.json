@@ -433,6 +433,8 @@
   "type.MCP tools": "MCP 工具集",
   "type.MCP_tools_url": "MCP 地址",
   "type.Plugin": "外掛",
+  "select_app_type": "選擇應用程式類型",
+  "change_app_type": "更改應用程式類型",
   "type.Simple bot": "簡易應用程式",
   "type.Tool": "工具",
   "type.Tool set": "工具集",

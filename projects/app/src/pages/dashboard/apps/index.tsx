@@ -6,7 +6,7 @@ import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
-import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { FolderIcon } from '@fastgpt/global/common/file/image/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { postCreateAppFolder } from '@/web/core/app/api/app';
@@ -23,7 +23,6 @@ import {
   getCollaboratorList,
   postUpdateAppCollaborators
 } from '@/web/core/app/api/collaborator';
-import type { CreateAppType } from '@/pageComponents/dashboard/apps/CreateModal';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -35,7 +34,6 @@ import { useMount } from 'ahooks';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 
-const CreateModal = dynamic(() => import('@/pageComponents/dashboard/apps/CreateModal'));
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
 );
@@ -65,7 +63,6 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     searchKey
   } = useContextSelector(AppListContext, (v) => v);
   const { userInfo } = useUserStore();
-  const [createAppType, setCreateAppType] = useState<CreateAppType>();
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
 
   const {
@@ -114,7 +111,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const appTypeName = useMemo(() => {
     const map: Record<AppTypeEnum | 'all', string> = {
       all: t('common:core.module.template.Team app'),
-      [AppTypeEnum.simple]: t('app:type.Simple bot'),
+      [AppTypeEnum.agent]: 'AI Agent',
       [AppTypeEnum.workflow]: t('app:type.Workflow bot'),
       [AppTypeEnum.plugin]: t('app:type.Plugin'),
       [AppTypeEnum.httpToolSet]: t('app:type.Http tool set'),
@@ -122,6 +119,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       [AppTypeEnum.toolSet]: t('app:type.MCP tools'),
       [AppTypeEnum.tool]: t('app:type.MCP tools'),
       [AppTypeEnum.hidden]: t('app:type.hidden'),
+      [AppTypeEnum.simple]: t('app:type.Simple bot'),
 
       // deprecated
       [AppTypeEnum.httpPlugin]: t('app:type.Http plugin')
@@ -181,69 +179,33 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
             {(folderDetail
               ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
               : userInfo?.team.permission.hasAppCreatePer) && (
-              <MyMenu
-                size="md"
-                Button={
-                  <Button variant={'primary'} leftIcon={<AddIcon />}>
-                    <Box>{t('common:new_create')}</Box>
-                  </Button>
-                }
-                menuList={[
-                  {
-                    children: [
-                      {
-                        icon: 'core/app/simpleBot',
-                        label: t('app:type.Simple bot'),
-                        description: t('app:type.Create simple bot tip'),
-                        onClick: () => setCreateAppType(AppTypeEnum.simple)
-                      },
-                      {
-                        icon: 'core/app/type/workflowFill',
-                        label: t('app:type.Workflow bot'),
-                        description: t('app:type.Create workflow tip'),
-                        onClick: () => setCreateAppType(AppTypeEnum.workflow)
-                      },
-                      {
-                        icon: 'core/app/type/pluginFill',
-                        label: t('app:type.Plugin'),
-                        description: t('app:type.Create one plugin tip'),
-                        onClick: () => setCreateAppType(AppTypeEnum.plugin)
-                      },
-                      {
-                        icon: 'core/app/type/httpPluginFill',
-                        label: t('app:type.Http tool set'),
-                        description: t('app:type.Create http toolset tip'),
-                        onClick: onOpenCreateHttpTools
-                      },
-                      {
-                        icon: 'core/app/type/mcpToolsFill',
-                        label: t('app:type.MCP tools'),
-                        description: t('app:type.Create mcp tools tip'),
-                        onClick: onOpenCreateMCPTools
-                      }
-                    ]
-                  },
-                  {
-                    children: [
-                      {
-                        icon: 'core/app/type/jsonImport',
-                        label: t('app:type.Import from json'),
-                        description: t('app:type.Import from json tip'),
-                        onClick: onOpenJsonImportModal
-                      }
-                    ]
-                  },
-                  {
-                    children: [
-                      {
-                        icon: FolderIcon,
-                        label: t('common:Folder'),
-                        onClick: () => setEditFolder({})
-                      }
-                    ]
+              <>
+                <Button
+                  variant={'grayBase'}
+                  leftIcon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
+                  onClick={() => setEditFolder({})}
+                >
+                  {t('common:Folder')}
+                </Button>
+                <Button
+                  variant={'grayBase'}
+                  leftIcon={<MyIcon name={'common/importLight'} w={'14px'} />}
+                  onClick={onOpenJsonImportModal}
+                >
+                  {t('common:Import')}
+                </Button>
+                <Button
+                  leftIcon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
+                  onClick={() =>
+                    router.push({
+                      pathname: '/dashboard/apps/create',
+                      query: { parentId }
+                    })
                   }
-                ]}
-              />
+                >
+                  <Box>{t('common:App')}</Box>
+                </Button>
+              </>
             )}
           </Flex>
 
@@ -288,7 +250,6 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               deleteTip={t('app:confirm_delete_folder_tip')}
               onDelete={() => onDeleFolder(folderDetail._id)}
               managePer={{
-                defaultRole: ReadRoleVal,
                 permission: folderDetail.permission,
                 onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
                 roleList: AppRoleList,
@@ -316,9 +277,6 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           onCreate={(data) => onCreateFolder({ ...data, parentId })}
           onEdit={({ id, ...data }) => onUpdateApp(id, data)}
         />
-      )}
-      {!!createAppType && (
-        <CreateModal type={createAppType} onClose={() => setCreateAppType(undefined)} />
       )}
       {isOpenCreateHttpTools && <HttpToolsCreateModal onClose={onCloseCreateHttpTools} />}
       {isOpenCreateMCPTools && <MCPToolsEditModal onClose={onCloseCreateMCPTools} />}

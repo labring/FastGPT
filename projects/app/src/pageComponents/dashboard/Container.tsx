@@ -9,6 +9,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { navbarWidth } from '@/components/Layout';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getTemplateMarketItemList, getTemplateTagList } from '@/web/core/app/api/template';
 import type { AppTemplateSchemaType, TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
@@ -89,6 +90,7 @@ const DashboardContainer = ({
         typeName: string;
         isActive?: boolean;
         onClick?: () => void;
+        tooltipLabel?: React.ReactNode;
       }[];
     }[]
   >(() => {
@@ -104,8 +106,8 @@ const DashboardContainer = ({
             typeName: t('app:type.All')
           },
           {
-            typeId: AppTypeEnum.simple,
-            typeName: t('app:type.Simple bot')
+            typeId: AppTypeEnum.agent,
+            typeName: 'AI Agent'
           },
           {
             typeId: AppTypeEnum.workflow,
@@ -114,6 +116,32 @@ const DashboardContainer = ({
           {
             typeId: AppTypeEnum.plugin,
             typeName: t('app:type.Plugin')
+          },
+          {
+            typeId: AppTypeEnum.simple,
+            typeName: t('app:type.Simple bot'),
+            tooltipLabel: (
+              <Box px={2} py={2}>
+                <Box mb={2} fontSize={'mini'}>
+                  简易应用模式已废弃，将在2026/01/01清除相关数据。 请及时将简易应用转为工作流。
+                </Box>
+              </Box>
+            )
+          }
+        ]
+      },
+      {
+        groupId: 'tools',
+        groupAvatar: 'core/app/type/plugin',
+        groupName: t('common:navbar.Tools'),
+        children: [
+          {
+            typeId: 'mcp',
+            typeName: 'MCP 工具集'
+          },
+          {
+            typeId: 'http',
+            typeName: 'HTTP 工具集'
           }
         ]
       },
@@ -259,7 +287,7 @@ const DashboardContainer = ({
                     {group.children.map((child) => {
                       const isActive = child.isActive || child.typeId === currentType;
 
-                      return (
+                      const childContent = (
                         <Flex
                           key={child.typeId}
                           fontSize={'sm'}
@@ -292,10 +320,24 @@ const DashboardContainer = ({
                               onCloseSidebar();
                             }
                           }}
+                          alignItems={'center'}
                         >
                           {child.typeName}
+                          {child.tooltipLabel && (
+                            <MyTooltip label={child.tooltipLabel} placement={'right'}>
+                              <MyIcon
+                                name="common/warn"
+                                w={'12px'}
+                                h={'12px'}
+                                ml={1}
+                                cursor={'pointer'}
+                              />
+                            </MyTooltip>
+                          )}
                         </Flex>
                       );
+
+                      return childContent;
                     })}
                   </Box>
                 )}

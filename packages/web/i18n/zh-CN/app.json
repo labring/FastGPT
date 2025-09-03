@@ -452,6 +452,8 @@
   "type.MCP tools": "MCP 工具集",
   "type.MCP_tools_url": "MCP 地址",
   "type.Plugin": "插件",
+  "select_app_type": "选择应用类型",
+  "change_app_type": "更改应用类型",
   "type.Simple bot": "简易应用",
   "type.Tool": "工具",
   "type.Tool set": "工具集",
