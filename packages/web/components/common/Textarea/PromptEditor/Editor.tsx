@@ -114,32 +114,6 @@ export default function Editor({
   const [focus, setFocus] = useState(false);
   const [scrollHeight, setScrollHeight] = useState(0);
 
-  const activePlugins = useMemo(() => {
-    const defaultPlugins = {
-      base: [
-        'HistoryPlugin',
-        'MaxLengthPlugin',
-        'FocusPlugin',
-        'VariableLabelPlugin',
-        'VariablePlugin',
-        'VariableLabelPickerPlugin',
-        'VariablePickerPlugin',
-        'OnBlurPlugin'
-      ],
-      richtext: ['ListPlugin', 'CheckListPlugin', 'MarkdownPlugin', 'TabIndentationPlugin'],
-      plaintext: []
-    };
-
-    return new Set([
-      ...defaultPlugins.base,
-      ...(isRichText ? defaultPlugins.richtext : defaultPlugins.plaintext)
-    ]);
-  }, [isRichText]);
-
-  const renderPlugin = (pluginName: string, component: React.ReactElement) => {
-    return activePlugins.has(pluginName) ? component : <></>;
-  };
-
   const initialConfig = {
     namespace: isRichText ? 'richPromptEditor' : 'promptEditor',
     nodes: [
@@ -196,6 +170,7 @@ export default function Editor({
       borderRadius={'md'}
     >
       <LexicalComposer initialConfig={initialConfig} key={key}>
+        {/* Text type */}
         {isRichText ? (
           <RichTextPlugin
             contentEditable={
@@ -228,34 +203,41 @@ export default function Editor({
           />
         )}
 
-        {renderPlugin('HistoryPlugin', <HistoryPlugin />)}
-        {renderPlugin('ListPlugin', <ListPlugin />)}
-        {renderPlugin('CheckListPlugin', <CheckListPlugin />)}
-        {renderPlugin('MarkdownPlugin', <MarkdownPlugin />)}
-        {renderPlugin('MaxLengthPlugin', <MaxLengthPlugin maxLength={maxLength || 999999} />)}
-        {renderPlugin('FocusPlugin', <FocusPlugin focus={focus} setFocus={setFocus} />)}
-        {renderPlugin('VariableLabelPlugin', <VariableLabelPlugin variables={variableLabels} />)}
-        {renderPlugin('VariablePlugin', <VariablePlugin variables={variables} />)}
-        {renderPlugin(
-          'VariableLabelPickerPlugin',
-          <VariableLabelPickerPlugin variables={variableLabels} isFocus={focus} />
-        )}
-        {renderPlugin(
-          'VariablePickerPlugin',
-          <VariablePickerPlugin variables={variableLabels.length > 0 ? [] : variables} />
-        )}
-        {renderPlugin('TabIndentationPlugin', <TabIndentationPlugin />)}
-        {renderPlugin('OnBlurPlugin', <OnBlurPlugin onBlur={onBlur} />)}
-        <ListDisplayFixPlugin />
-        <OnChangePlugin
-          onChange={(editorState, editor) => {
-            const rootElement = editor.getRootElement();
-            setScrollHeight(rootElement?.scrollHeight || 0);
-            startSts(() => {
-              onChange?.(editorState, editor);
-            });
-          }}
-        />
+        {/* Basic Plugin */}
+        <>
+          <HistoryPlugin />
+          <MaxLengthPlugin maxLength={maxLength || 999999} />
+          <FocusPlugin focus={focus} setFocus={setFocus} />
+
+          <VariablePlugin variables={variables} />
+          {variableLabels.length > 0 && (
+            <>
+              <VariableLabelPlugin variables={variableLabels} />
+              <VariableLabelPickerPlugin variables={variableLabels} isFocus={focus} />
+            </>
+          )}
+          {variableLabels.length > 0 && <VariablePickerPlugin variables={variables} />}
+          <OnBlurPlugin onBlur={onBlur} />
+          <ListDisplayFixPlugin />
+          <OnChangePlugin
+            onChange={(editorState, editor) => {
+              const rootElement = editor.getRootElement();
+              setScrollHeight(rootElement?.scrollHeight || 0);
+              startSts(() => {
+                onChange?.(editorState, editor);
+              });
+            }}
+          />
+
+          {isRichText && (
+            <>
+              <ListPlugin />
+              <CheckListPlugin />
+              <MarkdownPlugin />
+              <TabIndentationPlugin />
+            </>
+          )}
+        </>
       </LexicalComposer>
 
       {onChangeText &&
