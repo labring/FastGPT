@@ -11,7 +11,7 @@ import path from 'path';
 function getDocLastModifiedData(): Record<string, string> {
   try {
     const dataPath = path.join(process.cwd(), 'data', 'doc-last-modified.json');
-
+    console.log(dataPath);
     if (!fs.existsSync(dataPath)) {
       return {};
     }
