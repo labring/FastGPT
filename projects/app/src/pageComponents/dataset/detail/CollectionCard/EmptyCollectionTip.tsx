@@ -51,6 +51,20 @@ const EmptyCollectionTip = () => {
           }
         />
       )}
+      {datasetDetail.type === DatasetTypeEnum.database && (
+        <EmptyTip
+          text={
+            <Flex>
+              {/* TODO-lyx */}
+              {t('common:no_database_connection')}
+              {', '}
+              <Box textDecoration={'underline'} cursor={'pointer'} onClick={onOpenWebsiteModal}>
+                {t('common:click_config_database')}
+              </Box>
+            </Flex>
+          }
+        />
+      )}
     </>
   );
 };

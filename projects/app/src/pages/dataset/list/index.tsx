@@ -164,6 +164,12 @@ const Dataset = () => {
                           onClick: () => onSelectDatasetType(DatasetTypeEnum.websiteDataset)
                         },
                         {
+                          icon: 'core/dataset/databaseColor',
+                          label: t('dataset:enterprise_database'),
+                          description: t('dataset:enterprise_database_desc'),
+                          onClick: () => onSelectDatasetType(DatasetTypeEnum.database)
+                        },
+                        {
                           icon: 'core/dataset/otherDataset',
                           label: t('dataset:other_dataset'),
                           description: t('dataset:external_other_dataset_desc'),
