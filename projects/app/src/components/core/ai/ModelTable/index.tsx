@@ -14,7 +14,6 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import React, { useMemo, useRef, useState } from 'react';
-import { getModelProviders, getModelProvider } from '@/web/common/system/controller';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
@@ -23,20 +22,20 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import dynamic from 'next/dynamic';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
-import type { I18nStringType } from '@fastgpt/global/common/i18n/type';
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
 const ModelTable = () => {
   const { t, i18n } = useTranslation();
-  const language = i18n.language;
+  const { getModelProviders, getModelProvider } = useSystemStore();
+
   const [provider, setProvider] = useState<string | ''>('');
   const providerList = useRef<{ label: any; value: string | '' }[]>([
     { label: t('common:All'), value: '' },
-    ...getModelProviders().providerList.map((item) => ({
+    ...getModelProviders(i18n.language).map((item) => ({
       label: (
         <HStack>
           <Avatar src={item.avatar} w={'1rem'} />
-          <Box>{item.name[language as keyof I18nStringType]}</Box>
+          <Box>{item.name}</Box>
         </HStack>
       ),
       value: item.id
@@ -159,7 +158,7 @@ const ModelTable = () => {
       ];
     })();
     const formatList = list.map((item) => {
-      const provider = getModelProvider(item.provider, language);
+      const provider = getModelProvider(item.provider, i18n.language);
       return {
         name: item.name,
         avatar: provider.avatar,
@@ -191,9 +190,10 @@ const ModelTable = () => {
     reRankModelList,
     t,
     modelType,
+    getModelProvider,
+    i18n.language,
     provider,
-    search,
-    language
+    search
   ]);
 
   const filterProviderList = useMemo(() => {

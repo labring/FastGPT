@@ -9,8 +9,6 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 import type { ResponsiveValue } from '@chakra-ui/system';
-import type { I18nStringType } from '@fastgpt/global/common/i18n/type';
-import { defaultProvider } from '@fastgpt/service/core/app/provider/controller';
 
 type Props = SelectProps & {
   disableTip?: string;
@@ -18,16 +16,15 @@ type Props = SelectProps & {
 };
 
 const OneRowSelector = ({ list, onChange, disableTip, noOfLines, ...props }: Props) => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const {
     llmModelList,
     embeddingModelList,
     ttsModelList,
     sttModelList,
     reRankModelList,
-    ModelProviders
+    getModelProvider
   } = useSystemStore();
-  const language = i18n.language;
 
   const avatarSize = useMemo(() => {
     const size = {
@@ -52,7 +49,7 @@ const OneRowSelector = ({ list, onChange, disableTip, noOfLines, ...props }: Pro
         const modelData = allModels.find((model) => model.model === item.value);
         if (!modelData) return;
 
-        const provider = ModelProviders.mapData.get(modelData.provider) ?? defaultProvider;
+        const avatar = getModelProvider(modelData.provider)?.avatar;
 
         return {
           value: item.value,
@@ -61,7 +58,7 @@ const OneRowSelector = ({ list, onChange, disableTip, noOfLines, ...props }: Pro
               <Avatar
                 borderRadius={'0'}
                 mr={2}
-                src={provider.avatar || HUGGING_FACE_ICON}
+                src={avatar || HUGGING_FACE_ICON}
                 w={avatarSize}
                 fallbackSrc={HUGGING_FACE_ICON}
               />
@@ -82,9 +79,9 @@ const OneRowSelector = ({ list, onChange, disableTip, noOfLines, ...props }: Pro
     sttModelList,
     reRankModelList,
     list,
+    getModelProvider,
     avatarSize,
-    noOfLines,
-    ModelProviders
+    noOfLines
   ]);
 
   return (
@@ -127,9 +124,9 @@ const MultipleRowSelector = ({
     ttsModelList,
     sttModelList,
     reRankModelList,
-    ModelProviders
+    getModelProvider,
+    getModelProviders
   } = useSystemStore();
-  const language = i18n.language;
   const modelList = useMemo(() => {
     const allModels = [
       ...llmModelList,
@@ -142,15 +139,7 @@ const MultipleRowSelector = ({
     return list
       .map((item) => allModels.find((model) => model.model === item.value))
       .filter(Boolean);
-  }, [
-    llmModelList,
-    embeddingModelList,
-    ttsModelList,
-    sttModelList,
-    reRankModelList,
-    list,
-    language
-  ]);
+  }, [llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList, list]);
 
   const [value, setValue] = useState<string[]>([]);
 
@@ -165,7 +154,7 @@ const MultipleRowSelector = ({
   }, [props.size]);
 
   const selectorList = useMemo(() => {
-    const renderList = ModelProviders.listData.map<{
+    const renderList = getModelProviders(i18n.language).map<{
       label: React.JSX.Element;
       value: string;
       children: { label: string | React.ReactNode; value: string }[];
@@ -179,7 +168,7 @@ const MultipleRowSelector = ({
             fallbackSrc={HUGGING_FACE_ICON}
             w={avatarSize}
           />
-          <Box>{provider.name[language as keyof I18nStringType]}</Box>
+          <Box>{provider.name}</Box>
         </Flex>
       ),
       value: provider.id,
@@ -200,7 +189,7 @@ const MultipleRowSelector = ({
     }
 
     return renderList.filter((item) => item.children.length > 0);
-  }, [avatarSize, list, modelList, language, ModelProviders]);
+  }, [getModelProviders, i18n.language, avatarSize, list, modelList]);
 
   const onSelect = useCallback(
     (e: string[]) => {
@@ -217,19 +206,21 @@ const MultipleRowSelector = ({
 
     setValue([modelData.provider, props.value]);
 
+    const avatar = getModelProvider(modelData.provider)?.avatar;
+
     return (
       <Flex alignItems={'center'} py={1}>
         <Avatar
           borderRadius={'0'}
           mr={2}
-          src={modelData?.avatar}
+          src={avatar}
           fallbackSrc={HUGGING_FACE_ICON}
           w={avatarSize}
         />
         <Box noOfLines={noOfLines}>{modelData?.name}</Box>
       </Flex>
     );
-  }, [modelList, props.value, t, avatarSize, language]);
+  }, [props.value, t, modelList, getModelProvider, avatarSize, noOfLines]);
 
   return (
     <Box

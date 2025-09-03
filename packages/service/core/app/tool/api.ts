@@ -22,11 +22,6 @@ export async function APIGetSystemToolList() {
   return Promise.reject(res.body);
 }
 
-export async function getProviderList() {
-  const res = await pluginClient.model.provider();
-  return res.status === 200 ? res.body : Promise.reject(res.body);
-}
-
 const runToolInstance = new RunToolWithStream({
   baseUrl: BASE_URL,
   token: TOKEN
