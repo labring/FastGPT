@@ -272,10 +272,10 @@ export const iconPaths = {
   'core/workflow/inputType/customVariable': () =>
     import('./icons/core/workflow/inputType/customVariable.svg'),
   'core/workflow/inputType/dataset': () => import('./icons/core/workflow/inputType/dataset.svg'),
-  // 'core/workflow/inputType/timePointSelect': () =>
-  //   import('./icons/core/workflow/inputType/timePointSelect.svg'),
-  // 'core/workflow/inputType/timeRangeSelect': () =>
-  //   import('./icons/core/workflow/inputType/timeRangeSelect.svg'),
+  'core/workflow/inputType/timePointSelect': () =>
+    import('./icons/core/workflow/inputType/timePointSelect.svg'),
+  'core/workflow/inputType/timeRangeSelect': () =>
+    import('./icons/core/workflow/inputType/timeRangeSelect.svg'),
   'core/workflow/inputType/dynamic': () => import('./icons/core/workflow/inputType/dynamic.svg'),
   'core/workflow/inputType/external': () => import('./icons/core/workflow/inputType/external.svg'),
   'core/workflow/inputType/file': () => import('./icons/core/workflow/inputType/file.svg'),
