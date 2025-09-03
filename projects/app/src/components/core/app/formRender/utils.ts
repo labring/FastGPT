@@ -31,7 +31,6 @@ export const nodeInputTypeToInputType = (inputTypes: FlowNodeInputTypeEnum[] = [
   if (inputType === FlowNodeInputTypeEnum.JSONEditor) return InputTypeEnum.JSONEditor;
   if (inputType === FlowNodeInputTypeEnum.selectLLMModel) return InputTypeEnum.selectLLMModel;
   if (inputType === FlowNodeInputTypeEnum.fileSelect) return InputTypeEnum.fileSelect;
-  if (inputType === FlowNodeInputTypeEnum.richTextPrompt) return InputTypeEnum.richTextPrompt;
   return InputTypeEnum.textarea;
 };
 

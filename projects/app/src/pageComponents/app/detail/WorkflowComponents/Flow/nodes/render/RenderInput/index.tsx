@@ -56,9 +56,6 @@ const RenderList: Record<
       Promise.resolve(() => <VariableTip transform={'translateY(2px)'} />)
     )
   },
-  [FlowNodeInputTypeEnum.richTextPrompt]: {
-    Component: CommonInputForm
-  },
   [FlowNodeInputTypeEnum.numberInput]: {
     Component: CommonInputForm
   },

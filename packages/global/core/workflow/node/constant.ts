@@ -8,7 +8,6 @@ export enum FlowNodeInputTypeEnum { // render ui
   switch = 'switch', // true/false
   select = 'select',
   multipleSelect = 'multipleSelect',
-  richTextPrompt = 'richTextPrompt',
 
   // editor
   JSONEditor = 'JSONEditor',
@@ -91,9 +90,6 @@ export const FlowNodeInputMap: Record<
     icon: 'core/workflow/inputType/input'
   },
   [FlowNodeInputTypeEnum.textarea]: {
-    icon: 'core/workflow/inputType/textarea'
-  },
-  [FlowNodeInputTypeEnum.richTextPrompt]: {
     icon: 'core/workflow/inputType/textarea'
   },
   [FlowNodeInputTypeEnum.fileSelect]: {

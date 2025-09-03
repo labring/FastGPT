@@ -51,7 +51,7 @@ export const Input_Template_SettingAiModel: FlowNodeInputItemType = {
 
 export const Input_Template_System_Prompt: FlowNodeInputItemType = {
   key: NodeInputKeyEnum.aiSystemPrompt,
-  renderTypeList: [FlowNodeInputTypeEnum.richTextPrompt, FlowNodeInputTypeEnum.reference],
+  renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
   max: 3000,
   valueType: WorkflowIOValueTypeEnum.string,
   label: i18nT('common:core.ai.Prompt'),

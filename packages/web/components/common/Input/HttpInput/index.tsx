@@ -6,7 +6,7 @@ import {
   type EditorVariablePickerType
 } from '../../Textarea/PromptEditor/type';
 import Editor from './Editor';
-import { editorStateToText } from '../../../../components/common/Textarea/PromptEditor/editors/Plain/utils';
+import { editorStateToText } from '../../Textarea/PromptEditor/utils';
 
 const HttpInput = ({
   variables = [],

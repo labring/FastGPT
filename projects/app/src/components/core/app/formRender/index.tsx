@@ -2,9 +2,7 @@ import React from 'react';
 import { Box, Switch } from '@chakra-ui/react';
 import type { InputRenderProps } from './type';
 import { InputTypeEnum } from './constant';
-import PromptEditor, {
-  RichPromptEditor
-} from '@fastgpt/web/components/common/Textarea/PromptEditor';
+import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MultipleSelect, {
@@ -69,21 +67,7 @@ const InputRender = (props: InputRenderProps) => {
       return (
         <PromptEditor
           {...commonProps}
-          variables={props.variables}
-          variableLabels={props.variableLabels}
-          title={props.title}
-          maxLength={props.maxLength}
-          minH={100}
-          maxH={300}
-          ExtensionPopover={props.ExtensionPopover}
-        />
-      );
-    }
-
-    if (inputType === InputTypeEnum.richTextPrompt) {
-      return (
-        <RichPromptEditor
-          {...commonProps}
+          isRichText={true}
           variables={props.variables}
           variableLabels={props.variableLabels}
           title={props.title}

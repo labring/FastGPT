@@ -5,7 +5,6 @@ export enum InputTypeEnum {
   switch = 'switch',
   select = 'select',
   multipleSelect = 'multipleSelect',
-  richTextPrompt = 'richTextPrompt',
 
   JSONEditor = 'JSONEditor',
 
