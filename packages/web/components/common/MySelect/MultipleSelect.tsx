@@ -394,5 +394,31 @@ export default MultipleSelect;
 export const useMultipleSelect = <T = any,>(defaultValue: T[] = [], defaultSelectAll = false) => {
   const [value, setValue] = useState<T[]>(defaultValue);
   const [isSelectAll, setIsSelectAll] = useState<boolean>(defaultSelectAll);
-  return { value, setValue, isSelectAll, setIsSelectAll };
+  const [hasUserInteraction, setHasUserInteraction] = useState(false);
+
+  useEffect(() => {
+    if (defaultValue !== undefined && Array.isArray(defaultValue) && !hasUserInteraction) {
+      setValue(defaultValue);
+    }
+  }, [defaultValue, hasUserInteraction]);
+
+  const handleSetValue = useCallback((newValue: T[]) => {
+    setHasUserInteraction(true);
+    setValue(newValue);
+  }, []);
+
+  const handleSetIsSelectAll = useCallback(
+    (newSelectAll: boolean | ((prev: boolean) => boolean)) => {
+      setHasUserInteraction(true);
+      setIsSelectAll(newSelectAll);
+    },
+    []
+  );
+
+  return {
+    value,
+    setValue: handleSetValue,
+    isSelectAll,
+    setIsSelectAll: handleSetIsSelectAll
+  };
 };
