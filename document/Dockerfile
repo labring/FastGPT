@@ -37,7 +37,7 @@ WORKDIR /app
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY ./data/doc-last-modified.json /app/data/doc-last-modified.json
+COPY --chown=nextjs:nodejs ./data/doc-last-modified.json /app/data/doc-last-modified.json
 
 USER nextjs
 
