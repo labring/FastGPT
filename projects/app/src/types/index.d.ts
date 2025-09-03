@@ -11,6 +11,7 @@ import type { TrackEventName } from '@/web/common/system/constants';
 import { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 
 declare global {
+  var parseQueueLen: number;
   var qaQueueLen: number;
   var vectorQueueLen: number;
 
