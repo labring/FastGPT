@@ -30,7 +30,6 @@ export enum WorkflowIOValueTypeEnum {
   number = 'number',
   boolean = 'boolean',
   object = 'object',
-  date = 'date',
 
   arrayString = 'arrayString',
   arrayNumber = 'arrayNumber',
@@ -336,7 +335,8 @@ export enum VariableInputEnum {
   JSONEditor = 'JSONEditor',
   select = 'select',
   multipleSelect = 'multipleSelect',
-  dateSelect = 'dateSelect',
+  timePointSelect = 'timePointSelect',
+  timeRangeSelect = 'timeRangeSelect',
   switch = 'switch',
   password = 'password',
   file = 'file',
@@ -395,10 +395,16 @@ export const variableConfigs: VariableConfigType[][] = [
       defaultValueType: WorkflowIOValueTypeEnum.boolean
     },
     {
-      icon: 'core/workflow/inputType/dateSelect',
-      label: i18nT('common:core.workflow.inputType.dateSelect'),
-      value: VariableInputEnum.dateSelect,
-      defaultValueType: WorkflowIOValueTypeEnum.date
+      icon: 'core/workflow/inputType/timePointSelect',
+      label: i18nT('common:core.workflow.inputType.timePointSelect'),
+      value: VariableInputEnum.timePointSelect,
+      defaultValueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      icon: 'core/workflow/inputType/timeRangeSelect',
+      label: i18nT('common:core.workflow.inputType.timeRangeSelect'),
+      value: VariableInputEnum.timeRangeSelect,
+      defaultValueType: WorkflowIOValueTypeEnum.arrayString
     },
     {
       icon: 'core/workflow/inputType/file',
@@ -489,7 +495,6 @@ export const ArrayTypeMap: Record<WorkflowIOValueTypeEnum, WorkflowIOValueTypeEn
   [WorkflowIOValueTypeEnum.number]: WorkflowIOValueTypeEnum.arrayNumber,
   [WorkflowIOValueTypeEnum.boolean]: WorkflowIOValueTypeEnum.arrayBoolean,
   [WorkflowIOValueTypeEnum.object]: WorkflowIOValueTypeEnum.arrayObject,
-  [WorkflowIOValueTypeEnum.date]: WorkflowIOValueTypeEnum.arrayString,
   [WorkflowIOValueTypeEnum.arrayString]: WorkflowIOValueTypeEnum.arrayString,
   [WorkflowIOValueTypeEnum.arrayNumber]: WorkflowIOValueTypeEnum.arrayNumber,
   [WorkflowIOValueTypeEnum.arrayBoolean]: WorkflowIOValueTypeEnum.arrayBoolean,

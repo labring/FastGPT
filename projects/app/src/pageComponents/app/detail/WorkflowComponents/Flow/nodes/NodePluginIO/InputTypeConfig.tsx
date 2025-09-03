@@ -134,7 +134,8 @@ const InputTypeConfig = ({
     const list = [
       FlowNodeInputTypeEnum.addInputParam,
       FlowNodeInputTypeEnum.customVariable,
-      VariableInputEnum.dateSelect,
+      VariableInputEnum.timePointSelect,
+      VariableInputEnum.timeRangeSelect,
       VariableInputEnum.custom,
       VariableInputEnum.internal
     ];
@@ -305,7 +306,8 @@ const InputTypeConfig = ({
           </>
         )}
 
-        {inputType === VariableInputEnum.dateSelect && (
+        {(inputType === VariableInputEnum.timePointSelect ||
+          inputType === VariableInputEnum.timeRangeSelect) && (
           <>
             <Flex>
               <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
@@ -320,19 +322,6 @@ const InputTypeConfig = ({
                 ]}
                 value={timeGranularity || 'day'}
                 onChange={(value) => setValue('timeGranularity', value)}
-              />
-            </Flex>
-            <Flex>
-              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
-                {t('app:time_type')}
-              </FormLabel>
-              <RadioGroup
-                list={[
-                  { title: t('common:time_point'), value: 'point' },
-                  { title: t('common:time_range'), value: 'range' }
-                ]}
-                value={timeType || 'point'}
-                onChange={(value) => setValue('timeType', value)}
               />
             </Flex>
             <Flex alignItems={'flex-top'}>

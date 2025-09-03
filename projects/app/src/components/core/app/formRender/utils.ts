@@ -18,7 +18,8 @@ export const variableInputTypeToInputType = (
   if (inputType === VariableInputEnum.switch) return InputTypeEnum.switch;
   if (inputType === VariableInputEnum.password) return InputTypeEnum.password;
   if (inputType === VariableInputEnum.file) return InputTypeEnum.fileSelect;
-  if (inputType === VariableInputEnum.dateSelect) return InputTypeEnum.dateSelect;
+  if (inputType === VariableInputEnum.timePointSelect) return InputTypeEnum.timePointSelect;
+  if (inputType === VariableInputEnum.timeRangeSelect) return InputTypeEnum.timeRangeSelect;
   if (inputType === VariableInputEnum.custom || inputType === VariableInputEnum.internal)
     return valueTypeToInputType(valueType);
   return InputTypeEnum.JSONEditor;
@@ -44,7 +45,6 @@ export const valueTypeToInputType = (valueType?: WorkflowIOValueTypeEnum) => {
   if (valueType === WorkflowIOValueTypeEnum.string) return InputTypeEnum.input;
   if (valueType === WorkflowIOValueTypeEnum.number) return InputTypeEnum.numberInput;
   if (valueType === WorkflowIOValueTypeEnum.boolean) return InputTypeEnum.switch;
-  if (valueType === WorkflowIOValueTypeEnum.date) return InputTypeEnum.dateSelect;
   if (valueType === WorkflowIOValueTypeEnum.object) return InputTypeEnum.JSONEditor;
   if (valueType === WorkflowIOValueTypeEnum.arrayString) return InputTypeEnum.JSONEditor;
   if (valueType === WorkflowIOValueTypeEnum.arrayNumber) return InputTypeEnum.JSONEditor;

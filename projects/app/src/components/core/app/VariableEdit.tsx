@@ -158,22 +158,23 @@ const VariableEdit = ({
         delete data.maxFiles;
       }
 
-      if (data.type !== VariableInputEnum.dateSelect) {
+      if (
+        data.type !== VariableInputEnum.timePointSelect &&
+        data.type !== VariableInputEnum.timeRangeSelect
+      ) {
         delete data.timeGranularity;
-        delete data.timeType;
         delete data.timeRangeStart;
         delete data.timeRangeEnd;
-      } else {
-        data.defaultValue =
-          data.timeType === 'point'
-            ? new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
-            : [
-                data.timeRangeStart ||
-                  new Date(
-                    new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).setHours(0, 0, 0, 0)
-                  ).toISOString(),
-                data.timeRangeEnd || new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
-              ];
+      } else if (data.type === VariableInputEnum.timePointSelect) {
+        data.defaultValue = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+      } else if (data.type === VariableInputEnum.timeRangeSelect) {
+        data.defaultValue = [
+          data.timeRangeStart ||
+            new Date(
+              new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).setHours(0, 0, 0, 0)
+            ).toISOString(),
+          data.timeRangeEnd || new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
+        ];
       }
 
       if (data.type === VariableInputEnum.custom || data.type === VariableInputEnum.internal) {

@@ -72,10 +72,16 @@ type SpecificProps =
       fieldName?: string;
     }
   | {
-      // dateSelect
-      inputType: InputTypeEnum.dateSelect;
+      // timePointSelect
+      inputType: InputTypeEnum.timePointSelect;
       timeGranularity?: 'day' | 'hour' | 'minute' | 'second';
-      timeType?: 'point' | 'range';
+      timeRangeStart?: string;
+      timeRangeEnd?: string;
+    }
+  | {
+      // timeRangeSelect
+      inputType: InputTypeEnum.timeRangeSelect;
+      timeGranularity?: 'day' | 'hour' | 'minute' | 'second';
       timeRangeStart?: string;
       timeRangeEnd?: string;
     };

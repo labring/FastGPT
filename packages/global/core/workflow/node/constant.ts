@@ -31,7 +31,8 @@ export enum FlowNodeInputTypeEnum { // render ui
   custom = 'custom',
 
   fileSelect = 'fileSelect',
-  dateSelect = 'dateSelect',
+  timePointSelect = 'timePointSelect',
+  timeRangeSelect = 'timeRangeSelect',
   password = 'password'
 }
 export const FlowNodeInputMap: Record<
@@ -97,8 +98,11 @@ export const FlowNodeInputMap: Record<
   [FlowNodeInputTypeEnum.fileSelect]: {
     icon: 'core/workflow/inputType/file'
   },
-  [FlowNodeInputTypeEnum.dateSelect]: {
-    icon: 'core/workflow/inputType/dateSelect'
+  [FlowNodeInputTypeEnum.timePointSelect]: {
+    icon: 'core/workflow/inputType/timePointSelect'
+  },
+  [FlowNodeInputTypeEnum.timeRangeSelect]: {
+    icon: 'core/workflow/inputType/timeRangeSelect'
   },
   [FlowNodeInputTypeEnum.password]: {
     icon: 'core/workflow/inputType/password'
@@ -175,10 +179,6 @@ export const FlowValueTypeMap: Record<
   [WorkflowIOValueTypeEnum.boolean]: {
     label: 'Boolean',
     value: WorkflowIOValueTypeEnum.boolean
-  },
-  [WorkflowIOValueTypeEnum.date]: {
-    label: 'Date',
-    value: WorkflowIOValueTypeEnum.date
   },
   [WorkflowIOValueTypeEnum.object]: {
     label: 'Object',

@@ -270,7 +270,6 @@ export const filterWorkflowNodeOutputsByType = (
     [WorkflowIOValueTypeEnum.string]: [WorkflowIOValueTypeEnum.string],
     [WorkflowIOValueTypeEnum.number]: [WorkflowIOValueTypeEnum.number],
     [WorkflowIOValueTypeEnum.boolean]: [WorkflowIOValueTypeEnum.boolean],
-    [WorkflowIOValueTypeEnum.date]: [WorkflowIOValueTypeEnum.date],
     [WorkflowIOValueTypeEnum.object]: [WorkflowIOValueTypeEnum.object],
     [WorkflowIOValueTypeEnum.arrayString]: [
       WorkflowIOValueTypeEnum.string,

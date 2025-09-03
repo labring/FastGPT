@@ -74,7 +74,10 @@ const RenderList: Record<
   [FlowNodeInputTypeEnum.selectLLMModel]: {
     Component: CommonInputForm
   },
-  [FlowNodeInputTypeEnum.dateSelect]: {
+  [FlowNodeInputTypeEnum.timePointSelect]: {
+    Component: CommonInputForm
+  },
+  [FlowNodeInputTypeEnum.timeRangeSelect]: {
     Component: CommonInputForm
   },
   [FlowNodeInputTypeEnum.password]: {

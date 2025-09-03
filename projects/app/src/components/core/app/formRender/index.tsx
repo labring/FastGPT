@@ -217,59 +217,67 @@ const InputRender = (props: InputRenderProps) => {
       );
     }
 
-    if (inputType === InputTypeEnum.dateSelect) {
+    if (inputType === InputTypeEnum.timePointSelect) {
       const { timeRangeStart, timeRangeEnd } = props;
+      return (
+        <TimeInput
+          value={value ? new Date(value) : new Date()}
+          onDateTimeChange={(date) => onChange(date.toISOString())}
+          timeGranularity={props.timeGranularity}
+          minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
+          maxDate={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
+        />
+      );
+    }
 
-      if (props.timeType === 'point') {
-        return (
-          <TimeInput
-            value={new Date(value)}
-            onDateTimeChange={(date) => onChange(date.toISOString())}
-            timeGranularity={props.timeGranularity}
-            minDate={new Date(timeRangeStart || '')}
-            maxDate={new Date(timeRangeEnd || '')}
-          />
-        );
-      } else {
-        const rangeArray = Array.isArray(value) ? value : [null, null];
-        const [startDate, endDate] = rangeArray;
-        return (
-          <Box>
-            <Box mb={2}>
-              <Box fontSize="12px" color="myGray.500" mb={1}>
-                {t('app:time_range_start')}
-              </Box>
-              <TimeInput
-                value={new Date(startDate || '')}
-                onDateTimeChange={(date) => {
-                  const newArray = [...rangeArray];
-                  newArray[0] = date.toISOString();
-                  onChange(newArray);
-                }}
-                timeGranularity={props.timeGranularity}
-                maxDate={endDate ? new Date(endDate) : new Date(timeRangeEnd || '')}
-                minDate={new Date(timeRangeStart || '')}
-              />
+    if (inputType === InputTypeEnum.timeRangeSelect) {
+      const { timeRangeStart, timeRangeEnd } = props;
+      const rangeArray = Array.isArray(value) ? value : [null, null];
+      const [startDate, endDate] = rangeArray;
+      return (
+        <Box>
+          <Box mb={2}>
+            <Box fontSize="12px" color="myGray.500" mb={1}>
+              {t('app:time_range_start')}
             </Box>
-            <Box>
-              <Box fontSize="12px" color="myGray.500" mb={1}>
-                {t('app:time_range_end')}
-              </Box>
-              <TimeInput
-                value={new Date(endDate || '')}
-                onDateTimeChange={(date) => {
-                  const newArray = [...rangeArray];
-                  newArray[1] = date.toISOString();
-                  onChange(newArray);
-                }}
-                timeGranularity={props.timeGranularity}
-                minDate={startDate ? new Date(startDate) : new Date(timeRangeStart || '')}
-                maxDate={new Date(timeRangeEnd || '')}
-              />
-            </Box>
+            <TimeInput
+              value={startDate ? new Date(startDate) : new Date()}
+              onDateTimeChange={(date) => {
+                const newArray = [...rangeArray];
+                newArray[0] = date.toISOString();
+                onChange(newArray);
+              }}
+              timeGranularity={props.timeGranularity}
+              maxDate={
+                endDate ? new Date(endDate) : timeRangeEnd ? new Date(timeRangeEnd) : undefined
+              }
+              minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
+            />
           </Box>
-        );
-      }
+          <Box>
+            <Box fontSize="12px" color="myGray.500" mb={1}>
+              {t('app:time_range_end')}
+            </Box>
+            <TimeInput
+              value={endDate ? new Date(endDate) : new Date()}
+              onDateTimeChange={(date) => {
+                const newArray = [...rangeArray];
+                newArray[1] = date.toISOString();
+                onChange(newArray);
+              }}
+              timeGranularity={props.timeGranularity}
+              minDate={
+                startDate
+                  ? new Date(startDate)
+                  : timeRangeStart
+                    ? new Date(timeRangeStart)
+                    : undefined
+              }
+              maxDate={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
+            />
+          </Box>
+        </Box>
+      );
     }
 
     return null;

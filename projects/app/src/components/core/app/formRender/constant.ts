@@ -6,7 +6,8 @@ export enum InputTypeEnum {
   select = 'select',
   multipleSelect = 'multipleSelect',
   password = 'password',
-  dateSelect = 'dateSelect',
+  timePointSelect = 'timePointSelect',
+  timeRangeSelect = 'timeRangeSelect',
   JSONEditor = 'JSONEditor',
 
   selectLLMModel = 'selectLLMModel',

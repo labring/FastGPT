@@ -86,12 +86,10 @@ export const valueTypeFormat = (
 
   // 1. any值，忽略格式化
   if (value === undefined || value === null) return value;
-  if (
-    !valueType ||
-    valueType === WorkflowIOValueTypeEnum.any ||
-    type === VariableInputEnum.password
-  )
-    return value;
+  if (!valueType || valueType === WorkflowIOValueTypeEnum.any) return value;
+
+  // password 忽略格式化
+  if (type === VariableInputEnum.password) return value;
 
   // 2. 如果值已经符合目标类型，直接返回
   if (
