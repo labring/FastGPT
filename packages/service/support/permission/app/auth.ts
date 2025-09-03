@@ -1,7 +1,6 @@
 /* Auth app permission */
 import { MongoApp } from '../../../core/app/schema';
 import { type AppDetailType } from '@fastgpt/global/core/app/type.d';
-import { parseHeaderCert } from '../controller';
 import {
   PerResourceTypeEnum,
   ReadPermissionVal,
@@ -18,6 +17,7 @@ import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { type AuthModeType, type AuthResponseType } from '../type';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
+import { parseHeaderCert } from '../auth/common';
 
 export const authPluginByTmbId = async ({
   tmbId,

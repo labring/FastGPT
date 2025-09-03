@@ -1,5 +1,5 @@
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
-import { getResourcePermission, parseHeaderCert } from '../controller';
+import { getResourcePermission } from '../controller';
 import {
   type CollectionWithDatasetType,
   type DatasetDataItemType,
@@ -21,6 +21,7 @@ import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { DataSetDefaultRoleVal } from '@fastgpt/global/support/permission/dataset/constant';
 import { getDatasetImagePreviewUrl } from '../../../core/dataset/image/utils';
 import { i18nT } from '../../../../web/i18n/utils';
+import { parseHeaderCert } from '../auth/common';
 
 export const authDatasetByTmbId = async ({
   tmbId,
