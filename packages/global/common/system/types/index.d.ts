@@ -129,6 +129,7 @@ export type FastGPTFeConfigsType = {
 
 export type SystemEnvType = {
   openapiPrefix?: string;
+  parseMaxProcess?: number;
   vectorMaxProcess: number;
   qaMaxProcess: number;
   vlmMaxProcess: number;
@@ -146,6 +147,7 @@ export type SystemEnvType = {
 export type customPdfParseType = {
   url?: string;
   key?: string;
+  timeout?: number;
   doc2xKey?: string;
   price?: number;
 };
