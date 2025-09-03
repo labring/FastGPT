@@ -1,7 +1,7 @@
 import { MongoDataset } from '../dataset/schema';
 import { getEmbeddingModel } from '../ai/model';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getChildAppPreviewNode } from './plugin/controller';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
@@ -10,8 +10,6 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import type { VariableItemType } from '@fastgpt/global/core/app/type';
-import { decryptSecret, encryptSecret } from '../../common/secret/aes256gcm';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
   teamId,
@@ -206,41 +204,3 @@ export async function rewriteAppWorkflowToDetail({
 
   return nodes;
 }
-
-export const decryptPasswordVariables = (
-  variables: Record<string, any>,
-  variableList?: VariableItemType[]
-): Record<string, any> => {
-  if (!variableList || !Array.isArray(variableList)) return variables;
-
-  const result = { ...variables };
-  variableList.forEach((variable) => {
-    if (variable.type === VariableInputEnum.password && typeof result[variable.key] === 'object') {
-      const password = result[variable.key];
-      const actualValue = password.value || decryptSecret(password.secret);
-      result[variable.key] = actualValue;
-    }
-  });
-
-  return result;
-};
-
-export const encryptPasswordVariables = (
-  variables: Record<string, any>,
-  variableList?: VariableItemType[]
-): Record<string, any> => {
-  if (!variableList || !Array.isArray(variableList)) return variables;
-
-  const result = { ...variables };
-  variableList.forEach((variable) => {
-    if (variable.type === VariableInputEnum.password) {
-      const password = result[variable.key];
-      result[variable.key] = {
-        value: '',
-        secret: encryptSecret(password)
-      };
-    }
-  });
-
-  return result;
-};
