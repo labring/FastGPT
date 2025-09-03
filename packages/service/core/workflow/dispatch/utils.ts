@@ -1,7 +1,9 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import type { VariableItemType } from '@fastgpt/global/core/app/type';
+import { decryptSecret, encryptSecret } from '../../../common/secret/aes256gcm';
 import {
   type RuntimeEdgeItemType,
   type RuntimeNodeItemType,
@@ -21,6 +23,44 @@ import { MongoApp } from '../../../core/app/schema';
 import { getMCPChildren } from '../../../core/app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
+
+export const decryptPasswordVariables = (
+  variables: Record<string, any>,
+  variableList?: VariableItemType[]
+): Record<string, any> => {
+  if (!variableList || !Array.isArray(variableList)) return variables;
+
+  const result = { ...variables };
+  variableList.forEach((variable) => {
+    if (variable.type === VariableInputEnum.password && typeof result[variable.key] === 'object') {
+      const password = result[variable.key];
+      const actualValue = password.value || decryptSecret(password.secret);
+      result[variable.key] = actualValue;
+    }
+  });
+
+  return result;
+};
+
+export const encryptPasswordVariables = (
+  variables: Record<string, any>,
+  variableList?: VariableItemType[]
+): Record<string, any> => {
+  if (!variableList || !Array.isArray(variableList)) return variables;
+
+  const result = { ...variables };
+  variableList.forEach((variable) => {
+    if (variable.type === VariableInputEnum.password) {
+      const password = result[variable.key];
+      result[variable.key] = {
+        value: '',
+        secret: encryptSecret(password)
+      };
+    }
+  });
+
+  return result;
+};
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -115,7 +155,8 @@ export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
 /* remove system variable */
 export const removeSystemVariable = (
   variables: Record<string, any>,
-  removeObj: Record<string, string> = {}
+  removeObj: Record<string, string> = {},
+  variableList?: VariableItemType[]
 ) => {
   const copyVariables = { ...variables };
   delete copyVariables.userId;
@@ -130,8 +171,10 @@ export const removeSystemVariable = (
     delete copyVariables[key];
   });
 
-  return copyVariables;
+  // encrypt password variables
+  return encryptPasswordVariables(copyVariables, variableList);
 };
+
 export const filterSystemVariables = (variables: Record<string, any>): SystemVariablesType => {
   return {
     userId: variables.userId,

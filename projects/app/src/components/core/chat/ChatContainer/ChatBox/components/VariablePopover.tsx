@@ -74,10 +74,10 @@ const VariablePopover = ({
                 <LabelAndFormRender
                   {...item}
                   key={item.key}
-                  formKey={`variables.${item.key}`}
                   placeholder={item.description}
                   inputType={variableInputTypeToInputType(item.type)}
-                  variablesForm={variablesForm}
+                  form={variablesForm}
+                  fieldName={`variables.${item.key}`}
                   bg={'myGray.50'}
                 />
               ))}
@@ -90,10 +90,10 @@ const VariablePopover = ({
                 <LabelAndFormRender
                   {...item}
                   key={item.key}
-                  formKey={`variables.${item.key}`}
                   placeholder={item.description}
                   inputType={variableInputTypeToInputType(item.type)}
-                  variablesForm={variablesForm}
+                  form={variablesForm}
+                  fieldName={`variables.${item.key}`}
                   bg={'myGray.50'}
                 />
               ))}
