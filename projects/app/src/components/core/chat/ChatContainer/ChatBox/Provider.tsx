@@ -238,7 +238,9 @@ const Provider = ({
   const value: useChatStoreType = {
     ...props,
     welcomeText,
-    variableList: variables.filter((item) => item.type !== VariableInputEnum.custom),
+    variableList: variables.filter(
+      (item) => item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
+    ),
     allVariableList: variables,
     questionGuide,
     ttsConfig,

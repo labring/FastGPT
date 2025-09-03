@@ -53,11 +53,16 @@ export const useDebug = () => {
 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
-  const { filteredVar, customVar, variables } = useMemo(() => {
+  const { filteredVar, customVar, internalVar, variables } = useMemo(() => {
     const variables = appDetail.chatConfig?.variables || [];
     return {
-      filteredVar: variables.filter((item) => item.type !== VariableInputEnum.custom) || [],
+      filteredVar:
+        variables.filter(
+          (item) =>
+            item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
+        ) || [],
       customVar: variables.filter((item) => item.type === VariableInputEnum.custom) || [],
+      internalVar: variables.filter((item) => item.type === VariableInputEnum.internal) || [],
       variables
     };
   }, [appDetail.chatConfig?.variables]);
@@ -260,10 +265,21 @@ export const useDebug = () => {
               <LabelAndFormRender
                 {...item}
                 key={item.key}
-                formKey={`variables.${item.key}`}
                 placeholder={item.description}
                 inputType={variableInputTypeToInputType(item.type)}
-                variablesForm={variablesForm}
+                form={variablesForm}
+                fieldName={`variables.${item.key}`}
+                bg={'myGray.50'}
+              />
+            ))}
+            {internalVar.map((item) => (
+              <LabelAndFormRender
+                {...item}
+                key={item.key}
+                placeholder={item.description}
+                inputType={variableInputTypeToInputType(item.type)}
+                form={variablesForm}
+                fieldName={`variables.${item.key}`}
                 bg={'myGray.50'}
               />
             ))}
@@ -271,10 +287,10 @@ export const useDebug = () => {
               <LabelAndFormRender
                 {...item}
                 key={item.key}
-                formKey={`variables.${item.key}`}
                 placeholder={item.description}
                 inputType={variableInputTypeToInputType(item.type)}
-                variablesForm={variablesForm}
+                form={variablesForm}
+                fieldName={`variables.${item.key}`}
                 bg={'myGray.50'}
               />
             ))}
@@ -284,10 +300,10 @@ export const useDebug = () => {
               <LabelAndFormRender
                 {...item}
                 key={item.key}
-                formKey={`nodeVariables.${item.key}`}
                 placeholder={item.placeholder || item.description}
                 inputType={nodeInputTypeToInputType(item.renderTypeList)}
-                variablesForm={variablesForm}
+                form={variablesForm}
+                fieldName={`nodeVariables.${item.key}`}
                 bg={'myGray.50'}
               />
             ))}

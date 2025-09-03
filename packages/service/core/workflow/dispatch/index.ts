@@ -7,7 +7,7 @@ import type {
   ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type.d';
 import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -43,7 +43,7 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import { addLog } from '../../../common/system/log';
 import { surrenderProcess } from '../../../common/system/tools';
 import type { DispatchFlowResponse, WorkflowDebugResponse } from './type';
-import { removeSystemVariable, rewriteRuntimeWorkFlow } from './utils';
+import { rewriteRuntimeWorkFlow, decryptPasswordVariables, removeSystemVariable } from './utils';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { callbackMap } from './constants';
 
@@ -61,7 +61,7 @@ type NodeResponseCompleteType = Omit<NodeResponseType, 'responseData'> & {
 
 // Run workflow
 export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowResponse> {
-  const { res, stream, externalProvider } = data;
+  const { res, stream, externalProvider, chatConfig } = data;
 
   let streamCheckTimer: NodeJS.Timeout | null = null;
 
@@ -147,7 +147,11 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       [DispatchNodeResponseKeyEnum.runTimes]: 1,
       [DispatchNodeResponseKeyEnum.assistantResponses]: [],
       [DispatchNodeResponseKeyEnum.toolResponses]: null,
-      newVariables: removeSystemVariable(variables, externalProvider.externalWorkflowVariables),
+      newVariables: removeSystemVariable(
+        variables,
+        externalProvider.externalWorkflowVariables,
+        data.chatConfig?.variables
+      ),
       durationSeconds: 0
     };
   }
@@ -903,6 +907,12 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     });
   }
 
+  const encryptedNewVariables = removeSystemVariable(
+    variables,
+    externalProvider.externalWorkflowVariables,
+    data.chatConfig?.variables
+  );
+
   return {
     flowResponses: workflowQueue.chatResponses,
     flowUsages: workflowQueue.chatNodeUsages,
@@ -913,10 +923,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       workflowQueue.chatAssistantResponse
     ),
     [DispatchNodeResponseKeyEnum.toolResponses]: workflowQueue.toolRunResponse,
-    [DispatchNodeResponseKeyEnum.newVariables]: removeSystemVariable(
-      variables,
-      externalProvider.externalWorkflowVariables
-    ),
+    [DispatchNodeResponseKeyEnum.newVariables]: encryptedNewVariables,
     [DispatchNodeResponseKeyEnum.memories]:
       Object.keys(workflowQueue.system_memories).length > 0
         ? workflowQueue.system_memories
@@ -938,14 +945,20 @@ const getSystemVariables = ({
 }: Props): SystemVariablesType => {
   // Get global variables(Label -> key; Key -> key)
   const globalVariables = chatConfig?.variables || [];
+  const decryptedVariables = decryptPasswordVariables(variables, globalVariables);
+
   const variablesMap = globalVariables.reduce<Record<string, any>>((acc, item) => {
+    // For internal variables, ignore external input and use default value
+    if (item.type === VariableInputEnum.internal) {
+      acc[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
+    }
     // API
-    if (variables[item.label] !== undefined) {
-      acc[item.key] = valueTypeFormat(variables[item.label], item.valueType);
+    else if (decryptedVariables[item.label] !== undefined) {
+      acc[item.key] = valueTypeFormat(decryptedVariables[item.label], item.valueType);
     }
     // Web
-    else if (variables[item.key] !== undefined) {
-      acc[item.key] = valueTypeFormat(variables[item.key], item.valueType);
+    else if (decryptedVariables[item.key] !== undefined) {
+      acc[item.key] = valueTypeFormat(decryptedVariables[item.key], item.valueType);
     } else {
       acc[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
     }
