@@ -3,20 +3,12 @@
 from pydantic import Field
 from enum import Enum
 from typing import Optional, Dict, Any, List
-from diting_server.common.schema import Usage, StatusEnum, BaseSchema
+from diting_server.common.schema import Usage, StatusEnum, BaseSchema, ModelConfig
 
 
 class EvalMetricTypeEnum(str, Enum):
     Custom = "custom_metric"
     Builtin = "builtin_metric"
-
-
-class ModelConfig(BaseSchema):
-    name: str = Field(..., description="模型名称")
-    base_url: Optional[str] = Field(None, description="模型API基础URL")
-    api_key: Optional[str] = Field(None, description="API密钥")
-    parameters: Optional[Dict[str, Any]] = Field(None, description="模型参数")
-    timeout: Optional[int] = Field(600, description="超时时间(秒)")
 
 
 class MetricConfig(BaseSchema):

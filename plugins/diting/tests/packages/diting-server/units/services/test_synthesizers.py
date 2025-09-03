@@ -41,8 +41,8 @@ class TestSynthesizerSchema:
 class TestDiscoverSynthesizers:
     """Test cases for discover_synthesizers function."""
 
-    @patch("diting_engine.services.synthesis.synthesizers.importlib.import_module")
-    @patch("diting_engine.services.synthesis.synthesizers.pkgutil.walk_packages")
+    @patch("diting_server.services.synthesis.synthesizers.importlib.import_module")
+    @patch("diting_server.services.synthesis.synthesizers.pkgutil.walk_packages")
     def test_discover_synthesizers_success(
         self, mock_walk_packages, mock_import_module
     ):
@@ -67,7 +67,7 @@ class TestDiscoverSynthesizers:
         assert isinstance(result, dict)
         mock_import_module.assert_called_once_with(_diting_synthesizer_module_name)
 
-    @patch("diting_engine.services.synthesis.synthesizers.importlib.import_module")
+    @patch("diting_server.services.synthesis.synthesizers.importlib.import_module")
     def test_discover_synthesizers_import_error(self, mock_import_module):
         """Test synthesizers discovery with import error."""
         mock_import_module.side_effect = ImportError("Module not found")
@@ -76,8 +76,8 @@ class TestDiscoverSynthesizers:
 
         assert result == {}
 
-    @patch("diting_engine.services.synthesis.synthesizers.importlib.import_module")
-    @patch("diting_engine.services.synthesis.synthesizers.pkgutil.walk_packages")
+    @patch("diting_server.services.synthesis.synthesizers.importlib.import_module")
+    @patch("diting_server.services.synthesis.synthesizers.pkgutil.walk_packages")
     def test_discover_synthesizers_with_submodules(
         self, mock_walk_packages, mock_import_module
     ):
@@ -106,7 +106,7 @@ class TestDiscoverSynthesizers:
 
         assert isinstance(result, dict)
 
-    @patch("diting_engine.services.synthesis.synthesizers.importlib.import_module")
+    @patch("diting_server.services.synthesis.synthesizers.importlib.import_module")
     def test_discover_synthesizers_non_recursive(self, mock_import_module):
         """Test synthesizers discovery without recursive search."""
         # Mock base module
@@ -122,8 +122,8 @@ class TestDiscoverSynthesizers:
         # Should not call walk_packages when recursive=False
         mock_import_module.assert_called_once_with(_diting_synthesizer_module_name)
 
-    @patch("diting_engine.services.synthesis.synthesizers.importlib.import_module")
-    @patch("diting_engine.services.synthesis.synthesizers.pkgutil.walk_packages")
+    @patch("diting_server.services.synthesis.synthesizers.importlib.import_module")
+    @patch("diting_server.services.synthesis.synthesizers.pkgutil.walk_packages")
     def test_discover_synthesizers_submodule_import_error(
         self, mock_walk_packages, mock_import_module
     ):
@@ -149,8 +149,8 @@ class TestDiscoverSynthesizers:
         assert isinstance(result, dict)
         # Should continue despite submodule import error
 
-    @patch("diting_engine.services.synthesis.synthesizers.importlib.import_module")
-    @patch("diting_engine.services.synthesis.synthesizers.pkgutil.walk_packages")
+    @patch("diting_server.services.synthesis.synthesizers.importlib.import_module")
+    @patch("diting_server.services.synthesis.synthesizers.pkgutil.walk_packages")
     def test_discover_synthesizers_custom_base_module(
         self, mock_walk_packages, mock_import_module
     ):
@@ -177,7 +177,7 @@ class TestSynthesizerFactory(unittest.TestCase):
     def test_init(self):
         """Test SynthesizerFactory initialization."""
         with patch(
-            "diting_engine.services.synthesis.synthesizers.discover_synthesizers"
+            "diting_server.services.synthesis.synthesizers.discover_synthesizers"
         ) as mock_discover:
             mock_synthesizer = MagicMock()
             mock_discover.return_value = {"test_synthesizer": mock_synthesizer}
@@ -195,7 +195,7 @@ class TestSynthesizerFactory(unittest.TestCase):
         mock_synthesizers = {"test_synthesizer": mock_synthesizer_class}
 
         with patch(
-            "diting_engine.services.synthesis.synthesizers.discover_synthesizers"
+            "diting_server.services.synthesis.synthesizers.discover_synthesizers"
         ) as mock_discover:
             mock_discover.return_value = mock_synthesizers
             factory = SynthesizerFactory()
@@ -208,7 +208,7 @@ class TestSynthesizerFactory(unittest.TestCase):
         mock_synthesizers = {"existing_synthesizer": MagicMock()}
 
         with patch(
-            "diting_engine.services.synthesis.synthesizers.discover_synthesizers"
+            "diting_server.services.synthesis.synthesizers.discover_synthesizers"
         ) as mock_discover:
             mock_discover.return_value = mock_synthesizers
             factory = SynthesizerFactory()
@@ -221,7 +221,7 @@ class TestSynthesizerFactory(unittest.TestCase):
     def test_create_with_empty_synthesizers(self):
         """Test creating synthesizer with empty synthesizers dict."""
         with patch(
-            "diting_engine.services.synthesis.synthesizers.discover_synthesizers"
+            "diting_server.services.synthesis.synthesizers.discover_synthesizers"
         ) as mock_discover:
             mock_discover.return_value = {}
             factory = SynthesizerFactory()
@@ -241,7 +241,7 @@ class TestSynthesizerFactory(unittest.TestCase):
         }
 
         with patch(
-            "diting_engine.services.synthesis.synthesizers.discover_synthesizers"
+            "diting_server.services.synthesis.synthesizers.discover_synthesizers"
         ) as mock_discover:
             mock_discover.return_value = mock_synthesizers
             factory = SynthesizerFactory()
@@ -258,7 +258,7 @@ class TestSynthesizerFactory(unittest.TestCase):
         mock_synthesizers = {"TestSynthesizer": mock_synthesizer_class}
 
         with patch(
-            "diting_engine.services.synthesis.synthesizers.discover_synthesizers"
+            "diting_server.services.synthesis.synthesizers.discover_synthesizers"
         ) as mock_discover:
             mock_discover.return_value = mock_synthesizers
             factory = SynthesizerFactory()
@@ -280,7 +280,7 @@ class TestSynthesizerFactory(unittest.TestCase):
         mock_synthesizers = {"test_synthesizer": mock_synthesizer_class}
 
         with patch(
-            "diting_engine.services.synthesis.synthesizers.discover_synthesizers"
+            "diting_server.services.synthesis.synthesizers.discover_synthesizers"
         ) as mock_discover:
             mock_discover.return_value = mock_synthesizers
             factory = SynthesizerFactory()

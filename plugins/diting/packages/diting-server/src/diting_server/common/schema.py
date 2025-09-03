@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from typing import Optional
+from typing import Optional, Dict, Any
 from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -41,3 +41,11 @@ class Usage(BaseSchema):
     prompt_tokens: Optional[int] = Field(None, description="提示词token数")
     completion_tokens: Optional[int] = Field(None, description="完成token数")
     total_tokens: Optional[int] = Field(None, description="总token数")
+
+
+class ModelConfig(BaseSchema):
+    name: str = Field(..., description="模型名称")
+    base_url: Optional[str] = Field(None, description="模型API基础URL")
+    api_key: Optional[str] = Field(None, description="API密钥")
+    parameters: Optional[Dict[str, Any]] = Field(None, description="模型参数")
+    timeout: Optional[int] = Field(600, description="超时时间(秒)")

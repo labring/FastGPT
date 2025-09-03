@@ -64,7 +64,7 @@ class TestEvaluationAPI(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch(
-            "diting_engine.apis.v1.evaluation.api.evaluation_service.run_evaluation",
+            "diting_server.apis.v1.evaluation.api.evaluation_service.run_evaluation",
             return_value=mock_response,
         ) as mock_service:
             response = await run_evaluation(EvaluationRequest(**request_data))
@@ -89,7 +89,7 @@ class TestEvaluationAPI(unittest.IsolatedAsyncioTestCase):
 
         # Mock service to raise exception
         with patch(
-            "diting_engine.apis.v1.evaluation.api.evaluation_service.run_evaluation",
+            "diting_server.apis.v1.evaluation.api.evaluation_service.run_evaluation",
             side_effect=Exception("Service error"),
         ):
             with self.assertRaises(Exception):
@@ -112,7 +112,7 @@ class TestEvaluationAPI(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch(
-            "diting_engine.apis.v1.evaluation.api.evaluation_service.run_evaluation",
+            "diting_server.apis.v1.evaluation.api.evaluation_service.run_evaluation",
             return_value=mock_response,
         ) as mock_service:
             await run_evaluation(EvaluationRequest(**request_data))
@@ -154,7 +154,7 @@ class TestEvaluationAPI(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch(
-            "diting_engine.apis.v1.evaluation.api.evaluation_service.run_evaluation",
+            "diting_server.apis.v1.evaluation.api.evaluation_service.run_evaluation",
             return_value=mock_response,
         ):
             response = self.client.post("/api/v1/evaluations/runs", json=request_data)
@@ -173,7 +173,7 @@ class TestEvaluationAPI(unittest.IsolatedAsyncioTestCase):
         }
 
         with patch(
-            "diting_engine.apis.v1.evaluation.api.evaluation_service.run_evaluation",
+            "diting_server.apis.v1.evaluation.api.evaluation_service.run_evaluation",
             side_effect=Exception("Service error"),
         ):
             response = self.client.post("/api/v1/evaluations/runs", json=request_data)
@@ -225,7 +225,7 @@ class TestEvaluationAPI(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch(
-            "diting_engine.apis.v1.evaluation.api.evaluation_service.run_evaluation",
+            "diting_server.apis.v1.evaluation.api.evaluation_service.run_evaluation",
             return_value=mock_response,
         ):
             response = self.client.post("/api/v1/evaluations/runs", json=request_data)
@@ -262,7 +262,7 @@ class TestEvaluationAPI(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch(
-            "diting_engine.apis.v1.evaluation.api.evaluation_service.run_evaluation",
+            "diting_server.apis.v1.evaluation.api.evaluation_service.run_evaluation",
             return_value=mock_response,
         ):
             response = self.client.post("/api/v1/evaluations/runs", json=request_data)
@@ -288,10 +288,10 @@ class TestEvaluationAPI(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch(
-            "diting_engine.apis.v1.evaluation.api.evaluation_service.run_evaluation",
+            "diting_server.apis.v1.evaluation.api.evaluation_service.run_evaluation",
             return_value=mock_response,
         ) as _mock_service:
-            with patch("diting_engine.apis.v1.evaluation.api.logger") as mock_logger:
+            with patch("diting_server.apis.v1.evaluation.api.logger") as mock_logger:
                 response = self.client.post(
                     "/api/v1/evaluations/runs", json=request_data
                 )
@@ -324,10 +324,10 @@ class TestEvaluationAPI(unittest.IsolatedAsyncioTestCase):
         }
 
         with patch(
-            "diting_engine.apis.v1.evaluation.api.evaluation_service.run_evaluation",
+            "diting_server.apis.v1.evaluation.api.evaluation_service.run_evaluation",
             side_effect=Exception("Service error"),
         ):
-            with patch("diting_engine.apis.v1.evaluation.api.logger") as mock_logger:
+            with patch("diting_server.apis.v1.evaluation.api.logger") as mock_logger:
                 response = self.client.post(
                     "/api/v1/evaluations/runs", json=request_data
                 )

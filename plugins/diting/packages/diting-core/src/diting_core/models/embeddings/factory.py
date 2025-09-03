@@ -11,6 +11,7 @@ def embedding_factory(
     model: str = "bge-m3",
     base_url: Optional[str] = None,
     api_key: Optional[str] = None,
+    timeout: Optional[float] = None,
 ) -> BaseEmbeddings:
     """
     Create and return a BaseEmbeddings instance. Used for default embeddings
@@ -27,6 +28,7 @@ def embedding_factory(
         Base URL for the embedding API – useful for OpenAI, Azure, or custom endpoints.
     api_key : str
         API key for authenticating with the embedding service.
+    timeout: float
 
     Returns
     -------
@@ -34,6 +36,6 @@ def embedding_factory(
         A LangChain-compatible embedding instance that supports both `.embed_*`
         and `.aembed_*` methods.
     """
-    async_client = openai.AsyncOpenAI(api_key=api_key, base_url=base_url)
+    async_client = openai.AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
     openai_embeddings = PrivateEmbeddings(model=model, async_client=async_client)
     return openai_embeddings

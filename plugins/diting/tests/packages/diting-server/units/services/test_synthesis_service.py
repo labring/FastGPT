@@ -139,7 +139,7 @@ class TestSynthesizerService(unittest.IsolatedAsyncioTestCase):
         mock_synthesizer_class = MagicMock()
 
         with patch(
-            "diting_engine.services.synthesis.synthesis_service.SynthesizerFactory"
+            "diting_server.services.synthesis.synthesis_service.SynthesizerFactory"
         ) as mock_factory_class:
             mock_factory = mock_factory_class.return_value
             mock_factory.create.return_value = mock_synthesizer_class

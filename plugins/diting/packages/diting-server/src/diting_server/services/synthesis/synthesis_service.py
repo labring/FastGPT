@@ -109,7 +109,7 @@ class SynthesizerService:
                 base_url=llm_config.base_url,
                 api_key=llm_config.api_key,
             )
-            llm_model = llm_factory(**llm_config_resolved)
+            llm_model = llm_factory(**llm_config_resolved, timeout=llm_config.timeout)
             setattr(synthesizer, "model", llm_model)
             callbacks.append(get_llm_token)
         elif is_llm_required and (not llm_config):
@@ -128,7 +128,7 @@ class SynthesizerService:
                 base_url=embedding_config.base_url,
                 api_key=embedding_config.api_key,
             )
-            embedding_model = embedding_factory(**embedding_config_resolved)
+            embedding_model = embedding_factory(**embedding_config_resolved, timeout=embedding_config.timeout)
             setattr(synthesizer, "embedding_model", embedding_model)
             callbacks.append(get_embed_token)
         elif is_embedding_required and (not embedding_config):

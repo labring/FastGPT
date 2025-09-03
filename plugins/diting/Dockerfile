@@ -22,5 +22,5 @@ FROM mirrors.sangfor.com/python:3.11-slim-bookworm
 COPY --from=builder --chown=diting:diting /app/.venv /app/.venv
 # ENV DT_SERVER_DATA="/app/data"
 # VOLUME ["/app/data"]
-EXPOSE 8000
-CMD ["/app/.venv/bin/uvicorn", "diting_server.main:app", "--host", "0.0.0.0"]
+EXPOSE 3000
+CMD ["/app/.venv/bin/uvicorn", "diting_server.main:app", "--host", "0.0.0.0", "--port", "3000"]
