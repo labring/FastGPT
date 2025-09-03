@@ -33,52 +33,11 @@ export const getTopAgentDefaultPrompt = () => {
 请始终保持专业、准确、有条理的回答风格，确保用户能够清楚了解执行进度和结果。`;
 };
 
-export const PlanAgentTool: ChatCompletionTool = {
-  type: 'function',
-  function: {
-    name: SubAppIds.plan,
-    description:
-      '如果用户的任务非常复杂，可以先使用 plan_agent 制定计划，然后根据计划使用其他工具来完成任务。同时，plan_agent 负责维护整个任务的上下文和状态。可以更新或修改计划中的内容',
-    parameters: {
-      type: 'object',
-      properties: {
-        instruction: {
-          type: 'string',
-          description: ''
-        }
-      },
-      required: ['instruction']
-    }
-  }
-};
-
 export const StopAgentTool: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SubAppIds.stop,
     description: '如果完成了所有的任务，可调用此工具。'
-  }
-};
-
-export const ModelAgentTool: ChatCompletionTool = {
-  type: 'function',
-  function: {
-    name: SubAppIds.model,
-    description: '完成一些简单通用型任务, 可以调用此工具。',
-    parameters: {
-      type: 'object',
-      properties: {
-        systemPrompt: {
-          type: 'string',
-          description: '注入给此 agent 的系统提示词'
-        },
-        task: {
-          type: 'string',
-          description: '此 agent 本轮需要完成的任务'
-        }
-      },
-      required: ['systemPrompt', 'task']
-    }
   }
 };
 

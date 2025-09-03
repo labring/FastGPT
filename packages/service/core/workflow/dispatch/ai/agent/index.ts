@@ -33,14 +33,7 @@ import {
   initToolNodes,
   parseToolArgs
 } from '../utils';
-import {
-  getFileReadTool,
-  getTopAgentDefaultPrompt,
-  ModelAgentTool,
-  PlanAgentTool,
-  StopAgentTool,
-  SubAppIds
-} from './constants';
+import { getFileReadTool, getTopAgentDefaultPrompt, StopAgentTool, SubAppIds } from './constants';
 import { runWorkflow } from '../..';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import type { ToolNodeItemType } from './type';
@@ -48,6 +41,8 @@ import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/util
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { transferPlanAgent } from '../sub/plan';
 import { transferModelAgent } from '../sub/model';
+import { PlanAgentTool } from '../sub/plan/constants';
+import { ModelAgentTool } from '../sub/model/constants';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
