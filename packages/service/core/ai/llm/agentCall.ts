@@ -126,7 +126,9 @@ export const runAgentCall = async ({
       // TODO: 加入交互节点处理
       const { response, usages, isEnd } = await handleToolResponse(tool);
 
-      isEndSign ||= isEnd;
+      if (isEnd) {
+        isEndSign = true;
+      }
 
       requestMessages.push({
         tool_call_id: tool.id,
