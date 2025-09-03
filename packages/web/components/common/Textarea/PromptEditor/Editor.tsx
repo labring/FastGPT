@@ -6,7 +6,7 @@
  *
  */
 
-import { useMemo, useState, useTransition } from 'react';
+import { CSSProperties, useMemo, useState, useTransition } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -31,6 +31,7 @@ import { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
 import VariableLabelPlugin from './plugins/VariableLabelPlugin';
 import { useDeepCompareEffect } from 'ahooks';
 import VariablePickerPlugin from './plugins/VariablePickerPlugin';
+import KeyDownPlugin from './plugins/KeyDownPlugin';
 
 export type EditorProps = {
   variables?: EditorVariablePickerType[];
@@ -41,12 +42,14 @@ export type EditorProps = {
   maxH?: number;
   maxLength?: number;
   placeholder?: string;
+  placeholderPadding?: string;
   isInvalid?: boolean;
-
+  onKeyDown?: (e: React.KeyboardEvent) => void;
   ExtensionPopover?: ((e: {
     onChangeText: (text: string) => void;
     iconButtonStyle: Record<string, any>;
   }) => React.ReactNode)[];
+  boxStyle?: CSSProperties;
 };
 
 export default function Editor({
@@ -62,10 +65,12 @@ export default function Editor({
   onBlur,
   value,
   placeholder = '',
+  placeholderPadding = '12px 14px',
   bg = 'white',
   isInvalid,
-
-  ExtensionPopover
+  onKeyDown,
+  ExtensionPopover,
+  boxStyle
 }: EditorProps &
   FormPropsType & {
     onOpenModal?: () => void;
@@ -131,7 +136,8 @@ export default function Editor({
               className={isInvalid ? styles.contentEditable_invalid : styles.contentEditable}
               style={{
                 minHeight: `${minH}px`,
-                maxHeight: `${maxH}px`
+                maxHeight: `${maxH}px`,
+                ...boxStyle
               }}
             />
           }
@@ -142,8 +148,7 @@ export default function Editor({
               left={0}
               right={0}
               bottom={0}
-              py={3}
-              px={3.5}
+              p={placeholderPadding}
               pointerEvents={'none'}
               overflow={'hidden'}
             >
@@ -178,6 +183,7 @@ export default function Editor({
         <VariableLabelPickerPlugin variables={variableLabels} isFocus={focus} />
         <VariablePickerPlugin variables={variableLabels.length > 0 ? [] : variables} />
         <OnBlurPlugin onBlur={onBlur} />
+        <KeyDownPlugin onKeyDown={onKeyDown} />
       </LexicalComposer>
 
       {onChangeText &&
