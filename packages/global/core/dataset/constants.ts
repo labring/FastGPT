@@ -9,19 +9,36 @@ export enum DatasetTypeEnum {
 
   apiDataset = 'apiDataset',
   feishu = 'feishu',
-  yuque = 'yuque'
+  yuque = 'yuque',
+  database = 'database'
+}
+
+interface DatasetTypeConfig {
+  icon: string;
+  avatar: string;
+  label: any;
+  collectionLabel: string;
+  courseUrl?: string;
+  formConfig?: {
+    vectorModel?: {
+      isHidden?: boolean;
+      tip?: string;
+    };
+    agentModel?: {
+      isHidden?: boolean;
+      tip?: string;
+    };
+    vlmModel?: {
+      isHidden?: boolean;
+      tip?: string;
+    };
+  };
 }
 
 // @ts-ignore
 export const ApiDatasetTypeMap: Record<
   `${DatasetTypeEnum}`,
-  {
-    icon: string;
-    avatar: string;
-    label: any;
-    collectionLabel: string;
-    courseUrl?: string;
-  }
+  DatasetTypeConfig
 > = {
   [DatasetTypeEnum.apiDataset]: {
     icon: 'core/dataset/externalDatasetOutline',
@@ -47,13 +64,7 @@ export const ApiDatasetTypeMap: Record<
 };
 export const DatasetTypeMap: Record<
   `${DatasetTypeEnum}`,
-  {
-    icon: string;
-    avatar: string;
-    label: any;
-    collectionLabel: string;
-    courseUrl?: string;
-  }
+  DatasetTypeConfig
 > = {
   ...ApiDatasetTypeMap,
   [DatasetTypeEnum.folder]: {
@@ -74,6 +85,25 @@ export const DatasetTypeMap: Record<
     label: i18nT('dataset:website_dataset'),
     collectionLabel: i18nT('common:Website'),
     courseUrl: '/docs/introduction/guide/knowledge_base/websync/'
+  },
+  [DatasetTypeEnum.database]: {
+    icon: 'core/dataset/databaseOutline',
+    avatar: 'core/dataset/databaseColor',
+    label: i18nT('dataset:enterprise_database'),
+    collectionLabel: i18nT('common:File'),
+    courseUrl: '/docs/introduction/guide/knowledge_base/enterprise_database/',
+    formConfig: {
+      agentModel: {
+        isHidden: true,
+      },
+      vlmModel: {
+        isHidden: true,
+      },
+      vectorModel: {
+        isHidden: false,
+        tip:  i18nT('dataset:enterprise_database_embedding_model_tip')
+      },
+    },
   },
   [DatasetTypeEnum.externalFile]: {
     icon: 'core/dataset/externalDatasetOutline',
@@ -225,7 +255,8 @@ export enum ImportDataSourceEnum {
   externalFile = 'externalFile',
   apiDataset = 'apiDataset',
   reTraining = 'reTraining',
-  imageDataset = 'imageDataset'
+  imageDataset = 'imageDataset',
+  database = 'database'
 }
 
 export enum TrainingModeEnum {

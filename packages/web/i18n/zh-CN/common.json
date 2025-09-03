@@ -1341,5 +1341,7 @@
   "zoomin_tip": "缩小  ctrl  -",
   "zoomin_tip_mac": "缩小  ⌘  -",
   "zoomout_tip": "放大  ctrl  +",
-  "zoomout_tip_mac": "放大  ⌘  +"
+  "zoomout_tip_mac": "放大  ⌘  +",
+  "no_database_connection": "还没有连接数据库",
+  "click_config_database": "点击配置数据库"
 }

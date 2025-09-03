@@ -12,6 +12,7 @@ const ExternalFileCollection = dynamic(() => import('./diffSource/ExternalFile')
 const APIDatasetCollection = dynamic(() => import('./diffSource/APIDataset'));
 const ReTraining = dynamic(() => import('./diffSource/ReTraining'));
 const ImageDataset = dynamic(() => import('./diffSource/ImageDataset'));
+const Database = dynamic(() => import('./diffSource/ConnectDatabaseConfig'));
 
 const ImportDataset = () => {
   const importSource = useContextSelector(DatasetImportContext, (v) => v.importSource);
@@ -24,6 +25,7 @@ const ImportDataset = () => {
     if (importSource === ImportDataSourceEnum.externalFile) return ExternalFileCollection;
     if (importSource === ImportDataSourceEnum.apiDataset) return APIDatasetCollection;
     if (importSource === ImportDataSourceEnum.imageDataset) return ImageDataset;
+    if (importSource === ImportDataSourceEnum.database) return Database;
     return null;
   }, [importSource]);
 

@@ -1338,5 +1338,7 @@
   "zoomin_tip": "縮小  ctrl  -",
   "zoomin_tip_mac": "縮小  ⌘  -",
   "zoomout_tip": "放大  ctrl  +",
-  "zoomout_tip_mac": "放大  ⌘  +"
+  "zoomout_tip_mac": "放大  ⌘  +",
+  "no_database_connection": "還沒有連接數據庫",
+  "click_config_database": "點擊配置數據庫"
 }
