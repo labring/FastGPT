@@ -73,6 +73,7 @@ const InputRender = (props: InputRenderProps) => {
       return (
         <PromptEditor
           {...commonProps}
+          isRichText={true}
           variables={props.variables}
           variableLabels={props.variableLabels}
           title={props.title}
