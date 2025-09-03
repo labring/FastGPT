@@ -14,6 +14,7 @@ import AIModelSelector from '../../../Select/AIModelSelector';
 import FileSelector from '../../../Select/FileSelector';
 import TimeInput from './TimeInput';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { isSecretValue } from '@fastgpt/global/common/secret/utils';
 
 const InputRender = (props: InputRenderProps) => {
   const {
@@ -84,7 +85,7 @@ const InputRender = (props: InputRenderProps) => {
     }
 
     if (inputType === InputTypeEnum.password) {
-      const isPasswordConfigured = typeof value === 'object' && value !== null && value.secret;
+      const isPasswordConfigured = isSecretValue(value);
       return !isPasswordConfigured || isPasswordEditing ? (
         <Input
           {...commonProps}

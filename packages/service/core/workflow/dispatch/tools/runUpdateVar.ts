@@ -22,6 +22,7 @@ type Response = DispatchNodeResultType<{}>;
 
 export const dispatchUpdateVariable = async (props: Props): Promise<Response> => {
   const {
+    chatConfig,
     params,
     variables,
     runtimeNodes,
@@ -91,7 +92,11 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
   if (!runningAppInfo.isChildApp) {
     workflowStreamResponse?.({
       event: SseResponseEventEnum.updateVariables,
-      data: removeSystemVariable(variables, externalProvider.externalWorkflowVariables)
+      data: removeSystemVariable(
+        variables,
+        externalProvider.externalWorkflowVariables,
+        chatConfig?.variables
+      )
     });
   }
 

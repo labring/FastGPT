@@ -7,7 +7,6 @@ import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
   VARIABLE_NODE_ID,
-  VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '../constants';
 import { FlowNodeTypeEnum } from '../node/constant';
@@ -20,6 +19,7 @@ import type { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import type { StoreNodeItemType } from '../type/node';
 import { isValidReferenceValueFormat } from '../utils';
 import type { RuntimeEdgeItemType, RuntimeNodeItemType } from './type';
+import { isSecretValue } from '../../../common/secret/utils';
 
 export const checkIsBranchNode = (node: RuntimeNodeItemType) => {
   if (node.catchError) return true;
@@ -68,11 +68,7 @@ export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number 
 };
 
 /* value type format */
-export const valueTypeFormat = (
-  value: any,
-  valueType?: WorkflowIOValueTypeEnum,
-  type?: VariableInputEnum
-) => {
+export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum) => {
   const isObjectString = (value: any) => {
     if (typeof value === 'string' && value !== 'false' && value !== 'true') {
       const trimmedValue = value.trim();
@@ -88,8 +84,8 @@ export const valueTypeFormat = (
   if (value === undefined || value === null) return value;
   if (!valueType || valueType === WorkflowIOValueTypeEnum.any) return value;
 
-  // password 忽略格式化
-  if (type === VariableInputEnum.password) return value;
+  // Password check
+  if (valueType === WorkflowIOValueTypeEnum.string && isSecretValue(value)) return value;
 
   // 2. 如果值已经符合目标类型，直接返回
   if (
