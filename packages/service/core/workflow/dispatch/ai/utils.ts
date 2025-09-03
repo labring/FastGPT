@@ -11,6 +11,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 import type { ToolNodeItemType } from './tool/type';
+import json5 from 'json5';
 
 export const filterToolResponseToPreview = (response: AIChatItemValueItemType[]) => {
   return response.map((item) => {
@@ -166,4 +167,12 @@ export const getToolNodesByIds = ({
         jsonSchema
       };
     });
+};
+
+export const parseToolArgs = <T = Record<string, any>>(toolArgs: string): T => {
+  try {
+    return json5.parse(toolArgs) as T;
+  } catch {
+    return {} as T;
+  }
 };

@@ -30,15 +30,19 @@ import {
   filterToolResponseToPreview,
   formatToolResponse,
   getToolNodesByIds,
-  initToolNodes
+  initToolNodes,
+  parseToolArgs
 } from '../utils';
-import { getTopAgentDefaultPrompt, StopAgentId, StopAgentTool } from './constants';
+import { getFileReadTool, getTopAgentDefaultPrompt, StopAgentTool, SubAppIds } from './constants';
 import { runWorkflow } from '../..';
-import json5 from 'json5';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import type { ToolNodeItemType } from './type';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
+import { transferPlanAgent } from '../sub/plan';
+import { transferModelAgent } from '../sub/model';
+import { PlanAgentTool } from '../sub/plan/constants';
+import { ModelAgentTool } from '../sub/model/constants';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -81,7 +85,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       history = 6,
       fileUrlList: fileLinks,
       temperature,
-      aiChatTopP
+      aiChatTopP,
+      planConfig
     }
   } = props;
 
@@ -110,7 +115,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       };
     };
 
-    const subApps = getSubApps({ toolNodes });
+    const subApps = getSubApps({ toolNodes, urls: fileLinks });
 
     // TODO: 把 files 加入 query 中。
     const messages: ChatItemType[] = (() => {
@@ -162,11 +167,69 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         handleToolResponse: async (call) => {
           const toolId = call.function.name;
 
-          if (toolId === StopAgentId) {
+          if (toolId === SubAppIds.stop) {
             return {
               response: '',
               usages: [],
               isEnd: true
+            };
+          } else if (toolId === SubAppIds.plan) {
+            const planModel = planConfig?.model ?? model;
+            const { instruction } = parseToolArgs<{ instruction: string }>(call.function.arguments);
+
+            const { content, inputTokens, outputTokens } = await transferPlanAgent({
+              model: planModel,
+              instruction,
+              histories: [],
+              onStreaming({ text }) {
+                //TODO: 需要一个新的 plan sse event
+                workflowStreamResponse?.({
+                  event: SseResponseEventEnum.toolResponse,
+                  data: {
+                    tool: {
+                      id: call.id,
+                      toolName: '',
+                      toolAvatar: '',
+                      params: '',
+                      response: sliceStrStartEnd(text, 5000, 5000)
+                    }
+                  }
+                });
+              }
+            });
+            return {
+              response: content,
+              usages: [],
+              isEnd: false
+            };
+          } else if (toolId === SubAppIds.model) {
+            const { systemPrompt, task } = parseToolArgs<{ systemPrompt: string; task: string }>(
+              call.function.arguments
+            );
+
+            const { content, inputTokens, outputTokens } = await transferModelAgent({
+              model,
+              systemPrompt,
+              task,
+              onStreaming({ text }) {
+                workflowStreamResponse?.({
+                  event: SseResponseEventEnum.toolResponse,
+                  data: {
+                    tool: {
+                      id: call.id,
+                      toolName: '',
+                      toolAvatar: '',
+                      params: '',
+                      response: sliceStrStartEnd(text, 5000, 5000)
+                    }
+                  }
+                });
+              }
+            });
+            return {
+              response: content,
+              usages: [],
+              isEnd: false
             };
           }
 
@@ -179,14 +242,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             };
           }
 
-          const startParams = (() => {
-            try {
-              return json5.parse(call.function.arguments);
-            } catch {
-              return {};
-            }
-          })();
-
+          const startParams = parseToolArgs(call.function.arguments);
           initToolNodes(runtimeNodes, [node.nodeId], startParams);
           const { toolResponses, flowUsages, flowResponses } = await runWorkflow({
             ...props,
@@ -323,9 +379,20 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   }
 };
 
-const getSubApps = ({ toolNodes }: { toolNodes: ToolNodeItemType[] }): ChatCompletionTool[] => {
+const getSubApps = ({
+  toolNodes,
+  urls
+}: {
+  toolNodes: ToolNodeItemType[];
+  urls?: string[];
+}): ChatCompletionTool[] => {
   // System Tools: Plan Agent, stop sign, model agent.
-  const systemTools: ChatCompletionTool[] = [];
+  const systemTools: ChatCompletionTool[] = [
+    PlanAgentTool,
+    StopAgentTool,
+    ModelAgentTool,
+    getFileReadTool(urls)
+  ];
 
   // Node Tools
   const nodeTools = toolNodes.map<ChatCompletionTool>((item: ToolNodeItemType) => {
