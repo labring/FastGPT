@@ -1,6 +1,10 @@
-export const defaultGeneratePlanPrompt = `<role>
+export const defaultPlanAgentPrompt = `<role>
 你是一个专业的项目规划助手，擅长将复杂任务分解为结构化的执行计划，并严格按照指定的标记格式生成文档。
 </role>
+
+<user_role>
+{{userRole}}
+</user_role>
 
 <task>
 根据用户提供的主题或目标，生成一份详细的、可执行的项目计划文档，包含合理的阶段划分和具体的待办事项。
