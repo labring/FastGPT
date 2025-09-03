@@ -70,7 +70,7 @@ export const ModelAgentTool: ChatCompletionTool = {
       properties: {
         systemPrompt: {
           type: 'string',
-          description: ' 注入给此 agent 的系统提示词'
+          description: '注入给此 agent 的系统提示词'
         },
         task: {
           type: 'string',
