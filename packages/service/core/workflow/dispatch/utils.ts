@@ -3,7 +3,7 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
-import { decryptSecret, encryptSecret } from '../../../common/secret/aes256gcm';
+import { encryptSecret } from '../../../common/secret/aes256gcm';
 import {
   type RuntimeEdgeItemType,
   type RuntimeNodeItemType,
@@ -23,44 +23,6 @@ import { MongoApp } from '../../../core/app/schema';
 import { getMCPChildren } from '../../../core/app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-
-export const decryptPasswordVariables = (
-  variables: Record<string, any>,
-  variableList?: VariableItemType[]
-): Record<string, any> => {
-  if (!variableList || !Array.isArray(variableList)) return variables;
-
-  const result = { ...variables };
-  variableList.forEach((variable) => {
-    if (variable.type === VariableInputEnum.password && typeof result[variable.key] === 'object') {
-      const password = result[variable.key];
-      const actualValue = password.value || decryptSecret(password.secret);
-      result[variable.key] = actualValue;
-    }
-  });
-
-  return result;
-};
-
-export const encryptPasswordVariables = (
-  variables: Record<string, any>,
-  variableList?: VariableItemType[]
-): Record<string, any> => {
-  if (!variableList || !Array.isArray(variableList)) return variables;
-
-  const result = { ...variables };
-  variableList.forEach((variable) => {
-    if (variable.type === VariableInputEnum.password) {
-      const password = result[variable.key];
-      result[variable.key] = {
-        value: '',
-        secret: encryptSecret(password)
-      };
-    }
-  });
-
-  return result;
-};
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -156,9 +118,11 @@ export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
 export const removeSystemVariable = (
   variables: Record<string, any>,
   removeObj: Record<string, string> = {},
-  variableList?: VariableItemType[]
+  userVariablesConfigs: VariableItemType[] = []
 ) => {
   const copyVariables = { ...variables };
+
+  // Delete system variables
   delete copyVariables.userId;
   delete copyVariables.appId;
   delete copyVariables.chatId;
@@ -166,13 +130,23 @@ export const removeSystemVariable = (
   delete copyVariables.histories;
   delete copyVariables.cTime;
 
-  // delete external provider workflow variables
+  // Delete special variables
   Object.keys(removeObj).forEach((key) => {
     delete copyVariables[key];
   });
 
-  // encrypt password variables
-  return encryptPasswordVariables(copyVariables, variableList);
+  // Encrypt password variables
+  userVariablesConfigs.forEach((item) => {
+    const val = copyVariables[item.key];
+    if (item.type === VariableInputEnum.password && typeof val === 'string') {
+      copyVariables[item.key] = {
+        value: '',
+        secret: encryptSecret(val)
+      };
+    }
+  });
+
+  return copyVariables;
 };
 
 export const filterSystemVariables = (variables: Record<string, any>): SystemVariablesType => {

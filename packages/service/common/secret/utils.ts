@@ -2,6 +2,7 @@ import { decryptSecret, encryptSecret } from './aes256gcm';
 import type { SecretValueType } from '@fastgpt/global/common/secret/type';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { HeaderSecretTypeEnum } from '@fastgpt/global/common/secret/constants';
+import { isSecretValue } from '../../../global/common/secret/utils';
 
 export const encryptSecretValue = (value: SecretValueType): SecretValueType => {
   if (!value.value) {
@@ -47,4 +48,10 @@ export const getSecretValue = ({
 
     return acc;
   }, {});
+};
+
+export const anyValueDecrypt = (value: any) => {
+  if (!isSecretValue(value)) return value;
+
+  return decryptSecret(value.secret);
 };

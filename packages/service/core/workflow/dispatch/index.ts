@@ -43,9 +43,10 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import { addLog } from '../../../common/system/log';
 import { surrenderProcess } from '../../../common/system/tools';
 import type { DispatchFlowResponse } from './type';
-import { rewriteRuntimeWorkFlow, decryptPasswordVariables, removeSystemVariable } from './utils';
+import { rewriteRuntimeWorkFlow, removeSystemVariable } from './utils';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { callbackMap } from './constants';
+import { anyValueDecrypt } from '../../../common/secret/utils';
 
 type Props = Omit<ChatDispatchProps, 'workflowDispatchDeep'> & {
   runtimeNodes: RuntimeNodeItemType[];
@@ -60,7 +61,7 @@ type NodeResponseCompleteType = Omit<NodeResponseType, 'responseData'> & {
 
 // Run workflow
 export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowResponse> {
-  const { res, stream, externalProvider, chatConfig } = data;
+  const { res, stream, externalProvider } = data;
 
   let streamCheckTimer: NodeJS.Timeout | null = null;
 
@@ -875,21 +876,25 @@ const getSystemVariables = ({
   variables
 }: Props): SystemVariablesType => {
   // Get global variables(Label -> key; Key -> key)
-  const globalVariables = chatConfig?.variables || [];
-  const decryptedVariables = decryptPasswordVariables(variables, globalVariables);
+  const variablesConfig = chatConfig?.variables || [];
 
-  const variablesMap = globalVariables.reduce<Record<string, any>>((acc, item) => {
+  const variablesMap = variablesConfig.reduce<Record<string, any>>((acc, item) => {
     // For internal variables, ignore external input and use default value
     if (item.type === VariableInputEnum.internal) {
       acc[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
+    } else if (item.type === VariableInputEnum.password) {
+      const val = variables[item.label] || variables[item.key] || item.defaultValue;
+      const actualValue = anyValueDecrypt(val);
+      acc[item.key] = valueTypeFormat(actualValue, item.valueType);
     }
+
     // API
-    else if (decryptedVariables[item.label] !== undefined) {
-      acc[item.key] = valueTypeFormat(decryptedVariables[item.label], item.valueType);
+    else if (variables[item.label] !== undefined) {
+      acc[item.key] = valueTypeFormat(variables[item.label], item.valueType);
     }
     // Web
-    else if (decryptedVariables[item.key] !== undefined) {
-      acc[item.key] = valueTypeFormat(decryptedVariables[item.key], item.valueType);
+    else if (variables[item.key] !== undefined) {
+      acc[item.key] = valueTypeFormat(variables[item.key], item.valueType);
     } else {
       acc[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
     }
