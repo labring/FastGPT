@@ -40,6 +40,31 @@ import VariablePickerPlugin from './plugins/VariablePickerPlugin';
 import MarkdownPlugin from './plugins/MarkdownPlugin';
 import MyIcon from '../../Icon';
 
+const Placeholder = ({ children }: { children: React.ReactNode }) => (
+  <Box
+    position={'absolute'}
+    top={0}
+    left={0}
+    right={0}
+    bottom={0}
+    py={3}
+    px={3.5}
+    pointerEvents={'none'}
+    overflow={'hidden'}
+  >
+    <Box
+      color={'myGray.400'}
+      fontSize={'mini'}
+      userSelect={'none'}
+      whiteSpace={'pre-wrap'}
+      wordBreak={'break-all'}
+      h={'100%'}
+    >
+      {children}
+    </Box>
+  </Box>
+);
+
 export type EditorProps = {
   isRichText?: boolean;
   variables?: EditorVariablePickerType[];
@@ -88,7 +113,7 @@ export default function Editor({
   const [focus, setFocus] = useState(false);
   const [scrollHeight, setScrollHeight] = useState(0);
 
-  const renderPlugin = (pluginName: string, component: React.ReactElement) => {
+  const activePlugins = useMemo(() => {
     const defaultPlugins = {
       base: [
         'HistoryPlugin',
@@ -104,11 +129,13 @@ export default function Editor({
       plaintext: []
     };
 
-    const activePlugins = new Set([
+    return new Set([
       ...defaultPlugins.base,
       ...(isRichText ? defaultPlugins.richtext : defaultPlugins.plaintext)
     ]);
+  }, [isRichText]);
 
+  const renderPlugin = (pluginName: string, component: React.ReactElement) => {
     return activePlugins.has(pluginName) ? component : <></>;
   };
 
@@ -181,30 +208,7 @@ export default function Editor({
                 onBlur={() => setFocus(false)}
               />
             }
-            placeholder={
-              <Box
-                position={'absolute'}
-                top={0}
-                left={0}
-                right={0}
-                bottom={0}
-                py={3}
-                px={3.5}
-                pointerEvents={'none'}
-                overflow={'hidden'}
-              >
-                <Box
-                  color={'myGray.400'}
-                  fontSize={'mini'}
-                  userSelect={'none'}
-                  whiteSpace={'pre-wrap'}
-                  wordBreak={'break-all'}
-                  h={'100%'}
-                >
-                  {placeholder}
-                </Box>
-              </Box>
-            }
+            placeholder={<Placeholder>{placeholder}</Placeholder>}
             ErrorBoundary={LexicalErrorBoundary}
           />
         ) : (
@@ -218,30 +222,7 @@ export default function Editor({
                 }}
               />
             }
-            placeholder={
-              <Box
-                position={'absolute'}
-                top={0}
-                left={0}
-                right={0}
-                bottom={0}
-                py={3}
-                px={3.5}
-                pointerEvents={'none'}
-                overflow={'hidden'}
-              >
-                <Box
-                  color={'myGray.400'}
-                  fontSize={'mini'}
-                  userSelect={'none'}
-                  whiteSpace={'pre-wrap'}
-                  wordBreak={'break-all'}
-                  h={'100%'}
-                >
-                  {placeholder}
-                </Box>
-              </Box>
-            }
+            placeholder={<Placeholder>{placeholder}</Placeholder>}
             ErrorBoundary={LexicalErrorBoundary}
           />
         )}
