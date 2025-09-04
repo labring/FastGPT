@@ -74,6 +74,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     runningUserInfo,
     workflowStreamResponse,
     chatConfig,
+    wecomCrypto,
     params: {
       model,
       temperature,
@@ -218,7 +219,9 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
             text
           })
         });
-      }
+      },
+      res,
+      wecomCrypto
     });
 
     if (!answerText && !reasoningText) {

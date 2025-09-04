@@ -46,10 +46,12 @@ import type { DispatchFlowResponse } from './type';
 import { removeSystemVariable, rewriteRuntimeWorkFlow } from './utils';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { callbackMap } from './constants';
+import type { WecomCrypto } from '@fastgpt/global/common/secret/type';
 
 type Props = Omit<ChatDispatchProps, 'workflowDispatchDeep'> & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
+  wecomCrypto?: WecomCrypto;
 };
 type NodeResponseType = DispatchNodeResultType<{
   [key: string]: any;
@@ -112,7 +114,9 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 type RunWorkflowProps = ChatDispatchProps & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
+  wecomCrypto?: WecomCrypto;
 };
+
 export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowResponse> => {
   let {
     res,

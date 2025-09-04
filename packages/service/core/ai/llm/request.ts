@@ -25,6 +25,10 @@ import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { i18nT } from '../../../../web/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import json5 from 'json5';
+import type { NextApiResponse } from 'next';
+import { getMsgSinJsonStr } from '../../../common/secret/wecom';
+import { setRedisCache, getRedisCache, delRedisCache } from '../../../common/redis/cache';
+import type { WecomCrypto } from '@fastgpt/global/common/secret/type';
 
 type ResponseEvents = {
   onStreaming?: ({ text }: { text: string }) => void;
@@ -38,6 +42,8 @@ type CreateLLMResponseProps<T extends CompletionsBodyType> = {
   body: LLMRequestBodyType<T>;
   isAborted?: () => boolean | undefined;
   custonHeaders?: Record<string, string>;
+  res?: NextApiResponse;
+  wecomCrypto?: WecomCrypto;
 } & ResponseEvents;
 
 type LLMResponse = {
@@ -64,7 +70,7 @@ type LLMResponse = {
 export const createLLMResponse = async <T extends CompletionsBodyType>(
   args: CreateLLMResponseProps<T>
 ): Promise<LLMResponse> => {
-  const { body, custonHeaders, userKey } = args;
+  const { body, custonHeaders, userKey, res, wecomCrypto } = args;
   const { messages, useVision, requestOrigin, tools, toolCallMode } = body;
 
   // Messages process
@@ -107,7 +113,9 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
         onStreaming: args.onStreaming,
         onReasoning: args.onReasoning,
         onToolCall: args.onToolCall,
-        onToolParam: args.onToolParam
+        onToolParam: args.onToolParam,
+        res: res!,
+        wecomCrypto
       });
     } else {
       return createCompleteResponse({
@@ -173,19 +181,100 @@ type CompleteResponse = Pick<
 };
 
 export const createStreamResponse = async ({
+  res,
   body,
   response,
   isAborted,
   onStreaming,
   onReasoning,
   onToolCall,
-  onToolParam
+  onToolParam,
+  wecomCrypto
 }: CompleteParams & {
+  res: NextApiResponse;
   response: StreamChatType;
   isAborted?: () => boolean | undefined;
+  wecomCrypto?: WecomCrypto;
 }): Promise<CompleteResponse> => {
   const { retainDatasetCite = true, tools, toolCallMode = 'toolChoice', model } = body;
   const modelData = getLLMModel(model);
+
+  const streamRes = async (
+    streamParts: any[],
+    answer: string,
+    reasoning: string,
+    finish_reason: CompletionFinishReason,
+    usage: CompletionUsage
+  ) => {
+    const createPlaintext = (finish: boolean, answer: string, streamId?: string) => ({
+      msgtype: 'stream',
+      stream: {
+        ...(streamId && { id: streamId }),
+        finish,
+        content: answer
+      }
+    });
+
+    const contentKey = `content:${wecomCrypto!.streamId || 'default'}`;
+    const indexKey = `index:${wecomCrypto!.streamId || 'default'}`;
+
+    let index: string | null | number = await getRedisCache(indexKey);
+    index = index ? parseInt(index) : 0;
+
+    if (index >= streamParts.length) {
+      delRedisCache(contentKey);
+      delRedisCache(indexKey);
+      return {
+        answer: answer,
+        reasoning: reasoning,
+        finish_reason: finish_reason,
+        usage: usage
+      };
+    }
+
+    let content = await getRedisCache(contentKey);
+    content = content ? content : '';
+    content += streamParts[index].choices[0].delta.content;
+
+    const timeStamp = Math.floor(Date.now() / 1000).toString();
+    let plaintext: any = {};
+    if (index === streamParts.length - 1) {
+      plaintext = createPlaintext(true, content);
+      await delRedisCache(contentKey);
+      await delRedisCache(indexKey);
+    } else {
+      if (index === 0) {
+        plaintext = createPlaintext(false, content, wecomCrypto!.streamId);
+      } else {
+        plaintext = createPlaintext(false, content);
+      }
+      await setRedisCache(contentKey, content, 3600);
+      await setRedisCache(indexKey, index + 1, 3600);
+    }
+    const encryptedData = getMsgSinJsonStr(
+      plaintext,
+      timeStamp,
+      wecomCrypto!.nonce,
+      wecomCrypto!.token,
+      wecomCrypto!.aesKey
+    );
+
+    return new Promise((resolve) => {
+      res.write(encryptedData!, (error) => {
+        if (error) {
+          throw new Error('写入响应失败:' + error);
+        }
+        res.end(() => {
+          resolve({
+            answer,
+            reasoning,
+            finish_reason,
+            usage
+          });
+        });
+      });
+    });
+  };
 
   const { parsePart, getResponseData, updateFinishReason } = parseLLMStreamResponse();
 
@@ -194,7 +283,9 @@ export const createStreamResponse = async ({
       let callingTool: ChatCompletionMessageToolCall['function'] | null = null;
       const toolCalls: ChatCompletionMessageToolCall[] = [];
 
+      const streamParts = [];
       for await (const part of response) {
+        streamParts.push(part);
         if (isAborted?.()) {
           response.controller?.abort();
           updateFinishReason('close');
@@ -263,6 +354,8 @@ export const createStreamResponse = async ({
 
       const { reasoningContent, content, finish_reason, usage } = getResponseData();
 
+      await streamRes(streamParts, content, reasoningContent, finish_reason, usage);
+
       return {
         answerText: content,
         reasoningText: reasoningContent,
@@ -274,7 +367,9 @@ export const createStreamResponse = async ({
       let startResponseWrite = false;
       let answer = '';
 
+      const streamParts = [];
       for await (const part of response) {
+        streamParts.push(part);
         if (isAborted?.()) {
           response.controller?.abort();
           updateFinishReason('close');
@@ -326,6 +421,8 @@ export const createStreamResponse = async ({
       const { reasoningContent, content, finish_reason, usage } = getResponseData();
       const { answer: llmAnswer, streamAnswer, toolCalls } = parsePromptToolCall(content);
 
+      await streamRes(streamParts, content, reasoningContent, finish_reason, usage);
+
       if (streamAnswer) {
         onStreaming?.({ text: streamAnswer });
       }
@@ -344,7 +441,9 @@ export const createStreamResponse = async ({
     }
   } else {
     // Not use tool
+    const streamParts = [];
     for await (const part of response) {
+      streamParts.push(part);
       if (isAborted?.()) {
         response.controller?.abort();
         updateFinishReason('close');
@@ -366,6 +465,8 @@ export const createStreamResponse = async ({
     }
 
     const { reasoningContent, content, finish_reason, usage } = getResponseData();
+
+    await streamRes(streamParts, content, reasoningContent, finish_reason, usage);
 
     return {
       answerText: content,

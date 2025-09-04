@@ -77,6 +77,7 @@ export const runToolCall = async (
     toolModel,
     maxRunToolTimes,
     interactiveEntryToolParams,
+    wecomCrypto,
     ...workflowProps
   } = props;
   let {
@@ -357,7 +358,9 @@ export const runToolCall = async (
           }
         }
       });
-    }
+    },
+    res,
+    wecomCrypto
   });
 
   if (!answer && !reasoningContent && !toolCalls.length) {

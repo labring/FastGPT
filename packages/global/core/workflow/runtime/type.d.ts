@@ -30,6 +30,7 @@ import type {
 } from '../template/system/interactive/type';
 import type { SearchDataResponseItemType } from '../../dataset/type';
 import type { localeType } from '../../../common/i18n/type';
+import type { WecomCrypto } from '@fastgpt/global/common/secret/type';
 export type ExternalProviderType = {
   openaiAccount?: OpenaiAccountType;
   externalWorkflowVariables?: Record<string, string>;
@@ -85,6 +86,7 @@ export type ModuleDispatchProps<T> = ChatDispatchProps & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
   params: T;
+  wecomCrypto?: WecomCrypto;
 };
 
 export type SystemVariablesType = {
