@@ -1,26 +1,28 @@
 import type { ClientSession, AnyBulkWriteOperation } from '../../common/mongo';
 import type { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import {
-  ManageRoleVal,
-  NullRoleVal,
-  OwnerRoleVal
-} from '@fastgpt/global/support/permission/constant';
+import { ManageRoleVal, OwnerRoleVal } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from './schema';
-import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
+import type { ResourcePermissionType, ResourceType } from '@fastgpt/global/support/permission/type';
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { getGroupsByTmbId } from './memberGroup/controllers';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { type MemberGroupSchemaType } from '@fastgpt/global/support/permission/memberGroup/type';
-import { type TeamMemberSchema } from '@fastgpt/global/support/user/team/type';
-import { type OrgSchemaType } from '@fastgpt/global/support/user/team/org/type';
 import { getOrgIdSetWithParentByTmbId } from './org/controllers';
-import { sumPer } from '@fastgpt/global/support/permission/utils';
-import { DEFAULT_ORG_AVATAR } from '@fastgpt/global/common/system/constants';
+import {
+  getCollaboratorId,
+  mergeCollaboratorList,
+  sumPer
+} from '@fastgpt/global/support/permission/utils';
 import { type SyncChildrenPermissionResourceType } from './inheritPermission';
 import { pickCollaboratorIdFields } from './utils';
-import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
+import type {
+  CollaboratorItemDetailType,
+  CollaboratorItemType
+} from '@fastgpt/global/support/permission/collaborator';
+import { MongoTeamMember } from '../../support/user/team/teamMemberSchema';
+import { MongoOrgModel } from './org/orgSchema';
+import { MongoMemberGroupModel } from './memberGroup/memberGroupSchema';
 
 /** get resource permission for a team member
  * If there is no permission for the team member, it will return undefined
@@ -30,7 +32,7 @@ import type { CollaboratorItemType } from '@fastgpt/global/support/permission/co
  * @param resourceId
  * @returns PermissionValueType | undefined
  */
-export const getResourcePermission = async ({
+export const getTmbPermission = async ({
   resourceType,
   teamId,
   tmbId,
@@ -105,7 +107,10 @@ export const getResourcePermission = async ({
   return sumPer(...groupPers, ...orgPers);
 };
 
-export async function getResourceClbs({
+/**
+ * Only get resource's owned clbs, not including parents'.
+ */
+export async function getResourceOwnedClbs({
   resourceType,
   teamId,
   resourceId,
@@ -134,14 +139,105 @@ export async function getResourceClbs({
   ).lean();
 }
 
+export const getClbsInfo = async ({
+  clbs,
+  teamId,
+  ownerTmbId
+}: {
+  clbs: CollaboratorItemType[];
+  teamId: string;
+  ownerTmbId?: string;
+}): Promise<CollaboratorItemDetailType[]> => {
+  const tmbIds = [];
+  const orgIds = [];
+  const groupIds = [];
+
+  for (const clb of clbs) {
+    if (clb.tmbId) tmbIds.push(clb.tmbId);
+    if (clb.orgId) orgIds.push(clb.orgId);
+    if (clb.groupId) groupIds.push(clb.groupId);
+  }
+
+  const infos = (
+    await Promise.all([
+      MongoTeamMember.find({ _id: { $in: tmbIds }, teamId }, '_id name avatar').lean(),
+      MongoOrgModel.find({ _id: { $in: orgIds }, teamId }, '_id name avatar').lean(),
+      MongoMemberGroupModel.find({ _id: { $in: groupIds }, teamId }, '_id name avatar').lean()
+    ])
+  ).flat();
+
+  return clbs.map((clb) => {
+    const info = infos.find((info) => info._id === getCollaboratorId(clb))!;
+    return {
+      ...clb,
+      teamId,
+      permission: new Permission({ role: clb.permission, isOwner: ownerTmbId === clb.tmbId }),
+      name: info.name,
+      avatar: info.avatar
+    };
+  });
+};
+
+/**
+ * Get Resource's Collaborators (owned and parent's if it is inherit)
+ */
+export const getResourceClbs = async ({
+  resourceType,
+  teamId,
+  resourceId,
+  session,
+  inherit,
+  isFolder,
+  parentId
+}: {
+  teamId: string;
+  session?: ClientSession;
+  parentId: ParentIdType;
+  inherit?: boolean;
+  isFolder?: boolean;
+} & (
+  | {
+      resourceId: ParentIdType;
+      resourceType: Omit<`${PerResourceTypeEnum}`, 'team'>;
+    }
+  | {
+      resourceId: ParentIdType;
+      resourceType: 'team';
+    }
+)) => {
+  const ownedClbs = await getResourceOwnedClbs({
+    resourceType,
+    resourceId,
+    teamId,
+    session
+  });
+  if (inherit === false || isFolder || !parentId || resourceType === 'team') {
+    return ownedClbs;
+  }
+  // otherwise, we need the parent's clbs
+  const parentClbs = await getResourceOwnedClbs({
+    resourceType,
+    resourceId,
+    teamId
+  });
+
+  return mergeCollaboratorList(parentClbs, ownedClbs);
+};
+
 export const getClbsWithInfo = async ({
   resourceId,
   resourceType,
   teamId,
-  tmbId
+  tmbId,
+  parentId,
+  isFolder,
+  inherit
 }: {
   teamId: string;
   tmbId?: string;
+  parentId?: string;
+  isFolder?: boolean;
+  inherit?: boolean;
 } & (
   | {
       resourceId: ParentIdType;
@@ -155,67 +251,21 @@ export const getClbsWithInfo = async ({
   if (!resourceId && resourceType !== 'team') {
     return [];
   }
-  return Promise.all([
-    ...(
-      await MongoResourcePermission.find({
-        teamId,
-        resourceId,
-        resourceType,
-        tmbId: {
-          $exists: true
-        }
-      })
-        .populate<{ tmb: TeamMemberSchema }>({
-          path: 'tmb',
-          select: 'name userId avatar'
-        })
-        .lean()
-    )
-      .map((item) => ({
-        tmbId: item.tmb._id,
-        teamId: item.teamId,
-        permission: new Permission({ role: item.permission, isOwner: item.tmbId === tmbId }),
-        name: item.tmb.name,
-        avatar: item.tmb.avatar
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name)),
-    ...(
-      await MongoResourcePermission.find({
-        teamId,
-        resourceId,
-        resourceType,
-        groupId: {
-          $exists: true
-        }
-      })
-        .populate<{ group: MemberGroupSchemaType }>('group', 'name avatar')
-        .lean()
-    ).map((item) => ({
-      groupId: item.group._id,
-      teamId: item.teamId,
-      permission: new Permission({ role: item.permission }),
-      name: item.group.name,
-      avatar: item.group.avatar
-    })),
-    ...(
-      await MongoResourcePermission.find({
-        teamId,
-        resourceId,
-        resourceType,
-        orgId: {
-          $exists: true
-        }
-      })
-        .populate<{ org: OrgSchemaType }>({ path: 'org', select: 'name avatar' })
-        .lean()
-    ).map((item) => ({
-      orgId: item.org._id,
-      teamId: item.teamId,
-      permission: new Permission({ role: item.permission }),
-      name: item.org.name,
-      avatar: item.org.avatar || DEFAULT_ORG_AVATAR
-    }))
-  ]);
+
+  const clbs = await getResourceClbs({
+    resourceType,
+    resourceId,
+    teamId,
+    inherit,
+    isFolder,
+    parentId
+  });
+
+  return getClbsInfo({
+    clbs,
+    ownerTmbId: tmbId,
+    teamId
+  });
 };
 
 export const delResourcePermissionById = (id: string) => {
@@ -265,7 +315,7 @@ export const createResourceDefaultCollaborators = async ({
   session: ClientSession;
   tmbId: string;
 }) => {
-  const parentClbs = await getResourceClbs({
+  const parentClbs = await getResourceOwnedClbs({
     resourceId: resource.parentId,
     resourceType,
     teamId: resource.teamId,
@@ -280,7 +330,6 @@ export const createResourceDefaultCollaborators = async ({
       .map((clb) => {
         if (clb.permission === OwnerRoleVal) {
           clb.permission = ManageRoleVal;
-          clb.selfPermission = NullRoleVal;
         }
         return clb;
       }),
@@ -303,8 +352,7 @@ export const createResourceDefaultCollaborators = async ({
         },
         update: {
           $set: {
-            permission: clb.permission,
-            selfPermission: NullRoleVal
+            permission: clb.permission
           }
         },
         upsert: true

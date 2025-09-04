@@ -1,5 +1,5 @@
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
-import { getResourcePermission } from '../controller';
+import { getTmbPermission } from '../controller';
 import {
   type CollectionWithDatasetType,
   type DatasetDataItemType,
@@ -62,13 +62,15 @@ export const authDatasetByTmbId = async ({
     }
 
     const isOwner = tmbPer.isOwner || String(dataset.tmbId) === String(tmbId);
+    const isGetParentClb =
+      dataset.inheritPermission && dataset.type !== DatasetTypeEnum.folder && !!dataset.parentId;
 
     // get dataset permission or inherit permission from parent folder.
     const Per = new DatasetPermission({
-      role: await getResourcePermission({
+      role: await getTmbPermission({
         teamId,
         tmbId,
-        resourceId: datasetId,
+        resourceId: isGetParentClb ? dataset.parentId! : datasetId,
         resourceType: PerResourceTypeEnum.dataset
       }),
       isOwner

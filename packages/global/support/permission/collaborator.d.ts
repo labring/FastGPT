@@ -13,7 +13,6 @@ export type CollaboratorIdType = RequireOnlyOne<{
 export type CollaboratorItemDetailType = {
   teamId: string;
   permission: Permission;
-  selfPermission?: Permission;
   name: string;
   avatar: string;
 } & CollaboratorIdType;

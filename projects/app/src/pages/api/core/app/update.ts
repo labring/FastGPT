@@ -18,7 +18,10 @@ import {
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type ClientSession } from 'mongoose';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { getResourceClbs } from '@fastgpt/service/support/permission/controller';
+import {
+  getResourceClbs,
+  getResourceOwnedClbs
+} from '@fastgpt/service/support/permission/controller';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
@@ -150,7 +153,7 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
   if (isMove) {
     await mongoSessionRun(async (session) => {
       // Inherit folder: Sync children permission and it's clbs
-      const parentClbsAndGroups = await getResourceClbs({
+      const parentClbs = await getResourceOwnedClbs({
         teamId: app.teamId,
         resourceId: parentId,
         resourceType: PerResourceTypeEnum.app,
@@ -160,7 +163,7 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
       await syncCollaborators({
         resourceId: app._id,
         resourceType: PerResourceTypeEnum.app,
-        collaborators: parentClbsAndGroups,
+        collaborators: parentClbs,
         session,
         teamId: app.teamId
       });
@@ -170,7 +173,7 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
         resourceType: PerResourceTypeEnum.app,
         resourceModel: MongoApp,
         folderTypeList: AppFolderTypeList,
-        collaborators: parentClbsAndGroups,
+        collaborators: parentClbs,
         session
       });
       logAppMove({ tmbId, teamId, app, targetName });

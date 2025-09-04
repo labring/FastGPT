@@ -62,7 +62,6 @@ export type ResourcePermissionType = {
   teamId: string;
   resourceType: ResourceType;
   permission: PermissionValueType;
-  selfPermission?: PermissionValueType;
   resourceId: string;
 } & RequireOnlyOne<{
   tmbId: string;

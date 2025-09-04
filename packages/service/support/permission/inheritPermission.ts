@@ -7,10 +7,15 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
-import { getResourceClbs } from './controller';
+import { getResourceOwnedClbs } from './controller';
 import { MongoResourcePermission } from './schema';
 import type { ClientSession, Model, AnyBulkWriteOperation } from '../../common/mongo';
-import { getCollaboratorId, sumPer } from '@fastgpt/global/support/permission/utils';
+import {
+  getChangedCollaborators,
+  getCollaboratorId,
+  mergeCollaboratorList,
+  sumPer
+} from '@fastgpt/global/support/permission/utils';
 import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 import { pickCollaboratorIdFields } from './utils';
 
@@ -44,7 +49,7 @@ export async function syncChildrenPermission({
   // should be provided when inheritPermission is true
   session: ClientSession;
 
-  collaborators?: CollaboratorItemType[];
+  collaborators: CollaboratorItemType[];
 }) {
   // only folder has permission
   const isFolder = folderTypeList.includes(resource.type);
@@ -54,11 +59,14 @@ export async function syncChildrenPermission({
   if (!isFolder) return;
 
   // get all the resource permission of the app
-  const allResources = await resourceModel
+  const allFolders = await resourceModel
     .find(
       {
         teamId,
-        inheritPermission: true
+        inheritPermission: true,
+        type: {
+          $in: folderTypeList
+        }
       },
       '_id parentId'
     )
@@ -67,7 +75,10 @@ export async function syncChildrenPermission({
 
   const allClbs = await MongoResourcePermission.find({
     resourceType,
-    teamId
+    teamId,
+    resourceId: {
+      $in: allFolders.map((folder) => folder._id)
+    }
   })
     .lean()
     .session(session);
@@ -78,7 +89,7 @@ export async function syncChildrenPermission({
   const parentChildrenMap = new Map<string, SyncChildrenPermissionResourceType[]>();
 
   // init the map
-  allResources.forEach((resource) => {
+  allFolders.forEach((resource) => {
     resourceMap.set(resource._id, resource);
     const parentId = String(resource.parentId);
     if (!parentChildrenMap.has(parentId)) {
@@ -118,6 +129,7 @@ export async function syncChildrenPermission({
   // BFS to get all children
   const queue = [String(resource._id)];
   const ops: AnyBulkWriteOperation<ResourcePermissionType>[] = [];
+  const clbMap = new Map(collaborators.map((clb) => [getCollaboratorId(clb), { ...clb }]));
 
   while (queue.length) {
     const parentId = String(queue.shift());
@@ -126,96 +138,58 @@ export async function syncChildrenPermission({
     for (const child of _children) {
       // 1. get parent's permission and what permission I have.
       const parentClbs = resourceIdClbMap.get(String(child.parentId)) || [];
-      const myClbs = resourceIdClbMap.get(String(child._id)) || [];
-      // 2. merge the permission and generate operations for mongo.
-      //    rules:
-      //    i.   if parent has and I have not, get the clb.
-      //    ii.  if parent has not and I have. If my clb has no selfPermission,
-      //         it should be removed. Otherwise, it should be remained.
-      //    iii. if we both have, get the sumPer.
+      const myClbs = resourceIdClbMap.get(child._id) || [];
+      const parentIdSet = new Set(parentClbs.map((clb) => getCollaboratorId(clb)));
+      const myClbsIdSet = new Set(myClbs.map((clb) => getCollaboratorId(clb)));
 
-      const bothHaveClbs = parentClbs
-        .filter((clb) =>
-          myClbs.some((myClb) => getCollaboratorId(clb) === getCollaboratorId(myClb))
-        )
-        .map((clb) => ({
-          ...clb,
-          permission: sumPer(
-            clb.permission,
-            myClbs.find((myClb) => getCollaboratorId(clb) === getCollaboratorId(myClb))!.permission
-          )!
-        }));
-
-      const parentHasAndIHaveNot = parentClbs.filter(
-        (clb) => !myClbs.some((myClb) => getCollaboratorId(clb) === getCollaboratorId(myClb))
-      );
-
-      const IHaveAndParentHasNot = myClbs.filter(
-        (clb) =>
-          !parentClbs.some((parentClb) => getCollaboratorId(clb) === getCollaboratorId(parentClb))
-      );
-
-      // generate ops
-      // i.
-      for (const clb of parentHasAndIHaveNot) {
-        ops.push({
-          updateOne: {
-            filter: {
-              resourceId: child._id,
-              resourceType,
-              teamId,
-              ...pickCollaboratorIdFields(clb)
-            },
-            update: {
-              permission: clb.permission,
-              selfPermission: NullPermissionVal
-            },
-            upsert: true
-          }
-        });
-      }
-
-      // ii.
-      for (const clb of IHaveAndParentHasNot) {
-        if (clb.selfPermission === NullPermissionVal) {
+      // add or update
+      for (const clb of collaborators) {
+        if (!myClbsIdSet.has(getCollaboratorId(clb))) {
           ops.push({
-            deleteOne: {
-              filter: {
+            insertOne: {
+              document: {
                 resourceId: child._id,
                 resourceType,
                 teamId,
+                permission: parentClbs[0].permission,
                 ...pickCollaboratorIdFields(clb)
+              } as ResourcePermissionType
+            }
+          });
+        } else {
+          const myclb = myClbs.find((clb) => getCollaboratorId(clb) === getCollaboratorId(clb))!;
+          ops.push({
+            updateOne: {
+              filter: {
+                resourceId: child._id,
+                teamId,
+                ...pickCollaboratorIdFields(clb),
+                resourceType
+              },
+              update: {
+                permission: sumPer(myclb.permission, clb.permission)
               }
             }
           });
         }
       }
 
-      // iii.
-      for (const clb of bothHaveClbs) {
-        ops.push({
-          updateOne: {
-            filter: {
-              resourceId: child._id,
-              resourceType,
-              teamId,
-              ...pickCollaboratorIdFields(clb)
-            },
-            update: {
-              permission: clb.permission
-              // do not update selfPermission
-            },
-            upsert: true
-          }
-        });
+      // delele
+      for (const myClb of myClbs) {
+        if (!clbMap.get(getCollaboratorId(myClb))) {
+          // the new collaborators doesnt have it. remove it
+          ops.push({
+            deleteOne: {
+              filter: {
+                resourceId: child._id,
+                teamId,
+                ...pickCollaboratorIdFields(myClb),
+                resourceType
+              }
+            }
+          });
+        }
       }
-      // 3. save the permission status for my children
-      resourceIdClbMap.set(child._id, [
-        ...parentHasAndIHaveNot,
-        ...bothHaveClbs,
-        ...IHaveAndParentHasNot.filter((clb) => clb.selfPermission !== NullPermissionVal)
-      ]);
-      // 4. add myself to the queue
       queue.push(child._id);
     }
   }
@@ -240,6 +214,7 @@ export async function resumeInheritPermission({
   resourceModel: typeof Model;
   session?: ClientSession;
 }) {
+  const isFolder = folderTypeList.includes(resource.type);
   const fn = async (session: ClientSession) => {
     // update the resource permission
     await resourceModel.updateOne(
@@ -253,32 +228,32 @@ export async function resumeInheritPermission({
     );
 
     // Folder resource, need to sync children
-    const parentClbs = await getResourceClbs({
+    const parentClbs = await getResourceOwnedClbs({
       resourceId: resource.parentId,
       teamId: resource.teamId,
       resourceType,
       session
     });
 
-    // sync self
-    await syncCollaborators({
-      resourceType,
-      collaborators: parentClbs,
-      teamId: resource.teamId,
-      resourceId: resource._id,
-      session
-    });
-    // sync children
-    await syncChildrenPermission({
-      resource,
-      resourceModel,
-      folderTypeList,
-      resourceType,
-      session,
-      collaborators: parentClbs
-    });
-    // Not folder, delete all clb
-    // await MongoResourcePermission.deleteMany({ resourceId: resource._id }, { session });
+    if (isFolder) {
+      // sync self
+      await syncCollaborators({
+        resourceType,
+        collaborators: parentClbs,
+        teamId: resource.teamId,
+        resourceId: resource._id,
+        session
+      });
+      // sync children
+      await syncChildrenPermission({
+        resource,
+        resourceModel,
+        folderTypeList,
+        resourceType,
+        session,
+        collaborators: parentClbs
+      });
+    }
   };
 
   if (session) {
@@ -331,8 +306,7 @@ export async function syncCollaborators({
           ...pickCollaboratorIdFields(clb)
         },
         update: {
-          permission,
-          selfPermission: clb.permission
+          permission
         }
       }
     });
@@ -350,8 +324,7 @@ export async function syncCollaborators({
           resourceId,
           resourceType,
           ...pickCollaboratorIdFields(clb),
-          permission: clb.permission,
-          selfPermission: NullPermissionVal
+          permission: clb.permission
         } as ResourcePermissionType
       }
     });

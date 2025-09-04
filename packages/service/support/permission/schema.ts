@@ -45,9 +45,6 @@ export const ResourcePermissionSchema = new Schema({
    * Optional. Only be set when the resource is *inherited* from the parent resource.
    * For recording the self permission. When cancel the inheritance, it will overwrite the permission property and set to `unset`.
    */
-  selfPermission: {
-    type: Number
-  },
   // Resource ID: App or DataSet or any other resource type.
   // It is null if the resourceType is team.
   resourceId: {

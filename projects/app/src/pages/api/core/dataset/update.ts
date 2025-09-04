@@ -38,7 +38,10 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/training/utils';
-import { getResourceClbs } from '@fastgpt/service/support/permission/controller';
+import {
+  getResourceClbs,
+  getResourceOwnedClbs
+} from '@fastgpt/service/support/permission/controller';
 
 export type DatasetUpdateQuery = {};
 export type DatasetUpdateResponse = any;
@@ -230,7 +233,7 @@ async function handler(
 
   await mongoSessionRun(async (session) => {
     if (isMove) {
-      const parentClbsAndGroups = await getResourceClbs({
+      const parentClbs = await getResourceOwnedClbs({
         teamId: dataset.teamId,
         resourceId: parentId,
         resourceType: PerResourceTypeEnum.dataset,
@@ -241,7 +244,7 @@ async function handler(
         teamId: dataset.teamId,
         resourceId: id,
         resourceType: PerResourceTypeEnum.dataset,
-        collaborators: parentClbsAndGroups,
+        collaborators: parentClbs,
         session
       });
 
@@ -250,7 +253,7 @@ async function handler(
         resourceType: PerResourceTypeEnum.dataset,
         resourceModel: MongoDataset,
         folderTypeList: [DatasetTypeEnum.folder],
-        collaborators: parentClbsAndGroups,
+        collaborators: parentClbs,
         session
       });
       logDatasetMove({ tmbId, teamId, dataset, targetName });

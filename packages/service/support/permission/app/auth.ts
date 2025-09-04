@@ -8,7 +8,7 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
-import { getResourcePermission } from '../controller';
+import { getTmbPermission } from '../controller';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -90,11 +90,14 @@ export const authAppByTmbId = async ({
 
     const isOwner = tmbPer.isOwner || String(app.tmbId) === String(tmbId);
 
+    const isGetParentClb =
+      app.inheritPermission && !AppFolderTypeList.includes(app.type) && !!app.parentId;
+
     const Per = new AppPermission({
-      role: await getResourcePermission({
+      role: await getTmbPermission({
         teamId,
         tmbId,
-        resourceId: appId,
+        resourceId: isGetParentClb ? app.parentId! : app._id,
         resourceType: PerResourceTypeEnum.app
       }),
       isOwner
