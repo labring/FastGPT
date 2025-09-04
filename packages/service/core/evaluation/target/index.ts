@@ -5,7 +5,7 @@ import type {
   EvalTarget
 } from '@fastgpt/global/core/evaluation/type';
 import { dispatchWorkFlow } from '../../workflow/dispatch';
-import { getAppLatestVersion } from '../../app/version/controller';
+import { getAppVersionById } from '../../app/version/controller';
 import { MongoApp } from '../../app/schema';
 import {
   getWorkflowEntryNodeIds,
@@ -61,7 +61,7 @@ function extractRetrievalContext(flowResponses: ChatHistoryItemResType[]): strin
 // Evaluation target base class
 export abstract class EvaluationTarget {
   abstract execute(input: TargetInput): Promise<TargetOutput>;
-  abstract validate(): Promise<boolean>;
+  abstract validate(): Promise<{ isValid: boolean; message?: string }>;
 }
 
 // Workflow target implementation
@@ -85,7 +85,11 @@ export class WorkflowTarget extends EvaluationTarget {
     // Get user information and permissions
     const [{ timezone, externalProvider }, { nodes, edges, chatConfig }] = await Promise.all([
       getUserChatInfoAndAuthTeamPoints(appData.tmbId),
-      getAppLatestVersion(appData._id, appData)
+      getAppVersionById({
+        appId: String(appData._id),
+        versionId: this.config.versionId,
+        app: appData
+      })
     ]);
 
     // Construct query
@@ -167,12 +171,42 @@ export class WorkflowTarget extends EvaluationTarget {
     };
   }
 
-  async validate(): Promise<boolean> {
+  async validate(): Promise<{ isValid: boolean; message?: string }> {
     try {
       const appData = await MongoApp.findById(this.config.appId);
-      return !!appData;
+      if (!appData) {
+        return {
+          isValid: false,
+          message: `App with ID '${this.config.appId}' not found or not accessible`
+        };
+      }
+
+      // If versionId is specified, validate that the version exists and is accessible
+      if (this.config.versionId) {
+        const versionData = await getAppVersionById({
+          appId: String(appData._id),
+          versionId: this.config.versionId,
+          app: appData
+        });
+        // If versionId was specified but the returned version doesn't match (fell back to latest),
+        // it means the specified version doesn't exist
+        if (String(versionData.versionId).trim() !== String(this.config.versionId).trim()) {
+          return {
+            isValid: false,
+            message: `App version '${this.config.versionId}' not found for app '${appData.name}' (${this.config.appId}). Available version: ${versionData.versionId}`
+          };
+        }
+      }
+
+      return {
+        isValid: true,
+        message: `App '${appData.name}' is valid and accessible`
+      };
     } catch (error) {
-      return false;
+      return {
+        isValid: false,
+        message: `Validation failed: ${error instanceof Error ? error.message : String(error)}`
+      };
     }
   }
 }
@@ -195,11 +229,15 @@ export async function validateTargetConfig(
 ): Promise<{ success: boolean; message: string }> {
   try {
     const targetInstance = createTargetInstance(targetConfig);
-    const isValid = await targetInstance.validate();
+    const validationResult = await targetInstance.validate();
 
     return {
-      success: isValid,
-      message: isValid ? 'Target config is valid and accessible' : 'Target config validation failed'
+      success: validationResult.isValid,
+      message:
+        validationResult.message ||
+        (validationResult.isValid
+          ? 'Target config is valid and accessible'
+          : 'Target config validation failed')
     };
   } catch (error) {
     return {

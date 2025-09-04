@@ -51,8 +51,11 @@ export class EvaluationTaskService {
     return evaluation.toObject();
   }
 
-  static async getEvaluation(evalId: string): Promise<EvaluationSchemaType> {
-    const evaluation = await MongoEvaluation.findOne({ _id: new Types.ObjectId(evalId) }).lean();
+  static async getEvaluation(evalId: string, teamId: string): Promise<EvaluationSchemaType> {
+    const evaluation = await MongoEvaluation.findOne({
+      _id: new Types.ObjectId(evalId),
+      teamId: new Types.ObjectId(teamId)
+    }).lean();
     if (!evaluation) {
       throw new Error('Evaluation not found');
     }
@@ -86,7 +89,7 @@ export class EvaluationTaskService {
 
     checkDeleteResult(result, 'Evaluation');
 
-    addLog.info(`[Evaluation] Evaluation task deleted including queue cleanup: ${evalId}`);
+    addLog.debug(`[Evaluation] Evaluation task deleted including queue cleanup: ${evalId}`);
   }
 
   static async listEvaluations(
@@ -237,16 +240,13 @@ export class EvaluationTaskService {
     items: EvaluationItemDisplayType[];
     total: number;
   }> {
-    const evaluation = await this.getEvaluation(evalId);
-    if (String(evaluation.teamId) !== teamId) {
-      throw new Error('Evaluation not found');
-    }
+    const evaluation = await this.getEvaluation(evalId, teamId);
 
     const skip = (page - 1) * pageSize;
     const limit = pageSize;
 
     const [items, total] = await Promise.all([
-      MongoEvalItem.find({ evalId: evalId })
+      MongoEvalItem.find({ evalId: evaluation._id })
         .sort({ createTime: -1 })
         .skip(skip)
         .limit(limit)
@@ -257,17 +257,14 @@ export class EvaluationTaskService {
             evalItemId: item._id.toString()
           }))
         ),
-      MongoEvalItem.countDocuments({ evalId: evalId })
+      MongoEvalItem.countDocuments({ evalId: evaluation._id })
     ]);
 
     return { items, total };
   }
 
   static async startEvaluation(evalId: string, teamId: string): Promise<void> {
-    const evaluation = await this.getEvaluation(evalId);
-    if (String(evaluation.teamId) !== teamId) {
-      throw new Error('Evaluation not found');
-    }
+    const evaluation = await this.getEvaluation(evalId, teamId);
 
     if (evaluation.status !== EvaluationStatusEnum.queuing) {
       throw new Error('Only queuing evaluations can be started');
@@ -284,14 +281,11 @@ export class EvaluationTaskService {
       evalId: evalId
     });
 
-    addLog.info(`[Evaluation] Task submitted to queue: ${evalId}`);
+    addLog.debug(`[Evaluation] Task submitted to queue: ${evalId}`);
   }
 
   static async stopEvaluation(evalId: string, teamId: string): Promise<void> {
-    const evaluation = await this.getEvaluation(evalId);
-    if (String(evaluation.teamId) !== teamId) {
-      throw new Error('Evaluation not found');
-    }
+    const evaluation = await this.getEvaluation(evalId, teamId);
 
     if (
       ![EvaluationStatusEnum.evaluating, EvaluationStatusEnum.queuing].includes(evaluation.status)
@@ -329,7 +323,7 @@ export class EvaluationTaskService {
       }
     );
 
-    addLog.info(`[Evaluation] Task manually stopped and removed from queue: ${evalId}`);
+    addLog.debug(`[Evaluation] Task manually stopped and removed from queue: ${evalId}`);
   }
 
   static async getEvaluationStats(
@@ -343,13 +337,10 @@ export class EvaluationTaskService {
     error: number;
     avgScore?: number;
   }> {
-    const evaluation = await this.getEvaluation(evalId);
-    if (String(evaluation.teamId) !== teamId) {
-      throw new Error('Evaluation not found');
-    }
+    const evaluation = await this.getEvaluation(evalId, teamId);
 
     const stats = await MongoEvalItem.aggregate([
-      { $match: { evalId: evalId } },
+      { $match: { evalId: evaluation._id } },
       {
         $group: {
           _id: '$status',
@@ -388,7 +379,7 @@ export class EvaluationTaskService {
 
     // Count error items
     result.error = await MongoEvalItem.countDocuments({
-      evalId: evalId,
+      evalId: evaluation._id,
       errorMessage: { $ne: null }
     });
 
@@ -407,11 +398,7 @@ export class EvaluationTaskService {
       throw new Error('Evaluation item not found');
     }
 
-    // Validate access permission for evaluation task
-    const evaluation = await this.getEvaluation(item.evalId);
-    if (String(evaluation.teamId) !== teamId) {
-      throw new Error('Evaluation not found');
-    }
+    await this.getEvaluation(item.evalId, teamId);
 
     return item;
   }
@@ -470,19 +457,16 @@ export class EvaluationTaskService {
       evalItemId: itemId
     });
 
-    addLog.info(`[Evaluation] Evaluation item reset to queuing status and resubmitted: ${itemId}`);
+    addLog.debug(`[Evaluation] Evaluation item reset to queuing status and resubmitted: ${itemId}`);
   }
 
   static async retryFailedItems(evalId: string, teamId: string): Promise<number> {
-    const evaluation = await this.getEvaluation(evalId);
-    if (String(evaluation.teamId) !== teamId) {
-      throw new Error('Evaluation not found');
-    }
+    const evaluation = await this.getEvaluation(evalId, teamId);
 
     // Find items that need to be retried
     const itemsToRetry = await MongoEvalItem.find(
       {
-        evalId: evalId,
+        evalId: evaluation._id,
         $or: [
           // Items with failed status
           { status: EvaluationStatusEnum.error },
@@ -520,7 +504,7 @@ export class EvaluationTaskService {
     const jobs = itemsToRetry.map((item, index) => ({
       name: `eval_item_batch_retry_${evalId}_${index}`,
       data: {
-        evalId: evalId,
+        evalId: evaluation._id,
         evalItemId: item._id.toString()
       },
       opts: {
@@ -530,7 +514,7 @@ export class EvaluationTaskService {
 
     await evaluationItemQueue.addBulk(jobs);
 
-    addLog.info(
+    addLog.debug(
       `[Evaluation] Batch retry failed items: ${evalId}, affected count: ${itemsToRetry.length}`
     );
 
@@ -574,15 +558,12 @@ export class EvaluationTaskService {
     items: EvaluationItemDisplayType[];
     total: number;
   }> {
-    const evaluation = await this.getEvaluation(evalId);
-    if (String(evaluation.teamId) !== teamId) {
-      throw new Error('Evaluation not found');
-    }
+    const evaluation = await this.getEvaluation(evalId, teamId);
 
     const { status, hasError, scoreRange, keyword, page = 1, pageSize = 20 } = options;
 
     // Build query conditions
-    const filter: any = { evalId: evalId };
+    const filter: any = { evalId: evaluation._id };
 
     if (status !== undefined) {
       filter.status = status;
@@ -603,7 +584,7 @@ export class EvaluationTaskService {
         scoreFilter.$lte = scoreRange.max;
       }
       if (Object.keys(scoreFilter).length > 0) {
-        filter['evaluatorOutput?.data?.score'] = scoreFilter;
+        filter['evaluatorOutput.data.score'] = scoreFilter;
       }
     }
 
@@ -640,13 +621,14 @@ export class EvaluationTaskService {
     evalId: string,
     teamId: string,
     format: 'csv' | 'json' = 'json'
-  ): Promise<Buffer> {
-    const evaluation = await this.getEvaluation(evalId);
-    if (String(evaluation.teamId) !== teamId) {
-      throw new Error('Evaluation not found');
-    }
+  ): Promise<{ results: Buffer; total: number }> {
+    const evaluation = await this.getEvaluation(evalId, teamId);
 
-    const items = await MongoEvalItem.find({ evalId: evalId }).sort({ createTime: 1 }).lean();
+    const items = await MongoEvalItem.find({ evalId: evaluation._id })
+      .sort({ createTime: 1 })
+      .lean();
+
+    const total = items.length;
 
     if (format === 'json') {
       const results = items.map((item) => ({
@@ -662,11 +644,11 @@ export class EvaluationTaskService {
         finishTime: item.finishTime
       }));
 
-      return Buffer.from(JSON.stringify(results, null, 2));
+      return { results: Buffer.from(JSON.stringify(results, null, 2)), total };
     } else {
       // CSV format
       if (items.length === 0) {
-        return Buffer.from('');
+        return { results: Buffer.from(''), total: 0 };
       }
 
       const headers = [
@@ -696,7 +678,7 @@ export class EvaluationTaskService {
         csvRows.push(row.join(','));
       });
 
-      return Buffer.from(csvRows.join('\n'));
+      return { results: Buffer.from(csvRows.join('\n')), total };
     }
   }
 }

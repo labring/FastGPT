@@ -7,6 +7,7 @@ import type { EvaluationPermission } from '../../../support/permission/evaluatio
 // Evaluation target related types
 export interface WorkflowConfig {
   appId: string;
+  versionId?: string; // Optional app version ID, uses latest version if not specified
   chatConfig?: any;
 }
 

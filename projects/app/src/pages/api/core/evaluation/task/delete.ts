@@ -5,8 +5,9 @@ import type {
   DeleteEvaluationRequest,
   DeleteEvaluationResponse
 } from '@fastgpt/global/core/evaluation/api';
-import { addLog } from '@fastgpt/service/common/system/log';
 import { authEvaluationTaskWrite } from '@fastgpt/service/core/evaluation/common';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(
   req: ApiRequestProps<{}, DeleteEvaluationRequest>
@@ -18,7 +19,7 @@ async function handler(
       return Promise.reject('Evaluation ID is required');
     }
 
-    const { teamId } = await authEvaluationTaskWrite(evalId, {
+    const { teamId, tmbId, evaluation } = await authEvaluationTaskWrite(evalId, {
       req,
       authApiKey: true,
       authToken: true
@@ -26,16 +27,19 @@ async function handler(
 
     await EvaluationTaskService.deleteEvaluation(evalId, teamId);
 
-    addLog.info('[Evaluation] Evaluation task deleted successfully', {
-      evalId: evalId
-    });
+    (async () => {
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.DELETE_EVALUATION_TASK,
+        params: {
+          taskName: evaluation.name
+        }
+      });
+    })();
 
     return { message: 'Evaluation deleted successfully' };
   } catch (error) {
-    addLog.error('[Evaluation] Failed to delete evaluation task', {
-      evalId: req.query.evalId,
-      error
-    });
     return Promise.reject(error);
   }
 }

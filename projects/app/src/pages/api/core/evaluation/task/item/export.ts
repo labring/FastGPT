@@ -2,8 +2,9 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { EvaluationTaskService } from '@fastgpt/service/core/evaluation/task';
 import type { ExportEvaluationItemsRequest } from '@fastgpt/global/core/evaluation/api';
-import { addLog } from '@fastgpt/service/common/system/log';
 import { authEvaluationTaskRead } from '@fastgpt/service/core/evaluation/common';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(
   req: ApiRequestProps<{}, ExportEvaluationItemsRequest>,
@@ -20,13 +21,13 @@ async function handler(
       return Promise.reject('Format must be json or csv');
     }
 
-    const { teamId } = await authEvaluationTaskRead(evalId, {
+    const { teamId, tmbId, evaluation } = await authEvaluationTaskRead(evalId, {
       req,
       authApiKey: true,
       authToken: true
     });
 
-    const results = await EvaluationTaskService.exportEvaluationResults(
+    const { results, total } = await EvaluationTaskService.exportEvaluationResults(
       evalId,
       teamId,
       format as 'json' | 'csv'
@@ -40,20 +41,24 @@ async function handler(
       res.setHeader('Content-Disposition', `attachment; filename=evaluation-${evalId}.json`);
     }
 
-    addLog.info('[Evaluation] Evaluation items exported successfully', {
-      evalId,
-      format,
-      size: results.length
-    });
+    // Use total count for audit logging
+    const itemCount = total;
+    (async () => {
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.EXPORT_EVALUATION_TASK_ITEMS,
+        params: {
+          taskName: evaluation.name,
+          format,
+          itemCount
+        }
+      });
+    })();
 
     res.write(results);
     res.end();
   } catch (error) {
-    addLog.error('[Evaluation] Failed to export evaluation items', {
-      evalId: req.query?.evalId,
-      format: req.query?.format,
-      error
-    });
     return Promise.reject(error);
   }
 }

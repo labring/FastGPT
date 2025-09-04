@@ -5,7 +5,6 @@ import type {
   ListEvaluationItemsRequest,
   ListEvaluationItemsResponse
 } from '@fastgpt/global/core/evaluation/api';
-import { addLog } from '@fastgpt/service/common/system/log';
 import { authEvaluationTaskRead } from '@fastgpt/service/core/evaluation/common';
 
 async function handler(
@@ -42,23 +41,11 @@ async function handler(
       pageSizeInt
     );
 
-    addLog.info('[Evaluation] Evaluation items list query successful', {
-      evalId,
-      pageNum: pageNumInt,
-      pageSize: pageSizeInt,
-      total: result.total,
-      returned: result.items.length
-    });
-
     return {
       list: result.items,
       total: result.total
     };
   } catch (error) {
-    addLog.error('[Evaluation] Failed to query evaluation items list', {
-      evalId: req.body?.evalId,
-      error
-    });
     return Promise.reject(error);
   }
 }

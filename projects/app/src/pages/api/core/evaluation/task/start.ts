@@ -5,8 +5,9 @@ import type {
   StartEvaluationRequest,
   StartEvaluationResponse
 } from '@fastgpt/global/core/evaluation/api';
-import { addLog } from '@fastgpt/service/common/system/log';
 import { authEvaluationTaskExecution } from '@fastgpt/service/core/evaluation/common';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(
   req: ApiRequestProps<StartEvaluationRequest>
@@ -18,7 +19,7 @@ async function handler(
       return Promise.reject('Evaluation ID is required');
     }
 
-    const { teamId } = await authEvaluationTaskExecution(evalId, {
+    const { teamId, tmbId, evaluation } = await authEvaluationTaskExecution(evalId, {
       req,
       authApiKey: true,
       authToken: true
@@ -26,16 +27,19 @@ async function handler(
 
     await EvaluationTaskService.startEvaluation(evalId, teamId);
 
-    addLog.info('[Evaluation] Evaluation task started successfully', {
-      evalId
-    });
+    (async () => {
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.START_EVALUATION_TASK,
+        params: {
+          taskName: evaluation.name
+        }
+      });
+    })();
 
     return { message: 'Evaluation started successfully' };
   } catch (error) {
-    addLog.error('[Evaluation] Failed to start evaluation task', {
-      evalId: req.body?.evalId,
-      error
-    });
     return Promise.reject(error);
   }
 }
