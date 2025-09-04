@@ -21,6 +21,7 @@ async function handler(
   const {
     nodes = [],
     edges = [],
+    skipNodeQueue,
     variables = {},
     appId,
     query = [],
@@ -47,34 +48,34 @@ async function handler(
 
   // auth balance
   const { timezone, externalProvider } = await getUserChatInfoAndAuthTeamPoints(tmbId);
-  const lastInteractive = getLastInteractiveValue(history);
+  const interactive = getLastInteractiveValue(history);
 
   /* start process */
-  const { flowUsages, flowResponses, debugResponse, newVariables, workflowInteractiveResponse } =
-    await dispatchWorkFlow({
-      res,
-      lang: getLocale(req),
-      requestOrigin: req.headers.origin,
-      mode: 'debug',
-      timezone,
-      externalProvider,
-      uid: tmbId,
-      runningAppInfo: {
-        id: app._id,
-        teamId: app.teamId,
-        tmbId: app.tmbId
-      },
-      runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
-      runtimeNodes: nodes,
-      runtimeEdges: edges,
-      lastInteractive,
-      variables,
-      query: query,
-      chatConfig: defaultApp.chatConfig,
-      histories: history,
-      stream: false,
-      maxRunTimes: WORKFLOW_MAX_RUN_TIMES
-    });
+  const { flowUsages, debugResponse, newVariables } = await dispatchWorkFlow({
+    res,
+    lang: getLocale(req),
+    requestOrigin: req.headers.origin,
+    mode: 'debug',
+    timezone,
+    externalProvider,
+    uid: tmbId,
+    runningAppInfo: {
+      id: app._id,
+      teamId: app.teamId,
+      tmbId: app.tmbId
+    },
+    runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
+    runtimeNodes: nodes,
+    runtimeEdges: edges,
+    defaultSkipNodeQueue: skipNodeQueue,
+    lastInteractive: interactive,
+    variables,
+    query: query,
+    chatConfig: defaultApp.chatConfig,
+    histories: history,
+    stream: false,
+    maxRunTimes: WORKFLOW_MAX_RUN_TIMES
+  });
 
   createChatUsage({
     appName: `${app.name}-Debug`,
@@ -86,10 +87,8 @@ async function handler(
   });
 
   return {
-    ...debugResponse,
-    newVariables,
-    flowResponses,
-    workflowInteractiveResponse
+    ...debugResponse!,
+    newVariables
   };
 }
 

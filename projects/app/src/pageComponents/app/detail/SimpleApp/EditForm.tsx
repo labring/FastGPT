@@ -31,7 +31,6 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from './components/ToolSelect';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
@@ -148,7 +147,7 @@ const EditForm = ({
     },
     [appForm.aiSettings.systemPrompt, setAppForm]
   );
-
+  console.log(appForm.chatConfig.fileSelectConfig);
   return (
     <>
       <Box>
