@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { EvaluationTaskService } from '@fastgpt/service/core/evaluation/task';
 import type {
@@ -7,6 +7,8 @@ import type {
 } from '@fastgpt/global/core/evaluation/api';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { authEvaluationTaskExecution } from '@fastgpt/service/core/evaluation/common';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(
   req: ApiRequestProps<StopEvaluationRequest>
@@ -18,7 +20,7 @@ async function handler(
       return Promise.reject('Evaluation ID is required');
     }
 
-    const { teamId } = await authEvaluationTaskExecution(evalId, {
+    const { teamId, tmbId, evaluation } = await authEvaluationTaskExecution(evalId, {
       req,
       authApiKey: true,
       authToken: true
@@ -26,16 +28,19 @@ async function handler(
 
     await EvaluationTaskService.stopEvaluation(evalId, teamId);
 
-    addLog.info('[Evaluation] Evaluation task stopped successfully', {
-      evalId
-    });
+    (async () => {
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.STOP_EVALUATION_TASK,
+        params: {
+          taskName: evaluation.name
+        }
+      });
+    })();
 
     return { message: 'Evaluation stopped successfully' };
   } catch (error) {
-    addLog.error('[Evaluation] Failed to stop evaluation task', {
-      evalId: req.body?.evalId,
-      error
-    });
     return Promise.reject(error);
   }
 }

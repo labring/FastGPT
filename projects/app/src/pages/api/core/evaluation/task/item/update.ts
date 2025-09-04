@@ -8,8 +8,9 @@ import type {
   UpdateEvaluationItemRequest,
   UpdateEvaluationItemResponse
 } from '@fastgpt/global/core/evaluation/api';
-import { addLog } from '@fastgpt/service/common/system/log';
 import { authEvaluationItemWrite } from '@fastgpt/service/core/evaluation/common';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(
   req: ApiRequestProps<UpdateEvaluationItemRequest>
@@ -17,11 +18,14 @@ async function handler(
   try {
     const { evalItemId, userInput, expectedOutput, variables } = req.body;
 
-    const { teamId } = await authEvaluationItemWrite(evalItemId, {
-      req,
-      authApiKey: true,
-      authToken: true
-    });
+    const { evaluation, evaluationItem, teamId, tmbId } = await authEvaluationItemWrite(
+      evalItemId,
+      {
+        req,
+        authApiKey: true,
+        authToken: true
+      }
+    );
 
     if (!evalItemId) {
       return Promise.reject('Evaluation item ID is required');
@@ -44,17 +48,20 @@ async function handler(
 
     await EvaluationTaskService.updateEvaluationItem(evalItemId, updates, teamId);
 
-    addLog.info('[Evaluation] Evaluation item updated successfully', {
-      evalItemId,
-      updates: { userInput, expectedOutput, variables }
-    });
+    (async () => {
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.UPDATE_EVALUATION_TASK_ITEM,
+        params: {
+          taskName: evaluation.name,
+          itemId: String(evaluationItem._id)
+        }
+      });
+    })();
 
     return { message: 'Evaluation item updated successfully' };
   } catch (error) {
-    addLog.error('[Evaluation] Failed to update evaluation item', {
-      evalItemId: req.body?.evalItemId,
-      error
-    });
     return Promise.reject(error);
   }
 }

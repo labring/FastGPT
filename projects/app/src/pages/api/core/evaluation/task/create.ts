@@ -1,6 +1,5 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { addLog } from '@fastgpt/service/common/system/log';
 import { EvaluationTaskService } from '@fastgpt/service/core/evaluation/task';
 import type { EvalTarget } from '@fastgpt/global/core/evaluation/type';
 import type {
@@ -10,6 +9,8 @@ import type {
 import { validateTargetConfig } from '@fastgpt/service/core/evaluation/target';
 import { validateEvaluationParams } from '@fastgpt/global/core/evaluation/utils';
 import { authEvaluationTaskCreate } from '@fastgpt/service/core/evaluation/common';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(
   req: ApiRequestProps<CreateEvaluationRequest>
@@ -62,18 +63,22 @@ async function handler(
       tmbId
     });
 
-    addLog.info('[Evaluation] Evaluation task created successfully', {
-      evalId: evaluation._id,
-      name: evaluation.name,
-      datasetId,
-      targetType: target.type,
-      targetConfig: target.config,
-      evaluatorCount: evaluators.length
-    });
+    (async () => {
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.CREATE_EVALUATION_TASK,
+        params: {
+          taskName: evaluation.name,
+          datasetId,
+          targetType: target.type,
+          evaluatorCount: evaluators.length
+        }
+      });
+    })();
 
     return evaluation;
   } catch (error) {
-    addLog.error('[Evaluation] Failed to create evaluation task', error);
     return Promise.reject(error);
   }
 }

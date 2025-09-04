@@ -9,9 +9,17 @@ import { EvaluationPermission } from '@fastgpt/global/support/permission/evaluat
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 
-import { addLog } from '@fastgpt/service/common/system/log';
 import { getEvaluationPermissionAggregation } from '@fastgpt/service/core/evaluation/common';
 
+/*
+  Get evaluation task list permissions - based on app list implementation
+  1. Validate user permissions, get team permissions (owner handled separately)
+  2. Get all evaluation task permissions under team, get all my groups, and calculate all my permissions
+  3. Filter tasks I have permissions for, as well as tasks I created myself
+  4. Get task list based on filter conditions
+  5. Traverse searched tasks and assign permissions
+  6. Filter again based on read permissions
+*/
 async function handler(
   req: ApiRequestProps<ListEvaluationsRequest>
 ): Promise<ListEvaluationsResponse> {
@@ -80,12 +88,9 @@ async function handler(
 
         const getPrivateStatus = (evalId: string) => {
           const collaboratorCount = getClbCount(evalId);
-          // 参照app list逻辑：协作者数量 <= 1 且非团队owner时为私有
-          // 团队owner可以看到所有评估的协作状态
           if (isOwner) {
             return collaboratorCount <= 1;
           }
-          // 普通用户：无协作者或只有自己为私有
           return (
             collaboratorCount === 0 ||
             (collaboratorCount === 1 && String(evaluation.tmbId) === String(tmbId))
@@ -109,17 +114,8 @@ async function handler(
       total: result.total
     };
 
-    addLog.info('[Evaluation] Evaluation list query successful', {
-      pageNum: pageNumInt,
-      pageSize: pageSizeInt,
-      searchKey: searchKey?.trim(),
-      total: finalResult.total,
-      returned: finalResult.list.length
-    });
-
     return finalResult;
   } catch (error) {
-    addLog.error('[Evaluation] Failed to query evaluation list', error);
     return Promise.reject(error);
   }
 }
