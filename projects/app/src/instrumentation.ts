@@ -52,6 +52,13 @@ export async function register() {
       await Promise.all([getInitConfig(), initVectorStore(), initRootUser(), loadSystemModels()]);
 
       try {
+        const { initBuiltinMetrics } = await import('@/service/common/system');
+        await initBuiltinMetrics();
+      } catch (error) {
+        console.error('Init metrics error:', error);
+      }
+
+      try {
         await preLoadWorker();
       } catch (error) {
         console.error('Preload worker error', error);

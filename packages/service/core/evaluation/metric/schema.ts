@@ -2,57 +2,102 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
+import { EvalMetricTypeValues } from '@fastgpt/global/core/evaluation/metric/constants';
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
-import type { EvaluationMetricSchemaType } from '@fastgpt/global/core/evaluation/type';
+import type { EvalMetricSchemaType } from '@fastgpt/global/core/evaluation/metric/type';
+
 const { Schema } = connectionMongo;
 
-export const EvaluationMetricSchema = new Schema({
+export const EvalMetricCollectionName = 'eval_metrics';
+
+const EvalMetricSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
-    required: true,
-    index: true
+    required: true
   },
   tmbId: {
     type: Schema.Types.ObjectId,
     ref: TeamMemberCollectionName,
     required: true
   },
-  name: { type: String, required: true },
-  description: String,
-  type: { type: String, enum: ['ai_model'], required: true },
-  config: {
-    type: Schema.Types.Mixed,
+  name: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  description: {
+    type: String,
     required: false
   },
-  dependencies: {
-    type: [String],
-    enum: ['llm', 'embedding'],
-    default: [],
+  type: {
+    type: String,
+    enum: EvalMetricTypeValues,
+    required: true
+  },
+  prompt: {
+    type: String,
     required: false
   },
-  createTime: { type: Date, default: () => new Date() },
-  updateTime: { type: Date, default: () => new Date() }
+
+  userInputRequired: {
+    type: Boolean,
+    default: false
+  },
+
+  actualOutputRequired: {
+    type: Boolean,
+    default: false
+  },
+
+  expectedOutputRequired: {
+    type: Boolean,
+    default: false
+  },
+  contextRequired: {
+    type: Boolean,
+    default: false
+  },
+  retrievalContextRequired: {
+    type: Boolean,
+    default: false
+  },
+
+  embeddingRequired: {
+    type: Boolean,
+    default: false
+  },
+  llmRequired: {
+    type: Boolean,
+    default: false
+  },
+
+  createTime: {
+    type: Date,
+    required: true,
+    default: () => new Date()
+  },
+  updateTime: {
+    type: Date,
+    required: true,
+    default: () => new Date()
+  }
 });
 
-EvaluationMetricSchema.index({ teamId: 1, name: 1 });
-EvaluationMetricSchema.index({ type: 1 });
-EvaluationMetricSchema.index({ createTime: -1 });
+EvalMetricSchema.index({ teamId: 1, name: 1 });
+EvalMetricSchema.index({ createTime: -1 });
 
-// Automatically set updateTime on update
-EvaluationMetricSchema.pre('save', function (next) {
+EvalMetricSchema.pre('save', function (next) {
   this.updateTime = new Date();
   next();
 });
 
-EvaluationMetricSchema.pre(['updateOne', 'updateMany', 'findOneAndUpdate'], function (next) {
+EvalMetricSchema.pre(['updateOne', 'updateMany', 'findOneAndUpdate'], function (next) {
   this.set({ updateTime: new Date() });
   next();
 });
 
-export const EvalMetricCollectionName = 'eval_metrics';
-
-export const MongoEvalMetric = getMongoModel<EvaluationMetricSchemaType>(
+export const MongoEvalMetric = getMongoModel<EvalMetricSchemaType>(
   EvalMetricCollectionName,
-  EvaluationMetricSchema
+  EvalMetricSchema
 );

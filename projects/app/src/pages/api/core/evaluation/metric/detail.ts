@@ -1,42 +1,33 @@
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { EvaluationMetricService } from '@fastgpt/service/core/evaluation/metric';
-import type {
-  MetricDetailRequest,
-  MetricDetailResponse
-} from '@fastgpt/global/core/evaluation/api';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
-async function handler(
-  req: ApiRequestProps<{}, MetricDetailRequest>
-): Promise<MetricDetailResponse> {
-  try {
-    const { metricId } = req.query;
+type Query = { id: string };
 
-    if (!metricId) {
-      return Promise.reject('Metric ID is required');
-    }
+async function handler(req: ApiRequestProps<{}, Query>, res: ApiResponseType<any>) {
+  const { id } = req.query;
 
-    const metric = await EvaluationMetricService.getMetric(metricId, {
-      req,
-      authToken: true
-    });
-
-    addLog.info('[Evaluation Metric] Metric details retrieved successfully', {
-      metricId: metricId,
-      name: metric.name,
-      type: metric.type
-    });
-
-    return metric;
-  } catch (error) {
-    addLog.error('[Evaluation Metric] Failed to get metric details', {
-      metricId: req.query.metricId,
-      error
-    });
-    return Promise.reject(error);
+  if (!id) {
+    return Promise.reject('Missing required parameter: id');
   }
+
+  await authUserPer({
+    req,
+    authToken: true,
+    authApiKey: true,
+    per: ReadPermissionVal
+  });
+
+  const metric = await MongoEvalMetric.findById(id).lean();
+  if (!metric) {
+    return Promise.reject('Metric not found');
+  }
+
+  return metric;
 }
 
 export default NextAPI(handler);
+
 export { handler };
