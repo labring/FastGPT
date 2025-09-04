@@ -177,7 +177,7 @@ const MultipleRowSelector = ({
         renderList.find((item) => item.value === (modelData?.provider || 'Other')) ??
         renderList[renderList.length - 1];
 
-      provider.children.push({
+      provider?.children.push({
         label: modelData.name,
         value: modelData.model
       });
