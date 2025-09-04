@@ -12,9 +12,14 @@ vi.mock('@fastgpt/service/core/evaluation/task', () => ({
 
 vi.mock('@fastgpt/service/core/evaluation/common', () => ({
   authEvaluationTaskWrite: vi.fn().mockResolvedValue({
-    teamId: 'mock-team-id',
-    tmbId: 'mock-tmb-id'
+    evaluation: { name: 'Test Evaluation Task' },
+    teamId: new Types.ObjectId().toString(),
+    tmbId: new Types.ObjectId().toString()
   })
+}));
+
+vi.mock('@fastgpt/service/support/user/audit/util', () => ({
+  addAuditLog: vi.fn().mockResolvedValue(undefined)
 }));
 
 describe('Update Evaluation Task API Handler', () => {
@@ -24,6 +29,16 @@ describe('Update Evaluation Task API Handler', () => {
 
   test('应该成功更新评估任务', async () => {
     const evalId = new Types.ObjectId().toString();
+    const mockTeamId = new Types.ObjectId().toString();
+
+    // Update mock to return consistent teamId
+    const { authEvaluationTaskWrite } = await import('@fastgpt/service/core/evaluation/common');
+    (authEvaluationTaskWrite as any).mockResolvedValue({
+      evaluation: { name: 'Test Evaluation Task' },
+      teamId: mockTeamId,
+      tmbId: new Types.ObjectId().toString()
+    });
+
     const mockReq = {
       method: 'PUT',
       body: {
@@ -43,7 +58,7 @@ describe('Update Evaluation Task API Handler', () => {
         name: 'Updated Evaluation',
         description: 'Updated Description'
       }),
-      'mock-team-id'
+      mockTeamId
     );
     expect(result).toEqual({ message: 'Evaluation updated successfully' });
   });

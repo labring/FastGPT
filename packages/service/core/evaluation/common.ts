@@ -4,10 +4,23 @@ import { authEvaluation } from '../../support/permission/evaluation/auth';
 import { authEvalDataset, authEvalMetric } from '../../support/permission/evaluation/auth';
 import { authUserPer } from '../../support/permission/user/auth';
 import { TeamEvaluationCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
-import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import type { EvalTarget, EvaluationDetailType } from '@fastgpt/global/core/evaluation/type';
+import {
+  ReadPermissionVal,
+  WritePermissionVal,
+  PerResourceTypeEnum
+} from '@fastgpt/global/support/permission/constant';
+import type {
+  EvalTarget,
+  EvaluationDetailType,
+  EvaluationItemSchemaType
+} from '@fastgpt/global/core/evaluation/type';
 import { authApp } from '../../support/permission/app/auth';
 import { authDatasetCollection } from '../../support/permission/dataset/auth';
+import { MongoEvalItem } from './task/schema';
+import { MongoEvalDatasetData } from './dataset/evalDatasetDataSchema';
+import { MongoResourcePermission } from '../../support/permission/schema';
+import { getGroupsByTmbId } from '../../support/permission/memberGroup/controllers';
+import { getOrgIdSetWithParentByTmbId } from '../../support/permission/org/controllers';
 
 // Generic validation functions removed - replaced with resource-specific functions below
 export const buildListQuery = (
@@ -56,14 +69,6 @@ export const getEvaluationPermissionAggregation = async (
   myGroupMap: Map<string, 1>;
   myOrgSet: Set<string>;
 }> => {
-  const { authUserPer } = await import('../../support/permission/user/auth');
-  const { PerResourceTypeEnum, ReadPermissionVal } = await import(
-    '@fastgpt/global/support/permission/constant'
-  );
-  const { MongoResourcePermission } = await import('../../support/permission/schema');
-  const { getGroupsByTmbId } = await import('../../support/permission/memberGroup/controllers');
-  const { getOrgIdSetWithParentByTmbId } = await import('../../support/permission/org/controllers');
-
   // Auth user permission - 支持API Key和Token认证
   const {
     tmbId,
@@ -192,6 +197,7 @@ export const authEvaluationTaskExecution = async (
   evaluationId: string,
   auth: AuthModeType
 ): Promise<{
+  evaluation: EvaluationDetailType;
   teamId: string;
   tmbId: string;
 }> => {
@@ -215,6 +221,7 @@ export const authEvaluationTaskExecution = async (
   }
 
   return {
+    evaluation,
     teamId,
     tmbId
   };
@@ -229,23 +236,26 @@ export const authEvaluationItemRead = async (
   evalItemId: string,
   auth: AuthModeType
 ): Promise<{
+  evaluation: EvaluationDetailType;
+  evaluationItem: EvaluationItemSchemaType;
   teamId: string;
   tmbId: string;
-  evalItemId: string;
-  evalId: string;
 }> => {
-  const { MongoEvalItem } = await import('./task/schema');
-
-  // 根据evalItemId获取evalId
-  const evalItem = await MongoEvalItem.findById(evalItemId).select('evalId').lean();
-  if (!evalItem) {
+  // 根据evalItemId获取完整的evalItem信息
+  const evaluationItem = await MongoEvalItem.findById(evalItemId).lean();
+  if (!evaluationItem) {
     throw new Error('Evaluation item not found');
   }
 
-  // 验证评估任务的读权限
-  const { teamId, tmbId } = await authEvaluationTaskRead(evalItem.evalId, auth);
+  // 验证评估任务的读权限并获取evaluation
+  const { teamId, tmbId, evaluation } = await authEvaluationTaskRead(evaluationItem.evalId, auth);
 
-  return { teamId, tmbId, evalItemId, evalId: evalItem.evalId };
+  return {
+    evaluation,
+    evaluationItem,
+    teamId,
+    tmbId
+  };
 };
 
 /**
@@ -255,23 +265,26 @@ export const authEvaluationItemWrite = async (
   evalItemId: string,
   auth: AuthModeType
 ): Promise<{
+  evaluation: EvaluationDetailType;
+  evaluationItem: EvaluationItemSchemaType;
   teamId: string;
   tmbId: string;
-  evalItemId: string;
-  evalId: string;
 }> => {
-  const { MongoEvalItem } = await import('./task/schema');
-
-  // 根据evalItemId获取evalId
-  const evalItem = await MongoEvalItem.findById(evalItemId).select('evalId').lean();
-  if (!evalItem) {
+  // 根据evalItemId获取完整的evalItem信息
+  const evaluationItem = await MongoEvalItem.findById(evalItemId).lean();
+  if (!evaluationItem) {
     throw new Error('Evaluation item not found');
   }
 
-  // 验证评估任务的写权限
-  const { teamId, tmbId } = await authEvaluationTaskWrite(evalItem.evalId, auth);
+  // 验证评估任务的写权限并获取evaluation
+  const { teamId, tmbId, evaluation } = await authEvaluationTaskWrite(evaluationItem.evalId, auth);
 
-  return { teamId, tmbId, evalItemId, evalId: evalItem.evalId };
+  return {
+    evaluation,
+    evaluationItem,
+    teamId,
+    tmbId
+  };
 };
 
 /**
@@ -281,10 +294,10 @@ export const authEvaluationItemRetry = async (
   evalItemId: string,
   auth: AuthModeType
 ): Promise<{
+  evaluation: EvaluationDetailType;
+  evaluationItem: EvaluationItemSchemaType;
   teamId: string;
   tmbId: string;
-  evalItemId: string;
-  evalId: string;
 }> => {
   // 重试权限等同于写入权限
   return await authEvaluationItemWrite(evalItemId, auth);
@@ -532,13 +545,10 @@ export const authEvaluationDatasetDataUpdateById = async (
   tmbId: string;
   collectionId: string;
 }> => {
-  const { MongoEvalDatasetData } = await import('./dataset/evalDatasetDataSchema');
-  const { EvaluationErrEnum } = await import('@fastgpt/global/common/error/code/evaluation');
-
   // 根据dataId获取collectionId
   const dataItem = await MongoEvalDatasetData.findById(dataId).select('datasetId').lean();
   if (!dataItem) {
-    return Promise.reject(EvaluationErrEnum.evalDatasetDataNotFound);
+    throw new Error('Dataset data not found');
   }
 
   // 使用collectionId进行权限验证

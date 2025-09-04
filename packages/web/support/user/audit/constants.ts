@@ -532,6 +532,97 @@ export const auditLogMap = {
       recordCount?: number;
     }
   },
+  //Evaluation Task
+  [AuditEventEnum.CREATE_EVALUATION_TASK]: {
+    content: i18nT('account_team:log_create_evaluation_task'),
+    typeLabel: i18nT('account_team:create_evaluation_task'),
+    params: {} as {
+      name?: string;
+      taskName: string;
+      datasetId: string;
+      targetType: string;
+      evaluatorCount: number;
+    }
+  },
+  [AuditEventEnum.UPDATE_EVALUATION_TASK]: {
+    content: i18nT('account_team:log_update_evaluation_task'),
+    typeLabel: i18nT('account_team:update_evaluation_task'),
+    params: {} as {
+      name?: string;
+      taskName: string;
+    }
+  },
+  [AuditEventEnum.DELETE_EVALUATION_TASK]: {
+    content: i18nT('account_team:log_delete_evaluation_task'),
+    typeLabel: i18nT('account_team:delete_evaluation_task'),
+    params: {} as {
+      name?: string;
+      taskName: string;
+    }
+  },
+  [AuditEventEnum.START_EVALUATION_TASK]: {
+    content: i18nT('account_team:log_start_evaluation_task'),
+    typeLabel: i18nT('account_team:start_evaluation_task'),
+    params: {} as {
+      name?: string;
+      taskName: string;
+    }
+  },
+  [AuditEventEnum.STOP_EVALUATION_TASK]: {
+    content: i18nT('account_team:log_stop_evaluation_task'),
+    typeLabel: i18nT('account_team:stop_evaluation_task'),
+    params: {} as {
+      name?: string;
+      taskName: string;
+    }
+  },
+  [AuditEventEnum.RETRY_EVALUATION_TASK]: {
+    content: i18nT('account_team:log_retry_evaluation_task'),
+    typeLabel: i18nT('account_team:retry_evaluation_task'),
+    params: {} as {
+      name?: string;
+      taskName: string;
+      retryCount: number;
+    }
+  },
+  //Evaluation Task Item
+  [AuditEventEnum.DELETE_EVALUATION_TASK_ITEM]: {
+    content: i18nT('account_team:log_delete_evaluation_task_item'),
+    typeLabel: i18nT('account_team:delete_evaluation_task_item'),
+    params: {} as {
+      name?: string;
+      taskName: string;
+      itemId: string;
+    }
+  },
+  [AuditEventEnum.UPDATE_EVALUATION_TASK_ITEM]: {
+    content: i18nT('account_team:log_update_evaluation_task_item'),
+    typeLabel: i18nT('account_team:update_evaluation_task_item'),
+    params: {} as {
+      name?: string;
+      taskName: string;
+      itemId: string;
+    }
+  },
+  [AuditEventEnum.RETRY_EVALUATION_TASK_ITEM]: {
+    content: i18nT('account_team:log_retry_evaluation_task_item'),
+    typeLabel: i18nT('account_team:retry_evaluation_task_item'),
+    params: {} as {
+      name?: string;
+      taskName: string;
+      itemId: string;
+    }
+  },
+  [AuditEventEnum.EXPORT_EVALUATION_TASK_ITEMS]: {
+    content: i18nT('account_team:log_export_evaluation_task_items'),
+    typeLabel: i18nT('account_team:export_evaluation_task_items'),
+    params: {} as {
+      name?: string;
+      taskName: string;
+      format: string;
+      itemCount: number;
+    }
+  },
   //SearchTest
   [AuditEventEnum.SEARCH_TEST]: {
     content: i18nT('account_team:log_search_test'),

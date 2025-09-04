@@ -180,7 +180,7 @@ const finishEvaluationTask = async (evalId: string) => {
       }
     );
 
-    addLog.info(
+    addLog.debug(
       `[Evaluation] Task completed: ${evalId}, status: ${taskStatus}, total: ${totalCount}, ` +
         `success: ${completedCount}, failed: ${errorCount}, avg score: ${avgScore ? avgScore.toFixed(2) : 'N/A'}`
     );
@@ -255,7 +255,7 @@ const handleEvalItemError = async (evalItemId: string, evalId: string, error: an
       }
     );
 
-    addLog.info(
+    addLog.debug(
       `[Evaluation] Item requeued for retry: ${evalItemId}, remaining: ${newRetryCount}, delay: ${retryDelay}ms`
     );
   } else {
@@ -299,7 +299,7 @@ const createMergedEvaluationUsage = async (params: {
 const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
   const { evalId } = job.data;
 
-  addLog.info(`[Evaluation] Start processing evaluation task: ${evalId}`);
+  addLog.debug(`[Evaluation] Start processing evaluation task: ${evalId}`);
 
   try {
     // Get evaluation task information
@@ -331,7 +331,7 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
     // Check if evaluation items already exist (reentrant handling)
     const existingItems = await MongoEvalItem.find({ evalId }).lean();
     if (existingItems.length > 0) {
-      addLog.info(`[Evaluation] Task already has ${existingItems.length} items, resuming...`);
+      addLog.debug(`[Evaluation] Task already has ${existingItems.length} items, resuming...`);
 
       // Re-submit unfinished items to queue
       const pendingItems = existingItems.filter(
@@ -353,7 +353,7 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
         }));
 
         await evaluationItemQueue.addBulk(jobs);
-        addLog.info(`[Evaluation] Resumed ${jobs.length} pending items`);
+        addLog.debug(`[Evaluation] Resumed ${jobs.length} pending items`);
       }
       return;
     }
@@ -375,7 +375,7 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
 
     // Batch insert evaluation items
     const insertedItems = await MongoEvalItem.insertMany(evalItems);
-    addLog.info(`[Evaluation] Created ${insertedItems.length} atomic evaluation items`);
+    addLog.debug(`[Evaluation] Created ${insertedItems.length} atomic evaluation items`);
 
     // Submit to evaluation item queue for concurrent processing
     const jobs = insertedItems.map((item, index) => ({
@@ -391,7 +391,7 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
 
     await evaluationItemQueue.addBulk(jobs);
 
-    addLog.info(
+    addLog.debug(
       `[Evaluation] Task decomposition completed: ${evalId}, submitted ${jobs.length} evaluation items to queue`
     );
   } catch (error) {
@@ -446,15 +446,15 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
 
     // Resume from checkpoint if partially completed
     if (evalItem.status === EvaluationStatusEnum.evaluating) {
-      if (evalItem.evaluatorOutput) {
-        addLog.info(`[Evaluation] Item already completed evaluator: ${evalItemId}`);
+      if (evalItem.evaluatorOutput?.data?.score) {
+        addLog.debug(`[Evaluation] Item already completed evaluator: ${evalItemId}`);
         return; // Already completed, nothing to do
-      } else if (evalItem.targetOutput) {
-        addLog.info(`[Evaluation] Resuming from evaluator: ${evalItemId}`);
+      } else if (evalItem.targetOutput?.actualOutput) {
+        addLog.debug(`[Evaluation] Resuming from evaluator: ${evalItemId}`);
         targetOutput = evalItem.targetOutput;
         shouldExecuteTarget = false;
       } else {
-        addLog.info(`[Evaluation] Restarting item: ${evalItemId}`);
+        addLog.debug(`[Evaluation] Restarting item: ${evalItemId}`);
       }
     }
 

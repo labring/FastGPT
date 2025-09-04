@@ -183,33 +183,11 @@ export const EvaluationItemSchema = new Schema({
   // Execution results
   targetOutput: {
     type: Schema.Types.Mixed,
-    validate: {
-      validator: function (output: any) {
-        if (!output) return true; // Optional field
-        return (
-          typeof output.actualOutput === 'string' &&
-          typeof output.responseTime === 'number' &&
-          (!output.retrievalContext || Array.isArray(output.retrievalContext)) &&
-          (!output.usage || typeof output.usage === 'object')
-        );
-      },
-      message: 'targetOutput must conform to TargetOutput type'
-    }
+    default: {}
   },
   evaluatorOutput: {
     type: Schema.Types.Mixed,
-    validate: {
-      validator: function (output: any) {
-        if (!output) return true; // Optional field
-        return (
-          typeof output.metricId === 'string' &&
-          typeof output.metricName === 'string' &&
-          typeof output.score === 'number' &&
-          (!output.details || typeof output.details === 'object')
-        );
-      },
-      message: 'evaluatorOutput must conform to MetricResult type'
-    }
+    default: {}
   },
   status: {
     type: Number,

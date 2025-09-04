@@ -5,8 +5,9 @@ import type {
   DeleteEvaluationItemRequest,
   DeleteEvaluationItemResponse
 } from '@fastgpt/global/core/evaluation/api';
-import { addLog } from '@fastgpt/service/common/system/log';
 import { authEvaluationItemWrite } from '@fastgpt/service/core/evaluation/common';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(
   req: ApiRequestProps<{}, DeleteEvaluationItemRequest>
@@ -18,24 +19,31 @@ async function handler(
       return Promise.reject('Evaluation item ID is required');
     }
 
-    const { teamId } = await authEvaluationItemWrite(evalItemId, {
-      req,
-      authApiKey: true,
-      authToken: true
-    });
+    const { evaluation, evaluationItem, teamId, tmbId } = await authEvaluationItemWrite(
+      evalItemId,
+      {
+        req,
+        authApiKey: true,
+        authToken: true
+      }
+    );
 
     await EvaluationTaskService.deleteEvaluationItem(evalItemId, teamId);
 
-    addLog.info('[Evaluation] Evaluation item deleted successfully', {
-      evalItemId
-    });
+    (async () => {
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.DELETE_EVALUATION_TASK_ITEM,
+        params: {
+          taskName: evaluation.name,
+          itemId: String(evaluationItem._id)
+        }
+      });
+    })();
 
     return { message: 'Evaluation item deleted successfully' };
   } catch (error) {
-    addLog.error('[Evaluation] Failed to delete evaluation item', {
-      evalItemId: req.query?.evalItemId,
-      error
-    });
     return Promise.reject(error);
   }
 }

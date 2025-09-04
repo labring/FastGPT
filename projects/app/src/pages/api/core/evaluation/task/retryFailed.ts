@@ -1,12 +1,13 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { EvaluationTaskService } from '@fastgpt/service/core/evaluation/task';
-import { addLog } from '@fastgpt/service/common/system/log';
 import type {
   RetryFailedEvaluationItemsRequest,
   RetryFailedItemsResponse
 } from '@fastgpt/global/core/evaluation/api';
 import { authEvaluationTaskWrite } from '@fastgpt/service/core/evaluation/common';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(
   req: ApiRequestProps<RetryFailedEvaluationItemsRequest>
@@ -18,7 +19,7 @@ async function handler(
       return Promise.reject('Evaluation ID is required');
     }
 
-    const { teamId } = await authEvaluationTaskWrite(evalId, {
+    const { teamId, tmbId, evaluation } = await authEvaluationTaskWrite(evalId, {
       req,
       authApiKey: true,
       authToken: true
@@ -26,20 +27,23 @@ async function handler(
 
     const retryCount = await EvaluationTaskService.retryFailedItems(evalId, teamId);
 
-    addLog.info('[Evaluation] Failed items retry batch started successfully', {
-      evalId,
-      retryCount
-    });
+    (async () => {
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.RETRY_EVALUATION_TASK,
+        params: {
+          taskName: evaluation.name,
+          retryCount
+        }
+      });
+    })();
 
     return {
       message: 'Failed items retry started successfully',
       retryCount
     };
   } catch (error) {
-    addLog.error('[Evaluation] Failed to retry failed items batch', {
-      evalId: req.body?.evalId,
-      error
-    });
     return Promise.reject(error);
   }
 }
