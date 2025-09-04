@@ -1,12 +1,11 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import type { createEvalDatasetCollectionBody } from '@fastgpt/global/core/evaluation/dataset/api';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { authEvaluationDatasetCreate } from '@fastgpt/service/core/evaluation/common';
 
 export type EvalDatasetCollectionCreateQuery = {};
 export type EvalDatasetCollectionCreateBody = createEvalDatasetCollectionBody;
@@ -16,6 +15,13 @@ async function handler(
   req: ApiRequestProps<EvalDatasetCollectionCreateBody, EvalDatasetCollectionCreateQuery>
 ): Promise<EvalDatasetCollectionCreateResponse> {
   const { name, description = '' } = req.body;
+
+  // Authentication and authorization
+  const { teamId, tmbId } = await authEvaluationDatasetCreate({
+    req,
+    authApiKey: true,
+    authToken: true
+  });
 
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return Promise.reject('Name is required and must be a non-empty string');
@@ -32,14 +38,6 @@ async function handler(
   if (description && description.length > 100) {
     return Promise.reject('Description must be less than 100 characters');
   }
-
-  // Authentication and authorization
-  const { teamId, tmbId } = await authUserPer({
-    req,
-    authToken: true,
-    authApiKey: true,
-    per: WritePermissionVal
-  });
 
   // Check for name conflicts within team
   const existingDataset = await MongoEvalDatasetCollection.findOne({

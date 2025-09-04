@@ -6,6 +6,8 @@ import type {
   GetEvaluationSummaryQuery,
   EvaluationSummaryResponse
 } from '@fastgpt/global/core/evaluation/summary/api';
+import { authEvaluationTaskRead } from '@fastgpt/service/core/evaluation/common';
+
 async function handler(
   req: ApiRequestProps<{}, GetEvaluationSummaryQuery>
 ): Promise<EvaluationSummaryResponse> {
@@ -17,11 +19,15 @@ async function handler(
       return Promise.reject('Evaluation task ID is required');
     }
 
-    // Get evaluation summary report
-    const result = await EvaluationSummaryService.getEvaluationSummary(evalId, {
+    
+    await authEvaluationTaskRead(evalId, {
       req,
+      authApiKey: true,
       authToken: true
     });
+
+    // Get evaluation summary report
+    const result = await EvaluationSummaryService.getEvaluationSummary(evalId);
 
     addLog.info('[Evaluation] Evaluation summary report query successful', {
       evalId,

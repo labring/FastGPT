@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler } from '@/pages/api/core/evaluation/metric/update';
 import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/constants';
+import { authEvalMetric } from '@fastgpt/service/support/permission/evaluation/auth';
+import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 import type { UpdateMetricBody } from '@fastgpt/global/core/evaluation/metric/api';
 
 // Mock dependencies
@@ -12,8 +12,8 @@ vi.mock('@fastgpt/service/core/evaluation/metric/schema', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
-  authUserPer: vi.fn()
+vi.mock('@fastgpt/service/support/permission/evaluation/auth', () => ({
+  authEvalMetric: vi.fn()
 }));
 
 describe('/api/core/evaluation/metric/update', () => {
@@ -28,13 +28,13 @@ describe('/api/core/evaluation/metric/update', () => {
 
   it('should update a custom metric successfully with all fields', async () => {
     // Mock auth response
-    vi.mocked(authUserPer).mockResolvedValue({
+    vi.mocked(authEvalMetric).mockResolvedValue({
       userId: mockUserId,
       teamId: mockTeamId,
       tmbId: mockTmbId,
       isRoot: false,
       permission: {} as any,
-      tmb: {} as any
+      metric: {} as any
     });
 
     // Mock metric found - custom type
@@ -62,16 +62,27 @@ describe('/api/core/evaluation/metric/update', () => {
         name: 'Updated Metric',
         description: 'Updated Description',
         prompt: 'Updated Prompt'
-      } as UpdateMetricBody
+      } as UpdateMetricBody,
+      auth: {
+        userId: mockUserId,
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
     const result = await handler(req as any, {} as any);
 
     // Verify auth was called correctly
-    expect(authUserPer).toHaveBeenCalledWith({
+    expect(authEvalMetric).toHaveBeenCalledWith({
       req,
       authToken: true,
       authApiKey: true,
+      metricId: mockMetricId,
       per: expect.any(Number)
     });
 
@@ -94,13 +105,13 @@ describe('/api/core/evaluation/metric/update', () => {
 
   it('should update a custom metric with partial fields', async () => {
     // Mock auth response
-    vi.mocked(authUserPer).mockResolvedValue({
+    vi.mocked(authEvalMetric).mockResolvedValue({
       userId: mockUserId,
       teamId: mockTeamId,
       tmbId: mockTmbId,
       isRoot: false,
       permission: {} as any,
-      tmb: {} as any
+      metric: {} as any
     });
 
     // Mock metric found - custom type
@@ -125,7 +136,17 @@ describe('/api/core/evaluation/metric/update', () => {
         id: mockMetricId,
         name: 'Updated Metric Only'
         // description and prompt not provided
-      } as UpdateMetricBody
+      } as UpdateMetricBody,
+      auth: {
+        userId: mockUserId,
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
     const result = await handler(req as any, {} as any);
@@ -145,42 +166,72 @@ describe('/api/core/evaluation/metric/update', () => {
   });
 
   it('should reject when id is missing', async () => {
+    // Mock auth to fail due to missing id
+    vi.mocked(authEvalMetric).mockRejectedValue(new Error('Evaluation metric ID is required'));
+
     const req = {
       body: {
         name: 'Test Metric'
-      } as UpdateMetricBody
+      } as UpdateMetricBody,
+      auth: {
+        userId: mockUserId,
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
-    await expect(handler(req as any, {} as any)).rejects.toBe('Missing required parameter: id');
+    await expect(handler(req as any, {} as any)).rejects.toThrow(
+      'Evaluation metric ID is required'
+    );
 
-    // Verify no auth or database calls were made
-    expect(authUserPer).not.toHaveBeenCalled();
+    // Auth should be called but database should not
+    expect(authEvalMetric).toHaveBeenCalled();
     expect(MongoEvalMetric.findById).not.toHaveBeenCalled();
   });
 
   it('should reject when id is empty string', async () => {
+    // Mock auth to fail due to empty id
+    vi.mocked(authEvalMetric).mockRejectedValue(new Error('Evaluation metric ID is required'));
+
     const req = {
       body: {
         id: '',
         name: 'Test Metric'
-      } as UpdateMetricBody
+      } as UpdateMetricBody,
+      auth: {
+        userId: mockUserId,
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
-    await expect(handler(req as any, {} as any)).rejects.toBe('Missing required parameter: id');
+    await expect(handler(req as any, {} as any)).rejects.toThrow(
+      'Evaluation metric ID is required'
+    );
 
-    expect(authUserPer).not.toHaveBeenCalled();
+    expect(authEvalMetric).toHaveBeenCalled();
     expect(MongoEvalMetric.findById).not.toHaveBeenCalled();
   });
 
   it('should reject when metric is not found', async () => {
     // Mock auth response
-    vi.mocked(authUserPer).mockResolvedValue({
+    vi.mocked(authEvalMetric).mockResolvedValue({
       userId: mockUserId,
       teamId: mockTeamId,
       tmbId: mockTmbId,
       isRoot: false,
       permission: {} as any,
-      tmb: {} as any
+      metric: {} as any
     });
 
     // Mock metric not found
@@ -190,24 +241,34 @@ describe('/api/core/evaluation/metric/update', () => {
       body: {
         id: mockMetricId,
         name: 'Test Metric'
-      } as UpdateMetricBody
+      } as UpdateMetricBody,
+      auth: {
+        userId: mockUserId,
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
     await expect(handler(req as any, {} as any)).rejects.toBe('Metric not found');
 
-    expect(authUserPer).toHaveBeenCalled();
+    expect(authEvalMetric).toHaveBeenCalled();
     expect(MongoEvalMetric.findById).toHaveBeenCalledWith(mockMetricId);
   });
 
   it('should reject when trying to update builtin metric', async () => {
     // Mock auth response
-    vi.mocked(authUserPer).mockResolvedValue({
+    vi.mocked(authEvalMetric).mockResolvedValue({
       userId: mockUserId,
       teamId: mockTeamId,
       tmbId: mockTmbId,
       isRoot: false,
       permission: {} as any,
-      tmb: {} as any
+      metric: {} as any
     });
 
     // Mock metric found - builtin type
@@ -223,41 +284,61 @@ describe('/api/core/evaluation/metric/update', () => {
       body: {
         id: mockMetricId,
         name: 'Updated Builtin Metric'
-      } as UpdateMetricBody
+      } as UpdateMetricBody,
+      auth: {
+        userId: mockUserId,
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
     await expect(handler(req as any, {} as any)).rejects.toBe('Builtin metric cannot be modified');
 
-    expect(authUserPer).toHaveBeenCalled();
+    expect(authEvalMetric).toHaveBeenCalled();
     expect(MongoEvalMetric.findById).toHaveBeenCalledWith(mockMetricId);
     expect(mockMetric.save).not.toHaveBeenCalled();
   });
 
   it('should handle auth failure', async () => {
     const authError = new Error('Authentication failed');
-    vi.mocked(authUserPer).mockRejectedValue(authError);
+    vi.mocked(authEvalMetric).mockRejectedValue(authError);
 
     const req = {
       body: {
         id: mockMetricId,
         name: 'Test Metric'
-      } as UpdateMetricBody
+      } as UpdateMetricBody,
+      auth: {
+        userId: mockUserId,
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
     await expect(handler(req as any, {} as any)).rejects.toThrow('Authentication failed');
 
-    expect(authUserPer).toHaveBeenCalled();
+    expect(authEvalMetric).toHaveBeenCalled();
     expect(MongoEvalMetric.findById).not.toHaveBeenCalled();
   });
 
   it('should handle database findById failure', async () => {
-    vi.mocked(authUserPer).mockResolvedValue({
+    vi.mocked(authEvalMetric).mockResolvedValue({
       userId: mockUserId,
       teamId: mockTeamId,
       tmbId: mockTmbId,
       isRoot: false,
       permission: {} as any,
-      tmb: {} as any
+      metric: {} as any
     });
 
     const dbError = new Error('Database query failed');
@@ -267,23 +348,33 @@ describe('/api/core/evaluation/metric/update', () => {
       body: {
         id: mockMetricId,
         name: 'Test Metric'
-      } as UpdateMetricBody
+      } as UpdateMetricBody,
+      auth: {
+        userId: mockUserId,
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
     await expect(handler(req as any, {} as any)).rejects.toThrow('Database query failed');
 
-    expect(authUserPer).toHaveBeenCalled();
+    expect(authEvalMetric).toHaveBeenCalled();
     expect(MongoEvalMetric.findById).toHaveBeenCalledWith(mockMetricId);
   });
 
   it('should handle database save failure', async () => {
-    vi.mocked(authUserPer).mockResolvedValue({
+    vi.mocked(authEvalMetric).mockResolvedValue({
       userId: mockUserId,
       teamId: mockTeamId,
       tmbId: mockTmbId,
       isRoot: false,
       permission: {} as any,
-      tmb: {} as any
+      metric: {} as any
     });
 
     const mockMetric = {
@@ -305,25 +396,35 @@ describe('/api/core/evaluation/metric/update', () => {
       body: {
         id: mockMetricId,
         name: 'Updated Metric'
-      } as UpdateMetricBody
+      } as UpdateMetricBody,
+      auth: {
+        userId: mockUserId,
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
     await expect(handler(req as any, {} as any)).rejects.toThrow('Database save failed');
 
-    expect(authUserPer).toHaveBeenCalled();
+    expect(authEvalMetric).toHaveBeenCalled();
     expect(MongoEvalMetric.findById).toHaveBeenCalledWith(mockMetricId);
     expect(mockMetric.save).toHaveBeenCalled();
   });
 
   it('should handle empty update fields gracefully', async () => {
     // Mock auth response
-    vi.mocked(authUserPer).mockResolvedValue({
+    vi.mocked(authEvalMetric).mockResolvedValue({
       userId: mockUserId,
       teamId: mockTeamId,
       tmbId: mockTmbId,
       isRoot: false,
       permission: {} as any,
-      tmb: {} as any
+      metric: {} as any
     });
 
     // Mock metric found - custom type
@@ -344,7 +445,17 @@ describe('/api/core/evaluation/metric/update', () => {
       body: {
         id: mockMetricId
         // No name, description, or prompt provided
-      } as UpdateMetricBody
+      } as UpdateMetricBody,
+      auth: {
+        userId: mockUserId,
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
     const result = await handler(req as any, {} as any);

@@ -1,28 +1,20 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler_test } from '@/pages/api/core/evaluation/dataset/data/list';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { authEvaluationDatasetDataRead } from '@fastgpt/service/core/evaluation/common';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
-import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { Types } from '@fastgpt/service/common/mongo';
 import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
 
-vi.mock('@fastgpt/service/support/permission/user/auth');
+vi.mock('@fastgpt/service/core/evaluation/common');
 vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema', () => ({
   MongoEvalDatasetData: {
     aggregate: vi.fn(),
     countDocuments: vi.fn()
   }
 }));
-vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
-  MongoEvalDatasetCollection: {
-    findOne: vi.fn()
-  }
-}));
 
-const mockAuthUserPer = vi.mocked(authUserPer);
+const mockAuthEvaluationDatasetDataRead = vi.mocked(authEvaluationDatasetDataRead);
 const mockMongoEvalDatasetData = vi.mocked(MongoEvalDatasetData);
-const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
 
 describe('EvalDatasetData List API', () => {
   const validTeamId = '65f5b5b5b5b5b5b5b5b5b5b0';
@@ -59,15 +51,11 @@ describe('EvalDatasetData List API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockAuthUserPer.mockResolvedValue({
+    mockAuthEvaluationDatasetDataRead.mockResolvedValue({
       teamId: validTeamId,
-      tmbId: validTmbId
+      tmbId: validTmbId,
+      collectionId: validCollectionId
     });
-
-    mockMongoEvalDatasetCollection.findOne.mockResolvedValue({
-      _id: validCollectionId,
-      teamId: validTeamId
-    } as any);
 
     mockMongoEvalDatasetData.aggregate.mockResolvedValue(mockDataItems);
     mockMongoEvalDatasetData.countDocuments.mockResolvedValue(2);
@@ -108,49 +96,37 @@ describe('EvalDatasetData List API', () => {
   });
 
   describe('Authentication and Authorization', () => {
-    it('should call authUserPer with correct parameters', async () => {
+    it('should call authEvaluationDatasetDataRead with correct parameters', async () => {
       const req = {
         body: { collectionId: validCollectionId, pageNum: 1, pageSize: 10 }
       };
 
       await handler_test(req as any);
 
-      expect(mockAuthUserPer).toHaveBeenCalledWith({
+      expect(mockAuthEvaluationDatasetDataRead).toHaveBeenCalledWith(validCollectionId, {
         req,
         authToken: true,
-        authApiKey: true,
-        per: ReadPermissionVal
+        authApiKey: true
       });
     });
 
     it('should propagate authentication errors', async () => {
       const authError = new Error('Authentication failed');
-      mockAuthUserPer.mockRejectedValue(authError);
+      mockAuthEvaluationDatasetDataRead.mockRejectedValue(authError);
 
       const req = {
         body: { collectionId: validCollectionId, pageNum: 1, pageSize: 10 }
       };
 
-      await expect(handler_test(req as any)).rejects.toBe(authError);
+      await expect(handler_test(req as any)).rejects.toThrow('Authentication failed');
     });
   });
 
   describe('Collection Validation', () => {
-    it('should verify collection exists and belongs to team', async () => {
-      const req = {
-        body: { collectionId: validCollectionId, pageNum: 1, pageSize: 10 }
-      };
-
-      await handler_test(req as any);
-
-      expect(mockMongoEvalDatasetCollection.findOne).toHaveBeenCalledWith({
-        _id: new Types.ObjectId(validCollectionId),
-        teamId: new Types.ObjectId(validTeamId)
-      });
-    });
-
     it('should reject when collection does not exist', async () => {
-      mockMongoEvalDatasetCollection.findOne.mockResolvedValue(null);
+      mockAuthEvaluationDatasetDataRead.mockRejectedValue(
+        new Error('Collection not found or access denied')
+      );
 
       const req = {
         body: { collectionId: validCollectionId, pageNum: 1, pageSize: 10 }
@@ -162,7 +138,9 @@ describe('EvalDatasetData List API', () => {
     });
 
     it('should reject when collection belongs to different team', async () => {
-      mockMongoEvalDatasetCollection.findOne.mockResolvedValue(null);
+      mockAuthEvaluationDatasetDataRead.mockRejectedValue(
+        new Error('Collection not found or access denied')
+      );
 
       const req = {
         body: { collectionId: validCollectionId, pageNum: 1, pageSize: 10 }
@@ -651,15 +629,15 @@ describe('EvalDatasetData List API', () => {
       await expect(handler_test(req as any)).rejects.toBe(dbError);
     });
 
-    it('should handle collection findOne errors', async () => {
+    it('should handle collection access errors', async () => {
       const dbError = new Error('Collection query failed');
-      mockMongoEvalDatasetCollection.findOne.mockRejectedValue(dbError);
+      mockAuthEvaluationDatasetDataRead.mockRejectedValue(dbError);
 
       const req = {
         body: { collectionId: validCollectionId, pageNum: 1, pageSize: 10 }
       };
 
-      await expect(handler_test(req as any)).rejects.toBe(dbError);
+      await expect(handler_test(req as any)).rejects.toThrow('Collection query failed');
     });
   });
 

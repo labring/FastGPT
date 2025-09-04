@@ -1,7 +1,5 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { Types } from '@fastgpt/service/common/mongo';
 import type {
@@ -9,18 +7,18 @@ import type {
   listFailedTasksResponse
 } from '@fastgpt/global/core/evaluation/dataset/api';
 import { evalDatasetDataSynthesizeQueue } from '@fastgpt/service/core/evaluation/dataset/dataSynthesizeMq';
+import { authEvaluationDatasetRead } from '@fastgpt/service/core/evaluation/common';
 
 async function handler(
   req: ApiRequestProps<listFailedTasksBody, {}>
 ): Promise<listFailedTasksResponse> {
-  const { teamId } = await authUserPer({
-    req,
-    authToken: true,
-    authApiKey: true,
-    per: ReadPermissionVal
-  });
-
   const { collectionId } = req.body;
+
+  const { teamId } = await authEvaluationDatasetRead(collectionId, {
+    req,
+    authApiKey: true,
+    authToken: true
+  });
 
   const collection = await MongoEvalDatasetCollection.findOne({
     _id: new Types.ObjectId(collectionId),

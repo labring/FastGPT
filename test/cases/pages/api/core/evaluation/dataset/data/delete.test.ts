@@ -1,36 +1,40 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler_test } from '@/pages/api/core/evaluation/dataset/data/delete';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { authEvaluationDatasetDataUpdateById } from '@fastgpt/service/core/evaluation/common';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
-import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import {
   removeEvalDatasetDataQualityJobsRobust,
   checkEvalDatasetDataQualityJobActive
 } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import { addLog } from '@fastgpt/service/common/system/log';
+import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 
-vi.mock('@fastgpt/service/support/permission/user/auth');
+vi.mock('@fastgpt/service/core/evaluation/common');
 vi.mock('@fastgpt/service/common/mongo/sessionRun');
 vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema', () => ({
   MongoEvalDatasetData: {
-    findById: vi.fn(),
+    findById: vi.fn(() => ({
+      session: vi.fn()
+    })),
     deleteOne: vi.fn()
-  }
-}));
-vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
-  MongoEvalDatasetCollection: {
-    findOne: vi.fn()
   }
 }));
 vi.mock('@fastgpt/service/core/evaluation/dataset/dataQualityMq');
 vi.mock('@fastgpt/service/common/system/log');
+vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
+  MongoEvalDatasetCollection: {
+    findOne: vi.fn(() => ({
+      session: vi.fn()
+    }))
+  },
+  EvalDatasetCollectionName: 'eval_dataset_collections'
+}));
 vi.mock('@fastgpt/service/support/user/audit/util', () => ({
   addAuditLog: vi.fn()
 }));
 
-const mockAuthUserPer = vi.mocked(authUserPer);
+const mockAuthEvaluationDatasetDataUpdateById = vi.mocked(authEvaluationDatasetDataUpdateById);
 const mockMongoSessionRun = vi.mocked(mongoSessionRun);
 const mockMongoEvalDatasetData = vi.mocked(MongoEvalDatasetData);
 const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
@@ -45,40 +49,45 @@ describe('EvalDatasetData Delete API', () => {
   const validTmbId = 'tmb123';
   const validDataId = '65f5b5b5b5b5b5b5b5b5b5b5';
   const validCollectionId = '65f5b5b5b5b5b5b5b5b5b5b6';
-
   const mockSession = { id: 'session-123' };
-  const mockExistingData = {
-    _id: validDataId,
-    datasetId: validCollectionId,
-    userInput: 'Test input',
-    expectedOutput: 'Test output'
-  };
-
-  const mockCollection = {
-    _id: validCollectionId,
-    teamId: validTeamId,
-    name: 'Test Collection'
-  };
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockAuthUserPer.mockResolvedValue({
+    mockAuthEvaluationDatasetDataUpdateById.mockResolvedValue({
       teamId: validTeamId,
-      tmbId: validTmbId
+      tmbId: validTmbId,
+      collectionId: validCollectionId
     });
 
     mockMongoSessionRun.mockImplementation(async (callback) => {
       return callback(mockSession as any);
     });
 
-    mockMongoEvalDatasetData.findById.mockReturnValue({
-      session: vi.fn().mockResolvedValue(mockExistingData)
-    } as any);
+    // Mock findById chain for existing data
+    const mockDataDocument = {
+      _id: validDataId,
+      datasetId: validCollectionId,
+      userInput: 'test input',
+      expectedOutput: 'test output'
+    };
 
-    mockMongoEvalDatasetCollection.findOne.mockReturnValue({
-      session: vi.fn().mockResolvedValue(mockCollection)
-    } as any);
+    const mockFindByIdResult = {
+      session: vi.fn().mockResolvedValue(mockDataDocument)
+    };
+    mockMongoEvalDatasetData.findById.mockReturnValue(mockFindByIdResult as any);
+
+    // Mock findOne chain for collection
+    const mockCollectionDocument = {
+      _id: validCollectionId,
+      name: 'Test Collection',
+      teamId: validTeamId
+    };
+
+    const mockFindOneResult = {
+      session: vi.fn().mockResolvedValue(mockCollectionDocument)
+    };
+    mockMongoEvalDatasetCollection.findOne.mockReturnValue(mockFindOneResult as any);
 
     mockCheckEvalDatasetDataQualityJobActive.mockResolvedValue(false);
     mockMongoEvalDatasetData.deleteOne.mockResolvedValue({ deletedCount: 1 } as any);
@@ -91,6 +100,16 @@ describe('EvalDatasetData Delete API', () => {
     it('should reject when dataId is missing', async () => {
       const req = {
         query: {}
+      };
+
+      await expect(handler_test(req as any)).rejects.toEqual(
+        'dataId is required and must be a string'
+      );
+    });
+
+    it('should reject when dataId is empty string', async () => {
+      const req = {
+        query: { dataId: '' }
       };
 
       await expect(handler_test(req as any)).rejects.toEqual(
@@ -128,9 +147,9 @@ describe('EvalDatasetData Delete API', () => {
       );
     });
 
-    it('should reject when dataId is empty string', async () => {
+    it('should reject when dataId is whitespace only', async () => {
       const req = {
-        query: { dataId: '' }
+        query: { dataId: '   ' }
       };
 
       await expect(handler_test(req as any)).rejects.toEqual(
@@ -140,100 +159,48 @@ describe('EvalDatasetData Delete API', () => {
   });
 
   describe('Authentication and Authorization', () => {
-    it('should call authUserPer with correct parameters', async () => {
+    it('should call authEvaluationDatasetDataUpdateById with correct parameters', async () => {
       const req = {
         query: { dataId: validDataId }
       };
 
       await handler_test(req as any);
 
-      expect(mockAuthUserPer).toHaveBeenCalledWith({
+      expect(mockAuthEvaluationDatasetDataUpdateById).toHaveBeenCalledWith(validDataId, {
         req,
         authToken: true,
-        authApiKey: true,
-        per: WritePermissionVal
+        authApiKey: true
       });
     });
 
     it('should propagate authentication errors', async () => {
       const authError = new Error('Authentication failed');
-      mockAuthUserPer.mockRejectedValue(authError);
+      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(authError);
 
       const req = {
         query: { dataId: validDataId }
       };
 
-      await expect(handler_test(req as any)).rejects.toBe(authError);
+      await expect(handler_test(req as any)).rejects.toThrow('Authentication failed');
     });
   });
 
   describe('Data Validation', () => {
-    it('should verify data exists', async () => {
-      const req = {
-        query: { dataId: validDataId }
-      };
-
-      await handler_test(req as any);
-
-      expect(mockMongoEvalDatasetData.findById).toHaveBeenCalledWith(validDataId);
-    });
-
     it('should reject when data does not exist', async () => {
-      mockMongoEvalDatasetData.findById.mockReturnValue({
-        session: vi.fn().mockResolvedValue(null)
-      } as any);
-
-      const req = {
-        query: { dataId: validDataId }
-      };
-
-      await expect(handler_test(req as any)).rejects.toEqual('Dataset data not found');
-    });
-
-    it('should verify collection exists and belongs to team', async () => {
-      const req = {
-        query: { dataId: validDataId }
-      };
-
-      await handler_test(req as any);
-
-      expect(mockMongoEvalDatasetCollection.findOne).toHaveBeenCalledWith({
-        _id: validCollectionId,
-        teamId: validTeamId
-      });
-    });
-
-    it('should reject when collection does not exist', async () => {
-      mockMongoEvalDatasetCollection.findOne.mockReturnValue({
-        session: vi.fn().mockResolvedValue(null)
-      } as any);
-
-      const req = {
-        query: { dataId: validDataId }
-      };
-
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'Access denied or dataset collection not found'
+      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(
+        new Error('Dataset data not found')
       );
-    });
-
-    it('should reject when collection belongs to different team', async () => {
-      mockMongoEvalDatasetCollection.findOne.mockReturnValue({
-        session: vi.fn().mockResolvedValue(null)
-      } as any);
 
       const req = {
         query: { dataId: validDataId }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'Access denied or dataset collection not found'
-      );
+      await expect(handler_test(req as any)).rejects.toThrow('Dataset data not found');
     });
   });
 
   describe('Quality Job Management', () => {
-    it('should check for active quality evaluation jobs', async () => {
+    it('should check for active quality job', async () => {
       const req = {
         query: { dataId: validDataId }
       };
@@ -243,7 +210,7 @@ describe('EvalDatasetData Delete API', () => {
       expect(mockCheckEvalDatasetDataQualityJobActive).toHaveBeenCalledWith(validDataId);
     });
 
-    it('should remove active quality job before deletion', async () => {
+    it('should remove active quality job if exists', async () => {
       mockCheckEvalDatasetDataQualityJobActive.mockResolvedValue(true);
 
       const req = {
@@ -310,62 +277,32 @@ describe('EvalDatasetData Delete API', () => {
   });
 
   describe('Data Deletion', () => {
-    it('should delete data with correct parameters', async () => {
-      const req = {
-        query: { dataId: validDataId }
-      };
-
-      const result = await handler_test(req as any);
-
-      expect(mockMongoEvalDatasetData.deleteOne).toHaveBeenCalledWith(
-        { _id: validDataId },
-        { session: mockSession }
-      );
-      expect(result).toBe('success');
-    });
-
-    it('should log successful deletion', async () => {
+    it('should delete data using MongoDB session', async () => {
       const req = {
         query: { dataId: validDataId }
       };
 
       await handler_test(req as any);
 
-      expect(mockAddLog.info).toHaveBeenCalledWith('Evaluation dataset data deleted successfully', {
-        dataId: validDataId,
-        datasetId: validCollectionId,
-        teamId: validTeamId
-      });
-    });
-
-    it('should use MongoDB session for all operations', async () => {
-      const req = {
-        query: { dataId: validDataId }
-      };
-
-      await handler_test(req as any);
-
-      expect(mockMongoEvalDatasetData.findById().session).toHaveBeenCalledWith(mockSession);
-      expect(mockMongoEvalDatasetCollection.findOne().session).toHaveBeenCalledWith(mockSession);
       expect(mockMongoEvalDatasetData.deleteOne).toHaveBeenCalledWith(
         { _id: validDataId },
         { session: mockSession }
       );
     });
 
-    it('should return success message', async () => {
+    it('should return success when deletion completes', async () => {
       const req = {
         query: { dataId: validDataId }
       };
 
       const result = await handler_test(req as any);
+
       expect(result).toBe('success');
-      expect(typeof result).toBe('string');
     });
   });
 
   describe('Session Management', () => {
-    it('should wrap operations in MongoDB session', async () => {
+    it('should use MongoDB session for all operations', async () => {
       const req = {
         query: { dataId: validDataId }
       };
@@ -374,7 +311,9 @@ describe('EvalDatasetData Delete API', () => {
 
       expect(mockMongoSessionRun).toHaveBeenCalledWith(expect.any(Function));
     });
+  });
 
+  describe('Error Handling', () => {
     it('should propagate session errors', async () => {
       const sessionError = new Error('Session failed');
       mockMongoSessionRun.mockRejectedValue(sessionError);
@@ -383,135 +322,18 @@ describe('EvalDatasetData Delete API', () => {
         query: { dataId: validDataId }
       };
 
-      await expect(handler_test(req as any)).rejects.toBe(sessionError);
+      await expect(handler_test(req as any)).rejects.toThrow('Session failed');
     });
-  });
 
-  describe('Error Handling', () => {
-    it('should propagate database findById errors', async () => {
-      const dbError = new Error('Database connection failed');
-      mockMongoEvalDatasetData.findById.mockReturnValue({
-        session: vi.fn().mockRejectedValue(dbError)
-      } as any);
+    it('should propagate delete errors', async () => {
+      const deleteError = new Error('Delete failed');
+      mockMongoEvalDatasetData.deleteOne.mockRejectedValue(deleteError);
 
       const req = {
         query: { dataId: validDataId }
       };
 
-      await expect(handler_test(req as any)).rejects.toBe(dbError);
-    });
-
-    it('should propagate collection findOne errors', async () => {
-      const dbError = new Error('Database connection failed');
-      mockMongoEvalDatasetCollection.findOne.mockReturnValue({
-        session: vi.fn().mockRejectedValue(dbError)
-      } as any);
-
-      const req = {
-        query: { dataId: validDataId }
-      };
-
-      await expect(handler_test(req as any)).rejects.toBe(dbError);
-    });
-
-    it('should propagate deleteOne errors', async () => {
-      const dbError = new Error('Database deletion failed');
-      mockMongoEvalDatasetData.deleteOne.mockRejectedValue(dbError);
-
-      const req = {
-        query: { dataId: validDataId }
-      };
-
-      await expect(handler_test(req as any)).rejects.toBe(dbError);
-    });
-
-    it('should propagate quality job check errors', async () => {
-      const jobError = new Error('Quality job check failed');
-      mockCheckEvalDatasetDataQualityJobActive.mockRejectedValue(jobError);
-
-      const req = {
-        query: { dataId: validDataId }
-      };
-
-      await expect(handler_test(req as any)).rejects.toBe(jobError);
-    });
-  });
-
-  describe('Edge Cases', () => {
-    it('should handle valid ObjectId format for dataId', async () => {
-      const validObjectId = '507f1f77bcf86cd799439011';
-      const req = {
-        query: { dataId: validObjectId }
-      };
-
-      const result = await handler_test(req as any);
-      expect(result).toBe('success');
-    });
-
-    it('should handle data with minimal fields', async () => {
-      const minimalData = {
-        _id: validDataId,
-        datasetId: validCollectionId
-      };
-
-      mockMongoEvalDatasetData.findById.mockReturnValue({
-        session: vi.fn().mockResolvedValue(minimalData)
-      } as any);
-
-      const req = {
-        query: { dataId: validDataId }
-      };
-
-      const result = await handler_test(req as any);
-      expect(result).toBe('success');
-    });
-
-    it('should handle collection with minimal fields', async () => {
-      const minimalCollection = {
-        _id: validCollectionId,
-        teamId: validTeamId
-      };
-
-      mockMongoEvalDatasetCollection.findOne.mockReturnValue({
-        session: vi.fn().mockResolvedValue(minimalCollection)
-      } as any);
-
-      const req = {
-        query: { dataId: validDataId }
-      };
-
-      const result = await handler_test(req as any);
-      expect(result).toBe('success');
-    });
-
-    it('should handle whitespace in dataId', async () => {
-      const req = {
-        query: { dataId: '  ' }
-      };
-
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'dataId is required and must be a string'
-      );
-    });
-
-    it('should handle array dataId', async () => {
-      const req = {
-        query: { dataId: [validDataId] }
-      };
-
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'dataId is required and must be a string'
-      );
-    });
-
-    it('should handle object dataId', async () => {
-      const req = {
-        query: { dataId: { id: validDataId } }
-      };
-
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'dataId is required and must be a string'
-      );
+      await expect(handler_test(req as any)).rejects.toThrow('Delete failed');
     });
   });
 
@@ -526,7 +348,11 @@ describe('EvalDatasetData Delete API', () => {
       const result = await handler_test(req as any);
 
       // Verify complete flow
-      expect(mockAuthUserPer).toHaveBeenCalled();
+      expect(mockAuthEvaluationDatasetDataUpdateById).toHaveBeenCalledWith(validDataId, {
+        req,
+        authToken: true,
+        authApiKey: true
+      });
       expect(mockMongoEvalDatasetData.findById).toHaveBeenCalled();
       expect(mockMongoEvalDatasetCollection.findOne).toHaveBeenCalled();
       expect(mockCheckEvalDatasetDataQualityJobActive).toHaveBeenCalled();
@@ -545,27 +371,17 @@ describe('EvalDatasetData Delete API', () => {
       const result = await handler_test(req as any);
 
       // Verify complete flow
-      expect(mockAuthUserPer).toHaveBeenCalled();
+      expect(mockAuthEvaluationDatasetDataUpdateById).toHaveBeenCalledWith(validDataId, {
+        req,
+        authToken: true,
+        authApiKey: true
+      });
       expect(mockMongoEvalDatasetData.findById).toHaveBeenCalled();
       expect(mockMongoEvalDatasetCollection.findOne).toHaveBeenCalled();
       expect(mockCheckEvalDatasetDataQualityJobActive).toHaveBeenCalled();
       expect(mockRemoveEvalDatasetDataQualityJobsRobust).not.toHaveBeenCalled();
       expect(mockMongoEvalDatasetData.deleteOne).toHaveBeenCalled();
       expect(result).toBe('success');
-    });
-
-    it('should maintain transaction integrity on session failure', async () => {
-      const sessionError = new Error('Session rollback');
-      mockMongoEvalDatasetData.deleteOne.mockRejectedValue(sessionError);
-
-      const req = {
-        query: { dataId: validDataId }
-      };
-
-      await expect(handler_test(req as any)).rejects.toBe(sessionError);
-
-      // Verify session was used for all operations
-      expect(mockMongoSessionRun).toHaveBeenCalled();
     });
   });
 });

@@ -1,7 +1,5 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
@@ -9,6 +7,7 @@ import type { smartGenerateEvalDatasetBody } from '@fastgpt/global/core/evaluati
 import { addEvalDatasetSmartGenerateJob } from '@fastgpt/service/core/evaluation/dataset/smartGenerateMq';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { authEvaluationDatasetGenFromKnowledgeBase } from '@fastgpt/service/core/evaluation/common';
 
 export type SmartGenerateEvalDatasetQuery = {};
 export type SmartGenerateEvalDatasetBody = smartGenerateEvalDatasetBody;
@@ -18,6 +17,16 @@ async function handler(
   req: ApiRequestProps<SmartGenerateEvalDatasetBody, SmartGenerateEvalDatasetQuery>
 ): Promise<SmartGenerateEvalDatasetResponse> {
   const { collectionId, datasetCollectionIds, count, intelligentGenerationModel } = req.body;
+
+  const { teamId, tmbId } = await authEvaluationDatasetGenFromKnowledgeBase(
+    collectionId,
+    datasetCollectionIds,
+    {
+      req,
+      authToken: true,
+      authApiKey: true
+    }
+  );
 
   // Parameter validation
   if (!collectionId || typeof collectionId !== 'string') {
@@ -35,13 +44,6 @@ async function handler(
   if (!intelligentGenerationModel || typeof intelligentGenerationModel !== 'string') {
     return Promise.reject('intelligentGenerationModel is required and must be a string');
   }
-
-  const { teamId, tmbId } = await authUserPer({
-    req,
-    authToken: true,
-    authApiKey: true,
-    per: WritePermissionVal
-  });
 
   const evalDatasetCollection = await MongoEvalDatasetCollection.findById(collectionId);
   if (!evalDatasetCollection) {

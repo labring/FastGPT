@@ -3,17 +3,10 @@ import type {
   EvaluationSchemaType,
   EvaluationItemSchemaType,
   CreateEvaluationParams,
-  EvaluationDisplayType,
   EvaluationItemDisplayType
 } from '@fastgpt/global/core/evaluation/type';
-import type { AuthModeType } from '../../../support/permission/type';
-import {
-  validateResourceAccess,
-  validateResourceCreate,
-  validateListAccess,
-  checkUpdateResult,
-  checkDeleteResult
-} from '../common';
+import { checkUpdateResult, checkDeleteResult } from '../common';
+import { Types } from 'mongoose';
 import { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 import {
   evaluationTaskQueue,
@@ -28,10 +21,12 @@ import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 
 export class EvaluationTaskService {
   static async createEvaluation(
-    params: CreateEvaluationParams,
-    auth: AuthModeType
+    params: CreateEvaluationParams & {
+      teamId: string;
+      tmbId: string;
+    }
   ): Promise<EvaluationSchemaType> {
-    const { teamId, tmbId } = await validateResourceCreate(auth);
+    const { teamId, tmbId, ...evaluationParams } = params;
 
     // Check AI Points balance
     await checkTeamAIPoints(teamId);
@@ -40,12 +35,12 @@ export class EvaluationTaskService {
     const { billId } = await createTrainingUsage({
       teamId,
       tmbId,
-      appName: params.name,
+      appName: evaluationParams.name,
       billSource: UsageSourceEnum.evaluation
     });
 
     const evaluation = await MongoEvaluation.create({
-      ...params,
+      ...evaluationParams,
       teamId,
       tmbId,
       usageId: billId,
@@ -56,44 +51,38 @@ export class EvaluationTaskService {
     return evaluation.toObject();
   }
 
-  static async getEvaluation(evalId: string, auth: AuthModeType): Promise<EvaluationSchemaType> {
-    const { resourceFilter, notFoundError } = await validateResourceAccess(
-      evalId,
-      auth,
-      'Evaluation'
-    );
-
-    const evaluation = await MongoEvaluation.findOne(resourceFilter).lean();
-
+  static async getEvaluation(evalId: string): Promise<EvaluationSchemaType> {
+    const evaluation = await MongoEvaluation.findOne({ _id: new Types.ObjectId(evalId) }).lean();
     if (!evaluation) {
-      throw new Error(notFoundError);
+      throw new Error('Evaluation not found');
     }
-
     return evaluation;
   }
 
   static async updateEvaluation(
     evalId: string,
     updates: Partial<CreateEvaluationParams>,
-    auth: AuthModeType
+    teamId: string
   ): Promise<void> {
-    const { resourceFilter } = await validateResourceAccess(evalId, auth, 'Evaluation');
-
-    const result = await MongoEvaluation.updateOne(resourceFilter, { $set: updates });
+    const result = await MongoEvaluation.updateOne(
+      { _id: new Types.ObjectId(evalId), teamId: new Types.ObjectId(teamId) },
+      { $set: updates }
+    );
 
     checkUpdateResult(result, 'Evaluation');
   }
 
-  static async deleteEvaluation(evalId: string, auth: AuthModeType): Promise<void> {
-    const { resourceFilter } = await validateResourceAccess(evalId, auth, 'Evaluation');
-
+  static async deleteEvaluation(evalId: string, teamId: string): Promise<void> {
     // Remove related tasks from queue to prevent further processing
     await Promise.all([removeEvaluationTaskJob(evalId), removeEvaluationItemJobs(evalId)]);
 
     // Delete all evaluation items for this evaluation task
     await MongoEvalItem.deleteMany({ evalId: evalId });
 
-    const result = await MongoEvaluation.deleteOne(resourceFilter);
+    const result = await MongoEvaluation.deleteOne({
+      _id: new Types.ObjectId(evalId),
+      teamId: new Types.ObjectId(teamId)
+    });
 
     checkDeleteResult(result, 'Evaluation');
 
@@ -101,19 +90,44 @@ export class EvaluationTaskService {
   }
 
   static async listEvaluations(
-    auth: AuthModeType,
+    teamId: string,
     page: number = 1,
     pageSize: number = 20,
-    searchKey?: string
+    searchKey?: string,
+    accessibleIds?: string[],
+    tmbId?: string,
+    isOwner: boolean = false
   ): Promise<{
-    evaluations: EvaluationDisplayType[];
+    list: any[];
     total: number;
   }> {
-    const { filter, skip, limit, sort } = await validateListAccess(auth, searchKey, page, pageSize);
+    // Build basic filter and pagination
+    const filter: any = { teamId: new Types.ObjectId(teamId) };
+    if (searchKey) {
+      filter.$or = [
+        { name: { $regex: searchKey, $options: 'i' } },
+        { description: { $regex: searchKey, $options: 'i' } }
+      ];
+    }
+    const skip = (page - 1) * pageSize;
+    const limit = pageSize;
+    const sort = { createTime: -1 as const };
+
+    // If not owner, filter by accessible resources
+    let finalFilter = filter;
+    if (!isOwner && accessibleIds) {
+      finalFilter = {
+        ...filter,
+        $or: [
+          { _id: { $in: accessibleIds.map((id) => new Types.ObjectId(id)) } },
+          ...(tmbId ? [{ tmbId: new Types.ObjectId(tmbId) }] : []) // Own evaluations
+        ]
+      };
+    }
 
     const [evaluations, total] = await Promise.all([
       MongoEvaluation.aggregate([
-        { $match: filter },
+        { $match: finalFilter },
         {
           $lookup: {
             from: 'eval_datasets',
@@ -196,29 +210,37 @@ export class EvaluationTaskService {
             executorAvatar: 1,
             totalCount: 1,
             completedCount: 1,
-            errorCount: 1
+            errorCount: 1,
+            tmbId: 1
           }
         },
         { $sort: sort },
         { $skip: skip },
         { $limit: limit }
       ]),
-      MongoEvaluation.countDocuments(filter)
+      MongoEvaluation.countDocuments(finalFilter)
     ]);
 
-    return { evaluations, total };
+    // Return raw data - permissions will be handled in API layer
+    return {
+      list: evaluations,
+      total
+    };
   }
 
   static async listEvaluationItems(
     evalId: string,
-    auth: AuthModeType,
+    teamId: string,
     page: number = 1,
     pageSize: number = 20
   ): Promise<{
     items: EvaluationItemDisplayType[];
     total: number;
   }> {
-    await this.getEvaluation(evalId, auth);
+    const evaluation = await this.getEvaluation(evalId);
+    if (String(evaluation.teamId) !== teamId) {
+      throw new Error('Evaluation not found');
+    }
 
     const skip = (page - 1) * pageSize;
     const limit = pageSize;
@@ -241,8 +263,11 @@ export class EvaluationTaskService {
     return { items, total };
   }
 
-  static async startEvaluation(evalId: string, auth: AuthModeType): Promise<void> {
-    const evaluation = await this.getEvaluation(evalId, auth);
+  static async startEvaluation(evalId: string, teamId: string): Promise<void> {
+    const evaluation = await this.getEvaluation(evalId);
+    if (String(evaluation.teamId) !== teamId) {
+      throw new Error('Evaluation not found');
+    }
 
     if (evaluation.status !== EvaluationStatusEnum.queuing) {
       throw new Error('Only queuing evaluations can be started');
@@ -250,7 +275,7 @@ export class EvaluationTaskService {
 
     // Update status to processing
     await MongoEvaluation.updateOne(
-      { _id: evalId },
+      { _id: new Types.ObjectId(evalId) },
       { $set: { status: EvaluationStatusEnum.evaluating } }
     );
 
@@ -262,8 +287,11 @@ export class EvaluationTaskService {
     addLog.info(`[Evaluation] Task submitted to queue: ${evalId}`);
   }
 
-  static async stopEvaluation(evalId: string, auth: AuthModeType): Promise<void> {
-    const evaluation = await this.getEvaluation(evalId, auth);
+  static async stopEvaluation(evalId: string, teamId: string): Promise<void> {
+    const evaluation = await this.getEvaluation(evalId);
+    if (String(evaluation.teamId) !== teamId) {
+      throw new Error('Evaluation not found');
+    }
 
     if (
       ![EvaluationStatusEnum.evaluating, EvaluationStatusEnum.queuing].includes(evaluation.status)
@@ -276,7 +304,7 @@ export class EvaluationTaskService {
 
     // Update status to error (manually stopped)
     await MongoEvaluation.updateOne(
-      { _id: evalId },
+      { _id: new Types.ObjectId(evalId) },
       {
         $set: {
           status: EvaluationStatusEnum.error,
@@ -289,7 +317,7 @@ export class EvaluationTaskService {
     // Stop all related evaluation items
     await MongoEvalItem.updateMany(
       {
-        evalId: evalId,
+        evalId: new Types.ObjectId(evalId),
         status: { $in: [EvaluationStatusEnum.queuing, EvaluationStatusEnum.evaluating] }
       },
       {
@@ -306,7 +334,7 @@ export class EvaluationTaskService {
 
   static async getEvaluationStats(
     evalId: string,
-    auth: AuthModeType
+    teamId: string
   ): Promise<{
     total: number;
     completed: number;
@@ -315,7 +343,10 @@ export class EvaluationTaskService {
     error: number;
     avgScore?: number;
   }> {
-    await this.getEvaluation(evalId, auth);
+    const evaluation = await this.getEvaluation(evalId);
+    if (String(evaluation.teamId) !== teamId) {
+      throw new Error('Evaluation not found');
+    }
 
     const stats = await MongoEvalItem.aggregate([
       { $match: { evalId: evalId } },
@@ -368,7 +399,7 @@ export class EvaluationTaskService {
 
   static async getEvaluationItem(
     itemId: string,
-    auth: AuthModeType
+    teamId: string
   ): Promise<EvaluationItemSchemaType> {
     const item = await MongoEvalItem.findById(itemId).lean();
 
@@ -377,7 +408,10 @@ export class EvaluationTaskService {
     }
 
     // Validate access permission for evaluation task
-    await this.getEvaluation(item.evalId, auth);
+    const evaluation = await this.getEvaluation(item.evalId);
+    if (String(evaluation.teamId) !== teamId) {
+      throw new Error('Evaluation not found');
+    }
 
     return item;
   }
@@ -385,25 +419,25 @@ export class EvaluationTaskService {
   static async updateEvaluationItem(
     itemId: string,
     updates: Partial<EvaluationItemSchemaType>,
-    auth: AuthModeType
+    teamId: string
   ): Promise<void> {
-    await this.getEvaluationItem(itemId, auth);
+    await this.getEvaluationItem(itemId, teamId);
 
     const result = await MongoEvalItem.updateOne({ _id: itemId }, { $set: updates });
 
     checkUpdateResult(result, 'Evaluation item');
   }
 
-  static async deleteEvaluationItem(itemId: string, auth: AuthModeType): Promise<void> {
-    await this.getEvaluationItem(itemId, auth);
+  static async deleteEvaluationItem(itemId: string, teamId: string): Promise<void> {
+    await this.getEvaluationItem(itemId, teamId);
 
     const result = await MongoEvalItem.deleteOne({ _id: itemId });
 
     checkDeleteResult(result, 'Evaluation item');
   }
 
-  static async retryEvaluationItem(itemId: string, auth: AuthModeType): Promise<void> {
-    const item = await this.getEvaluationItem(itemId, auth);
+  static async retryEvaluationItem(itemId: string, teamId: string): Promise<void> {
+    const item = await this.getEvaluationItem(itemId, teamId);
 
     // Only completed evaluation items without errors cannot be retried
     if (item.status === EvaluationStatusEnum.completed && !item.errorMessage) {
@@ -439,8 +473,11 @@ export class EvaluationTaskService {
     addLog.info(`[Evaluation] Evaluation item reset to queuing status and resubmitted: ${itemId}`);
   }
 
-  static async retryFailedItems(evalId: string, auth: AuthModeType): Promise<number> {
-    await this.getEvaluation(evalId, auth);
+  static async retryFailedItems(evalId: string, teamId: string): Promise<number> {
+    const evaluation = await this.getEvaluation(evalId);
+    if (String(evaluation.teamId) !== teamId) {
+      throw new Error('Evaluation not found');
+    }
 
     // Find items that need to be retried
     const itemsToRetry = await MongoEvalItem.find(
@@ -502,7 +539,7 @@ export class EvaluationTaskService {
 
   static async getEvaluationItemResult(
     itemId: string,
-    auth: AuthModeType
+    teamId: string
   ): Promise<{
     item: EvaluationItemSchemaType;
     dataItem: any;
@@ -510,7 +547,7 @@ export class EvaluationTaskService {
     result?: any;
     score?: number;
   }> {
-    const item = await this.getEvaluationItem(itemId, auth);
+    const item = await this.getEvaluationItem(itemId, teamId);
 
     return {
       item,
@@ -524,7 +561,7 @@ export class EvaluationTaskService {
   // Search evaluation items
   static async searchEvaluationItems(
     evalId: string,
-    auth: AuthModeType,
+    teamId: string,
     options: {
       status?: EvaluationStatusEnum;
       hasError?: boolean;
@@ -537,7 +574,10 @@ export class EvaluationTaskService {
     items: EvaluationItemDisplayType[];
     total: number;
   }> {
-    await this.getEvaluation(evalId, auth);
+    const evaluation = await this.getEvaluation(evalId);
+    if (String(evaluation.teamId) !== teamId) {
+      throw new Error('Evaluation not found');
+    }
 
     const { status, hasError, scoreRange, keyword, page = 1, pageSize = 20 } = options;
 
@@ -598,10 +638,13 @@ export class EvaluationTaskService {
   // Export evaluation item results
   static async exportEvaluationResults(
     evalId: string,
-    auth: AuthModeType,
+    teamId: string,
     format: 'csv' | 'json' = 'json'
   ): Promise<Buffer> {
-    await this.getEvaluation(evalId, auth);
+    const evaluation = await this.getEvaluation(evalId);
+    if (String(evaluation.teamId) !== teamId) {
+      throw new Error('Evaluation not found');
+    }
 
     const items = await MongoEvalItem.find({ evalId: evalId }).sort({ createTime: 1 }).lean();
 
