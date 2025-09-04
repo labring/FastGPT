@@ -1,5 +1,7 @@
 import type { EvaluationStatusEnum } from './constants';
 import type { EvalDatasetDataSchemaType } from './dataset/type';
+import type { MetricResult } from './metric/type';
+
 // Evaluation target related types
 export interface WorkflowConfig {
   appId: string;
@@ -9,38 +11,6 @@ export interface WorkflowConfig {
 export interface EvalTarget {
   type: 'workflow';
   config: WorkflowConfig;
-}
-
-export interface AiModelConfig {
-  llm?: string;
-  prompt?: string;
-}
-
-type MetricDependency = 'llm' | 'embedding';
-
-export interface EvaluationMetricSchemaType {
-  _id: string;
-  teamId: string;
-  tmbId: string;
-  name: string;
-  description?: string;
-  type: 'ai_model';
-  dependencies: MetricDependency[];
-  config: AiModelConfig;
-  createTime: Date;
-  updateTime: Date;
-}
-
-// Runtime configuration types
-export interface RuntimeConfig {
-  llm?: string; // LLM model selection
-  embedding?: string; // Embedding model selection
-}
-
-// Evaluator configuration types
-export interface EvaluatorSchema {
-  metric: EvaluationMetricSchemaType; // Contains complete metric configuration
-  runtimeConfig: RuntimeConfig; // Runtime configuration including LLM model
 }
 
 // Statistics information for evaluation task
@@ -85,23 +55,6 @@ export type EvaluationItemSchemaType = {
   finishTime?: Date;
   errorMessage?: string;
 };
-
-// Metric result types
-export interface MetricResult {
-  metricId: string;
-  metricName: string;
-  score: number;
-  details?: Record<string, any>;
-}
-
-// Evaluation case types, composit by TargetOutput and DatasetItem
-export interface EvalCase {
-  userInput?: string;
-  expectedOutput?: string;
-  actualOutput?: string;
-  context?: string[];
-  retrievalContext?: string[];
-}
 
 // Evaluation target input/output types
 export interface TargetInput {
@@ -150,16 +103,6 @@ export interface ImportResult {
   success: boolean;
   importedCount: number;
   errors: string[];
-}
-
-// ===== API Parameter Types =====
-
-export interface CreateMetricParams {
-  name: string;
-  description?: string;
-  type: 'ai_model';
-  dependencies?: MetricDependency[]; // Add dependency declarations
-  config?: AiModelConfig; // Make optional
 }
 
 export interface CreateEvaluationParams {

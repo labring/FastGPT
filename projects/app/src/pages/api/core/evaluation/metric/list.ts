@@ -1,52 +1,60 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { EvaluationMetricService } from '@fastgpt/service/core/evaluation/metric';
-import type { ListMetricsRequest, ListMetricsResponse } from '@fastgpt/global/core/evaluation/api';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema';
+import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
+import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import { Types } from '@fastgpt/service/common/mongo';
+import { addSourceMember } from '@fastgpt/service/support/user/utils';
 
-async function handler(req: ApiRequestProps<ListMetricsRequest>): Promise<ListMetricsResponse> {
+import type { ListMetricsBody } from '@fastgpt/global/core/evaluation/metric/api';
+
+async function handler(req: ApiRequestProps<ListMetricsBody, {}>) {
+  const { teamId, tmbId } = await authUserPer({
+    req,
+    authToken: true,
+    authApiKey: true,
+    per: ReadPermissionVal
+  });
+
+  const { offset, pageSize } = parsePaginationRequest(req);
+  const { searchKey } = req.body;
+
+  const match: Record<string, any> = {
+    teamId: new Types.ObjectId(teamId)
+  };
+
+  if (searchKey && typeof searchKey === 'string' && searchKey.trim().length > 0) {
+    match.name = { $regex: new RegExp(`${replaceRegChars(searchKey.trim())}`, 'i') };
+  }
+
   try {
-    const { pageNum = 1, pageSize = 20, searchKey } = req.body;
+    const [metrics, total] = await Promise.all([
+      MongoEvalMetric.find(match).sort({ createTime: -1 }).skip(offset).limit(pageSize).lean(),
+      MongoEvalMetric.countDocuments(match)
+    ]);
 
-    // Validate pagination parameters
-    const pageNumInt = Number(pageNum);
-    const pageSizeInt = Number(pageSize);
-
-    if (pageNumInt < 1) {
-      return Promise.reject('Invalid page number');
-    }
-
-    if (pageSizeInt < 1 || pageSizeInt > 100) {
-      return Promise.reject('Invalid page size (1-100)');
-    }
-
-    const result = await EvaluationMetricService.listMetrics(
-      {
-        req,
-        authToken: true
-      },
-      pageNumInt,
-      pageSizeInt,
-      searchKey?.trim()
-    );
-
-    addLog.info('[Evaluation Metric] Metric list query successful', {
-      pageNum: pageNumInt,
-      pageSize: pageSizeInt,
-      searchKey: searchKey?.trim(),
-      total: result.total,
-      returned: result.metrics.length
+    const listWithSourceMember = await addSourceMember({
+      list: metrics.map((item: any) => ({
+        _id: String(item._id),
+        name: item.name,
+        description: item.description || '',
+        createTime: item.createTime,
+        updateTime: item.updateTime,
+        tmbId: item.tmbId
+      }))
     });
 
     return {
-      list: result.metrics,
-      total: result.total
+      total,
+      list: listWithSourceMember
     };
   } catch (error) {
-    addLog.error('[Evaluation Metric] Failed to query metric list', error);
-    return Promise.reject(error);
+    return Promise.reject('Failed to fetch evaluation metrics');
   }
 }
 
 export default NextAPI(handler);
+
 export { handler };

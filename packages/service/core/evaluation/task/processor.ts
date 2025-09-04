@@ -126,7 +126,7 @@ const finishEvaluationTask = async (evalId: string) => {
             $avg: {
               $cond: [
                 { $eq: ['$status', EvaluationStatusEnum.completed] },
-                '$evaluatorOutput.score',
+                '$evaluatorOutput?.data?.score',
                 null
               ]
             }
@@ -521,8 +521,8 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
     }
 
     // Record usage from metric evaluation
-    if (evalItem.evaluator.metric.type === 'ai_model' && evaluatorOutput.details?.usage) {
-      totalMetricPoints += evaluatorOutput.details.usage.totalPoints || 0;
+    if (evaluatorOutput.totalPoints) {
+      totalMetricPoints += evaluatorOutput.totalPoints || 0;
     }
 
     // Record usage from metric evaluation
@@ -551,7 +551,7 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
     );
 
     addLog.debug(
-      `[Evaluation] Evaluation item completed: ${evalItemId}, score: ${evaluatorOutput.score}`
+      `[Evaluation] Evaluation item completed: ${evalItemId}, score: ${evaluatorOutput?.data?.score}`
     );
   } catch (error) {
     await handleEvalItemError(evalItemId, evalId, error);

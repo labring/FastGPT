@@ -1,87 +1,103 @@
 import type {
+  EvalMetricSchemaType,
   EvalCase,
   MetricResult,
-  AiModelConfig,
-  EvaluatorSchema
-} from '@fastgpt/global/core/evaluation/type';
-import { getAppEvaluationScore } from './scoring';
+  EvaluationResponse,
+  MetricConfig,
+  EvalModelConfigType
+} from '@fastgpt/global/core/evaluation/metric/type';
+import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
+import { getLLMModel, getEmbeddingModel } from '../../ai/model';
+import { createDitingClient } from './ditingClient';
 
 export abstract class Evaluator {
-  protected config: any;
-  protected metricId: string;
-  protected name: string;
-  protected runtimeConfig: any;
+  protected metricConfig: MetricConfig;
+  protected llmConfig?: EvalModelConfigType;
+  protected embeddingConfig?: EvalModelConfigType;
 
-  constructor(evaluatorConfig: EvaluatorSchema) {
-    this.config = evaluatorConfig.metric.config;
-    this.metricId = evaluatorConfig.metric._id;
-    this.name = evaluatorConfig.metric.name;
-    this.runtimeConfig = evaluatorConfig.runtimeConfig;
+  constructor(
+    metricConfig: MetricConfig,
+    llmConfig?: EvalModelConfigType,
+    embeddingConfig?: EvalModelConfigType
+  ) {
+    this.llmConfig = llmConfig;
+    this.embeddingConfig = embeddingConfig;
+    this.metricConfig = metricConfig;
   }
 
   abstract evaluate(evalCase: EvalCase): Promise<MetricResult>;
-  abstract getName(): string;
-  abstract validate(): Promise<boolean>;
 }
 
-export class AiModelEvaluator extends Evaluator {
-  protected config: AiModelConfig;
-  protected runtimeConfig: { llm?: string };
+export class DitingEvaluator extends Evaluator {
+  private client: ReturnType<typeof createDitingClient>;
 
-  constructor(evaluatorConfig: EvaluatorSchema) {
-    super(evaluatorConfig);
-    this.config = evaluatorConfig.metric.config as AiModelConfig;
-    this.runtimeConfig = evaluatorConfig.runtimeConfig;
+  constructor(
+    metricConfig: MetricConfig,
+    llmConfig?: EvalModelConfigType,
+    embeddingConfig?: EvalModelConfigType
+  ) {
+    super(metricConfig, llmConfig, embeddingConfig);
+    this.client = createDitingClient();
   }
 
   async evaluate(evalCase: EvalCase): Promise<MetricResult> {
-    const modelToUse = this.runtimeConfig.llm || this.config.llm;
-
-    if (!modelToUse) {
-      throw new Error('No LLM model specified in runtime config or metric config');
-    }
-
-    const { score, usage } = await getAppEvaluationScore({
-      userInput: evalCase.userInput || '',
-      appAnswer: evalCase.actualOutput || '',
-      standardAnswer: evalCase.expectedOutput || '',
-      model: modelToUse,
-      prompt: this.config.prompt
+    const response: EvaluationResponse = await this.client.runEvaluation({
+      evalCase: evalCase,
+      metricConfig: this.metricConfig,
+      embeddingConfig: this.embeddingConfig,
+      llmConfig: this.llmConfig
     });
 
     return {
-      metricId: this.metricId,
-      metricName: this.name,
-      score,
-      details: {
-        usage,
-        model: modelToUse,
-        prompt: this.config.prompt
-      }
+      metricName: this.metricConfig.metricName,
+      status: response.status,
+      data: response.data,
+      usages: response.usages,
+      error: response.error,
+      totalPoints: 0
     };
-  }
-
-  getName(): string {
-    return this.name;
-  }
-
-  async validate(): Promise<boolean> {
-    try {
-      const hasModel = this.runtimeConfig.llm || this.config.llm;
-      return Boolean(hasModel);
-    } catch (error) {
-      return false;
-    }
   }
 }
 
-export function createEvaluatorInstance(evaluatorConfig: EvaluatorSchema): Evaluator {
-  switch (evaluatorConfig.metric.type) {
-    case 'ai_model':
-      return new AiModelEvaluator(evaluatorConfig);
-    default:
-      throw new Error(
-        `Unsupported metric type: ${evaluatorConfig.metric.type}. Only 'ai_model' is currently supported.`
-      );
+export function createEvaluatorInstance(
+  metricSchema: EvalMetricSchemaType,
+  llmConfig?: EvalModelConfigType,
+  embeddingConfig?: EvalModelConfigType
+): Evaluator {
+  if (metricSchema.type === EvalMetricTypeEnum.Custom && !metricSchema.prompt) {
+    throw new Error('Custom metric must provide a prompt');
   }
+  const metricConfig: MetricConfig = {
+    metricName: metricSchema.name,
+    metricType: metricSchema.type,
+    prompt: metricSchema.prompt
+  };
+
+  if (llmConfig?.name) {
+    try {
+      const llm = getLLMModel(llmConfig.name);
+      llmConfig = {
+        ...llmConfig,
+        baseUrl: llm.requestUrl || '',
+        apiKey: llm.requestAuth || ''
+      };
+    } catch (err) {
+      throw new Error(`Get LLM model failed: ${(err as Error).message}`);
+    }
+  }
+
+  if (embeddingConfig?.name) {
+    try {
+      const embedding = getEmbeddingModel(embeddingConfig.name);
+      embeddingConfig = {
+        ...embeddingConfig,
+        baseUrl: embedding.requestUrl || '',
+        apiKey: embedding.requestAuth || ''
+      };
+    } catch (err) {
+      throw new Error(`Get embedding model failed: ${(err as Error).message}`);
+    }
+  }
+
+  return new DitingEvaluator(metricConfig, llmConfig, embeddingConfig);
 }

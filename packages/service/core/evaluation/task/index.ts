@@ -323,7 +323,7 @@ export class EvaluationTaskService {
         $group: {
           _id: '$status',
           count: { $sum: 1 },
-          avgScore: { $avg: '$evaluatorOutput.score' }
+          avgScore: { $avg: '$evaluatorOutput?.data?.score' }
         }
       }
     ]);
@@ -517,7 +517,7 @@ export class EvaluationTaskService {
       dataItem: item.dataItem,
       response: item.targetOutput?.actualOutput,
       result: item.evaluatorOutput,
-      score: item.evaluatorOutput?.score
+      score: item.evaluatorOutput?.data?.score
     };
   }
 
@@ -563,7 +563,7 @@ export class EvaluationTaskService {
         scoreFilter.$lte = scoreRange.max;
       }
       if (Object.keys(scoreFilter).length > 0) {
-        filter['evaluatorOutput.score'] = scoreFilter;
+        filter['evaluatorOutput?.data?.score'] = scoreFilter;
       }
     }
 
@@ -611,7 +611,7 @@ export class EvaluationTaskService {
         userInput: item.dataItem?.userInput,
         expectedOutput: item.dataItem?.expectedOutput,
         actualOutput: item.targetOutput?.actualOutput,
-        score: item.evaluatorOutput?.score,
+        score: item.evaluatorOutput?.data?.score,
         status: item.status,
         targetOutput: item.targetOutput,
         evaluatorOutput: item.evaluatorOutput,
@@ -645,7 +645,7 @@ export class EvaluationTaskService {
           `"${(item.dataItem?.userInput || '').replace(/"/g, '""')}"`,
           `"${(item.dataItem?.expectedOutput || '').replace(/"/g, '""')}"`,
           `"${(item.targetOutput?.actualOutput || '').replace(/"/g, '""')}"`,
-          item.evaluatorOutput?.score || '',
+          item.evaluatorOutput?.data?.score || '',
           item.status || '',
           `"${(item.errorMessage || '').replace(/"/g, '""')}"`,
           item.finishTime || ''
