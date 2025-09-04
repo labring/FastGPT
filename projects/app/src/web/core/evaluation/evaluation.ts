@@ -1,0 +1,57 @@
+import { DELETE, POST } from '@/web/common/api/request';
+// 临时类型定义，规避引用源被删除的问题
+type listEvalItemsBody = any;
+type listEvaluationsBody = any;
+type retryEvalItemBody = any;
+type updateEvalItemBody = any;
+type evaluationType = any;
+type listEvalItemsItem = any;
+import type { PaginationResponse } from '@fastgpt/web/common/fetch/type';
+
+export const postCreateEvaluation = ({
+  file,
+  name,
+  evalModel,
+  appId,
+  percentListen
+}: {
+  file: File;
+  name: string;
+  evalModel: string;
+  appId: string;
+  percentListen: (percent: number) => void;
+}) => {
+  const formData = new FormData();
+  formData.append('file', file, encodeURIComponent(file.name));
+  formData.append('data', JSON.stringify({ name, evalModel, appId }));
+
+  return POST(`/core/evaluation/create`, formData, {
+    timeout: 600000,
+    onUploadProgress: (e) => {
+      if (!e.total) return;
+
+      const percent = Math.round((e.loaded / e.total) * 100);
+      percentListen?.(percent);
+    },
+    headers: {
+      'Content-Type': 'multipart/form-data; charset=utf-8'
+    }
+  });
+};
+
+export const getEvaluationList = (data: listEvaluationsBody) =>
+  POST<PaginationResponse<evaluationType>>('/core/evaluation/list', data);
+
+export const deleteEvaluation = (data: { evalId: string }) =>
+  DELETE('/core/evaluation/delete', data);
+
+export const getEvalItemsList = (data: listEvalItemsBody) =>
+  POST<PaginationResponse<listEvalItemsItem>>('/core/evaluation/listItems', data);
+
+export const deleteEvalItem = (data: { evalItemId: string }) =>
+  DELETE('/core/evaluation/deleteItem', data);
+
+export const retryEvalItem = (data: retryEvalItemBody) => POST('/core/evaluation/retryItem', data);
+
+export const updateEvalItem = (data: updateEvalItemBody) =>
+  POST('/core/evaluation/updateItem', data);
