@@ -27,6 +27,7 @@ import {
 import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import {
+  applyDiff,
   filterToolResponseToPreview,
   formatToolResponse,
   getToolNodesByIds,
@@ -164,7 +165,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         isAborted: res ? () => res.closed : undefined,
 
         getToolInfo,
-        handleToolResponse: async (call) => {
+        handleToolResponse: async ({ call, context }) => {
           const toolId = call.function.name;
 
           if (toolId === SubAppIds.stop) {
@@ -180,9 +181,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             const { content, inputTokens, outputTokens } = await transferPlanAgent({
               model: planModel,
               instruction,
-              histories: [],
-              onStreaming({ text }) {
+              histories: GPTMessages2Chats({
+                messages: context.slice(1, -1),
+                getToolInfo
+              }),
+              onStreaming({ text, fullText }) {
                 //TODO: 需要一个新的 plan sse event
+                if (!fullText) return;
                 workflowStreamResponse?.({
                   event: SseResponseEventEnum.toolResponse,
                   data: {
@@ -191,12 +196,41 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                       toolName: '',
                       toolAvatar: '',
                       params: '',
-                      response: sliceStrStartEnd(text, 5000, 5000)
+                      response: sliceStrStartEnd(fullText, 5000, 5000)
                     }
                   }
                 });
               }
             });
+
+            const lastPlanCallIndex = context
+              .slice(0, -1)
+              .findLastIndex(
+                (c) =>
+                  c.role === 'assistant' &&
+                  c.tool_calls?.some((tc) => tc.function?.name === SubAppIds.plan)
+              );
+            const originalContent =
+              lastPlanCallIndex !== -1 ? (context[lastPlanCallIndex + 1].content as string) : '';
+
+            const applyedContent = applyDiff({
+              original: originalContent,
+              patch: content
+            });
+
+            // workflowStreamResponse?.({
+            //   event: SseResponseEventEnum.toolResponse,
+            //   data: {
+            //     tool: {
+            //       id: call.id,
+            //       toolName: '',
+            //       toolAvatar: '',
+            //       params: '',
+            //       response: sliceStrStartEnd(applyedContent, 5000, 5000)
+            //     }
+            //   }
+            // });
+
             return {
               response: content,
               usages: [],
@@ -211,7 +245,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               model,
               systemPrompt,
               task,
-              onStreaming({ text }) {
+              onStreaming({ text, fullText }) {
+                if (!fullText) return;
                 workflowStreamResponse?.({
                   event: SseResponseEventEnum.toolResponse,
                   data: {
@@ -220,7 +255,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                       toolName: '',
                       toolAvatar: '',
                       params: '',
-                      response: sliceStrStartEnd(text, 5000, 5000)
+                      response: sliceStrStartEnd(fullText, 5000, 5000)
                     }
                   }
                 });
