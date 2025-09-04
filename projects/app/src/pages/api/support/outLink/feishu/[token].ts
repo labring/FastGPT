@@ -11,7 +11,7 @@ async function handler(
 ): Promise<void> {
   // send to pro
   const { token } = req.query;
-  const result = await POST<any>(`support/outLink/feishu/${token}`, req.body, {
+  const result = await POST<any>(`/support/outLink/feishu/${token}`, req.body, {
     headers: req.headers as any
   });
   res.json(result);
