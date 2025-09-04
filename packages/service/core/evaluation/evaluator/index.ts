@@ -6,6 +6,7 @@ import type {
   MetricConfig,
   EvalModelConfigType
 } from '@fastgpt/global/core/evaluation/metric/type';
+import type { EvaluatorSchema } from '@fastgpt/global/core/evaluation/type';
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 import { getLLMModel, getEmbeddingModel } from '../../ai/model';
 import { createDitingClient } from './ditingClient';
@@ -59,25 +60,25 @@ export class DitingEvaluator extends Evaluator {
   }
 }
 
-export function createEvaluatorInstance(
-  metricSchema: EvalMetricSchemaType,
-  llmConfig?: EvalModelConfigType,
-  embeddingConfig?: EvalModelConfigType
-): Evaluator {
-  if (metricSchema.type === EvalMetricTypeEnum.Custom && !metricSchema.prompt) {
-    throw new Error('Custom metric must provide a prompt');
-  }
+export function createEvaluatorInstance(evaluatorConfig: EvaluatorSchema): Evaluator {
   const metricConfig: MetricConfig = {
-    metricName: metricSchema.name,
-    metricType: metricSchema.type,
-    prompt: metricSchema.prompt
+    metricName: evaluatorConfig.metric.name,
+    metricType: evaluatorConfig.metric.type,
+    prompt: evaluatorConfig.metric.prompt
   };
 
-  if (llmConfig?.name) {
+  if (metricConfig.metricType === EvalMetricTypeEnum.Custom && !metricConfig.prompt) {
+    throw new Error('Custom metric must provide a prompt');
+  }
+
+  let llmConfig: EvalModelConfigType | undefined = undefined;
+  let embeddingConfig: EvalModelConfigType | undefined = undefined;
+
+  if (evaluatorConfig.runtimeConfig?.llm) {
     try {
-      const llm = getLLMModel(llmConfig.name);
+      const llm = getLLMModel(evaluatorConfig.runtimeConfig.llm);
       llmConfig = {
-        ...llmConfig,
+        name: evaluatorConfig.runtimeConfig.llm,
         baseUrl: llm.requestUrl || '',
         apiKey: llm.requestAuth || ''
       };
@@ -86,11 +87,11 @@ export function createEvaluatorInstance(
     }
   }
 
-  if (embeddingConfig?.name) {
+  if (evaluatorConfig.runtimeConfig?.embedding) {
     try {
-      const embedding = getEmbeddingModel(embeddingConfig.name);
+      const embedding = getEmbeddingModel(evaluatorConfig.runtimeConfig.embedding);
       embeddingConfig = {
-        ...embeddingConfig,
+        name: evaluatorConfig.runtimeConfig.embedding,
         baseUrl: embedding.requestUrl || '',
         apiKey: embedding.requestAuth || ''
       };

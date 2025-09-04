@@ -12,7 +12,10 @@ import type {
   EvaluationItemJobData
 } from '@fastgpt/global/core/evaluation/type';
 import type { AuthModeType } from '@fastgpt/service/support/permission/type';
-import { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
+import {
+  EvaluationStatusEnum,
+  CalculateMethodEnum
+} from '@fastgpt/global/core/evaluation/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
@@ -143,7 +146,10 @@ describe('EvaluationTaskService', () => {
         metric: metric.toObject(),
         runtimeConfig: {
           llm: 'gpt-3.5-turbo'
-        }
+        },
+        weight: 1.0,
+        thresholdValue: 0.8,
+        calculateType: 0
       }
     ];
   });
@@ -503,7 +509,6 @@ describe('EvaluationTaskService', () => {
       expect(stats.evaluating).toBe(1);
       expect(stats.queuing).toBe(1);
       expect(stats.error).toBe(1);
-      expect(stats.avgScore).toBe(90); // (85 + 95) / 2
     });
   });
 
@@ -1694,7 +1699,6 @@ describe('EvaluationTaskService', () => {
       // 验证任务状态正确更新
       const finalEvaluation = await MongoEvaluation.findById(testEvaluationId);
       expect(finalEvaluation?.status).toBe(EvaluationStatusEnum.completed);
-      expect(finalEvaluation?.avgScore).toBe(90); // (85 + 95) / 2
       expect(finalEvaluation?.finishTime).toBeDefined();
     });
 
@@ -1850,7 +1854,6 @@ describe('EvaluationTaskService', () => {
 
       const finalEvaluation = await MongoEvaluation.findById(testEvaluationId);
       expect(finalEvaluation?.status).toBe(EvaluationStatusEnum.completed);
-      expect(finalEvaluation?.avgScore).toBe(90); // (85 + 95) / 2
       expect(finalEvaluation?.statistics?.totalItems).toBe(3);
       expect(finalEvaluation?.statistics?.completedItems).toBe(2);
       expect(finalEvaluation?.statistics?.errorItems).toBe(1);

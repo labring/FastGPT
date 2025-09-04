@@ -11,6 +11,7 @@ import type {
   MetricDependency
 } from '@fastgpt/global/core/evaluation/type';
 import type { AuthModeType } from '@fastgpt/service/support/permission/type';
+import { CalculateMethodEnum } from '@fastgpt/global/core/evaluation/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 
 // Mock getAppEvaluationScore
@@ -177,7 +178,10 @@ describe('AiModelEvaluator', () => {
 
     const evaluatorConfig = {
       metric: mockMetricConfig,
-      runtimeConfig: { llm: 'gpt-4' }
+      runtimeConfig: { llm: 'gpt-4' },
+      weight: 1.0,
+      thresholdValue: 0.8,
+      calculateType: CalculateMethodEnum.mean
     };
     aiEvaluator = new AiModelEvaluator(evaluatorConfig);
 
@@ -232,7 +236,10 @@ describe('createEvaluatorInstance', () => {
 
     const evaluatorConfig = {
       metric: metricConfig,
-      runtimeConfig: { llm: 'gpt-4' }
+      runtimeConfig: { llm: 'gpt-4' },
+      weight: 1.0,
+      thresholdValue: 0.8,
+      calculateType: CalculateMethodEnum.mean
     };
 
     const instance = createEvaluatorInstance(evaluatorConfig);
@@ -256,7 +263,10 @@ describe('createEvaluatorInstance', () => {
 
     const evaluatorConfig = {
       metric: metricConfig,
-      runtimeConfig: {}
+      runtimeConfig: {},
+      weight: 1.0,
+      thresholdValue: 0.8,
+      calculateType: CalculateMethodEnum.mean
     };
 
     expect(() => createEvaluatorInstance(evaluatorConfig)).toThrow(

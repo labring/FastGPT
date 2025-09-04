@@ -24,3 +24,47 @@ export const EvaluationStatusMap = {
   }
 };
 export const EvaluationStatusValues = Object.keys(EvaluationStatusMap).map(Number);
+
+export enum SummaryStatusEnum {
+  pending = 0,
+  generating = 1,
+  completed = 2,
+  failed = 3
+}
+
+export const SummaryStatusMap = {
+  [SummaryStatusEnum.pending]: {
+    name: i18nT('dashboard_evaluation:summary_pending')
+  },
+  [SummaryStatusEnum.generating]: {
+    name: i18nT('dashboard_evaluation:summary_generating')
+  },
+  [SummaryStatusEnum.completed]: {
+    name: i18nT('dashboard_evaluation:summary_done')
+  },
+  [SummaryStatusEnum.failed]: {
+    name: i18nT('dashboard_evaluation:summary_failed')
+  }
+};
+
+export const SummaryStatusValues = Object.keys(SummaryStatusMap).map(Number);
+
+// Calculation method enumeration
+export enum CalculateMethodEnum {
+  mean = 0,
+  median = 1
+}
+
+export const CaculateMethodMap = {
+  [CalculateMethodEnum.mean]: {
+    name: i18nT('dashboard_evaluation:method_mean')
+  },
+  [CalculateMethodEnum.median]: {
+    name: i18nT('dashboard_evaluation:method_median')
+  }
+};
+
+export const CaculateMethodValues = Object.keys(CaculateMethodMap).map(Number);
+
+// Score constants
+export const PERFECT_SCORE = 100;
