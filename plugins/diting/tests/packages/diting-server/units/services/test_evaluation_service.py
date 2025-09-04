@@ -171,7 +171,7 @@ class TestEvaluationService(unittest.IsolatedAsyncioTestCase):
 
         with patch.object(self.service, "_load_metric", return_value=mock_metric_class):
             with patch(
-                "diting_engine.common.utils.compute_token_usage", return_value=[]
+                "diting_server.common.utils.compute_token_usage", return_value=[]
             ):
                 result = await self.service._evaluate_case_with_metric(
                     case, metric_config, llm_config, embedding_config
@@ -209,7 +209,7 @@ class TestEvaluationService(unittest.IsolatedAsyncioTestCase):
 
         with patch.object(self.service, "_load_metric", return_value=mock_metric_class):
             with patch(
-                "diting_engine.common.utils.compute_token_usage", return_value=[]
+                "diting_server.common.utils.compute_token_usage", return_value=[]
             ):
                 result = await self.service._evaluate_case_with_metric(
                     case, metric_config, llm_config
@@ -303,7 +303,7 @@ class TestEvaluationService(unittest.IsolatedAsyncioTestCase):
 
         with patch.object(self.service, "_load_metric", return_value=mock_metric_class):
             with patch(
-                "diting_engine.common.utils.compute_token_usage", return_value=[]
+                "diting_server.common.utils.compute_token_usage", return_value=[]
             ):
                 result = await self.service._evaluate_case_with_metric(
                     case, metric_config
@@ -321,7 +321,7 @@ class TestEvaluationService(unittest.IsolatedAsyncioTestCase):
         mock_factory.create.return_value = mock_metric_class
 
         with patch(
-            "diting_engine.services.evaluation.evaluation_service.MetricFactory",
+            "diting_server.services.evaluation.evaluation_service.MetricFactory",
             return_value=mock_factory,
         ):
             result = self.service._load_metric("test_metric")
