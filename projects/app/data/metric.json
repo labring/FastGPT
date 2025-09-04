@@ -1,0 +1,70 @@
+{  
+  "builtinMetrics": [  
+    {  
+      "name": "answer_correctness",  
+      "description": "Evaluates the factual accuracy of model responses compared to ground truth answers.",  
+      "userInputRequired": true,  
+      "actualOutputRequired": true,  
+      "expectedOutputRequired": true,  
+      "contextRequired": false,  
+      "retrievalContextRequired": false,  
+      "embeddingRequired": true,  
+      "llmRequired": true  
+    },  
+    {  
+      "name": "answer_similarity",  
+      "description": "Measures semantic similarity between model output and reference answer.",  
+      "userInputRequired": false,  
+      "actualOutputRequired": true,  
+      "expectedOutputRequired": true,  
+      "contextRequired": false,  
+      "retrievalContextRequired": false,  
+      "embeddingRequired": true,  
+      "llmRequired": false  
+    },  
+    {  
+      "name": "answer_relevancy",  
+      "description": "Measures how relevant the generated answer is to the user's question.",  
+      "userInputRequired": true,  
+      "actualOutputRequired": true,  
+      "expectedOutputRequired": false,  
+      "contextRequired": false,  
+      "retrievalContextRequired": false,  
+      "embeddingRequired": false,  
+      "llmRequired": true  
+    },  
+    {  
+      "name": "context_precision",  
+      "description": "Measures the proportion of relevant contexts among the retrieved contexts.",  
+      "userInputRequired": true,  
+      "actualOutputRequired": false,  
+      "expectedOutputRequired": true,  
+      "contextRequired": false,  
+      "retrievalContextRequired": true,  
+      "embeddingRequired": false,  
+      "llmRequired": true  
+    },  
+    {  
+      "name": "context_recall",  
+      "description": "Measures the proportion of relevant contexts that were successfully retrieved.",  
+      "userInputRequired": true,  
+      "actualOutputRequired": false,  
+      "expectedOutputRequired": true,  
+      "contextRequired": false,  
+      "retrievalContextRequired": true,  
+      "embeddingRequired": false,  
+      "llmRequired": true  
+    },  
+    {  
+      "name": "faithfulness",  
+      "description": "Evaluates whether the generated answer is faithful to the retrieved context.",  
+      "userInputRequired": true,  
+      "actualOutputRequired": true,  
+      "expectedOutputRequired": false,  
+      "contextRequired": false,  
+      "retrievalContextRequired": true,  
+      "embeddingRequired": false,  
+      "llmRequired": true  
+    }
+  ]  
+}

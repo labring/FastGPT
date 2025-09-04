@@ -206,3 +206,44 @@ export async function initAppTemplateTypes() {
     console.error('Error initializing system templates:', error);
   }
 }
+
+export async function initBuiltinMetrics() {
+  try {
+    // 读取独立的 metric.json 文件
+    const { readConfigData } = await import('@/service/common/system');
+    const metricContent = await readConfigData('metric.json');
+    const metricConfig = JSON.parse(metricContent);
+
+    // 获取 root 用户信息
+    const { MongoUser } = await import('@fastgpt/service/support/user/schema');
+    const { getUserDefaultTeam } = await import('@fastgpt/service/support/user/team/controller');
+    const { MongoEvalMetric } = await import('@fastgpt/service/core/evaluation/metric/schema');
+    const { EvalMetricTypeEnum } = await import('@fastgpt/global/core/evaluation/metric/constants');
+
+    const rootUser = await MongoUser.findOne({ username: 'root' });
+    if (!rootUser) return;
+
+    const tmb = await getUserDefaultTeam({ userId: rootUser._id });
+    const metrics = (metricConfig.builtinMetrics || []).map((m: any) => ({
+      teamId: tmb.teamId,
+      tmbId: tmb.tmbId,
+      name: m.name,
+      description: m.description,
+      type: EvalMetricTypeEnum.Builtin,
+      userInputRequired: m.userInputRequired ?? false,
+      actualOutputRequired: m.actualOutputRequired ?? false,
+      expectedOutputRequired: m.expectedOutputRequired ?? false,
+      contextRequired: m.contextRequired ?? false,
+      retrievalContextRequired: m.retrievalContextRequired ?? false,
+      embeddingRequired: m.embeddingRequired ?? false,
+      llmRequired: m.llmRequired ?? false
+    }));
+
+    if (metrics.length > 0) {
+      await MongoEvalMetric.insertMany(metrics);
+      console.log('[Init] Built-in metrics inserted to MongoDB');
+    }
+  } catch (error) {
+    console.error('Init metrics skipped:', error);
+  }
+}

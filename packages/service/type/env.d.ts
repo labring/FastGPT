@@ -18,6 +18,7 @@ declare global {
       MILVUS_ADDRESS: string;
       MILVUS_TOKEN: string;
       SANDBOX_URL: string;
+      DITING_BASE_URL: string;
       FE_DOMAIN: string;
       FILE_DOMAIN: string;
       LOG_LEVEL?: string;
