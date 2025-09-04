@@ -127,11 +127,9 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
         }
       ];
 
-      const lastInteractive = getLastInteractiveValue(mockHistory);
       onNextNodeDebug({
         ...workflowDebugData,
-        // Rewrite runtimeEdges
-        runtimeEdges: storeEdges2RuntimeEdges(workflowDebugData.runtimeEdges, lastInteractive),
+        runtimeEdges: workflowDebugData.runtimeEdges,
         query: updatedQuery,
         history: mockHistory
       });
@@ -189,7 +187,7 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
             <Box fontWeight={'bold'} flex={'1'}>
               {t('common:core.workflow.debug.Run result')}
             </Box>
-            {workflowDebugData?.nextRunNodes.length !== 0 && (
+            {workflowDebugData?.entryNodeIds.length !== 0 && (
               <PopoverConfirm
                 Trigger={
                   <Button
@@ -209,8 +207,8 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
               <>
                 {(debugResult.status === 'success' || debugResult.status === 'skipped') &&
                   !debugResult.isExpired &&
-                  workflowDebugData?.nextRunNodes &&
-                  workflowDebugData.nextRunNodes.length > 0 && (
+                  workflowDebugData?.entryNodeIds &&
+                  workflowDebugData.entryNodeIds.length > 0 && (
                     <Button
                       ml={2}
                       size={'sm'}
@@ -221,8 +219,8 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
                       {t('common:next_step')}
                     </Button>
                   )}
-                {workflowDebugData?.nextRunNodes &&
-                  workflowDebugData?.nextRunNodes.length === 0 && (
+                {workflowDebugData?.entryNodeIds &&
+                  workflowDebugData?.entryNodeIds.length === 0 && (
                     <Button ml={2} size={'sm'} variant={'primary'} onClick={onStopNodeDebug}>
                       {t('common:core.workflow.debug.Done')}
                     </Button>
