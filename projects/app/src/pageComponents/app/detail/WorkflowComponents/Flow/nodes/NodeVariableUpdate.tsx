@@ -111,18 +111,19 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
         (item) => item.renderType === updateItem.renderType
       );
 
-      const onUpdateNewValue = (newValue: any) => {
-        if (isValidReferenceValueFormat(newValue)) {
-          onUpdateList(
-            updateList.map((update, i) =>
-              i === index ? { ...update, value: newValue as ReferenceItemValueType } : update
-            )
-          );
-        } else {
+      const onUpdateNewValue = (newValue?: ReferenceValueType | string) => {
+        if (typeof newValue === 'string') {
           onUpdateList(
             updateList.map((update, i) =>
               i === index ? { ...update, value: ['', newValue] } : update
             )
+          );
+        } else if (
+          Array.isArray(newValue) &&
+          (isValidReferenceValueFormat(newValue) || newValue.every(isValidReferenceValueFormat))
+        ) {
+          onUpdateList(
+            updateList.map((update, i) => (i === index ? { ...update, value: newValue } : update))
           );
         }
       };
