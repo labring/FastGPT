@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Box, Input, Switch, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { InputRenderProps } from './type';
@@ -6,9 +6,7 @@ import { InputTypeEnum } from './constant';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import MultipleSelect, {
-  useMultipleSelect
-} from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import JSONEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import AIModelSelector from '../../../Select/AIModelSelector';
 import FileSelector from '../../../Select/FileSelector';
@@ -35,17 +33,15 @@ const InputRender = (props: InputRenderProps) => {
   }
 
   const { t } = useSafeTranslation();
-  const {
-    value: selectedValue,
-    setValue,
-    isSelectAll,
-    setIsSelectAll
-  } = useMultipleSelect<string>(
-    value,
-    inputType === InputTypeEnum.multipleSelect &&
+
+  const isSelectAll = useMemo(() => {
+    return (
+      inputType === InputTypeEnum.multipleSelect &&
       Array.isArray(value) &&
       value.length === (props.list?.length || 0)
-  );
+    );
+    // @ts-ignore
+  }, [inputType, value, props.list?.length]);
 
   const commonProps = {
     value,
@@ -175,16 +171,10 @@ const InputRender = (props: InputRenderProps) => {
           {...commonProps}
           h={10}
           list={list}
-          value={selectedValue}
-          onSelect={(val) => {
-            setValue(val);
-            onChange(val);
-          }}
+          value={value}
+          onSelect={onChange}
           isSelectAll={isSelectAll}
-          setIsSelectAll={(all) => {
-            setIsSelectAll(all);
-            onChange(all ? list.map((item) => item.value) : []);
-          }}
+          itemWrap
         />
       );
     }
