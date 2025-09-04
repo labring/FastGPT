@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 function getDocLastModifiedData(): Record<string, string> {
   try {
     const dataPath = path.join(process.cwd(), 'data', 'doc-last-modified.json');
-    console.log(dataPath, 222222222);
+
     if (!fs.existsSync(dataPath)) {
       return {};
     }
@@ -46,7 +46,7 @@ export default async function Page({
   const docLastModifiedData = getDocLastModifiedData();
   const filePath = `content/docs/${page.file.path}`;
   const lastModified = docLastModifiedData[filePath] || page.data.lastModified;
-
+  console.log(docLastModifiedData, lastModified, page.data.lastModified);
   return (
     <DocsPage
       toc={page.data.toc}
