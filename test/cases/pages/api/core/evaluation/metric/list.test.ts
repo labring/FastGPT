@@ -3,6 +3,7 @@ import { handler } from '@/pages/api/core/evaluation/metric/list';
 import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
+import { getEvaluationPermissionAggregation } from '@fastgpt/service/core/evaluation/common';
 import type { ListMetricsBody } from '@fastgpt/global/core/evaluation/metric/api';
 import { Types } from '@fastgpt/service/common/mongo';
 
@@ -30,6 +31,10 @@ vi.mock('@fastgpt/service/support/user/utils', () => ({
   addSourceMember: vi.fn()
 }));
 
+vi.mock('@fastgpt/service/core/evaluation/common', () => ({
+  getEvaluationPermissionAggregation: vi.fn()
+}));
+
 describe('/api/core/evaluation/metric/list', () => {
   const mockTeamId = '507f1f77bcf86cd799439011';
   const mockTmbId = '507f1f77bcf86cd799439012';
@@ -50,6 +55,16 @@ describe('/api/core/evaluation/metric/list', () => {
       tmb: {} as any
     });
 
+    // Mock permission aggregation response
+    vi.mocked(getEvaluationPermissionAggregation).mockResolvedValue({
+      teamId: mockTeamId,
+      tmbId: mockTmbId,
+      isOwner: false,
+      roleList: [],
+      myGroupMap: new Map(),
+      myOrgSet: new Set()
+    });
+
     // Mock database response
     const mockMetrics = [
       {
@@ -58,7 +73,8 @@ describe('/api/core/evaluation/metric/list', () => {
         description: 'Description 1',
         createTime: new Date('2024-01-01'),
         updateTime: new Date('2024-01-01'),
-        tmbId: mockTmbId
+        tmbId: mockTmbId,
+        permission: { hasReadPer: true }
       },
       {
         _id: 'metric2',
@@ -66,7 +82,8 @@ describe('/api/core/evaluation/metric/list', () => {
         description: 'Description 2',
         createTime: new Date('2024-01-02'),
         updateTime: new Date('2024-01-02'),
-        tmbId: mockTmbId
+        tmbId: mockTmbId,
+        permission: { hasReadPer: true }
       }
     ];
 
@@ -112,7 +129,17 @@ describe('/api/core/evaluation/metric/list', () => {
       body: {
         pageNum: 1,
         pageSize: 10
-      } as ListMetricsBody
+      } as ListMetricsBody,
+      auth: {
+        userId: mockUserId,
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
     const result = await handler(req as any);
@@ -125,8 +152,25 @@ describe('/api/core/evaluation/metric/list', () => {
       per: expect.any(Number)
     });
 
-    // Verify database query
+    // Verify permission aggregation was called
+    expect(getEvaluationPermissionAggregation).toHaveBeenCalledWith({
+      req,
+      authApiKey: true,
+      authToken: true
+    });
+
+    // Verify database query with expected filter structure
     expect(MongoEvalMetric.find).toHaveBeenCalledWith({
+      $or: [
+        {
+          _id: {
+            $in: []
+          }
+        },
+        {
+          tmbId: new Types.ObjectId(mockTmbId)
+        }
+      ],
       teamId: new Types.ObjectId(mockTeamId)
     });
     expect(mockFind.sort).toHaveBeenCalledWith({ createTime: -1 });
@@ -135,29 +179,43 @@ describe('/api/core/evaluation/metric/list', () => {
 
     // Verify count query
     expect(MongoEvalMetric.countDocuments).toHaveBeenCalledWith({
+      $or: [
+        {
+          _id: {
+            $in: []
+          }
+        },
+        {
+          tmbId: new Types.ObjectId(mockTmbId)
+        }
+      ],
       teamId: new Types.ObjectId(mockTeamId)
     });
 
-    // Verify source member addition
+    // Verify source member addition (with permission objects added)
     expect(addSourceMember).toHaveBeenCalledWith({
-      list: [
-        {
+      list: expect.arrayContaining([
+        expect.objectContaining({
           _id: 'metric1',
           name: 'Metric 1',
           description: 'Description 1',
           createTime: new Date('2024-01-01'),
           updateTime: new Date('2024-01-01'),
-          tmbId: mockTmbId
-        },
-        {
+          tmbId: mockTmbId,
+          permission: expect.any(Object),
+          private: expect.any(Boolean)
+        }),
+        expect.objectContaining({
           _id: 'metric2',
           name: 'Metric 2',
           description: 'Description 2',
           createTime: new Date('2024-01-02'),
           updateTime: new Date('2024-01-02'),
-          tmbId: mockTmbId
-        }
-      ]
+          tmbId: mockTmbId,
+          permission: expect.any(Object),
+          private: expect.any(Boolean)
+        })
+      ])
     });
 
     // Verify response
@@ -234,6 +292,16 @@ describe('/api/core/evaluation/metric/list', () => {
       tmb: {} as any
     });
 
+    // Mock permission aggregation response
+    vi.mocked(getEvaluationPermissionAggregation).mockResolvedValue({
+      teamId: mockTeamId,
+      tmbId: mockTmbId,
+      isOwner: false,
+      roleList: [],
+      myGroupMap: new Map(),
+      myOrgSet: new Set()
+    });
+
     const mockQuery = {
       lean: vi.fn().mockResolvedValue([])
     };
@@ -256,13 +324,33 @@ describe('/api/core/evaluation/metric/list', () => {
         pageNum: 1,
         pageSize: 10,
         searchKey: '   ' // whitespace only
-      } as ListMetricsBody
+      } as ListMetricsBody,
+      auth: {
+        userId: mockUserId,
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
     await handler(req as any);
 
     // Verify database query without search filter (whitespace is trimmed)
     expect(MongoEvalMetric.find).toHaveBeenCalledWith({
+      $or: [
+        {
+          _id: {
+            $in: []
+          }
+        },
+        {
+          tmbId: new Types.ObjectId(mockTmbId)
+        }
+      ],
       teamId: new Types.ObjectId(mockTeamId)
     });
   });

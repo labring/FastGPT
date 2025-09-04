@@ -3,14 +3,14 @@ import { NextAPI } from '@/service/middleware/entry';
 import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema';
 import type { UpdateMetricBody } from '@fastgpt/global/core/evaluation/metric/api';
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-
+import { authEvaluationMetricWrite } from '@fastgpt/service/core/evaluation/common';
 async function handler(req: ApiRequestProps<UpdateMetricBody, {}>, res: ApiResponseType<any>) {
   const { id, name, description, prompt } = req.body;
-
+  const { teamId } = await authEvaluationMetricWrite(id, {
+    req,
+    authApiKey: true,
+    authToken: true
+  });
   if (!id) {
     return Promise.reject('Missing required parameter: id');
   }
@@ -38,13 +38,6 @@ async function handler(req: ApiRequestProps<UpdateMetricBody, {}>, res: ApiRespo
   if (prompt && prompt.length > 4000) {
     return Promise.reject('Prompt must be less than 4000 characters');
   }
-
-  const { teamId, tmbId } = await authUserPer({
-    req,
-    authToken: true,
-    authApiKey: true,
-    per: WritePermissionVal
-  });
 
   const metric = await MongoEvalMetric.findById(id);
   if (!metric) {

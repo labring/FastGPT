@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler } from '@/pages/api/core/evaluation/metric/detail';
 import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { authEvalMetric } from '@fastgpt/service/support/permission/evaluation/auth';
 
 // Mock dependencies
 vi.mock('@fastgpt/service/core/evaluation/metric/schema', () => ({
@@ -12,8 +12,8 @@ vi.mock('@fastgpt/service/core/evaluation/metric/schema', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
-  authUserPer: vi.fn()
+vi.mock('@fastgpt/service/support/permission/evaluation/auth', () => ({
+  authEvalMetric: vi.fn()
 }));
 
 describe('/api/core/evaluation/metric/detail', () => {
@@ -28,13 +28,13 @@ describe('/api/core/evaluation/metric/detail', () => {
 
   it('should return metric details successfully', async () => {
     // Mock auth response
-    vi.mocked(authUserPer).mockResolvedValue({
+    vi.mocked(authEvalMetric).mockResolvedValue({
       userId: mockUserId,
       teamId: mockTeamId,
       tmbId: mockTmbId,
       isRoot: false,
       permission: {} as any,
-      tmb: {} as any
+      metric: {} as any
     });
 
     // Mock metric data
@@ -59,16 +59,27 @@ describe('/api/core/evaluation/metric/detail', () => {
     const req = {
       query: {
         id: mockMetricId
+      },
+      auth: {
+        userId: mockUserId,
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
       }
     };
 
     const result = await handler(req as any, {} as any);
 
     // Verify auth was called correctly
-    expect(authUserPer).toHaveBeenCalledWith({
+    expect(authEvalMetric).toHaveBeenCalledWith({
       req,
       authToken: true,
       authApiKey: true,
+      metricId: mockMetricId,
       per: expect.any(Number)
     });
 
@@ -81,39 +92,49 @@ describe('/api/core/evaluation/metric/detail', () => {
   });
 
   it('should reject when id parameter is missing', async () => {
+    // Mock auth to fail due to missing id
+    vi.mocked(authEvalMetric).mockRejectedValue(new Error('Evaluation metric ID is required'));
+
     const req = {
       query: {}
     };
 
-    await expect(handler(req as any, {} as any)).rejects.toBe('Missing required parameter: id');
+    await expect(handler(req as any, {} as any)).rejects.toThrow(
+      'Evaluation metric ID is required'
+    );
 
-    // Verify no auth or database calls were made
-    expect(authUserPer).not.toHaveBeenCalled();
+    // Verify auth was called but database was not
+    expect(authEvalMetric).toHaveBeenCalled();
     expect(MongoEvalMetric.findById).not.toHaveBeenCalled();
   });
 
   it('should reject when id parameter is empty string', async () => {
+    // Mock auth to fail due to empty id
+    vi.mocked(authEvalMetric).mockRejectedValue(new Error('Evaluation metric ID is required'));
+
     const req = {
       query: {
         id: ''
       }
     };
 
-    await expect(handler(req as any, {} as any)).rejects.toBe('Missing required parameter: id');
+    await expect(handler(req as any, {} as any)).rejects.toThrow(
+      'Evaluation metric ID is required'
+    );
 
-    expect(authUserPer).not.toHaveBeenCalled();
+    expect(authEvalMetric).toHaveBeenCalled();
     expect(MongoEvalMetric.findById).not.toHaveBeenCalled();
   });
 
   it('should reject when metric is not found', async () => {
     // Mock auth response
-    vi.mocked(authUserPer).mockResolvedValue({
+    vi.mocked(authEvalMetric).mockResolvedValue({
       userId: mockUserId,
       teamId: mockTeamId,
       tmbId: mockTmbId,
       isRoot: false,
       permission: {} as any,
-      tmb: {} as any
+      metric: {} as any
     });
 
     // Mock metric not found
@@ -130,14 +151,14 @@ describe('/api/core/evaluation/metric/detail', () => {
 
     await expect(handler(req as any, {} as any)).rejects.toBe('Metric not found');
 
-    expect(authUserPer).toHaveBeenCalled();
+    expect(authEvalMetric).toHaveBeenCalled();
     expect(MongoEvalMetric.findById).toHaveBeenCalledWith(mockMetricId);
     expect(mockQuery.lean).toHaveBeenCalled();
   });
 
   it('should handle auth failure', async () => {
     const authError = new Error('Authentication failed');
-    vi.mocked(authUserPer).mockRejectedValue(authError);
+    vi.mocked(authEvalMetric).mockRejectedValue(authError);
 
     const req = {
       query: {
@@ -147,18 +168,18 @@ describe('/api/core/evaluation/metric/detail', () => {
 
     await expect(handler(req as any, {} as any)).rejects.toThrow('Authentication failed');
 
-    expect(authUserPer).toHaveBeenCalled();
+    expect(authEvalMetric).toHaveBeenCalled();
     expect(MongoEvalMetric.findById).not.toHaveBeenCalled();
   });
 
   it('should handle database query failure', async () => {
-    vi.mocked(authUserPer).mockResolvedValue({
+    vi.mocked(authEvalMetric).mockResolvedValue({
       userId: mockUserId,
       teamId: mockTeamId,
       tmbId: mockTmbId,
       isRoot: false,
       permission: {} as any,
-      tmb: {} as any
+      metric: {} as any
     });
 
     const dbError = new Error('Database query failed');
@@ -175,20 +196,20 @@ describe('/api/core/evaluation/metric/detail', () => {
 
     await expect(handler(req as any, {} as any)).rejects.toThrow('Database query failed');
 
-    expect(authUserPer).toHaveBeenCalled();
+    expect(authEvalMetric).toHaveBeenCalled();
     expect(MongoEvalMetric.findById).toHaveBeenCalledWith(mockMetricId);
     expect(mockQuery.lean).toHaveBeenCalled();
   });
 
   it('should return metric with all fields when found', async () => {
     // Mock auth response
-    vi.mocked(authUserPer).mockResolvedValue({
+    vi.mocked(authEvalMetric).mockResolvedValue({
       userId: mockUserId,
       teamId: mockTeamId,
       tmbId: mockTmbId,
       isRoot: false,
       permission: {} as any,
-      tmb: {} as any
+      metric: {} as any
     });
 
     // Mock comprehensive metric data

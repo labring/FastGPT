@@ -1,7 +1,5 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
@@ -14,6 +12,7 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { authEvaluationDatasetDataUpdateById } from '@fastgpt/service/core/evaluation/common';
 
 export type EvalDatasetDataUpdateQuery = {};
 export type EvalDatasetDataUpdateBody = updateEvalDatasetDataBody;
@@ -32,6 +31,12 @@ async function handler(
     enableQualityEvaluation,
     qualityEvaluationModel
   } = req.body;
+
+  const { teamId, tmbId } = await authEvaluationDatasetDataUpdateById(dataId, {
+    req,
+    authToken: true,
+    authApiKey: true
+  });
 
   if (!dataId || typeof dataId !== 'string') {
     return Promise.reject('dataId is required and must be a string');
@@ -76,13 +81,6 @@ async function handler(
       'qualityEvaluationModel is required when enableQualityEvaluation is true'
     );
   }
-
-  const { teamId, tmbId } = await authUserPer({
-    req,
-    authToken: true,
-    authApiKey: true,
-    per: WritePermissionVal
-  });
 
   let collectionName = '';
 

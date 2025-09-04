@@ -1,7 +1,5 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { Types } from '@fastgpt/service/common/mongo';
 import type { retryTaskBody } from '@fastgpt/global/core/evaluation/dataset/api';
@@ -9,18 +7,18 @@ import { evalDatasetDataSynthesizeQueue } from '@fastgpt/service/core/evaluation
 import { addLog } from '@fastgpt/service/common/system/log';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { authEvaluationDatasetWrite } from '@fastgpt/service/core/evaluation/common';
 
 async function handler(
   req: ApiRequestProps<retryTaskBody, {}>
 ): Promise<{ success: boolean; message: string }> {
-  const { teamId, tmbId } = await authUserPer({
-    req,
-    authToken: true,
-    authApiKey: true,
-    per: WritePermissionVal
-  });
-
   const { collectionId, jobId } = req.body;
+
+  const { teamId, tmbId } = await authEvaluationDatasetWrite(collectionId, {
+    req,
+    authApiKey: true,
+    authToken: true
+  });
 
   const collection = await MongoEvalDatasetCollection.findOne({
     _id: new Types.ObjectId(collectionId),

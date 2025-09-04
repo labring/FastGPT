@@ -1,7 +1,5 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
@@ -12,6 +10,7 @@ import {
 import type { createEvalDatasetDataBody } from '@fastgpt/global/core/evaluation/dataset/api';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { authEvaluationDatasetDataCreate } from '@fastgpt/service/core/evaluation/common';
 
 export type EvalDatasetDataCreateQuery = {};
 export type EvalDatasetDataCreateBody = createEvalDatasetDataBody;
@@ -22,6 +21,12 @@ async function handler(
 ): Promise<EvalDatasetDataCreateResponse> {
   const { collectionId, userInput, actualOutput, expectedOutput, context, retrievalContext } =
     req.body;
+
+  const { teamId, tmbId } = await authEvaluationDatasetDataCreate(collectionId, {
+    req,
+    authToken: true,
+    authApiKey: true
+  });
 
   if (!collectionId || typeof collectionId !== 'string') {
     return Promise.reject('collectionId is required and must be a string');
@@ -53,13 +58,6 @@ async function handler(
   ) {
     return Promise.reject('retrievalContext must be an array of strings if provided');
   }
-
-  const { teamId, tmbId } = await authUserPer({
-    req,
-    authToken: true,
-    authApiKey: true,
-    per: WritePermissionVal
-  });
 
   // Verify collection exists and belongs to the team
   const collection = await MongoEvalDatasetCollection.findOne({

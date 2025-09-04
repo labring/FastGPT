@@ -1,7 +1,5 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import {
@@ -17,6 +15,7 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { EvalDatasetDataQualityStatusEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { authEvaluationDatasetWrite } from '@fastgpt/service/core/evaluation/common';
 
 export type QualityAssessmentBatchQuery = {};
 export type QualityAssessmentBatchBody = qualityAssessmentBatchBody;
@@ -25,6 +24,12 @@ async function handler(
   req: ApiRequestProps<QualityAssessmentBatchBody, QualityAssessmentBatchQuery>
 ): Promise<QualityAssessmentBatchResponse> {
   const { collectionId, evalModel } = req.body;
+
+  const { teamId, tmbId } = await authEvaluationDatasetWrite(collectionId, {
+    req,
+    authApiKey: true,
+    authToken: true
+  });
 
   if (!collectionId || typeof collectionId !== 'string') {
     return {
@@ -45,13 +50,6 @@ async function handler(
       errorCount: 0
     };
   }
-
-  const { teamId, tmbId } = await authUserPer({
-    req,
-    authToken: true,
-    authApiKey: true,
-    per: WritePermissionVal
-  });
 
   const collection = await MongoEvalDatasetCollection.findOne({
     _id: collectionId,

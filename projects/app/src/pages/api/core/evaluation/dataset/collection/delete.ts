@@ -1,7 +1,5 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
@@ -12,6 +10,7 @@ import { removeEvalDatasetDataSynthesizeJobsRobust } from '@fastgpt/service/core
 import { addLog } from '@fastgpt/service/common/system/log';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { authEvaluationDatasetWrite } from '@fastgpt/service/core/evaluation/common';
 
 export type EvalDatasetCollectionDeleteQuery = deleteEvalDatasetCollectionQuery;
 export type EvalDatasetCollectionDeleteBody = {};
@@ -26,11 +25,10 @@ async function handler(
     return Promise.reject('collectionId is required and must be a string');
   }
 
-  const { teamId, tmbId } = await authUserPer({
+  const { teamId, tmbId } = await authEvaluationDatasetWrite(collectionId, {
     req,
-    authToken: true,
     authApiKey: true,
-    per: WritePermissionVal
+    authToken: true
   });
 
   let collectionName = '';

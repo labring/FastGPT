@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { handler } from '@/pages/api/core/evaluation/metric/create';
 import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/constants';
+import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 import type { CreateMetricBody } from '@fastgpt/global/core/evaluation/metric/api';
 
 // Mock dependencies
@@ -58,7 +58,17 @@ describe('/api/core/evaluation/metric/create', () => {
         name: 'Test Metric',
         description: 'Test Description',
         prompt: 'Test prompt for evaluation'
-      } as CreateMetricBody
+      } as CreateMetricBody,
+      auth: {
+        userId: '507f1f77bcf86cd799439013',
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
     const result = await handler(req as any, {} as any);
@@ -118,7 +128,17 @@ describe('/api/core/evaluation/metric/create', () => {
       body: {
         name: 'Test Metric',
         prompt: 'Test prompt for evaluation'
-      } as CreateMetricBody
+      } as CreateMetricBody,
+      auth: {
+        userId: '507f1f77bcf86cd799439013',
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
     const result = await handler(req as any, {} as any);
@@ -145,65 +165,145 @@ describe('/api/core/evaluation/metric/create', () => {
   });
 
   it('should reject when name is missing', async () => {
+    // Mock auth response (auth happens before validation)
+    vi.mocked(authUserPer).mockResolvedValue({
+      userId: '507f1f77bcf86cd799439013',
+      teamId: mockTeamId,
+      tmbId: mockTmbId,
+      isRoot: false,
+      permission: {} as any,
+      tmb: {} as any
+    });
+
     const req = {
       body: {
         prompt: 'Test prompt for evaluation'
-      } as CreateMetricBody
+      } as CreateMetricBody,
+      auth: {
+        userId: '507f1f77bcf86cd799439013',
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
     await expect(handler(req as any, {} as any)).rejects.toBe(
       'Metric name is required and must be a non-empty string'
     );
 
-    // Verify no auth or database calls were made
-    expect(authUserPer).not.toHaveBeenCalled();
+    // Auth should be called but database should not
+    expect(authUserPer).toHaveBeenCalled();
     expect(MongoEvalMetric.create).not.toHaveBeenCalled();
   });
 
   it('should reject when name is empty string', async () => {
+    // Mock auth response (auth happens before validation)
+    vi.mocked(authUserPer).mockResolvedValue({
+      userId: '507f1f77bcf86cd799439013',
+      teamId: mockTeamId,
+      tmbId: mockTmbId,
+      isRoot: false,
+      permission: {} as any,
+      tmb: {} as any
+    });
+
     const req = {
       body: {
         name: '',
         prompt: 'Test prompt for evaluation'
-      } as CreateMetricBody
+      } as CreateMetricBody,
+      auth: {
+        userId: '507f1f77bcf86cd799439013',
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
     await expect(handler(req as any, {} as any)).rejects.toBe(
       'Metric name is required and must be a non-empty string'
     );
 
-    expect(authUserPer).not.toHaveBeenCalled();
+    expect(authUserPer).toHaveBeenCalled();
     expect(MongoEvalMetric.create).not.toHaveBeenCalled();
   });
 
   it('should reject when prompt is missing', async () => {
+    // Mock auth response (auth happens before validation)
+    vi.mocked(authUserPer).mockResolvedValue({
+      userId: '507f1f77bcf86cd799439013',
+      teamId: mockTeamId,
+      tmbId: mockTmbId,
+      isRoot: false,
+      permission: {} as any,
+      tmb: {} as any
+    });
+
     const req = {
       body: {
         name: 'Test Metric'
-      } as CreateMetricBody
+      } as CreateMetricBody,
+      auth: {
+        userId: '507f1f77bcf86cd799439013',
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
     await expect(handler(req as any, {} as any)).rejects.toBe(
       'Metric prompt is required and must be a non-empty string'
     );
 
-    expect(authUserPer).not.toHaveBeenCalled();
+    expect(authUserPer).toHaveBeenCalled();
     expect(MongoEvalMetric.create).not.toHaveBeenCalled();
   });
 
   it('should reject when prompt is empty string', async () => {
+    // Mock auth response (auth happens before validation)
+    vi.mocked(authUserPer).mockResolvedValue({
+      userId: '507f1f77bcf86cd799439013',
+      teamId: mockTeamId,
+      tmbId: mockTmbId,
+      isRoot: false,
+      permission: {} as any,
+      tmb: {} as any
+    });
+
     const req = {
       body: {
         name: 'Test Metric',
         prompt: ''
-      } as CreateMetricBody
+      } as CreateMetricBody,
+      auth: {
+        userId: '507f1f77bcf86cd799439013',
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
     await expect(handler(req as any, {} as any)).rejects.toBe(
       'Metric prompt is required and must be a non-empty string'
     );
 
-    expect(authUserPer).not.toHaveBeenCalled();
+    expect(authUserPer).toHaveBeenCalled();
     expect(MongoEvalMetric.create).not.toHaveBeenCalled();
   });
 
@@ -215,7 +315,17 @@ describe('/api/core/evaluation/metric/create', () => {
       body: {
         name: 'Test Metric',
         prompt: 'Test prompt for evaluation'
-      } as CreateMetricBody
+      } as CreateMetricBody,
+      auth: {
+        userId: '507f1f77bcf86cd799439013',
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
     await expect(handler(req as any, {} as any)).rejects.toThrow('Authentication failed');
@@ -241,7 +351,17 @@ describe('/api/core/evaluation/metric/create', () => {
       body: {
         name: 'Test Metric',
         prompt: 'Test prompt for evaluation'
-      } as CreateMetricBody
+      } as CreateMetricBody,
+      auth: {
+        userId: '507f1f77bcf86cd799439013',
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
     await expect(handler(req as any, {} as any)).rejects.toThrow('Database creation failed');

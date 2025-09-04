@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler_test } from '@/pages/api/core/evaluation/dataset/data/qualityAssessment';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { authEvaluationDatasetDataUpdateById } from '@fastgpt/service/core/evaluation/common';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import {
@@ -8,19 +8,15 @@ import {
   removeEvalDatasetDataQualityJobsRobust,
   checkEvalDatasetDataQualityJobActive
 } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { EvalDatasetDataQualityStatusEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
 
-vi.mock('@fastgpt/service/support/permission/user/auth');
+vi.mock('@fastgpt/service/core/evaluation/common', () => ({
+  authEvaluationDatasetDataUpdateById: vi.fn()
+}));
 vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema', () => ({
   MongoEvalDatasetData: {
     findById: vi.fn(),
     findByIdAndUpdate: vi.fn()
-  }
-}));
-vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
-  MongoEvalDatasetCollection: {
-    findOne: vi.fn()
   }
 }));
 vi.mock('@fastgpt/service/core/evaluation/dataset/dataQualityMq', () => ({
@@ -31,8 +27,13 @@ vi.mock('@fastgpt/service/core/evaluation/dataset/dataQualityMq', () => ({
 vi.mock('@fastgpt/service/support/user/audit/util', () => ({
   addAuditLog: vi.fn()
 }));
+vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
+  MongoEvalDatasetCollection: {
+    findOne: vi.fn()
+  }
+}));
 
-const mockAuthUserPer = vi.mocked(authUserPer);
+const mockAuthEvaluationDatasetDataUpdateById = vi.mocked(authEvaluationDatasetDataUpdateById);
 const mockMongoEvalDatasetData = vi.mocked(MongoEvalDatasetData);
 const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
 const mockAddEvalDatasetDataQualityJob = vi.mocked(addEvalDatasetDataQualityJob);
@@ -51,20 +52,28 @@ describe('QualityAssessment API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockAuthUserPer.mockResolvedValue({
+    mockAuthEvaluationDatasetDataUpdateById.mockResolvedValue({
       teamId: validTeamId,
-      tmbId: validTmbId
+      tmbId: validTmbId,
+      collectionId: validCollectionId
     });
 
-    mockMongoEvalDatasetData.findById.mockResolvedValue({
+    // Mock dataset data document
+    const mockDatasetData = {
       _id: validDataId,
-      datasetId: validCollectionId
-    } as any);
+      datasetId: validCollectionId,
+      userInput: 'test input',
+      expectedOutput: 'test output'
+    };
+    mockMongoEvalDatasetData.findById.mockResolvedValue(mockDatasetData as any);
 
-    mockMongoEvalDatasetCollection.findOne.mockResolvedValue({
+    // Mock collection document
+    const mockCollection = {
       _id: validCollectionId,
+      name: 'Test Collection',
       teamId: validTeamId
-    } as any);
+    };
+    mockMongoEvalDatasetCollection.findOne.mockResolvedValue(mockCollection as any);
 
     mockCheckEvalDatasetDataQualityJobActive.mockResolvedValue(false);
     mockAddEvalDatasetDataQualityJob.mockResolvedValue({} as any);
@@ -129,7 +138,7 @@ describe('QualityAssessment API', () => {
   });
 
   describe('Authentication and Authorization', () => {
-    it('should call authUserPer with correct parameters', async () => {
+    it('should call authEvaluationDatasetDataUpdateById with correct parameters', async () => {
       const req = {
         body: {
           dataId: validDataId,
@@ -139,17 +148,16 @@ describe('QualityAssessment API', () => {
 
       await handler_test(req as any);
 
-      expect(mockAuthUserPer).toHaveBeenCalledWith({
+      expect(mockAuthEvaluationDatasetDataUpdateById).toHaveBeenCalledWith(validDataId, {
         req,
         authToken: true,
-        authApiKey: true,
-        per: WritePermissionVal
+        authApiKey: true
       });
     });
 
     it('should propagate authentication errors', async () => {
       const authError = new Error('Authentication failed');
-      mockAuthUserPer.mockRejectedValue(authError);
+      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(authError);
 
       const req = {
         body: {
@@ -158,26 +166,15 @@ describe('QualityAssessment API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toBe(authError);
+      await expect(handler_test(req as any)).rejects.toThrow('Authentication failed');
     });
   });
 
   describe('Data Validation', () => {
-    it('should verify dataset data exists', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          evalModel: validEvalModel
-        }
-      };
-
-      await handler_test(req as any);
-
-      expect(mockMongoEvalDatasetData.findById).toHaveBeenCalledWith(validDataId);
-    });
-
     it('should return error when dataset data not found', async () => {
-      mockMongoEvalDatasetData.findById.mockResolvedValue(null);
+      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(
+        new Error('Dataset data not found')
+      );
 
       const req = {
         body: {
@@ -186,28 +183,13 @@ describe('QualityAssessment API', () => {
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('Dataset data not found');
-    });
-
-    it('should verify collection exists and belongs to team', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          evalModel: validEvalModel
-        }
-      };
-
-      await handler_test(req as any);
-
-      expect(mockMongoEvalDatasetCollection.findOne).toHaveBeenCalledWith({
-        _id: validCollectionId,
-        teamId: validTeamId
-      });
+      await expect(handler_test(req as any)).rejects.toThrow('Dataset data not found');
     });
 
     it('should return error when collection not found', async () => {
-      mockMongoEvalDatasetCollection.findOne.mockResolvedValue(null);
+      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(
+        new Error('Dataset collection not found or access denied')
+      );
 
       const req = {
         body: {
@@ -216,12 +198,15 @@ describe('QualityAssessment API', () => {
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('Dataset collection not found or access denied');
+      await expect(handler_test(req as any)).rejects.toThrow(
+        'Dataset collection not found or access denied'
+      );
     });
 
     it('should return error when collection belongs to different team', async () => {
-      mockMongoEvalDatasetCollection.findOne.mockResolvedValue(null);
+      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(
+        new Error('Dataset collection not found or access denied')
+      );
 
       const req = {
         body: {
@@ -230,8 +215,9 @@ describe('QualityAssessment API', () => {
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('Dataset collection not found or access denied');
+      await expect(handler_test(req as any)).rejects.toThrow(
+        'Dataset collection not found or access denied'
+      );
     });
   });
 
@@ -455,10 +441,6 @@ describe('QualityAssessment API', () => {
 
     it('should handle very long dataId', async () => {
       const longDataId = 'a'.repeat(1000);
-      mockMongoEvalDatasetData.findById.mockResolvedValue({
-        _id: longDataId,
-        datasetId: validCollectionId
-      } as any);
 
       const req = {
         body: {
@@ -511,20 +493,11 @@ describe('QualityAssessment API', () => {
       vi.clearAllMocks();
 
       // Set up all necessary mocks for this test
-      mockAuthUserPer.mockResolvedValue({
+      mockAuthEvaluationDatasetDataUpdateById.mockResolvedValue({
         teamId: validTeamId,
-        tmbId: validTmbId
+        tmbId: validTmbId,
+        collectionId: validCollectionId
       });
-
-      mockMongoEvalDatasetData.findById.mockResolvedValue({
-        _id: validDataId,
-        datasetId: validCollectionId
-      } as any);
-
-      mockMongoEvalDatasetCollection.findOne.mockResolvedValue({
-        _id: validCollectionId,
-        teamId: validTeamId
-      } as any);
 
       mockCheckEvalDatasetDataQualityJobActive.mockResolvedValue(true);
       mockRemoveEvalDatasetDataQualityJobsRobust.mockResolvedValue(undefined);
@@ -540,16 +513,10 @@ describe('QualityAssessment API', () => {
 
       const result = await handler_test(req as any);
 
-      expect(mockAuthUserPer).toHaveBeenCalledWith({
+      expect(mockAuthEvaluationDatasetDataUpdateById).toHaveBeenCalledWith(validDataId, {
         req,
         authToken: true,
-        authApiKey: true,
-        per: WritePermissionVal
-      });
-      expect(mockMongoEvalDatasetData.findById).toHaveBeenCalledWith(validDataId);
-      expect(mockMongoEvalDatasetCollection.findOne).toHaveBeenCalledWith({
-        _id: validCollectionId,
-        teamId: validTeamId
+        authApiKey: true
       });
       expect(mockCheckEvalDatasetDataQualityJobActive).toHaveBeenCalledWith(validDataId);
       expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalledWith([validDataId]);
@@ -579,16 +546,10 @@ describe('QualityAssessment API', () => {
 
       const result = await handler_test(req as any);
 
-      expect(mockAuthUserPer).toHaveBeenCalledWith({
+      expect(mockAuthEvaluationDatasetDataUpdateById).toHaveBeenCalledWith(validDataId, {
         req,
         authToken: true,
-        authApiKey: true,
-        per: WritePermissionVal
-      });
-      expect(mockMongoEvalDatasetData.findById).toHaveBeenCalledWith(validDataId);
-      expect(mockMongoEvalDatasetCollection.findOne).toHaveBeenCalledWith({
-        _id: validCollectionId,
-        teamId: validTeamId
+        authApiKey: true
       });
       expect(mockCheckEvalDatasetDataQualityJobActive).toHaveBeenCalledWith(validDataId);
       expect(mockRemoveEvalDatasetDataQualityJobsRobust).not.toHaveBeenCalled();

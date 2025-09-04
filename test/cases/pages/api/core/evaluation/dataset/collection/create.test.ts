@@ -1,23 +1,23 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler_test } from '@/pages/api/core/evaluation/dataset/collection/create';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { authEvaluationDatasetCreate } from '@fastgpt/service/core/evaluation/common';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
-vi.mock('@fastgpt/service/support/permission/user/auth');
+vi.mock('@fastgpt/service/core/evaluation/common');
 vi.mock('@fastgpt/service/common/mongo/sessionRun');
 vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
   MongoEvalDatasetCollection: {
     findOne: vi.fn(),
     create: vi.fn()
-  }
+  },
+  EvalDatasetCollectionName: 'eval_dataset_collections'
 }));
 vi.mock('@fastgpt/service/support/user/audit/util', () => ({
   addAuditLog: vi.fn()
 }));
 
-const mockAuthUserPer = vi.mocked(authUserPer);
+const mockAuthEvaluationDatasetCreate = vi.mocked(authEvaluationDatasetCreate);
 const mockMongoSessionRun = vi.mocked(mongoSessionRun);
 const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
 
@@ -29,7 +29,7 @@ describe('EvalDatasetCollection Create API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockAuthUserPer.mockResolvedValue({
+    mockAuthEvaluationDatasetCreate.mockResolvedValue({
       teamId: validTeamId,
       tmbId: validTmbId
     });
@@ -134,30 +134,29 @@ describe('EvalDatasetCollection Create API', () => {
   });
 
   describe('Authentication and Authorization', () => {
-    it('should call authUserPer with correct parameters', async () => {
+    it('should call authEvaluationDatasetCreate with correct parameters', async () => {
       const req = {
         body: { name: 'Test Dataset', description: 'Test description' }
       };
 
       await handler_test(req as any);
 
-      expect(mockAuthUserPer).toHaveBeenCalledWith({
+      expect(mockAuthEvaluationDatasetCreate).toHaveBeenCalledWith({
         req,
         authToken: true,
-        authApiKey: true,
-        per: WritePermissionVal
+        authApiKey: true
       });
     });
 
     it('should propagate authentication errors', async () => {
       const authError = new Error('Authentication failed');
-      mockAuthUserPer.mockRejectedValue(authError);
+      mockAuthEvaluationDatasetCreate.mockRejectedValue(authError);
 
       const req = {
         body: { name: 'Test Dataset', description: 'Test description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toBe(authError);
+      await expect(handler_test(req as any)).rejects.toThrow('Authentication failed');
     });
   });
 

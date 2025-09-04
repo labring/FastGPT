@@ -2,25 +2,19 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema';
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-
+import { authEvaluationMetricWrite } from '@fastgpt/service/core/evaluation/common';
 type Query = { id: string };
 
 async function handler(req: ApiRequestProps<{}, Query>, res: ApiResponseType<any>) {
   const { id } = req.query;
-
   if (!id) {
     return Promise.reject('Missing required parameter: id');
   }
 
-  const { teamId, tmbId } = await authUserPer({
+  const { teamId } = await authEvaluationMetricWrite(id, {
     req,
-    authToken: true,
     authApiKey: true,
-    per: WritePermissionVal
+    authToken: true
   });
 
   const metric = await MongoEvalMetric.findById(id);

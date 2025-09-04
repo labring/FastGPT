@@ -9,12 +9,19 @@ import type {
   UpdateEvaluationItemResponse
 } from '@fastgpt/global/core/evaluation/api';
 import { addLog } from '@fastgpt/service/common/system/log';
+import { authEvaluationItemWrite } from '@fastgpt/service/core/evaluation/common';
 
 async function handler(
   req: ApiRequestProps<UpdateEvaluationItemRequest>
 ): Promise<UpdateEvaluationItemResponse> {
   try {
-    const { evalItemId, userInput, expectedOutput } = req.body;
+    const { evalItemId, userInput, expectedOutput, variables } = req.body;
+
+    const { teamId } = await authEvaluationItemWrite(evalItemId, {
+      req,
+      authApiKey: true,
+      authToken: true
+    });
 
     if (!evalItemId) {
       return Promise.reject('Evaluation item ID is required');
@@ -35,14 +42,11 @@ async function handler(
       updates.dataItem = dataItemUpdates as EvalDatasetDataSchemaType;
     }
 
-    await EvaluationTaskService.updateEvaluationItem(evalItemId, updates, {
-      req,
-      authToken: true
-    });
+    await EvaluationTaskService.updateEvaluationItem(evalItemId, updates, teamId);
 
     addLog.info('[Evaluation] Evaluation item updated successfully', {
       evalItemId,
-      updates: { userInput, expectedOutput }
+      updates: { userInput, expectedOutput, variables }
     });
 
     return { message: 'Evaluation item updated successfully' };

@@ -1,6 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler_test } from '@/pages/api/core/evaluation/dataset/data/update';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { authEvalDataset } from '@fastgpt/service/support/permission/evaluation/auth';
+import { authEvaluationDatasetDataUpdateById } from '@fastgpt/service/core/evaluation/common';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
@@ -13,17 +15,30 @@ import {
 import { addLog } from '@fastgpt/service/common/system/log';
 
 vi.mock('@fastgpt/service/support/permission/user/auth');
+// Mock the evaluation permissions
+vi.mock('@fastgpt/service/support/permission/evaluation/auth', () => ({
+  authEvalDataset: vi.fn()
+}));
+vi.mock('@fastgpt/service/core/evaluation/common', () => ({
+  authEvaluationDatasetDataUpdateById: vi.fn()
+}));
 vi.mock('@fastgpt/service/common/mongo/sessionRun');
 vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema', () => ({
   MongoEvalDatasetData: {
-    findById: vi.fn(),
+    findById: vi.fn(() => ({
+      select: vi.fn(() => ({
+        lean: vi.fn()
+      })),
+      session: vi.fn()
+    })),
     updateOne: vi.fn()
   }
 }));
 vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
   MongoEvalDatasetCollection: {
     findOne: vi.fn()
-  }
+  },
+  EvalDatasetCollectionName: 'eval_dataset_collections'
 }));
 vi.mock('@fastgpt/service/core/evaluation/dataset/dataQualityMq', () => ({
   removeEvalDatasetDataQualityJobsRobust: vi.fn(),
@@ -40,6 +55,8 @@ vi.mock('@fastgpt/service/support/user/audit/util', () => ({
 }));
 
 const mockAuthUserPer = vi.mocked(authUserPer);
+const mockAuthEvalDataset = vi.mocked(authEvalDataset);
+const mockAuthEvaluationDatasetDataUpdateById = vi.mocked(authEvaluationDatasetDataUpdateById);
 const mockMongoSessionRun = vi.mocked(mongoSessionRun);
 const mockMongoEvalDatasetData = vi.mocked(MongoEvalDatasetData);
 const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
@@ -58,10 +75,23 @@ describe('EvalDatasetData Update API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
+    mockAuthEvaluationDatasetDataUpdateById.mockResolvedValue({
+      teamId: validTeamId,
+      tmbId: validTmbId,
+      collectionId: validCollectionId
+    });
+
     mockAuthUserPer.mockResolvedValue({
       teamId: validTeamId,
       tmbId: validTmbId
     });
+
+    mockAuthEvalDataset.mockResolvedValue({
+      teamId: validTeamId,
+      tmbId: validTmbId,
+      dataset: { _id: validCollectionId, teamId: validTeamId },
+      isOwner: true
+    } as any);
 
     const mockExistingData = {
       _id: validDataId,
@@ -70,9 +100,15 @@ describe('EvalDatasetData Update API', () => {
       [EvalDatasetDataKeyEnum.ExpectedOutput]: 'Old output'
     };
 
-    mockMongoEvalDatasetData.findById.mockReturnValue({
+    // Mock for authentication pattern: findById().select().lean()
+    const mockSelectChain = {
+      lean: vi.fn().mockResolvedValue({ datasetId: validCollectionId })
+    };
+    const mockFindByIdChain = {
+      select: vi.fn(() => mockSelectChain),
       session: vi.fn().mockResolvedValue(mockExistingData)
-    } as any);
+    };
+    mockMongoEvalDatasetData.findById.mockReturnValue(mockFindByIdChain as any);
 
     mockMongoEvalDatasetCollection.findOne.mockReturnValue({
       session: vi.fn().mockResolvedValue({
@@ -381,7 +417,7 @@ describe('EvalDatasetData Update API', () => {
   });
 
   describe('Authentication and Authorization', () => {
-    it('should call authUserPer with correct parameters', async () => {
+    it('should call authEvaluationDatasetDataUpdateById with correct parameters', async () => {
       const req = {
         body: {
           dataId: validDataId,
@@ -393,17 +429,16 @@ describe('EvalDatasetData Update API', () => {
 
       await handler_test(req as any);
 
-      expect(mockAuthUserPer).toHaveBeenCalledWith({
+      expect(mockAuthEvaluationDatasetDataUpdateById).toHaveBeenCalledWith(validDataId, {
         req,
         authToken: true,
-        authApiKey: true,
-        per: WritePermissionVal
+        authApiKey: true
       });
     });
 
     it('should propagate authentication errors', async () => {
       const authError = new Error('Authentication failed');
-      mockAuthUserPer.mockRejectedValue(authError);
+      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(authError);
 
       const req = {
         body: {
@@ -420,9 +455,8 @@ describe('EvalDatasetData Update API', () => {
 
   describe('Data Validation', () => {
     it('should reject when dataset data does not exist', async () => {
-      mockMongoEvalDatasetData.findById.mockReturnValue({
-        session: vi.fn().mockResolvedValue(null)
-      } as any);
+      const dataNotFoundError = new Error('Dataset data not found');
+      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(dataNotFoundError);
 
       const req = {
         body: {
@@ -433,13 +467,12 @@ describe('EvalDatasetData Update API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual('Dataset data not found');
+      await expect(handler_test(req as any)).rejects.toBe(dataNotFoundError);
     });
 
     it('should reject when collection does not exist', async () => {
-      mockMongoEvalDatasetCollection.findOne.mockReturnValue({
-        session: vi.fn().mockResolvedValue(null)
-      } as any);
+      const collectionNotFoundError = new Error('Access denied or dataset collection not found');
+      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(collectionNotFoundError);
 
       const req = {
         body: {
@@ -450,15 +483,12 @@ describe('EvalDatasetData Update API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'Access denied or dataset collection not found'
-      );
+      await expect(handler_test(req as any)).rejects.toBe(collectionNotFoundError);
     });
 
     it('should reject when collection belongs to different team', async () => {
-      mockMongoEvalDatasetCollection.findOne.mockReturnValue({
-        session: vi.fn().mockResolvedValue(null)
-      } as any);
+      const accessDeniedError = new Error('Access denied or dataset collection not found');
+      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(accessDeniedError);
 
       const req = {
         body: {
@@ -469,9 +499,7 @@ describe('EvalDatasetData Update API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'Access denied or dataset collection not found'
-      );
+      await expect(handler_test(req as any)).rejects.toBe(accessDeniedError);
     });
   });
 
@@ -903,12 +931,12 @@ describe('EvalDatasetData Update API', () => {
 
     it('should handle MongoDB ObjectId-like strings for dataId', async () => {
       const objectIdLikeDataId = '507f1f77bcf86cd799439011';
-      mockMongoEvalDatasetData.findById.mockReturnValue({
-        session: vi.fn().mockResolvedValue({
-          _id: objectIdLikeDataId,
-          datasetId: validCollectionId
-        })
-      } as any);
+      // Reset auth mock to work with new dataId
+      mockAuthEvaluationDatasetDataUpdateById.mockResolvedValue({
+        teamId: validTeamId,
+        tmbId: validTmbId,
+        collectionId: validCollectionId
+      });
 
       const req = {
         body: {
@@ -921,6 +949,11 @@ describe('EvalDatasetData Update API', () => {
 
       const result = await handler_test(req as any);
       expect(result).toBe('success');
+      expect(mockAuthEvaluationDatasetDataUpdateById).toHaveBeenCalledWith(objectIdLikeDataId, {
+        req,
+        authToken: true,
+        authApiKey: true
+      });
     });
 
     it('should handle quality evaluation with different models', async () => {

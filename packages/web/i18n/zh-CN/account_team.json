@@ -223,6 +223,8 @@
   "permission_appCreate_tip": "可以在根目录创建应用，（文件夹下的创建权限由文件夹控制）",
   "permission_datasetCreate": "创建知识库",
   "permission_datasetCreate_Tip": "可以在根目录创建知识库，（文件夹下的创建权限由文件夹控制）",
+  "permission_evaluationCreate": "创建评估",
+  "permission_evaluationCreate_Tip": "可以创建评估任务、评估指标和评估数据集",
   "permission_manage": "管理员",
   "permission_manage_tip": "可以管理成员、创建群组、管理所有群组、为群组和成员分配权限",
   "please_bind_contact": "请绑定联系方式",

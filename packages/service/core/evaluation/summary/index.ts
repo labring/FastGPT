@@ -5,26 +5,11 @@ import {
   CalculateMethodEnum
 } from '@fastgpt/global/core/evaluation/constants';
 import { MongoEvaluation, MongoEvalItem } from '../task/schema';
-import { MongoEvalMetric } from '../metric/schema';
 import type {
   EvaluationSchemaType,
   EvaluationItemSchemaType,
-  CreateEvaluationParams,
-  EvaluationDisplayType,
-  EvaluationItemDisplayType
 } from '@fastgpt/global/core/evaluation/type';
-import type { AuthModeType } from '../../../support/permission/type';
-import {
-  validateResourceAccess,
-  validateResourceCreate,
-  validateListAccess,
-  checkUpdateResult,
-  checkDeleteResult
-} from '../common';
-import { removeEvaluationTaskJob, removeEvaluationItemJobs, evaluationTaskQueue } from '../task/mq';
 import { Types } from '../../../common/mongo';
-import { concatUsage } from '../../../support/wallet/usage/controller';
-import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { addLog } from '../../../common/system/log';
 import { SummaryStatusEnum, PERFECT_SCORE } from '@fastgpt/global/core/evaluation/constants';
 import { getEvaluationSummaryTokenLimit } from '../utils/tokenLimiter';
@@ -40,8 +25,7 @@ import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 export class EvaluationSummaryService {
   // Get evaluation summary report
   static async getEvaluationSummary(
-    evaluationId: string,
-    auth: AuthModeType
+    evalId: string,
   ): Promise<{
     data: Array<{
       metricsId: string;
@@ -55,14 +39,11 @@ export class EvaluationSummaryService {
     }>;
     aggregateScore: number;
   }> {
-    const { resourceFilter } = await validateResourceAccess(evaluationId, auth, 'Evaluation');
-
     // Query evaluation task
-    const evalId = resourceFilter?._id;
-    const evaluation = await MongoEvaluation.findOne({ _id: evalId }).lean();
+    const evaluation = await MongoEvaluation.findOne({ _id: new Types.ObjectId(evalId)}).lean();
 
     if (!evaluation) {
-      throw new Error('评估任务不存在或无权限访问');
+      throw new Error('Evaluation task not found');
     }
 
     // Real-time calculation of metricsScore and aggregateScore
@@ -266,19 +247,15 @@ export class EvaluationSummaryService {
 
   // Update evaluation summary configuration (threshold, weight, calculation method)
   static async updateEvaluationSummaryConfig(
-    evaluationId: string,
+    evalId: string,
     metricsConfig: Array<{
       metricsId: string;
       thresholdValue: number;
       weight?: number;
       calculateType?: CalculateMethodEnum;
     }>,
-    auth: AuthModeType
   ): Promise<void> {
-    //todo authentication
-    // const { resourceFilter } = await validateResourceAccess(evaluationId, auth, 'Evaluation');
-    // Read evaluation information, validate metric ownership
-    const evaluation = await MongoEvaluation.findOne({ _id: evaluationId }).lean();
+    const evaluation = await MongoEvaluation.findOne({ _id: evalId }).lean();
     if (!evaluation) throw new Error('Evaluation not found');
 
     const evalMetricIdSet = new Set(
@@ -314,7 +291,7 @@ export class EvaluationSummaryService {
     });
 
     await MongoEvaluation.updateOne(
-      { _id: evaluationId },
+      { _id: evalId },
       {
         $set: {
           evaluators: updatedEvaluators
@@ -325,8 +302,7 @@ export class EvaluationSummaryService {
 
   // Get evaluation summary configuration details
   static async getEvaluationSummaryConfig(
-    evaluationId: string,
-    auth: AuthModeType
+    evalId: string
   ): Promise<{
     calculateType: CalculateMethodEnum;
     calculateTypeName: string;
@@ -337,10 +313,8 @@ export class EvaluationSummaryService {
       weight: number;
     }>;
   }> {
-    const { resourceFilter } = await validateResourceAccess(evaluationId, auth, 'Evaluation');
-
     // Query evaluation task
-    const evaluation = await MongoEvaluation.findOne(resourceFilter).lean();
+    const evaluation = await MongoEvaluation.findOne({ _id: evalId }).lean();
 
     if (!evaluation) {
       throw new Error('评估任务不存在或无权限访问');
@@ -395,12 +369,9 @@ export class EvaluationSummaryService {
   static async generateSummaryReports(
     evalId: string,
     metricsIds: string[],
-    auth: AuthModeType
   ): Promise<void> {
     try {
-      // Validate permissions and get evaluation task
-      const { resourceFilter } = await validateResourceAccess(evalId, auth, 'Evaluation');
-      const evaluation = await MongoEvaluation.findOne(resourceFilter).lean();
+      const evaluation = await MongoEvaluation.findOne({ _id: evalId }).lean();
 
       if (!evaluation) {
         throw new Error('评估任务不存在或无权限访问');
@@ -459,7 +430,7 @@ export class EvaluationSummaryService {
 
       // Execute report generation asynchronously, don't wait for results
       setImmediate(() => {
-        this.executeAsyncSummaryGeneration(evaluation, evaluatorTasks, auth);
+        this.executeAsyncSummaryGeneration(evaluation, evaluatorTasks);
       });
     } catch (error) {
       addLog.error('[EvaluationSummary] Report generation task creation failed', {
@@ -480,8 +451,7 @@ export class EvaluationSummaryService {
       metricId: string;
       evaluatorIndex: number;
       evaluator: any;
-    }>,
-    auth: AuthModeType
+    }>
   ): Promise<void> {
     const evalId = evaluation._id.toString();
 
@@ -499,7 +469,6 @@ export class EvaluationSummaryService {
             task.metricId,
             task.evaluatorIndex,
             task.evaluator,
-            auth
           ).catch((error) => {
             addLog.error('[EvaluationSummary] Single metric report generation failed', {
               evalId,
@@ -531,7 +500,6 @@ export class EvaluationSummaryService {
     metricId: string,
     evaluatorIndex: number,
     evaluator: any,
-    auth: AuthModeType
   ): Promise<void> {
     const evalId = evaluation._id.toString();
 
@@ -607,7 +575,7 @@ export class EvaluationSummaryService {
 
       // 5. Record costs and usage
       const llmModel = evaluator.runtimeConfig?.llm;
-      await this.recordUsage(evaluation, evaluator, usage, llmModel, auth);
+      await this.recordUsage(evaluation, evaluator, usage, llmModel);
 
       // 6. Update results
       await this.updateSummaryResult(evalId, evaluatorIndex, SummaryStatusEnum.completed, summary);
@@ -919,8 +887,7 @@ export class EvaluationSummaryService {
     evaluation: EvaluationSchemaType,
     evaluator: any,
     usage: any,
-    llmModel: string | undefined,
-    auth: AuthModeType
+    llmModel: string | undefined
   ): Promise<void> {
     if (!usage) return;
 
