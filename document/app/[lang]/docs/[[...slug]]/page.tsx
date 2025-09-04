@@ -26,7 +26,7 @@ export default async function Page({
   const filePath = `document/content/docs/${page.file.path}`;
   // @ts-ignore
   const lastModified = docLastModifiedData[filePath] || page.data.lastModified;
-  console.log(lastModified, filePath);
+
   return (
     <DocsPage
       toc={page.data.toc}
