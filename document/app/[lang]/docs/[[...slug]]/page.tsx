@@ -23,7 +23,7 @@ export default async function Page({
   const MDXContent = page.data.body;
 
   // 使用构建时导入的静态数据
-  const filePath = `content/docs/${page.file.path}`;
+  const filePath = `document/content/docs/${page.file.path}`;
   // @ts-ignore
   const lastModified = docLastModifiedData[filePath] || page.data.lastModified;
   console.log(lastModified, filePath);
