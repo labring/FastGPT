@@ -20,14 +20,16 @@ import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useState, useEffect, useMemo } from 'react';
-import EvaluationDetailModal from '@/pageComponents/evaluation/DetailModal';
+import EvaluationDetailModal from '@/pageComponents/dashboard/evaluation/DetailModal';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import type { evaluationType } from '@fastgpt/global/core/evaluation/type';
+// import type { evaluationType } from '@fastgpt/global/core/evaluation/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useTranslation } from 'next-i18next';
+
+type evaluationType = any;
 
 const EvaluationTasks = () => {
   const router = useRouter();

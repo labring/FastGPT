@@ -29,8 +29,8 @@ import UserBox from '@fastgpt/web/components/common/UserBox';
 import { useTranslation } from 'next-i18next';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { getMetricList, deleteMetric } from '@/web/core/evaluation/dimension';
-import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/constants';
-import type { EvalMetricSchemaType } from '@fastgpt/global/core/evaluation/type';
+// import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/constants';
+// import type { EvalMetricSchemaType } from '@fastgpt/global/core/evaluation/type';
 
 const EvaluationDimensions = ({ Tab }: { Tab: React.ReactNode }) => {
   const [searchValue, setSearchValue] = useState('');
@@ -126,28 +126,35 @@ const EvaluationDimensions = ({ Tab }: { Tab: React.ReactNode }) => {
               </Tr>
             </Thead>
             <Tbody>
-              {dimensions.map((dimension: EvalMetricSchemaType) => (
+              {dimensions.map((dimension: any) => (
                 <Tr
                   key={dimension._id}
                   _hover={{ bg: 'myGray.100' }}
-                  cursor={dimension.type === EvalMetricTypeEnum.Custom ? 'pointer' : 'default'}
-                  onClick={
-                    dimension.type === EvalMetricTypeEnum.Custom
-                      ? () => {
-                          router.push({
-                            pathname: '/dashboard/evaluation/dimension/edit',
-                            query: { id: dimension._id }
-                          });
-                        }
-                      : undefined
-                  }
+                  // cursor={dimension.type === EvalMetricTypeEnum.Custom ? 'pointer' : 'default'}
+                  cursor={'pointer'}
+                  onClick={() => {
+                    router.push({
+                      pathname: '/dashboard/evaluation/dimension/edit',
+                      query: { id: dimension._id }
+                    });
+                  }}
+                  // onClick={
+                  //   dimension.type === EvalMetricTypeEnum.Custom
+                  //     ? () => {
+                  //       router.push({
+                  //         pathname: '/dashboard/evaluation/dimension/edit',
+                  //         query: { id: dimension._id }
+                  //       });
+                  //     }
+                  //     : undefined
+                  // }
                 >
                   <Td>
                     <HStack spacing={2}>
                       <Text>{dimension.name}</Text>
-                      {dimension.type === EvalMetricTypeEnum.Builtin && (
+                      {/* {dimension.type === EvalMetricTypeEnum.Builtin && (
                         <MyTag colorSchema="gray">{t('dashboard_evaluation:builtin')}</MyTag>
-                      )}
+                      )} */}
                     </HStack>
                   </Td>
                   <Td color={'myGray.600'}>{dimension.description || '-'}</Td>
@@ -169,24 +176,24 @@ const EvaluationDimensions = ({ Tab }: { Tab: React.ReactNode }) => {
                     />
                   </Td>
                   <Td onClick={(e) => e.stopPropagation()}>
-                    {dimension.type === EvalMetricTypeEnum.Custom && (
-                      <MyIconButton
-                        icon="delete"
-                        w={'24px'}
-                        h={'24px'}
-                        hoverBg="red.50"
-                        hoverColor={'red.600'}
-                        onClick={() =>
-                          openConfirm(
-                            async () => {
-                              await handleDeleteDimension(dimension._id);
-                            },
-                            undefined,
-                            t('dashboard_evaluation:confirm_delete_dimension')
-                          )()
-                        }
-                      />
-                    )}
+                    {/* {dimension.type === EvalMetricTypeEnum.Custom && ( */}
+                    <MyIconButton
+                      icon="delete"
+                      w={'24px'}
+                      h={'24px'}
+                      hoverBg="red.50"
+                      hoverColor={'red.600'}
+                      onClick={() =>
+                        openConfirm(
+                          async () => {
+                            await handleDeleteDimension(dimension._id);
+                          },
+                          undefined,
+                          t('dashboard_evaluation:confirm_delete_dimension')
+                        )()
+                      }
+                    />
+                    {/* )} */}
                   </Td>
                 </Tr>
               ))}

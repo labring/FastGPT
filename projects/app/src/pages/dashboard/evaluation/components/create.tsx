@@ -23,7 +23,7 @@ import { fileDownload } from '@/web/common/file/utils';
 import { postCreateEvaluation } from '@/web/core/evaluation/evaluation';
 import { useMemo, useState } from 'react';
 import Markdown from '@/components/Markdown';
-import { getEvaluationFileHeader } from '@fastgpt/global/core/evaluation/utils';
+// import { getEvaluationFileHeader } from '@fastgpt/global/core/evaluation/utils';
 import { evaluationFileErrors } from '@fastgpt/global/core/evaluation/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -68,14 +68,20 @@ const EvaluationCreating = () => {
   });
 
   const handleDownloadTemplate = async () => {
-    const appDetail = await getAppDetail();
-    const variables = appDetail?.chatConfig.variables;
-    const templateContent = getEvaluationFileHeader(variables);
+    // const appDetail = await getAppDetail();
+    // const variables = appDetail?.chatConfig.variables;
+    // const templateContent = getEvaluationFileHeader(variables);
 
-    fileDownload({
-      text: templateContent,
-      type: 'text/csv;charset=utf-8',
-      filename: `${appDetail?.name}_evaluation.csv`
+    // fileDownload({
+    //   text: templateContent,
+    //   type: 'text/csv;charset=utf-8',
+    //   filename: `${appDetail?.name}_evaluation.csv`
+    // });
+
+    // 临时禁用模板下载功能
+    toast({
+      title: t('模板下载功能暂时不可用'),
+      status: 'warning'
     });
   };
 
