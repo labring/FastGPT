@@ -88,14 +88,16 @@ const ModifyEvaluationModal = ({
                 evaluationStatus: e
               }));
             }}
-            list={modifiableEvaluationStatusOptions}
+            list={modifiableEvaluationStatusOptions.map((v) => ({
+              ...v,
+              label: t(v.label)
+            }))}
           />
         </FormControl>
 
         <FormControl mb={6}>
           <FormLabel fontSize="14px" fontWeight="medium" color="myGray.900">
             {t('dashboard_evaluation:modify_reason_label')}
-            {evaluationData.evaluationResult}
           </FormLabel>
           <Textarea
             placeholder={t('dashboard_evaluation:modify_reason_input_placeholder')}
