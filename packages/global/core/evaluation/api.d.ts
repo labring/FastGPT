@@ -3,11 +3,8 @@ import type {
   CreateEvaluationParams,
   EvaluationSchemaType,
   EvaluationItemSchemaType,
-  CreateMetricParams,
   EvaluationMetricSchemaType,
-  MetricResult,
   ImportResult,
-  EvalCase,
   EvaluationDisplayType,
   EvaluationItemDisplayType
 } from './type';
@@ -105,33 +102,3 @@ export type RetryEvaluationItemResponse = MessageResponse;
 // Delete Evaluation Item
 export type DeleteEvaluationItemRequest = EvalItemIdQuery;
 export type DeleteEvaluationItemResponse = MessageResponse;
-
-// ===== Evaluation Metric API =====
-
-// Create Metric
-export type CreateMetricRequest = CreateMetricParams;
-export type CreateMetricResponse = EvaluationMetricSchemaType;
-
-// Get Metric Detail
-export type MetricDetailRequest = MetricIdQuery;
-export type MetricDetailResponse = EvaluationMetricSchemaType;
-
-// Update Metric
-export type UpdateMetricRequest = MetricIdQuery & Partial<CreateMetricParams>;
-export type UpdateMetricResponse = MessageResponse;
-
-// Delete Metric
-export type DeleteMetricRequest = MetricIdQuery;
-export type DeleteMetricResponse = MessageResponse;
-
-// List Metrics
-export type ListMetricsRequest = PaginationProps<{
-  searchKey?: string;
-}>;
-export type ListMetricsResponse = PaginationResponse<EvaluationMetricSchemaType>;
-
-// Test Metric
-export type TestMetricRequest = MetricIdQuery & {
-  testCase: EvalCase;
-};
-export type TestMetricResponse = MetricResult;
