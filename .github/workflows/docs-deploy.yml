@@ -78,12 +78,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # - name: Rewrite image paths
-      #   if: matrix.domain_config.suffix == 'io'
-      #   run: |
-      #     find document/content/docs -name "*.mdx" -type f | while read file; do
-      #       sed -i 's|](/imgs/|](https://cdn.jsdelivr.net/gh/labring/fastgpt-img@main/|g' "$file"
-      #     done
+      - name: Rewrite image paths
+        if: matrix.domain_config.suffix == 'io'
+        run: |
+          find document/content/docs -name "*.mdx" -type f | while read file; do
+            sed -i 's|](/imgs/|](https://cdn.jsdelivr.net/gh/labring/fastgpt-img@main/|g' "$file"
+          done
 
       - name: Docker meta
         id: meta
