@@ -88,9 +88,20 @@ vi.mock(import('@fastgpt/service/support/permission/auth/common'), async (import
       return Promise.resolve(auth);
     }
   );
+
+  const authCert = async (props: any) => {
+    const result = await parseHeaderCert(props);
+
+    return {
+      ...result,
+      isOwner: true,
+      canWrite: true
+    };
+  };
   return {
     ...mod,
-    parseHeaderCert
+    parseHeaderCert,
+    authCert
   };
 });
 
