@@ -258,6 +258,10 @@ const MultipleReferenceSelector = ({
     });
   }, [getSelectValue, value]);
 
+  const invalidList = useMemo(() => {
+    return formatList.filter((item) => item.nodeName && item.outputName);
+  }, [formatList]);
+
   useEffect(() => {
     // Adapt array type from old version
     if (Array.isArray(value) && typeof value[0] === 'string') {
@@ -265,10 +269,6 @@ const MultipleReferenceSelector = ({
       onSelect([value]);
     }
   }, [formatList, onSelect, value]);
-
-  const invalidList = useMemo(() => {
-    return formatList.filter((item) => item.nodeName && item.outputName);
-  }, [formatList]);
 
   const ArraySelector = useMemo(() => {
     return (
@@ -282,7 +282,7 @@ const MultipleReferenceSelector = ({
               fontSize={'sm'}
               _hover={{
                 '.delete': {
-                  display: 'block'
+                  visibility: 'visible'
                 }
               }}
             >
@@ -310,7 +310,7 @@ const MultipleReferenceSelector = ({
                     </Flex>
                     <MyIcon
                       className="delete"
-                      display={'none'}
+                      visibility={'hidden'}
                       name={'common/closeLight'}
                       w={'1rem'}
                       ml={1}
@@ -336,7 +336,9 @@ const MultipleReferenceSelector = ({
         }
         value={value as any}
         list={list}
-        onSelect={onSelect as any}
+        onSelect={(e) => {
+          onSelect(e as any);
+        }}
         popDirection={popDirection}
       />
     );

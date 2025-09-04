@@ -147,7 +147,7 @@ const EditForm = ({
     },
     [appForm.aiSettings.systemPrompt, setAppForm]
   );
-  console.log(appForm.chatConfig.fileSelectConfig);
+
   return (
     <>
       <Box>
