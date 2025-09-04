@@ -5,21 +5,18 @@ import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workf
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import type { WorkflowDebugResponse } from '@fastgpt/service/core/workflow/dispatch/type';
 
 export type PostWorkflowDebugProps = {
   nodes: RuntimeNodeItemType[];
   edges: RuntimeEdgeItemType[];
+  skipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
   variables: Record<string, any>;
   appId: string;
   query?: UserChatItemValueItemType[];
   history?: ChatItemType[];
 };
 
-export type PostWorkflowDebugResponse = {
-  finishedNodes: RuntimeNodeItemType[];
-  finishedEdges: RuntimeEdgeItemType[];
-  nextStepRunNodes: RuntimeNodeItemType[];
-  flowResponses: ChatHistoryItemResType[];
-  workflowInteractiveResponse?: WorkflowInteractiveResponseType;
+export type PostWorkflowDebugResponse = WorkflowDebugResponse & {
   newVariables: Record<string, any>;
 };
