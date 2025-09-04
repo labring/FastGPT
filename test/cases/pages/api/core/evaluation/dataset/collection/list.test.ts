@@ -1,16 +1,17 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler_test } from '@/pages/api/core/evaluation/dataset/collection/list';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { getEvaluationPermissionAggregation } from '@fastgpt/service/core/evaluation/common';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { Types } from '@fastgpt/service/common/mongo';
 
-vi.mock('@fastgpt/service/support/permission/user/auth');
+vi.mock('@fastgpt/service/core/evaluation/common');
 vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
   MongoEvalDatasetCollection: {
     aggregate: vi.fn(),
     countDocuments: vi.fn()
-  }
+  },
+  EvalDatasetCollectionName: 'eval_dataset_collections'
 }));
 vi.mock('@fastgpt/service/core/evaluation/dataset/dataSynthesizeMq', () => ({
   evalDatasetDataSynthesizeQueue: {
@@ -24,7 +25,67 @@ vi.mock('@fastgpt/service/core/evaluation/dataset/dataSynthesizeMq', () => ({
   }
 }));
 
-const mockAuthUserPer = vi.mocked(authUserPer);
+vi.mock('@fastgpt/service/support/permission/schema', () => ({
+  MongoResourcePermission: {
+    find: vi.fn().mockReturnValue({
+      lean: vi.fn().mockResolvedValue([])
+    })
+  }
+}));
+
+vi.mock('@fastgpt/service/support/permission/memberGroup/controllers', () => ({
+  getGroupsByTmbId: vi.fn().mockResolvedValue([])
+}));
+
+vi.mock('@fastgpt/service/support/permission/org/controllers', () => ({
+  getOrgIdSetWithParentByTmbId: vi.fn().mockResolvedValue(new Set())
+}));
+
+vi.mock('@fastgpt/service/support/user/utils', () => ({
+  addSourceMember: vi.fn().mockImplementation(({ list }) => Promise.resolve(list))
+}));
+
+vi.mock('@fastgpt/global/support/permission/evaluation/controller', () => ({
+  EvaluationPermission: vi.fn().mockImplementation(() => ({
+    hasReadPer: true,
+    hasWritePer: true,
+    hasManagePer: true
+  }))
+}));
+
+// Mock mongoose to use the existing Types from @fastgpt/service/common/mongo
+vi.mock('mongoose', async () => {
+  const { Types } = await vi.importActual<typeof import('@fastgpt/service/common/mongo')>(
+    '@fastgpt/service/common/mongo'
+  );
+  return { Types };
+});
+
+// Mock TeamPermission实例
+const createMockTeamPermission = (isOwner = true) => ({
+  isOwner,
+  hasManagePer: true,
+  hasWritePer: true,
+  hasReadPer: true,
+  hasManageRole: true,
+  hasWriteRole: true,
+  hasReadRole: true,
+  hasAppCreateRole: true,
+  hasDatasetCreateRole: true,
+  hasApikeyCreateRole: true,
+  hasEvaluationCreateRole: true,
+  hasAppCreatePer: true,
+  hasDatasetCreatePer: true,
+  hasApikeyCreatePer: true,
+  hasEvaluationCreatePer: true,
+  role: 511,
+  permission: 511,
+  roleList: [],
+  perList: [],
+  rolePerMap: {}
+});
+
+const mockGetEvaluationPermissionAggregation = vi.mocked(getEvaluationPermissionAggregation);
 const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
 
 describe('EvalDatasetCollection List API', () => {
@@ -35,32 +96,34 @@ describe('EvalDatasetCollection List API', () => {
       _id: '65f5b5b5b5b5b5b5b5b5b5b1',
       name: 'Dataset 1',
       description: 'First dataset',
+      tmbId: validTmbId,
       createTime: new Date('2024-01-01'),
       updateTime: new Date('2024-01-02'),
-      teamMember: {
-        avatar: 'avatar1.jpg',
-        name: 'User One'
-      }
+      creatorAvatar: 'avatar1.jpg',
+      creatorName: 'User One'
     },
     {
       _id: '65f5b5b5b5b5b5b5b5b5b5b2',
       name: 'Dataset 2',
       description: 'Second dataset',
+      tmbId: validTmbId,
       createTime: new Date('2024-01-03'),
       updateTime: new Date('2024-01-04'),
-      teamMember: {
-        avatar: 'avatar2.jpg',
-        name: 'User Two'
-      }
+      creatorAvatar: 'avatar2.jpg',
+      creatorName: 'User Two'
     }
   ];
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockAuthUserPer.mockResolvedValue({
+    mockGetEvaluationPermissionAggregation.mockResolvedValue({
       teamId: validTeamId,
-      tmbId: validTmbId
+      tmbId: validTmbId,
+      isOwner: true,
+      roleList: [],
+      myGroupMap: new Map(),
+      myOrgSet: new Set()
     });
 
     mockMongoEvalDatasetCollection.aggregate.mockResolvedValue(mockCollections);
@@ -68,24 +131,23 @@ describe('EvalDatasetCollection List API', () => {
   });
 
   describe('Authentication and Authorization', () => {
-    it('should call authUserPer with correct parameters', async () => {
+    it('should call getEvaluationPermissionAggregation with correct parameters', async () => {
       const req = {
         body: { pageNum: 1, pageSize: 10 }
       };
 
       await handler_test(req as any);
 
-      expect(mockAuthUserPer).toHaveBeenCalledWith({
+      expect(mockGetEvaluationPermissionAggregation).toHaveBeenCalledWith({
         req,
         authToken: true,
-        authApiKey: true,
-        per: ReadPermissionVal
+        authApiKey: true
       });
     });
 
     it('should propagate authentication errors', async () => {
       const authError = new Error('Authentication failed');
-      mockAuthUserPer.mockRejectedValue(authError);
+      mockGetEvaluationPermissionAggregation.mockRejectedValue(authError);
 
       const req = {
         body: { pageNum: 1, pageSize: 10 }
@@ -106,9 +168,7 @@ describe('EvalDatasetCollection List API', () => {
       expect(mockMongoEvalDatasetCollection.aggregate).toHaveBeenCalledWith(
         expect.arrayContaining([
           { $match: { teamId: new Types.ObjectId(validTeamId) } },
-          { $sort: { createTime: -1 } },
-          { $skip: 0 },
-          { $limit: 20 }
+          { $sort: { createTime: -1 } }
         ])
       );
       expect(result.total).toBe(2);
@@ -140,7 +200,12 @@ describe('EvalDatasetCollection List API', () => {
       await handler_test(req as any);
 
       expect(mockMongoEvalDatasetCollection.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $skip: 0 }, { $limit: 10 }])
+        expect.arrayContaining([
+          { $match: { teamId: new Types.ObjectId(validTeamId) } },
+          { $sort: { createTime: -1 } },
+          { $skip: 0 },
+          { $limit: 10 }
+        ])
       );
     });
   });
@@ -185,8 +250,6 @@ describe('EvalDatasetCollection List API', () => {
       expect(mockMongoEvalDatasetCollection.aggregate).toHaveBeenCalledWith(
         expect.arrayContaining([{ $match: expectedMatch }])
       );
-
-      expect(mockMongoEvalDatasetCollection.countDocuments).toHaveBeenCalledWith(expectedMatch);
     });
 
     it('should trim search key before processing', async () => {
@@ -267,12 +330,11 @@ describe('EvalDatasetCollection List API', () => {
             _id: 1,
             name: 1,
             description: 1,
+            tmbId: 1,
             createTime: 1,
             updateTime: 1,
-            teamMember: {
-              avatar: 1,
-              name: 1
-            }
+            creatorAvatar: '$teamMember.avatar',
+            creatorName: '$teamMember.name'
           }
         }
       ]);
@@ -317,7 +379,13 @@ describe('EvalDatasetCollection List API', () => {
             createTime: expect.any(Date),
             updateTime: expect.any(Date),
             creatorAvatar: 'avatar1.jpg',
-            creatorName: 'User One'
+            creatorName: 'User One',
+            permission: expect.objectContaining({
+              hasReadPer: true,
+              hasWritePer: true,
+              hasManagePer: true
+            }),
+            private: expect.any(Boolean)
           },
           {
             _id: '65f5b5b5b5b5b5b5b5b5b5b2',
@@ -327,7 +395,13 @@ describe('EvalDatasetCollection List API', () => {
             createTime: expect.any(Date),
             updateTime: expect.any(Date),
             creatorAvatar: 'avatar2.jpg',
-            creatorName: 'User Two'
+            creatorName: 'User Two',
+            permission: expect.objectContaining({
+              hasReadPer: true,
+              hasWritePer: true,
+              hasManagePer: true
+            }),
+            private: expect.any(Boolean)
           }
         ]
       });
@@ -362,7 +436,13 @@ describe('EvalDatasetCollection List API', () => {
         createTime: expect.any(Date),
         updateTime: expect.any(Date),
         creatorAvatar: undefined,
-        creatorName: undefined
+        creatorName: undefined,
+        permission: expect.objectContaining({
+          hasReadPer: true,
+          hasWritePer: true,
+          hasManagePer: true
+        }),
+        private: expect.any(Boolean)
       });
     });
 

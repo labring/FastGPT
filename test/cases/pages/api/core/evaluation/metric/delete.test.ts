@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler } from '@/pages/api/core/evaluation/metric/delete';
 import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/constants';
+import { authEvalMetric } from '@fastgpt/service/support/permission/evaluation/auth';
+import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 
 // Mock dependencies
 vi.mock('@fastgpt/service/core/evaluation/metric/schema', () => ({
@@ -12,8 +12,8 @@ vi.mock('@fastgpt/service/core/evaluation/metric/schema', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
-  authUserPer: vi.fn()
+vi.mock('@fastgpt/service/support/permission/evaluation/auth', () => ({
+  authEvalMetric: vi.fn()
 }));
 
 describe('/api/core/evaluation/metric/delete', () => {
@@ -26,14 +26,14 @@ describe('/api/core/evaluation/metric/delete', () => {
   });
 
   it('should delete a custom metric successfully', async () => {
-    // Mock auth response
-    vi.mocked(authUserPer).mockResolvedValue({
+    // Mock auth response for the new auth function
+    vi.mocked(authEvalMetric).mockResolvedValue({
       userId: '507f1f77bcf86cd799439013',
       teamId: mockTeamId,
       tmbId: mockTmbId,
       isRoot: false,
       permission: {} as any,
-      tmb: {} as any
+      metric: {} as any
     });
 
     // Mock metric found - custom type
@@ -48,16 +48,27 @@ describe('/api/core/evaluation/metric/delete', () => {
     const req = {
       query: {
         id: mockMetricId
+      },
+      auth: {
+        userId: '507f1f77bcf86cd799439013',
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
       }
     };
 
     const result = await handler(req as any, {} as any);
 
     // Verify auth was called correctly
-    expect(authUserPer).toHaveBeenCalledWith({
+    expect(authEvalMetric).toHaveBeenCalledWith({
       req,
       authToken: true,
       authApiKey: true,
+      metricId: mockMetricId,
       per: expect.any(Number)
     });
 
@@ -79,7 +90,7 @@ describe('/api/core/evaluation/metric/delete', () => {
     await expect(handler(req as any, {} as any)).rejects.toBe('Missing required parameter: id');
 
     // Verify no auth or database calls were made
-    expect(authUserPer).not.toHaveBeenCalled();
+    expect(authEvalMetric).not.toHaveBeenCalled();
     expect(MongoEvalMetric.findById).not.toHaveBeenCalled();
     expect(MongoEvalMetric.findByIdAndDelete).not.toHaveBeenCalled();
   });
@@ -93,20 +104,20 @@ describe('/api/core/evaluation/metric/delete', () => {
 
     await expect(handler(req as any, {} as any)).rejects.toBe('Missing required parameter: id');
 
-    expect(authUserPer).not.toHaveBeenCalled();
+    expect(authEvalMetric).not.toHaveBeenCalled();
     expect(MongoEvalMetric.findById).not.toHaveBeenCalled();
     expect(MongoEvalMetric.findByIdAndDelete).not.toHaveBeenCalled();
   });
 
   it('should reject when metric is not found', async () => {
     // Mock auth response
-    vi.mocked(authUserPer).mockResolvedValue({
+    vi.mocked(authEvalMetric).mockResolvedValue({
       userId: '507f1f77bcf86cd799439013',
       teamId: mockTeamId,
       tmbId: mockTmbId,
       isRoot: false,
       permission: {} as any,
-      tmb: {} as any
+      metric: {} as any
     });
 
     // Mock metric not found
@@ -115,25 +126,35 @@ describe('/api/core/evaluation/metric/delete', () => {
     const req = {
       query: {
         id: mockMetricId
+      },
+      auth: {
+        userId: '507f1f77bcf86cd799439013',
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
       }
     };
 
     await expect(handler(req as any, {} as any)).rejects.toBe('Metric not found');
 
-    expect(authUserPer).toHaveBeenCalled();
+    expect(authEvalMetric).toHaveBeenCalled();
     expect(MongoEvalMetric.findById).toHaveBeenCalledWith(mockMetricId);
     expect(MongoEvalMetric.findByIdAndDelete).not.toHaveBeenCalled();
   });
 
   it('should reject when trying to delete builtin metric', async () => {
     // Mock auth response
-    vi.mocked(authUserPer).mockResolvedValue({
+    vi.mocked(authEvalMetric).mockResolvedValue({
       userId: '507f1f77bcf86cd799439013',
       teamId: mockTeamId,
       tmbId: mockTmbId,
       isRoot: false,
       permission: {} as any,
-      tmb: {} as any
+      metric: {} as any
     });
 
     // Mock metric found - builtin type
@@ -147,41 +168,61 @@ describe('/api/core/evaluation/metric/delete', () => {
     const req = {
       query: {
         id: mockMetricId
+      },
+      auth: {
+        userId: '507f1f77bcf86cd799439013',
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
       }
     };
 
     await expect(handler(req as any, {} as any)).rejects.toBe('Builtin metrics cannot be deleted');
 
-    expect(authUserPer).toHaveBeenCalled();
+    expect(authEvalMetric).toHaveBeenCalled();
     expect(MongoEvalMetric.findById).toHaveBeenCalledWith(mockMetricId);
     expect(MongoEvalMetric.findByIdAndDelete).not.toHaveBeenCalled();
   });
 
   it('should handle auth failure', async () => {
     const authError = new Error('Authentication failed');
-    vi.mocked(authUserPer).mockRejectedValue(authError);
+    vi.mocked(authEvalMetric).mockRejectedValue(authError);
 
     const req = {
       query: {
         id: mockMetricId
+      },
+      auth: {
+        userId: '507f1f77bcf86cd799439013',
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
       }
     };
 
     await expect(handler(req as any, {} as any)).rejects.toThrow('Authentication failed');
 
-    expect(authUserPer).toHaveBeenCalled();
+    expect(authEvalMetric).toHaveBeenCalled();
     expect(MongoEvalMetric.findById).not.toHaveBeenCalled();
     expect(MongoEvalMetric.findByIdAndDelete).not.toHaveBeenCalled();
   });
 
   it('should handle database findById failure', async () => {
-    vi.mocked(authUserPer).mockResolvedValue({
+    vi.mocked(authEvalMetric).mockResolvedValue({
       userId: '507f1f77bcf86cd799439013',
       teamId: mockTeamId,
       tmbId: mockTmbId,
       isRoot: false,
       permission: {} as any,
-      tmb: {} as any
+      metric: {} as any
     });
 
     const dbError = new Error('Database query failed');
@@ -190,24 +231,34 @@ describe('/api/core/evaluation/metric/delete', () => {
     const req = {
       query: {
         id: mockMetricId
+      },
+      auth: {
+        userId: '507f1f77bcf86cd799439013',
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
       }
     };
 
     await expect(handler(req as any, {} as any)).rejects.toThrow('Database query failed');
 
-    expect(authUserPer).toHaveBeenCalled();
+    expect(authEvalMetric).toHaveBeenCalled();
     expect(MongoEvalMetric.findById).toHaveBeenCalledWith(mockMetricId);
     expect(MongoEvalMetric.findByIdAndDelete).not.toHaveBeenCalled();
   });
 
   it('should handle database deletion failure', async () => {
-    vi.mocked(authUserPer).mockResolvedValue({
+    vi.mocked(authEvalMetric).mockResolvedValue({
       userId: '507f1f77bcf86cd799439013',
       teamId: mockTeamId,
       tmbId: mockTmbId,
       isRoot: false,
       permission: {} as any,
-      tmb: {} as any
+      metric: {} as any
     });
 
     const mockMetric = {
@@ -223,12 +274,22 @@ describe('/api/core/evaluation/metric/delete', () => {
     const req = {
       query: {
         id: mockMetricId
+      },
+      auth: {
+        userId: '507f1f77bcf86cd799439013',
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
       }
     };
 
     await expect(handler(req as any, {} as any)).rejects.toThrow('Database deletion failed');
 
-    expect(authUserPer).toHaveBeenCalled();
+    expect(authEvalMetric).toHaveBeenCalled();
     expect(MongoEvalMetric.findById).toHaveBeenCalledWith(mockMetricId);
     expect(MongoEvalMetric.findByIdAndDelete).toHaveBeenCalledWith(mockMetricId);
   });

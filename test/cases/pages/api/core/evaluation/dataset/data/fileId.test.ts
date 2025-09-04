@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler_test } from '@/pages/api/core/evaluation/dataset/data/fileId';
 import { authEvalDatasetCollectionFile } from '@fastgpt/service/support/permission/evaluation/auth';
+import { authEvaluationDatasetDataWrite } from '@fastgpt/service/core/evaluation/common';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
@@ -14,17 +15,25 @@ import {
 import { addEvalDatasetDataQualityJob } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 
 vi.mock('@fastgpt/service/support/permission/evaluation/auth');
+vi.mock('@fastgpt/service/core/evaluation/common');
 vi.mock('@fastgpt/service/common/mongo/sessionRun');
 vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema', () => ({
   MongoEvalDatasetData: {
     insertMany: vi.fn()
   }
 }));
-vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
-  MongoEvalDatasetCollection: {
-    findById: vi.fn()
+vi.mock(
+  '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema',
+  async (importOriginal) => {
+    const actual = await importOriginal();
+    return {
+      ...actual,
+      MongoEvalDatasetCollection: {
+        findById: vi.fn()
+      }
+    };
   }
-}));
+);
 vi.mock('@fastgpt/service/common/file/gridfs/controller', () => ({
   readFileContentFromMongo: vi.fn()
 }));
@@ -36,6 +45,7 @@ vi.mock('@fastgpt/service/support/user/audit/util', () => ({
 }));
 
 const mockAuthEvalDatasetCollectionFile = vi.mocked(authEvalDatasetCollectionFile);
+const mockAuthEvaluationDatasetDataWrite = vi.mocked(authEvaluationDatasetDataWrite);
 const mockMongoSessionRun = vi.mocked(mongoSessionRun);
 const mockMongoEvalDatasetData = vi.mocked(MongoEvalDatasetData);
 const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
@@ -72,10 +82,11 @@ describe('EvalDatasetData FileId Import API', () => {
       }
     } as any);
 
-    mockMongoEvalDatasetCollection.findById.mockResolvedValue({
-      _id: validCollectionId,
-      teamId: validTeamId
-    } as any);
+    mockAuthEvaluationDatasetDataWrite.mockResolvedValue({
+      teamId: validTeamId,
+      tmbId: validTmbId,
+      collectionId: validCollectionId
+    });
 
     // Don't set default CSV content - let each test set its own
     mockReadFileContentFromMongo.mockResolvedValue({
@@ -87,6 +98,11 @@ describe('EvalDatasetData FileId Import API', () => {
     });
 
     mockMongoEvalDatasetData.insertMany.mockResolvedValue(mockInsertedRecords as any);
+    mockMongoEvalDatasetCollection.findById.mockResolvedValue({
+      _id: validCollectionId,
+      teamId: validTeamId,
+      name: 'Test Collection'
+    } as any);
     mockAddEvalDatasetDataQualityJob.mockResolvedValue({} as any);
   });
 
@@ -329,8 +345,10 @@ describe('EvalDatasetData FileId Import API', () => {
   });
 
   describe('Dataset Collection Validation', () => {
-    it('should reject when dataset collection does not exist', async () => {
-      mockMongoEvalDatasetCollection.findById.mockResolvedValue(null);
+    it('should reject when dataset collection access is denied', async () => {
+      mockAuthEvaluationDatasetDataWrite.mockRejectedValue(
+        new Error('Dataset collection not found or access denied')
+      );
 
       const req = {
         body: {
@@ -340,15 +358,15 @@ describe('EvalDatasetData FileId Import API', () => {
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('Evaluation dataset collection not found');
+      await expect(handler_test(req as any)).rejects.toThrow(
+        'Dataset collection not found or access denied'
+      );
     });
 
     it('should reject when dataset collection belongs to different team', async () => {
-      mockMongoEvalDatasetCollection.findById.mockResolvedValue({
-        _id: validCollectionId,
-        teamId: 'different-team'
-      } as any);
+      mockAuthEvaluationDatasetDataWrite.mockRejectedValue(
+        new Error('No permission to access this dataset collection')
+      );
 
       const req = {
         body: {
@@ -358,8 +376,9 @@ describe('EvalDatasetData FileId Import API', () => {
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('No permission to access this dataset collection');
+      await expect(handler_test(req as any)).rejects.toThrow(
+        'No permission to access this dataset collection'
+      );
     });
   });
 

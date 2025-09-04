@@ -9,6 +9,7 @@ import type {
 } from '@fastgpt/global/core/evaluation/api';
 import { validateTargetConfig } from '@fastgpt/service/core/evaluation/target';
 import { validateEvaluationParams } from '@fastgpt/global/core/evaluation/utils';
+import { authEvaluationTaskCreate } from '@fastgpt/service/core/evaluation/common';
 
 async function handler(
   req: ApiRequestProps<CreateEvaluationRequest>
@@ -45,20 +46,21 @@ async function handler(
       }
     }
 
-    // Create evaluation task
-    const evaluation = await EvaluationTaskService.createEvaluation(
-      {
-        name: name.trim(),
-        description: description?.trim(),
-        datasetId,
-        target: target as EvalTarget,
-        evaluators
-      },
-      {
-        req,
-        authToken: true
-      }
-    );
+    const { teamId, tmbId } = await authEvaluationTaskCreate(target as EvalTarget, {
+      req,
+      authApiKey: true,
+      authToken: true
+    });
+
+    const evaluation = await EvaluationTaskService.createEvaluation({
+      name: name.trim(),
+      description: description?.trim(),
+      datasetId,
+      target: target as EvalTarget,
+      evaluators,
+      teamId,
+      tmbId
+    });
 
     addLog.info('[Evaluation] Evaluation task created successfully', {
       evalId: evaluation._id,

@@ -15,6 +15,7 @@ import { addEvalDatasetDataQualityJob } from '@fastgpt/service/core/evaluation/d
 import { authEvalDatasetCollectionFile } from '@fastgpt/service/support/permission/evaluation/auth';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { authEvaluationDatasetDataWrite } from '@fastgpt/service/core/evaluation/common';
 
 export type EvalDatasetImportFromFileQuery = {};
 export type EvalDatasetImportFromFileBody = importEvalDatasetFromFileBody;
@@ -151,6 +152,12 @@ async function handler(
 ): Promise<EvalDatasetImportFromFileResponse> {
   const { fileId, collectionId, enableQualityEvaluation, qualityEvaluationModel } = req.body;
 
+  const { teamId, tmbId } = await authEvaluationDatasetDataWrite(collectionId, {
+    req,
+    authToken: true,
+    authApiKey: true
+  });
+
   if (!fileId || typeof fileId !== 'string') {
     return 'fileId is required and must be a string';
   }
@@ -170,7 +177,8 @@ async function handler(
     return 'qualityEvaluationModel is required when enableQualityEvaluation is true';
   }
 
-  const { file, teamId, tmbId } = await authEvalDatasetCollectionFile({
+  // 先进行文件认证
+  const { file } = await authEvalDatasetCollectionFile({
     req,
     authToken: true,
     authApiKey: true,
@@ -192,7 +200,6 @@ async function handler(
   if (String(datasetCollection.teamId) !== teamId) {
     return 'No permission to access this dataset collection';
   }
-
   try {
     // Read and parse CSV file
     const { rawText } = await readFileContentFromMongo({

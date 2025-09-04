@@ -7,8 +7,11 @@ import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { Types } from '@fastgpt/service/common/mongo';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-
+import { EvaluationPermission } from '@fastgpt/global/support/permission/evaluation/controller';
+import { sumPer } from '@fastgpt/global/support/permission/utils';
 import type { ListMetricsBody } from '@fastgpt/global/core/evaluation/metric/api';
+import { addLog } from '@fastgpt/service/common/system/log';
+import { getEvaluationPermissionAggregation } from '@fastgpt/service/core/evaluation/common';
 
 async function handler(req: ApiRequestProps<ListMetricsBody, {}>) {
   const { teamId, tmbId } = await authUserPer({
@@ -30,26 +33,107 @@ async function handler(req: ApiRequestProps<ListMetricsBody, {}>) {
   }
 
   try {
+    const { teamId, tmbId, isOwner, roleList, myGroupMap, myOrgSet } =
+      await getEvaluationPermissionAggregation({
+        req,
+        authApiKey: true,
+        authToken: true
+      });
+
+    const myRoles = roleList.filter(
+      (item) =>
+        String(item.tmbId) === String(tmbId) ||
+        myGroupMap.has(String(item.groupId)) ||
+        myOrgSet.has(String(item.orgId))
+    );
+    const accessibleIds = myRoles.map((item) => item.resourceId);
+
+    const filter: any = { teamId: new Types.ObjectId(teamId) };
+    if (searchKey) {
+      filter.$or = [
+        { name: { $regex: searchKey, $options: 'i' } },
+        { description: { $regex: searchKey, $options: 'i' } }
+      ];
+    }
+    const limit = pageSize;
+    const sort = { createTime: -1 as const };
+
+    // If not owner, filter by accessible resources
+    let finalFilter = filter;
+    if (!isOwner && accessibleIds) {
+      finalFilter = {
+        ...filter,
+        $or: [
+          { _id: { $in: accessibleIds.map((id) => new Types.ObjectId(id)) } },
+          ...(tmbId ? [{ tmbId: new Types.ObjectId(tmbId) }] : []) // Own metrics
+        ]
+      };
+    }
+
     const [metrics, total] = await Promise.all([
-      MongoEvalMetric.find(match).sort({ createTime: -1 }).skip(offset).limit(pageSize).lean(),
-      MongoEvalMetric.countDocuments(match)
+      MongoEvalMetric.find(finalFilter).sort(sort).skip(offset).limit(limit).lean(),
+      MongoEvalMetric.countDocuments(finalFilter)
     ]);
 
-    const listWithSourceMember = await addSourceMember({
-      list: metrics.map((item: any) => ({
-        _id: String(item._id),
-        name: item.name,
-        description: item.description || '',
-        createTime: item.createTime,
-        updateTime: item.updateTime,
-        tmbId: item.tmbId
-      }))
+    const formatMetrics = metrics
+      .map((metric: any) => {
+        const getPer = (metricId: string) => {
+          const tmbRole = myRoles.find(
+            (item) => String(item.resourceId) === metricId && !!item.tmbId
+          )?.permission;
+          const groupRole = sumPer(
+            ...myRoles
+              .filter(
+                (item) => String(item.resourceId) === metricId && (!!item.groupId || !!item.orgId)
+              )
+              .map((item) => item.permission)
+          );
+          return new EvaluationPermission({
+            role: tmbRole ?? groupRole,
+            isOwner: String(metric.tmbId) === String(tmbId) || isOwner
+          });
+        };
+
+        const getClbCount = (metricId: string) => {
+          return roleList.filter((item) => String(item.resourceId) === String(metricId)).length;
+        };
+
+        const getPrivateStatus = (metricId: string) => {
+          const collaboratorCount = getClbCount(metricId);
+          if (isOwner) {
+            return collaboratorCount <= 1;
+          }
+          return (
+            collaboratorCount === 0 ||
+            (collaboratorCount === 1 && String(metric.tmbId) === String(tmbId))
+          );
+        };
+
+        return {
+          ...metric,
+          permission: getPer(String(metric._id)),
+          private: getPrivateStatus(String(metric._id))
+        };
+      })
+      .filter((metric: any) => metric.permission.hasReadPer);
+
+    const formattedResult = await addSourceMember({
+      list: formatMetrics
     });
 
-    return {
-      total,
-      list: listWithSourceMember
+    const finalResult = {
+      list: formattedResult,
+      total: total
     };
+
+    addLog.info('[Evaluation Metric] Metric list query successful', {
+      pageSize: pageSize,
+      searchKey: searchKey?.trim(),
+      total: finalResult.total,
+      returned: finalResult.list.length
+    });
+
+    return finalResult;
   } catch (error) {
     return Promise.reject('Failed to fetch evaluation metrics');
   }

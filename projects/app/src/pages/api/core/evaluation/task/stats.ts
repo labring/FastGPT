@@ -6,6 +6,7 @@ import type {
   EvaluationStatsResponse
 } from '@fastgpt/global/core/evaluation/api';
 import { addLog } from '@fastgpt/service/common/system/log';
+import { authEvaluationTaskRead } from '@fastgpt/service/core/evaluation/common';
 
 async function handler(
   req: ApiRequestProps<{}, StatsEvaluationRequest>
@@ -17,10 +18,13 @@ async function handler(
       return Promise.reject('Evaluation ID is required');
     }
 
-    const stats = await EvaluationTaskService.getEvaluationStats(evalId, {
+    const { teamId } = await authEvaluationTaskRead(evalId, {
       req,
+      authApiKey: true,
       authToken: true
     });
+
+    const stats = await EvaluationTaskService.getEvaluationStats(evalId, teamId);
 
     addLog.info('[Evaluation] Evaluation task statistics query successful', {
       evalId,

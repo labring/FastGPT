@@ -3,6 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { EvaluationTaskService } from '@fastgpt/service/core/evaluation/task';
 import type { ExportEvaluationItemsRequest } from '@fastgpt/global/core/evaluation/api';
 import { addLog } from '@fastgpt/service/common/system/log';
+import { authEvaluationTaskRead } from '@fastgpt/service/core/evaluation/common';
 
 async function handler(
   req: ApiRequestProps<{}, ExportEvaluationItemsRequest>,
@@ -19,12 +20,15 @@ async function handler(
       return Promise.reject('Format must be json or csv');
     }
 
+    const { teamId } = await authEvaluationTaskRead(evalId, {
+      req,
+      authApiKey: true,
+      authToken: true
+    });
+
     const results = await EvaluationTaskService.exportEvaluationResults(
       evalId,
-      {
-        req,
-        authToken: true
-      },
+      teamId,
       format as 'json' | 'csv'
     );
 

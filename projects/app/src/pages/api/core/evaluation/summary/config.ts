@@ -8,12 +8,20 @@ import type {
   UpdateSummaryConfigBody,
   UpdateSummaryConfigResponse
 } from '@fastgpt/global/core/evaluation/summary/api';
+import { authEvaluationTaskRead } from '@fastgpt/service/core/evaluation/common';
+
 async function handler(
   req: ApiRequestProps<UpdateSummaryConfigBody>
 ): Promise<UpdateSummaryConfigResponse> {
   try {
     const { evalId, calculateType, metricsConfig } = req.body || ({} as any);
-
+    
+    await authEvaluationTaskRead(evalId, {
+      req,
+      authApiKey: true,
+      authToken: true
+    });
+    
     // Basic parameter validation
     if (!evalId || typeof evalId !== 'string') {
       return Promise.reject('evalId is required');
@@ -49,11 +57,7 @@ async function handler(
 
     await EvaluationSummaryService.updateEvaluationSummaryConfig(
       evalId,
-      metricsConfigWithCalculateType,
-      {
-        req,
-        authToken: true
-      }
+      metricsConfigWithCalculateType
     );
 
     addLog.info('[Evaluation] Summary configuration updated successfully', {

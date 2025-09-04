@@ -1,22 +1,22 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler_test } from '@/pages/api/core/evaluation/dataset/collection/delete';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { authEvaluationDatasetWrite } from '@fastgpt/service/core/evaluation/common';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { removeEvalDatasetSmartGenerateJobsRobust } from '@fastgpt/service/core/evaluation/dataset/smartGenerateMq';
 import { removeEvalDatasetDataQualityJobsRobust } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import { removeEvalDatasetDataSynthesizeJobsRobust } from '@fastgpt/service/core/evaluation/dataset/dataSynthesizeMq';
 import { addLog } from '@fastgpt/service/common/system/log';
 
-vi.mock('@fastgpt/service/support/permission/user/auth');
+vi.mock('@fastgpt/service/core/evaluation/common');
 vi.mock('@fastgpt/service/common/mongo/sessionRun');
 vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
   MongoEvalDatasetCollection: {
     findOne: vi.fn(),
     deleteOne: vi.fn()
-  }
+  },
+  EvalDatasetCollectionName: 'eval_dataset_collections'
 }));
 vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema', () => ({
   MongoEvalDatasetData: {
@@ -43,7 +43,7 @@ vi.mock('@fastgpt/service/support/user/audit/util', () => ({
   addAuditLog: vi.fn()
 }));
 
-const mockAuthUserPer = vi.mocked(authUserPer);
+const mockAuthEvaluationDatasetWrite = vi.mocked(authEvaluationDatasetWrite);
 const mockMongoSessionRun = vi.mocked(mongoSessionRun);
 const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
 const mockMongoEvalDatasetData = vi.mocked(MongoEvalDatasetData);
@@ -79,9 +79,10 @@ describe('EvalDatasetCollection Delete API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockAuthUserPer.mockResolvedValue({
+    mockAuthEvaluationDatasetWrite.mockResolvedValue({
       teamId: validTeamId,
-      tmbId: validTmbId
+      tmbId: validTmbId,
+      datasetId: validCollectionId
     });
 
     mockMongoSessionRun.mockImplementation(async (callback) => {
@@ -175,24 +176,23 @@ describe('EvalDatasetCollection Delete API', () => {
   });
 
   describe('Authentication and Authorization', () => {
-    it('should call authUserPer with correct parameters', async () => {
+    it('should call authEvaluationDatasetWrite with correct parameters', async () => {
       const req = {
         query: { collectionId: validCollectionId }
       };
 
       await handler_test(req as any);
 
-      expect(mockAuthUserPer).toHaveBeenCalledWith({
+      expect(mockAuthEvaluationDatasetWrite).toHaveBeenCalledWith(validCollectionId, {
         req,
         authToken: true,
-        authApiKey: true,
-        per: WritePermissionVal
+        authApiKey: true
       });
     });
 
     it('should propagate authentication errors', async () => {
       const authError = new Error('Authentication failed');
-      mockAuthUserPer.mockRejectedValue(authError);
+      mockAuthEvaluationDatasetWrite.mockRejectedValue(authError);
 
       const req = {
         query: { collectionId: validCollectionId }
@@ -639,7 +639,7 @@ describe('EvalDatasetCollection Delete API', () => {
       const result = await handler_test(req as any);
 
       // Verify complete flow
-      expect(mockAuthUserPer).toHaveBeenCalled();
+      expect(mockAuthEvaluationDatasetWrite).toHaveBeenCalled();
       expect(mockMongoEvalDatasetCollection.findOne).toHaveBeenCalled();
       expect(mockRemoveEvalDatasetSmartGenerateJobsRobust).toHaveBeenCalled();
       expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalled();
