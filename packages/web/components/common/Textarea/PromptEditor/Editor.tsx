@@ -15,7 +15,6 @@ import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import { ListPlugin } from '@lexical/react/LexicalListPlugin';
 import { CheckListPlugin } from '@lexical/react/LexicalCheckListPlugin';
-import { TabIndentationPlugin } from '@lexical/react/LexicalTabIndentationPlugin';
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListItemNode, ListNode } from '@lexical/list';
@@ -40,6 +39,8 @@ import { useDeepCompareEffect } from 'ahooks';
 import VariablePickerPlugin from './plugins/VariablePickerPlugin';
 import MarkdownPlugin from './plugins/MarkdownPlugin';
 import MyIcon from '../../Icon';
+import TabToSpacesPlugin from './plugins/TabToSpacesPlugin';
+import ListExitPlugin from './plugins/ListExitPlugin';
 
 const Placeholder = ({ children }: { children: React.ReactNode }) => (
   <Box
@@ -231,10 +232,11 @@ export default function Editor({
 
           {isRichText && (
             <>
-              <ListPlugin />
+              {/* <ListPlugin />
               <CheckListPlugin />
-              <MarkdownPlugin />
-              <TabIndentationPlugin />
+              <ListExitPlugin /> */}
+              <TabToSpacesPlugin />
+              {/* <MarkdownPlugin /> */}
             </>
           )}
         </>
