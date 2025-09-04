@@ -1,6 +1,6 @@
-import type { EvaluationStatusEnum } from './constants';
+import type { EvaluationStatusEnum, CalculateMethodEnum, SummaryStatusEnum } from './constants';
 import type { EvalDatasetDataSchemaType } from './dataset/type';
-import type { MetricResult } from './metric/type';
+import type { MetricResult, EvalMetricSchemaType, EvalModelConfigType } from './metric/type';
 
 // Evaluation target related types
 export interface WorkflowConfig {
@@ -11,6 +11,24 @@ export interface WorkflowConfig {
 export interface EvalTarget {
   type: 'workflow';
   config: WorkflowConfig;
+}
+
+export interface RuntimeConfig {
+  llm?: string; // LLM model selection
+  embedding?: string; // Embedding model selection
+}
+
+// Evaluator configuration type
+export interface EvaluatorSchema {
+  metric: EvalMetricSchemaType; // Contains complete metric configuration
+  runtimeConfig: RuntimeConfig; // Runtime configuration including LLM model
+  weight?: number;
+  thresholdValue?: number;
+  calculateType?: CalculateMethodEnum;
+  metricsScore?: number;
+  summary?: string;
+  summaryStatus?: SummaryStatusEnum;
+  errorReason?: string;
 }
 
 // Statistics information for evaluation task
@@ -34,12 +52,11 @@ export type EvaluationSchemaType = {
   status: EvaluationStatusEnum;
   createTime: Date;
   finishTime?: Date;
-  avgScore?: number;
   errorMessage?: string;
   statistics?: EvaluationStatistics;
 };
 
-// Evaluation item types (atomic: one dataItem + one target + one evaluator)
+// Evaluation item type (atomic: one dataItem + one target + one evaluator)
 export type EvaluationItemSchemaType = {
   _id: string;
   evalId: string;
@@ -121,4 +138,23 @@ export interface EvaluationTaskJobData {
 export interface EvaluationItemJobData {
   evalId: string;
   evalItemId: string;
+}
+
+// ===== Summary Generate API Types =====
+
+export interface GenerateSummaryParams {
+  evalId: string;
+  metricsIds: string[];
+}
+
+export interface GenerateSummaryResponse {
+  success: boolean;
+  message: string;
+  taskId?: string;
+}
+
+export interface SummaryGenerationTaskData {
+  evalId: string;
+  metricId: string;
+  evaluatorIndex: number;
 }

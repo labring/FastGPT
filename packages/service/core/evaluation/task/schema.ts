@@ -10,7 +10,11 @@ import type {
 import { UsageCollectionName } from '../../../support/wallet/usage/schema';
 import {
   EvaluationStatusEnum,
-  EvaluationStatusValues
+  EvaluationStatusValues,
+  SummaryStatusValues,
+  SummaryStatusEnum,
+  CalculateMethodEnum,
+  CaculateMethodValues
 } from '@fastgpt/global/core/evaluation/constants';
 import { EvalDatasetCollectionName } from '../dataset/evalDatasetCollectionSchema';
 
@@ -51,12 +55,45 @@ export const EvaluationEvaluatorSchema = new Schema(
       type: Schema.Types.Mixed,
       required: false,
       default: {}
+    },
+    weight: {
+      type: Number,
+      required: false,
+      default: 0
+    },
+    thresholdValue: {
+      type: Number,
+      required: false,
+      default: 80
+    },
+    calculateType: {
+      type: Number,
+      enum: CaculateMethodValues,
+      default: CalculateMethodEnum.mean
+    },
+    metricsScore: {
+      type: Number,
+      required: false
+    },
+    summary: {
+      type: String,
+      required: false
+    },
+    summaryStatus: {
+      type: Number,
+      enum: SummaryStatusValues,
+      default: SummaryStatusEnum.pending
+    },
+    errorReason: {
+      type: String,
+      required: false
     }
   },
   { _id: false }
 );
 
-export const EvaluationCollectionName = 'eval';
+// Collection names
+export const EvaluationCollectionName = 'evals';
 export const EvalItemCollectionName = 'eval_items';
 
 export const EvaluationTaskSchema = new Schema({
@@ -98,7 +135,6 @@ export const EvaluationTaskSchema = new Schema({
     default: () => new Date()
   },
   finishTime: Date,
-  avgScore: Number,
   errorMessage: String,
   // Statistical information
   statistics: {

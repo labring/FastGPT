@@ -23,7 +23,10 @@ import type {
   EvalDatasetCollectionSchemaType
 } from '@fastgpt/global/core/evaluation/dataset/type';
 import type { AuthModeType } from '@fastgpt/service/support/permission/type';
-import { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
+import {
+  EvaluationStatusEnum,
+  CalculateMethodEnum
+} from '@fastgpt/global/core/evaluation/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 
 // Mock external dependencies
@@ -427,15 +430,24 @@ describe('End-to-End Evaluation System', () => {
       evaluators = [
         {
           metric: accuracyMetric,
-          runtimeConfig: { llm: 'gpt-4' }
+          runtimeConfig: { llm: 'gpt-4' },
+          weight: 1.0,
+          thresholdValue: 0.8,
+          calculateType: CalculateMethodEnum.mean
         },
         {
           metric: semanticMetric,
-          runtimeConfig: { llm: 'gpt-4' }
+          runtimeConfig: { llm: 'gpt-4' },
+          weight: 1.0,
+          thresholdValue: 0.7,
+          calculateType: CalculateMethodEnum.mean
         },
         {
           metric: professionalismMetric,
-          runtimeConfig: { llm: 'gpt-4' }
+          runtimeConfig: { llm: 'gpt-4' },
+          weight: 1.5,
+          thresholdValue: 0.6,
+          calculateType: CalculateMethodEnum.median
         }
       ];
 
@@ -628,7 +640,6 @@ describe('End-to-End Evaluation System', () => {
         {
           $set: {
             finishTime: new Date(),
-            avgScore: Math.round(totalAvgScore * 100) / 100,
             status: 2 // completed
           }
         }
@@ -638,13 +649,12 @@ describe('End-to-End Evaluation System', () => {
 
       const finalEvaluation = await MongoEvaluation.findById(evalId).lean();
       expect(finalEvaluation).toBeTruthy();
-      expect(finalEvaluation!.avgScore).toBeGreaterThan(0);
       expect(finalEvaluation!.finishTime).toBeTruthy();
       expect(finalEvaluation!.status).toBe(2);
 
       console.log(`\n=== 评估任务完成 ===`);
       console.log(`任务名称: ${finalEvaluation!.name}`);
-      console.log(`总体平均分: ${finalEvaluation!.avgScore}`);
+      console.log(`总体平均分: ${Math.round(totalAvgScore * 100) / 100}`);
       console.log(`完成时间: ${finalEvaluation!.finishTime}`);
       console.log(`处理的问题数量: ${completedItems.length}`);
 
@@ -770,7 +780,10 @@ describe('End-to-End Evaluation System', () => {
           combinationMetricIds.push(aiMetric._id.toString());
           combinationEvaluators.push({
             metric: aiMetric,
-            runtimeConfig: { llm: 'gpt-4' }
+            runtimeConfig: { llm: 'gpt-4' },
+            weight: 1.0,
+            thresholdValue: 0.8,
+            calculateType: CalculateMethodEnum.mean
           });
         }
 
@@ -789,7 +802,10 @@ describe('End-to-End Evaluation System', () => {
           combinationMetricIds.push(aiMetric._id.toString());
           combinationEvaluators.push({
             metric: aiMetric,
-            runtimeConfig: { llm: 'gpt-4' }
+            runtimeConfig: { llm: 'gpt-4' },
+            weight: 1.0,
+            thresholdValue: 0.7,
+            calculateType: CalculateMethodEnum.mean
           });
         }
 
