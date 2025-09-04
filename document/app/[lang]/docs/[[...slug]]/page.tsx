@@ -7,11 +7,14 @@ import { getMDXComponents } from '@/mdx-components';
 import fs from 'fs';
 import path from 'path';
 
+// 强制动态渲染以确保能读取运行时文件
+export const dynamic = 'force-dynamic';
+
 // 读取文档修改时间数据
 function getDocLastModifiedData(): Record<string, string> {
   try {
     const dataPath = path.join(process.cwd(), 'data', 'doc-last-modified.json');
-
+    console.log(dataPath, 222222222);
     if (!fs.existsSync(dataPath)) {
       return {};
     }
