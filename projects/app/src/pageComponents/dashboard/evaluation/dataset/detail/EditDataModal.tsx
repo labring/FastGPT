@@ -14,6 +14,7 @@ import {
   ModalFooter,
   useDisclosure
 } from '@chakra-ui/react';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
@@ -33,6 +34,8 @@ interface EditDataModalProps {
   onSaveAndNext: (data: EditDataFormData) => void;
   evaluationStatus?: EvaluationStatus;
   evaluationResult?: string;
+  defaultQuestion?: string;
+  defaultReferenceAnswer?: string;
 }
 
 type OprResType = 'startReview' | 'modifyRes' | 'reStart';
@@ -49,7 +52,9 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
   onSave,
   onSaveAndNext,
   evaluationStatus = EvaluationStatus.NotEvaluated,
-  evaluationResult = ''
+  evaluationResult = '',
+  defaultQuestion = '',
+  defaultReferenceAnswer = ''
 }) => {
   const { t } = useTranslation();
   const [currentEvaluationStatus, setCurrentEvaluationStatus] =
@@ -78,13 +83,58 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
   const {
     register,
     handleSubmit,
-    formState: { errors }
+    formState: { errors },
+    reset
   } = useForm<EditDataFormData>({
     defaultValues: {
-      question: '',
-      referenceAnswer: ''
+      question: defaultQuestion,
+      referenceAnswer: defaultReferenceAnswer
     }
   });
+
+  // 当弹窗打开时重置表单数据
+  React.useEffect(() => {
+    if (isOpen) {
+      reset({
+        question: defaultQuestion,
+        referenceAnswer: defaultReferenceAnswer
+      });
+      setCurrentEvaluationStatus(evaluationStatus);
+      setCurrentEvaluationResult(evaluationResult);
+
+      // 根据评测状态设置按钮显示状态
+      if (evaluationStatus === EvaluationStatus.NotEvaluated) {
+        setReviewBtns((prev) =>
+          prev.map((btn) => ({
+            ...btn,
+            isShow: btn.key === 'startReview'
+          }))
+        );
+      } else if (
+        evaluationStatus === EvaluationStatus.HighQuality ||
+        evaluationStatus === EvaluationStatus.NeedsImprovement ||
+        evaluationStatus === EvaluationStatus.Abnormal
+      ) {
+        setReviewBtns((prev) =>
+          prev.map((btn) => ({
+            ...btn,
+            isShow: btn.key === 'modifyRes' || btn.key === 'reStart'
+          }))
+        );
+      } else if (
+        evaluationStatus === EvaluationStatus.Evaluating ||
+        evaluationStatus === EvaluationStatus.Queuing
+      ) {
+        // 评估中或排队中时，不显示任何操作按钮
+        setReviewBtns((prev) =>
+          prev.map((btn) => ({
+            ...btn,
+            isShow: false
+          }))
+        );
+      }
+    }
+  }, [isOpen, defaultQuestion, defaultReferenceAnswer, evaluationStatus, evaluationResult, reset]);
 
   const handleSaveClick = (data: EditDataFormData) => {
     onSave(data);
@@ -98,21 +148,25 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
     switch (currentEvaluationStatus) {
       case EvaluationStatus.Queuing:
         return (
-          <VStack spacing={4} justify="center" h="300px">
-            <Spinner size="lg" color="blue.500" />
-            <Text color="gray.500" fontSize="14px">
-              {evaluationStatusMap[EvaluationStatus.Queuing]}
-            </Text>
+          <VStack spacing={4} justify="center" h="100%">
+            <HStack spacing={3} align="center">
+              <MyIcon name="history" w="20px" h="20px" color="gray.500" />
+              <Text color="gray.500" fontSize="14px">
+                {t(evaluationStatusMap[EvaluationStatus.Queuing])}
+              </Text>
+            </HStack>
           </VStack>
         );
 
       case EvaluationStatus.Evaluating:
         return (
-          <VStack spacing={4} justify="center" h="300px">
-            <Spinner size="lg" color="blue.500" />
-            <Text color="gray.500" fontSize="14px">
-              {evaluationStatusMap[EvaluationStatus.Evaluating]}
-            </Text>
+          <VStack spacing={4} justify="center" h="100%">
+            <HStack spacing={3} align="center">
+              <Spinner size="md" color="blue.500" />
+              <Text color="gray.500" fontSize="14px">
+                {t(evaluationStatusMap[EvaluationStatus.Evaluating])}
+              </Text>
+            </HStack>
           </VStack>
         );
 
@@ -121,7 +175,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
           <Box>
             <HStack spacing={2} mb={4}>
               <Badge colorScheme="orange" variant="subtle" px={2} py={1}>
-                {evaluationStatusMap[EvaluationStatus.NeedsImprovement]}
+                {t(evaluationStatusMap[EvaluationStatus.NeedsImprovement])}
               </Badge>
             </HStack>
             <Text fontSize="14px" lineHeight="1.6" color="gray.700">
@@ -135,7 +189,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
           <Box>
             <HStack spacing={2} mb={4}>
               <Badge colorScheme="green" variant="subtle" px={2} py={1}>
-                {evaluationStatusMap[EvaluationStatus.HighQuality]}
+                {t(evaluationStatusMap[EvaluationStatus.HighQuality])}
               </Badge>
             </HStack>
             <Text fontSize="14px" lineHeight="1.6" color="gray.700">
@@ -149,7 +203,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
           <Box>
             <HStack spacing={2} mb={4}>
               <Badge colorScheme="red" variant="subtle" px={2} py={1}>
-                {evaluationStatusMap[EvaluationStatus.Abnormal]}
+                {t(evaluationStatusMap[EvaluationStatus.Abnormal])}
               </Badge>
             </HStack>
             <Text fontSize="14px" lineHeight="1.6" color="gray.700">
@@ -161,25 +215,16 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
       case EvaluationStatus.NotEvaluated:
       default:
         return (
-          <VStack spacing={4} justify="center" h="300px">
-            <Box
-              w="60px"
-              h="60px"
-              borderRadius="full"
-              bg="gray.100"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-            >
-              <Text fontSize="24px" color="gray.400">
-                📊
-              </Text>
+          <VStack spacing={4} justify="center" h="100%">
+            <Box borderRadius="full" display="flex" alignItems="center" justifyContent="center">
+              <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
             </Box>
-            <VStack spacing={1}>
-              <Text color="gray.500" fontSize="14px">
-                {t('dashboard_evaluation:no_evaluation_result')}
+            <Flex fontSize={'14px'} gap={1}>
+              <Text color="gray.500">{t('dashboard_evaluation:no_evaluation_result_click')}</Text>
+              <Text as="ins" color="gray.500" cursor={'pointer'}>
+                {t('dashboard_evaluation:start_evaluation_action')}
               </Text>
-            </VStack>
+            </Flex>
           </VStack>
         );
     }
@@ -337,32 +382,35 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
             <VStack flex={1} alignItems={'flex-start'}>
               <Flex width={'100%'} alignItems={'center'} mb={2}>
                 <Text fontSize={'14px'} color="myGray.900">
-                  {' '}
                   {t('dashboard_evaluation:quality_evaluation')}
                 </Text>
-                <HStack ml={'auto'}>
-                  {reviewBtns
-                    .filter((btn) => btn.isShow)
-                    .map((btn, index) => (
-                      <Button
-                        key={btn.key}
-                        fontSize={'12px'}
-                        px={2.5}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault(); // 阻止默认行为
-                          handleOprRes(btn.key);
-                        }}
-                        variant="outline"
-                        isLoading={
-                          isEvaluating && (btn.key === 'startReview' || btn.key === 'reStart')
-                        }
-                        disabled={isEvaluating}
-                      >
-                        {btn.label}
-                      </Button>
-                    ))}
-                </HStack>
+                {/* 只有当不是评估中或排队中状态时才显示操作按钮 */}
+                {currentEvaluationStatus !== EvaluationStatus.Evaluating &&
+                  currentEvaluationStatus !== EvaluationStatus.Queuing && (
+                    <HStack ml={'auto'}>
+                      {reviewBtns
+                        .filter((btn) => btn.isShow)
+                        .map((btn, index) => (
+                          <Button
+                            key={btn.key}
+                            fontSize={'12px'}
+                            px={2.5}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault(); // 阻止默认行为
+                              handleOprRes(btn.key);
+                            }}
+                            variant="outline"
+                            isLoading={
+                              isEvaluating && (btn.key === 'startReview' || btn.key === 'reStart')
+                            }
+                            disabled={isEvaluating}
+                          >
+                            {btn.label}
+                          </Button>
+                        ))}
+                    </HStack>
+                  )}
               </Flex>
               <Box bg="gray.50" borderRadius="md" p={4} flex={1} overflow="auto" width="100%">
                 {renderEvaluationContent()}
