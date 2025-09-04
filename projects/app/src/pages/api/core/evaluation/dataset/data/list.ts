@@ -9,9 +9,9 @@ import { Types } from '@fastgpt/service/common/mongo';
 import type {
   listEvalDatasetDataBody,
   listEvalDatasetDataResponse
-} from '@fastgpt/global/core/evaluation/api';
+} from '@fastgpt/global/core/evaluation/dataset/api';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
-import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/constants';
+import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
 
 async function handler(
   req: ApiRequestProps<listEvalDatasetDataBody, {}>

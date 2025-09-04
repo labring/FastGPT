@@ -4,7 +4,7 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { Types } from '@fastgpt/service/common/mongo';
-import type { retryTaskBody } from '@fastgpt/global/core/evaluation/api';
+import type { retryTaskBody } from '@fastgpt/global/core/evaluation/dataset/api';
 import { evalDatasetDataSynthesizeQueue } from '@fastgpt/service/core/evaluation/dataset/dataSynthesizeMq';
 import { addLog } from '@fastgpt/service/common/system/log';
 
