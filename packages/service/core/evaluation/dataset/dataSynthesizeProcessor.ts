@@ -12,6 +12,7 @@ import {
   type EvalDatasetDataSynthesizeData,
   getEvalDatasetDataSynthesizeWorker
 } from './dataSynthesizeMq';
+import { createSynthesizerInstance } from '../synthesizer';
 
 async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
   const { dataId, intelligentGenerationModel, evalDatasetCollectionId } = job.data;
@@ -35,21 +36,23 @@ async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
       throw new Error(`Eval dataset not found: ${evalDatasetCollectionId}`);
     }
 
-    // TODO: Implement AI model call for synthesis
-    // This is where we would call the intelligent generation model
-    // to generate expectedOutput based on userInput
-    const synthesizedOutput = await synthesizeExpectedOutput(
-      sourceData.q,
-      intelligentGenerationModel
-    );
+    const llmConfig = {
+      name: intelligentGenerationModel
+    };
 
-    // Create new evaluation dataset record with synthesized data
+    const synthesisCase = {
+      context: sourceData.q ? [sourceData.q] : []
+    };
+
+    const synthesizer = createSynthesizerInstance('q_a_synthesizer', llmConfig);
+    const synthesisResult = await synthesizer.synthesize(synthesisCase);
+
     const evalData: Partial<EvalDatasetDataSchemaType> = {
       teamId: evalDatasetCollection.teamId,
       tmbId: evalDatasetCollection.tmbId,
       datasetId: evalDatasetCollectionId,
-      [EvalDatasetDataKeyEnum.UserInput]: sourceData.q,
-      [EvalDatasetDataKeyEnum.ExpectedOutput]: synthesizedOutput,
+      [EvalDatasetDataKeyEnum.UserInput]: synthesisResult.data?.qaPair.question,
+      [EvalDatasetDataKeyEnum.ExpectedOutput]: synthesisResult.data?.qaPair.answer,
       [EvalDatasetDataKeyEnum.ActualOutput]: '',
       [EvalDatasetDataKeyEnum.Context]: [],
       [EvalDatasetDataKeyEnum.RetrievalContext]: [],
@@ -57,6 +60,9 @@ async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
         sourceDataId: sourceData._id,
         sourceDatasetId: sourceData.datasetId,
         sourceCollectionId: sourceData.collectionId,
+        qualityScore: synthesisResult.data?.metadata?.score,
+        qualityReason: synthesisResult.data?.metadata?.reason,
+        qualityUsages: synthesisResult?.usages,
         generatedAt: new Date(),
         synthesizedAt: new Date(),
         intelligentGenerationModel
@@ -69,8 +75,7 @@ async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
     addLog.info('Completed data synthesis', {
       dataId,
       evalDatasetCollectionId,
-      insertedRecordId: insertedRecord._id,
-      synthesizedLength: synthesizedOutput.length
+      insertedRecordId: insertedRecord._id
     });
 
     // TODO: Add audit log
@@ -78,8 +83,7 @@ async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
 
     return {
       success: true,
-      insertedRecordId: insertedRecord._id,
-      synthesizedOutput: synthesizedOutput
+      insertedRecordId: insertedRecord._id
     };
   } catch (error) {
     addLog.error('Failed to synthesize eval dataset data', {
@@ -88,27 +92,8 @@ async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined
     });
-
-    // TODO: Update record status to error
     throw error;
   }
-}
-
-async function synthesizeExpectedOutput(
-  userInput: string,
-  intelligentGenerationModel: string
-): Promise<string> {
-  // TODO: Implement actual AI model call for synthesis
-  // For now, return a placeholder that would be replaced with real implementation
-
-  const prompt = `Question: ${userInput}\n\nProvide a comprehensive and accurate answer:`;
-
-  // TODO: Replace with actual model API call
-  // const response = await callAIModel(intelligentGenerationModel, prompt);
-  // return response.text;
-
-  // For now, return a synthesized placeholder
-  return `[AI Generated Answer for: ${userInput.substring(0, 100)}${userInput.length > 100 ? '...' : ''}]`;
 }
 
 // Initialize worker
