@@ -51,16 +51,12 @@ export async function register() {
       //init system config；init vector database；init root user
       await Promise.all([getInitConfig(), initVectorStore(), initRootUser(), loadSystemModels()]);
 
-      try {
-        await Promise.all([
-          preLoadWorker(),
-          getSystemTools(),
-          initSystemPluginGroups(),
-          initAppTemplateTypes
-        ]);
-      } catch (error) {
-        console.error('Preload worker error', error);
-      }
+      await Promise.all([
+        preLoadWorker().catch(),
+        getSystemTools(),
+        initSystemPluginGroups(),
+        initAppTemplateTypes()
+      ]);
 
       startMongoWatch();
       startCron();
