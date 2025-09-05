@@ -225,9 +225,7 @@ describe('EvalDatasetCollection Delete API', () => {
         query: { collectionId: validCollectionId }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'Access denied or dataset collection not found'
-      );
+      await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetCollectionNotFound');
     });
 
     it('should reject when collection belongs to different team', async () => {
@@ -239,9 +237,7 @@ describe('EvalDatasetCollection Delete API', () => {
         query: { collectionId: validCollectionId }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'Access denied or dataset collection not found'
-      );
+      await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetCollectionNotFound');
     });
   });
 

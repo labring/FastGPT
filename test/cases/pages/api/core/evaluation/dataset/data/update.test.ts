@@ -467,7 +467,7 @@ describe('EvalDatasetData Update API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toBe(dataNotFoundError);
+      await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetDataNotFound');
     });
 
     it('should reject when collection does not exist', async () => {
@@ -483,7 +483,7 @@ describe('EvalDatasetData Update API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toBe(collectionNotFoundError);
+      await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetCollectionNotFound');
     });
 
     it('should reject when collection belongs to different team', async () => {
@@ -499,7 +499,7 @@ describe('EvalDatasetData Update API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toBe(accessDeniedError);
+      await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetCollectionNotFound');
     });
   });
 

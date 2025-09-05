@@ -8,6 +8,7 @@ import teamErr from './code/team';
 import userErr from './code/user';
 import commonErr from './code/common';
 import SystemErrEnum from './code/system';
+import evaluationErr from './code/evaluation';
 import { i18nT } from '../../../web/i18n/utils';
 
 export const ERROR_CODE: { [key: number]: string } = {
@@ -108,5 +109,6 @@ export const ERROR_RESPONSE: Record<
   ...userErr,
   ...pluginErr,
   ...commonErr,
-  ...SystemErrEnum
+  ...SystemErrEnum,
+  ...evaluationErr
 };
