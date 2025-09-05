@@ -1340,5 +1340,7 @@
   "zoomin_tip": "Zoom Out  ctrl  -",
   "zoomin_tip_mac": "Zoom Out  ⌘  -",
   "zoomout_tip": "Zoom In  ctrl  +",
-  "zoomout_tip_mac": "Zoom In  ⌘  +"
+  "zoomout_tip_mac": "Zoom In  ⌘  +",
+  "no_database_connection": "还没有连接数据库",
+  "click_config_database": "点击配置数据库"
 }

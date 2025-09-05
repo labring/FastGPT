@@ -26,7 +26,8 @@ export type CreateDatasetType =
   | DatasetTypeEnum.apiDataset
   | DatasetTypeEnum.websiteDataset
   | DatasetTypeEnum.feishu
-  | DatasetTypeEnum.yuque;
+  | DatasetTypeEnum.yuque
+  | DatasetTypeEnum.database;
 
 const CreateModal = ({
   onClose,
@@ -86,6 +87,12 @@ const CreateModal = ({
       }
     }
   );
+
+  const {
+    agentModel: agentModelShowConfig,
+    vlmModel: vlmModelShowConfig,
+    vectorModel: vectorModelShowConfig
+  } = DatasetTypeMap[type].formConfig || {};
 
   return (
     <MyModal
@@ -151,102 +158,115 @@ const CreateModal = ({
             />
           </Flex>
         </Box>
-
-        <Flex
-          mt={6}
-          alignItems={['flex-start', 'center']}
-          justify={'space-between'}
-          flexDir={['column', 'row']}
-        >
-          <HStack
-            spacing={1}
-            alignItems={'center'}
-            flex={['', '0 0 110px']}
-            fontSize={'sm'}
-            color={'myGray.900'}
-            fontWeight={500}
-            pb={['12px', '0']}
+        {!vectorModelShowConfig?.isHidden && (
+          <Flex
+            mt={6}
+            alignItems={['flex-start', 'center']}
+            justify={'space-between'}
+            flexDir={['column', 'row']}
           >
-            <Box>{t('common:core.ai.model.Vector Model')}</Box>
-            <QuestionTip label={t('common:core.dataset.embedding model tip')} />
-          </HStack>
-          <Box w={['100%', '300px']}>
-            <AIModelSelector
-              w={['100%', '300px']}
-              value={vectorModel}
-              list={filterNotHiddenVectorModelList.map((item) => ({
-                label: item.name,
-                value: item.model
-              }))}
-              onChange={(e) => {
-                setValue('vectorModel' as const, e);
-              }}
-            />
-          </Box>
-        </Flex>
+            <HStack
+              spacing={1}
+              alignItems={'center'}
+              flex={['', '0 0 110px']}
+              fontSize={'sm'}
+              color={'myGray.900'}
+              fontWeight={500}
+              pb={['12px', '0']}
+            >
+              <Box>{t('common:core.ai.model.Vector Model')}</Box>
+              {vectorModelShowConfig?.tip ? (
+                <QuestionTip label={t(vectorModelShowConfig.tip)} />
+              ) : (
+                <QuestionTip label={t('common:core.dataset.embedding model tip')} />
+              )}
+            </HStack>
+            <Box w={['100%', '300px']}>
+              <AIModelSelector
+                w={['100%', '300px']}
+                value={vectorModel}
+                list={filterNotHiddenVectorModelList.map((item) => ({
+                  label: item.name,
+                  value: item.model
+                }))}
+                onChange={(e) => {
+                  setValue('vectorModel' as const, e);
+                }}
+              />
+            </Box>
+          </Flex>
+        )}
 
-        <Flex
-          mt={6}
-          alignItems={['flex-start', 'center']}
-          justify={'space-between'}
-          flexDir={['column', 'row']}
-        >
-          <HStack
-            spacing={1}
-            flex={['', '0 0 110px']}
-            fontSize={'sm'}
-            color={'myGray.900'}
-            fontWeight={500}
-            pb={['12px', '0']}
+        {!agentModelShowConfig?.isHidden && (
+          <Flex
+            mt={6}
+            alignItems={['flex-start', 'center']}
+            justify={'space-between'}
+            flexDir={['column', 'row']}
           >
-            <Box>{t('common:core.ai.model.Dataset Agent Model')}</Box>
-            <QuestionTip label={t('dataset:file_model_function_tip')} />
-          </HStack>
-          <Box w={['100%', '300px']}>
-            <AIModelSelector
-              w={['100%', '300px']}
-              value={agentModel}
-              list={datasetModelList.map((item) => ({
-                label: item.name,
-                value: item.model
-              }))}
-              onChange={(e) => {
-                setValue('agentModel', e);
-              }}
-            />
-          </Box>
-        </Flex>
+            <HStack
+              spacing={1}
+              flex={['', '0 0 110px']}
+              fontSize={'sm'}
+              color={'myGray.900'}
+              fontWeight={500}
+              pb={['12px', '0']}
+            >
+              <Box>{t('common:core.ai.model.Dataset Agent Model')}</Box>
+              {agentModelShowConfig?.tip ? (
+                <QuestionTip label={t(agentModelShowConfig.tip)} />
+              ) : (
+                <QuestionTip label={t('dataset:file_model_function_tip')} />
+              )}
+            </HStack>
+            <Box w={['100%', '300px']}>
+              <AIModelSelector
+                w={['100%', '300px']}
+                value={agentModel}
+                list={datasetModelList.map((item) => ({
+                  label: item.name,
+                  value: item.model
+                }))}
+                onChange={(e) => {
+                  setValue('agentModel', e);
+                }}
+              />
+            </Box>
+          </Flex>
+        )}
 
-        <Flex
-          mt={6}
-          alignItems={['flex-start', 'center']}
-          justify={'space-between'}
-          flexDir={['column', 'row']}
-        >
-          <HStack
-            spacing={1}
-            flex={['', '0 0 110px']}
-            fontSize={'sm'}
-            color={'myGray.900'}
-            fontWeight={500}
-            pb={['12px', '0']}
+        {!vlmModelShowConfig?.isHidden && (
+          <Flex
+            mt={6}
+            alignItems={['flex-start', 'center']}
+            justify={'space-between'}
+            flexDir={['column', 'row']}
           >
-            <Box>{t('dataset:vllm_model')}</Box>
-          </HStack>
-          <Box w={['100%', '300px']}>
-            <AIModelSelector
-              w={['100%', '300px']}
-              value={vlmModel}
-              list={vllmModelList.map((item) => ({
-                label: item.name,
-                value: item.model
-              }))}
-              onChange={(e) => {
-                setValue('vlmModel', e);
-              }}
-            />
-          </Box>
-        </Flex>
+            <HStack
+              spacing={1}
+              flex={['', '0 0 110px']}
+              fontSize={'sm'}
+              color={'myGray.900'}
+              fontWeight={500}
+              pb={['12px', '0']}
+            >
+              <Box>{t('dataset:vllm_model')}</Box>
+            </HStack>
+            <Box w={['100%', '300px']}>
+              <AIModelSelector
+                w={['100%', '300px']}
+                value={vlmModel}
+                list={vllmModelList.map((item) => ({
+                  label: item.name,
+                  value: item.model
+                }))}
+                onChange={(e) => {
+                  setValue('vlmModel', e);
+                }}
+              />
+            </Box>
+          </Flex>
+        )}
 
         {/* @ts-ignore */}
         <ApiDatasetForm type={type} form={form} />
