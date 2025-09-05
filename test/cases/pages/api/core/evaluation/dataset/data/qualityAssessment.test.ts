@@ -183,7 +183,23 @@ describe('QualityAssessment API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toThrow('Dataset data not found');
+      await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetDataNotFound');
+    });
+
+    it('should verify collection exists and belongs to team', async () => {
+      const req = {
+        body: {
+          dataId: validDataId,
+          evalModel: validEvalModel
+        }
+      };
+
+      await handler_test(req as any);
+
+      expect(mockMongoEvalDatasetCollection.findOne).toHaveBeenCalledWith({
+        _id: validCollectionId,
+        teamId: validTeamId
+      });
     });
 
     it('should return error when collection not found', async () => {
@@ -198,9 +214,7 @@ describe('QualityAssessment API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toThrow(
-        'Dataset collection not found or access denied'
-      );
+      await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetCollectionNotFound');
     });
 
     it('should return error when collection belongs to different team', async () => {
@@ -215,9 +229,7 @@ describe('QualityAssessment API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toThrow(
-        'Dataset collection not found or access denied'
-      );
+      await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetCollectionNotFound');
     });
   });
 
