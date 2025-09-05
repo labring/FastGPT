@@ -1,0 +1,611 @@
+<!-- VSCode 用 Live Server 插件打开 -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FastGPT 图标展示</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background-color: #f5f7fa;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 10px;
+      color: #2c3e50;
+    }
+
+    .search-container {
+      margin-bottom: 20px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 12px 15px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 16px;
+      transition: border-color 0.3s;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: #4a90e2;
+    }
+
+    .filter-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .filter-tab {
+      padding: 8px 16px;
+      background-color: #fff;
+      border: 1px solid #ddd;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .filter-tab:hover {
+      background-color: #f0f0f0;
+    }
+
+    .filter-tab.active {
+      background-color: #4a90e2;
+      color: white;
+      border-color: #4a90e2;
+    }
+
+    .icons-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 15px;
+    }
+
+    .icon-card {
+      background-color: #fff;
+      border-radius: 8px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      transition: transform 0.3s, box-shadow 0.3s;
+      cursor: pointer;
+    }
+
+    .icon-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .icon-container {
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 10px;
+    }
+
+    .icon-container svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .icon-name {
+      font-size: 12px;
+      text-align: center;
+      color: #666;
+      word-break: break-all;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .no-results {
+      text-align: center;
+      padding: 40px;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .stats {
+      margin-top: 20px;
+      font-size: 14px;
+      color: #666;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background-color: #fff;
+      padding: 30px;
+      border-radius: 8px;
+      max-width: 500px;
+      width: 90%;
+      text-align: center;
+    }
+
+    .modal-icon {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto 20px;
+    }
+
+    .modal-icon svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .modal-name {
+      font-size: 18px;
+      margin-bottom: 20px;
+      word-break: break-all;
+    }
+
+    .modal-path {
+      font-family: monospace;
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      overflow-x: auto;
+    }
+
+    .close-button {
+      background-color: #4a90e2;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s;
+    }
+
+    .close-button:hover {
+      background-color: #3a7bc8;
+    }
+
+    .copy-button {
+      background-color: #5cb85c;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-left: 10px;
+      transition: background-color 0.3s;
+    }
+
+    .copy-button:hover {
+      background-color: #4cae4c;
+    }
+
+    .copy-success {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background-color: #5cb85c;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 4px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      display: none;
+      z-index: 1001;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>FastGPT 图标展示</h1>
+      <p>点击图标查看详情，点击路径可复制到剪贴板</p>
+    </header>
+
+    <div class="search-container">
+      <input type="text" class="search-input" placeholder="搜索图标名称..." id="searchInput">
+    </div>
+
+    <div class="filter-tabs" id="filterTabs">
+      <div class="filter-tab active" data-category="all">全部</div>
+      <div class="filter-tab" data-category="common">通用</div>
+      <div class="filter-tab" data-category="core">核心</div>
+      <div class="filter-tab" data-category="file">文件</div>
+      <div class="filter-tab" data-category="model">模型</div>
+      <div class="filter-tab" data-category="support">支持</div>
+      <div class="filter-tab" data-category="plugins">插件</div>
+    </div>
+
+    <div class="icons-grid" id="iconsGrid">
+      <!-- 图标将通过JavaScript动态加载 -->
+    </div>
+
+    <div class="stats" id="stats">
+      <!-- 统计信息将通过JavaScript动态更新 -->
+    </div>
+  </div>
+
+  <div class="modal" id="iconModal">
+    <div class="modal-content">
+      <div class="modal-icon" id="modalIcon"></div>
+      <div class="modal-name" id="modalName"></div>
+      <div class="modal-path" id="modalPath"></div>
+      <button class="copy-button" id="copyButton">复制路径</button>
+      <button class="close-button" id="closeButton">关闭</button>
+    </div>
+  </div>
+
+  <div class="copy-success" id="copySuccess">已复制到剪贴板!</div>
+
+  <script>
+    // 图标路径映射，从 constants.ts 动态生成
+    let iconPaths = {};
+    // 从 constants.ts 文件加载图标路径配置
+    async function loadIconPathsFromConstants() {
+      try {
+        console.log('Loading icon paths from constants.ts...');
+        
+        // 读取 constants.ts 文件内容
+        const response = await fetch('./constants.ts');
+        if (!response.ok) {
+          throw new Error(`Failed to load constants.ts: ${response.status}`);
+        }
+        
+        const constantsContent = await response.text();
+        console.log('Constants file loaded successfully');
+        
+        // 解析 TypeScript 文件中的 iconPaths 对象
+        iconPaths = parseIconPathsFromTS(constantsContent);
+        console.log(`Parsed ${Object.keys(iconPaths).length} icon paths from constants.ts`);
+        
+        return iconPaths;
+      } catch (error) {
+        console.error('Error loading constants.ts:', error);
+        
+        // 如果加载失败，使用备用的图标路径配置
+        console.log('Using fallback icon paths...');
+        iconPaths = getFallbackIconPaths();
+        return iconPaths;
+      }
+    }
+    // 解析 TypeScript 文件中的 iconPaths 对象
+    function parseIconPathsFromTS(content) {
+      const paths = {};
+      
+      try {
+        // 提取 iconPaths 对象的内容
+        const iconPathsMatch = content.match(/export const iconPaths = \{([\s\S]*?)\};/);
+        if (!iconPathsMatch) {
+          throw new Error('Could not find iconPaths export in constants.ts');
+        }
+        
+        const iconPathsContent = iconPathsMatch[1];
+        
+        // 使用正则表达式匹配每个图标路径条目，支持两种格式：
+        // 1. 带引号的键名: 'common/add2': () => import('./icons/common/add2.svg')
+        // 2. 不带引号的键名: alignLeft: () => import('./icons/alignLeft.svg')
+        const entryRegex = /(?:['"`]([^'"`]+)['"`]|([a-zA-Z_$][a-zA-Z0-9_$]*)):\s*\(\)\s*=>\s*import\(['"`]\.\/icons\/([^'"`]+)['"`]\)/g;
+        let match;
+        
+        while ((match = entryRegex.exec(iconPathsContent)) !== null) {
+          // match[1] 是带引号的键名，match[2] 是不带引号的键名
+          const iconName = match[1] || match[2];
+          const iconPath = `./icons/${match[3]}`;
+          paths[iconName] = iconPath;
+        }
+        
+        console.log(`Successfully parsed ${Object.keys(paths).length} icon paths`);
+        return paths;
+      } catch (error) {
+        console.error('Error parsing constants.ts content:', error);
+        throw error;
+      }
+    }
+    // 备用图标路径配置（当无法加载 constants.ts 时使用）
+    function getFallbackIconPaths() {
+      return {};
+    }
+
+    // 图标数据存储
+    let iconsData = [];
+    let filteredIcons = [];
+    let currentCategory = 'all';
+    let searchTerm = '';
+
+    // 初始化页面
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        console.log('Page loaded, initializing...');
+        
+        // 首先加载图标路径配置
+        await loadIconPathsFromConstants();
+        console.log('Icon paths loaded:', Object.keys(iconPaths).length, 'icons');
+
+        // 检查是否通过HTTP服务器访问
+        if (window.location.protocol === 'file:') {
+          console.warn('Warning: Running from file:// protocol. Some features may not work due to CORS restrictions.');
+          // 移除alert，改为在页面上显示提示
+          const header = document.querySelector('header p');
+          header.innerHTML = '⚠️ 建议通过HTTP服务器访问此页面以获得最佳体验。当前显示的是示例图标。';
+        }
+
+        await loadIcons();
+        await renderIcons();
+        updateStats();
+        setupEventListeners();
+      } catch (error) {
+        console.error('Initialization error:', error);
+        document.getElementById('iconsGrid').innerHTML = '<div class="no-results">页面初始化失败，请刷新重试</div>';
+      }
+    });
+
+    // 加载所有图标
+    async function loadIcons() {
+      iconsData = [];
+
+      for (const [name, path] of Object.entries(iconPaths)) {
+        try {
+          // 确定图标类别
+          const category = getIconCategory(name);
+
+          iconsData.push({
+            name,
+            path,
+            category
+          });
+        } catch (error) {
+          console.error(`Error loading icon ${name}:`, error);
+        }
+      }
+
+      filteredIcons = [...iconsData];
+    }
+
+    // 根据图标名称确定类别
+    function getIconCategory(name) {
+      if (name.startsWith('common/')) return 'common';
+      if (name.startsWith('core/')) return 'core';
+      if (name.startsWith('file/')) return 'file';
+      if (name.startsWith('model/')) return 'model';
+      if (name.startsWith('support/')) return 'support';
+      if (name.startsWith('plugins/')) return 'plugins';
+
+      // 根据名称模式推断类别
+      if (name.includes('Solid') || name.includes('Light')) return 'common';
+      if (['close', 'code', 'comment'].includes(name)) return 'common';
+
+      return 'common'; // 默认类别
+    }
+
+    // 渲染图标网格
+    async function renderIcons() {
+      const iconsGrid = document.getElementById('iconsGrid');
+      iconsGrid.innerHTML = '';
+
+      if (filteredIcons.length === 0) {
+        iconsGrid.innerHTML = '<div class="no-results">没有找到匹配的图标</div>';
+        return;
+      }
+
+      for (const icon of filteredIcons) {
+        const iconCard = document.createElement('div');
+        iconCard.className = 'icon-card';
+        iconCard.dataset.name = icon.name;
+        iconCard.dataset.category = icon.category;
+
+        try {
+          // 尝试加载SVG内容
+          const svgContent = await fetchSvgContent(icon.path);
+          iconCard.innerHTML = `
+                        <div class="icon-container">
+                            ${svgContent}
+                        </div>
+                        <div class="icon-name">${icon.name}</div>
+                    `;
+        } catch (error) {
+          // 如果加载失败，显示占位符
+          console.error(`Error loading SVG for ${icon.name}:`, error);
+          iconCard.innerHTML = `
+                        <div class="icon-container">
+                            <div style="width: 40px; height: 40px; background-color: #f0f0f0; border-radius: 4px;"></div>
+                        </div>
+                        <div class="icon-name">${icon.name}</div>
+                    `;
+        }
+
+        // 添加点击事件
+        iconCard.addEventListener('click', () => showIconModal(icon));
+
+        iconsGrid.appendChild(iconCard);
+      }
+    }
+
+    // 获取SVG内容
+    async function fetchSvgContent(path) {
+      try {
+        const response = await fetch(path);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const svgText = await response.text();
+        return svgText;
+      } catch (error) {
+        console.error(`Failed to fetch SVG from ${path}:`, error);
+        // 返回一个占位符SVG
+        const iconName = path.split('/').pop().replace('.svg', '');
+        return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" fill="#f8f9fa" stroke="#dee2e6"/>
+                    <path d="M9 9h6M9 12h6M9 15h4" stroke="#6c757d" stroke-width="1"/>
+                </svg>`;
+      }
+    }
+
+    // 显示图标详情模态框
+    async function showIconModal(icon) {
+      try {
+        const modal = document.getElementById('iconModal');
+        const modalIcon = document.getElementById('modalIcon');
+        const modalName = document.getElementById('modalName');
+        const modalPath = document.getElementById('modalPath');
+
+        // 设置模态框内容
+        modalName.textContent = icon.name;
+        modalPath.textContent = icon.path;
+
+        // 加载并设置图标
+        const svgContent = await fetchSvgContent(icon.path);
+        modalIcon.innerHTML = svgContent;
+
+        // 显示模态框
+        modal.style.display = 'flex';
+      } catch (error) {
+        console.error(`Error in showIconModal:`, error);
+      }
+    }
+
+    // 设置事件监听器
+    function setupEventListeners() {
+      // 搜索输入
+      const searchInput = document.getElementById('searchInput');
+      searchInput.addEventListener('input', (e) => {
+        searchTerm = e.target.value.toLowerCase();
+        filterIcons();
+      });
+
+      // 分类标签
+      const filterTabs = document.querySelectorAll('.filter-tab');
+      filterTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          // 更新活动标签
+          filterTabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+
+          // 更新当前分类
+          currentCategory = tab.dataset.category;
+          filterIcons();
+        });
+      });
+
+      // 模态框关闭按钮
+      const closeButton = document.getElementById('closeButton');
+      closeButton.addEventListener('click', () => {
+        document.getElementById('iconModal').style.display = 'none';
+      });
+
+      // 点击模态框外部关闭
+      const modal = document.getElementById('iconModal');
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.style.display = 'none';
+        }
+      });
+
+      // 复制路径按钮
+      const copyButton = document.getElementById('copyButton');
+      copyButton.addEventListener('click', () => {
+        const path = document.getElementById('modalPath').textContent;
+        copyToClipboard(path);
+      });
+    }
+
+    // 过滤图标
+    function filterIcons() {
+      filteredIcons = iconsData.filter(icon => {
+        const matchesCategory = currentCategory === 'all' || icon.category === currentCategory;
+        const matchesSearch = searchTerm === '' || icon.name.toLowerCase().includes(searchTerm);
+        return matchesCategory && matchesSearch;
+      });
+
+      renderIcons();
+      updateStats();
+    }
+
+    // 更新统计信息
+    function updateStats() {
+      const stats = document.getElementById('stats');
+      stats.textContent = `共 ${iconsData.length} 个图标，显示 ${filteredIcons.length} 个`;
+    }
+
+    // 复制到剪贴板
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text)
+        .then(() => {
+          // 显示复制成功提示
+          const copySuccess = document.getElementById('copySuccess');
+          copySuccess.style.display = 'block';
+
+          // 3秒后隐藏提示
+          setTimeout(() => {
+            copySuccess.style.display = 'none';
+          }, 3000);
+        })
+        .catch(err => {
+          console.error('无法复制文本: ', err);
+          // 备用方法
+          const textArea = document.createElement('textarea');
+          textArea.value = text;
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+
+          // 显示复制成功提示
+          const copySuccess = document.getElementById('copySuccess');
+          copySuccess.style.display = 'block';
+          setTimeout(() => {
+            copySuccess.style.display = 'none';
+          }, 3000);
+        });
+    }
+  </script>
+</body>
+
+</html>
