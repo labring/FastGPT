@@ -286,6 +286,8 @@
   "core.app.outLink.Select Mode": "開始使用",
   "core.app.outLink.Select Using Way": "選擇使用方式",
   "core.app.outLink.Show History": "顯示歷史對話",
+  "core.app.outLink.Width": "寬度",
+  "core.app.outLink.Height": "高度",
   "core.app.publish.Fei shu bot": "飛書",
   "core.app.publish.Fei shu bot publish": "發布到飛書機器人",
   "core.app.schedule.Default prompt": "預設問題",

@@ -286,6 +286,8 @@
   "core.app.outLink.Select Mode": "Start Using",
   "core.app.outLink.Select Using Way": "Select Usage Method",
   "core.app.outLink.Show History": "Show Chat History",
+  "core.app.outLink.Width": "Width",
+  "core.app.outLink.Height": "Height",
   "core.app.publish.Fei shu bot": "Feishu",
   "core.app.publish.Fei shu bot publish": "Publish to Feishu Bot",
   "core.app.schedule.Default prompt": "Default Question",
