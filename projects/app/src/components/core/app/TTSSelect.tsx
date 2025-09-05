@@ -16,7 +16,6 @@ import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 
 const TTSSelect = ({
@@ -27,8 +26,7 @@ const TTSSelect = ({
   onChange: (e: AppTTSConfigType) => void;
 }) => {
   const { t, i18n } = useTranslation();
-  const language = i18n.language;
-  const { ttsModelList } = useSystemStore();
+  const { ttsModelList, getModelProvider } = useSystemStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const appId = useContextSelector(AppContext, (v) => v.appId);
@@ -38,7 +36,7 @@ const TTSSelect = ({
       { label: t('app:tts_close'), value: TTSTypeEnum.none, children: [] },
       { label: t('app:tts_browser'), value: TTSTypeEnum.web, children: [] },
       ...ttsModelList.map((model) => {
-        const providerData = getModelProvider(model.provider, language);
+        const providerData = getModelProvider(model.provider, i18n.language);
         return {
           label: (
             <HStack>

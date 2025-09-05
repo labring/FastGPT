@@ -8,12 +8,18 @@ import type {
   EmbeddingModelItemType,
   STTModelType
 } from '@fastgpt/global/core/ai/model.d';
-import { type InitDateResponse } from '@/global/common/api/systemRes';
+import type { InitDateResponse } from '@/pages/api/common/system/getInitData';
 import { type FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import { type SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import type { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { type SystemDefaultModelType } from '@fastgpt/service/core/ai/type';
+import type { SystemDefaultModelType } from '@fastgpt/service/core/ai/type';
+import {
+  defaultProvider,
+  formatModelProviders,
+  type langType,
+  type ModelProviderItemType
+} from '@fastgpt/global/core/ai/provider';
 
 type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
 
@@ -48,15 +54,23 @@ type State = {
   feConfigs: FastGPTFeConfigsType;
   subPlans?: SubPlanType;
   systemVersion: string;
+
+  modelProviders: Record<langType, ModelProviderItemType[]>;
+  modelProviderMap: Record<langType, Record<string, ModelProviderItemType>>;
+  aiproxyIdMap: NonNullable<InitDateResponse['aiproxyIdMap']>;
   defaultModels: SystemDefaultModelType;
   llmModelList: LLMModelItemType[];
   datasetModelList: LLMModelItemType[];
-  getVlmModelList: () => LLMModelItemType[];
   embeddingModelList: EmbeddingModelItemType[];
   ttsModelList: TTSModelType[];
   reRankModelList: RerankModelItemType[];
   sttModelList: STTModelType[];
+  getVlmModelList: () => LLMModelItemType[];
+  getModelProviders: (language?: string) => ModelProviderItemType[];
+  getModelProvider: (provider?: string, language?: string) => ModelProviderItemType;
+
   initStaticData: (e: InitDateResponse) => void;
+
   appType?: string;
   setAppType: (e?: string) => void;
 };
@@ -126,6 +140,18 @@ export const useSystemStore = create<State>()(
         feConfigs: {},
         subPlans: undefined,
         systemVersion: '0.0.0',
+
+        modelProviders: {
+          en: [],
+          'zh-CN': [],
+          'zh-Hant': []
+        },
+        modelProviderMap: {
+          en: {},
+          'zh-CN': {},
+          'zh-Hant': {}
+        },
+        aiproxyIdMap: {},
         defaultModels: {},
         llmModelList: [],
         datasetModelList: [],
@@ -133,8 +159,18 @@ export const useSystemStore = create<State>()(
         ttsModelList: [],
         reRankModelList: [],
         sttModelList: [],
+
         getVlmModelList: () => {
           return get().llmModelList.filter((item) => item.vision);
+        },
+        getModelProviders(language = 'en') {
+          return get().modelProviders[language as langType] ?? [];
+        },
+        getModelProvider(provider, language = 'en') {
+          if (!provider) {
+            return defaultProvider;
+          }
+          return get().modelProviderMap[language as langType][provider] ?? {};
         },
         initStaticData(res) {
           set((state) => {
@@ -143,6 +179,15 @@ export const useSystemStore = create<State>()(
             state.feConfigs = res.feConfigs ?? state.feConfigs;
             state.subPlans = res.subPlans ?? state.subPlans;
             state.systemVersion = res.systemVersion ?? state.systemVersion;
+
+            if (res.modelProviders) {
+              const { ModelProviderListCache, ModelProviderMapCache } = formatModelProviders(
+                res.modelProviders
+              );
+              state.modelProviders = ModelProviderListCache ?? state.modelProviders;
+              state.modelProviderMap = ModelProviderMapCache ?? state.modelProviderMap;
+            }
+            state.aiproxyIdMap = res.aiproxyIdMap ?? state.aiproxyIdMap;
 
             state.llmModelList =
               res.activeModelList?.filter((item) => item.type === ModelTypeEnum.llm) ??
@@ -173,6 +218,10 @@ export const useSystemStore = create<State>()(
           feConfigs: state.feConfigs,
           subPlans: state.subPlans,
           systemVersion: state.systemVersion,
+
+          modelProviders: state.modelProviders,
+          modelProviderMap: state.modelProviderMap,
+          aiproxyIdMap: state.aiproxyIdMap,
           defaultModels: state.defaultModels,
           llmModelList: state.llmModelList,
           datasetModelList: state.datasetModelList,

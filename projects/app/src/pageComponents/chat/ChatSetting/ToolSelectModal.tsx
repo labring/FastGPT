@@ -14,6 +14,8 @@ import {
   Flex,
   Grid
 } from '@chakra-ui/react';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -159,7 +161,7 @@ const RenderList = React.memo(function RenderList({
   templates: NodeTemplateListItemType[];
   setParentId: (parentId: ParentIdType) => any;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [configTool, setConfigTool] = useState<FlowNodeTemplateType>();
   const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
   const { toast } = useToast();
@@ -258,25 +260,44 @@ const RenderList = React.memo(function RenderList({
   });
 
   const formatTemplatesArray = useMemo(() => {
-    const data = pluginGroups.map((group) => {
-      const copy: NodeTemplateListType = group.groupTypes.map((type) => ({
-        list: [],
-        type: type.typeId,
-        label: type.typeName
-      }));
+    return pluginGroups.map((group) => {
+      const map = group.groupTypes.reduce<
+        Record<
+          string,
+          {
+            list: NodeTemplateListItemType[];
+            label: string;
+          }
+        >
+      >((acc, item) => {
+        acc[item.typeId] = {
+          list: [],
+          label: t(parseI18nString(item.typeName, i18n.language))
+        };
+        return acc;
+      }, {});
+
       templates.forEach((item) => {
-        const index = copy.findIndex((template) => template.type === item.templateType);
-        if (index === -1) return;
-        copy[index].list.push(item);
+        if (map[item.templateType]) {
+          map[item.templateType].list.push({
+            ...item,
+            name: t(parseI18nString(item.name, i18n.language)),
+            intro: t(parseI18nString(item.intro, i18n.language))
+          });
+        }
       });
       return {
         label: group.groupName,
-        list: copy.filter((item) => item.list.length > 0)
+        list: Object.entries(map)
+          .map(([type, { list, label }]) => ({
+            type,
+            label,
+            list
+          }))
+          .filter((item) => item.list.length > 0)
       };
     });
-
-    return data.filter(({ list }) => list.length > 0);
-  }, [pluginGroups, templates]);
+  }, [i18n.language, pluginGroups, t, templates]);
 
   const gridStyle = {
     gridTemplateColumns: ['1fr', '1fr 1fr'],
@@ -320,11 +341,11 @@ const RenderList = React.memo(function RenderList({
                               borderRadius={'sm'}
                             />
                             <Box fontWeight={'bold'} ml={3} color={'myGray.900'}>
-                              {t(template.name as any)}
+                              {template.name}
                             </Box>
                           </Flex>
                           <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
-                            {t(template.intro as any) || t('common:core.workflow.Not intro')}
+                            {template.intro || t('common:core.workflow.Not intro')}
                           </Box>
                           {/* {type === TemplateTypeEnum.systemPlugin && (
                             <CostTooltip

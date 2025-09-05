@@ -19,6 +19,7 @@ export enum FeedbackTypeEnum {
 }
 
 export enum ChatTypeEnum {
+  test = 'test',
   chat = 'chat',
   log = 'log',
   share = 'share',

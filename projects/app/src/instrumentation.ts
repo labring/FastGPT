@@ -19,7 +19,8 @@ export async function register() {
         { startTrainingQueue },
         { preLoadWorker },
         { loadSystemModels },
-        { connectSignoz }
+        { connectSignoz },
+        { getSystemTools }
       ] = await Promise.all([
         import('@fastgpt/service/common/mongo/init'),
         import('@fastgpt/service/common/mongo/index'),
@@ -32,7 +33,8 @@ export async function register() {
         import('@/service/core/dataset/training/utils'),
         import('@fastgpt/service/worker/preload'),
         import('@fastgpt/service/core/ai/config/utils'),
-        import('@fastgpt/service/common/otel/trace/register')
+        import('@fastgpt/service/common/otel/trace/register'),
+        import('@fastgpt/service/core/app/plugin/controller')
       ]);
 
       // connect to signoz
@@ -49,16 +51,13 @@ export async function register() {
       //init system config；init vector database；init root user
       await Promise.all([getInitConfig(), initVectorStore(), initRootUser(), loadSystemModels()]);
 
-      try {
-        await preLoadWorker();
-      } catch (error) {
-        console.error('Preload worker error', error);
-      }
+      await Promise.all([
+        preLoadWorker().catch(),
+        getSystemTools(),
+        initSystemPluginGroups(),
+        initAppTemplateTypes()
+      ]);
 
-      // 异步加载
-      initSystemPluginGroups();
-      initAppTemplateTypes();
-      // getSystemPlugins(true);
       startMongoWatch();
       startCron();
       startTrainingQueue(true);

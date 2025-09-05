@@ -7,8 +7,8 @@ import { type FlowNodeTemplateType } from '../../type/node.d';
 import {
   WorkflowIOValueTypeEnum,
   NodeOutputKeyEnum,
-  FlowNodeTemplateTypeEnum,
-  NodeInputKeyEnum
+  NodeInputKeyEnum,
+  FlowNodeTemplateTypeEnum
 } from '../../constants';
 import { i18nT } from '../../../../../web/i18n/utils';
 

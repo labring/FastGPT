@@ -1,5 +1,4 @@
 import type { ModelTypeEnum } from './model';
-import type { ModelProviderIdType } from './provider';
 
 type PriceType = {
   charsPointsPrice?: number; // 1k chars=n points; 60s=n points;
@@ -9,7 +8,7 @@ type PriceType = {
   outputPrice?: number; // 1k tokens=n points
 };
 type BaseModelItemType = {
-  provider: ModelProviderIdType;
+  provider: string;
   model: string;
   name: string;
   avatar?: string; // model icon, from provider

@@ -141,7 +141,7 @@ export const useChatTest = ({
         appId={appId}
         chatId={chatId}
         showMarkIcon
-        chatType={ChatTypeEnum.chat}
+        chatType={ChatTypeEnum.test}
         onStartChat={startChat}
       />
     )

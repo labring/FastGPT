@@ -44,6 +44,9 @@ svg {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(189, 193, 197, 1);
 }
+:root {
+  --lexical-indent-base-value: 24px;
+}
 
 div {
   &::-webkit-scrollbar-thumb {

@@ -30,13 +30,12 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useTranslation } from 'next-i18next';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import SideTag from './SideTag';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 
 function List() {
-  const { setLoading } = useSystemStore();
+  const { setLoading, getModelProvider } = useSystemStore();
   const { isPc } = useSystem();
   const { t } = useTranslation();
   const {

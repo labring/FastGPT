@@ -20,7 +20,6 @@
     "@emotion/styled": "11.11.0",
     "@fastgpt/global": "workspace:*",
     "@fastgpt/service": "workspace:*",
-    "@fastgpt/templates": "workspace:*",
     "@fastgpt/web": "workspace:*",
     "@fortaine/fetch-event-source": "^3.0.6",
     "@modelcontextprotocol/sdk": "^1.12.1",

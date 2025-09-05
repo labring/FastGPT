@@ -76,3 +76,14 @@
   color: var(--chakra-colors-primary-600);
   padding: 0 2px;
 }
+
+.richText {
+  ul,
+  ol {
+    padding-left: 16px;
+
+    li::marker {
+      color: var(--chakra-colors-primary-600);
+    }
+  }
+}

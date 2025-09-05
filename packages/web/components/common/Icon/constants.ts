@@ -271,14 +271,25 @@ export const iconPaths = {
   'core/workflow/inputType/array': () => import('./icons/core/workflow/inputType/array.svg'),
   'core/workflow/inputType/customVariable': () =>
     import('./icons/core/workflow/inputType/customVariable.svg'),
+  'core/workflow/inputType/dataset': () => import('./icons/core/workflow/inputType/dataset.svg'),
+  'core/workflow/inputType/timePointSelect': () =>
+    import('./icons/core/workflow/inputType/timePointSelect.svg'),
+  'core/workflow/inputType/timeRangeSelect': () =>
+    import('./icons/core/workflow/inputType/timeRangeSelect.svg'),
   'core/workflow/inputType/dynamic': () => import('./icons/core/workflow/inputType/dynamic.svg'),
+  'core/workflow/inputType/external': () => import('./icons/core/workflow/inputType/external.svg'),
   'core/workflow/inputType/file': () => import('./icons/core/workflow/inputType/file.svg'),
   'core/workflow/inputType/input': () => import('./icons/core/workflow/inputType/input.svg'),
+  'core/workflow/inputType/internal': () => import('./icons/core/workflow/inputType/internal.svg'),
   'core/workflow/inputType/jsonEditor': () =>
     import('./icons/core/workflow/inputType/jsonEditor.svg'),
+  'core/workflow/inputType/model': () => import('./icons/core/workflow/inputType/model.svg'),
+  'core/workflow/inputType/multipleSelect': () =>
+    import('./icons/core/workflow/inputType/multipleSelect.svg'),
   'core/workflow/inputType/numberInput': () =>
     import('./icons/core/workflow/inputType/numberInput.svg'),
   'core/workflow/inputType/option': () => import('./icons/core/workflow/inputType/option.svg'),
+  'core/workflow/inputType/password': () => import('./icons/core/workflow/inputType/password.svg'),
   'core/workflow/inputType/reference': () =>
     import('./icons/core/workflow/inputType/reference.svg'),
   'core/workflow/inputType/select': () => import('./icons/core/workflow/inputType/select.svg'),
@@ -419,6 +430,7 @@ export const iconPaths = {
   'model/cloudflare': () => import('./icons/model/cloudflare.svg'),
   'model/cohere': () => import('./icons/model/cohere.svg'),
   'model/coze': () => import('./icons/model/coze.svg'),
+  'model/huggingface': () => import('./icons/model/huggingface.svg'),
   more: () => import('./icons/more.svg'),
   moreLine: () => import('./icons/moreLine.svg'),
   optimizer: () => import('./icons/optimizer.svg'),

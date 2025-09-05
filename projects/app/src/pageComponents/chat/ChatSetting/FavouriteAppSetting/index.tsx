@@ -148,29 +148,30 @@ const FavouriteAppSetting = ({ Header }: Props) => {
     if (!tag) return null;
 
     return (
-      <Flex
-        maxW="full"
+      <Box
+        maxW="120px"
         key={id}
         fontSize="xs"
         borderRadius="sm"
         bg="myGray.100"
         px="1.5"
         py="0.5"
-        noOfLines={1}
         cursor="text"
         minW="40px"
-        justifyContent="center"
+        textAlign="center"
+        overflow="hidden"
+        whiteSpace="nowrap"
+        textOverflow="ellipsis"
         onClick={(e) => e.stopPropagation()}
       >
         {tag.name}
-      </Flex>
+      </Box>
     );
   };
 
   return (
     <>
       <MyBox
-        gap={['13px', '26px']}
         display="flex"
         flexDir="column"
         isLoading={isSearching}
@@ -219,20 +220,38 @@ const FavouriteAppSetting = ({ Header }: Props) => {
           </HStack>
         </Header>
 
-        <TableContainer flex="1 0 0" h={0} px={[2, 0]} overflowY="auto">
-          <Table variant="simple" fontSize="sm" position="relative">
-            <Thead position="sticky" top="0" zIndex="1">
-              <Tr>
-                <Th p="0" w="0"></Th>
-                <Th>{t('chat:setting.favourite.table_column_name')}</Th>
-                <Th>{t('chat:setting.favourite.table_column_intro')}</Th>
-                <Th>{t('chat:setting.favourite.table_column_category')}</Th>
-                <Th p="0" textAlign="center">
-                  {t('chat:setting.favourite.table_column_action')}
-                </Th>
-              </Tr>
-            </Thead>
+        {/* 表头 */}
+        <Flex
+          bg={'myGray.100'}
+          my={['13px', '26px']}
+          pl={2}
+          pr={[2, 0]}
+          py={2}
+          rounded={'md'}
+          alignItems={'center'}
+          fontSize={'sm'}
+          fontWeight={'medium'}
+          color="myGray.600"
+          position="sticky"
+          top="0"
+          zIndex="1"
+        >
+          <Box w="40px"></Box>
+          <Box w={[3 / 10, 2.5 / 10]}>{t('chat:setting.favourite.table_column_name')}</Box>
+          <Box w={3.5 / 10} display={['none', 'block']}>
+            {t('chat:setting.favourite.table_column_intro')}
+          </Box>
+          <Box w={[2.5 / 10, 2 / 10]} flexShrink={0} pl={[2, 4]}>
+            {t('chat:setting.favourite.table_column_category')}
+          </Box>
+          <Box w={[1.5 / 10, 2 / 10]} textAlign="center" ml="auto">
+            {t('chat:setting.favourite.table_column_action')}
+          </Box>
+        </Flex>
 
+        {/* 表格内容 */}
+        <Box overflow={'auto'} flex="1 0 0" h={0} px={[2, 0]} minH="300px">
+          {localFavourites.length > 0 ? (
             <DndDrag<ChatFavouriteApp>
               dataList={localFavourites}
               renderInnerPlaceholder={false}
@@ -243,53 +262,111 @@ const FavouriteAppSetting = ({ Header }: Props) => {
               }}
             >
               {({ provided }) => (
-                <Tbody ref={provided.innerRef} {...provided.droppableProps}>
+                <Flex
+                  gap={1}
+                  flexDirection={'column'}
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                >
                   {localFavourites.map((row, index) => (
                     <Draggable key={row._id} draggableId={row._id} index={index}>
                       {(provided, snapshot) => (
-                        <Tr
+                        <MyBox
+                          py="1"
                           ref={provided.innerRef}
                           {...provided.draggableProps}
-                          bg={snapshot.isDragging ? 'myGray.50' : 'transparent'}
-                          _hover={{ bg: 'myGray.50' }}
+                          style={{
+                            ...provided.draggableProps.style,
+                            opacity: snapshot.isDragging ? 0.8 : 1
+                          }}
+                          display={'flex'}
+                          pl={2}
+                          bg={snapshot.isDragging ? 'myGray.50' : 'white'}
+                          borderRadius={'md'}
+                          // h={12}
+                          w={'full'}
+                          border={'1px solid transparent'}
+                          _hover={{
+                            borderColor: 'rgba(51, 112, 255, 0.10)',
+                            bg: 'myGray.50'
+                          }}
+                          fontSize={'sm'}
+                          alignItems={'center'}
                         >
-                          {/* drag handle */}
-                          <Td p="0" pl="2">
-                            <Box {...provided.dragHandleProps}>
-                              <MyIcon
-                                name={'drag'}
-                                cursor={'grab'}
-                                borderRadius={'md'}
-                                color={'myGray.500'}
-                                _hover={{ bg: 'myGray.50' }}
-                                w={'16px'}
-                              />
+                          {/* 拖拽手柄 */}
+                          <Box w="40px" display="flex" alignItems="center" justifyContent="center">
+                            <Flex
+                              {...provided.dragHandleProps}
+                              align="center"
+                              justify="center"
+                              h="full"
+                              rounded="xs"
+                              _hover={{ bg: 'myGray.05' }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MyIcon name={'drag'} cursor={'grab'} color={'myGray.500'} w="14px" />
+                            </Flex>
+                          </Box>
+
+                          {/* 名称列 */}
+                          <Box w={[3 / 10, 2.5 / 10]} display="flex" alignItems="center" pr={4}>
+                            <Avatar src={row.avatar} borderRadius={'xs'} w={'20px'} mr={2} />
+                            <Box
+                              fontWeight={'medium'}
+                              whiteSpace={'nowrap'}
+                              overflow={'hidden'}
+                              textOverflow={'ellipsis'}
+                              cursor="default"
+                              flex="1"
+                            >
+                              {row.name || ''}
                             </Box>
-                          </Td>
+                          </Box>
 
-                          {/* name */}
-                          <Td w="0">
-                            <HStack spacing={2} w="200px">
-                              <Avatar src={row.avatar} borderRadius={'sm'} w="20px" />
-                              <Flex className="textEllipsis">{row.name || ''}</Flex>
-                            </HStack>
-                          </Td>
-
-                          {/* intro */}
-                          <Td w="0">
-                            <Box noOfLines={1} color={'myGray.600'} w="500px">
-                              {row.intro || ''}
+                          {/* 介绍列 */}
+                          <Box w={3.5 / 10} display={['none', 'block']} pr={4} flexShrink={0}>
+                            <Box color={'myGray.600'} cursor="default">
+                              <MyPopover
+                                placement="top"
+                                trigger="hover"
+                                width="fit-content"
+                                Trigger={
+                                  <Box
+                                    as="span"
+                                    maxW="100%"
+                                    cursor="help"
+                                    overflow="hidden"
+                                    whiteSpace="nowrap"
+                                    display="inline-block"
+                                    textOverflow="ellipsis"
+                                  >
+                                    {row.intro || t('common:no_intro')}
+                                  </Box>
+                                }
+                              >
+                                {() => (
+                                  <Box
+                                    p="3"
+                                    maxW="400px"
+                                    wordBreak="break-word"
+                                    lineHeight="1.5"
+                                    fontSize="sm"
+                                  >
+                                    {row.intro || t('common:no_intro')}
+                                  </Box>
+                                )}
+                              </MyPopover>
                             </Box>
-                          </Td>
+                          </Box>
 
-                          {/* tags */}
-                          <Td w="0">
-                            <Wrap w="200px">
-                              {row.favouriteTags.slice(0, 3).map((id) => (
+                          {/* 标签列 */}
+                          <Box w={[2.5 / 10, 2 / 10]} pr={3} flexShrink={0}>
+                            <Wrap spacing={1} overflow="hidden">
+                              {row.favouriteTags.slice(0, 2).map((id) => (
                                 <TagBox key={id} id={id} />
                               ))}
 
-                              {row.favouriteTags.length > 3 && (
+                              {row.favouriteTags.length > 2 && (
                                 <MyPopover
                                   placement="bottom"
                                   trigger="hover"
@@ -302,11 +379,11 @@ const FavouriteAppSetting = ({ Header }: Props) => {
                                       px="1.5"
                                       py="0.5"
                                       cursor="pointer"
-                                      minW="40px"
+                                      minW="30px"
                                       textAlign="center"
                                       onClick={(e) => e.stopPropagation()}
                                     >
-                                      +{row.favouriteTags.length - 3}
+                                      +{row.favouriteTags.length - 2}
                                     </Box>
                                   }
                                 >
@@ -315,10 +392,10 @@ const FavouriteAppSetting = ({ Header }: Props) => {
                                       p="2"
                                       gap="2"
                                       flexWrap="wrap"
-                                      maxW="200px"
+                                      maxW="300px"
                                       onClick={(e) => e.stopPropagation()}
                                     >
-                                      {row.favouriteTags.slice(3).map((id) => (
+                                      {row.favouriteTags.map((id) => (
                                         <TagBox key={id} id={id} />
                                       ))}
                                     </Flex>
@@ -326,51 +403,54 @@ const FavouriteAppSetting = ({ Header }: Props) => {
                                 </MyPopover>
                               )}
                             </Wrap>
-                          </Td>
+                          </Box>
 
-                          {/* action */}
-                          <Td p="0" w="0" textAlign="center">
-                            <Box w="158px">
-                              <PopoverConfirm
-                                type="delete"
-                                content={t('chat:setting.favourite.delete_app_confirm')}
-                                onConfirm={() => {
-                                  setLocalFavourites((prev) => {
-                                    const next = prev.filter((_, i) => i !== index);
-                                    // reset order
-                                    const ordered = next.map((item, idx) => ({
-                                      ...item,
-                                      order: idx
-                                    }));
-                                    deleteApp(row._id);
-                                    return ordered;
-                                  });
-                                }}
-                                Trigger={
-                                  <IconButton
-                                    size="sm"
-                                    aria-label="delete"
-                                    variant="grayGhost"
-                                    color="myGray.500"
-                                    icon={
-                                      <MyIcon name="common/trash" w="20px" color="myGray.400" />
-                                    }
-                                  />
-                                }
-                              />
-                            </Box>
-                          </Td>
-                        </Tr>
+                          {/* 操作列 */}
+                          <Flex
+                            w={[1.5 / 10, 2 / 10]}
+                            alignItems="center"
+                            justifyContent="center"
+                            ml="auto"
+                          >
+                            <PopoverConfirm
+                              type="delete"
+                              content={t('chat:setting.favourite.delete_app_confirm')}
+                              onConfirm={() => {
+                                setLocalFavourites((prev) => {
+                                  const next = prev.filter((_, i) => i !== index);
+                                  // reset order
+                                  const ordered = next.map((item, idx) => ({
+                                    ...item,
+                                    order: idx
+                                  }));
+                                  deleteApp(row._id);
+                                  return ordered;
+                                });
+                              }}
+                              Trigger={
+                                <IconButton
+                                  size="sm"
+                                  aria-label="delete"
+                                  variant="grayGhost"
+                                  color="myGray.500"
+                                  onClick={(e) => e.stopPropagation()}
+                                  icon={<MyIcon name="common/trash" w="16px" color="myGray.400" />}
+                                />
+                              }
+                            />
+                          </Flex>
+                        </MyBox>
                       )}
                     </Draggable>
                   ))}
                   {provided.placeholder}
-                </Tbody>
+                </Flex>
               )}
             </DndDrag>
-          </Table>
-          {localFavourites.length === 0 && <EmptyTip />}
-        </TableContainer>
+          ) : (
+            <EmptyTip />
+          )}
+        </Box>
       </MyBox>
 
       {isOpenTagManageModal && (

@@ -9,7 +9,7 @@ import {
   type RerankModelItemType
 } from '@fastgpt/global/core/ai/model.d';
 import { debounce } from 'lodash';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
+import { getModelProvider } from '../../../core/app/provider/controller';
 import { findModelFromAlldata } from '../model';
 import {
   reloadFastGPTConfigBuffer,
@@ -18,6 +18,7 @@ import {
 import { delay } from '@fastgpt/global/common/system/utils';
 import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
 import { setCron } from '../../../common/system/cron';
+import { preloadModelProviders } from '../../../core/app/provider/controller';
 
 export const loadSystemModels = async (init = false, language = 'en') => {
   const pushModel = (model: SystemModelItemType) => {
@@ -77,6 +78,8 @@ export const loadSystemModels = async (init = false, language = 'en') => {
 
   if (!init && global.systemModelList) return;
 
+  await preloadModelProviders();
+
   global.systemModelList = [];
   global.systemActiveModelList = [];
   global.llmModelMap = new Map<string, LLMModelItemType>();
@@ -109,14 +112,13 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         };
 
         const dbModel = dbModels.find((item) => item.model === model.model);
+        const provider = getModelProvider(dbModel?.metadata?.provider || model.provider, language);
 
         const modelData: any = {
           ...model,
           ...dbModel?.metadata,
-          provider: getModelProvider(
-            dbModel?.metadata?.provider || (model.provider as any),
-            language
-          ).id,
+          provider: provider.id,
+          avatar: provider.avatar,
           type: dbModel?.metadata?.type || model.type,
           isCustom: false,
 

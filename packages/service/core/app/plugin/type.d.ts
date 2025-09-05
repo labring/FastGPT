@@ -2,6 +2,7 @@ import { SystemPluginListItemType } from '@fastgpt/global/core/app/type';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
 import type { InputConfigType } from '@fastgpt/global/core/workflow/type/io';
+import type { I18nStringStrictType } from '@fastgpt/global/sdk/fastgpt-plugin';
 
 export type SystemPluginConfigSchemaType = {
   pluginId: string;
@@ -38,11 +39,11 @@ export type SystemPluginConfigSchemaType = {
 };
 
 export type TGroupType = {
-  typeName: string;
+  typeName: I18nStringStrictType | string;
   typeId: string;
 };
 
-export type PluginGroupSchemaType = {
+export type SystemToolGroupSchemaType = {
   groupId: string;
   groupAvatar: string;
   groupName: string;

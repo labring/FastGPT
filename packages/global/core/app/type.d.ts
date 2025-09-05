@@ -162,11 +162,23 @@ export type VariableItemType = {
 
   // input
   maxLength?: number;
+  // password
+  minLength?: number;
   // numberInput
   max?: number;
   min?: number;
   // select
   list?: { label: string; value: string }[];
+  // file
+  canSelectFile?: boolean;
+  canSelectImg?: boolean;
+  maxFiles?: number;
+  // timeSelect
+  timeGranularity?: 'second' | 'minute' | 'hour' | 'day';
+  timeType?: 'point' | 'range';
+  timeRangeStart?: string;
+  timeRangeEnd?: string;
+
   // @deprecated
   enums?: { value: string; label: string }[];
 };

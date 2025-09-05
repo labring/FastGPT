@@ -504,17 +504,17 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplat
 
 /* FastsGPT-Pluign api: */
 function getCachedSystemPlugins() {
-  if (!global.systemPlugins_cache) {
-    global.systemPlugins_cache = {
+  if (!global.systemToolsCache) {
+    global.systemToolsCache = {
       expires: 0,
       data: [] as SystemPluginTemplateItemType[]
     };
   }
-  return global.systemPlugins_cache;
+  return global.systemToolsCache;
 }
 
 const cleanSystemPluginCache = () => {
-  global.systemPlugins_cache = undefined;
+  global.systemToolsCache = undefined;
 };
 
 export const refetchSystemPlugins = () => {
@@ -579,15 +579,20 @@ export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> 
       .filter((item) => item.customConfig?.associatedPluginId)
       .map((item) => dbPluginFormat(item));
 
-    const plugins = [...formatTools, ...dbPlugins];
-    plugins.sort((a, b) => (a.pluginOrder ?? 0) - (b.pluginOrder ?? 0));
+    const concatTools = [...formatTools, ...dbPlugins];
+    concatTools.sort((a, b) => (a.pluginOrder ?? 0) - (b.pluginOrder ?? 0));
 
-    global.systemPlugins_cache = {
+    global.systemToolsCache = {
       expires: Date.now() + 30 * 60 * 1000, // 30 minutes
-      data: plugins
+      data: concatTools
     };
 
-    return plugins;
+    global.systemToolsTypeCache = {};
+    concatTools.forEach((item) => {
+      global.systemToolsTypeCache[item.templateType] = 1;
+    });
+
+    return concatTools;
   }
 };
 
@@ -608,10 +613,11 @@ export const getSystemToolById = async (id: string): Promise<SystemPluginTemplat
 };
 
 declare global {
-  var systemPlugins_cache:
+  var systemToolsCache:
     | {
         expires: number;
         data: SystemPluginTemplateItemType[];
       }
     | undefined;
+  var systemToolsTypeCache: Record<string, 1>;
 }

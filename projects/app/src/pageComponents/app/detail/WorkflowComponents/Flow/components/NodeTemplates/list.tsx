@@ -32,19 +32,20 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
-import { cloneDeep } from 'lodash';
-import { workflowNodeTemplateList } from '@fastgpt/web/core/workflow/constants';
+import { workflowSystemNodeTemplateList } from '@fastgpt/web/core/workflow/constants';
 import { sliderWidth } from '../../NodeTemplatesModal';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useWorkflowUtils } from '../../hooks/useUtils';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
 import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/loopEnd';
-import { useReactFlow, type Node } from 'reactflow';
+import { useReactFlow } from 'reactflow';
+import type { Node } from 'reactflow';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { WorkflowEventContext } from '../../../context/workflowEventContext';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 
 export type TemplateListProps = {
   onAddNode: ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => void;
@@ -87,11 +88,11 @@ const NodeTemplateListItem = ({
               borderRadius={'sm'}
             />
             <Box fontWeight={'bold'} ml={3} color={'myGray.900'}>
-              {t(template.name as any)}
+              {template.name}
             </Box>
           </Flex>
           <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
-            {t(template.intro as any) || t('common:core.workflow.Not intro')}
+            {template.intro || t('common:core.workflow.Not intro')}
           </Box>
           <CostTooltip
             cost={template.currentCost}
@@ -206,7 +207,7 @@ const NodeTemplateList = ({
   templateType,
   onUpdateParentId
 }: TemplateListProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const { computedNewNodeName } = useWorkflowUtils();
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
@@ -333,42 +334,101 @@ const NodeTemplateList = ({
   const formatTemplatesArray = useMemoizedFn(
     (
       type: TemplateTypeEnum,
-      templates: NodeTemplateListItemType[],
-      pluginGroups: any[]
+      templates: NodeTemplateListItemType[]
     ): { list: NodeTemplateListType; label: string }[] => {
       const data = (() => {
+        if (type === TemplateTypeEnum.basic) {
+          const map = workflowSystemNodeTemplateList.reduce<
+            Record<
+              string,
+              {
+                list: NodeTemplateListItemType[];
+                label: string;
+              }
+            >
+          >((acc, item) => {
+            acc[item.type] = {
+              list: [],
+              label: t(item.label)
+            };
+            return acc;
+          }, {});
+
+          templates.forEach((item) => {
+            if (map[item.templateType]) {
+              map[item.templateType].list.push({
+                ...item,
+                name: t(item.name as any),
+                intro: t(item.intro as any)
+              });
+            }
+          });
+
+          return [
+            {
+              label: '',
+              list: Object.entries(map)
+                .map(([type, { list, label }]) => ({
+                  type,
+                  label,
+                  list
+                }))
+                .filter((item) => item.list.length > 0)
+            }
+          ];
+        }
+
         if (type === TemplateTypeEnum.systemPlugin) {
           return pluginGroups.map((group) => {
-            const copy: NodeTemplateListType = group.groupTypes.map((type: any) => ({
-              list: [],
-              type: type.typeId,
-              label: type.typeName
-            }));
+            const map = group.groupTypes.reduce<
+              Record<
+                string,
+                {
+                  list: NodeTemplateListItemType[];
+                  label: string;
+                }
+              >
+            >((acc, item) => {
+              acc[item.typeId] = {
+                list: [],
+                label: t(parseI18nString(item.typeName, i18n.language))
+              };
+              return acc;
+            }, {});
+
             templates.forEach((item) => {
-              const index = copy.findIndex((template) => template.type === item.templateType);
-              if (index === -1) return;
-              copy[index].list.push(item);
+              if (map[item.templateType]) {
+                map[item.templateType].list.push({
+                  ...item,
+                  name: t(parseI18nString(item.name, i18n.language)),
+                  intro: t(parseI18nString(item.intro, i18n.language))
+                });
+              }
             });
             return {
               label: group.groupName,
-              list: copy.filter((item) => item.list.length > 0)
+              list: Object.entries(map)
+                .map(([type, { list, label }]) => ({
+                  type,
+                  label,
+                  list
+                }))
+                .filter((item) => item.list.length > 0)
             };
           });
         }
 
-        const copy: NodeTemplateListType = cloneDeep(workflowNodeTemplateList).map((item) => ({
-          ...item,
-          list: []
-        }));
-        templates.forEach((item) => {
-          const index = copy.findIndex((template) => template.type === item.templateType);
-          if (index === -1) return;
-          copy[index].list.push(item);
-        });
+        // Team apps
         return [
           {
             label: '',
-            list: copy.filter((item) => item.list.length > 0)
+            list: [
+              {
+                type: '',
+                label: '',
+                list: templates
+              }
+            ]
           }
         ];
       })();
@@ -377,8 +437,8 @@ const NodeTemplateList = ({
   );
 
   const formatTemplatesArrayData = useMemo(
-    () => formatTemplatesArray(templateType, templates, pluginGroups),
-    [templateType, templates, pluginGroups, formatTemplatesArray]
+    () => formatTemplatesArray(templateType, templates),
+    [templateType, templates, formatTemplatesArray]
   );
 
   const PluginListRender = useMemoizedFn(({ list = [] }: { list: NodeTemplateListType }) => {
@@ -394,15 +454,18 @@ const NodeTemplateList = ({
                 }
               })}
             >
-              <Box
-                fontSize={isPopover ? '12.8px' : 'sm'}
-                my={2}
-                fontWeight={'500'}
-                flex={1}
-                color={isPopover ? 'myGray.600' : 'myGray.900'}
-              >
-                {t(item.label as any)}
-              </Box>
+              {!!item.label && (
+                <Box
+                  fontSize={isPopover ? '12.8px' : 'sm'}
+                  my={2}
+                  fontWeight={'500'}
+                  flex={1}
+                  color={isPopover ? 'myGray.600' : 'myGray.900'}
+                >
+                  {t(item.label as any)}
+                </Box>
+              )}
+
               <Grid
                 gridTemplateColumns={
                   templateType === TemplateTypeEnum.teamPlugin ? ['1fr'] : ['1fr', '1fr 1fr']

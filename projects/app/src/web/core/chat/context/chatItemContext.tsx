@@ -158,13 +158,20 @@ const ChatItemContextProvider = ({
   );
 
   const clearChatRecords = useCallback(() => {
-    const data = variablesForm.getValues();
-    for (const key in data.variables) {
-      variablesForm.setValue(`variables.${key}`, '');
-    }
+    const variables = chatBoxData?.app?.chatConfig?.variables || [];
+    const values = variablesForm.getValues();
+
+    variables.forEach((item) => {
+      if (item.defaultValue !== undefined) {
+        values.variables[item.key] = item.defaultValue;
+      } else {
+        values.variables[item.key] = '';
+      }
+    });
+    variablesForm.reset(values);
 
     ChatBoxRef.current?.restartChat?.();
-  }, [variablesForm]);
+  }, [chatBoxData?.app?.chatConfig?.variables, variablesForm]);
 
   const [datasetCiteData, setCiteModalData] = useState<QuoteDataType>();
 

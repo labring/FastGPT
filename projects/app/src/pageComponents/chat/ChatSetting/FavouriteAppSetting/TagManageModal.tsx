@@ -286,7 +286,7 @@ const SaveTagForAppSubPanel = ({
             />
 
             <Flex alignItems="center" gap="1">
-              <Flex bg="myGray.100" rounded="sm" p="1" minW="30px" justifyContent="center">
+              <Flex bg="myGray.100" rounded="sm" p="0.5" minW="40px" justifyContent="center">
                 {tag.name}
               </Flex>
               <Box>({checkedAppIds.length})</Box>
