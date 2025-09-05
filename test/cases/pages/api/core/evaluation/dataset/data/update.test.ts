@@ -770,7 +770,10 @@ describe('EvalDatasetData Update API', () => {
 
       await handler_test(req as any);
 
-      expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalledWith([validDataId]);
+      expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalledWith([validDataId], {
+        forceCleanActiveJobs: true,
+        retryDelay: 200
+      });
       expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledWith({
         dataId: validDataId,
         evalModel: qualityEvaluationModel

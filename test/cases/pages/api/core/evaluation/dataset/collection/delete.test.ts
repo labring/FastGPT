@@ -249,9 +249,14 @@ describe('EvalDatasetCollection Delete API', () => {
 
       await handler_test(req as any);
 
-      expect(mockRemoveEvalDatasetSmartGenerateJobsRobust).toHaveBeenCalledWith([
-        validCollectionId
-      ]);
+      expect(mockRemoveEvalDatasetSmartGenerateJobsRobust).toHaveBeenCalledWith(
+        [validCollectionId],
+        {
+          forceCleanActiveJobs: true,
+          retryAttempts: 3,
+          retryDelay: 200
+        }
+      );
       expect(mockAddLog.info).toHaveBeenCalledWith('Cleaning up smart generation queue tasks', {
         collectionId: validCollectionId
       });
@@ -288,10 +293,14 @@ describe('EvalDatasetCollection Delete API', () => {
         { datasetId: validCollectionId },
         { _id: 1 }
       );
-      expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalledWith([
-        '65f5b5b5b5b5b5b5b5b5b5b6',
-        '65f5b5b5b5b5b5b5b5b5b5b7'
-      ]);
+      expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalledWith(
+        ['65f5b5b5b5b5b5b5b5b5b5b6', '65f5b5b5b5b5b5b5b5b5b5b7'],
+        {
+          forceCleanActiveJobs: true,
+          retryAttempts: 3,
+          retryDelay: 200
+        }
+      );
       expect(mockAddLog.info).toHaveBeenCalledWith('Quality assessment queue cleanup completed', {
         collectionId: validCollectionId,
         dataCount: 2
@@ -342,9 +351,14 @@ describe('EvalDatasetCollection Delete API', () => {
 
       await handler_test(req as any);
 
-      expect(mockRemoveEvalDatasetDataSynthesizeJobsRobust).toHaveBeenCalledWith([
-        validCollectionId
-      ]);
+      expect(mockRemoveEvalDatasetDataSynthesizeJobsRobust).toHaveBeenCalledWith(
+        [validCollectionId],
+        {
+          forceCleanActiveJobs: true,
+          retryAttempts: 3,
+          retryDelay: 200
+        }
+      );
       expect(mockAddLog.info).toHaveBeenCalledWith('Cleaning up data synthesis queue tasks', {
         collectionId: validCollectionId
       });
@@ -580,7 +594,12 @@ describe('EvalDatasetCollection Delete API', () => {
       const result = await handler_test(req as any);
       expect(result).toBe('success');
       expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalledWith(
-        largeDataset.map((item) => item._id)
+        largeDataset.map((item) => item._id),
+        {
+          forceCleanActiveJobs: true,
+          retryAttempts: 3,
+          retryDelay: 200
+        }
       );
     });
 

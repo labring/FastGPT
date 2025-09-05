@@ -119,7 +119,10 @@ async function handler(
     if (enableQualityEvaluation && qualityEvaluationModel) {
       try {
         // Remove existing quality assessment task if any
-        await removeEvalDatasetDataQualityJobsRobust([dataId]);
+        await removeEvalDatasetDataQualityJobsRobust([dataId], {
+          forceCleanActiveJobs: true,
+          retryDelay: 200
+        });
 
         // Enqueue new quality assessment task
         await addEvalDatasetDataQualityJob({

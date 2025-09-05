@@ -107,7 +107,10 @@ async function handler(
           jobId,
           collectionId
         });
-        await removeEvalDatasetDataQualityJobsRobust([dataId]);
+        await removeEvalDatasetDataQualityJobsRobust([dataId], {
+          forceCleanActiveJobs: true,
+          retryDelay: 200
+        });
 
         // Create new job
         await addEvalDatasetDataQualityJob({

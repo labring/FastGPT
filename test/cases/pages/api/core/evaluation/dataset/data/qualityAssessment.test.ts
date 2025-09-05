@@ -259,7 +259,10 @@ describe('QualityAssessment API', () => {
 
       await handler_test(req as any);
 
-      expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalledWith([validDataId]);
+      expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalledWith([validDataId], {
+        forceCleanActiveJobs: true,
+        retryDelay: 200
+      });
     });
 
     it('should not remove job if none exists', async () => {
@@ -531,7 +534,10 @@ describe('QualityAssessment API', () => {
         authApiKey: true
       });
       expect(mockCheckEvalDatasetDataQualityJobActive).toHaveBeenCalledWith(validDataId);
-      expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalledWith([validDataId]);
+      expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalledWith([validDataId], {
+        forceCleanActiveJobs: true,
+        retryDelay: 200
+      });
       expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledWith({
         dataId: validDataId,
         evalModel: validEvalModel

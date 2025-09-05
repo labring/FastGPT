@@ -62,7 +62,10 @@ async function handler(
       });
 
       try {
-        await removeEvalDatasetDataQualityJobsRobust([dataId]);
+        await removeEvalDatasetDataQualityJobsRobust([dataId], {
+          forceCleanActiveJobs: true,
+          retryDelay: 200
+        });
         addLog.info('Quality evaluation job removed successfully before deletion', {
           dataId,
           teamId
