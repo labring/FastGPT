@@ -11,6 +11,7 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { authEvaluationDatasetWrite } from '@fastgpt/service/core/evaluation/common';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 export type EvalDatasetCollectionDeleteQuery = deleteEvalDatasetCollectionQuery;
 export type EvalDatasetCollectionDeleteBody = {};
@@ -40,7 +41,7 @@ async function handler(
     }).session(session);
 
     if (!collection) {
-      return Promise.reject('Access denied or dataset collection not found');
+      return Promise.reject(EvaluationErrEnum.evalDatasetCollectionNotFound);
     }
 
     collectionName = collection.name;
