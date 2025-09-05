@@ -72,8 +72,8 @@ importers:
         specifier: ^1.2.8
         version: 1.2.8
       '@fastgpt-sdk/plugin':
-        specifier: ^0.1.15
-        version: 0.1.15(@types/node@20.14.0)
+        specifier: ^0.1.16
+        version: 0.1.16(@types/node@20.14.0)
       axios:
         specifier: ^1.8.2
         version: 1.8.4
@@ -1976,8 +1976,8 @@ packages:
     resolution: {integrity: sha512-d9zaMRSTIKDLhctzH12MtXvJKSSUhaHcjV+2Z+GK+EEY7XKpP5yR4x+N3TAcHTcu963nIr+TMcCb4DBCYX1z6Q==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
-  '@fastgpt-sdk/plugin@0.1.15':
-    resolution: {integrity: sha512-GhSpVFhwT4HH9q3T+qUeDWWV/psHgRrEYMmVqUQV+pFVdSLHAV1G4cCBiXIjYyaDqoNgS5y4wzpoC4BK4X1HUg==}
+  '@fastgpt-sdk/plugin@0.1.16':
+    resolution: {integrity: sha512-HGoq0jy3YrY8RAJvn8b0u13uqOjjNe5OE4w2dySQc4dgUjHpsmMl9hfGzAhi9bpuUrtptpGohtf0ealNeAAfDQ==}
 
   '@fastify/accept-negotiator@1.1.0':
     resolution: {integrity: sha512-OIHZrb2ImZ7XG85HXOONLcJWGosv7sIvM2ifAPQVhg9Lv7qdmMBNVaai4QTdyuaqbKM5eO6sLSQOYI7wEQeCJQ==}
@@ -11222,7 +11222,7 @@ snapshots:
 
   '@eslint/js@8.57.1': {}
 
-  '@fastgpt-sdk/plugin@0.1.15(@types/node@20.14.0)':
+  '@fastgpt-sdk/plugin@0.1.16(@types/node@20.14.0)':
     dependencies:
       '@fortaine/fetch-event-source': 3.0.6
       '@ts-rest/core': 3.52.1(@types/node@20.14.0)(zod@3.25.51)
