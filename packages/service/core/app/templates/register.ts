@@ -1,11 +1,13 @@
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
-import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
-import { APIGetTemplate } from '@fastgpt/service/core/app/tool/api';
+import { MongoAppTemplate } from './templateSchema';
+import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
 
 const getFileTemplates = async (): Promise<AppTemplateSchemaType[]> => {
-  return (await APIGetTemplate()) as AppTemplateSchemaType[];
+  const res = await pluginClient.workflow.getTemplateList();
+  if (res.status === 200) return res.body as AppTemplateSchemaType[];
+  else return Promise.reject(res.body);
 };
 
 const getAppTemplates = async () => {
@@ -61,3 +63,7 @@ export const getAppTemplatesAndLoadThem = async (refresh = false) => {
 export const isCommunityTemplate = (templateId: string) => {
   return templateId.startsWith(PluginSourceEnum.community);
 };
+
+declare global {
+  var appTemplates: AppTemplateSchemaType[];
+}
