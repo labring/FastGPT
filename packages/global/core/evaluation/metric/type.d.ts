@@ -96,3 +96,79 @@ export type MetricDefinition = {
   requireContext: boolean;
   requireRetrievalContext: boolean;
 };
+
+export type SynthesisCase = {
+  context?: string[];
+  themes?: string[];
+};
+
+export type SynthesisOutput = {
+  qaPair: {
+    question: string;
+    answer: string;
+  };
+  metadata?: Record<string, any>;
+};
+
+export type SynthesisResult = {
+  synthesisName: string;
+  status: string;
+  data?: SynthesisOutput;
+  usages?: Usage[];
+  error?: string;
+  totalPoints?: number;
+};
+
+export type SynthesizerConfig = {
+  synthesizerName: string;
+  config?: Record<string, any>;
+};
+
+export type SynthesisRequest = {
+  synthesisCase: SynthesisCase;
+  synthesizerConfig: SynthesizerConfig;
+  llmConfig?: EvalModelConfigType;
+  embeddingConfig?: EvalModelConfigType;
+};
+
+export type SynthesisResponse = {
+  requestId: string;
+  status: string;
+  data?: SynthesisOutput;
+  usages?: Usage[];
+  error?: string;
+  metadata?: Record<string, any>;
+};
+
+export type SynthesisMetadata = {
+  chunkId?: string;
+  totalChunks?: number;
+  projectName?: string;
+  createdAt?: string;
+};
+
+export type DatasetSynthesisRequest = {
+  metadata?: SynthesisMetadata;
+  llmConfig: EvalModelConfigType;
+  embeddingConfig?: EvalModelConfigType;
+  synthesizerConfig: SynthesizerConfig;
+  inputData: {
+    context?: string[];
+    themes?: string[];
+  };
+};
+
+export type DatasetSynthesisResponse = {
+  requestId: string;
+  status: string;
+  data?: {
+    qaPair: {
+      question: string;
+      answer: string;
+    };
+    metadata?: Record<string, any>;
+  };
+  usages?: Usage[];
+  error?: string;
+  metadata?: Record<string, any>;
+};

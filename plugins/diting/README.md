@@ -374,6 +374,8 @@ print(f"Evaluation reason: {result['data']['reason']}")
 ### Data Synthesis API Example
 
 ```python
+import requests
+
 # Data synthesis request
 synthesis_request = {
     "llmConfig": {
