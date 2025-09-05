@@ -55,7 +55,11 @@ async function handler(
 
     addLog.info('Cleaning up smart generation queue tasks', { collectionId });
     try {
-      await removeEvalDatasetSmartGenerateJobsRobust([collectionId]);
+      await removeEvalDatasetSmartGenerateJobsRobust([collectionId], {
+        forceCleanActiveJobs: true,
+        retryAttempts: 3,
+        retryDelay: 200
+      });
       addLog.info('Smart generation queue cleanup completed', { collectionId });
     } catch (error) {
       addLog.error('Failed to clean up smart generation queue', {
@@ -74,7 +78,11 @@ async function handler(
       const dataIds = datasetDataIds.map((data) => data._id.toString());
 
       if (dataIds.length > 0) {
-        await removeEvalDatasetDataQualityJobsRobust(dataIds);
+        await removeEvalDatasetDataQualityJobsRobust(dataIds, {
+          forceCleanActiveJobs: true,
+          retryAttempts: 3,
+          retryDelay: 200
+        });
         addLog.info('Quality assessment queue cleanup completed', {
           collectionId,
           dataCount: dataIds.length
@@ -89,7 +97,11 @@ async function handler(
 
     addLog.info('Cleaning up data synthesis queue tasks', { collectionId });
     try {
-      await removeEvalDatasetDataSynthesizeJobsRobust([collectionId]);
+      await removeEvalDatasetDataSynthesizeJobsRobust([collectionId], {
+        forceCleanActiveJobs: true,
+        retryAttempts: 3,
+        retryDelay: 200
+      });
       addLog.info('Data synthesis queue cleanup completed', { collectionId });
     } catch (error) {
       addLog.error('Failed to clean up data synthesis queue', {
