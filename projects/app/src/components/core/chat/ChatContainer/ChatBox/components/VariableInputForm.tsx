@@ -80,7 +80,6 @@ const VariableInput = ({
     variables.forEach((item) => {
       const val = getValues(`variables.${item.key}`);
       if (item.defaultValue !== undefined && (val === undefined || val === null || val === '')) {
-        console.log(item.defaultValue, 22);
         values.variables[item.key] = item.defaultValue;
       }
     });

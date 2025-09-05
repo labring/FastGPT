@@ -277,9 +277,7 @@ export function editorStateToText(editor: LexicalEditor) {
         paragraphText.push('\n');
       } else if (child.text) {
         paragraphText.push(child.text);
-      } else if (child.type === 'variableLabel') {
-        paragraphText.push(child.variableKey);
-      } else if (child.type === 'Variable') {
+      } else if (child.type === 'variableLabel' || child.type === 'Variable') {
         paragraphText.push(child.variableKey);
       }
     });
