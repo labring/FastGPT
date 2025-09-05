@@ -1,5 +1,7 @@
 import type { Job } from 'bullmq';
 import type { HydratedDocument } from 'mongoose';
+import { Types } from '../../../common/mongo';
+import { readFromSecondary } from '../../../common/mongo/utils';
 import { addLog } from '../../../common/system/log';
 import { MongoEvalDatasetCollection } from './evalDatasetCollectionSchema';
 import { MongoEvalDatasetData } from './evalDatasetDataSchema';
@@ -38,17 +40,32 @@ async function processor(job: Job<EvalDatasetSmartGenerateData>) {
       throw new Error(`Eval dataset collection not found: ${evalDatasetCollectionId}`);
     }
 
-    // TODO: Optimize the acquisition of dataset data
-    const sampleData = await MongoDatasetData.find(
+    const match = {
+      teamId: new Types.ObjectId(evalDatasetCollection.teamId),
+      collectionId: { $in: datasetCollectionIds.map((id) => new Types.ObjectId(id)) }
+    };
+
+    const sampleData = await MongoDatasetData.aggregate(
+      [
+        {
+          $match: match
+        },
+        {
+          $sample: { size: sampleSize }
+        },
+        {
+          $project: {
+            q: 1,
+            a: 1,
+            datasetId: 1,
+            collectionId: 1
+          }
+        }
+      ],
       {
-        teamId: evalDatasetCollection.teamId,
-        collectionId: { $in: datasetCollectionIds }
-      },
-      'q a datasetId collectionId'
-    )
-      .sort({ updateTime: -1 })
-      .limit(100)
-      .lean();
+        ...readFromSecondary
+      }
+    );
 
     if (sampleData.length === 0) {
       throw new Error('No data found in selected dataset collections');
