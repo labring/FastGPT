@@ -235,5 +235,13 @@
   "no_evaluation_result_click": "还没有测评结果，点击",
   "start_evaluation_action": "开始测评",
   "evaluation_dataset": "评测数据集",
-   "evaluation_status": "评测状态"
+   "evaluation_status": "评测状态",
+  "manually_add_data_modal": "手动新增数据",
+  "question_input_label": "问题",
+  "max_chars_3000_placeholder": "最多 3000 字",
+  "reference_answer_input_label": "参考答案",
+  "auto_quality_eval_after_add": "新增后自动进行数据质量评测",
+  "auto_quality_eval_add_tip": "开启后将自动对新增的数据进行质量评测",
+  "quality_eval_model_label": "质量评测模型",
+  "select_quality_eval_model_placeholder": "请选择质量评测模型"
 }

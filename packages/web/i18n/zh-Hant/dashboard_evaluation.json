@@ -231,5 +231,13 @@
   "no_evaluation_result_click": "還沒有測評結果，點擊",
   "start_evaluation_action": "開始測評",
   "evaluation_dataset": "評測數據集",
-  "evaluation_status": "評測狀態"
+  "evaluation_status": "評測狀態",
+  "manually_add_data_modal": "手動新增數據",
+  "question_input_label": "問題",
+  "max_chars_3000_placeholder": "最多 3000 字",
+  "reference_answer_input_label": "參考答案",
+  "auto_quality_eval_after_add": "新增後自動進行數據質量評測",
+  "auto_quality_eval_add_tip": "開啟後將自動對新增的數據進行質量評測",
+  "quality_eval_model_label": "質量評測模型",
+  "select_quality_eval_model_placeholder": "請選擇質量評測模型"
 }
