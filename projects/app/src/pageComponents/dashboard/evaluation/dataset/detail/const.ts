@@ -18,7 +18,7 @@ export const evaluationStatusMap: Record<EvaluationStatus, string> = {
   [EvaluationStatus.NeedsImprovement]: i18nT('dashboard_evaluation:needs_improvement'),
   [EvaluationStatus.Abnormal]: i18nT('dashboard_evaluation:abnormal'),
   [EvaluationStatus.NotEvaluated]: i18nT('dashboard_evaluation:not_evaluated'),
-  [EvaluationStatus.Evaluating]: i18nT('dashboard_evaluation:evaluating'),
+  [EvaluationStatus.Evaluating]: i18nT('dashboard_evaluation:detail_evaluating'),
   [EvaluationStatus.Queuing]: i18nT('dashboard_evaluation:queuing')
 };
 

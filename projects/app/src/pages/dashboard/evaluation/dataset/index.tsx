@@ -402,7 +402,18 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
             </Thead>
             <Tbody>
               {datasets.map((dataset) => (
-                <Tr key={dataset.id} _hover={{ bg: 'myGray.100' }}>
+                <Tr
+                  key={dataset.id}
+                  _hover={{ bg: 'myGray.100' }}
+                  onClick={() => {
+                    router.push({
+                      pathname: '/dashboard/evaluation/dataset/detail',
+                      query: {
+                        datasetId: 'TODO-lyx'
+                      }
+                    });
+                  }}
+                >
                   <Td>{dataset.name}</Td>
                   <Td>{dataset.dataCount}</Td>
                   <Td color={'myGray.900'}>
