@@ -54,7 +54,10 @@ async function handler(
   try {
     const isJobActive = await checkEvalDatasetDataQualityJobActive(dataId);
     if (isJobActive) {
-      await removeEvalDatasetDataQualityJobsRobust([dataId]);
+      await removeEvalDatasetDataQualityJobsRobust([dataId], {
+        forceCleanActiveJobs: true,
+        retryDelay: 200
+      });
     }
 
     await addEvalDatasetDataQualityJob({
