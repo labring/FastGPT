@@ -4,12 +4,17 @@ import {
   FlowNodeTypeEnum
 } from '../../node/constant';
 import { type FlowNodeTemplateType } from '../../type/node.d';
-import { WorkflowIOValueTypeEnum, NodeOutputKeyEnum, NodeInputKeyEnum } from '../../constants';
+import {
+  WorkflowIOValueTypeEnum,
+  NodeOutputKeyEnum,
+  NodeInputKeyEnum,
+  FlowNodeTemplateTypeEnum
+} from '../../constants';
 import { i18nT } from '../../../../../web/i18n/utils';
 
 export const TextEditorNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.textEditor,
-  templateType: 'tools',
+  templateType: FlowNodeTemplateTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.textEditor,
   showSourceHandle: true,
   showTargetHandle: true,

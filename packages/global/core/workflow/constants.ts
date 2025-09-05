@@ -4,8 +4,9 @@ import type { JsonSchemaPropertiesItemType } from '../app/jsonschema';
 export enum FlowNodeTemplateTypeEnum {
   systemInput = 'systemInput',
   ai = 'ai',
-  function = 'function',
   interactive = 'interactive',
+  tools = 'tools',
+  other = 'other',
 
   // Team app type
   teamApp = 'teamApp'

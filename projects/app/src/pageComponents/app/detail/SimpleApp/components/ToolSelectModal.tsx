@@ -325,23 +325,45 @@ const RenderList = React.memo(function RenderList({
     const data = (() => {
       if (type === TemplateTypeEnum.systemPlugin) {
         return pluginGroups.map((group) => {
-          const copy: NodeTemplateListType = group.groupTypes.map((type) => ({
-            list: [],
-            type: type.typeId,
-            label: parseI18nString(type.typeName, lang)
-          }));
+          const map = group.groupTypes.reduce<
+            Record<
+              string,
+              {
+                list: NodeTemplateListItemType[];
+                label: string;
+              }
+            >
+          >((acc, item) => {
+            acc[item.typeId] = {
+              list: [],
+              label: t(parseI18nString(item.typeName, i18n.language))
+            };
+            return acc;
+          }, {});
+
           templates.forEach((item) => {
-            const index = copy.findIndex((template) => template.type === item.templateType);
-            if (index === -1) return;
-            copy[index].list.push(item);
+            if (map[item.templateType]) {
+              map[item.templateType].list.push({
+                ...item,
+                name: t(parseI18nString(item.name, i18n.language)),
+                intro: t(parseI18nString(item.intro, i18n.language))
+              });
+            }
           });
           return {
             label: group.groupName,
-            list: copy.filter((item) => item.list.length > 0)
+            list: Object.entries(map)
+              .map(([type, { list, label }]) => ({
+                type,
+                label,
+                list
+              }))
+              .filter((item) => item.list.length > 0)
           };
         });
       }
 
+      // Team apps
       return [
         {
           list: [
@@ -357,7 +379,7 @@ const RenderList = React.memo(function RenderList({
     })();
 
     return data.filter(({ list }) => list.length > 0);
-  }, [pluginGroups, templates, type]);
+  }, [i18n.language, pluginGroups, t, templates, type]);
 
   const gridStyle = useMemo(() => {
     if (type === TemplateTypeEnum.teamPlugin) {

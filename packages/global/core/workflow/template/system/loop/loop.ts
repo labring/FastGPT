@@ -4,7 +4,12 @@ import {
   FlowNodeTypeEnum
 } from '../../../node/constant';
 import { type FlowNodeTemplateType } from '../../../type/node';
-import { NodeInputKeyEnum, NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../../../constants';
+import {
+  FlowNodeTemplateTypeEnum,
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '../../../constants';
 import { i18nT } from '../../../../../../web/i18n/utils';
 import {
   Input_Template_Children_Node_List,
@@ -15,7 +20,7 @@ import {
 
 export const LoopNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.loop,
-  templateType: 'tools',
+  templateType: FlowNodeTemplateTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.loop,
   showSourceHandle: true,
   showTargetHandle: true,

@@ -1,6 +1,6 @@
 import type { AppChatConfigType, AppSimpleEditFormType } from '../app/type';
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
-import { NodeInputKeyEnum } from '../workflow/constants';
+import { FlowNodeTemplateTypeEnum, NodeInputKeyEnum } from '../workflow/constants';
 import type { FlowNodeInputItemType } from '../workflow/type/io.d';
 import { getAppChatConfig } from '../workflow/utils';
 import { type StoreNodeItemType } from '../workflow/type/node';
@@ -157,7 +157,7 @@ export const appWorkflow2Form = ({
         version: node.version,
         inputs: node.inputs,
         outputs: node.outputs,
-        templateType: 'other',
+        templateType: FlowNodeTemplateTypeEnum.other,
         pluginData: node.pluginData,
         toolConfig: node.toolConfig
       });

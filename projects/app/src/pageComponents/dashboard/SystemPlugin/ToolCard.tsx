@@ -6,9 +6,8 @@ import React from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { type NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
-import { type PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
+import { type SystemToolGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
-import { type localeType } from '@fastgpt/global/common/i18n/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 
 const PluginCard = ({
@@ -16,15 +15,14 @@ const PluginCard = ({
   groups
 }: {
   item: NodeTemplateListItemType;
-  groups: PluginGroupSchemaType[];
+  groups: SystemToolGroupSchemaType[];
 }) => {
   const { t, i18n } = useTranslation();
-  const lang = i18n.language as localeType;
   const { feConfigs } = useSystemStore();
 
   const type = groups.reduce<string | undefined>((acc, group) => {
     const foundType = group.groupTypes.find((type) => type.typeId === item.templateType);
-    return foundType ? parseI18nString(foundType.typeName, lang) : acc;
+    return foundType ? parseI18nString(foundType.typeName, i18n.language) : acc;
   }, undefined);
 
   return (
