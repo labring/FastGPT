@@ -149,7 +149,7 @@ const FavouriteAppSetting = ({ Header }: Props) => {
 
     return (
       <Box
-        maxW="120px"
+        maxW={['120px', '160px']}
         key={id}
         fontSize="xs"
         borderRadius="sm"
@@ -250,7 +250,7 @@ const FavouriteAppSetting = ({ Header }: Props) => {
         </Flex>
 
         {/* 表格内容 */}
-        <Box overflow={'auto'} flex="1 0 0" h={0} px={[2, 0]} minH="300px">
+        <Box overflow={'auto'} flex="1 0 0" h={0} px={[2, 0]}>
           {localFavourites.length > 0 ? (
             <DndDrag<ChatFavouriteApp>
               dataList={localFavourites}
@@ -337,6 +337,7 @@ const FavouriteAppSetting = ({ Header }: Props) => {
                                     cursor="help"
                                     overflow="hidden"
                                     whiteSpace="nowrap"
+                                    verticalAlign="middle"
                                     display="inline-block"
                                     textOverflow="ellipsis"
                                   >
@@ -395,7 +396,7 @@ const FavouriteAppSetting = ({ Header }: Props) => {
                                       maxW="300px"
                                       onClick={(e) => e.stopPropagation()}
                                     >
-                                      {row.favouriteTags.map((id) => (
+                                      {row.favouriteTags.slice(2).map((id) => (
                                         <TagBox key={id} id={id} />
                                       ))}
                                     </Flex>
