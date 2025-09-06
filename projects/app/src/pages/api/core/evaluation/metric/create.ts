@@ -48,6 +48,10 @@ async function handler(req: ApiRequestProps<CreateMetricBody, {}>, res: ApiRespo
     description: description ?? '',
     type: EvalMetricTypeEnum.Custom,
     prompt: prompt,
+    llmRequired: true,
+    userInputRequired: true,
+    actualOutputRequired: true,
+    expectedOutputRequired: true,
     createTime: new Date(),
     updateTime: new Date()
   });
