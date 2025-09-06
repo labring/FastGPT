@@ -23,7 +23,7 @@ async function handler(
       authApiKey: true,
       authToken: true
     });
-    
+
     // Validate parameters
     if (!evalId || typeof evalId !== 'string') {
       return Promise.reject('evalId is required');

@@ -19,7 +19,6 @@ async function handler(
       return Promise.reject('Evaluation task ID is required');
     }
 
-    
     await authEvaluationTaskRead(evalId, {
       req,
       authApiKey: true,

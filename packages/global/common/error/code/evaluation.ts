@@ -12,11 +12,11 @@ const evaluationErrList = [
   // Evaluation Dataset related errors
   {
     statusText: EvaluationErrEnum.evalDatasetCollectionNotFound,
-    message: i18nT('evaluation_dataset:dataset_collection_not_found')
+    message: i18nT('evaluation:dataset_collection_not_found')
   },
   {
     statusText: EvaluationErrEnum.evalDatasetDataNotFound,
-    message: i18nT('evaluation_dataset:dataset_data_not_found')
+    message: i18nT('evaluation:dataset_data_not_found')
   }
 ];
 

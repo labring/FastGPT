@@ -455,8 +455,7 @@ describe('EvalDatasetData Update API', () => {
 
   describe('Data Validation', () => {
     it('should reject when dataset data does not exist', async () => {
-      const dataNotFoundError = new Error('Dataset data not found');
-      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(dataNotFoundError);
+      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue('evaluationDatasetDataNotFound');
 
       const req = {
         body: {
@@ -471,8 +470,9 @@ describe('EvalDatasetData Update API', () => {
     });
 
     it('should reject when collection does not exist', async () => {
-      const collectionNotFoundError = new Error('Access denied or dataset collection not found');
-      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(collectionNotFoundError);
+      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(
+        'evaluationDatasetCollectionNotFound'
+      );
 
       const req = {
         body: {
@@ -487,8 +487,9 @@ describe('EvalDatasetData Update API', () => {
     });
 
     it('should reject when collection belongs to different team', async () => {
-      const accessDeniedError = new Error('Access denied or dataset collection not found');
-      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(accessDeniedError);
+      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(
+        'evaluationDatasetCollectionNotFound'
+      );
 
       const req = {
         body: {
