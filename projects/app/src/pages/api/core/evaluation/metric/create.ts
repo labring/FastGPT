@@ -2,13 +2,16 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import type { CreateMetricBody } from '@fastgpt/global/core/evaluation/metric/api';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
-import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
-
+import { authEvaluationMetricCreate } from '@fastgpt/service/core/evaluation/common';
 async function handler(req: ApiRequestProps<CreateMetricBody, {}>, res: ApiResponseType<any>) {
   const { name, description, prompt } = req.body;
+
+  const { teamId, tmbId } = await authEvaluationMetricCreate({
+    req,
+    authApiKey: true,
+    authToken: true
+  });
 
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return Promise.reject('Metric name is required and must be a non-empty string');
@@ -33,13 +36,6 @@ async function handler(req: ApiRequestProps<CreateMetricBody, {}>, res: ApiRespo
   if (prompt.trim().length > 4000) {
     return Promise.reject('Prompt must be less than 4000 characters');
   }
-
-  const { teamId, tmbId } = await authUserPer({
-    req,
-    authToken: true,
-    authApiKey: true,
-    per: WritePermissionVal
-  });
 
   const metric = await MongoEvalMetric.create({
     teamId: teamId,

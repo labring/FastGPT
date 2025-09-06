@@ -11,7 +11,7 @@ import { authFrequencyLimit } from '@/service/common/frequencyLimit/api';
 import { addSeconds } from 'date-fns';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { authEvalDatasetCollection } from '@fastgpt/service/support/permission/evaluation/auth';
+import { authEvalDataset } from '@fastgpt/service/support/permission/evaluation/auth';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
@@ -77,8 +77,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
       }
       if (bucketName === 'evaluation') {
         const evalData = data as UploadEvaluationFileProps;
-        const authData = await authEvalDatasetCollection({
-          collectionId: evalData.collectionId,
+        const authData = await authEvalDataset({
+          datasetId: evalData.collectionId,
           per: WritePermissionVal,
           req,
           authToken: true,

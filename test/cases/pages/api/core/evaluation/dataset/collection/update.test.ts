@@ -1,23 +1,23 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler_test } from '@/pages/api/core/evaluation/dataset/collection/update';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { authEvaluationDatasetWrite } from '@fastgpt/service/core/evaluation/common';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
-vi.mock('@fastgpt/service/support/permission/user/auth');
+vi.mock('@fastgpt/service/core/evaluation/common');
 vi.mock('@fastgpt/service/common/mongo/sessionRun');
 vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
   MongoEvalDatasetCollection: {
     findOne: vi.fn(),
     updateOne: vi.fn()
-  }
+  },
+  EvalDatasetCollectionName: 'eval_dataset_collections'
 }));
 vi.mock('@fastgpt/service/support/user/audit/util', () => ({
   addAuditLog: vi.fn()
 }));
 
-const mockAuthUserPer = vi.mocked(authUserPer);
+const mockAuthEvaluationDatasetWrite = vi.mocked(authEvaluationDatasetWrite);
 const mockMongoSessionRun = vi.mocked(mongoSessionRun);
 const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
 
@@ -35,7 +35,7 @@ describe('EvalDatasetCollection Update API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockAuthUserPer.mockResolvedValue({
+    mockAuthEvaluationDatasetWrite.mockResolvedValue({
       teamId: validTeamId,
       tmbId: validTmbId
     });
@@ -207,17 +207,16 @@ describe('EvalDatasetCollection Update API', () => {
 
       await handler_test(req as any);
 
-      expect(mockAuthUserPer).toHaveBeenCalledWith({
+      expect(mockAuthEvaluationDatasetWrite).toHaveBeenCalledWith(mockCollectionId, {
         req,
         authToken: true,
-        authApiKey: true,
-        per: WritePermissionVal
+        authApiKey: true
       });
     });
 
     it('should propagate authentication errors', async () => {
       const authError = new Error('Authentication failed');
-      mockAuthUserPer.mockRejectedValue(authError);
+      mockAuthEvaluationDatasetWrite.mockRejectedValue(authError);
 
       const req = {
         body: {
@@ -227,7 +226,7 @@ describe('EvalDatasetCollection Update API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toBe(authError);
+      await expect(handler_test(req as any)).rejects.toThrow('Authentication failed');
     });
   });
 

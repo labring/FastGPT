@@ -1,9 +1,6 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
-import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { Types } from '@fastgpt/service/common/mongo';
 import type {
@@ -12,17 +9,11 @@ import type {
 } from '@fastgpt/global/core/evaluation/dataset/api';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
+import { authEvaluationDatasetDataRead } from '@fastgpt/service/core/evaluation/common';
 
 async function handler(
   req: ApiRequestProps<listEvalDatasetDataBody, {}>
 ): Promise<listEvalDatasetDataResponse> {
-  const { teamId, tmbId } = await authUserPer({
-    req,
-    authToken: true,
-    authApiKey: true,
-    per: ReadPermissionVal
-  });
-
   // Parse request parameters
   const { offset, pageSize } = parsePaginationRequest(req);
   const { collectionId, searchKey } = req.body;
@@ -32,18 +23,14 @@ async function handler(
     throw new Error('Collection ID is required');
   }
 
-  // TODO: Audit Log - Log request attempt with parameters
-  console.log(`[AUDIT] User requested eval dataset data list for collection: ${collectionId}`);
-
-  // Verify collection exists and belongs to team
-  const collection = await MongoEvalDatasetCollection.findOne({
-    _id: new Types.ObjectId(collectionId),
-    teamId: new Types.ObjectId(teamId)
+  await authEvaluationDatasetDataRead(collectionId, {
+    req,
+    authToken: true,
+    authApiKey: true
   });
 
-  if (!collection) {
-    throw new Error('Collection not found or access denied');
-  }
+  // TODO: Audit Log - Log request attempt with parameters
+  console.log(`[AUDIT] User requested eval dataset data list for collection: ${collectionId}`);
 
   // Build MongoDB match criteria
   const match: Record<string, any> = {

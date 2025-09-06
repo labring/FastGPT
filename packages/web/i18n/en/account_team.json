@@ -230,6 +230,8 @@
   "permission_appCreate_tip": "Create apps in the root directory. (Permissions within folders are controlled by the folder.)",
   "permission_datasetCreate": "Create knowledge base",
   "permission_datasetCreate_Tip": "Create knowledge bases in the root directory. (Permissions within folders are controlled by the folder.)",
+  "permission_evaluationCreate": "Create Evaluation",
+  "permission_evaluationCreate_Tip": "Can create evaluation tasks, evaluation metrics and evaluation datasets",
   "permission_manage": "Administrator",
   "permission_manage_tip": "Manage members, create groups, manage all groups, and assign permissions to groups and members.",
   "please_bind_contact": "Please specify contact information.",

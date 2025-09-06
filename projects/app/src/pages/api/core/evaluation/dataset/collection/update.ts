@@ -1,12 +1,11 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import type { updateEvalDatasetCollectionBody } from '@fastgpt/global/core/evaluation/dataset/api';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { authEvaluationDatasetWrite } from '@fastgpt/service/core/evaluation/common';
 
 export type EvalDatasetCollectionUpdateQuery = {};
 export type EvalDatasetCollectionUpdateBody = updateEvalDatasetCollectionBody;
@@ -15,6 +14,12 @@ async function handler(
   req: ApiRequestProps<EvalDatasetCollectionUpdateBody, EvalDatasetCollectionUpdateQuery>
 ): Promise<EvalDatasetCollectionUpdateResponse> {
   const { collectionId, name, description = '' } = req.body;
+
+  const { teamId, tmbId } = await authEvaluationDatasetWrite(collectionId, {
+    req,
+    authApiKey: true,
+    authToken: true
+  });
 
   if (!collectionId || typeof collectionId !== 'string' || collectionId.trim().length === 0) {
     return Promise.reject('Collection ID is required and must be a non-empty string');
@@ -35,15 +40,6 @@ async function handler(
   if (description && description.length > 100) {
     return Promise.reject('Description must be less than 100 characters');
   }
-
-  // TODO: Authentication check - verify user is authenticated via cookie or token
-  // TODO: Authorization check - verify user has write permissions for this resource
-  const { teamId, tmbId } = await authUserPer({
-    req,
-    authToken: true,
-    authApiKey: true,
-    per: WritePermissionVal
-  });
 
   // Check if collection exists and belongs to the team
   const existingCollection = await MongoEvalDatasetCollection.findOne({

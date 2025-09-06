@@ -109,9 +109,17 @@ export const EvaluationTaskSchema = new Schema({
   },
   name: {
     type: String,
-    required: true
+    required: true,
+    unique: true,
+    trim: true,
+    maxlength: 100
   },
-  description: String,
+  description: {
+    type: String,
+    default: '',
+    trim: true,
+    maxlength: 100
+  },
   datasetId: {
     type: Schema.Types.ObjectId,
     ref: EvalDatasetCollectionName,
@@ -156,6 +164,7 @@ export const EvaluationTaskSchema = new Schema({
 EvaluationTaskSchema.index({ teamId: 1 });
 EvaluationTaskSchema.index({ status: 1, createTime: -1 });
 EvaluationTaskSchema.index({ teamId: 1, status: 1 });
+EvaluationTaskSchema.index({ teamId: 1, name: 1 });
 
 // Atomic evaluation item: one dataItem + one target + one evaluator
 export const EvaluationItemSchema = new Schema({
