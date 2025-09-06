@@ -15,13 +15,13 @@ async function handler(
 ): Promise<UpdateSummaryConfigResponse> {
   try {
     const { evalId, calculateType, metricsConfig } = req.body || ({} as any);
-    
+
     await authEvaluationTaskRead(evalId, {
       req,
       authApiKey: true,
       authToken: true
     });
-    
+
     // Basic parameter validation
     if (!evalId || typeof evalId !== 'string') {
       return Promise.reject('evalId is required');

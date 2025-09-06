@@ -47,7 +47,12 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
       updateTime: new Date()
     };
 
-    const llmConfig = { name: evalModel };
+    const evaluatorConfig = {
+      metric: metricSchema,
+      runtimeConfig: {
+        llm: evalModel
+      }
+    };
 
     const evalCase = {
       [EvalDatasetDataKeyEnum.UserInput]: datasetData.userInput,
@@ -57,7 +62,7 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
       [EvalDatasetDataKeyEnum.RetrievalContext]: datasetData.retrievalContext
     };
 
-    const evaluator = createEvaluatorInstance(metricSchema, llmConfig);
+    const evaluator = createEvaluatorInstance(evaluatorConfig);
     const metricResult = await evaluator.evaluate(evalCase);
 
     if (metricResult.status === 'success' && metricResult.data) {

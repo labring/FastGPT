@@ -172,9 +172,7 @@ describe('QualityAssessment API', () => {
 
   describe('Data Validation', () => {
     it('should return error when dataset data not found', async () => {
-      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(
-        new Error('Dataset data not found')
-      );
+      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue('evaluationDatasetDataNotFound');
 
       const req = {
         body: {
@@ -204,7 +202,7 @@ describe('QualityAssessment API', () => {
 
     it('should return error when collection not found', async () => {
       mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(
-        new Error('Dataset collection not found or access denied')
+        'evaluationDatasetCollectionNotFound'
       );
 
       const req = {
@@ -219,7 +217,7 @@ describe('QualityAssessment API', () => {
 
     it('should return error when collection belongs to different team', async () => {
       mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(
-        new Error('Dataset collection not found or access denied')
+        'evaluationDatasetCollectionNotFound'
       );
 
       const req = {
