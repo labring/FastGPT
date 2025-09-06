@@ -34,11 +34,18 @@ export const ResourcePermissionSchema = new Schema({
     enum: Object.values(PerResourceTypeEnum),
     required: true
   },
+  /**
+   * The **Role** of the object to the resource.
+   */
   permission: {
     type: Number,
     required: true
   },
-  // Resrouce ID: App or DataSet or any other resource type.
+  /**
+   * Optional. Only be set when the resource is *inherited* from the parent resource.
+   * For recording the self permission. When cancel the inheritance, it will overwrite the permission property and set to `unset`.
+   */
+  // Resource ID: App or DataSet or any other resource type.
   // It is null if the resourceType is team.
   resourceId: {
     type: Schema.Types.ObjectId

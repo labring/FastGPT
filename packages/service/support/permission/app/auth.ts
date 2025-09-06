@@ -1,7 +1,6 @@
 /* Auth app permission */
 import { MongoApp } from '../../../core/app/schema';
 import { type AppDetailType } from '@fastgpt/global/core/app/type.d';
-import { parseHeaderCert } from '../controller';
 import {
   PerResourceTypeEnum,
   ReadPermissionVal,
@@ -9,7 +8,7 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
-import { getResourcePermission } from '../controller';
+import { getTmbPermission } from '../controller';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -18,6 +17,7 @@ import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { type AuthModeType, type AuthResponseType } from '../type';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
+import { parseHeaderCert } from '../auth/common';
 
 export const authPluginByTmbId = async ({
   tmbId,
@@ -90,53 +90,18 @@ export const authAppByTmbId = async ({
 
     const isOwner = tmbPer.isOwner || String(app.tmbId) === String(tmbId);
 
-    const { Per } = await (async () => {
-      if (isOwner) {
-        return {
-          Per: new AppPermission({ isOwner: true })
-        };
-      }
+    const isGetParentClb =
+      app.inheritPermission && !AppFolderTypeList.includes(app.type) && !!app.parentId;
 
-      if (
-        AppFolderTypeList.includes(app.type) ||
-        app.inheritPermission === false ||
-        !app.parentId
-      ) {
-        // 1. is a folder. (Folders have completely permission)
-        // 2. inheritPermission is false.
-        // 3. is root folder/app.
-        const role = await getResourcePermission({
-          teamId,
-          tmbId,
-          resourceId: appId,
-          resourceType: PerResourceTypeEnum.app
-        });
-        const Per = new AppPermission({ role, isOwner });
-
-        if (app.favourite || app.quick) {
-          Per.addRole(ReadRoleVal);
-        }
-
-        return {
-          Per
-        };
-      } else {
-        // is not folder and inheritPermission is true and is not root folder.
-        const { app: parent } = await authAppByTmbId({
-          tmbId,
-          appId: app.parentId,
-          per
-        });
-
-        const Per = new AppPermission({
-          role: parent.permission.role,
-          isOwner
-        });
-        return {
-          Per
-        };
-      }
-    })();
+    const Per = new AppPermission({
+      role: await getTmbPermission({
+        teamId,
+        tmbId,
+        resourceId: isGetParentClb ? app.parentId! : app._id,
+        resourceType: PerResourceTypeEnum.app
+      }),
+      isOwner
+    });
 
     if (!Per.checkPer(per)) {
       return Promise.reject(AppErrEnum.unAuthApp);

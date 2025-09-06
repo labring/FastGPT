@@ -1,5 +1,5 @@
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
-import { getResourcePermission, parseHeaderCert } from '../controller';
+import { getTmbPermission } from '../controller';
 import {
   type CollectionWithDatasetType,
   type DatasetDataItemType,
@@ -21,6 +21,7 @@ import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { DataSetDefaultRoleVal } from '@fastgpt/global/support/permission/dataset/constant';
 import { getDatasetImagePreviewUrl } from '../../../core/dataset/image/utils';
 import { i18nT } from '../../../../web/i18n/utils';
+import { parseHeaderCert } from '../auth/common';
 
 export const authDatasetByTmbId = async ({
   tmbId,
@@ -61,54 +62,19 @@ export const authDatasetByTmbId = async ({
     }
 
     const isOwner = tmbPer.isOwner || String(dataset.tmbId) === String(tmbId);
+    const isGetParentClb =
+      dataset.inheritPermission && dataset.type !== DatasetTypeEnum.folder && !!dataset.parentId;
 
     // get dataset permission or inherit permission from parent folder.
-    const { Per } = await (async () => {
-      if (isOwner) {
-        return {
-          Per: new DatasetPermission({ isOwner: true })
-        };
-      }
-      if (
-        dataset.type === DatasetTypeEnum.folder ||
-        dataset.inheritPermission === false ||
-        !dataset.parentId
-      ) {
-        // 1. is a folder. (Folders have completely permission)
-        // 2. inheritPermission is false.
-        // 3. is root folder/dataset.
-        const rp = await getResourcePermission({
-          teamId,
-          tmbId,
-          resourceId: datasetId,
-          resourceType: PerResourceTypeEnum.dataset
-        });
-        const Per = new DatasetPermission({
-          role: rp,
-          isOwner
-        });
-        return {
-          Per
-        };
-      } else {
-        // is not folder and inheritPermission is true and is not root folder.
-        const { dataset: parent } = await authDatasetByTmbId({
-          tmbId,
-          datasetId: dataset.parentId,
-          per,
-          isRoot
-        });
-
-        const Per = new DatasetPermission({
-          role: parent.permission.role,
-          isOwner
-        });
-
-        return {
-          Per
-        };
-      }
-    })();
+    const Per = new DatasetPermission({
+      role: await getTmbPermission({
+        teamId,
+        tmbId,
+        resourceId: isGetParentClb ? dataset.parentId! : datasetId,
+        resourceType: PerResourceTypeEnum.dataset
+      }),
+      isOwner
+    });
 
     if (!Per.checkPer(per)) {
       return Promise.reject(DatasetErrEnum.unAuthDataset);
