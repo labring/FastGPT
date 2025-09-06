@@ -176,7 +176,7 @@
   "template.ai_chat": "AI 對話",
   "template.ai_chat_intro": "AI 大型語言模型對話",
   "template.dataset_search": "知識庫搜尋",
-  "template.dataset_search_intro": "使用「語意搜尋」和「全文搜尋」功能，從「知識庫」中尋找可能與問題相關的參考內容",
+  "template.dataset_search_intro": "調用語義檢索、全文檢索、數據庫檢索能力，從“知識庫”中查找可能與問題相關的參考內容。",
   "template.forbid_stream": "停用串流輸出",
   "template.forbid_stream_desc": "強制設定巢狀執行的應用程式以非串流模式執行",
   "template.plugin_output": "外掛程式輸出",

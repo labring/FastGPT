@@ -16,7 +16,9 @@ const SearchParamsTip = ({
   responseEmptyText,
   usingReRank = false,
   datasetSearchUsingExtensionQuery,
-  queryExtensionModel
+  queryExtensionModel,
+  hasDatabaseKnowledge = false,
+  hasOtherKnowledge = true
 }: {
   searchMode: `${DatasetSearchModeEnum}`;
   similarity?: number;
@@ -25,6 +27,8 @@ const SearchParamsTip = ({
   usingReRank?: boolean;
   datasetSearchUsingExtensionQuery?: boolean;
   queryExtensionModel?: string;
+  hasDatabaseKnowledge?: boolean;
+  hasOtherKnowledge?: boolean;
 }) => {
   const { t } = useTranslation();
   const { reRankModelList, llmModelList } = useSystemStore();
@@ -37,6 +41,11 @@ const SearchParamsTip = ({
     () =>
       datasetSearchUsingExtensionQuery ? getWebLLMModel(queryExtensionModel)?.name : undefined,
     [datasetSearchUsingExtensionQuery, queryExtensionModel, llmModelList]
+  );
+
+  const onlyDatabase = useMemo(
+    () => hasDatabaseKnowledge && !hasOtherKnowledge,
+    [hasDatabaseKnowledge, hasOtherKnowledge]
   );
 
   return (
@@ -61,43 +70,60 @@ const SearchParamsTip = ({
       <Table fontSize={'xs'} overflow={'overlay'}>
         <Thead>
           <Tr bg={'transparent !important'}>
-            <Th fontSize={'mini'}>{t('common:core.dataset.search.search mode')}</Th>
-            <Th fontSize={'mini'}>{t('common:max_quote_tokens')}</Th>
-            <Th fontSize={'mini'}>{t('common:min_similarity')}</Th>
-            {hasReRankModel && <Th fontSize={'mini'}>{t('common:core.dataset.search.ReRank')}</Th>}
-            <Th fontSize={'mini'}>{t('common:core.module.template.Query extension')}</Th>
-            {hasEmptyResponseMode && (
-              <Th fontSize={'mini'}>{t('common:core.dataset.search.Empty result response')}</Th>
+            {!onlyDatabase && (
+              <>
+                <Th fontSize={'mini'}>{t('common:core.dataset.search.search mode')}</Th>
+                <Th fontSize={'mini'}>{t('common:max_quote_tokens')}</Th>
+                <Th fontSize={'mini'}>{t('common:min_similarity')}</Th>
+                {hasReRankModel && (
+                  <Th fontSize={'mini'}>{t('common:core.dataset.search.ReRank')}</Th>
+                )}
+                <Th fontSize={'mini'}>{t('common:core.module.template.Query extension')}</Th>
+                {hasEmptyResponseMode && (
+                  <Th fontSize={'mini'}>{t('common:core.dataset.search.Empty result response')}</Th>
+                )}
+              </>
             )}
+            {hasDatabaseKnowledge && <Th fontSize={'mini'}>{t('dataset:database_search')}</Th>}
           </Tr>
         </Thead>
         <Tbody>
           <Tr color={'myGray.800'}>
-            <Td pt={0} pb={2}>
-              <Flex alignItems={'center'}>
-                <MyIcon
-                  name={DatasetSearchModeMap[searchMode]?.icon as any}
-                  w={'12px'}
-                  mr={'1px'}
-                />
-                {t(DatasetSearchModeMap[searchMode]?.title as any)}
-              </Flex>
-            </Td>
-            <Td pt={0} pb={2}>
-              {limit}
-            </Td>
-            <Td pt={0} pb={2}>
-              {hasSimilarityMode ? similarity : t('common:core.dataset.search.Nonsupport')}
-            </Td>
-            {hasReRankModel && (
+            {!onlyDatabase && (
+              <>
+                <Td pt={0} pb={2}>
+                  <Flex alignItems={'center'}>
+                    <MyIcon
+                      name={DatasetSearchModeMap[searchMode]?.icon as any}
+                      w={'12px'}
+                      mr={'1px'}
+                    />
+                    {t(DatasetSearchModeMap[searchMode]?.title as any)}
+                  </Flex>
+                </Td>
+                <Td pt={0} pb={2}>
+                  {limit}
+                </Td>
+                <Td pt={0} pb={2}>
+                  {hasSimilarityMode ? similarity : t('common:core.dataset.search.Nonsupport')}
+                </Td>
+                {hasReRankModel && (
+                  <Td pt={0} pb={2}>
+                    {usingReRank ? '✅' : '❌'}
+                  </Td>
+                )}
+                <Td pt={0} pb={2} fontSize={'mini'}>
+                  {extensionModelName ? extensionModelName : '❌'}
+                </Td>
+                {hasEmptyResponseMode && <Th>{responseEmptyText !== '' ? '✅' : '❌'}</Th>}
+              </>
+            )}
+            {/* TODO-lyx 待联调 */}
+            {hasDatabaseKnowledge && (
               <Td pt={0} pb={2}>
-                {usingReRank ? '✅' : '❌'}
+                {limit}
               </Td>
             )}
-            <Td pt={0} pb={2} fontSize={'mini'}>
-              {extensionModelName ? extensionModelName : '❌'}
-            </Td>
-            {hasEmptyResponseMode && <Th>{responseEmptyText !== '' ? '✅' : '❌'}</Th>}
           </Tr>
         </Tbody>
       </Table>

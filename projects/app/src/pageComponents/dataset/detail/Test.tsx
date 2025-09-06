@@ -1,5 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Textarea, Button, Flex, useTheme, useDisclosure } from '@chakra-ui/react';
+import {
+  Box,
+  Textarea,
+  Button,
+  Flex,
+  useTheme,
+  useDisclosure,
+  HStack,
+  Text
+} from '@chakra-ui/react';
 import {
   useSearchTestStore,
   type SearchTestStoreItemType
@@ -31,6 +40,7 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
 
@@ -192,14 +202,45 @@ const Test = ({ datasetId }: { datasetId: string }) => {
               onChange={(e) => setInputType(e)}
             />
 
-            <Button
-              variant={'whitePrimary'}
-              leftIcon={<MyIcon name={searchModeData.icon as any} w={'14px'} />}
-              size={'sm'}
-              onClick={onOpenSelectMode}
-            >
-              {t(searchModeData.title as any)}
-            </Button>
+            {datasetDetail.type === DatasetTypeEnum.database ? (
+              <HStack>
+                <MySelect<'text' | 'file'>
+                  size={'sm'}
+                  list={[
+                    {
+                      label: (
+                        <Flex alignItems={'center'}>
+                          <MyIcon mr={2} name={'text'} w={'14px'} color={'primary.600'} />
+                          <Box fontSize={'sm'} fontWeight={'bold'} flex={1}>
+                            {t('common:core.dataset.test.Test Text')}
+                          </Box>
+                        </Flex>
+                      ),
+                      value: 'text'
+                    }
+                  ]}
+                  value={inputType}
+                  onChange={(e) => setInputType(e)}
+                />
+                <QuestionTip
+                  label={
+                    <>
+                      <Text>{t('dataset:search_model_desc')}</Text>
+                      <Text>{t('dataset:search_model_tip')}</Text>
+                    </>
+                  }
+                />
+              </HStack>
+            ) : (
+              <Button
+                variant={'whitePrimary'}
+                leftIcon={<MyIcon name={searchModeData.icon as any} w={'14px'} />}
+                size={'sm'}
+                onClick={onOpenSelectMode}
+              >
+                {t(searchModeData.title as any)}
+              </Button>
+            )}
           </Flex>
 
           <Box h={'180px'}>

@@ -176,7 +176,7 @@
   "template.ai_chat": "AI 对话",
   "template.ai_chat_intro": "AI 大模型对话",
   "template.dataset_search": "知识库搜索",
-  "template.dataset_search_intro": "调用“语义检索”和“全文检索”能力，从“知识库”中查找可能与问题相关的参考内容",
+  "template.dataset_search_intro": "调用语义检索、全文检索、数据库检索能力，从“知识库”中查找可能与问题相关的参考内容",
   "template.forbid_stream": "禁用流输出",
   "template.forbid_stream_desc": "强制设置嵌套运行的应用，均以非流模式运行",
   "template.plugin_output": "插件输出",

@@ -289,5 +289,11 @@
 "test_connectivity": "測試連通性",
 "connect_and_next": "連接並進行下一步",
 "connection_network_error": "連接失敗，請檢查網路連接",
-"validate_ip_tip": "該輸入項禁止使用本地回環位址，如：localhost、127.x.x.x、0.0.0.0"
+"validate_ip_tip": "該輸入項禁止使用本地回環位址，如：localhost、127.x.x.x、0.0.0.0",
+"database": "資料庫",
+"search_model": "檢索模型",
+"search_model_desc": "用於生成可在資料庫中檢索的SQL語句，並進行檢索與匯總，生成可用於對話的文字。",
+"search_model_tip": "使用非推理模型、參數量大的模型效果更佳。",
+"other_knowledge_base": "其他知識庫",
+"database_search": "資料庫檢索"
 }
