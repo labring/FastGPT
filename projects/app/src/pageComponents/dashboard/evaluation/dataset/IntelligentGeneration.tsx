@@ -21,6 +21,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import dynamic from 'next/dynamic';
+import MyInput from '@/components/MyInput';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 
@@ -32,6 +33,7 @@ export interface IntelligentGenerationForm {
   generationModel: string;
   dataAmount: number;
   selectedDatasets: SelectedDatasetType;
+  keywords?: string; // 关键词，仅在数据场景下使用
 }
 
 /**
@@ -42,6 +44,7 @@ interface IntelligentGenerationProps {
   onClose: () => void;
   onConfirm: (data: IntelligentGenerationForm) => void;
   defaultValues?: Partial<IntelligentGenerationForm>;
+  scene?: 'dataset' | 'data'; // 场景：数据集或数据
 }
 
 /**
@@ -52,7 +55,8 @@ const IntelligentGeneration = ({
   isOpen,
   onClose,
   onConfirm,
-  defaultValues
+  defaultValues,
+  scene = 'dataset'
 }: IntelligentGenerationProps) => {
   const { t } = useTranslation();
   const { llmModelList } = useSystemStore();
@@ -82,6 +86,7 @@ const IntelligentGeneration = ({
   const generationModelValue = watch('generationModel');
   const dataAmountValue = watch('dataAmount');
   const selectedDatasets = watch('selectedDatasets');
+  const keywordsValue = watch('keywords');
 
   // TODO: 计算所选知识库的总分块数量，用于设置数据量的最大值
   const maxDataAmount = useMemo(() => {
@@ -91,13 +96,15 @@ const IntelligentGeneration = ({
 
   // 检查表单是否有效
   const isFormValid = useMemo(() => {
-    return (
-      nameValue.trim() !== '' &&
-      generationModelValue.trim() !== '' &&
-      selectedDatasets.length > 0 &&
-      dataAmountValue >= 1
-    );
-  }, [nameValue, generationModelValue, selectedDatasets, dataAmountValue]);
+    const baseValid =
+      generationModelValue.trim() !== '' && selectedDatasets.length > 0 && dataAmountValue >= 1;
+
+    if (scene === 'dataset') {
+      return baseValid && nameValue.trim() !== '';
+    } else {
+      return baseValid;
+    }
+  }, [nameValue, generationModelValue, selectedDatasets, dataAmountValue, scene]);
 
   // 处理数据量变化
   const handleDataAmountChange = useCallback(
@@ -130,25 +137,31 @@ const IntelligentGeneration = ({
       isOpen={isOpen}
       onClose={onClose}
       iconSrc="modal/edit"
-      title={t('dashboard_evaluation:intelligent_generation_dataset')}
+      title={
+        scene === 'dataset'
+          ? t('dashboard_evaluation:intelligent_generation_dataset')
+          : t('智能生成数据')
+      }
       w={'100%'}
       maxW={['90vw', '800px']}
       isCentered
     >
       <ModalBody>
         <VStack as="form" spacing={6} align="stretch" px={2}>
-          {/* 取个名字 */}
-          <Box>
-            <FormLabel required mb={1}>
-              {t('dashboard_evaluation:dataset_name_input')}
-            </FormLabel>
-            <Input
-              bgColor="myGray.50"
-              {...register('name', { required: true })}
-              isInvalid={!!errors.name}
-              placeholder={t('dashboard_evaluation:dataset_name_input_placeholder')}
-            />
-          </Box>
+          {/* 取个名字 - 仅在数据集场景下显示 */}
+          {scene === 'dataset' && (
+            <Box>
+              <FormLabel required mb={1}>
+                {t('dashboard_evaluation:dataset_name_input')}
+              </FormLabel>
+              <Input
+                bgColor="myGray.50"
+                {...register('name', { required: scene === 'dataset' })}
+                isInvalid={!!errors.name}
+                placeholder={t('dashboard_evaluation:dataset_name_input_placeholder')}
+              />
+            </Box>
+          )}
 
           {/* 生成依据 - 选择知识库 */}
           <Box>
@@ -232,6 +245,21 @@ const IntelligentGeneration = ({
               }}
             />
           </Box>
+
+          {/* 关键词 - 仅在数据场景下显示 */}
+          {scene === 'data' && (
+            <Box>
+              <FormLabel mb={1}>{t('关键词')}</FormLabel>
+              <MyInput
+                bgColor="myGray.50"
+                {...register('keywords')}
+                placeholder={t(
+                  '请输入一些关键词辅助生成更匹配期望的数据，用逗号隔开。如：金融、客服'
+                )}
+                resize="none"
+              />
+            </Box>
+          )}
 
           {/* 生成模型 */}
           <Box>

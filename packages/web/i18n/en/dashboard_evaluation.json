@@ -243,5 +243,11 @@
   "auto_quality_eval_after_add": "新增后自动进行数据质量评测",
   "auto_quality_eval_add_tip": "开启后将自动对新增的数据进行质量评测",
   "quality_eval_model_label": "质量评测模型",
-  "select_quality_eval_model_placeholder": "请选择质量评测模型"
+  "select_quality_eval_model_placeholder": "请选择质量评测模型",
+  "confirm": "确认",
+  "confirm_quality_evaluation": "确认对全部数据",
+  "quality_evaluation_question": "进行质量评测吗",
+  "model_change_notice": "更改模型后将对后续评测的任务生效。",
+  "evaluation_model": "评测模型",
+  "select_evaluation_model": "请选择评测模型"
 }
