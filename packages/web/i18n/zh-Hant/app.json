@@ -69,7 +69,7 @@
   "cron.every_week": "每週執行",
   "cron.interval": "間隔執行",
   "dataset": "知識庫",
-  "dataset_search_tool_description": "呼叫「語意搜尋」和「全文搜尋」功能，從「知識庫」中尋找可能與問題相關的參考內容。優先呼叫這個工具來協助回答使用者的問題。",
+  "dataset_search_tool_description": "調用語義檢索、全文檢索、數據庫檢索能力，從“知識庫”中查找可能與問題相關的參考內容。",
   "day": "日",
   "deleted": "應用已刪除",
   "document_quote": "文件引用",
