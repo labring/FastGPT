@@ -89,6 +89,10 @@ describe('/api/core/evaluation/metric/create', () => {
       description: 'Test Description',
       type: EvalMetricTypeEnum.Custom,
       prompt: 'Test prompt for evaluation',
+      llmRequired: true,
+      userInputRequired: true,
+      actualOutputRequired: true,
+      expectedOutputRequired: true,
       createTime: mockDate,
       updateTime: mockDate
     });
@@ -151,6 +155,10 @@ describe('/api/core/evaluation/metric/create', () => {
       description: '',
       type: EvalMetricTypeEnum.Custom,
       prompt: 'Test prompt for evaluation',
+      llmRequired: true,
+      userInputRequired: true,
+      actualOutputRequired: true,
+      expectedOutputRequired: true,
       createTime: mockDate,
       updateTime: mockDate
     });

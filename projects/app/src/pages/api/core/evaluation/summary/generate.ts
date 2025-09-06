@@ -24,7 +24,7 @@ async function handler(
       authApiKey: true,
       authToken: true
     });
-    
+
     addLog.info('[EvaluationSummary] Starting summary report generation', {
       evalId,
       metricsIds,
