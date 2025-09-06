@@ -289,5 +289,11 @@
   "test_connectivity": "测试连通性",
   "connect_and_next": "连接并进行下一步",
   "connection_network_error": "连接失败，请检查网络连接",
-  "validate_ip_tip": "该输入项禁止使用本地回环地址，如：localhost、127.x.x.x、0.0.0.0"
+  "validate_ip_tip": "该输入项禁止使用本地回环地址，如：localhost、127.x.x.x、0.0.0.0",
+  "database": "数据库",
+  "search_model": "检索模型",
+  "search_model_desc": "用于生成可在数据库中检索的SQL语句，并进行检索与汇总，生成可用于对话的文本。",
+  "search_model_tip": "使用非推理模型、参数量大的模型效果更佳。",
+  "other_knowledge_base": "其他知识库",
+  "database_search": "数据库检索"
 }

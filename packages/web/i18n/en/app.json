@@ -69,7 +69,7 @@
   "cron.every_week": "Every week",
   "cron.interval": "Other",
   "dataset": "Knowledge base",
-  "dataset_search_tool_description": "Search reference materials related to the question from the knowledge base by using the semantic search and full-text search features. The tool is prioritized to help answer questions.",
+  "dataset_search_tool_description": "调用语义检索、全文检索、数据库检索能力，从“知识库”中查找可能与问题相关的参考内容",
   "day": "Day",
   "deleted": "The app has been deleted.",
   "document_quote": "Document reference",
