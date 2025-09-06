@@ -61,15 +61,23 @@ export class DitingEvaluator extends Evaluator {
 }
 
 export function createEvaluatorInstance(evaluatorConfig: EvaluatorSchema): Evaluator {
+  if (evaluatorConfig.metric.llmRequired && !evaluatorConfig.runtimeConfig?.llm) {
+    throw new Error(
+      `Metric "${evaluatorConfig.metric.name}" requires an LLM, but runtimeConfig.llm is missing`
+    );
+  }
+
+  if (evaluatorConfig.metric.embeddingRequired && !evaluatorConfig.runtimeConfig?.embedding) {
+    throw new Error(
+      `Metric "${evaluatorConfig.metric.name}" requires an embedding model, but runtimeConfig.embedding is missing`
+    );
+  }
+
   const metricConfig: MetricConfig = {
     metricName: evaluatorConfig.metric.name,
     metricType: evaluatorConfig.metric.type,
     prompt: evaluatorConfig.metric.prompt
   };
-
-  if (metricConfig.metricType === EvalMetricTypeEnum.Custom && !metricConfig.prompt) {
-    throw new Error('Custom metric must provide a prompt');
-  }
 
   let llmConfig: EvalModelConfigType | undefined = undefined;
   let embeddingConfig: EvalModelConfigType | undefined = undefined;
@@ -79,8 +87,8 @@ export function createEvaluatorInstance(evaluatorConfig: EvaluatorSchema): Evalu
       const llm = getLLMModel(evaluatorConfig.runtimeConfig.llm);
       llmConfig = {
         name: evaluatorConfig.runtimeConfig.llm,
-        baseUrl: llm.requestUrl || '',
-        apiKey: llm.requestAuth || ''
+        baseUrl: llm.requestUrl ?? undefined,
+        apiKey: llm.requestAuth ?? undefined
       };
     } catch (err) {
       throw new Error(`Get LLM model failed: ${(err as Error).message}`);
@@ -92,8 +100,8 @@ export function createEvaluatorInstance(evaluatorConfig: EvaluatorSchema): Evalu
       const embedding = getEmbeddingModel(evaluatorConfig.runtimeConfig.embedding);
       embeddingConfig = {
         name: evaluatorConfig.runtimeConfig.embedding,
-        baseUrl: embedding.requestUrl || '',
-        apiKey: embedding.requestAuth || ''
+        baseUrl: embedding.requestUrl ?? undefined,
+        apiKey: embedding.requestAuth ?? undefined
       };
     } catch (err) {
       throw new Error(`Get embedding model failed: ${(err as Error).message}`);
