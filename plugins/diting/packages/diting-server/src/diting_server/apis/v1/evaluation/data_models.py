@@ -47,7 +47,7 @@ class EvalCase(BaseSchema):
 
 
 class EvaluationRequest(BaseSchema):
-    llm_config: ModelConfig = Field(..., description="llm模型配置")
+    llm_config: Optional[ModelConfig] = Field(None, description="llm模型配置")
     embedding_config: Optional[ModelConfig] = Field(
         None, description="embedding模型配置"
     )

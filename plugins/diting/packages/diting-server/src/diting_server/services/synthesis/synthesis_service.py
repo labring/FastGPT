@@ -88,14 +88,16 @@ class SynthesizerService:
                 synthesizer_config.synthesizer_name
             )()
         except Exception as ex:
+            error = str(ex)
             logger.error(
                 f"Failed to load the synthesizer {synthesizer_config.synthesizer_name}. "
-                f"Original error: {str(ex)}"
+                f"Original error: {error}",
+                exc_info=True
             )
             raise SynthesizerNotFoundException(
                 f"Failed to load the synthesizer {synthesizer_config.synthesizer_name}. "
                 "Please ensure that this synthesizer is supported and correctly configured. "
-                f"Original error: {str(ex)}"
+                f"Original error: {error}",  
             )
 
         is_llm_required = hasattr(synthesizer, "model")
@@ -145,8 +147,8 @@ class SynthesizerService:
         try:
             llm_case = await synthesizer.apply(corpus=corpus, callbacks=callbacks)
         except Exception as ex:
-            logger.error(f"Synthesizer application error: {str(ex)}")
             error = str(ex)
+            logger.error(f"Synthesizer application: {error}", exc_info=True)
         finally:
             usages = compute_token_usage(
                 llm_usages=get_llm_token.usages,

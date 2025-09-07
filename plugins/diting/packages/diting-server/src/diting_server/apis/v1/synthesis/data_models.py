@@ -31,13 +31,13 @@ class InputData(BaseSchema):
 
 
 class DatasetSynthesisRequest(BaseSchema):
-    metadata: Optional[Metadata] = Field(None, description="分片信息")
     llm_config: ModelConfig = Field(..., description="数据生成LLM模型配置")
     embedding_config: Optional[ModelConfig] = Field(
         None, description="数据生成embedding模型配置"
     )
     synthesizer_config: SynthesizerConfig = Field(..., description="数据生成算法配置")
     input_data: InputData = Field(..., description="数据生成输入数据")
+    metadata: Optional[Metadata] = Field(None, description="分片信息")
 
 
 class QAPair(BaseSchema):
