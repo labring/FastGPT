@@ -1,0 +1,115 @@
+version: "3.3"
+services:
+  # PostgreSQL + pgvector
+  pg:
+    image: pgvector/pgvector:0.8.0-pg15
+    container_name: pg
+    restart: always
+    networks:
+      - fastgpt
+    environment:
+      - POSTGRES_USER=username
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgres
+    volumes:
+      - ./pg/data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'username', '-d', 'postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # MongoDB 副本集
+  mongo:
+    image: mongo:4.4.24
+    container_name: mongo
+    restart: always
+    networks:
+      - fastgpt
+    command: mongod --keyFile /data/mongodb.key --replSet rs0
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=myusername
+      - MONGO_INITDB_ROOT_PASSWORD=mypassword
+    volumes:
+      - ./mongo/data:/data/db
+    entrypoint:
+      - bash
+      - -c
+      - |
+        openssl rand -base64 128 > /data/mongodb.key
+        chmod 400 /data/mongodb.key
+        chown 999:999 /data/mongodb.key
+        echo 'const isInited = rs.status().ok === 1
+        if(!isInited){
+          rs.initiate({
+              _id: "rs0",
+              members: [
+                  { _id: 0, host: "mongo:27017" }
+              ]
+          })
+        }' > /data/initReplicaSet.js
+        exec docker-entrypoint.sh "$$@" &
+        until mongo -u myusername -p mypassword --authenticationDatabase admin --eval "print('waited for connection')"; do
+          echo "Waiting for MongoDB to start..."
+          sleep 2
+        done
+        mongo -u myusername -p mypassword --authenticationDatabase admin /data/initReplicaSet.js
+        wait $$!
+
+  # Redis
+  redis:
+    image: redis:7
+    container_name: redis
+    restart: always
+    networks:
+      - fastgpt
+    command: redis-server --requirepass mypassword
+    volumes:
+      - ./redis/data:/data
+
+  # FastGPT
+  fastgpt:
+    container_name: fastgpt
+    image: ghcr.io/labring/fastgpt:v4.10.0-fix
+    ports:
+      - 3000:3000
+    networks:
+      - fastgpt
+    depends_on:
+      - mongo
+      - sandbox
+      - pg
+      - redis
+    restart: always
+    environment:
+      - DEFAULT_ROOT_PSW=1234
+      - ROOT_KEY=root_key
+      - FILE_TOKEN_KEY=filetoken
+      - DB_MAX_LINK=30
+
+      # MongoDB
+      - MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
+
+      # Redis
+      - REDIS_URL=redis://default:mypassword@redis:6379
+
+      # PostgreSQL
+      - PG_URL=postgresql://username:password@pg:5432/postgres
+
+      - LOG_LEVEL=info
+      - STORE_LOG_LEVEL=warn
+      - CHAT_FILE_EXPIRE_TIME=7
+
+  # Sandbox
+  sandbox:
+    container_name: sandbox
+    image: ghcr.io/labring/fastgpt-sandbox:latest
+    networks:
+      - fastgpt
+    restart: always
+    environment:
+      - SANDBOX_KEY=123456
+
+networks:
+  fastgpt:
+    driver: bridge
