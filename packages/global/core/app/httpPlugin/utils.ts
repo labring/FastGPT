@@ -16,6 +16,15 @@ import { getHandleId } from '../../workflow/utils';
 import { type CreateHttpPluginChildrenPros } from '../controller';
 import { AppTypeEnum } from '../constants';
 import type { StoreEdgeItemType } from '../../workflow/type/edge';
+import { type RuntimeNodeItemType } from '../../workflow/runtime/type';
+import { FlowNodeTypeEnum } from '../../workflow/node/constant';
+import type { AppSchema } from '../type';
+import { type HttpToolConfigType } from '../type';
+import { PluginSourceEnum } from '../plugin/constants';
+import { jsonSchema2NodeInput } from '../jsonschema';
+import { i18nT } from '../../../../web/i18n/utils';
+import { NodeOutputKeyEnum } from '../../workflow/constants';
+import { type StoreSecretValueType } from '../../../common/secret/type';
 
 export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema> => {
   try {
@@ -28,7 +37,21 @@ export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema
     })();
     const jsonSchema = (await SwaggerParser.parse(data)) as OpenAPIV3.Document;
 
-    const serverPath = jsonSchema.servers?.[0].url || '';
+    // 支持 OpenAPI 2.0 和 3.0 的服务器路径提取
+    let serverPath = '';
+
+    // OpenAPI 3.0 格式
+    if (jsonSchema.servers && jsonSchema.servers.length > 0) {
+      serverPath = jsonSchema.servers[0].url || '';
+    }
+    // OpenAPI 2.0 (Swagger 2.0) 格式
+    else if (data.host || data.basePath) {
+      const scheme = data.schemes && data.schemes.length > 0 ? data.schemes[0] : 'https';
+      const host = data.host || '';
+      const basePath = data.basePath || '';
+      serverPath = `${scheme}://${host}${basePath}`;
+    }
+
     const pathData = Object.keys(jsonSchema.paths)
       .map((path) => {
         const methodData: any = data.paths[path];
@@ -39,13 +62,29 @@ export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema
           .map((method) => {
             const methodInfo = methodData[method];
             if (methodInfo.deprecated) return;
+
+            // 处理 OpenAPI 2.0 的 requestBody (在 parameters 中)
+            let requestBody = methodInfo?.requestBody;
+            if (!requestBody && methodInfo.parameters) {
+              const bodyParam = methodInfo.parameters.find((p: any) => p.in === 'body');
+              if (bodyParam) {
+                requestBody = {
+                  content: {
+                    'application/json': {
+                      schema: bodyParam.schema
+                    }
+                  }
+                };
+              }
+            }
+
             const result = {
               path,
               method,
               name: methodInfo.operationId || path,
               description: methodInfo.description || methodInfo.summary,
               params: methodInfo.parameters,
-              request: methodInfo?.requestBody,
+              request: requestBody,
               response: methodInfo.responses
             };
             return result;
@@ -387,4 +426,103 @@ export const httpApiSchema2Plugins = async ({
       }
     };
   });
+};
+
+export const getHTTPToolSetRuntimeNode = ({
+  url,
+  toolList,
+  headerSecret,
+  name,
+  avatar,
+  toolId
+}: {
+  url: string;
+  toolList: HttpToolConfigType[];
+  headerSecret?: StoreSecretValueType;
+  name?: string;
+  avatar?: string;
+  toolId: string;
+}): RuntimeNodeItemType => {
+  return {
+    nodeId: getNanoid(16),
+    flowNodeType: FlowNodeTypeEnum.toolSet,
+    avatar,
+    intro: 'HTTP Tools',
+    toolConfig: {
+      httpToolSet: {
+        toolList,
+        headerSecret,
+        url,
+        toolId
+      }
+    },
+    inputs: [],
+    outputs: [],
+    name: name || '',
+    version: ''
+  };
+};
+
+export const getHTTPToolRuntimeNode = ({
+  tool,
+  avatar = 'core/app/type/httpToolsFill',
+  parentId
+}: {
+  tool: HttpToolConfigType;
+  avatar?: string;
+  parentId: string;
+}): RuntimeNodeItemType => {
+  return {
+    nodeId: getNanoid(16),
+    flowNodeType: FlowNodeTypeEnum.tool,
+    avatar,
+    intro: tool.description,
+    toolConfig: {
+      mcpTool: {
+        toolId: `${PluginSourceEnum.http}-${parentId}/${tool.name}`
+      }
+    },
+    inputs: jsonSchema2NodeInput(tool.inputSchema),
+    outputs: [
+      {
+        id: NodeOutputKeyEnum.rawResponse,
+        key: NodeOutputKeyEnum.rawResponse,
+        required: true,
+        label: i18nT('workflow:raw_response'),
+        description: i18nT('workflow:tool_raw_response_description'),
+        valueType: WorkflowIOValueTypeEnum.any,
+        type: FlowNodeOutputTypeEnum.static
+      }
+    ],
+    name: tool.name,
+    version: ''
+  };
+};
+
+export const createHttpToolRuntimeNode = ({
+  name,
+  avatar,
+  headerSecret
+}: {
+  name?: string;
+  avatar?: string;
+  headerSecret?: string;
+}): RuntimeNodeItemType => {
+  return {
+    nodeId: getNanoid(16),
+    flowNodeType: FlowNodeTypeEnum.httpPlugin,
+    avatar,
+    intro: 'HTTP Tools',
+    toolConfig: {
+      httpToolSet: {
+        toolId: getNanoid(16),
+        url: '',
+        toolList: []
+      }
+    },
+    inputs: [],
+    outputs: [],
+    name: name || '',
+    version: ''
+  };
 };
