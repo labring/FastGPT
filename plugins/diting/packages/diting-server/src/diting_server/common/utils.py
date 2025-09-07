@@ -44,7 +44,7 @@ def resolve_model_config(
     model: str, base_url: Optional[str] = None, api_key: Optional[str] = None
 ) -> dict[str, Any]:
     if not base_url and not api_key:
-        base_url = os.getenv("AIPROXY_API_ENDPOINT")
+        base_url = os.getenv("AIPROXY_API_ENDPOINT") + "/v1"
         api_key = os.getenv("AIPROXY_API_TOKEN")
 
     if base_url:

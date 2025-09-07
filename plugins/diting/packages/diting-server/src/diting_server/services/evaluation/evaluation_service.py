@@ -88,11 +88,16 @@ class EvaluationService:
                 metric_name = metric_config.metric_name
             metric: BaseMetric = self._load_metric(metric_name)()
         except Exception as ex:
-            logger.error(f"Failed to load metric {str(ex)}")
+            error = {str(ex)}
+            logger.error(
+                f"Failed to load metric {metric_config.metric_name}."
+                f"Original error: {error}",
+                exc_info=True
+            )
             raise MetricNotFoundException(
                 f"Failed to load the metric {metric_config.metric_name}. "
                 "Please ensure that this metric is supported and correctly configured. "
-                f"Original error: {str(ex)}"
+                f"Original error: {error}"
             )
         is_llm_required = hasattr(metric, "model")
         is_embedding_required = hasattr(metric, "embedding_model")
@@ -139,8 +144,8 @@ class EvaluationService:
         try:
             metric_value = await metric.compute(test_case=case, callbacks=callbacks)
         except Exception as ex:
-            logger.error(f"Metric compute error: {str(ex)}")
             error = str(ex)
+            logger.error(f"Metric compute error: {error}", exc_info=True)
         finally:
             usages = compute_token_usage(
                 llm_usages=get_llm_token.usages,
