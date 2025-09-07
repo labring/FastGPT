@@ -48,7 +48,12 @@ const PromptEditor = ({
     if (typeof value === 'object') {
       return JSON.stringify(value);
     }
-    return value || '';
+
+    if (value === undefined || value === null) {
+      return '';
+    }
+
+    return String(value || '');
   }, [value]);
 
   return (

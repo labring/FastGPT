@@ -71,22 +71,6 @@ const VariableInput = ({
     internalVariableList.length > 0 ||
     externalVariableList.length > 0;
 
-  const { getValues, setValue, reset } = variablesForm;
-
-  // Init variables and add default values
-  useEffect(() => {
-    const values = getValues();
-
-    variables.forEach((item) => {
-      const val = getValues(`variables.${item.key}`);
-      if (item.defaultValue !== undefined && (val === undefined || val === null || val === '')) {
-        values.variables[item.key] = item.defaultValue;
-      }
-    });
-
-    reset(values);
-  }, [variables, getValues, reset, setValue]);
-
   return hasVariables ? (
     <Box py={3}>
       <ChatAvatar src={appAvatar} type={'AI'} />

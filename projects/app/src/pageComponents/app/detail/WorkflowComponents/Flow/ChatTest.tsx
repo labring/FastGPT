@@ -35,7 +35,7 @@ type Props = {
 
 const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) => {
   const { t } = useTranslation();
-  const { appDetail } = useContextSelector(AppContext, (v) => v);
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const isPlugin = appDetail.type === AppTypeEnum.plugin;
   const { copyData } = useCopyData();
 

@@ -61,7 +61,10 @@ const LabelAndFormRender = ({
         control={control}
         name={props.fieldName}
         rules={{
-          required,
+          validate: (value) => {
+            if (!required || inputType === InputTypeEnum.switch) return true;
+            return !!value;
+          },
           ...(!!props?.minLength
             ? {
                 minLength: {

@@ -142,17 +142,19 @@ const ChatItemContextProvider = ({
 
   const resetVariables = useCallback(
     (props?: { variables?: Record<string, any>; variableList?: VariableItemType[] }) => {
-      const { variables, variableList = [] } = props || {};
+      const { variables = {}, variableList = [] } = props || {};
 
-      if (variables) {
-        variableList.forEach((item) => {
-          variablesForm.setValue(`variables.${item.key}`, variables[item.key]);
-        });
-      } else {
-        variableList.forEach((item) => {
-          variablesForm.setValue(`variables.${item.key}`, item.defaultValue);
-        });
-      }
+      variableList.forEach((item) => {
+        if (variables[item.key] === undefined) {
+          variables[item.key] = item.defaultValue;
+        }
+      });
+
+      const values = variablesForm.getValues();
+      variablesForm.reset({
+        ...values,
+        variables
+      });
     },
     [variablesForm]
   );

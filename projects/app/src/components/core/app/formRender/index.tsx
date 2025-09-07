@@ -92,6 +92,8 @@ const InputRender = (props: InputRenderProps) => {
           value={typeof value === 'string' ? value : ''}
           autoFocus={isPasswordEditing}
           onBlur={() => setIsPasswordEditing(false)}
+          autoComplete="new-password"
+          data-form-type="other"
         />
       ) : (
         <Flex alignItems="center" gap={2}>

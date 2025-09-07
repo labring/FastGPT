@@ -130,6 +130,7 @@ const ChatBox = ({
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const ChatBoxRef = useContextSelector(ChatItemContext, (v) => v.ChatBoxRef);
   const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
+  const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const setIsVariableVisible = useContextSelector(ChatItemContext, (v) => v.setIsVariableVisible);
 
   const isLoadingRecords = useContextSelector(ChatRecordContext, (v) => v.isLoadingRecords);
@@ -332,7 +333,7 @@ const ChatBox = ({
               })
             };
           } else if (event === SseResponseEventEnum.updateVariables && variables) {
-            variablesForm.setValue('variables', variables);
+            resetVariables({ variables });
           } else if (event === SseResponseEventEnum.interactive) {
             const val: AIChatItemValueItemType = {
               type: ChatItemValueTypeEnum.interactive,

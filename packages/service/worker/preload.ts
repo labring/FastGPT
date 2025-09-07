@@ -1,6 +1,7 @@
 import { getWorkerController, WorkerNameEnum } from './utils';
 
 export const preLoadWorker = async () => {
+  const start = Date.now();
   const max = Math.min(Number(global.systemEnv?.tokenWorkers || 30), 500);
   const workerController = getWorkerController({
     name: WorkerNameEnum.countGptMessagesTokens,
@@ -8,7 +9,7 @@ export const preLoadWorker = async () => {
   });
 
   // Batch size for concurrent loading
-  const batchSize = 10;
+  const batchSize = 5;
 
   for (let i = 0; i < max; i += batchSize) {
     const currentBatchSize = Math.min(batchSize, max - i);
@@ -36,5 +37,5 @@ export const preLoadWorker = async () => {
     console.log('Preload worker', workerController.workerQueue.length);
   }
 
-  console.log('Preload worker success', workerController.workerQueue.length);
+  console.log('Preload worker success', workerController.workerQueue.length, Date.now() - start);
 };
