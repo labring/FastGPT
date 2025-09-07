@@ -117,6 +117,7 @@ type RunWorkflowProps = ChatDispatchProps & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
+  streamId?: string;
 };
 export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowResponse> => {
   let {

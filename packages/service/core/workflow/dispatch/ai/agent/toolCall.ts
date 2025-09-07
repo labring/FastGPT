@@ -22,6 +22,9 @@ import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { createLLMResponse } from '../../../../ai/llm/request';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
+import { getRedisCache, setRedisCache } from '../../../../../common/redis/cache';
+import { createEncryptedResponse } from '../../../../../common/secret/wecom';
+import type { WecomCrypto } from '@fastgpt/global/common/secret/type';
 
 type ToolRunResponseType = {
   toolRunResponse?: DispatchFlowResponse;
@@ -77,6 +80,7 @@ export const runToolCall = async (
     toolModel,
     maxRunToolTimes,
     interactiveEntryToolParams,
+    streamId,
     ...workflowProps
   } = props;
   let {
@@ -274,6 +278,28 @@ export const runToolCall = async (
 
   const write = res ? responseWriteController({ res, readStream: stream }) : undefined;
 
+  let isFirst = false;
+  let accumulated = '';
+  let wecomCrypto: WecomCrypto;
+  let encryptedResponse = '';
+  if (streamId) {
+    const wecomCryptoStr = await getRedisCache(streamId);
+    wecomCrypto = JSON.parse(wecomCryptoStr!);
+    isFirst = wecomCrypto.isFirst;
+    if (isFirst) {
+      const firstResponse = createEncryptedResponse(
+        '',
+        false,
+        wecomCrypto.nonce,
+        wecomCrypto.token,
+        wecomCrypto.aesKey,
+        wecomCrypto.streamId
+      );
+      res?.write(firstResponse);
+      res?.end();
+    }
+  }
+
   let {
     reasoningText: reasoningContent,
     answerText: answer,
@@ -317,11 +343,23 @@ export const runToolCall = async (
       });
     },
     onStreaming({ text }) {
+      if (isFirst) {
+        accumulated += text;
+        const resKey = `res:${wecomCrypto.streamId}`;
+        setRedisCache(resKey, accumulated, 3600);
+        encryptedResponse = createEncryptedResponse(
+          accumulated,
+          false,
+          wecomCrypto.nonce,
+          wecomCrypto.token,
+          wecomCrypto.aesKey
+        )!;
+      }
       workflowStreamResponse?.({
         write,
         event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
-          text
+          text: JSON.stringify(encryptedResponse)
         })
       });
     },
@@ -359,6 +397,18 @@ export const runToolCall = async (
       });
     }
   });
+
+  if (isFirst) {
+    const encryptedResponse = createEncryptedResponse(
+      accumulated,
+      true,
+      wecomCrypto!.nonce,
+      wecomCrypto!.token,
+      wecomCrypto!.aesKey
+    );
+    res?.write(encryptedResponse);
+    res?.end();
+  }
 
   if (!answer && !reasoningContent && !toolCalls.length) {
     return Promise.reject(getEmptyResponseTip());
