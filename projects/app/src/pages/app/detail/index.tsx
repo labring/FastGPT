@@ -27,6 +27,10 @@ const MCPTools = dynamic(() => import('@/pageComponents/app/detail/MCPTools'), {
   ssr: false,
   loading: () => <Loading fixed={false} />
 });
+const HTTPTools = dynamic(() => import('@/pageComponents/app/detail/HTTPTools'), {
+  ssr: false,
+  loading: () => <Loading fixed={false} />
+});
 
 const AppDetail = () => {
   const { setAppId, setSource } = useChatStore();
@@ -56,6 +60,8 @@ const AppDetail = () => {
             {appDetail.type === AppTypeEnum.workflow && <Workflow />}
             {appDetail.type === AppTypeEnum.plugin && <Plugin />}
             {appDetail.type === AppTypeEnum.toolSet && <MCPTools />}
+            {/* AppTypeEnum.httpPlugin枚举名称还没改 */}
+            {appDetail.type === AppTypeEnum.httpPlugin && <HTTPTools />}
           </>
         )}
       </Box>

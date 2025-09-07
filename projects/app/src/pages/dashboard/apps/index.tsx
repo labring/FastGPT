@@ -174,7 +174,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
             )}
 
             {(folderDetail
-              ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
+              ? folderDetail.permission.hasWritePer
               : userInfo?.team.permission.hasAppCreatePer) && (
               <MyMenu
                 size="md"

@@ -36,6 +36,7 @@ import { type OpenApiJsonSchema } from '@fastgpt/global/core/app/httpPlugin/type
 import { type AppSchema } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
+import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 
 export type EditHttpPluginProps = {
   id?: string;
@@ -74,10 +75,13 @@ const HttpPluginEditModal = ({
   });
   const [updateTrigger, setUpdateTrigger] = useState(false);
 
+  const [createType, setCreateType] = useState<'batch' | 'manual'>('batch');
+
   const { register, setValue, handleSubmit, watch } = useForm<EditHttpPluginProps>({
     defaultValues: defaultPlugin
   });
   const avatar = watch('avatar');
+  const nameValue = watch('name');
   const apiSchemaStr = watch('pluginData.apiSchemaStr');
   const [apiData, setApiData] = useState<OpenApiJsonSchema>({ pathData: [], serverPath: '' });
 
@@ -89,8 +93,8 @@ const HttpPluginEditModal = ({
         intro: data.intro,
         avatar: data.avatar,
         pluginData: {
-          apiSchemaStr: data.pluginData?.apiSchemaStr,
-          customHeaders: data.pluginData?.customHeaders
+          apiSchemaStr: data.pluginData?.apiSchemaStr || '',
+          customHeaders: data.pluginData?.customHeaders || ''
         }
       });
     },
@@ -122,31 +126,6 @@ const HttpPluginEditModal = ({
     errorToast: t('common:update_failed')
   });
 
-  const {
-    File,
-    onOpen: onOpenSelectFile,
-    onSelectImage
-  } = useSelectFile({
-    fileType: 'image/*',
-    multiple: false
-  });
-
-  /* load api from url */
-  const { mutate: onClickUrlLoadApi, isLoading: isLoadingUrlApi } = useRequest({
-    mutationFn: async () => {
-      if (!schemaUrl || (!schemaUrl.startsWith('https://') && !schemaUrl.startsWith('http://'))) {
-        return toast({
-          title: t('common:plugin.Invalid URL'),
-          status: 'warning'
-        });
-      }
-
-      const schema = await getApiSchemaByUrl(schemaUrl);
-      setValue('pluginData.apiSchemaStr', JSON.stringify(schema, null, 2));
-    },
-    errorToast: t('common:plugin.Invalid Schema')
-  });
-
   useEffect(() => {
     (async () => {
       if (!apiSchemaStr) {
@@ -164,6 +143,15 @@ const HttpPluginEditModal = ({
     })();
   }, [apiSchemaStr, t, toast]);
 
+  const {
+    File,
+    onOpen: onOpenSelectFile,
+    onSelectImage
+  } = useSelectFile({
+    fileType: 'image/*',
+    multiple: false
+  });
+
   return (
     <>
       <MyModal
@@ -172,10 +160,10 @@ const HttpPluginEditModal = ({
         iconSrc="core/app/type/httpPluginFill"
         title={isEdit ? t('common:plugin.Edit Http Plugin') : t('common:plugin.Import Plugin')}
         w={['90vw', '600px']}
-        h={['90vh', '80vh']}
+        maxH={['90vh', '80vh']}
         position={'relative'}
       >
-        <ModalBody flex={'1 0 0'} overflow={'auto'}>
+        <ModalBody flex={'0 1 auto'} overflow={'auto'} pb={0} px={9}>
           <>
             <Box color={'myGray.800'} fontWeight={'bold'}>
               {t('common:input_name')}
@@ -202,241 +190,75 @@ const HttpPluginEditModal = ({
               />
             </Flex>
             <>
-              <Box color={'myGray.800'} fontWeight={'bold'} mt={3}>
-                {t('common:plugin.Intro')}
+              <Box color={'myGray.800'} fontWeight={'bold'} mt={6}>
+                {t('common:core.app.App intro')}
               </Box>
               <Textarea
                 {...register('intro')}
                 bg={'myWhite.600'}
+                h={'122px'}
                 rows={3}
                 mt={3}
-                placeholder={t('common:core.plugin.Http plugin intro placeholder')}
+                placeholder={t('common:core.app.Make a brief introduction of your app')}
               />
             </>
           </>
-          {/* import */}
-          <Box mt={4}>
-            <Box
-              color={'myGray.800'}
-              fontWeight={'bold'}
-              justifyContent={'space-between'}
-              display={'flex'}
-            >
-              <Box my={'auto'}>{'OpenAPI Schema'}</Box>
-
-              <Box>
-                <Flex alignItems={'center'}>
-                  <Input
-                    mr={2}
-                    placeholder={t('common:plugin.Import from URL')}
-                    h={'30px'}
-                    w={['150px', '250px']}
-                    fontSize={'sm'}
-                    onBlur={(e) => setSchemaUrl(e.target.value)}
-                  />
-                  <Button
-                    size={'sm'}
-                    variant={'whitePrimary'}
-                    isLoading={isLoadingUrlApi}
-                    onClick={onClickUrlLoadApi}
-                  >
-                    {t('common:Import')}
-                  </Button>
-                </Flex>
+          <>
+            <Box display={'flex'} alignItems={'center'} py={1} gap={'281px'} mt={6}>
+              <Box color={'myGray.800'} fontWeight={'bold'}>
+                {t('common:plugin.Create Type')}
+              </Box>
+              <Box
+                display={'flex'}
+                justifyContent={'center'}
+                alignItems={'center'}
+                ml={'auto'}
+                gap={'4px'}
+              >
+                <MyIcon name={'common/info'} w={'16px'} h={'16px'} />
+                <Box
+                  fontSize={'12px'}
+                  fontStyle={'normal'}
+                  fontWeight={'500'}
+                  lineHeight={'16px'}
+                  letterSpacing={'0.5px'}
+                >
+                  {t('common:plugin.Create Type Tip')}
+                </Box>
               </Box>
             </Box>
-            <Textarea
-              {...register('pluginData.apiSchemaStr')}
-              bg={'myWhite.600'}
-              rows={10}
-              mt={3}
-              onBlur={(e) => {
-                const content = e.target.value;
-                if (!content) return;
-                setValue('pluginData.apiSchemaStr', content);
-              }}
-            />
-          </Box>
-          <>
-            <Box color={'myGray.800'} fontWeight={'bold'} mt={3}>
-              {t('common:core.plugin.Custom headers')}
-            </Box>
-            <Box
-              mt={1}
-              borderRadius={'md'}
-              overflow={'hidden'}
-              borderWidth={'1px'}
-              borderBottom={'none'}
-            >
-              <TableContainer overflowY={'visible'} overflowX={'unset'}>
-                <Table>
-                  <Thead>
-                    <Tr>
-                      <Th px={2} borderRadius="none !important">
-                        {t('common:core.module.http.Props name')}
-                      </Th>
-                      <Th px={2} borderRadius="none !important">
-                        {t('common:core.module.http.Props value')}
-                      </Th>
-                    </Tr>
-                  </Thead>
-                  <Tbody>
-                    {customHeaders.map((item, index) => (
-                      <Tr key={`${index}`}>
-                        <Td p={0} w={'150px'}>
-                          <HttpInput
-                            placeholder={t('common:core.module.http.Props name')}
-                            value={item.key}
-                            onBlur={(val) => {
-                              setCustomHeaders((prev) => {
-                                const newHeaders = prev.map((item, i) =>
-                                  i === index ? { ...item, key: val } : item
-                                );
-                                setValue(
-                                  'pluginData.customHeaders',
-                                  '{\n' +
-                                    newHeaders
-                                      .map((item) => `"${item.key}":"${item.value}"`)
-                                      .join(',\n') +
-                                    '\n}'
-                                );
-                                return newHeaders;
-                              });
-                            }}
-                            updateTrigger={updateTrigger}
-                          />
-                        </Td>
-                        <Td p={0}>
-                          <Box display={'flex'} alignItems={'center'}>
-                            <HttpInput
-                              placeholder={t('common:core.module.http.Props value')}
-                              value={item.value}
-                              onBlur={(val) =>
-                                setCustomHeaders((prev) => {
-                                  const newHeaders = prev.map((item, i) =>
-                                    i === index ? { ...item, value: val } : item
-                                  );
-                                  setValue(
-                                    'pluginData.customHeaders',
-                                    '{\n' +
-                                      newHeaders
-                                        .map((item) => `"${item.key}":"${item.value}"`)
-                                        .join(',\n') +
-                                      '\n}'
-                                  );
-                                  return newHeaders;
-                                })
-                              }
-                            />
-                            <MyIcon
-                              name={'delete'}
-                              cursor={'pointer'}
-                              _hover={{ color: 'red.600' }}
-                              w={'14px'}
-                              onClick={() =>
-                                setCustomHeaders((prev) => {
-                                  const newHeaders = prev.filter((val) => val.key !== item.key);
-                                  setValue(
-                                    'pluginData.customHeaders',
-                                    '{\n' +
-                                      newHeaders
-                                        .map((item) => `"${item.key}":"${item.value}"`)
-                                        .join(',\n') +
-                                      '\n}'
-                                  );
-                                  return newHeaders;
-                                })
-                              }
-                            />
-                          </Box>
-                        </Td>
-                      </Tr>
-                    ))}
-                    <Tr>
-                      <Td p={0} w={'150px'}>
-                        <HttpInput
-                          placeholder={t('common:core.module.http.Add props')}
-                          value={''}
-                          updateTrigger={updateTrigger}
-                          onBlur={(val) => {
-                            if (!val) return;
-                            setCustomHeaders((prev) => {
-                              const newHeaders = [...prev, { key: val, value: '' }];
-                              setValue(
-                                'pluginData.customHeaders',
-                                '{\n' +
-                                  newHeaders
-                                    .map((item) => `"${item.key}":"${item.value}"`)
-                                    .join(',\n') +
-                                  '\n}'
-                              );
-                              return newHeaders;
-                            });
-                            setUpdateTrigger((prev) => !prev);
-                          }}
-                        />
-                      </Td>
-                      <Td p={0}>
-                        <Box display={'flex'} alignItems={'center'}>
-                          <HttpInput />
-                        </Box>
-                      </Td>
-                    </Tr>
-                  </Tbody>
-                </Table>
-              </TableContainer>
-            </Box>
-          </>
-          <>
-            <Box color={'myGray.800'} fontWeight={'bold'} mt={3}>
-              {t('common:plugin.Plugin List')}
-            </Box>
-            <Box
-              mt={3}
-              borderRadius={'md'}
-              overflow={'hidden'}
-              borderWidth={'1px'}
-              borderBottom={'none'}
-            >
-              <TableContainer maxH={400} overflowY={'auto'}>
-                <Table bg={'white'}>
-                  <Thead bg={'myGray.50'}>
-                    <Th>{t('common:Name')}</Th>
-                    <Th>{t('common:plugin.Description')}</Th>
-                    <Th>{t('common:plugin.Method')}</Th>
-                    <Th>{t('common:plugin.Path')}</Th>
-                  </Thead>
-                  <Tbody>
-                    {apiData.pathData?.map((item, index) => (
-                      <Tr key={index}>
-                        <Td>{item.name}</Td>
-                        <Td
-                          fontSize={'sm'}
-                          textColor={'gray.600'}
-                          w={'auto'}
-                          maxW={80}
-                          whiteSpace={'pre-wrap'}
-                        >
-                          {item.description}
-                        </Td>
-                        <Td>{item.method}</Td>
-                        <Td>{item.path}</Td>
-                      </Tr>
-                    ))}
-                  </Tbody>
-                </Table>
-              </TableContainer>
+            <Box mt={2}>
+              {/* 现在还没有更新功能，所以不支持更改 */}
+              <LeftRadio
+                list={[
+                  {
+                    title: t('app:type.Http batch'),
+                    value: 'batch',
+                    desc: t('app:type.Http batch tip')
+                  },
+                  {
+                    title: t('app:type.Http manual'),
+                    value: 'manual',
+                    desc: t('app:type.Http manual tip')
+                  }
+                ]}
+                value={createType}
+                fontSize={'xs'}
+                onChange={(e) => setCreateType(e as 'batch' | 'manual')}
+                defaultBg={'white'}
+                activeBg={'white'}
+              />
             </Box>
           </>
         </ModalBody>
 
-        <ModalFooter>
+        <ModalFooter my={6} py={0} px={9}>
           <Button variant={'whiteBase'} mr={3} onClick={onClose}>
             {t('common:Close')}
           </Button>
           {!isEdit ? (
             <Button
-              isDisabled={apiData.pathData.length === 0}
+              isDisabled={!nameValue?.trim()}
               onClick={handleSubmit((data) => onCreate(data))}
               isLoading={isCreating}
             >
