@@ -85,6 +85,7 @@ export type ModuleDispatchProps<T> = ChatDispatchProps & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
   params: T;
+  streamId?: string;
 };
 
 export type SystemVariablesType = {

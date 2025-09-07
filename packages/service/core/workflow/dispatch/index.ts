@@ -52,6 +52,7 @@ type Props = Omit<ChatDispatchProps, 'workflowDispatchDeep'> & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
+  streamId?: string;
 };
 type NodeResponseType = DispatchNodeResultType<{
   [key: string]: any;

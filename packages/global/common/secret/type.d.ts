@@ -4,3 +4,11 @@ export type SecretValueType = {
 };
 
 export type StoreSecretValueType = Record<string, SecretValueType>;
+
+export type WecomCrypto = {
+  token: string;
+  aesKey: string;
+  nonce: string;
+  streamId: string;
+  isFirst: boolean;
+};
