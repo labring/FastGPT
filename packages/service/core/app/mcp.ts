@@ -8,6 +8,7 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { MongoApp } from './schema';
 import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 export class MCPClient {
   private client: Client;
@@ -76,7 +77,7 @@ export class MCPClient {
       const response = await client.listTools();
 
       if (!Array.isArray(response.tools)) {
-        return Promise.reject('[MCP Client] Get tools response is not an array');
+        return Promise.reject(new UserError('[MCP Client] Get tools response is not an array'));
       }
 
       const tools = response.tools.map((tool) => ({
