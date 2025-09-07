@@ -34,7 +34,7 @@ import {
   initToolNodes,
   parseToolArgs
 } from '../utils';
-import { getFileReadTool, getTopAgentDefaultPrompt, StopAgentTool, SubAppIds } from './constants';
+import { getFileReadTool, getTopAgentConstantPrompt, StopAgentTool, SubAppIds } from './constants';
 import { runWorkflow } from '../..';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import type { ToolNodeItemType } from './type';
@@ -44,6 +44,8 @@ import { transferPlanAgent } from '../sub/plan';
 import { transferModelAgent } from '../sub/model';
 import { PlanAgentTool } from '../sub/plan/constants';
 import { ModelAgentTool } from '../sub/model/constants';
+import { getSubIdsByAgentSystem, parseAgentSystem } from './utils';
+import { getChildAppPreviewNode } from '../../../../../core/app/plugin/controller';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -101,7 +103,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     }
 
     // Init tool params
-    const toolNodeIds = filterToolNodeIdByEdges({ nodeId, edges: runtimeEdges });
+    // const toolNodeIds = filterToolNodeIdByEdges({ nodeId, edges: runtimeEdges });
+    const toolNodeIds = getSubIdsByAgentSystem(systemPrompt);
     const toolNodes = getToolNodesByIds({ toolNodeIds, runtimeNodes });
     // TODO: 补充系统 agent
     const toolNodesMap = new Map<string, ToolNodeItemType>();
@@ -118,10 +121,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     const subApps = getSubApps({ toolNodes, urls: fileLinks });
 
+    const combinedSystemPrompt = `${parseAgentSystem({ systemPrompt, toolNodesMap })}\n\n${getTopAgentConstantPrompt()}`;
+
     // TODO: 把 files 加入 query 中。
     const messages: ChatItemType[] = (() => {
       const value: ChatItemType[] = [
-        ...getSystemPrompt_ChatItemType(systemPrompt || getTopAgentDefaultPrompt()),
+        ...getSystemPrompt_ChatItemType(combinedSystemPrompt),
         // Add file input prompt to histories
         ...chatHistories,
         {
@@ -436,7 +441,7 @@ const getSubApps = ({
         type: 'function',
         function: {
           name: item.nodeId,
-          description: item.intro || item.name,
+          description: `调用${item.flowNodeType}:${item.name || item.intro}完成任务`,
           parameters: item.jsonSchema
         }
       };
@@ -459,7 +464,7 @@ const getSubApps = ({
       type: 'function',
       function: {
         name: item.nodeId,
-        description: item.toolDescription || item.intro || item.name,
+        description: `调用${item.flowNodeType}:${item.name || item.toolDescription || item.intro}完成任务`,
         parameters: {
           type: 'object',
           properties,
@@ -468,6 +473,7 @@ const getSubApps = ({
       }
     };
   });
+  console.dir(nodeTools, { depth: null });
 
   return [...systemTools, ...nodeTools];
 };
