@@ -3,12 +3,11 @@ import fs, { existsSync } from 'fs';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types/index.d';
 import { getFastGPTConfigFromDB } from '@fastgpt/service/common/system/config/controller';
-import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
 import json5 from 'json5';
 import { defaultGroup, defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
-import { MongoPluginGroups } from '@fastgpt/service/core/app/plugin/pluginGroupSchema';
+import { MongoToolGroups } from '@fastgpt/service/core/app/plugin/pluginGroupSchema';
 import { MongoTemplateTypes } from '@fastgpt/service/core/app/templates/templateTypeSchema';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import {
@@ -21,6 +20,7 @@ import {
   type CreateUsageProps
 } from '@fastgpt/global/support/wallet/usage/api';
 import { isProVersion } from './constants';
+import { getSystemToolTypes } from '@fastgpt/service/core/app/tool/api';
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');
@@ -167,17 +167,28 @@ export async function initSystemConfig() {
 export async function initSystemPluginGroups() {
   try {
     const { groupOrder, ...restDefaultGroup } = defaultGroup;
-    await MongoPluginGroups.updateOne(
-      {
-        groupId: defaultGroup.groupId
-      },
-      {
-        $set: restDefaultGroup
-      },
-      {
-        upsert: true
-      }
-    );
+
+    const toolTypes = await getSystemToolTypes();
+
+    if (toolTypes.length > 0) {
+      await MongoToolGroups.updateOne(
+        {
+          groupId: defaultGroup.groupId
+        },
+        {
+          $set: {
+            ...restDefaultGroup,
+            groupTypes: toolTypes.map((toolType) => ({
+              typeId: toolType.type,
+              typeName: toolType.name
+            }))
+          }
+        },
+        {
+          upsert: true
+        }
+      );
+    }
   } catch (error) {
     console.error('Error initializing system plugins:', error);
   }

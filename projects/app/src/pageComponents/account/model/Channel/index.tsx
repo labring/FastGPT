@@ -26,14 +26,12 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { type ChannelInfoType } from '@/global/aiproxy/type';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import { aiproxyIdMap } from '@fastgpt/global/sdk/fastgpt-plugin';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { ChannelStatusEnum, ChannelStautsMap, defaultChannel } from '@/global/aiproxy/constants';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import dynamic from 'next/dynamic';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
@@ -46,6 +44,7 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   const { t, i18n } = useTranslation();
   const language = i18n.language as localeType;
   const { userInfo } = useUserStore();
+  const { aiproxyIdMap, getModelProvider } = useSystemStore();
 
   const isRoot = userInfo?.username === 'root';
 
@@ -129,16 +128,15 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                   name: channelProviders[item.type]?.name || 'Invalid provider',
                   provider: 'Other'
                 };
-                const provider = getModelProvider(providerData?.provider, language);
-
+                const provider = getModelProvider(providerData?.provider, i18n.language);
                 return (
                   <Tr key={item.id} _hover={{ bg: 'myGray.100' }}>
                     <Td>{item.id}</Td>
                     <Td>{item.name}</Td>
                     <Td>
                       <HStack>
-                        <Avatar src={providerData?.avatar || provider?.avatar} w={'1rem'} />
-                        <Box>{parseI18nString(providerData.name, language)}</Box>
+                        <Avatar src={provider?.avatar} w={'1rem'} />
+                        <Box>{parseI18nString(providerData.name, i18n.language)}</Box>
                       </HStack>
                     </Td>
                     <Td>
