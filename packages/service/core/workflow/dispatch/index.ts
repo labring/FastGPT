@@ -7,7 +7,7 @@ import type {
   ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type.d';
 import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -43,9 +43,10 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import { addLog } from '../../../common/system/log';
 import { surrenderProcess } from '../../../common/system/tools';
 import type { DispatchFlowResponse, WorkflowDebugResponse } from './type';
-import { removeSystemVariable, rewriteRuntimeWorkFlow } from './utils';
+import { rewriteRuntimeWorkFlow, removeSystemVariable } from './utils';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { callbackMap } from './constants';
+import { anyValueDecrypt } from '../../../common/secret/utils';
 
 type Props = Omit<ChatDispatchProps, 'workflowDispatchDeep'> & {
   runtimeNodes: RuntimeNodeItemType[];
@@ -147,7 +148,11 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       [DispatchNodeResponseKeyEnum.runTimes]: 1,
       [DispatchNodeResponseKeyEnum.assistantResponses]: [],
       [DispatchNodeResponseKeyEnum.toolResponses]: null,
-      newVariables: removeSystemVariable(variables, externalProvider.externalWorkflowVariables),
+      newVariables: removeSystemVariable(
+        variables,
+        externalProvider.externalWorkflowVariables,
+        data.chatConfig?.variables
+      ),
       durationSeconds: 0
     };
   }
@@ -903,6 +908,12 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     });
   }
 
+  const encryptedNewVariables = removeSystemVariable(
+    variables,
+    externalProvider.externalWorkflowVariables,
+    data.chatConfig?.variables
+  );
+
   return {
     flowResponses: workflowQueue.chatResponses,
     flowUsages: workflowQueue.chatNodeUsages,
@@ -913,10 +924,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       workflowQueue.chatAssistantResponse
     ),
     [DispatchNodeResponseKeyEnum.toolResponses]: workflowQueue.toolRunResponse,
-    [DispatchNodeResponseKeyEnum.newVariables]: removeSystemVariable(
-      variables,
-      externalProvider.externalWorkflowVariables
-    ),
+    [DispatchNodeResponseKeyEnum.newVariables]: encryptedNewVariables,
     [DispatchNodeResponseKeyEnum.memories]:
       Object.keys(workflowQueue.system_memories).length > 0
         ? workflowQueue.system_memories
@@ -937,10 +945,18 @@ const getSystemVariables = ({
   variables
 }: Props): SystemVariablesType => {
   // Get global variables(Label -> key; Key -> key)
-  const globalVariables = chatConfig?.variables || [];
-  const variablesMap = globalVariables.reduce<Record<string, any>>((acc, item) => {
+  const variablesConfig = chatConfig?.variables || [];
+
+  const variablesMap = variablesConfig.reduce<Record<string, any>>((acc, item) => {
+    // For internal variables, ignore external input and use default value
+    if (item.type === VariableInputEnum.password) {
+      const val = variables[item.label] || variables[item.key] || item.defaultValue;
+      const actualValue = anyValueDecrypt(val);
+      acc[item.key] = valueTypeFormat(actualValue, item.valueType);
+    }
+
     // API
-    if (variables[item.label] !== undefined) {
+    else if (variables[item.label] !== undefined) {
       acc[item.key] = valueTypeFormat(variables[item.label], item.valueType);
     }
     // Web

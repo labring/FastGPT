@@ -8,7 +8,7 @@
 
 import type { DecoratorNode, Klass, LexicalEditor, LexicalNode } from 'lexical';
 import type { EntityMatch } from '@lexical/text';
-import { $createTextNode, $getRoot, $isTextNode, TextNode } from 'lexical';
+import { $createTextNode, $isTextNode, TextNode } from 'lexical';
 import { useCallback } from 'react';
 import type { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
 import type { VariableNode } from './plugins/VariablePlugin/node';
@@ -209,36 +209,9 @@ export function textToEditorState(text = '') {
   });
 }
 
-export function editorStateToText(editor: LexicalEditor) {
-  const editorStateTextString: string[] = [];
-  const paragraphs = editor.getEditorState().toJSON().root.children;
-  paragraphs.forEach((paragraph: any) => {
-    const children = paragraph.children;
-    const paragraphText: string[] = [];
-    children.forEach((child: any) => {
-      if (child.type === 'linebreak') {
-        paragraphText.push(`
-`);
-      } else if (child.text) {
-        paragraphText.push(child.text);
-      } else if (child.type === 'variableLabel') {
-        paragraphText.push(child.variableKey);
-      } else if (child.type === 'Variable') {
-        paragraphText.push(child.variableKey);
-      }
-    });
-    editorStateTextString.push(paragraphText.join(''));
-  });
-  return editorStateTextString.join(`
-`);
-}
-
 const varRegex = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g;
 export const getVars = (value: string) => {
   if (!value) return [];
-  // .filter((item) => {
-  //   return ![CONTEXT_PLACEHOLDER_TEXT, HISTORY_PLACEHOLDER_TEXT, QUERY_PLACEHOLDER_TEXT, PRE_PROMPT_PLACEHOLDER_TEXT].includes(item)
-  // })
   const keys =
     value
       .match(varRegex)
@@ -291,4 +264,24 @@ export function useBasicTypeaheadTriggerMatch(
     },
     [maxLength, minLength, trigger]
   );
+}
+
+export function editorStateToText(editor: LexicalEditor) {
+  const editorStateTextString: string[] = [];
+  const paragraphs = editor.getEditorState().toJSON().root.children;
+  paragraphs.forEach((paragraph: any) => {
+    const children = paragraph.children || [];
+    const paragraphText: string[] = [];
+    children.forEach((child: any) => {
+      if (child.type === 'linebreak') {
+        paragraphText.push('\n');
+      } else if (child.text) {
+        paragraphText.push(child.text);
+      } else if (child.type === 'variableLabel' || child.type === 'Variable') {
+        paragraphText.push(child.variableKey);
+      }
+    });
+    editorStateTextString.push(paragraphText.join(''));
+  });
+  return editorStateTextString.join('\n');
 }

@@ -1,3 +1,4 @@
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type ChannelInfoType } from './type';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 
@@ -26,10 +27,15 @@ export const ChannelStautsMap = {
   }
 };
 
+const firstProviderId = useSystemStore.getState().getModelProviders('en')[0]?.id;
+const firstChannelType =
+  Object.entries(useSystemStore.getState().aiproxyIdMap).find(
+    ([id, item]) => item.provider === firstProviderId
+  )?.[0] || 1;
 export const defaultChannel: ChannelInfoType = {
   id: 0,
   status: ChannelStatusEnum.ChannelStatusEnabled,
-  type: 1,
+  type: Number(firstChannelType),
   created_at: 0,
   models: [],
   model_mapping: {},

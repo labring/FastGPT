@@ -22,7 +22,7 @@ import {
 import { getMyApps } from '@/web/core/app/api';
 import SelectOneResource from '@/components/common/folder/SelectOneResource';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import VariablePopover from '@/components/core/chat/ChatContainer/ChatBox/components/VariablePopover';
+import VariablePopover from '@/components/core/chat/ChatContainer/components/VariablePopover';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 import {
@@ -32,6 +32,7 @@ import {
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { usePathname } from 'next/navigation';
 import type { ChatSettingReturnType } from '@fastgpt/global/core/chat/setting/type';
+import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 
 const ChatHeader = ({
   history,
@@ -59,8 +60,8 @@ const ChatHeader = ({
   const isVariableVisible = useContextSelector(ChatItemContext, (v) => v.isVariableVisible);
 
   const isPlugin = chatData.app.type === AppTypeEnum.plugin;
-  const isChat = pathname === '/chat';
   const isShare = source === 'share';
+  const chatType = isShare ? ChatTypeEnum.share : ChatTypeEnum.chat;
 
   return isPc && isPlugin ? null : (
     <Flex
@@ -100,7 +101,7 @@ const ChatHeader = ({
       )}
 
       <Flex gap={2} alignItems={'center'}>
-        {!isVariableVisible && <VariablePopover showExternalVariables={isChat} />}
+        {!isVariableVisible && <VariablePopover chatType={chatType} />}
 
         {/* control */}
         {!isPlugin && <ToolMenu history={history} />}

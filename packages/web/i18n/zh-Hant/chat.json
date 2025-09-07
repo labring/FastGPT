@@ -51,6 +51,7 @@
   "input_guide_tip": "您可以設定一些預設問題。當使用者輸入問題時，系統會從這些預設問題中提供相關問題作為提示。",
   "input_placeholder_phone": "請輸入問題",
   "insert_input_guide,_some_data_already_exists": "偵測到重複資料，已自動過濾，共插入 {{len}} 筆資料",
+  "internal_variables_tip": "內部變量僅調試時可見",
   "invalid_share_url": "無效的分享鏈接",
   "is_chatting": "對話進行中...請稍候",
   "items": "筆",
@@ -159,7 +160,7 @@
   "stream_output": "串流輸出",
   "unsupported_file_type": "不支援的檔案類型",
   "upload": "上傳",
-  "variable_invisable_in_share": "自定義變數在免登入連結中不可見",
+  "variable_invisable_in_share": "外部變量在免登錄鏈接中不可見",
   "view_citations": "檢視引用",
   "web_site_sync": "網站同步"
 }

@@ -11,7 +11,7 @@ import type {
   EmbeddingRecallResponse,
   InsertVectorControllerProps
 } from '../controller.d';
-import { delay, retryFn } from '@fastgpt/global/common/system/utils';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 import { addLog } from '../../system/log';
 import { customNanoid } from '@fastgpt/global/common/string/tools';
 

@@ -14,7 +14,14 @@ export const variableInputTypeToInputType = (
   if (inputType === VariableInputEnum.textarea) return InputTypeEnum.textarea;
   if (inputType === VariableInputEnum.numberInput) return InputTypeEnum.numberInput;
   if (inputType === VariableInputEnum.select) return InputTypeEnum.select;
-  if (inputType === VariableInputEnum.custom) return valueTypeToInputType(valueType);
+  if (inputType === VariableInputEnum.multipleSelect) return InputTypeEnum.multipleSelect;
+  if (inputType === VariableInputEnum.switch) return InputTypeEnum.switch;
+  if (inputType === VariableInputEnum.password) return InputTypeEnum.password;
+  if (inputType === VariableInputEnum.file) return InputTypeEnum.fileSelect;
+  if (inputType === VariableInputEnum.timePointSelect) return InputTypeEnum.timePointSelect;
+  if (inputType === VariableInputEnum.timeRangeSelect) return InputTypeEnum.timeRangeSelect;
+  if (inputType === VariableInputEnum.custom || inputType === VariableInputEnum.internal)
+    return valueTypeToInputType(valueType);
   return InputTypeEnum.JSONEditor;
 };
 

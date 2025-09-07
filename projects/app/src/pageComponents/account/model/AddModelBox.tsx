@@ -18,11 +18,6 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import React, { useMemo, useRef, useState } from 'react';
-import {
-  getModelProviders,
-  type ModelProviderIdType,
-  getModelProvider
-} from '@fastgpt/global/core/ai/provider';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -96,8 +91,7 @@ export const ModelEditModal = ({
   onClose: () => void;
 }) => {
   const { t, i18n } = useTranslation();
-  const language = i18n.language;
-  const { feConfigs } = useSystemStore();
+  const { feConfigs, getModelProviders } = useSystemStore();
 
   const { register, getValues, setValue, handleSubmit, watch, reset } =
     useForm<SystemModelItemType>({
@@ -113,8 +107,8 @@ export const ModelEditModal = ({
 
   const provider = watch('provider');
 
-  const providerList = useRef<{ label: React.ReactNode; value: ModelProviderIdType }[]>(
-    getModelProviders(language).map((item) => ({
+  const providerList = useRef<{ label: React.ReactNode; value: string }[]>(
+    getModelProviders(i18n.language).map((item) => ({
       label: (
         <HStack>
           <Avatar src={item.avatar} w={'1rem'} />

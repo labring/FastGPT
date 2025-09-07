@@ -21,8 +21,9 @@ import ChatRecordContextProvider, {
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
-import VariablePopover from '@/components/core/chat/ChatContainer/ChatBox/components/VariablePopover';
+import VariablePopover from '@/components/core/chat/ChatContainer/components/VariablePopover';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
+import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 
 type Props = {
   isOpen: boolean;
@@ -34,7 +35,7 @@ type Props = {
 
 const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) => {
   const { t } = useTranslation();
-  const { appDetail } = useContextSelector(AppContext, (v) => v);
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const isPlugin = appDetail.type === AppTypeEnum.plugin;
   const { copyData } = useCopyData();
 
@@ -132,7 +133,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
                 </Box>
               </MyTooltip>
             </Flex>
-            {!isVariableVisible && <VariablePopover showExternalVariables />}
+            {!isVariableVisible && <VariablePopover chatType={ChatTypeEnum.test} />}
             <Box flex={1} />
             <MyTooltip label={t('common:core.chat.Restart')}>
               <IconButton

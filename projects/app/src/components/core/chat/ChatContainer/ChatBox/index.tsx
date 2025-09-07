@@ -130,6 +130,7 @@ const ChatBox = ({
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const ChatBoxRef = useContextSelector(ChatItemContext, (v) => v.ChatBoxRef);
   const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
+  const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const setIsVariableVisible = useContextSelector(ChatItemContext, (v) => v.setIsVariableVisible);
 
   const isLoadingRecords = useContextSelector(ChatRecordContext, (v) => v.isLoadingRecords);
@@ -154,12 +155,13 @@ const ChatBox = ({
   // Workflow running, there are user input or selection
   const isInteractive = useMemo(() => checkIsInteractiveByHistories(chatRecords), [chatRecords]);
 
-  const externalVariableList = useMemo(() => {
-    if ([ChatTypeEnum.log, ChatTypeEnum.chat].includes(chatType)) {
-      return allVariableList.filter((item) => item.type === VariableInputEnum.custom);
-    }
-    return [];
+  const showExternalVariable = useMemo(() => {
+    return (
+      [ChatTypeEnum.log, ChatTypeEnum.test, ChatTypeEnum.chat].includes(chatType) &&
+      allVariableList.some((item) => item.type === VariableInputEnum.custom)
+    );
   }, [allVariableList, chatType]);
+
   // compute variable input is finish.
   const chatForm = useForm<ChatBoxInputFormType>({
     defaultValues: {
@@ -174,9 +176,7 @@ const ChatBox = ({
   // 可以进入对话框对话
   const chatStarted =
     chatBoxData?.appId === appId &&
-    (chatRecords.length > 0 ||
-      chatStartedWatch ||
-      [...variableList, ...externalVariableList].length === 0);
+    (chatRecords.length > 0 || chatStartedWatch || variableList.length === 0);
 
   // 滚动到底部
   const scrollToBottom = useMemoizedFn((behavior: 'smooth' | 'auto' = 'smooth', delay = 0) => {
@@ -333,7 +333,7 @@ const ChatBox = ({
               })
             };
           } else if (event === SseResponseEventEnum.updateVariables && variables) {
-            variablesForm.setValue('variables', variables);
+            resetVariables({ variables });
           } else if (event === SseResponseEventEnum.interactive) {
             const val: AIChatItemValueItemType = {
               type: ChatItemValueTypeEnum.interactive,
@@ -828,7 +828,7 @@ const ChatBox = ({
       showEmptyIntro &&
       chatRecords.length === 0 &&
       !variableList?.length &&
-      !externalVariableList?.length &&
+      !showExternalVariable &&
       !welcomeText,
     [
       chatType,
@@ -836,7 +836,7 @@ const ChatBox = ({
       showEmptyIntro,
       chatRecords.length,
       variableList?.length,
-      externalVariableList?.length,
+      showExternalVariable,
       welcomeText
     ]
   );
@@ -1083,31 +1083,15 @@ const ChatBox = ({
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
 
           {/* variable input */}
-          {(!!variableList?.length || !!externalVariableList?.length) && (
-            <Box id="variable-input">
-              <VariableInputForm
-                chatStarted={chatStarted}
-                chatForm={chatForm}
-                showExternalVariables={[ChatTypeEnum.log, ChatTypeEnum.chat].includes(chatType)}
-              />
-            </Box>
-          )}
+          <Box id="variable-input">
+            <VariableInputForm chatStarted={chatStarted} chatForm={chatForm} chatType={chatType} />
+          </Box>
 
           {RecordsBox}
         </Box>
       </ScrollData>
     );
-  }, [
-    ScrollData,
-    showEmpty,
-    welcomeText,
-    variableList,
-    externalVariableList,
-    chatStarted,
-    chatForm,
-    chatType,
-    RecordsBox
-  ]);
+  }, [ScrollData, showEmpty, welcomeText, chatStarted, chatForm, chatType, RecordsBox]);
   const HomeChatRenderBox = useMemo(() => {
     return (
       <>

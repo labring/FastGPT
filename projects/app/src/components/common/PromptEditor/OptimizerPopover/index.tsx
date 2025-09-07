@@ -55,7 +55,6 @@ const OptimizerPopover = ({
 
   const modelOptions = useMemo(() => {
     return llmModelList.map((model) => {
-      // const provider = getModelProvider(model.model)
       return {
         label: (
           <Flex alignItems={'center'}>
