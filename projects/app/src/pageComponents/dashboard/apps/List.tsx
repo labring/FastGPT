@@ -330,8 +330,7 @@ const ListItem = () => {
                                           }
                                         }
                                       },
-                                      ...(folderDetail?.type === AppTypeEnum.httpPlugin &&
-                                      !(parentApp ? parentApp.permission : app.permission)
+                                      ...(!(parentApp ? parentApp.permission : app.permission)
                                         .hasManagePer
                                         ? []
                                         : [
@@ -358,8 +357,7 @@ const ListItem = () => {
                               : []),
                             ...(!app.permission?.hasWritePer ||
                             app.type === AppTypeEnum.toolSet ||
-                            app.type === AppTypeEnum.folder ||
-                            app.type === AppTypeEnum.httpPlugin
+                            app.type === AppTypeEnum.folder
                               ? []
                               : [
                                   {
