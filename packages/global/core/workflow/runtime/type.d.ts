@@ -119,6 +119,9 @@ export type RuntimeNodeItemType = {
 
   // catch error
   catchError?: boolean;
+
+  // http plugin
+  apiSchemaStr?: string;
 };
 
 export type RuntimeEdgeItemType = StoreEdgeItemType & {

@@ -8,10 +8,18 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { isEqual } from 'lodash';
 import { onCreateApp } from '../create';
 import { onDelOneApp } from '@fastgpt/service/core/app/controller';
 import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
+import {
+  getHTTPToolRuntimeNode,
+  getHTTPToolSetRuntimeNode,
+  str2OpenApiSchema
+} from '@fastgpt/global/core/app/httpPlugin/utils';
+import { type HttpToolConfigType } from '@fastgpt/global/core/app/type';
+import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 
 export type UpdateHttpPluginBody = {
   appId: string;
@@ -35,6 +43,48 @@ async function handler(req: ApiRequestProps<UpdateHttpPluginBody>, res: NextApiR
     customHeaders: pluginData?.customHeaders
   };
 
+  const schema = await str2OpenApiSchema(pluginData?.apiSchemaStr);
+
+  const toolList: HttpToolConfigType[] = schema.pathData.map((item) => ({
+    name: item.name,
+    description: item.description || '',
+    path: item.path,
+    method: item.method,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        // params -> JSONSchema
+        ...(Array.isArray(item.params)
+          ? item.params.reduce((acc: any, p: any) => {
+              acc[p.name] = {
+                type: p?.schema?.type || 'string',
+                description: p?.description
+              };
+              return acc;
+            }, {})
+          : {}),
+        // requestBody.application/json.schema.properties 直接并入
+        ...(item.request?.content?.['application/json']?.schema?.properties || {})
+      },
+      required: [
+        ...(Array.isArray(item.params)
+          ? item.params.filter((p: any) => p.required).map((p: any) => p.name)
+          : []),
+        ...((item.request?.content?.['application/json']?.schema?.required as string[]) || [])
+      ]
+    }
+  }));
+
+  const httpToolSetNode = getHTTPToolSetRuntimeNode({
+    url: schema.serverPath || '',
+    toolList: toolList,
+    // headerSecret: pluginData?.customHeaders as StoreSecretValueType,
+    headerSecret: undefined,
+    name: name || app.name,
+    avatar: avatar || app.avatar,
+    toolId: ''
+  });
+
   await mongoSessionRun(async (session) => {
     // update children
     if (!isEqual(storeData, updateData)) {
@@ -53,7 +103,19 @@ async function handler(req: ApiRequestProps<UpdateHttpPluginBody>, res: NextApiR
         ...(name && { name }),
         ...(avatar && { avatar }),
         ...(intro !== undefined && { intro }),
-        pluginData
+        pluginData,
+        modules: [httpToolSetNode],
+        updateTime: new Date()
+      },
+      { session }
+    );
+
+    await MongoAppVersion.updateOne(
+      { appId },
+      {
+        $set: {
+          nodes: [httpToolSetNode]
+        }
       },
       { session }
     );
@@ -102,18 +164,7 @@ const updateHttpChildrenPlugin = async ({
       });
     }
   }
-  // 数据库中不存在，schema存在，新增
-  for await (const plugin of schemaPlugins) {
-    if (!dbPlugins.find((p) => p.pluginData?.pluginUniId === plugin.name)) {
-      await onCreateApp({
-        ...plugin,
-        teamId,
-        tmbId,
-        session
-      });
-    }
-  }
-  // 数据库中存在，schema存在，更新
+
   for await (const plugin of schemaPlugins) {
     const dbPlugin = dbPlugins.find((p) => plugin.name === p.pluginData?.pluginUniId);
     if (dbPlugin) {

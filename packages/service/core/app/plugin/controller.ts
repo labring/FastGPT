@@ -43,8 +43,10 @@ import { isProduction } from '@fastgpt/global/common/system/constants';
 import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
+import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/httpPlugin/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getMCPChildren } from '../mcp';
+import { getHTTPChildren } from '../http';
 import { cloneDeep } from 'lodash';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getCachedData } from '../../../common/cache';
@@ -197,8 +199,16 @@ export async function getChildAppPreviewNode({
             url: ''
           }
         };
+      } else if (item.type === AppTypeEnum.httpPlugin) {
+        const children = await getHTTPChildren(item);
+        version.nodes[0].toolConfig = {
+          httpToolSet: {
+            toolId: pluginId,
+            toolList: children,
+            url: ''
+          }
+        };
       }
-
       return {
         id: String(item._id),
         teamId: String(item.teamId),
@@ -249,6 +259,44 @@ export async function getChildAppPreviewNode({
         workflow: {
           nodes: [
             getMCPToolRuntimeNode({
+              tool: {
+                description: tool.description,
+                inputSchema: tool.inputSchema,
+                name: tool.name
+              },
+              avatar: item.avatar,
+              parentId: item._id
+            })
+          ],
+          edges: []
+        },
+        version: '',
+        isLatestVersion: true
+      };
+    }
+    // http tool
+    else if (source === PluginSourceEnum.http) {
+      const [parentId, toolName] = pluginId.split('/');
+      const item = await MongoApp.findById(parentId).lean();
+      if (!item) return Promise.reject(PluginErrEnum.unExist);
+
+      const version = await getAppVersionById({ appId: parentId, versionId, app: item });
+      const toolConfig = version.nodes[0].toolConfig?.httpToolSet;
+      const tool = await (async () => {
+        if (toolConfig?.toolList) {
+          return toolConfig.toolList.find((item) => item.name === toolName);
+        }
+        return (await getHTTPChildren(item)).find((item) => item.name === toolName);
+      })();
+      if (!tool) return Promise.reject(PluginErrEnum.unExist);
+      return {
+        avatar: item.avatar,
+        id: appId,
+        name: tool.name,
+        templateType: FlowNodeTemplateTypeEnum.tools,
+        workflow: {
+          nodes: [
+            getHTTPToolRuntimeNode({
               tool: {
                 description: tool.description,
                 inputSchema: tool.inputSchema,

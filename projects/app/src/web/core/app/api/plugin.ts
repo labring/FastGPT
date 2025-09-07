@@ -6,7 +6,6 @@ import type {
   NodeTemplateListItemType
 } from '@fastgpt/global/core/workflow/type/node';
 import { getAppDetailById, getMyApps } from '../api';
-import type { ListAppBody } from '@/pages/api/core/app/list';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { GetPreviewNodeQuery } from '@/pages/api/core/app/plugin/getPreviewNode';
@@ -18,8 +17,6 @@ import type {
 } from '@fastgpt/global/common/parentFolder/type';
 import type { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/plugin/getSystemPluginTemplates';
 import type { SystemToolGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { defaultGroup } from '@fastgpt/web/core/workflow/constants';
 import type { createMCPToolsBody } from '@/pages/api/core/app/mcpTools/create';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import type { updateMCPToolsBody } from '@/pages/api/core/app/mcpTools/update';
@@ -34,6 +31,9 @@ import type {
   McpGetChildrenmResponse
 } from '@/pages/api/core/app/mcpTools/getChildren';
 import type { UploadPresignedURLResponse } from '@fastgpt/service/common/s3/type';
+import type { RunHTTPToolBody } from '@/pages/api/support/http/client/runTool';
+import type { getHTTPToolsBody } from '@/pages/api/support/http/client/getTools';
+import { type HttpToolConfigType } from '@fastgpt/global/core/app/type';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = async (data?: {
@@ -139,3 +139,10 @@ export const getApiSchemaByUrl = (url: string) =>
       timeout: 30000
     }
   );
+
+/* ============ http tools ============== */
+export const getHTTPTools = (data: getHTTPToolsBody) =>
+  POST<HttpToolConfigType[]>('/support/http/client/getTools', data);
+
+export const postRunHTTPTool = (data: RunHTTPToolBody) =>
+  POST('/support/http/client/runTool', data, { timeout: 300000 });

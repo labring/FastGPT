@@ -120,6 +120,14 @@ export type McpToolConfigType = {
   inputSchema: JSONSchemaInputType;
 };
 
+export type HttpToolConfigType = {
+  name: string;
+  description: string;
+  inputSchema: JSONSchemaInputType;
+  path?: string;
+  method?: string;
+};
+
 /* app chat config type */
 export type AppChatConfigType = {
   welcomeText?: string;

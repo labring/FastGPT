@@ -19,7 +19,12 @@ import { ChatNodeUsageType } from '../../../support/wallet/bill/type';
 import { RuntimeNodeItemType } from '../runtime/type';
 import { RuntimeEdgeItemType, StoreEdgeItemType } from './edge';
 import { NextApiResponse } from 'next';
-import type { AppDetailType, AppSchema, McpToolConfigType } from '../../app/type';
+import type {
+  AppDetailType,
+  AppSchema,
+  McpToolConfigType,
+  HttpToolConfigType
+} from '../../app/type';
 import type { ParentIdType } from 'common/parentFolder/type';
 import { AppTypeEnum } from '../../app/constants';
 import type { WorkflowInteractiveResponseType } from '../template/system/interactive/type';
@@ -46,6 +51,13 @@ export type NodeToolConfigType = {
       description: string;
     }[];
   };
+  httpToolSet?: {
+    toolId: string;
+    url: string;
+    headerSecret?: StoreSecretValueType;
+    toolList: HttpToolConfigType[];
+  };
+  apiSchemaStr?: string;
 };
 
 export type FlowNodeCommonType = {

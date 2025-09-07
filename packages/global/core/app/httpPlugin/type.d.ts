@@ -1,3 +1,5 @@
+import type { HttpToolConfigType } from '../type';
+
 export type PathDataType = {
   name: string;
   description: string;
@@ -11,4 +13,9 @@ export type PathDataType = {
 export type OpenApiJsonSchema = {
   pathData: PathDataType[];
   serverPath: string;
+};
+
+export type HttpToolDataType = HttpToolConfigType & {
+  url: string;
+  headerSecret?: StoreSecretValueType;
 };
