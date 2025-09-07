@@ -208,6 +208,7 @@
   "tool_params.params_name_placeholder": "name/age/sql",
   "tool_params.tool_params_result": "参数配置结果",
   "tool_raw_response_description": "工具的原始响应",
+  "tool_response_description": "作为工具响应",
   "trigger_after_application_completion": "将在应用完全结束后触发",
   "unFoldAll": "全部展开",
   "update_link_error": "更新链接异常",
