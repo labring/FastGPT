@@ -33,6 +33,9 @@ import type {
   McpGetChildrenmQuery,
   McpGetChildrenmResponse
 } from '@/pages/api/core/app/mcpTools/getChildren';
+import type { RunHTTPToolBody } from '@/pages/api/support/http/client/runTool';
+import type { getHTTPToolsBody } from '@/pages/api/support/http/client/getTools';
+import { type HttpToolConfigType } from '@fastgpt/global/core/app/type';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = async (data?: {
@@ -127,3 +130,10 @@ export const getApiSchemaByUrl = (url: string) =>
       timeout: 30000
     }
   );
+
+/* ============ http tools ============== */
+export const getHTTPTools = (data: getHTTPToolsBody) =>
+  POST<HttpToolConfigType[]>('/support/http/client/getTools', data);
+
+export const postRunHTTPTool = (data: RunHTTPToolBody) =>
+  POST('/support/http/client/runTool', data, { timeout: 300000 });
