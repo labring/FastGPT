@@ -5,55 +5,37 @@ import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { chats2GPTMessages, getSystemPrompt_ChatItemType } from '@fastgpt/global/core/chat/adapt';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import type { DispatchSubAppProps, DispatchSubAppResponse } from '../../type';
 
 type ModelAgentConfig = {
   model: string;
   temperature?: number;
   top_p?: number;
   stream?: boolean;
-};
-
-type transferModelAgentProps = {
   systemPrompt?: string;
   task?: string;
-} & ModelAgentConfig &
-  Pick<ResponseEvents, 'onStreaming' | 'onReasoning'>;
+};
 
-export async function transferModelAgent({
-  systemPrompt = '',
-  task = '',
+type dispatchModelAgentProps = DispatchSubAppProps<ModelAgentConfig>;
 
-  onStreaming,
-  onReasoning,
+export async function dispatchModelAgent({
+  messages,
+  onStream,
+  params
+}: dispatchModelAgentProps): Promise<DispatchSubAppResponse> {
+  const { model, temperature, top_p, stream, systemPrompt, task } = params;
 
-  model,
-  temperature = 0.7,
-  top_p,
-  stream = true
-}: transferModelAgentProps): Promise<{
-  content: string;
-  inputTokens: number;
-  outputTokens: number;
-}> {
   try {
-    const messages: ChatItemType[] = [
-      ...getSystemPrompt_ChatItemType(systemPrompt),
+    const context: ChatCompletionMessageParam[] = [
       {
-        obj: ChatRoleEnum.Human,
-        value: [
-          {
-            type: ChatItemValueTypeEnum.text,
-            text: {
-              content: task
-            }
-          }
-        ]
+        role: 'system',
+        content: systemPrompt ?? ''
+      },
+      {
+        role: 'user',
+        content: task ?? ''
       }
     ];
-    const adaptedMessages: ChatCompletionMessageParam[] = chats2GPTMessages({
-      messages,
-      reserveId: false
-    });
 
     const {
       answerText,
@@ -62,26 +44,23 @@ export async function transferModelAgent({
       body: {
         model,
         temperature,
-        messages: adaptedMessages,
+        messages: context,
         top_p,
         stream
       },
-      onStreaming,
-      onReasoning
+      onStreaming: onStream
     });
 
     return {
-      content: answerText,
-      inputTokens,
-      outputTokens
+      response: answerText,
+      usages: undefined
     };
   } catch (error) {
     const err = getErrText(error);
     addLog.warn('call model_agent failed');
     return {
-      content: err,
-      inputTokens: 0,
-      outputTokens: 0
+      response: err,
+      usages: undefined
     };
   }
 }
