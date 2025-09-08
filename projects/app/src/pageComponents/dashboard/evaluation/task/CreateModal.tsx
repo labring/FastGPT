@@ -22,6 +22,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import ManageDimension, { type Dimension } from './ManageDimension';
+import AppSelect from '@/components/Select/AppSelect';
 
 // 表单数据类型定义
 export interface TaskFormData {
@@ -156,6 +157,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                 })}
                 placeholder="appointment/sql"
                 bg="myGray.50"
+                h={10}
                 isInvalid={!!errors.name}
                 flex={1}
               />
@@ -169,17 +171,16 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                   <QuestionTip label={t('dashboard_evaluation:evaluation_app_support_tip')} />
                 </HStack>
               </FormLabel>
-              <MySelect
-                placeholder={t('dashboard_evaluation:evaluation_app_select_placeholder')}
-                value={watchedValues.appId}
-                list={mockApps}
-                onChange={(val) => {
-                  setValue('appId', val);
-                  setValue('appVersion', ''); // 重置版本选择
-                }}
-                isInvalid={!!errors.appId}
-                flex={1}
-              />
+              <Box flex={1}>
+                <AppSelect
+                  value={watchedValues.appId}
+                  placeholder={t('dashboard_evaluation:evaluation_app_select_placeholder')}
+                  onSelect={(id) => {
+                    setValue('appId', id);
+                    setValue('appVersion', ''); // 重置版本选择
+                  }}
+                />
+              </Box>
             </Flex>
 
             {/* 评测应用版本 */}
@@ -187,15 +188,17 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
               <FormLabel minW="120px" mb={0}>
                 {t('dashboard_evaluation:evaluation_app_version_select')}
               </FormLabel>
-              <MySelect
-                placeholder={t('dashboard_evaluation:evaluation_app_version_select_placeholder')}
-                value={watchedValues.appVersion}
-                list={appVersionOptions}
-                onChange={(val) => setValue('appVersion', val)}
-                isDisabled={!watchedValues.appId}
-                isInvalid={!!errors.appVersion}
-                flex={1}
-              />
+              <Box flex={1}>
+                <MySelect
+                  h={10}
+                  placeholder={t('dashboard_evaluation:evaluation_app_version_select_placeholder')}
+                  value={watchedValues.appVersion}
+                  list={appVersionOptions}
+                  onChange={(val) => setValue('appVersion', val)}
+                  isDisabled={!watchedValues.appId}
+                  isInvalid={!!errors.appVersion}
+                />
+              </Box>
             </Flex>
 
             {/* 评测数据集 */}
@@ -204,14 +207,16 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                 {t('dashboard_evaluation:evaluation_dataset_select')}
               </FormLabel>
               <HStack flex={1}>
-                <MySelect
-                  placeholder={t('dashboard_evaluation:evaluation_dataset_select_placeholder')}
-                  value={watchedValues.datasetId}
-                  list={mockDatasets}
-                  onChange={(val) => setValue('datasetId', val)}
-                  isInvalid={!!errors.datasetId}
-                  flex={1}
-                />
+                <Box flex={1}>
+                  <MySelect
+                    h={10}
+                    placeholder={t('dashboard_evaluation:evaluation_dataset_select_placeholder')}
+                    value={watchedValues.datasetId}
+                    list={mockDatasets}
+                    onChange={(val) => setValue('datasetId', val)}
+                    isInvalid={!!errors.datasetId}
+                  />
+                </Box>
                 <Button
                   variant="whiteBase"
                   size="md"
@@ -235,7 +240,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
               <Button
                 variant="whiteBase"
                 size="md"
-                leftIcon={<MyIcon name="modal/edit" w="14px" />}
+                leftIcon={<MyIcon name="edit" w="14px" />}
                 onClick={handleOpenManageDimension}
               >
                 {t('dashboard_evaluation:manage_dimension')}
@@ -283,7 +288,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                           bg="myGray.50"
                         >
                           <HStack spacing={3}>
-                            <Text fontSize="sm" fontWeight="medium">
+                            <Text fontSize="sm" fontWeight="medium" color={'myGray.900'}>
                               {dimension.name}
                             </Text>
                             <Text

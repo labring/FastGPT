@@ -483,7 +483,11 @@ const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
                               icon: 'edit',
                               label: t('dashboard_evaluation:rename'),
                               onClick: () => handleRenameTask(task)
-                            },
+                            }
+                          ]
+                        },
+                        {
+                          children: [
                             {
                               type: 'danger',
                               icon: 'delete',

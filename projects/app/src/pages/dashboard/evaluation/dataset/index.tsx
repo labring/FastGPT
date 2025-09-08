@@ -14,14 +14,9 @@ import {
   Input,
   InputGroup,
   InputLeftElement,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalCloseButton,
   useDisclosure,
-  Text
+  Text,
+  Button
 } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
@@ -38,6 +33,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import IntelligentGeneration from '@/pageComponents/dashboard/evaluation/dataset/IntelligentGeneration';
+import ErrorModal from './errorModal';
 
 // 数据集状态类型
 type DatasetStatus =
@@ -167,7 +163,7 @@ const getMockEvaluationDatasets = async (data: any) => {
 
 const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
   const [searchValue, setSearchValue] = useState('');
-  const [selectedError, setSelectedError] = useState<string>('');
+  const [selectedDataset, setSelectedDataset] = useState<EvaluationDataset | null>(null);
   const router = useRouter();
   const { t } = useTranslation();
   const {
@@ -272,7 +268,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
             isErrorStatus
               ? (e) => {
                   e.stopPropagation();
-                  setSelectedError(dataset.errorMessage || 'unknown error');
+                  setSelectedDataset(dataset);
                   onOpenErrorModal();
                 }
               : undefined
@@ -322,6 +318,20 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
     [onCloseIntelligentModal]
   );
 
+  const handleRetryDataset = (id?: string) => {
+    console.log('retryDataset:', id);
+    onCloseErrorModal();
+    // 这里应该调用API重试数据集
+    fetchData();
+  };
+
+  const handleDeleteErrorDataset = (id: string) => {
+    console.log('deleteErrorDataset:', id);
+    onCloseErrorModal();
+    // 这里应该调用API删除数据集
+    fetchData();
+  };
+
   return (
     <>
       <Flex alignItems={'center'}>
@@ -342,22 +352,10 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
           <MyMenu
             offset={[0, 5]}
             Button={
-              <Flex
-                px={3.5}
-                py={2}
-                borderRadius={'sm'}
-                cursor={'pointer'}
-                bg={'primary.500'}
-                overflow={'hidden'}
-                color={'white'}
-                _hover={{
-                  bg: 'primary.600'
-                }}
-              >
-                <Box h={'20px'} fontSize={'sm'} fontWeight={'500'}>
-                  {t('dashboard_evaluation:create_new_dataset')}
-                </Box>
-              </Flex>
+              <Button leftIcon={<MyIcon name={'common/addLight'} w={4} />}>
+                {' '}
+                {t('dashboard_evaluation:create_new_dataset')}
+              </Button>
             }
             menuList={[
               {
@@ -365,7 +363,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
                   {
                     label: (
                       <Flex>
-                        <MyIcon name={'core/app/simpleMode/ai'} w={'20px'} mr={2} />
+                        <MyIcon name={'common/aiOutline'} w={'20px'} mr={2} />
                         {t('dashboard_evaluation:smart_generation')}
                       </Flex>
                     ),
@@ -442,7 +440,11 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
                               icon: 'edit',
                               label: t('dashboard_evaluation:rename'),
                               onClick: () => handleRenameDataset(dataset)
-                            },
+                            }
+                          ]
+                        },
+                        {
+                          children: [
                             {
                               type: 'danger',
                               icon: 'delete',
@@ -475,16 +477,21 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
       </Flex>
 
       {/* 异常详情弹窗 */}
-      <Modal isOpen={isErrorModalOpen} onClose={onCloseErrorModal}>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>{t('dashboard_evaluation:error_details')}</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pb={6}>
-            <Text color="red.600">{selectedError}</Text>
-          </ModalBody>
-        </ModalContent>
-      </Modal>
+      {selectedDataset && (
+        <ErrorModal
+          isOpen={isErrorModalOpen}
+          onClose={onCloseErrorModal}
+          errorType="all"
+          errorInfo={{
+            id: selectedDataset.id.toString(),
+            title: selectedDataset.name,
+            status: selectedDataset.status === 'parseError' ? 400 : 500,
+            errorMessage: selectedDataset.errorMessage || t('dashboard_evaluation:error_details')
+          }}
+          onRetry={handleRetryDataset}
+          onDelete={handleDeleteErrorDataset}
+        />
+      )}
 
       <ConfirmModal />
       <EditTitleModal />
