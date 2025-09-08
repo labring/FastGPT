@@ -27,7 +27,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import json5 from 'json5';
 
 export type ResponseEvents = {
-  onStreaming?: (e: { text: string; fullText?: string }) => void;
+  onStreaming?: (e: { text: string }) => void;
   onReasoning?: (e: { text: string }) => void;
   onToolCall?: (e: { call: ChatCompletionMessageToolCall }) => void;
   onToolParam?: (e: { tool: ChatCompletionMessageToolCall; params: string }) => void;
@@ -192,7 +192,6 @@ export const createStreamResponse = async ({
   if (tools?.length) {
     if (toolCallMode === 'toolChoice') {
       let callingTool: ChatCompletionMessageToolCall['function'] | null = null;
-      let fullText = '';
       const toolCalls: ChatCompletionMessageToolCall[] = [];
 
       for await (const part of response) {
@@ -212,8 +211,7 @@ export const createStreamResponse = async ({
           onReasoning?.({ text: reasoningContent });
         }
         if (responseContent) {
-          fullText += responseContent;
-          onStreaming?.({ text: responseContent, fullText });
+          onStreaming?.({ text: responseContent });
         }
 
         const responseChoice = part.choices?.[0]?.delta;
@@ -346,7 +344,6 @@ export const createStreamResponse = async ({
     }
   } else {
     // Not use tool
-    let fullText = '';
     for await (const part of response) {
       if (isAborted?.()) {
         response.controller?.abort();
@@ -360,13 +357,11 @@ export const createStreamResponse = async ({
         retainDatasetCite
       });
 
-      fullText += responseContent;
-
       if (reasoningContent) {
         onReasoning?.({ text: reasoningContent });
       }
       if (responseContent) {
-        onStreaming?.({ text: responseContent, fullText });
+        onStreaming?.({ text: responseContent });
       }
     }
 
