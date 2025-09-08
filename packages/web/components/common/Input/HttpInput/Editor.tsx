@@ -26,7 +26,6 @@ import { textToEditorState } from '../../Textarea/PromptEditor/utils';
 import { SingleLinePlugin } from '../../Textarea/PromptEditor/plugins/SingleLinePlugin';
 import OnBlurPlugin from '../../Textarea/PromptEditor/plugins/OnBlurPlugin';
 import VariablePlugin from '../../Textarea/PromptEditor/plugins/VariablePlugin';
-import VariablePickerPlugin from '../../Textarea/PromptEditor/plugins/VariablePickerPlugin';
 import FocusPlugin from '../../Textarea/PromptEditor/plugins/FocusPlugin';
 import VariableLabelPlugin from '../../Textarea/PromptEditor/plugins/VariableLabelPlugin';
 import { VariableLabelNode } from '../../Textarea/PromptEditor/plugins/VariableLabelPlugin/node';

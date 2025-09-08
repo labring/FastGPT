@@ -17,7 +17,7 @@ import type {
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
 import type { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/plugin/getSystemPluginTemplates';
-import type { PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
+import type { SystemToolGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { defaultGroup } from '@fastgpt/web/core/workflow/constants';
 import type { createMCPToolsBody } from '@/pages/api/core/app/mcpTools/create';
@@ -82,11 +82,8 @@ export const getTeamPlugTemplates = async (data?: {
 export const getSystemPlugTemplates = (data: GetSystemPluginTemplatesBody) =>
   POST<NodeTemplateListItemType[]>('/core/app/plugin/getSystemPluginTemplates', data);
 
-export const getPluginGroups = () => {
-  return useSystemStore.getState()?.feConfigs?.isPlus
-    ? GET<PluginGroupSchemaType[]>('/proApi/core/app/plugin/getPluginGroups')
-    : Promise.resolve([defaultGroup]);
-};
+export const getPluginGroups = () =>
+  GET<SystemToolGroupSchemaType[]>('/core/app/plugin/getToolGroups');
 
 export const getSystemPluginPaths = (data: GetPathProps) => {
   if (!data.sourceId) return Promise.resolve<ParentTreePathItemType[]>([]);

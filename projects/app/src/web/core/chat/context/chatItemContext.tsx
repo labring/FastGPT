@@ -142,29 +142,38 @@ const ChatItemContextProvider = ({
 
   const resetVariables = useCallback(
     (props?: { variables?: Record<string, any>; variableList?: VariableItemType[] }) => {
-      const { variables, variableList = [] } = props || {};
+      const { variables = {}, variableList = [] } = props || {};
 
-      if (variables) {
-        variableList.forEach((item) => {
-          variablesForm.setValue(`variables.${item.key}`, variables[item.key]);
-        });
-      } else {
-        variableList.forEach((item) => {
-          variablesForm.setValue(`variables.${item.key}`, item.defaultValue);
-        });
-      }
+      variableList.forEach((item) => {
+        if (variables[item.key] === undefined) {
+          variables[item.key] = item.defaultValue;
+        }
+      });
+
+      const values = variablesForm.getValues();
+      variablesForm.reset({
+        ...values,
+        variables
+      });
     },
     [variablesForm]
   );
 
   const clearChatRecords = useCallback(() => {
-    const data = variablesForm.getValues();
-    for (const key in data.variables) {
-      variablesForm.setValue(`variables.${key}`, '');
-    }
+    const variables = chatBoxData?.app?.chatConfig?.variables || [];
+    const values = variablesForm.getValues();
+
+    variables.forEach((item) => {
+      if (item.defaultValue !== undefined) {
+        values.variables[item.key] = item.defaultValue;
+      } else {
+        values.variables[item.key] = '';
+      }
+    });
+    variablesForm.reset(values);
 
     ChatBoxRef.current?.restartChat?.();
-  }, [variablesForm]);
+  }, [chatBoxData?.app?.chatConfig?.variables, variablesForm]);
 
   const [datasetCiteData, setCiteModalData] = useState<QuoteDataType>();
 

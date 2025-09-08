@@ -72,8 +72,8 @@ importers:
         specifier: ^1.2.8
         version: 1.2.8
       '@fastgpt-sdk/plugin':
-        specifier: ^0.1.12
-        version: 0.1.12(@types/node@20.14.0)
+        specifier: ^0.1.16
+        version: 0.1.16(@types/node@20.14.0)
       axios:
         specifier: ^1.8.2
         version: 1.8.4
@@ -308,15 +308,6 @@ importers:
         specifier: ^5.0.4
         version: 5.0.5
 
-  packages/templates:
-    devDependencies:
-      '@fastgpt/global':
-        specifier: workspace:*
-        version: link:../global
-      '@fastgpt/service':
-        specifier: workspace:*
-        version: link:../service
-
   packages/web:
     dependencies:
       '@chakra-ui/anatomy':
@@ -349,9 +340,21 @@ importers:
       '@fingerprintjs/fingerprintjs':
         specifier: ^4.3.0
         version: 4.6.1
+      '@lexical/code':
+        specifier: 0.12.6
+        version: 0.12.6(lexical@0.12.6)
+      '@lexical/list':
+        specifier: 0.12.6
+        version: 0.12.6(lexical@0.12.6)
+      '@lexical/markdown':
+        specifier: 0.12.6
+        version: 0.12.6(@lexical/clipboard@0.12.6(lexical@0.12.6))(@lexical/selection@0.14.5)(lexical@0.12.6)
       '@lexical/react':
         specifier: 0.12.6
         version: 0.12.6(lexical@0.12.6)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(yjs@13.6.24)
+      '@lexical/rich-text':
+        specifier: 0.12.6
+        version: 0.12.6(@lexical/clipboard@0.12.6(lexical@0.12.6))(@lexical/selection@0.14.5)(@lexical/utils@0.12.6(lexical@0.12.6))(lexical@0.12.6)
       '@lexical/selection':
         specifier: ^0.14.5
         version: 0.14.5
@@ -479,9 +482,6 @@ importers:
       '@fastgpt/service':
         specifier: workspace:*
         version: link:../../packages/service
-      '@fastgpt/templates':
-        specifier: workspace:*
-        version: link:../../packages/templates
       '@fastgpt/web':
         specifier: workspace:*
         version: link:../../packages/web
@@ -1976,8 +1976,8 @@ packages:
     resolution: {integrity: sha512-d9zaMRSTIKDLhctzH12MtXvJKSSUhaHcjV+2Z+GK+EEY7XKpP5yR4x+N3TAcHTcu963nIr+TMcCb4DBCYX1z6Q==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
-  '@fastgpt-sdk/plugin@0.1.12':
-    resolution: {integrity: sha512-jcgS0FWNxtfdwq+M7VEK4NggkIIXDkSC7jukYjRkEPS1klupkS89O3D0ekAZHq7uzHUbEN18x0xui+nV3nh0Tw==}
+  '@fastgpt-sdk/plugin@0.1.16':
+    resolution: {integrity: sha512-HGoq0jy3YrY8RAJvn8b0u13uqOjjNe5OE4w2dySQc4dgUjHpsmMl9hfGzAhi9bpuUrtptpGohtf0ealNeAAfDQ==}
 
   '@fastify/accept-negotiator@1.1.0':
     resolution: {integrity: sha512-OIHZrb2ImZ7XG85HXOONLcJWGosv7sIvM2ifAPQVhg9Lv7qdmMBNVaai4QTdyuaqbKM5eO6sLSQOYI7wEQeCJQ==}
@@ -11222,7 +11222,7 @@ snapshots:
 
   '@eslint/js@8.57.1': {}
 
-  '@fastgpt-sdk/plugin@0.1.12(@types/node@20.14.0)':
+  '@fastgpt-sdk/plugin@0.1.16(@types/node@20.14.0)':
     dependencies:
       '@fortaine/fetch-event-source': 3.0.6
       '@ts-rest/core': 3.52.1(@types/node@20.14.0)(zod@3.25.51)
@@ -11604,6 +11604,19 @@ snapshots:
       - '@lexical/clipboard'
       - '@lexical/selection'
 
+  '@lexical/markdown@0.12.6(@lexical/clipboard@0.12.6(lexical@0.12.6))(@lexical/selection@0.14.5)(lexical@0.12.6)':
+    dependencies:
+      '@lexical/code': 0.12.6(lexical@0.12.6)
+      '@lexical/link': 0.12.6(lexical@0.12.6)
+      '@lexical/list': 0.12.6(lexical@0.12.6)
+      '@lexical/rich-text': 0.12.6(@lexical/clipboard@0.12.6(lexical@0.12.6))(@lexical/selection@0.14.5)(@lexical/utils@0.12.6(lexical@0.12.6))(lexical@0.12.6)
+      '@lexical/text': 0.12.6(lexical@0.12.6)
+      '@lexical/utils': 0.12.6(lexical@0.12.6)
+      lexical: 0.12.6
+    transitivePeerDependencies:
+      - '@lexical/clipboard'
+      - '@lexical/selection'
+
   '@lexical/offset@0.12.6(lexical@0.12.6)':
     dependencies:
       lexical: 0.12.6
@@ -11649,6 +11662,13 @@ snapshots:
     dependencies:
       '@lexical/clipboard': 0.12.6(lexical@0.12.6)
       '@lexical/selection': 0.12.6(lexical@0.12.6)
+      '@lexical/utils': 0.12.6(lexical@0.12.6)
+      lexical: 0.12.6
+
+  '@lexical/rich-text@0.12.6(@lexical/clipboard@0.12.6(lexical@0.12.6))(@lexical/selection@0.14.5)(@lexical/utils@0.12.6(lexical@0.12.6))(lexical@0.12.6)':
+    dependencies:
+      '@lexical/clipboard': 0.12.6(lexical@0.12.6)
+      '@lexical/selection': 0.14.5
       '@lexical/utils': 0.12.6(lexical@0.12.6)
       lexical: 0.12.6
 
@@ -15126,7 +15146,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.0(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.31.0)(eslint@8.56.0))(eslint@8.56.0):
+  eslint-module-utils@2.12.0(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0)(eslint@8.56.0):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
@@ -15137,7 +15157,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.0(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.31.0)(eslint@8.57.1))(eslint@8.57.1):
+  eslint-module-utils@2.12.0(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0)(eslint@8.57.1):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
@@ -15159,7 +15179,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 8.56.0
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.0(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.31.0)(eslint@8.56.0))(eslint@8.56.0)
+      eslint-module-utils: 2.12.0(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0)(eslint@8.56.0)
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3
@@ -15188,7 +15208,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 8.57.1
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.0(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.31.0)(eslint@8.57.1))(eslint@8.57.1)
+      eslint-module-utils: 2.12.0(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0)(eslint@8.57.1)
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3
