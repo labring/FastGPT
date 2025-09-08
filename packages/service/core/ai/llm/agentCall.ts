@@ -32,7 +32,10 @@ type RunAgentCallProps = {
     name: string;
     avatar: string;
   };
-  handleToolResponse: (e: ChatCompletionMessageToolCall) => Promise<{
+  handleToolResponse: (e: {
+    call: ChatCompletionMessageToolCall;
+    context: ChatCompletionMessageParam[];
+  }) => Promise<{
     response: string;
     usages: ChatNodeUsageType[];
     isEnd: boolean;
@@ -124,7 +127,10 @@ export const runAgentCall = async ({
     let isEndSign = false;
     for await (const tool of toolCalls) {
       // TODO: 加入交互节点处理
-      const { response, usages, isEnd } = await handleToolResponse(tool);
+      const { response, usages, isEnd } = await handleToolResponse({
+        call: tool,
+        context: requestMessages
+      });
 
       if (isEnd) {
         isEndSign = true;
