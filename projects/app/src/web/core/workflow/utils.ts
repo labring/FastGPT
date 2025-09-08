@@ -465,7 +465,7 @@ export const checkWorkflowNodeAndConnection = ({
         return [data.nodeId];
       }
     }
-    if (data.flowNodeType === FlowNodeTypeEnum.agent) {
+    if (data.flowNodeType === FlowNodeTypeEnum.toolCall) {
       const toolConnections = edges.filter(
         (edge) =>
           edge.source === data.nodeId && edge.sourceHandle === NodeOutputKeyEnum.selectedTools
@@ -531,7 +531,7 @@ export const checkWorkflowNodeAndConnection = ({
     const edgeFilted = edges.filter(
       (edge) =>
         !(
-          data.flowNodeType === FlowNodeTypeEnum.agent &&
+          data.flowNodeType === FlowNodeTypeEnum.toolCall &&
           edge.sourceHandle === NodeOutputKeyEnum.selectedTools
         )
     );

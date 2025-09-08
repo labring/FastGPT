@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { appWorkflow2Form, getDefaultAppForm } from '@fastgpt/global/core/app/utils';
+import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
+import { appWorkflow2AgentForm } from './utils';
 
 import Header from './Header';
 import { useContextSelector } from 'use-context-selector';
@@ -7,17 +8,16 @@ import { AppContext, TabEnum } from '../context';
 import dynamic from 'next/dynamic';
 import { Box, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { type SimpleAppSnapshotType, useSimpleAppSnapshots } from './useSnapshots';
+import { useSimpleAppSnapshots } from './useSnapshots';
 import { useDebounceEffect, useMount } from 'ahooks';
 import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
-import { getAppConfigByDiff } from '@/web/core/app/diff';
 import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 
 const Edit = dynamic(() => import('./Edit'));
 const Logs = dynamic(() => import('../Logs/index'));
 const PublishChannel = dynamic(() => import('../Publish'));
 
-const SimpleEdit = () => {
+const AgentEdit = () => {
   const { t } = useTranslation();
 
   const { currentTab, appDetail } = useContextSelector(AppContext, (v) => v);
@@ -29,18 +29,8 @@ const SimpleEdit = () => {
 
   // Init app form
   useMount(() => {
-    if (appDetail.version !== 'v2') {
-      return setAppForm(
-        appWorkflow2Form({
-          nodes: v1Workflow2V2((appDetail.modules || []) as any)?.nodes,
-          chatConfig: appDetail.chatConfig
-        })
-      );
-    }
-
-    // 初始化snapshot
     if (past.length === 0) {
-      const appForm = appWorkflow2Form({
+      const appForm = appWorkflow2AgentForm({
         nodes: appDetail.modules,
         chatConfig: {
           ...appDetail.chatConfig,
@@ -94,4 +84,4 @@ const SimpleEdit = () => {
   );
 };
 
-export default React.memo(SimpleEdit);
+export default React.memo(AgentEdit);

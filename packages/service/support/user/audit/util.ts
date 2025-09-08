@@ -12,6 +12,7 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 
 export function getI18nAppType(type: AppTypeEnum): string {
   if (type === AppTypeEnum.folder) return i18nT('account_team:type.Folder');
+  if (type === AppTypeEnum.agent) return 'Agent';
   if (type === AppTypeEnum.simple) return i18nT('account_team:type.Simple bot');
   if (type === AppTypeEnum.workflow) return i18nT('account_team:type.Workflow bot');
   if (type === AppTypeEnum.plugin) return i18nT('account_team:type.Plugin');

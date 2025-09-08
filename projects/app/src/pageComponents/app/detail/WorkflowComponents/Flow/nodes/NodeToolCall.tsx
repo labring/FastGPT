@@ -15,7 +15,7 @@ import CatchError from './render/RenderOutput/CatchError';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
 
-const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeToolCall = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, catchError } = data;
   const splitOutput = useContextSelector(WorkflowUtilsContext, (ctx) => ctx.splitOutput);
@@ -48,4 +48,4 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     </NodeCard>
   );
 };
-export default React.memo(NodeAgent);
+export default React.memo(NodeToolCall);
