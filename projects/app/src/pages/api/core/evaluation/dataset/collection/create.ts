@@ -6,6 +6,10 @@ import type { createEvalDatasetCollectionBody } from '@fastgpt/global/core/evalu
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { authEvaluationDatasetCreate } from '@fastgpt/service/core/evaluation/common';
+import {
+  checkTeamEvalDatasetLimit,
+  checkTeamAIPoints
+} from '@fastgpt/service/support/permission/teamLimit';
 
 export type EvalDatasetCollectionCreateQuery = {};
 export type EvalDatasetCollectionCreateBody = createEvalDatasetCollectionBody;
@@ -48,6 +52,12 @@ async function handler(
   if (existingDataset) {
     return Promise.reject('A dataset with this name already exists');
   }
+
+  // Check evaluation dataset limit
+  await checkTeamEvalDatasetLimit(teamId);
+
+  // Check AI points availability
+  await checkTeamAIPoints(teamId);
 
   const datasetId = await mongoSessionRun(async (session) => {
     const [{ _id }] = await MongoEvalDatasetCollection.create(

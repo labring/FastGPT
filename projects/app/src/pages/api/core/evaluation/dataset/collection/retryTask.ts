@@ -8,6 +8,7 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { authEvaluationDatasetWrite } from '@fastgpt/service/core/evaluation/common';
+import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 
 async function handler(
   req: ApiRequestProps<retryTaskBody, {}>
@@ -19,6 +20,9 @@ async function handler(
     authApiKey: true,
     authToken: true
   });
+
+  // Check AI points availability
+  await checkTeamAIPoints(teamId);
 
   const collection = await MongoEvalDatasetCollection.findOne({
     _id: new Types.ObjectId(collectionId),

@@ -74,10 +74,10 @@ export type EvaluationResult = {
 };
 
 export type Usage = {
-  model_type: ModelTypeEnum;
-  prompt_tokens?: number;
-  completion_tokens?: number;
-  total_tokens?: number;
+  modelType: ModelTypeEnum;
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
 };
 
 export type EvaluationResponse = {

@@ -13,6 +13,8 @@ import {
   getEvalDatasetDataSynthesizeWorker
 } from './dataSynthesizeMq';
 import { createSynthesizerInstance } from '../synthesizer';
+import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
+import { createEvalDatasetSynthesisUsage } from '../../../support/wallet/usage/controller';
 
 async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
   const { dataId, intelligentGenerationModel, evalDatasetCollectionId } = job.data;
@@ -36,6 +38,9 @@ async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
       throw new Error(`Eval dataset not found: ${evalDatasetCollectionId}`);
     }
 
+    // Check AI points limit before synthesis
+    await checkTeamAIPoints(evalDatasetCollection.teamId);
+
     const llmConfig = {
       name: intelligentGenerationModel
     };
@@ -46,6 +51,18 @@ async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
 
     const synthesizer = createSynthesizerInstance('q_a_synthesizer', llmConfig);
     const synthesisResult = await synthesizer.synthesize(synthesisCase);
+
+    // Save usage
+    let totalPoints = 0;
+    if (synthesisResult.usages?.length) {
+      const { totalPoints: calculatedPoints } = await createEvalDatasetSynthesisUsage({
+        teamId: evalDatasetCollection.teamId,
+        tmbId: evalDatasetCollection.tmbId,
+        model: intelligentGenerationModel,
+        usages: synthesisResult.usages
+      });
+      totalPoints = calculatedPoints;
+    }
 
     const evalData: Partial<EvalDatasetDataSchemaType> = {
       teamId: evalDatasetCollection.teamId,
@@ -75,7 +92,8 @@ async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
     addLog.info('Completed data synthesis', {
       dataId,
       evalDatasetCollectionId,
-      insertedRecordId: insertedRecord._id
+      insertedRecordId: insertedRecord._id,
+      totalPoints
     });
 
     // TODO: Add audit log

@@ -5,16 +5,20 @@ import { createDitingClient } from '@fastgpt/service/core/evaluation/evaluator/d
 import type { DebugMetricBody } from '@fastgpt/global/core/evaluation/metric/api';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 
 async function handler(req: ApiRequestProps<DebugMetricBody, {}>, res: ApiResponseType<any>) {
   const { evalCase, llmConfig, metricConfig } = req.body;
 
-  await authUserPer({
+  const { teamId } = await authUserPer({
     req,
     authToken: true,
     authApiKey: true,
     per: ReadPermissionVal
   });
+
+  // Check AI points availability
+  await checkTeamAIPoints(teamId);
 
   if (!evalCase?.userInput) {
     return Promise.reject('UserInput is required');
