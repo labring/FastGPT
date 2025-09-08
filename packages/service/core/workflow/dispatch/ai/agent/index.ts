@@ -35,12 +35,7 @@ import {
   initToolNodes,
   parseToolArgs
 } from '../utils';
-import {
-  getFileReadTool,
-  getTopAgentConstantPrompt,
-  StopAgentTool,
-  SubAppIds
-} from './sub/constants';
+import { getFileReadTool, getTopAgentConstantPrompt, SubAppIds } from './sub/constants';
 import { runWorkflow } from '../..';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import type { ToolNodeItemType } from './type';
@@ -72,7 +67,6 @@ import { dispatchRunAppNode } from '../../child/runApp';
 import { dispatchRunPlugin } from '../../plugin/run';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { dispatchTool } from './sub/tool';
-import { dispatchStopToolCall } from '../agent/sub/stop';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -273,11 +267,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             isEnd
           } = await (async () => {
             if (toolId === SubAppIds.stop) {
-              const { response, usages } = await dispatchStopToolCall();
-
               return {
-                response,
-                usages,
+                response: '',
+                usages: [],
                 isEnd: true
               };
             } else if (toolId === SubAppIds.plan) {

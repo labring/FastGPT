@@ -17,14 +17,6 @@ export const getTopAgentConstantPrompt = () => {
 - 遇到错误时要有容错和重试机制`;
 };
 
-export const StopAgentTool: ChatCompletionTool = {
-  type: 'function',
-  function: {
-    name: SubAppIds.stop,
-    description: '如果完成了所有的任务，可调用此工具。'
-  }
-};
-
 /*
   结构：
   [url1,url2,url2]
