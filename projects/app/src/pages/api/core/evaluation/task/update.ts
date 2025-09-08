@@ -5,9 +5,10 @@ import type {
   UpdateEvaluationResponse,
   UpdateEvaluationRequest
 } from '@fastgpt/global/core/evaluation/api';
-import { addLog } from '@fastgpt/service/common/system/log';
 import { validateEvaluationParams } from '@fastgpt/global/core/evaluation/utils';
 import { authEvaluationTaskWrite } from '@fastgpt/service/core/evaluation/common';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(
   req: ApiRequestProps<UpdateEvaluationRequest>
@@ -28,11 +29,13 @@ async function handler(
       return Promise.reject(paramValidation.message);
     }
 
-    const { teamId } = await authEvaluationTaskWrite(evalId, {
+    const { teamId, tmbId, evaluation } = await authEvaluationTaskWrite(evalId, {
       req,
       authApiKey: true,
       authToken: true
     });
+
+    const taskName = name?.trim() || evaluation.name;
 
     await EvaluationTaskService.updateEvaluation(
       evalId,
@@ -43,17 +46,19 @@ async function handler(
       teamId
     );
 
-    addLog.info('[Evaluation] Evaluation task updated successfully', {
-      evalId: evalId,
-      updates: { name, description }
-    });
+    (async () => {
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.UPDATE_EVALUATION_TASK,
+        params: {
+          taskName
+        }
+      });
+    })();
 
     return { message: 'Evaluation updated successfully' };
   } catch (error) {
-    addLog.error('[Evaluation] Failed to update evaluation task', {
-      evalId: req.query.evalId,
-      error
-    });
     return Promise.reject(error);
   }
 }

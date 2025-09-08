@@ -20,9 +20,13 @@ vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
 
 vi.mock('@fastgpt/service/core/evaluation/common', () => ({
   authEvaluationTaskCreate: vi.fn().mockResolvedValue({
-    teamId: 'mock-team-id',
-    tmbId: 'mock-tmb-id'
+    teamId: new Types.ObjectId().toString(),
+    tmbId: new Types.ObjectId().toString()
   })
+}));
+
+vi.mock('@fastgpt/service/support/user/audit/util', () => ({
+  addAuditLog: vi.fn().mockResolvedValue(undefined)
 }));
 
 vi.mock('@fastgpt/service/core/evaluation/target', () => ({
@@ -61,6 +65,16 @@ describe('Create Evaluation Task API Handler', () => {
   });
 
   test('应该成功创建评估任务', async () => {
+    const mockTeamId = new Types.ObjectId().toString();
+    const mockTmbId = new Types.ObjectId().toString();
+
+    // Update mock to return consistent IDs
+    const { authEvaluationTaskCreate } = await import('@fastgpt/service/core/evaluation/common');
+    (authEvaluationTaskCreate as any).mockResolvedValue({
+      teamId: mockTeamId,
+      tmbId: mockTmbId
+    });
+
     const mockReq = {
       method: 'POST',
       body: {
@@ -105,18 +119,11 @@ describe('Create Evaluation Task API Handler', () => {
         datasetId: mockReq.body.datasetId,
         target: mockReq.body.target,
         evaluators: mockReq.body.evaluators,
-        teamId: 'mock-team-id',
-        tmbId: 'mock-tmb-id'
+        teamId: mockTeamId,
+        tmbId: mockTmbId
       })
     );
     expect(result).toEqual(mockEvaluation);
-    expect(addLog.info).toHaveBeenCalledWith(
-      '[Evaluation] Evaluation task created successfully',
-      expect.objectContaining({
-        evalId: mockEvaluation._id,
-        name: mockEvaluation.name
-      })
-    );
   });
 
   test('应该拒绝空名称', async () => {
