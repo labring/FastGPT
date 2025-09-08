@@ -22,9 +22,9 @@ import { i18nT } from '../../../../../web/i18n/utils';
 import { Input_Template_File_Link } from '../input';
 import { Output_Template_Error_Message } from '../output';
 
-export const AgentNode: FlowNodeTemplateType = {
-  id: FlowNodeTypeEnum.agent,
-  flowNodeType: FlowNodeTypeEnum.agent,
+export const ToolCallNode: FlowNodeTemplateType = {
+  id: FlowNodeTypeEnum.toolCall,
+  flowNodeType: FlowNodeTypeEnum.toolCall,
   templateType: FlowNodeTemplateTypeEnum.ai,
   showSourceHandle: true,
   showTargetHandle: true,
