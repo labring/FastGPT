@@ -14,7 +14,7 @@ import { AppListContext } from './context';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { postCreateApp } from '@/web/core/app/api';
 import { useRouter } from 'next/router';
-import { form2AppWorkflow } from '@/web/core/app/utils';
+import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
 import ImportAppConfigEditor from '@/pageComponents/app/ImportAppConfigEditor';
 import { postFetchWorkflow } from '@/web/support/marketing/api';
 import {
