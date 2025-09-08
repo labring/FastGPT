@@ -13,7 +13,7 @@ import json5 from 'json5';
 import type { DispatchFlowResponse } from '../../type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import type { AIChatItemType } from '@fastgpt/global/core/chat/type';
-import { formatToolResponse, initToolCallEdges, initToolNodes } from '../utils';
+import { formatToolResponse, initToolCallEdges, initToolNodes, parseToolArgs } from '../utils';
 import { computedMaxToken } from '../../../../ai/utils';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -367,13 +367,7 @@ export const runToolCall = async (
 
       if (!toolNode) continue;
 
-      const startParams = (() => {
-        try {
-          return json5.parse(tool.function.arguments);
-        } catch (error) {
-          return {};
-        }
-      })();
+      const startParams = parseToolArgs(tool.function.arguments);
 
       initToolNodes(runtimeNodes, [toolNode.nodeId], startParams);
       const toolRunResponse = await runWorkflow({
@@ -382,7 +376,6 @@ export const runToolCall = async (
       });
 
       const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
-
       const toolMsgParams: ChatCompletionToolMessageParam = {
         tool_call_id: tool.id,
         role: ChatCompletionRequestMessageRoleEnum.Tool,
