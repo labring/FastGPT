@@ -868,7 +868,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     if (
       item.flowNodeType !== FlowNodeTypeEnum.userSelect &&
       item.flowNodeType !== FlowNodeTypeEnum.formInput &&
-      item.flowNodeType !== FlowNodeTypeEnum.agent
+      item.flowNodeType !== FlowNodeTypeEnum.toolCall
     ) {
       item.isEntry = false;
     }

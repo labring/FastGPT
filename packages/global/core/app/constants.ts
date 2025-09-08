@@ -14,7 +14,8 @@ export enum AppTypeEnum {
   httpPlugin = 'httpPlugin',
   toolSet = 'toolSet',
   tool = 'tool',
-  hidden = 'hidden'
+  hidden = 'hidden',
+  agent = 'agent'
 }
 
 export const AppFolderTypeList = [AppTypeEnum.folder, AppTypeEnum.httpPlugin];
