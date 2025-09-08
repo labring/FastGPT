@@ -51,8 +51,8 @@ import {
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
-import { transferPlanAgent } from './sub/plan';
-import { transferModelAgent } from './sub/model';
+import { dispatchPlanAgent } from './sub/plan';
+import { dispatchModelAgent } from './sub/model';
 import { PlanAgentTool } from './sub/plan/constants';
 import { ModelAgentTool } from './sub/model/constants';
 import { getSubIdsByAgentSystem, parseAgentSystem } from './utils';
@@ -72,6 +72,7 @@ import { dispatchRunAppNode } from '../../child/runApp';
 import { dispatchRunPlugin } from '../../plugin/run';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { dispatchTool } from './sub/tool';
+import { dispatchStopToolCall } from '../agent/sub/stop';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -272,10 +273,88 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             isEnd
           } = await (async () => {
             if (toolId === SubAppIds.stop) {
+              const { response, usages } = await dispatchStopToolCall();
+
               return {
-                response: '',
-                usages: [],
+                response,
+                usages,
                 isEnd: true
+              };
+            } else if (toolId === SubAppIds.plan) {
+              const { instruction } = parseToolArgs<{ instruction: string }>(
+                call.function.arguments
+              );
+
+              const { response, usages } = await dispatchPlanAgent({
+                messages,
+                params: {
+                  model,
+                  instruction
+                },
+                onStream({ text }) {
+                  //TODO: 需要一个新的 plan sse event
+                  workflowStreamResponse?.({
+                    event: SseResponseEventEnum.toolResponse,
+                    data: {
+                      tool: {
+                        id: call.id,
+                        toolName: '',
+                        toolAvatar: '',
+                        params: '',
+                        response: sliceStrStartEnd(text, 5000, 5000)
+                      }
+                    }
+                  });
+                }
+              });
+
+              const lastPlanCallIndex = messages
+                .slice(0, -1)
+                .findLastIndex(
+                  (c) =>
+                    c.role === 'assistant' &&
+                    c.tool_calls?.some((tc) => tc.function?.name === SubAppIds.plan)
+                );
+              const originalContent =
+                lastPlanCallIndex !== -1 ? (messages[lastPlanCallIndex + 1].content as string) : '';
+
+              // const applyedContent = applyDiff({
+              //   original: originalContent,
+              //   patch: content
+              // });
+
+              return {
+                response,
+                usages,
+                isEnd: false
+              };
+            } else if (toolId === SubAppIds.model) {
+              const { systemPrompt, task } = parseToolArgs<{ systemPrompt: string; task: string }>(
+                call.function.arguments
+              );
+
+              const { response, usages } = await dispatchModelAgent({
+                messages,
+                params: { model, systemPrompt, task },
+                onStream({ text }) {
+                  workflowStreamResponse?.({
+                    event: SseResponseEventEnum.toolResponse,
+                    data: {
+                      tool: {
+                        id: call.id,
+                        toolName: '',
+                        toolAvatar: '',
+                        params: '',
+                        response: sliceStrStartEnd(text, 5000, 5000)
+                      }
+                    }
+                  });
+                }
+              });
+              return {
+                response,
+                usages,
+                isEnd: false
               };
             }
             // User Sub App
@@ -352,98 +431,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               }
             }
           })();
-          // } else if (toolId === SubAppIds.plan) {
-          //   const planModel = planConfig?.model ?? model;
-          //   const { instruction } = parseToolArgs<{ instruction: string }>(call.function.arguments);
-
-          //   const { content, inputTokens, outputTokens } = await transferPlanAgent({
-          //     model: planModel,
-          //     instruction,
-          //     histories: GPTMessages2Chats({
-          //       messages: context.slice(1, -1),
-          //       getToolInfo
-          //     }),
-          //     onStreaming({ text }) {
-          //       //TODO: 需要一个新的 plan sse event
-          //       workflowStreamResponse?.({
-          //         event: SseResponseEventEnum.toolResponse,
-          //         data: {
-          //           tool: {
-          //             id: call.id,
-          //             toolName: '',
-          //             toolAvatar: '',
-          //             params: '',
-          //             response: sliceStrStartEnd(fullText, 5000, 5000)
-          //           }
-          //         }
-          //       });
-          //     }
-          //   });
-
-          //   const lastPlanCallIndex = context
-          //     .slice(0, -1)
-          //     .findLastIndex(
-          //       (c) =>
-          //         c.role === 'assistant' &&
-          //         c.tool_calls?.some((tc) => tc.function?.name === SubAppIds.plan)
-          //     );
-          //   const originalContent =
-          //     lastPlanCallIndex !== -1 ? (context[lastPlanCallIndex + 1].content as string) : '';
-
-          //   const applyedContent = applyDiff({
-          //     original: originalContent,
-          //     patch: content
-          //   });
-
-          //   // workflowStreamResponse?.({
-          //   //   event: SseResponseEventEnum.toolResponse,
-          //   //   data: {
-          //   //     tool: {
-          //   //       id: call.id,
-          //   //       toolName: '',
-          //   //       toolAvatar: '',
-          //   //       params: '',
-          //   //       response: sliceStrStartEnd(applyedContent, 5000, 5000)
-          //   //     }
-          //   //   }
-          //   // });
-
-          //   return {
-          //     response: content,
-          //     usages: [],
-          //     isEnd: false
-          //   };
-          // } else if (toolId === SubAppIds.model) {
-          //   const { systemPrompt, task } = parseToolArgs<{ systemPrompt: string; task: string }>(
-          //     call.function.arguments
-          //   );
-
-          //   const { content, inputTokens, outputTokens } = await transferModelAgent({
-          //     model,
-          //     systemPrompt,
-          //     task,
-          //     onStreaming({ text, fullText }) {
-          //       if (!fullText) return;
-          //       workflowStreamResponse?.({
-          //         event: SseResponseEventEnum.toolResponse,
-          //         data: {
-          //           tool: {
-          //             id: call.id,
-          //             toolName: '',
-          //             toolAvatar: '',
-          //             params: '',
-          //             response: sliceStrStartEnd(fullText, 5000, 5000)
-          //           }
-          //         }
-          //       });
-          //     }
-          //   });
-          //   return {
-          //     response: content,
-          //     usages: [],
-          //     isEnd: false
-          //   };
-          // }
 
           // Push stream response
           workflowStreamResponse?.({
