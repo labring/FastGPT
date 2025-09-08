@@ -533,11 +533,12 @@ export const authEvaluationDatasetDataUpdateById = async (
   collectionId: string;
 }> => {
   const { MongoEvalDatasetData } = await import('./dataset/evalDatasetDataSchema');
+  const { EvaluationErrEnum } = await import('@fastgpt/global/common/error/code/evaluation');
 
   // 根据dataId获取collectionId
   const dataItem = await MongoEvalDatasetData.findById(dataId).select('datasetId').lean();
   if (!dataItem) {
-    throw new Error('Dataset data not found');
+    return Promise.reject(EvaluationErrEnum.evalDatasetDataNotFound);
   }
 
   // 使用collectionId进行权限验证

@@ -13,6 +13,7 @@ import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/dataset/
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { authEvaluationDatasetDataUpdateById } from '@fastgpt/service/core/evaluation/common';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 export type EvalDatasetDataUpdateQuery = {};
 export type EvalDatasetDataUpdateBody = updateEvalDatasetDataBody;
@@ -88,7 +89,7 @@ async function handler(
     const existingData = await MongoEvalDatasetData.findById(dataId).session(session);
 
     if (!existingData) {
-      return Promise.reject('Dataset data not found');
+      return Promise.reject(EvaluationErrEnum.evalDatasetDataNotFound);
     }
 
     const collection = await MongoEvalDatasetCollection.findOne({
@@ -97,7 +98,7 @@ async function handler(
     }).session(session);
 
     if (!collection) {
-      return Promise.reject('Access denied or dataset collection not found');
+      return Promise.reject(EvaluationErrEnum.evalDatasetCollectionNotFound);
     }
 
     collectionName = collection.name;
@@ -118,7 +119,10 @@ async function handler(
     if (enableQualityEvaluation && qualityEvaluationModel) {
       try {
         // Remove existing quality assessment task if any
-        await removeEvalDatasetDataQualityJobsRobust([dataId]);
+        await removeEvalDatasetDataQualityJobsRobust([dataId], {
+          forceCleanActiveJobs: true,
+          retryDelay: 200
+        });
 
         // Enqueue new quality assessment task
         await addEvalDatasetDataQualityJob({

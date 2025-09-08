@@ -187,15 +187,52 @@ describe('EvalDatasetData Delete API', () => {
 
   describe('Data Validation', () => {
     it('should reject when data does not exist', async () => {
-      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(
-        new Error('Dataset data not found')
-      );
+      mockMongoEvalDatasetData.findById.mockReturnValue({
+        session: vi.fn().mockResolvedValue(null)
+      } as any);
 
       const req = {
         query: { dataId: validDataId }
       };
 
-      await expect(handler_test(req as any)).rejects.toThrow('Dataset data not found');
+      await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetDataNotFound');
+    });
+
+    it('should verify collection exists and belongs to team', async () => {
+      const req = {
+        query: { dataId: validDataId }
+      };
+
+      await handler_test(req as any);
+
+      expect(mockMongoEvalDatasetCollection.findOne).toHaveBeenCalledWith({
+        _id: validCollectionId,
+        teamId: validTeamId
+      });
+    });
+
+    it('should reject when collection does not exist', async () => {
+      mockMongoEvalDatasetCollection.findOne.mockReturnValue({
+        session: vi.fn().mockResolvedValue(null)
+      } as any);
+
+      const req = {
+        query: { dataId: validDataId }
+      };
+
+      await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetCollectionNotFound');
+    });
+
+    it('should reject when collection belongs to different team', async () => {
+      mockMongoEvalDatasetCollection.findOne.mockReturnValue({
+        session: vi.fn().mockResolvedValue(null)
+      } as any);
+
+      const req = {
+        query: { dataId: validDataId }
+      };
+
+      await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetCollectionNotFound');
     });
   });
 
@@ -219,7 +256,10 @@ describe('EvalDatasetData Delete API', () => {
 
       await handler_test(req as any);
 
-      expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalledWith([validDataId]);
+      expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalledWith([validDataId], {
+        forceCleanActiveJobs: true,
+        retryDelay: 200
+      });
       expect(mockAddLog.info).toHaveBeenCalledWith(
         'Removing active quality evaluation job before deletion',
         {

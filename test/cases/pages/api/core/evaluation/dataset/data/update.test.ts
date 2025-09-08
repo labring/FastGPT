@@ -455,8 +455,7 @@ describe('EvalDatasetData Update API', () => {
 
   describe('Data Validation', () => {
     it('should reject when dataset data does not exist', async () => {
-      const dataNotFoundError = new Error('Dataset data not found');
-      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(dataNotFoundError);
+      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue('evaluationDatasetDataNotFound');
 
       const req = {
         body: {
@@ -467,12 +466,13 @@ describe('EvalDatasetData Update API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toBe(dataNotFoundError);
+      await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetDataNotFound');
     });
 
     it('should reject when collection does not exist', async () => {
-      const collectionNotFoundError = new Error('Access denied or dataset collection not found');
-      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(collectionNotFoundError);
+      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(
+        'evaluationDatasetCollectionNotFound'
+      );
 
       const req = {
         body: {
@@ -483,12 +483,13 @@ describe('EvalDatasetData Update API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toBe(collectionNotFoundError);
+      await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetCollectionNotFound');
     });
 
     it('should reject when collection belongs to different team', async () => {
-      const accessDeniedError = new Error('Access denied or dataset collection not found');
-      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(accessDeniedError);
+      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(
+        'evaluationDatasetCollectionNotFound'
+      );
 
       const req = {
         body: {
@@ -499,7 +500,7 @@ describe('EvalDatasetData Update API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toBe(accessDeniedError);
+      await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetCollectionNotFound');
     });
   });
 
@@ -770,7 +771,10 @@ describe('EvalDatasetData Update API', () => {
 
       await handler_test(req as any);
 
-      expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalledWith([validDataId]);
+      expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalledWith([validDataId], {
+        forceCleanActiveJobs: true,
+        retryDelay: 200
+      });
       expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledWith({
         dataId: validDataId,
         evalModel: qualityEvaluationModel

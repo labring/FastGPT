@@ -11,6 +11,7 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { authEvaluationDatasetWrite } from '@fastgpt/service/core/evaluation/common';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 export type EvalDatasetCollectionDeleteQuery = deleteEvalDatasetCollectionQuery;
 export type EvalDatasetCollectionDeleteBody = {};
@@ -40,7 +41,7 @@ async function handler(
     }).session(session);
 
     if (!collection) {
-      return Promise.reject('Access denied or dataset collection not found');
+      return Promise.reject(EvaluationErrEnum.evalDatasetCollectionNotFound);
     }
 
     collectionName = collection.name;
@@ -54,7 +55,11 @@ async function handler(
 
     addLog.info('Cleaning up smart generation queue tasks', { collectionId });
     try {
-      await removeEvalDatasetSmartGenerateJobsRobust([collectionId]);
+      await removeEvalDatasetSmartGenerateJobsRobust([collectionId], {
+        forceCleanActiveJobs: true,
+        retryAttempts: 3,
+        retryDelay: 200
+      });
       addLog.info('Smart generation queue cleanup completed', { collectionId });
     } catch (error) {
       addLog.error('Failed to clean up smart generation queue', {
@@ -73,7 +78,11 @@ async function handler(
       const dataIds = datasetDataIds.map((data) => data._id.toString());
 
       if (dataIds.length > 0) {
-        await removeEvalDatasetDataQualityJobsRobust(dataIds);
+        await removeEvalDatasetDataQualityJobsRobust(dataIds, {
+          forceCleanActiveJobs: true,
+          retryAttempts: 3,
+          retryDelay: 200
+        });
         addLog.info('Quality assessment queue cleanup completed', {
           collectionId,
           dataCount: dataIds.length
@@ -88,7 +97,11 @@ async function handler(
 
     addLog.info('Cleaning up data synthesis queue tasks', { collectionId });
     try {
-      await removeEvalDatasetDataSynthesizeJobsRobust([collectionId]);
+      await removeEvalDatasetDataSynthesizeJobsRobust([collectionId], {
+        forceCleanActiveJobs: true,
+        retryAttempts: 3,
+        retryDelay: 200
+      });
       addLog.info('Data synthesis queue cleanup completed', { collectionId });
     } catch (error) {
       addLog.error('Failed to clean up data synthesis queue', {

@@ -1,4 +1,5 @@
 import type { EvaluationStatusEnum, CalculateMethodEnum, SummaryStatusEnum } from './constants';
+import type { EvalDatasetDataKeyEnum } from './dataset/constants';
 import type { EvalDatasetDataSchemaType } from './dataset/type';
 import type { MetricResult, EvalMetricSchemaType, EvalModelConfigType } from './metric/type';
 import type { EvaluationPermission } from '../../../support/permission/evaluation/controller';
@@ -76,8 +77,8 @@ export type EvaluationItemSchemaType = {
 
 // Evaluation target input/output types
 export interface TargetInput {
-  userInput: string;
-  context?: string[];
+  [EvalDatasetDataKeyEnum.UserInput]: string;
+  [EvalDatasetDataKeyEnum.Context]?: string[];
   globalVariables?: Record<string, any>;
 }
 

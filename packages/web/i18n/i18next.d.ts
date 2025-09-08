@@ -11,6 +11,7 @@ import type account_usage from './zh-CN/account_usage.json';
 import type account_info from './zh-CN/account_info.json';
 import type common from './zh-CN/common.json';
 import type dataset from './zh-CN/dataset.json';
+import type evaluation from './zh-CN/evaluation.json';
 import type app from './zh-CN/app.json';
 import type file from './zh-CN/file.json';
 import type publish from './zh-CN/publish.json';
@@ -25,6 +26,7 @@ import type { I18N_NAMESPACES } from './constants';
 export interface I18nNamespaces {
   common: typeof common;
   dataset: typeof dataset;
+  evaluation: typeof evaluation;
   app: typeof app;
   file: typeof file;
   publish: typeof publish;

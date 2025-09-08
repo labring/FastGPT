@@ -16,6 +16,7 @@ import { EvalDatasetDataQualityStatusEnum } from '@fastgpt/global/core/evaluatio
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { authEvaluationDatasetWrite } from '@fastgpt/service/core/evaluation/common';
+import EvaluationErrCode, { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 export type QualityAssessmentBatchQuery = {};
 export type QualityAssessmentBatchBody = qualityAssessmentBatchBody;
@@ -59,7 +60,7 @@ async function handler(
   if (!collection) {
     return {
       success: false,
-      message: 'Dataset collection not found or access denied',
+      message: EvaluationErrCode[EvaluationErrEnum.evalDatasetCollectionNotFound].message,
       processedCount: 0,
       skippedCount: 0,
       errorCount: 0
@@ -106,7 +107,10 @@ async function handler(
           jobId,
           collectionId
         });
-        await removeEvalDatasetDataQualityJobsRobust([dataId]);
+        await removeEvalDatasetDataQualityJobsRobust([dataId], {
+          forceCleanActiveJobs: true,
+          retryDelay: 200
+        });
 
         // Create new job
         await addEvalDatasetDataQualityJob({

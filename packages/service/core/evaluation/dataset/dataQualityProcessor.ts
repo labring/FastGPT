@@ -6,93 +6,9 @@ import {
   EvalDatasetDataKeyEnum,
   EvalDatasetDataQualityStatusEnum
 } from '@fastgpt/global/core/evaluation/dataset/constants';
-
-// FastAPI service interface schemas
-export type InputData = {
-  [EvalDatasetDataKeyEnum.UserInput]?: string;
-  [EvalDatasetDataKeyEnum.ActualOutput]?: string;
-  [EvalDatasetDataKeyEnum.ExpectedOutput]?: string;
-  [EvalDatasetDataKeyEnum.Context]?: string[];
-  [EvalDatasetDataKeyEnum.RetrievalContext]?: string[];
-  metadata?: Record<string, any>;
-};
-
-export type ModelConfig = {
-  name: string;
-  base_url?: string;
-  api_key?: string;
-  parameters?: Record<string, any>;
-  timeout?: number;
-};
-
-export type MetricConfig = {
-  metric_name: string;
-  prompt?: string;
-};
-
-export type EvaluationRequest = {
-  llm_config: ModelConfig;
-  embedding_config: ModelConfig;
-  metric_config: MetricConfig;
-  input_data: InputData;
-};
-
-export type EvaluationResult = {
-  metric_name: string;
-  score: number;
-  reason?: string;
-  run_logs?: Record<string, any>;
-};
-
-export type Usage = {
-  model_type: 'llm' | 'embed';
-  prompt_tokens?: number;
-  completion_tokens?: number;
-  total_tokens?: number;
-};
-
-export type EvaluationResponse = {
-  request_id: string;
-  status: 'success' | 'failed';
-  data?: EvaluationResult;
-  usages?: Usage[];
-  error?: string;
-};
-// TODO: function to simulate calling the FastAPI microservice
-async function mockEvaluationService(request: EvaluationRequest): Promise<EvaluationResponse> {
-  addLog.info('Mock: Calling evaluation microservice', {
-    request_id: request.input_data.metadata?.request_id
-  });
-
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 2000));
-
-  // Mock successful response with random score
-  const mockScore = 0.6 + Math.random() * 0.4; // Score between 0.6 and 1.0
-
-  return {
-    request_id: request.input_data.metadata?.request_id || 'mock-request-id',
-    status: 'success',
-    data: {
-      metric_name: request.metric_config.metric_name,
-      score: Math.round(mockScore * 100) / 100,
-      reason: `Mock evaluation result for ${request.metric_config.metric_name}`,
-      run_logs: {
-        mock: true,
-        timestamp: new Date().toISOString(),
-        model: request.llm_config.name
-      }
-    },
-    usages: [
-      {
-        model_type: 'llm',
-        prompt_tokens: 100,
-        completion_tokens: 50,
-        total_tokens: 150
-      }
-    ]
-  };
-}
+import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
+import type { EvalMetricSchemaType } from '@fastgpt/global/core/evaluation/metric/type';
+import { createEvaluatorInstance } from '../evaluator';
 
 // Queue processor function
 export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQualityData>) => {
@@ -113,48 +29,50 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
       throw new Error(`Dataset data not found: ${DataId}`);
     }
 
-    // Prepare the evaluation request
-    const evaluationRequest: EvaluationRequest = {
-      llm_config: {
-        name: evalModel,
-        parameters: {
-          temperature: 0.7,
-          max_tokens: 1000
-        },
-        timeout: 600
-      },
-      embedding_config: {
-        name: 'text-embedding-ada-002',
-        timeout: 600
-      },
-      metric_config: {
-        metric_name: 'quality_assessment'
-      },
-      input_data: {
-        [EvalDatasetDataKeyEnum.UserInput]: datasetData.userInput,
-        [EvalDatasetDataKeyEnum.ActualOutput]: datasetData.actualOutput,
-        [EvalDatasetDataKeyEnum.ExpectedOutput]: datasetData.expectedOutput,
-        [EvalDatasetDataKeyEnum.Context]: datasetData.context,
-        [EvalDatasetDataKeyEnum.RetrievalContext]: datasetData.retrievalContext,
-        metadata: {
-          ...datasetData.metadata,
-          request_id: `${DataId}-${Date.now()}`
-        }
+    // Create evaluator instance and run evaluation
+    const metricSchema: EvalMetricSchemaType = {
+      _id: '',
+      teamId: '',
+      tmbId: '',
+      name: 'q_a_quality',
+      type: EvalMetricTypeEnum.Builtin,
+      userInputRequired: true,
+      actualOutputRequired: false,
+      expectedOutputRequired: true,
+      contextRequired: false,
+      retrievalContextRequired: false,
+      embeddingRequired: false,
+      llmRequired: true,
+      createTime: new Date(),
+      updateTime: new Date()
+    };
+
+    const evaluatorConfig = {
+      metric: metricSchema,
+      runtimeConfig: {
+        llm: evalModel
       }
     };
 
-    // Call mock evaluation service
-    const evaluationResult = await mockEvaluationService(evaluationRequest);
+    const evalCase = {
+      [EvalDatasetDataKeyEnum.UserInput]: datasetData.userInput,
+      [EvalDatasetDataKeyEnum.ActualOutput]: datasetData.actualOutput,
+      [EvalDatasetDataKeyEnum.ExpectedOutput]: datasetData.expectedOutput,
+      [EvalDatasetDataKeyEnum.Context]: datasetData.context,
+      [EvalDatasetDataKeyEnum.RetrievalContext]: datasetData.retrievalContext
+    };
 
-    if (evaluationResult.status === 'success' && evaluationResult.data) {
-      // Update dataset data with successful evaluation result
+    const evaluator = createEvaluatorInstance(evaluatorConfig);
+    const metricResult = await evaluator.evaluate(evalCase);
+
+    if (metricResult.status === 'success' && metricResult.data) {
       await MongoEvalDatasetData.findByIdAndUpdate(DataId, {
         $set: {
           'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.completed,
-          'metadata.qualityScore': evaluationResult.data.score,
-          'metadata.qualityReason': evaluationResult.data.reason,
-          'metadata.qualityRunLogs': evaluationResult.data.run_logs,
-          'metadata.qualityUsages': evaluationResult.usages,
+          'metadata.qualityScore': metricResult.data.score,
+          'metadata.qualityReason': metricResult.data?.reason,
+          'metadata.qualityRunLogs': metricResult.data?.run_logs,
+          'metadata.qualityUsages': metricResult?.usages,
           'metadata.qualityFinishTime': new Date(),
           'metadata.qualityModel': evalModel
         }
@@ -162,15 +80,14 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
 
       addLog.info('Eval dataset data quality job completed successfully', {
         DataId,
-        score: evaluationResult.data.score
+        score: metricResult.data.score
       });
     } else {
-      throw new Error(evaluationResult.error || 'Evaluation failed');
+      throw new Error(metricResult.error || 'Evaluation failed');
     }
   } catch (error) {
     addLog.error('Eval dataset data quality job failed', { DataId, error });
 
-    // Update status to failed
     await MongoEvalDatasetData.findByIdAndUpdate(DataId, {
       $set: {
         'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.error,

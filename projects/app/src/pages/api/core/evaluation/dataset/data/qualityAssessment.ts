@@ -12,6 +12,7 @@ import { EvalDatasetDataQualityStatusEnum } from '@fastgpt/global/core/evaluatio
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { authEvaluationDatasetDataUpdateById } from '@fastgpt/service/core/evaluation/common';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 export type QualityAssessmentQuery = {};
 export type QualityAssessmentBody = qualityAssessmentBody;
@@ -38,7 +39,7 @@ async function handler(
 
   const datasetData = await MongoEvalDatasetData.findById(dataId);
   if (!datasetData) {
-    return 'Dataset data not found';
+    return Promise.reject(EvaluationErrEnum.evalDatasetDataNotFound);
   }
 
   const collection = await MongoEvalDatasetCollection.findOne({
@@ -47,13 +48,16 @@ async function handler(
   });
 
   if (!collection) {
-    return 'Dataset collection not found or access denied';
+    return Promise.reject(EvaluationErrEnum.evalDatasetCollectionNotFound);
   }
 
   try {
     const isJobActive = await checkEvalDatasetDataQualityJobActive(dataId);
     if (isJobActive) {
-      await removeEvalDatasetDataQualityJobsRobust([dataId]);
+      await removeEvalDatasetDataQualityJobsRobust([dataId], {
+        forceCleanActiveJobs: true,
+        retryDelay: 200
+      });
     }
 
     await addEvalDatasetDataQualityJob({

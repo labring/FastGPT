@@ -8,6 +8,7 @@ import type {
   EvaluationDisplayType,
   EvaluationItemDisplayType
 } from './type';
+import type { EvalDatasetDataKeyEnum } from './dataset/constants';
 
 // ===== Common Types =====
 export type MessageResponse = { message: string };
@@ -89,8 +90,8 @@ export type EvaluationItemDetailResponse = {
 
 // Update Evaluation Item
 export type UpdateEvaluationItemRequest = EvalItemIdQuery & {
-  userInput?: string;
-  expectedOutput?: string;
+  [EvalDatasetDataKeyEnum.UserInput]?: string;
+  [EvalDatasetDataKeyEnum.ExpectedOutput]?: string;
   variables?: Record<string, any>;
 };
 export type UpdateEvaluationItemResponse = MessageResponse;
