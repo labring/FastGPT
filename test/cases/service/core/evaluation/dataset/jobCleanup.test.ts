@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type { Queue} from 'bullmq';
+import type { Queue } from 'bullmq';
 import { Job } from 'bullmq';
 import {
   RobustJobCleaner,
   createJobCleaner,
   type JobCleanupOptions
-} from '@fastgpt/service/core/evaluation/dataset/jobCleanup';
+} from '@fastgpt/service/core/evaluation/utils/jobCleanup';
 
 // Mock dependencies
 vi.mock('@fastgpt/service/common/system/log', () => ({

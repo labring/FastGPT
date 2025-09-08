@@ -5,19 +5,20 @@ import type {
   CreateEvaluationParams,
   EvaluationItemDisplayType
 } from '@fastgpt/global/core/evaluation/type';
-import { checkUpdateResult, checkDeleteResult } from '../common';
 import { Types } from 'mongoose';
 import { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 import {
   evaluationTaskQueue,
   evaluationItemQueue,
   removeEvaluationTaskJob,
-  removeEvaluationItemJobs
+  removeEvaluationItemJobs,
+  removeEvaluationItemJobsByItemId
 } from './mq';
 import { createTrainingUsage } from '../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { addLog } from '../../../common/system/log';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 export class EvaluationTaskService {
   static async createEvaluation(
@@ -57,7 +58,7 @@ export class EvaluationTaskService {
       teamId: new Types.ObjectId(teamId)
     }).lean();
     if (!evaluation) {
-      throw new Error('Evaluation not found');
+      throw new Error(EvaluationErrEnum.evalTaskNotFound);
     }
     return evaluation;
   }
@@ -71,13 +72,31 @@ export class EvaluationTaskService {
       { _id: new Types.ObjectId(evalId), teamId: new Types.ObjectId(teamId) },
       { $set: updates }
     );
-
-    checkUpdateResult(result, 'Evaluation');
+    if (result.matchedCount === 0) {
+      throw new Error(EvaluationErrEnum.evalTaskNotFound);
+    }
   }
 
   static async deleteEvaluation(evalId: string, teamId: string): Promise<void> {
     // Remove related tasks from queue to prevent further processing
-    await Promise.all([removeEvaluationTaskJob(evalId), removeEvaluationItemJobs(evalId)]);
+    const [taskCleanupResult, itemCleanupResult] = await Promise.all([
+      removeEvaluationTaskJob(evalId, {
+        forceCleanActiveJobs: true,
+        retryAttempts: 3,
+        retryDelay: 200
+      }),
+      removeEvaluationItemJobs(evalId, {
+        forceCleanActiveJobs: true,
+        retryAttempts: 3,
+        retryDelay: 200
+      })
+    ]);
+
+    addLog.debug('Queue cleanup completed for evaluation deletion', {
+      evalId,
+      taskCleanup: taskCleanupResult,
+      itemCleanup: itemCleanupResult
+    });
 
     // Delete all evaluation items for this evaluation task
     await MongoEvalItem.deleteMany({ evalId: evalId });
@@ -87,7 +106,9 @@ export class EvaluationTaskService {
       teamId: new Types.ObjectId(teamId)
     });
 
-    checkDeleteResult(result, 'Evaluation');
+    if (result.deletedCount === 0) {
+      throw new Error(EvaluationErrEnum.evalTaskNotFound);
+    }
 
     addLog.debug(`[Evaluation] Evaluation task deleted including queue cleanup: ${evalId}`);
   }
@@ -267,7 +288,7 @@ export class EvaluationTaskService {
     const evaluation = await this.getEvaluation(evalId, teamId);
 
     if (evaluation.status !== EvaluationStatusEnum.queuing) {
-      throw new Error('Only queuing evaluations can be started');
+      throw new Error(EvaluationErrEnum.evalOnlyQueuingCanStart);
     }
 
     // Update status to processing
@@ -290,11 +311,28 @@ export class EvaluationTaskService {
     if (
       ![EvaluationStatusEnum.evaluating, EvaluationStatusEnum.queuing].includes(evaluation.status)
     ) {
-      throw new Error('Only running or queuing evaluations can be stopped');
+      throw new Error(EvaluationErrEnum.evalOnlyRunningCanStop);
     }
 
     // Remove related tasks from queue
-    await Promise.all([removeEvaluationTaskJob(evalId), removeEvaluationItemJobs(evalId)]);
+    const [taskCleanupResult, itemCleanupResult] = await Promise.all([
+      removeEvaluationTaskJob(evalId, {
+        forceCleanActiveJobs: true,
+        retryAttempts: 3,
+        retryDelay: 200
+      }),
+      removeEvaluationItemJobs(evalId, {
+        forceCleanActiveJobs: true,
+        retryAttempts: 3,
+        retryDelay: 200
+      })
+    ]);
+
+    addLog.debug('Queue cleanup completed for evaluation stop', {
+      evalId,
+      taskCleanup: taskCleanupResult,
+      itemCleanup: itemCleanupResult
+    });
 
     // Update status to error (manually stopped)
     await MongoEvaluation.updateOne(
@@ -395,7 +433,7 @@ export class EvaluationTaskService {
     const item = await MongoEvalItem.findById(itemId).lean();
 
     if (!item) {
-      throw new Error('Evaluation item not found');
+      throw new Error(EvaluationErrEnum.evalItemNotFound);
     }
 
     await this.getEvaluation(item.evalId, teamId);
@@ -412,15 +450,33 @@ export class EvaluationTaskService {
 
     const result = await MongoEvalItem.updateOne({ _id: itemId }, { $set: updates });
 
-    checkUpdateResult(result, 'Evaluation item');
+    if (result.matchedCount === 0) {
+      throw new Error(EvaluationErrEnum.evalItemNotFound);
+    }
   }
 
   static async deleteEvaluationItem(itemId: string, teamId: string): Promise<void> {
     await this.getEvaluationItem(itemId, teamId);
 
+    // Remove related jobs from queue before deleting the item
+    const cleanupResult = await removeEvaluationItemJobsByItemId(itemId, {
+      forceCleanActiveJobs: true,
+      retryAttempts: 3,
+      retryDelay: 200
+    });
+
+    addLog.debug('Queue cleanup completed for evaluation item deletion', {
+      itemId,
+      cleanup: cleanupResult
+    });
+
     const result = await MongoEvalItem.deleteOne({ _id: itemId });
 
-    checkDeleteResult(result, 'Evaluation item');
+    if (result.deletedCount === 0) {
+      throw new Error(EvaluationErrEnum.evalItemNotFound);
+    }
+
+    addLog.debug(`[Evaluation] Evaluation item deleted including queue cleanup: ${itemId}`);
   }
 
   static async retryEvaluationItem(itemId: string, teamId: string): Promise<void> {
@@ -428,13 +484,25 @@ export class EvaluationTaskService {
 
     // Only completed evaluation items without errors cannot be retried
     if (item.status === EvaluationStatusEnum.completed && !item.errorMessage) {
-      throw new Error('Only failed evaluation items can be retried');
+      throw new Error(EvaluationErrEnum.evalOnlyFailedCanRetry);
     }
 
     // Check if there is error message or in retryable status
     if (!item.errorMessage && item.status !== EvaluationStatusEnum.queuing) {
-      throw new Error('Evaluation item has no error to retry');
+      throw new Error(EvaluationErrEnum.evalItemNoErrorToRetry);
     }
+
+    // Remove existing jobs for this item to prevent duplicates
+    const cleanupResult = await removeEvaluationItemJobsByItemId(itemId, {
+      forceCleanActiveJobs: true,
+      retryAttempts: 3,
+      retryDelay: 200
+    });
+
+    addLog.debug('Queue cleanup completed for evaluation item retry', {
+      itemId,
+      cleanup: cleanupResult
+    });
 
     // Update status
     await MongoEvalItem.updateOne(
@@ -480,6 +548,26 @@ export class EvaluationTaskService {
     if (itemsToRetry.length === 0) {
       return 0;
     }
+
+    // Clean up existing jobs for all items that will be retried to prevent duplicates
+    const itemIds = itemsToRetry.map((item) => item._id.toString());
+    const cleanupPromises = itemIds.map((itemId) =>
+      removeEvaluationItemJobsByItemId(itemId, {
+        forceCleanActiveJobs: true,
+        retryAttempts: 3,
+        retryDelay: 200
+      })
+    );
+
+    const cleanupResults = await Promise.allSettled(cleanupPromises);
+    const successfulCleanups = cleanupResults.filter((r) => r.status === 'fulfilled').length;
+
+    addLog.debug('Queue cleanup completed for batch retry failed items', {
+      evalId,
+      totalItems: itemsToRetry.length,
+      successfulCleanups,
+      failedCleanups: cleanupResults.length - successfulCleanups
+    });
 
     // Batch update status
     await MongoEvalItem.updateMany(

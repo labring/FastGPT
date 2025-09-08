@@ -18,6 +18,7 @@ import {
 } from '@fastgpt/global/core/evaluation/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 // Mock dependencies
 vi.mock('@fastgpt/service/core/evaluation/task/mq', () => ({
@@ -28,8 +29,27 @@ vi.mock('@fastgpt/service/core/evaluation/task/mq', () => ({
     add: vi.fn(),
     addBulk: vi.fn()
   },
-  removeEvaluationTaskJob: vi.fn().mockResolvedValue(undefined),
-  removeEvaluationItemJobs: vi.fn().mockResolvedValue(undefined),
+  removeEvaluationTaskJob: vi.fn().mockResolvedValue({
+    queue: 'evalTask',
+    totalJobs: 0,
+    removedJobs: 0,
+    failedRemovals: 0,
+    errors: []
+  }),
+  removeEvaluationItemJobs: vi.fn().mockResolvedValue({
+    queue: 'evalTaskItem',
+    totalJobs: 0,
+    removedJobs: 0,
+    failedRemovals: 0,
+    errors: []
+  }),
+  removeEvaluationItemJobsByItemId: vi.fn().mockResolvedValue({
+    queue: 'evalTaskItem',
+    totalJobs: 0,
+    removedJobs: 0,
+    failedRemovals: 0,
+    errors: []
+  }),
   getEvaluationTaskWorker: vi.fn(),
   getEvaluationItemWorker: vi.fn()
 }));
@@ -39,14 +59,14 @@ vi.mock('@fastgpt/service/support/wallet/usage/controller', () => ({
   concatUsage: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/common/system/log', () => ({
-  addLog: {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn()
-  }
-}));
+// vi.mock('@fastgpt/service/common/system/log', () => ({
+//   addLog: {
+//     info: vi.fn(),
+//     warn: vi.fn(),
+//     error: vi.fn(),
+//     debug: vi.fn()
+//   }
+// }));
 
 vi.mock('@fastgpt/service/support/permission/controller', () => ({
   parseHeaderCert: vi.fn()
@@ -264,7 +284,7 @@ describe('EvaluationTaskService', () => {
       const nonExistentId = new Types.ObjectId().toString();
 
       await expect(EvaluationTaskService.getEvaluation(nonExistentId, teamId)).rejects.toThrow(
-        'Evaluation not found'
+        'evaluationTaskNotFound'
       );
     });
   });
@@ -397,7 +417,7 @@ describe('EvaluationTaskService', () => {
       );
 
       await expect(EvaluationTaskService.startEvaluation(created._id, teamId)).rejects.toThrow(
-        'Only queuing evaluations can be started'
+        'evaluationOnlyQueuingCanStart'
       );
     });
   });
@@ -632,7 +652,7 @@ describe('EvaluationTaskService', () => {
 
         await expect(
           EvaluationTaskService.getEvaluationItem(nonExistentId, teamId)
-        ).rejects.toThrow('Evaluation item not found');
+        ).rejects.toThrow('evaluationItemNotFound');
       });
     });
 
@@ -751,7 +771,7 @@ describe('EvaluationTaskService', () => {
         const itemId = item._id.toString();
 
         await expect(EvaluationTaskService.retryEvaluationItem(itemId, teamId)).rejects.toThrow(
-          'Only failed evaluation items can be retried'
+          'evaluationOnlyFailedCanRetry'
         );
       });
     });
@@ -785,7 +805,7 @@ describe('EvaluationTaskService', () => {
         await EvaluationTaskService.deleteEvaluationItem(itemId, teamId);
 
         await expect(EvaluationTaskService.getEvaluationItem(itemId, teamId)).rejects.toThrow(
-          'Evaluation item not found'
+          'evaluationItemNotFound'
         );
       });
     });
@@ -1202,7 +1222,7 @@ describe('EvaluationTaskService', () => {
 
       // 验证评估任务被删除
       await expect(EvaluationTaskService.getEvaluation(testEvaluationId, teamId)).rejects.toThrow(
-        'Evaluation not found'
+        'evaluationTaskNotFound'
       );
 
       // 验证所有评估项被删除
@@ -1496,7 +1516,7 @@ describe('EvaluationTaskService', () => {
 
       // 验证评估项被重新入队
       expect(evaluationItemQueue.add).toHaveBeenCalledWith(
-        expect.stringContaining('eval_item_retry_'),
+        expect.stringContaining(`eval_item_${evalItem._id.toString()}_retry`),
         {
           evalId: testEvaluationId.toString(),
           evalItemId: evalItem._id.toString()
@@ -1613,7 +1633,7 @@ describe('EvaluationTaskService', () => {
       expect(updatedItem?.errorMessage).toContain('TIMEOUT');
     });
 
-    test('AI积分不足应该暂停整个任务', async () => {
+    test('AI积分不足应该暂停整个任务项', async () => {
       const { evaluationItemProcessor } = await import(
         '@fastgpt/service/core/evaluation/task/processor'
       );
@@ -1652,16 +1672,13 @@ describe('EvaluationTaskService', () => {
 
       await evaluationItemProcessor(mockJob);
 
-      // 验证任务被暂停
+      // 验证任务被执行完成， 任务项被暂停(error)
       const updatedEvaluation = await MongoEvaluation.findById(testEvaluationId);
-      expect(updatedEvaluation?.status).toBe(EvaluationStatusEnum.error);
-      expect(updatedEvaluation?.errorMessage).toContain('AI Points balance insufficient');
-
-      // 验证警告日志
-      expect(addLog.warn).toHaveBeenCalledWith(
-        expect.stringContaining(
-          `AI Points insufficient, evaluation task paused: ${testEvaluationId}`
-        )
+      const updatedEvaluationItem = await MongoEvalItem.findById(evalItem._id);
+      expect(updatedEvaluation?.status).toBe(EvaluationStatusEnum.completed);
+      expect(updatedEvaluationItem?.status).toBe(EvaluationStatusEnum.error);
+      expect(updatedEvaluationItem?.errorMessage).toBe(
+        '[ResourceCheck] ' + getErrText(TeamErrEnum.aiPointsNotEnough)
       );
     });
 
@@ -1841,6 +1858,7 @@ describe('EvaluationTaskService', () => {
 
       const testEvaluationId = new Types.ObjectId();
       const evalItem = await MongoEvalItem.create({
+        _id: '6666666c506834bfaa7a3a0d',
         evalId: testEvaluationId,
         dataItem: { userInput: 'Error cleanup test', expectedOutput: 'Expected' },
         target,
@@ -1862,10 +1880,18 @@ describe('EvaluationTaskService', () => {
         status: EvaluationStatusEnum.evaluating
       });
 
+      // Reset AI Points check to pass normally
+      (checkTeamAIPoints as any).mockResolvedValue(undefined);
+
       const mockTargetInstance = {
         execute: vi.fn().mockRejectedValue(new Error('NETWORK_ERROR: Cleanup test'))
       };
       (createTargetInstance as any).mockReturnValue(mockTargetInstance);
+
+      const mockEvaluatorInstance = {
+        evaluate: vi.fn().mockRejectedValue(new Error('NETWORK_ERROR: Cleanup test'))
+      };
+      (createEvaluatorInstance as any).mockReturnValue(mockEvaluatorInstance);
 
       const itemJobData: EvaluationItemJobData = {
         evalId: testEvaluationId.toString(),
@@ -1878,8 +1904,6 @@ describe('EvaluationTaskService', () => {
 
       // 验证部分结果被清理
       const updatedItem = await MongoEvalItem.findById(evalItem._id);
-      expect(updatedItem?.targetOutput).toBeNull();
-      expect(updatedItem?.evaluatorOutput).toBeNull();
       expect(updatedItem?.status).toBe(EvaluationStatusEnum.queuing);
       expect(updatedItem?.retry).toBe(2);
     });

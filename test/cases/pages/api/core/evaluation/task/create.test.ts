@@ -50,8 +50,21 @@ describe('Create Evaluation Task API Handler', () => {
     name: 'Test Evaluation',
     description: 'Test Description',
     datasetId: new Types.ObjectId(),
-    targetId: new Types.ObjectId(),
-    metricIds: [new Types.ObjectId(), new Types.ObjectId()],
+    target: {
+      type: 'workflow',
+      config: {
+        appId: new Types.ObjectId().toString()
+      }
+    },
+    evaluators: [
+      {
+        metric: {
+          _id: new Types.ObjectId().toString(),
+          name: 'Test Metric',
+          type: 'ai_model'
+        }
+      }
+    ],
     usageId: new Types.ObjectId(),
     status: EvaluationStatusEnum.queuing,
     teamId: new Types.ObjectId(),
@@ -157,7 +170,7 @@ describe('Create Evaluation Task API Handler', () => {
       }
     } as any;
 
-    await expect(createHandler(mockReq)).rejects.toMatch('Evaluation name is required');
+    await expect(createHandler(mockReq)).rejects.toMatch('evaluationNameRequired');
   });
 
   test('应该拒绝空指标列表', async () => {
@@ -180,7 +193,7 @@ describe('Create Evaluation Task API Handler', () => {
     // 需要mock validateTargetConfig返回成功
     (validateTargetConfig as any).mockResolvedValue({ success: true, message: 'Valid' });
 
-    await expect(createHandler(mockReq)).rejects.toMatch('At least one evaluator is required');
+    await expect(createHandler(mockReq)).rejects.toMatch('evaluationEvaluatorsRequired');
   });
 
   test('应该拒绝缺少必填字段', async () => {
@@ -188,17 +201,17 @@ describe('Create Evaluation Task API Handler', () => {
       method: 'POST',
       body: {
         name: 'Test Evaluation'
-        // 缺少 datasetId, target, metricIds
+        // 缺少 datasetId, target, evaluators
       }
     } as any;
 
     // 重置mock为默认的失败状态
-    (validateTargetConfig as any).mockResolvedValue({
-      success: false,
-      message: 'Target validation failed'
-    });
+    // (validateTargetConfig as any).mockResolvedValue({
+    //   success: false,
+    //   message: 'Target validation failed'
+    // });
 
-    // 由于没有target字段，target验证会先失败
-    await expect(createHandler(mockReq)).rejects.toMatch('Target validation failed');
+    // datasetId 验证会先失败
+    await expect(createHandler(mockReq)).rejects.toMatch('evaluationDatasetIdRequired');
   });
 });

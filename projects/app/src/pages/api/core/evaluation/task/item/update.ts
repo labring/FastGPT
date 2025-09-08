@@ -16,7 +16,7 @@ async function handler(
   req: ApiRequestProps<UpdateEvaluationItemRequest>
 ): Promise<UpdateEvaluationItemResponse> {
   try {
-    const { evalItemId, userInput, expectedOutput, variables } = req.body;
+    const { evalItemId, userInput, expectedOutput } = req.body;
 
     const { evaluation, evaluationItem, teamId, tmbId } = await authEvaluationItemWrite(
       evalItemId,

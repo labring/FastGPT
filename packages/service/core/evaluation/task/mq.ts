@@ -1,8 +1,14 @@
+import { addLog } from '../../../common/system/log';
 import { getQueue, getWorker, QueueNames } from '../../../common/bullmq';
 import type {
   EvaluationTaskJobData,
   EvaluationItemJobData
 } from '@fastgpt/global/core/evaluation/type';
+import {
+  createJobCleaner,
+  type JobCleanupResult,
+  type JobCleanupOptions
+} from '../utils/jobCleanup';
 
 export const evaluationTaskQueue = getQueue<EvaluationTaskJobData>(QueueNames.evalTask, {
   defaultJobOptions: {
@@ -30,26 +36,76 @@ export const getEvaluationItemWorker = (processor: any) =>
     concurrency: Number(process.env.EVAL_ITEM_CONCURRENCY) || 10
   });
 
-export const removeEvaluationTaskJob = async (evalId: string) => {
-  try {
-    const jobs = await evaluationTaskQueue.getJobs(['prioritized', 'waiting', 'delayed']);
-    const targetJobs = jobs.filter((job) => job.data.evalId === evalId);
+export const removeEvaluationTaskJob = async (
+  evalId: string,
+  options?: JobCleanupOptions
+): Promise<JobCleanupResult> => {
+  const cleaner = createJobCleaner(options);
 
-    await Promise.all(targetJobs.map((job) => job.remove()));
-  } catch (error) {
-    console.error('Failed to remove evaluation task jobs:', error);
-  }
+  const filterFn = (job: any) => {
+    return String(job.data?.evalId) === String(evalId);
+  };
+
+  const result = await cleaner.cleanAllJobsByFilter(
+    evaluationTaskQueue,
+    filterFn,
+    QueueNames.evalTask
+  );
+
+  addLog.debug('Evaluation task jobs cleanup completed', {
+    evalId,
+    result
+  });
+
+  return result;
 };
 
-export const removeEvaluationItemJobs = async (evalId: string) => {
-  try {
-    const jobs = await evaluationItemQueue.getJobs(['prioritized', 'waiting', 'delayed']);
-    const targetJobs = jobs.filter((job) => job.data.evalId === evalId);
+export const removeEvaluationItemJobs = async (
+  evalId: string,
+  options?: JobCleanupOptions
+): Promise<JobCleanupResult> => {
+  const cleaner = createJobCleaner(options);
 
-    await Promise.all(targetJobs.map((job) => job.remove()));
-  } catch (error) {
-    console.error('Failed to remove evaluation item jobs:', error);
-  }
+  const filterFn = (job: any) => {
+    return String(job.data?.evalId) === String(evalId);
+  };
+
+  const result = await cleaner.cleanAllJobsByFilter(
+    evaluationItemQueue,
+    filterFn,
+    QueueNames.evalTaskItem
+  );
+
+  addLog.debug('Evaluation item jobs cleanup completed', {
+    evalId,
+    result
+  });
+
+  return result;
+};
+
+export const removeEvaluationItemJobsByItemId = async (
+  evalItemId: string,
+  options?: JobCleanupOptions
+): Promise<JobCleanupResult> => {
+  const cleaner = createJobCleaner(options);
+
+  const filterFn = (job: any) => {
+    return String(job.data?.evalItemId) === String(evalItemId);
+  };
+
+  const result = await cleaner.cleanAllJobsByFilter(
+    evaluationItemQueue,
+    filterFn,
+    QueueNames.evalTaskItem
+  );
+
+  addLog.debug('Evaluation item jobs cleanup completed for specific item', {
+    evalItemId,
+    result
+  });
+
+  return result;
 };
 
 export const getEvaluationQueueStats = async () => {
