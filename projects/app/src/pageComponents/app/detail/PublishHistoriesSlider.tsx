@@ -21,7 +21,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { AppVersionSchemaType, VersionListItemType } from '@fastgpt/global/core/app/version';
-import type { SimpleAppSnapshotType } from './SimpleApp/useSnapshots';
+import type { SimpleAppSnapshotType } from './Edit/FormComponent/useSnapshots';
 
 const PublishHistoriesSlider = <T extends SimpleAppSnapshotType | WorkflowSnapshotsType>({
   onClose,
