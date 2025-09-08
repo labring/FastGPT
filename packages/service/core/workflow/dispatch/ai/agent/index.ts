@@ -27,18 +27,25 @@ import {
 import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import {
+  applyDiff,
   filterToolResponseToPreview,
   formatToolResponse,
   getToolNodesByIds,
-  initToolNodes
+  initToolNodes,
+  parseToolArgs
 } from '../utils';
-import { getTopAgentDefaultPrompt, StopAgentId, StopAgentTool } from './constants';
+import { getFileReadTool, getTopAgentConstantPrompt, StopAgentTool, SubAppIds } from './constants';
 import { runWorkflow } from '../..';
-import json5 from 'json5';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import type { ToolNodeItemType } from './type';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
+import { transferPlanAgent } from '../sub/plan';
+import { transferModelAgent } from '../sub/model';
+import { PlanAgentTool } from '../sub/plan/constants';
+import { ModelAgentTool } from '../sub/model/constants';
+import { getSubIdsByAgentSystem, parseAgentSystem } from './utils';
+import { getChildAppPreviewNode } from '../../../../../core/app/plugin/controller';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -81,7 +88,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       history = 6,
       fileUrlList: fileLinks,
       temperature,
-      aiChatTopP
+      aiChatTopP,
+      planConfig
     }
   } = props;
 
@@ -95,7 +103,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     }
 
     // Init tool params
-    const toolNodeIds = filterToolNodeIdByEdges({ nodeId, edges: runtimeEdges });
+    // const toolNodeIds = filterToolNodeIdByEdges({ nodeId, edges: runtimeEdges });
+    const toolNodeIds = getSubIdsByAgentSystem(systemPrompt);
     const toolNodes = getToolNodesByIds({ toolNodeIds, runtimeNodes });
     // TODO: 补充系统 agent
     const toolNodesMap = new Map<string, ToolNodeItemType>();
@@ -110,12 +119,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       };
     };
 
-    const subApps = getSubApps({ toolNodes });
+    const subApps = getSubApps({ toolNodes, urls: fileLinks });
+
+    const combinedSystemPrompt = `${parseAgentSystem({ systemPrompt, toolNodesMap })}\n\n${getTopAgentConstantPrompt()}`;
 
     // TODO: 把 files 加入 query 中。
     const messages: ChatItemType[] = (() => {
       const value: ChatItemType[] = [
-        ...getSystemPrompt_ChatItemType(systemPrompt || getTopAgentDefaultPrompt()),
+        ...getSystemPrompt_ChatItemType(combinedSystemPrompt),
         // Add file input prompt to histories
         ...chatHistories,
         {
@@ -159,14 +170,106 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         isAborted: res ? () => res.closed : undefined,
 
         getToolInfo,
-        handleToolResponse: async (call) => {
+        handleToolResponse: async ({ call, context }) => {
           const toolId = call.function.name;
 
-          if (toolId === StopAgentId) {
+          if (toolId === SubAppIds.stop) {
             return {
               response: '',
               usages: [],
               isEnd: true
+            };
+          } else if (toolId === SubAppIds.plan) {
+            const planModel = planConfig?.model ?? model;
+            const { instruction } = parseToolArgs<{ instruction: string }>(call.function.arguments);
+
+            const { content, inputTokens, outputTokens } = await transferPlanAgent({
+              model: planModel,
+              instruction,
+              histories: GPTMessages2Chats({
+                messages: context.slice(1, -1),
+                getToolInfo
+              }),
+              onStreaming({ text, fullText }) {
+                //TODO: 需要一个新的 plan sse event
+                if (!fullText) return;
+                workflowStreamResponse?.({
+                  event: SseResponseEventEnum.toolResponse,
+                  data: {
+                    tool: {
+                      id: call.id,
+                      toolName: '',
+                      toolAvatar: '',
+                      params: '',
+                      response: sliceStrStartEnd(fullText, 5000, 5000)
+                    }
+                  }
+                });
+              }
+            });
+
+            const lastPlanCallIndex = context
+              .slice(0, -1)
+              .findLastIndex(
+                (c) =>
+                  c.role === 'assistant' &&
+                  c.tool_calls?.some((tc) => tc.function?.name === SubAppIds.plan)
+              );
+            const originalContent =
+              lastPlanCallIndex !== -1 ? (context[lastPlanCallIndex + 1].content as string) : '';
+
+            const applyedContent = applyDiff({
+              original: originalContent,
+              patch: content
+            });
+
+            // workflowStreamResponse?.({
+            //   event: SseResponseEventEnum.toolResponse,
+            //   data: {
+            //     tool: {
+            //       id: call.id,
+            //       toolName: '',
+            //       toolAvatar: '',
+            //       params: '',
+            //       response: sliceStrStartEnd(applyedContent, 5000, 5000)
+            //     }
+            //   }
+            // });
+
+            return {
+              response: content,
+              usages: [],
+              isEnd: false
+            };
+          } else if (toolId === SubAppIds.model) {
+            const { systemPrompt, task } = parseToolArgs<{ systemPrompt: string; task: string }>(
+              call.function.arguments
+            );
+
+            const { content, inputTokens, outputTokens } = await transferModelAgent({
+              model,
+              systemPrompt,
+              task,
+              onStreaming({ text, fullText }) {
+                if (!fullText) return;
+                workflowStreamResponse?.({
+                  event: SseResponseEventEnum.toolResponse,
+                  data: {
+                    tool: {
+                      id: call.id,
+                      toolName: '',
+                      toolAvatar: '',
+                      params: '',
+                      response: sliceStrStartEnd(fullText, 5000, 5000)
+                    }
+                  }
+                });
+              }
+            });
+            return {
+              response: content,
+              usages: [],
+              isEnd: false
             };
           }
 
@@ -179,14 +282,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             };
           }
 
-          const startParams = (() => {
-            try {
-              return json5.parse(call.function.arguments);
-            } catch {
-              return {};
-            }
-          })();
-
+          const startParams = parseToolArgs(call.function.arguments);
           initToolNodes(runtimeNodes, [node.nodeId], startParams);
           const { toolResponses, flowUsages, flowResponses } = await runWorkflow({
             ...props,
@@ -323,9 +419,20 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   }
 };
 
-const getSubApps = ({ toolNodes }: { toolNodes: ToolNodeItemType[] }): ChatCompletionTool[] => {
+const getSubApps = ({
+  toolNodes,
+  urls
+}: {
+  toolNodes: ToolNodeItemType[];
+  urls?: string[];
+}): ChatCompletionTool[] => {
   // System Tools: Plan Agent, stop sign, model agent.
-  const systemTools: ChatCompletionTool[] = [];
+  const systemTools: ChatCompletionTool[] = [
+    PlanAgentTool,
+    StopAgentTool,
+    ModelAgentTool,
+    getFileReadTool(urls)
+  ];
 
   // Node Tools
   const nodeTools = toolNodes.map<ChatCompletionTool>((item: ToolNodeItemType) => {
@@ -334,7 +441,7 @@ const getSubApps = ({ toolNodes }: { toolNodes: ToolNodeItemType[] }): ChatCompl
         type: 'function',
         function: {
           name: item.nodeId,
-          description: item.intro || item.name,
+          description: `调用${item.flowNodeType}:${item.name || item.intro}完成任务`,
           parameters: item.jsonSchema
         }
       };
@@ -357,7 +464,7 @@ const getSubApps = ({ toolNodes }: { toolNodes: ToolNodeItemType[] }): ChatCompl
       type: 'function',
       function: {
         name: item.nodeId,
-        description: item.toolDescription || item.intro || item.name,
+        description: `调用${item.flowNodeType}:${item.name || item.toolDescription || item.intro}完成任务`,
         parameters: {
           type: 'object',
           properties,
@@ -366,6 +473,7 @@ const getSubApps = ({ toolNodes }: { toolNodes: ToolNodeItemType[] }): ChatCompl
       }
     };
   });
+  console.dir(nodeTools, { depth: null });
 
   return [...systemTools, ...nodeTools];
 };
