@@ -92,6 +92,7 @@ export type AppDatasetSearchParamsType = {
   datasetSearchExtensionModel?: string;
   datasetSearchExtensionBg?: string;
 };
+
 export type AppSimpleEditFormType = {
   // templateId: string;
   aiSettings: {

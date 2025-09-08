@@ -1,5 +1,5 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
-import { SubAppIds } from '../../agent/constants';
+import { SubAppIds } from '../constants';
 
 export const ModelAgentTool: ChatCompletionTool = {
   type: 'function',

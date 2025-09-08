@@ -662,7 +662,7 @@ export const useWorkflow = () => {
       // 1. Add file input
       if (
         node.flowNodeType === FlowNodeTypeEnum.chatNode ||
-        node.flowNodeType === FlowNodeTypeEnum.agent ||
+        node.flowNodeType === FlowNodeTypeEnum.toolCall ||
         node.flowNodeType === FlowNodeTypeEnum.appModule
       ) {
         const input = node.inputs.find((i) => i.key === NodeInputKeyEnum.fileUrlList);

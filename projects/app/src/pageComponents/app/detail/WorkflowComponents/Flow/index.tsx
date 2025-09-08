@@ -44,8 +44,8 @@ const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.pluginOutput]: dynamic(() => import('./nodes/NodePluginIO/PluginOutput')),
   [FlowNodeTypeEnum.pluginModule]: NodeSimple,
   [FlowNodeTypeEnum.queryExtension]: NodeSimple,
-  [FlowNodeTypeEnum.toolCall]: undefined,
-  [FlowNodeTypeEnum.agent]: dynamic(() => import('./nodes/NodeAgent')),
+  [FlowNodeTypeEnum.agent]: undefined,
+  [FlowNodeTypeEnum.toolCall]: dynamic(() => import('./nodes/NodeToolCall')),
   [FlowNodeTypeEnum.stopTool]: (data: NodeProps<FlowNodeItemType>) => (
     <NodeSimple {...data} minW={'100px'} maxW={'300px'} />
   ),
