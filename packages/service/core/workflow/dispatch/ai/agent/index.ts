@@ -65,7 +65,7 @@ import type { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemToo
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import type { appConfigType } from './sub/app';
 import type { DatasetConfigType } from './sub/dataset';
-import { getSubApps } from './sub';
+import { getSubApps, rewriteSubAppsToolset } from './sub';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { dispatchRunTool } from '../../child/runTool';
 import { dispatchRunAppNode } from '../../child/runApp';
@@ -122,23 +122,26 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     }
   } = props;
 
-  const runtimeSubApps = subApps.map<RuntimeNodeItemType>((node) => {
-    return {
-      nodeId: node.id,
-      name: node.name,
-      avatar: node.avatar,
-      intro: node.intro,
-      toolDescription: node.toolDescription,
-      flowNodeType: node.flowNodeType,
-      showStatus: node.showStatus,
-      isEntry: false,
-      inputs: node.inputs,
-      outputs: node.outputs,
-      pluginId: node.pluginId,
-      version: node.version,
-      toolConfig: node.toolConfig,
-      catchError: node.catchError
-    };
+  const runtimeSubApps = await rewriteSubAppsToolset({
+    subApps: subApps.map<RuntimeNodeItemType>((node) => {
+      return {
+        nodeId: node.id,
+        name: node.name,
+        avatar: node.avatar,
+        intro: node.intro,
+        toolDescription: node.toolDescription,
+        flowNodeType: node.flowNodeType,
+        showStatus: node.showStatus,
+        isEntry: false,
+        inputs: node.inputs,
+        outputs: node.outputs,
+        pluginId: node.pluginId,
+        version: node.version,
+        toolConfig: node.toolConfig,
+        catchError: node.catchError
+      };
+    }),
+    lang
   });
 
   try {
@@ -150,6 +153,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       fileLinks = undefined;
     }
 
+    const subAppList = getSubApps({ subApps: runtimeSubApps, urls: fileLinks });
+    console.log(JSON.stringify(subAppList, null, 2));
+
     // Init tool params
     const toolNodesMap = new Map(runtimeSubApps.map((item) => [item.nodeId, item]));
     const getToolInfo = (id: string) => {
@@ -160,8 +166,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       };
     };
 
-    const subAppList = await getSubApps({ subApps: runtimeSubApps, urls: fileLinks, lang });
-    console.log(JSON.stringify(subAppList, null, 2));
     // const combinedSystemPrompt = `${parseAgentSystem({ systemPrompt, toolNodesMap })}\n\n${getTopAgentConstantPrompt()}`;
 
     // TODO: 把 files 加入 query 中。
