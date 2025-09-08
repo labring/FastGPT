@@ -100,7 +100,7 @@ const NodeCard = (props: Props) => {
   });
 
   const showToolHandle = useMemo(
-    () => isTool && !!nodeList.find((item) => item?.flowNodeType === FlowNodeTypeEnum.agent),
+    () => isTool && !!nodeList.find((item) => item?.flowNodeType === FlowNodeTypeEnum.toolCall),
     [isTool, nodeList]
   );
 
@@ -329,7 +329,9 @@ const NodeCard = (props: Props) => {
   }, [nodeId]);
   const RenderToolHandle = useMemo(
     () =>
-      node?.flowNodeType === FlowNodeTypeEnum.agent ? <ToolSourceHandle nodeId={nodeId} /> : null,
+      node?.flowNodeType === FlowNodeTypeEnum.toolCall ? (
+        <ToolSourceHandle nodeId={nodeId} />
+      ) : null,
     [node?.flowNodeType, nodeId]
   );
 
