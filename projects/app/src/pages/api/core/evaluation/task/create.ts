@@ -10,6 +10,10 @@ import { validateEvaluationParamsForCreate } from '@fastgpt/service/core/evaluat
 import { authEvaluationTaskCreate } from '@fastgpt/service/core/evaluation/common';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import {
+  checkTeamEvaluationTaskLimit,
+  checkTeamAIPoints
+} from '@fastgpt/service/support/permission/teamLimit';
 
 async function handler(
   req: ApiRequestProps<CreateEvaluationRequest>
@@ -34,6 +38,12 @@ async function handler(
       authApiKey: true,
       authToken: true
     });
+
+    // Check evaluation task limit
+    await checkTeamEvaluationTaskLimit(teamId);
+
+    // Check AI points availability
+    await checkTeamAIPoints(teamId);
 
     const evaluation = await EvaluationTaskService.createEvaluation({
       name: name.trim(),

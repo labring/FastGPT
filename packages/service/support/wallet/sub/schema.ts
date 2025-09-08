@@ -55,6 +55,9 @@ const SubSchema = new Schema({
   maxTeamMember: Number,
   maxApp: Number,
   maxDataset: Number,
+  maxEvaluationTaskAmount: Number,
+  maxEvalDatasetAmount: Number,
+  maxEvalDatasetDataAmount: Number,
 
   // stand sub and extra points sub. Plan total points
   totalPoints: {

@@ -17,6 +17,7 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { authEvaluationDatasetWrite } from '@fastgpt/service/core/evaluation/common';
 import EvaluationErrCode, { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
+import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 
 export type QualityAssessmentBatchQuery = {};
 export type QualityAssessmentBatchBody = qualityAssessmentBatchBody;
@@ -31,6 +32,9 @@ async function handler(
     authApiKey: true,
     authToken: true
   });
+
+  // Check AI points availability
+  await checkTeamAIPoints(teamId);
 
   if (!collectionId || typeof collectionId !== 'string') {
     return {

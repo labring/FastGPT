@@ -11,6 +11,10 @@ import type { createEvalDatasetDataBody } from '@fastgpt/global/core/evaluation/
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { authEvaluationDatasetDataCreate } from '@fastgpt/service/core/evaluation/common';
+import {
+  checkTeamEvalDatasetDataLimit,
+  checkTeamAIPoints
+} from '@fastgpt/service/support/permission/teamLimit';
 
 export type EvalDatasetDataCreateQuery = {};
 export type EvalDatasetDataCreateBody = createEvalDatasetDataBody;
@@ -68,6 +72,12 @@ async function handler(
   if (!collection) {
     return Promise.reject('Dataset collection not found or access denied');
   }
+
+  // Check evaluation data limit
+  await checkTeamEvalDatasetDataLimit(teamId);
+
+  // Check AI points availability
+  await checkTeamAIPoints(teamId);
 
   const dataId = await mongoSessionRun(async (session) => {
     const [{ _id }] = await MongoEvalDatasetData.create(

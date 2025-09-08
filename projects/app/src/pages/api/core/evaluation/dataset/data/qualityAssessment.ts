@@ -13,6 +13,7 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { authEvaluationDatasetDataUpdateById } from '@fastgpt/service/core/evaluation/common';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
+import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 
 export type QualityAssessmentQuery = {};
 export type QualityAssessmentBody = qualityAssessmentBody;
@@ -28,6 +29,9 @@ async function handler(
     authToken: true,
     authApiKey: true
   });
+
+  // Check AI points availability
+  await checkTeamAIPoints(teamId);
 
   if (!dataId || typeof dataId !== 'string') {
     return 'dataId is required and must be a string';

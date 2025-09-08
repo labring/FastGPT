@@ -9,17 +9,29 @@ vi.mock('@fastgpt/service/common/mongo/sessionRun');
 vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
   MongoEvalDatasetCollection: {
     findOne: vi.fn(),
-    create: vi.fn()
+    create: vi.fn(),
+    countDocuments: vi.fn()
   },
   EvalDatasetCollectionName: 'eval_dataset_collections'
 }));
 vi.mock('@fastgpt/service/support/user/audit/util', () => ({
   addAuditLog: vi.fn()
 }));
+vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
+  checkTeamEvalDatasetLimit: vi.fn(),
+  checkTeamAIPoints: vi.fn()
+}));
+
+import {
+  checkTeamEvalDatasetLimit,
+  checkTeamAIPoints
+} from '@fastgpt/service/support/permission/teamLimit';
 
 const mockAuthEvaluationDatasetCreate = vi.mocked(authEvaluationDatasetCreate);
 const mockMongoSessionRun = vi.mocked(mongoSessionRun);
 const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
+const mockCheckTeamEvalDatasetLimit = vi.mocked(checkTeamEvalDatasetLimit);
+const mockCheckTeamAIPoints = vi.mocked(checkTeamAIPoints);
 
 describe('EvalDatasetCollection Create API', () => {
   const validTeamId = 'team123';
@@ -41,6 +53,11 @@ describe('EvalDatasetCollection Create API', () => {
     });
 
     mockMongoEvalDatasetCollection.create.mockResolvedValue([{ _id: mockDatasetId }] as any);
+    mockMongoEvalDatasetCollection.countDocuments.mockResolvedValue(0);
+
+    // Mock team limit checks to pass by default
+    mockCheckTeamEvalDatasetLimit.mockResolvedValue(undefined);
+    mockCheckTeamAIPoints.mockResolvedValue(undefined);
   });
 
   describe('Parameter Validation', () => {

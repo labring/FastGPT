@@ -8,6 +8,7 @@ import { addEvalDatasetSmartGenerateJob } from '@fastgpt/service/core/evaluation
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { authEvaluationDatasetGenFromKnowledgeBase } from '@fastgpt/service/core/evaluation/common';
+import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 
 export type SmartGenerateEvalDatasetQuery = {};
 export type SmartGenerateEvalDatasetBody = smartGenerateEvalDatasetBody;
@@ -27,6 +28,9 @@ async function handler(
       authApiKey: true
     }
   );
+
+  // Check AI points availability
+  await checkTeamAIPoints(teamId);
 
   // Parameter validation
   if (!collectionId || typeof collectionId !== 'string') {
