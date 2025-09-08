@@ -7,7 +7,6 @@ import {
   Text,
   IconButton,
   VStack,
-  useDisclosure,
   Menu,
   MenuButton,
   MenuList,
@@ -27,16 +26,8 @@ import { EvaluationStatus, evaluationStatusMap } from './const';
 import EvaluationStatusSelect from './StatusSelect';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import EditDataModal from './EditDataModal';
-
-// 模拟数据类型
-interface EvaluationDataItem {
-  _id: string;
-  index: number;
-  question: string;
-  answer: string;
-  status: EvaluationStatus;
-}
+import DataListModals from './DataListModals';
+import { DataListProvider, useDataListContext, type EvaluationDataItem } from './DataListContext';
 
 // 模拟API函数 - 实际使用时需要替换为真实的API调用
 const getEvaluationDataList = async (params: {
@@ -139,18 +130,25 @@ const getEvaluationDataList = async (params: {
   };
 };
 
-const DataList = () => {
+// 内部组件，使用 Context
+const DataListContent = () => {
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>(EvaluationStatus.All);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
-  const [selectedItem, setSelectedItem] = useState<EvaluationDataItem | null>(null);
-  const [deleteConfirmItem, setDeleteConfirmItem] = useState<string | null>(null);
+
   const {
-    isOpen: isEditModalOpen,
-    onOpen: onEditModalOpen,
-    onClose: onEditModalClose
-  } = useDisclosure();
+    selectedItem,
+    setSelectedItem,
+    deleteConfirmItem,
+    setDeleteConfirmItem,
+    onEditModalOpen,
+    onQualityEvaluationModalOpen,
+    onIntelligentGenerationModalOpen,
+    onSettingsModalOpen,
+    handleDeleteConfirm,
+    setEvaluationDataList
+  } = useDataListContext();
 
   const scrollParams = useMemo(
     () => ({
@@ -166,14 +164,18 @@ const DataList = () => {
     data: evaluationDataList,
     ScrollData,
     total,
-    refreshList,
-    setData: setEvaluationDataList
+    refreshList
   } = useScrollPagination(getEvaluationDataList, {
     pageSize: 15,
     params: { ...scrollParams, pageNum: 1 },
     refreshDeps: [searchText, statusFilter],
     EmptyTip: EmptyTipDom
   });
+
+  // 同步数据到 Context，供弹窗组件使用
+  React.useEffect(() => {
+    setEvaluationDataList(evaluationDataList);
+  }, [evaluationDataList, setEvaluationDataList]);
 
   // 获取状态标签颜色
   const getStatusColor = (status: EvaluationStatus) => {
@@ -219,30 +221,11 @@ const DataList = () => {
     onEditModalOpen();
   };
 
-  // 处理保存数据
-  const handleSaveData = (data: { question: string; referenceAnswer: string }) => {
-    // 这里可以添加保存数据的API调用
-    onEditModalClose();
-  };
-
-  // 处理保存并下一条
-  const handleSaveAndNext = (data: { question: string; referenceAnswer: string }) => {
-    // 这里可以添加保存数据的API调用
-    // 然后自动打开下一条数据
-    const currentIndex = evaluationDataList.findIndex((item) => item._id === selectedItem?._id);
-    if (currentIndex < evaluationDataList.length - 1) {
-      const nextItem = evaluationDataList[currentIndex + 1];
-      setSelectedItem(nextItem);
-    } else {
-      onEditModalClose();
-    }
-  };
-
   // 处理追加数据菜单项点击
   const handleAddDataMenuClick = (type: 'ai' | 'file' | 'manual') => {
     switch (type) {
       case 'ai':
-        // 这里可以添加智能生成的逻辑
+        onIntelligentGenerationModalOpen();
         break;
       case 'file':
         // 这里可以添加文件导入的逻辑
@@ -251,14 +234,6 @@ const DataList = () => {
         // 这里可以添加手动新增的逻辑
         break;
     }
-  };
-
-  // 处理删除确认
-  const handleDeleteConfirm = (itemId: string) => {
-    // 这里可以添加删除API调用
-    // 删除成功后更新列表
-    setEvaluationDataList((prev) => prev.filter((item) => item._id !== itemId));
-    setDeleteConfirmItem(null);
   };
 
   // 处理删除点击
@@ -290,7 +265,7 @@ const DataList = () => {
               flex={1}
               size={'sm'}
               h={'36px'}
-              placeholder={t('搜索') || ''}
+              placeholder={t('common:Search') || ''}
               value={searchText}
               leftIcon={
                 <MyIcon
@@ -307,10 +282,10 @@ const DataList = () => {
 
             {/* Action Buttons */}
             <HStack>
-              <Button size={'sm'} variant={'whitePrimary'}>
+              <Button size={'sm'} variant={'whitePrimary'} onClick={onSettingsModalOpen}>
                 {t('dashboard_evaluation:settings')}
               </Button>
-              <Button size={'sm'} variant={'whitePrimary'}>
+              <Button size={'sm'} variant={'whitePrimary'} onClick={onQualityEvaluationModalOpen}>
                 {t('dashboard_evaluation:quality_evaluation')}
               </Button>
               <Menu>
@@ -330,10 +305,16 @@ const DataList = () => {
                   {t('dashboard_evaluation:add_data')}
                 </MenuButton>
                 <MenuList>
-                  <MenuItem onClick={() => handleAddDataMenuClick('ai')}>
+                  <MenuItem
+                    icon={<MyIcon name="common/aiOutline" w="16px" h="16px" />}
+                    onClick={() => handleAddDataMenuClick('ai')}
+                  >
                     {t('dashboard_evaluation:ai_generate')}
                   </MenuItem>
-                  <MenuItem onClick={() => handleAddDataMenuClick('file')}>
+                  <MenuItem
+                    icon={<MyIcon name="common/csvOutline" w="16px" h="16px" />}
+                    onClick={() => handleAddDataMenuClick('file')}
+                  >
                     {t('dashboard_evaluation:file_import')}
                   </MenuItem>
                   <MenuItem
@@ -387,7 +368,7 @@ const DataList = () => {
                   <Popover
                     isOpen={deleteConfirmItem === item._id}
                     onClose={() => setDeleteConfirmItem(null)}
-                    placement="top"
+                    placement="left"
                     closeOnBlur={true}
                   >
                     <PopoverTrigger>
@@ -407,11 +388,12 @@ const DataList = () => {
                         onClick={(e) => handleDeleteClick(e, item._id)}
                       />
                     </PopoverTrigger>
-                    <PopoverContent w="auto" maxW="280px">
+                    <PopoverContent w="318px" onClick={(e) => e.stopPropagation()}>
                       <PopoverArrow />
                       <PopoverBody p={3}>
                         <VStack spacing={3} align="stretch">
                           <HStack spacing={2}>
+                            <MyIcon name="common/warn" w={'24px'} h={'24px'}></MyIcon>
                             <Text fontSize="14px" fontWeight="medium">
                               {t('dashboard_evaluation:confirm_delete_data')}
                             </Text>
@@ -429,10 +411,10 @@ const DataList = () => {
                             </Button>
                             <Button
                               size="sm"
-                              colorScheme="red"
+                              bg="red.600"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDeleteConfirm(item._id);
+                                // handleDeleteConfirm(item._id);
                               }}
                             >
                               {t('dashboard_evaluation:delete')}
@@ -449,20 +431,18 @@ const DataList = () => {
         </ScrollData>
       </Flex>
 
-      {/* 编辑数据弹窗 */}
-      {selectedItem && (
-        <EditDataModal
-          isOpen={isEditModalOpen}
-          onClose={onEditModalClose}
-          onSave={handleSaveData}
-          onSaveAndNext={handleSaveAndNext}
-          evaluationStatus={selectedItem.status}
-          evaluationResult={selectedItem.answer}
-          defaultQuestion={selectedItem.question}
-          defaultReferenceAnswer={selectedItem.answer}
-        />
-      )}
+      {/* 所有弹窗组件 */}
+      <DataListModals total={total} />
     </MyBox>
+  );
+};
+
+// 主组件，只提供 Context
+const DataList = () => {
+  return (
+    <DataListProvider>
+      <DataListContent />
+    </DataListProvider>
   );
 };
 
