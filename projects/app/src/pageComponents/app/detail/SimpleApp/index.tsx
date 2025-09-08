@@ -38,45 +38,7 @@ const SimpleEdit = () => {
       );
     }
 
-    // 读取旧的存储记录
-    const pastSnapshot = (() => {
-      try {
-        const pastSnapshot = localStorage.getItem(`${appDetail._id}-past`);
-        return pastSnapshot ? (JSON.parse(pastSnapshot) as SimpleAppSnapshotType[]) : [];
-      } catch (error) {
-        return [];
-      }
-    })();
-    const defaultState = pastSnapshot?.[pastSnapshot.length - 1]?.state;
-    if (pastSnapshot?.[0]?.diff && defaultState) {
-      setPast(
-        pastSnapshot
-          .map((item) => {
-            if (!item.state && !item.diff) return;
-            if (!item.diff) {
-              return {
-                title: t('app:initial_form'),
-                isSaved: true,
-                appForm: defaultState
-              };
-            }
-
-            const currentState = getAppConfigByDiff(defaultState, item.diff);
-            return {
-              title: item.title,
-              isSaved: item.isSaved,
-              appForm: currentState
-            };
-          })
-          .filter(Boolean) as SimpleAppSnapshotType[]
-      );
-
-      const pastState = getAppConfigByDiff(defaultState, pastSnapshot[0].diff);
-      localStorage.removeItem(`${appDetail._id}-past`);
-      return setAppForm(pastState);
-    }
-
-    // 无旧的记录，正常初始化
+    // 初始化snapshot
     if (past.length === 0) {
       const appForm = appWorkflow2Form({
         nodes: appDetail.modules,
