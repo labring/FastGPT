@@ -19,7 +19,7 @@ import {
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
-import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
+import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
 import {
   WorkflowStart,
   userFilesInput
@@ -438,16 +438,16 @@ export function form2AppWorkflow(
       nodes: [
         {
           nodeId: toolNodeId,
-          name: AgentNode.name,
-          intro: AgentNode.intro,
-          avatar: AgentNode.avatar,
-          flowNodeType: AgentNode.flowNodeType,
+          name: ToolCallNode.name,
+          intro: ToolCallNode.intro,
+          avatar: ToolCallNode.avatar,
+          flowNodeType: ToolCallNode.flowNodeType,
           showStatus: true,
           position: {
             x: 1062.1738942532802,
             y: -223.65033022650476
           },
-          version: AgentNode.version,
+          version: ToolCallNode.version,
           inputs: [
             {
               key: NodeInputKeyEnum.aiModel,
@@ -527,7 +527,7 @@ export function form2AppWorkflow(
               value: formData.aiSettings.aiChatReasoning
             }
           ],
-          outputs: AgentNode.outputs
+          outputs: ToolCallNode.outputs
         },
         // tool nodes
         ...(datasetTool ? datasetTool.nodes : []),

@@ -34,7 +34,7 @@ type RunAgentCallProps = {
   };
   handleToolResponse: (e: {
     call: ChatCompletionMessageToolCall;
-    context: ChatCompletionMessageParam[];
+    messages: ChatCompletionMessageParam[];
   }) => Promise<{
     response: string;
     usages: ChatNodeUsageType[];
@@ -129,7 +129,7 @@ export const runAgentCall = async ({
       // TODO: 加入交互节点处理
       const { response, usages, isEnd } = await handleToolResponse({
         call: tool,
-        context: requestMessages
+        messages: requestMessages
       });
 
       if (isEnd) {

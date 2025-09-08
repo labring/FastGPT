@@ -14,6 +14,7 @@ export enum AppTypeEnum {
   toolSet = 'toolSet', // 'mcp'
   httpToolSet = 'httpToolSet',
   tool = 'tool',
+  agent = 'agent',
   hidden = 'hidden',
 
   // deprecated
