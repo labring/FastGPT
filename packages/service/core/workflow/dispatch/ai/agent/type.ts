@@ -15,5 +15,5 @@ export type DispatchSubAppProps<T> = {
 };
 export type DispatchSubAppResponse = {
   response: string;
-  usages: ChatNodeUsageType[];
+  usages?: ChatNodeUsageType[];
 };
