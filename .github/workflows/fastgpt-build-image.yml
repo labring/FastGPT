@@ -8,10 +8,10 @@ on:
       - "packages/**"
     tags:
       - "*fastgpt*"
-      
 env:
-  IMAGE_NAME: fastgpt                          # 镜像名（不含 registry 与 namespace）
-
+  IMAGE_NAME: fastgpt                             # 镜像名（不含 registry 与 namespace）
+  DOCKERFILE_PATH: projects/app/Dockerfile        # Dockerfile 路径（按需修改）
+  
 jobs:
   build-fastgpt-images:
     permissions:
@@ -26,6 +26,7 @@ jobs:
           - repo: fastgpt-sub-route-gchat
             base_url: "/gchat"
         archs:
+          - arch: amd64
           - arch: arm64
             runs-on: ubuntu-24.04-arm
     runs-on: ${{ matrix.archs.runs-on || 'ubuntu-24.04' }}
@@ -51,27 +52,104 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ matrix.archs.arch }}-${{ matrix.sub_routes.repo }}-buildx-
 
-      # 登录阿里云 ACR（从 Secrets 读取）
-      - name: Log in to Alibaba Cloud Container Registry
+      # 仅登录阿里云容器仓库
+      - name: Login to Ali Hub
         uses: docker/login-action@v3
         with:
-          registry: ${{ secrets.ACR_REGISTRY }}      # e.g. registry.cn-hangzhou.aliyuncs.com
-          username: ${{ secrets.ACR_USERNAME }}      # 通常为 AccessKeyId
-          password: ${{ secrets.ACR_PASSWORD }}      # 通常为 AccessKeySecret
+          registry: ${{ secrets.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
 
       # 构建镜像
-      - name: Build and push multi-arch image
+      - name: Build for ${{ matrix.archs.arch }}
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
           file: projects/app/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/${{ matrix.archs.arch }}
           build-args: |
             ${{ matrix.sub_routes.base_url && format('base_url={0}', matrix.sub_routes.base_url) || '' }}
-          push: true
-          tags: |
-            ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
-            ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.IMAGE_NAME }}:latest
-          # 可选缓存，加速后续构建（首次会慢）
-          cache-from: type=registry,ref=${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.IMAGE_NAME }}:buildcache
-          cache-to: type=inline
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=${{ matrix.sub_routes.repo }} image
+          outputs: type=image,"name=${{ env.IMAGE_NAME }}/${{ matrix.sub_routes.repo }}",push-by-digest=true,push=true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+      # 导出镜像摘要
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests/${{ matrix.sub_routes.repo }}
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${{ matrix.sub_routes.repo }}/${digest#sha256:}"
+
+      # 上传镜像摘要作为工件
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.sub_routes.repo }}-${{ github.sha }}-${{ matrix.archs.arch }}
+          path: ${{ runner.temp }}/digests/${{ matrix.sub_routes.repo }}/*
+          if-no-files-found: error
+          retention-days: 1
+
+  release-fastgpt-images:
+    permissions:
+      contents: read
+    needs: build-fastgpt-images
+    strategy:
+      matrix:
+        sub_routes:
+          - repo: fastgpt
+          - repo: fastgpt-sub-route
+          - repo: fastgpt-sub-route-gchat
+    runs-on: ubuntu-24.04
+    steps:
+      # 登录阿里云容器仓库
+      - name: Login to Ali Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      # 下载镜像摘要
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-${{ matrix.sub_routes.repo }}-${{ github.sha }}-*
+          merge-multiple: true
+
+      # 设置Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 设置镜像名称和标签
+      - name: Set image name and tag
+        run: |
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "Ali_Tag=${{ env.IMAGE_NAME }}/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
+          else
+            echo "Ali_Tag=${{ env.IMAGE_NAME }}/${{ matrix.sub_routes.repo }}:${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "Ali_Latest=${{ env.IMAGE_NAME }}/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
+          fi
+
+      # 创建镜像清单并推送到阿里云
+      - name: Create manifest list and push to Aliyun
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          # 基础标签
+          TAGS="${Ali_Tag}"
+          
+          # 如果不是main分支，还需要推送latest标签
+          if [[ "${{ github.ref_name }}" != "main" ]]; then
+            TAGS="${TAGS} ${Ali_Latest}"
+          fi
+          
+          # 为每个标签创建多架构镜像清单
+          for TAG in $TAGS; do
+            docker buildx imagetools create -t $TAG \
+              $(printf '${{ env.IMAGE_NAME }}/${{ matrix.sub_routes.repo }}@sha256:%s ' *)
+            sleep 5
+          done
