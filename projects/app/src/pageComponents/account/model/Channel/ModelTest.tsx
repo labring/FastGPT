@@ -14,7 +14,6 @@ import {
   ModalBody,
   ModalFooter
 } from '@chakra-ui/react';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import React, { useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -26,6 +25,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type ModelTestItem = {
   label: React.ReactNode;
@@ -46,7 +46,7 @@ const ModelTest = ({
   onClose: () => void;
 }) => {
   const { t, i18n } = useTranslation();
-  const language = i18n.language;
+  const { getModelProvider } = useSystemStore();
   const { toast } = useToast();
   const [testModelList, setTestModelList] = useState<ModelTestItem[]>([]);
 
@@ -77,7 +77,7 @@ const ModelTest = ({
         .map((model) => {
           const modelData = res.find((item) => item.model === model);
           if (!modelData) return null;
-          const provider = getModelProvider(modelData.provider, language);
+          const provider = getModelProvider(modelData.provider, i18n.language);
 
           return {
             label: (

@@ -3,10 +3,10 @@ import NodeCard from './render/NodeCard';
 import { type NodeProps } from 'reactflow';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Flex, Switch } from '@chakra-ui/react';
+import { Box, Button, Flex } from '@chakra-ui/react';
 import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import {
@@ -30,8 +30,12 @@ import { isArray } from 'lodash';
 import { WorkflowNodeEdgeContext } from '../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import InputRender from '@/components/core/app/formRender';
-import { valueTypeToInputType } from '@/components/core/app/formRender/utils';
+import {
+  valueTypeToInputType,
+  variableInputTypeToInputType
+} from '@/components/core/app/formRender/utils';
 import { isValidReferenceValueFormat } from '@fastgpt/global/core/workflow/utils';
+import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs = [], nodeId } = data;
@@ -102,6 +106,44 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
 
   const ValueRender = useMemoizedFn(
     ({ updateItem, index }: { updateItem: TUpdateListItem; index: number }) => {
+      const { inputType, formParams = {} } = (() => {
+        const value = updateItem.variable;
+        if (!value) {
+          return {
+            inputType: InputTypeEnum.input
+          };
+        }
+        // Global variables: 根据变量的 inputType 决定
+        if (value[0] === VARIABLE_NODE_ID) {
+          const variableList = appDetail.chatConfig.variables || [];
+          const variable = variableList.find((item) => item.key === value[1]);
+          if (variable) {
+            return {
+              inputType: variableInputTypeToInputType(variable.type),
+              formParams: {
+                min: variable.min,
+                max: variable.max,
+                list: variable.list
+              }
+            };
+          }
+        }
+        // Node output: 根据数据类型决定
+        else if (value[0] && value[1]) {
+          const output = nodeList
+            .find((node) => node.nodeId === value[0])
+            ?.outputs.find((output) => output.id === value[1]);
+          if (output) {
+            return {
+              inputType: valueTypeToInputType(output.valueType)
+            };
+          }
+        }
+
+        return {
+          inputType: InputTypeEnum.input
+        };
+      })();
       const { valueType } = getRefData({
         variable: updateItem.variable,
         nodeList,
@@ -111,17 +153,15 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
         (item) => item.renderType === updateItem.renderType
       );
 
-      const onUpdateNewValue = (newValue: any) => {
-        if (isValidReferenceValueFormat(newValue)) {
+      const onUpdateNewValue = (value: any) => {
+        if (updateItem.renderType === FlowNodeInputTypeEnum.reference) {
           onUpdateList(
-            updateList.map((update, i) =>
-              i === index ? { ...update, value: newValue as ReferenceItemValueType } : update
-            )
+            updateList.map((update, i) => (i === index ? { ...update, value: value } : update))
           );
         } else {
           onUpdateList(
             updateList.map((update, i) =>
-              i === index ? { ...update, value: ['', newValue] } : update
+              i === index ? { ...update, value: ['', value] } : update
             )
           );
         }
@@ -222,16 +262,16 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                 );
               }
 
-              const inputValue = isArray(updateItem.value?.[1]) ? '' : updateItem.value?.[1];
-
               return (
                 <Box w={'300px'} borderRadius={'sm'}>
                   <InputRender
-                    inputType={valueTypeToInputType(valueType)}
-                    value={inputValue || ''}
-                    onChange={onUpdateNewValue}
+                    // @ts-ignore
+                    inputType={inputType}
+                    {...formParams}
                     variables={[...variables, ...externalProviderWorkflowVariables]}
                     variableLabels={variables}
+                    value={updateItem.value?.[1]}
+                    onChange={onUpdateNewValue}
                   />
                 </Box>
               );

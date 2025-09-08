@@ -191,7 +191,7 @@ export const LoginContainer = ({
   const { feConfigs } = useSystemStore();
   const { setLastChatAppId } = useChatStore();
 
-  const [pageType, setPageType] = useState<`${LoginPageTypeEnum}` | null>(null);
+  const [pageType, setPageType] = useState<`${LoginPageTypeEnum}`>(LoginPageTypeEnum.passwordLogin);
   const [showCommunityModal, setShowCommunityModal] = useState(false);
 
   // login success handler
@@ -204,10 +204,6 @@ export const LoginContainer = ({
 
   // initialization logic
   useEffect(() => {
-    setPageType(
-      feConfigs?.oauth?.wechat ? LoginPageTypeEnum.wechat : LoginPageTypeEnum.passwordLogin
-    );
-
     // reset chat state
     setLastChatAppId('');
   }, [feConfigs?.oauth?.wechat, setLastChatAppId]);

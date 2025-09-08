@@ -72,8 +72,11 @@ export const useChatTest = ({
   );
 
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
+  const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const clearChatRecords = useContextSelector(ChatItemContext, (v) => v.clearChatRecords);
+
+  const variableList = useMemo(() => chatConfig.variables, [chatConfig.variables]);
 
   const pluginInputs = useMemo(() => {
     return nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs || [];
@@ -108,10 +111,9 @@ export const useChatTest = ({
     async () => {
       if (!appId || !chatId) return;
       const res = await getInitChatInfo({ appId, chatId });
-
       resetVariables({
         variables: res.variables,
-        variableList: res.app?.chatConfig?.variables
+        variableList: variableList ?? res.app?.chatConfig?.variables
       });
     },
     {
@@ -124,6 +126,21 @@ export const useChatTest = ({
     clearChatRecords();
     setChatId();
   }, [clearChatRecords, setChatId]);
+
+  // 新增变量时候，自动加入默认值
+  useEffect(() => {
+    const values = variablesForm.getValues();
+    if (values.variables && variableList) {
+      variableList.forEach((item) => {
+        const val = variablesForm.getValues(`variables.${item.key}`);
+        if (item.defaultValue !== undefined && (val === undefined || val === null || val === '')) {
+          values.variables[item.key] = item.defaultValue;
+        }
+      });
+
+      variablesForm.reset(values);
+    }
+  }, [variableList, variablesForm]);
 
   const CustomChatContainer = useMemoizedFn(() =>
     appDetail.type === AppTypeEnum.plugin ? (
@@ -141,7 +158,7 @@ export const useChatTest = ({
         appId={appId}
         chatId={chatId}
         showMarkIcon
-        chatType={ChatTypeEnum.chat}
+        chatType={ChatTypeEnum.test}
         onStartChat={startChat}
       />
     )

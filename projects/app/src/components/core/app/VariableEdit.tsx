@@ -15,7 +15,7 @@ import {
 import { SmallAddIcon } from '@chakra-ui/icons';
 import {
   VariableInputEnum,
-  variableMap,
+  variableConfigs,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type.d';
@@ -44,7 +44,16 @@ export const defaultVariable: VariableItemType = {
   type: VariableInputEnum.input,
   description: '',
   required: true,
-  valueType: WorkflowIOValueTypeEnum.string
+  valueType: WorkflowIOValueTypeEnum.string,
+  canSelectFile: true,
+  canSelectImg: true,
+  maxFiles: 5,
+  timeGranularity: 'day',
+  timeType: 'point',
+  timeRangeStart: new Date(
+    new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).setHours(0, 0, 0, 0)
+  ).toISOString(),
+  timeRangeEnd: new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
 };
 
 export const addVariable = () => {
@@ -69,24 +78,69 @@ const VariableEdit = ({
   const value = getValues();
   const type = watch('type');
 
-  const inputTypeList = useMemo(
-    () =>
-      Object.values(variableMap)
-        .filter((item) => item.value !== VariableInputEnum.textarea)
-        .map((item) => ({
-          icon: item.icon,
-          label: t(item.label as any),
-          value: item.value,
-          defaultValueType: item.defaultValueType,
-          description: item.description ? t(item.description as any) : ''
-        })),
-    [t]
-  );
+  const inputTypeList = useMemo(() => {
+    return variableConfigs
+      .map((group) =>
+        group
+          .filter((item) => item && item.value !== VariableInputEnum.textarea)
+          .map((item) => ({
+            icon: item.icon,
+            label: t(item.label as any),
+            value: item.value,
+            defaultValueType: item.defaultValueType,
+            description: item.description ? t(item.description as any) : ''
+          }))
+      )
+      .filter((group) => group.length > 0);
+  }, [t]);
 
   const defaultValueType = useMemo(() => {
-    const item = inputTypeList.find((item) => item.value === type);
+    const item = inputTypeList.flat().find((item) => item.value === type);
     return item?.defaultValueType;
   }, [inputTypeList, type]);
+
+  const handleTypeChange = useCallback(
+    (newType: VariableInputEnum) => {
+      const defaultValIsNumber = !isNaN(Number(value.defaultValue));
+      const currentType = value.type;
+
+      const isCurrentTimeType =
+        currentType === VariableInputEnum.timePointSelect ||
+        currentType === VariableInputEnum.timeRangeSelect;
+      const isNewTimeType =
+        newType === VariableInputEnum.timePointSelect ||
+        newType === VariableInputEnum.timeRangeSelect;
+
+      if (
+        newType === VariableInputEnum.select ||
+        newType === VariableInputEnum.multipleSelect ||
+        (newType === VariableInputEnum.numberInput && !defaultValIsNumber)
+      ) {
+        setValue('defaultValue', '');
+      }
+
+      // Set time-related default values when switching from non-time type to time type
+      if (!isCurrentTimeType && isNewTimeType) {
+        setValue('defaultValue', '');
+        setValue('timeGranularity', 'day');
+        setValue(
+          'timeRangeStart',
+          new Date(
+            new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).setHours(0, 0, 0, 0)
+          ).toISOString()
+        );
+        setValue('timeRangeEnd', new Date(new Date().setHours(0, 0, 0, 0)).toISOString());
+      }
+
+      // Clear default value when switching from time type to other types
+      if (isCurrentTimeType && !isNewTimeType) {
+        setValue('defaultValue', '');
+      }
+
+      setValue('type', newType);
+    },
+    [setValue, value.defaultValue, value.type]
+  );
 
   const formatVariables = useMemo(() => {
     const results = formatEditorVariablePickerIcon(variables);
@@ -137,14 +191,45 @@ const VariableEdit = ({
         return;
       }
 
-      if (data.type !== VariableInputEnum.select && data.list) {
+      if (
+        data.type !== VariableInputEnum.select &&
+        data.type !== VariableInputEnum.multipleSelect &&
+        data.list
+      ) {
         delete data.list;
       }
 
-      if (data.type === VariableInputEnum.custom) {
+      if (data.type !== VariableInputEnum.file) {
+        delete data.canSelectFile;
+        delete data.canSelectImg;
+        delete data.maxFiles;
+      }
+
+      if (
+        data.type !== VariableInputEnum.timePointSelect &&
+        data.type !== VariableInputEnum.timeRangeSelect
+      ) {
+        delete data.timeGranularity;
+        delete data.timeRangeStart;
+        delete data.timeRangeEnd;
+      } else if (data.type === VariableInputEnum.timePointSelect) {
+        data.defaultValue = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+      } else if (data.type === VariableInputEnum.timeRangeSelect) {
+        data.defaultValue = [
+          data.timeRangeStart ||
+            new Date(
+              new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).setHours(0, 0, 0, 0)
+            ).toISOString(),
+          data.timeRangeEnd || new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
+        ];
+      }
+
+      if (data.type === VariableInputEnum.custom || data.type === VariableInputEnum.internal) {
         data.required = false;
       } else {
-        data.valueType = inputTypeList.find((item) => item.value === data.type)?.defaultValueType;
+        data.valueType = inputTypeList
+          .flat()
+          .find((item) => item.value === data.type)?.defaultValueType;
       }
 
       const onChangeVariable = (() => {
@@ -282,7 +367,7 @@ const VariableEdit = ({
           title={t('common:core.module.Variable Setting')}
           isOpen={true}
           onClose={() => reset({})}
-          maxW={['90vw', '928px']}
+          maxW={['90vw', '1078px']}
           w={'100%'}
           isCentered
         >
@@ -291,65 +376,67 @@ const VariableEdit = ({
               <FormLabel color={'myGray.600'} fontWeight={'medium'}>
                 {t('workflow:Variable.Variable type')}
               </FormLabel>
-              <Flex flexDirection={'column'} gap={4}></Flex>
-              <Box display={'grid'} gridTemplateColumns={'repeat(2, 1fr)'} gap={4}>
-                {inputTypeList.map((item) => {
-                  const isSelected = type === item.value;
+              <Flex flexDirection={'column'} gap={4}>
+                {inputTypeList.map((list, index) => {
                   return (
                     <Box
-                      display={'flex'}
-                      key={item.label}
-                      border={isSelected ? '1px solid #3370FF' : '1px solid #DFE2EA'}
-                      p={3}
-                      rounded={'6px'}
-                      fontWeight={'medium'}
-                      fontSize={'14px'}
-                      alignItems={'center'}
-                      cursor={'pointer'}
-                      boxShadow={isSelected ? '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)' : 'none'}
-                      _hover={{
-                        '& > svg': {
-                          color: 'primary.600'
-                        },
-                        '& > span': {
-                          color: 'myGray.900'
-                        },
-                        border: '1px solid #3370FF',
-                        boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
-                      }}
-                      onClick={() => {
-                        const defaultValIsNumber = !isNaN(Number(value.defaultValue));
-                        // 如果切换到 numberInput，不是数字，则清空
-                        if (
-                          item.value === VariableInputEnum.select ||
-                          (item.value === VariableInputEnum.numberInput && !defaultValIsNumber)
-                        ) {
-                          setValue('defaultValue', '');
-                        }
-                        setValue('type', item.value);
-                      }}
+                      key={index}
+                      display={'grid'}
+                      gridTemplateColumns={'repeat(3, 1fr)'}
+                      gap={4}
+                      mt={3}
                     >
-                      <MyIcon
-                        name={item.icon as any}
-                        w={'20px'}
-                        mr={1.5}
-                        color={isSelected ? 'primary.600' : 'myGray.400'}
-                      />
-                      <Box
-                        as="span"
-                        color={isSelected ? 'myGray.900' : 'inherit'}
-                        pr={4}
-                        whiteSpace="nowrap"
-                      >
-                        {item.label}
-                      </Box>
-                      {item.description && (
-                        <QuestionTip label={item.description as string} ml={1} />
-                      )}
+                      {list.map((item) => {
+                        const isSelected = type === item.value;
+                        return (
+                          <Box
+                            display={'flex'}
+                            key={item.label}
+                            border={isSelected ? '1px solid #3370FF' : '1px solid #DFE2EA'}
+                            p={3}
+                            rounded={'6px'}
+                            fontWeight={'medium'}
+                            fontSize={'14px'}
+                            alignItems={'center'}
+                            cursor={'pointer'}
+                            boxShadow={
+                              isSelected ? '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)' : 'none'
+                            }
+                            _hover={{
+                              '& > svg': {
+                                color: 'primary.600'
+                              },
+                              '& > span': {
+                                color: 'myGray.900'
+                              },
+                              border: '1px solid #3370FF',
+                              boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
+                            }}
+                            onClick={() => handleTypeChange(item.value)}
+                          >
+                            <MyIcon
+                              name={item.icon as any}
+                              w={'20px'}
+                              mr={1.5}
+                              color={isSelected ? 'primary.600' : 'myGray.400'}
+                            />
+                            <Box
+                              as="span"
+                              color={isSelected ? 'myGray.900' : 'inherit'}
+                              whiteSpace="nowrap"
+                            >
+                              {item.label}
+                            </Box>
+                            {item.description && (
+                              <QuestionTip label={item.description as string} ml={1} />
+                            )}
+                          </Box>
+                        );
+                      })}
                     </Box>
                   );
                 })}
-              </Box>
+              </Flex>
             </Stack>
             <InputTypeConfig
               form={form}
