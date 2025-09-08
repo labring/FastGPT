@@ -94,7 +94,7 @@ export const filterPublicNodeResponseData = ({
   const publicNodeMap: Record<string, any> = {
     [FlowNodeTypeEnum.pluginModule]: true,
     [FlowNodeTypeEnum.datasetSearchNode]: true,
-    [FlowNodeTypeEnum.agent]: true,
+    [FlowNodeTypeEnum.toolCall]: true,
     [FlowNodeTypeEnum.pluginOutput]: true
   };
 
