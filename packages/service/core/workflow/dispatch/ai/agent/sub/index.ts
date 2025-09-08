@@ -16,12 +16,15 @@ import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/
 import { MongoApp } from '../../../../../app/schema';
 import { getMCPChildren } from '../../../../../app/mcp';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 
 export const getSubApps = async ({
   subApps,
+  lang,
   urls
 }: {
   subApps: RuntimeNodeItemType[];
+  lang?: localeType;
   urls?: string[];
 }): Promise<ChatCompletionTool[]> => {
   // System Tools: Plan Agent, stop sign, model agent.
@@ -101,7 +104,7 @@ export const getSubApps = async ({
           if (systemToolId) {
             const children = await getSystemToolRunTimeNodeFromSystemToolset({
               toolSetNode: node,
-              lang: 'en'
+              lang
             });
             return getToolNode(children);
           } else if (mcpToolsetVal) {
