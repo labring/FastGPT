@@ -41,18 +41,20 @@ export const checkTeamMemberLimit = async (teamId: string, newCount: number) => 
 };
 
 export const checkTeamAppLimit = async (teamId: string, amount = 1) => {
+  const type = [
+    AppTypeEnum.agent,
+    AppTypeEnum.simple,
+    AppTypeEnum.workflow,
+    AppTypeEnum.plugin,
+    AppTypeEnum.toolSet,
+    AppTypeEnum.httpToolSet
+  ];
   const [{ standardConstants }, appCount] = await Promise.all([
     getTeamStandPlan({ teamId }),
     MongoApp.countDocuments({
       teamId,
       type: {
-        $in: [
-          AppTypeEnum.simple,
-          AppTypeEnum.workflow,
-          AppTypeEnum.plugin,
-          AppTypeEnum.toolSet,
-          AppTypeEnum.httpToolSet
-        ]
+        $in: type
       }
     })
   ]);
@@ -65,7 +67,7 @@ export const checkTeamAppLimit = async (teamId: string, amount = 1) => {
   if (global?.licenseData?.maxApps && typeof global?.licenseData?.maxApps === 'number') {
     const totalApps = await MongoApp.countDocuments({
       type: {
-        $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin, AppTypeEnum.toolSet]
+        $in: type
       }
     });
     if (totalApps >= global.licenseData.maxApps) {

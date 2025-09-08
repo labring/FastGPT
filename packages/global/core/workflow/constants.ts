@@ -169,9 +169,8 @@ export enum NodeInputKeyEnum {
   aiChatJsonSchema = 'aiChatJsonSchema',
 
   // agent
-  subAgentConfig = 'subConfig',
-  planAgentConfig = 'planConfig',
-  modelAgentConfig = 'modelConfig',
+  subApps = 'subApps',
+  planAgentConfig = 'planAgentConfig',
 
   // dataset
   datasetSelectList = 'datasets',
