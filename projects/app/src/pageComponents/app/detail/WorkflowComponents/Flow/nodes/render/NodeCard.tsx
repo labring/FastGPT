@@ -473,7 +473,8 @@ const MenuRender = React.memo(function MenuRender({
           pluginId: node.data.pluginId,
           version: node.data.version,
           versionLabel: node.data.versionLabel,
-          isLatestVersion: node.data.isLatestVersion
+          isLatestVersion: node.data.isLatestVersion,
+          toolConfig: node.data.toolConfig
         };
 
         return [
@@ -495,7 +496,8 @@ const MenuRender = React.memo(function MenuRender({
               outputs: template.outputs,
               version: template.version,
               versionLabel: template.versionLabel,
-              isLatestVersion: template.isLatestVersion
+              isLatestVersion: template.isLatestVersion,
+              toolConfig: template.toolConfig
             },
             selected: true,
             parentNodeId: undefined,
