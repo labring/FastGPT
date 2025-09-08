@@ -61,7 +61,7 @@ export const useInitApp = () => {
   const { loadGitStar, setInitd, feConfigs } = useSystemStore();
   const { userInfo } = useUserStore();
   const [scripts, setScripts] = useState<FastGPTFeConfigsType['scripts']>([]);
-  const [title, setTitle] = useState(process.env.SYSTEM_NAME || 'AI');
+  const [title, setTitle] = useState(process.env.SYSTEM_NAME || 'AlopeGpt');
 
   const getPathWithoutMarketingParams = () => {
     const filteredQuery = { ...router.query };
@@ -88,16 +88,7 @@ export const useInitApp = () => {
       feConfigs: { scripts, isPlus, systemTitle }
     } = await clientInitData();
 
-    setTitle(systemTitle || 'FastGPT');
-
-    // log fastgpt
-    if (!isPlus) {
-      console.log(
-        '%cWelcome to FastGPT',
-        'font-family:Arial; color:#3370ff ; font-size:18px; font-weight:bold;',
-        `GitHub：https://github.com/labring/FastGPT`
-      );
-    }
+    setTitle(systemTitle || 'AlopeGpt');
 
     loadGitStar();
 
