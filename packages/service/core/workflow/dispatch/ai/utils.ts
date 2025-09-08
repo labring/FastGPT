@@ -11,6 +11,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 import type { ToolNodeItemType } from './tool/type';
+import json5 from 'json5';
 
 export const filterToolResponseToPreview = (response: AIChatItemValueItemType[]) => {
   return response.map((item) => {
@@ -166,4 +167,53 @@ export const getToolNodesByIds = ({
         jsonSchema
       };
     });
+};
+
+export const parseToolArgs = <T = Record<string, any>>(toolArgs: string): T => {
+  try {
+    return json5.parse(toolArgs) as T;
+  } catch {
+    return {} as T;
+  }
+};
+
+/**
+ * 简单版 diff apply
+ * @param original 原始文本
+ * @param patch diff patch 文本（带 + 和 -）
+ */
+export const applyDiff = ({ original, patch }: { original: string; patch: string }): string => {
+  if (!original) return patch;
+
+  let result = original.split('\n');
+
+  const patchLines = patch.split('\n');
+  for (let i = 0; i < patchLines.length; i++) {
+    const line = patchLines[i];
+
+    if (line.startsWith('-')) {
+      const oldContent = line.slice(1).trim();
+      const next = patchLines[i + 1];
+
+      // 下一个是对应的 + 行 → 替换
+      if (next && next.startsWith('+')) {
+        const newContent = next.slice(1).trim(); // 也要 trim
+        const idx = result.findIndex((l) => l.trim() === oldContent);
+        if (idx !== -1) {
+          // 保留原有的缩进
+          const indent = result[idx].match(/^(\s*)/)?.[1] || '';
+          result[idx] = indent + newContent; // 保留缩进
+        }
+        i++; // 跳过下一个 + 行
+      } else {
+        // 单独的删除行
+        const idx = result.findIndex((l) => l.trim() === oldContent);
+        if (idx !== -1) {
+          result.splice(idx, 1);
+        }
+      }
+    }
+  }
+
+  return result.join('\n');
 };
