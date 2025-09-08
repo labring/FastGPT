@@ -94,7 +94,7 @@ export type AppDatasetSearchParamsType = {
   datasetSearchExtensionBg?: string;
 };
 
-export type AppSimpleEditFormType = {
+export type AppFormEditFormType = {
   // templateId: string;
   aiSettings: {
     [NodeInputKeyEnum.aiModel]: string;
