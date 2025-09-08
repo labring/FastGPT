@@ -162,8 +162,8 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
         return (
           <VStack spacing={4} justify="center" h="100%">
             <HStack spacing={3} align="center">
-              <Spinner size="md" color="blue.500" />
-              <Text color="gray.500" fontSize="14px">
+              <Spinner size="sm" color="myGray.500" emptyColor="gray.200" />
+              <Text color="myGray.500" fontSize="14px">
                 {t(evaluationStatusMap[EvaluationStatus.Evaluating])}
               </Text>
             </HStack>
@@ -200,16 +200,24 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
 
       case EvaluationStatus.Abnormal:
         return (
-          <Box>
-            <HStack spacing={2} mb={4}>
-              <Badge colorScheme="red" variant="subtle" px={2} py={1}>
-                {t(evaluationStatusMap[EvaluationStatus.Abnormal])}
-              </Badge>
-            </HStack>
-            <Text fontSize="14px" lineHeight="1.6" color="gray.700">
-              {currentEvaluationResult || t('dashboard_evaluation:evaluation_error_message')}
-            </Text>
-          </Box>
+          <VStack spacing={4} justify="center" h="100%">
+            <Box borderRadius="md">
+              <Flex align="center" mb={4}>
+                <MyIcon name="closeSolid" w={4} h={4} color="red" mr={1} />
+                <Text fontSize="14px" fontWeight="medium" color="red.500">
+                  {t('dashboard_evaluation:evaluation_abnormal')}
+                </Text>
+              </Flex>
+              <Text fontSize="14px" color="myGray.600" mb={2}>
+                {t('dashboard_evaluation:error_message')}:
+              </Text>
+              <Text fontSize="14px" color="myGray.900" lineHeight="1.5">
+                Failed to load resource: the server responded with a status of X<br />
+                Failed to load resource: the server responded with a status of X<br />
+                Failed to load resource: the server responded with a status of X
+              </Text>
+            </Box>
+          </VStack>
         );
 
       case EvaluationStatus.NotEvaluated:
@@ -341,6 +349,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
         isOpen={isOpen}
         onClose={onClose}
         size={'md'}
+        iconSrc="modal/edit"
         title={t('dashboard_evaluation:edit_data')}
       >
         <ModalBody w={'1024px'}>

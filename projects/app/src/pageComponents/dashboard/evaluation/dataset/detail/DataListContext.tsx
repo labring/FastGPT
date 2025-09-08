@@ -12,6 +12,13 @@ interface EvaluationDataItem {
   status: EvaluationStatus;
 }
 
+export interface ManualAddDataFormData {
+  question: string;
+  referenceAnswer: string;
+  autoEvaluate: boolean;
+  evaluationModel: string;
+}
+
 interface DataListContextType {
   // 数据相关
   evaluationDataList: EvaluationDataItem[];
@@ -33,6 +40,12 @@ interface DataListContextType {
   isIntelligentGenerationModalOpen: boolean;
   onIntelligentGenerationModalOpen: () => void;
   onIntelligentGenerationModalClose: () => void;
+
+  // 手动新增数据弹窗相关
+  isManualAddModalOpen: boolean;
+  onManualAddModalOpen: () => void;
+  onManualAddModalClose: () => void;
+  handleManualAddConfirm: (data: ManualAddDataFormData) => void;
 
   // 设置弹窗相关
   isSettingsModalOpen: boolean;
@@ -90,6 +103,13 @@ export const DataListProvider: React.FC<DataListProviderProps> = ({ children }) 
     onClose: onSettingsModalClose
   } = useDisclosure();
 
+  // 手动新增数据弹窗
+  const {
+    isOpen: isManualAddModalOpen,
+    onOpen: onManualAddModalOpen,
+    onClose: onManualAddModalClose
+  } = useDisclosure();
+
   // 业务逻辑处理函数
   const handleSaveData = (data: { question: string; referenceAnswer: string }) => {
     // 这里可以添加保存数据的API调用
@@ -133,6 +153,17 @@ export const DataListProvider: React.FC<DataListProviderProps> = ({ children }) 
     setDeleteConfirmItem(null);
   };
 
+  // 处理手动新增数据确认
+  const handleManualAddConfirm = (data: ManualAddDataFormData) => {
+    console.log('手动新增数据:', data);
+    // 这里添加手动新增数据的逻辑
+    // 如果开启了自动评测，可以在这里触发评测
+    if (data.autoEvaluate) {
+      console.log('使用模型进行自动评测:', data.evaluationModel);
+    }
+    onManualAddModalClose();
+  };
+
   const contextValue: DataListContextType = {
     // 数据相关
     evaluationDataList,
@@ -161,6 +192,12 @@ export const DataListProvider: React.FC<DataListProviderProps> = ({ children }) 
     onSettingsModalClose,
     evaluationModel,
     setEvaluationModel,
+
+    // 手动新增数据弹窗相关
+    isManualAddModalOpen,
+    onManualAddModalOpen,
+    onManualAddModalClose,
+    handleManualAddConfirm,
 
     // 删除确认相关
     deleteConfirmItem,

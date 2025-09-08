@@ -49,6 +49,13 @@ const getEvaluationDataList = async (params: {
       status: EvaluationStatus.HighQuality
     },
     {
+      _id: '122',
+      index: 1333,
+      question: '如何修复保障的机组条件检测问题?',
+      answer: '见《DLT596自备电站生技规程管理办法》相关条文执行。',
+      status: EvaluationStatus.Abnormal
+    },
+    {
       _id: '2',
       index: 2,
       question: '什么时候需要注册员工工作（微信）卡?',
@@ -145,6 +152,7 @@ const DataListContent = () => {
     onEditModalOpen,
     onQualityEvaluationModalOpen,
     onIntelligentGenerationModalOpen,
+    onManualAddModalOpen,
     onSettingsModalOpen,
     handleDeleteConfirm,
     setEvaluationDataList
@@ -231,7 +239,7 @@ const DataListContent = () => {
         // 这里可以添加文件导入的逻辑
         break;
       case 'manual':
-        // 这里可以添加手动新增的逻辑
+        onManualAddModalOpen();
         break;
     }
   };
