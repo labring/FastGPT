@@ -5,7 +5,7 @@ import type {
   UpdateEvaluationResponse,
   UpdateEvaluationRequest
 } from '@fastgpt/global/core/evaluation/api';
-import { validateEvaluationParams } from '@fastgpt/global/core/evaluation/utils';
+import { validateEvaluationParamsForUpdate } from '@fastgpt/service/core/evaluation/utils';
 import { authEvaluationTaskWrite } from '@fastgpt/service/core/evaluation/common';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -14,17 +14,20 @@ async function handler(
   req: ApiRequestProps<UpdateEvaluationRequest>
 ): Promise<UpdateEvaluationResponse> {
   try {
-    const { evalId, name, description } = req.body;
+    const { evalId, name, description, datasetId, target, evaluators } = req.body;
 
     if (!evalId) {
       return Promise.reject('Evaluation ID is required');
     }
 
-    // Validate name and description with common validation utility
-    const paramValidation = validateEvaluationParams(
-      { name, description },
-      { namePrefix: 'Evaluation' }
-    );
+    // Validate all evaluation parameters with common validation utility
+    const paramValidation = await validateEvaluationParamsForUpdate({
+      name,
+      description,
+      datasetId,
+      target,
+      evaluators
+    });
     if (!paramValidation.success) {
       return Promise.reject(paramValidation.message);
     }
@@ -41,7 +44,10 @@ async function handler(
       evalId,
       {
         ...(name !== undefined && { name: name.trim() }),
-        ...(description !== undefined && { description: description?.trim() })
+        ...(description !== undefined && { description: description?.trim() }),
+        ...(datasetId !== undefined && { datasetId }),
+        ...(target !== undefined && { target }),
+        ...(evaluators !== undefined && { evaluators })
       },
       teamId
     );

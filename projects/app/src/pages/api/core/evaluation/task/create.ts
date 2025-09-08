@@ -6,8 +6,7 @@ import type {
   CreateEvaluationRequest,
   CreateEvaluationResponse
 } from '@fastgpt/global/core/evaluation/api';
-import { validateTargetConfig } from '@fastgpt/service/core/evaluation/target';
-import { validateEvaluationParams } from '@fastgpt/global/core/evaluation/utils';
+import { validateEvaluationParamsForCreate } from '@fastgpt/service/core/evaluation/utils';
 import { authEvaluationTaskCreate } from '@fastgpt/service/core/evaluation/common';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -18,33 +17,16 @@ async function handler(
   try {
     const { name, description, datasetId, target, evaluators } = req.body;
 
-    // Validate name and description
-    const paramValidation = validateEvaluationParams(
-      { name, description },
-      { namePrefix: 'Evaluation' }
-    );
+    // Validate all evaluation parameters (includes target validation)
+    const paramValidation = await validateEvaluationParamsForCreate({
+      name,
+      description,
+      datasetId,
+      target,
+      evaluators
+    });
     if (!paramValidation.success) {
       return Promise.reject(paramValidation.message);
-    }
-
-    const targetValidation = await validateTargetConfig(target as EvalTarget);
-    if (!targetValidation.success) {
-      return Promise.reject(`Target validation failed: ${targetValidation.message}`);
-    }
-
-    if (!datasetId) {
-      return Promise.reject('Dataset ID is required');
-    }
-
-    if (!evaluators || !Array.isArray(evaluators) || evaluators.length === 0) {
-      return Promise.reject('At least one evaluator is required');
-    }
-
-    // Validate evaluators configuration
-    for (const evaluator of evaluators) {
-      if (!evaluator.metric || !evaluator.metric._id || !evaluator.metric.type) {
-        return Promise.reject('Each evaluator must contain a valid metric configuration');
-      }
     }
 
     const { teamId, tmbId } = await authEvaluationTaskCreate(target as EvalTarget, {
@@ -71,8 +53,8 @@ async function handler(
         params: {
           taskName: evaluation.name,
           datasetId,
-          targetType: target.type,
-          evaluatorCount: evaluators.length
+          targetType: evaluation.target.type,
+          evaluatorCount: evaluation.evaluators.length
         }
       });
     })();
