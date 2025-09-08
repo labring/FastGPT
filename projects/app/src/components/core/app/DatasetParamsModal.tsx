@@ -10,7 +10,8 @@ import {
   Slider,
   SliderTrack,
   SliderFilledTrack,
-  SliderThumb
+  SliderThumb,
+  Divider
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -49,12 +50,16 @@ const DatasetParamsModal = ({
   datasetSearchExtensionModel,
   datasetSearchExtensionBg,
   maxTokens,
+  hasDatabaseKnowledge = false,
+  hasOtherKnowledge = true,
   onClose,
   onSuccess
 }: AppDatasetSearchParamsType & {
   maxTokens?: number; // limit max tokens
   onClose: () => void;
   onSuccess: (e: AppDatasetSearchParamsType) => void;
+  hasDatabaseKnowledge?: boolean;
+  hasOtherKnowledge?: boolean;
 }) => {
   const { t } = useTranslation();
   const { teamPlanStatus } = useUserStore();
@@ -134,6 +139,57 @@ const DatasetParamsModal = ({
     return Math.ceil(maxTokens / 80 / 100) * 100;
   }, [maxTokens]);
 
+  const showModelTitle = useMemo(
+    () => hasDatabaseKnowledge && hasOtherKnowledge,
+    [hasDatabaseKnowledge, hasOtherKnowledge]
+  );
+
+  const renderHeader = useMemo(() => {
+    return (
+      <>
+        {showModelTitle && (
+          <HStack fontSize={'md'} alignItems={'center'} fontWeight={'medium'} mb={4}>
+            <Box w={'3px'} h={'14px'} borderRadius={'13px'} bg={'primary.600'} />
+            <Box color="myGray.900" fontSize="16px" fontWeight="500">
+              {t('dataset:database')}
+            </Box>
+          </HStack>
+        )}
+        {hasDatabaseKnowledge && (
+          <Flex mb={2} alignItems={'center'}>
+            <FormLabel>
+              {t('dataset:search_model')}
+              <QuestionTip
+                ml={0.5}
+                label={
+                  <>
+                    {t('dataset:search_model_desc')}
+                    <br />
+                    {t('dataset:search_model_tip')}
+                  </>
+                }
+              />
+            </FormLabel>
+            <Box flex={['1 0 0', '0 0 380px']}>
+              <SelectAiModel flex={1} width={'100%'} ml={2} list={chatModelSelectList} />
+            </Box>
+          </Flex>
+        )}
+        {showModelTitle && (
+          <>
+            <Divider mt={6} mb={6} />
+            <HStack fontSize={'md'} alignItems={'center'} fontWeight={'medium'} mb={4}>
+              <Box w={'3px'} h={'14px'} borderRadius={'13px'} bg={'primary.600'} />
+              <Box color="myGray.900" fontSize="16px" fontWeight="500">
+                {t('dataset:other_knowledge_base')}
+              </Box>
+            </HStack>
+          </>
+        )}
+      </>
+    );
+  }, [chatModelSelectList, showModelTitle, t]);
+
   return (
     <MyModal
       isOpen={true}
@@ -143,263 +199,274 @@ const DatasetParamsModal = ({
       w={['90vw', '550px']}
     >
       <ModalBody flex={'auto'} overflow={'auto'} px={[4, 10]}>
-        <LightRowTabs<SearchSettingTabEnum>
-          width={'100%'}
-          mb={3}
-          list={[
-            {
-              icon: 'common/setting',
-              label: t('common:core.dataset.search.search mode'),
-              value: SearchSettingTabEnum.searchMode
-            },
-            {
-              icon: 'core/dataset/searchfilter',
-              label: t('common:core.dataset.search.Filter'),
-              value: SearchSettingTabEnum.limit
-            },
-            {
-              label: t('common:core.module.template.Query extension'),
-              value: SearchSettingTabEnum.queryExtension,
-              icon: 'core/dataset/questionExtension'
-            }
-          ]}
-          inlineStyles={{
-            borderBottomColor: 'myGray.200',
-            borderBottom: '1px solid'
-          }}
-          value={currentTabType}
-          onChange={setCurrentTabType}
-        />
-        {currentTabType === SearchSettingTabEnum.searchMode && (
-          <Box mt={3}>
-            <LeftRadio<`${DatasetSearchModeEnum}`>
-              py={2.5}
-              gridGap={4}
+        {renderHeader}
+        {hasOtherKnowledge && (
+          <>
+            <LightRowTabs<SearchSettingTabEnum>
+              width={'100%'}
+              mb={3}
               list={[
                 {
-                  title: t('common:core.dataset.search.mode.embedding'),
-                  desc: t('common:core.dataset.search.mode.embedding desc'),
-                  value: DatasetSearchModeEnum.embedding
+                  icon: 'common/setting',
+                  label: t('common:core.dataset.search.search mode'),
+                  value: SearchSettingTabEnum.searchMode
                 },
                 {
-                  title: t('common:core.dataset.search.mode.fullTextRecall'),
-                  desc: t('common:core.dataset.search.mode.fullTextRecall desc'),
-                  value: DatasetSearchModeEnum.fullTextRecall
+                  icon: 'core/dataset/searchfilter',
+                  label: t('common:core.dataset.search.Filter'),
+                  value: SearchSettingTabEnum.limit
                 },
                 {
-                  title: t('common:core.dataset.search.mode.mixedRecall'),
-                  desc: t('common:core.dataset.search.mode.mixedRecall desc'),
-                  value: DatasetSearchModeEnum.mixedRecall,
-                  children: searchModeWatch === DatasetSearchModeEnum.mixedRecall && (
-                    <Box mt={3}>
-                      <HStack justifyContent={'space-between'}>
-                        <Flex alignItems={'center'}>
-                          <Box fontSize={'sm'} color={'myGray.900'}>
-                            {t('common:core.dataset.search.mode.embedding')}
-                          </Box>
-                          <Box fontSize={'xs'} color={'myGray.500'}>
-                            {embeddingWeightWatch}
-                          </Box>
-                        </Flex>
-                        <Flex alignItems={'center'}>
-                          <Box fontSize={'sm'} color={'myGray.900'}>
-                            {t('common:core.dataset.search.score.fullText')}
-                          </Box>
-                          <Box fontSize={'xs'} color={'myGray.500'}>
-                            {fullTextWeightWatch}
-                          </Box>
-                        </Flex>
-                      </HStack>
-                      <Slider
-                        defaultValue={embeddingWeightWatch}
-                        min={0.1}
-                        max={0.9}
-                        step={0.01}
-                        onChange={(e) => {
-                          setValue('embeddingWeight', Number(e.toFixed(2)));
-                        }}
-                      >
-                        <SliderTrack bg={'#F9518E'}>
-                          <SliderFilledTrack bg={'#3370FF'} />
-                        </SliderTrack>
-                        <SliderThumb boxShadow={'none'} bg={'none'}>
-                          <MyIcon transform={'translateY(10px)'} name={'sliderTag'} w={'1rem'} />
-                        </SliderThumb>
-                      </Slider>
-                    </Box>
-                  )
+                  label: t('common:core.module.template.Query extension'),
+                  value: SearchSettingTabEnum.queryExtension,
+                  icon: 'core/dataset/questionExtension'
                 }
               ]}
-              value={searchModeWatch}
-              onChange={(e) => {
-                setValue('searchMode', e);
+              inlineStyles={{
+                borderBottomColor: 'myGray.200',
+                borderBottom: '1px solid'
               }}
+              value={currentTabType}
+              onChange={setCurrentTabType}
             />
-            {/* Rerank */}
-            <>
-              <HStack mt={6} justifyContent={'space-between'}>
-                <FormLabel>
-                  {t('common:core.dataset.search.ReRank')}
-                  <QuestionTip ml={0.5} label={t('common:core.dataset.search.ReRank desc')} />
-                </FormLabel>
-                {!showReRank ? (
-                  <Box color={'myGray.500'} fontSize={'sm'}>
-                    {t('common:core.ai.Not deploy rerank model')}
-                  </Box>
-                ) : (
-                  <Switch {...register('usingReRank')} />
-                )}
-              </HStack>
-              {usingReRankWatch && (
+            {currentTabType === SearchSettingTabEnum.searchMode && (
+              <Box mt={3}>
+                <LeftRadio<`${DatasetSearchModeEnum}`>
+                  py={2.5}
+                  gridGap={4}
+                  list={[
+                    {
+                      title: t('common:core.dataset.search.mode.embedding'),
+                      desc: t('common:core.dataset.search.mode.embedding desc'),
+                      value: DatasetSearchModeEnum.embedding
+                    },
+                    {
+                      title: t('common:core.dataset.search.mode.fullTextRecall'),
+                      desc: t('common:core.dataset.search.mode.fullTextRecall desc'),
+                      value: DatasetSearchModeEnum.fullTextRecall
+                    },
+                    {
+                      title: t('common:core.dataset.search.mode.mixedRecall'),
+                      desc: t('common:core.dataset.search.mode.mixedRecall desc'),
+                      value: DatasetSearchModeEnum.mixedRecall,
+                      children: searchModeWatch === DatasetSearchModeEnum.mixedRecall && (
+                        <Box mt={3}>
+                          <HStack justifyContent={'space-between'}>
+                            <Flex alignItems={'center'}>
+                              <Box fontSize={'sm'} color={'myGray.900'}>
+                                {t('common:core.dataset.search.mode.embedding')}
+                              </Box>
+                              <Box fontSize={'xs'} color={'myGray.500'}>
+                                {embeddingWeightWatch}
+                              </Box>
+                            </Flex>
+                            <Flex alignItems={'center'}>
+                              <Box fontSize={'sm'} color={'myGray.900'}>
+                                {t('common:core.dataset.search.score.fullText')}
+                              </Box>
+                              <Box fontSize={'xs'} color={'myGray.500'}>
+                                {fullTextWeightWatch}
+                              </Box>
+                            </Flex>
+                          </HStack>
+                          <Slider
+                            defaultValue={embeddingWeightWatch}
+                            min={0.1}
+                            max={0.9}
+                            step={0.01}
+                            onChange={(e) => {
+                              setValue('embeddingWeight', Number(e.toFixed(2)));
+                            }}
+                          >
+                            <SliderTrack bg={'#F9518E'}>
+                              <SliderFilledTrack bg={'#3370FF'} />
+                            </SliderTrack>
+                            <SliderThumb boxShadow={'none'} bg={'none'}>
+                              <MyIcon
+                                transform={'translateY(10px)'}
+                                name={'sliderTag'}
+                                w={'1rem'}
+                              />
+                            </SliderThumb>
+                          </Slider>
+                        </Box>
+                      )
+                    }
+                  ]}
+                  value={searchModeWatch}
+                  onChange={(e) => {
+                    setValue('searchMode', e);
+                  }}
+                />
+                {/* Rerank */}
                 <>
-                  <HStack mt={3} justifyContent={'space-between'}>
-                    <Box fontSize={'sm'} flex={'0 0 100px'} color={'myGray.700'}>
-                      {t('common:rerank_weight')}
-                    </Box>
+                  <HStack mt={6} justifyContent={'space-between'}>
+                    <FormLabel>
+                      {t('common:core.dataset.search.ReRank')}
+                      <QuestionTip ml={0.5} label={t('common:core.dataset.search.ReRank desc')} />
+                    </FormLabel>
+                    {!showReRank ? (
+                      <Box color={'myGray.500'} fontSize={'sm'}>
+                        {t('common:core.ai.Not deploy rerank model')}
+                      </Box>
+                    ) : (
+                      <Switch {...register('usingReRank')} />
+                    )}
+                  </HStack>
+                  {usingReRankWatch && (
+                    <>
+                      <HStack mt={3} justifyContent={'space-between'}>
+                        <Box fontSize={'sm'} flex={'0 0 100px'} color={'myGray.700'}>
+                          {t('common:rerank_weight')}
+                        </Box>
+                        <Box flex={'1 0 0'}>
+                          <InputSlider
+                            min={0.1}
+                            max={1}
+                            step={0.01}
+                            value={rerankWeightWatch}
+                            onChange={(val) => {
+                              setValue(
+                                NodeInputKeyEnum.datasetSearchRerankWeight,
+                                Number(val.toFixed(2))
+                              );
+                            }}
+                          />
+                        </Box>
+                      </HStack>
+                      <HStack mt={3}>
+                        <Box fontSize={'sm'} flex={'0 0 100px'} color={'myGray.700'}>
+                          {t('common:model.type.reRank')}
+                        </Box>
+                        <Box flex={'1 0 0'}>
+                          <SelectAiModel
+                            bg={'myGray.50'}
+                            h={'36px'}
+                            value={reRankModelWatch}
+                            list={reRankModelSelectList}
+                            onChange={(val) => {
+                              setValue(NodeInputKeyEnum.datasetSearchRerankModel, val);
+                            }}
+                          />
+                        </Box>
+                      </HStack>
+                    </>
+                  )}
+                </>
+              </Box>
+            )}
+            {currentTabType === SearchSettingTabEnum.limit && (
+              <Box pt={5}>
+                {limit !== undefined && (
+                  <Box display={['block', 'flex']}>
+                    <Flex flex={'0 0 120px'} alignItems={'center'} mb={[5, 0]}>
+                      <FormLabel>{t('common:max_quote_tokens')}</FormLabel>
+                      <QuestionTip label={t('common:max_quote_tokens_tips')} />
+                    </Flex>
                     <Box flex={'1 0 0'}>
+                      {maxTokens ? (
+                        <InputSlider
+                          min={100}
+                          max={maxTokens}
+                          step={maxTokenStep}
+                          value={getValues(NodeInputKeyEnum.datasetMaxTokens) ?? 1000}
+                          onChange={(val) => {
+                            setValue(NodeInputKeyEnum.datasetMaxTokens, val);
+                            setRefresh(!refresh);
+                          }}
+                        />
+                      ) : (
+                        <MyNumberInput
+                          size={'sm'}
+                          min={100}
+                          max={1000000}
+                          step={100}
+                          register={register}
+                          name={NodeInputKeyEnum.datasetMaxTokens}
+                        />
+                      )}
+                    </Box>
+                  </Box>
+                )}
+                <Box display={['block', 'flex']} mt={[6, 10]} mb={4}>
+                  <Flex flex={'0 0 120px'} alignItems={'center'} mb={[5, 0]}>
+                    <FormLabel>{t('common:min_similarity')}</FormLabel>
+                    <QuestionTip label={t('common:min_similarity_tip')} />
+                  </Flex>
+                  <Box flex={'1 0 0'}>
+                    {showSimilarity ? (
                       <InputSlider
-                        min={0.1}
+                        min={0}
                         max={1}
                         step={0.01}
-                        value={rerankWeightWatch}
+                        value={getValues(NodeInputKeyEnum.datasetSimilarity) ?? 0.5}
                         onChange={(val) => {
-                          setValue(
-                            NodeInputKeyEnum.datasetSearchRerankWeight,
-                            Number(val.toFixed(2))
-                          );
+                          setValue(NodeInputKeyEnum.datasetSimilarity, val);
+                          setRefresh(!refresh);
                         }}
                       />
-                    </Box>
-                  </HStack>
-                  <HStack mt={3}>
-                    <Box fontSize={'sm'} flex={'0 0 100px'} color={'myGray.700'}>
-                      {t('common:model.type.reRank')}
-                    </Box>
-                    <Box flex={'1 0 0'}>
-                      <SelectAiModel
-                        bg={'myGray.50'}
-                        h={'36px'}
-                        value={reRankModelWatch}
-                        list={reRankModelSelectList}
-                        onChange={(val) => {
-                          setValue(NodeInputKeyEnum.datasetSearchRerankModel, val);
-                        }}
-                      />
-                    </Box>
-                  </HStack>
-                </>
-              )}
-            </>
-          </Box>
-        )}
-        {currentTabType === SearchSettingTabEnum.limit && (
-          <Box pt={5}>
-            {limit !== undefined && (
-              <Box display={['block', 'flex']}>
-                <Flex flex={'0 0 120px'} alignItems={'center'} mb={[5, 0]}>
-                  <FormLabel>{t('common:max_quote_tokens')}</FormLabel>
-                  <QuestionTip label={t('common:max_quote_tokens_tips')} />
-                </Flex>
-                <Box flex={'1 0 0'}>
-                  {maxTokens ? (
-                    <InputSlider
-                      min={100}
-                      max={maxTokens}
-                      step={maxTokenStep}
-                      value={getValues(NodeInputKeyEnum.datasetMaxTokens) ?? 1000}
-                      onChange={(val) => {
-                        setValue(NodeInputKeyEnum.datasetMaxTokens, val);
-                        setRefresh(!refresh);
-                      }}
-                    />
-                  ) : (
-                    <MyNumberInput
-                      size={'sm'}
-                      min={100}
-                      max={1000000}
-                      step={100}
-                      register={register}
-                      name={NodeInputKeyEnum.datasetMaxTokens}
-                    />
-                  )}
+                    ) : (
+                      <Box color={'myGray.500'} fontSize={'sm'}>
+                        {t('common:core.dataset.search.No support similarity')}
+                      </Box>
+                    )}
+                  </Box>
                 </Box>
               </Box>
             )}
-            <Box display={['block', 'flex']} mt={[6, 10]} mb={4}>
-              <Flex flex={'0 0 120px'} alignItems={'center'} mb={[5, 0]}>
-                <FormLabel>{t('common:min_similarity')}</FormLabel>
-                <QuestionTip label={t('common:min_similarity_tip')} />
-              </Flex>
-              <Box flex={'1 0 0'}>
-                {showSimilarity ? (
-                  <InputSlider
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={getValues(NodeInputKeyEnum.datasetSimilarity) ?? 0.5}
-                    onChange={(val) => {
-                      setValue(NodeInputKeyEnum.datasetSimilarity, val);
-                      setRefresh(!refresh);
-                    }}
-                  />
-                ) : (
-                  <Box color={'myGray.500'} fontSize={'sm'}>
-                    {t('common:core.dataset.search.No support similarity')}
-                  </Box>
+            {currentTabType === SearchSettingTabEnum.queryExtension && (
+              <Box>
+                <Box transform={'translateY(-5px)'} fontSize={'xs'} color={'myGray.500'}>
+                  {t('common:core.dataset.Query extension intro')}
+                </Box>
+                <Flex mt={3} alignItems={'center'}>
+                  <FormLabel flex={'1 0 0'}>
+                    {t('common:core.dataset.search.Using query extension')}
+                  </FormLabel>
+                  <Switch {...register('datasetSearchUsingExtensionQuery')} />
+                </Flex>
+                {datasetSearchUsingCfrForm === true && (
+                  <>
+                    <Flex mt={4} alignItems={'center'}>
+                      <FormLabel flex={['0 0 80px', '1 0 0']}>
+                        {t('common:core.ai.Model')}
+                      </FormLabel>
+                      <Box flex={['1 0 0', '0 0 300px']}>
+                        <SelectAiModel
+                          width={'100%'}
+                          value={queryExtensionModel}
+                          list={chatModelSelectList}
+                          onChange={(val: any) => {
+                            setValue('datasetSearchExtensionModel', val);
+                          }}
+                        />
+                      </Box>
+                    </Flex>
+                    <Box mt={3}>
+                      <Flex alignItems={'center'}>
+                        <FormLabel>
+                          {t('common:core.app.edit.Query extension background prompt')}
+                        </FormLabel>
+                        <QuestionTip
+                          ml={1}
+                          label={t('common:core.app.edit.Query extension background tip')}
+                        ></QuestionTip>
+                      </Flex>
+                      <Box mt={1}>
+                        <MyTextarea
+                          autoHeight
+                          minH={150}
+                          maxH={300}
+                          placeholder={t('common:core.module.QueryExtension.placeholder')}
+                          {...register('datasetSearchExtensionBg')}
+                        />
+                      </Box>
+                    </Box>
+                  </>
                 )}
               </Box>
-            </Box>
-          </Box>
-        )}
-        {currentTabType === SearchSettingTabEnum.queryExtension && (
-          <Box>
-            <Box transform={'translateY(-5px)'} fontSize={'xs'} color={'myGray.500'}>
-              {t('common:core.dataset.Query extension intro')}
-            </Box>
-            <Flex mt={3} alignItems={'center'}>
-              <FormLabel flex={'1 0 0'}>
-                {t('common:core.dataset.search.Using query extension')}
-              </FormLabel>
-              <Switch {...register('datasetSearchUsingExtensionQuery')} />
-            </Flex>
-            {datasetSearchUsingCfrForm === true && (
-              <>
-                <Flex mt={4} alignItems={'center'}>
-                  <FormLabel flex={['0 0 80px', '1 0 0']}>{t('common:core.ai.Model')}</FormLabel>
-                  <Box flex={['1 0 0', '0 0 300px']}>
-                    <SelectAiModel
-                      width={'100%'}
-                      value={queryExtensionModel}
-                      list={chatModelSelectList}
-                      onChange={(val: any) => {
-                        setValue('datasetSearchExtensionModel', val);
-                      }}
-                    />
-                  </Box>
-                </Flex>
-                <Box mt={3}>
-                  <Flex alignItems={'center'}>
-                    <FormLabel>
-                      {t('common:core.app.edit.Query extension background prompt')}
-                    </FormLabel>
-                    <QuestionTip
-                      ml={1}
-                      label={t('common:core.app.edit.Query extension background tip')}
-                    ></QuestionTip>
-                  </Flex>
-                  <Box mt={1}>
-                    <MyTextarea
-                      autoHeight
-                      minH={150}
-                      maxH={300}
-                      placeholder={t('common:core.module.QueryExtension.placeholder')}
-                      {...register('datasetSearchExtensionBg')}
-                    />
-                  </Box>
-                </Box>
-              </>
             )}
-          </Box>
+          </>
         )}
       </ModalBody>
       <ModalFooter>

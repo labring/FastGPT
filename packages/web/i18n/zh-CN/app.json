@@ -69,7 +69,7 @@
   "cron.every_week": "每周执行",
   "cron.interval": "间隔执行",
   "dataset": "知识库",
-  "dataset_search_tool_description": "调用“语义检索”和“全文检索”能力，从“知识库”中查找可能与问题相关的参考内容。优先调用该工具来辅助回答用户的问题。",
+  "dataset_search_tool_description": "调用语义检索、全文检索、数据库检索能力，从“知识库”中查找可能与问题相关的参考内容",
   "day": "日",
   "deleted": "应用已删除",
   "document_quote": "文档引用",
