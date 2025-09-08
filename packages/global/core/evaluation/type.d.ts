@@ -84,8 +84,8 @@ export interface TargetInput {
 }
 
 export interface TargetOutput {
-  actualOutput: string;
-  retrievalContext?: string[];
+  [EvalDatasetDataKeyEnum.ActualOutput]: string;
+  [EvalDatasetDataKeyEnum.RetrievalContext]?: string[];
   usage?: any;
   responseTime: number;
 }

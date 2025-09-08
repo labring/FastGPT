@@ -18,16 +18,7 @@ import { getFileById } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { Permission } from '@fastgpt/global/support/permission/controller';
-
-export const EvaluationAuthErrors = {
-  evaluationNotFound: 'Evaluation not found',
-  datasetNotFound: 'Evaluation dataset not found',
-  metricNotFound: 'Evaluation metric not found',
-  permissionDenied: 'Permission denied',
-  evaluationIdRequired: 'Evaluation ID is required',
-  datasetIdRequired: 'Evaluation dataset ID is required',
-  metricIdRequired: 'Evaluation metric ID is required'
-} as const;
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 // ================ Authentication and Authorization for eval task ================
 export const authEvaluationByTmbId = async ({
@@ -45,7 +36,7 @@ export const authEvaluationByTmbId = async ({
 
   const evaluation = await MongoEvaluation.findOne({ _id: evaluationId }).lean();
   if (!evaluation) {
-    return Promise.reject(EvaluationAuthErrors.evaluationNotFound);
+    return Promise.reject(EvaluationErrEnum.evalTaskNotFound);
   }
 
   // Root用户权限特殊处理
@@ -60,7 +51,7 @@ export const authEvaluationByTmbId = async ({
 
   // 团队权限验证
   if (String(evaluation.teamId) !== teamId) {
-    return Promise.reject(EvaluationAuthErrors.evaluationNotFound);
+    return Promise.reject(EvaluationErrEnum.evalTaskNotFound);
   }
 
   // 所有者检查
@@ -85,7 +76,7 @@ export const authEvaluationByTmbId = async ({
 
   // 权限验证
   if (!Per.checkPer(per)) {
-    return Promise.reject(EvaluationAuthErrors.permissionDenied);
+    return Promise.reject(EvaluationErrEnum.evalInsufficientPermission);
   }
 
   return {
@@ -115,7 +106,7 @@ export const authEvaluation = async ({
   const { tmbId } = result;
 
   if (!evaluationId) {
-    return Promise.reject(EvaluationAuthErrors.evaluationIdRequired);
+    return Promise.reject(EvaluationErrEnum.evalTaskNotFound);
   }
 
   const { evaluation } = await authEvaluationByTmbId({
@@ -151,7 +142,7 @@ export const authEvalDatasetByTmbId = async ({
 
   const dataset = await MongoEvalDatasetCollection.findOne({ _id: datasetId }).lean();
   if (!dataset) {
-    return Promise.reject(EvaluationAuthErrors.datasetNotFound);
+    return Promise.reject(EvaluationErrEnum.evalDatasetCollectionNotFound);
   }
 
   // Root用户权限特殊处理
@@ -166,7 +157,7 @@ export const authEvalDatasetByTmbId = async ({
 
   // 团队权限验证
   if (String(dataset.teamId) !== teamId) {
-    return Promise.reject(EvaluationAuthErrors.datasetNotFound);
+    return Promise.reject(EvaluationErrEnum.evalDatasetCollectionNotFound);
   }
 
   // 所有者检查
@@ -191,7 +182,7 @@ export const authEvalDatasetByTmbId = async ({
 
   // 权限验证
   if (!Per.checkPer(per)) {
-    return Promise.reject(EvaluationAuthErrors.permissionDenied);
+    return Promise.reject(EvaluationErrEnum.evalInsufficientPermission);
   }
 
   return {
@@ -221,7 +212,7 @@ export const authEvalDataset = async ({
   const { tmbId } = result;
 
   if (!datasetId) {
-    return Promise.reject(EvaluationAuthErrors.datasetIdRequired);
+    return Promise.reject(EvaluationErrEnum.evalDatasetCollectionNotFound);
   }
 
   const { dataset } = await authEvalDatasetByTmbId({
@@ -295,7 +286,7 @@ export const authEvalMetricByTmbId = async ({
 
   const metric = await MongoEvalMetric.findOne({ _id: metricId }).lean();
   if (!metric) {
-    return Promise.reject(EvaluationAuthErrors.metricNotFound);
+    return Promise.reject(EvaluationErrEnum.evalMetricNotFound);
   }
 
   // Root用户权限特殊处理
@@ -310,7 +301,7 @@ export const authEvalMetricByTmbId = async ({
 
   // 团队权限验证
   if (String(metric.teamId) !== teamId) {
-    return Promise.reject(EvaluationAuthErrors.metricNotFound);
+    return Promise.reject(EvaluationErrEnum.evalMetricNotFound);
   }
 
   // 所有者检查
@@ -335,7 +326,7 @@ export const authEvalMetricByTmbId = async ({
 
   // 权限验证
   if (!Per.checkPer(per)) {
-    return Promise.reject(EvaluationAuthErrors.permissionDenied);
+    return Promise.reject(EvaluationErrEnum.evalInsufficientPermission);
   }
 
   return {
@@ -365,7 +356,7 @@ export const authEvalMetric = async ({
   const { tmbId } = result;
 
   if (!metricId) {
-    return Promise.reject(EvaluationAuthErrors.metricIdRequired);
+    return Promise.reject(EvaluationErrEnum.evalMetricNotFound);
   }
 
   const { metric } = await authEvalMetricByTmbId({
