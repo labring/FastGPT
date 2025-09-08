@@ -30,7 +30,6 @@ import NextHead from '@/components/common/NextHead';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { form2AppWorkflow } from '@/web/core/app/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { getPreviewPluginNode } from '@/web/core/app/api/plugin';
@@ -48,6 +47,7 @@ import { ChatSidebarPaneEnum } from '../constants';
 import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
 
 type Props = {
   myApps: AppListItemType[];
