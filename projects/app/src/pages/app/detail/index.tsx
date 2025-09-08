@@ -11,11 +11,11 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { TabEnum } from '@/pageComponents/app/detail/context';
 
-const SimpleEdit = dynamic(() => import('@/pageComponents/app/detail/SimpleApp'), {
+const SimpleEdit = dynamic(() => import('@/pageComponents/app/detail/Edit/SimpleApp'), {
   ssr: false,
   loading: () => <Loading fixed={false} />
 });
-const AgentEdit = dynamic(() => import('@/pageComponents/app/detail/Agent'), {
+const AgentEdit = dynamic(() => import('@/pageComponents/app/detail/Edit/Agent'), {
   ssr: false,
   loading: () => <Loading fixed={false} />
 });
@@ -27,7 +27,7 @@ const Plugin = dynamic(() => import('@/pageComponents/app/detail/Plugin'), {
   ssr: false,
   loading: () => <Loading fixed={false} />
 });
-const MCPTools = dynamic(() => import('@/pageComponents/app/detail/MCPTools'), {
+const MCPTools = dynamic(() => import('@/pageComponents/app/detail/Edit/MCPTools'), {
   ssr: false,
   loading: () => <Loading fixed={false} />
 });
