@@ -278,3 +278,93 @@ export const createEvaluationUsage = async ({
 
   return { usageId };
 };
+
+export const createEvalDatasetQualityUsage = async ({
+  teamId,
+  tmbId,
+  model,
+  usages
+}: {
+  teamId: string;
+  tmbId: string;
+  model: string;
+  usages: Array<{
+    promptTokens?: number;
+    completionTokens?: number;
+  }>;
+}) => {
+  let totalPoints = 0;
+  const usageList = usages.map((usage) => {
+    const { totalPoints: points } = formatModelChars2Points({
+      model,
+      modelType: ModelTypeEnum.llm,
+      inputTokens: usage.promptTokens || 0,
+      outputTokens: usage.completionTokens || 0
+    });
+    totalPoints += points;
+
+    return {
+      moduleName: i18nT('account_usage:evaluation_quality_assessment'),
+      amount: points,
+      model,
+      inputTokens: usage.promptTokens || 0,
+      outputTokens: usage.completionTokens || 0
+    };
+  });
+
+  await createUsage({
+    teamId,
+    tmbId,
+    appName: i18nT('account_usage:evaluation_dataset_quality_assessment'),
+    totalPoints,
+    source: UsageSourceEnum.evaluation,
+    list: usageList
+  });
+
+  return { totalPoints };
+};
+
+export const createEvalDatasetSynthesisUsage = async ({
+  teamId,
+  tmbId,
+  model,
+  usages
+}: {
+  teamId: string;
+  tmbId: string;
+  model: string;
+  usages: Array<{
+    promptTokens?: number;
+    completionTokens?: number;
+  }>;
+}) => {
+  let totalPoints = 0;
+  const usageList = usages.map((usage) => {
+    const { totalPoints: points } = formatModelChars2Points({
+      model,
+      modelType: ModelTypeEnum.llm,
+      inputTokens: usage.promptTokens || 0,
+      outputTokens: usage.completionTokens || 0
+    });
+    totalPoints += points;
+
+    return {
+      moduleName: i18nT('account_usage:evaluation_qa_synthesis'),
+      amount: points,
+      model,
+      inputTokens: usage.promptTokens || 0,
+      outputTokens: usage.completionTokens || 0
+    };
+  });
+
+  await createUsage({
+    teamId,
+    tmbId,
+    appName: i18nT('account_usage:evaluation_dataset_synthesis'),
+    totalPoints,
+    source: UsageSourceEnum.evaluation,
+    list: usageList
+  });
+
+  return { totalPoints };
+};

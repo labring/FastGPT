@@ -10,6 +10,9 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getVectorCountByTeamId } from '@fastgpt/service/common/vectorDB/controller';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
+import { MongoEvaluation } from '@fastgpt/service/core/evaluation/task/schema';
+import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
+import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 
 async function handler(
   req: NextApiRequest,
@@ -21,34 +24,48 @@ async function handler(
       authToken: true
     });
 
-    const [planStatus, usedMember, usedAppAmount, usedDatasetSize, usedDatasetIndexSize] =
-      await Promise.all([
-        getTeamPlanStatus({
-          teamId
-        }),
-        MongoTeamMember.countDocuments({
-          teamId,
-          status: { $ne: TeamMemberStatusEnum.leave }
-        }),
-        MongoApp.countDocuments({
-          teamId,
-          type: {
-            $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin, AppTypeEnum.toolSet]
-          }
-        }),
-        MongoDataset.countDocuments({
-          teamId,
-          type: { $ne: DatasetTypeEnum.folder }
-        }),
-        getVectorCountByTeamId(teamId)
-      ]);
+    const [
+      planStatus,
+      usedMember,
+      usedAppAmount,
+      usedDatasetSize,
+      usedDatasetIndexSize,
+      usedEvaluationTaskAmount,
+      usedEvalDatasetAmount,
+      usedEvalDatasetDataAmount
+    ] = await Promise.all([
+      getTeamPlanStatus({
+        teamId
+      }),
+      MongoTeamMember.countDocuments({
+        teamId,
+        status: { $ne: TeamMemberStatusEnum.leave }
+      }),
+      MongoApp.countDocuments({
+        teamId,
+        type: {
+          $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin, AppTypeEnum.toolSet]
+        }
+      }),
+      MongoDataset.countDocuments({
+        teamId,
+        type: { $ne: DatasetTypeEnum.folder }
+      }),
+      getVectorCountByTeamId(teamId),
+      MongoEvaluation.countDocuments({ teamId }),
+      MongoEvalDatasetCollection.countDocuments({ teamId }),
+      MongoEvalDatasetData.countDocuments({ teamId })
+    ]);
 
     return {
       ...planStatus,
       usedMember,
       usedAppAmount,
       usedDatasetSize,
-      usedDatasetIndexSize
+      usedDatasetIndexSize,
+      usedEvaluationTaskAmount,
+      usedEvalDatasetAmount,
+      usedEvalDatasetDataAmount
     };
   } catch (error) {}
 }

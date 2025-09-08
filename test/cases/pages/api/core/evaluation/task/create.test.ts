@@ -2,7 +2,10 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { handler as createHandler } from '@/pages/api/core/evaluation/task/create';
 import { EvaluationTaskService } from '@fastgpt/service/core/evaluation/task';
-import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
+import {
+  checkTeamAIPoints,
+  checkTeamEvaluationTaskLimit
+} from '@fastgpt/service/support/permission/teamLimit';
 import { validateTargetConfig } from '@fastgpt/service/core/evaluation/target';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
@@ -15,7 +18,8 @@ vi.mock('@fastgpt/service/core/evaluation/task', () => ({
 }));
 
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
-  checkTeamAIPoints: vi.fn()
+  checkTeamAIPoints: vi.fn(),
+  checkTeamEvaluationTaskLimit: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/evaluation/common', () => ({
@@ -62,6 +66,10 @@ describe('Create Evaluation Task API Handler', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Setup mocks
+    vi.mocked(checkTeamAIPoints).mockResolvedValue(undefined);
+    vi.mocked(checkTeamEvaluationTaskLimit).mockResolvedValue(undefined);
   });
 
   test('应该成功创建评估任务', async () => {

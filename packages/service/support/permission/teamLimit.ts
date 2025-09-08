@@ -8,6 +8,9 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoTeamMember } from '../user/team/teamMemberSchema';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { getVectorCountByTeamId } from '../../common/vectorDB/controller';
+import { MongoEvaluation } from '../../core/evaluation/task/schema';
+import { MongoEvalDatasetCollection } from '../../core/evaluation/dataset/evalDatasetCollectionSchema';
+import { MongoEvalDatasetData } from '../../core/evaluation/dataset/evalDatasetDataSchema';
 
 export const checkTeamAIPoints = async (teamId: string) => {
   if (!global.subPlans?.standard) return;
@@ -122,5 +125,44 @@ export const checkTeamDatasetSyncPermission = async (teamId: string) => {
 
   if (standardConstants && !standardConstants?.permissionWebsiteSync) {
     return Promise.reject(TeamErrEnum.websiteSyncNotEnough);
+  }
+};
+
+export const checkTeamEvaluationTaskLimit = async (teamId: string, amount = 1) => {
+  const [{ standardConstants }, evaluationTaskCount] = await Promise.all([
+    getTeamStandPlan({ teamId }),
+    MongoEvaluation.countDocuments({ teamId })
+  ]);
+
+  if (
+    standardConstants &&
+    evaluationTaskCount + amount > standardConstants.maxEvaluationTaskAmount
+  ) {
+    return Promise.reject(TeamErrEnum.evaluationTaskAmountNotEnough);
+  }
+};
+
+export const checkTeamEvalDatasetLimit = async (teamId: string, amount = 1) => {
+  const [{ standardConstants }, evalDatasetCount] = await Promise.all([
+    getTeamStandPlan({ teamId }),
+    MongoEvalDatasetCollection.countDocuments({ teamId })
+  ]);
+
+  if (standardConstants && evalDatasetCount + amount > standardConstants.maxEvalDatasetAmount) {
+    return Promise.reject(TeamErrEnum.evalDatasetAmountNotEnough);
+  }
+};
+
+export const checkTeamEvalDatasetDataLimit = async (teamId: string, amount = 1) => {
+  const [{ standardConstants }, evalDatasetDataCount] = await Promise.all([
+    getTeamStandPlan({ teamId }),
+    MongoEvalDatasetData.countDocuments({ teamId })
+  ]);
+
+  if (
+    standardConstants &&
+    evalDatasetDataCount + amount > standardConstants.maxEvalDatasetDataAmount
+  ) {
+    return Promise.reject(TeamErrEnum.evalDatasetDataAmountNotEnough);
   }
 };

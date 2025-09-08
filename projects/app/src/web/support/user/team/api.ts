@@ -100,6 +100,12 @@ export const checkTeamExportDatasetLimit = (datasetId: string) =>
 export const checkTeamWebSyncLimit = () => GET(`/support/user/team/limit/webSyncLimit`);
 export const checkTeamDatasetSizeLimit = (size: number) =>
   GET(`/support/user/team/limit/datasetSizeLimit`, { size });
+export const checkTeamEvaluationTaskLimit = (amount = 1) =>
+  GET(`/support/user/team/limit/evaluationTaskLimit`, { amount });
+export const checkTeamEvalDatasetLimit = (amount = 1) =>
+  GET(`/support/user/team/limit/evalDatasetLimit`, { amount });
+export const checkTeamEvalDatasetDataLimit = (amount = 1) =>
+  GET(`/support/user/team/limit/evalDatasetDataLimit`, { amount });
 
 /* plans */
 export const getTeamPlanStatus = () =>
