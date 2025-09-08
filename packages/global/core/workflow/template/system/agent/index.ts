@@ -44,12 +44,6 @@ export const AgentNode: FlowNodeTemplateType = {
     Input_Template_System_Prompt,
     Input_Template_History,
     {
-      key: NodeInputKeyEnum.modelConfig,
-      renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
-      label: '',
-      valueType: WorkflowIOValueTypeEnum.object
-    },
-    {
       key: NodeInputKeyEnum.subApps,
       renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
       label: '',
