@@ -1,9 +1,10 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Flex, Grid } from '@chakra-ui/react';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { Box, Button, Flex, Grid } from '@chakra-ui/react';
+import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import {
@@ -13,27 +14,35 @@ import {
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getToolPreviewNode, getAppToolTemplates, getAppToolPaths } from '@/web/core/app/api/tool';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { getTeamAppTemplates } from '@/web/core/app/api/tool';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '../../../context';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMemoizedFn } from 'ahooks';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { type AppFormEditFormType } from '@fastgpt/global/core/app/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { workflowStartNodeId } from '@/web/core/app/constants';
-import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
+import ConfigToolModal from '../../component/ConfigToolModal';
 import CostTooltip from '@/components/core/app/tool/CostTooltip';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
-import ConfigToolModal from '@/pageComponents/app/detail/Edit/component/ConfigToolModal';
+import { types } from 'util';
+import { useRouter } from 'next/router';
 
 type Props = {
-  selectedTools: ChatSettingType['selectedTools'];
-  chatConfig?: AppFormEditFormType['chatConfig'];
+  selectedTools: FlowNodeTemplateType[];
+  chatConfig: AppFormEditFormType['chatConfig'];
+  selectedModel: LLMModelItemType;
   onAddTool: (tool: FlowNodeTemplateType) => void;
   onRemoveTool: (tool: NodeTemplateListItemType) => void;
 };
@@ -45,8 +54,16 @@ export const childAppSystemKey: string[] = [
   NodeInputKeyEnum.userChatInput
 ];
 
+enum TemplateTypeEnum {
+  'appTool' = 'appTool',
+  'teamApp' = 'teamApp'
+}
+
 const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void }) => {
   const { t } = useTranslation();
+  const { appDetail } = useContextSelector(AppContext, (v) => v);
+
+  const [templateType, setTemplateType] = useState(TemplateTypeEnum.appTool);
   const [parentId, setParentId] = useState<ParentIdType>('');
   const [searchKey, setSearchKey] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
@@ -57,38 +74,47 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
     loading: isLoading
   } = useRequest2(
     async ({
+      type = templateType,
       parentId = '',
       searchVal = searchKey
     }: {
+      type?: TemplateTypeEnum;
       parentId?: ParentIdType;
       searchVal?: string;
     }) => {
-      return getAppToolTemplates({ parentId, searchKey: searchVal });
+      if (type === TemplateTypeEnum.appTool) {
+        return getAppToolTemplates({ parentId, searchKey: searchVal });
+      } else if (type === TemplateTypeEnum.teamApp) {
+        return getTeamAppTemplates({
+          parentId,
+          searchKey: searchVal
+        }).then((res) => res.filter((app) => app.id !== appDetail._id));
+      }
     },
     {
-      onSuccess(_, [{ parentId = '' }]) {
+      onSuccess(_, [{ type = templateType, parentId = '' }]) {
+        setTemplateType(type);
         setParentId(parentId);
       },
-      refreshDeps: [searchKey, parentId],
+      refreshDeps: [templateType, searchKey, parentId],
       errorToast: t('common:core.module.templates.Load plugin error')
     }
   );
 
-  const { data: allTags = [] } = useRequest2(getPluginToolTags, {
-    manual: false
-  });
-
   const templates = useMemo(() => {
-    if (selectedTagIds.length === 0) {
+    if (selectedTagIds.length === 0 || templateType !== TemplateTypeEnum.appTool) {
       return rawTemplates;
     }
     return rawTemplates.filter((template) => {
+      // @ts-ignore
       return template.tags?.some((tag) => selectedTagIds.includes(tag));
     });
-  }, [rawTemplates, selectedTagIds]);
+  }, [rawTemplates, selectedTagIds, templateType]);
 
   const { data: paths = [] } = useRequest2(
     () => {
+      if (templateType === TemplateTypeEnum.teamApp)
+        return getAppFolderPath({ sourceId: parentId, type: 'current' });
       return getAppToolPaths({ sourceId: parentId, type: 'current' });
     },
     {
@@ -96,6 +122,10 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       refreshDeps: [parentId]
     }
   );
+
+  const { data: allTags = [] } = useRequest2(getPluginToolTags, {
+    manual: false
+  });
 
   const onUpdateParentId = useCallback(
     (parentId: ParentIdType) => {
@@ -115,46 +145,72 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   return (
     <MyModal
       isOpen
-      title={t('chat:home.select_tools')}
+      title={t('common:core.app.Tool call')}
       iconSrc="core/app/toolCall"
       onClose={onClose}
       maxW={['90vw', '700px']}
       w={'700px'}
       h={['90vh', '80vh']}
     >
-      {/* Header: search */}
-      <Box px={[3, 6]} pt={4} display={'flex'} justifyContent={'flex-end'} w={'full'}>
+      {/* Header: row and search */}
+      <Box px={[3, 6]} pt={4} display={'flex'} justifyContent={'space-between'} w={'full'}>
+        <FillRowTabs
+          list={[
+            {
+              icon: 'phoneTabbar/tool',
+              label: t('common:navbar.Toolkit'),
+              value: TemplateTypeEnum.appTool
+            },
+            {
+              icon: 'support/user/userLightSmall',
+              label: t('common:core.module.template.Team app'),
+              value: TemplateTypeEnum.teamApp
+            }
+          ]}
+          py={'5px'}
+          px={'15px'}
+          value={templateType}
+          onChange={(e) =>
+            loadTemplates({
+              type: e as TemplateTypeEnum,
+              parentId: null
+            })
+          }
+        />
         <Box w={300}>
           <SearchInput
             value={searchKey}
             onChange={(e) => setSearchKey(e.target.value)}
-            placeholder={t('common:search_tool')}
+            placeholder={
+              templateType === TemplateTypeEnum.appTool
+                ? t('common:search_tool')
+                : t('app:search_app')
+            }
           />
         </Box>
       </Box>
-      {/* Tag filter */}
-      {allTags.length > 0 && (
-        <Box mt={3} mb={-1} px={[3, 6]}>
+      {templateType === TemplateTypeEnum.appTool && allTags.length > 0 && (
+        <Box mt={3} px={[3, 6]}>
           <ToolTagFilterBox
-            size="sm"
             tags={allTags}
             selectedTagIds={selectedTagIds}
             onTagSelect={setSelectedTagIds}
+            size="sm"
           />
         </Box>
       )}
       {/* route components */}
       {!searchKey && parentId && (
-        <Flex mt={2} px={[3, 6]}>
+        <Flex mt={1} px={[3, 6]}>
           <FolderPath paths={paths} FirstPathDom={null} onClick={onUpdateParentId} />
         </Flex>
       )}
-      <MyBox isLoading={isLoading} mt={2} pb={3} flex={'1 0 0'} h={0}>
-        <Box px={[3, 6]} overflow={'overlay'} height={'100%'}>
+      <MyBox isLoading={isLoading} mt={1} pb={3} flex={'1 0 0'} h={0}>
+        <Box overflow={'overlay'} height={'100%'}>
           <RenderList
             templates={templates}
+            type={templateType}
             setParentId={onUpdateParentId}
-            allTags={allTags}
             {...props}
           />
         </Box>
@@ -167,19 +223,21 @@ export default React.memo(ToolSelectModal);
 
 const RenderList = React.memo(function RenderList({
   templates,
+  type,
   onAddTool,
   onRemoveTool,
   setParentId,
   selectedTools,
-  chatConfig = {},
-  allTags
+  chatConfig
 }: Props & {
   templates: NodeTemplateListItemType[];
+  type: TemplateTypeEnum;
   setParentId: (parentId: ParentIdType) => any;
-  allTags: Array<{ tagId: string; tagName: any }>;
 }) {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
+  const { t } = useSafeTranslation();
   const { feConfigs } = useSystemStore();
+  const router = useRouter();
 
   const [configTool, setConfigTool] = useState<FlowNodeTemplateType>();
   const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
@@ -274,26 +332,19 @@ const RenderList = React.memo(function RenderList({
     }
   );
 
-  const gridStyle = {
-    gridTemplateColumns: ['1fr', '1fr 1fr'],
-    py: 3,
-    avatarSize: '1.75rem'
-  };
-
   const PluginListRender = useMemoizedFn(() => {
+    const isSystemTool = type === TemplateTypeEnum.appTool;
     return (
       <>
         {templates.length > 0 ? (
-          <Grid gridTemplateColumns={gridStyle.gridTemplateColumns} rowGap={3} columnGap={3} mt={3}>
+          <Grid gridTemplateColumns={['1fr', '1fr 1fr']} gap={3} px={[3, 6]}>
             {templates.map((template) => {
               const selected = selectedTools.some((tool) => tool.pluginId === template.id);
-
               return (
                 <MyTooltip
                   key={template.id}
-                  placement={'right'}
                   label={
-                    <Box py={2}>
+                    <Box py={2} minW={['auto', '250px']}>
                       <Flex alignItems={'center'}>
                         <MyAvatar
                           src={template.avatar}
@@ -302,22 +353,30 @@ const RenderList = React.memo(function RenderList({
                           borderRadius={'sm'}
                         />
                         <Box fontWeight={'bold'} ml={3} color={'myGray.900'} flex={'1'}>
-                          {template.name}
+                          {t(parseI18nString(template.name, i18n.language))}
                         </Box>
-                        <Box color={'myGray.500'}>
-                          By {template.author || feConfigs?.systemTitle}
-                        </Box>
+                        {isSystemTool && (
+                          <Box color={'myGray.500'}>
+                            By {template.author || feConfigs?.systemTitle}
+                          </Box>
+                        )}
                       </Flex>
                       <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
-                        {template.intro || t('common:core.workflow.Not intro')}
+                        {t(parseI18nString(template.intro || '', i18n.language)) ||
+                          t('common:core.workflow.Not intro')}
                       </Box>
-                      <CostTooltip cost={template.currentCost} hasTokenFee={template.hasTokenFee} />
+                      {isSystemTool && (
+                        <CostTooltip
+                          cost={template.currentCost}
+                          hasTokenFee={template.hasTokenFee}
+                        />
+                      )}
                     </Box>
                   }
                 >
                   <Flex
                     alignItems={'center'}
-                    py={gridStyle.py}
+                    py={3}
                     px={3}
                     _hover={{ bg: 'myWhite.600' }}
                     borderRadius={'sm'}
@@ -325,7 +384,7 @@ const RenderList = React.memo(function RenderList({
                   >
                     <MyAvatar
                       src={template.avatar}
-                      w={gridStyle.avatarSize}
+                      w={'1.75rem'}
                       objectFit={'contain'}
                       borderRadius={'sm'}
                       flexShrink={0}
@@ -414,9 +473,28 @@ const RenderList = React.memo(function RenderList({
   });
 
   return (
-    <>
-      <PluginListRender />
-
+    <Flex position="relative" direction="column" h="100%">
+      <Box overflowY="auto" mb={8} w={'full'}>
+        <PluginListRender />
+      </Box>
+      {type === TemplateTypeEnum.appTool && (
+        <Flex
+          alignItems="center"
+          cursor="pointer"
+          _hover={{
+            color: 'primary.600'
+          }}
+          onClick={() => router.push('/plugin/tool')}
+          gap={1}
+          bottom={0}
+          right={[3, 6]}
+          position="absolute"
+          zIndex={2}
+        >
+          <Box fontSize="sm">{t('app:find_more_tools')}</Box>
+          <MyIcon name="common/rightArrowLight" w="0.9rem" />
+        </Flex>
+      )}
       {!!configTool && (
         <ConfigToolModal
           configTool={configTool}
@@ -424,6 +502,6 @@ const RenderList = React.memo(function RenderList({
           onAddTool={onAddTool}
         />
       )}
-    </>
+    </Flex>
   );
 });
