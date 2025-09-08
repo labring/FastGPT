@@ -58,6 +58,7 @@ import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelec
 
 const Header = dynamic(() => import('./Header'));
 const EmptyCollectionTip = dynamic(() => import('./EmptyCollectionTip'));
+const DatabaseListTable = dynamic(() => import('./DatabaseListTable'));
 
 const CollectionCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
@@ -222,239 +223,264 @@ const CollectionCard = () => {
         <Header hasTrainingData={hasTrainingData} />
 
         {/* collection table */}
-        <TableContainer mt={3} overflowY={'auto'} fontSize={'sm'} flex={'1 0 0'} h={0}>
-          <Table variant={'simple'} draggable={false}>
-            <Thead draggable={false}>
-              <Tr>
-                <Th py={4}>
-                  <HStack>
-                    <Checkbox isChecked={isSelecteAll} onChange={selectAllTrigger} />
-                    <Box>{t('common:Name')}</Box>
-                  </HStack>
-                </Th>
-                <Th py={4}>{t('dataset:collection.training_type')}</Th>
-                <Th py={4}>{t('dataset:collection_data_count')}</Th>
-                <Th py={4}>{t('dataset:collection.Create update time')}</Th>
-                <Th py={4}>{t('common:Status')}</Th>
-                <Th py={4}>{t('dataset:Enable')}</Th>
-                <Th py={4} />
-              </Tr>
-            </Thead>
-            <Tbody>
-              <Tr h={'5px'} />
-              {formatCollections.map((collection) => (
-                <Tr
-                  key={collection._id}
-                  _hover={{ bg: 'myGray.50' }}
-                  cursor={'pointer'}
-                  {...getBoxProps({
-                    dataId: collection._id,
-                    isFolder: collection.type === DatasetCollectionTypeEnum.folder
-                  })}
-                  draggable={false}
-                  onClick={() => {
-                    if (collection.type === DatasetCollectionTypeEnum.folder) {
-                      router.push({
-                        query: {
-                          datasetId: datasetDetail._id,
-                          parentId: collection._id
-                        }
-                      });
-                    } else {
-                      router.push({
-                        query: {
-                          datasetId: datasetDetail._id,
-                          collectionId: collection._id,
-                          currentTab: TabEnum.dataCard
-                        }
-                      });
-                    }
-                  }}
-                >
-                  <Td minW={'150px'} maxW={['200px', '300px']} draggable py={2}>
+        {isDatabase ? (
+          <DatabaseListTable
+            formatCollections={formatCollections}
+            total={total}
+            onUpdateCollection={onUpdateCollection}
+            onTrainingStatesClick={(collectionId) => setTrainingStatesCollection({ collectionId })}
+            onDataConfigClick={(collectionId) => {
+              // TODO: 实现数据配置逻辑
+              console.log('数据配置', collectionId);
+            }}
+            onRemoveClick={(collectionId) => {
+              openDeleteConfirm(
+                () => onDelCollection([collectionId]),
+                undefined,
+                t('dataset:confirm_remove_database_table')
+              )();
+            }}
+          />
+        ) : (
+          <TableContainer mt={3} overflowY={'auto'} fontSize={'sm'} flex={'1 0 0'} h={0}>
+            <Table variant={'simple'} draggable={false}>
+              <Thead draggable={false}>
+                <Tr>
+                  <Th py={4}>
                     <HStack>
-                      <Box onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          isChecked={isSelected(collection)}
-                          onChange={(e) => toggleSelect(collection)}
-                        />
-                      </Box>
-                      <Box>
-                        <Flex alignItems={'center'}>
-                          <MyIcon name={collection.icon as any} w={'1.25rem'} mr={2} />
-                          <MyTooltip label={t('common:click_drag_tip')} shouldWrapChildren={false}>
-                            <Box color={'myGray.900'} fontWeight={'500'} className="textEllipsis">
-                              {collection.name}
-                            </Box>
-                          </MyTooltip>
-                        </Flex>
-                        {feConfigs?.isPlus && !!collection.tags?.length && (
-                          <TagsPopOver currentCollection={collection} hoverBg={'white'} />
-                        )}
-                      </Box>
+                      <Checkbox isChecked={isSelecteAll} onChange={selectAllTrigger} />
+                      <Box>{t('common:Name')}</Box>
                     </HStack>
-                  </Td>
-                  <Td py={2}>
-                    {collection.trainingType
-                      ? t(
-                          (DatasetCollectionDataProcessModeMap[collection.trainingType]?.label ||
-                            '-') as any
-                        )
-                      : '-'}
-                  </Td>
-                  <Td py={2}>{collection.dataAmount || '-'}</Td>
-                  <Td fontSize={'xs'} py={2} color={'myGray.500'}>
-                    <Box>{formatTime2YMDHM(collection.createTime)}</Box>
-                    <Box>{formatTime2YMDHM(collection.updateTime)}</Box>
-                  </Td>
-                  <Td py={2}>
-                    <MyTooltip label={t('common:Click_to_expand')}>
-                      <MyTag
-                        showDot
-                        colorSchema={collection.colorSchema as any}
-                        type={'fill'}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setTrainingStatesCollection({ collectionId: collection._id });
-                        }}
-                      >
-                        <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
-                          {t(collection.statusText as any)}
-                          <MyIcon name={'common/maximize'} w={'11px'} />
-                        </Flex>
-                      </MyTag>
-                    </MyTooltip>
-                  </Td>
-                  <Td py={2} onClick={(e) => e.stopPropagation()}>
-                    <Switch
-                      isChecked={!collection.forbid}
-                      size={'sm'}
-                      onChange={(e) =>
-                        onUpdateCollection({
-                          id: collection._id,
-                          forbid: !e.target.checked
-                        })
-                      }
-                    />
-                  </Td>
-                  <Td py={2} onClick={(e) => e.stopPropagation()}>
-                    {collection.permission.hasWritePer && (
-                      <MyMenu
-                        width={100}
-                        offset={[-70, 5]}
-                        Button={
-                          <MenuButton
-                            w={'1.5rem'}
-                            h={'1.5rem'}
-                            borderRadius={'md'}
-                            _hover={{
-                              color: 'primary.500',
-                              '& .icon': {
-                                bg: 'myGray.200'
-                              }
-                            }}
-                          >
-                            <MyIcon
-                              className="icon"
-                              name={'more'}
-                              h={'1rem'}
-                              w={'1rem'}
-                              px={1}
-                              py={1}
-                              borderRadius={'md'}
-                              cursor={'pointer'}
-                            />
-                          </MenuButton>
-                        }
-                        menuList={[
-                          {
-                            children: [
-                              ...(collectionCanSync(collection.type)
-                                ? [
-                                    {
-                                      label: (
-                                        <Flex alignItems={'center'}>
-                                          <MyIcon
-                                            name={'common/refreshLight'}
-                                            w={'0.9rem'}
-                                            mr={2}
-                                          />
-                                          {t('dataset:collection_sync')}
-                                        </Flex>
-                                      ),
-                                      onClick: () =>
-                                        openSyncConfirm(() => {
-                                          onclickStartSync(collection._id);
-                                        })()
-                                    }
-                                  ]
-                                : []),
-                              {
-                                label: (
-                                  <Flex alignItems={'center'}>
-                                    <MyIcon name={'common/file/move'} w={'0.9rem'} mr={2} />
-                                    {t('common:Move')}
-                                  </Flex>
-                                ),
-                                onClick: () =>
-                                  setMoveCollectionData({ collectionId: collection._id })
-                              },
-                              {
-                                label: (
-                                  <Flex alignItems={'center'}>
-                                    <MyIcon name={'edit'} w={'0.9rem'} mr={2} />
-                                    {t('common:Rename')}
-                                  </Flex>
-                                ),
-                                onClick: () =>
-                                  onOpenEditTitleModal({
-                                    defaultVal: collection.name,
-                                    onSuccess: (newName) =>
-                                      onUpdateCollection({
-                                        id: collection._id,
-                                        name: newName
-                                      })
-                                  })
-                              }
-                            ]
-                          },
-                          {
-                            children: [
-                              {
-                                label: (
-                                  <Flex alignItems={'center'}>
-                                    <MyIcon
-                                      mr={1}
-                                      name={'delete'}
-                                      w={'0.9rem'}
-                                      _hover={{ color: 'red.600' }}
-                                    />
-                                    <Box>{t('common:Delete')}</Box>
-                                  </Flex>
-                                ),
-                                type: 'danger',
-                                onClick: () =>
-                                  openDeleteConfirm(
-                                    () => onDelCollection([collection._id]),
-                                    undefined,
-                                    collection.type === DatasetCollectionTypeEnum.folder
-                                      ? t('common:dataset.collections.Confirm to delete the folder')
-                                      : t('common:dataset.Confirm to delete the file')
-                                  )()
-                              }
-                            ]
-                          }
-                        ]}
-                      />
-                    )}
-                  </Td>
+                  </Th>
+                  <Th py={4}>{t('dataset:collection.training_type')}</Th>
+                  <Th py={4}>{t('dataset:collection_data_count')}</Th>
+                  <Th py={4}>{t('dataset:collection.Create update time')}</Th>
+                  <Th py={4}>{t('common:Status')}</Th>
+                  <Th py={4}>{t('dataset:Enable')}</Th>
+                  <Th py={4} />
                 </Tr>
-              ))}
-            </Tbody>
-          </Table>
+              </Thead>
+              <Tbody>
+                <Tr h={'5px'} />
+                {formatCollections.map((collection) => (
+                  <Tr
+                    key={collection._id}
+                    _hover={{ bg: 'myGray.50' }}
+                    cursor={'pointer'}
+                    {...getBoxProps({
+                      dataId: collection._id,
+                      isFolder: collection.type === DatasetCollectionTypeEnum.folder
+                    })}
+                    draggable={false}
+                    onClick={() => {
+                      if (collection.type === DatasetCollectionTypeEnum.folder) {
+                        router.push({
+                          query: {
+                            datasetId: datasetDetail._id,
+                            parentId: collection._id
+                          }
+                        });
+                      } else {
+                        router.push({
+                          query: {
+                            datasetId: datasetDetail._id,
+                            collectionId: collection._id,
+                            currentTab: TabEnum.dataCard
+                          }
+                        });
+                      }
+                    }}
+                  >
+                    <Td minW={'150px'} maxW={['200px', '300px']} draggable py={2}>
+                      <HStack>
+                        <Box onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            isChecked={isSelected(collection)}
+                            onChange={(e) => toggleSelect(collection)}
+                          />
+                        </Box>
+                        <Box>
+                          <Flex alignItems={'center'}>
+                            <MyIcon name={collection.icon as any} w={'1.25rem'} mr={2} />
+                            <MyTooltip
+                              label={t('common:click_drag_tip')}
+                              shouldWrapChildren={false}
+                            >
+                              <Box color={'myGray.900'} fontWeight={'500'} className="textEllipsis">
+                                {collection.name}
+                              </Box>
+                            </MyTooltip>
+                          </Flex>
+                          {feConfigs?.isPlus && !!collection.tags?.length && (
+                            <TagsPopOver currentCollection={collection} hoverBg={'white'} />
+                          )}
+                        </Box>
+                      </HStack>
+                    </Td>
+                    <Td py={2}>
+                      {collection.trainingType
+                        ? t(
+                            (DatasetCollectionDataProcessModeMap[collection.trainingType]?.label ||
+                              '-') as any
+                          )
+                        : '-'}
+                    </Td>
+                    <Td py={2}>{collection.dataAmount || '-'}</Td>
+                    <Td fontSize={'xs'} py={2} color={'myGray.500'}>
+                      <Box>{formatTime2YMDHM(collection.createTime)}</Box>
+                      <Box>{formatTime2YMDHM(collection.updateTime)}</Box>
+                    </Td>
+                    <Td py={2}>
+                      <MyTooltip label={t('common:Click_to_expand')}>
+                        <MyTag
+                          showDot
+                          colorSchema={collection.colorSchema as any}
+                          type={'fill'}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setTrainingStatesCollection({ collectionId: collection._id });
+                          }}
+                        >
+                          <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
+                            {t(collection.statusText as any)}
+                            <MyIcon name={'common/maximize'} w={'11px'} />
+                          </Flex>
+                        </MyTag>
+                      </MyTooltip>
+                    </Td>
+                    <Td py={2} onClick={(e) => e.stopPropagation()}>
+                      <Switch
+                        isChecked={!collection.forbid}
+                        size={'sm'}
+                        onChange={(e) =>
+                          onUpdateCollection({
+                            id: collection._id,
+                            forbid: !e.target.checked
+                          })
+                        }
+                      />
+                    </Td>
+                    <Td py={2} onClick={(e) => e.stopPropagation()}>
+                      {collection.permission.hasWritePer && (
+                        <MyMenu
+                          width={100}
+                          offset={[-70, 5]}
+                          Button={
+                            <MenuButton
+                              w={'1.5rem'}
+                              h={'1.5rem'}
+                              borderRadius={'md'}
+                              _hover={{
+                                color: 'primary.500',
+                                '& .icon': {
+                                  bg: 'myGray.200'
+                                }
+                              }}
+                            >
+                              <MyIcon
+                                className="icon"
+                                name={'more'}
+                                h={'1rem'}
+                                w={'1rem'}
+                                px={1}
+                                py={1}
+                                borderRadius={'md'}
+                                cursor={'pointer'}
+                              />
+                            </MenuButton>
+                          }
+                          menuList={[
+                            {
+                              children: [
+                                ...(collectionCanSync(collection.type)
+                                  ? [
+                                      {
+                                        label: (
+                                          <Flex alignItems={'center'}>
+                                            <MyIcon
+                                              name={'common/refreshLight'}
+                                              w={'0.9rem'}
+                                              mr={2}
+                                            />
+                                            {t('dataset:collection_sync')}
+                                          </Flex>
+                                        ),
+                                        onClick: () =>
+                                          openSyncConfirm(() => {
+                                            onclickStartSync(collection._id);
+                                          })()
+                                      }
+                                    ]
+                                  : []),
+                                {
+                                  label: (
+                                    <Flex alignItems={'center'}>
+                                      <MyIcon name={'common/file/move'} w={'0.9rem'} mr={2} />
+                                      {t('common:Move')}
+                                    </Flex>
+                                  ),
+                                  onClick: () =>
+                                    setMoveCollectionData({ collectionId: collection._id })
+                                },
+                                {
+                                  label: (
+                                    <Flex alignItems={'center'}>
+                                      <MyIcon name={'edit'} w={'0.9rem'} mr={2} />
+                                      {t('common:Rename')}
+                                    </Flex>
+                                  ),
+                                  onClick: () =>
+                                    onOpenEditTitleModal({
+                                      defaultVal: collection.name,
+                                      onSuccess: (newName) =>
+                                        onUpdateCollection({
+                                          id: collection._id,
+                                          name: newName
+                                        })
+                                    })
+                                }
+                              ]
+                            },
+                            {
+                              children: [
+                                {
+                                  label: (
+                                    <Flex alignItems={'center'}>
+                                      <MyIcon
+                                        mr={1}
+                                        name={'delete'}
+                                        w={'0.9rem'}
+                                        _hover={{ color: 'red.600' }}
+                                      />
+                                      <Box>{t('common:Delete')}</Box>
+                                    </Flex>
+                                  ),
+                                  type: 'danger',
+                                  onClick: () =>
+                                    openDeleteConfirm(
+                                      () => onDelCollection([collection._id]),
+                                      undefined,
+                                      collection.type === DatasetCollectionTypeEnum.folder
+                                        ? t(
+                                            'common:dataset.collections.Confirm to delete the folder'
+                                          )
+                                        : t('common:dataset.Confirm to delete the file')
+                                    )()
+                                }
+                              ]
+                            }
+                          ]}
+                        />
+                      )}
+                    </Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
 
-          {total === 0 && <EmptyCollectionTip />}
-        </TableContainer>
+            {total === 0 && <EmptyCollectionTip />}
+          </TableContainer>
+        )}
 
         <FloatingActionBar
           Controler={

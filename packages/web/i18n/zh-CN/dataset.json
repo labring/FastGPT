@@ -295,5 +295,8 @@
   "search_model_desc": "用于生成可在数据库中检索的SQL语句，并进行检索与汇总，生成可用于对话的文本。",
   "search_model_tip": "使用非推理模型、参数量大的模型效果更佳。",
   "other_knowledge_base": "其他知识库",
-   "database_search": "数据库检索"
+  "database_search": "数据库检索",
+  "description": "描述",
+  "remove": "移除",
+  "confirm_remove_database_table": "确认移除该数据表及其所有数据配置？"
 }

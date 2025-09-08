@@ -14,6 +14,7 @@ import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import EditDataModal from './EditDataModal';
 import IntelligentGeneration from '../IntelligentGeneration';
+import ManualAddDataModal from './ManualAddDataModal';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useDataListContext } from './DataListContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -43,6 +44,11 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total }) => {
     isIntelligentGenerationModalOpen,
     onIntelligentGenerationModalClose,
     handleIntelligentGenerationConfirm,
+
+    // 手动新增数据弹窗相关
+    isManualAddModalOpen,
+    onManualAddModalClose,
+    handleManualAddConfirm,
 
     // 设置弹窗相关
     isSettingsModalOpen,
@@ -98,6 +104,13 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total }) => {
         onClose={onIntelligentGenerationModalClose}
         onConfirm={handleIntelligentGenerationConfirm}
         scene="data"
+      />
+
+      {/* 手动新增数据弹窗 */}
+      <ManualAddDataModal
+        isOpen={isManualAddModalOpen}
+        onClose={onManualAddModalClose}
+        onConfirm={handleManualAddConfirm}
       />
 
       {/* 设置弹窗 */}

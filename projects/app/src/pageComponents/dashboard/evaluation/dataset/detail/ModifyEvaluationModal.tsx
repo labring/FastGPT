@@ -72,6 +72,7 @@ const ModifyEvaluationModal = ({
       isOpen={isOpen}
       onClose={handleClose}
       size="md"
+      iconSrc="modal/edit"
       title={t('dashboard_evaluation:modify_evaluation_result_title')}
     >
       <ModalBody>

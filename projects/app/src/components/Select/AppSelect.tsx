@@ -12,7 +12,15 @@ import { getMyApps } from '@/web/core/app/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 
-const AppSelect = ({ value, onSelect }: { value: string; onSelect: (id: string) => void }) => {
+const AppSelect = ({
+  value,
+  onSelect,
+  placeholder
+}: {
+  value: string;
+  onSelect: (id: string) => void;
+  placeholder?: string;
+}) => {
   const [currentApp, setCurrentApp] = useState<GetResourceListItemResponse | null>(null);
   const { t } = useTranslation();
 
@@ -62,7 +70,7 @@ const AppSelect = ({ value, onSelect }: { value: string; onSelect: (id: string) 
         >
           <Flex w={'100%'} alignItems={'center'} gap={2}>
             {currentApp && <Avatar src={currentApp.avatar} w={5} borderRadius={'sm'} />}
-            {currentApp?.name || t('common:Select_App')}
+            {currentApp?.name || placeholder || t('common:Select_App')}
           </Flex>
         </Button>
       }
