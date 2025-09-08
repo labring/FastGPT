@@ -1,6 +1,6 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import { PlanAgentTool } from './plan/constants';
-import { getFileReadTool, StopAgentTool } from './constants';
+import { getFileReadTool } from './constants';
 import { ModelAgentTool } from './model/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
@@ -17,6 +17,7 @@ import { MongoApp } from '../../../../../app/schema';
 import { getMCPChildren } from '../../../../../app/mcp';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
+import { StopAgentTool } from './stop/constants';
 
 export const rewriteSubAppsToolset = ({
   subApps,
