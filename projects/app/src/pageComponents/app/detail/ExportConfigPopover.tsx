@@ -6,7 +6,7 @@ import { filterSensitiveNodesData } from '@/web/core/workflow/utils';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { fileDownload } from '@/web/common/file/utils';
-import { type AppChatConfigType, type AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { type AppChatConfigType, type AppFormEditFormType } from '@fastgpt/global/core/app/type';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { filterSensitiveFormData } from '@/web/core/app/utils';
 import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
@@ -29,7 +29,7 @@ const ExportConfigPopover = ({
         edges: StoreEdgeItemType[];
       }
     | undefined;
-  appForm: AppSimpleEditFormType;
+  appForm: AppFormEditFormType;
 }>) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
