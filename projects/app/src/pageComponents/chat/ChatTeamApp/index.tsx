@@ -37,6 +37,7 @@ const MyApps = () => {
     () =>
       ({
         all: t('common:core.module.template.all_team_app'),
+        [AppTypeEnum.agent]: 'Agent',
         [AppTypeEnum.simple]: t('app:type.Simple bot'),
         [AppTypeEnum.workflow]: t('app:type.Workflow bot'),
         [AppTypeEnum.plugin]: t('app:type.Plugin'),
@@ -45,7 +46,7 @@ const MyApps = () => {
         [AppTypeEnum.toolSet]: t('app:type.MCP tools'),
         [AppTypeEnum.tool]: t('app:type.MCP tools'),
         [AppTypeEnum.hidden]: t('app:type.hidden')
-      }) satisfies Record<AppTypeEnum | 'all', string>,
+      }) as Record<AppTypeEnum | 'all', string>,
     [t]
   );
 
