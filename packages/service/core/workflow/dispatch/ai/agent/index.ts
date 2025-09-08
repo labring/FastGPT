@@ -94,6 +94,7 @@ type Response = DispatchNodeResultType<{
 export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise<Response> => {
   let {
     node: { nodeId, name, isEntry, version, inputs },
+    lang,
     runtimeNodes,
     runtimeEdges,
     histories,
@@ -159,7 +160,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       };
     };
 
-    const subAppList = await getSubApps({ subApps: runtimeSubApps, urls: fileLinks });
+    const subAppList = await getSubApps({ subApps: runtimeSubApps, urls: fileLinks, lang });
     console.log(JSON.stringify(subAppList, null, 2));
     // const combinedSystemPrompt = `${parseAgentSystem({ systemPrompt, toolNodesMap })}\n\n${getTopAgentConstantPrompt()}`;
 
@@ -261,7 +262,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         handleToolResponse: async ({ call, messages }) => {
           const toolId = call.function.name;
 
-          const { response, usages, isEnd } = await (async () => {
+          const {
+            response,
+            usages = [],
+            isEnd
+          } = await (async () => {
             if (toolId === SubAppIds.stop) {
               return {
                 response: '',
