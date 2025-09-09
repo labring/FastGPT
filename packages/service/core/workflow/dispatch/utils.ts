@@ -23,6 +23,7 @@ import { MongoApp } from '../../../core/app/schema';
 import { getMCPChildren } from '../../../core/app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
+import type { WorkflowResponseType } from './type';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -37,10 +38,14 @@ export const getWorkflowResponseWrite = ({
   id?: string;
   showNodeStatus?: boolean;
 }) => {
-  return ({ event, data }: { event: SseResponseEventEnum; data: Record<string, any> }) => {
-    const useStreamResponse = streamResponse;
-
-    if (!res || res.closed || !useStreamResponse) return;
+  const fn: WorkflowResponseType = ({
+    event,
+    data
+  }: {
+    event: SseResponseEventEnum;
+    data: Record<string, any>;
+  }) => {
+    if (!res || res.closed || !streamResponse) return;
 
     // Forbid show detail
     const notDetailEvent: Record<string, 1> = {
@@ -64,6 +69,7 @@ export const getWorkflowResponseWrite = ({
       data: JSON.stringify(data)
     });
   };
+  return fn;
 };
 
 export const filterToolNodeIdByEdges = ({
