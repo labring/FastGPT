@@ -10,22 +10,20 @@
   "target_app_id_missing": "應用ID缺失",
   "evaluators_required": "評估器必填",
   "evaluator_invalid_config": "評估器配置無效",
-  "collection_id_required": "集合ID必填",
   "user_input_required": "用戶輸入必填",
   "expected_output_required": "預期輸出必填",
-  "invalid_page_number": "無效的頁碼",
-  "invalid_page_size": "無效的頁面大小",
   "invalid_format": "無效的格式",
-  "count_must_be_positive": "數量必須為正數",
+  "id_required": "評估ID不能為空",
+  "item_id_required": "評估項ID不能為空",
+  "data_item_id_required": "數據項ID不能為空",
   "invalid_context": "無效的上下文",
   "invalid_retrieval_context": "無效的檢索上下文",
   "insufficient_permission": "權限不足",
   "app_not_found": "應用未找到",
-  "app_no_permission": "應用無權限",
   "task_not_found": "評估任務未找到",
   "item_not_found": "評估項未找到",
   "invalid_status": "無效的狀態",
-  "only_queuing_can_start": "只有排隊狀態的評估可以啟動",
+  "invalid_state_transition": "無效的狀態轉換, 只有排隊狀態或手動停止的評估可以啟動",
   "only_running_can_stop": "只有運行中的評估可以停止",
   "only_failed_can_retry": "只有失敗的評估項可以重試",
   "item_no_error_to_retry": "評估項無錯誤可重試",
@@ -40,7 +38,7 @@
   "no_data_in_collections": "集合中無數據",
   "update_failed": "更新失敗",
   "lock_acquisition_failed": "鎖獲取失敗",
-  
+
   "metric_not_found": "評估指標未找到",
   "metric_un_auth": "無權操作該評估指標",
   "metric_name_required": "指標名稱不能為空",
@@ -53,7 +51,7 @@
   "metric_builtin_cannot_modify": "內建指標不能修改",
   "metric_builtin_cannot_delete": "內建指標不能刪除",
   "metric_id_required": "指標ID不能為空",
-  
+
   "eval_case_required": "評估用例不能為空",
   "eval_case_user_input_required": "用戶輸入不能為空",
   "eval_case_user_input_too_long": "用戶輸入不能超過1000個字符",
@@ -61,12 +59,12 @@
   "eval_case_actual_output_too_long": "實際輸出不能超過4000個字符",
   "eval_case_expected_output_required": "期望輸出不能為空",
   "eval_case_expected_output_too_long": "期望輸出不能超過4000個字符",
-  
+
   "llm_config_required": "LLM配置不能為空",
   "llm_model_name_required": "LLM模型名稱不能為空",
-  
+
   "debug_evaluation_failed": "評估調試失敗",
-  
+
   "evaluator_config_required": "評估器配置不能為空",
   "evaluator_llm_config_missing": "評估器缺少LLM配置",
   "evaluator_embedding_config_missing": "評估器缺少嵌入模型配置",

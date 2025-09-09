@@ -6,19 +6,18 @@ import type {
   EvaluationMetricSchemaType,
   ImportResult,
   EvaluationDisplayType,
-  EvaluationItemDisplayType
+  EvaluationItemDisplayType,
+  TargetCallParams,
+  EvaluationDataItemType
 } from './type';
 import type { EvalDatasetDataKeyEnum } from './dataset/constants';
+import type { EvalDatasetDataSchemaType } from './dataset/type';
 
 // ===== Common Types =====
 export type MessageResponse = { message: string };
 
-export type EvalIdQuery = { evalId: string };
-export type EvalItemIdQuery = { evalItemId: string };
-export type MetricIdQuery = { metricId: string };
-
 // ===== Evaluation Task API =====
-
+export type EvalIdQuery = { evalId: string };
 // Create Evaluation
 export type CreateEvaluationRequest = CreateEvaluationParams;
 export type CreateEvaluationResponse = EvaluationSchemaType;
@@ -74,6 +73,8 @@ export type RetryFailedItemsResponse = {
 
 // ===== Evaluation Item API =====
 
+export type EvalItemIdQuery = { evalItemId: string };
+
 // List Evaluation Items
 export type ListEvaluationItemsRequest = PaginationProps<EvalIdQuery>;
 export type ListEvaluationItemsResponse = PaginationResponse<EvaluationItemDisplayType>;
@@ -89,11 +90,7 @@ export type EvaluationItemDetailResponse = {
 };
 
 // Update Evaluation Item
-export type UpdateEvaluationItemRequest = EvalItemIdQuery & {
-  [EvalDatasetDataKeyEnum.UserInput]?: string;
-  [EvalDatasetDataKeyEnum.ExpectedOutput]?: string;
-  variables?: Record<string, any>;
-};
+export type UpdateEvaluationItemRequest = EvalItemIdQuery & Partial<EvaluationDataItemType>;
 export type UpdateEvaluationItemResponse = MessageResponse;
 
 // Retry Evaluation Item
@@ -103,3 +100,54 @@ export type RetryEvaluationItemResponse = MessageResponse;
 // Delete Evaluation Item
 export type DeleteEvaluationItemRequest = EvalItemIdQuery;
 export type DeleteEvaluationItemResponse = MessageResponse;
+
+// ===== DataItem Aggregation API =====
+
+// Query for dataItem ID
+export type DataItemIdQuery = { dataItemId: string };
+
+// DataItem List (Grouped by DataItem)
+export type DataItemListRequest = PaginationProps<
+  EvalIdQuery & {
+    status?: number; // Optional: filter by status
+    keyword?: string; // Optional: search in dataItem content
+  }
+>;
+export type DataItemGroupedItem = {
+  dataItemId: string;
+  dataItem: EvaluationDataItemType;
+  items: EvaluationItemDisplayType[];
+  summary: {
+    totalItems: number;
+    completedItems: number;
+    errorItems: number;
+    avgScore?: number;
+  };
+};
+export type DataItemListResponse = PaginationResponse<DataItemGroupedItem>;
+
+// Delete DataItem Items
+export type DeleteDataItemRequest = DataItemIdQuery & EvalIdQuery;
+export type DeleteDataItemResponse = {
+  message: string;
+  deletedCount: number;
+};
+
+// Retry DataItem Items
+export type RetryDataItemRequest = DataItemIdQuery & EvalIdQuery;
+export type RetryDataItemResponse = {
+  message: string;
+  retriedCount: number;
+};
+
+// Update DataItem Items
+export type UpdateDataItemRequest = DataItemIdQuery & EvalIdQuery & Partial<EvaluationDataItemType>;
+export type UpdateDataItemResponse = {
+  message: string;
+  updatedCount: number;
+};
+
+// Export All DataItems Results
+export type ExportDataItemsResultsRequest = EvalIdQuery & {
+  format?: 'csv' | 'json';
+};

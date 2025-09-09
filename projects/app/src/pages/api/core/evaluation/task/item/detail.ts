@@ -6,29 +6,26 @@ import type {
   EvaluationItemDetailResponse
 } from '@fastgpt/global/core/evaluation/api';
 import { authEvaluationItemRead } from '@fastgpt/service/core/evaluation/common';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 async function handler(
   req: ApiRequestProps<{}, EvaluationItemDetailRequest>
 ): Promise<EvaluationItemDetailResponse> {
-  try {
-    const { evalItemId } = req.query;
+  const { evalItemId } = req.query;
 
-    if (!evalItemId) {
-      return Promise.reject('Evaluation item ID is required');
-    }
-
-    const { teamId } = await authEvaluationItemRead(evalItemId, {
-      req,
-      authApiKey: true,
-      authToken: true
-    });
-
-    const result = await EvaluationTaskService.getEvaluationItemResult(evalItemId, teamId);
-
-    return result;
-  } catch (error) {
-    return Promise.reject(error);
+  if (!evalItemId) {
+    throw new Error(EvaluationErrEnum.evalItemIdRequired);
   }
+
+  const { teamId } = await authEvaluationItemRead(evalItemId, {
+    req,
+    authApiKey: true,
+    authToken: true
+  });
+
+  const result = await EvaluationTaskService.getEvaluationItemResult(evalItemId, teamId);
+
+  return result;
 }
 
 export default NextAPI(handler);

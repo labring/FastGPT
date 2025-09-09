@@ -17,22 +17,20 @@ export enum EvaluationErrEnum {
   evalTargetAppIdMissing = 'evaluationTargetAppIdMissing',
   evalEvaluatorsRequired = 'evaluationEvaluatorsRequired',
   evalEvaluatorInvalidConfig = 'evaluationEvaluatorInvalidConfig',
-  evalCollectionIdRequired = 'evaluationCollectionIdRequired',
-  evalInvalidPageNumber = 'evaluationInvalidPageNumber',
-  evalInvalidPageSize = 'evaluationInvalidPageSize',
   evalInvalidFormat = 'evaluationInvalidFormat',
-  evalCountMustBePositive = 'evaluationCountMustBePositive',
+  evalIdRequired = 'evaluationIdRequired',
+  evalItemIdRequired = 'evaluationItemIdRequired',
+  evalDataItemIdRequired = 'evaluationDataItemIdRequired',
 
   // Authentication errors (510050-510069)
   evalInsufficientPermission = 'evaluationInsufficientPermission',
   evalAppNotFound = 'evaluationAppNotFound',
-  evalAppNoPermission = 'evaluationAppNoPermission',
   evalTaskNotFound = 'evaluationTaskNotFound',
   evalItemNotFound = 'evaluationItemNotFound',
 
   // Business logic errors (510070-510099)
   evalInvalidStatus = 'evaluationInvalidStatus',
-  evalOnlyQueuingCanStart = 'evaluationOnlyQueuingCanStart',
+  evalInvalidStateTransition = 'evaluationInvalidStateTransition',
   evalOnlyRunningCanStop = 'evaluationOnlyRunningCanStop',
   evalOnlyFailedCanRetry = 'evaluationOnlyFailedCanRetry',
   evalItemNoErrorToRetry = 'evaluationItemNoErrorToRetry',
@@ -47,6 +45,7 @@ export enum EvaluationErrEnum {
   evalNoDataInCollections = 'evaluationNoDataInCollections',
   evalUpdateFailed = 'evaluationUpdateFailed',
   evalLockAcquisitionFailed = 'evaluationLockAcquisitionFailed',
+
   // Metric related errors
   evalMetricNotFound = 'evaluationMetricNotFound',
   evalMetricUnAuth = 'evaluationMetricUnAuth',
@@ -138,24 +137,20 @@ const evaluationErrList = [
     message: i18nT('evaluation:evaluator_invalid_config')
   },
   {
-    statusText: EvaluationErrEnum.evalCollectionIdRequired,
-    message: i18nT('evaluation:collection_id_required')
-  },
-  {
-    statusText: EvaluationErrEnum.evalInvalidPageNumber,
-    message: i18nT('evaluation:invalid_page_number')
-  },
-  {
-    statusText: EvaluationErrEnum.evalInvalidPageSize,
-    message: i18nT('evaluation:invalid_page_size')
-  },
-  {
     statusText: EvaluationErrEnum.evalInvalidFormat,
     message: i18nT('evaluation:invalid_format')
   },
   {
-    statusText: EvaluationErrEnum.evalCountMustBePositive,
-    message: i18nT('evaluation:count_must_be_positive')
+    statusText: EvaluationErrEnum.evalIdRequired,
+    message: i18nT('evaluation:id_required')
+  },
+  {
+    statusText: EvaluationErrEnum.evalItemIdRequired,
+    message: i18nT('evaluation:item_id_required')
+  },
+  {
+    statusText: EvaluationErrEnum.evalDataItemIdRequired,
+    message: i18nT('evaluation:data_item_id_required')
   },
 
   // Authentication errors
@@ -166,10 +161,6 @@ const evaluationErrList = [
   {
     statusText: EvaluationErrEnum.evalAppNotFound,
     message: i18nT('evaluation:app_not_found')
-  },
-  {
-    statusText: EvaluationErrEnum.evalAppNoPermission,
-    message: i18nT('evaluation:app_no_permission')
   },
   {
     statusText: EvaluationErrEnum.evalTaskNotFound,
@@ -186,8 +177,8 @@ const evaluationErrList = [
     message: i18nT('evaluation:invalid_status')
   },
   {
-    statusText: EvaluationErrEnum.evalOnlyQueuingCanStart,
-    message: i18nT('evaluation:only_queuing_can_start')
+    statusText: EvaluationErrEnum.evalInvalidStateTransition,
+    message: i18nT('evaluation:invalid_state_transition')
   },
   {
     statusText: EvaluationErrEnum.evalOnlyRunningCanStop,

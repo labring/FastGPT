@@ -382,6 +382,14 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
       teamId: evaluation.teamId
     }).lean();
 
+    // TODO: Handle targetCallParams population for evaluation data items
+    // The dataItems loaded from dataset only contain basic EvalDatasetDataSchemaType fields
+    // but evaluation items need EvaluationDataItemType (including targetCallParams).
+    // Need to:
+    // 1. Determine source of targetCallParams (evaluation config, dataset metadata, or default)
+    // 2. Transform dataItems to include targetCallParams before creating evaluation items
+    // 3. Consider caching strategy for targetCallParams if they are dynamic per evaluation
+
     if (dataItems.length === 0) {
       throw new Error(EvaluationErrEnum.evalDatasetLoadFailed);
     }
@@ -555,7 +563,8 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
         const targetInstance = createTargetInstance(evalItem.target);
         targetOutput = await targetInstance.execute({
           userInput: evalItem.dataItem.userInput,
-          context: evalItem.dataItem.context
+          context: evalItem.dataItem.context,
+          targetCallParams: evalItem.dataItem.targetCallParams
         });
 
         // Save target output as checkpoint

@@ -85,6 +85,10 @@
   "delete_evaluation_task": "删除评测任务",
   "delete_evaluation_task_item": "删除评测任务项目",
   "delete_evaluation_metric": "删除评测维度",
+  "delete_evaluation_task_data_item": "删除评测任务数据项",
+  "update_evaluation_task_data_item": "更新评测任务数据项",
+  "retry_evaluation_task_data_item": "重试评测任务数据项",
+  "export_evaluation_task_data_items": "导出评测任务数据项",
   "delete_from_org": "移出部门",
   "delete_from_team": "移出团队",
   "delete_group": "删除群组",
@@ -317,9 +321,13 @@
   "log_delete_evaluation_task_item": "【{{name}}】删除了评测任务【{{taskName}}】中的项目【{{itemId}}】",
   "log_update_evaluation_task_item": "【{{name}}】更新了评测任务【{{taskName}}】中的项目【{{itemId}}】",
   "log_retry_evaluation_task_item": "【{{name}}】重试了评测任务【{{taskName}}】中的项目【{{itemId}}】",
-  "log_export_evaluation_task_items": "【{{name}}】导出了评测任务【{{taskName}}】的{{itemCount}}个项目，格式为{{format}}",
   "log_create_evaluation_metric": "【{{name}}】创建了名为【{{metricName}}】的评测维度",
   "log_delete_evaluation_metric": "【{{name}}】删除了名为【{{metricName}}】的评测维度",
   "log_update_evaluation_metric": "【{{name}}】更新了名为【{{metricName}}】的评测维度",
-  "log_debug_evaluation_metric": "【{{name}}】调试了名为【{{metricName}}】的评测维度"
+  "log_debug_evaluation_metric": "【{{name}}】调试了名为【{{metricName}}】的评测维度",
+  "log_export_evaluation_task_items": "【{{name}}】导出了评测任务【{{taskName}}】的{{itemCount}}个项目，格式为{{format}}",
+  "log_delete_evaluation_task_data_item": "【{{name}}】删除了评测任务【{{taskName}}】中的数据项【{{dataItemId}}】",
+  "log_update_evaluation_task_data_item": "【{{name}}】更新了评测任务【{{taskName}}】中的数据项【{{dataItemId}}】",
+  "log_retry_evaluation_task_data_item": "【{{name}}】重试了评测任务【{{taskName}}】中的数据项【{{dataItemId}}】",
+  "log_export_evaluation_task_data_items": "【{{name}}】导出了评测任务【{{taskName}}】的{{itemCount}}个数据项，格式为{{format}}"
 }

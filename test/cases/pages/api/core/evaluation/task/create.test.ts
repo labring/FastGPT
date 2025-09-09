@@ -178,7 +178,7 @@ describe('Create Evaluation Task API Handler', () => {
       }
     } as any;
 
-    await expect(createHandler(mockReq)).rejects.toMatch('evaluationNameRequired');
+    await expect(createHandler(mockReq)).rejects.toThrow('evaluationNameRequired');
   });
 
   test('应该拒绝空指标列表', async () => {
@@ -201,7 +201,7 @@ describe('Create Evaluation Task API Handler', () => {
     // 需要mock validateTargetConfig返回成功
     (validateTargetConfig as any).mockResolvedValue({ success: true, message: 'Valid' });
 
-    await expect(createHandler(mockReq)).rejects.toMatch('evaluationEvaluatorsRequired');
+    await expect(createHandler(mockReq)).rejects.toThrow('evaluationEvaluatorsRequired');
   });
 
   test('应该拒绝缺少必填字段', async () => {
@@ -220,6 +220,6 @@ describe('Create Evaluation Task API Handler', () => {
     // });
 
     // datasetId 验证会先失败
-    await expect(createHandler(mockReq)).rejects.toMatch('evaluationDatasetIdRequired');
+    await expect(createHandler(mockReq)).rejects.toThrow('evaluationDatasetIdRequired');
   });
 });
