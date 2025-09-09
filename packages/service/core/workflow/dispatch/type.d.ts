@@ -41,13 +41,9 @@ export type DispatchFlowResponse = {
 };
 
 export type WorkflowResponseType = ({
-  write,
   event,
-  data,
-  stream
+  data
 }: {
-  write?: ((text: string) => void) | undefined;
   event: SseResponseEventEnum;
   data: Record<string, any>;
-  stream?: boolean | undefined;
 }) => void;
