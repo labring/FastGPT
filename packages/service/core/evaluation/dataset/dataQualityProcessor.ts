@@ -88,7 +88,7 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
           'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.completed,
           'metadata.qualityScore': metricResult.data.score,
           'metadata.qualityReason': metricResult.data?.reason,
-          'metadata.qualityRunLogs': metricResult.data?.run_logs,
+          'metadata.qualityRunLogs': metricResult.data?.runLogs,
           'metadata.qualityUsages': metricResult?.usages,
           'metadata.qualityFinishTime': new Date(),
           'metadata.qualityModel': evalModel

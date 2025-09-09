@@ -3,6 +3,7 @@ import { handler } from '@/pages/api/core/evaluation/metric/delete';
 import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema';
 import { authEvalMetric } from '@fastgpt/service/support/permission/evaluation/auth';
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 // Mock dependencies
 vi.mock('@fastgpt/service/core/evaluation/metric/schema', () => ({
@@ -47,7 +48,7 @@ describe('/api/core/evaluation/metric/delete', () => {
 
     const req = {
       query: {
-        id: mockMetricId
+        metricId: mockMetricId
       },
       auth: {
         userId: '507f1f77bcf86cd799439013',
@@ -82,12 +83,14 @@ describe('/api/core/evaluation/metric/delete', () => {
     expect(result).toEqual({});
   });
 
-  it('should reject when id parameter is missing', async () => {
+  it('should reject when metricId parameter is missing', async () => {
     const req = {
       query: {}
     };
 
-    await expect(handler(req as any, {} as any)).rejects.toBe('Missing required parameter: id');
+    await expect(handler(req as any, {} as any)).rejects.toBe(
+      EvaluationErrEnum.evalMetricIdRequired
+    );
 
     // Verify no auth or database calls were made
     expect(authEvalMetric).not.toHaveBeenCalled();
@@ -95,14 +98,16 @@ describe('/api/core/evaluation/metric/delete', () => {
     expect(MongoEvalMetric.findByIdAndDelete).not.toHaveBeenCalled();
   });
 
-  it('should reject when id parameter is empty string', async () => {
+  it('should reject when metricId parameter is empty string', async () => {
     const req = {
       query: {
-        id: ''
+        metricId: ''
       }
     };
 
-    await expect(handler(req as any, {} as any)).rejects.toBe('Missing required parameter: id');
+    await expect(handler(req as any, {} as any)).rejects.toBe(
+      EvaluationErrEnum.evalMetricIdRequired
+    );
 
     expect(authEvalMetric).not.toHaveBeenCalled();
     expect(MongoEvalMetric.findById).not.toHaveBeenCalled();
@@ -125,7 +130,7 @@ describe('/api/core/evaluation/metric/delete', () => {
 
     const req = {
       query: {
-        id: mockMetricId
+        metricId: mockMetricId
       },
       auth: {
         userId: '507f1f77bcf86cd799439013',
@@ -139,7 +144,7 @@ describe('/api/core/evaluation/metric/delete', () => {
       }
     };
 
-    await expect(handler(req as any, {} as any)).rejects.toBe('Metric not found');
+    await expect(handler(req as any, {} as any)).rejects.toBe(EvaluationErrEnum.evalMetricNotFound);
 
     expect(authEvalMetric).toHaveBeenCalled();
     expect(MongoEvalMetric.findById).toHaveBeenCalledWith(mockMetricId);
@@ -167,7 +172,7 @@ describe('/api/core/evaluation/metric/delete', () => {
 
     const req = {
       query: {
-        id: mockMetricId
+        metricId: mockMetricId
       },
       auth: {
         userId: '507f1f77bcf86cd799439013',
@@ -181,7 +186,9 @@ describe('/api/core/evaluation/metric/delete', () => {
       }
     };
 
-    await expect(handler(req as any, {} as any)).rejects.toBe('Builtin metrics cannot be deleted');
+    await expect(handler(req as any, {} as any)).rejects.toBe(
+      EvaluationErrEnum.evalMetricBuiltinCannotDelete
+    );
 
     expect(authEvalMetric).toHaveBeenCalled();
     expect(MongoEvalMetric.findById).toHaveBeenCalledWith(mockMetricId);
@@ -194,7 +201,7 @@ describe('/api/core/evaluation/metric/delete', () => {
 
     const req = {
       query: {
-        id: mockMetricId
+        metricId: mockMetricId
       },
       auth: {
         userId: '507f1f77bcf86cd799439013',
@@ -230,7 +237,7 @@ describe('/api/core/evaluation/metric/delete', () => {
 
     const req = {
       query: {
-        id: mockMetricId
+        metricId: mockMetricId
       },
       auth: {
         userId: '507f1f77bcf86cd799439013',
@@ -273,7 +280,7 @@ describe('/api/core/evaluation/metric/delete', () => {
 
     const req = {
       query: {
-        id: mockMetricId
+        metricId: mockMetricId
       },
       auth: {
         userId: '507f1f77bcf86cd799439013',

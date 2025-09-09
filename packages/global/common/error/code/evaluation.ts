@@ -18,18 +18,10 @@ export enum EvaluationErrEnum {
   evalEvaluatorsRequired = 'evaluationEvaluatorsRequired',
   evalEvaluatorInvalidConfig = 'evaluationEvaluatorInvalidConfig',
   evalCollectionIdRequired = 'evaluationCollectionIdRequired',
-  evalUserInputRequired = 'evaluationUserInputRequired',
-  evalExpectedOutputRequired = 'evaluationExpectedOutputRequired',
   evalInvalidPageNumber = 'evaluationInvalidPageNumber',
   evalInvalidPageSize = 'evaluationInvalidPageSize',
-  evalMetricNameRequired = 'evaluationMetricNameRequired',
-  evalMetricNameTooLong = 'evaluationMetricNameTooLong',
-  evalMetricPromptRequired = 'evaluationMetricPromptRequired',
-  evalMetricPromptTooLong = 'evaluationMetricPromptTooLong',
   evalInvalidFormat = 'evaluationInvalidFormat',
   evalCountMustBePositive = 'evaluationCountMustBePositive',
-  evalInvalidContext = 'evaluationInvalidContext',
-  evalInvalidRetrievalContext = 'evaluationInvalidRetrievalContext',
 
   // Authentication errors (510050-510069)
   evalInsufficientPermission = 'evaluationInsufficientPermission',
@@ -37,9 +29,6 @@ export enum EvaluationErrEnum {
   evalAppNoPermission = 'evaluationAppNoPermission',
   evalTaskNotFound = 'evaluationTaskNotFound',
   evalItemNotFound = 'evaluationItemNotFound',
-  evalMetricNotFound = 'evaluationMetricNotFound',
-  evalMetricBuiltinCannotModify = 'evaluationMetricBuiltinCannotModify',
-  evalMetricBuiltinCannotDelete = 'evaluationMetricBuiltinCannotDelete',
 
   // Business logic errors (510070-510099)
   evalInvalidStatus = 'evaluationInvalidStatus',
@@ -57,7 +46,47 @@ export enum EvaluationErrEnum {
   evalDuplicateDatasetName = 'evaluationDuplicateDatasetName',
   evalNoDataInCollections = 'evaluationNoDataInCollections',
   evalUpdateFailed = 'evaluationUpdateFailed',
-  evalLockAcquisitionFailed = 'evaluationLockAcquisitionFailed'
+  evalLockAcquisitionFailed = 'evaluationLockAcquisitionFailed',
+  // Metric related errors
+  evalMetricNotFound = 'evaluationMetricNotFound',
+  evalMetricUnAuth = 'evaluationMetricUnAuth',
+  evalMetricNameRequired = 'evaluationMetricNameRequired',
+  evalMetricNameTooLong = 'evaluationMetricNameTooLong',
+  evalMetricDescriptionTooLong = 'evaluationMetricDescriptionTooLong',
+  evalMetricPromptRequired = 'evaluationMetricPromptRequired',
+  evalMetricPromptTooLong = 'evaluationMetricPromptTooLong',
+  evalMetricTypeRequired = 'evaluationMetricTypeRequired',
+  evalMetricTypeInvalid = 'evaluationMetricTypeInvalid',
+  evalMetricBuiltinCannotModify = 'evaluationMetricBuiltinCannotModify',
+  evalMetricBuiltinCannotDelete = 'evaluationMetricBuiltinCannotDelete',
+  evalMetricIdRequired = 'evaluationMetricIdRequired',
+
+  // Evaluation case related errors
+  evalCaseRequired = 'evaluationCaseRequired',
+  evalCaseUserInputRequired = 'evaluationCaseUserInputRequired',
+  evalCaseUserInputTooLong = 'evaluationCaseUserInputTooLong',
+  evalCaseActualOutputRequired = 'evaluationCaseActualOutputRequired',
+  evalCaseActualOutputTooLong = 'evaluationCaseActualOutputTooLong',
+  evalCaseExpectedOutputRequired = 'evaluationCaseExpectedOutputRequired',
+  evalCaseExpectedOutputTooLong = 'evaluationCaseExpectedOutputTooLong',
+
+  // LLM config related errors
+  evalLLmConfigRequired = 'evaluationLLmConfigRequired',
+  evalLLmModelNameRequired = 'evaluationLLmModelNameRequired',
+
+  // Debug related errors
+  debugEvaluationFailed = 'evaluationDebugFailed',
+
+  // Evaluator related errors
+  evaluatorConfigRequired = 'evaluationEvaluatorConfigRequired',
+  evaluatorLLmConfigMissing = 'evaluationEvaluatorLLmConfigMissing',
+  evaluatorEmbeddingConfigMissing = 'evaluationEvaluatorEmbeddingConfigMissing',
+  evaluatorLLmModelNotFound = 'evaluationEvaluatorLLmModelNotFound',
+  evaluatorEmbeddingModelNotFound = 'evaluationEvaluatorEmbeddingModelNotFound',
+  evaluatorRequestTimeout = 'evaluationEvaluatorRequestTimeout',
+  evaluatorServiceUnavailable = 'evaluationEvaluatorServiceUnavailable',
+  evaluatorInvalidResponse = 'evaluationEvaluatorInvalidResponse',
+  evaluatorNetworkError = 'evaluationEvaluatorNetworkError'
 }
 
 const evaluationErrList = [
@@ -113,14 +142,6 @@ const evaluationErrList = [
     message: i18nT('evaluation:collection_id_required')
   },
   {
-    statusText: EvaluationErrEnum.evalUserInputRequired,
-    message: i18nT('evaluation:user_input_required')
-  },
-  {
-    statusText: EvaluationErrEnum.evalExpectedOutputRequired,
-    message: i18nT('evaluation:expected_output_required')
-  },
-  {
     statusText: EvaluationErrEnum.evalInvalidPageNumber,
     message: i18nT('evaluation:invalid_page_number')
   },
@@ -129,36 +150,12 @@ const evaluationErrList = [
     message: i18nT('evaluation:invalid_page_size')
   },
   {
-    statusText: EvaluationErrEnum.evalMetricNameRequired,
-    message: i18nT('evaluation:metric_name_required')
-  },
-  {
-    statusText: EvaluationErrEnum.evalMetricNameTooLong,
-    message: i18nT('evaluation:metric_name_too_long')
-  },
-  {
-    statusText: EvaluationErrEnum.evalMetricPromptRequired,
-    message: i18nT('evaluation:metric_prompt_required')
-  },
-  {
-    statusText: EvaluationErrEnum.evalMetricPromptTooLong,
-    message: i18nT('evaluation:metric_prompt_too_long')
-  },
-  {
     statusText: EvaluationErrEnum.evalInvalidFormat,
     message: i18nT('evaluation:invalid_format')
   },
   {
     statusText: EvaluationErrEnum.evalCountMustBePositive,
     message: i18nT('evaluation:count_must_be_positive')
-  },
-  {
-    statusText: EvaluationErrEnum.evalInvalidContext,
-    message: i18nT('evaluation:invalid_context')
-  },
-  {
-    statusText: EvaluationErrEnum.evalInvalidRetrievalContext,
-    message: i18nT('evaluation:invalid_retrieval_context')
   },
 
   // Authentication errors
@@ -181,18 +178,6 @@ const evaluationErrList = [
   {
     statusText: EvaluationErrEnum.evalItemNotFound,
     message: i18nT('evaluation:item_not_found')
-  },
-  {
-    statusText: EvaluationErrEnum.evalMetricNotFound,
-    message: i18nT('evaluation:metric_not_found')
-  },
-  {
-    statusText: EvaluationErrEnum.evalMetricBuiltinCannotModify,
-    message: i18nT('evaluation:metric_builtin_cannot_modify')
-  },
-  {
-    statusText: EvaluationErrEnum.evalMetricBuiltinCannotDelete,
-    message: i18nT('evaluation:metric_builtin_cannot_delete')
   },
 
   // Business logic errors
@@ -259,6 +244,139 @@ const evaluationErrList = [
   {
     statusText: EvaluationErrEnum.evalLockAcquisitionFailed,
     message: i18nT('evaluation:lock_acquisition_failed')
+  },
+  // Metric related errors
+  {
+    statusText: EvaluationErrEnum.evalMetricNotFound,
+    message: i18nT('evaluation:metric_not_found')
+  },
+  {
+    statusText: EvaluationErrEnum.evalMetricUnAuth,
+    message: i18nT('evaluation:metric_un_auth')
+  },
+  {
+    statusText: EvaluationErrEnum.evalMetricNameRequired,
+    message: i18nT('evaluation:metric_name_required')
+  },
+  {
+    statusText: EvaluationErrEnum.evalMetricNameTooLong,
+    message: i18nT('evaluation:metric_name_too_long')
+  },
+  {
+    statusText: EvaluationErrEnum.evalMetricDescriptionTooLong,
+    message: i18nT('evaluation:metric_description_too_long')
+  },
+  {
+    statusText: EvaluationErrEnum.evalMetricPromptRequired,
+    message: i18nT('evaluation:metric_prompt_required')
+  },
+  {
+    statusText: EvaluationErrEnum.evalMetricPromptTooLong,
+    message: i18nT('evaluation:metric_prompt_too_long')
+  },
+  {
+    statusText: EvaluationErrEnum.evalMetricTypeRequired,
+    message: i18nT('evaluation:metric_type_required')
+  },
+  {
+    statusText: EvaluationErrEnum.evalMetricTypeInvalid,
+    message: i18nT('evaluation:metric_type_invalid')
+  },
+  {
+    statusText: EvaluationErrEnum.evalMetricBuiltinCannotModify,
+    message: i18nT('evaluation:metric_builtin_cannot_modify')
+  },
+  {
+    statusText: EvaluationErrEnum.evalMetricBuiltinCannotDelete,
+    message: i18nT('evaluation:metric_builtin_cannot_delete')
+  },
+  {
+    statusText: EvaluationErrEnum.evalMetricIdRequired,
+    message: i18nT('evaluation:metric_id_required')
+  },
+
+  // Evaluation case related errors
+  {
+    statusText: EvaluationErrEnum.evalCaseRequired,
+    message: i18nT('evaluation:eval_case_required')
+  },
+  {
+    statusText: EvaluationErrEnum.evalCaseUserInputRequired,
+    message: i18nT('evaluation:eval_case_user_input_required')
+  },
+  {
+    statusText: EvaluationErrEnum.evalCaseUserInputTooLong,
+    message: i18nT('evaluation:eval_case_user_input_too_long')
+  },
+  {
+    statusText: EvaluationErrEnum.evalCaseActualOutputRequired,
+    message: i18nT('evaluation:eval_case_actual_output_required')
+  },
+  {
+    statusText: EvaluationErrEnum.evalCaseActualOutputTooLong,
+    message: i18nT('evaluation:eval_case_actual_output_too_long')
+  },
+  {
+    statusText: EvaluationErrEnum.evalCaseExpectedOutputRequired,
+    message: i18nT('evaluation:eval_case_expected_output_required')
+  },
+  {
+    statusText: EvaluationErrEnum.evalCaseExpectedOutputTooLong,
+    message: i18nT('evaluation:eval_case_expected_output_too_long')
+  },
+
+  // LLM config related errors
+  {
+    statusText: EvaluationErrEnum.evalLLmConfigRequired,
+    message: i18nT('evaluation:llm_config_required')
+  },
+  {
+    statusText: EvaluationErrEnum.evalLLmModelNameRequired,
+    message: i18nT('evaluation:llm_model_name_required')
+  },
+
+  // Debug related errors
+  {
+    statusText: EvaluationErrEnum.debugEvaluationFailed,
+    message: i18nT('evaluation:debug_evaluation_failed')
+  },
+
+  // Evaluator related errors
+  {
+    statusText: EvaluationErrEnum.evaluatorConfigRequired,
+    message: i18nT('evaluation:evaluator_config_required')
+  },
+  {
+    statusText: EvaluationErrEnum.evaluatorLLmConfigMissing,
+    message: i18nT('evaluation:evaluator_llm_config_missing')
+  },
+  {
+    statusText: EvaluationErrEnum.evaluatorEmbeddingConfigMissing,
+    message: i18nT('evaluation:evaluator_embedding_config_missing')
+  },
+  {
+    statusText: EvaluationErrEnum.evaluatorLLmModelNotFound,
+    message: i18nT('evaluation:evaluator_llm_model_not_found')
+  },
+  {
+    statusText: EvaluationErrEnum.evaluatorEmbeddingModelNotFound,
+    message: i18nT('evaluation:evaluator_embedding_model_not_found')
+  },
+  {
+    statusText: EvaluationErrEnum.evaluatorRequestTimeout,
+    message: i18nT('evaluation:evaluator_request_timeout')
+  },
+  {
+    statusText: EvaluationErrEnum.evaluatorServiceUnavailable,
+    message: i18nT('evaluation:evaluator_service_unavailable')
+  },
+  {
+    statusText: EvaluationErrEnum.evaluatorInvalidResponse,
+    message: i18nT('evaluation:evaluator_invalid_response')
+  },
+  {
+    statusText: EvaluationErrEnum.evaluatorNetworkError,
+    message: i18nT('evaluation:evaluator_network_error')
   }
 ];
 

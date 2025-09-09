@@ -623,6 +623,39 @@ export const auditLogMap = {
       itemCount: number;
     }
   },
+  //Evaluation Metric
+  [AuditEventEnum.CREATE_EVALUATION_METRIC]: {
+    content: i18nT('account_team:log_create_evaluation_metric'),
+    typeLabel: i18nT('account_team:create_evaluation_metric'),
+    params: {} as {
+      name?: string;
+      metricName: string;
+    }
+  },
+  [AuditEventEnum.DELETE_EVALUATION_METRIC]: {
+    content: i18nT('account_team:log_delete_evaluation_metric'),
+    typeLabel: i18nT('account_team:delete_evaluation_metric'),
+    params: {} as {
+      name?: string;
+      metricName: string;
+    }
+  },
+  [AuditEventEnum.UPDATE_EVALUATION_METRIC]: {
+    content: i18nT('account_team:log_update_evaluation_metric'),
+    typeLabel: i18nT('account_team:update_evaluation_metric'),
+    params: {} as {
+      name?: string;
+      metricName: string;
+    }
+  },
+  [AuditEventEnum.DEBUG_EVALUATION_METRIC]: {
+    content: i18nT('account_team:log_debug_evaluation_metric'),
+    typeLabel: i18nT('account_team:debug_evaluation_metric'),
+    params: {} as {
+      name?: string;
+      metricName: string;
+    }
+  },
   //SearchTest
   [AuditEventEnum.SEARCH_TEST]: {
     content: i18nT('account_team:log_search_test'),
