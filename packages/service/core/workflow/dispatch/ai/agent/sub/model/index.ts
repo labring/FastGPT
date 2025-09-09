@@ -1,66 +1,80 @@
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
-import { addLog } from '../../../../../../../common/system/log';
 import { createLLMResponse, type ResponseEvents } from '../../../../../../ai/llm/request';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type';
-import { chats2GPTMessages, getSystemPrompt_ChatItemType } from '@fastgpt/global/core/chat/adapt';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { getErrText } from '@fastgpt/global/common/error/utils';
-import type { DispatchSubAppProps, DispatchSubAppResponse } from '../../type';
+import { getLLMModel } from '../../../../../../ai/model';
+import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 
 type ModelAgentConfig = {
   model: string;
   temperature?: number;
   top_p?: number;
   stream?: boolean;
-  systemPrompt?: string;
-  task?: string;
 };
 
-type dispatchModelAgentProps = DispatchSubAppProps<ModelAgentConfig>;
+type DispatchModelAgentProps = ModelAgentConfig & {
+  systemPrompt: string;
+  task: string;
+  onStreaming: ResponseEvents['onStreaming'];
+};
+
+type DispatchPlanAgentResponse = {
+  response: string;
+  usages: ChatNodeUsageType[];
+};
 
 export async function dispatchModelAgent({
-  messages,
-  onStream,
-  params
-}: dispatchModelAgentProps): Promise<DispatchSubAppResponse> {
-  const { model, temperature, top_p, stream, systemPrompt, task } = params;
+  model,
+  temperature,
+  top_p,
+  stream,
+  systemPrompt,
+  task,
+  onStreaming
+}: DispatchModelAgentProps): Promise<DispatchPlanAgentResponse> {
+  const modelData = getLLMModel(model);
 
-  try {
-    const context: ChatCompletionMessageParam[] = [
+  const messages: ChatCompletionMessageParam[] = [
+    ...(systemPrompt
+      ? [
+          {
+            role: 'system' as const,
+            content: systemPrompt
+          }
+        ]
+      : []),
+    {
+      role: 'user',
+      content: task
+    }
+  ];
+
+  const { answerText, usage } = await createLLMResponse({
+    body: {
+      model: modelData.model,
+      temperature,
+      messages: messages,
+      top_p,
+      stream
+    },
+    onStreaming
+  });
+
+  const { totalPoints, modelName } = formatModelChars2Points({
+    model: modelData.model,
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens
+  });
+
+  return {
+    response: answerText,
+    usages: [
       {
-        role: 'system',
-        content: systemPrompt ?? ''
-      },
-      {
-        role: 'user',
-        content: task ?? ''
+        moduleName: modelName,
+        model: modelData.model,
+        totalPoints,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens
       }
-    ];
-
-    const {
-      answerText,
-      usage: { inputTokens, outputTokens }
-    } = await createLLMResponse({
-      body: {
-        model,
-        temperature,
-        messages: context,
-        top_p,
-        stream
-      },
-      onStreaming: onStream
-    });
-
-    return {
-      response: answerText,
-      usages: undefined
-    };
-  } catch (error) {
-    const err = getErrText(error);
-    addLog.warn('call model_agent failed');
-    return {
-      response: err,
-      usages: undefined
-    };
-  }
+    ]
+  };
 }
