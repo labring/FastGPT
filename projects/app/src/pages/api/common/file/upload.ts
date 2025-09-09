@@ -14,6 +14,7 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { authEvalDataset } from '@fastgpt/service/support/permission/evaluation/auth';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { authEvaluationDatasetCreate } from '@fastgpt/service/core/evaluation/common';
 
 export type UploadChatFileProps = {
   appId: string;
@@ -22,7 +23,7 @@ export type UploadDatasetFileProps = {
   datasetId: string;
 };
 export type UploadEvaluationFileProps = {
-  collectionId: string;
+  collectionId?: string;
 };
 
 const authUploadLimit = (tmbId: string) => {
@@ -77,17 +78,30 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
       }
       if (bucketName === 'evaluation') {
         const evalData = data as UploadEvaluationFileProps;
-        const authData = await authEvalDataset({
-          datasetId: evalData.collectionId,
-          per: WritePermissionVal,
-          req,
-          authToken: true,
-          authApiKey: true
-        });
-        return {
-          teamId: authData.teamId,
-          uid: authData.tmbId
-        };
+
+        if (evalData.collectionId) {
+          const authData = await authEvalDataset({
+            datasetId: evalData.collectionId,
+            per: WritePermissionVal,
+            req,
+            authToken: true,
+            authApiKey: true
+          });
+          return {
+            teamId: authData.teamId,
+            uid: authData.tmbId
+          };
+        } else {
+          const authData = await authEvaluationDatasetCreate({
+            req,
+            authToken: true,
+            authApiKey: true
+          });
+          return {
+            teamId: authData.teamId,
+            uid: authData.tmbId
+          };
+        }
       }
       return Promise.reject('bucketName is empty');
     })();
