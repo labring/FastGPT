@@ -77,7 +77,6 @@ async function handler(
       message: 'Task deleted successfully'
     };
   } catch (error) {
-    console.error('Error deleting task:', error);
     addLog.error('Failed to delete task', {
       jobId,
       collectionId,

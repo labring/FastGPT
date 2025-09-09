@@ -177,7 +177,6 @@ async function handler(
     return 'qualityEvaluationModel is required when enableQualityEvaluation is true';
   }
 
-  // 先进行文件认证
   const { file } = await authEvalDatasetCollectionFile({
     req,
     authToken: true,
@@ -191,7 +190,6 @@ async function handler(
     return 'File must be a CSV file';
   }
 
-  // Verify dataset collection exists and belongs to team
   const datasetCollection = await MongoEvalDatasetCollection.findById(collectionId);
   if (!datasetCollection) {
     return 'Evaluation dataset collection not found';
@@ -201,7 +199,6 @@ async function handler(
     return 'No permission to access this dataset collection';
   }
   try {
-    // Read and parse CSV file
     const { rawText } = await readFileContentFromMongo({
       teamId,
       tmbId,
@@ -221,14 +218,11 @@ async function handler(
       return 'CSV file cannot contain more than 10,000 rows';
     }
 
-    // Prepare data for bulk insert
     const evalDatasetRecords = csvRows.map((row) => {
-      // Parse context arrays
       let contextArray: string[] = [];
       let retrievalContextArray: string[] = [];
       let metadataObj: Record<string, any> = {};
 
-      // Parse context (optional)
       if (row.context !== undefined && row.context) {
         try {
           const parsed = JSON.parse(row.context);
@@ -243,7 +237,6 @@ async function handler(
         }
       }
 
-      // Parse retrieval_context (optional)
       if (row.retrieval_context !== undefined && row.retrieval_context) {
         try {
           const parsed = JSON.parse(row.retrieval_context);
@@ -258,7 +251,6 @@ async function handler(
         }
       }
 
-      // Parse metadata (optional)
       if (row.metadata !== undefined && row.metadata) {
         try {
           const parsed = JSON.parse(row.metadata);
@@ -285,7 +277,6 @@ async function handler(
       };
     });
 
-    // Bulk insert evaluation dataset data and get inserted documents
     const insertedRecords = await mongoSessionRun(async (session) => {
       return await MongoEvalDatasetData.insertMany(evalDatasetRecords, {
         session,
@@ -293,7 +284,6 @@ async function handler(
       });
     });
 
-    // Add to quality evaluation queue if enabled
     if (enableQualityEvaluation && qualityEvaluationModel) {
       const evaluationJobs = insertedRecords.map((record) =>
         addEvalDatasetDataQualityJob({
@@ -322,8 +312,6 @@ async function handler(
     if (error.message && typeof error.message === 'string') {
       return `CSV parsing error: ${error.message}`;
     }
-
-    // Re-throw other errors
     throw error;
   }
 }
