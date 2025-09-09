@@ -1,14 +1,21 @@
 import crypto from 'crypto';
 
 /** The final encrypted package to return */
-export const createEncryptedResponse = (
-  content: string,
-  finish: boolean,
-  nonce: string,
-  token: string,
-  aesKey: string,
-  streamId?: string
-) => {
+export const createEncryptedResponse = ({
+  content,
+  finish,
+  nonce,
+  token,
+  aesKey,
+  streamId
+}: {
+  content: string;
+  finish: boolean;
+  nonce: string;
+  token: string;
+  aesKey: string;
+  streamId?: string;
+}) => {
   const response = createPlaintext(finish, content, streamId);
   const timeStamp = Math.floor(Date.now() / 1000).toString();
   const encrypted = getMsgSinJsonStr(response, timeStamp, nonce, token, aesKey);
