@@ -33,6 +33,7 @@
   "llm_paragraph": "模型分段",
   "mcp": "MCP 調用",
   "member": "成員",
+  "metrics_execute": "指標執行",
   "member_name": "成員名",
   "module_name": "模組名",
   "month": "月",
@@ -56,5 +57,6 @@
   "total_usage": "總消耗",
   "usage_detail": "使用詳細資訊",
   "user_type": "類型",
-  "wecom": "企業微信"
+  "wecom": "企業微信",
+  "evaluation_summary_generation": "評估-總結生成"
 }

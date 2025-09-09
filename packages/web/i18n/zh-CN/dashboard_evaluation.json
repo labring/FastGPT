@@ -274,5 +274,11 @@
   "auto_quality_evaluation": "新增后自动进行数据质量评测",
   "quality_evaluation_tip": "将对数据的问答相关度、合理性等进行评测，给出数据质量评价及原因，可根据评价对数据进行优化。",
   "quality_evaluation_model": "质量评测模型",
-  "please_select_evaluation_model": "请选择质量评测模型"
+  "please_select_evaluation_model": "请选择质量评测模型",
+  "summary_pending": "待生成",
+  "summary_generating": "生成中",
+  "summary_done": "已完成",
+  "summary_failed": "生成失败",
+  "method_mean": "平均值",
+  "method_median": "中位数"
 }

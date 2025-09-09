@@ -712,5 +712,10 @@ export const auditLogMap = {
     content: i18nT('account_team:log_delete_api_key'),
     typeLabel: i18nT('account_team:delete_api_key'),
     params: {} as { name?: string; keyName: string }
+  },
+  [AuditEventEnum.GENERATE_EVALUATION_SUMMARY]: {
+    content: i18nT('account_team:log_generate_evaluation_summary'),
+    typeLabel: i18nT('account_team:generate_evaluation_summary'),
+    params: {} as { name?: string; evalName: string; metricName: string }
   }
 } as const;

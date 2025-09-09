@@ -52,6 +52,7 @@ declare global {
       EVAL_TASK_CONCURRENCY?: string;
       EVAL_ITEM_CONCURRENCY?: string;
       EVAL_ITEM_MAX_RETRY?: string;
+      EVALUATION_DEFAULT_THRESHOLD?: string;
 
       // evalaution data settings
       EVAL_DATA_QUALITY_CONCURRENCY?: string;
