@@ -20,6 +20,7 @@ import SecretInputModal, {
 } from '@/pageComponents/app/plugin/SecretInputModal';
 import { SystemToolInputTypeMap } from '@fastgpt/global/core/app/systemTool/constants';
 import { useBoolean } from 'ahooks';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const ConfigToolModal = ({
   configTool,
@@ -30,7 +31,7 @@ const ConfigToolModal = ({
   onCloseConfigTool: () => void;
   onAddTool: (tool: AppFormEditFormType['selectedTools'][number]) => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const [isOpenSecretModal, { setTrue: setTrueSecretModal, setFalse: setFalseSecretModal }] =
     useBoolean(false);
 
@@ -86,8 +87,8 @@ const ConfigToolModal = ({
               <Box key={input.key} _notLast={{ mb: 4 }}>
                 <Flex alignItems={'center'} mb={1}>
                   {input.required && <Box color={'red.500'}>*</Box>}
-                  <FormLabel>{input.label}</FormLabel>
-                  {input.description && <QuestionTip ml={1} label={input.description} />}
+                  <FormLabel>{t(input.label)}</FormLabel>
+                  {input.description && <QuestionTip ml={1} label={t(input.description)} />}
                 </Flex>
 
                 {input.key === NodeInputKeyEnum.systemInputConfig && input.inputList ? (
