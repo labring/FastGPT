@@ -436,7 +436,7 @@ describe('/api/core/evaluation/metric/list', () => {
       } as ListMetricsBody
     };
 
-    await expect(handler(req as any)).rejects.toBe('Failed to fetch evaluation metrics');
+    await expect(handler(req as any)).rejects.toThrow('Database query failed');
 
     expect(authUserPer).toHaveBeenCalled();
     expect(MongoEvalMetric.find).toHaveBeenCalled();

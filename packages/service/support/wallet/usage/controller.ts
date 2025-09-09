@@ -368,3 +368,42 @@ export const createEvalDatasetDataSynthesisUsage = async ({
 
   return { totalPoints };
 };
+
+export const createEvaluationMetricDebugUsage = async ({
+  teamId,
+  tmbId,
+  metricName,
+  totalPoints,
+  model,
+  inputTokens,
+  outputTokens
+}: {
+  teamId: string;
+  tmbId: string;
+  metricName: string;
+  totalPoints: number;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+}) => {
+  if (totalPoints <= 0) {
+    return;
+  }
+
+  await createUsage({
+    teamId,
+    tmbId,
+    appName: i18nT('account_usage:evaluation_debug_metric'),
+    totalPoints,
+    source: UsageSourceEnum.evaluation,
+    list: [
+      {
+        moduleName: `Debug: ${metricName}`,
+        amount: totalPoints,
+        model,
+        inputTokens,
+        outputTokens
+      }
+    ]
+  });
+};

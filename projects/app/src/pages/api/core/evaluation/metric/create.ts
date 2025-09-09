@@ -5,6 +5,10 @@ import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema'
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 import { authEvaluationMetricCreate } from '@fastgpt/service/core/evaluation/common';
 import { checkTeamEvalMetricLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
+
 async function handler(req: ApiRequestProps<CreateMetricBody, {}>, res: ApiResponseType<any>) {
   const { name, description, prompt } = req.body;
 
@@ -18,27 +22,27 @@ async function handler(req: ApiRequestProps<CreateMetricBody, {}>, res: ApiRespo
   await checkTeamEvalMetricLimit(teamId);
 
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
-    return Promise.reject('Metric name is required and must be a non-empty string');
+    return Promise.reject(EvaluationErrEnum.evalMetricNameRequired);
   }
 
   if (name.trim().length > 100) {
-    return Promise.reject('Metric name must be less than 100 characters');
+    return Promise.reject(EvaluationErrEnum.evalMetricNameTooLong);
   }
 
   if (description && typeof description !== 'string') {
-    return Promise.reject('Description must be a string');
+    return Promise.reject(EvaluationErrEnum.evalMetricDescriptionTooLong);
   }
 
   if (description && description.length > 100) {
-    return Promise.reject('Description must be less than 100 characters');
+    return Promise.reject(EvaluationErrEnum.evalMetricDescriptionTooLong);
   }
 
   if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
-    return Promise.reject('Metric prompt is required and must be a non-empty string');
+    return Promise.reject(EvaluationErrEnum.evalMetricPromptRequired);
   }
 
   if (prompt.trim().length > 4000) {
-    return Promise.reject('Prompt must be less than 4000 characters');
+    return Promise.reject(EvaluationErrEnum.evalMetricPromptTooLong);
   }
 
   const metric = await MongoEvalMetric.create({
@@ -56,14 +60,16 @@ async function handler(req: ApiRequestProps<CreateMetricBody, {}>, res: ApiRespo
     updateTime: new Date()
   });
 
-  // addAuditLog({
-  //   tmbId,
-  //   teamId,
-  //   event: AuditEventEnum.CREATE_EVALUATION_METRIC,
-  //   params: {
-  //     name: name
-  //   }
-  // });
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.CREATE_EVALUATION_METRIC,
+      params: {
+        metricName: name.trim()
+      }
+    });
+  })();
 
   return {
     id: metric._id.toString(),

@@ -135,7 +135,8 @@ async function handler(req: ApiRequestProps<ListMetricsBody, {}>) {
 
     return finalResult;
   } catch (error) {
-    return Promise.reject('Failed to fetch evaluation metrics');
+    addLog.error('[Evaluation Metric] Failed to fetch evaluation metrics', error);
+    return Promise.reject(error);
   }
 }
 

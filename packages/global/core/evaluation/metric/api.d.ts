@@ -13,10 +13,18 @@ export type DebugMetricBody = {
 };
 
 export type UpdateMetricBody = {
-  id: string;
+  metricId: string;
   name?: string;
   description?: string;
   prompt?: string;
+};
+
+export type DeleteMetricQuery = {
+  metricId: string;
+};
+
+export type DetailMetricQuery = {
+  metricId: string;
 };
 
 export type ListMetricsBody = {
