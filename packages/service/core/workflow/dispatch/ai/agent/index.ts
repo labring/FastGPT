@@ -9,7 +9,7 @@ import type {
   RuntimeNodeItemType
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { getLLMModel } from '../../../../ai/model';
-import { getNodeErrResponse, getHistories } from '../../utils';
+import { getNodeErrResponse, getHistories, getWorkflowChildResponseWrite } from '../../utils';
 import { runAgentCall } from '../../../../ai/llm/agentCall';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
@@ -48,7 +48,7 @@ import { getMasterAgentDefaultPrompt } from './constants';
 import { addFilePrompt2Input, getFileInputPrompt } from './sub/file/utils';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { dispatchFileRead } from './sub/file';
-import { dispatchApp } from './sub/app';
+import { dispatchApp, dispatchPlugin } from './sub/app';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -252,6 +252,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
         handleToolResponse: async ({ call, messages }) => {
           const toolId = call.function.name;
+          const childWorkflowStreamResponse = getWorkflowChildResponseWrite({
+            id: call.id,
+            fn: workflowStreamResponse
+          });
 
           const {
             response,
@@ -276,8 +280,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                   stream,
                   onStreaming({ text }) {
                     //TODO: 需要一个新的 plan sse event
-                    workflowStreamResponse?.({
-                      id: call.id,
+                    childWorkflowStreamResponse?.({
                       event: SseResponseEventEnum.toolResponse,
                       data: {
                         tool: {
@@ -312,8 +315,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                   systemPrompt,
                   task,
                   onStreaming({ text }) {
-                    workflowStreamResponse?.({
-                      id: call.id,
+                    childWorkflowStreamResponse?.({
                       event: SseResponseEventEnum.toolResponse,
                       data: {
                         tool: {
@@ -419,18 +421,32 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                     runningUserInfo,
                     runningAppInfo,
                     variables,
-                    workflowStreamResponse
+                    workflowStreamResponse: childWorkflowStreamResponse
                   });
                   return {
                     response,
                     usages,
                     isEnd: false
                   };
-                } else if (node.flowNodeType === FlowNodeTypeEnum.appModule) {
-                  const { response, usages } = await dispatchApp({
+                } else if (
+                  node.flowNodeType === FlowNodeTypeEnum.appModule ||
+                  node.flowNodeType === FlowNodeTypeEnum.pluginModule
+                ) {
+                  const fn =
+                    node.flowNodeType === FlowNodeTypeEnum.appModule ? dispatchApp : dispatchPlugin;
+                  console.log(requestParams, 22);
+                  const { response, usages } = await fn({
                     ...props,
-                    node
+                    node,
+                    // stream: false,
+                    workflowStreamResponse: undefined,
+                    callParams: {
+                      appId: node.pluginId,
+                      version: node.version,
+                      ...requestParams
+                    }
                   });
+
                   return {
                     response,
                     usages,
@@ -455,8 +471,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
           // Push stream response
           if (streamResponse) {
-            workflowStreamResponse?.({
-              id: call.id,
+            childWorkflowStreamResponse?.({
               event: SseResponseEventEnum.toolResponse,
               data: {
                 tool: {
