@@ -87,7 +87,7 @@ export const runAgentCall = async ({
 
     // TODO: Context agent compression
 
-    // console.log(JSON.stringify(requestMessages, null, 2));
+    // console.log(JSON.stringify({ messages: requestMessages, tools: subApps }, null, 2));
     // Request LLM
     let {
       reasoningText: reasoningContent,
@@ -129,7 +129,7 @@ export const runAgentCall = async ({
       // TODO: 加入交互节点处理
       const { response, usages, isEnd } = await handleToolResponse({
         call: tool,
-        messages: requestMessages
+        messages: requestMessages.slice(0, requestMessagesLength) // 取原来 request 的上下文
       });
 
       if (isEnd) {

@@ -8,11 +8,6 @@ export type ToolNodeItemType = RuntimeNodeItemType & {
   jsonSchema?: JSONSchemaInputType;
 };
 
-export type DispatchSubAppProps<T> = {
-  messages: ChatCompletionMessageParam[];
-  onStream?: (e: { text: string }) => void;
-  params: T;
-};
 export type DispatchSubAppResponse = {
   response: string;
   usages?: ChatNodeUsageType[];
