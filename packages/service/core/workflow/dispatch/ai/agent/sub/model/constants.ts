@@ -5,20 +5,20 @@ export const ModelAgentTool: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SubAppIds.model,
-    description: '完成一些简单通用型任务, 可以调用此工具。',
+    description: '调用 LLM 模型完成一些通用任务。',
     parameters: {
       type: 'object',
       properties: {
         systemPrompt: {
           type: 'string',
-          description: '注入给此 agent 的系统提示词'
+          description: '系统提示词，用于为 LLM 提供完成任务的引导。'
         },
         task: {
           type: 'string',
-          description: '此 agent 本轮需要完成的任务'
+          description: '本轮需要完成的任务'
         }
       },
-      required: ['systemPrompt', 'task']
+      required: ['task']
     }
   }
 };
