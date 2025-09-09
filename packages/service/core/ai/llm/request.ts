@@ -30,7 +30,7 @@ export type ResponseEvents = {
   onStreaming?: (e: { text: string }) => void;
   onReasoning?: (e: { text: string }) => void;
   onToolCall?: (e: { call: ChatCompletionMessageToolCall }) => void;
-  onToolParam?: (e: { tool: ChatCompletionMessageToolCall; params: string }) => void;
+  onToolParam?: (e: { call: ChatCompletionMessageToolCall; params: string }) => void;
 };
 
 export type CreateLLMResponseProps<T extends CompletionsBodyType = CompletionsBodyType> = {
@@ -254,7 +254,7 @@ export const createStreamResponse = async ({
               if (currentTool && arg) {
                 currentTool.function.arguments += arg;
 
-                onToolParam?.({ tool: currentTool, params: arg });
+                onToolParam?.({ call: currentTool, params: arg });
               }
             }
           });
