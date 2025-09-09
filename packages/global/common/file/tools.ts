@@ -66,7 +66,7 @@ export const parseUrlToFileType = (url: string): UserChatItemValueItemType['file
     if (extension && documentFileType.includes(extension)) {
       return {
         type: ChatFileTypeEnum.file,
-        name: filename || 'null',
+        name: filename ? decodeURIComponent(filename) : url,
         url
       };
     }
@@ -74,13 +74,13 @@ export const parseUrlToFileType = (url: string): UserChatItemValueItemType['file
     // Default to image type for non-document files
     return {
       type: ChatFileTypeEnum.image,
-      name: filename || 'null.png',
+      name: filename ? decodeURIComponent(filename) : url,
       url
     };
   } catch (error) {
     return {
       type: ChatFileTypeEnum.image,
-      name: 'invalid.png',
+      name: url,
       url
     };
   }
