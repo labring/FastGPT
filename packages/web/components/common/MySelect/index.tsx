@@ -5,7 +5,8 @@ import React, {
   useEffect,
   useImperativeHandle,
   type ForwardedRef,
-  useState
+  useState,
+  isValidElement
 } from 'react';
 import {
   Menu,
@@ -274,7 +275,11 @@ const MySelect = <T = any,>(
                           w={selectItem.iconSize ?? '1rem'}
                         />
                       )}
-                      {selectItem?.alias || selectItem?.label || placeholder}
+                      {
+                        <Box noOfLines={1}>
+                          {selectItem?.alias || selectItem?.label || placeholder}
+                        </Box>
+                      }
                     </>
                   )}
                 </>
