@@ -11,6 +11,10 @@ export type TeamStandardSubPlanItemType = {
   maxDatasetAmount: number;
   chatHistoryStoreDuration: number; // n day
   maxDatasetSize: number;
+  maxEvaluationTaskAmount: number; // max evaluation task amount
+  maxEvalDatasetAmount: number; // max evaluation dataset amount
+  maxEvalDatasetDataAmount: number; // max evaluation data amount per dataset
+  maxEvalMetricAmount: number; // max evaluation metric amount
   trainingWeight: number; // 1~4
   permissionCustomApiKey: boolean;
   permissionCustomCopyright: boolean; // feature
@@ -48,6 +52,10 @@ export type TeamSubSchema = {
   maxTeamMember?: number;
   maxApp?: number;
   maxDataset?: number;
+  maxEvaluationTaskAmount?: number;
+  maxEvalDatasetAmount?: number;
+  maxEvalDatasetDataAmount?: number;
+  maxEvalMetricAmount?: number;
 
   totalPoints: number;
   surplusPoints: number;
@@ -71,4 +79,8 @@ export type ClientTeamPlanStatusType = TeamPlanStatusType & {
   usedAppAmount: number;
   usedDatasetSize: number;
   usedDatasetIndexSize: number;
+  usedEvaluationTaskAmount: number;
+  usedEvalDatasetAmount: number;
+  usedEvalDatasetDataAmount: number;
+  usedEvalMetricAmount: number;
 };

@@ -13,6 +13,10 @@ export enum TeamErrEnum {
   pluginAmountNotEnough = 'pluginAmountNotEnough',
   websiteSyncNotEnough = 'websiteSyncNotEnough',
   reRankNotEnough = 'reRankNotEnough',
+  evaluationTaskAmountNotEnough = 'evaluationTaskAmountNotEnough',
+  evaluationDatasetAmountNotEnough = 'evaluationDatasetAmountNotEnough',
+  evaluationDatasetDataAmountNotEnough = 'evaluationDatasetDataAmountNotEnough',
+  evaluationMetricAmountNotEnough = 'evaluationMetricAmountNotEnough',
   groupNameEmpty = 'groupNameEmpty',
   groupNameDuplicate = 'groupNameDuplicate',
   groupNotExist = 'groupNotExist',
@@ -72,6 +76,22 @@ const teamErr = [
   {
     statusText: TeamErrEnum.reRankNotEnough,
     message: i18nT('common:code_error.team_error.re_rank_not_enough')
+  },
+  {
+    statusText: TeamErrEnum.evaluationTaskAmountNotEnough,
+    message: i18nT('common:code_error.team_error.evaluation_task_amount_not_enough')
+  },
+  {
+    statusText: TeamErrEnum.evaluationDatasetAmountNotEnough,
+    message: i18nT('common:code_error.team_error.evaluation_dataset_amount_not_enough')
+  },
+  {
+    statusText: TeamErrEnum.evaluationDatasetDataAmountNotEnough,
+    message: i18nT('common:code_error.team_error.evaluation_dataset_data_amount_not_enough')
+  },
+  {
+    statusText: TeamErrEnum.evaluationMetricAmountNotEnough,
+    message: i18nT('common:code_error.team_error.evaluation_metric_amount_not_enough')
   },
   {
     statusText: TeamErrEnum.groupNameEmpty,

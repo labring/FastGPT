@@ -9,6 +9,8 @@ import {
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 import type { EvalMetricSchemaType } from '@fastgpt/global/core/evaluation/metric/type';
 import { createEvaluatorInstance } from '../evaluator';
+import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
+import { createEvalDatasetDataQualityUsage } from '../../../support/wallet/usage/controller';
 
 // Queue processor function
 export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQualityData>) => {
@@ -28,6 +30,9 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
     if (!datasetData) {
       throw new Error(`Dataset data not found: ${DataId}`);
     }
+
+    // Check AI points limit
+    await checkTeamAIPoints(datasetData.teamId);
 
     // Create evaluator instance and run evaluation
     const metricSchema: EvalMetricSchemaType = {
@@ -66,6 +71,18 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
     const metricResult = await evaluator.evaluate(evalCase);
 
     if (metricResult.status === 'success' && metricResult.data) {
+      // Save usage
+      let totalPoints = 0;
+      if (metricResult.usages?.length) {
+        const { totalPoints: calculatedPoints } = await createEvalDatasetDataQualityUsage({
+          teamId: datasetData.teamId,
+          tmbId: datasetData.tmbId,
+          model: evalModel,
+          usages: metricResult.usages
+        });
+        totalPoints = calculatedPoints;
+      }
+
       await MongoEvalDatasetData.findByIdAndUpdate(DataId, {
         $set: {
           'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.completed,
@@ -80,7 +97,8 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
 
       addLog.info('Eval dataset data quality job completed successfully', {
         DataId,
-        score: metricResult.data.score
+        score: metricResult.data.score,
+        totalPoints
       });
     } else {
       throw new Error(metricResult.error || 'Evaluation failed');

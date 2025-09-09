@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { handler } from '@/pages/api/core/evaluation/metric/create';
 import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { checkTeamEvalMetricLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 import type { CreateMetricBody } from '@fastgpt/global/core/evaluation/metric/api';
 
@@ -14,6 +15,14 @@ vi.mock('@fastgpt/service/core/evaluation/metric/schema', () => ({
 
 vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
   authUserPer: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
+  checkTeamEvalMetricLimit: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/support/wallet/sub/utils', () => ({
+  getTeamStandPlan: vi.fn()
 }));
 
 describe('/api/core/evaluation/metric/create', () => {
@@ -42,6 +51,9 @@ describe('/api/core/evaluation/metric/create', () => {
       permission: {} as any,
       tmb: {} as any
     });
+
+    // Mock team limit check (passes validation)
+    vi.mocked(checkTeamEvalMetricLimit).mockResolvedValue(undefined);
 
     // Mock database create response
     const mockMetric = {
@@ -118,6 +130,9 @@ describe('/api/core/evaluation/metric/create', () => {
       tmb: {} as any
     });
 
+    // Mock team limit check (passes validation)
+    vi.mocked(checkTeamEvalMetricLimit).mockResolvedValue(undefined);
+
     // Mock database create response
     const mockMetric = {
       _id: mockMetricId,
@@ -183,6 +198,9 @@ describe('/api/core/evaluation/metric/create', () => {
       tmb: {} as any
     });
 
+    // Mock team limit check (passes validation)
+    vi.mocked(checkTeamEvalMetricLimit).mockResolvedValue(undefined);
+
     const req = {
       body: {
         prompt: 'Test prompt for evaluation'
@@ -218,6 +236,9 @@ describe('/api/core/evaluation/metric/create', () => {
       permission: {} as any,
       tmb: {} as any
     });
+
+    // Mock team limit check (passes validation)
+    vi.mocked(checkTeamEvalMetricLimit).mockResolvedValue(undefined);
 
     const req = {
       body: {
@@ -255,6 +276,9 @@ describe('/api/core/evaluation/metric/create', () => {
       tmb: {} as any
     });
 
+    // Mock team limit check (passes validation)
+    vi.mocked(checkTeamEvalMetricLimit).mockResolvedValue(undefined);
+
     const req = {
       body: {
         name: 'Test Metric'
@@ -290,6 +314,9 @@ describe('/api/core/evaluation/metric/create', () => {
       tmb: {} as any
     });
 
+    // Mock team limit check (passes validation)
+    vi.mocked(checkTeamEvalMetricLimit).mockResolvedValue(undefined);
+
     const req = {
       body: {
         name: 'Test Metric',
@@ -318,6 +345,9 @@ describe('/api/core/evaluation/metric/create', () => {
   it('should handle auth failure', async () => {
     const authError = new Error('Authentication failed');
     vi.mocked(authUserPer).mockRejectedValue(authError);
+
+    // Mock team limit check - won't be called due to auth failure, but needed for consistency
+    vi.mocked(checkTeamEvalMetricLimit).mockResolvedValue(undefined);
 
     const req = {
       body: {
@@ -351,6 +381,9 @@ describe('/api/core/evaluation/metric/create', () => {
       permission: {} as any,
       tmb: {} as any
     });
+
+    // Mock team limit check (passes validation)
+    vi.mocked(checkTeamEvalMetricLimit).mockResolvedValue(undefined);
 
     const dbError = new Error('Database creation failed');
     vi.mocked(MongoEvalMetric.create).mockRejectedValue(dbError);

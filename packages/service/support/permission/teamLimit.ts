@@ -8,6 +8,10 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoTeamMember } from '../user/team/teamMemberSchema';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { getVectorCountByTeamId } from '../../common/vectorDB/controller';
+import { MongoEvaluation } from '../../core/evaluation/task/schema';
+import { MongoEvalDatasetCollection } from '../../core/evaluation/dataset/evalDatasetCollectionSchema';
+import { MongoEvalDatasetData } from '../../core/evaluation/dataset/evalDatasetDataSchema';
+import { MongoEvalMetric } from '../../core/evaluation/metric/schema';
 
 export const checkTeamAIPoints = async (teamId: string) => {
   if (!global.subPlans?.standard) return;
@@ -122,5 +126,95 @@ export const checkTeamDatasetSyncPermission = async (teamId: string) => {
 
   if (standardConstants && !standardConstants?.permissionWebsiteSync) {
     return Promise.reject(TeamErrEnum.websiteSyncNotEnough);
+  }
+};
+
+export const checkTeamEvaluationTaskLimit = async (teamId: string, amount = 1) => {
+  const [{ standardConstants }, evaluationTaskCount] = await Promise.all([
+    getTeamStandPlan({ teamId }),
+    MongoEvaluation.countDocuments({ teamId })
+  ]);
+
+  if (
+    standardConstants &&
+    evaluationTaskCount + amount > standardConstants.maxEvaluationTaskAmount
+  ) {
+    return Promise.reject(TeamErrEnum.evaluationTaskAmountNotEnough);
+  }
+
+  if (
+    global?.licenseData?.maxEvaluationTaskAmount &&
+    typeof global?.licenseData?.maxEvaluationTaskAmount === 'number'
+  ) {
+    const totalEvaluationTasks = await MongoEvaluation.countDocuments({});
+    if (totalEvaluationTasks >= global.licenseData.maxEvaluationTaskAmount) {
+      return Promise.reject(SystemErrEnum.licenseEvaluationTaskAmountLimit);
+    }
+  }
+};
+
+export const checkTeamEvalDatasetLimit = async (teamId: string, amount = 1) => {
+  const [{ standardConstants }, evalDatasetCount] = await Promise.all([
+    getTeamStandPlan({ teamId }),
+    MongoEvalDatasetCollection.countDocuments({ teamId })
+  ]);
+
+  if (standardConstants && evalDatasetCount + amount > standardConstants.maxEvalDatasetAmount) {
+    return Promise.reject(TeamErrEnum.evaluationDatasetAmountNotEnough);
+  }
+
+  if (
+    global?.licenseData?.maxEvalDatasetAmount &&
+    typeof global?.licenseData?.maxEvalDatasetAmount === 'number'
+  ) {
+    const totalEvalDatasets = await MongoEvalDatasetCollection.countDocuments({});
+    if (totalEvalDatasets >= global.licenseData.maxEvalDatasetAmount) {
+      return Promise.reject(SystemErrEnum.licenseEvalDatasetAmountLimit);
+    }
+  }
+};
+
+export const checkTeamEvalDatasetDataLimit = async (teamId: string, amount = 1) => {
+  const [{ standardConstants }, evalDatasetDataCount] = await Promise.all([
+    getTeamStandPlan({ teamId }),
+    MongoEvalDatasetData.countDocuments({ teamId })
+  ]);
+
+  if (
+    standardConstants &&
+    evalDatasetDataCount + amount > standardConstants.maxEvalDatasetDataAmount
+  ) {
+    return Promise.reject(TeamErrEnum.evaluationDatasetDataAmountNotEnough);
+  }
+
+  if (
+    global?.licenseData?.maxEvalDatasetDataAmount &&
+    typeof global?.licenseData?.maxEvalDatasetDataAmount === 'number'
+  ) {
+    const totalEvalDatasetData = await MongoEvalDatasetData.countDocuments({});
+    if (totalEvalDatasetData >= global.licenseData.maxEvalDatasetDataAmount) {
+      return Promise.reject(SystemErrEnum.licenseEvalDatasetDataAmountLimit);
+    }
+  }
+};
+
+export const checkTeamEvalMetricLimit = async (teamId: string, amount = 1) => {
+  const [{ standardConstants }, evalMetricCount] = await Promise.all([
+    getTeamStandPlan({ teamId }),
+    MongoEvalMetric.countDocuments({ teamId })
+  ]);
+
+  if (standardConstants && evalMetricCount + amount > standardConstants.maxEvalMetricAmount) {
+    return Promise.reject(TeamErrEnum.evaluationMetricAmountNotEnough);
+  }
+
+  if (
+    global?.licenseData?.maxEvalMetricAmount &&
+    typeof global?.licenseData?.maxEvalMetricAmount === 'number'
+  ) {
+    const totalEvalMetrics = await MongoEvalMetric.countDocuments({});
+    if (totalEvalMetrics >= global.licenseData.maxEvalMetricAmount) {
+      return Promise.reject(SystemErrEnum.licenseEvalMetricAmountLimit);
+    }
   }
 };

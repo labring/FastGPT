@@ -9,6 +9,7 @@ import {
   checkEvalDatasetDataQualityJobActive
 } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import { EvalDatasetDataQualityStatusEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
+import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 
 vi.mock('@fastgpt/service/core/evaluation/common', () => ({
   authEvaluationDatasetDataUpdateById: vi.fn()
@@ -27,10 +28,14 @@ vi.mock('@fastgpt/service/core/evaluation/dataset/dataQualityMq', () => ({
 vi.mock('@fastgpt/service/support/user/audit/util', () => ({
   addAuditLog: vi.fn()
 }));
+vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
+  checkTeamAIPoints: vi.fn()
+}));
 vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
   MongoEvalDatasetCollection: {
     findOne: vi.fn()
-  }
+  },
+  EvalDatasetCollectionName: 'eval_dataset_collections'
 }));
 
 const mockAuthEvaluationDatasetDataUpdateById = vi.mocked(authEvaluationDatasetDataUpdateById);
@@ -41,6 +46,7 @@ const mockRemoveEvalDatasetDataQualityJobsRobust = vi.mocked(
   removeEvalDatasetDataQualityJobsRobust
 );
 const mockCheckEvalDatasetDataQualityJobActive = vi.mocked(checkEvalDatasetDataQualityJobActive);
+const mockCheckTeamAIPoints = vi.mocked(checkTeamAIPoints);
 
 describe('QualityAssessment API', () => {
   const validTeamId = 'team123';
@@ -76,6 +82,7 @@ describe('QualityAssessment API', () => {
     mockMongoEvalDatasetCollection.findOne.mockResolvedValue(mockCollection as any);
 
     mockCheckEvalDatasetDataQualityJobActive.mockResolvedValue(false);
+    mockCheckTeamAIPoints.mockResolvedValue(undefined);
     mockAddEvalDatasetDataQualityJob.mockResolvedValue({} as any);
     mockMongoEvalDatasetData.findByIdAndUpdate.mockResolvedValue({} as any);
   });
