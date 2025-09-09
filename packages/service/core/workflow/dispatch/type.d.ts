@@ -40,10 +40,8 @@ export type DispatchFlowResponse = {
   durationSeconds: number;
 };
 
-export type WorkflowResponseType = ({
-  event,
-  data
-}: {
+export type WorkflowResponseType = (e: {
+  id?: string;
   event: SseResponseEventEnum;
   data: Record<string, any>;
 }) => void;

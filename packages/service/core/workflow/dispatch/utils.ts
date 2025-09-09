@@ -38,13 +38,7 @@ export const getWorkflowResponseWrite = ({
   id?: string;
   showNodeStatus?: boolean;
 }) => {
-  const fn: WorkflowResponseType = ({
-    event,
-    data
-  }: {
-    event: SseResponseEventEnum;
-    data: Record<string, any>;
-  }) => {
+  const fn: WorkflowResponseType = ({ id, event, data }) => {
     if (!res || res.closed || !streamResponse) return;
 
     // Forbid show detail
@@ -66,7 +60,10 @@ export const getWorkflowResponseWrite = ({
     responseWrite({
       res,
       event: detail ? event : undefined,
-      data: JSON.stringify(data)
+      data: JSON.stringify({
+        ...data,
+        ...(id && detail && { responseValueId: id })
+      })
     });
   };
   return fn;
