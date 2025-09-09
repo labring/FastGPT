@@ -7,7 +7,11 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 
 import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
@@ -21,6 +25,7 @@ import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent/i
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
+import { Input_Template_File_Link } from '@fastgpt/global/core/workflow/template/input';
 
 /* format app nodes to edit form */
 export const appWorkflow2AgentForm = ({
@@ -137,6 +142,10 @@ export function agentForm2AppWorkflow(
               description: t('common:core.app.tip.systemPromptTip'),
               placeholder: t('common:core.app.tip.chatNodeSystemPromptTip'),
               value: data.aiSettings.systemPrompt
+            },
+            {
+              ...Input_Template_File_Link,
+              value: [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]]
             },
             {
               key: NodeInputKeyEnum.aiChatTemperature,

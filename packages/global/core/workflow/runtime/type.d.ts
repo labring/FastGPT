@@ -23,7 +23,7 @@ import type { WorkflowResponseType } from '../../../../service/core/workflow/dis
 import type { AiChatQuoteRoleType } from '../template/system/aiChat/type';
 import type { OpenaiAccountType } from '../../../support/user/team/type';
 import { LafAccountType } from '../../../support/user/team/type';
-import type { CompletionFinishReason } from '../../ai/type';
+import type { ChatCompletionMessageParam, CompletionFinishReason } from '../../ai/type';
 import type {
   InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
