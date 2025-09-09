@@ -268,15 +268,18 @@ export async function dispatchDatasetSearch(
       },
       [DispatchNodeResponseKeyEnum.nodeResponse]: responseData,
       nodeDispatchUsages,
-      [DispatchNodeResponseKeyEnum.toolResponses]: {
-        prompt: getDatasetSearchToolResponsePrompt(),
-        cites: searchRes.map((item) => ({
-          id: item.id,
-          sourceName: item.sourceName,
-          updateTime: item.updateTime,
-          content: `${item.q}\n${item.a}`.trim()
-        }))
-      }
+      [DispatchNodeResponseKeyEnum.toolResponses]:
+        searchRes.length > 0
+          ? {
+              prompt: getDatasetSearchToolResponsePrompt(),
+              cites: searchRes.map((item) => ({
+                id: item.id,
+                sourceName: item.sourceName,
+                updateTime: item.updateTime,
+                content: `${item.q}\n${item.a}`.trim()
+              }))
+            }
+          : 'No results'
     };
   } catch (error) {
     return getNodeErrResponse({ error });
