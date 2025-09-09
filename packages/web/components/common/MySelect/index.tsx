@@ -243,11 +243,7 @@ const MySelect = <T = any,>(
             <Flex alignItems={'center'}>
               {isSelecting && <MyIcon mr={2} name={'common/loading'} w={'1rem'} />}
               {valueLabel ? (
-                isValidElement(valueLabel) ? (
-                  <>{valueLabel}</>
-                ) : (
-                  <Box noOfLines={1}>{selectItem?.label}</Box>
-                )
+                <>{valueLabel}</>
               ) : (
                 <>
                   {isSearch && isOpen ? (
@@ -279,7 +275,11 @@ const MySelect = <T = any,>(
                           w={selectItem.iconSize ?? '1rem'}
                         />
                       )}
-                      {selectItem?.alias || selectItem?.label || placeholder}
+                      {
+                        <Box noOfLines={1}>
+                          {selectItem?.alias || selectItem?.label || placeholder}
+                        </Box>
+                      }
                     </>
                   )}
                 </>

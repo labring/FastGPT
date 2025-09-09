@@ -22,7 +22,7 @@ type Props<T> = Omit<GridProps, 'onChange'> & {
 const LeftRadio = <T = any,>({
   list,
   value,
-  align = 'center',
+  align = 'flex-top',
   px = 3.5,
   py = 4,
   defaultBg = 'myGray.50',
