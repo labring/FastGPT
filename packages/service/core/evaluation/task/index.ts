@@ -28,9 +28,6 @@ export class EvaluationTaskService {
   ): Promise<EvaluationSchemaType> {
     const { teamId, tmbId, ...evaluationParams } = params;
 
-    // Check AI Points balance
-    await checkTeamAIPoints(teamId);
-
     // Create usage record
     const { billId } = await createTrainingUsage({
       teamId,
