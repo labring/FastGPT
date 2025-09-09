@@ -22,8 +22,15 @@ import {
 } from '@fastgpt/global/core/chat/adapt';
 import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
-import { filterMemoryMessages, filterToolResponseToPreview, parseToolArgs } from '../utils';
-import { SubAppIds } from './sub/constants';
+import {
+  filterMemoryMessages,
+  filterToolResponseToPreview,
+  formatToolResponse,
+  getToolNodesByIds,
+  initToolNodes,
+  parseToolArgs
+} from '../utils';
+import { SubAppIds, systemSubInfo } from './sub/constants';
 import {
   getReferenceVariableValue,
   replaceEditorVariable,
@@ -138,7 +145,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     // Init tool params
     const toolNodesMap = new Map(runtimeSubApps.map((item) => [item.nodeId, item]));
     const getToolInfo = (id: string) => {
-      const toolNode = toolNodesMap.get(id);
+      const toolNode = toolNodesMap.get(id) || systemSubInfo[id];
       return {
         name: toolNode?.name || '',
         avatar: toolNode?.avatar || ''
