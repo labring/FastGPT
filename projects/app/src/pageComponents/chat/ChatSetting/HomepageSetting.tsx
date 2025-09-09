@@ -48,7 +48,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
       return {
         slogan: data?.slogan || t('chat:setting.home.slogan.default'),
         dialogTips: data?.dialogTips || t('chat:setting.home.dialogue_tips.default'),
-        homeTabTitle: data?.homeTabTitle || 'FastGPT',
+        homeTabTitle: data?.homeTabTitle || 'AlopeGpt',
         selectedTools: data?.selectedTools || [],
         wideLogoUrl: data?.wideLogoUrl,
         squareLogoUrl: data?.squareLogoUrl

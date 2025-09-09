@@ -57,7 +57,7 @@ const MyApps = () => {
 
   return (
     <Flex flexDirection={'column'} h={'100%'} pt={['46px', 0]}>
-      <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} icon="/icon/logo.svg" />
+      <NextHead title={chatSettings?.homeTabTitle || 'AlopeGpt'} icon="/icon/logo.svg" />
 
       {!isPc && (
         <Flex h="46px" w="100vw" top="0" position="absolute" borderBottom="sm" color="myGray.900">
