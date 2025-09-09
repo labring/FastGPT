@@ -36,10 +36,7 @@ interface DatasetTypeConfig {
 }
 
 // @ts-ignore
-export const ApiDatasetTypeMap: Record<
-  `${DatasetTypeEnum}`,
-  DatasetTypeConfig
-> = {
+export const ApiDatasetTypeMap: Record<`${DatasetTypeEnum}`, DatasetTypeConfig> = {
   [DatasetTypeEnum.apiDataset]: {
     icon: 'core/dataset/externalDatasetOutline',
     avatar: 'core/dataset/externalDatasetColor',
@@ -62,10 +59,7 @@ export const ApiDatasetTypeMap: Record<
     courseUrl: '/docs/introduction/guide/knowledge_base/yuque_dataset/'
   }
 };
-export const DatasetTypeMap: Record<
-  `${DatasetTypeEnum}`,
-  DatasetTypeConfig
-> = {
+export const DatasetTypeMap: Record<`${DatasetTypeEnum}`, DatasetTypeConfig> = {
   ...ApiDatasetTypeMap,
   [DatasetTypeEnum.folder]: {
     icon: 'common/folderFill',
@@ -90,20 +84,20 @@ export const DatasetTypeMap: Record<
     icon: 'core/dataset/databaseOutline',
     avatar: 'core/dataset/databaseColor',
     label: i18nT('dataset:enterprise_database'),
-    collectionLabel: i18nT('common:File'),
+    collectionLabel: i18nT('dataset:enterprise_database'),
     courseUrl: '/docs/introduction/guide/knowledge_base/enterprise_database/',
     formConfig: {
       agentModel: {
-        isHidden: true,
+        isHidden: true
       },
       vlmModel: {
-        isHidden: true,
+        isHidden: true
       },
       vectorModel: {
         isHidden: false,
-        tip:  i18nT('dataset:enterprise_database_embedding_model_tip')
-      },
-    },
+        tip: i18nT('dataset:enterprise_database_embedding_model_tip')
+      }
+    }
   },
   [DatasetTypeEnum.externalFile]: {
     icon: 'core/dataset/externalDatasetOutline',
