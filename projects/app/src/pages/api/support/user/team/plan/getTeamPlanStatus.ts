@@ -13,6 +13,7 @@ import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant
 import { MongoEvaluation } from '@fastgpt/service/core/evaluation/task/schema';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
+import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema';
 
 async function handler(
   req: NextApiRequest,
@@ -32,7 +33,8 @@ async function handler(
       usedDatasetIndexSize,
       usedEvaluationTaskAmount,
       usedEvalDatasetAmount,
-      usedEvalDatasetDataAmount
+      usedEvalDatasetDataAmount,
+      usedEvalMetricAmount
     ] = await Promise.all([
       getTeamPlanStatus({
         teamId
@@ -54,7 +56,8 @@ async function handler(
       getVectorCountByTeamId(teamId),
       MongoEvaluation.countDocuments({ teamId }),
       MongoEvalDatasetCollection.countDocuments({ teamId }),
-      MongoEvalDatasetData.countDocuments({ teamId })
+      MongoEvalDatasetData.countDocuments({ teamId }),
+      MongoEvalMetric.countDocuments({ teamId })
     ]);
 
     return {
@@ -65,7 +68,8 @@ async function handler(
       usedDatasetIndexSize,
       usedEvaluationTaskAmount,
       usedEvalDatasetAmount,
-      usedEvalDatasetDataAmount
+      usedEvalDatasetDataAmount,
+      usedEvalMetricAmount
     };
   } catch (error) {}
 }

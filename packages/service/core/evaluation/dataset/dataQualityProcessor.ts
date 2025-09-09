@@ -10,7 +10,7 @@ import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/const
 import type { EvalMetricSchemaType } from '@fastgpt/global/core/evaluation/metric/type';
 import { createEvaluatorInstance } from '../evaluator';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
-import { createEvalDatasetQualityUsage } from '../../../support/wallet/usage/controller';
+import { createEvalDatasetDataQualityUsage } from '../../../support/wallet/usage/controller';
 
 // Queue processor function
 export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQualityData>) => {
@@ -74,7 +74,7 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
       // Save usage
       let totalPoints = 0;
       if (metricResult.usages?.length) {
-        const { totalPoints: calculatedPoints } = await createEvalDatasetQualityUsage({
+        const { totalPoints: calculatedPoints } = await createEvalDatasetDataQualityUsage({
           teamId: datasetData.teamId,
           tmbId: datasetData.tmbId,
           model: evalModel,

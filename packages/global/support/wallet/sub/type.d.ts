@@ -14,6 +14,7 @@ export type TeamStandardSubPlanItemType = {
   maxEvaluationTaskAmount: number; // max evaluation task amount
   maxEvalDatasetAmount: number; // max evaluation dataset amount
   maxEvalDatasetDataAmount: number; // max evaluation data amount per dataset
+  maxEvalMetricAmount: number; // max evaluation metric amount
   trainingWeight: number; // 1~4
   permissionCustomApiKey: boolean;
   permissionCustomCopyright: boolean; // feature
@@ -54,6 +55,7 @@ export type TeamSubSchema = {
   maxEvaluationTaskAmount?: number;
   maxEvalDatasetAmount?: number;
   maxEvalDatasetDataAmount?: number;
+  maxEvalMetricAmount?: number;
 
   totalPoints: number;
   surplusPoints: number;
@@ -80,4 +82,5 @@ export type ClientTeamPlanStatusType = TeamPlanStatusType & {
   usedEvaluationTaskAmount: number;
   usedEvalDatasetAmount: number;
   usedEvalDatasetDataAmount: number;
+  usedEvalMetricAmount: number;
 };

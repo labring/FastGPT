@@ -14,8 +14,9 @@ export enum TeamErrEnum {
   websiteSyncNotEnough = 'websiteSyncNotEnough',
   reRankNotEnough = 'reRankNotEnough',
   evaluationTaskAmountNotEnough = 'evaluationTaskAmountNotEnough',
-  evalDatasetAmountNotEnough = 'evalDatasetAmountNotEnough',
-  evalDatasetDataAmountNotEnough = 'evalDatasetDataAmountNotEnough',
+  evaluationDatasetAmountNotEnough = 'evaluationDatasetAmountNotEnough',
+  evaluationDatasetDataAmountNotEnough = 'evaluationDatasetDataAmountNotEnough',
+  evaluationMetricAmountNotEnough = 'evaluationMetricAmountNotEnough',
   groupNameEmpty = 'groupNameEmpty',
   groupNameDuplicate = 'groupNameDuplicate',
   groupNotExist = 'groupNotExist',
@@ -81,12 +82,16 @@ const teamErr = [
     message: i18nT('common:code_error.team_error.evaluation_task_amount_not_enough')
   },
   {
-    statusText: TeamErrEnum.evalDatasetAmountNotEnough,
-    message: i18nT('common:code_error.team_error.eval_dataset_amount_not_enough')
+    statusText: TeamErrEnum.evaluationDatasetAmountNotEnough,
+    message: i18nT('common:code_error.team_error.evaluation_dataset_amount_not_enough')
   },
   {
-    statusText: TeamErrEnum.evalDatasetDataAmountNotEnough,
-    message: i18nT('common:code_error.team_error.eval_dataset_data_amount_not_enough')
+    statusText: TeamErrEnum.evaluationDatasetDataAmountNotEnough,
+    message: i18nT('common:code_error.team_error.evaluation_dataset_data_amount_not_enough')
+  },
+  {
+    statusText: TeamErrEnum.evaluationMetricAmountNotEnough,
+    message: i18nT('common:code_error.team_error.evaluation_metric_amount_not_enough')
   },
   {
     statusText: TeamErrEnum.groupNameEmpty,

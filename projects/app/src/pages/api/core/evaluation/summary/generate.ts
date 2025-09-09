@@ -7,6 +7,7 @@ import type {
   GenerateSummaryResponse
 } from '@fastgpt/global/core/evaluation/type';
 import { authEvaluationTaskRead } from '@fastgpt/service/core/evaluation/common';
+import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 
 async function handler(
   req: ApiRequestProps<GenerateSummaryParams>
@@ -19,11 +20,14 @@ async function handler(
       return Promise.reject('Evaluation task ID and metrics ID array are required');
     }
 
-    await authEvaluationTaskRead(evalId, {
+    const { teamId } = await authEvaluationTaskRead(evalId, {
       req,
       authApiKey: true,
       authToken: true
     });
+
+    // Check AI points availability
+    await checkTeamAIPoints(teamId);
 
     addLog.info('[EvaluationSummary] Starting summary report generation', {
       evalId,
