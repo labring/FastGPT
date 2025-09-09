@@ -79,7 +79,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     node: { nodeId, name, isEntry, version, inputs },
     lang,
     runtimeNodes,
-    runtimeEdges,
     histories,
     query,
     requestOrigin,
@@ -205,7 +204,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
         userKey: externalProvider.openaiAccount,
         isAborted: res ? () => res.closed : undefined,
-
         getToolInfo,
 
         onReasoning({ text }) {
@@ -227,6 +225,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         onToolCall({ call }) {
           const toolNode = getToolInfo(call.function.name);
           workflowStreamResponse?.({
+            id: call.id,
             event: SseResponseEventEnum.toolCall,
             data: {
               tool: {
@@ -240,12 +239,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             }
           });
         },
-        onToolParam({ tool, params }) {
+        onToolParam({ call, params }) {
           workflowStreamResponse?.({
+            id: call.id,
             event: SseResponseEventEnum.toolParams,
             data: {
               tool: {
-                id: tool.id,
+                id: call.id,
                 toolName: '',
                 toolAvatar: '',
                 params,
@@ -261,7 +261,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           const {
             response,
             usages = [],
-            isEnd
+            isEnd,
+            streamResponse = true
           } = await (async () => {
             try {
               if (toolId === SubAppIds.stop) {
@@ -277,9 +278,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                   model,
                   temperature,
                   top_p: aiChatTopP,
+                  stream,
                   onStreaming({ text }) {
                     //TODO: 需要一个新的 plan sse event
                     workflowStreamResponse?.({
+                      id: call.id,
                       event: SseResponseEventEnum.toolResponse,
                       data: {
                         tool: {
@@ -314,7 +317,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 return {
                   response,
                   usages,
-                  isEnd: false
+                  isEnd: false,
+                  streamResponse: false
                 };
               } else if (toolId === SubAppIds.model) {
                 const { systemPrompt, task } = parseToolArgs<{
@@ -331,6 +335,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                   task,
                   onStreaming({ text }) {
                     workflowStreamResponse?.({
+                      id: call.id,
                       event: SseResponseEventEnum.toolResponse,
                       data: {
                         tool: {
@@ -347,7 +352,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 return {
                   response,
                   usages,
-                  isEnd: false
+                  isEnd: false,
+                  streamResponse: false
                 };
               } else if (toolId === SubAppIds.fileRead) {
                 const { file_indexes } = parseToolArgs<{
@@ -460,18 +466,21 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           })();
 
           // Push stream response
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.toolResponse,
-            data: {
-              tool: {
-                id: call.id,
-                toolName: '',
-                toolAvatar: '',
-                params: '',
-                response: sliceStrStartEnd(response, 5000, 5000)
+          if (streamResponse) {
+            workflowStreamResponse?.({
+              id: call.id,
+              event: SseResponseEventEnum.toolResponse,
+              data: {
+                tool: {
+                  id: call.id,
+                  toolName: '',
+                  toolAvatar: '',
+                  params: '',
+                  response
+                }
               }
-            }
-          });
+            });
+          }
 
           // TODO: 推送账单
 
