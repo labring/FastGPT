@@ -9,6 +9,7 @@ import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { MongoDataset } from '../../../core/dataset/schema';
 import {
   NullPermissionVal,
+  NullRoleVal,
   PerResourceTypeEnum
 } from '@fastgpt/global/support/permission/constant';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
@@ -22,6 +23,7 @@ import { DataSetDefaultRoleVal } from '@fastgpt/global/support/permission/datase
 import { getDatasetImagePreviewUrl } from '../../../core/dataset/image/utils';
 import { i18nT } from '../../../../web/i18n/utils';
 import { parseHeaderCert } from '../auth/common';
+import { sumPer } from '@fastgpt/global/support/permission/utils';
 
 export const authDatasetByTmbId = async ({
   tmbId,
@@ -65,16 +67,24 @@ export const authDatasetByTmbId = async ({
     const isGetParentClb =
       dataset.inheritPermission && dataset.type !== DatasetTypeEnum.folder && !!dataset.parentId;
 
-    // get dataset permission or inherit permission from parent folder.
-    const Per = new DatasetPermission({
-      role: await getTmbPermission({
+    const [folderPer = NullRoleVal, myPer = NullRoleVal] = await Promise.all([
+      isGetParentClb
+        ? getTmbPermission({
+            teamId,
+            tmbId,
+            resourceId: dataset.parentId!,
+            resourceType: PerResourceTypeEnum.dataset
+          })
+        : NullRoleVal,
+      getTmbPermission({
         teamId,
         tmbId,
-        resourceId: isGetParentClb ? dataset.parentId! : datasetId,
+        resourceId: datasetId,
         resourceType: PerResourceTypeEnum.dataset
-      }),
-      isOwner
-    });
+      })
+    ]);
+
+    const Per = new DatasetPermission({ role: sumPer(folderPer, myPer), isOwner });
 
     if (!Per.checkPer(per)) {
       return Promise.reject(DatasetErrEnum.unAuthDataset);

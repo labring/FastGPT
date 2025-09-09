@@ -2,6 +2,7 @@
 import { MongoApp } from '../../../core/app/schema';
 import { type AppDetailType } from '@fastgpt/global/core/app/type.d';
 import {
+  NullRoleVal,
   PerResourceTypeEnum,
   ReadPermissionVal,
   ReadRoleVal
@@ -18,6 +19,7 @@ import { type AuthModeType, type AuthResponseType } from '../type';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { parseHeaderCert } from '../auth/common';
+import { sumPer } from '@fastgpt/global/support/permission/utils';
 
 export const authPluginByTmbId = async ({
   tmbId,
@@ -93,15 +95,24 @@ export const authAppByTmbId = async ({
     const isGetParentClb =
       app.inheritPermission && !AppFolderTypeList.includes(app.type) && !!app.parentId;
 
-    const Per = new AppPermission({
-      role: await getTmbPermission({
+    const [folderPer = NullRoleVal, myPer = NullRoleVal] = await Promise.all([
+      isGetParentClb
+        ? getTmbPermission({
+            teamId,
+            tmbId,
+            resourceId: app.parentId!,
+            resourceType: PerResourceTypeEnum.app
+          })
+        : NullRoleVal,
+      getTmbPermission({
         teamId,
         tmbId,
-        resourceId: isGetParentClb ? app.parentId! : app._id,
+        resourceId: appId,
         resourceType: PerResourceTypeEnum.app
-      }),
-      isOwner
-    });
+      })
+    ]);
+
+    const Per = new AppPermission({ role: sumPer(folderPer, myPer), isOwner });
 
     if (!Per.checkPer(per)) {
       return Promise.reject(AppErrEnum.unAuthApp);
