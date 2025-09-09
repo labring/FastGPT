@@ -1,7 +1,11 @@
 import { getQueue, getWorker, QueueNames } from '../../../common/bullmq';
 import { type Processor } from 'bullmq';
 import { addLog } from '../../../common/system/log';
-import { createJobCleaner, type JobCleanupResult, type JobCleanupOptions } from './jobCleanup';
+import {
+  createJobCleaner,
+  type JobCleanupResult,
+  type JobCleanupOptions
+} from '../utils/jobCleanup';
 
 export type EvalDatasetDataQualityData = {
   dataId: string;

@@ -51,6 +51,7 @@ declare global {
       // evaluations settings
       EVAL_TASK_CONCURRENCY?: string;
       EVAL_ITEM_CONCURRENCY?: string;
+      EVAL_ITEM_MAX_RETRY?: string;
 
       // evalaution data settings
       EVAL_DATA_QUALITY_CONCURRENCY?: string;
