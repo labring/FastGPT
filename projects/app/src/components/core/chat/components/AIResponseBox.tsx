@@ -16,7 +16,7 @@ import type {
   ToolModuleResponseItemType,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type';
-import React, { useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type {
@@ -33,6 +33,7 @@ import { useContextSelector } from 'use-context-selector';
 import { type OnOpenCiteModalProps } from '@/web/core/chat/context/chatItemContext';
 import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
 import { useCreation } from 'ahooks';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -131,6 +132,9 @@ const RenderTool = React.memo(
     showAnimation: boolean;
     tools: ToolModuleResponseItemType[];
   }) {
+    const { t } = useSafeTranslation();
+    const [userOnchange, setUserOnchange] = useState(false);
+
     return (
       <Box>
         {tools.map((tool) => {
@@ -145,12 +149,20 @@ const RenderTool = React.memo(
           const toolResponse = formatJson(tool.response);
 
           return (
-            <Accordion key={tool.id} allowToggle _notLast={{ mb: 2 }}>
+            <Accordion
+              key={tool.id}
+              allowToggle
+              _notLast={{ mb: 2 }}
+              index={userOnchange ? undefined : showAnimation ? 0 : undefined}
+              onChange={() => {
+                setUserOnchange(true);
+              }}
+            >
               <AccordionItem borderTop={'none'} borderBottom={'none'}>
                 <AccordionButton {...accordionButtonStyle}>
                   <Avatar src={tool.toolAvatar} w={'1.25rem'} h={'1.25rem'} borderRadius={'sm'} />
                   <Box mx={2} fontSize={'sm'} color={'myGray.900'}>
-                    {tool.toolName}
+                    {t(tool.toolName)}
                   </Box>
                   {showAnimation && !tool.response && <MyIcon name={'common/loading'} w={'14px'} />}
                   <AccordionIcon color={'myGray.600'} ml={5} />
