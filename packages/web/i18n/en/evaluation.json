@@ -10,24 +10,22 @@
   "target_app_id_missing": "Application ID is missing",
   "evaluators_required": "Evaluators are required",
   "evaluator_invalid_config": "Evaluator configuration is invalid",
-  "collection_id_required": "Collection ID is required",
   "user_input_required": "User input is required",
   "expected_output_required": "Expected output is required",
-  "invalid_page_number": "Invalid page number",
-  "invalid_page_size": "Invalid page size",
   "invalid_format": "Invalid format",
-  "count_must_be_positive": "Count must be positive",
+  "id_required": "Evaluation ID is required",
+  "item_id_required": "Evaluation item ID is required",
+  "data_item_id_required": "Data item ID is required",
   "invalid_context": "Invalid context",
   "invalid_retrieval_context": "Invalid retrieval context",
   "insufficient_permission": "Insufficient permission",
   "app_not_found": "Application not found",
-  "app_no_permission": "No permission for application",
   "task_not_found": "Evaluation task not found",
   "item_not_found": "Evaluation item not found",
   "metric_builtin_cannot_modify": "Built-in metrics cannot be modified",
   "metric_builtin_cannot_delete": "Built-in metrics cannot be deleted",
   "invalid_status": "Invalid status",
-  "only_queuing_can_start": "Only queued evaluations can be started",
+  "invalid_state_transition": "Invalid state transition, Only queued or manually stopped evaluations can be started",
   "only_running_can_stop": "Only running evaluations can be stopped",
   "only_failed_can_retry": "Only failed evaluation items can be retried",
   "item_no_error_to_retry": "Evaluation item has no error to retry",
@@ -42,7 +40,7 @@
   "no_data_in_collections": "No data in collections",
   "update_failed": "Update failed",
   "lock_acquisition_failed": "Lock acquisition failed",
-  
+
   "metric_not_found": "Evaluation metric not found",
   "metric_un_auth": "No permission to operate this evaluation metric",
   "metric_name_required": "Metric name is required and must be a non-empty string",
@@ -53,7 +51,7 @@
   "metric_type_required": "Metric type is required",
   "metric_type_invalid": "Invalid metric type",
   "metric_id_required": "Missing required parameter: metricId",
-  
+
   "eval_case_required": "EvalCase is required",
   "eval_case_user_input_required": "UserInput is required and must be a non-empty string",
   "eval_case_user_input_too_long": "UserInput must be less than 1000 characters",
@@ -61,12 +59,12 @@
   "eval_case_actual_output_too_long": "ActualOutput must be less than 4000 characters",
   "eval_case_expected_output_required": "ExpectedOutput is required and must be a non-empty string",
   "eval_case_expected_output_too_long": "ExpectedOutput must be less than 4000 characters",
-  
+
   "llm_config_required": "LLM config is required",
   "llm_model_name_required": "LLM model name is required and must be a non-empty string",
-  
+
   "debug_evaluation_failed": "Evaluation debug failed",
-  
+
   "evaluator_config_required": "Evaluator configuration is required",
   "evaluator_llm_config_missing": "Evaluator requires LLM configuration but it is missing",
   "evaluator_embedding_config_missing": "Evaluator requires embedding model configuration but it is missing",

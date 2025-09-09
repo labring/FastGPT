@@ -59,12 +59,42 @@ export type EvaluationSchemaType = {
   statistics?: EvaluationStatistics;
 };
 
+/**
+ * Target call parameters for evaluation execution extensibility.
+ * Provides structured way to pass variables and additional configuration
+ * to target instances during evaluation.
+ *
+ * @example
+ * ```typescript
+ * const params: TargetCallParams = {
+ *   variables: { userId: "123", theme: "dark" },  // Named variables for target execution
+ *   timeout: 5000,                               // Custom timeout setting
+ *   retryCount: 3,                               // Retry configuration
+ *   customHeaders: { "X-Custom": "value" }       // Additional parameters
+ * }
+ * ```
+ */
+export interface TargetCallParams {
+  /** Named variables to be passed to target execution (replaces globalVariables) */
+  variables?: Record<string, any>;
+  /** Index signature allowing additional extensible parameters */
+  [key: string]: any;
+}
+
+/**
+ * Extended evaluation data item that combines dataset data with target call parameters.
+ * Used in evaluation context where both dataset content and execution parameters are needed.
+ */
+export type EvaluationDataItemType = EvalDatasetDataSchemaType & {
+  targetCallParams?: TargetCallParams;
+};
+
 // Evaluation item type (atomic: one dataItem + one target + one evaluator)
 export type EvaluationItemSchemaType = {
   _id: string;
   evalId: string;
   // Dependent component configurations
-  dataItem: EvalDatasetDataSchemaType;
+  dataItem: EvaluationDataItemType;
   target: EvalTarget;
   evaluator: EvaluatorSchema; // Single evaluator configuration
   // Execution results
@@ -80,7 +110,7 @@ export type EvaluationItemSchemaType = {
 export interface TargetInput {
   [EvalDatasetDataKeyEnum.UserInput]: string;
   [EvalDatasetDataKeyEnum.Context]?: string[];
-  globalVariables?: Record<string, any>;
+  targetCallParams?: TargetCallParams;
 }
 
 export interface TargetOutput {
@@ -94,12 +124,13 @@ export interface TargetOutput {
 
 export type EvaluationDisplayType = Pick<
   EvaluationSchemaType,
-  'name' | 'createTime' | 'finishTime' | 'status' | 'errorMessage' | 'avgScore'
+  'name' | 'createTime' | 'finishTime' | 'status' | 'errorMessage' | 'tmbId'
 > & {
   _id: string;
-  executorAvatar: string;
-  executorName: string;
-  datasetName: string;
+  avgScore?: number;
+  executorAvatar?: string;
+  executorName?: string;
+  datasetName?: string;
   targetName: string;
   metricNames: string[];
   completedCount: number;

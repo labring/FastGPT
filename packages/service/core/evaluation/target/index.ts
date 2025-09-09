@@ -32,6 +32,7 @@ import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 // Helper function to extract retrieval context from workflow results
 function extractRetrievalContext(flowResponses: ChatHistoryItemResType[]): string[] {
@@ -79,7 +80,7 @@ export class WorkflowTarget extends EvaluationTarget {
     // Get application information
     const appData = await MongoApp.findById(this.config.appId);
     if (!appData) {
-      throw new Error('App not found');
+      throw new Error(EvaluationErrEnum.evalAppNotFound);
     }
 
     // Get user information and permissions
@@ -102,8 +103,45 @@ export class WorkflowTarget extends EvaluationTarget {
       }
     ];
 
-    // TODO: In the future, construct conversation history based on input.context
-    const histories: any[] = [];
+    // Construct conversation history based on input.context
+    const histories: (UserChatItemType | AIChatItemType)[] = [];
+
+    if (input.context && input.context.length > 0) {
+      // Convert context strings to alternating user-ai conversation history
+      // Assume context format: [user1, ai1, user2, ai2, ...]
+      for (let i = 0; i < input.context.length; i++) {
+        const isUser = i % 2 === 0;
+        const content = input.context[i];
+
+        if (isUser) {
+          // User message
+          histories.push({
+            obj: ChatRoleEnum.Human,
+            value: [
+              {
+                type: ChatItemValueTypeEnum.text,
+                text: {
+                  content
+                }
+              }
+            ]
+          });
+        } else {
+          // AI message
+          histories.push({
+            obj: ChatRoleEnum.AI,
+            value: [
+              {
+                type: ChatItemValueTypeEnum.text,
+                text: {
+                  content
+                }
+              }
+            ]
+          });
+        }
+      }
+    }
 
     const chatId = getNanoid();
 
@@ -123,7 +161,7 @@ export class WorkflowTarget extends EvaluationTarget {
         uid: String(appData.tmbId),
         runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
         runtimeEdges: storeEdges2RuntimeEdges(edges),
-        variables: input.globalVariables || {},
+        variables: input.targetCallParams?.variables || {},
         query,
         chatConfig: { ...chatConfig, ...(this.config.chatConfig || {}) },
         histories,
@@ -155,7 +193,7 @@ export class WorkflowTarget extends EvaluationTarget {
       tmbId: appData.tmbId,
       nodes,
       appChatConfig: { ...chatConfig, ...(this.config.chatConfig || {}) },
-      variables: input.globalVariables || {},
+      variables: input.targetCallParams?.variables || {},
       isUpdateUseTime: false,
       newTitle: getChatTitleFromChatMessage(userQuestion),
       source: ChatSourceEnum.evaluation,
@@ -217,9 +255,7 @@ export function createTargetInstance(targetConfig: EvalTarget): EvaluationTarget
     case 'workflow':
       return new WorkflowTarget(targetConfig.config as WorkflowConfig);
     default:
-      throw new Error(
-        `Unsupported target type: ${targetConfig.type}. Only 'workflow' is currently supported.`
-      );
+      throw new Error(EvaluationErrEnum.evalUnsupportedTargetType);
   }
 }
 

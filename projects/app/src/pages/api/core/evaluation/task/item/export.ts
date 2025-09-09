@@ -5,62 +5,59 @@ import type { ExportEvaluationItemsRequest } from '@fastgpt/global/core/evaluati
 import { authEvaluationTaskRead } from '@fastgpt/service/core/evaluation/common';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 async function handler(
   req: ApiRequestProps<{}, ExportEvaluationItemsRequest>,
   res: ApiResponseType<any>
 ) {
-  try {
-    const { evalId, format = 'json' } = req.query;
+  const { evalId, format = 'json' } = req.query;
 
-    if (!evalId) {
-      return Promise.reject('Evaluation ID is required');
-    }
-
-    if (!['json', 'csv'].includes(format)) {
-      return Promise.reject('Format must be json or csv');
-    }
-
-    const { teamId, tmbId, evaluation } = await authEvaluationTaskRead(evalId, {
-      req,
-      authApiKey: true,
-      authToken: true
-    });
-
-    const { results, total } = await EvaluationTaskService.exportEvaluationResults(
-      evalId,
-      teamId,
-      format as 'json' | 'csv'
-    );
-
-    if (format === 'csv') {
-      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename=evaluation-${evalId}.csv`);
-    } else {
-      res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename=evaluation-${evalId}.json`);
-    }
-
-    // Use total count for audit logging
-    const itemCount = total;
-    (async () => {
-      addAuditLog({
-        tmbId,
-        teamId,
-        event: AuditEventEnum.EXPORT_EVALUATION_TASK_ITEMS,
-        params: {
-          taskName: evaluation.name,
-          format,
-          itemCount
-        }
-      });
-    })();
-
-    res.write(results);
-    res.end();
-  } catch (error) {
-    return Promise.reject(error);
+  if (!evalId) {
+    throw new Error(EvaluationErrEnum.evalIdRequired);
   }
+
+  if (!['json', 'csv'].includes(format)) {
+    throw new Error(EvaluationErrEnum.evalInvalidFormat);
+  }
+
+  const { teamId, tmbId, evaluation } = await authEvaluationTaskRead(evalId, {
+    req,
+    authApiKey: true,
+    authToken: true
+  });
+
+  const { results, total } = await EvaluationTaskService.exportEvaluationResults(
+    evalId,
+    teamId,
+    format as 'json' | 'csv'
+  );
+
+  if (format === 'csv') {
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=evaluation-${evalId}.csv`);
+  } else {
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=evaluation-${evalId}.json`);
+  }
+
+  // Use total count for audit logging
+  const itemCount = total;
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.EXPORT_EVALUATION_TASK_ITEMS,
+      params: {
+        taskName: evaluation.name,
+        format,
+        itemCount
+      }
+    });
+  })();
+
+  res.write(results);
+  res.end();
 }
 
 export default NextAPI(handler);

@@ -1,5 +1,5 @@
 import { validateTargetConfig } from '../target';
-import type { EvalTarget } from '@fastgpt/global/core/evaluation/type';
+import type { CreateEvaluationParams } from '@fastgpt/global/core/evaluation/type';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 export interface ValidationResult {
@@ -7,13 +7,7 @@ export interface ValidationResult {
   message?: string;
 }
 
-export interface EvaluationValidationParams {
-  name?: string;
-  description?: string;
-  datasetId?: string;
-  target?: EvalTarget;
-  evaluators?: any[];
-}
+export type EvaluationValidationParams = Partial<CreateEvaluationParams>;
 
 export interface EvaluationValidationOptions {
   mode?: 'create' | 'update'; // validation mode

@@ -10,22 +10,20 @@
   "target_app_id_missing": "应用ID缺失",
   "evaluators_required": "评估器必填",
   "evaluator_invalid_config": "评估器配置无效",
-  "collection_id_required": "集合ID必填",
   "user_input_required": "用户输入必填",
   "expected_output_required": "预期输出必填",
-  "invalid_page_number": "无效的页码",
-  "invalid_page_size": "无效的页面大小",
   "invalid_format": "无效的格式",
-  "count_must_be_positive": "数量必须为正数",
+  "id_required": "评估ID不能为空",
+  "item_id_required": "评估项ID不能为空",
+  "data_item_id_required": "数据项ID不能为空",
   "invalid_context": "无效的上下文",
   "invalid_retrieval_context": "无效的检索上下文",
   "insufficient_permission": "权限不足",
   "app_not_found": "应用未找到",
-  "app_no_permission": "应用无权限",
   "task_not_found": "评估任务未找到",
   "item_not_found": "评估项未找到",
   "invalid_status": "无效的状态",
-  "only_queuing_can_start": "只有排队状态的评估可以启动",
+  "invalid_state_transition": "无效的状态转换，只有排队状态或手动停止的评估可以启动",
   "only_running_can_stop": "只有运行中的评估可以停止",
   "only_failed_can_retry": "只有失败的评估项可以重试",
   "item_no_error_to_retry": "评估项无错误可重试",
@@ -40,7 +38,7 @@
   "no_data_in_collections": "集合中无数据",
   "update_failed": "更新失败",
   "lock_acquisition_failed": "锁获取失败",
-  
+
   "metric_not_found": "评估指标未找到",
   "metric_un_auth": "无权操作该评估指标",
   "metric_name_required": "指标名称不能为空",
@@ -53,7 +51,7 @@
   "metric_builtin_cannot_modify": "内置指标不能修改",
   "metric_builtin_cannot_delete": "内置指标不能删除",
   "metric_id_required": "指标ID不能为空",
-  
+
   "eval_case_required": "评估用例不能为空",
   "eval_case_user_input_required": "用户输入不能为空",
   "eval_case_user_input_too_long": "用户输入不能超过1000个字符",
@@ -61,12 +59,12 @@
   "eval_case_actual_output_too_long": "实际输出不能超过4000个字符",
   "eval_case_expected_output_required": "期望输出不能为空",
   "eval_case_expected_output_too_long": "期望输出不能超过4000个字符",
-  
+
   "llm_config_required": "LLM配置不能为空",
   "llm_model_name_required": "LLM模型名称不能为空",
-  
+
   "debug_evaluation_failed": "评估调试失败",
-  
+
   "evaluator_config_required": "评估器配置不能为空",
   "evaluator_llm_config_missing": "评估器缺少LLM配置",
   "evaluator_embedding_config_missing": "评估器缺少嵌入模型配置",

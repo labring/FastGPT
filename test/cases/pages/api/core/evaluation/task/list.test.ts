@@ -72,7 +72,7 @@ describe('List Evaluation Tasks API Handler', () => {
 
     expect(EvaluationTaskService.listEvaluations).toHaveBeenCalledWith(
       'mock-team-id',
-      1,
+      0,
       10,
       undefined,
       [],
@@ -105,7 +105,7 @@ describe('List Evaluation Tasks API Handler', () => {
 
     expect(EvaluationTaskService.listEvaluations).toHaveBeenCalledWith(
       'mock-team-id',
-      2,
+      20,
       20,
       'test search',
       [],
@@ -116,7 +116,8 @@ describe('List Evaluation Tasks API Handler', () => {
 
   test('应该使用默认分页参数', async () => {
     const mockReq = {
-      body: {}
+      body: {},
+      query: {}
     } as any;
 
     const mockResult = { list: [], total: 0 };
@@ -126,8 +127,8 @@ describe('List Evaluation Tasks API Handler', () => {
 
     expect(EvaluationTaskService.listEvaluations).toHaveBeenCalledWith(
       'mock-team-id',
-      1,
-      20,
+      0,
+      10,
       undefined,
       [],
       'mock-tmb-id',
