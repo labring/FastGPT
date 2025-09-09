@@ -66,6 +66,7 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { cloneDeep } from 'lodash';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
@@ -231,6 +232,7 @@ const ChatBox = ({
 
   const generatingMessage = useMemoizedFn(
     ({
+      responseValueId,
       event,
       text = '',
       reasoningText,
@@ -250,9 +252,13 @@ const ChatBox = ({
 
           autoTTSResponse && splitText2Audio(formatChatValue2InputType(item.value).text || '');
 
-          const lastValue: AIChatItemValueItemType = JSON.parse(
-            JSON.stringify(item.value[item.value.length - 1])
-          );
+          const updateIndex = (() => {
+            if (!responseValueId) return item.value.length - 1;
+            const index = item.value.findIndex((item) => item.id === responseValueId);
+            if (index !== -1) return index;
+            return item.value.length - 1;
+          })();
+          const updateValue: AIChatItemValueItemType = cloneDeep(item.value[updateIndex]);
 
           if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
             return {
@@ -268,11 +274,15 @@ const ChatBox = ({
               moduleName: name
             };
           } else if (reasoningText) {
-            if (lastValue.type === ChatItemValueTypeEnum.reasoning && lastValue.reasoning) {
-              lastValue.reasoning.content += reasoningText;
+            if (updateValue.type === ChatItemValueTypeEnum.reasoning && updateValue.reasoning) {
+              updateValue.reasoning.content += reasoningText;
               return {
                 ...item,
-                value: item.value.slice(0, -1).concat(lastValue)
+                value: [
+                  ...item.value.slice(0, updateIndex),
+                  updateValue,
+                  ...item.value.slice(updateIndex + 1)
+                ]
               };
             } else {
               const val: AIChatItemValueItemType = {
@@ -283,14 +293,14 @@ const ChatBox = ({
               };
               return {
                 ...item,
-                value: item.value.concat(val)
+                value: [...item.value, val]
               };
             }
           } else if (
             (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) &&
             text
           ) {
-            if (!lastValue || !lastValue.text) {
+            if (!updateValue || !updateValue.text) {
               const newValue: AIChatItemValueItemType = {
                 type: ChatItemValueTypeEnum.text,
                 text: {
@@ -302,10 +312,14 @@ const ChatBox = ({
                 value: item.value.concat(newValue)
               };
             } else {
-              lastValue.text.content += text;
+              updateValue.text.content += text;
               return {
                 ...item,
-                value: item.value.slice(0, -1).concat(lastValue)
+                value: [
+                  ...item.value.slice(0, updateIndex),
+                  updateValue,
+                  ...item.value.slice(updateIndex + 1)
+                ]
               };
             }
           } else if (event === SseResponseEventEnum.toolCall && tool) {
@@ -320,10 +334,10 @@ const ChatBox = ({
           } else if (
             event === SseResponseEventEnum.toolParams &&
             tool &&
-            lastValue.type === ChatItemValueTypeEnum.tool &&
-            lastValue?.tools
+            updateValue.type === ChatItemValueTypeEnum.tool &&
+            updateValue?.tools
           ) {
-            lastValue.tools = lastValue.tools.map((item) => {
+            updateValue.tools = updateValue.tools.map((item) => {
               if (item.id === tool.id) {
                 item.params += tool.params;
               }
@@ -331,24 +345,32 @@ const ChatBox = ({
             });
             return {
               ...item,
-              value: item.value.slice(0, -1).concat(lastValue)
+              value: [
+                ...item.value.slice(0, updateIndex),
+                updateValue,
+                ...item.value.slice(updateIndex + 1)
+              ]
             };
-          } else if (event === SseResponseEventEnum.toolResponse && tool) {
+          } else if (
+            event === SseResponseEventEnum.toolResponse &&
+            tool &&
+            updateValue.type === ChatItemValueTypeEnum.tool &&
+            updateValue?.tools
+          ) {
             // replace tool response
+            updateValue.tools = updateValue.tools.map((item) => {
+              if (item.id === tool.id) {
+                item.response = item.response ? item.response + tool.response : tool.response;
+              }
+              return item;
+            });
             return {
               ...item,
-              value: item.value.map((val) => {
-                if (val.type === ChatItemValueTypeEnum.tool && val.tools) {
-                  const tools = val.tools.map((item) =>
-                    item.id === tool.id ? { ...item, response: tool.response } : item
-                  );
-                  return {
-                    ...val,
-                    tools
-                  };
-                }
-                return val;
-              })
+              value: [
+                ...item.value.slice(0, updateIndex),
+                updateValue,
+                ...item.value.slice(updateIndex + 1)
+              ]
             };
           } else if (event === SseResponseEventEnum.updateVariables && variables) {
             resetVariables({ variables });
