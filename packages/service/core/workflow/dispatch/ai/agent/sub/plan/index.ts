@@ -1,10 +1,13 @@
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
-import { addLog } from '../../../../../../../common/system/log';
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionTool
+} from '@fastgpt/global/core/ai/type.d';
 import { createLLMResponse, type ResponseEvents } from '../../../../../../ai/llm/request';
-import { defaultPlanAgentPrompt } from './prompt';
-import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { getErrText } from '@fastgpt/global/common/error/utils';
-import type { DispatchSubAppProps, DispatchSubAppResponse } from '../../type';
+import { getPlanAgentPrompt } from './prompt';
+import { getLLMModel } from '../../../../../../ai/model';
+import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { SubAppIds } from '../constants';
 
 type PlanAgentConfig = {
   model: string;
@@ -12,54 +15,73 @@ type PlanAgentConfig = {
   temperature?: number;
   top_p?: number;
   stream?: boolean;
-  instruction?: string;
 };
 
-type dispatchPlanAgentProps = DispatchSubAppProps<PlanAgentConfig>;
+type DispatchPlanAgentProps = PlanAgentConfig & {
+  messages: ChatCompletionMessageParam[];
+  tools: ChatCompletionTool[];
+  onStreaming: ResponseEvents['onStreaming'];
+};
+
+type DispatchPlanAgentResponse = {
+  response: string;
+  usages: ChatNodeUsageType[];
+};
 
 export const dispatchPlanAgent = async ({
   messages,
-  onStream,
-  params
-}: dispatchPlanAgentProps): Promise<DispatchSubAppResponse> => {
-  const { model, customSystemPrompt, temperature, top_p, stream, instruction } = params;
+  tools,
+  model,
+  customSystemPrompt,
+  temperature,
+  top_p,
+  stream,
+  onStreaming
+}: DispatchPlanAgentProps): Promise<DispatchPlanAgentResponse> => {
+  const modelData = getLLMModel(model);
 
-  try {
-    const combinedMessages: ChatCompletionMessageParam[] = [
+  const requestMessages: ChatCompletionMessageParam[] = [
+    {
+      role: 'system',
+      content: getPlanAgentPrompt(customSystemPrompt)
+    },
+    ...messages.filter((item) => item.role !== 'system'),
+    { role: 'user', content: 'Start plan' }
+  ];
+  const filterPlanTools = tools.filter((item) => item.function.name !== SubAppIds.plan);
+
+  const { answerText, usage } = await createLLMResponse({
+    body: {
+      model: modelData.model,
+      temperature,
+      messages: requestMessages,
+      top_p,
+      stream,
+
+      tools: filterPlanTools,
+      tool_choice: 'auto',
+      toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
+      parallel_tool_calls: true
+    },
+    onStreaming
+  });
+
+  const { totalPoints, modelName } = formatModelChars2Points({
+    model: modelData.model,
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens
+  });
+
+  return {
+    response: answerText,
+    usages: [
       {
-        role: 'system',
-        content: replaceVariable(defaultPlanAgentPrompt, {
-          userRole: customSystemPrompt
-        })
-      },
-      ...messages,
-      { role: 'user', content: instruction ?? '' }
-    ];
-
-    const {
-      answerText,
-      usage: { inputTokens, outputTokens }
-    } = await createLLMResponse({
-      body: {
-        model,
-        temperature,
-        messages: combinedMessages,
-        top_p,
-        stream
-      },
-      onStreaming: onStream
-    });
-
-    return {
-      response: answerText,
-      usages: undefined
-    };
-  } catch (error) {
-    const err = getErrText(error);
-    addLog.warn('call plan_agent failed');
-    return {
-      response: err,
-      usages: undefined
-    };
-  }
+        moduleName: modelName,
+        model: modelData.model,
+        totalPoints,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens
+      }
+    ]
+  };
 };

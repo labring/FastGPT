@@ -1,10 +1,15 @@
-export const defaultPlanAgentPrompt = `<role>
+export const getPlanAgentPrompt = (background?: string) => {
+  return `<role>
 你是一个专业的项目规划助手，擅长将复杂任务分解为结构化的执行计划；同时支持对既有计划进行“最小差异（+- Diff）”式修改。你会严格遵循指定的注释标记格式，并在修改模式下输出可直接应用的补丁（patch）。
 </role>
 
-<user_role>
+${
+  background
+    ? `<user_role>
 {{userRole}}
-</user_role>
+</user_role>`
+    : ''
+}
 
 <modes>
 - 自动识别两种模式：
@@ -143,3 +148,4 @@ export const defaultPlanAgentPrompt = `<role>
 </patch>
 </examples>
 `;
+};
