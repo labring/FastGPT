@@ -49,6 +49,7 @@ import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { getAppVersionById } from '@fastgpt/service/core/app/version/controller';
 import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 describe('WorkflowTarget - Workflow Only Support', () => {
   let workflowTarget: WorkflowTarget;
@@ -73,7 +74,7 @@ describe('WorkflowTarget - Workflow Only Support', () => {
     testInput = {
       userInput: 'What is the capital of France?',
       context: [],
-      globalVariables: { language: 'en' }
+      targetCallParams: { variables: { language: 'en' } }
     };
 
     // Setup mocks
@@ -133,7 +134,9 @@ describe('WorkflowTarget - Workflow Only Support', () => {
   test('应该处理应用不存在的错误', async () => {
     (MongoApp.findById as any).mockResolvedValue(null);
 
-    await expect(workflowTarget.execute(testInput)).rejects.toThrow('App not found');
+    await expect(workflowTarget.execute(testInput)).rejects.toThrow(
+      EvaluationErrEnum.evalAppNotFound
+    );
   });
 
   test('应该使用指定版本执行工作流评估', async () => {
@@ -267,7 +270,7 @@ describe('createTargetInstance', () => {
     } as any;
 
     expect(() => createTargetInstance(invalidConfig)).toThrow(
-      "Unsupported target type: unsupported_type. Only 'workflow' is currently supported."
+      EvaluationErrEnum.evalUnsupportedTargetType
     );
   });
 });
@@ -338,6 +341,6 @@ describe('validateTargetConfig', () => {
 
     const result = await validateTargetConfig(invalidConfig);
     expect(result.success).toBe(false);
-    expect(result.message).toContain('Unsupported target type');
+    expect(result.message).toContain(EvaluationErrEnum.evalUnsupportedTargetType);
   });
 });

@@ -52,6 +52,6 @@ describe('Get Evaluation Task Stats API Handler', () => {
       query: {}
     } as any;
 
-    await expect(statsHandler(mockReq)).rejects.toMatch('Evaluation ID is required');
+    await expect(statsHandler(mockReq)).rejects.toThrow('evaluationIdRequired');
   });
 });

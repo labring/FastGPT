@@ -161,10 +161,12 @@ export const EvaluationTaskSchema = new Schema({
   }
 });
 
-EvaluationTaskSchema.index({ teamId: 1 });
-EvaluationTaskSchema.index({ status: 1, createTime: -1 });
-EvaluationTaskSchema.index({ teamId: 1, status: 1 });
-EvaluationTaskSchema.index({ teamId: 1, name: 1 });
+// Optimized indexes for EvaluationTaskSchema
+EvaluationTaskSchema.index({ teamId: 1, createTime: -1 }); // Main query: team filtering + time sorting
+EvaluationTaskSchema.index({ teamId: 1, status: 1, createTime: -1 }); // Status filtering + time sorting
+EvaluationTaskSchema.index({ teamId: 1, name: 1 }); // Name uniqueness check
+EvaluationTaskSchema.index({ tmbId: 1, createTime: -1 }); // Query by creator
+EvaluationTaskSchema.index({ status: 1 }); // Status-based queue processing
 
 // Atomic evaluation item: one dataItem + one target + one evaluator
 export const EvaluationItemSchema = new Schema({
@@ -202,9 +204,19 @@ export const EvaluationItemSchema = new Schema({
   errorMessage: String
 });
 
-EvaluationItemSchema.index({ evalId: 1, status: 1 });
-EvaluationItemSchema.index({ status: 1, retry: 1 });
-EvaluationItemSchema.index({ evalId: 1, finishTime: -1 });
+// Optimized indexes for EvaluationItemSchema
+EvaluationItemSchema.index({ evalId: 1, createTime: -1 }); // Main query: eval filtering + time sorting
+EvaluationItemSchema.index({ evalId: 1, status: 1, createTime: -1 }); // Status filtering + time sorting
+EvaluationItemSchema.index({ status: 1, retry: 1 }); // Queue processing with retry logic
+EvaluationItemSchema.index({ evalId: 1, 'dataItem._id': 1 }); // DataItem aggregation queries
+EvaluationItemSchema.index({ evalId: 1, status: 1, retry: 1 }); // Retry operations optimization
+
+// Optimized text search for content filtering (removed evalId for flexibility)
+EvaluationItemSchema.index({
+  'dataItem.userInput': 'text',
+  'dataItem.expectedOutput': 'text',
+  'targetOutput.actualOutput': 'text'
+}); // Comprehensive text search across all content fields
 
 export const MongoEvaluation = getMongoModel<EvaluationSchemaType>(
   EvaluationCollectionName,

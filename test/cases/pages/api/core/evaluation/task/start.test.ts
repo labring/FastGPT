@@ -58,6 +58,6 @@ describe('Start Evaluation Task API Handler', () => {
       body: {}
     } as any;
 
-    await expect(startHandler(mockReq)).rejects.toMatch('Evaluation ID is required');
+    await expect(startHandler(mockReq)).rejects.toThrow('evaluationIdRequired');
   });
 });

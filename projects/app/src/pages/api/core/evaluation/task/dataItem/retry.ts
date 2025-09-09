@@ -2,50 +2,53 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { EvaluationTaskService } from '@fastgpt/service/core/evaluation/task';
 import type {
-  RetryFailedEvaluationItemsRequest,
-  RetryFailedItemsResponse
+  RetryDataItemRequest,
+  RetryDataItemResponse
 } from '@fastgpt/global/core/evaluation/api';
 import { authEvaluationTaskWrite } from '@fastgpt/service/core/evaluation/common';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
-import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
-async function handler(
-  req: ApiRequestProps<RetryFailedEvaluationItemsRequest>
-): Promise<RetryFailedItemsResponse> {
-  const { evalId } = req.body;
+async function handler(req: ApiRequestProps<RetryDataItemRequest>): Promise<RetryDataItemResponse> {
+  const { dataItemId, evalId } = req.body;
+
+  if (!dataItemId) {
+    throw new Error(EvaluationErrEnum.evalDataItemIdRequired);
+  }
 
   if (!evalId) {
     throw new Error(EvaluationErrEnum.evalIdRequired);
   }
 
-  const { teamId, tmbId, evaluation } = await authEvaluationTaskWrite(evalId, {
+  const { evaluation, teamId, tmbId } = await authEvaluationTaskWrite(evalId, {
     req,
     authApiKey: true,
     authToken: true
   });
 
-  // Check AI points availability
-  await checkTeamAIPoints(teamId);
+  const result = await EvaluationTaskService.retryEvaluationItemsByDataItem(
+    dataItemId,
+    teamId,
+    evalId
+  );
 
-  const retryCount = await EvaluationTaskService.retryFailedItems(evalId, teamId);
-
+  // Add audit log for dataItem retry
   (async () => {
     addAuditLog({
       tmbId,
       teamId,
-      event: AuditEventEnum.RETRY_EVALUATION_TASK,
+      event: AuditEventEnum.RETRY_EVALUATION_TASK_DATA_ITEM,
       params: {
         taskName: evaluation.name,
-        retryCount
+        dataItemId: dataItemId
       }
     });
   })();
 
   return {
-    message: 'Failed items retry started successfully',
-    retryCount
+    message: `Successfully retried ${result.retriedCount} evaluation items`,
+    retriedCount: result.retriedCount
   };
 }
 

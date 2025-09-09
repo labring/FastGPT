@@ -6,48 +6,32 @@ import type {
   ListEvaluationItemsResponse
 } from '@fastgpt/global/core/evaluation/api';
 import { authEvaluationTaskRead } from '@fastgpt/service/core/evaluation/common';
+import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 async function handler(
   req: ApiRequestProps<ListEvaluationItemsRequest>
 ): Promise<ListEvaluationItemsResponse> {
-  try {
-    const { evalId, pageNum = 1, pageSize = 20 } = req.body;
+  const { offset, pageSize } = parsePaginationRequest(req);
+  const { evalId } = req.body;
 
-    if (!evalId) {
-      return Promise.reject('Evaluation ID is required');
-    }
-
-    const pageNumInt = Number(pageNum);
-    const pageSizeInt = Number(pageSize);
-
-    if (pageNumInt < 1) {
-      return Promise.reject('Invalid page number');
-    }
-
-    if (pageSizeInt < 1 || pageSizeInt > 100) {
-      return Promise.reject('Invalid page size (1-100)');
-    }
-
-    const { teamId } = await authEvaluationTaskRead(evalId, {
-      req,
-      authApiKey: true,
-      authToken: true
-    });
-
-    const result = await EvaluationTaskService.listEvaluationItems(
-      evalId,
-      teamId,
-      pageNumInt,
-      pageSizeInt
-    );
-
-    return {
-      list: result.items,
-      total: result.total
-    };
-  } catch (error) {
-    return Promise.reject(error);
+  if (!evalId) {
+    throw new Error(EvaluationErrEnum.evalIdRequired);
   }
+
+  const { teamId } = await authEvaluationTaskRead(evalId, {
+    req,
+    authApiKey: true,
+    authToken: true
+  });
+
+  const result = await EvaluationTaskService.listEvaluationItems(evalId, teamId, offset, pageSize);
+
+  return {
+    list: result.items,
+    total: result.total
+  };
 }
 
 export default NextAPI(handler);
+export { handler };

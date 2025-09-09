@@ -42,14 +42,11 @@ function getDefaultThreshold(): number {
     : 80;
   // Validate threshold is within valid range
   if (isNaN(threshold) || threshold < 0 || threshold > 100) {
-    console.warn(
+    addLog.warn(
       `[getDefaultThreshold] Invalid EVALUATION_DEFAULT_THRESHOLD value: ${process.env.EVALUATION_DEFAULT_THRESHOLD}. Using default: 80`
     );
     return 80;
   }
-  console.log(
-    `[getDefaultThreshold] Using threshold: ${threshold} (from ${process.env.EVALUATION_DEFAULT_THRESHOLD ? 'env' : 'default'})`
-  );
   return threshold;
 }
 
