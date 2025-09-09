@@ -19,6 +19,7 @@ import type { ChatBoxInputType } from '../../../../projects/app/src/components/c
 import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
 import type { FlowNodeInputItemType } from '../workflow/type/io';
 import type { FlowNodeTemplateType } from '../workflow/type/node.d';
+import { ChatCompletionMessageParam } from '../ai/type';
 
 export type ChatSchemaType = {
   _id: string;

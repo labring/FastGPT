@@ -28,17 +28,14 @@ import {
 import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import {
-  applyDiff,
+  filterMemoryMessages,
   filterToolResponseToPreview,
   formatToolResponse,
   getToolNodesByIds,
   initToolNodes,
   parseToolArgs
 } from '../utils';
-import { getFileReadTool, getTopAgentConstantPrompt, SubAppIds } from './sub/constants';
-import { runWorkflow } from '../..';
-import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
-import type { ToolNodeItemType } from './type';
+import { SubAppIds } from './sub/constants';
 import {
   getReferenceVariableValue,
   replaceEditorVariable,
@@ -48,25 +45,16 @@ import {
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { dispatchPlanAgent } from './sub/plan';
 import { dispatchModelAgent } from './sub/model';
-import { PlanAgentTool } from './sub/plan/constants';
-import { ModelAgentTool } from './sub/model/constants';
-import { getSubIdsByAgentSystem, parseAgentSystem } from './utils';
-import { getChildAppPreviewNode } from '../../../../../core/app/plugin/controller';
-import type {
-  FlowNodeTemplateType,
-  NodeToolConfigType
-} from '@fastgpt/global/core/workflow/type/node';
-import type { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
-import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import type { appConfigType } from './sub/app';
-import type { DatasetConfigType } from './sub/dataset';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { getSubApps, rewriteSubAppsToolset } from './sub';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { dispatchRunTool } from '../../child/runTool';
-import { dispatchRunAppNode } from '../../child/runApp';
-import { dispatchRunPlugin } from '../../plugin/run';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { dispatchTool } from './sub/tool';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getMasterAgentDefaultPrompt } from './constants';
+import { addFilePrompt2Input, getFileInputPrompt } from './sub/file/utils';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import { dispatchFileRead } from './sub/file';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -116,6 +104,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       planAgentConfig
     }
   } = props;
+  const memoryKey = `${runningAppInfo.id}-${nodeId}`;
 
   const runtimeSubApps = await rewriteSubAppsToolset({
     subApps: subApps.map<RuntimeNodeItemType>((node) => {
@@ -143,13 +132,22 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const agentModel = getLLMModel(model);
     const chatHistories = getHistories(history, histories);
 
+    // Get files
     const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
     if (!fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0) {
       fileLinks = undefined;
     }
+    const { filesMap, prompt: fileInputPrompt } = getFileInputPrompt({
+      fileUrls: fileLinks,
+      requestOrigin,
+      maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
+      histories: chatHistories
+    });
 
-    const subAppList = getSubApps({ subApps: runtimeSubApps, urls: fileLinks });
-    console.log(JSON.stringify(subAppList, null, 2));
+    const subAppList = getSubApps({
+      subApps: runtimeSubApps,
+      addReadFileTool: Object.keys(filesMap).length > 0
+    });
 
     // Init tool params
     const toolNodesMap = new Map(runtimeSubApps.map((item) => [item.nodeId, item]));
@@ -161,44 +159,43 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       };
     };
 
-    // const combinedSystemPrompt = `${parseAgentSystem({ systemPrompt, toolNodesMap })}\n\n${getTopAgentConstantPrompt()}`;
+    const systemMessages = chats2GPTMessages({
+      messages: getSystemPrompt_ChatItemType(systemPrompt || getMasterAgentDefaultPrompt()),
+      reserveId: false
+    });
+    const historyMessages: ChatCompletionMessageParam[] = (() => {
+      const lastHistory = chatHistories[chatHistories.length - 1];
+      if (lastHistory && lastHistory.obj === ChatRoleEnum.AI && lastHistory.memories?.[memoryKey]) {
+        return lastHistory.memories?.[memoryKey];
+      }
 
-    // TODO: 把 files 加入 query 中。
-    const messages: ChatItemType[] = (() => {
-      const value: ChatItemType[] = [
-        // ...getSystemPrompt_ChatItemType(combinedSystemPrompt),
-        // Add file input prompt to histories
-        ...chatHistories,
+      return chats2GPTMessages({ messages: chatHistories, reserveId: false });
+    })();
+    const userMessages = chats2GPTMessages({
+      messages: [
         {
           obj: ChatRoleEnum.Human,
           value: runtimePrompt2ChatsValue({
-            text: userChatInput,
+            text: addFilePrompt2Input({ query: userChatInput, filePrompt: fileInputPrompt }),
             files: []
           })
         }
-      ];
-      if (lastInteractive && isEntry) {
-        return value.slice(0, -2);
-      }
-      return value;
-    })();
+      ],
+      reserveId: false
+    });
+    const requestMessages = [...systemMessages, ...historyMessages, ...userMessages];
 
     // Check interactive entry
     props.node.isEntry = false;
 
-    const adaptMessages = chats2GPTMessages({
-      messages,
-      reserveId: false
-    });
-
     const dispatchFlowResponse: ChatHistoryItemResType[] = [];
-
+    // console.log(JSON.stringify(requestMessages, null, 2));
     const { completeMessages, assistantResponses, inputTokens, outputTokens, subAppUsages } =
       await runAgentCall({
         maxRunAgentTimes: 100,
         interactiveEntryToolParams: lastInteractive?.toolParams,
         body: {
-          messages: adaptMessages,
+          messages: requestMessages,
           model: agentModel,
           temperature,
           stream,
@@ -266,161 +263,199 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             usages = [],
             isEnd
           } = await (async () => {
-            if (toolId === SubAppIds.stop) {
-              return {
-                response: '',
-                usages: [],
-                isEnd: true
-              };
-            } else if (toolId === SubAppIds.plan) {
-              const { instruction } = parseToolArgs<{ instruction: string }>(
-                call.function.arguments
-              );
-
-              const { response, usages } = await dispatchPlanAgent({
-                messages,
-                params: {
-                  model,
-                  instruction
-                },
-                onStream({ text }) {
-                  //TODO: 需要一个新的 plan sse event
-                  workflowStreamResponse?.({
-                    event: SseResponseEventEnum.toolResponse,
-                    data: {
-                      tool: {
-                        id: call.id,
-                        toolName: '',
-                        toolAvatar: '',
-                        params: '',
-                        response: sliceStrStartEnd(text, 5000, 5000)
-                      }
-                    }
-                  });
-                }
-              });
-
-              const lastPlanCallIndex = messages
-                .slice(0, -1)
-                .findLastIndex(
-                  (c) =>
-                    c.role === 'assistant' &&
-                    c.tool_calls?.some((tc) => tc.function?.name === SubAppIds.plan)
-                );
-              const originalContent =
-                lastPlanCallIndex !== -1 ? (messages[lastPlanCallIndex + 1].content as string) : '';
-
-              // const applyedContent = applyDiff({
-              //   original: originalContent,
-              //   patch: content
-              // });
-
-              return {
-                response,
-                usages,
-                isEnd: false
-              };
-            } else if (toolId === SubAppIds.model) {
-              const { systemPrompt, task } = parseToolArgs<{ systemPrompt: string; task: string }>(
-                call.function.arguments
-              );
-
-              const { response, usages } = await dispatchModelAgent({
-                messages,
-                params: { model, systemPrompt, task },
-                onStream({ text }) {
-                  workflowStreamResponse?.({
-                    event: SseResponseEventEnum.toolResponse,
-                    data: {
-                      tool: {
-                        id: call.id,
-                        toolName: '',
-                        toolAvatar: '',
-                        params: '',
-                        response: sliceStrStartEnd(text, 5000, 5000)
-                      }
-                    }
-                  });
-                }
-              });
-              return {
-                response,
-                usages,
-                isEnd: false
-              };
-            }
-            // User Sub App
-            else {
-              const node = toolNodesMap.get(toolId);
-              if (!node) {
+            try {
+              if (toolId === SubAppIds.stop) {
                 return {
-                  response: 'Can not find the tool',
+                  response: '',
                   usages: [],
-                  isEnd: false
+                  isEnd: true
                 };
-              }
-
-              const toolCallParams = parseToolArgs(call.function.arguments);
-              // Get params
-              const requestParams = (() => {
-                const params: Record<string, any> = toolCallParams;
-
-                node.inputs.forEach((input) => {
-                  if (input.key in toolCallParams) {
-                    return;
+              } else if (toolId === SubAppIds.plan) {
+                const { response, usages } = await dispatchPlanAgent({
+                  messages,
+                  tools: subAppList,
+                  model,
+                  temperature,
+                  top_p: aiChatTopP,
+                  onStreaming({ text }) {
+                    //TODO: 需要一个新的 plan sse event
+                    workflowStreamResponse?.({
+                      event: SseResponseEventEnum.toolResponse,
+                      data: {
+                        tool: {
+                          id: call.id,
+                          toolName: '',
+                          toolAvatar: '',
+                          params: '',
+                          response: text
+                        }
+                      }
+                    });
                   }
-                  // Skip some special key
-                  if (
-                    [
-                      NodeInputKeyEnum.childrenNodeIdList,
-                      NodeInputKeyEnum.systemInputConfig
-                    ].includes(input.key as NodeInputKeyEnum)
-                  ) {
-                    params[input.key] = input.value;
-                    return;
-                  }
-
-                  // replace {{$xx.xx$}} and {{xx}} variables
-                  let value = replaceEditorVariable({
-                    text: input.value,
-                    nodes: runtimeNodes,
-                    variables
-                  });
-
-                  // replace reference variables
-                  value = getReferenceVariableValue({
-                    value,
-                    nodes: runtimeNodes,
-                    variables
-                  });
-
-                  params[input.key] = valueTypeFormat(value, input.valueType);
                 });
 
-                return params;
-              })();
+                const lastPlanCallIndex = messages
+                  .slice(0, -1)
+                  .findLastIndex(
+                    (c) =>
+                      c.role === 'assistant' &&
+                      c.tool_calls?.some((tc) => tc.function?.name === SubAppIds.plan)
+                  );
+                const originalContent =
+                  lastPlanCallIndex !== -1
+                    ? (messages[lastPlanCallIndex + 1].content as string)
+                    : '';
 
-              if (node.flowNodeType === FlowNodeTypeEnum.tool) {
-                const { response, usages } = await dispatchTool({
-                  node,
-                  params: requestParams,
-                  runningUserInfo,
-                  runningAppInfo,
-                  variables,
-                  workflowStreamResponse
+                // const applyedContent = applyDiff({
+                //   original: originalContent,
+                //   patch: content
+                // });
+
+                return {
+                  response,
+                  usages,
+                  isEnd: false
+                };
+              } else if (toolId === SubAppIds.model) {
+                const { systemPrompt, task } = parseToolArgs<{
+                  systemPrompt: string;
+                  task: string;
+                }>(call.function.arguments);
+
+                const { response, usages } = await dispatchModelAgent({
+                  model,
+                  temperature,
+                  top_p: aiChatTopP,
+                  stream,
+                  systemPrompt,
+                  task,
+                  onStreaming({ text }) {
+                    workflowStreamResponse?.({
+                      event: SseResponseEventEnum.toolResponse,
+                      data: {
+                        tool: {
+                          id: call.id,
+                          toolName: '',
+                          toolAvatar: '',
+                          params: '',
+                          response: text
+                        }
+                      }
+                    });
+                  }
                 });
                 return {
                   response,
                   usages,
                   isEnd: false
                 };
-              } else {
+              } else if (toolId === SubAppIds.fileRead) {
+                const { file_indexes } = parseToolArgs<{
+                  file_indexes: string[];
+                }>(call.function.arguments);
+                if (!Array.isArray(file_indexes)) {
+                  return {
+                    response: 'file_indexes is not array',
+                    usages: [],
+                    isEnd: false
+                  };
+                }
+
+                const files = file_indexes.map((index) => ({
+                  index,
+                  url: filesMap[index]
+                }));
+                const result = await dispatchFileRead({
+                  files,
+                  teamId: runningUserInfo.teamId,
+                  tmbId: runningUserInfo.tmbId,
+                  customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse
+                });
                 return {
-                  response: 'Can not find the tool',
-                  usages: [],
+                  response: result.response,
+                  usages: result.usages,
                   isEnd: false
                 };
               }
+              // User Sub App
+              else {
+                const node = toolNodesMap.get(toolId);
+                if (!node) {
+                  return {
+                    response: 'Can not find the tool',
+                    usages: [],
+                    isEnd: false
+                  };
+                }
+
+                const toolCallParams = parseToolArgs(call.function.arguments);
+                // Get params
+                const requestParams = (() => {
+                  const params: Record<string, any> = toolCallParams;
+
+                  node.inputs.forEach((input) => {
+                    if (input.key in toolCallParams) {
+                      return;
+                    }
+                    // Skip some special key
+                    if (
+                      [
+                        NodeInputKeyEnum.childrenNodeIdList,
+                        NodeInputKeyEnum.systemInputConfig
+                      ].includes(input.key as NodeInputKeyEnum)
+                    ) {
+                      params[input.key] = input.value;
+                      return;
+                    }
+
+                    // replace {{$xx.xx$}} and {{xx}} variables
+                    let value = replaceEditorVariable({
+                      text: input.value,
+                      nodes: runtimeNodes,
+                      variables
+                    });
+
+                    // replace reference variables
+                    value = getReferenceVariableValue({
+                      value,
+                      nodes: runtimeNodes,
+                      variables
+                    });
+
+                    params[input.key] = valueTypeFormat(value, input.valueType);
+                  });
+
+                  return params;
+                })();
+
+                if (node.flowNodeType === FlowNodeTypeEnum.tool) {
+                  const { response, usages } = await dispatchTool({
+                    node,
+                    params: requestParams,
+                    runningUserInfo,
+                    runningAppInfo,
+                    variables,
+                    workflowStreamResponse
+                  });
+                  return {
+                    response,
+                    usages,
+                    isEnd: false
+                  };
+                } else {
+                  return {
+                    response: 'Can not find the tool',
+                    usages: [],
+                    isEnd: false
+                  };
+                }
+              }
+            } catch (error) {
+              return {
+                response: getErrText(error),
+                usages: [],
+                isEnd: false
+              };
             }
           })();
 
@@ -455,9 +490,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       outputTokens
     });
     const modelUsage = externalProvider.openaiAccount?.key ? 0 : modelTotalPoints;
-
     const toolTotalPoints = subAppUsages.reduce((sum, item) => sum + item.totalPoints, 0);
-
     // concat tool usage
     const totalPointsUsage = modelUsage + toolTotalPoints;
 
@@ -469,6 +502,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           .filter((item) => item.text?.content)
           .map((item) => item.text?.content || '')
           .join('')
+      },
+      // TODO: 需要对 memoryMessages 单独建表存储
+      [DispatchNodeResponseKeyEnum.memories]: {
+        [memoryKey]: filterMemoryMessages(completeMessages)
       },
       [DispatchNodeResponseKeyEnum.assistantResponses]: previewAssistantResponses,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
