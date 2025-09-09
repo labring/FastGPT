@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler } from '@/pages/api/core/evaluation/metric/detail';
 import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema';
 import { authEvalMetric } from '@fastgpt/service/support/permission/evaluation/auth';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 // Mock dependencies
 vi.mock('@fastgpt/service/core/evaluation/metric/schema', () => ({
@@ -58,7 +59,7 @@ describe('/api/core/evaluation/metric/detail', () => {
 
     const req = {
       query: {
-        id: mockMetricId
+        metricId: mockMetricId
       },
       auth: {
         userId: mockUserId,
@@ -91,8 +92,8 @@ describe('/api/core/evaluation/metric/detail', () => {
     expect(result).toEqual(mockMetric);
   });
 
-  it('should reject when id parameter is missing', async () => {
-    // Mock auth to fail due to missing id
+  it('should reject when metricId parameter is missing', async () => {
+    // Mock auth to fail due to missing metricId
     vi.mocked(authEvalMetric).mockRejectedValue(new Error('Evaluation metric ID is required'));
 
     const req = {
@@ -108,13 +109,13 @@ describe('/api/core/evaluation/metric/detail', () => {
     expect(MongoEvalMetric.findById).not.toHaveBeenCalled();
   });
 
-  it('should reject when id parameter is empty string', async () => {
-    // Mock auth to fail due to empty id
+  it('should reject when metricId parameter is empty string', async () => {
+    // Mock auth to fail due to empty metricId
     vi.mocked(authEvalMetric).mockRejectedValue(new Error('Evaluation metric ID is required'));
 
     const req = {
       query: {
-        id: ''
+        metricId: ''
       }
     };
 
@@ -145,11 +146,11 @@ describe('/api/core/evaluation/metric/detail', () => {
 
     const req = {
       query: {
-        id: mockMetricId
+        metricId: mockMetricId
       }
     };
 
-    await expect(handler(req as any, {} as any)).rejects.toBe('Metric not found');
+    await expect(handler(req as any, {} as any)).rejects.toBe(EvaluationErrEnum.evalMetricNotFound);
 
     expect(authEvalMetric).toHaveBeenCalled();
     expect(MongoEvalMetric.findById).toHaveBeenCalledWith(mockMetricId);
@@ -162,7 +163,7 @@ describe('/api/core/evaluation/metric/detail', () => {
 
     const req = {
       query: {
-        id: mockMetricId
+        metricId: mockMetricId
       }
     };
 
@@ -190,7 +191,7 @@ describe('/api/core/evaluation/metric/detail', () => {
 
     const req = {
       query: {
-        id: mockMetricId
+        metricId: mockMetricId
       }
     };
 
@@ -240,7 +241,7 @@ describe('/api/core/evaluation/metric/detail', () => {
 
     const req = {
       query: {
-        id: mockMetricId
+        metricId: mockMetricId
       }
     };
 

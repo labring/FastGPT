@@ -5,6 +5,7 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { checkTeamEvalMetricLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 import type { CreateMetricBody } from '@fastgpt/global/core/evaluation/metric/api';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 // Mock dependencies
 vi.mock('@fastgpt/service/core/evaluation/metric/schema', () => ({
@@ -218,7 +219,7 @@ describe('/api/core/evaluation/metric/create', () => {
     };
 
     await expect(handler(req as any, {} as any)).rejects.toBe(
-      'Metric name is required and must be a non-empty string'
+      EvaluationErrEnum.evalMetricNameRequired
     );
 
     // Auth should be called but database should not
@@ -258,7 +259,7 @@ describe('/api/core/evaluation/metric/create', () => {
     };
 
     await expect(handler(req as any, {} as any)).rejects.toBe(
-      'Metric name is required and must be a non-empty string'
+      EvaluationErrEnum.evalMetricNameRequired
     );
 
     expect(authUserPer).toHaveBeenCalled();
@@ -296,7 +297,7 @@ describe('/api/core/evaluation/metric/create', () => {
     };
 
     await expect(handler(req as any, {} as any)).rejects.toBe(
-      'Metric prompt is required and must be a non-empty string'
+      EvaluationErrEnum.evalMetricPromptRequired
     );
 
     expect(authUserPer).toHaveBeenCalled();
@@ -335,7 +336,7 @@ describe('/api/core/evaluation/metric/create', () => {
     };
 
     await expect(handler(req as any, {} as any)).rejects.toBe(
-      'Metric prompt is required and must be a non-empty string'
+      EvaluationErrEnum.evalMetricPromptRequired
     );
 
     expect(authUserPer).toHaveBeenCalled();

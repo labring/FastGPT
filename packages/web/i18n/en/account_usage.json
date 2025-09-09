@@ -17,6 +17,7 @@
   "evaluation_dataset_data_synthesis": "Evaluation Dataset Synthesis",
   "evaluation_dataset_data_qa_synthesis": "Evaluation Q&A Synthesis",
   "evaluation_quality_assessment": "Quality Assessment",
+  "evaluation_debug_metric": "Debug Metric",
   "every_day": "Day",
   "every_month": "Moon",
   "every_week": "weekly",

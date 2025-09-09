@@ -70,7 +70,7 @@ export type EvaluationResult = {
   metricName: string;
   score: number;
   reason?: string;
-  run_logs?: Record<string, any>;
+  runLogs?: Record<string, any>;
 };
 
 export type Usage = {

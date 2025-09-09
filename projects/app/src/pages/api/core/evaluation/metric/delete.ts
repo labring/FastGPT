@@ -3,39 +3,44 @@ import { NextAPI } from '@/service/middleware/entry';
 import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema';
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 import { authEvaluationMetricWrite } from '@fastgpt/service/core/evaluation/common';
-type Query = { id: string };
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import type { DeleteMetricQuery } from '@fastgpt/global/core/evaluation/metric/api';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
-async function handler(req: ApiRequestProps<{}, Query>, res: ApiResponseType<any>) {
-  const { id } = req.query;
-  if (!id) {
-    return Promise.reject('Missing required parameter: id');
+async function handler(req: ApiRequestProps<{}, DeleteMetricQuery>, res: ApiResponseType<any>) {
+  const { metricId } = req.query;
+  if (!metricId) {
+    return Promise.reject(EvaluationErrEnum.evalMetricIdRequired);
   }
 
-  const { teamId } = await authEvaluationMetricWrite(id, {
+  const { teamId, tmbId } = await authEvaluationMetricWrite(metricId, {
     req,
     authApiKey: true,
     authToken: true
   });
 
-  const metric = await MongoEvalMetric.findById(id);
+  const metric = await MongoEvalMetric.findById(metricId);
   if (!metric) {
-    return Promise.reject('Metric not found');
+    return Promise.reject(EvaluationErrEnum.evalMetricNotFound);
   }
 
   if (metric.type === EvalMetricTypeEnum.Builtin) {
-    return Promise.reject('Builtin metrics cannot be deleted');
+    return Promise.reject(EvaluationErrEnum.evalMetricBuiltinCannotDelete);
   }
 
-  await MongoEvalMetric.findByIdAndDelete(id);
+  await MongoEvalMetric.findByIdAndDelete(metricId);
 
-  // addAuditLog({
-  //   tmbId,
-  //   teamId,
-  //   event: AuditEventEnum.DELETE_EVALUATION_METRIC,
-  //   params: {
-  //     name: metric.name
-  //   }
-  // });
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.DELETE_EVALUATION_METRIC,
+      params: {
+        metricName: metric.name.trim()
+      }
+    });
+  })();
 
   return {};
 }

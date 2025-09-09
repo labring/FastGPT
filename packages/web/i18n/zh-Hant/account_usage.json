@@ -17,6 +17,7 @@
   "evaluation_dataset_data_synthesis": "評測數據合成",
   "evaluation_dataset_data_qa_synthesis": "評測數據問答合成",
   "evaluation_quality_assessment": "評估品質評估",
+  "evaluation_debug_metric": "調試維度",
   "every_day": "天",
   "every_month": "月",
   "every_week": "每週",

@@ -4,6 +4,7 @@ import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema'
 import { authEvalMetric } from '@fastgpt/service/support/permission/evaluation/auth';
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 import type { UpdateMetricBody } from '@fastgpt/global/core/evaluation/metric/api';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 // Mock dependencies
 vi.mock('@fastgpt/service/core/evaluation/metric/schema', () => ({
@@ -58,7 +59,7 @@ describe('/api/core/evaluation/metric/update', () => {
 
     const req = {
       body: {
-        id: mockMetricId,
+        metricId: mockMetricId,
         name: 'Updated Metric',
         description: 'Updated Description',
         prompt: 'Updated Prompt'
@@ -133,7 +134,7 @@ describe('/api/core/evaluation/metric/update', () => {
 
     const req = {
       body: {
-        id: mockMetricId,
+        metricId: mockMetricId,
         name: 'Updated Metric Only'
         // description and prompt not provided
       } as UpdateMetricBody,
@@ -165,8 +166,8 @@ describe('/api/core/evaluation/metric/update', () => {
     });
   });
 
-  it('should reject when id is missing', async () => {
-    // Mock auth to fail due to missing id
+  it('should reject when metricId is missing', async () => {
+    // Mock auth to fail due to missing metricId
     vi.mocked(authEvalMetric).mockRejectedValue(new Error('Evaluation metric ID is required'));
 
     const req = {
@@ -194,13 +195,13 @@ describe('/api/core/evaluation/metric/update', () => {
     expect(MongoEvalMetric.findById).not.toHaveBeenCalled();
   });
 
-  it('should reject when id is empty string', async () => {
-    // Mock auth to fail due to empty id
+  it('should reject when metricId is empty string', async () => {
+    // Mock auth to fail due to empty metricId
     vi.mocked(authEvalMetric).mockRejectedValue(new Error('Evaluation metric ID is required'));
 
     const req = {
       body: {
-        id: '',
+        metricId: '',
         name: 'Test Metric'
       } as UpdateMetricBody,
       auth: {
@@ -239,7 +240,7 @@ describe('/api/core/evaluation/metric/update', () => {
 
     const req = {
       body: {
-        id: mockMetricId,
+        metricId: mockMetricId,
         name: 'Test Metric'
       } as UpdateMetricBody,
       auth: {
@@ -254,7 +255,7 @@ describe('/api/core/evaluation/metric/update', () => {
       }
     };
 
-    await expect(handler(req as any, {} as any)).rejects.toBe('Metric not found');
+    await expect(handler(req as any, {} as any)).rejects.toBe(EvaluationErrEnum.evalMetricNotFound);
 
     expect(authEvalMetric).toHaveBeenCalled();
     expect(MongoEvalMetric.findById).toHaveBeenCalledWith(mockMetricId);
@@ -282,7 +283,7 @@ describe('/api/core/evaluation/metric/update', () => {
 
     const req = {
       body: {
-        id: mockMetricId,
+        metricId: mockMetricId,
         name: 'Updated Builtin Metric'
       } as UpdateMetricBody,
       auth: {
@@ -297,7 +298,9 @@ describe('/api/core/evaluation/metric/update', () => {
       }
     };
 
-    await expect(handler(req as any, {} as any)).rejects.toBe('Builtin metric cannot be modified');
+    await expect(handler(req as any, {} as any)).rejects.toBe(
+      EvaluationErrEnum.evalMetricBuiltinCannotModify
+    );
 
     expect(authEvalMetric).toHaveBeenCalled();
     expect(MongoEvalMetric.findById).toHaveBeenCalledWith(mockMetricId);
@@ -310,7 +313,7 @@ describe('/api/core/evaluation/metric/update', () => {
 
     const req = {
       body: {
-        id: mockMetricId,
+        metricId: mockMetricId,
         name: 'Test Metric'
       } as UpdateMetricBody,
       auth: {
@@ -346,7 +349,7 @@ describe('/api/core/evaluation/metric/update', () => {
 
     const req = {
       body: {
-        id: mockMetricId,
+        metricId: mockMetricId,
         name: 'Test Metric'
       } as UpdateMetricBody,
       auth: {
@@ -394,7 +397,7 @@ describe('/api/core/evaluation/metric/update', () => {
 
     const req = {
       body: {
-        id: mockMetricId,
+        metricId: mockMetricId,
         name: 'Updated Metric'
       } as UpdateMetricBody,
       auth: {
@@ -443,7 +446,7 @@ describe('/api/core/evaluation/metric/update', () => {
 
     const req = {
       body: {
-        id: mockMetricId
+        metricId: mockMetricId
         // No name, description, or prompt provided
       } as UpdateMetricBody,
       auth: {

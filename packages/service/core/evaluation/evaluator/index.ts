@@ -7,9 +7,9 @@ import type {
   EvalModelConfigType
 } from '@fastgpt/global/core/evaluation/metric/type';
 import type { EvaluatorSchema } from '@fastgpt/global/core/evaluation/type';
-import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 import { getLLMModel, getEmbeddingModel } from '../../ai/model';
 import { createDitingClient } from './ditingClient';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 export abstract class Evaluator {
   protected metricConfig: MetricConfig;
@@ -62,15 +62,11 @@ export class DitingEvaluator extends Evaluator {
 
 export function createEvaluatorInstance(evaluatorConfig: EvaluatorSchema): Evaluator {
   if (evaluatorConfig.metric.llmRequired && !evaluatorConfig.runtimeConfig?.llm) {
-    throw new Error(
-      `Metric "${evaluatorConfig.metric.name}" requires an LLM, but runtimeConfig.llm is missing`
-    );
+    throw new Error(EvaluationErrEnum.evaluatorLLmConfigMissing);
   }
 
   if (evaluatorConfig.metric.embeddingRequired && !evaluatorConfig.runtimeConfig?.embedding) {
-    throw new Error(
-      `Metric "${evaluatorConfig.metric.name}" requires an embedding model, but runtimeConfig.embedding is missing`
-    );
+    throw new Error(EvaluationErrEnum.evaluatorEmbeddingConfigMissing);
   }
 
   const metricConfig: MetricConfig = {
@@ -91,7 +87,7 @@ export function createEvaluatorInstance(evaluatorConfig: EvaluatorSchema): Evalu
         apiKey: llm.requestAuth ?? undefined
       };
     } catch (err) {
-      throw new Error(`Get LLM model failed: ${(err as Error).message}`);
+      throw new Error(EvaluationErrEnum.evaluatorLLmModelNotFound);
     }
   }
 
@@ -104,7 +100,7 @@ export function createEvaluatorInstance(evaluatorConfig: EvaluatorSchema): Evalu
         apiKey: embedding.requestAuth ?? undefined
       };
     } catch (err) {
-      throw new Error(`Get embedding model failed: ${(err as Error).message}`);
+      throw new Error(EvaluationErrEnum.evaluatorEmbeddingModelNotFound);
     }
   }
 

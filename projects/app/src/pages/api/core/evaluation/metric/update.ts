@@ -4,48 +4,52 @@ import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema'
 import type { UpdateMetricBody } from '@fastgpt/global/core/evaluation/metric/api';
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 import { authEvaluationMetricWrite } from '@fastgpt/service/core/evaluation/common';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
+
 async function handler(req: ApiRequestProps<UpdateMetricBody, {}>, res: ApiResponseType<any>) {
-  const { id, name, description, prompt } = req.body;
-  const { teamId } = await authEvaluationMetricWrite(id, {
+  const { metricId, name, description, prompt } = req.body;
+  const { teamId, tmbId } = await authEvaluationMetricWrite(metricId, {
     req,
     authApiKey: true,
     authToken: true
   });
-  if (!id) {
-    return Promise.reject('Missing required parameter: id');
+  if (!metricId) {
+    return Promise.reject(EvaluationErrEnum.evalMetricIdRequired);
   }
 
   if (name && (typeof name !== 'string' || name.trim().length === 0)) {
-    return Promise.reject('Metric name must be a non-empty string');
+    return Promise.reject(EvaluationErrEnum.evalMetricNameRequired);
   }
 
   if (name && name.trim().length > 100) {
-    return Promise.reject('Metric name must be less than 100 characters');
+    return Promise.reject(EvaluationErrEnum.evalMetricNameTooLong);
   }
 
   if (description && (typeof description !== 'string' || description.trim().length === 0)) {
-    return Promise.reject('Description must be a non-empty string');
+    return Promise.reject(EvaluationErrEnum.evalMetricDescriptionTooLong);
   }
 
   if (description && description.length > 100) {
-    return Promise.reject('Description must be less than 100 characters');
+    return Promise.reject(EvaluationErrEnum.evalMetricDescriptionTooLong);
   }
 
   if (prompt && (typeof prompt !== 'string' || prompt.trim().length === 0)) {
-    return Promise.reject('Prompt must be a non-empty string');
+    return Promise.reject(EvaluationErrEnum.evalMetricPromptRequired);
   }
 
   if (prompt && prompt.length > 4000) {
-    return Promise.reject('Prompt must be less than 4000 characters');
+    return Promise.reject(EvaluationErrEnum.evalMetricPromptTooLong);
   }
 
-  const metric = await MongoEvalMetric.findById(id);
+  const metric = await MongoEvalMetric.findById(metricId);
   if (!metric) {
-    return Promise.reject('Metric not found');
+    return Promise.reject(EvaluationErrEnum.evalMetricNotFound);
   }
 
   if (metric.type === EvalMetricTypeEnum.Builtin) {
-    return Promise.reject('Builtin metric cannot be modified');
+    return Promise.reject(EvaluationErrEnum.evalMetricBuiltinCannotModify);
   }
 
   if (name) metric.name = name;
@@ -54,14 +58,16 @@ async function handler(req: ApiRequestProps<UpdateMetricBody, {}>, res: ApiRespo
 
   await metric.save();
 
-  // addAuditLog({
-  //   tmbId,
-  //   teamId,
-  //   event: AuditEventEnum.UPDATE_EVALUATION_METRIC,
-  //   params: {
-  //     name: metric.name
-  //   }
-  // });
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.UPDATE_EVALUATION_METRIC,
+      params: {
+        metricName: metric.name.trim()
+      }
+    });
+  })();
 
   return {
     id: metric._id.toString(),
