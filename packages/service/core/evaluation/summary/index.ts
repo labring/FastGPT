@@ -7,7 +7,7 @@ import {
 import { MongoEvaluation, MongoEvalItem } from '../task/schema';
 import type {
   EvaluationSchemaType,
-  EvaluationItemSchemaType,
+  EvaluationItemSchemaType
 } from '@fastgpt/global/core/evaluation/type';
 import { Types } from '../../../common/mongo';
 import { addLog } from '../../../common/system/log';
@@ -21,12 +21,14 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import { loadRequestMessages } from '../../chat/utils';
 import { evalSummaryTemplate, goodExample, badExample } from '@fastgpt/global/core/ai/prompt/eval';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
+import { addAuditLog } from '../../../support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { concatUsage, evaluationUsageIndexMap } from '../../../support/wallet/usage/controller';
+import { createMergedEvaluationUsage } from '../utils/usage';
 
 export class EvaluationSummaryService {
   // Get evaluation summary report
-  static async getEvaluationSummary(
-    evalId: string,
-  ): Promise<{
+  static async getEvaluationSummary(evalId: string): Promise<{
     data: Array<{
       metricsId: string;
       metricsName: string;
@@ -40,7 +42,7 @@ export class EvaluationSummaryService {
     aggregateScore: number;
   }> {
     // Query evaluation task
-    const evaluation = await MongoEvaluation.findOne({ _id: new Types.ObjectId(evalId)}).lean();
+    const evaluation = await MongoEvaluation.findById(evalId).lean();
 
     if (!evaluation) {
       throw new Error('Evaluation task not found');
@@ -253,9 +255,9 @@ export class EvaluationSummaryService {
       thresholdValue: number;
       weight?: number;
       calculateType?: CalculateMethodEnum;
-    }>,
+    }>
   ): Promise<void> {
-    const evaluation = await MongoEvaluation.findOne({ _id: evalId }).lean();
+    const evaluation = await MongoEvaluation.findById(evalId).lean();
     if (!evaluation) throw new Error('Evaluation not found');
 
     const evalMetricIdSet = new Set(
@@ -301,9 +303,7 @@ export class EvaluationSummaryService {
   }
 
   // Get evaluation summary configuration details
-  static async getEvaluationSummaryConfig(
-    evalId: string
-  ): Promise<{
+  static async getEvaluationSummaryConfig(evalId: string): Promise<{
     calculateType: CalculateMethodEnum;
     calculateTypeName: string;
     metricsConfig: Array<{
@@ -314,7 +314,7 @@ export class EvaluationSummaryService {
     }>;
   }> {
     // Query evaluation task
-    const evaluation = await MongoEvaluation.findOne({ _id: evalId }).lean();
+    const evaluation = await MongoEvaluation.findById(evalId).lean();
 
     if (!evaluation) {
       throw new Error('评估任务不存在或无权限访问');
@@ -366,12 +366,9 @@ export class EvaluationSummaryService {
   /**
    * 生成多个指标的总结报告 - 异步触发，立即返回
    */
-  static async generateSummaryReports(
-    evalId: string,
-    metricsIds: string[],
-  ): Promise<void> {
+  static async generateSummaryReports(evalId: string, metricsIds: string[]): Promise<void> {
     try {
-      const evaluation = await MongoEvaluation.findOne({ _id: evalId }).lean();
+      const evaluation = await MongoEvaluation.findById(evalId).lean();
 
       if (!evaluation) {
         throw new Error('评估任务不存在或无权限访问');
@@ -468,7 +465,7 @@ export class EvaluationSummaryService {
             evaluation,
             task.metricId,
             task.evaluatorIndex,
-            task.evaluator,
+            task.evaluator
           ).catch((error) => {
             addLog.error('[EvaluationSummary] Single metric report generation failed', {
               evalId,
@@ -499,7 +496,7 @@ export class EvaluationSummaryService {
     evaluation: EvaluationSchemaType,
     metricId: string,
     evaluatorIndex: number,
-    evaluator: any,
+    evaluator: any
   ): Promise<void> {
     const evalId = evaluation._id.toString();
 
@@ -579,6 +576,19 @@ export class EvaluationSummaryService {
 
       // 6. Update results
       await this.updateSummaryResult(evalId, evaluatorIndex, SummaryStatusEnum.completed, summary);
+
+      // 7. Add audit log
+      (async () => {
+        addAuditLog({
+          tmbId: evaluation.tmbId,
+          teamId: evaluation.teamId.toString(),
+          event: AuditEventEnum.GENERATE_EVALUATION_SUMMARY,
+          params: {
+            evalName: evaluation.name,
+            metricName: evaluator.metric.name
+          }
+        });
+      })();
 
       addLog.info('[EvaluationSummary] Single metric report generated successfully', {
         evalId,
@@ -906,19 +916,23 @@ export class EvaluationSummaryService {
           )
         : 0;
 
-      // await concatUsage({
-      //   billId: evaluation.usageId,
-      //   teamId: evaluation.teamId,
-      //   tmbId: auth.tmbId,
-      //   totalPoints,
-      //   inputTokens,
-      //   outputTokens
-      // });
+      // Use unified evaluation usage recording
+      await createMergedEvaluationUsage({
+        evalId: evaluation._id.toString(),
+        teamId: evaluation.teamId.toString(),
+        tmbId: evaluation.tmbId.toString(),
+        usageId: evaluation.usageId,
+        totalPoints,
+        type: 'summary',
+        inputTokens,
+        outputTokens
+      });
 
       addLog.info('[EvaluationSummary] Usage recorded successfully', {
         evalId: evaluation._id.toString(),
         metricId: evaluator.metric._id.toString(),
-        totalTokens: usage.total_tokens
+        totalTokens: usage.total_tokens,
+        totalPoints
       });
     } catch (error) {
       addLog.error('[EvaluationSummary] Usage recording failed', {

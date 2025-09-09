@@ -33,6 +33,7 @@
   "llm_paragraph": "LLM segmentation",
   "mcp": "MCP call",
   "member": "member",
+  "metrics_execute": "Metrics Execute",
   "member_name": "Member name",
   "module_name": "module name",
   "month": "moon",
@@ -56,5 +57,6 @@
   "total_usage": "Total Usage",
   "usage_detail": "Details",
   "user_type": "type",
-  "wecom": "WeCom"
+  "wecom": "WeCom",
+  "evaluation_summary_generation": "Evaluation - Summary Generation"
 }

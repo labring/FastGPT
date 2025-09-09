@@ -8,7 +8,7 @@ import type {
   UpdateSummaryConfigBody,
   UpdateSummaryConfigResponse
 } from '@fastgpt/global/core/evaluation/summary/api';
-import { authEvaluationTaskRead } from '@fastgpt/service/core/evaluation/common';
+import { authEvaluationTaskWrite } from '@fastgpt/service/core/evaluation/common';
 
 async function handler(
   req: ApiRequestProps<UpdateSummaryConfigBody>
@@ -16,7 +16,7 @@ async function handler(
   try {
     const { evalId, calculateType, metricsConfig } = req.body || ({} as any);
 
-    await authEvaluationTaskRead(evalId, {
+    await authEvaluationTaskWrite(evalId, {
       req,
       authApiKey: true,
       authToken: true

@@ -9,6 +9,8 @@ import type {
 import type { EvaluatorSchema } from '@fastgpt/global/core/evaluation/type';
 import { getLLMModel, getEmbeddingModel } from '../../ai/model';
 import { createDitingClient } from './ditingClient';
+import { formatModelChars2Points } from '../../../support/wallet/usage/utils';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 export abstract class Evaluator {
@@ -49,13 +51,38 @@ export class DitingEvaluator extends Evaluator {
       llmConfig: this.llmConfig
     });
 
+    // Calculate total points from usages
+    let totalPoints = 0;
+    if (response.usages && response.usages.length > 0) {
+      for (const usage of response.usages) {
+        if (usage.promptTokens || usage.completionTokens) {
+          const modelType =
+            usage.modelType === 'embed' ? ModelTypeEnum.embedding : ModelTypeEnum.llm;
+          const model =
+            modelType === ModelTypeEnum.embedding
+              ? this.embeddingConfig?.name
+              : this.llmConfig?.name;
+
+          if (model) {
+            const { totalPoints: usagePoints } = formatModelChars2Points({
+              model,
+              modelType,
+              inputTokens: usage.promptTokens || 0,
+              outputTokens: usage.completionTokens || 0
+            });
+            totalPoints += usagePoints;
+          }
+        }
+      }
+    }
+
     return {
       metricName: this.metricConfig.metricName,
       status: response.status,
       data: response.data,
       usages: response.usages,
       error: response.error,
-      totalPoints: 0
+      totalPoints
     };
   }
 }

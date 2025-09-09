@@ -267,5 +267,11 @@
   "auto_quality_evaluation": "新增後自動進行數據質量評測",
   "quality_evaluation_tip": "將對數據的問答相關度、合理性等進行評測，給出數據質量評價及原因，可根據評價對數據進行優化。",
   "quality_evaluation_model": "質量評測模型",
-  "please_select_evaluation_model": "請選擇質量評測模型"
+  "please_select_evaluation_model": "請選擇質量評測模型",
+  "summary_pending": "待生成",
+  "summary_generating": "生成中",
+  "summary_done": "已完成",
+  "summary_failed": "生成失敗",
+  "method_mean": "平均值",
+  "method_median": "中位數"
 }
