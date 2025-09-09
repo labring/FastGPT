@@ -11,6 +11,7 @@ import { getVectorCountByTeamId } from '../../common/vectorDB/controller';
 import { MongoEvaluation } from '../../core/evaluation/task/schema';
 import { MongoEvalDatasetCollection } from '../../core/evaluation/dataset/evalDatasetCollectionSchema';
 import { MongoEvalDatasetData } from '../../core/evaluation/dataset/evalDatasetDataSchema';
+import { MongoEvalMetric } from '../../core/evaluation/metric/schema';
 
 export const checkTeamAIPoints = async (teamId: string) => {
   if (!global.subPlans?.standard) return;
@@ -149,7 +150,7 @@ export const checkTeamEvalDatasetLimit = async (teamId: string, amount = 1) => {
   ]);
 
   if (standardConstants && evalDatasetCount + amount > standardConstants.maxEvalDatasetAmount) {
-    return Promise.reject(TeamErrEnum.evalDatasetAmountNotEnough);
+    return Promise.reject(TeamErrEnum.evaluationDatasetAmountNotEnough);
   }
 };
 
@@ -163,6 +164,17 @@ export const checkTeamEvalDatasetDataLimit = async (teamId: string, amount = 1) 
     standardConstants &&
     evalDatasetDataCount + amount > standardConstants.maxEvalDatasetDataAmount
   ) {
-    return Promise.reject(TeamErrEnum.evalDatasetDataAmountNotEnough);
+    return Promise.reject(TeamErrEnum.evaluationDatasetDataAmountNotEnough);
+  }
+};
+
+export const checkTeamEvalMetricLimit = async (teamId: string, amount = 1) => {
+  const [{ standardConstants }, evalMetricCount] = await Promise.all([
+    getTeamStandPlan({ teamId }),
+    MongoEvalMetric.countDocuments({ teamId })
+  ]);
+
+  if (standardConstants && evalMetricCount + amount > standardConstants.maxEvalMetricAmount) {
+    return Promise.reject(TeamErrEnum.evaluationMetricAmountNotEnough);
   }
 };

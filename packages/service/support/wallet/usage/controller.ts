@@ -279,7 +279,7 @@ export const createEvaluationUsage = async ({
   return { usageId };
 };
 
-export const createEvalDatasetQualityUsage = async ({
+export const createEvalDatasetDataQualityUsage = async ({
   teamId,
   tmbId,
   model,
@@ -315,7 +315,7 @@ export const createEvalDatasetQualityUsage = async ({
   await createUsage({
     teamId,
     tmbId,
-    appName: i18nT('account_usage:evaluation_dataset_quality_assessment'),
+    appName: i18nT('account_usage:evaluation_dataset_data_quality_assessment'),
     totalPoints,
     source: UsageSourceEnum.evaluation,
     list: usageList
@@ -324,7 +324,7 @@ export const createEvalDatasetQualityUsage = async ({
   return { totalPoints };
 };
 
-export const createEvalDatasetSynthesisUsage = async ({
+export const createEvalDatasetDataSynthesisUsage = async ({
   teamId,
   tmbId,
   model,
@@ -349,7 +349,7 @@ export const createEvalDatasetSynthesisUsage = async ({
     totalPoints += points;
 
     return {
-      moduleName: i18nT('account_usage:evaluation_qa_synthesis'),
+      moduleName: i18nT('account_usage:evaluation_dataset_data_qa_synthesis'),
       amount: points,
       model,
       inputTokens: usage.promptTokens || 0,
@@ -360,7 +360,7 @@ export const createEvalDatasetSynthesisUsage = async ({
   await createUsage({
     teamId,
     tmbId,
-    appName: i18nT('account_usage:evaluation_dataset_synthesis'),
+    appName: i18nT('account_usage:evaluation_dataset_data_synthesis'),
     totalPoints,
     source: UsageSourceEnum.evaluation,
     list: usageList

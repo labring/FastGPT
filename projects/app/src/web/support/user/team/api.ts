@@ -106,6 +106,8 @@ export const checkTeamEvalDatasetLimit = (amount = 1) =>
   GET(`/support/user/team/limit/evalDatasetLimit`, { amount });
 export const checkTeamEvalDatasetDataLimit = (amount = 1) =>
   GET(`/support/user/team/limit/evalDatasetDataLimit`, { amount });
+export const checkTeamEvalMetricLimit = (amount = 1) =>
+  GET(`/support/user/team/limit/evalMetricLimit`, { amount });
 
 /* plans */
 export const getTeamPlanStatus = () =>
