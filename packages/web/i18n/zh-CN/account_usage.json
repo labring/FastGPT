@@ -1,7 +1,7 @@
 {
   "ai_model": "AI 模型",
   "all": "所有",
-  "answer_accuracy": "评测-回答准确性",
+  "metrics_execute": "指标执行",
   "app_name": "应用名",
   "auto_index": "索引增强",
   "billing_module": "扣费模块",
@@ -58,5 +58,6 @@
   "total_usage": "总消耗",
   "usage_detail": "使用详情",
   "user_type": "类型",
-  "wecom": "企业微信"
+  "wecom": "企业微信",
+  "evaluation_summary_generation": "评估-总结生成"
 }
