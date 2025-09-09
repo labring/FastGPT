@@ -5,7 +5,8 @@ import React, {
   useEffect,
   useImperativeHandle,
   type ForwardedRef,
-  useState
+  useState,
+  isValidElement
 } from 'react';
 import {
   Menu,
@@ -242,7 +243,11 @@ const MySelect = <T = any,>(
             <Flex alignItems={'center'}>
               {isSelecting && <MyIcon mr={2} name={'common/loading'} w={'1rem'} />}
               {valueLabel ? (
-                <>{valueLabel}</>
+                isValidElement(valueLabel) ? (
+                  <>{valueLabel}</>
+                ) : (
+                  <Box noOfLines={1}>{selectItem?.label}</Box>
+                )
               ) : (
                 <>
                   {isSearch && isOpen ? (
