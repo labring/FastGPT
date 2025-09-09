@@ -98,7 +98,7 @@ const AIContentCard = React.memo(function AIContentCard({
   onOpenCiteModal
 }: {
   dataId: string;
-  chatValue: ChatItemValueItemType[];
+  chatValue: AIChatItemValueItemType[];
   isLastChild: boolean;
   isChatting: boolean;
   questionGuides: string[];
@@ -107,7 +107,7 @@ const AIContentCard = React.memo(function AIContentCard({
   return (
     <Flex flexDirection={'column'} gap={2}>
       {chatValue.map((value, i) => {
-        const key = `${dataId}-ai-${i}`;
+        const key = value.id || `${dataId}-ai-${i}`;
 
         return (
           <AIResponseBox
@@ -355,7 +355,7 @@ const ChatItem = (props: Props) => {
             {type === ChatRoleEnum.AI && (
               <>
                 <AIContentCard
-                  chatValue={value}
+                  chatValue={value as AIChatItemValueItemType[]}
                   dataId={chat.dataId}
                   isLastChild={isLastChild && i === splitAiResponseResults.length - 1}
                   isChatting={isChatting}

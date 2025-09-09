@@ -5,10 +5,12 @@ import type {
   ToolModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
 import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 export type generatingMessageProps = {
   event: SseResponseEventEnum;
+  responseValueId?: string;
   text?: string;
   reasoningText?: string;
   name?: string;
