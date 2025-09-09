@@ -68,6 +68,18 @@ export const getWorkflowResponseWrite = ({
   };
   return fn;
 };
+export const getWorkflowChildResponseWrite = ({
+  id,
+  fn
+}: {
+  id: string;
+  fn?: WorkflowResponseType;
+}): WorkflowResponseType | undefined => {
+  if (!fn) return;
+  return (e: Parameters<WorkflowResponseType>[0]) => {
+    return fn({ ...e, id });
+  };
+};
 
 export const filterToolNodeIdByEdges = ({
   nodeId,
