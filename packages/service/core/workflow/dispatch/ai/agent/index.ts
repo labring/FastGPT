@@ -1,9 +1,4 @@
-import {
-  NodeInputKeyEnum,
-  NodeOutputKeyEnum,
-  toolValueTypeList,
-  valueTypeJsonSchemaMap
-} from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
@@ -14,7 +9,7 @@ import type {
   RuntimeNodeItemType
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { getLLMModel } from '../../../../ai/model';
-import { filterToolNodeIdByEdges, getNodeErrResponse, getHistories } from '../../utils';
+import { getNodeErrResponse, getHistories } from '../../utils';
 import { runAgentCall } from '../../../../ai/llm/agentCall';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
@@ -27,14 +22,7 @@ import {
 } from '@fastgpt/global/core/chat/adapt';
 import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
-import {
-  filterMemoryMessages,
-  filterToolResponseToPreview,
-  formatToolResponse,
-  getToolNodesByIds,
-  initToolNodes,
-  parseToolArgs
-} from '../utils';
+import { filterMemoryMessages, filterToolResponseToPreview, parseToolArgs } from '../utils';
 import { SubAppIds } from './sub/constants';
 import {
   getReferenceVariableValue,
@@ -42,19 +30,18 @@ import {
   textAdaptGptResponse,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { dispatchPlanAgent } from './sub/plan';
 import { dispatchModelAgent } from './sub/model';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { getSubApps, rewriteSubAppsToolset } from './sub';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { dispatchTool } from './sub/tool';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getMasterAgentDefaultPrompt } from './constants';
 import { addFilePrompt2Input, getFileInputPrompt } from './sub/file/utils';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { dispatchFileRead } from './sub/file';
+import { dispatchApp } from './sub/app';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -297,23 +284,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                   }
                 });
 
-                const lastPlanCallIndex = messages
-                  .slice(0, -1)
-                  .findLastIndex(
-                    (c) =>
-                      c.role === 'assistant' &&
-                      c.tool_calls?.some((tc) => tc.function?.name === SubAppIds.plan)
-                  );
-                const originalContent =
-                  lastPlanCallIndex !== -1
-                    ? (messages[lastPlanCallIndex + 1].content as string)
-                    : '';
-
-                // const applyedContent = applyDiff({
-                //   original: originalContent,
-                //   patch: content
-                // });
-
                 return {
                   response,
                   usages,
@@ -442,6 +412,16 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                     runningAppInfo,
                     variables,
                     workflowStreamResponse
+                  });
+                  return {
+                    response,
+                    usages,
+                    isEnd: false
+                  };
+                } else if (node.flowNodeType === FlowNodeTypeEnum.appModule) {
+                  const { response, usages } = await dispatchApp({
+                    ...props,
+                    node
                   });
                   return {
                     response,
