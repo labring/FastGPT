@@ -33,6 +33,7 @@ export type listEvalDatasetCollectionResponse = PaginationResponse<
     creatorAvatar?: string;
     creatorName?: string;
     status: EvalDatasetCollectionStatus;
+    dataItemsCount: number;
   }
 >;
 type QualityEvaluationBase = {

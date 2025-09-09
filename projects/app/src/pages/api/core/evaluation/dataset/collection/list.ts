@@ -1,6 +1,7 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
+import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 import { EvaluationPermission } from '@fastgpt/global/support/permission/evaluation/controller';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
@@ -125,8 +126,17 @@ async function handler(
         }
       },
       {
+        $lookup: {
+          from: 'eval_dataset_datas',
+          localField: '_id',
+          foreignField: 'datasetId',
+          as: 'dataItems'
+        }
+      },
+      {
         $addFields: {
-          teamMember: { $arrayElemAt: ['$teamMember', 0] }
+          teamMember: { $arrayElemAt: ['$teamMember', 0] },
+          dataItemsCount: { $size: '$dataItems' }
         }
       },
       {
@@ -138,7 +148,8 @@ async function handler(
           createTime: 1,
           updateTime: 1,
           creatorAvatar: '$teamMember.avatar',
-          creatorName: '$teamMember.name'
+          creatorName: '$teamMember.name',
+          dataItemsCount: 1
         }
       }
     ]),
@@ -191,7 +202,8 @@ async function handler(
         creatorAvatar: collection.creatorAvatar,
         creatorName: collection.creatorName,
         permission: getPer(String(collection._id)),
-        private: getPrivateStatus(String(collection._id))
+        private: getPrivateStatus(String(collection._id)),
+        dataItemsCount: collection.dataItemsCount
       };
     })
     .filter((collection) => {

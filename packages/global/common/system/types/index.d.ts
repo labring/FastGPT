@@ -159,6 +159,10 @@ export type LicenseDataType = {
   maxUsers?: number; // 最大用户数，不填默认不上限
   maxApps?: number; // 最大应用数，不填默认不上限
   maxDatasets?: number; // 最大数据集数，不填默认不上限
+  maxEvaluationTaskAmount?: number; // 最大评估任务数，不填默认不上限
+  maxEvalDatasetAmount?: number; // 最大评估数据集数，不填默认不上限
+  maxEvalDatasetDataAmount?: number; // 最大评估数据集数据量，不填默认不上限
+  maxEvalMetricAmount?: number; // 最大评估指标数，不填默认不上限
   functions: {
     sso: boolean;
     pay: boolean;
