@@ -1,8 +1,6 @@
-import type { DispatchSubAppProps, DispatchSubAppResponse } from '../../type';
+import type { DispatchSubAppResponse } from '../../type';
 
-export const dispatchContextAgent = async (
-  props: DispatchSubAppProps<{}>
-): Promise<DispatchSubAppResponse> => {
+export const dispatchContextAgent = async (props: {}): Promise<DispatchSubAppResponse> => {
   return {
     response: ''
   };
