@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback } from 'react';
 import { Box, Flex, Grid, type GridProps, HStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import QuestionTip from '../MyTooltip/QuestionTip';
@@ -33,8 +33,8 @@ const LeftRadio = <T = any,>({
 }: Props<T>) => {
   const { t } = useTranslation();
 
-  const getBoxStyle = useMemo(
-    () => (isActive: boolean) => {
+  const getBoxStyle = useCallback(
+    (isActive: boolean) => {
       const baseStyle = {
         px,
         py,
@@ -71,7 +71,7 @@ const LeftRadio = <T = any,>({
         opacity: 1
       };
     },
-    [activeBg, defaultBg, isDisabled]
+    [activeBg, defaultBg, isDisabled, px, py]
   );
 
   return (
