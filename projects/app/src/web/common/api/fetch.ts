@@ -23,12 +23,14 @@ export type StreamResponseType = {
 };
 type ResponseQueueItemType =
   | {
+      responseValueId?: string;
       event: SseResponseEventEnum.fastAnswer | SseResponseEventEnum.answer;
       text?: string;
       reasoningText?: string;
     }
-  | { event: SseResponseEventEnum.interactive; [key: string]: any }
+  | { responseValueId?: string; event: SseResponseEventEnum.interactive; [key: string]: any }
   | {
+      responseValueId?: string;
       event:
         | SseResponseEventEnum.toolCall
         | SseResponseEventEnum.toolParams
@@ -180,31 +182,36 @@ export const streamFetch = ({
           })();
 
           if (typeof parseJson !== 'object') return;
+          const { responseValueId, ...rest } = parseJson;
 
           // console.log(parseJson, event);
           if (event === SseResponseEventEnum.answer) {
-            const reasoningText = parseJson.choices?.[0]?.delta?.reasoning_content || '';
+            const reasoningText = rest.choices?.[0]?.delta?.reasoning_content || '';
             pushDataToQueue({
+              responseValueId,
               event,
               reasoningText
             });
 
-            const text = parseJson.choices?.[0]?.delta?.content || '';
+            const text = rest.choices?.[0]?.delta?.content || '';
             for (const item of text) {
               pushDataToQueue({
+                responseValueId,
                 event,
                 text: item
               });
             }
           } else if (event === SseResponseEventEnum.fastAnswer) {
-            const reasoningText = parseJson.choices?.[0]?.delta?.reasoning_content || '';
+            const reasoningText = rest.choices?.[0]?.delta?.reasoning_content || '';
             pushDataToQueue({
+              responseValueId,
               event,
               reasoningText
             });
 
-            const text = parseJson.choices?.[0]?.delta?.content || '';
+            const text = rest.choices?.[0]?.delta?.content || '';
             pushDataToQueue({
+              responseValueId,
               event,
               text
             });
@@ -214,29 +221,31 @@ export const streamFetch = ({
             event === SseResponseEventEnum.toolResponse
           ) {
             pushDataToQueue({
+              responseValueId,
               event,
-              ...parseJson
+              ...rest
             });
           } else if (event === SseResponseEventEnum.flowNodeResponse) {
             onMessage({
               event,
-              nodeResponse: parseJson
+              nodeResponse: rest
             });
           } else if (event === SseResponseEventEnum.updateVariables) {
             onMessage({
               event,
-              variables: parseJson
+              variables: rest
             });
           } else if (event === SseResponseEventEnum.interactive) {
             pushDataToQueue({
+              responseValueId,
               event,
-              ...parseJson
+              ...rest
             });
           } else if (event === SseResponseEventEnum.error) {
-            if (parseJson.statusText === TeamErrEnum.aiPointsNotEnough) {
+            if (rest.statusText === TeamErrEnum.aiPointsNotEnough) {
               useSystemStore.getState().setNotSufficientModalType(TeamErrEnum.aiPointsNotEnough);
             }
-            errMsg = getErrText(parseJson, '流响应错误');
+            errMsg = getErrText(rest, '流响应错误');
           } else if (
             [SseResponseEventEnum.workflowDuration, SseResponseEventEnum.flowNodeStatus].includes(
               event as any
@@ -244,7 +253,7 @@ export const streamFetch = ({
           ) {
             onMessage({
               event,
-              ...parseJson
+              ...rest
             });
           }
         },
