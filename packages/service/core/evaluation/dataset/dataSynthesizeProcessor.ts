@@ -14,7 +14,7 @@ import {
 } from './dataSynthesizeMq';
 import { createSynthesizerInstance } from '../synthesizer';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
-import { createEvalDatasetSynthesisUsage } from '../../../support/wallet/usage/controller';
+import { createEvalDatasetDataSynthesisUsage } from '../../../support/wallet/usage/controller';
 
 async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
   const { dataId, intelligentGenerationModel, evalDatasetCollectionId } = job.data;
@@ -55,7 +55,7 @@ async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
     // Save usage
     let totalPoints = 0;
     if (synthesisResult.usages?.length) {
-      const { totalPoints: calculatedPoints } = await createEvalDatasetSynthesisUsage({
+      const { totalPoints: calculatedPoints } = await createEvalDatasetDataSynthesisUsage({
         teamId: evalDatasetCollection.teamId,
         tmbId: evalDatasetCollection.tmbId,
         model: intelligentGenerationModel,

@@ -69,7 +69,9 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
           maxEvalDatasetAmount:
             standard?.maxEvalDatasetAmount || standardConstants.maxEvalDatasetAmount,
           maxEvalDatasetDataAmount:
-            standard?.maxEvalDatasetDataAmount || standardConstants.maxEvalDatasetDataAmount
+            standard?.maxEvalDatasetDataAmount || standardConstants.maxEvalDatasetDataAmount,
+          maxEvalMetricAmount:
+            standard?.maxEvalMetricAmount || standardConstants.maxEvalMetricAmount
         }
       : undefined
   };
@@ -197,7 +199,9 @@ export const getTeamPlanStatus = async ({
           maxEvalDatasetAmount:
             standardPlan?.maxEvalDatasetAmount || standardConstants.maxEvalDatasetAmount,
           maxEvalDatasetDataAmount:
-            standardPlan?.maxEvalDatasetDataAmount || standardConstants.maxEvalDatasetDataAmount
+            standardPlan?.maxEvalDatasetDataAmount || standardConstants.maxEvalDatasetDataAmount,
+          maxEvalMetricAmount:
+            standardPlan?.maxEvalMetricAmount || standardConstants.maxEvalMetricAmount
         }
       : undefined,
 

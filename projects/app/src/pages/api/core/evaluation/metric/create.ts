@@ -4,6 +4,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema';
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 import { authEvaluationMetricCreate } from '@fastgpt/service/core/evaluation/common';
+import { checkTeamEvalMetricLimit } from '@fastgpt/service/support/permission/teamLimit';
 async function handler(req: ApiRequestProps<CreateMetricBody, {}>, res: ApiResponseType<any>) {
   const { name, description, prompt } = req.body;
 
@@ -12,6 +13,9 @@ async function handler(req: ApiRequestProps<CreateMetricBody, {}>, res: ApiRespo
     authApiKey: true,
     authToken: true
   });
+
+  // Check team evaluation metric limit
+  await checkTeamEvalMetricLimit(teamId);
 
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return Promise.reject('Metric name is required and must be a non-empty string');
