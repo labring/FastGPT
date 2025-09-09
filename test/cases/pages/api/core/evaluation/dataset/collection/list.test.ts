@@ -321,8 +321,17 @@ describe('EvalDatasetCollection List API', () => {
           }
         },
         {
+          $lookup: {
+            from: 'eval_dataset_datas',
+            localField: '_id',
+            foreignField: 'datasetId',
+            as: 'dataItems'
+          }
+        },
+        {
           $addFields: {
-            teamMember: { $arrayElemAt: ['$teamMember', 0] }
+            teamMember: { $arrayElemAt: ['$teamMember', 0] },
+            dataItemsCount: { $size: '$dataItems' }
           }
         },
         {
@@ -334,7 +343,8 @@ describe('EvalDatasetCollection List API', () => {
             createTime: 1,
             updateTime: 1,
             creatorAvatar: '$teamMember.avatar',
-            creatorName: '$teamMember.name'
+            creatorName: '$teamMember.name',
+            dataItemsCount: 1
           }
         }
       ]);

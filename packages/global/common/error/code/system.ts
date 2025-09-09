@@ -5,7 +5,11 @@ export enum SystemErrEnum {
   communityVersionNumLimit = 'communityVersionNumLimit',
   licenseAppAmountLimit = 'licenseAppAmountLimit',
   licenseDatasetAmountLimit = 'licenseDatasetAmountLimit',
-  licenseUserAmountLimit = 'licenseUserAmountLimit'
+  licenseUserAmountLimit = 'licenseUserAmountLimit',
+  licenseEvaluationTaskAmountLimit = 'licenseEvaluationTaskAmountLimit',
+  licenseEvalDatasetAmountLimit = 'licenseEvalDatasetAmountLimit',
+  licenseEvalDatasetDataAmountLimit = 'licenseEvalDatasetDataAmountLimit',
+  licenseEvalMetricAmountLimit = 'licenseEvalMetricAmountLimit'
 }
 
 const systemErr = [
@@ -24,6 +28,22 @@ const systemErr = [
   {
     statusText: SystemErrEnum.licenseUserAmountLimit,
     message: i18nT('common:code_error.system_error.license_user_amount_limit')
+  },
+  {
+    statusText: SystemErrEnum.licenseEvaluationTaskAmountLimit,
+    message: i18nT('common:code_error.system_error.license_evaluation_task_amount_limit')
+  },
+  {
+    statusText: SystemErrEnum.licenseEvalDatasetAmountLimit,
+    message: i18nT('common:code_error.system_error.license_eval_dataset_amount_limit')
+  },
+  {
+    statusText: SystemErrEnum.licenseEvalDatasetDataAmountLimit,
+    message: i18nT('common:code_error.system_error.license_eval_dataset_data_amount_limit')
+  },
+  {
+    statusText: SystemErrEnum.licenseEvalMetricAmountLimit,
+    message: i18nT('common:code_error.system_error.license_eval_metric_amount_limit')
   }
 ];
 
