@@ -324,6 +324,7 @@ const ChatBox = ({
             }
           } else if (event === SseResponseEventEnum.toolCall && tool) {
             const val: AIChatItemValueItemType = {
+              id: responseValueId,
               type: ChatItemValueTypeEnum.tool,
               tools: [tool]
             };
