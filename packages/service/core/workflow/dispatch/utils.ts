@@ -23,21 +23,24 @@ import { MongoApp } from '../../../core/app/schema';
 import { getMCPChildren } from '../../../core/app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
+import { getRedisCache, setRedisCache } from '../../../common/redis/cache';
 
 export const getWorkflowResponseWrite = ({
   res,
   detail,
   streamResponse,
   id = getNanoid(24),
-  showNodeStatus = true
+  showNodeStatus = true,
+  streamId
 }: {
   res?: NextApiResponse;
   detail: boolean;
   streamResponse: boolean;
   id?: string;
   showNodeStatus?: boolean;
+  streamId?: string;
 }) => {
-  return ({
+  return async ({
     write,
     event,
     data
@@ -45,8 +48,33 @@ export const getWorkflowResponseWrite = ({
     write?: (text: string) => void;
     event: SseResponseEventEnum;
     data: Record<string, any>;
-  }) => {
+  }): Promise<void> => {
     const useStreamResponse = streamResponse;
+
+    if (
+      streamId &&
+      (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer)
+    ) {
+      try {
+        if (data.choices?.[0]?.delta?.content) {
+          const resKey = `res:${streamId}`;
+
+          const existingData = await getRedisCache(resKey);
+          const streamData = existingData
+            ? JSON.parse(existingData)
+            : {
+                content: '',
+                finished: false
+              };
+
+          streamData.content += data.choices?.[0]?.delta?.content;
+
+          await setRedisCache(resKey, JSON.stringify(streamData), 3600);
+        }
+      } catch (error) {
+        console.error('[WeChat Work] Real-time streaming error:', error);
+      }
+    }
 
     if (!res || res.closed || !useStreamResponse) return;
 
@@ -66,6 +94,7 @@ export const getWorkflowResponseWrite = ({
     };
     if (!showNodeStatus && statusEvent[event]) return;
 
+    // Original SSE processing
     responseWrite({
       res,
       write,
