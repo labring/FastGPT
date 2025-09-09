@@ -1,5 +1,5 @@
 import type { CollaboratorIdType, CollaboratorItemType } from './collaborator';
-import type { RoleValueType} from './type';
+import type { RoleValueType } from './type';
 import { type PermissionValueType } from './type';
 /**
  * Sum the permission value.

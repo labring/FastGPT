@@ -94,13 +94,6 @@ async function handler(
       { session, ordered: true }
     );
 
-    await createResourceDefaultCollaborators({
-      tmbId,
-      session,
-      resource: dataset,
-      resourceType: PerResourceTypeEnum.dataset
-    });
-
     await refreshSourceAvatar(avatar, undefined, session);
 
     return dataset._id;

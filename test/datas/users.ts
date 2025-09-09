@@ -38,7 +38,8 @@ export async function getRootUser(): Promise<parseHeaderCertRet> {
     isRoot: true,
     sourceName: undefined,
     teamId: tmb?.teamId,
-    tmbId: tmb?._id
+    tmbId: tmb?._id,
+    sessionId: ''
   };
 }
 

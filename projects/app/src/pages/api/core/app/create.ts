@@ -25,7 +25,6 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
-import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 
 export type CreateAppBody = {
   parentId?: ParentIdType;
@@ -158,12 +157,6 @@ export const onCreateApp = async ({
       );
     }
 
-    await createResourceDefaultCollaborators({
-      tmbId,
-      session,
-      resource: app,
-      resourceType: PerResourceTypeEnum.app
-    });
     (async () => {
       addAuditLog({
         tmbId,

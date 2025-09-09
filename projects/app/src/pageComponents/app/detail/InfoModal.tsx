@@ -31,7 +31,6 @@ import { useTranslation } from 'next-i18next';
 import React, { useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { useContextSelector } from 'use-context-selector';
-import { postUpdateDatasetCollaborators } from '@/web/core/dataset/api/collaborator';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 
 const InfoModal = ({ onClose }: { onClose: () => void }) => {
@@ -173,9 +172,9 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                 onGetCollaboratorList={() => getCollaboratorList(appDetail._id)}
                 roleList={AppRoleList}
                 onUpdateCollaborators={async ({ collaborators }) =>
-                  postUpdateDatasetCollaborators({
+                  postUpdateAppCollaborators({
                     collaborators,
-                    datasetId: appDetail._id
+                    appId: appDetail._id
                   })
                 }
                 onDelOneCollaborator={onDelCollaborator}
