@@ -48,7 +48,7 @@ export const getWorkflowResponseWrite = ({
     write?: (text: string) => void;
     event: SseResponseEventEnum;
     data: Record<string, any>;
-  }): Promise<void> => {
+  }) => {
     const useStreamResponse = streamResponse;
 
     if (
@@ -94,7 +94,6 @@ export const getWorkflowResponseWrite = ({
     };
     if (!showNodeStatus && statusEvent[event]) return;
 
-    // Original SSE processing
     responseWrite({
       res,
       write,
