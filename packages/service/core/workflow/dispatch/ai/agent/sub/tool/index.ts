@@ -1,8 +1,7 @@
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
-import type { DispatchSubAppProps, DispatchSubAppResponse } from '../../type';
+import type { DispatchSubAppResponse } from '../../type';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
-import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { getSystemToolById } from '../../../../../../app/plugin/controller';
 import { getSecretValue } from '../../../../../../../common/secret/utils';
 import { MongoSystemPlugin } from '../../../../../../app/plugin/systemPluginSchema';
