@@ -16,6 +16,9 @@ import {
   getEvalDatasetSmartGenerateWorker
 } from './smartGenerateMq';
 import { addEvalDatasetDataSynthesizeJob } from './dataSynthesizeMq';
+import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
+import { addAuditLog } from '../../../support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function processor(job: Job<EvalDatasetSmartGenerateData>) {
   const { datasetCollectionIds, count, intelligentGenerationModel, evalDatasetCollectionId } =
@@ -33,12 +36,13 @@ async function processor(job: Job<EvalDatasetSmartGenerateData>) {
       throw new Error(`Invalid count parameter: ${count}. Must be a positive integer.`);
     }
 
-    // TODO: Authentication check - get team and user info from eval dataset
     const evalDatasetCollection =
       await MongoEvalDatasetCollection.findById(evalDatasetCollectionId);
     if (!evalDatasetCollection) {
       throw new Error(`Eval dataset collection not found: ${evalDatasetCollectionId}`);
     }
+
+    await checkTeamAIPoints(evalDatasetCollection.teamId);
 
     const match = {
       teamId: new Types.ObjectId(evalDatasetCollection.teamId),
@@ -142,8 +146,16 @@ async function processor(job: Job<EvalDatasetSmartGenerateData>) {
       });
     }
 
-    // TODO: Add audit log
-    // TODO: Add tracking metrics
+    (async () => {
+      addAuditLog({
+        teamId: evalDatasetCollection.teamId,
+        tmbId: evalDatasetCollection.tmbId,
+        event: AuditEventEnum.SMART_GENERATE_EVALUATION_DATA,
+        params: {
+          collectionName: evalDatasetCollection.name
+        }
+      });
+    })();
 
     addLog.info('Completed eval dataset smart generation', {
       evalDatasetCollectionId: evalDatasetCollectionId,
@@ -164,8 +176,6 @@ async function processor(job: Job<EvalDatasetSmartGenerateData>) {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined
     });
-
-    // TODO: Update dataset status to error
     throw error;
   }
 }

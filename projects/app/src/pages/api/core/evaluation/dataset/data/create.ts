@@ -63,7 +63,6 @@ async function handler(
     return Promise.reject('retrievalContext must be an array of strings if provided');
   }
 
-  // Verify collection exists and belongs to the team
   const collection = await MongoEvalDatasetCollection.findOne({
     _id: collectionId,
     teamId
