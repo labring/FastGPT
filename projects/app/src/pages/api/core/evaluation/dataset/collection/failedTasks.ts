@@ -53,7 +53,6 @@ async function handler(
       tasks
     };
   } catch (error) {
-    console.error('Error fetching failed tasks:', error);
     throw new Error('Error occurred while fetching failed tasks list');
   }
 }

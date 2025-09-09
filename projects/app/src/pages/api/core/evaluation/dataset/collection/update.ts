@@ -41,7 +41,6 @@ async function handler(
     return Promise.reject('Description must be less than 100 characters');
   }
 
-  // Check if collection exists and belongs to the team
   const existingCollection = await MongoEvalDatasetCollection.findOne({
     _id: collectionId,
     teamId
@@ -51,7 +50,6 @@ async function handler(
     return Promise.reject('Dataset collection not found');
   }
 
-  // Check for name conflicts within team (excluding current collection)
   const nameConflict = await MongoEvalDatasetCollection.findOne({
     teamId,
     name: name.trim(),

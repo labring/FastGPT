@@ -32,7 +32,6 @@ async function handler(
   // Check AI points availability
   await checkTeamAIPoints(teamId);
 
-  // Parameter validation
   if (!collectionId || typeof collectionId !== 'string') {
     return Promise.reject('collectionId is required and must be a string');
   }
@@ -67,7 +66,6 @@ async function handler(
     return Promise.reject('One or more dataset collections not found or no permission');
   }
 
-  // Calculate total data count from selected collections
   const totalDataCount = await MongoDatasetData.countDocuments({
     teamId,
     collectionId: { $in: datasetCollectionIds }
@@ -80,7 +78,6 @@ async function handler(
   // Use totalDataCount as default when count is undefined
   const finalCount = count !== undefined ? count : totalDataCount;
 
-  // Validate count after setting default
   if (finalCount < 1) {
     return Promise.reject('count must be greater than 0');
   }

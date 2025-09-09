@@ -81,7 +81,6 @@ async function handler(
       message: 'Task retried successfully'
     };
   } catch (error) {
-    console.error('Error retrying task:', error);
     addLog.error('Failed to retry task', {
       jobId,
       collectionId,

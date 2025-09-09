@@ -15,6 +15,8 @@ import {
 import { createSynthesizerInstance } from '../synthesizer';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 import { createEvalDatasetDataSynthesisUsage } from '../../../support/wallet/usage/controller';
+import { addAuditLog } from '../../../support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
   const { dataId, intelligentGenerationModel, evalDatasetCollectionId } = job.data;
@@ -31,7 +33,6 @@ async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
       throw new Error(`Source dataset data not found: ${dataId}`);
     }
 
-    // TODO: Authentication check
     const evalDatasetCollection =
       await MongoEvalDatasetCollection.findById(evalDatasetCollectionId);
     if (!evalDatasetCollection) {
@@ -96,8 +97,16 @@ async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
       totalPoints
     });
 
-    // TODO: Add audit log
-    // TODO: Add tracking metrics
+    (async () => {
+      addAuditLog({
+        teamId: evalDatasetCollection.teamId,
+        tmbId: evalDatasetCollection.tmbId,
+        event: AuditEventEnum.SMART_GENERATE_EVALUATION_DATA,
+        params: {
+          collectionName: evalDatasetCollection.name
+        }
+      });
+    })();
 
     return {
       success: true,

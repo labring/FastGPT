@@ -10,15 +10,14 @@ import type {
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
 import { authEvaluationDatasetDataRead } from '@fastgpt/service/core/evaluation/common';
+import { addLog } from '@fastgpt/service/common/system/log';
 
 async function handler(
   req: ApiRequestProps<listEvalDatasetDataBody, {}>
 ): Promise<listEvalDatasetDataResponse> {
-  // Parse request parameters
   const { offset, pageSize } = parsePaginationRequest(req);
   const { collectionId, searchKey } = req.body;
 
-  // Validate required parameters
   if (!collectionId) {
     throw new Error('Collection ID is required');
   }
@@ -29,15 +28,10 @@ async function handler(
     authApiKey: true
   });
 
-  // TODO: Audit Log - Log request attempt with parameters
-  console.log(`[AUDIT] User requested eval dataset data list for collection: ${collectionId}`);
-
-  // Build MongoDB match criteria
   const match: Record<string, any> = {
     datasetId: new Types.ObjectId(collectionId)
   };
 
-  // Add search filter if provided
   if (searchKey && typeof searchKey === 'string' && searchKey.trim().length > 0) {
     const searchRegex = new RegExp(`${replaceRegChars(searchKey.trim())}`, 'i');
     match.$or = [
@@ -48,21 +42,10 @@ async function handler(
   }
 
   try {
-    // TODO: Performance Tracking - Log query execution time
-    const startTime = Date.now();
-
-    // Execute aggregation with pagination
     const [dataList, total] = await Promise.all([
       MongoEvalDatasetData.aggregate(buildPipeline(match, offset, pageSize)),
       MongoEvalDatasetData.countDocuments(match)
     ]);
-
-    // TODO: Performance Tracking - Log query completion time
-    const executionTime = Date.now() - startTime;
-    console.log(`[PERFORMANCE] Query executed in ${executionTime}ms`);
-
-    // TODO: Audit Log - Log successful response
-    console.log(`[AUDIT] Successfully returned ${dataList.length} items out of ${total} total`);
 
     return {
       total,
@@ -80,14 +63,13 @@ async function handler(
       }))
     };
   } catch (error) {
-    // TODO: Error Tracking - Log detailed error information
-    console.error('[ERROR] Database error in eval dataset data list:', error);
-
-    // TODO: Audit Log - Log failed request
-    console.log(
-      `[AUDIT] Failed to retrieve eval dataset data list for collection: ${collectionId}`
-    );
-
+    addLog.error('Database error in eval dataset data list', {
+      collectionId,
+      searchKey,
+      offset,
+      pageSize,
+      error
+    });
     throw error;
   }
 }
