@@ -83,6 +83,7 @@ export type SystemChatItemType = {
 };
 
 export type AIChatItemValueItemType = {
+  id?: string; // Client concat stream response
   type:
     | ChatItemValueTypeEnum.text
     | ChatItemValueTypeEnum.reasoning
