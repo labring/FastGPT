@@ -384,10 +384,6 @@ const evaluationErrList = [
 
   // Summary related errors
   {
-    statusText: EvaluationErrEnum.evalIdRequired,
-    message: i18nT('evaluation:eval_id_required')
-  },
-  {
     statusText: EvaluationErrEnum.summaryMetricsConfigError,
     message: i18nT('evaluation:summary_metrics_config_error')
   },
