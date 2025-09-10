@@ -1,4 +1,3 @@
-import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import { i18nT } from '../../../../../../../web/i18n/utils';
 
 export enum SubAppIds {

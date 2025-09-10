@@ -6,11 +6,15 @@ import type {
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import type { AIChatItemType, AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type {
+  InteractiveNodeResponseType,
+  WorkflowInteractiveResponseType
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { CreateLLMResponseProps, ResponseEvents } from './request';
 import { createLLMResponse } from './request';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 type RunAgentCallProps = {
   maxRunAgentTimes: number;
@@ -39,6 +43,7 @@ type RunAgentCallProps = {
     response: string;
     usages: ChatNodeUsageType[];
     isEnd: boolean;
+    [DispatchNodeResponseKeyEnum.interactive]?: InteractiveNodeResponseType;
   }>;
 } & ResponseEvents;
 
@@ -127,13 +132,34 @@ export const runAgentCall = async ({
     let isEndSign = false;
     for await (const tool of toolCalls) {
       // TODO: 加入交互节点处理
-      const { response, usages, isEnd } = await handleToolResponse({
+      const {
+        response,
+        usages,
+        isEnd,
+        [DispatchNodeResponseKeyEnum.interactive]: interactive
+      } = await handleToolResponse({
         call: tool,
         messages: requestMessages.slice(0, requestMessagesLength) // 取原来 request 的上下文
       });
 
       if (isEnd) {
         isEndSign = true;
+      }
+
+      // If interactive response is returned, set it and break the loop
+      if (interactive) {
+        interactiveResponse = {
+          ...interactive,
+          entryNodeIds: [],
+          memoryEdges: [],
+          nodeOutputs: [],
+          toolParams: {
+            entryNodeIds: [],
+            memoryMessages: requestMessages.slice(requestMessagesLength),
+            toolCallId: tool.id
+          }
+        } as WorkflowInteractiveResponseType;
+        break;
       }
 
       requestMessages.push({
@@ -168,6 +194,7 @@ export const runAgentCall = async ({
     outputTokens,
     completeMessages: requestMessages,
     assistantResponses,
-    subAppUsages
+    subAppUsages,
+    interactiveResponse
   };
 };

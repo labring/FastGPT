@@ -16,6 +16,7 @@ import { MongoApp } from '../../../../../app/schema';
 import { getMCPChildren } from '../../../../../app/mcp';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
+import { AskAgentTool } from './ask/constants';
 
 export const rewriteSubAppsToolset = ({
   subApps,
@@ -73,6 +74,7 @@ export const getSubApps = ({
   // System Tools: Plan Agent, stop sign, model agent.
   const systemTools: ChatCompletionTool[] = [
     PlanAgentTool,
+    AskAgentTool,
     ...(addReadFileTool ? [readFileTool] : [])
     // ModelAgentTool
     // StopAgentTool,

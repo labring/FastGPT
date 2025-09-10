@@ -49,6 +49,7 @@ import { addFilePrompt2Input, getFileInputPrompt } from './sub/file/utils';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { dispatchFileRead } from './sub/file';
 import { dispatchApp, dispatchPlugin } from './sub/app';
+import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -183,314 +184,341 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     const dispatchFlowResponse: ChatHistoryItemResType[] = [];
     // console.log(JSON.stringify(requestMessages, null, 2));
-    const { completeMessages, assistantResponses, inputTokens, outputTokens, subAppUsages } =
-      await runAgentCall({
-        maxRunAgentTimes: 100,
-        interactiveEntryToolParams: lastInteractive?.toolParams,
-        body: {
-          messages: requestMessages,
-          model: agentModel,
-          temperature,
-          stream,
-          top_p: aiChatTopP,
-          subApps: subAppList
-        },
+    const {
+      completeMessages,
+      assistantResponses,
+      inputTokens,
+      outputTokens,
+      subAppUsages,
+      interactiveResponse
+    } = await runAgentCall({
+      maxRunAgentTimes: 100,
+      interactiveEntryToolParams: lastInteractive?.toolParams,
+      body: {
+        messages: requestMessages,
+        model: agentModel,
+        temperature,
+        stream,
+        top_p: aiChatTopP,
+        subApps: subAppList
+      },
 
-        userKey: externalProvider.openaiAccount,
-        isAborted: res ? () => res.closed : undefined,
-        getToolInfo,
+      userKey: externalProvider.openaiAccount,
+      isAborted: res ? () => res.closed : undefined,
+      getToolInfo,
 
-        onReasoning({ text }) {
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.answer,
-            data: textAdaptGptResponse({
-              reasoning_content: text
-            })
-          });
-        },
-        onStreaming({ text }) {
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.answer,
-            data: textAdaptGptResponse({
-              text
-            })
-          });
-        },
-        onToolCall({ call }) {
-          const toolNode = getToolInfo(call.function.name);
-          workflowStreamResponse?.({
-            id: call.id,
-            event: SseResponseEventEnum.toolCall,
-            data: {
-              tool: {
-                id: call.id,
-                toolName: toolNode?.name || call.function.name,
-                toolAvatar: toolNode?.avatar || '',
-                functionName: call.function.name,
-                params: call.function.arguments ?? '',
-                response: ''
+      onReasoning({ text }) {
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.answer,
+          data: textAdaptGptResponse({
+            reasoning_content: text
+          })
+        });
+      },
+      onStreaming({ text }) {
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.answer,
+          data: textAdaptGptResponse({
+            text
+          })
+        });
+      },
+      onToolCall({ call }) {
+        const toolNode = getToolInfo(call.function.name);
+        workflowStreamResponse?.({
+          id: call.id,
+          event: SseResponseEventEnum.toolCall,
+          data: {
+            tool: {
+              id: call.id,
+              toolName: toolNode?.name || call.function.name,
+              toolAvatar: toolNode?.avatar || '',
+              functionName: call.function.name,
+              params: call.function.arguments ?? '',
+              response: ''
+            }
+          }
+        });
+      },
+      onToolParam({ call, params }) {
+        workflowStreamResponse?.({
+          id: call.id,
+          event: SseResponseEventEnum.toolParams,
+          data: {
+            tool: {
+              id: call.id,
+              toolName: '',
+              toolAvatar: '',
+              params,
+              response: ''
+            }
+          }
+        });
+      },
+
+      handleToolResponse: async ({ call, messages }) => {
+        const toolId = call.function.name;
+        const childWorkflowStreamResponse = getWorkflowChildResponseWrite({
+          id: call.id,
+          fn: workflowStreamResponse
+        });
+
+        const {
+          response,
+          usages = [],
+          isEnd,
+          streamResponse = true,
+          interactive
+        } = await (async () => {
+          try {
+            if (toolId === SubAppIds.stop) {
+              return {
+                response: '',
+                usages: [],
+                isEnd: true
+              };
+            } else if (toolId === SubAppIds.plan) {
+              const { response, usages } = await dispatchPlanAgent({
+                messages,
+                tools: subAppList,
+                model,
+                temperature,
+                top_p: aiChatTopP,
+                stream,
+                onStreaming({ text }) {
+                  childWorkflowStreamResponse?.({
+                    event: SseResponseEventEnum.toolResponse,
+                    data: {
+                      tool: {
+                        id: call.id,
+                        toolName: '',
+                        toolAvatar: '',
+                        params: '',
+                        response: text
+                      }
+                    }
+                  });
+                }
+              });
+
+              return {
+                response,
+                usages,
+                isEnd: false,
+                streamResponse: false
+              };
+            } else if (toolId === SubAppIds.model) {
+              const { systemPrompt, task } = parseToolArgs<{
+                systemPrompt: string;
+                task: string;
+              }>(call.function.arguments);
+
+              const { response, usages } = await dispatchModelAgent({
+                model,
+                temperature,
+                top_p: aiChatTopP,
+                stream,
+                systemPrompt,
+                task,
+                onStreaming({ text }) {
+                  childWorkflowStreamResponse?.({
+                    event: SseResponseEventEnum.toolResponse,
+                    data: {
+                      tool: {
+                        id: call.id,
+                        toolName: '',
+                        toolAvatar: '',
+                        params: '',
+                        response: text
+                      }
+                    }
+                  });
+                }
+              });
+              return {
+                response,
+                usages,
+                isEnd: false,
+                streamResponse: false
+              };
+            } else if (toolId === SubAppIds.fileRead) {
+              const { file_indexes } = parseToolArgs<{
+                file_indexes: string[];
+              }>(call.function.arguments);
+              if (!Array.isArray(file_indexes)) {
+                return {
+                  response: 'file_indexes is not array',
+                  usages: [],
+                  isEnd: false
+                };
+              }
+
+              const files = file_indexes.map((index) => ({
+                index,
+                url: filesMap[index]
+              }));
+              const result = await dispatchFileRead({
+                files,
+                teamId: runningUserInfo.teamId,
+                tmbId: runningUserInfo.tmbId,
+                customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse
+              });
+              return {
+                response: result.response,
+                usages: result.usages,
+                isEnd: false
+              };
+            } else if (toolId === SubAppIds.ask) {
+              const { prompt } = parseToolArgs<{ prompt: string }>(call.function.arguments);
+              const interactive: InteractiveNodeResponseType = {
+                type: 'userSelect',
+                params: {
+                  description: prompt || '请选择一个选项：',
+                  userSelectOptions: [
+                    { value: '苹果', key: 'option1' },
+                    { value: '香蕉', key: 'option2' }
+                  ]
+                }
+              };
+
+              return {
+                response: '',
+                usages: [],
+                isEnd: false,
+                interactive
+              };
+            }
+            // User Sub App
+            else {
+              const node = toolNodesMap.get(toolId);
+              if (!node) {
+                return {
+                  response: 'Can not find the tool',
+                  usages: [],
+                  isEnd: false
+                };
+              }
+
+              const toolCallParams = parseToolArgs(call.function.arguments);
+              // Get params
+              const requestParams = (() => {
+                const params: Record<string, any> = toolCallParams;
+
+                node.inputs.forEach((input) => {
+                  if (input.key in toolCallParams) {
+                    return;
+                  }
+                  // Skip some special key
+                  if (
+                    [
+                      NodeInputKeyEnum.childrenNodeIdList,
+                      NodeInputKeyEnum.systemInputConfig
+                    ].includes(input.key as NodeInputKeyEnum)
+                  ) {
+                    params[input.key] = input.value;
+                    return;
+                  }
+
+                  // replace {{$xx.xx$}} and {{xx}} variables
+                  let value = replaceEditorVariable({
+                    text: input.value,
+                    nodes: runtimeNodes,
+                    variables
+                  });
+
+                  // replace reference variables
+                  value = getReferenceVariableValue({
+                    value,
+                    nodes: runtimeNodes,
+                    variables
+                  });
+
+                  params[input.key] = valueTypeFormat(value, input.valueType);
+                });
+
+                return params;
+              })();
+
+              if (node.flowNodeType === FlowNodeTypeEnum.tool) {
+                const { response, usages } = await dispatchTool({
+                  node,
+                  params: requestParams,
+                  runningUserInfo,
+                  runningAppInfo,
+                  variables,
+                  workflowStreamResponse: childWorkflowStreamResponse
+                });
+                return {
+                  response,
+                  usages,
+                  isEnd: false
+                };
+              } else if (
+                node.flowNodeType === FlowNodeTypeEnum.appModule ||
+                node.flowNodeType === FlowNodeTypeEnum.pluginModule
+              ) {
+                const fn =
+                  node.flowNodeType === FlowNodeTypeEnum.appModule ? dispatchApp : dispatchPlugin;
+                const { response, usages } = await fn({
+                  ...props,
+                  node,
+                  // stream: false,
+                  workflowStreamResponse: undefined,
+                  callParams: {
+                    appId: node.pluginId,
+                    version: node.version,
+                    ...requestParams
+                  }
+                });
+
+                return {
+                  response,
+                  usages,
+                  isEnd: false
+                };
+              } else {
+                return {
+                  response: 'Can not find the tool',
+                  usages: [],
+                  isEnd: false
+                };
               }
             }
-          });
-        },
-        onToolParam({ call, params }) {
-          workflowStreamResponse?.({
-            id: call.id,
-            event: SseResponseEventEnum.toolParams,
+          } catch (error) {
+            return {
+              response: getErrText(error),
+              usages: [],
+              isEnd: false
+            };
+          }
+        })();
+
+        // Push stream response
+        if (streamResponse) {
+          childWorkflowStreamResponse?.({
+            event: SseResponseEventEnum.toolResponse,
             data: {
               tool: {
                 id: call.id,
                 toolName: '',
                 toolAvatar: '',
-                params,
-                response: ''
+                params: '',
+                response
               }
             }
           });
-        },
-
-        handleToolResponse: async ({ call, messages }) => {
-          const toolId = call.function.name;
-          const childWorkflowStreamResponse = getWorkflowChildResponseWrite({
-            id: call.id,
-            fn: workflowStreamResponse
-          });
-
-          const {
-            response,
-            usages = [],
-            isEnd,
-            streamResponse = true
-          } = await (async () => {
-            try {
-              if (toolId === SubAppIds.stop) {
-                return {
-                  response: '',
-                  usages: [],
-                  isEnd: true
-                };
-              } else if (toolId === SubAppIds.plan) {
-                const { response, usages } = await dispatchPlanAgent({
-                  messages,
-                  tools: subAppList,
-                  model,
-                  temperature,
-                  top_p: aiChatTopP,
-                  stream,
-                  onStreaming({ text }) {
-                    childWorkflowStreamResponse?.({
-                      event: SseResponseEventEnum.toolResponse,
-                      data: {
-                        tool: {
-                          id: call.id,
-                          toolName: '',
-                          toolAvatar: '',
-                          params: '',
-                          response: text
-                        }
-                      }
-                    });
-                  }
-                });
-
-                return {
-                  response,
-                  usages,
-                  isEnd: false,
-                  streamResponse: false
-                };
-              } else if (toolId === SubAppIds.model) {
-                const { systemPrompt, task } = parseToolArgs<{
-                  systemPrompt: string;
-                  task: string;
-                }>(call.function.arguments);
-
-                const { response, usages } = await dispatchModelAgent({
-                  model,
-                  temperature,
-                  top_p: aiChatTopP,
-                  stream,
-                  systemPrompt,
-                  task,
-                  onStreaming({ text }) {
-                    childWorkflowStreamResponse?.({
-                      event: SseResponseEventEnum.toolResponse,
-                      data: {
-                        tool: {
-                          id: call.id,
-                          toolName: '',
-                          toolAvatar: '',
-                          params: '',
-                          response: text
-                        }
-                      }
-                    });
-                  }
-                });
-                return {
-                  response,
-                  usages,
-                  isEnd: false,
-                  streamResponse: false
-                };
-              } else if (toolId === SubAppIds.fileRead) {
-                const { file_indexes } = parseToolArgs<{
-                  file_indexes: string[];
-                }>(call.function.arguments);
-                if (!Array.isArray(file_indexes)) {
-                  return {
-                    response: 'file_indexes is not array',
-                    usages: [],
-                    isEnd: false
-                  };
-                }
-
-                const files = file_indexes.map((index) => ({
-                  index,
-                  url: filesMap[index]
-                }));
-                const result = await dispatchFileRead({
-                  files,
-                  teamId: runningUserInfo.teamId,
-                  tmbId: runningUserInfo.tmbId,
-                  customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse
-                });
-                return {
-                  response: result.response,
-                  usages: result.usages,
-                  isEnd: false
-                };
-              }
-              // User Sub App
-              else {
-                const node = toolNodesMap.get(toolId);
-                if (!node) {
-                  return {
-                    response: 'Can not find the tool',
-                    usages: [],
-                    isEnd: false
-                  };
-                }
-
-                const toolCallParams = parseToolArgs(call.function.arguments);
-                // Get params
-                const requestParams = (() => {
-                  const params: Record<string, any> = toolCallParams;
-
-                  node.inputs.forEach((input) => {
-                    if (input.key in toolCallParams) {
-                      return;
-                    }
-                    // Skip some special key
-                    if (
-                      [
-                        NodeInputKeyEnum.childrenNodeIdList,
-                        NodeInputKeyEnum.systemInputConfig
-                      ].includes(input.key as NodeInputKeyEnum)
-                    ) {
-                      params[input.key] = input.value;
-                      return;
-                    }
-
-                    // replace {{$xx.xx$}} and {{xx}} variables
-                    let value = replaceEditorVariable({
-                      text: input.value,
-                      nodes: runtimeNodes,
-                      variables
-                    });
-
-                    // replace reference variables
-                    value = getReferenceVariableValue({
-                      value,
-                      nodes: runtimeNodes,
-                      variables
-                    });
-
-                    params[input.key] = valueTypeFormat(value, input.valueType);
-                  });
-
-                  return params;
-                })();
-
-                if (node.flowNodeType === FlowNodeTypeEnum.tool) {
-                  const { response, usages } = await dispatchTool({
-                    node,
-                    params: requestParams,
-                    runningUserInfo,
-                    runningAppInfo,
-                    variables,
-                    workflowStreamResponse: childWorkflowStreamResponse
-                  });
-                  return {
-                    response,
-                    usages,
-                    isEnd: false
-                  };
-                } else if (
-                  node.flowNodeType === FlowNodeTypeEnum.appModule ||
-                  node.flowNodeType === FlowNodeTypeEnum.pluginModule
-                ) {
-                  const fn =
-                    node.flowNodeType === FlowNodeTypeEnum.appModule ? dispatchApp : dispatchPlugin;
-                  const { response, usages } = await fn({
-                    ...props,
-                    node,
-                    // stream: false,
-                    workflowStreamResponse: undefined,
-                    callParams: {
-                      appId: node.pluginId,
-                      version: node.version,
-                      ...requestParams
-                    }
-                  });
-
-                  return {
-                    response,
-                    usages,
-                    isEnd: false
-                  };
-                } else {
-                  return {
-                    response: 'Can not find the tool',
-                    usages: [],
-                    isEnd: false
-                  };
-                }
-              }
-            } catch (error) {
-              return {
-                response: getErrText(error),
-                usages: [],
-                isEnd: false
-              };
-            }
-          })();
-
-          // Push stream response
-          if (streamResponse) {
-            childWorkflowStreamResponse?.({
-              event: SseResponseEventEnum.toolResponse,
-              data: {
-                tool: {
-                  id: call.id,
-                  toolName: '',
-                  toolAvatar: '',
-                  params: '',
-                  response
-                }
-              }
-            });
-          }
-
-          // TODO: 推送账单
-
-          return {
-            response,
-            usages,
-            isEnd
-          };
         }
-      });
+
+        // TODO: 推送账单
+
+        return {
+          response,
+          usages,
+          isEnd,
+          ...(interactive && { [DispatchNodeResponseKeyEnum.interactive]: interactive })
+        };
+      }
+    });
 
     // Usage count
     const { totalPoints: modelTotalPoints, modelName } = formatModelChars2Points({
@@ -545,7 +573,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         // Tool usage
         ...subAppUsages
       ],
-      [DispatchNodeResponseKeyEnum.interactive]: undefined
+      [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
     };
   } catch (error) {
     return getNodeErrResponse({ error });
