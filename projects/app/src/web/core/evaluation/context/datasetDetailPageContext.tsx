@@ -3,28 +3,30 @@ import { createContext } from 'use-context-selector';
 import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 
 type DatasetDetailPageContextType = {
-  datasetId: string;
   paths: ParentTreePathItemType[];
+  collectionId: string;
 };
 
 export const DatasetDetailPageContext = createContext<DatasetDetailPageContextType>({
-  datasetId: '',
-  paths: []
+  paths: [],
+  collectionId: ''
 });
 
 export const DatasetDetailPageContextProvider = ({
   children,
-  datasetId
+  collectionId,
+  collectionName
 }: {
   children: ReactNode;
-  datasetId: string;
+  collectionId: string;
+  collectionName: string;
 }) => {
   const contextValue: DatasetDetailPageContextType = {
-    datasetId,
+    collectionId,
     paths: [
       {
         parentId: '',
-        parentName: 'Mock 标题待改'
+        parentName: collectionName
       }
     ]
   };

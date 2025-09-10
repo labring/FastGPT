@@ -32,10 +32,12 @@ export const DatasetSelectModal = ({
   isOpen,
   defaultSelectedDatasets = [],
   onChange,
-  onClose
+  onClose,
+  scene = ''
 }: {
   isOpen: boolean;
   defaultSelectedDatasets: SelectedDatasetType;
+  scene?: string;
   onChange: (e: SelectedDatasetType) => void;
   onClose: () => void;
 }) => {
@@ -47,7 +49,8 @@ export const DatasetSelectModal = ({
   const { toast } = useToast();
 
   // Use server-side search, following the logic of the dataset list page
-  const { paths, setParentId, searchKey, setSearchKey, datasets, isFetching } = useDatasetSelect();
+  const { paths, setParentId, searchKey, setSearchKey, datasets, isFetching } =
+    useDatasetSelect(scene);
 
   // The vector model of the first selected dataset
   const activeVectorModel = selectedDatasets[0]?.vectorModel?.model;
@@ -108,7 +111,8 @@ export const DatasetSelectModal = ({
           avatar: item.avatar,
           name: item.name,
           vectorModel: item.vectorModel,
-          datasetType: item.type
+          datasetType: item.type,
+          dataCount: item.dataCount
         }
       ]);
     } else {
@@ -302,7 +306,8 @@ export const DatasetSelectModal = ({
                             avatar: item.avatar,
                             name: item.name,
                             vectorModel: item.vectorModel,
-                            datasetType: item.type
+                            datasetType: item.type,
+                            dataCount: item.dataCount
                           })
                         );
                         setSelectedDatasets((prev) => [...prev, ...newSelections]);
