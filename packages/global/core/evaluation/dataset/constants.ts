@@ -14,10 +14,13 @@ export enum EvalDatasetCollectionStatusEnum {
 }
 
 export enum EvalDatasetDataQualityStatusEnum {
+  unevaluated = 'unevaluated',
   queuing = 'queuing',
   evaluating = 'evaluating',
   error = 'error',
-  completed = 'completed'
+  completed = 'completed',
+  highQuality = 'highQuality',
+  needsOptimization = 'needsOptimization'
 }
 
 export enum EvalDatasetDataKeyEnum {
@@ -25,7 +28,8 @@ export enum EvalDatasetDataKeyEnum {
   ActualOutput = 'actualOutput',
   ExpectedOutput = 'expectedOutput',
   Context = 'context',
-  RetrievalContext = 'retrievalContext'
+  RetrievalContext = 'retrievalContext',
+  Metadata = 'metadata'
 }
 
 export const EvalDatasetDataQualityStatusValues = Object.values(EvalDatasetDataQualityStatusEnum);

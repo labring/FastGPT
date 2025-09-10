@@ -9,6 +9,7 @@ import type { EvalDatasetDataKeyEnum } from './constants';
 type EvalDatasetCollectionBase = {
   name: string;
   description?: string;
+  evaluationModel?: string;
 };
 
 export type createEvalDatasetCollectionBody = EvalDatasetCollectionBase;
@@ -38,7 +39,7 @@ export type listEvalDatasetCollectionResponse = PaginationResponse<
 >;
 type QualityEvaluationBase = {
   enableQualityEvaluation: boolean;
-  qualityEvaluationModel?: string;
+  evaluationModel?: string;
 };
 
 export type importEvalDatasetFromFileBody = {
@@ -51,11 +52,13 @@ type EvalDatasetDataBase = {
   [EvalDatasetDataKeyEnum.ExpectedOutput]: string;
   [EvalDatasetDataKeyEnum.Context]?: string[];
   [EvalDatasetDataKeyEnum.RetrievalContext]?: string[];
+  [EvalDatasetDataKeyEnum.Metadata]?: Record<string, any>;
 };
 
-export type createEvalDatasetDataBody = EvalDatasetDataBase & {
-  collectionId: string;
-};
+export type createEvalDatasetDataBody = EvalDatasetDataBase &
+  QualityEvaluationBase & {
+    collectionId: string;
+  };
 
 export type listEvalDatasetDataBody = PaginationProps<{
   collectionId: string;
@@ -78,19 +81,18 @@ export type listEvalDatasetDataResponse = PaginationResponse<
   >
 >;
 
-export type updateEvalDatasetDataBody = EvalDatasetDataBase &
-  QualityEvaluationBase & {
-    dataId: string;
-  };
+export type updateEvalDatasetDataBody = EvalDatasetDataBase & {
+  dataId: string;
+};
 
 export type qualityAssessmentBody = {
   dataId: string;
-  evalModel: string;
+  evaluationModel?: string;
 };
 
 export type qualityAssessmentBatchBody = {
   collectionId: string;
-  evalModel: string;
+  evaluationModel?: string;
 };
 
 export type qualityAssessmentBatchResponse = {

@@ -8,7 +8,8 @@ import { MongoEvalDatasetData } from './evalDatasetDataSchema';
 import { MongoDatasetData } from '../../dataset/data/schema';
 import {
   EvalDatasetDataCreateFromEnum,
-  EvalDatasetDataKeyEnum
+  EvalDatasetDataKeyEnum,
+  EvalDatasetDataQualityStatusEnum
 } from '@fastgpt/global/core/evaluation/dataset/constants';
 import type { EvalDatasetDataSchemaType } from '@fastgpt/global/core/evaluation/dataset/type';
 import {
@@ -24,11 +25,21 @@ async function processor(job: Job<EvalDatasetSmartGenerateData>) {
   const { datasetCollectionIds, count, intelligentGenerationModel, evalDatasetCollectionId } =
     job.data;
 
+  if (!global.llmModelMap.has(intelligentGenerationModel)) {
+    const errorMsg = `Invalid intelligent generation model: ${intelligentGenerationModel}`;
+    addLog.error('Eval dataset smart generation failed - invalid model', {
+      evalDatasetCollectionId,
+      intelligentGenerationModel
+    });
+    throw new Error(errorMsg);
+  }
+
   try {
     addLog.info('Starting eval dataset smart generation', {
       evalDatasetCollectionId,
       datasetCollectionIds,
-      count
+      count,
+      intelligentGenerationModel
     });
 
     const sampleSize = Number(count);
@@ -103,6 +114,7 @@ async function processor(job: Job<EvalDatasetSmartGenerateData>) {
             sourceDataId: sample._id,
             sourceDatasetId: sample.datasetId,
             sourceCollectionId: sample.collectionId,
+            qualityStatus: EvalDatasetDataQualityStatusEnum.unevaluated,
             generatedAt: new Date(),
             intelligentGenerationModel
           },

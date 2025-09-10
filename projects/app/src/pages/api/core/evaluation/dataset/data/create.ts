@@ -5,7 +5,8 @@ import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/e
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import {
   EvalDatasetDataCreateFromEnum,
-  EvalDatasetDataKeyEnum
+  EvalDatasetDataKeyEnum,
+  EvalDatasetDataQualityStatusEnum
 } from '@fastgpt/global/core/evaluation/dataset/constants';
 import type { createEvalDatasetDataBody } from '@fastgpt/global/core/evaluation/dataset/api';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
@@ -15,6 +16,7 @@ import {
   checkTeamEvalDatasetDataLimit,
   checkTeamAIPoints
 } from '@fastgpt/service/support/permission/teamLimit';
+import { addEvalDatasetDataQualityJob } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 
 export type EvalDatasetDataCreateQuery = {};
 export type EvalDatasetDataCreateBody = createEvalDatasetDataBody;
@@ -23,8 +25,16 @@ export type EvalDatasetDataCreateResponse = string;
 async function handler(
   req: ApiRequestProps<EvalDatasetDataCreateBody, EvalDatasetDataCreateQuery>
 ): Promise<EvalDatasetDataCreateResponse> {
-  const { collectionId, userInput, actualOutput, expectedOutput, context, retrievalContext } =
-    req.body;
+  const {
+    collectionId,
+    userInput,
+    actualOutput,
+    expectedOutput,
+    context,
+    retrievalContext,
+    enableQualityEvaluation,
+    evaluationModel
+  } = req.body;
 
   const { teamId, tmbId } = await authEvaluationDatasetDataCreate(collectionId, {
     req,
@@ -63,6 +73,18 @@ async function handler(
     return Promise.reject('retrievalContext must be an array of strings if provided');
   }
 
+  if (typeof enableQualityEvaluation !== 'boolean') {
+    return Promise.reject('enableQualityEvaluation is required and must be a boolean');
+  }
+
+  if (enableQualityEvaluation && (!evaluationModel || typeof evaluationModel !== 'string')) {
+    return Promise.reject('evaluationModel is required when enableQualityEvaluation is true');
+  }
+
+  if (evaluationModel && !global.llmModelMap.has(evaluationModel)) {
+    return Promise.reject(`Invalid evaluation model: ${evaluationModel}`);
+  }
+
   const collection = await MongoEvalDatasetCollection.findOne({
     _id: collectionId,
     teamId
@@ -90,7 +112,12 @@ async function handler(
           [EvalDatasetDataKeyEnum.ExpectedOutput]: expectedOutput.trim(),
           [EvalDatasetDataKeyEnum.Context]: context || [],
           [EvalDatasetDataKeyEnum.RetrievalContext]: retrievalContext || [],
-          createFrom: EvalDatasetDataCreateFromEnum.manual
+          createFrom: EvalDatasetDataCreateFromEnum.manual,
+          metadata: {
+            ...(enableQualityEvaluation
+              ? {}
+              : { qualityStatus: EvalDatasetDataQualityStatusEnum.unevaluated })
+          }
         }
       ],
       { session, ordered: true }
@@ -98,6 +125,13 @@ async function handler(
 
     return _id;
   });
+
+  if (enableQualityEvaluation && evaluationModel) {
+    await addEvalDatasetDataQualityJob({
+      dataId: dataId.toString(),
+      evaluationModel: evaluationModel
+    });
+  }
 
   (async () => {
     addAuditLog({

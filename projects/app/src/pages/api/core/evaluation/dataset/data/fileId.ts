@@ -6,7 +6,8 @@ import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dat
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 import {
   EvalDatasetDataCreateFromEnum,
-  EvalDatasetDataKeyEnum
+  EvalDatasetDataKeyEnum,
+  EvalDatasetDataQualityStatusEnum
 } from '@fastgpt/global/core/evaluation/dataset/constants';
 import { readFileContentFromMongo } from '@fastgpt/service/common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
@@ -150,7 +151,7 @@ function parseCSVContent(csvContent: string): CSVRow[] {
 async function handler(
   req: ApiRequestProps<EvalDatasetImportFromFileBody, EvalDatasetImportFromFileQuery>
 ): Promise<EvalDatasetImportFromFileResponse> {
-  const { fileId, collectionId, enableQualityEvaluation, qualityEvaluationModel } = req.body;
+  const { fileId, collectionId, enableQualityEvaluation, evaluationModel } = req.body;
 
   const { teamId, tmbId } = await authEvaluationDatasetDataWrite(collectionId, {
     req,
@@ -159,22 +160,23 @@ async function handler(
   });
 
   if (!fileId || typeof fileId !== 'string') {
-    return 'fileId is required and must be a string';
+    return Promise.reject('fileId is required and must be a string');
   }
 
   if (!collectionId || typeof collectionId !== 'string') {
-    return 'datasetCollectionId is required and must be a string';
+    return Promise.reject('datasetCollectionId is required and must be a string');
   }
 
   if (typeof enableQualityEvaluation !== 'boolean') {
-    return 'enableQualityEvaluation is required and must be a boolean';
+    return Promise.reject('enableQualityEvaluation is required and must be a boolean');
   }
 
-  if (
-    enableQualityEvaluation &&
-    (!qualityEvaluationModel || typeof qualityEvaluationModel !== 'string')
-  ) {
-    return 'qualityEvaluationModel is required when enableQualityEvaluation is true';
+  if (enableQualityEvaluation && (!evaluationModel || typeof evaluationModel !== 'string')) {
+    return Promise.reject('evaluationModel is required when enableQualityEvaluation is true');
+  }
+
+  if (evaluationModel && !global.llmModelMap.has(evaluationModel)) {
+    return Promise.reject(`Invalid evaluation model: ${evaluationModel}`);
   }
 
   const { file } = await authEvalDatasetCollectionFile({
@@ -187,16 +189,16 @@ async function handler(
 
   const filename = file.filename?.toLowerCase() || '';
   if (!filename.endsWith('.csv')) {
-    return 'File must be a CSV file';
+    return Promise.reject('File must be a CSV file');
   }
 
   const datasetCollection = await MongoEvalDatasetCollection.findById(collectionId);
   if (!datasetCollection) {
-    return 'Evaluation dataset collection not found';
+    return Promise.reject('Evaluation dataset collection not found');
   }
 
   if (String(datasetCollection.teamId) !== teamId) {
-    return 'No permission to access this dataset collection';
+    return Promise.reject('No permission to access this dataset collection');
   }
   try {
     const { rawText } = await readFileContentFromMongo({
@@ -210,12 +212,12 @@ async function handler(
     const csvRows = parseCSVContent(rawText);
 
     if (csvRows.length === 0) {
-      return 'CSV file contains no data rows';
+      return Promise.reject('CSV file contains no data rows');
     }
 
     // Validate row limit (prevent memory issues)
     if (csvRows.length > 10000) {
-      return 'CSV file cannot contain more than 10,000 rows';
+      return Promise.reject('CSV file cannot contain more than 10,000 rows');
     }
 
     const evalDatasetRecords = csvRows.map((row) => {
@@ -272,7 +274,12 @@ async function handler(
         [EvalDatasetDataKeyEnum.ActualOutput]: row.actual_output || '',
         [EvalDatasetDataKeyEnum.Context]: contextArray,
         [EvalDatasetDataKeyEnum.RetrievalContext]: retrievalContextArray,
-        metadata: metadataObj,
+        metadata: {
+          ...metadataObj,
+          ...(enableQualityEvaluation
+            ? {}
+            : { qualityStatus: EvalDatasetDataQualityStatusEnum.unevaluated })
+        },
         createFrom: EvalDatasetDataCreateFromEnum.fileImport
       };
     });
@@ -284,11 +291,11 @@ async function handler(
       });
     });
 
-    if (enableQualityEvaluation && qualityEvaluationModel) {
+    if (enableQualityEvaluation && evaluationModel) {
       const evaluationJobs = insertedRecords.map((record) =>
         addEvalDatasetDataQualityJob({
           dataId: record._id.toString(),
-          evalModel: qualityEvaluationModel
+          evaluationModel: evaluationModel
         })
       );
       await Promise.allSettled(evaluationJobs);
@@ -310,7 +317,7 @@ async function handler(
   } catch (error: any) {
     // Handle parsing errors
     if (error.message && typeof error.message === 'string') {
-      return `CSV parsing error: ${error.message}`;
+      return Promise.reject(`CSV parsing error: ${error.message}`);
     }
     throw error;
   }

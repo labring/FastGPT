@@ -47,6 +47,9 @@ export const loadSystemModels = async (init = false) => {
         if (model.isDefaultDatasetImageModel) {
           global.systemDefaultModel.datasetImageLLM = model;
         }
+        if (model.isDefaultEvaluationModel) {
+          global.systemDefaultModel.evaluation = model;
+        }
       } else if (model.type === ModelTypeEnum.embedding) {
         global.embeddingModelMap.set(model.model, model);
         global.embeddingModelMap.set(model.name, model);
@@ -152,6 +155,11 @@ export const loadSystemModels = async (init = false) => {
     if (!global.systemDefaultModel.datasetImageLLM) {
       global.systemDefaultModel.datasetImageLLM = Array.from(global.llmModelMap.values()).find(
         (item) => item.vision
+      );
+    }
+    if (!global.systemDefaultModel.evaluation) {
+      global.systemDefaultModel.evaluation = Array.from(global.llmModelMap.values()).find(
+        (item) => item.useInEvaluation
       );
     }
     if (!global.systemDefaultModel.embedding) {

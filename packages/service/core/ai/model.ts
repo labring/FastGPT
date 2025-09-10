@@ -48,6 +48,12 @@ export function getRerankModel(model?: string) {
   return global.reRankModelMap.get(model) || getDefaultRerankModel();
 }
 
+export const getDefaultEvaluationModel = () => global?.systemDefaultModel.evaluation;
+export function getEvaluationModel(model?: string) {
+  if (!model) return getDefaultEvaluationModel();
+  return global.llmModelMap.get(model) || getDefaultEvaluationModel();
+}
+
 export const findAIModel = (model: string): SystemModelItemType | undefined => {
   return (
     global.llmModelMap.get(model) ||

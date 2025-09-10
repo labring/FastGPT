@@ -14,21 +14,39 @@ import { createEvalDatasetDataQualityUsage } from '../../../support/wallet/usage
 
 // Queue processor function
 export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQualityData>) => {
-  const { dataId: DataId, evalModel } = job.data;
+  const { dataId, evaluationModel } = job.data;
 
-  addLog.info('Processing eval dataset data quality job', { DataId, evalModel });
+  addLog.info('Processing eval dataset data quality job', { dataId, evaluationModel });
+
+  if (!global.llmModelMap.has(evaluationModel)) {
+    const errorMsg = `Invalid evaluation model: ${evaluationModel}`;
+    addLog.error('Eval dataset data quality job failed - invalid model', {
+      dataId,
+      evaluationModel
+    });
+
+    await MongoEvalDatasetData.findByIdAndUpdate(dataId, {
+      $set: {
+        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.error,
+        'metadata.qualityError': errorMsg,
+        'metadata.qualityFinishTime': new Date()
+      }
+    });
+
+    throw new Error(errorMsg);
+  }
 
   try {
-    await MongoEvalDatasetData.findByIdAndUpdate(DataId, {
+    await MongoEvalDatasetData.findByIdAndUpdate(dataId, {
       $set: {
         'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.evaluating,
         'metadata.qualityStartTime': new Date()
       }
     });
 
-    const datasetData = await MongoEvalDatasetData.findById(DataId);
+    const datasetData = await MongoEvalDatasetData.findById(dataId);
     if (!datasetData) {
-      throw new Error(`Dataset data not found: ${DataId}`);
+      throw new Error(`Dataset data not found: ${dataId}`);
     }
 
     // Check AI points limit
@@ -55,7 +73,7 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
     const evaluatorConfig = {
       metric: metricSchema,
       runtimeConfig: {
-        llm: evalModel
+        llm: evaluationModel
       }
     };
 
@@ -77,13 +95,13 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
         const { totalPoints: calculatedPoints } = await createEvalDatasetDataQualityUsage({
           teamId: datasetData.teamId,
           tmbId: datasetData.tmbId,
-          model: evalModel,
+          model: evaluationModel,
           usages: metricResult.usages
         });
         totalPoints = calculatedPoints;
       }
 
-      await MongoEvalDatasetData.findByIdAndUpdate(DataId, {
+      await MongoEvalDatasetData.findByIdAndUpdate(dataId, {
         $set: {
           'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.completed,
           'metadata.qualityScore': metricResult.data.score,
@@ -91,12 +109,12 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
           'metadata.qualityRunLogs': metricResult.data?.runLogs,
           'metadata.qualityUsages': metricResult?.usages,
           'metadata.qualityFinishTime': new Date(),
-          'metadata.qualityModel': evalModel
+          'metadata.qualityModel': evaluationModel
         }
       });
 
       addLog.info('Eval dataset data quality job completed successfully', {
-        DataId,
+        dataId,
         score: metricResult.data.score,
         totalPoints
       });
@@ -104,9 +122,9 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
       throw new Error(metricResult.error || 'Evaluation failed');
     }
   } catch (error) {
-    addLog.error('Eval dataset data quality job failed', { DataId, error });
+    addLog.error('Eval dataset data quality job failed', { dataId, error });
 
-    await MongoEvalDatasetData.findByIdAndUpdate(DataId, {
+    await MongoEvalDatasetData.findByIdAndUpdate(dataId, {
       $set: {
         'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.error,
         'metadata.qualityError': error instanceof Error ? error.message : 'Unknown error',
