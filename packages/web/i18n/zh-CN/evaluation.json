@@ -73,5 +73,17 @@
   "evaluator_request_timeout": "评估器请求超时",
   "evaluator_service_unavailable": "评估器服务不可用",
   "evaluator_invalid_response": "评估器返回无效响应",
-  "evaluator_network_error": "评估器网络连接错误"
+  "evaluator_network_error": "评估器网络连接错误",
+  
+  "eval_id_required": "评估任务ID不能为空",
+  "summary_metrics_config_error": "指标配置错误",
+  "summary_threshold_value_required": "阈值不能为空",
+  "summary_weight_required": "权重不能为空",
+  "summary_weight_must_be_number": "权重必须为数字",
+  "summary_threshold_must_be_number": "阈值必须为数字",
+  "summary_calculate_type_required": "计算类型不能为空",
+  "summary_calculate_type_invalid": "计算类型无效",
+  "summary_no_valid_metrics_found": "没有找到有效的指标",
+  "summary_stream_response_not_supported": "不支持流式响应",
+  "summary_weight_sum_must_be_100": "所有指标的权重总和必须等于100"
 }
