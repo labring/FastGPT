@@ -16,6 +16,7 @@ export type updateDefaultBody = {
   [ModelTypeEnum.rerank]?: string;
   datasetTextLLM?: string;
   datasetImageLLM?: string;
+  evaluation?: string;
 };
 
 export type updateDefaultResponse = {};
@@ -26,7 +27,8 @@ async function handler(
 ): Promise<updateDefaultResponse> {
   await authSystemAdmin({ req });
 
-  const { llm, embedding, tts, stt, rerank, datasetTextLLM, datasetImageLLM } = req.body;
+  const { llm, embedding, tts, stt, rerank, datasetTextLLM, datasetImageLLM, evaluation } =
+    req.body;
 
   await mongoSessionRun(async (session) => {
     // Remove all default flags
@@ -36,7 +38,8 @@ async function handler(
         $unset: {
           'metadata.isDefault': 1,
           'metadata.isDefaultDatasetTextModel': 1,
-          'metadata.isDefaultDatasetImageModel': 1
+          'metadata.isDefaultDatasetImageModel': 1,
+          'metadata.isDefaultEvaluationModel': 1
         }
       },
       { session }
@@ -60,6 +63,13 @@ async function handler(
       await MongoSystemModel.updateOne(
         { model: datasetImageLLM },
         { $set: { 'metadata.isDefaultDatasetImageModel': true } },
+        { session }
+      );
+    }
+    if (evaluation) {
+      await MongoSystemModel.updateOne(
+        { model: evaluation },
+        { $set: { 'metadata.isDefaultEvaluationModel': true } },
         { session }
       );
     }

@@ -1,7 +1,6 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
-import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 import { EvaluationPermission } from '@fastgpt/global/support/permission/evaluation/controller';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
@@ -144,6 +143,7 @@ async function handler(
           _id: 1,
           name: 1,
           description: 1,
+          evaluationModel: 1,
           tmbId: 1,
           createTime: 1,
           updateTime: 1,
@@ -196,6 +196,7 @@ async function handler(
         _id: String(collection._id),
         name: collection.name,
         description: collection.description || '',
+        evaluationModel: collection.evaluationModel,
         tmbId: collection.tmbId,
         createTime: collection.createTime,
         updateTime: collection.updateTime,

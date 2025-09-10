@@ -639,6 +639,21 @@ describe('EvalDatasetData List API', () => {
 
       await expect(handler_test(req as any)).rejects.toThrow('Collection query failed');
     });
+
+    it('should log database errors with proper context', async () => {
+      const dbError = new Error('Database connection failed');
+      mockMongoEvalDatasetData.aggregate.mockRejectedValue(dbError);
+
+      const req = {
+        body: { collectionId: validCollectionId, pageNum: 1, pageSize: 10 }
+      };
+
+      await expect(handler_test(req as any)).rejects.toBe(dbError);
+
+      // The error should be logged with proper context
+      // Note: We can't easily test the addLog.error call since it's imported directly
+      // and not mocked in this test file
+    });
   });
 
   describe('Collection Isolation', () => {
@@ -788,6 +803,54 @@ describe('EvalDatasetData List API', () => {
       await expect(handler_test(req as any)).rejects.toThrow(
         'input must be a 24 character hex string'
       );
+    });
+
+    it('should handle very large offset values', async () => {
+      const req = {
+        body: { collectionId: validCollectionId, pageNum: 10000, pageSize: 10 }
+      };
+
+      await handler_test(req as any);
+
+      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
+        expect.arrayContaining([{ $skip: 99990 }])
+      );
+    });
+
+    it('should handle maximum page size limit', async () => {
+      const req = {
+        body: { collectionId: validCollectionId, pageNum: 1, pageSize: 10000 }
+      };
+
+      await handler_test(req as any);
+
+      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
+        expect.arrayContaining([{ $limit: 10000 }])
+      );
+    });
+
+    it('should handle empty string collectionId', async () => {
+      const req = {
+        body: { collectionId: '', pageNum: 1, pageSize: 10 }
+      };
+
+      await expect(handler_test(req as any)).rejects.toThrow('Collection ID is required');
+    });
+
+    it('should handle null collectionId', async () => {
+      const req = {
+        body: { collectionId: null, pageNum: 1, pageSize: 10 }
+      };
+
+      await expect(handler_test(req as any)).rejects.toThrow('Collection ID is required');
+    });
+
+    it('should handle undefined collectionId', async () => {
+      const req = {
+        body: { collectionId: undefined, pageNum: 1, pageSize: 10 }
+      };
+
+      await expect(handler_test(req as any)).rejects.toThrow('Collection ID is required');
     });
   });
 });

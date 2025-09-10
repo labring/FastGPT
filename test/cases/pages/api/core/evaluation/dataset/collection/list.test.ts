@@ -339,6 +339,7 @@ describe('EvalDatasetCollection List API', () => {
             _id: 1,
             name: 1,
             description: 1,
+            evaluationModel: 1,
             tmbId: 1,
             createTime: 1,
             updateTime: 1,

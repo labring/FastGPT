@@ -45,6 +45,11 @@ const EvalDatasetCollectionSchema = new Schema({
   metadata: {
     type: Schema.Types.Mixed,
     default: {}
+  },
+  evaluationModel: {
+    type: String,
+    trim: true,
+    maxlength: 100
   }
 });
 

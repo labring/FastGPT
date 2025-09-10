@@ -3,6 +3,7 @@ import { handler_test } from '@/pages/api/core/evaluation/dataset/collection/upd
 import { authEvaluationDatasetWrite } from '@fastgpt/service/core/evaluation/common';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 
 vi.mock('@fastgpt/service/core/evaluation/common');
 vi.mock('@fastgpt/service/common/mongo/sessionRun');
@@ -16,10 +17,14 @@ vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', 
 vi.mock('@fastgpt/service/support/user/audit/util', () => ({
   addAuditLog: vi.fn()
 }));
+vi.mock('@fastgpt/service/core/ai/model', () => ({
+  getDefaultEvaluationModel: vi.fn()
+}));
 
 const mockAuthEvaluationDatasetWrite = vi.mocked(authEvaluationDatasetWrite);
 const mockMongoSessionRun = vi.mocked(mongoSessionRun);
 const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
+const mockAddAuditLog = vi.mocked(addAuditLog);
 
 describe('EvalDatasetCollection Update API', () => {
   const validTeamId = 'team123';
@@ -161,6 +166,61 @@ describe('EvalDatasetCollection Update API', () => {
       await expect(handler_test(req as any)).rejects.toEqual(
         'Description must be less than 100 characters'
       );
+    });
+
+    it('should reject when evaluation model is not a string', async () => {
+      const req = {
+        body: { collectionId: mockCollectionId, name: 'Updated Name', evaluationModel: 123 }
+      };
+
+      await expect(handler_test(req as any)).rejects.toEqual('Evaluation model must be a string');
+    });
+
+    it('should reject when evaluation model exceeds 100 characters', async () => {
+      const longModel = 'a'.repeat(101);
+      const req = {
+        body: { collectionId: mockCollectionId, name: 'Updated Name', evaluationModel: longModel }
+      };
+
+      await expect(handler_test(req as any)).rejects.toEqual(
+        'Evaluation model must be less than 100 characters'
+      );
+    });
+
+    it('should reject invalid evaluation model', async () => {
+      const invalidModel = 'invalid-model';
+
+      // Mock global.llmModelMap.has to return false for invalid model
+      vi.spyOn(global.llmModelMap, 'has').mockReturnValue(false);
+
+      const req = {
+        body: {
+          collectionId: mockCollectionId,
+          name: 'Updated Name',
+          evaluationModel: invalidModel
+        }
+      };
+
+      await expect(handler_test(req as any)).rejects.toEqual(
+        expect.stringContaining('Invalid evaluation model')
+      );
+
+      expect(global.llmModelMap.has).toHaveBeenCalledWith(invalidModel);
+    });
+
+    it('should accept valid evaluation model', async () => {
+      const validModel = 'gpt-4';
+
+      // Mock global.llmModelMap.has to return true for valid model
+      vi.spyOn(global.llmModelMap, 'has').mockReturnValue(true);
+
+      const req = {
+        body: { collectionId: mockCollectionId, name: 'Updated Name', evaluationModel: validModel }
+      };
+
+      const result = await handler_test(req as any);
+      expect(result).toBe('success');
+      expect(global.llmModelMap.has).toHaveBeenCalledWith(validModel);
     });
 
     it('should accept valid parameters', async () => {
@@ -555,6 +615,96 @@ describe('EvalDatasetCollection Update API', () => {
 
       const result = await handler_test(req as any);
       expect(result).toBe('success');
+    });
+
+    it('should handle exactly 100 character evaluation model', async () => {
+      const exactModel = 'a'.repeat(100);
+
+      // Mock global.llmModelMap.has to return true for valid model
+      vi.spyOn(global.llmModelMap, 'has').mockReturnValue(true);
+
+      const req = {
+        body: {
+          collectionId: mockCollectionId,
+          name: 'Updated Name',
+          evaluationModel: exactModel
+        }
+      };
+
+      const result = await handler_test(req as any);
+      expect(result).toBe('success');
+      expect(global.llmModelMap.has).toHaveBeenCalledWith(exactModel);
+    });
+
+    it('should handle empty evaluation model string', async () => {
+      const req = {
+        body: {
+          collectionId: mockCollectionId,
+          name: 'Updated Name',
+          evaluationModel: ''
+        }
+      };
+
+      const result = await handler_test(req as any);
+      expect(result).toBe('success');
+    });
+  });
+
+  describe('Audit Logging', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      mockAuthEvaluationDatasetWrite.mockResolvedValue({
+        teamId: validTeamId,
+        tmbId: validTmbId
+      });
+      mockMongoEvalDatasetCollection.findOne
+        .mockResolvedValueOnce(existingCollection as any)
+        .mockResolvedValueOnce(null);
+      mockMongoEvalDatasetCollection.updateOne.mockResolvedValue({ modifiedCount: 1 } as any);
+    });
+
+    it('should create audit log with correct parameters', async () => {
+      const datasetName = 'Updated Dataset';
+      const req = {
+        body: {
+          collectionId: mockCollectionId,
+          name: datasetName,
+          description: 'Updated description'
+        }
+      };
+
+      const result = await handler_test(req as any);
+      expect(result).toBe('success');
+
+      // Check that audit log was called with correct parameters
+      expect(mockAddAuditLog).toHaveBeenCalledWith({
+        tmbId: validTmbId,
+        teamId: validTeamId,
+        event: expect.any(String), // AuditEventEnum.UPDATE_EVALUATION_DATASET_COLLECTION
+        params: {
+          collectionName: datasetName.trim()
+        }
+      });
+    });
+
+    it('should NOT create audit log when update fails', async () => {
+      const datasetName = 'Updated Dataset';
+      const dbError = new Error('Database error');
+
+      mockMongoSessionRun.mockRejectedValue(dbError);
+
+      const req = {
+        body: {
+          collectionId: mockCollectionId,
+          name: datasetName,
+          description: 'Updated description'
+        }
+      };
+
+      await expect(handler_test(req as any)).rejects.toEqual('Failed to update dataset collection');
+
+      // Audit log should NOT be called if update fails
+      expect(mockAddAuditLog).not.toHaveBeenCalled();
     });
   });
 });

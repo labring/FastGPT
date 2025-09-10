@@ -13,7 +13,7 @@ export type EvalDatasetCollectionUpdateResponse = string;
 async function handler(
   req: ApiRequestProps<EvalDatasetCollectionUpdateBody, EvalDatasetCollectionUpdateQuery>
 ): Promise<EvalDatasetCollectionUpdateResponse> {
-  const { collectionId, name, description = '' } = req.body;
+  const { collectionId, name, description = '', evaluationModel } = req.body;
 
   const { teamId, tmbId } = await authEvaluationDatasetWrite(collectionId, {
     req,
@@ -39,6 +39,18 @@ async function handler(
 
   if (description && description.length > 100) {
     return Promise.reject('Description must be less than 100 characters');
+  }
+
+  if (evaluationModel && typeof evaluationModel !== 'string') {
+    return Promise.reject('Evaluation model must be a string');
+  }
+
+  if (evaluationModel && evaluationModel.length > 100) {
+    return Promise.reject('Evaluation model must be less than 100 characters');
+  }
+
+  if (evaluationModel && !global.llmModelMap.has(evaluationModel)) {
+    return Promise.reject(`Invalid evaluation model: ${evaluationModel}`);
   }
 
   const existingCollection = await MongoEvalDatasetCollection.findOne({
@@ -68,7 +80,8 @@ async function handler(
           $set: {
             name: name.trim(),
             description: description.trim(),
-            updateTime: new Date()
+            updateTime: new Date(),
+            ...(evaluationModel !== undefined && { evaluationModel: evaluationModel.trim() })
           }
         },
         { session }

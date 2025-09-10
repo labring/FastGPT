@@ -18,6 +18,7 @@ export type EvalDatasetCollectionSchemaType = {
   createTime: Date;
   updateTime: Date;
   metadata: Record<string, any>;
+  evaluationModel?: string;
 };
 
 export type EvalDatasetDataSchemaType = {

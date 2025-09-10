@@ -10,6 +10,7 @@ import {
 } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import { EvalDatasetDataQualityStatusEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 vi.mock('@fastgpt/service/core/evaluation/common', () => ({
   authEvaluationDatasetDataUpdateById: vi.fn()
@@ -53,7 +54,15 @@ describe('QualityAssessment API', () => {
   const validTmbId = 'tmb123';
   const validDataId = '65f5b5b5b5b5b5b5b5b5b5b5';
   const validCollectionId = '65f5b5b5b5b5b5b5b5b5b5b6';
-  const validEvalModel = 'gpt-4';
+  const validEvaluationModel = 'gpt-4';
+
+  // Mock global.llmModelMap
+  beforeEach(() => {
+    global.llmModelMap = new Map([
+      ['gpt-4', { model: 'gpt-4' }],
+      ['gpt-3.5-turbo', { model: 'gpt-3.5-turbo' }]
+    ]) as any;
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -77,7 +86,8 @@ describe('QualityAssessment API', () => {
     const mockCollection = {
       _id: validCollectionId,
       name: 'Test Collection',
-      teamId: validTeamId
+      teamId: validTeamId,
+      evaluationModel: validEvaluationModel
     };
     mockMongoEvalDatasetCollection.findOne.mockResolvedValue(mockCollection as any);
 
@@ -91,56 +101,76 @@ describe('QualityAssessment API', () => {
     it('should return error when dataId is missing', async () => {
       const req = {
         body: {
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('dataId is required and must be a string');
+      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(
+        'dataId is required and must be a string'
+      );
+
+      await expect(handler_test(req as any)).rejects.toBe(
+        'dataId is required and must be a string'
+      );
     });
 
     it('should return error when dataId is not a string', async () => {
       const req = {
         body: {
           dataId: 123,
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('dataId is required and must be a string');
+      await expect(handler_test(req as any)).rejects.toBe(
+        'dataId is required and must be a string'
+      );
     });
 
-    it('should return error when evalModel is missing', async () => {
+    it('should return error when evaluationModel is invalid type', async () => {
+      const req = {
+        body: {
+          dataId: validDataId,
+          evaluationModel: 123
+        }
+      };
+
+      await expect(handler_test(req as any)).rejects.toBe(
+        'evaluationModel must be a string if provided'
+      );
+    });
+
+    it('should return error when no evaluation model available', async () => {
+      const mockCollectionNoModel = {
+        _id: validCollectionId,
+        name: 'Test Collection',
+        teamId: validTeamId,
+        evaluationModel: undefined
+      };
+      mockMongoEvalDatasetCollection.findOne.mockResolvedValue(mockCollectionNoModel as any);
+
       const req = {
         body: {
           dataId: validDataId
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('evalModel is required and must be a string');
+      await expect(handler_test(req as any)).rejects.toBe('No evaluation model available');
     });
 
-    it('should return error when evalModel is not a string', async () => {
+    it('should return error when invalid evaluation model', async () => {
+      global.llmModelMap.clear();
+
       const req = {
         body: {
           dataId: validDataId,
-          evalModel: 123
+          evaluationModel: 'invalid-model'
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('evalModel is required and must be a string');
-    });
-
-    it('should return error when both dataId and evalModel are missing', async () => {
-      const req = {
-        body: {}
-      };
-
-      const result = await handler_test(req as any);
-      expect(result).toBe('dataId is required and must be a string');
+      await expect(handler_test(req as any)).rejects.toBe(
+        'Invalid evaluation model: invalid-model'
+      );
     });
   });
 
@@ -149,7 +179,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
@@ -169,7 +199,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
@@ -179,23 +209,25 @@ describe('QualityAssessment API', () => {
 
   describe('Data Validation', () => {
     it('should return error when dataset data not found', async () => {
-      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue('evaluationDatasetDataNotFound');
+      mockMongoEvalDatasetData.findById.mockResolvedValue(null);
 
       const req = {
         body: {
           dataId: validDataId,
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetDataNotFound');
+      await expect(handler_test(req as any)).rejects.toEqual(
+        EvaluationErrEnum.evalDatasetDataNotFound
+      );
     });
 
     it('should verify collection exists and belongs to team', async () => {
       const req = {
         body: {
           dataId: validDataId,
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
@@ -208,33 +240,33 @@ describe('QualityAssessment API', () => {
     });
 
     it('should return error when collection not found', async () => {
-      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(
-        'evaluationDatasetCollectionNotFound'
-      );
+      mockMongoEvalDatasetCollection.findOne.mockResolvedValue(null);
 
       const req = {
         body: {
           dataId: validDataId,
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetCollectionNotFound');
+      await expect(handler_test(req as any)).rejects.toEqual(
+        EvaluationErrEnum.evalDatasetCollectionNotFound
+      );
     });
 
     it('should return error when collection belongs to different team', async () => {
-      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(
-        'evaluationDatasetCollectionNotFound'
-      );
+      mockMongoEvalDatasetCollection.findOne.mockResolvedValue(null);
 
       const req = {
         body: {
           dataId: validDataId,
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetCollectionNotFound');
+      await expect(handler_test(req as any)).rejects.toEqual(
+        EvaluationErrEnum.evalDatasetCollectionNotFound
+      );
     });
   });
 
@@ -243,7 +275,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
@@ -258,7 +290,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
@@ -276,7 +308,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
@@ -289,7 +321,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
@@ -297,7 +329,7 @@ describe('QualityAssessment API', () => {
 
       expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledWith({
         dataId: validDataId,
-        evalModel: validEvalModel
+        evaluationModel: validEvaluationModel
       });
     });
 
@@ -305,7 +337,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
@@ -314,7 +346,7 @@ describe('QualityAssessment API', () => {
       expect(mockMongoEvalDatasetData.findByIdAndUpdate).toHaveBeenCalledWith(validDataId, {
         $set: {
           'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.queuing,
-          'metadata.qualityModel': validEvalModel,
+          'metadata.qualityModel': validEvaluationModel,
           'metadata.qualityQueueTime': expect.any(Date)
         }
       });
@@ -324,7 +356,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
@@ -342,7 +374,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
@@ -357,7 +389,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
@@ -372,7 +404,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
@@ -386,7 +418,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
@@ -401,7 +433,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
@@ -415,85 +447,52 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: '',
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('dataId is required and must be a string');
+      await expect(handler_test(req as any)).rejects.toBe(
+        'dataId is required and must be a string'
+      );
     });
 
-    it('should handle empty string evalModel', async () => {
+    it('should handle empty string evaluationModel', async () => {
+      const mockCollectionEmptyModel = {
+        _id: validCollectionId,
+        name: 'Test Collection',
+        teamId: validTeamId,
+        evaluationModel: ''
+      };
+      mockMongoEvalDatasetCollection.findOne.mockResolvedValue(mockCollectionEmptyModel as any);
+
       const req = {
         body: {
           dataId: validDataId,
-          evalModel: ''
+          evaluationModel: ''
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('evalModel is required and must be a string');
+      await expect(handler_test(req as any)).rejects.toBe('No evaluation model available');
     });
 
     it('should handle null dataId', async () => {
       const req = {
         body: {
           dataId: null,
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('dataId is required and must be a string');
+      await expect(handler_test(req as any)).rejects.toBe(
+        'dataId is required and must be a string'
+      );
     });
 
-    it('should handle undefined evalModel', async () => {
+    it('should handle undefined evaluationModel with collection fallback', async () => {
       const req = {
         body: {
           dataId: validDataId,
-          evalModel: undefined
-        }
-      };
-
-      const result = await handler_test(req as any);
-      expect(result).toBe('evalModel is required and must be a string');
-    });
-
-    it('should handle very long dataId', async () => {
-      const longDataId = 'a'.repeat(1000);
-
-      const req = {
-        body: {
-          dataId: longDataId,
-          evalModel: validEvalModel
-        }
-      };
-
-      const result = await handler_test(req as any);
-      expect(result).toBe('success');
-    });
-
-    it('should handle very long evalModel', async () => {
-      const longEvalModel = 'gpt-4-' + 'a'.repeat(1000);
-
-      const req = {
-        body: {
-          dataId: validDataId,
-          evalModel: longEvalModel
-        }
-      };
-
-      const result = await handler_test(req as any);
-      expect(result).toBe('success');
-    });
-
-    it('should handle special characters in evalModel', async () => {
-      const specialEvalModel = 'gpt-4-特殊字符-🚀';
-
-      const req = {
-        body: {
-          dataId: validDataId,
-          evalModel: specialEvalModel
+          evaluationModel: undefined
         }
       };
 
@@ -502,7 +501,56 @@ describe('QualityAssessment API', () => {
 
       expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledWith({
         dataId: validDataId,
-        evalModel: specialEvalModel
+        evaluationModel: validEvaluationModel // Should use collection's model
+      });
+    });
+
+    it('should handle very long dataId', async () => {
+      const longDataId = 'a'.repeat(1000);
+
+      const req = {
+        body: {
+          dataId: longDataId,
+          evaluationModel: validEvaluationModel
+        }
+      };
+
+      const result = await handler_test(req as any);
+      expect(result).toBe('success');
+    });
+
+    it('should handle very long evaluationModel', async () => {
+      const longEvaluationModel = 'gpt-4-' + 'a'.repeat(1000);
+      global.llmModelMap.set(longEvaluationModel, { model: longEvaluationModel } as any);
+
+      const req = {
+        body: {
+          dataId: validDataId,
+          evaluationModel: longEvaluationModel
+        }
+      };
+
+      const result = await handler_test(req as any);
+      expect(result).toBe('success');
+    });
+
+    it('should handle special characters in evaluationModel', async () => {
+      const specialEvaluationModel = 'gpt-4-特殊字符-🚀';
+      global.llmModelMap.set(specialEvaluationModel, { model: specialEvaluationModel } as any);
+
+      const req = {
+        body: {
+          dataId: validDataId,
+          evaluationModel: specialEvaluationModel
+        }
+      };
+
+      const result = await handler_test(req as any);
+      expect(result).toBe('success');
+
+      expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledWith({
+        dataId: validDataId,
+        evaluationModel: specialEvaluationModel
       });
     });
   });
@@ -519,6 +567,25 @@ describe('QualityAssessment API', () => {
         collectionId: validCollectionId
       });
 
+      // Mock dataset data document
+      const mockDatasetData = {
+        _id: validDataId,
+        datasetId: validCollectionId,
+        userInput: 'test input',
+        expectedOutput: 'test output'
+      };
+      mockMongoEvalDatasetData.findById.mockResolvedValue(mockDatasetData as any);
+
+      // Mock collection document
+      const mockCollection = {
+        _id: validCollectionId,
+        name: 'Test Collection',
+        teamId: validTeamId,
+        evaluationModel: validEvaluationModel
+      };
+      mockMongoEvalDatasetCollection.findOne.mockResolvedValue(mockCollection as any);
+
+      mockCheckTeamAIPoints.mockResolvedValue(undefined);
       mockCheckEvalDatasetDataQualityJobActive.mockResolvedValue(true);
       mockRemoveEvalDatasetDataQualityJobsRobust.mockResolvedValue(undefined);
       mockAddEvalDatasetDataQualityJob.mockResolvedValue({} as any);
@@ -527,7 +594,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
@@ -545,12 +612,12 @@ describe('QualityAssessment API', () => {
       });
       expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledWith({
         dataId: validDataId,
-        evalModel: validEvalModel
+        evaluationModel: validEvaluationModel
       });
       expect(mockMongoEvalDatasetData.findByIdAndUpdate).toHaveBeenCalledWith(validDataId, {
         $set: {
           'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.queuing,
-          'metadata.qualityModel': validEvalModel,
+          'metadata.qualityModel': validEvaluationModel,
           'metadata.qualityQueueTime': expect.any(Date)
         }
       });
@@ -563,7 +630,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evalModel: validEvalModel
+          evaluationModel: validEvaluationModel
         }
       };
 
@@ -578,12 +645,12 @@ describe('QualityAssessment API', () => {
       expect(mockRemoveEvalDatasetDataQualityJobsRobust).not.toHaveBeenCalled();
       expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledWith({
         dataId: validDataId,
-        evalModel: validEvalModel
+        evaluationModel: validEvaluationModel
       });
       expect(mockMongoEvalDatasetData.findByIdAndUpdate).toHaveBeenCalledWith(validDataId, {
         $set: {
           'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.queuing,
-          'metadata.qualityModel': validEvalModel,
+          'metadata.qualityModel': validEvaluationModel,
           'metadata.qualityQueueTime': expect.any(Date)
         }
       });

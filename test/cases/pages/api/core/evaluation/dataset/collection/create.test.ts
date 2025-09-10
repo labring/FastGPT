@@ -21,17 +21,22 @@ vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
   checkTeamEvalDatasetLimit: vi.fn(),
   checkTeamAIPoints: vi.fn()
 }));
+vi.mock('@fastgpt/service/core/ai/model', () => ({
+  getDefaultEvaluationModel: vi.fn()
+}));
 
 import {
   checkTeamEvalDatasetLimit,
   checkTeamAIPoints
 } from '@fastgpt/service/support/permission/teamLimit';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 
 const mockAuthEvaluationDatasetCreate = vi.mocked(authEvaluationDatasetCreate);
 const mockMongoSessionRun = vi.mocked(mongoSessionRun);
 const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
 const mockCheckTeamEvalDatasetLimit = vi.mocked(checkTeamEvalDatasetLimit);
 const mockCheckTeamAIPoints = vi.mocked(checkTeamAIPoints);
+const mockAddAuditLog = vi.mocked(addAuditLog);
 
 describe('EvalDatasetCollection Create API', () => {
   const validTeamId = 'team123';
@@ -347,6 +352,216 @@ describe('EvalDatasetCollection Create API', () => {
 
       const result = await handler_test(req as any);
       expect(result).toBe(mockDatasetId);
+    });
+  });
+
+  describe('Evaluation Model Validation', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      mockAuthEvaluationDatasetCreate.mockResolvedValue({
+        teamId: validTeamId,
+        tmbId: validTmbId
+      });
+      mockMongoEvalDatasetCollection.findOne.mockResolvedValue(null);
+      mockMongoEvalDatasetCollection.create.mockResolvedValue([{ _id: mockDatasetId }] as any);
+      mockCheckTeamEvalDatasetLimit.mockResolvedValue(undefined);
+      mockCheckTeamAIPoints.mockResolvedValue(undefined);
+    });
+
+    it('should reject invalid evaluation model', async () => {
+      const invalidModel = 'invalid-model';
+
+      // Mock global.llmModelMap.has to return false for invalid model
+      vi.spyOn(global.llmModelMap, 'has').mockReturnValue(false);
+
+      const req = {
+        body: { name: 'Test Dataset', evaluationModel: invalidModel }
+      };
+
+      await expect(handler_test(req as any)).rejects.toEqual(
+        expect.stringContaining('Invalid evaluation model')
+      );
+
+      expect(global.llmModelMap.has).toHaveBeenCalledWith(invalidModel);
+    });
+
+    it('should accept valid evaluation model', async () => {
+      const validModel = 'gpt-4';
+
+      // Mock global.llmModelMap.has to return true for valid model
+      vi.spyOn(global.llmModelMap, 'has').mockReturnValue(true);
+
+      const req = {
+        body: { name: 'Test Dataset', evaluationModel: validModel }
+      };
+
+      const result = await handler_test(req as any);
+      expect(result).toBe(mockDatasetId);
+      expect(global.llmModelMap.has).toHaveBeenCalledWith(validModel);
+    });
+
+    it('should use default evaluation model when none provided', async () => {
+      const defaultModel = 'gpt-3.5-turbo';
+      const { getDefaultEvaluationModel } = await import('@fastgpt/service/core/ai/model');
+      vi.mocked(getDefaultEvaluationModel).mockReturnValue({ model: defaultModel } as any);
+
+      const req = {
+        body: { name: 'Test Dataset' }
+      };
+
+      const result = await handler_test(req as any);
+      expect(result).toBe(mockDatasetId);
+      expect(getDefaultEvaluationModel).toHaveBeenCalled();
+    });
+  });
+
+  describe('Team Limit Checks', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      mockAuthEvaluationDatasetCreate.mockResolvedValue({
+        teamId: validTeamId,
+        tmbId: validTmbId
+      });
+      mockMongoEvalDatasetCollection.findOne.mockResolvedValue(null);
+      mockMongoEvalDatasetCollection.create.mockResolvedValue([{ _id: mockDatasetId }] as any);
+    });
+
+    it('should propagate team eval dataset limit errors', async () => {
+      const limitError = new Error('Team evaluation dataset limit exceeded');
+      mockCheckTeamEvalDatasetLimit.mockRejectedValue(limitError);
+
+      const req = {
+        body: { name: 'Test Dataset' }
+      };
+
+      await expect(handler_test(req as any)).rejects.toThrow(
+        'Team evaluation dataset limit exceeded'
+      );
+      expect(mockCheckTeamEvalDatasetLimit).toHaveBeenCalledWith(validTeamId);
+    });
+
+    it('should propagate team AI points errors', async () => {
+      const pointsError = new Error('Insufficient AI points');
+      mockCheckTeamAIPoints.mockRejectedValue(pointsError);
+
+      const req = {
+        body: { name: 'Test Dataset' }
+      };
+
+      await expect(handler_test(req as any)).rejects.toThrow('Insufficient AI points');
+      expect(mockCheckTeamAIPoints).toHaveBeenCalledWith(validTeamId);
+    });
+
+    it('should call both team limit checks successfully', async () => {
+      mockCheckTeamEvalDatasetLimit.mockResolvedValue(undefined);
+      mockCheckTeamAIPoints.mockResolvedValue(undefined);
+
+      const req = {
+        body: { name: 'Test Dataset' }
+      };
+
+      const result = await handler_test(req as any);
+      expect(result).toBe(mockDatasetId);
+      expect(mockCheckTeamEvalDatasetLimit).toHaveBeenCalledWith(validTeamId);
+      expect(mockCheckTeamAIPoints).toHaveBeenCalledWith(validTeamId);
+    });
+  });
+
+  describe('Audit Logging', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      mockAuthEvaluationDatasetCreate.mockResolvedValue({
+        teamId: validTeamId,
+        tmbId: validTmbId
+      });
+      mockMongoEvalDatasetCollection.findOne.mockResolvedValue(null);
+      mockMongoEvalDatasetCollection.create.mockResolvedValue([{ _id: mockDatasetId }] as any);
+      mockCheckTeamEvalDatasetLimit.mockResolvedValue(undefined);
+      mockCheckTeamAIPoints.mockResolvedValue(undefined);
+    });
+
+    it('should create audit log with correct parameters', async () => {
+      const datasetName = 'Test Dataset';
+      const req = {
+        body: { name: datasetName }
+      };
+
+      const result = await handler_test(req as any);
+      expect(result).toBe(mockDatasetId);
+
+      // Check that audit log was called with correct parameters
+      expect(mockAddAuditLog).toHaveBeenCalledWith({
+        tmbId: validTmbId,
+        teamId: validTeamId,
+        event: expect.any(String), // AuditEventEnum.CREATE_EVALUATION_DATASET_COLLECTION
+        params: {
+          collectionName: datasetName.trim()
+        }
+      });
+    });
+
+    it('should NOT create audit log when dataset creation fails', async () => {
+      const datasetName = 'Test Dataset';
+      const dbError = new Error('Database error');
+
+      mockMongoSessionRun.mockRejectedValue(dbError);
+
+      const req = {
+        body: { name: datasetName }
+      };
+
+      await expect(handler_test(req as any)).rejects.toThrow('Database error');
+
+      // Audit log should NOT be called if creation fails
+      expect(mockAddAuditLog).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Edge Cases', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      mockAuthEvaluationDatasetCreate.mockResolvedValue({
+        teamId: validTeamId,
+        tmbId: validTmbId
+      });
+      mockMongoEvalDatasetCollection.findOne.mockResolvedValue(null);
+      mockMongoEvalDatasetCollection.create.mockResolvedValue([{ _id: mockDatasetId }] as any);
+      mockCheckTeamEvalDatasetLimit.mockResolvedValue(undefined);
+      mockCheckTeamAIPoints.mockResolvedValue(undefined);
+    });
+
+    it('should reject when evaluation model is not a string', async () => {
+      const req = {
+        body: { name: 'Test Dataset', evaluationModel: 123 }
+      };
+
+      await expect(handler_test(req as any)).rejects.toEqual('Evaluation model must be a string');
+    });
+
+    it('should reject when evaluation model exceeds 100 characters', async () => {
+      const longModel = 'a'.repeat(101);
+      const req = {
+        body: { name: 'Test Dataset', evaluationModel: longModel }
+      };
+
+      await expect(handler_test(req as any)).rejects.toEqual(
+        'Evaluation model must be less than 100 characters'
+      );
+    });
+
+    it('should handle exactly 100 character evaluation model', async () => {
+      const exactLengthModel = 'a'.repeat(100);
+
+      // Mock global.llmModelMap.has to return true for valid model
+      vi.spyOn(global.llmModelMap, 'has').mockReturnValue(true);
+
+      const req = {
+        body: { name: 'Test Dataset', evaluationModel: exactLengthModel }
+      };
+
+      const result = await handler_test(req as any);
+      expect(result).toBe(mockDatasetId);
+      expect(global.llmModelMap.has).toHaveBeenCalledWith(exactLengthModel);
     });
   });
 });
