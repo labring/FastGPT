@@ -61,7 +61,7 @@ export const dispatchPlanAgent = async ({
       stream,
 
       tools: filterPlanTools,
-      tool_choice: 'auto',
+      tool_choice: 'none',
       toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
       parallel_tool_calls: true
     },
