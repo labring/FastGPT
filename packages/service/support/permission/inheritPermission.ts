@@ -117,7 +117,6 @@ export async function syncChildrenPermission({
   while (queue.length) {
     const parentId = String(queue.shift());
     const _children = parentChildrenMap.get(parentId) || [];
-    // console.log('children', _children);
     if (_children.length === 0) continue;
     for (const child of _children) {
       // 1. get parent's permission and what permission I have.
@@ -167,7 +166,6 @@ export async function syncChildrenPermission({
         const parentClb = parentClbs.find(
           (clb) => getCollaboratorId(clb) === getCollaboratorId(myClb)
         );
-        // console.log(myClb, parentClb);
         // the new collaborators doesnt have it, and the permission is same.
         // remove it
         if (
@@ -190,7 +188,6 @@ export async function syncChildrenPermission({
       queue.push(child._id);
     }
   }
-  console.log('ops', JSON.stringify(ops, null, 2));
   await MongoResourcePermission.bulkWrite(ops, { session });
   return;
 }

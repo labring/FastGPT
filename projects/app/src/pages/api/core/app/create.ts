@@ -7,6 +7,7 @@ import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import type { AppSchema } from '@fastgpt/global/core/app/type';
 import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
 import {
+  OwnerRoleVal,
   PerResourceTypeEnum,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
@@ -25,6 +26,8 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 
 export type CreateAppBody = {
   parentId?: ParentIdType;
@@ -156,6 +159,14 @@ export const onCreateApp = async ({
         { session, ordered: true }
       );
     }
+
+    await MongoResourcePermission.insertOne({
+      teamId,
+      tmbId,
+      resourceId: app._id,
+      permission: OwnerRoleVal,
+      resourceType: PerResourceTypeEnum.app
+    });
 
     (async () => {
       addAuditLog({

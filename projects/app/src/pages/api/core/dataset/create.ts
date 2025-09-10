@@ -3,6 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
+  OwnerRoleVal,
   PerResourceTypeEnum,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
@@ -25,6 +26,7 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 
 export type DatasetCreateQuery = {};
 export type DatasetCreateBody = CreateDatasetParams;
@@ -93,6 +95,14 @@ async function handler(
       ],
       { session, ordered: true }
     );
+
+    await MongoResourcePermission.insertOne({
+      teamId,
+      tmbId,
+      resourceId: dataset._id,
+      permission: OwnerRoleVal,
+      resourceType: PerResourceTypeEnum.dataset
+    });
 
     await refreshSourceAvatar(avatar, undefined, session);
 
