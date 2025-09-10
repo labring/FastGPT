@@ -14,10 +14,11 @@ import {
   removeEvaluationItemJobs,
   removeEvaluationItemJobsByItemId
 } from './mq';
-import { createTrainingUsage } from '../../../support/wallet/usage/controller';
+import { createEvaluationUsage } from '../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { addLog } from '../../../common/system/log';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
+import { buildEvalDataConfig } from '../summary/util/weightCalculator';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 export class EvaluationTaskService {
@@ -30,15 +31,18 @@ export class EvaluationTaskService {
     const { teamId, tmbId, ...evaluationParams } = params;
 
     // Create usage record
-    const { billId } = await createTrainingUsage({
+    const { billId } = await createEvaluationUsage({
       teamId,
       tmbId,
-      appName: evaluationParams.name,
-      billSource: UsageSourceEnum.evaluation
+      appName: evaluationParams.name
     });
+
+    // Apply default configuration to evaluators (weights, thresholds, etc.)
+    const evaluatorsWithDefaultConfig = buildEvalDataConfig(evaluationParams.evaluators);
 
     const evaluation = await MongoEvaluation.create({
       ...evaluationParams,
+      evaluators: evaluatorsWithDefaultConfig,
       teamId,
       tmbId,
       usageId: billId,
