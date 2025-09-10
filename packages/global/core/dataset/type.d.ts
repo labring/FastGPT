@@ -223,6 +223,7 @@ export type DatasetListItemType = {
   inheritPermission: boolean;
   private?: boolean;
   sourceMember?: SourceMemberType;
+  dataCount?: number;
 };
 
 export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel' | 'vlmModel'> & {

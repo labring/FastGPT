@@ -236,8 +236,8 @@
   "question_input_label": "問題",
   "max_chars_3000_placeholder": "最多 3000 字",
   "reference_answer_input_label": "參考答案",
-  "auto_quality_eval_after_add": "新增後自動進行數據質量評測",
-  "auto_quality_eval_add_tip": "開啟後將自動對新增的數據進行質量評測",
+  "auto_quality_eval_after_add": "數據質量評測",
+  "auto_quality_eval_add_tip": "開啟後，將自動對數據的問答相關度、合理性等進行評測，給出數據質量評價及原因，可根據評價對數據進行優化。",
   "quality_eval_model_label": "質量評測模型",
   "select_quality_eval_model_placeholder": "請選擇質量評測模型",
   "confirm": "確認",
@@ -276,5 +276,10 @@
   "method_median": "中位數",
   "prompt_cannot_be_empty": "提示詞不允許為空",
   "please_select_model": "請選擇模型",
-  "run_failed_please_retry": "運行失敗，請重試"
+  "run_failed_please_retry": "運行失敗，請重試",
+  "intelligent_generate_data": "智能生成數據",
+  "evaluation_completed": "評估完成",
+  "generation_error": "生成異常",
+  "data_generating": "數據生成中",
+  "delete_dataset_error": "刪除數據集異常"
 }

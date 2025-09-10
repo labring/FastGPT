@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -21,7 +21,12 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import dynamic from 'next/dynamic';
-import MyInput from '@/components/MyInput';
+import type { smartGenerateEvalDatasetBody } from '@fastgpt/global/core/evaluation/dataset/api';
+import {
+  postSmartGenerateEvaluationDataset,
+  postCreateEvaluationDataset
+} from '@/web/core/evaluation/dataset';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 
@@ -34,6 +39,7 @@ export interface IntelligentGenerationForm {
   dataAmount: number;
   selectedDatasets: SelectedDatasetType;
   keywords?: string; // 关键词，仅在数据场景下使用
+  collectionId?: string;
 }
 
 /**
@@ -46,6 +52,17 @@ interface IntelligentGenerationProps {
   defaultValues?: Partial<IntelligentGenerationForm>;
   scene?: 'dataset' | 'data'; // 场景：数据集或数据
 }
+
+const formatSubmitData = (
+  params: IntelligentGenerationForm & { collectionId: string }
+): smartGenerateEvalDatasetBody => {
+  return {
+    count: params.dataAmount,
+    kbDatasetIds: params.selectedDatasets.map((v) => v.datasetId),
+    intelligentGenerationModel: params.generationModel,
+    collectionId: params.collectionId
+  };
+};
 
 /**
  * 智能生成数据集弹窗组件
@@ -60,6 +77,10 @@ const IntelligentGeneration = ({
 }: IntelligentGenerationProps) => {
   const { t } = useTranslation();
   const { llmModelList } = useSystemStore();
+  const [collectionId, setCollectionId] = useState<string>(defaultValues?.collectionId || '');
+  useEffect(() => {
+    defaultValues?.collectionId && setCollectionId(defaultValues?.collectionId);
+  }, [defaultValues?.collectionId]);
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -86,13 +107,40 @@ const IntelligentGeneration = ({
   const generationModelValue = watch('generationModel');
   const dataAmountValue = watch('dataAmount');
   const selectedDatasets = watch('selectedDatasets');
-  const keywordsValue = watch('keywords');
 
-  // TODO: 计算所选知识库的总分块数量，用于设置数据量的最大值
+  const { runAsync: onclickCreate, loading: creating } = useRequest2(
+    async (data: IntelligentGenerationForm) => {
+      let targetCollectionId = collectionId;
+
+      // 只有当collectionId不存在时，才需要创建新的数据集
+      if (!targetCollectionId) {
+        targetCollectionId = await postCreateEvaluationDataset({ name: data.name });
+        setCollectionId(targetCollectionId);
+      }
+
+      const params = formatSubmitData({
+        ...data,
+        collectionId: targetCollectionId
+      });
+
+      return postSmartGenerateEvaluationDataset(params);
+    },
+    {
+      successToast: t('common:create_success')
+    }
+  );
+
   const maxDataAmount = useMemo(() => {
-    // 临时设置为1000，待实现知识库分块数量计算
-    return 1000;
+    return selectedDatasets.length > 0
+      ? selectedDatasets.reduce((pre, cur) => pre + (cur.dataCount || 0), 0)
+      : 1;
   }, [selectedDatasets]);
+
+  useEffect(() => {
+    if (maxDataAmount < 50) {
+      setValue('dataAmount', maxDataAmount);
+    }
+  }, [maxDataAmount, setValue]);
 
   // 检查表单是否有效
   const isFormValid = useMemo(() => {
@@ -125,12 +173,10 @@ const IntelligentGeneration = ({
   );
 
   // 处理表单提交
-  const handleFormSubmit = useCallback(
-    (data: IntelligentGenerationForm) => {
-      onConfirm(data);
-    },
-    [onConfirm]
-  );
+  const handleFormSubmit = async (data: IntelligentGenerationForm) => {
+    await onclickCreate(data);
+    onConfirm(data);
+  };
 
   return (
     <MyModal
@@ -140,7 +186,7 @@ const IntelligentGeneration = ({
       title={
         scene === 'dataset'
           ? t('dashboard_evaluation:intelligent_generation_dataset')
-          : t('智能生成数据')
+          : t('dashboard_evaluation:intelligent_generate_data')
       }
       w={'100%'}
       maxW={['90vw', '800px']}
@@ -246,21 +292,6 @@ const IntelligentGeneration = ({
             />
           </Box>
 
-          {/* 关键词 - 仅在数据场景下显示 */}
-          {scene === 'data' && (
-            <Box>
-              <FormLabel mb={1}>{t('关键词')}</FormLabel>
-              <MyInput
-                bgColor="myGray.50"
-                {...register('keywords')}
-                placeholder={t(
-                  '请输入一些关键词辅助生成更匹配期望的数据，用逗号隔开。如：金融、客服'
-                )}
-                resize="none"
-              />
-            </Box>
-          )}
-
           {/* 生成模型 */}
           <Box>
             <FormLabel required mb={1}>
@@ -286,6 +317,7 @@ const IntelligentGeneration = ({
         </Button>
         <Button
           variant="primary"
+          isLoading={creating}
           isDisabled={!isFormValid}
           onClick={handleSubmit(handleFormSubmit)}
         >
@@ -305,6 +337,7 @@ const IntelligentGeneration = ({
           }))}
           onChange={handleDatasetSelect}
           onClose={onCloseDatasetSelect}
+          scene="smartGenerate"
         />
       )}
     </MyModal>

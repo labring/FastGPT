@@ -112,6 +112,7 @@ export type SelectedDatasetType = {
   avatar: string;
   name: string;
   vectorModel: EmbeddingModelItemType;
+  dataCount?: number
 }[];
 
 /* http node */

@@ -17,7 +17,7 @@ export const uploadFile2DB = async ({
 }: {
   file: File;
   bucketName: `${BucketNameEnum}`;
-  data: UploadChatFileProps | UploadDatasetFileProps;
+  data?: UploadChatFileProps | UploadDatasetFileProps;
   metadata?: Record<string, any>;
   percentListen?: (percent: number) => void;
 }) => {

@@ -152,7 +152,7 @@ function List() {
           alignItems={'stretch'}
         >
           {formatDatasets.map((dataset, index) => {
-            const vectorModelAvatar = getModelProvider(dataset.vectorModel.provider)?.avatar;
+            const vectorModelAvatar = getModelProvider(dataset.vectorModel?.provider)?.avatar;
 
             return (
               <MyTooltip
@@ -280,7 +280,7 @@ function List() {
                         <HStack spacing={1} className="time">
                           <Avatar src={vectorModelAvatar} w={'0.85rem'} />
                           <Box color={'myGray.500'} fontSize={'mini'}>
-                            {dataset.vectorModel.name}
+                            {dataset.vectorModel?.name}
                           </Box>
                         </HStack>
                       )}

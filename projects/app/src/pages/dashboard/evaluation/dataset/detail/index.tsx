@@ -8,17 +8,16 @@ import NextHead from '@/components/common/NextHead';
 
 import DataList from '@/pageComponents/dashboard/evaluation/dataset/detail/DataList';
 
-type Props = { datasetId: string; currentTab: string };
+type Props = { collectionId: string; collectionName: string };
 
-const Detail = ({ datasetId, currentTab }: Props) => {
+const Detail = ({ collectionId, collectionName }: Props) => {
   return (
     <>
-      {/* TODO-lyx */}
-      <NextHead title="Mock 名称" />
+      <NextHead title={collectionName} />
       <Flex h={'100%'} py={3} pl={1} pr={3} gap={2}>
         <Flex flex={1} w={0} bg={'white'} flexDir={'column'} boxShadow={'2'} borderRadius={'md'}>
           <NavBar />
-          <DataList />
+          <DataList collectionId={collectionId} />
         </Flex>
       </Flex>
     </>
@@ -26,21 +25,24 @@ const Detail = ({ datasetId, currentTab }: Props) => {
 };
 
 const Render = (data: Props) => (
-  <DatasetDetailPageContextProvider datasetId={data.datasetId}>
+  <DatasetDetailPageContextProvider
+    collectionId={data.collectionId}
+    collectionName={data.collectionName}
+  >
     <Detail {...data} />
   </DatasetDetailPageContextProvider>
 );
 export default Render;
 
 export async function getServerSideProps(context: any) {
-  const currentTab = context?.query?.currentTab || '';
-  const datasetId = context?.query?.datasetId;
+  const collectionId = context?.query?.collectionId || '';
+  const collectionName = context?.query?.collectionName;
 
   return {
     props: {
-      currentTab,
-      datasetId,
-      ...(await serviceSideProps(context, ['dataset', 'file', 'user']))
+      collectionId,
+      collectionName,
+      ...(await serviceSideProps(context, ['dashboard_evaluation', 'file', 'user']))
     }
   };
 }

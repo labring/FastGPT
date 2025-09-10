@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -14,49 +14,144 @@ import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import EditDataModal from './EditDataModal';
 import IntelligentGeneration from '../IntelligentGeneration';
-import ManualAddDataModal from './ManualAddDataModal';
+import ManualAddDataModal from './ManuallyAddModal';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useDataListContext } from './DataListContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import {
+  postEvaluationDatasetQualityAssessmentBatch,
+  postSmartGenerateEvaluationDatasetData,
+  postCreateEvaluationDatasetData,
+  updateEvaluationDatasetData,
+  updateEvaluationDataset
+} from '@/web/core/evaluation/dataset';
+import type { updateEvalDatasetDataBody } from '@fastgpt/global/core/evaluation/dataset/api';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 interface DataListModalsProps {
   total: number;
+  refreshList: () => void;
 }
 
-const DataListModals: React.FC<DataListModalsProps> = ({ total }) => {
+const DataListModals: React.FC<DataListModalsProps> = ({ total, refreshList }) => {
   const { t } = useTranslation();
-  const { llmModelList } = useSystemStore();
 
   const {
     // 编辑数据弹窗相关
     isEditModalOpen,
     onEditModalClose,
     selectedItem,
-    handleSaveData,
-    handleSaveAndNext,
+    setSelectedItem,
 
     // 质量评估弹窗相关
     isQualityEvaluationModalOpen,
     onQualityEvaluationModalClose,
-    handleQualityEvaluationConfirm,
 
     // 智能生成弹窗相关
     isIntelligentGenerationModalOpen,
     onIntelligentGenerationModalClose,
-    handleIntelligentGenerationConfirm,
 
     // 手动新增数据弹窗相关
     isManualAddModalOpen,
     onManualAddModalClose,
-    handleManualAddConfirm,
 
     // 设置弹窗相关
     isSettingsModalOpen,
     onSettingsModalClose,
-    handleSettingsConfirm,
-    evaluationModel,
-    setEvaluationModel
+
+    // 获取数据集ID和刷新数据的方法
+    collectionId,
+    collectionName,
+    evaluationDataList
   } = useDataListContext();
+
+  // 批量质量评估请求
+  const { runAsync: runQualityAssessmentBatch, loading: isQualityAssessmentLoading } = useRequest2(
+    postEvaluationDatasetQualityAssessmentBatch,
+    {
+      successToast: t('common:submit_success')
+    }
+  );
+
+  // 智能生成数据请求
+  const { runAsync: runSmartGenerate, loading: isSmartGenerateLoading } = useRequest2(
+    postSmartGenerateEvaluationDatasetData,
+    {
+      successToast: t('common:submit_success')
+    }
+  );
+
+  // 修改测评数据
+  const { runAsync: updateDataFn } = useRequest2(updateEvaluationDatasetData, {
+    successToast: t('common:update_success')
+  });
+
+  // 修改评估模型
+  const { runAsync: updateModelSettingFn, loading: isUpdating } = useRequest2(
+    updateEvaluationDataset,
+    {
+      successToast: t('common:update_success')
+    }
+  );
+  const { llmModelList } = useSystemStore();
+  const evalModelList = useMemo(() => {
+    return llmModelList.filter((item) => item.useInEvaluation);
+  }, [llmModelList]);
+  const [evaluationModel, setEvaluationModel] = useState<string>(evalModelList[0]?.model || '');
+
+  const handleSettingsConfirm = async () => {
+    // TODO-lyx name可删除临时规避待后台修改
+    await updateModelSettingFn({ collectionId, evaluationModel, name: collectionName });
+    onSettingsModalClose();
+  };
+
+  const handleGoNextData = () => {
+    if (!selectedItem) return;
+    // 自动打开下一条数据
+    const currentIndex = evaluationDataList.findIndex((item) => item._id === selectedItem?._id);
+    if (currentIndex < evaluationDataList.length - 1) {
+      const nextItem = evaluationDataList[currentIndex + 1];
+      setSelectedItem(nextItem);
+    } else {
+      onEditModalClose();
+    }
+  };
+
+  const handleSaveUpdateData = async (
+    formData: {
+      question: string;
+      referenceAnswer: string;
+      metadata: Record<string, any>;
+    },
+    isGoNext = false
+  ) => {
+    const { question, referenceAnswer, metadata } = formData;
+    await updateDataFn({
+      dataId: selectedItem._id,
+      userInput: question,
+      expectedOutput: referenceAnswer,
+      metadata
+    });
+    isGoNext && handleGoNextData();
+    !isGoNext && onEditModalClose();
+    refreshList?.();
+  };
+
+  // 处理质量评估确认
+  const handleQualityEvaluationConfirmWithRequest = async () => {
+    await runQualityAssessmentBatch({
+      collectionId
+    });
+    onQualityEvaluationModalClose();
+    refreshList?.();
+  };
+
+  // 处理智能生成确认
+  const handleIntelligentGeneration = async () => {
+    onIntelligentGenerationModalClose();
+    refreshList?.();
+  };
 
   return (
     <>
@@ -65,12 +160,8 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total }) => {
         <EditDataModal
           isOpen={isEditModalOpen}
           onClose={onEditModalClose}
-          onSave={handleSaveData}
-          onSaveAndNext={handleSaveAndNext}
-          evaluationStatus={selectedItem.status}
-          evaluationResult={selectedItem.answer}
-          defaultQuestion={selectedItem.question}
-          defaultReferenceAnswer={selectedItem.answer}
+          onSave={handleSaveUpdateData}
+          formData={selectedItem}
         />
       )}
 
@@ -91,7 +182,12 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total }) => {
             <Button size="sm" variant="outline" onClick={onQualityEvaluationModalClose}>
               {t('dashboard_evaluation:cancel')}
             </Button>
-            <Button size="sm" colorScheme="blue" onClick={handleQualityEvaluationConfirm}>
+            <Button
+              size="sm"
+              colorScheme="blue"
+              onClick={handleQualityEvaluationConfirmWithRequest}
+              isLoading={isQualityAssessmentLoading}
+            >
               {t('dashboard_evaluation:start_evaluation')}
             </Button>
           </HStack>
@@ -102,15 +198,17 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total }) => {
       <IntelligentGeneration
         isOpen={isIntelligentGenerationModalOpen}
         onClose={onIntelligentGenerationModalClose}
-        onConfirm={handleIntelligentGenerationConfirm}
+        onConfirm={handleIntelligentGeneration}
+        defaultValues={{ collectionId }}
         scene="data"
       />
 
       {/* 手动新增数据弹窗 */}
       <ManualAddDataModal
         isOpen={isManualAddModalOpen}
+        collectionId={collectionId}
         onClose={onManualAddModalClose}
-        onConfirm={handleManualAddConfirm}
+        onConfirm={refreshList}
       />
 
       {/* 设置弹窗 */}
@@ -138,16 +236,15 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total }) => {
             </Alert>
             {/* 评测模型选择 */}
             <Box>
-              <Text fontSize="14px" fontWeight="medium" color="myGray.900" mb={2}>
-                <Text as="span" color="red.500">
-                  *
+              <FormLabel required>
+                <Text fontSize="14px" fontWeight="medium" color="myGray.900" mb={2}>
+                  {t('dashboard_evaluation:evaluation_model')}
                 </Text>
-                {t('dashboard_evaluation:evaluation_model')}
-              </Text>
+              </FormLabel>
               <AIModelSelector
                 bg="myGray.50"
                 value={evaluationModel}
-                list={llmModelList.map((item) => ({
+                list={evalModelList.map((item) => ({
                   value: item.model,
                   label: item.name
                 }))}
@@ -161,7 +258,12 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total }) => {
           <Button variant="whiteBase" mr={4} onClick={onSettingsModalClose}>
             {t('dashboard_evaluation:cancel')}
           </Button>
-          <Button variant="primary" isDisabled={!evaluationModel} onClick={handleSettingsConfirm}>
+          <Button
+            variant="primary"
+            isDisabled={!evaluationModel}
+            onClick={handleSettingsConfirm}
+            isLoading={isUpdating}
+          >
             {t('dashboard_evaluation:confirm')}
           </Button>
         </ModalFooter>

@@ -1,5 +1,14 @@
 import React, { useCallback, useMemo } from 'react';
-import { Box, Button, Flex, ModalBody, ModalFooter, VStack, Switch } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Flex,
+  ModalBody,
+  ModalFooter,
+  VStack,
+  Switch,
+  HStack
+} from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -8,6 +17,8 @@ import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { postCreateEvaluationDatasetData } from '@/web/core/evaluation/dataset';
 
 /**
  * 手动新增数据表单数据接口
@@ -25,7 +36,8 @@ export interface ManuallyAddForm {
 interface ManuallyAddModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (data: ManuallyAddForm) => void;
+  onConfirm?: (data: ManuallyAddForm) => void;
+  collectionId: string;
   defaultValues?: Partial<ManuallyAddForm>;
 }
 
@@ -33,7 +45,13 @@ interface ManuallyAddModalProps {
  * 手动新增数据弹窗组件
  * 用于手动添加评测数据
  */
-const ManuallyAddModal = ({ isOpen, onClose, onConfirm, defaultValues }: ManuallyAddModalProps) => {
+const ManuallyAddModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  collectionId,
+  defaultValues
+}: ManuallyAddModalProps) => {
   const { t } = useTranslation();
   const { llmModelList } = useSystemStore();
 
@@ -46,7 +64,8 @@ const ManuallyAddModal = ({ isOpen, onClose, onConfirm, defaultValues }: Manuall
     handleSubmit,
     setValue,
     watch,
-    formState: { errors }
+    formState: { errors },
+    reset
   } = useForm<ManuallyAddForm>({
     defaultValues: {
       question: defaultValues?.question || '',
@@ -61,6 +80,10 @@ const ManuallyAddModal = ({ isOpen, onClose, onConfirm, defaultValues }: Manuall
   const autoEvaluationValue = watch('autoEvaluation');
   const evaluationModelValue = watch('evaluationModel');
 
+  const { runAsync: handleAddData, loading } = useRequest2(postCreateEvaluationDatasetData, {
+    successToast: t('common:add_success')
+  });
+
   // 检查表单是否有效
   const isFormValid = useMemo(() => {
     return (
@@ -70,10 +93,19 @@ const ManuallyAddModal = ({ isOpen, onClose, onConfirm, defaultValues }: Manuall
 
   // 处理表单提交
   const handleFormSubmit = useCallback(
-    (data: ManuallyAddForm) => {
-      onConfirm(data);
+    async (data: ManuallyAddForm) => {
+      await handleAddData({
+        userInput: data.question,
+        expectedOutput: data.answer,
+        evaluationModel: data.evaluationModel,
+        enableQualityEvaluation: data.autoEvaluation,
+        collectionId
+      });
+      onConfirm?.(data);
+      onClose?.();
+      reset();
     },
-    [onConfirm]
+    [onConfirm, handleAddData, collectionId, onClose, reset]
   );
 
   return (
@@ -121,7 +153,7 @@ const ManuallyAddModal = ({ isOpen, onClose, onConfirm, defaultValues }: Manuall
           </Box>
 
           {/* 新增后自动进行数据质量评测 */}
-          <Box>
+          <HStack>
             <Flex align="center" mb={1}>
               <FormLabel required mb={0}>
                 {t('dashboard_evaluation:auto_quality_eval_after_add')}
@@ -133,7 +165,7 @@ const ManuallyAddModal = ({ isOpen, onClose, onConfirm, defaultValues }: Manuall
               onChange={(e) => setValue('autoEvaluation', e.target.checked)}
               colorScheme="blue"
             />
-          </Box>
+          </HStack>
 
           {/* 质量评测模型 */}
           <Box>
@@ -160,6 +192,7 @@ const ManuallyAddModal = ({ isOpen, onClose, onConfirm, defaultValues }: Manuall
         </Button>
         <Button
           variant="primary"
+          isLoading={loading}
           isDisabled={!isFormValid}
           onClick={handleSubmit(handleFormSubmit)}
         >

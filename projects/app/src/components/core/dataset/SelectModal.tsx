@@ -68,7 +68,7 @@ const DatasetSelectContainer = ({
   );
 };
 
-export function useDatasetSelect() {
+export function useDatasetSelect(scene?: string | undefined) {
   const [parentId, setParentId] = useState('');
   const [searchKey, setSearchKey] = useState('');
 
@@ -81,7 +81,7 @@ export function useDatasetSelect() {
   } = useRequest2(
     async () => {
       const result = await Promise.all([
-        getDatasets({ parentId, searchKey }),
+        getDatasets({ parentId, searchKey, ...(scene ? { scene } : {}) }),
         // Only get paths when not searching
         searchKey.trim()
           ? Promise.resolve([])

@@ -51,7 +51,7 @@ const EvaluationStatusSelect = ({ value, onSelect, w = '200px' }: EvaluationStat
         >
           <Flex alignItems={'center'} w={'100%'} h={'100%'}>
             <Box color={'myGray.600'} fontSize={'sm'} whiteSpace={'nowrap'}>
-              {t('评测状态')}
+              {t('dashboard_evaluation:evaluation_status')}
             </Box>
             <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
             <Box fontSize={'sm'} color={'myGray.900'} flex={1} noOfLines={1}>
