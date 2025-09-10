@@ -90,3 +90,16 @@ export const setSourceDomain = (sourceDomain?: string) => {
   if (!formatSourceDomain || getSourceDomain()) return;
   sessionStorage.setItem('sourceDomain', formatSourceDomain);
 };
+
+export const setCode = (couponCode?: string) => {
+  if (!couponCode) return;
+  localStorage.setItem('couponCode', couponCode);
+};
+
+export const getCode = () => {
+  return localStorage.getItem('couponCode') || undefined;
+};
+
+export const removeCode = () => {
+  localStorage.removeItem('couponCode');
+};
