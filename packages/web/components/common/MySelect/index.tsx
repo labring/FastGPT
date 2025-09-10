@@ -5,8 +5,7 @@ import React, {
   useEffect,
   useImperativeHandle,
   type ForwardedRef,
-  useState,
-  isValidElement
+  useState
 } from 'react';
 import {
   Menu,
