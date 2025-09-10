@@ -4,11 +4,6 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import type { updateEvalDatasetDataBody } from '@fastgpt/global/core/evaluation/dataset/api';
-import {
-  addEvalDatasetDataQualityJob,
-  removeEvalDatasetDataQualityJobsRobust
-} from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
-import { addLog } from '@fastgpt/service/common/system/log';
 import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -22,16 +17,8 @@ export type EvalDatasetDataUpdateResponse = string;
 async function handler(
   req: ApiRequestProps<EvalDatasetDataUpdateBody, EvalDatasetDataUpdateQuery>
 ): Promise<EvalDatasetDataUpdateResponse> {
-  const {
-    dataId,
-    userInput,
-    actualOutput,
-    expectedOutput,
-    context,
-    retrievalContext,
-    enableQualityEvaluation,
-    qualityEvaluationModel
-  } = req.body;
+  const { dataId, userInput, actualOutput, expectedOutput, context, retrievalContext, metadata } =
+    req.body;
 
   const { teamId, tmbId } = await authEvaluationDatasetDataUpdateById(dataId, {
     req,
@@ -70,17 +57,11 @@ async function handler(
     return Promise.reject('retrievalContext must be an array of strings if provided');
   }
 
-  if (typeof enableQualityEvaluation !== 'boolean') {
-    return Promise.reject('enableQualityEvaluation is required and must be a boolean');
-  }
-
   if (
-    enableQualityEvaluation &&
-    (!qualityEvaluationModel || typeof qualityEvaluationModel !== 'string')
+    metadata !== undefined &&
+    (typeof metadata !== 'object' || metadata === null || Array.isArray(metadata))
   ) {
-    return Promise.reject(
-      'qualityEvaluationModel is required when enableQualityEvaluation is true'
-    );
+    return Promise.reject('metadata must be an object if provided');
   }
 
   let collectionName = '';
@@ -103,49 +84,26 @@ async function handler(
 
     collectionName = collection.name;
 
-    await MongoEvalDatasetData.updateOne(
-      { _id: dataId },
-      {
-        [EvalDatasetDataKeyEnum.UserInput]: userInput.trim(),
-        [EvalDatasetDataKeyEnum.ActualOutput]: actualOutput?.trim() || '',
-        [EvalDatasetDataKeyEnum.ExpectedOutput]: expectedOutput.trim(),
-        [EvalDatasetDataKeyEnum.Context]: context || [],
-        [EvalDatasetDataKeyEnum.RetrievalContext]: retrievalContext || [],
-        updateTime: new Date()
-      },
-      { session }
-    );
+    const updateFields: Record<string, any> = {
+      [EvalDatasetDataKeyEnum.UserInput]: userInput.trim(),
+      [EvalDatasetDataKeyEnum.ActualOutput]: actualOutput?.trim() || '',
+      [EvalDatasetDataKeyEnum.ExpectedOutput]: expectedOutput.trim(),
+      [EvalDatasetDataKeyEnum.Context]: context || [],
+      [EvalDatasetDataKeyEnum.RetrievalContext]: retrievalContext || [],
+      updateTime: new Date()
+    };
 
-    if (enableQualityEvaluation && qualityEvaluationModel) {
-      try {
-        // Remove existing quality assessment task if any
-        await removeEvalDatasetDataQualityJobsRobust([dataId], {
-          forceCleanActiveJobs: true,
-          retryDelay: 200
-        });
-
-        // Enqueue new quality assessment task
-        await addEvalDatasetDataQualityJob({
-          dataId,
-          evalModel: qualityEvaluationModel
-        });
-
-        addLog.info('Quality evaluation task enqueued successfully', {
-          dataId,
-          evalModel: qualityEvaluationModel,
-          teamId
-        });
-      } catch (error) {
-        addLog.error('Failed to manage quality evaluation task', {
-          dataId,
-          evalModel: qualityEvaluationModel,
-          teamId,
-          error
-        });
-        // Note: We don't throw the error to prevent the update operation from failing
-        // The data update should succeed even if quality evaluation task management fails
+    if (metadata !== undefined) {
+      if (Object.keys(metadata).length > 0) {
+        for (const [key, value] of Object.entries(metadata)) {
+          updateFields[`metadata.${key}`] = value;
+        }
+      } else {
+        updateFields.metadata = {};
       }
     }
+
+    await MongoEvalDatasetData.updateOne({ _id: dataId }, { $set: updateFields }, { session });
   });
 
   (async () => {
