@@ -25,6 +25,7 @@ import { addAuditLog } from '../../../support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { concatUsage, evaluationUsageIndexMap } from '../../../support/wallet/usage/controller';
 import { createMergedEvaluationUsage } from '../utils/usage';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 export class EvaluationSummaryService {
   // Get evaluation summary report
@@ -45,7 +46,7 @@ export class EvaluationSummaryService {
     const evaluation = await MongoEvaluation.findById(evalId).lean();
 
     if (!evaluation) {
-      throw new Error('Evaluation task not found');
+      throw new Error(EvaluationErrEnum.evalTaskNotFound);
     }
 
     // Real-time calculation of metricsScore and aggregateScore
@@ -258,14 +259,14 @@ export class EvaluationSummaryService {
     }>
   ): Promise<void> {
     const evaluation = await MongoEvaluation.findById(evalId).lean();
-    if (!evaluation) throw new Error('Evaluation not found');
+    if (!evaluation) throw new Error(EvaluationErrEnum.evalTaskNotFound);
 
     const evalMetricIdSet = new Set(
       (evaluation.evaluators || []).map((evaluator: any) => evaluator.metric._id.toString())
     );
     for (const m of metricsConfig) {
       if (!evalMetricIdSet.has(m.metricsId)) {
-        throw new Error(`metricsId ${m.metricsId} 不属于该评估任务`);
+        throw new Error(EvaluationErrEnum.evalMetricIdRequired);
       }
     }
 
@@ -317,7 +318,7 @@ export class EvaluationSummaryService {
     const evaluation = await MongoEvaluation.findById(evalId).lean();
 
     if (!evaluation) {
-      throw new Error('评估任务不存在或无权限访问');
+      throw new Error(EvaluationErrEnum.evalTaskNotFound);
     }
 
     // Get calculation type from first evaluator (since all metrics use the same type)
@@ -371,7 +372,7 @@ export class EvaluationSummaryService {
       const evaluation = await MongoEvaluation.findById(evalId).lean();
 
       if (!evaluation) {
-        throw new Error('评估任务不存在或无权限访问');
+        throw new Error(EvaluationErrEnum.evalTaskNotFound);
       }
 
       addLog.info(
@@ -411,7 +412,7 @@ export class EvaluationSummaryService {
       });
 
       if (evaluatorTasks.length === 0) {
-        throw new Error('没有找到有效的指标');
+        throw new Error(EvaluationErrEnum.summaryNoValidMetricsFound);
       }
 
       // Immediately update all related evaluator status to generating
@@ -867,7 +868,7 @@ export class EvaluationSummaryService {
       });
 
       if (isStreamResponse) {
-        throw new Error('不支持流式响应');
+        throw new Error(EvaluationErrEnum.summaryStreamResponseNotSupported);
       }
 
       const summary = response.choices[0]?.message?.content || '生成总结失败';

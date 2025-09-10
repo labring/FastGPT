@@ -9,6 +9,7 @@ import type {
   GetConfigDetailQuery,
   GetConfigDetailResponse
 } from '@fastgpt/global/core/evaluation/summary/api';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 import { authEvaluationTaskRead } from '@fastgpt/service/core/evaluation/common';
 
@@ -26,7 +27,7 @@ async function handler(
 
     // Validate parameters
     if (!evalId || typeof evalId !== 'string') {
-      return Promise.reject('evalId is required');
+      return Promise.reject(EvaluationErrEnum.evalIdRequired);
     }
 
     // Get evaluation task configuration details
@@ -52,3 +53,5 @@ async function handler(
 }
 
 export default NextAPI(handler);
+
+export { handler };

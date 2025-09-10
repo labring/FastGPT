@@ -14,12 +14,18 @@ export interface MetricConfigItemWithName extends Omit<MetricConfigItem, 'calcul
   metricsName: string; // Metric name for display
 }
 
+export interface UpdateMetricConfigItem extends Omit<MetricConfigItem, 'calculateType'> {
+  metricsId: string;
+  thresholdValue?: number;
+  weight?: number;
+}
+
 // ===== Config API Types =====
 
 export interface UpdateSummaryConfigBody {
   evalId: string;
   calculateType?: CalculateMethodEnum;
-  metricsConfig: MetricConfigItem[];
+  metricsConfig: UpdateMetricConfigItem[];
 }
 
 export interface UpdateSummaryConfigResponse {

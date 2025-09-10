@@ -6,6 +6,7 @@ import type {
   GetEvaluationSummaryQuery,
   EvaluationSummaryResponse
 } from '@fastgpt/global/core/evaluation/summary/api';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 import { authEvaluationTaskRead } from '@fastgpt/service/core/evaluation/common';
 
 async function handler(
@@ -16,7 +17,7 @@ async function handler(
 
     // Validate parameters
     if (!evalId) {
-      return Promise.reject('Evaluation task ID is required');
+      return Promise.reject(EvaluationErrEnum.evalIdRequired);
     }
 
     await authEvaluationTaskRead(evalId, {
@@ -45,3 +46,4 @@ async function handler(
 }
 
 export default NextAPI(handler);
+export { handler };
