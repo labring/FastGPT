@@ -75,5 +75,17 @@
   "evaluator_request_timeout": "Evaluator request timeout",
   "evaluator_service_unavailable": "Evaluator service unavailable",
   "evaluator_invalid_response": "Evaluator returned invalid response",
-  "evaluator_network_error": "Evaluator network connection error"
+  "evaluator_network_error": "Evaluator network connection error",
+  
+  "eval_id_required": "Evaluation task ID is required",
+  "summary_metrics_config_error": "Metrics configuration error",
+  "summary_threshold_value_required": "Threshold value is required",
+  "summary_weight_required": "Weight is required",
+  "summary_weight_must_be_number": "Weight must be a number",
+  "summary_threshold_must_be_number": "Threshold value must be a number",
+  "summary_calculate_type_required": "Calculate type is required",
+  "summary_calculate_type_invalid": "Calculate type is invalid",
+  "summary_no_valid_metrics_found": "No valid metrics found",
+  "summary_stream_response_not_supported": "Stream response not supported",
+  "summary_weight_sum_must_be_100": "The sum of all metric weights must equal 100"
 }

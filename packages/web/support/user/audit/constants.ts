@@ -717,5 +717,10 @@ export const auditLogMap = {
     content: i18nT('account_team:log_generate_evaluation_summary'),
     typeLabel: i18nT('account_team:generate_evaluation_summary'),
     params: {} as { name?: string; evalName: string; metricName: string }
+  },
+  [AuditEventEnum.UPDATE_EVALUATION_SUMMARY_CONFIG]: {
+    content: i18nT('account_team:log_update_evaluation_summary_config'),
+    typeLabel: i18nT('account_team:update_evaluation_summary_config'),
+    params: {} as { name?: string; evalName: string }
   }
 } as const;

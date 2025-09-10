@@ -75,5 +75,17 @@
   "evaluator_request_timeout": "評估器請求超時",
   "evaluator_service_unavailable": "評估器服務不可用",
   "evaluator_invalid_response": "評估器返回無效響應",
-  "evaluator_network_error": "評估器網絡連接錯誤"
+  "evaluator_network_error": "評估器網絡連接錯誤",
+  
+  "eval_id_required": "評估任務ID不能為空",
+  "summary_metrics_config_error": "指標配置錯誤",
+  "summary_threshold_value_required": "閾值不能為空",
+  "summary_weight_required": "權重不能為空",
+  "summary_weight_must_be_number": "權重必須為數字",
+  "summary_threshold_must_be_number": "閾值必須為數字",
+  "summary_calculate_type_required": "計算類型不能為空",
+  "summary_calculate_type_invalid": "計算類型無效",
+  "summary_no_valid_metrics_found": "沒有找到有效的指標",
+  "summary_stream_response_not_supported": "不支持流式響應",
+  "summary_weight_sum_must_be_100": "所有指標的權重總和必須等於100"
 }

@@ -86,7 +86,22 @@ export enum EvaluationErrEnum {
   evaluatorRequestTimeout = 'evaluationEvaluatorRequestTimeout',
   evaluatorServiceUnavailable = 'evaluationEvaluatorServiceUnavailable',
   evaluatorInvalidResponse = 'evaluationEvaluatorInvalidResponse',
-  evaluatorNetworkError = 'evaluationEvaluatorNetworkError'
+  evaluatorNetworkError = 'evaluationEvaluatorNetworkError',
+
+  // Eval common errors
+  evalIdRequired = 'evaluationEvalIdRequired',
+
+  // Summary related errors
+  summaryMetricsConfigError = 'evaluationSummaryMetricsConfigError',
+  summaryThresholdValueRequired = 'evaluationSummaryThresholdValueRequired',
+  summaryWeightRequired = 'evaluationSummaryWeightRequired',
+  summaryWeightMustBeNumber = 'evaluationSummaryWeightMustBeNumber',
+  summaryThresholdMustBeNumber = 'evaluationSummaryThresholdMustBeNumber',
+  summaryCalculateTypeRequired = 'evaluationSummaryCalculateTypeRequired',
+  summaryCalculateTypeInvalid = 'evaluationSummaryCalculateTypeInvalid',
+  summaryNoValidMetricsFound = 'evaluationSummaryNoValidMetricsFound',
+  summaryStreamResponseNotSupported = 'evaluationSummaryStreamResponseNotSupported',
+  summaryWeightSumMustBe100 = 'evaluationSummaryWeightSumMustBe100'
 }
 
 const evaluationErrList = [
@@ -377,6 +392,52 @@ const evaluationErrList = [
   {
     statusText: EvaluationErrEnum.evaluatorNetworkError,
     message: i18nT('evaluation:evaluator_network_error')
+  },
+
+  // Summary related errors
+  {
+    statusText: EvaluationErrEnum.evalIdRequired,
+    message: i18nT('evaluation:eval_id_required')
+  },
+  {
+    statusText: EvaluationErrEnum.summaryMetricsConfigError,
+    message: i18nT('evaluation:summary_metrics_config_error')
+  },
+  {
+    statusText: EvaluationErrEnum.summaryThresholdValueRequired,
+    message: i18nT('evaluation:summary_threshold_value_required')
+  },
+  {
+    statusText: EvaluationErrEnum.summaryWeightRequired,
+    message: i18nT('evaluation:summary_weight_required')
+  },
+  {
+    statusText: EvaluationErrEnum.summaryWeightMustBeNumber,
+    message: i18nT('evaluation:summary_weight_must_be_number')
+  },
+  {
+    statusText: EvaluationErrEnum.summaryThresholdMustBeNumber,
+    message: i18nT('evaluation:summary_threshold_must_be_number')
+  },
+  {
+    statusText: EvaluationErrEnum.summaryCalculateTypeRequired,
+    message: i18nT('evaluation:summary_calculate_type_required')
+  },
+  {
+    statusText: EvaluationErrEnum.summaryCalculateTypeInvalid,
+    message: i18nT('evaluation:summary_calculate_type_invalid')
+  },
+  {
+    statusText: EvaluationErrEnum.summaryNoValidMetricsFound,
+    message: i18nT('evaluation:summary_no_valid_metrics_found')
+  },
+  {
+    statusText: EvaluationErrEnum.summaryStreamResponseNotSupported,
+    message: i18nT('evaluation:summary_stream_response_not_supported')
+  },
+  {
+    statusText: EvaluationErrEnum.summaryWeightSumMustBe100,
+    message: i18nT('evaluation:summary_weight_sum_must_be_100')
   }
 ];
 
