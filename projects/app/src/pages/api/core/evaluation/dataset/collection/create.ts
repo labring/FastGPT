@@ -20,7 +20,6 @@ async function handler(
 ): Promise<EvalDatasetCollectionCreateResponse> {
   const { name, description = '' } = req.body;
 
-  // Authentication and authorization
   const { teamId, tmbId } = await authEvaluationDatasetCreate({
     req,
     authApiKey: true,
@@ -43,7 +42,6 @@ async function handler(
     return Promise.reject('Description must be less than 100 characters');
   }
 
-  // Check for name conflicts within team
   const existingDataset = await MongoEvalDatasetCollection.findOne({
     teamId,
     name: name.trim()
