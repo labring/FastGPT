@@ -7,10 +7,6 @@ import {
   Text,
   IconButton,
   VStack,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
   Popover,
   PopoverTrigger,
   PopoverContent,
@@ -22,126 +18,24 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
+import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { EvaluationStatus, evaluationStatusMap } from './const';
 import EvaluationStatusSelect from './StatusSelect';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import DataListModals from './DataListModals';
-import { DataListProvider, useDataListContext, type EvaluationDataItem } from './DataListContext';
-
-// 模拟API函数 - 实际使用时需要替换为真实的API调用
-const getEvaluationDataList = async (params: {
-  searchText: string;
-  statusFilter: string;
-  pageNum: number;
-  pageSize: number;
-}): Promise<{
-  list: EvaluationDataItem[];
-  total: number;
-}> => {
-  // 模拟数据
-  const mockData: EvaluationDataItem[] = [
-    {
-      _id: '1',
-      index: 1,
-      question: '如何修复保障的机组条件检测问题?',
-      answer: '见《DLT596自备电站生技规程管理办法》相关条文执行。',
-      status: EvaluationStatus.HighQuality
-    },
-    {
-      _id: '122',
-      index: 1333,
-      question: '如何修复保障的机组条件检测问题?',
-      answer: '见《DLT596自备电站生技规程管理办法》相关条文执行。',
-      status: EvaluationStatus.Abnormal
-    },
-    {
-      _id: '2',
-      index: 2,
-      question: '什么时候需要注册员工工作（微信）卡?',
-      answer:
-        '集团公司员工请假、离职、转岗、解除劳动合同，请与员工工作（微信）卡进行申请或（销件卡），这样的为员人员在位在岗人，人力资源部门统筹，文档资产管理中心内地条件，需要员工工作（微信）卡进行申请或（销件卡）。',
-      status: EvaluationStatus.HighQuality
-    },
-    {
-      _id: '3',
-      index: 3,
-      question: '办公电脑能否公司可以认证?',
-      answer:
-        '办公电脑使用时为工作，提到的是更新管理公司设计信息网络配置，我需要此过程的管理是否满足。',
-      status: EvaluationStatus.NeedsImprovement
-    },
-    {
-      _id: '4',
-      index: 4,
-      question: '高出一般业务需求的电脑配置，要记录电脑配置标准是多少钱?',
-      answer:
-        '按设计、管理化、高清条件的设计规格等级出一般业务需求的计算配置，经验集团公司计算条件标准，新工厂等管理更新问题高质配置，在公司条件配置标准条不超过8000元/台，要记录其他配置标准条不超过8000元/台。',
-      status: EvaluationStatus.Evaluating
-    },
-    {
-      _id: '5',
-      index: 5,
-      question: '自主招生软件自主自由择权是谁?租赁房房源长为?',
-      answer:
-        '主要是收费类，管理公司享有保障的DT台所开的资金需产生住宅套数60%自主决定招生权为，申请自主招生收费类，集团公司享有保障的DT台所开内容套产生住宅套数40%以出租给合作办公司房屋条件中社会人员的权为，自主招生房源租赁期限为20年，申请自主招生房源条件为3年。',
-      status: EvaluationStatus.Evaluating
-    },
-    {
-      _id: '6',
-      index: 6,
-      question: '如何修复保障的机组条件检测问题?',
-      answer: '见《DLT596自备电站生技规程管理办法》相关条文执行。',
-      status: EvaluationStatus.NeedsImprovement
-    },
-    {
-      _id: '7',
-      index: 7,
-      question: '办公电脑能否公司可以认证?',
-      answer: '',
-      status: EvaluationStatus.NotEvaluated
-    },
-    {
-      _id: '8',
-      index: 7,
-      question: '1+2 = 4?',
-      answer: '哇天才',
-      status: EvaluationStatus.Queuing
-    }
-  ];
-
-  // 模拟异步请求
-  await new Promise((resolve) => setTimeout(resolve, 300));
-
-  // 过滤数据
-  let filteredData = mockData.filter((item) => {
-    const matchSearch =
-      !params.searchText ||
-      item.question.toLowerCase().includes(params.searchText.toLowerCase()) ||
-      item.answer.toLowerCase().includes(params.searchText.toLowerCase());
-
-    const matchStatus =
-      params.statusFilter === EvaluationStatus.All || item.status === params.statusFilter;
-
-    return matchSearch && matchStatus;
-  });
-
-  // 分页
-  const startIndex = (params.pageNum - 1) * params.pageSize;
-  const endIndex = startIndex + params.pageSize;
-  const paginatedData = filteredData.slice(startIndex, endIndex);
-
-  return {
-    list: paginatedData,
-    total: filteredData.length
-  };
-};
+import { DataListProvider, useDataListContext } from './DataListContext';
+import {
+  getEvaluationDatasetDataList,
+  deleteEvaluationDatasetData
+} from '@/web/core/evaluation/dataset';
 
 // 内部组件，使用 Context
 const DataListContent = () => {
   const { t } = useTranslation();
-  const [searchText, setSearchText] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>(EvaluationStatus.All);
+  const [searchKey, setSearchKey] = useState('');
+  const [status, setStatus] = useState<EvaluationStatus>(EvaluationStatus.All);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
   const {
@@ -154,16 +48,22 @@ const DataListContent = () => {
     onIntelligentGenerationModalOpen,
     onManualAddModalOpen,
     onSettingsModalOpen,
-    handleDeleteConfirm,
-    setEvaluationDataList
+    setEvaluationDataList,
+    collectionId
   } = useDataListContext();
+
+  // 删除数据的请求
+  const { runAsync: onDeleteData, loading: isDeleting } = useRequest2(deleteEvaluationDatasetData, {
+    successToast: t('common:delete_success')
+  });
 
   const scrollParams = useMemo(
     () => ({
-      searchText,
-      statusFilter
+      searchKey: searchKey || '',
+      status: status === EvaluationStatus.All ? '' : status,
+      collectionId
     }),
-    [searchText, statusFilter]
+    [searchKey, status, collectionId]
   );
 
   const EmptyTipDom = useMemo(() => <EmptyTip text={t('dashboard_evaluation:no_data')} />, [t]);
@@ -173,10 +73,10 @@ const DataListContent = () => {
     ScrollData,
     total,
     refreshList
-  } = useScrollPagination(getEvaluationDataList, {
+  } = useScrollPagination(getEvaluationDatasetDataList, {
     pageSize: 15,
-    params: { ...scrollParams, pageNum: 1 },
-    refreshDeps: [searchText, statusFilter],
+    params: scrollParams,
+    refreshDeps: [searchKey, status, collectionId], // 添加collectionId作为依赖
     EmptyTip: EmptyTipDom
   });
 
@@ -205,6 +105,23 @@ const DataListContent = () => {
     }
   };
 
+  const renderStatusTag = (item: any) => {
+    if (!item.metadata?.qualityStatus) return '-';
+
+    return (
+      <Box>
+        <MyTag
+          colorSchema={getStatusColor(item.metadata.qualityStatus)}
+          type={'fill'}
+          mx={6}
+          fontWeight={500}
+        >
+          {t(evaluationStatusMap[item.metadata.qualityStatus as EvaluationStatus])}
+        </MyTag>
+      </Box>
+    );
+  };
+
   // 获取卡片样式
   const getCardStyles = (itemId: string) => {
     const isHovered = hoveredItem === itemId;
@@ -221,10 +138,8 @@ const DataListContent = () => {
     };
   };
 
-  const [selectedStatus, setSelectedStatus] = useState<EvaluationStatus>(EvaluationStatus.All);
-
   // 处理数据项点击
-  const handleItemClick = (item: EvaluationDataItem) => {
+  const handleItemClick = (item: any) => {
     setSelectedItem(item);
     onEditModalOpen();
   };
@@ -250,6 +165,14 @@ const DataListContent = () => {
     setDeleteConfirmItem(itemId);
   };
 
+  // 处理删除确认
+  const handleDeleteConfirmClick = async (e: React.MouseEvent, itemId: string) => {
+    e.stopPropagation();
+    await onDeleteData({ dataId: itemId });
+    setDeleteConfirmItem(null);
+    refreshList();
+  };
+
   return (
     <MyBox h={'100%'} py={[2, 4]} overflow={'hidden'}>
       <Flex flexDirection={'column'} py={[1, 0]} h={'100%'} px={[2, 6]}>
@@ -263,9 +186,11 @@ const DataListContent = () => {
               </Flex>
             </Box>
             <EvaluationStatusSelect
-              value={selectedStatus}
+              value={status}
               w="228px"
-              onSelect={(status) => setSelectedStatus(status)}
+              onSelect={(e) => {
+                setStatus(e);
+              }}
             />
             {/* Search Input */}
             <MyInput
@@ -274,7 +199,7 @@ const DataListContent = () => {
               size={'sm'}
               h={'36px'}
               placeholder={t('common:Search') || ''}
-              value={searchText}
+              value={searchKey}
               leftIcon={
                 <MyIcon
                   name="common/searchLight"
@@ -284,7 +209,7 @@ const DataListContent = () => {
                 />
               }
               onChange={(e) => {
-                setSearchText(e.target.value);
+                setSearchKey(e.target.value);
               }}
             />
 
@@ -296,43 +221,45 @@ const DataListContent = () => {
               <Button size={'sm'} variant={'whitePrimary'} onClick={onQualityEvaluationModalOpen}>
                 {t('dashboard_evaluation:quality_evaluation')}
               </Button>
-              <Menu>
-                <MenuButton
-                  as={Button}
-                  size={'sm'}
-                  colorScheme={'primary.600'}
-                  leftIcon={
-                    <MyIcon
-                      name={'common/addLight'}
-                      w={'18px'}
-                      color={'white'}
-                      bg={'primary.600'}
-                    />
+              <MyMenu
+                Button={
+                  <Button
+                    size={'sm'}
+                    colorScheme={'primary.600'}
+                    leftIcon={
+                      <MyIcon
+                        name={'common/addLight'}
+                        w={'18px'}
+                        color={'white'}
+                        bg={'primary.600'}
+                      />
+                    }
+                  >
+                    {t('dashboard_evaluation:add_data')}
+                  </Button>
+                }
+                menuList={[
+                  {
+                    children: [
+                      {
+                        label: t('dashboard_evaluation:ai_generate'),
+                        icon: 'common/aiOutline',
+                        onClick: () => handleAddDataMenuClick('ai')
+                      },
+                      {
+                        label: t('dashboard_evaluation:file_import'),
+                        icon: 'common/csvOutline',
+                        onClick: () => handleAddDataMenuClick('file')
+                      },
+                      {
+                        label: t('dashboard_evaluation:manual_add'),
+                        icon: 'common/addLight',
+                        onClick: () => handleAddDataMenuClick('manual')
+                      }
+                    ]
                   }
-                >
-                  {t('dashboard_evaluation:add_data')}
-                </MenuButton>
-                <MenuList>
-                  <MenuItem
-                    icon={<MyIcon name="common/aiOutline" w="16px" h="16px" />}
-                    onClick={() => handleAddDataMenuClick('ai')}
-                  >
-                    {t('dashboard_evaluation:ai_generate')}
-                  </MenuItem>
-                  <MenuItem
-                    icon={<MyIcon name="common/csvOutline" w="16px" h="16px" />}
-                    onClick={() => handleAddDataMenuClick('file')}
-                  >
-                    {t('dashboard_evaluation:file_import')}
-                  </MenuItem>
-                  <MenuItem
-                    icon={<MyIcon name={'common/addLight'} w={'16px'} />}
-                    onClick={() => handleAddDataMenuClick('manual')}
-                  >
-                    {t('dashboard_evaluation:manual_add')}
-                  </MenuItem>
-                </MenuList>
-              </Menu>
+                ]}
+              />
             </HStack>
           </HStack>
         </MyBox>
@@ -350,29 +277,20 @@ const DataListContent = () => {
               >
                 <HStack justify="space-between" align="center" spacing={4}>
                   <Text fontSize="14px" color="gray.500" fontWeight="medium" minW="20px">
-                    {String(item.index).padStart(2, '0')}
+                    {String(evaluationDataList.indexOf(item) + 1).padStart(2, '0')}
                   </Text>
                   <Flex flexDirection="column" align="flex-start" flex={1}>
                     <Text fontSize="14px" fontWeight="medium" color="myGray.900" mb={1} flex={1}>
-                      {item.question}
+                      {item.userInput}
                     </Text>
                     <Box>
                       <Text fontSize="14px" color="gray.600">
-                        {item.answer || t('dashboard_evaluation:no_answer')}
+                        {item.expectedOutput || t('dashboard_evaluation:no_answer')}
                       </Text>
                     </Box>
                   </Flex>
-                  <Box>
-                    <MyTag
-                      colorSchema={getStatusColor(item.status)}
-                      type={'fill'}
-                      mx={6}
-                      fontWeight={500}
-                      showDot={item.status === EvaluationStatus.Evaluating}
-                    >
-                      {t(evaluationStatusMap[item.status])}
-                    </MyTag>
-                  </Box>
+
+                  {renderStatusTag(item)}
                   <Popover
                     isOpen={deleteConfirmItem === item._id}
                     onClose={() => setDeleteConfirmItem(null)}
@@ -419,11 +337,10 @@ const DataListContent = () => {
                             </Button>
                             <Button
                               size="sm"
-                              bg="red.600"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // handleDeleteConfirm(item._id);
-                              }}
+                              colorScheme="red"
+                              variant="solid"
+                              isLoading={isDeleting}
+                              onClick={(e) => handleDeleteConfirmClick(e, item._id)}
                             >
                               {t('dashboard_evaluation:delete')}
                             </Button>
@@ -440,15 +357,15 @@ const DataListContent = () => {
       </Flex>
 
       {/* 所有弹窗组件 */}
-      <DataListModals total={total} />
+      <DataListModals total={total} refreshList={refreshList} />
     </MyBox>
   );
 };
 
 // 主组件，只提供 Context
-const DataList = () => {
+const DataList = ({ collectionId }: { collectionId: string }) => {
   return (
-    <DataListProvider>
+    <DataListProvider collectionId={collectionId}>
       <DataListContent />
     </DataListProvider>
   );
