@@ -12,7 +12,7 @@ ${
 }
 
 <task>
-根据用户提供的主题或目标，生成一份详细、可执行的项目计划文档，包含合理的阶段划分与具体待办事项。
+根据用户提供的主题或目标，生成一份详细、可执行的项目计划，严格产出符合 JSON Schema 的结构化 JSON。
 </task>
 
 <inputs>
@@ -22,26 +22,74 @@ ${
 
 <process>
 1. 解析用户输入，提取核心目标、关键要素、约束与本地化偏好。
-2. 评估任务复杂度（简单：2-3 步；复杂：4-7 步），据此确定阶段数量。
-3. 各阶段生成 3-5 条可执行 Todo，动词开头，MECE 且无重叠。
+2. 评估任务复杂度, 据此确定阶段数量。
+3. 各阶段生成可执行 Todo，动词开头，MECE 且无重叠。
 4. 语言风格本地化（根据用户输入语言进行术语与语序调整）。
-5. 产出完整计划，严格使用占位符 [主题] 与标记体系；确保编号连续、标签闭合、结构清晰。
+5. 严格按照 JSON Schema 生成完整计划，不得输出多余内容。
 </process>
 
 <requirements>
-- 必须严格遵循以下注释标记格式：
-  * <!--@title--> 标记主标题
-  * <!--@desc--> 标记整体描述
-  * <!--@step:N:start--> 和 <!--@step:N:end--> 包裹步骤块
-  * <!--@step:N:title--> 标记步骤标题
-  * <!--@step:N:desc--> 标记步骤描述
-  * <!--@todos:N:start--> 和 <!--@todos:N:end--> 包裹待办列表
-  * <!--@todo:N.X--> 标记单个待办事项
-  * <!--@note:N--> 添加重要注释或备注
-- 步骤数量随复杂度自动调整；每步 3-5 条 Todo。
-- 编号（N、X）必须连续、准确。
-- 描述语言简洁、专业、可操作；各阶段逻辑递进、MECE。
-- 进行本地化调整（术语、量词、表达习惯）。
+- 必须严格输出 JSON，不能包含代码块标记（如 \`\`\`）、注释或额外说明文字。
+- 严禁调用任何工具。
+- 输出结构必须符合以下 JSON Schema：
+\`\`\`json
+{
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "主标题，简洁有力，突出核心主题"
+    },
+    "description": {
+      "type": "string",
+      "description": "总体描述，准确概括任务或主题的核心维度"
+    },
+    "steps": {
+      "type": "array",
+      "description": "阶段步骤列表",
+      "items": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer",
+            "description": "步骤顺序，从 1 开始递增"
+          },
+          "title": {
+            "type": "string",
+            "description": "阶段标题"
+          },
+          "tasks": {
+            "type": "array",
+            "description": "该阶段的任务列表",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "description": "任务顺序，从 1 开始递增"
+                },
+                "task": {
+                  "type": "string",
+                  "description": "具体任务描述，动词开头，明确可执行"
+                }
+              },
+              "required": ["index", "task"]
+            },
+          },
+          "note": {
+            "type": "string",
+            "description": "可选备注",
+            "nullable": true
+          }
+        },
+        "required": ["index", "title", "tasks"]
+      },
+      "minItems": 2
+    }
+  },
+  "required": ["title", "description", "steps"]
+}
+\`\`\`
 </requirements>
 
 <guardrails>
@@ -52,42 +100,33 @@ ${
 
 <output>
   <format>
-  # [主题] 深度调研计划 <!--@title-->
-
-  全面了解 [主题] 的 [核心维度描述] <!--@desc-->
-
-  <!--@step:1:start-->
-  ## Step 1: [阶段名称] <!--@step:1:title-->
-  [阶段目标描述] <!--@step:1:desc-->
-  ### Todo List
-  <!--@todos:1:start-->
-  - [ ] [具体任务描述] <!--@todo:1.1-->
-  - [ ] [具体任务描述] <!--@todo:1.2-->
-  - [ ] [具体任务描述] <!--@todo:1.3-->
-  <!--@todos:1:end-->
-  <!--@note:1--> [可选备注]
-  <!--@step:1:end-->
-
-  <!--@step:2:start-->
-  ## Step 2: [阶段名称] <!--@step:2:title-->
-  [阶段目标描述] <!--@step:2:desc-->
-  ### Todo List
-  <!--@todos:2:start-->
-  - [ ] [具体任务描述] <!--@todo:2.1-->
-  - [ ] [具体任务描述] <!--@todo:2.2-->
-  - [ ] [具体任务描述] <!--@todo:2.3-->
-  <!--@todos:2:end-->
-  <!--@note:2--> [可选备注]
-  <!--@step:2:end-->
+  {
+    "title": "[主题] 深度调研计划",
+    "description": "全面了解 [主题] 的 [核心维度描述]",
+    "steps": [
+      {
+        "index": 1,
+        "title": "[阶段名称]",
+        "tasks": [
+          { "index": 1, "task": "[具体任务描述]" },
+          { "index": 2, "task": "[具体任务描述]" },
+          { "index": 3, "task": "[具体任务描述]" }
+        ],
+        "note": "[可选备注]"
+      },
+      {
+        "index": 2,
+        "title": "[阶段名称]",
+        "tasks": [
+          { "index": 1, "task": "[具体任务描述]" },
+          { "index": 2, "task": "[具体任务描述]" },
+          { "index": 3, "task": "[具体任务描述]" }
+        ],
+        "note": "[可选备注]"
+      }
+    ]
+  }
   </format>
-
-  <style>
-  - 标题简洁有力，突出核心主题
-  - 描述准确概括该阶段的核心目标
-  - 待办事项以动词开头，明确可执行
-  - 保持专业术语的准确性
-  - 语言流畅、逻辑清晰
-  </style>
 </output>
 `;
 };

@@ -278,7 +278,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                   top_p: aiChatTopP,
                   stream,
                   onStreaming({ text }) {
-                    //TODO: 需要一个新的 plan sse event
                     childWorkflowStreamResponse?.({
                       event: SseResponseEventEnum.toolResponse,
                       data: {
@@ -433,7 +432,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 ) {
                   const fn =
                     node.flowNodeType === FlowNodeTypeEnum.appModule ? dispatchApp : dispatchPlugin;
-                  console.log(requestParams, 22);
                   const { response, usages } = await fn({
                     ...props,
                     node,
