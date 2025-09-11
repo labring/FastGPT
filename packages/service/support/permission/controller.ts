@@ -169,13 +169,14 @@ export const getClbsInfo = async ({
   ).flat();
 
   return clbs.map((clb) => {
-    const info = infos.find((info) => info._id === getCollaboratorId(clb))!;
+    const info = infos.find((info) => info._id === getCollaboratorId(clb));
+
     return {
       ...clb,
       teamId,
       permission: new Permission({ role: clb.permission, isOwner: ownerTmbId === clb.tmbId }),
       name: info?.name ?? 'Unknown name',
-      avatar: info.avatar ?? (clb.orgId ? DEFAULT_ORG_AVATAR : DEFAULT_TEAM_AVATAR)
+      avatar: info?.avatar ?? (clb.orgId ? DEFAULT_ORG_AVATAR : DEFAULT_TEAM_AVATAR)
     };
   });
 };

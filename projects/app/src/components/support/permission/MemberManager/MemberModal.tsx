@@ -130,7 +130,7 @@ function MemberModal({ onClose }: { onClose: () => void }) {
   // TODO: I18n
   const { openConfirm: openConfirmDisableInheritPer, ConfirmModal: ConfirmDisableInheritPer } =
     useConfirm({
-      content: t('permission.Remove InheritPermission Confirm')
+      content: t('common:permission.Remove InheritPermission Confirm')
     });
 
   const onConfirm = useCallback(() => {
@@ -177,7 +177,6 @@ function MemberModal({ onClose }: { onClose: () => void }) {
         minW="900px"
         maxW={'60vw'}
         h={'100%'}
-        maxH={'50vh'}
         isCentered
         isLoading={loadingGroupsAndOrgs}
       >
@@ -459,6 +458,7 @@ const RenderMemberList = ({
 }) => {
   const { userInfo } = useUserStore();
   const myRole = useContextSelector(CollaboratorContext, (v) => v.myRole);
+
   return (
     <>
       {members?.map((member) => {
