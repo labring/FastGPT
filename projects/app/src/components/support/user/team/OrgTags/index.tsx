@@ -29,7 +29,7 @@ function OrgTags({ orgs, type = 'simple' }: { orgs?: string[]; type?: 'simple' |
           className="textEllipsis"
           fontSize="xs"
           fontWeight={400}
-          w="full"
+          maxW={'200px'}
           color="myGray.400"
           whiteSpace={'nowrap'}
         >

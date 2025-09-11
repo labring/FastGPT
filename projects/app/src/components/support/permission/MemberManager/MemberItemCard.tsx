@@ -62,10 +62,14 @@ function MemberItemCard({
       >
         {isChecked !== undefined && <Checkbox isChecked={isChecked} pointerEvents="none" />}
         <Avatar src={avatar} w="1.5rem" borderRadius={'50%'} />
-        <Box fontSize={'sm'} className="textEllipsis" maxW={'100px'}>
-          {name}
-        </Box>
-        <Box lineHeight={1}>{orgs && orgs.length > 0 && <OrgTags orgs={orgs} />}</Box>
+        <Flex justifyContent={'start'} flexDirection={'column'} w="full">
+          <Box fontSize={'sm'} className="textEllipsis" maxW={'100px'}>
+            {name}
+          </Box>
+          <Box lineHeight={1} maxW="100px">
+            {orgs && orgs.length > 0 && <OrgTags orgs={orgs} />}
+          </Box>
+        </Flex>
       </Flex>
       {showRoleSelect && (
         <RoleSelect
