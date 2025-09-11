@@ -11,13 +11,18 @@ import { describe, expect, it } from 'vitest';
 describe('create api', () => {
   it('should return 200 when create app success', async () => {
     const users = await getFakeUsers(2);
-    await MongoResourcePermission.create({
-      resourceType: 'team',
-      teamId: users.members[0].teamId,
-      resourceId: null,
-      tmbId: users.members[0].tmbId,
-      permission: TeamAppCreatePermissionVal
-    });
+    await MongoResourcePermission.findOneAndUpdate(
+      {
+        resourceType: 'team',
+        teamId: users.members[0].teamId,
+        resourceId: null,
+        tmbId: users.members[0].tmbId
+      },
+      {
+        permission: TeamAppCreatePermissionVal
+      },
+      { upsert: true }
+    );
 
     const res = await Call<createapi.CreateAppBody, {}, {}>(createapi.default, {
       auth: users.members[0],
@@ -56,13 +61,18 @@ describe('create api', () => {
     expect(res3.error).toBe(AppErrEnum.unAuthApp);
     expect(res3.code).toBe(500);
 
-    await MongoResourcePermission.create({
-      resourceType: 'app',
-      teamId: users.members[1].teamId,
-      resourceId: String(folderId),
-      tmbId: users.members[1].tmbId,
-      permission: WritePermissionVal
-    });
+    await MongoResourcePermission.findOneAndUpdate(
+      {
+        resourceType: 'app',
+        teamId: users.members[1].teamId,
+        resourceId: String(folderId),
+        tmbId: users.members[1].tmbId
+      },
+      {
+        permission: WritePermissionVal
+      },
+      { upsert: true }
+    );
 
     const res4 = await Call<createapi.CreateAppBody, {}, {}>(createapi.default, {
       auth: users.members[1],

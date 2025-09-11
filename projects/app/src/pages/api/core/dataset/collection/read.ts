@@ -2,7 +2,6 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { createFileToken } from '@fastgpt/service/support/permission/controller';
 import { BucketNameEnum, ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
@@ -10,6 +9,7 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
+import { createFileToken } from '@fastgpt/service/support/permission/auth/file';
 
 export type readCollectionSourceQuery = {};
 
@@ -48,7 +48,7 @@ async function handler(
       });
     }
 
-    /* 
+    /*
       1. auth chat read permission
       2. auth collection quote in chat
       3. auth outlink open show quote

@@ -18,7 +18,10 @@ import {
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type ClientSession } from 'mongoose';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { getResourceClbsAndGroups } from '@fastgpt/service/support/permission/controller';
+import {
+  getResourceClbs,
+  getResourceOwnedClbs
+} from '@fastgpt/service/support/permission/controller';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
@@ -150,38 +153,30 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
   if (isMove) {
     await mongoSessionRun(async (session) => {
       // Inherit folder: Sync children permission and it's clbs
-      if (AppFolderTypeList.includes(app.type)) {
-        const parentClbsAndGroups = await getResourceClbsAndGroups({
-          teamId: app.teamId,
-          resourceId: parentId,
-          resourceType: PerResourceTypeEnum.app,
-          session
-        });
-        // sync self
-        await syncCollaborators({
-          resourceId: app._id,
-          resourceType: PerResourceTypeEnum.app,
-          collaborators: parentClbsAndGroups,
-          session,
-          teamId: app.teamId
-        });
-        // sync the children
-        await syncChildrenPermission({
-          resource: app,
-          resourceType: PerResourceTypeEnum.app,
-          resourceModel: MongoApp,
-          folderTypeList: AppFolderTypeList,
-          collaborators: parentClbsAndGroups,
-          session
-        });
-      } else {
-        logAppMove({ tmbId, teamId, app, targetName });
-        // Not folder, delete all clb
-        await MongoResourcePermission.deleteMany(
-          { resourceType: PerResourceTypeEnum.app, teamId: app.teamId, resourceId: app._id },
-          { session }
-        );
-      }
+      const parentClbs = await getResourceOwnedClbs({
+        teamId: app.teamId,
+        resourceId: parentId,
+        resourceType: PerResourceTypeEnum.app,
+        session
+      });
+      // sync self
+      await syncCollaborators({
+        resourceId: app._id,
+        resourceType: PerResourceTypeEnum.app,
+        collaborators: parentClbs,
+        session,
+        teamId: app.teamId
+      });
+      // sync the children
+      await syncChildrenPermission({
+        resource: app,
+        resourceType: PerResourceTypeEnum.app,
+        resourceModel: MongoApp,
+        folderTypeList: AppFolderTypeList,
+        collaborators: parentClbs,
+        session
+      });
+      logAppMove({ tmbId, teamId, app, targetName });
       return onUpdate(session);
     });
   } else {
