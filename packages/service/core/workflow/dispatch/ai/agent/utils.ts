@@ -1,4 +1,10 @@
+import type {
+  ChatCompletionAssistantMessageParam,
+  ChatCompletionMessageParam
+} from '@fastgpt/global/core/ai/type';
 import type { ToolNodeItemType } from './type';
+import { SubAppIds } from './sub/constants';
+import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
 const namespaceMap = new Map<string, string>([
   ['a', '子应用'],
@@ -58,4 +64,37 @@ export const parseAgentSystem = ({
   });
 
   return processedPrompt;
+};
+
+export const checkIsEditPlan = (query: UserChatItemValueItemType[]) => {
+  return query.some((item) => item?.text?.content === '更改');
+};
+
+export const hasPlanResponse = (messages: ChatCompletionMessageParam[]) => {
+  return messages.some(
+    (m) =>
+      m.role === 'assistant' &&
+      'tool_calls' in m &&
+      Array.isArray(m.tool_calls) &&
+      m.tool_calls.some((t) => t.type === 'function' && t.function?.name === 'plan_agent')
+  );
+};
+
+export const getPlanAgentToolCallId = (messages: ChatCompletionMessageParam[]) => {
+  return messages
+    .filter((m) => m.role === 'assistant' && 'tool_calls' in m)
+    .flatMap((m) => (m as ChatCompletionAssistantMessageParam).tool_calls || [])
+    .find((t) => t.type === 'function' && t.function?.name === 'plan_agent')?.id;
+};
+
+export const rewritePlanResponse = (
+  messages: ChatCompletionMessageParam[],
+  response: string
+): ChatCompletionMessageParam[] => {
+  return messages.map((m) => {
+    if (m.role === 'tool' && 'tool_call_id' in m) {
+      return { ...m, content: response };
+    }
+    return m;
+  });
 };

@@ -34,7 +34,7 @@ export type ChatNodeUsageType = {
   outputTokens?: number;
   totalPoints: number;
   moduleName: string;
-  model?: string;
+  model: string;
 };
 
 export type InvoiceType = {
