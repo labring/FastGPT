@@ -40,16 +40,18 @@ function MemberItemCard({
   return (
     <Flex
       justifyContent="space-between"
-      alignItems="start"
+      alignItems="center"
       key={key}
-      px="3"
-      py="2"
-      gap="4"
+      px="1"
+      py="1"
+      gap="2"
       borderRadius="sm"
-      _hover={{
-        bgColor: 'myGray.50'
-      }}
-      cursor={disabled ? 'not-allowed' : 'pointer'}
+      {...(!showRoleSelect
+        ? {
+            _hover: { bgColor: 'myGray.50' },
+            cursor: 'pointer'
+          }
+        : {})}
       onClick={() => {
         if (disabled) return;
         onChange?.();
@@ -57,8 +59,8 @@ function MemberItemCard({
     >
       <Flex
         flexDirection={'row'}
-        h={showRoleSelect ? '50px' : 'unset'}
-        p="2"
+        h={showRoleSelect ? '36px' : 'unset'}
+        p="1"
         alignItems={'center'}
         gap="2"
         w="full"
@@ -84,14 +86,14 @@ function MemberItemCard({
               border="base"
               fontSize={'sm'}
               borderRadius={'md'}
-              minH={'50px'}
-              w="250px"
-              p="2"
+              minH={'18px'}
+              w="300px"
+              p="1"
               alignItems={'end'}
               justifyContent={'space-between'}
             >
               <RoleTags permission={role} />
-              <Flex h="32px" alignItems={'center'} justifyContent={'center'}>
+              <Flex h="18px" alignItems={'center'} justifyContent={'center'}>
                 <ChevronDownIcon fontSize="lg" />
               </Flex>
             </Flex>
@@ -100,7 +102,7 @@ function MemberItemCard({
         />
       )}
       {onDelete !== undefined && (
-        <Flex flexDirection={'row'} h={showRoleSelect ? '50px' : 'unset'} alignItems={'center'}>
+        <Flex flexDirection={'row'} h={showRoleSelect ? '36px' : 'unset'} alignItems={'center'}>
           <MyIcon
             name="common/closeLight"
             w="1rem"
