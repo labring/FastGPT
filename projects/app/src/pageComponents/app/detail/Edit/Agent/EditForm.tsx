@@ -11,7 +11,7 @@ import {
 } from '@chakra-ui/react';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/type.d';
 import { useRouter } from 'next/router';
-import { useTranslation } from 'next-i18next';
+import { i18n, useTranslation } from 'next-i18next';
 
 import dynamic from 'next/dynamic';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -32,6 +32,11 @@ import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { getSystemPlugTemplates, getPluginGroups } from '@/web/core/app/api/plugin';
+import type { EditorSkillPickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -101,6 +106,93 @@ const EditForm = ({
       })),
     [appForm.chatConfig.variables, t]
   );
+
+  const { data: systemPlugins = [] } = useRequest2(
+    async () => {
+      try {
+        return await getSystemPlugTemplates({ parentId: '', searchKey: '' });
+      } catch (error) {
+        console.error('Failed to load system plugin templates:', error);
+        return [];
+      }
+    },
+    {
+      manual: false,
+      refreshDeps: [appDetail._id]
+    }
+  );
+  const { data: pluginGroups = [] } = useRequest2(
+    async () => {
+      try {
+        return await getPluginGroups();
+      } catch (error) {
+        console.error('Failed to load plugin groups:', error);
+        return [];
+      }
+    },
+    {
+      manual: false
+    }
+  );
+
+  // Build skill templates with categorized secondary options
+  const skillTemplates: EditorSkillPickerType[] = useMemo(() => {
+    const lang = i18n?.language as localeType;
+
+    // 构建分类后的系统工具
+    const categorizedTools = pluginGroups
+      .map((group) => {
+        const categoryMap = group.groupTypes.reduce<
+          Record<
+            string,
+            {
+              list: Array<{
+                key: string;
+                name: string;
+                avatar: string;
+                canOpen?: boolean;
+              }>;
+              label: string;
+            }
+          >
+        >((acc, item) => {
+          acc[item.typeId] = {
+            list: [],
+            label: t(parseI18nString(item.typeName, lang))
+          };
+          return acc;
+        }, {});
+
+        systemPlugins.forEach((plugin) => {
+          if (categoryMap[plugin.templateType]) {
+            categoryMap[plugin.templateType].list.push({
+              key: plugin.id,
+              name: t(parseI18nString(plugin.name, lang)),
+              avatar: plugin.avatar || 'core/workflow/template/toolCall',
+              canOpen: plugin.flowNodeType === 'toolSet' || plugin.isFolder
+            });
+          }
+        });
+
+        return {
+          key: group.groupName,
+          label: t(group.groupName as any),
+          icon: 'core/workflow/template/toolCall',
+          toolCategories: Object.entries(categoryMap)
+            .map(([type, { list, label }]) => ({
+              type,
+              label,
+              list
+            }))
+            .filter((item) => item.list.length > 0)
+        };
+      })
+      .filter((group) => group.toolCategories.length > 0);
+
+    return categorizedTools;
+  }, [systemPlugins, pluginGroups, t, i18n?.language]);
+
+  console.log('skillTemplates', skillTemplates);
 
   const selectedModel = getWebLLMModel(appForm.aiSettings.model);
   const tokenLimit = useMemo(() => {
@@ -216,6 +308,7 @@ const EditForm = ({
                 }}
                 variableLabels={formatVariables}
                 variables={formatVariables}
+                skills={skillTemplates}
                 placeholder={t('common:core.app.tip.systemPromptTip')}
                 title={t('common:core.ai.Prompt')}
                 ExtensionPopover={[OptimizerPopverComponent]}

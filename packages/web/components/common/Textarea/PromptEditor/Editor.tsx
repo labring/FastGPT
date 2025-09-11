@@ -42,6 +42,10 @@ import MarkdownPlugin from './plugins/MarkdownPlugin';
 import MyIcon from '../../Icon';
 import TabToSpacesPlugin from './plugins/TabToSpacesPlugin';
 import ListExitPlugin from './plugins/ListExitPlugin';
+import SkillPickerPlugin from './plugins/SkillPickerPlugin';
+import SkillPlugin from './plugins/SkillPlugin';
+import { SkillNode } from './plugins/SkillPlugin/node';
+import type { EditorSkillPickerType } from './plugins/SkillPickerPlugin';
 
 const Placeholder = ({ children }: { children: React.ReactNode }) => (
   <Box
@@ -72,6 +76,7 @@ export type EditorProps = {
   isRichText?: boolean;
   variables?: EditorVariablePickerType[];
   variableLabels?: EditorVariableLabelPickerType[];
+  skills?: EditorSkillPickerType[];
   value?: string;
   showOpenModal?: boolean;
   minH?: number;
@@ -95,6 +100,7 @@ export default function Editor({
   onOpenModal,
   variables = [],
   variableLabels = [],
+  skills = [],
   onChange,
   onChangeText,
   onBlur,
@@ -121,6 +127,7 @@ export default function Editor({
     nodes: [
       VariableNode,
       VariableLabelNode,
+      SkillNode,
       HeadingNode,
       ListNode,
       ListItemNode,
@@ -219,6 +226,12 @@ export default function Editor({
             </>
           )}
           {variableLabels.length > 0 && <VariablePickerPlugin variables={variables} />}
+          {skills.length > 0 && (
+            <>
+              <SkillPlugin skills={skills} />
+              <SkillPickerPlugin skills={skills} isFocus={focus} />
+            </>
+          )}
           <OnBlurPlugin onBlur={onBlur} />
           <OnChangePlugin
             onChange={(editorState, editor) => {
