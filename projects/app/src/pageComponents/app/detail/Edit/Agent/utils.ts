@@ -50,7 +50,7 @@ export const appWorkflow2AgentForm = ({
       defaultAppForm.aiSettings.aiChatTopP = inputMap.get(NodeInputKeyEnum.aiChatTopP);
 
       const subApps = inputMap.get(NodeInputKeyEnum.subApps) as FlowNodeTemplateType[];
-      console.log(subApps);
+
       if (subApps) {
         subApps.forEach((subApp) => {
           defaultAppForm.selectedTools.push(subApp);

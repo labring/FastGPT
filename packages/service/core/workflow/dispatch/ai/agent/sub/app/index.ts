@@ -15,7 +15,6 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getUserChatInfoAndAuthTeamPoints } from '../../../../../../../support/permission/auth/team';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getChildAppRuntimeById } from '../../../../../../app/plugin/controller';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
@@ -92,7 +91,6 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
     variables: childrenRunVariables,
     query: [
       {
-        type: ChatItemValueTypeEnum.text,
         text: {
           content: userChatInput
         }

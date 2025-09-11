@@ -20,6 +20,7 @@ type PlanAgentConfig = {
 type DispatchPlanAgentProps = PlanAgentConfig & {
   messages: ChatCompletionMessageParam[];
   tools: ChatCompletionTool[];
+  onReasoning: ResponseEvents['onReasoning'];
   onStreaming: ResponseEvents['onStreaming'];
 };
 
@@ -36,6 +37,7 @@ export const dispatchPlanAgent = async ({
   temperature,
   top_p,
   stream,
+  onReasoning,
   onStreaming
 }: DispatchPlanAgentProps): Promise<DispatchPlanAgentResponse> => {
   const modelData = getLLMModel(model);
@@ -63,6 +65,7 @@ export const dispatchPlanAgent = async ({
       toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
       parallel_tool_calls: true
     },
+    onReasoning,
     onStreaming
   });
 
