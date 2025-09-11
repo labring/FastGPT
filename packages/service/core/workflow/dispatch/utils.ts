@@ -23,7 +23,6 @@ import { MongoApp } from '../../../core/app/schema';
 import { getMCPChildren } from '../../../core/app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import { getRedisCache, setRedisCache } from '../../../common/redis/cache';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -50,31 +49,6 @@ export const getWorkflowResponseWrite = ({
     data: Record<string, any>;
   }) => {
     const useStreamResponse = streamResponse;
-
-    if (
-      streamId &&
-      (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer)
-    ) {
-      try {
-        if (data.choices?.[0]?.delta?.content) {
-          const resKey = `res:${streamId}`;
-
-          const existingData = await getRedisCache(resKey);
-          const streamData = existingData
-            ? JSON.parse(existingData)
-            : {
-                content: '',
-                finished: false
-              };
-
-          streamData.content += data.choices?.[0]?.delta?.content;
-
-          await setRedisCache(resKey, JSON.stringify(streamData), 3600);
-        }
-      } catch (error) {
-        console.error('[WeChat Work] Real-time streaming error:', error);
-      }
-    }
 
     if (!res || res.closed || !useStreamResponse) return;
 
