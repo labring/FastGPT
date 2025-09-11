@@ -205,10 +205,9 @@ function PermissionManage({
             size="md"
             borderRadius={'md'}
             ml={3}
-            leftIcon={<MyIcon name="common/add2" w={'14px'} />}
             onClick={onOpenAddMember}
           >
-            {t('user:permission.Add')}
+            {t('account_team:manage_per')}
           </Button>
         )}
       </Flex>

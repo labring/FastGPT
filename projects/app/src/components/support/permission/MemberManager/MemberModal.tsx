@@ -193,20 +193,20 @@ function MemberModal({ onClose }: { onClose: () => void }) {
               flexDirection="column"
               borderRight="1px solid"
               borderColor="myGray.200"
-              p="2"
-              pr="0"
+              py="2"
             >
-              <SearchInput
-                placeholder={t('user:search_group_org_user')}
-                bgColor="myGray.50"
-                onChange={(e) => setSearchKey(e.target.value)}
-                mr="2"
-              />
+              <Box px={2}>
+                <SearchInput
+                  placeholder={t('user:search_group_org_user')}
+                  bgColor="myGray.50"
+                  onChange={(e) => setSearchKey(e.target.value)}
+                />
+              </Box>
 
               <Flex flexDirection="column" mt="3" overflow={'auto'} flex={'1 0 0'} h={0}>
                 {/* Entry */}
                 {!searchKey && !filterClass && (
-                  <>
+                  <Box px={2}>
                     {entryList.current.map((item) => {
                       return (
                         <HStack
@@ -228,12 +228,12 @@ function MemberModal({ onClose }: { onClose: () => void }) {
                         </HStack>
                       );
                     })}
-                  </>
+                  </Box>
                 )}
 
                 {/* Path */}
                 {!searchKey && filterClass && (
-                  <Box mb={1}>
+                  <Box mb={1} px={2}>
                     <Path
                       paths={[
                         {
@@ -277,13 +277,14 @@ function MemberModal({ onClose }: { onClose: () => void }) {
                       />
                     );
                     return searchKey ? (
-                      MemberList
+                      <Box px={2}>{MemberList}</Box>
                     ) : (
                       <TeamMemberScrollData
                         flexDirection={'column'}
                         gap={1}
                         userSelect={'none'}
                         height={'fit-content'}
+                        px={2}
                       >
                         {MemberList}
                       </TeamMemberScrollData>
@@ -336,9 +337,9 @@ function MemberModal({ onClose }: { onClose: () => void }) {
                       );
                     });
                     return searchKey ? (
-                      Orgs
+                      <Box px={2}>{Orgs}</Box>
                     ) : (
-                      <OrgMemberScrollData>
+                      <OrgMemberScrollData px={2}>
                         {Orgs}
                         <RenderMemberList
                           members={orgMembers}
@@ -349,47 +350,55 @@ function MemberModal({ onClose }: { onClose: () => void }) {
                       </OrgMemberScrollData>
                     );
                   })()}
-                {(filterClass === 'group' || searchKey) &&
-                  groups?.map((group) => {
-                    const addGroup = () => {
-                      setCollaboratorList((state) => {
-                        if (state.find((v) => v.groupId === group._id)) {
-                          return state.filter((v) => v.groupId !== group._id);
-                        }
-                        return [
-                          ...state,
-                          {
-                            ...group,
-                            groupId: group._id,
-                            permission: new Permission({ role: defaultRole })
+                {(filterClass === 'group' || searchKey) && (
+                  <Box
+                    {...(searchKey
+                      ? {}
+                      : {
+                          flex: '1 0 0',
+                          overflow: 'auto'
+                        })}
+                    px={2}
+                  >
+                    {groups?.map((group) => {
+                      const addGroup = () => {
+                        setCollaboratorList((state) => {
+                          if (state.find((v) => v.groupId === group._id)) {
+                            return state.filter((v) => v.groupId !== group._id);
                           }
-                        ];
-                      });
-                    };
-                    const isChecked = !!editCollaborators.find((v) => v.groupId === group._id);
-                    return (
-                      <MemberItemCard
-                        avatar={group.avatar}
-                        key={group._id}
-                        name={
-                          group.name === DefaultGroupName
-                            ? userInfo?.team.teamName ?? ''
-                            : group.name
-                        }
-                        onChange={addGroup}
-                        isChecked={isChecked}
-                      />
-                    );
-                  })}
+                          return [
+                            ...state,
+                            {
+                              ...group,
+                              groupId: group._id,
+                              permission: new Permission({ role: defaultRole })
+                            }
+                          ];
+                        });
+                      };
+                      const isChecked = !!editCollaborators.find((v) => v.groupId === group._id);
+                      return (
+                        <MemberItemCard
+                          avatar={group.avatar}
+                          key={group._id}
+                          name={
+                            group.name === DefaultGroupName
+                              ? userInfo?.team.teamName ?? ''
+                              : group.name
+                          }
+                          onChange={addGroup}
+                          isChecked={isChecked}
+                        />
+                      );
+                    })}
+                  </Box>
+                )}
               </Flex>
             </Flex>
 
             <Flex h={'100%'} flexDirection="column" overflow={'auto'} p="2">
-              <Box>
-                {`${t('user:has_chosen')}: `}
-                {editCollaborators.length}
-              </Box>
-              <Flex flexDirection="column" mt="2" gap={1} flex={'1 0 0'} h={0}>
+              <Box mt={2} mb={3}>{`${t('common:chosen')}: ${editCollaborators.length}`}</Box>
+              <Flex flexDirection="column" gap={1} flex={'1 0 0'} h={0}>
                 {editCollaborators.map((clb) => {
                   const onDelete = () => {
                     setCollaboratorList((state) => {
