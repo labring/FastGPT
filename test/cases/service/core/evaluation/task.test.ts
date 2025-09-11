@@ -12,10 +12,7 @@ import type {
   EvaluationItemJobData
 } from '@fastgpt/global/core/evaluation/type';
 import type { AuthModeType } from '@fastgpt/service/support/permission/type';
-import {
-  EvaluationStatusEnum,
-  CalculateMethodEnum
-} from '@fastgpt/global/core/evaluation/constants';
+import { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -56,7 +53,9 @@ vi.mock('@fastgpt/service/core/evaluation/task/mq', () => ({
 
 vi.mock('@fastgpt/service/support/wallet/usage/controller', () => ({
   createTrainingUsage: vi.fn(),
-  concatUsage: vi.fn()
+  createEvaluationUsage: vi.fn(),
+  concatUsage: vi.fn(),
+  evaluationUsageIndexMap: {}
 }));
 
 // vi.mock('@fastgpt/service/common/system/log', () => ({
@@ -85,8 +84,11 @@ vi.mock('@fastgpt/service/core/evaluation/evaluator', () => ({
 }));
 
 import { evaluationTaskQueue, evaluationItemQueue } from '@fastgpt/service/core/evaluation/task/mq';
-import { createTrainingUsage, concatUsage } from '@fastgpt/service/support/wallet/usage/controller';
-import { addLog } from '@fastgpt/service/common/system/log';
+import {
+  createTrainingUsage,
+  createEvaluationUsage,
+  concatUsage
+} from '@fastgpt/service/support/wallet/usage/controller';
 import { parseHeaderCert } from '@fastgpt/service/support/permission/controller';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 import { createTargetInstance } from '@fastgpt/service/core/evaluation/target';
@@ -190,10 +192,12 @@ describe('EvaluationTaskService', () => {
     ]);
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
     // Mock createTrainingUsage
     (createTrainingUsage as any).mockResolvedValue({ billId: new Types.ObjectId() });
+    // Mock createEvaluationUsage
+    (createEvaluationUsage as any).mockResolvedValue({ billId: new Types.ObjectId() });
     // Mock concatUsage
     (concatUsage as any).mockResolvedValue(undefined);
     // Mock parseHeaderCert - 返回正确的ObjectId类型
@@ -239,11 +243,10 @@ describe('EvaluationTaskService', () => {
       expect(Types.ObjectId.isValid(evaluation.usageId)).toBe(true);
 
       // 验证创建用量记录被调用
-      expect(createTrainingUsage).toHaveBeenCalledWith({
-        teamId: expect.any(String),
-        tmbId: expect.any(String),
-        appName: params.name,
-        billSource: expect.any(String)
+      expect(createEvaluationUsage).toHaveBeenCalledWith({
+        teamId: teamId,
+        tmbId: tmbId,
+        appName: params.name
       });
     });
 
@@ -320,6 +323,8 @@ describe('EvaluationTaskService', () => {
 
   describe('listEvaluations', () => {
     test('应该成功获取评估任务列表', async () => {
+      // Clean up any leftover evaluation tasks
+      await MongoEvaluation.deleteMany({ teamId });
       // 先创建一个评估任务
       const params: CreateEvaluationParams = {
         name: 'List Test Evaluation',
@@ -334,7 +339,15 @@ describe('EvaluationTaskService', () => {
         tmbId: tmbId
       });
 
-      const result = await EvaluationTaskService.listEvaluations(teamId, 1, 10);
+      const result = await EvaluationTaskService.listEvaluations(
+        teamId,
+        0,
+        10,
+        undefined,
+        undefined,
+        tmbId,
+        true
+      );
 
       expect(Array.isArray(result.list)).toBe(true);
       expect(typeof result.total).toBe('number');
@@ -346,6 +359,8 @@ describe('EvaluationTaskService', () => {
     });
 
     test('应该支持搜索功能', async () => {
+      // Clean up any leftover evaluation tasks
+      await MongoEvaluation.deleteMany({ teamId });
       // 先创建一个评估任务
       const params: CreateEvaluationParams = {
         name: 'Searchable Test Evaluation',
@@ -360,7 +375,15 @@ describe('EvaluationTaskService', () => {
         tmbId: tmbId
       });
 
-      const result = await EvaluationTaskService.listEvaluations(teamId, 1, 10, 'Searchable');
+      const result = await EvaluationTaskService.listEvaluations(
+        teamId,
+        0,
+        10,
+        'Searchable',
+        undefined,
+        tmbId,
+        true
+      );
 
       expect(Array.isArray(result.list)).toBe(true);
       expect(result.list.some((evaluation) => evaluation.name.includes('Searchable'))).toBe(true);
@@ -417,7 +440,270 @@ describe('EvaluationTaskService', () => {
       );
 
       await expect(EvaluationTaskService.startEvaluation(created._id, teamId)).rejects.toThrow(
-        'evaluationOnlyQueuingCanStart'
+        'evaluationInvalidStateTransition'
+      );
+    });
+
+    test('应该能重启手动停止的任务', async () => {
+      // 先创建一个评估任务
+      const params: CreateEvaluationParams = {
+        name: 'Restart Test Evaluation',
+        description: 'Test evaluation for restart operation',
+        datasetId,
+        target,
+        evaluators: evaluators
+      };
+      const created = await EvaluationTaskService.createEvaluation({
+        ...params,
+        teamId: teamId,
+        tmbId: tmbId
+      });
+
+      // 先启动任务
+      await EvaluationTaskService.startEvaluation(created._id, teamId);
+
+      // 然后停止任务
+      await EvaluationTaskService.stopEvaluation(created._id, teamId);
+
+      // 验证任务已被标记为手动停止
+      let evaluation = await EvaluationTaskService.getEvaluation(created._id, teamId);
+      expect(evaluation.status).toBe(EvaluationStatusEnum.error);
+      expect(evaluation.errorMessage).toBe('Manually stopped');
+
+      // 现在应该能重启这个任务
+      await EvaluationTaskService.startEvaluation(created._id, teamId);
+
+      // 验证状态已更新
+      evaluation = await EvaluationTaskService.getEvaluation(created._id, teamId);
+      expect(evaluation.status).toBe(EvaluationStatusEnum.evaluating);
+      expect(evaluation.errorMessage).toBeUndefined();
+      expect(evaluation.finishTime).toBeUndefined();
+
+      // 验证任务已重新提交到队列
+      expect(evaluationTaskQueue.add).toHaveBeenLastCalledWith(`eval_task_${created._id}`, {
+        evalId: created._id
+      });
+    });
+
+    test('因真实错误失败的任务不能重启', async () => {
+      // 先创建一个评估任务
+      const params: CreateEvaluationParams = {
+        name: 'Error Test Evaluation',
+        description: 'Test evaluation with real error',
+        datasetId,
+        target,
+        evaluators: evaluators
+      };
+      const created = await EvaluationTaskService.createEvaluation({
+        ...params,
+        teamId: teamId,
+        tmbId: tmbId
+      });
+
+      // 手动设置为错误状态（但不是手动停止）
+      await MongoEvaluation.updateOne(
+        { _id: created._id },
+        {
+          $set: {
+            status: EvaluationStatusEnum.error,
+            errorMessage: 'System error occurred',
+            finishTime: new Date()
+          }
+        }
+      );
+
+      // 尝试重启应该失败
+      await expect(EvaluationTaskService.startEvaluation(created._id, teamId)).rejects.toThrow(
+        'evaluationInvalidStateTransition'
+      );
+    });
+
+    test('应该支持多次重启操作', async () => {
+      // 创建评估任务
+      const params: CreateEvaluationParams = {
+        name: 'Multiple Restart Test',
+        description: 'Test multiple restart operations',
+        datasetId,
+        target,
+        evaluators: evaluators
+      };
+      const created = await EvaluationTaskService.createEvaluation({
+        ...params,
+        teamId: teamId,
+        tmbId: tmbId
+      });
+
+      // 第一次：启动 -> 停止 -> 重启
+      await EvaluationTaskService.startEvaluation(created._id, teamId);
+      await EvaluationTaskService.stopEvaluation(created._id, teamId);
+      await EvaluationTaskService.startEvaluation(created._id, teamId);
+
+      let evaluation = await EvaluationTaskService.getEvaluation(created._id, teamId);
+      expect(evaluation.status).toBe(EvaluationStatusEnum.evaluating);
+
+      // 第二次：停止 -> 重启
+      await EvaluationTaskService.stopEvaluation(created._id, teamId);
+      await EvaluationTaskService.startEvaluation(created._id, teamId);
+
+      evaluation = await EvaluationTaskService.getEvaluation(created._id, teamId);
+      expect(evaluation.status).toBe(EvaluationStatusEnum.evaluating);
+      expect(evaluation.errorMessage).toBeUndefined();
+    });
+
+    test('只有特定错误消息的任务才能重启', async () => {
+      // 创建评估任务
+      const params: CreateEvaluationParams = {
+        name: 'Specific Error Message Test',
+        description: 'Test specific error message for restart',
+        datasetId,
+        target,
+        evaluators: evaluators
+      };
+      const created = await EvaluationTaskService.createEvaluation({
+        ...params,
+        teamId: teamId,
+        tmbId: tmbId
+      });
+
+      // 测试不同的错误消息
+      const errorMessages = [
+        'manually stopped', // 小写，不应该允许重启
+        'MANUALLY STOPPED', // 大写，不应该允许重启
+        'Manually Stopped', // 不完全匹配，不应该允许重启
+        'Manually stopped by user', // 包含但不完全匹配，不应该允许重启
+        'System manually stopped' // 包含但不完全匹配，不应该允许重启
+      ];
+
+      for (const errorMessage of errorMessages) {
+        // 设置错误状态
+        await MongoEvaluation.updateOne(
+          { _id: created._id },
+          {
+            $set: {
+              status: EvaluationStatusEnum.error,
+              errorMessage: errorMessage,
+              finishTime: new Date()
+            }
+          }
+        );
+
+        // 尝试重启应该失败
+        await expect(EvaluationTaskService.startEvaluation(created._id, teamId)).rejects.toThrow(
+          'evaluationInvalidStateTransition'
+        );
+      }
+
+      // 只有确切的 'Manually stopped' 才能重启
+      await MongoEvaluation.updateOne(
+        { _id: created._id },
+        {
+          $set: {
+            status: EvaluationStatusEnum.error,
+            errorMessage: 'Manually stopped',
+            finishTime: new Date()
+          }
+        }
+      );
+
+      // 这次应该成功
+      await expect(
+        EvaluationTaskService.startEvaluation(created._id, teamId)
+      ).resolves.not.toThrow();
+    });
+
+    test('重启时应该正确清理相关字段', async () => {
+      // 创建评估任务
+      const params: CreateEvaluationParams = {
+        name: 'Field Cleanup Test',
+        description: 'Test field cleanup during restart',
+        datasetId,
+        target,
+        evaluators: evaluators
+      };
+      const created = await EvaluationTaskService.createEvaluation({
+        ...params,
+        teamId: teamId,
+        tmbId: tmbId
+      });
+
+      // 启动并停止任务
+      await EvaluationTaskService.startEvaluation(created._id, teamId);
+      await EvaluationTaskService.stopEvaluation(created._id, teamId);
+
+      // 验证停止后的状态
+      let evaluation = await EvaluationTaskService.getEvaluation(created._id, teamId);
+      expect(evaluation.status).toBe(EvaluationStatusEnum.error);
+      expect(evaluation.errorMessage).toBe('Manually stopped');
+      expect(evaluation.finishTime).toBeDefined();
+
+      // 重启任务
+      await EvaluationTaskService.startEvaluation(created._id, teamId);
+
+      // 验证字段被正确清理
+      evaluation = await EvaluationTaskService.getEvaluation(created._id, teamId);
+      expect(evaluation.status).toBe(EvaluationStatusEnum.evaluating);
+      expect(evaluation.errorMessage).toBeUndefined();
+      expect(evaluation.finishTime).toBeUndefined();
+    });
+
+    test('重启已完成的任务应该失败', async () => {
+      // 创建评估任务
+      const params: CreateEvaluationParams = {
+        name: 'Completed Task Restart Test',
+        description: 'Test restarting completed task',
+        datasetId,
+        target,
+        evaluators: evaluators
+      };
+      const created = await EvaluationTaskService.createEvaluation({
+        ...params,
+        teamId: teamId,
+        tmbId: tmbId
+      });
+
+      // 手动设置为已完成状态
+      await MongoEvaluation.updateOne(
+        { _id: created._id },
+        {
+          $set: {
+            status: EvaluationStatusEnum.completed,
+            finishTime: new Date(),
+            avgScore: 85
+          }
+        }
+      );
+
+      // 尝试重启应该失败
+      await expect(EvaluationTaskService.startEvaluation(created._id, teamId)).rejects.toThrow(
+        'evaluationInvalidStateTransition'
+      );
+    });
+
+    test('重启正在运行的任务应该失败', async () => {
+      // 创建评估任务
+      const params: CreateEvaluationParams = {
+        name: 'Running Task Restart Test',
+        description: 'Test restarting running task',
+        datasetId,
+        target,
+        evaluators: evaluators
+      };
+      const created = await EvaluationTaskService.createEvaluation({
+        ...params,
+        teamId: teamId,
+        tmbId: tmbId
+      });
+
+      // 启动任务
+      await EvaluationTaskService.startEvaluation(created._id, teamId);
+
+      // 验证状态为运行中
+      const evaluation = await EvaluationTaskService.getEvaluation(created._id, teamId);
+      expect(evaluation.status).toBe(EvaluationStatusEnum.evaluating);
+
+      // 尝试再次启动应该失败
+      await expect(EvaluationTaskService.startEvaluation(created._id, teamId)).rejects.toThrow(
+        'evaluationInvalidStateTransition'
       );
     });
   });
@@ -483,6 +769,9 @@ describe('EvaluationTaskService', () => {
 
   describe('getEvaluationStats', () => {
     test('应该返回正确的统计信息', async () => {
+      // Clean up any leftover evaluation items and evaluations
+      await MongoEvalItem.deleteMany({});
+      await MongoEvaluation.deleteMany({ teamId });
       // 创建一个新的evaluation用于此测试
       const params: CreateEvaluationParams = {
         name: 'Test Evaluation for getEvaluationStats',
@@ -498,7 +787,7 @@ describe('EvaluationTaskService', () => {
       });
       const testEvaluationId = evaluation._id;
 
-      // 创建测试评估项
+      // 创建测试评估项 - 确保只有最后一个有错误
       await MongoEvalItem.create([
         {
           evalId: testEvaluationId,
@@ -539,21 +828,23 @@ describe('EvaluationTaskService', () => {
           target,
           evaluator: evaluators[0],
           status: EvaluationStatusEnum.queuing
-        },
-        {
-          evalId: testEvaluationId,
-          dataItem: { userInput: 'Q5', expectedOutput: 'A5' },
-          target,
-          evaluator: evaluators[0],
-          status: EvaluationStatusEnum.completed,
-          errorMessage: 'Test error'
         }
       ]);
+
+      // 单独创建错误状态的项目
+      await MongoEvalItem.create({
+        evalId: testEvaluationId,
+        dataItem: { userInput: 'Q5', expectedOutput: 'A5' },
+        target,
+        evaluator: evaluators[0],
+        status: EvaluationStatusEnum.error,
+        errorMessage: 'Test error'
+      });
 
       const stats = await EvaluationTaskService.getEvaluationStats(testEvaluationId, teamId);
 
       expect(stats.total).toBe(5);
-      expect(stats.completed).toBe(3); // 2个成功 + 1个错误
+      expect(stats.completed).toBe(2); // 2个真正完成的
       expect(stats.evaluating).toBe(1);
       expect(stats.queuing).toBe(1);
       expect(stats.error).toBe(1);
@@ -683,27 +974,17 @@ describe('EvaluationTaskService', () => {
         const itemId = item._id.toString();
 
         const updates = {
-          status: EvaluationStatusEnum.completed,
-          evaluatorOutput: {
-            metricName: 'Test Metric',
-            status: 'pass',
-            data: {
-              metricName: 'Test Metric',
-              score: 88
-            }
-          },
-          targetOutput: {
-            actualOutput: 'Updated response',
-            responseTime: 1000
-          }
+          userInput: 'Updated user input',
+          expectedOutput: 'Updated expected output',
+          context: ['Updated context 1', 'Updated context 2']
         };
 
         await EvaluationTaskService.updateEvaluationItem(itemId, updates, teamId);
 
         const updatedItem = await EvaluationTaskService.getEvaluationItem(itemId, teamId);
-        expect(updatedItem.status).toBe(updates.status);
-        expect(updatedItem.evaluatorOutput?.data?.score).toBe(88);
-        expect(updatedItem.targetOutput?.actualOutput).toBe('Updated response');
+        expect(updatedItem.dataItem.userInput).toBe(updates.userInput);
+        expect(updatedItem.dataItem.expectedOutput).toBe(updates.expectedOutput);
+        expect(updatedItem.dataItem.context).toEqual(updates.context);
       });
     });
 
@@ -739,7 +1020,7 @@ describe('EvaluationTaskService', () => {
 
         const retriedItem = await EvaluationTaskService.getEvaluationItem(itemId, teamId);
         expect(retriedItem.status).toBe(EvaluationStatusEnum.queuing);
-        expect(retriedItem.errorMessage).toBeNull();
+        expect(retriedItem.errorMessage).toBeUndefined();
         expect(retriedItem.retry).toBeGreaterThanOrEqual(1);
       });
 
@@ -841,7 +1122,7 @@ describe('EvaluationTaskService', () => {
             metricName: 'Test Metric',
             data: {
               score: 92,
-              run_logs: { test: true }
+              runLogs: { test: true }
             }
           }
         });
@@ -854,7 +1135,7 @@ describe('EvaluationTaskService', () => {
         expect(result.response).toBe('Test response');
         expect(result.score).toBe(92);
         expect(result.result).toBeDefined();
-        expect(result.result.data.score).toBe(92);
+        expect(result.result?.data?.score).toBe(92);
       });
     });
   });
@@ -919,13 +1200,7 @@ describe('EvaluationTaskService', () => {
           dataItem: { userInput: 'Failed userInput', expectedOutput: 'Failed answer' },
           target,
           evaluator: evaluators[0],
-          status: EvaluationStatusEnum.completed,
-          evaluatorOutput: {
-            metricName: 'Test Metric',
-            data: {
-              score: 45
-            }
-          },
+          status: EvaluationStatusEnum.error,
           errorMessage: 'Processing failed'
         }
       ]);
@@ -936,8 +1211,8 @@ describe('EvaluationTaskService', () => {
         status: EvaluationStatusEnum.completed
       });
 
-      expect(result.items).toHaveLength(3);
-      expect(result.total).toBe(3);
+      expect(result.items).toHaveLength(2);
+      expect(result.total).toBe(2);
     });
 
     test('应该按错误状态搜索', async () => {
@@ -947,6 +1222,7 @@ describe('EvaluationTaskService', () => {
 
       expect(result.items).toHaveLength(1);
       expect(result.items[0].dataItem.userInput).toBe('Failed userInput');
+      expect(result.items[0].status).toBe(EvaluationStatusEnum.error);
     });
 
     test('应该按分数范围搜索', async () => {
@@ -1123,7 +1399,7 @@ describe('EvaluationTaskService', () => {
           dataItem: { userInput: 'Failed 1', expectedOutput: 'Answer 1' },
           target,
           evaluator: evaluators[0],
-          status: EvaluationStatusEnum.completed,
+          status: EvaluationStatusEnum.error,
           errorMessage: 'Error 1'
         },
         {
@@ -1131,7 +1407,7 @@ describe('EvaluationTaskService', () => {
           dataItem: { userInput: 'Failed 2', expectedOutput: 'Answer 2' },
           target,
           evaluator: evaluators[0],
-          status: EvaluationStatusEnum.completed,
+          status: EvaluationStatusEnum.error,
           errorMessage: 'Error 2'
         },
         {
@@ -1161,7 +1437,7 @@ describe('EvaluationTaskService', () => {
 
       failedItems.forEach((item) => {
         expect(item.status).toBe(EvaluationStatusEnum.queuing);
-        expect(item.errorMessage).toBeNull();
+        expect(item.errorMessage).toBeUndefined();
       });
 
       // 验证成功的项目未受影响
@@ -1252,7 +1528,7 @@ describe('EvaluationTaskService', () => {
           metricName: 'Test Metric',
           data: {
             score: 85,
-            run_logs: { usage: { totalPoints: 20 } }
+            runLogs: { usage: { totalPoints: 20 } }
           }
         })
       };
@@ -1263,7 +1539,7 @@ describe('EvaluationTaskService', () => {
 
     test('应该正确处理评估任务流程', async () => {
       // Import the processor module after mocking
-      const { evaluationTaskProcessor, evaluationItemProcessor } = await import(
+      const { evaluationTaskProcessor } = await import(
         '@fastgpt/service/core/evaluation/task/processor'
       );
 
@@ -1384,7 +1660,7 @@ describe('EvaluationTaskService', () => {
       expect(mockTargetInstance.execute).toHaveBeenCalledWith({
         userInput: 'Test input',
         context: ['context1'],
-        globalVariables: undefined
+        targetCallParams: undefined
       });
 
       expect(mockEvaluatorInstance.evaluate).toHaveBeenCalledWith({
@@ -1962,6 +2238,328 @@ describe('EvaluationTaskService', () => {
       expect(finalEvaluation?.statistics?.totalItems).toBe(3);
       expect(finalEvaluation?.statistics?.completedItems).toBe(2);
       expect(finalEvaluation?.statistics?.errorItems).toBe(1);
+    });
+  });
+
+  // ========================= 数据项聚合操作测试 =========================
+  describe('DataItem Aggregation Operations Tests', () => {
+    let testEvaluationId: string;
+    let testDataItemId: string;
+
+    beforeEach(async () => {
+      // 为每个测试创建新的evaluation
+      const params: CreateEvaluationParams = {
+        name: 'Test Evaluation for DataItem Operations',
+        description: 'A test evaluation for data item operations',
+        datasetId,
+        target,
+        evaluators: evaluators
+      };
+      const evaluation = await EvaluationTaskService.createEvaluation({
+        ...params,
+        teamId: teamId,
+        tmbId: tmbId
+      });
+      testEvaluationId = evaluation._id;
+      testDataItemId = new Types.ObjectId().toString();
+
+      // 创建测试数据项 - 同一个dataItemId的多个评估项
+      await MongoEvalItem.create([
+        {
+          evalId: testEvaluationId,
+          dataItem: {
+            _id: testDataItemId,
+            userInput: 'What is JavaScript?',
+            expectedOutput: 'JavaScript is a programming language'
+          },
+          target,
+          evaluator: evaluators[0],
+          status: EvaluationStatusEnum.completed,
+          evaluatorOutput: {
+            metricName: 'Test Metric',
+            data: { score: 85 }
+          }
+        },
+        {
+          evalId: testEvaluationId,
+          dataItem: {
+            _id: testDataItemId,
+            userInput: 'What is JavaScript?',
+            expectedOutput: 'JavaScript is a programming language'
+          },
+          target,
+          evaluator: evaluators[0],
+          status: EvaluationStatusEnum.error,
+          errorMessage: 'Test error'
+        },
+        {
+          evalId: testEvaluationId,
+          dataItem: {
+            _id: new Types.ObjectId().toString(),
+            userInput: 'What is Python?',
+            expectedOutput: 'Python is a programming language'
+          },
+          target,
+          evaluator: evaluators[0],
+          status: EvaluationStatusEnum.completed,
+          evaluatorOutput: {
+            metricName: 'Test Metric',
+            data: { score: 90 }
+          }
+        }
+      ]);
+    });
+
+    describe('listDataItemsGrouped', () => {
+      test('应该成功返回按数据项分组的结果', async () => {
+        const result = await EvaluationTaskService.listDataItemsGrouped(teamId, {
+          evalId: testEvaluationId,
+          offset: 0,
+          pageSize: 20
+        });
+
+        expect(result.list).toHaveLength(2);
+        expect(result.total).toBe(2);
+
+        const firstGroup = result.list[0];
+        expect(firstGroup.dataItemId).toBeDefined();
+        expect(firstGroup.dataItem).toBeDefined();
+        expect(firstGroup.items).toBeDefined();
+        expect(firstGroup.summary).toBeDefined();
+        expect(firstGroup.summary.totalItems).toBeGreaterThan(0);
+        expect(firstGroup.summary.completedItems).toBeGreaterThanOrEqual(0);
+        expect(firstGroup.summary.errorItems).toBeGreaterThanOrEqual(0);
+      });
+
+      test('应该支持状态过滤', async () => {
+        const result = await EvaluationTaskService.listDataItemsGrouped(teamId, {
+          evalId: testEvaluationId,
+          status: EvaluationStatusEnum.completed,
+          offset: 0,
+          pageSize: 20
+        });
+
+        result.list.forEach((group) => {
+          group.items.forEach((item) => {
+            expect(item.status).toBe(EvaluationStatusEnum.completed);
+          });
+        });
+      });
+
+      test('应该支持关键词搜索', async () => {
+        const result = await EvaluationTaskService.listDataItemsGrouped(teamId, {
+          evalId: testEvaluationId,
+          keyword: 'JavaScript',
+          offset: 0,
+          pageSize: 20
+        });
+
+        expect(result.list.length).toBeGreaterThan(0);
+        const hasJavaScript = result.list.some(
+          (group) =>
+            group.dataItem.userInput?.includes('JavaScript') ||
+            group.dataItem.expectedOutput?.includes('JavaScript')
+        );
+        expect(hasJavaScript).toBe(true);
+      });
+
+      test('应该支持分页', async () => {
+        const result = await EvaluationTaskService.listDataItemsGrouped(teamId, {
+          evalId: testEvaluationId,
+          offset: 0,
+          pageSize: 1
+        });
+
+        expect(result.list).toHaveLength(1);
+        expect(result.total).toBe(2);
+      });
+    });
+
+    describe('deleteEvaluationItemsByDataItem', () => {
+      test('应该成功删除指定数据项的所有评估项', async () => {
+        const result = await EvaluationTaskService.deleteEvaluationItemsByDataItem(
+          testDataItemId,
+          teamId,
+          testEvaluationId
+        );
+
+        expect(result.deletedCount).toBe(2); // 应该删除2个评估项
+
+        // 验证项目已被删除
+        const remainingItems = await MongoEvalItem.find({
+          evalId: testEvaluationId,
+          'dataItem._id': testDataItemId
+        });
+        expect(remainingItems).toHaveLength(0);
+
+        // 验证其他项目未受影响
+        const otherItems = await MongoEvalItem.find({
+          evalId: testEvaluationId,
+          'dataItem._id': { $ne: testDataItemId }
+        });
+        expect(otherItems).toHaveLength(1);
+      });
+
+      test('数据项不存在时应该返回0', async () => {
+        const nonExistentDataItemId = new Types.ObjectId().toString();
+
+        const result = await EvaluationTaskService.deleteEvaluationItemsByDataItem(
+          nonExistentDataItemId,
+          teamId,
+          testEvaluationId
+        );
+
+        expect(result.deletedCount).toBe(0);
+      });
+    });
+
+    describe('retryEvaluationItemsByDataItem', () => {
+      test('应该成功重试指定数据项的失败评估项', async () => {
+        const result = await EvaluationTaskService.retryEvaluationItemsByDataItem(
+          testDataItemId,
+          teamId,
+          testEvaluationId
+        );
+
+        expect(result.retriedCount).toBe(1); // 应该重试1个失败的项目
+
+        // 验证失败的项目状态被重置
+        const retriedItems = await MongoEvalItem.find({
+          evalId: testEvaluationId,
+          'dataItem._id': testDataItemId,
+          status: EvaluationStatusEnum.queuing
+        });
+        expect(retriedItems).toHaveLength(1);
+
+        // 验证成功的项目未受影响
+        const completedItems = await MongoEvalItem.find({
+          evalId: testEvaluationId,
+          'dataItem._id': testDataItemId,
+          status: EvaluationStatusEnum.completed
+        });
+        expect(completedItems).toHaveLength(1);
+      });
+
+      test('没有失败项目时应该返回0', async () => {
+        // 先将所有项目设为完成状态
+        await MongoEvalItem.updateMany(
+          { evalId: testEvaluationId, 'dataItem._id': testDataItemId },
+          { $set: { status: EvaluationStatusEnum.completed } }
+        );
+
+        const result = await EvaluationTaskService.retryEvaluationItemsByDataItem(
+          testDataItemId,
+          teamId,
+          testEvaluationId
+        );
+
+        expect(result.retriedCount).toBe(0);
+      });
+    });
+
+    describe('updateEvaluationItemsByDataItem', () => {
+      test('应该成功更新指定数据项的所有评估项', async () => {
+        const updates = {
+          userInput: 'Updated JavaScript userInput',
+          expectedOutput: 'Updated JavaScript answer',
+          context: ['Updated context']
+        };
+
+        const result = await EvaluationTaskService.updateEvaluationItemsByDataItem(
+          testDataItemId,
+          updates,
+          teamId,
+          testEvaluationId
+        );
+
+        expect(result.updatedCount).toBe(2); // 应该更新2个评估项
+
+        // 验证更新结果
+        const updatedItems = await MongoEvalItem.find({
+          evalId: testEvaluationId,
+          'dataItem._id': testDataItemId
+        });
+
+        updatedItems.forEach((item) => {
+          expect(item.dataItem.userInput).toBe(updates.userInput);
+          expect(item.dataItem.expectedOutput).toBe(updates.expectedOutput);
+          expect(item.dataItem.context).toEqual(updates.context);
+        });
+      });
+
+      test('空更新时应该返回0', async () => {
+        const result = await EvaluationTaskService.updateEvaluationItemsByDataItem(
+          testDataItemId,
+          {},
+          teamId,
+          testEvaluationId
+        );
+
+        expect(result.updatedCount).toBe(0);
+      });
+    });
+
+    describe('exportEvaluationResultsGroupedByDataItem', () => {
+      test('应该成功导出JSON格式的数据项分组结果', async () => {
+        const result = await EvaluationTaskService.exportEvaluationResultsGroupedByDataItem(
+          teamId,
+          testEvaluationId,
+          'json'
+        );
+
+        expect(result.totalItems).toBe(2);
+
+        const exportData = JSON.parse(result.results.toString());
+        expect(Array.isArray(exportData)).toBe(true);
+        expect(exportData).toHaveLength(2);
+
+        const firstItem = exportData[0];
+        expect(firstItem.dataItemId).toBeDefined();
+        expect(firstItem.userInput).toBeDefined();
+        expect(firstItem.expectedOutput).toBeDefined();
+        expect(firstItem.metricScores).toBeDefined();
+        expect(typeof firstItem.metricScores).toBe('object');
+      });
+
+      test('应该成功导出CSV格式的数据项分组结果', async () => {
+        const result = await EvaluationTaskService.exportEvaluationResultsGroupedByDataItem(
+          teamId,
+          testEvaluationId,
+          'csv'
+        );
+
+        expect(result.totalItems).toBe(2);
+
+        const csvContent = result.results.toString();
+        expect(csvContent).toContain('DataItemId,UserInput,ExpectedOutput,ActualOutput');
+        expect(csvContent).toContain('Test Metric'); // 指标名称应该作为列标题
+        expect(csvContent.split('\n').length).toBeGreaterThan(2); // 应该有标题行和数据行
+      });
+
+      test('空数据时应该返回空结果', async () => {
+        // 创建一个空的评估任务
+        const emptyParams: CreateEvaluationParams = {
+          name: 'Empty DataItem Export Test',
+          description: 'Empty test',
+          datasetId,
+          target,
+          evaluators: evaluators
+        };
+        const emptyEvaluation = await EvaluationTaskService.createEvaluation({
+          ...emptyParams,
+          teamId: teamId,
+          tmbId: tmbId
+        });
+
+        const result = await EvaluationTaskService.exportEvaluationResultsGroupedByDataItem(
+          teamId,
+          emptyEvaluation._id,
+          'json'
+        );
+
+        expect(result.totalItems).toBe(0);
+        expect(result.results.toString()).toBe('[]');
+      });
     });
   });
 });

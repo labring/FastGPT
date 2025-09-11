@@ -22,6 +22,10 @@ vi.mock('@fastgpt/service/support/user/audit/util', () => ({
   addAuditLog: vi.fn().mockResolvedValue(undefined)
 }));
 
+vi.mock('@fastgpt/service/core/evaluation/utils', () => ({
+  validateEvaluationParamsForUpdate: vi.fn().mockResolvedValue({ success: true })
+}));
+
 describe('Update Evaluation Task API Handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -48,7 +52,7 @@ describe('Update Evaluation Task API Handler', () => {
       }
     } as any;
 
-    (EvaluationTaskService.updateEvaluation as any).mockResolvedValue(undefined);
+    (EvaluationTaskService.updateEvaluation as any).mockResolvedValue(false);
 
     const result = await updateHandler(mockReq);
 
@@ -60,6 +64,39 @@ describe('Update Evaluation Task API Handler', () => {
       }),
       mockTeamId
     );
-    expect(result).toEqual({ message: 'Evaluation updated successfully' });
+    expect(result).toEqual({
+      message: 'Evaluation updated successfully'
+    });
+  });
+
+  test('缺少评估ID时应该抛出错误', async () => {
+    const mockReq = {
+      method: 'PUT',
+      body: {
+        name: 'Updated Evaluation'
+      }
+    } as any;
+
+    await expect(updateHandler(mockReq)).rejects.toThrow('evaluationIdRequired');
+  });
+
+  test('验证失败时应该抛出错误', async () => {
+    const { validateEvaluationParamsForUpdate } = await import(
+      '@fastgpt/service/core/evaluation/utils'
+    );
+    (validateEvaluationParamsForUpdate as any).mockResolvedValue({
+      success: false,
+      message: 'Invalid parameters'
+    });
+
+    const mockReq = {
+      method: 'PUT',
+      body: {
+        evalId: new Types.ObjectId().toString(),
+        name: ''
+      }
+    } as any;
+
+    await expect(updateHandler(mockReq)).rejects.toThrow('Invalid parameters');
   });
 });

@@ -654,6 +654,44 @@ export const auditLogMap = {
     params: {} as {
       name?: string;
       metricName: string;
+   }
+  },
+  //Evaluation Task DataItem Aggregation
+  [AuditEventEnum.DELETE_EVALUATION_TASK_DATA_ITEM]: {
+    content: i18nT('account_team:log_delete_evaluation_task_data_item'),
+    typeLabel: i18nT('account_team:delete_evaluation_task_data_item'),
+    params: {} as {
+      name?: string;
+      taskName: string;
+      dataItemId: string;
+    }
+  },
+  [AuditEventEnum.UPDATE_EVALUATION_TASK_DATA_ITEM]: {
+    content: i18nT('account_team:log_update_evaluation_task_data_item'),
+    typeLabel: i18nT('account_team:update_evaluation_task_data_item'),
+    params: {} as {
+      name?: string;
+      taskName: string;
+      dataItemId: string;
+    }
+  },
+  [AuditEventEnum.RETRY_EVALUATION_TASK_DATA_ITEM]: {
+    content: i18nT('account_team:log_retry_evaluation_task_data_item'),
+    typeLabel: i18nT('account_team:retry_evaluation_task_data_item'),
+    params: {} as {
+      name?: string;
+      taskName: string;
+      dataItemId: string;
+    }
+  },
+  [AuditEventEnum.EXPORT_EVALUATION_TASK_DATA_ITEMS]: {
+    content: i18nT('account_team:log_export_evaluation_task_data_items'),
+    typeLabel: i18nT('account_team:export_evaluation_task_data_items'),
+    params: {} as {
+      name?: string;
+      taskName: string;
+      format: string;
+      itemCount: number;
     }
   },
   //SearchTest

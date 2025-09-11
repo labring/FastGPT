@@ -14,65 +14,62 @@ import {
   checkTeamEvaluationTaskLimit,
   checkTeamAIPoints
 } from '@fastgpt/service/support/permission/teamLimit';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 async function handler(
   req: ApiRequestProps<CreateEvaluationRequest>
 ): Promise<CreateEvaluationResponse> {
-  try {
-    const { name, description, datasetId, target, evaluators } = req.body;
+  const { name, description, datasetId, target, evaluators } = req.body;
 
-    // Validate all evaluation parameters (includes target validation)
-    const paramValidation = await validateEvaluationParamsForCreate({
-      name,
-      description,
-      datasetId,
-      target,
-      evaluators
-    });
-    if (!paramValidation.success) {
-      return Promise.reject(paramValidation.message);
-    }
-
-    const { teamId, tmbId } = await authEvaluationTaskCreate(target as EvalTarget, {
-      req,
-      authApiKey: true,
-      authToken: true
-    });
-
-    // Check evaluation task limit
-    await checkTeamEvaluationTaskLimit(teamId);
-
-    // Check AI points availability
-    await checkTeamAIPoints(teamId);
-
-    const evaluation = await EvaluationTaskService.createEvaluation({
-      name: name.trim(),
-      description: description?.trim(),
-      datasetId,
-      target: target as EvalTarget,
-      evaluators,
-      teamId,
-      tmbId
-    });
-
-    (async () => {
-      addAuditLog({
-        tmbId,
-        teamId,
-        event: AuditEventEnum.CREATE_EVALUATION_TASK,
-        params: {
-          taskName: evaluation.name,
-          datasetId,
-          targetType: evaluation.target.type,
-          evaluatorCount: evaluation.evaluators.length
-        }
-      });
-    })();
-
-    return evaluation;
-  } catch (error) {
-    return Promise.reject(error);
+  // Validate all evaluation parameters (includes target validation)
+  const paramValidation = await validateEvaluationParamsForCreate({
+    name,
+    description,
+    datasetId,
+    target,
+    evaluators
+  });
+  if (!paramValidation.success) {
+    throw new Error(paramValidation.message);
   }
+
+  const { teamId, tmbId } = await authEvaluationTaskCreate(target as EvalTarget, {
+    req,
+    authApiKey: true,
+    authToken: true
+  });
+
+  // Check evaluation task limit
+  await checkTeamEvaluationTaskLimit(teamId);
+
+  // Check AI points availability
+  await checkTeamAIPoints(teamId);
+
+  const evaluation = await EvaluationTaskService.createEvaluation({
+    name: name.trim(),
+    description: description?.trim(),
+    datasetId,
+    target: target as EvalTarget,
+    evaluators,
+    teamId,
+    tmbId
+  });
+
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.CREATE_EVALUATION_TASK,
+      params: {
+        taskName: evaluation.name,
+        datasetId,
+        targetType: evaluation.target.type,
+        evaluatorCount: evaluation.evaluators.length
+      }
+    });
+  })();
+
+  return evaluation;
 }
 
 export default NextAPI(handler);
