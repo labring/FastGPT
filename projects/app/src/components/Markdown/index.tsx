@@ -23,6 +23,12 @@ const IframeCodeBlock = dynamic(() => import('./codeBlock/Iframe'), { ssr: false
 const IframeHtmlCodeBlock = dynamic(() => import('./codeBlock/iframe-html'), { ssr: false });
 const VideoBlock = dynamic(() => import('./codeBlock/Video'), { ssr: false });
 const AudioBlock = dynamic(() => import('./codeBlock/Audio'), { ssr: false });
+const TableBlock = dynamic(() => import('./codeBlock/Table'), { ssr: false });
+const IndicatorCard = dynamic(() => import('./codeBlock/IndicatorCard'), { ssr: false });
+const LinkBlock = dynamic(() => import('./codeBlock/Link'), { ssr: false });
+const Tips = dynamic(() => import('./codeBlock/Tips'), { ssr: false });
+const Divider = dynamic(() => import('./codeBlock/Divider'), { ssr: false });
+const TextBlock = dynamic(() => import('./codeBlock/TextBlock'), { ssr: false });
 
 const ChatGuide = dynamic(() => import('./chat/Guide'), { ssr: false });
 const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false });
@@ -68,10 +74,108 @@ const MarkdownRender = ({
     };
   }, [chatAuthData, onOpenCiteModal, showAnimation]);
 
+  // parse fragmented JSON array
+  const parseFragmentedJson = useCallback((source: string): {}[] => {
+    const jsonArrays = source.split('][');
+    const allItems: {}[] = [];
+
+    jsonArrays.forEach((jsonStr, index) => {
+      let fixedJsonStr = jsonStr;
+
+      // fix fragmented JSON string format
+      if (index === 0 && !jsonStr.endsWith(']')) {
+        fixedJsonStr = jsonStr + ']';
+      } else if (index === jsonArrays.length - 1 && !jsonStr.startsWith('[')) {
+        fixedJsonStr = '[' + jsonStr;
+      } else if (index > 0 && index < jsonArrays.length - 1) {
+        fixedJsonStr = '[' + jsonStr + ']';
+      }
+
+      try {
+        const items = JSON.parse(fixedJsonStr);
+        if (Array.isArray(items)) {
+          allItems.push(...items);
+        }
+      } catch {
+        // ignore parse error
+      }
+    });
+
+    return allItems;
+  }, []);
+
+  // convert single item to Markdown
+  const convertItemToMarkdown = useCallback((item: { type: string; content: any }): string => {
+    const { type, content } = item;
+
+    switch (type) {
+      case 'TEXT':
+        return (typeof content === 'string' ? content : JSON.stringify(content)) + '\n\n';
+
+      case 'CHART':
+        return content?.hasChart && content?.echartsData
+          ? `\`\`\`echarts\n${JSON.stringify(content.echartsData, null, 2)}\n\`\`\`\n\n`
+          : '';
+
+      case 'TABLE':
+        return content?.data
+          ? `\`\`\`table\n${JSON.stringify(content.data, null, 2)}\n\`\`\`\n\n`
+          : '';
+
+      case 'INDICATOR':
+        return content?.dataList
+          ? `\`\`\`indicator\n${JSON.stringify(content.dataList, null, 2)}\n\`\`\`\n\n`
+          : '';
+
+      case 'LINK':
+        return content?.text && content?.url
+          ? `\`\`\`link\n${JSON.stringify(content, null, 2)}\n\`\`\`\n\n`
+          : '';
+
+      case 'ERROR_TIPS':
+        return content ? `\`\`\`error_tips\n${content}\n\`\`\`\n\n` : '';
+
+      case 'WARNING_TIPS':
+        return content ? `\`\`\`warning_tips\n${content}\n\`\`\`\n\n` : '';
+
+      case 'DIVIDER':
+        return `\`\`\`divider\n\n\`\`\`\n\n`;
+
+      case 'TEXTBLOCK':
+        return content ? `\`\`\`textblock\n${content}\n\`\`\`\n\n` : '';
+
+      default:
+        return '';
+    }
+  }, []);
+
   const formatSource = useMemo(() => {
     if (showAnimation || forbidZhFormat) return source;
-    return mdTextFormat(source);
-  }, [forbidZhFormat, showAnimation, source]);
+
+    // check if it is a tool response
+    const isStructuredResponse =
+      source?.startsWith('[{') && source.includes('"type"') && source.includes('"content"');
+
+    if (!isStructuredResponse) {
+      return mdTextFormat(source);
+    }
+
+    try {
+      // parse JSON data
+      const jsonData = source.includes('][') ? parseFragmentedJson(source) : JSON.parse(source);
+
+      if (!Array.isArray(jsonData)) {
+        return mdTextFormat(source);
+      }
+
+      // convert to Markdown format
+      const result = jsonData.map(convertItemToMarkdown).join('').trim();
+
+      return result || mdTextFormat(source);
+    } catch (error) {
+      return `\`\`\`json\n${source}\n\`\`\``;
+    }
+  }, [forbidZhFormat, showAnimation, source, parseFragmentedJson, convertItemToMarkdown]);
 
   const urlTransform = useCallback((val: string) => {
     return val;
@@ -133,6 +237,27 @@ function Code(e: any) {
     }
     if (codeType === CodeClassNameEnum.audio) {
       return <AudioBlock code={strChildren} />;
+    }
+    if (codeType === CodeClassNameEnum.table) {
+      return <TableBlock code={strChildren} />;
+    }
+    if (codeType === CodeClassNameEnum.indicator) {
+      return <IndicatorCard dataList={JSON.parse(strChildren)} />;
+    }
+    if (codeType === CodeClassNameEnum.link) {
+      return <LinkBlock data={JSON.parse(strChildren)} />;
+    }
+    if (codeType === CodeClassNameEnum.error_tips) {
+      return <Tips content={strChildren} type="error" />;
+    }
+    if (codeType === CodeClassNameEnum.warning_tips) {
+      return <Tips content={strChildren} type="warning" />;
+    }
+    if (codeType === CodeClassNameEnum.divider) {
+      return <Divider />;
+    }
+    if (codeType === CodeClassNameEnum.textblock) {
+      return <TextBlock content={strChildren} />;
     }
 
     return (
