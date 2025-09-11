@@ -50,6 +50,7 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { dispatchFileRead } from './sub/file';
 import { dispatchApp, dispatchPlugin } from './sub/app';
 import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { AskAgentToolParamsType } from './sub/ask/constants';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -98,6 +99,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       planAgentConfig
     }
   } = props;
+
+  // Handle interactive recovery: extract actual user selection from query
+  if (props.lastInteractive) {
+    userChatInput = props.query?.find(({ type }) => type === 'text')?.text?.content;
+    console.log(userChatInput);
+  }
   const memoryKey = `${runningAppInfo.id}-${nodeId}`;
 
   const runtimeSubApps = await rewriteSubAppsToolset({
@@ -369,20 +376,37 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 isEnd: false
               };
             } else if (toolId === SubAppIds.ask) {
-              const { prompt } = parseToolArgs<{ prompt: string }>(call.function.arguments);
-              const interactive: InteractiveNodeResponseType = {
-                type: 'userSelect',
-                params: {
-                  description: prompt || '请选择一个选项：',
-                  userSelectOptions: [
-                    { value: '苹果', key: 'option1' },
-                    { value: '香蕉', key: 'option2' }
-                  ]
-                }
-              };
+              const params = parseToolArgs<AskAgentToolParamsType>(call.function.arguments);
+              let interactive: InteractiveNodeResponseType | undefined;
+              let response = '';
+
+              // Check if this is interactive resumption
+              if (lastInteractive?.toolParams?.toolCallId === call.id) {
+                // TODO
+                return {
+                  response: userChatInput,
+                  usages: [],
+                  isEnd: false
+                };
+              }
+
+              if (params.mode === 'userSelect') {
+                interactive = {
+                  type: 'userSelect',
+                  params: {
+                    description: params.prompt || '请选择一个选项：',
+                    userSelectOptions: params.options.map((option, index) => ({
+                      value: option,
+                      key: `option${index + 1}`
+                    }))
+                  }
+                };
+              } else {
+                response = 'unsupported interactive mode';
+              }
 
               return {
-                response: '',
+                response,
                 usages: [],
                 isEnd: false,
                 interactive

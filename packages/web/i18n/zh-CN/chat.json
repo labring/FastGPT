@@ -3,6 +3,7 @@
   "Delete_all": "清空词库",
   "LLM_model_response_empty": "模型流响应为空，请检查模型流输出是否正常",
   "ai_reasoning": "思考过程",
+  "ask_agent": "提问互动",
   "back_to_text": "返回输入",
   "chat.quote.No Data": "找不到该文件",
   "chat.quote.deleted": "该数据已被删除～",

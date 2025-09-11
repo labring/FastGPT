@@ -18,7 +18,7 @@ export const systemSubInfo: Record<string, { name: string; avatar: string }> = {
     avatar: 'core/workflow/template/readFiles'
   },
   [SubAppIds.ask]: {
-    name: 'Ask Agent',
+    name: i18nT('chat:ask_agent'),
     avatar: 'core/workflow/template/agent'
   },
   [SubAppIds.stop]: {

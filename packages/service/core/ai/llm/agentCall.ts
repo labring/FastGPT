@@ -80,6 +80,39 @@ export const runAgentCall = async ({
 
   let requestMessages = messages;
 
+  // Handle interactive resumption: replace placeholder tool_result with actual user input
+  if (interactiveEntryToolParams) {
+    const targetToolCallId = interactiveEntryToolParams.toolCallId;
+    const userInputMessage = messages.at(-1)!; // Latest user message
+    console.dir(messages, { depth: null });
+
+    // Find and replace the placeholder tool_result
+    requestMessages = messages
+      .map((msg) => {
+        if (
+          msg.role === 'tool' &&
+          msg.tool_call_id === targetToolCallId &&
+          (msg.content === '[Interactive mode activated, waiting for user input]' ||
+            msg.content === '')
+        ) {
+          return {
+            ...msg,
+            content: userInputMessage.content
+          } as any;
+        }
+        return msg;
+      })
+      .filter((msg, index) => {
+        // Remove the duplicate user message at the end (since we used it to replace tool_result)
+        if (index === messages.length - 1 && msg.role === 'user') {
+          return false;
+        }
+        return true;
+      }) as typeof messages;
+
+    console.dir(requestMessages, { depth: null });
+  }
+
   let inputTokens: number = 0;
   let outputTokens: number = 0;
   const subAppUsages: ChatNodeUsageType[] = [];
@@ -159,6 +192,13 @@ export const runAgentCall = async ({
             toolCallId: tool.id
           }
         } as WorkflowInteractiveResponseType;
+
+        // Still need to provide tool_result for the current tool_use to satisfy API requirements
+        requestMessages.push({
+          tool_call_id: tool.id,
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          content: response
+        });
         break;
       }
 

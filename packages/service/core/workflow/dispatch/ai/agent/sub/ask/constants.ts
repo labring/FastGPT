@@ -1,17 +1,30 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import { SubAppIds } from '../constants';
 
-export type AskAgentToolParamsType = {
-  mode?: 'userSelect' | 'formInput' | 'userInput';
+type BaseParams = {
   prompt?: string;
-  options?: string[];
-  form?: {
+};
+
+type UserInputParams = BaseParams & {
+  mode: 'userInput';
+};
+
+type UserSelectParams = BaseParams & {
+  mode: 'userSelect';
+  options: string[];
+};
+
+type FormInputParams = BaseParams & {
+  mode: 'formInput';
+  form: {
     field: string;
     type: 'textInput' | 'numberInput' | 'singleSelect' | 'multiSelect';
     required?: boolean;
     options?: string[];
   }[];
 };
+
+export type AskAgentToolParamsType = UserSelectParams | FormInputParams | UserInputParams;
 
 export const AskAgentTool: ChatCompletionTool = {
   type: 'function',
@@ -21,12 +34,24 @@ export const AskAgentTool: ChatCompletionTool = {
     parameters: {
       type: 'object',
       properties: {
+        mode: {
+          type: 'string',
+          enum: ['userSelect'],
+          description: '交互模式'
+        },
         prompt: {
           type: 'string',
           description: '向用户展示的提示信息'
+        },
+        options: {
+          type: 'array',
+          description: '当 mode=userSelect 时可供选择的选项',
+          items: {
+            type: 'string'
+          }
         }
       },
-      required: ['prompt']
+      required: ['mode', 'prompt']
     }
     // parameters: {
     //   type: 'object',
@@ -72,10 +97,6 @@ export const AskAgentTool: ChatCompletionTool = {
     //         required: ['field', 'type']
     //       }
     //     },
-    //     userInput: {
-    //       type: 'string',
-    //       description: '当 mode=userInput 时用户自由输入的内容'
-    //     }
     //   },
     //   required: ['mode', 'prompt']
     // }

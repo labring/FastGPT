@@ -3,11 +3,12 @@ import type {
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/type.d';
 import { createLLMResponse, type ResponseEvents } from '../../../../../../ai/llm/request';
-import { getPlanAgentPrompt } from './prompt';
+import { getPlanAgentPrompt, type PlanType } from './prompt';
 import { getLLMModel } from '../../../../../../ai/model';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { SubAppIds } from '../constants';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 type PlanAgentConfig = {
   model: string;
@@ -66,6 +67,13 @@ export const dispatchPlanAgent = async ({
     onStreaming
   });
 
+  const planObj = JSON.parse(answerText) as PlanType;
+  planObj.steps = planObj.steps.map((step) => ({
+    ...step,
+    id: getNanoid(6)
+  }));
+  const finalAnswer = JSON.stringify(planObj, null, 2);
+
   const { totalPoints, modelName } = formatModelChars2Points({
     model: modelData.model,
     inputTokens: usage.inputTokens,
@@ -73,7 +81,7 @@ export const dispatchPlanAgent = async ({
   });
 
   return {
-    response: answerText,
+    response: finalAnswer,
     usages: [
       {
         moduleName: modelName,

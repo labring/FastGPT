@@ -1,3 +1,13 @@
+export type PlanType = {
+  title: string;
+  description: string;
+  steps: {
+    title: string;
+    note?: string | null;
+    id?: string;
+  }[];
+};
+
 export const getPlanAgentPrompt = (background?: string) => {
   return `<role>
 你是一个专业的项目规划助手，擅长将复杂任务分解为结构化的执行计划。
@@ -50,31 +60,9 @@ ${
       "items": {
         "type": "object",
         "properties": {
-          "index": {
-            "type": "integer",
-            "description": "步骤顺序，从 1 开始递增"
-          },
           "title": {
             "type": "string",
             "description": "阶段标题"
-          },
-          "tasks": {
-            "type": "array",
-            "description": "该阶段的任务列表",
-            "items": {
-              "type": "object",
-              "properties": {
-                "index": {
-                  "type": "integer",
-                  "description": "任务顺序，从 1 开始递增"
-                },
-                "task": {
-                  "type": "string",
-                  "description": "具体任务描述，动词开头，明确可执行"
-                }
-              },
-              "required": ["index", "task"]
-            },
           },
           "note": {
             "type": "string",
@@ -82,7 +70,7 @@ ${
             "nullable": true
           }
         },
-        "required": ["index", "title", "tasks"]
+        "required": ["title"]
       },
       "minItems": 2
     }
@@ -100,32 +88,7 @@ ${
 
 <output>
   <format>
-  {
-    "title": "[主题] 深度调研计划",
-    "description": "全面了解 [主题] 的 [核心维度描述]",
-    "steps": [
-      {
-        "index": 1,
-        "title": "[阶段名称]",
-        "tasks": [
-          { "index": 1, "task": "[具体任务描述]" },
-          { "index": 2, "task": "[具体任务描述]" },
-          { "index": 3, "task": "[具体任务描述]" }
-        ],
-        "note": "[可选备注]"
-      },
-      {
-        "index": 2,
-        "title": "[阶段名称]",
-        "tasks": [
-          { "index": 1, "task": "[具体任务描述]" },
-          { "index": 2, "task": "[具体任务描述]" },
-          { "index": 3, "task": "[具体任务描述]" }
-        ],
-        "note": "[可选备注]"
-      }
-    ]
-  }
+  c
   </format>
 </output>
 `;
