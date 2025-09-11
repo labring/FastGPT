@@ -25,7 +25,7 @@ const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/
 export const useChatTest = ({
   nodes,
   edges,
-  chatConfig,
+  chatConfig = {},
   isReady
 }: {
   nodes: StoreNodeItemType[];
