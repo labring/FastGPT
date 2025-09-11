@@ -25,40 +25,35 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import format from 'date-fns/format';
-import UserBox from '@fastgpt/web/components/common/UserBox';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { getMetricList, deleteMetric } from '@/web/core/evaluation/dimension';
-// import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/constants';
-// import type { EvalMetricSchemaType } from '@fastgpt/global/core/evaluation/type';
+import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
+import type { EvalMetricDisplayType } from '@fastgpt/global/core/evaluation/metric/type';
+import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
 const EvaluationDimensions = ({ Tab }: { Tab: React.ReactNode }) => {
   const [searchValue, setSearchValue] = useState('');
   const { t } = useTranslation();
   const router = useRouter();
 
-  // 创建适配器函数来匹配 usePagination 的参数格式
-  const getMetricListAdapter = async (data: any) => {
-    const params = {
-      page: data.pageNum,
-      pageSize: data.pageSize,
+  const getMetricListAdapter = async (
+    data: PaginationProps<{ searchKey: string }>
+  ): Promise<PaginationResponse<EvalMetricDisplayType>> => {
+    return getMetricList({
+      pageNum: Number(data.pageNum),
+      pageSize: Number(data.pageSize),
       searchKey: data.searchKey
-    };
-    const result = await getMetricList(params);
-
-    // 根据实际接口响应结构解析数据
-    return {
-      list: result.list || [],
-      total: result.total || 0
-    };
+    });
   };
 
-  // 使用分页Hook
   const {
     data: dimensions,
     Pagination,
-    getData: fetchData
-  } = usePagination(getMetricListAdapter, {
+    getData: fetchData,
+    isLoading
+  } = usePagination<{ searchKey: string }, EvalMetricDisplayType>(getMetricListAdapter, {
     defaultPageSize: 10,
     params: {
       searchKey: searchValue
@@ -107,13 +102,14 @@ const EvaluationDimensions = ({ Tab }: { Tab: React.ReactNode }) => {
             h={9}
             px={4}
             flexShrink={0}
+            leftIcon={<MyIcon name={'common/addLight'} w={4} />}
           >
             {t('dashboard_evaluation:create_dimension')}
           </Button>
         </HStack>
       </Flex>
 
-      <MyBox flex={'1 0 0'} h={0}>
+      <MyBox flex={'1 0 0'} h={0} isLoading={isLoading}>
         <TableContainer h={'100%'} overflowY={'auto'} fontSize={'sm'}>
           <Table>
             <Thead>
@@ -126,74 +122,66 @@ const EvaluationDimensions = ({ Tab }: { Tab: React.ReactNode }) => {
               </Tr>
             </Thead>
             <Tbody>
-              {dimensions.map((dimension: any) => (
+              {dimensions.map((dimension) => (
                 <Tr
                   key={dimension._id}
                   _hover={{ bg: 'myGray.100' }}
-                  // cursor={dimension.type === EvalMetricTypeEnum.Custom ? 'pointer' : 'default'}
-                  cursor={'pointer'}
-                  onClick={() => {
-                    router.push({
-                      pathname: '/dashboard/evaluation/dimension/edit',
-                      query: { id: dimension._id }
-                    });
-                  }}
-                  // onClick={
-                  //   dimension.type === EvalMetricTypeEnum.Custom
-                  //     ? () => {
-                  //       router.push({
-                  //         pathname: '/dashboard/evaluation/dimension/edit',
-                  //         query: { id: dimension._id }
-                  //       });
-                  //     }
-                  //     : undefined
-                  // }
+                  cursor={dimension.type === EvalMetricTypeEnum.Custom ? 'pointer' : 'default'}
+                  onClick={
+                    dimension.type === EvalMetricTypeEnum.Custom
+                      ? () => {
+                          router.push({
+                            pathname: '/dashboard/evaluation/dimension/edit',
+                            query: { id: dimension._id }
+                          });
+                        }
+                      : undefined
+                  }
                 >
                   <Td>
                     <HStack spacing={2}>
                       <Text>{dimension.name}</Text>
-                      {/* {dimension.type === EvalMetricTypeEnum.Builtin && (
+                      {dimension.type === EvalMetricTypeEnum.Builtin && (
                         <MyTag colorSchema="gray">{t('dashboard_evaluation:builtin')}</MyTag>
-                      )} */}
+                      )}
                     </HStack>
                   </Td>
-                  <Td color={'myGray.600'}>{dimension.description || '-'}</Td>
-                  <Td color={'myGray.900'}>
+                  <Td>{dimension.description || '-'}</Td>
+                  <Td>
                     <Box>{format(new Date(dimension.createTime), 'yyyy-MM-dd HH:mm:ss')}</Box>
                     <Box>{format(new Date(dimension.updateTime), 'yyyy-MM-dd HH:mm:ss')}</Box>
                   </Td>
                   <Td>
-                    <UserBox
-                      sourceMember={{
-                        // avatar: dimension.creator.avatar,
-                        // name: dimension.creator.name,
-                        avatar: '/imgs/avatar/BlueAvatar.svg',
-                        name: 'System',
-                        status: 'active'
-                      }}
-                      fontSize="sm"
-                      spacing={1}
-                    />
+                    <Flex alignItems={'center'} gap={1.5}>
+                      <Avatar
+                        src={dimension.sourceMember?.avatar}
+                        w={5}
+                        borderRadius={'full'}
+                        border={'1px solid'}
+                        borderColor={'myGray.200'}
+                      />
+                      <Box>{dimension.sourceMember?.name}</Box>
+                    </Flex>
                   </Td>
                   <Td onClick={(e) => e.stopPropagation()}>
-                    {/* {dimension.type === EvalMetricTypeEnum.Custom && ( */}
-                    <MyIconButton
-                      icon="delete"
-                      w={'24px'}
-                      h={'24px'}
-                      hoverBg="red.50"
-                      hoverColor={'red.600'}
-                      onClick={() =>
-                        openConfirm(
-                          async () => {
-                            await handleDeleteDimension(dimension._id);
-                          },
-                          undefined,
-                          t('dashboard_evaluation:confirm_delete_dimension')
-                        )()
-                      }
-                    />
-                    {/* )} */}
+                    {dimension.type === EvalMetricTypeEnum.Custom && (
+                      <MyIconButton
+                        icon="delete"
+                        w={'24px'}
+                        h={'24px'}
+                        hoverBg="red.50"
+                        hoverColor={'red.600'}
+                        onClick={() =>
+                          openConfirm(
+                            async () => {
+                              await handleDeleteDimension(dimension._id);
+                            },
+                            undefined,
+                            t('dashboard_evaluation:confirm_delete_dimension')
+                          )()
+                        }
+                      />
+                    )}
                   </Td>
                 </Tr>
               ))}

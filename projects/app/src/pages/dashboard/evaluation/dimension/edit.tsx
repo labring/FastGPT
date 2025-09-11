@@ -22,6 +22,11 @@ const DimensionEdit = () => {
   const [isTestRunOpen, setIsTestRunOpen] = useState(false);
   const [dimensionData, setDimensionData] = useState<EvaluationDimensionForm | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentFormData, setCurrentFormData] = useState<EvaluationDimensionForm>({
+    name: '',
+    description: '',
+    prompt: ''
+  });
 
   const dimensionId = router.query.id as string;
 
@@ -67,9 +72,15 @@ const DimensionEdit = () => {
     loadDimensionData();
   }, [dimensionId, fetchDimensionData]);
 
-  const handleValidationChange = useCallback((isValid: boolean) => {
-    setIsFormValid(isValid);
-  }, []);
+  const handleValidationChange = useCallback(
+    (isValid: boolean, formData?: EvaluationDimensionForm) => {
+      setIsFormValid(isValid);
+      if (formData) {
+        setCurrentFormData(formData);
+      }
+    },
+    []
+  );
 
   const handleTestRun = useCallback(() => {
     setIsTestRunOpen(true);
@@ -85,7 +96,7 @@ const DimensionEdit = () => {
       if (!dimensionId) throw new Error('dimensionId is required');
 
       await putUpdateMetric({
-        id: dimensionId,
+        metricId: dimensionId,
         name: data.name,
         description: data.description,
         prompt: data.prompt
@@ -158,7 +169,13 @@ const DimensionEdit = () => {
           </VStack>
           <Flex maxW={['90vw', '800px']} mx="auto">
             <Flex w={'100%'} justifyContent={'flex-end'} pt={8}>
-              <Button h={9} mr={3} variant={'outline'} onClick={handleTestRun}>
+              <Button
+                h={9}
+                mr={3}
+                variant={'outline'}
+                isDisabled={!isFormValid}
+                onClick={handleTestRun}
+              >
                 {t('dashboard_evaluation:dimension_test_run')}
               </Button>
               <Button
@@ -173,8 +190,7 @@ const DimensionEdit = () => {
             </Flex>
           </Flex>
 
-          {/* 试运行弹窗 */}
-          <TestRun isOpen={isTestRunOpen} onClose={handleCloseTestRun} />
+          <TestRun isOpen={isTestRunOpen} onClose={handleCloseTestRun} formData={currentFormData} />
         </MyBox>
       )}
     </DashboardContainer>
@@ -186,7 +202,7 @@ export default DimensionEdit;
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['dashboard_evaluation', 'file']))
+      ...(await serviceSideProps(content))
     }
   };
 }

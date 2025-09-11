@@ -1,10 +1,21 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import { Box, Button, Flex, Grid, Text, VStack, Textarea } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import AnswerTextarea from './AnswerTextarea';
 import styles from './styles.module.scss';
+import { postDebugMetric } from '@/web/core/evaluation/dimension';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
+import type {
+  EvalModelConfigType,
+  MetricConfig
+} from '@fastgpt/global/core/evaluation/metric/type';
+import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
+import AIModelSelector from '@/components/Select/AIModelSelector';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 /**
  * 测试运行结果接口
@@ -24,7 +35,11 @@ interface TestRunProps {
   q?: string;
   referenceAnswer?: string;
   actualAnswer?: string;
-  onRun?: (answers: { referenceAnswer: string; actualAnswer: string }) => Promise<TestResult>;
+  formData?: {
+    name: string;
+    description?: string;
+    prompt: string;
+  };
 }
 
 /**
@@ -37,95 +52,95 @@ const TestRun = ({
   q = '',
   referenceAnswer: defaultReferenceAnswer = '',
   actualAnswer: defaultActualAnswer = '',
-  onRun
+  formData
 }: TestRunProps) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
 
   const [referenceAnswer, setReferenceAnswer] = useState(defaultReferenceAnswer);
   const [actualAnswer, setActualAnswer] = useState(defaultActualAnswer);
   const [question, setQuestion] = useState(q);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<string>('');
+
+  const { llmModelList } = useSystemStore();
+
+  // 初始化默认模型
+  React.useEffect(() => {
+    if (llmModelList.length > 0 && !selectedModel) {
+      setSelectedModel(llmModelList[0].model);
+    }
+  }, [llmModelList, selectedModel]);
+
+  // 构建 LLM 配置
+  const llmConfig: EvalModelConfigType | null = useMemo(() => {
+    if (!selectedModel) return null;
+
+    return {
+      name: selectedModel
+    };
+  }, [selectedModel]);
 
   // 处理开始运行
   const handleStartRun = useCallback(async () => {
-    // Mock 数据
-    const mockSuccessResults = [
-      {
-        score: 85,
-        feedback: '回答质量良好，主要观点清晰，但缺少一些细节说明。建议补充更多具体例子来支持观点。'
-      },
-      {
-        score: 92,
-        feedback: '回答非常全面，逻辑清晰，涵盖了问题的所有关键点。表达准确，语言流畅。'
-      },
-      {
-        score: 78,
-        feedback:
-          '回答基本正确，但结构不够清晰，部分内容需要进一步展开。建议重新组织语言，使逻辑更加连贯。'
-      }
-    ];
+    if (!formData?.prompt) {
+      toast({
+        title: t('dashboard_evaluation:prompt_cannot_be_empty'),
+        status: 'warning'
+      });
+      return;
+    }
 
-    const mockErrorResults = [
-      {
-        feedback: '网络连接超时，请检查网络连接后重试。'
-      },
-      {
-        feedback: '服务暂时不可用，系统正在维护中，请稍后再试。'
-      },
-      {
-        feedback: '参数验证失败，请确保输入的问题和答案格式正确。'
-      },
-      {
-        feedback: '处理请求时发生内部错误，请联系技术支持。'
-      }
-    ];
+    if (!llmConfig || !selectedModel) {
+      toast({
+        title: t('dashboard_evaluation:please_select_model'),
+        status: 'warning'
+      });
+      return;
+    }
 
     setIsRunning(true);
     setTestResult({ score: 0, status: 'running', feedback: '' });
 
     try {
-      // 模拟异步处理延迟
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // 构建评估用例
+      const evalCase = {
+        [EvalDatasetDataKeyEnum.UserInput]: question,
+        [EvalDatasetDataKeyEnum.ExpectedOutput]: referenceAnswer,
+        [EvalDatasetDataKeyEnum.ActualOutput]: actualAnswer
+      };
 
-      // 如果有外部传入的 onRun 函数，优先使用
-      if (onRun) {
-        const result = await onRun({
-          referenceAnswer,
-          actualAnswer
-        });
-        setTestResult(result);
-      } else {
-        // 否则使用 mock 数据
-        const isSuccess = Math.random() > 0.5; // 50% 概率成功或失败
+      // 构建评估维度配置
+      const metricConfig: MetricConfig = {
+        metricName: formData.name,
+        metricType: EvalMetricTypeEnum.Custom,
+        prompt: formData.prompt
+      };
 
-        if (isSuccess) {
-          const randomSuccess =
-            mockSuccessResults[Math.floor(Math.random() * mockSuccessResults.length)];
-          setTestResult({
-            score: randomSuccess.score,
-            status: 'success',
-            feedback: randomSuccess.feedback
-          });
-        } else {
-          const randomError = mockErrorResults[Math.floor(Math.random() * mockErrorResults.length)];
-          setTestResult({
-            score: 0,
-            status: 'error',
-            feedback: randomError.feedback
-          });
-        }
-      }
+      // 调用调试接口
+      const result = await postDebugMetric({
+        evalCase,
+        llmConfig,
+        metricConfig
+      });
+
+      setTestResult({
+        score: result.score,
+        status: 'success',
+        feedback: result.reason || t('dashboard_evaluation:no_feedback_text')
+      });
     } catch (error) {
+      console.error('debug metric error:', error);
       setTestResult({
         score: 0,
         status: 'error',
-        feedback: t('运行失败，请重试')
+        feedback: getErrText(error) || t('dashboard_evaluation:run_failed_please_retry')
       });
     } finally {
       setIsRunning(false);
     }
-  }, [referenceAnswer, actualAnswer, onRun, t]);
+  }, [question, referenceAnswer, actualAnswer, formData, llmConfig, selectedModel, t, toast]);
 
   // 获取状态显示信息
   const getStatusInfo = useCallback(
@@ -230,16 +245,36 @@ const TestRun = ({
             <Text fontSize="md" fontWeight="medium">
               {t('dashboard_evaluation:run_result_label')}
             </Text>
-            <Button
-              size="sm"
-              colorScheme="blue"
-              onClick={handleStartRun}
-              isLoading={isRunning}
-              loadingText={t('dashboard_evaluation:running_text')}
-              isDisabled={!question.trim() || !referenceAnswer.trim() || !actualAnswer.trim()}
-            >
-              {t('dashboard_evaluation:start_run_button')}
-            </Button>
+            <Flex align="center" gap={2}>
+              <AIModelSelector
+                w={'180px'}
+                h={'32px'}
+                bg={'white'}
+                value={selectedModel}
+                list={llmModelList.map((item) => ({
+                  label: item.name,
+                  value: item.model
+                }))}
+                onChange={(model) => {
+                  setSelectedModel(model);
+                }}
+              />
+              <Button
+                size="sm"
+                colorScheme="blue"
+                onClick={handleStartRun}
+                isLoading={isRunning}
+                loadingText={t('dashboard_evaluation:running_text')}
+                isDisabled={
+                  !question.trim() ||
+                  !referenceAnswer.trim() ||
+                  !actualAnswer.trim() ||
+                  !selectedModel
+                }
+              >
+                {t('dashboard_evaluation:start_run_button')}
+              </Button>
+            </Flex>
           </Flex>
 
           {/* 运行结果内容 */}

@@ -1,5 +1,6 @@
 import type { EvalDatasetDataKeyEnum } from '../dataset/constants';
 import type { ModelTypeEnum, EvalMetricTypeEnum } from './constants';
+import type { SourceMemberType } from '@fastgpt/global/support/user/type';
 
 export type EvalModelConfigType = {
   name: string;
@@ -47,6 +48,10 @@ export type EvalMetricSchemaType = {
   createTime: Date;
   updateTime: Date;
 };
+
+export interface EvalMetricDisplayType extends EvalMetricSchemaType {
+  sourceMember: SourceMemberType;
+}
 
 export type HttpConfig = {
   url: string;
