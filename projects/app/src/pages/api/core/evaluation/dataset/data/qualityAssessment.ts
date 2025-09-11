@@ -22,7 +22,7 @@ export type QualityAssessmentResponse = string;
 async function handler(
   req: ApiRequestProps<QualityAssessmentBody, QualityAssessmentQuery>
 ): Promise<QualityAssessmentResponse> {
-  const { dataId, evalModel } = req.body;
+  const { dataId, evaluationModel } = req.body;
 
   const { teamId, tmbId } = await authEvaluationDatasetDataUpdateById(dataId, {
     req,
@@ -34,11 +34,11 @@ async function handler(
   await checkTeamAIPoints(teamId);
 
   if (!dataId || typeof dataId !== 'string') {
-    return 'dataId is required and must be a string';
+    return Promise.reject('dataId is required and must be a string');
   }
 
-  if (!evalModel || typeof evalModel !== 'string') {
-    return 'evalModel is required and must be a string';
+  if (evaluationModel !== undefined && typeof evaluationModel !== 'string') {
+    return Promise.reject('evaluationModel must be a string if provided');
   }
 
   const datasetData = await MongoEvalDatasetData.findById(dataId);
@@ -55,6 +55,17 @@ async function handler(
     return Promise.reject(EvaluationErrEnum.evalDatasetCollectionNotFound);
   }
 
+  // Use provided evaluationModel or fallback to collection's evaluationModel
+  const finalEvaluationModel = evaluationModel || collection.evaluationModel;
+
+  if (!finalEvaluationModel || typeof finalEvaluationModel !== 'string') {
+    return Promise.reject('No evaluation model available');
+  }
+
+  if (!global.llmModelMap.has(finalEvaluationModel)) {
+    return Promise.reject(`Invalid evaluation model: ${finalEvaluationModel}`);
+  }
+
   try {
     const isJobActive = await checkEvalDatasetDataQualityJobActive(dataId);
     if (isJobActive) {
@@ -66,13 +77,13 @@ async function handler(
 
     await addEvalDatasetDataQualityJob({
       dataId: dataId,
-      evalModel: evalModel
+      evaluationModel: finalEvaluationModel
     });
 
     await MongoEvalDatasetData.findByIdAndUpdate(dataId, {
       $set: {
         'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.queuing,
-        'metadata.qualityModel': evalModel,
+        'metadata.qualityModel': finalEvaluationModel,
         'metadata.qualityQueueTime': new Date()
       }
     });

@@ -18,6 +18,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { authEvaluationDatasetWrite } from '@fastgpt/service/core/evaluation/common';
 import EvaluationErrCode, { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
+import { getEvaluationModel } from '@fastgpt/service/core/ai/model';
 
 export type QualityAssessmentBatchQuery = {};
 export type QualityAssessmentBatchBody = qualityAssessmentBatchBody;
@@ -25,7 +26,7 @@ export type QualityAssessmentBatchResponse = qualityAssessmentBatchResponse;
 async function handler(
   req: ApiRequestProps<QualityAssessmentBatchBody, QualityAssessmentBatchQuery>
 ): Promise<QualityAssessmentBatchResponse> {
-  const { collectionId, evalModel } = req.body;
+  const { collectionId, evaluationModel } = req.body;
 
   const { teamId, tmbId } = await authEvaluationDatasetWrite(collectionId, {
     req,
@@ -46,10 +47,10 @@ async function handler(
     };
   }
 
-  if (!evalModel || typeof evalModel !== 'string') {
+  if (evaluationModel !== undefined && typeof evaluationModel !== 'string') {
     return {
       success: false,
-      message: 'evalModel is required and must be a string',
+      message: 'evaluationModel must be a string if provided',
       processedCount: 0,
       skippedCount: 0,
       errorCount: 0
@@ -70,6 +71,20 @@ async function handler(
       errorCount: 0
     };
   }
+
+  const finalEvaluationModel = getEvaluationModel(evaluationModel || collection.evaluationModel);
+
+  if (!finalEvaluationModel) {
+    return {
+      success: false,
+      message: EvaluationErrCode[EvaluationErrEnum.evaluatorLLmModelNotFound].message,
+      processedCount: 0,
+      skippedCount: 0,
+      errorCount: 0
+    };
+  }
+
+  const evalModel = finalEvaluationModel.model;
 
   const dataItems = await MongoEvalDatasetData.find({
     datasetId: collectionId,
@@ -119,7 +134,7 @@ async function handler(
         // Create new job
         await addEvalDatasetDataQualityJob({
           dataId: dataId,
-          evalModel: evalModel
+          evaluationModel: evalModel
         });
 
         // Update metadata
@@ -159,7 +174,7 @@ async function handler(
         // Create new job
         await addEvalDatasetDataQualityJob({
           dataId: dataId,
-          evalModel: evalModel
+          evaluationModel: evalModel
         });
 
         // Update metadata
@@ -187,7 +202,7 @@ async function handler(
 
   addLog.info('Batch quality assessment completed', {
     collectionId,
-    evalModel,
+    finalEvaluationModel: evalModel,
     processedCount,
     skippedCount,
     errorCount,

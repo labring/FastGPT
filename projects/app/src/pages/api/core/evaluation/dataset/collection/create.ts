@@ -10,6 +10,7 @@ import {
   checkTeamEvalDatasetLimit,
   checkTeamAIPoints
 } from '@fastgpt/service/support/permission/teamLimit';
+import { getDefaultEvaluationModel } from '@fastgpt/service/core/ai/model';
 
 export type EvalDatasetCollectionCreateQuery = {};
 export type EvalDatasetCollectionCreateBody = createEvalDatasetCollectionBody;
@@ -18,7 +19,7 @@ export type EvalDatasetCollectionCreateResponse = string;
 async function handler(
   req: ApiRequestProps<EvalDatasetCollectionCreateBody, EvalDatasetCollectionCreateQuery>
 ): Promise<EvalDatasetCollectionCreateResponse> {
-  const { name, description = '' } = req.body;
+  const { name, description = '', evaluationModel } = req.body;
 
   const { teamId, tmbId } = await authEvaluationDatasetCreate({
     req,
@@ -42,6 +43,20 @@ async function handler(
     return Promise.reject('Description must be less than 100 characters');
   }
 
+  if (evaluationModel && typeof evaluationModel !== 'string') {
+    return Promise.reject('Evaluation model must be a string');
+  }
+
+  if (evaluationModel && evaluationModel.length > 100) {
+    return Promise.reject('Evaluation model must be less than 100 characters');
+  }
+
+  if (evaluationModel) {
+    if (!global.llmModelMap.has(evaluationModel)) {
+      return Promise.reject(`Invalid evaluation model: ${evaluationModel}`);
+    }
+  }
+
   const existingDataset = await MongoEvalDatasetCollection.findOne({
     teamId,
     name: name.trim()
@@ -57,6 +72,10 @@ async function handler(
   // Check AI points availability
   await checkTeamAIPoints(teamId);
 
+  // Get the evaluation model to use (provided or default)
+  const defaultEvaluationModel = getDefaultEvaluationModel();
+  const modelToUse = evaluationModel || defaultEvaluationModel?.model;
+
   const datasetId = await mongoSessionRun(async (session) => {
     const [{ _id }] = await MongoEvalDatasetCollection.create(
       [
@@ -64,7 +83,8 @@ async function handler(
           teamId,
           tmbId,
           name: name.trim(),
-          description: description.trim()
+          description: description.trim(),
+          ...(modelToUse && { evaluationModel: modelToUse })
         }
       ],
       { session, ordered: true }

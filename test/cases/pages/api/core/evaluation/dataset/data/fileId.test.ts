@@ -52,6 +52,14 @@ const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
 const mockReadFileContentFromMongo = vi.mocked(readFileContentFromMongo);
 const mockAddEvalDatasetDataQualityJob = vi.mocked(addEvalDatasetDataQualityJob);
 
+// Mock global.llmModelMap
+beforeEach(() => {
+  global.llmModelMap = new Map([
+    ['gpt-4', { model: 'gpt-4' }],
+    ['gpt-3.5-turbo', { model: 'gpt-3.5-turbo' }]
+  ]) as any;
+});
+
 describe('EvalDatasetData FileId Import API', () => {
   const validTeamId = 'team123';
   const validTmbId = 'tmb123';
@@ -68,6 +76,12 @@ describe('EvalDatasetData FileId Import API', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Reset global.llmModelMap
+    global.llmModelMap = new Map([
+      ['gpt-4', { model: 'gpt-4' }],
+      ['gpt-3.5-turbo', { model: 'gpt-3.5-turbo' }]
+    ]) as any;
 
     mockAuthEvalDatasetCollectionFile.mockResolvedValue({
       teamId: validTeamId,
@@ -115,8 +129,9 @@ describe('EvalDatasetData FileId Import API', () => {
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('fileId is required and must be a string');
+      await expect(handler_test(req as any)).rejects.toBe(
+        'fileId is required and must be a string'
+      );
     });
 
     it('should reject when fileId is not a string', async () => {
@@ -128,8 +143,9 @@ describe('EvalDatasetData FileId Import API', () => {
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('fileId is required and must be a string');
+      await expect(handler_test(req as any)).rejects.toBe(
+        'fileId is required and must be a string'
+      );
     });
 
     it('should reject when collectionId is missing', async () => {
@@ -140,8 +156,9 @@ describe('EvalDatasetData FileId Import API', () => {
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('datasetCollectionId is required and must be a string');
+      await expect(handler_test(req as any)).rejects.toBe(
+        'datasetCollectionId is required and must be a string'
+      );
     });
 
     it('should reject when collectionId is not a string', async () => {
@@ -153,8 +170,9 @@ describe('EvalDatasetData FileId Import API', () => {
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('datasetCollectionId is required and must be a string');
+      await expect(handler_test(req as any)).rejects.toBe(
+        'datasetCollectionId is required and must be a string'
+      );
     });
 
     it('should reject when enableQualityEvaluation is missing', async () => {
@@ -165,8 +183,9 @@ describe('EvalDatasetData FileId Import API', () => {
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('enableQualityEvaluation is required and must be a boolean');
+      await expect(handler_test(req as any)).rejects.toBe(
+        'enableQualityEvaluation is required and must be a boolean'
+      );
     });
 
     it('should reject when enableQualityEvaluation is not a boolean', async () => {
@@ -178,11 +197,12 @@ describe('EvalDatasetData FileId Import API', () => {
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('enableQualityEvaluation is required and must be a boolean');
+      await expect(handler_test(req as any)).rejects.toBe(
+        'enableQualityEvaluation is required and must be a boolean'
+      );
     });
 
-    it('should reject when enableQualityEvaluation is true but qualityEvaluationModel is missing', async () => {
+    it('should reject when enableQualityEvaluation is true but evaluationModel is missing', async () => {
       const req = {
         body: {
           fileId: validFileId,
@@ -191,25 +211,23 @@ describe('EvalDatasetData FileId Import API', () => {
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe(
-        'qualityEvaluationModel is required when enableQualityEvaluation is true'
+      await expect(handler_test(req as any)).rejects.toBe(
+        'evaluationModel is required when enableQualityEvaluation is true'
       );
     });
 
-    it('should reject when enableQualityEvaluation is true but qualityEvaluationModel is not a string', async () => {
+    it('should reject when enableQualityEvaluation is true but evaluationModel is not a string', async () => {
       const req = {
         body: {
           fileId: validFileId,
           collectionId: validCollectionId,
           enableQualityEvaluation: true,
-          qualityEvaluationModel: 123
+          evaluationModel: 123
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe(
-        'qualityEvaluationModel is required when enableQualityEvaluation is true'
+      await expect(handler_test(req as any)).rejects.toBe(
+        'evaluationModel is required when enableQualityEvaluation is true'
       );
     });
   });
@@ -274,7 +292,7 @@ describe('EvalDatasetData FileId Import API', () => {
         file: {
           _id: validFileId,
           filename: 'test.txt',
-          metadata: {}
+          metadata: { qualityStatus: 'unevaluated' }
         }
       } as any);
 
@@ -286,8 +304,7 @@ describe('EvalDatasetData FileId Import API', () => {
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('File must be a CSV file');
+      await expect(handler_test(req as any)).rejects.toBe('File must be a CSV file');
     });
 
     it('should handle files with uppercase CSV extension', async () => {
@@ -297,7 +314,7 @@ describe('EvalDatasetData FileId Import API', () => {
         file: {
           _id: validFileId,
           filename: 'test.CSV',
-          metadata: {}
+          metadata: { qualityStatus: 'unevaluated' }
         }
       } as any);
 
@@ -327,7 +344,7 @@ describe('EvalDatasetData FileId Import API', () => {
         file: {
           _id: validFileId,
           filename: undefined,
-          metadata: {}
+          metadata: { qualityStatus: 'unevaluated' }
         }
       } as any);
 
@@ -339,8 +356,7 @@ describe('EvalDatasetData FileId Import API', () => {
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('File must be a CSV file');
+      await expect(handler_test(req as any)).rejects.toBe('File must be a CSV file');
     });
   });
 
@@ -418,7 +434,7 @@ describe('EvalDatasetData FileId Import API', () => {
             [EvalDatasetDataKeyEnum.ActualOutput]: 'AI is...',
             [EvalDatasetDataKeyEnum.Context]: ['tech', 'science'],
             [EvalDatasetDataKeyEnum.RetrievalContext]: ['AI overview'],
-            metadata: { category: 'tech' },
+            metadata: { category: 'tech', qualityStatus: 'unevaluated' },
             createFrom: EvalDatasetDataCreateFromEnum.fileImport
           }),
           expect.objectContaining({
@@ -430,7 +446,7 @@ describe('EvalDatasetData FileId Import API', () => {
             [EvalDatasetDataKeyEnum.ActualOutput]: '',
             [EvalDatasetDataKeyEnum.Context]: [],
             [EvalDatasetDataKeyEnum.RetrievalContext]: [],
-            metadata: {},
+            metadata: { qualityStatus: 'unevaluated' },
             createFrom: EvalDatasetDataCreateFromEnum.fileImport
           })
         ]),
@@ -470,7 +486,7 @@ describe('EvalDatasetData FileId Import API', () => {
             [EvalDatasetDataKeyEnum.ActualOutput]: '',
             [EvalDatasetDataKeyEnum.Context]: [],
             [EvalDatasetDataKeyEnum.RetrievalContext]: [],
-            metadata: {}
+            metadata: { qualityStatus: 'unevaluated' }
           })
         ]),
         expect.any(Object)
@@ -495,8 +511,9 @@ describe('EvalDatasetData FileId Import API', () => {
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toMatch(/CSV parsing error: CSV file is missing required columns/);
+      await expect(handler_test(req as any)).rejects.toMatch(
+        /CSV parsing error: CSV file is missing required columns/
+      );
     });
 
     it('should reject empty CSV file', async () => {
@@ -512,8 +529,9 @@ describe('EvalDatasetData FileId Import API', () => {
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toMatch(/CSV parsing error: CSV file is empty/);
+      await expect(handler_test(req as any)).rejects.toMatch(
+        /CSV parsing error: CSV file is empty/
+      );
     });
 
     it('should reject CSV with no data rows', async () => {
@@ -531,8 +549,7 @@ describe('EvalDatasetData FileId Import API', () => {
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('CSV file contains no data rows');
+      await expect(handler_test(req as any)).rejects.toBe('CSV file contains no data rows');
     });
 
     it('should reject CSV with too many rows', async () => {
@@ -555,8 +572,9 @@ describe('EvalDatasetData FileId Import API', () => {
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('CSV file cannot contain more than 10,000 rows');
+      await expect(handler_test(req as any)).rejects.toBe(
+        'CSV file cannot contain more than 10,000 rows'
+      );
     });
 
     it('should handle CSV with inconsistent column count', async () => {
@@ -576,8 +594,9 @@ describe('EvalDatasetData FileId Import API', () => {
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toMatch(/CSV parsing error: Row 3: Expected 2 columns, got 3/);
+      await expect(handler_test(req as any)).rejects.toMatch(
+        /CSV parsing error: Row 3: Expected 2 columns, got 3/
+      );
     });
 
     it('should handle CSV with quoted fields containing commas', async () => {
@@ -781,7 +800,7 @@ describe('EvalDatasetData FileId Import API', () => {
       expect(mockMongoEvalDatasetData.insertMany).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
-            metadata: { category: 'tech', priority: 1 }
+            metadata: { category: 'tech', priority: 1, qualityStatus: 'unevaluated' }
           })
         ]),
         expect.any(Object)
@@ -809,7 +828,7 @@ describe('EvalDatasetData FileId Import API', () => {
       expect(mockMongoEvalDatasetData.insertMany).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
-            metadata: {}
+            metadata: { qualityStatus: 'unevaluated' }
           })
         ]),
         expect.any(Object)
@@ -868,7 +887,7 @@ describe('EvalDatasetData FileId Import API', () => {
     });
 
     it('should trigger quality evaluation when enabled', async () => {
-      const qualityEvaluationModel = 'gpt-4';
+      const evaluationModel = 'gpt-4';
       // Override the mock to return the full CSV with all columns
       mockReadFileContentFromMongo.mockResolvedValue({
         rawText: validCSVContent
@@ -879,7 +898,7 @@ describe('EvalDatasetData FileId Import API', () => {
           fileId: validFileId,
           collectionId: validCollectionId,
           enableQualityEvaluation: true,
-          qualityEvaluationModel
+          evaluationModel
         }
       };
 
@@ -888,16 +907,16 @@ describe('EvalDatasetData FileId Import API', () => {
       expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledTimes(2);
       expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledWith({
         dataId: '65f5b5b5b5b5b5b5b5b5b5b6',
-        evalModel: qualityEvaluationModel
+        evaluationModel: evaluationModel
       });
       expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledWith({
         dataId: '65f5b5b5b5b5b5b5b5b5b5b7',
-        evalModel: qualityEvaluationModel
+        evaluationModel: evaluationModel
       });
     });
 
     it('should handle quality evaluation job failures gracefully', async () => {
-      const qualityEvaluationModel = 'gpt-4';
+      const evaluationModel = 'gpt-4';
       mockAddEvalDatasetDataQualityJob.mockRejectedValueOnce(new Error('Queue error'));
 
       const simpleCSV = `user_input,expected_output
@@ -912,7 +931,7 @@ describe('EvalDatasetData FileId Import API', () => {
           fileId: validFileId,
           collectionId: validCollectionId,
           enableQualityEvaluation: true,
-          qualityEvaluationModel
+          evaluationModel
         }
       };
 
@@ -968,8 +987,7 @@ describe('EvalDatasetData FileId Import API', () => {
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('CSV parsing error: Database error');
+      await expect(handler_test(req as any)).rejects.toBe('CSV parsing error: Database error');
     });
 
     it('should propagate file reading errors', async () => {
@@ -984,8 +1002,7 @@ describe('EvalDatasetData FileId Import API', () => {
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('CSV parsing error: File read error');
+      await expect(handler_test(req as any)).rejects.toBe('CSV parsing error: File read error');
     });
   });
 
@@ -1128,9 +1145,9 @@ describe('EvalDatasetData FileId Import API', () => {
         }
       };
 
-      const result = await handler_test(req as any);
-      expect(typeof result).toBe('string');
-      expect(result).toBe('fileId is required and must be a string');
+      await expect(handler_test(req as any)).rejects.toBe(
+        'fileId is required and must be a string'
+      );
     });
   });
 });

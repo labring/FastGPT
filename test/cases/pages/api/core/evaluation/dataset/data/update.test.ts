@@ -8,10 +8,6 @@ import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/e
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
-import {
-  removeEvalDatasetDataQualityJobsRobust,
-  addEvalDatasetDataQualityJob
-} from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import { addLog } from '@fastgpt/service/common/system/log';
 
 vi.mock('@fastgpt/service/support/permission/user/auth');
@@ -40,10 +36,6 @@ vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', 
   },
   EvalDatasetCollectionName: 'eval_dataset_collections'
 }));
-vi.mock('@fastgpt/service/core/evaluation/dataset/dataQualityMq', () => ({
-  removeEvalDatasetDataQualityJobsRobust: vi.fn(),
-  addEvalDatasetDataQualityJob: vi.fn()
-}));
 vi.mock('@fastgpt/service/common/system/log', () => ({
   addLog: {
     info: vi.fn(),
@@ -60,10 +52,6 @@ const mockAuthEvaluationDatasetDataUpdateById = vi.mocked(authEvaluationDatasetD
 const mockMongoSessionRun = vi.mocked(mongoSessionRun);
 const mockMongoEvalDatasetData = vi.mocked(MongoEvalDatasetData);
 const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
-const mockRemoveEvalDatasetDataQualityJobsRobust = vi.mocked(
-  removeEvalDatasetDataQualityJobsRobust
-);
-const mockAddEvalDatasetDataQualityJob = vi.mocked(addEvalDatasetDataQualityJob);
 const mockAddLog = vi.mocked(addLog);
 
 describe('EvalDatasetData Update API', () => {
@@ -71,6 +59,33 @@ describe('EvalDatasetData Update API', () => {
   const validTmbId = 'tmb123';
   const validDataId = '65f5b5b5b5b5b5b5b5b5b5b5';
   const validCollectionId = '65f5b5b5b5b5b5b5b5b5b5b6';
+
+  // Helper function to create base request
+  const createBaseRequest = (overrides = {}) => ({
+    body: {
+      dataId: validDataId,
+      userInput: 'Test input',
+      expectedOutput: 'Test output',
+      ...overrides
+    }
+  });
+
+  // Helper function for validation test cases
+  const testValidation = (description: string, bodyOverrides: any, expectedError: string) => {
+    it(description, async () => {
+      const req = createBaseRequest(bodyOverrides);
+      await expect(handler_test(req as any)).rejects.toEqual(expectedError);
+    });
+  };
+
+  // Helper function to verify database update calls
+  const expectUpdateCall = (expectedUpdateFields: any) => {
+    expect(mockMongoEvalDatasetData.updateOne).toHaveBeenCalledWith(
+      { _id: validDataId },
+      { $set: expectedUpdateFields },
+      { session: {} }
+    );
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -122,311 +137,129 @@ describe('EvalDatasetData Update API', () => {
     mockMongoSessionRun.mockImplementation(async (callback) => {
       return callback({} as any);
     });
-
-    mockRemoveEvalDatasetDataQualityJobsRobust.mockResolvedValue(true);
-    mockAddEvalDatasetDataQualityJob.mockResolvedValue({} as any);
   });
 
   describe('Parameter Validation', () => {
-    it('should reject when dataId is missing', async () => {
-      const req = {
-        body: {
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: false
-        }
-      };
+    describe('dataId validation', () => {
+      testValidation(
+        'should reject when dataId is missing',
+        { dataId: undefined },
+        'dataId is required and must be a string'
+      );
 
-      await expect(handler_test(req as any)).rejects.toEqual(
+      testValidation(
+        'should reject when dataId is not a string',
+        { dataId: 123 },
         'dataId is required and must be a string'
       );
     });
 
-    it('should reject when dataId is not a string', async () => {
-      const req = {
-        body: {
-          dataId: 123,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: false
-        }
-      };
-
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'dataId is required and must be a string'
+    describe('userInput validation', () => {
+      testValidation(
+        'should reject when userInput is missing',
+        { userInput: undefined },
+        'userInput is required and must be a non-empty string'
       );
-    });
 
-    it('should reject when userInput is missing', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: false
-        }
-      };
+      testValidation(
+        'should reject when userInput is empty string',
+        { userInput: '' },
+        'userInput is required and must be a non-empty string'
+      );
 
-      await expect(handler_test(req as any)).rejects.toEqual(
+      testValidation(
+        'should reject when userInput is only whitespace',
+        { userInput: '   ' },
+        'userInput is required and must be a non-empty string'
+      );
+
+      testValidation(
+        'should reject when userInput is not a string',
+        { userInput: 123 },
         'userInput is required and must be a non-empty string'
       );
     });
 
-    it('should reject when userInput is empty string', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: '',
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: false
-        }
-      };
-
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'userInput is required and must be a non-empty string'
+    describe('expectedOutput validation', () => {
+      testValidation(
+        'should reject when expectedOutput is missing',
+        { expectedOutput: undefined },
+        'expectedOutput is required and must be a non-empty string'
       );
-    });
 
-    it('should reject when userInput is only whitespace', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: '   ',
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: false
-        }
-      };
-
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'userInput is required and must be a non-empty string'
+      testValidation(
+        'should reject when expectedOutput is empty string',
+        { expectedOutput: '' },
+        'expectedOutput is required and must be a non-empty string'
       );
-    });
 
-    it('should reject when userInput is not a string', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 123,
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: false
-        }
-      };
-
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'userInput is required and must be a non-empty string'
+      testValidation(
+        'should reject when expectedOutput is only whitespace',
+        { expectedOutput: '   ' },
+        'expectedOutput is required and must be a non-empty string'
       );
-    });
 
-    it('should reject when expectedOutput is missing', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          enableQualityEvaluation: false
-        }
-      };
-
-      await expect(handler_test(req as any)).rejects.toEqual(
+      testValidation(
+        'should reject when expectedOutput is not a string',
+        { expectedOutput: 123 },
         'expectedOutput is required and must be a non-empty string'
       );
     });
 
-    it('should reject when expectedOutput is empty string', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: '',
-          enableQualityEvaluation: false
-        }
-      };
-
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'expectedOutput is required and must be a non-empty string'
-      );
-    });
-
-    it('should reject when expectedOutput is only whitespace', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: '   ',
-          enableQualityEvaluation: false
-        }
-      };
-
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'expectedOutput is required and must be a non-empty string'
-      );
-    });
-
-    it('should reject when expectedOutput is not a string', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 123,
-          enableQualityEvaluation: false
-        }
-      };
-
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'expectedOutput is required and must be a non-empty string'
-      );
-    });
-
-    it('should reject when actualOutput is not a string', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          actualOutput: 123,
-          enableQualityEvaluation: false
-        }
-      };
-
-      await expect(handler_test(req as any)).rejects.toEqual(
+    describe('Optional field validation', () => {
+      testValidation(
+        'should reject when actualOutput is not a string',
+        { actualOutput: 123 },
         'actualOutput must be a string if provided'
       );
-    });
 
-    it('should reject when context is not an array', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          context: 'not an array',
-          enableQualityEvaluation: false
-        }
-      };
-
-      await expect(handler_test(req as any)).rejects.toEqual(
+      testValidation(
+        'should reject when context is not an array',
+        { context: 'not an array' },
         'context must be an array of strings if provided'
       );
-    });
 
-    it('should reject when context contains non-string items', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          context: ['valid', 123, 'also valid'],
-          enableQualityEvaluation: false
-        }
-      };
-
-      await expect(handler_test(req as any)).rejects.toEqual(
+      testValidation(
+        'should reject when context contains non-string items',
+        { context: ['valid', 123, 'also valid'] },
         'context must be an array of strings if provided'
       );
-    });
 
-    it('should reject when retrievalContext is not an array', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          retrievalContext: 'not an array',
-          enableQualityEvaluation: false
-        }
-      };
-
-      await expect(handler_test(req as any)).rejects.toEqual(
+      testValidation(
+        'should reject when retrievalContext is not an array',
+        { retrievalContext: 'not an array' },
         'retrievalContext must be an array of strings if provided'
       );
-    });
 
-    it('should reject when retrievalContext contains non-string items', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          retrievalContext: ['valid', 123, 'also valid'],
-          enableQualityEvaluation: false
-        }
-      };
-
-      await expect(handler_test(req as any)).rejects.toEqual(
+      testValidation(
+        'should reject when retrievalContext contains non-string items',
+        { retrievalContext: ['valid', 123, 'also valid'] },
         'retrievalContext must be an array of strings if provided'
       );
-    });
 
-    it('should reject when enableQualityEvaluation is missing', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output'
-        }
-      };
-
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'enableQualityEvaluation is required and must be a boolean'
+      testValidation(
+        'should reject when metadata is not an object',
+        { metadata: 'not an object' },
+        'metadata must be an object if provided'
       );
-    });
 
-    it('should reject when enableQualityEvaluation is not a boolean', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: 'true'
-        }
-      };
-
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'enableQualityEvaluation is required and must be a boolean'
+      testValidation(
+        'should reject when metadata is an array',
+        { metadata: ['array'] },
+        'metadata must be an object if provided'
       );
-    });
 
-    it('should reject when enableQualityEvaluation is true but qualityEvaluationModel is missing', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: true
-        }
-      };
-
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'qualityEvaluationModel is required when enableQualityEvaluation is true'
-      );
-    });
-
-    it('should reject when enableQualityEvaluation is true but qualityEvaluationModel is not a string', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: true,
-          qualityEvaluationModel: 123
-        }
-      };
-
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'qualityEvaluationModel is required when enableQualityEvaluation is true'
+      testValidation(
+        'should reject when metadata is null',
+        { metadata: null },
+        'metadata must be an object if provided'
       );
     });
   });
 
   describe('Authentication and Authorization', () => {
     it('should call authEvaluationDatasetDataUpdateById with correct parameters', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: false
-        }
-      };
-
+      const req = createBaseRequest();
       await handler_test(req as any);
 
       expect(mockAuthEvaluationDatasetDataUpdateById).toHaveBeenCalledWith(validDataId, {
@@ -440,15 +273,7 @@ describe('EvalDatasetData Update API', () => {
       const authError = new Error('Authentication failed');
       mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(authError);
 
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: false
-        }
-      };
-
+      const req = createBaseRequest();
       await expect(handler_test(req as any)).rejects.toBe(authError);
     });
   });
@@ -456,16 +281,7 @@ describe('EvalDatasetData Update API', () => {
   describe('Data Validation', () => {
     it('should reject when dataset data does not exist', async () => {
       mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue('evaluationDatasetDataNotFound');
-
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: false
-        }
-      };
-
+      const req = createBaseRequest();
       await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetDataNotFound');
     });
 
@@ -473,16 +289,7 @@ describe('EvalDatasetData Update API', () => {
       mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(
         'evaluationDatasetCollectionNotFound'
       );
-
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: false
-        }
-      };
-
+      const req = createBaseRequest();
       await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetCollectionNotFound');
     });
 
@@ -490,355 +297,119 @@ describe('EvalDatasetData Update API', () => {
       mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(
         'evaluationDatasetCollectionNotFound'
       );
-
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: false
-        }
-      };
-
+      const req = createBaseRequest();
       await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetCollectionNotFound');
     });
   });
 
   describe('Data Update', () => {
-    it('should update data with required fields only', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: false
-        }
-      };
+    const createExpectedUpdateFields = (overrides = {}) => ({
+      [EvalDatasetDataKeyEnum.UserInput]: 'Test input',
+      [EvalDatasetDataKeyEnum.ActualOutput]: '',
+      [EvalDatasetDataKeyEnum.ExpectedOutput]: 'Test output',
+      [EvalDatasetDataKeyEnum.Context]: [],
+      [EvalDatasetDataKeyEnum.RetrievalContext]: [],
+      updateTime: expect.any(Date),
+      ...overrides
+    });
 
+    it('should update data with required fields only', async () => {
+      const req = createBaseRequest();
       const result = await handler_test(req as any);
 
       expect(mockMongoSessionRun).toHaveBeenCalledWith(expect.any(Function));
-      expect(mockMongoEvalDatasetData.updateOne).toHaveBeenCalledWith(
-        { _id: validDataId },
-        {
-          [EvalDatasetDataKeyEnum.UserInput]: 'Test input',
-          [EvalDatasetDataKeyEnum.ActualOutput]: '',
-          [EvalDatasetDataKeyEnum.ExpectedOutput]: 'Test output',
-          [EvalDatasetDataKeyEnum.Context]: [],
-          [EvalDatasetDataKeyEnum.RetrievalContext]: [],
-          updateTime: expect.any(Date)
-        },
-        { session: {} }
-      );
+      expectUpdateCall(createExpectedUpdateFields());
       expect(result).toBe('success');
     });
 
     it('should update data with all optional fields', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          actualOutput: 'Actual output',
-          expectedOutput: 'Test output',
-          context: ['Context 1', 'Context 2'],
-          retrievalContext: ['Retrieval 1', 'Retrieval 2'],
-          enableQualityEvaluation: false
-        }
-      };
+      const req = createBaseRequest({
+        actualOutput: 'Actual output',
+        context: ['Context 1', 'Context 2'],
+        retrievalContext: ['Retrieval 1', 'Retrieval 2']
+      });
 
       await handler_test(req as any);
 
-      expect(mockMongoEvalDatasetData.updateOne).toHaveBeenCalledWith(
-        { _id: validDataId },
-        {
-          [EvalDatasetDataKeyEnum.UserInput]: 'Test input',
+      expectUpdateCall(
+        createExpectedUpdateFields({
           [EvalDatasetDataKeyEnum.ActualOutput]: 'Actual output',
-          [EvalDatasetDataKeyEnum.ExpectedOutput]: 'Test output',
           [EvalDatasetDataKeyEnum.Context]: ['Context 1', 'Context 2'],
-          [EvalDatasetDataKeyEnum.RetrievalContext]: ['Retrieval 1', 'Retrieval 2'],
-          updateTime: expect.any(Date)
-        },
-        { session: {} }
+          [EvalDatasetDataKeyEnum.RetrievalContext]: ['Retrieval 1', 'Retrieval 2']
+        })
       );
     });
 
     it('should trim whitespace from userInput and expectedOutput', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: '  Test input  ',
-          expectedOutput: '  Test output  ',
-          enableQualityEvaluation: false
-        }
-      };
+      const req = createBaseRequest({
+        userInput: '  Test input  ',
+        expectedOutput: '  Test output  '
+      });
 
       await handler_test(req as any);
-
-      expect(mockMongoEvalDatasetData.updateOne).toHaveBeenCalledWith(
-        { _id: validDataId },
-        {
-          [EvalDatasetDataKeyEnum.UserInput]: 'Test input',
-          [EvalDatasetDataKeyEnum.ActualOutput]: '',
-          [EvalDatasetDataKeyEnum.ExpectedOutput]: 'Test output',
-          [EvalDatasetDataKeyEnum.Context]: [],
-          [EvalDatasetDataKeyEnum.RetrievalContext]: [],
-          updateTime: expect.any(Date)
-        },
-        { session: {} }
-      );
+      expectUpdateCall(createExpectedUpdateFields());
     });
 
     it('should trim whitespace from actualOutput', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          actualOutput: '  Actual output  ',
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: false
-        }
-      };
-
+      const req = createBaseRequest({ actualOutput: '  Actual output  ' });
       await handler_test(req as any);
-
-      expect(mockMongoEvalDatasetData.updateOne).toHaveBeenCalledWith(
-        { _id: validDataId },
-        {
-          [EvalDatasetDataKeyEnum.UserInput]: 'Test input',
-          [EvalDatasetDataKeyEnum.ActualOutput]: 'Actual output',
-          [EvalDatasetDataKeyEnum.ExpectedOutput]: 'Test output',
-          [EvalDatasetDataKeyEnum.Context]: [],
-          [EvalDatasetDataKeyEnum.RetrievalContext]: [],
-          updateTime: expect.any(Date)
-        },
-        { session: {} }
+      expectUpdateCall(
+        createExpectedUpdateFields({
+          [EvalDatasetDataKeyEnum.ActualOutput]: 'Actual output'
+        })
       );
     });
 
     it('should handle empty actualOutput', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          actualOutput: '',
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: false
-        }
-      };
-
+      const req = createBaseRequest({ actualOutput: '' });
       await handler_test(req as any);
-
-      expect(mockMongoEvalDatasetData.updateOne).toHaveBeenCalledWith(
-        { _id: validDataId },
-        {
-          [EvalDatasetDataKeyEnum.UserInput]: 'Test input',
-          [EvalDatasetDataKeyEnum.ActualOutput]: '',
-          [EvalDatasetDataKeyEnum.ExpectedOutput]: 'Test output',
-          [EvalDatasetDataKeyEnum.Context]: [],
-          [EvalDatasetDataKeyEnum.RetrievalContext]: [],
-          updateTime: expect.any(Date)
-        },
-        { session: {} }
-      );
+      expectUpdateCall(createExpectedUpdateFields());
     });
 
     it('should handle undefined actualOutput', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: false
-        }
-      };
-
+      const req = createBaseRequest();
       await handler_test(req as any);
-
-      expect(mockMongoEvalDatasetData.updateOne).toHaveBeenCalledWith(
-        { _id: validDataId },
-        {
-          [EvalDatasetDataKeyEnum.UserInput]: 'Test input',
-          [EvalDatasetDataKeyEnum.ActualOutput]: '',
-          [EvalDatasetDataKeyEnum.ExpectedOutput]: 'Test output',
-          [EvalDatasetDataKeyEnum.Context]: [],
-          [EvalDatasetDataKeyEnum.RetrievalContext]: [],
-          updateTime: expect.any(Date)
-        },
-        { session: {} }
-      );
+      expectUpdateCall(createExpectedUpdateFields());
     });
 
     it('should handle empty context array', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          context: [],
-          enableQualityEvaluation: false
-        }
-      };
-
+      const req = createBaseRequest({ context: [] });
       await handler_test(req as any);
-
-      expect(mockMongoEvalDatasetData.updateOne).toHaveBeenCalledWith(
-        { _id: validDataId },
-        {
-          [EvalDatasetDataKeyEnum.UserInput]: 'Test input',
-          [EvalDatasetDataKeyEnum.ActualOutput]: '',
-          [EvalDatasetDataKeyEnum.ExpectedOutput]: 'Test output',
-          [EvalDatasetDataKeyEnum.Context]: [],
-          [EvalDatasetDataKeyEnum.RetrievalContext]: [],
-          updateTime: expect.any(Date)
-        },
-        { session: {} }
-      );
+      expectUpdateCall(createExpectedUpdateFields());
     });
 
     it('should handle empty retrievalContext array', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          retrievalContext: [],
-          enableQualityEvaluation: false
-        }
-      };
-
+      const req = createBaseRequest({ retrievalContext: [] });
       await handler_test(req as any);
+      expectUpdateCall(createExpectedUpdateFields());
+    });
 
-      expect(mockMongoEvalDatasetData.updateOne).toHaveBeenCalledWith(
-        { _id: validDataId },
-        {
-          [EvalDatasetDataKeyEnum.UserInput]: 'Test input',
-          [EvalDatasetDataKeyEnum.ActualOutput]: '',
-          [EvalDatasetDataKeyEnum.ExpectedOutput]: 'Test output',
-          [EvalDatasetDataKeyEnum.Context]: [],
-          [EvalDatasetDataKeyEnum.RetrievalContext]: [],
-          updateTime: expect.any(Date)
-        },
-        { session: {} }
+    it('should handle metadata updates', async () => {
+      const req = createBaseRequest({ metadata: { custom: 'value', score: 95 } });
+      await handler_test(req as any);
+      expectUpdateCall(
+        createExpectedUpdateFields({
+          'metadata.custom': 'value',
+          'metadata.score': 95
+        })
+      );
+    });
+
+    it('should handle empty metadata object', async () => {
+      const req = createBaseRequest({ metadata: {} });
+      await handler_test(req as any);
+      expectUpdateCall(
+        createExpectedUpdateFields({
+          metadata: {}
+        })
       );
     });
 
     it('should propagate database update errors', async () => {
       const dbError = new Error('Database update failed');
       mockMongoSessionRun.mockRejectedValue(dbError);
-
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: false
-        }
-      };
-
+      const req = createBaseRequest();
       await expect(handler_test(req as any)).rejects.toBe(dbError);
-    });
-  });
-
-  describe('Quality Evaluation', () => {
-    it('should not trigger quality evaluation when disabled', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: false
-        }
-      };
-
-      await handler_test(req as any);
-
-      expect(mockRemoveEvalDatasetDataQualityJobsRobust).not.toHaveBeenCalled();
-      expect(mockAddEvalDatasetDataQualityJob).not.toHaveBeenCalled();
-      expect(mockAddLog.info).not.toHaveBeenCalled();
-    });
-
-    it('should trigger quality evaluation when enabled', async () => {
-      const qualityEvaluationModel = 'gpt-4';
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: true,
-          qualityEvaluationModel
-        }
-      };
-
-      await handler_test(req as any);
-
-      expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalledWith([validDataId], {
-        forceCleanActiveJobs: true,
-        retryDelay: 200
-      });
-      expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledWith({
-        dataId: validDataId,
-        evalModel: qualityEvaluationModel
-      });
-      expect(mockAddLog.info).toHaveBeenCalledWith(
-        'Quality evaluation task enqueued successfully',
-        {
-          dataId: validDataId,
-          evalModel: qualityEvaluationModel,
-          teamId: validTeamId
-        }
-      );
-    });
-
-    it('should handle quality evaluation job removal failure gracefully', async () => {
-      const qualityEvaluationModel = 'gpt-4';
-      const jobError = new Error('Failed to remove job');
-      mockRemoveEvalDatasetDataQualityJobsRobust.mockRejectedValue(jobError);
-
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: true,
-          qualityEvaluationModel
-        }
-      };
-
-      const result = await handler_test(req as any);
-
-      expect(mockAddLog.error).toHaveBeenCalledWith('Failed to manage quality evaluation task', {
-        dataId: validDataId,
-        evalModel: qualityEvaluationModel,
-        teamId: validTeamId,
-        error: jobError
-      });
-      expect(result).toBe('success');
-    });
-
-    it('should handle quality evaluation job addition failure gracefully', async () => {
-      const qualityEvaluationModel = 'gpt-4';
-      const jobError = new Error('Failed to add job');
-      mockAddEvalDatasetDataQualityJob.mockRejectedValue(jobError);
-
-      const req = {
-        body: {
-          dataId: validDataId,
-          userInput: 'Test input',
-          expectedOutput: 'Test output',
-          enableQualityEvaluation: true,
-          qualityEvaluationModel
-        }
-      };
-
-      const result = await handler_test(req as any);
-
-      expect(mockAddLog.error).toHaveBeenCalledWith('Failed to manage quality evaluation task', {
-        dataId: validDataId,
-        evalModel: qualityEvaluationModel,
-        teamId: validTeamId,
-        error: jobError
-      });
-      expect(result).toBe('success');
     });
   });
 
@@ -958,29 +529,6 @@ describe('EvalDatasetData Update API', () => {
         authToken: true,
         authApiKey: true
       });
-    });
-
-    it('should handle quality evaluation with different models', async () => {
-      const testCases = ['gpt-4', 'claude-3', 'gemini-pro'];
-
-      for (const model of testCases) {
-        const req = {
-          body: {
-            dataId: validDataId,
-            userInput: 'Test input',
-            expectedOutput: 'Test output',
-            enableQualityEvaluation: true,
-            qualityEvaluationModel: model
-          }
-        };
-
-        await handler_test(req as any);
-
-        expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledWith({
-          dataId: validDataId,
-          evalModel: model
-        });
-      }
     });
   });
 
