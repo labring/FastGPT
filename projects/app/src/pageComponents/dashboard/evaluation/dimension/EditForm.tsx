@@ -21,7 +21,7 @@ export interface EvaluationDimensionForm {
 interface EditFormProps {
   defaultValues?: Partial<EvaluationDimensionForm>;
   onSubmit: (data: EvaluationDimensionForm) => void;
-  onValidationChange?: (isValid: boolean) => void;
+  onValidationChange?: (isValid: boolean, formData?: EvaluationDimensionForm) => void;
 }
 
 /**
@@ -53,20 +53,20 @@ const EditForm = ({ defaultValues, onSubmit, onValidationChange }: EditFormProps
     reValidateMode: 'onChange'
   });
 
-  const promptValue = watch('prompt');
-  const nameValue = watch('name');
+  const formData = watch();
+  const { name, description, prompt } = formData;
 
   // 检查必填字段是否有效
   const isFormValid = useMemo(() => {
-    return nameValue.trim() !== '' && promptValue.trim() !== '';
-  }, [nameValue, promptValue]);
+    return name.trim() !== '' && prompt.trim() !== '';
+  }, [name, prompt]);
 
-  // 将验证状态传递给父组件
+  // 将验证状态和表单数据传递给父组件
   useEffect(() => {
     if (onValidationChange) {
-      onValidationChange(isFormValid);
+      onValidationChange(isFormValid, { name, description, prompt });
     }
-  }, [isFormValid, onValidationChange]);
+  }, [isFormValid, name, description, prompt, onValidationChange]);
 
   // 处理引用模板确认
   const handleCitationTemplateConfirm = useCallback(
@@ -150,11 +150,7 @@ const EditForm = ({ defaultValues, onSubmit, onValidationChange }: EditFormProps
               {t('dashboard_evaluation:citation_template_button')}
             </Button>
           </Flex>
-          <MyTextarea
-            value={promptValue}
-            onChange={(e) => setValue('prompt', e.target.value)}
-            rows={15}
-          />
+          <MyTextarea {...register('prompt', { required: true })} rows={15} />
         </Flex>
       </Flex>
 
