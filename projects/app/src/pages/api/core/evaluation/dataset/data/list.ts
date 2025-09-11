@@ -16,7 +16,7 @@ async function handler(
   req: ApiRequestProps<listEvalDatasetDataBody, {}>
 ): Promise<listEvalDatasetDataResponse> {
   const { offset, pageSize } = parsePaginationRequest(req);
-  const { collectionId, searchKey } = req.body;
+  const { collectionId, searchKey, status: qualityStatus } = req.body;
 
   if (!collectionId) {
     throw new Error('Collection ID is required');
@@ -39,6 +39,10 @@ async function handler(
       { [EvalDatasetDataKeyEnum.ExpectedOutput]: { $regex: searchRegex } },
       { [EvalDatasetDataKeyEnum.ActualOutput]: { $regex: searchRegex } }
     ];
+  }
+
+  if (qualityStatus && typeof qualityStatus === 'string' && qualityStatus.trim().length > 0) {
+    match['metadata.qualityStatus'] = qualityStatus.trim();
   }
 
   try {
@@ -66,6 +70,7 @@ async function handler(
     addLog.error('Database error in eval dataset data list', {
       collectionId,
       searchKey,
+      qualityStatus,
       offset,
       pageSize,
       error

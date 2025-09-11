@@ -2,7 +2,8 @@ import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fe
 import type {
   EvalDatasetCollectionSchemaType,
   EvalDatasetDataSchemaType,
-  EvalDatasetCollectionStatus
+  EvalDatasetCollectionStatus,
+  EvalDatasetDataQualityStatus
 } from './type';
 import type { EvalDatasetDataKeyEnum } from './constants';
 
@@ -63,6 +64,7 @@ export type createEvalDatasetDataBody = EvalDatasetDataBase &
 export type listEvalDatasetDataBody = PaginationProps<{
   collectionId: string;
   searchKey?: string;
+  status?: EvalDatasetDataQualityStatus;
 }>;
 
 export type listEvalDatasetDataResponse = PaginationResponse<
