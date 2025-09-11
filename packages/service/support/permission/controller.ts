@@ -174,7 +174,10 @@ export const getClbsInfo = async ({
     return {
       ...clb,
       teamId,
-      permission: new Permission({ role: clb.permission, isOwner: ownerTmbId === clb.tmbId }),
+      permission: new Permission({
+        role: clb.permission,
+        isOwner: !!ownerTmbId && !!clb.tmbId && ownerTmbId === clb.tmbId
+      }),
       name: info?.name ?? 'Unknown name',
       avatar: info?.avatar ?? (clb.orgId ? DEFAULT_ORG_AVATAR : DEFAULT_TEAM_AVATAR)
     };
@@ -225,50 +228,6 @@ export const getResourceClbs = async ({
   });
 
   return mergeCollaboratorList(parentClbs, ownedClbs);
-};
-
-export const getClbsWithInfo = async ({
-  resourceId,
-  resourceType,
-  teamId,
-  tmbId,
-  parentId,
-  isFolder,
-  inherit
-}: {
-  teamId: string;
-  tmbId?: string;
-  parentId?: string;
-  isFolder?: boolean;
-  inherit?: boolean;
-} & (
-  | {
-      resourceId: ParentIdType;
-      resourceType: Omit<`${PerResourceTypeEnum}`, 'team'>;
-    }
-  | {
-      resourceType: 'team';
-      resourceId?: undefined;
-    }
-)) => {
-  if (!resourceId && resourceType !== 'team') {
-    return [];
-  }
-
-  const clbs = await getResourceClbs({
-    resourceType,
-    resourceId,
-    teamId,
-    inherit,
-    isFolder,
-    parentId
-  });
-
-  return getClbsInfo({
-    clbs,
-    ownerTmbId: tmbId,
-    teamId
-  });
 };
 
 export const delResourcePermissionById = (id: string) => {
