@@ -101,9 +101,14 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
         totalPoints = calculatedPoints;
       }
 
+      const qualityStatus =
+        metricResult.data.score >= 0.7
+          ? EvalDatasetDataQualityStatusEnum.highQuality
+          : EvalDatasetDataQualityStatusEnum.needsOptimization;
+
       await MongoEvalDatasetData.findByIdAndUpdate(dataId, {
         $set: {
-          'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.completed,
+          'metadata.qualityStatus': qualityStatus,
           'metadata.qualityScore': metricResult.data.score,
           'metadata.qualityReason': metricResult.data?.reason,
           'metadata.qualityRunLogs': metricResult.data?.runLogs,

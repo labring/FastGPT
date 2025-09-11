@@ -5,7 +5,8 @@ import { MongoEvalDatasetData } from './evalDatasetDataSchema';
 import { MongoDatasetData } from '../../dataset/data/schema';
 import {
   EvalDatasetDataCreateFromEnum,
-  EvalDatasetDataKeyEnum
+  EvalDatasetDataKeyEnum,
+  EvalDatasetDataQualityStatusEnum
 } from '@fastgpt/global/core/evaluation/dataset/constants';
 import type { EvalDatasetDataSchemaType } from '@fastgpt/global/core/evaluation/dataset/type';
 import {
@@ -81,6 +82,10 @@ async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
         qualityScore: synthesisResult.data?.metadata?.score,
         qualityReason: synthesisResult.data?.metadata?.reason,
         qualityUsages: synthesisResult?.usages,
+        qualityStatus:
+          synthesisResult.data?.metadata?.score && synthesisResult.data.metadata.score >= 0.7
+            ? EvalDatasetDataQualityStatusEnum.highQuality
+            : EvalDatasetDataQualityStatusEnum.needsOptimization,
         generatedAt: new Date(),
         synthesizedAt: new Date(),
         intelligentGenerationModel
