@@ -7,6 +7,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import OrgTags from '../../user/team/OrgTags';
 import RoleSelect from './RoleSelect';
 import { ChevronDownIcon } from '@chakra-ui/icons';
+import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 function MemberItemCard({
   avatar,
@@ -34,6 +36,7 @@ function MemberItemCard({
   disabled?: boolean;
 }) {
   const showRoleSelect = onRoleChange !== undefined;
+  const { userInfo } = useUserStore();
   return (
     <Flex
       justifyContent="space-between"
@@ -64,7 +67,7 @@ function MemberItemCard({
         <Avatar src={avatar} w="1.5rem" borderRadius={'50%'} />
         <Flex justifyContent={'start'} flexDirection={'column'} w="full">
           <Box fontSize={'sm'} className="textEllipsis" maxW={'100px'}>
-            {name}
+            {name === DefaultGroupName ? userInfo?.team.teamName : name}
           </Box>
           <Box lineHeight={1} maxW="100px">
             {orgs && orgs.length > 0 && <OrgTags orgs={orgs} />}

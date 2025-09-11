@@ -31,10 +31,7 @@ export const OrgSchema = new Schema(
       required: true
     },
     avatar: {
-      type: String,
-      get: function (value: string) {
-        return value || DEFAULT_ORG_AVATAR;
-      }
+      type: String
     },
     description: String,
     updateTime: {
