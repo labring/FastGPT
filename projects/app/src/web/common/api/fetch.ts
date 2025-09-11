@@ -24,19 +24,27 @@ export type StreamResponseType = {
 type ResponseQueueItemType =
   | {
       responseValueId?: string;
+      subAppId?: string;
       event: SseResponseEventEnum.fastAnswer | SseResponseEventEnum.answer;
       text?: string;
       reasoningText?: string;
     }
-  | { responseValueId?: string; event: SseResponseEventEnum.interactive; [key: string]: any }
   | {
       responseValueId?: string;
+      subAppId?: string;
+      event: SseResponseEventEnum.interactive;
+      [key: string]: any;
+    }
+  | {
+      responseValueId?: string;
+      subAppId?: string;
       event:
         | SseResponseEventEnum.toolCall
         | SseResponseEventEnum.toolParams
         | SseResponseEventEnum.toolResponse;
-      [key: string]: any;
+      tools: any;
     };
+
 class FatalError extends Error {}
 
 export const streamFetch = ({
@@ -81,7 +89,7 @@ export const streamFetch = ({
       if (abortCtrl.signal.aborted) {
         responseQueue.forEach((item) => {
           onMessage(item);
-          if (isAnswerEvent(item.event) && item.text) {
+          if (isAnswerEvent(item.event) && 'text' in item && item.text) {
             responseText += item.text;
           }
         });
@@ -93,7 +101,7 @@ export const streamFetch = ({
         for (let i = 0; i < fetchCount; i++) {
           const item = responseQueue[i];
           onMessage(item);
-          if (isAnswerEvent(item.event) && item.text) {
+          if (isAnswerEvent(item.event) && 'text' in item && item.text) {
             responseText += item.text;
           }
         }
@@ -182,13 +190,14 @@ export const streamFetch = ({
           })();
 
           if (typeof parseJson !== 'object') return;
-          const { responseValueId, ...rest } = parseJson;
+          const { responseValueId, subAppId, ...rest } = parseJson;
 
           // console.log(parseJson, event);
           if (event === SseResponseEventEnum.answer) {
             const reasoningText = rest.choices?.[0]?.delta?.reasoning_content || '';
             pushDataToQueue({
               responseValueId,
+              subAppId,
               event,
               reasoningText
             });
@@ -197,6 +206,7 @@ export const streamFetch = ({
             for (const item of text) {
               pushDataToQueue({
                 responseValueId,
+                subAppId,
                 event,
                 text: item
               });
@@ -205,6 +215,7 @@ export const streamFetch = ({
             const reasoningText = rest.choices?.[0]?.delta?.reasoning_content || '';
             pushDataToQueue({
               responseValueId,
+              subAppId,
               event,
               reasoningText
             });
@@ -212,6 +223,7 @@ export const streamFetch = ({
             const text = rest.choices?.[0]?.delta?.content || '';
             pushDataToQueue({
               responseValueId,
+              subAppId,
               event,
               text
             });
@@ -222,6 +234,7 @@ export const streamFetch = ({
           ) {
             pushDataToQueue({
               responseValueId,
+              subAppId,
               event,
               ...rest
             });
@@ -238,6 +251,7 @@ export const streamFetch = ({
           } else if (event === SseResponseEventEnum.interactive) {
             pushDataToQueue({
               responseValueId,
+              subAppId,
               event,
               ...rest
             });

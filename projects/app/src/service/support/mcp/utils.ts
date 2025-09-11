@@ -21,11 +21,7 @@ import {
   updatePluginInputByVariables
 } from '@fastgpt/global/core/workflow/utils';
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
-import {
-  ChatItemValueTypeEnum,
-  ChatRoleEnum,
-  ChatSourceEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges,
@@ -189,7 +185,6 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
         obj: ChatRoleEnum.Human,
         value: [
           {
-            type: ChatItemValueTypeEnum.text,
             text: {
               content: variables.question
             }

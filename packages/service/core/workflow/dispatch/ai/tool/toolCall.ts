@@ -17,7 +17,6 @@ import { formatToolResponse, initToolCallEdges, initToolNodes, parseToolArgs } f
 import { computedMaxToken } from '../../../../ai/utils';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { createLLMResponse } from '../../../../ai/llm/request';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
@@ -337,12 +336,12 @@ export const runToolCall = async (
         }
       });
     },
-    onToolParam({ tool, params }) {
+    onToolParam({ call, params }) {
       workflowStreamResponse?.({
         event: SseResponseEventEnum.toolParams,
         data: {
           tool: {
-            id: tool.id,
+            id: call.id,
             toolName: '',
             toolAvatar: '',
             params,
@@ -472,7 +471,7 @@ export const runToolCall = async (
     const toolChildAssistants = flatToolsResponseData
       .map((item) => item.assistantResponses)
       .flat()
-      .filter((item) => item.type !== ChatItemValueTypeEnum.interactive); // 交互节点留着下次记录
+      .filter((item) => !item.interactive); // 交互节点留着下次记录
     const concatAssistantResponses = [
       ...assistantResponses,
       ...toolNodeAssistant.value,

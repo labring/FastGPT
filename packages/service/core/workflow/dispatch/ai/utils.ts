@@ -1,5 +1,4 @@
 import { replaceVariable, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type {
   AIChatItemValueItemType,
   UserChatItemValueItemType
@@ -18,7 +17,7 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 // Assistant process
 export const filterToolResponseToPreview = (response: AIChatItemValueItemType[]) => {
   return response.map((item) => {
-    if (item.type === ChatItemValueTypeEnum.tool) {
+    if (item.tools) {
       const formatTools = item.tools?.map((tool) => {
         return {
           ...tool,
@@ -106,15 +105,15 @@ export const toolCallMessagesAdapt = ({
 
   if (skip) return userInput;
 
-  const files = userInput.filter((item) => item.type === 'file');
+  const files = userInput.filter((item) => item.file);
 
   if (files.length > 0) {
     const filesCount = files.filter((file) => file.file?.type === 'file').length;
     const imgCount = files.filter((file) => file.file?.type === 'image').length;
 
-    if (userInput.some((item) => item.type === 'text')) {
+    if (userInput.some((item) => item.text)) {
       return userInput.map((item) => {
-        if (item.type === 'text') {
+        if (item.text) {
           const text = item.text?.content || '';
 
           return {
@@ -131,7 +130,6 @@ export const toolCallMessagesAdapt = ({
     // Every input is a file
     return [
       {
-        type: ChatItemValueTypeEnum.text,
         text: {
           content: getMultiplePrompt({ fileCount: filesCount, imgCount, question: '' })
         }

@@ -1,16 +1,12 @@
 import { Box, type BoxProps, Card, Flex } from '@chakra-ui/react';
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useMemo } from 'react';
 import ChatController, { type ChatControllerProps } from './ChatController';
 import ChatAvatar from './ChatAvatar';
 import { MessageCardStyle } from '../constants';
 import { formatChatValue2InputType } from '../utils';
 import Markdown from '@/components/Markdown';
 import styles from '../index.module.scss';
-import {
-  ChatItemValueTypeEnum,
-  ChatRoleEnum,
-  ChatStatusEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import FilesBlock from './FilesBox';
 import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';
@@ -19,9 +15,11 @@ import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
+import type {
+  AIChatItemType,
+  UserChatItemValueItemType} from '@fastgpt/global/core/chat/type';
 import {
-  type AIChatItemValueItemType,
-  type ChatItemValueItemType
+  type AIChatItemValueItemType
 } from '@fastgpt/global/core/chat/type';
 import { CodeClassNameEnum } from '@/components/Markdown/utils';
 import { isEqual } from 'lodash';
@@ -54,7 +52,7 @@ const colorMap = {
   }
 };
 
-type BasicProps = {
+type Props = {
   avatar?: string;
   statusBoxData?: {
     status: `${ChatStatusEnum}`;
@@ -63,10 +61,6 @@ type BasicProps = {
   questionGuides?: string[];
   children?: React.ReactNode;
 } & ChatControllerProps;
-
-type Props = BasicProps & {
-  type: ChatRoleEnum.Human | ChatRoleEnum.AI;
-};
 
 const RenderQuestionGuide = ({ questionGuides }: { questionGuides: string[] }) => {
   return (
@@ -78,7 +72,7 @@ ${JSON.stringify(questionGuides)}`}
 };
 
 const HumanContentCard = React.memo(
-  function HumanContentCard({ chatValue }: { chatValue: ChatItemValueItemType[] }) {
+  function HumanContentCard({ chatValue }: { chatValue: UserChatItemValueItemType[] }) {
     const { text, files = [] } = formatChatValue2InputType(chatValue);
     return (
       <Flex flexDirection={'column'} gap={4}>
@@ -91,6 +85,7 @@ const HumanContentCard = React.memo(
 );
 const AIContentCard = React.memo(function AIContentCard({
   chatValue,
+  subAppsValue = {},
   dataId,
   isLastChild,
   isChatting,
@@ -99,6 +94,7 @@ const AIContentCard = React.memo(function AIContentCard({
 }: {
   dataId: string;
   chatValue: AIChatItemValueItemType[];
+  subAppsValue?: AIChatItemType['subAppsValue'];
   isLastChild: boolean;
   isChatting: boolean;
   questionGuides: string[];
@@ -114,6 +110,7 @@ const AIContentCard = React.memo(function AIContentCard({
             chatItemDataId={dataId}
             key={key}
             value={value}
+            subAppValue={value.tool ? subAppsValue[value.tool.id] : undefined}
             isLastResponseValue={isLastChild && i === chatValue.length - 1}
             isChatting={isChatting}
             onOpenCiteModal={onOpenCiteModal}
@@ -128,12 +125,12 @@ const AIContentCard = React.memo(function AIContentCard({
 });
 
 const ChatItem = (props: Props) => {
-  const { type, avatar, statusBoxData, children, isLastChild, questionGuides = [], chat } = props;
+  const { avatar, statusBoxData, children, isLastChild, questionGuides = [], chat } = props;
 
   const { isPc } = useSystem();
 
   const styleMap: BoxProps = {
-    ...(type === ChatRoleEnum.Human
+    ...(chat.obj === ChatRoleEnum.Human
       ? {
           order: 0,
           borderRadius: '8px 0 8px 8px',
@@ -182,57 +179,63 @@ const ChatItem = (props: Props) => {
     2. Auto-complete the last textnode
   */
   const splitAiResponseResults = useMemo(() => {
-    if (chat.obj !== ChatRoleEnum.AI) return [chat.value];
+    if (chat.obj === ChatRoleEnum.Human) return [chat.value];
 
-    // Remove empty text node
-    const filterList = chat.value.filter((item, i) => {
-      if (item.type === ChatItemValueTypeEnum.text && !item.text?.content?.trim()) {
-        return false;
-      }
-      return item;
-    });
-
-    const groupedValues: AIChatItemValueItemType[][] = [];
-    let currentGroup: AIChatItemValueItemType[] = [];
-
-    filterList.forEach((value) => {
-      if (value.type === 'interactive') {
-        if (currentGroup.length > 0) {
-          groupedValues.push(currentGroup);
-          currentGroup = [];
+    if (chat.obj === ChatRoleEnum.AI) {
+      // Remove empty text node
+      const filterList = chat.value.filter((item, i) => {
+        if (item.text && !item.text.content?.trim()) {
+          return false;
         }
+        if (item.reasoning && !item.reasoning.content?.trim()) {
+          return false;
+        }
+        return item;
+      });
 
-        groupedValues.push([value]);
-      } else {
-        currentGroup.push(value);
-      }
-    });
+      const groupedValues: AIChatItemValueItemType[][] = [];
+      let currentGroup: AIChatItemValueItemType[] = [];
 
-    if (currentGroup.length > 0) {
-      groupedValues.push(currentGroup);
-    }
-
-    // Check last group is interactive, Auto add a empty text node(animation)
-    const lastGroup = groupedValues[groupedValues.length - 1];
-    if (isChatting || groupedValues.length === 0) {
-      if (
-        (lastGroup &&
-          lastGroup[lastGroup.length - 1] &&
-          lastGroup[lastGroup.length - 1].type === ChatItemValueTypeEnum.interactive) ||
-        groupedValues.length === 0
-      ) {
-        groupedValues.push([
-          {
-            type: ChatItemValueTypeEnum.text,
-            text: {
-              content: ''
-            }
+      filterList.forEach((value) => {
+        if (value.interactive) {
+          if (currentGroup.length > 0) {
+            groupedValues.push(currentGroup);
+            currentGroup = [];
           }
-        ]);
+
+          groupedValues.push([value]);
+        } else {
+          currentGroup.push(value);
+        }
+      });
+
+      if (currentGroup.length > 0) {
+        groupedValues.push(currentGroup);
       }
+
+      // Check last group is interactive, Auto add a empty text node(animation)
+      const lastGroup = groupedValues[groupedValues.length - 1];
+      if (isChatting || groupedValues.length === 0) {
+        if (
+          (lastGroup &&
+            lastGroup[lastGroup.length - 1] &&
+            lastGroup[lastGroup.length - 1].interactive) ||
+          groupedValues.length === 0
+        ) {
+          groupedValues.push([
+            {
+              text: {
+                content: ''
+              }
+            }
+          ]);
+        }
+      }
+
+      return groupedValues;
     }
 
-    return groupedValues;
+    return [];
   }, [chat.obj, chat.value, isChatting]);
 
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
@@ -277,6 +280,8 @@ const ChatItem = (props: Props) => {
     }
   );
 
+  const aiSubApps = 'subApps' in chat ? chat.subApps : undefined;
+
   return (
     <Box
       _hover={{
@@ -287,11 +292,11 @@ const ChatItem = (props: Props) => {
     >
       {/* control icon */}
       <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
-        {isChatting && type === ChatRoleEnum.AI && isLastChild ? null : (
+        {isChatting && chat.obj === ChatRoleEnum.AI && isLastChild ? null : (
           <Flex order={styleMap.order} ml={styleMap.ml} align={'center'} gap={'0.62rem'}>
             {chat.time && (isPc || isChatLog) && (
               <Box
-                order={type === ChatRoleEnum.AI ? 2 : 0}
+                order={chat.obj === ChatRoleEnum.AI ? 2 : 0}
                 className={'time-label'}
                 fontSize={styleMap.fontSize}
                 color={styleMap.color}
@@ -306,7 +311,7 @@ const ChatItem = (props: Props) => {
             <ChatController {...props} isLastChild={isLastChild} />
           </Flex>
         )}
-        <ChatAvatar src={avatar} type={type} />
+        <ChatAvatar src={avatar} type={chat.obj} />
 
         {/* Workflow status */}
         {!!chatStatusMap && statusBoxData && isLastChild && showNodeStatus && (
@@ -333,88 +338,91 @@ const ChatItem = (props: Props) => {
         )}
       </Flex>
       {/* content */}
-      {splitAiResponseResults.map((value, i) => (
-        <Box
-          key={i}
-          mt={['6px', 2]}
-          className="chat-box-card"
-          textAlign={styleMap.textAlign}
-          _hover={{
-            '& .footer-copy': {
-              display: 'block'
-            }
-          }}
-        >
-          <Card
-            {...MessageCardStyle}
-            bg={styleMap.bg}
-            borderRadius={styleMap.borderRadius}
-            textAlign={'left'}
+      {splitAiResponseResults.map((value, i) => {
+        return (
+          <Box
+            key={i}
+            mt={['6px', 2]}
+            className="chat-box-card"
+            textAlign={styleMap.textAlign}
+            _hover={{
+              '& .footer-copy': {
+                display: 'block'
+              }
+            }}
           >
-            {type === ChatRoleEnum.Human && <HumanContentCard chatValue={value} />}
-            {type === ChatRoleEnum.AI && (
-              <>
-                <AIContentCard
-                  chatValue={value as AIChatItemValueItemType[]}
-                  dataId={chat.dataId}
-                  isLastChild={isLastChild && i === splitAiResponseResults.length - 1}
-                  isChatting={isChatting}
-                  questionGuides={questionGuides}
-                  onOpenCiteModal={onOpenCiteModal}
-                />
-                {i === splitAiResponseResults.length - 1 && (
-                  <ResponseTags
-                    showTags={!isLastChild || !isChatting}
-                    historyItem={chat}
+            <Card
+              {...MessageCardStyle}
+              bg={styleMap.bg}
+              borderRadius={styleMap.borderRadius}
+              textAlign={'left'}
+            >
+              {chat.obj === ChatRoleEnum.Human && <HumanContentCard chatValue={value} />}
+              {chat.obj === ChatRoleEnum.AI && (
+                <>
+                  <AIContentCard
+                    chatValue={value as AIChatItemValueItemType[]}
+                    subAppsValue={chat.subAppsValue}
+                    dataId={chat.dataId}
+                    isLastChild={isLastChild && i === splitAiResponseResults.length - 1}
+                    isChatting={isChatting}
+                    questionGuides={questionGuides}
                     onOpenCiteModal={onOpenCiteModal}
                   />
-                )}
-              </>
-            )}
-            {/* Example: Response tags. A set of dialogs only needs to be displayed once*/}
-            {i === splitAiResponseResults.length - 1 && (
-              <>
-                {/* error message */}
-                {!!chat.errorMsg && (
-                  <Box mt={2}>
-                    <ChatBoxDivider icon={'common/errorFill'} text={t('chat:error_message')} />
-                    <Box fontSize={'xs'} color={'myGray.500'}>
-                      {chat.errorMsg}
+                  {i === splitAiResponseResults.length - 1 && (
+                    <ResponseTags
+                      showTags={!isLastChild || !isChatting}
+                      historyItem={chat}
+                      onOpenCiteModal={onOpenCiteModal}
+                    />
+                  )}
+                </>
+              )}
+              {/* Example: Response tags. A set of dialogs only needs to be displayed once*/}
+              {i === splitAiResponseResults.length - 1 && (
+                <>
+                  {/* error message */}
+                  {!!chat.errorMsg && (
+                    <Box mt={2}>
+                      <ChatBoxDivider icon={'common/errorFill'} text={t('chat:error_message')} />
+                      <Box fontSize={'xs'} color={'myGray.500'}>
+                        {chat.errorMsg}
+                      </Box>
                     </Box>
+                  )}
+                  {children}
+                </>
+              )}
+              {/* 对话框底部的复制按钮 */}
+              {chat.obj == ChatRoleEnum.AI &&
+                !('interactive' in value[0]) &&
+                (!isChatting || (isChatting && !isLastChild)) && (
+                  <Box
+                    className="footer-copy"
+                    display={['block', 'none']}
+                    position={'absolute'}
+                    bottom={0}
+                    right={0}
+                    transform={'translateX(100%)'}
+                  >
+                    <MyTooltip label={t('common:Copy')}>
+                      <MyIcon
+                        w={'1rem'}
+                        cursor="pointer"
+                        p="5px"
+                        bg="white"
+                        name={'copy'}
+                        color={'myGray.500'}
+                        _hover={{ color: 'primary.600' }}
+                        onClick={() => copyData(formatChatValue2InputType(value).text ?? '')}
+                      />
+                    </MyTooltip>
                   </Box>
                 )}
-                {children}
-              </>
-            )}
-            {/* 对话框底部的复制按钮 */}
-            {type == ChatRoleEnum.AI &&
-              value[0]?.type !== 'interactive' &&
-              (!isChatting || (isChatting && !isLastChild)) && (
-                <Box
-                  className="footer-copy"
-                  display={['block', 'none']}
-                  position={'absolute'}
-                  bottom={0}
-                  right={0}
-                  transform={'translateX(100%)'}
-                >
-                  <MyTooltip label={t('common:Copy')}>
-                    <MyIcon
-                      w={'1rem'}
-                      cursor="pointer"
-                      p="5px"
-                      bg="white"
-                      name={'copy'}
-                      color={'myGray.500'}
-                      _hover={{ color: 'primary.600' }}
-                      onClick={() => copyData(formatChatValue2InputType(value).text ?? '')}
-                    />
-                  </MyTooltip>
-                </Box>
-              )}
-          </Card>
-        </Box>
-      ))}
+            </Card>
+          </Box>
+        );
+      })}
     </Box>
   );
 };

@@ -164,6 +164,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
       return chats2GPTMessages({ messages: chatHistories, reserveId: false });
     })();
+
     const userMessages = chats2GPTMessages({
       messages: [
         {
@@ -223,12 +224,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             event: SseResponseEventEnum.toolCall,
             data: {
               tool: {
-                id: call.id,
+                id: `${nodeId}/${call.function.name}`,
                 toolName: toolNode?.name || call.function.name,
                 toolAvatar: toolNode?.avatar || '',
                 functionName: call.function.name,
-                params: call.function.arguments ?? '',
-                response: ''
+                params: call.function.arguments ?? ''
               }
             }
           });
@@ -239,11 +239,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             event: SseResponseEventEnum.toolParams,
             data: {
               tool: {
-                id: call.id,
-                toolName: '',
-                toolAvatar: '',
-                params,
-                response: ''
+                params
               }
             }
           });
@@ -252,15 +248,31 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         handleToolResponse: async ({ call, messages }) => {
           const toolId = call.function.name;
           const childWorkflowStreamResponse = getWorkflowChildResponseWrite({
+            subAppId: `${nodeId}/${toolId}`,
             id: call.id,
             fn: workflowStreamResponse
           });
+          const onReasoning = ({ text }: { text: string }) => {
+            childWorkflowStreamResponse?.({
+              event: SseResponseEventEnum.answer,
+              data: textAdaptGptResponse({
+                reasoning_content: text
+              })
+            });
+          };
+          const onStreaming = ({ text }: { text: string }) => {
+            childWorkflowStreamResponse?.({
+              event: SseResponseEventEnum.answer,
+              data: textAdaptGptResponse({
+                text
+              })
+            });
+          };
 
           const {
             response,
             usages = [],
-            isEnd,
-            streamResponse = true
+            isEnd
           } = await (async () => {
             try {
               if (toolId === SubAppIds.stop) {
@@ -277,28 +289,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                   temperature,
                   top_p: aiChatTopP,
                   stream,
-                  onStreaming({ text }) {
-                    //TODO: 需要一个新的 plan sse event
-                    childWorkflowStreamResponse?.({
-                      event: SseResponseEventEnum.toolResponse,
-                      data: {
-                        tool: {
-                          id: call.id,
-                          toolName: '',
-                          toolAvatar: '',
-                          params: '',
-                          response: text
-                        }
-                      }
-                    });
-                  }
+                  onReasoning,
+                  onStreaming
                 });
 
                 return {
                   response,
                   usages,
-                  isEnd: false,
-                  streamResponse: false
+                  isEnd: false
                 };
               } else if (toolId === SubAppIds.model) {
                 const { systemPrompt, task } = parseToolArgs<{
@@ -313,26 +311,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                   stream,
                   systemPrompt,
                   task,
-                  onStreaming({ text }) {
-                    childWorkflowStreamResponse?.({
-                      event: SseResponseEventEnum.toolResponse,
-                      data: {
-                        tool: {
-                          id: call.id,
-                          toolName: '',
-                          toolAvatar: '',
-                          params: '',
-                          response: text
-                        }
-                      }
-                    });
-                  }
+                  onReasoning,
+                  onStreaming
                 });
                 return {
                   response,
                   usages,
-                  isEnd: false,
-                  streamResponse: false
+                  isEnd: false
                 };
               } else if (toolId === SubAppIds.fileRead) {
                 const { file_indexes } = parseToolArgs<{
@@ -433,12 +418,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 ) {
                   const fn =
                     node.flowNodeType === FlowNodeTypeEnum.appModule ? dispatchApp : dispatchPlugin;
-                  console.log(requestParams, 22);
+
                   const { response, usages } = await fn({
                     ...props,
                     node,
-                    // stream: false,
-                    workflowStreamResponse: undefined,
+                    workflowStreamResponse: childWorkflowStreamResponse,
                     callParams: {
                       appId: node.pluginId,
                       version: node.version,
@@ -469,20 +453,16 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           })();
 
           // Push stream response
-          if (streamResponse) {
-            childWorkflowStreamResponse?.({
-              event: SseResponseEventEnum.toolResponse,
-              data: {
-                tool: {
-                  id: call.id,
-                  toolName: '',
-                  toolAvatar: '',
-                  params: '',
-                  response
-                }
+          workflowStreamResponse?.({
+            id: call.id,
+            event: SseResponseEventEnum.toolResponse,
+            data: {
+              tool: {
+                id: call.id,
+                response
               }
-            });
-          }
+            }
+          });
 
           // TODO: 推送账单
 

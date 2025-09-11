@@ -44,11 +44,7 @@ import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/u
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
-import {
-  ChatItemValueTypeEnum,
-  ChatRoleEnum,
-  ChatSourceEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 
@@ -110,7 +106,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           obj: ChatRoleEnum.Human,
           value: [
             {
-              type: ChatItemValueTypeEnum.text,
               text: { content: 'tool test' }
             }
           ]

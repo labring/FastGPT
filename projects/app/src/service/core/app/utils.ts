@@ -4,11 +4,7 @@ import { createChatUsage } from '@fastgpt/service/support/wallet/usage/controlle
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { delay, retryFn } from '@fastgpt/global/common/system/utils';
-import {
-  ChatItemValueTypeEnum,
-  ChatRoleEnum,
-  ChatSourceEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges,
@@ -51,7 +47,6 @@ export const getScheduleTriggerApp = async () => {
       const { nodes, edges, chatConfig } = await retryFn(() => getAppLatestVersion(app._id, app));
       const userQuery: UserChatItemValueItemType[] = [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content: app.scheduledTriggerConfig?.defaultPrompt
           }
