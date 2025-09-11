@@ -53,11 +53,16 @@ export type VariableEditorNode = BaseEditorNode & {
   variableKey: string;
 };
 
+export type TabEditorNode = BaseEditorNode & {
+  type: 'tab';
+};
+
 export type ChildEditorNode =
   | TextEditorNode
   | LineBreakEditorNode
   | VariableLabelEditorNode
-  | VariableEditorNode;
+  | VariableEditorNode
+  | TabEditorNode;
 
 export type ParagraphEditorNode = BaseEditorNode & {
   type: 'paragraph';
@@ -87,29 +92,19 @@ export type ListEditorNode = BaseEditorNode & {
   tag: 'ul' | 'ol';
 };
 
-export type RootEditorNode = BaseEditorNode & {
-  type: 'root';
-  children: Array<ParagraphEditorNode | ListEditorNode>;
-  direction: string;
-  format: string;
-  indent: number;
-};
-
 export type EditorState = {
-  root: RootEditorNode;
-};
-
-// For textToEditorState parsing
-export type ParsedTextLine = {
-  type: 'paragraph' | 'bullet' | 'number';
-  text: string;
-  indent: number;
-  value?: number;
+  root: {
+    type: 'root';
+    children: Array<ParagraphEditorNode | ListEditorNode>;
+    direction: string;
+    format: string;
+    indent: number;
+  } & BaseEditorNode;
 };
 
 export type ListItemInfo = {
   type: 'bullet' | 'number';
   text: string;
   indent: number;
-  value?: number;
+  numberValue?: number;
 };
