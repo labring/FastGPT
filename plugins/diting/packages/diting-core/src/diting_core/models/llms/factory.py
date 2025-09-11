@@ -18,7 +18,11 @@ def llm_factory(
 ) -> BaseLLM:
     if api_key:
         llm = ChatOpenAI(
-            model=model, base_url=base_url, api_key=SecretStr(api_key), timeout=timeout, **kwargs
+            model=model,
+            base_url=base_url,
+            api_key=SecretStr(api_key),
+            timeout=timeout,
+            **kwargs,
         )
     else:
         llm = ChatOpenAI(model=model, base_url=base_url, timeout=timeout, **kwargs)

@@ -204,4 +204,3 @@ class Faithfulness(BaseMetric):
             run_logs={"statements": statements, "verdicts": verdicts},
         )
         return metric_value
-

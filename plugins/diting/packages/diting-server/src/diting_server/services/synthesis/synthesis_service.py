@@ -92,12 +92,12 @@ class SynthesizerService:
             logger.error(
                 f"Failed to load the synthesizer {synthesizer_config.synthesizer_name}. "
                 f"Original error: {error}",
-                exc_info=True
+                exc_info=True,
             )
             raise SynthesizerNotFoundException(
                 f"Failed to load the synthesizer {synthesizer_config.synthesizer_name}. "
                 "Please ensure that this synthesizer is supported and correctly configured. "
-                f"Original error: {error}",  
+                f"Original error: {error}",
             )
 
         is_llm_required = hasattr(synthesizer, "model")
@@ -130,7 +130,9 @@ class SynthesizerService:
                 base_url=embedding_config.base_url,
                 api_key=embedding_config.api_key,
             )
-            embedding_model = embedding_factory(**embedding_config_resolved, timeout=embedding_config.timeout)
+            embedding_model = embedding_factory(
+                **embedding_config_resolved, timeout=embedding_config.timeout
+            )
             setattr(synthesizer, "embedding_model", embedding_model)
             callbacks.append(get_embed_token)
         elif is_embedding_required and (not embedding_config):
