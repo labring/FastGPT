@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
 import { useTranslation } from 'next-i18next';
-import { Button, Flex, VStack, IconButton } from '@chakra-ui/react';
+import { Button, Flex, VStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -20,10 +20,21 @@ const DimensionCreate = () => {
   const { toast } = useToast();
   const [isFormValid, setIsFormValid] = useState(false);
   const [isTestRunOpen, setIsTestRunOpen] = useState(false);
+  const [currentFormData, setCurrentFormData] = useState<EvaluationDimensionForm>({
+    name: '',
+    description: '',
+    prompt: ''
+  });
 
-  const handleValidationChange = useCallback((isValid: boolean) => {
-    setIsFormValid(isValid);
-  }, []);
+  const handleValidationChange = useCallback(
+    (isValid: boolean, formData?: EvaluationDimensionForm) => {
+      setIsFormValid(isValid);
+      if (formData) {
+        setCurrentFormData(formData);
+      }
+    },
+    []
+  );
 
   const handleTestRun = useCallback(() => {
     setIsTestRunOpen(true);
@@ -94,7 +105,13 @@ const DimensionCreate = () => {
           </VStack>
           <Flex maxW={['90vw', '800px']} mx="auto">
             <Flex w={'100%'} justifyContent={'flex-end'} pt={8}>
-              <Button h={9} mr={3} variant={'outline'} onClick={handleTestRun}>
+              <Button
+                h={9}
+                mr={3}
+                variant={'outline'}
+                isDisabled={!isFormValid}
+                onClick={handleTestRun}
+              >
                 {t('dashboard_evaluation:dimension_create_test_run')}
               </Button>
               <Button
@@ -109,8 +126,7 @@ const DimensionCreate = () => {
             </Flex>
           </Flex>
 
-          {/* 试运行弹窗 */}
-          <TestRun isOpen={isTestRunOpen} onClose={handleCloseTestRun} />
+          <TestRun isOpen={isTestRunOpen} onClose={handleCloseTestRun} formData={currentFormData} />
         </MyBox>
       )}
     </DashboardContainer>
@@ -122,7 +138,7 @@ export default DimensionCreate;
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['dashboard_evaluation', 'file']))
+      ...(await serviceSideProps(content))
     }
   };
 }

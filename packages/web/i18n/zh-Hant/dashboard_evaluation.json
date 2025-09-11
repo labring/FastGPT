@@ -86,7 +86,7 @@
   "table_header_time": "創建/更新時間",
   "table_header_status": "狀態",
   "table_header_creator": "創建人",
-  "create_dimension": "新建維度",
+  "create_dimension": "新建",
   "search_dimension": "搜索評測維度",
   "delete_failed": "刪除失敗",
   "delete_success": "刪除成功",
@@ -273,5 +273,8 @@
   "summary_done": "已完成",
   "summary_failed": "生成失敗",
   "method_mean": "平均值",
-  "method_median": "中位數"
+  "method_median": "中位數",
+  "prompt_cannot_be_empty": "提示詞不允許為空",
+  "please_select_model": "請選擇模型",
+  "run_failed_please_retry": "運行失敗，請重試"
 }

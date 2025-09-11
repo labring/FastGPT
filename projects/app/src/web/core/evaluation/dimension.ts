@@ -1,48 +1,18 @@
 import { DELETE, GET, POST, PUT } from '@/web/common/api/request';
-// import type {
-//   CreateMetricBody,
-//   DebugMetricBody,
-//   ListMetricsBody,
-//   UpdateMetricBody
-// } from '@fastgpt/global/core/evaluation/api';
-// import type {
-//   EvalMetricSchemaType,
-//   EvaluationResponse
-// } from '@fastgpt/global/core/evaluation/type';
+import type {
+  CreateMetricBody,
+  DebugMetricBody,
+  ListMetricsBody,
+  UpdateMetricBody,
+  DeleteMetricQuery,
+  DetailMetricQuery
+} from '@fastgpt/global/core/evaluation/metric/api';
+import type {
+  EvalMetricSchemaType,
+  EvalMetricDisplayType,
+  EvaluationResponse
+} from '@fastgpt/global/core/evaluation/metric/type';
 import type { PaginationResponse } from '@fastgpt/web/common/fetch/type';
-
-// 临时类型定义
-interface ListMetricsBody {
-  current?: number;
-  pageSize?: number;
-  searchKey?: string;
-  type?: string;
-}
-
-type CreateMetricBody = any;
-
-type UpdateMetricBody = any;
-
-interface DebugMetricBody {
-  prompt: string;
-  question: string;
-  answer: string;
-  reference?: string;
-}
-
-interface EvalMetricSchemaType {
-  _id: string;
-  name: string;
-  description?: string;
-  type: string;
-  prompt?: string;
-  scoreRange?: {
-    min: number;
-    max: number;
-  };
-  createTime: Date;
-  updateTime: Date;
-}
 
 /**
  * 获取评估维度列表
@@ -50,15 +20,15 @@ interface EvalMetricSchemaType {
  * @returns 评估维度列表数据
  */
 export const getMetricList = (data: ListMetricsBody) =>
-  POST<PaginationResponse<EvalMetricSchemaType>>('/core/evaluation/metric/list', data);
+  POST<PaginationResponse<EvalMetricDisplayType>>('/core/evaluation/metric/list', data);
 
 /**
  * 获取评估维度详情
- * @param id - 评估维度ID
+ * @param metricId - 评估维度ID
  * @returns 评估维度详情
  */
-export const getMetricDetail = (id: string) =>
-  GET<EvalMetricSchemaType>('/core/evaluation/metric/detail', { id });
+export const getMetricDetail = (metricId: string) =>
+  GET<EvalMetricSchemaType>('/core/evaluation/metric/detail', { metricId });
 
 /**
  * 创建评估维度
@@ -86,10 +56,11 @@ export const putUpdateMetric = (data: UpdateMetricBody) =>
 
 /**
  * 删除评估维度
- * @param id - 评估维度ID
+ * @param metricId - 评估维度ID
  * @returns 删除结果
  */
-export const deleteMetric = (id: string) => DELETE('/core/evaluation/metric/delete', { id });
+export const deleteMetric = (metricId: string) =>
+  DELETE('/core/evaluation/metric/delete', { metricId });
 
 /**
  * 自定义维度试运行
