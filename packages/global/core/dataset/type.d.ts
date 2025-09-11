@@ -10,7 +10,8 @@ import type {
   SearchScoreTypeEnum,
   TrainingModeEnum,
   ChunkSettingModeEnum,
-  ChunkTriggerConfigTypeEnum
+  ChunkTriggerConfigTypeEnum,
+  DatabaseType
 } from './constants';
 import type { DatasetPermission } from '../../support/permission/dataset/controller';
 import type {
@@ -54,6 +55,73 @@ export type ChunkSettingsType = {
   qaPrompt?: string;
 };
 
+export type DatabaseConfig = {
+  client: `${DatabaseType}`;
+  version?: string;
+  host: string;
+  port?: number;
+  database: string;
+  user: string;
+  password: string;
+  encrypt?: boolean;
+  poolSize?: number;
+};
+
+// Database table schema types
+export type ColumnSchemaType = {
+  columnName: string;
+  columnType: string;
+  description: string;
+  examples: string[];
+  forbid: boolean;
+  valueIndex: boolean;
+  
+  // Database attributes
+  isNullable?: boolean;
+  defaultValue?: string;
+  isAutoIncrement?: boolean;
+  isPrimaryKey?: boolean;
+  isForeignKey?: boolean;
+  relatedColumns?: string[];
+  
+  // Extended metadata
+  metadata?: Record<string, any>;
+};
+
+export type ForeignKeySchemaType = {
+  constrainedColumns: string[];
+  referredSchema: string | null;
+  referredTable: string;
+  referredColumns: string[];
+};
+
+export type IndexSchemaType = {
+  name: string;
+  columns: string[];
+  unique: boolean;
+  type: string;
+};
+
+export type ConstraintSchemaType = {
+  name: string;
+  type: string; // PRIMARY, FOREIGN, UNIQUE, CHECK
+  columns: string[];
+  definition: string;
+};
+
+export type TableSchemaType = {
+  tableName: string;
+  description: string;
+  columns: Record<string, ColumnSchemaType>;
+  foreignKeys: ForeignKeySchemaType[];
+  primaryKeys: string[];
+  indexes: IndexSchemaType[];
+  constraints: ConstraintSchemaType[];
+  rowCount?: number;
+  estimatedSize?: string;
+  lastUpdated: Date;
+};
+
 export type DatasetSchemaType = {
   _id: string;
   parentId: ParentIdType;
@@ -82,6 +150,7 @@ export type DatasetSchemaType = {
 
   apiDatasetServer?: ApiDatasetServerType;
 
+  databaseConfig?: DatabaseConfig;
   // abandon
   autoSync?: boolean;
   externalReadUrl?: string;
@@ -127,6 +196,9 @@ export type DatasetCollectionSchemaType = ChunkSettingsType & {
   // Parse settings
   customPdfParse?: boolean;
   trainingType: DatasetCollectionDataProcessModeEnum;
+  
+  // Database table schema (for database type collections)
+  tableSchema?: TableSchemaType;
 };
 
 export type DatasetCollectionTagsSchemaType = {

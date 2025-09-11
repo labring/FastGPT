@@ -37,7 +37,7 @@ import {
 } from '@fastgpt/global/core/dataset/training/utils';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { clearCollectionImages, removeDatasetImageExpiredTime } from '../image/utils';
-
+import { DBDatasetVectorTableName,DBDatasetValueVectorTableName,DatasetVectorTableName } from '../../../common/vectorDB/constants';
 export const createCollectionAndInsertData = async ({
   dataset,
   rawText,
@@ -274,7 +274,8 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
     externalFileId,
     externalFileUrl,
     apiFileId,
-    apiFileParentId
+    apiFileParentId,
+    tableSchema
   } = props;
 
   const collectionTags = await createOrGetCollectionTags({
@@ -300,7 +301,8 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
         ...(externalFileId ? { externalFileId } : {}),
         ...(externalFileUrl ? { externalFileUrl } : {}),
         ...(apiFileId ? { apiFileId } : {}),
-        ...(apiFileParentId ? { apiFileParentId } : {})
+        ...(apiFileParentId ? { apiFileParentId } : {}),
+        ...(tableSchema ? { tableSchema } : {})
       }
     ],
     { session, ordered: true }
@@ -415,7 +417,9 @@ export async function delCollection({
           ]
         : []),
       // Delete vector data
-      deleteDatasetDataVector({ teamId, datasetIds, collectionIds })
+      deleteDatasetDataVector({ teamId, datasetIds, collectionIds ,tableName:DatasetVectorTableName}),
+      deleteDatasetDataVector({ teamId, datasetIds, collectionIds ,tableName:DBDatasetVectorTableName}),
+      deleteDatasetDataVector({ teamId, datasetIds, collectionIds ,tableName:DBDatasetValueVectorTableName}),
     ]);
 
     // delete collections

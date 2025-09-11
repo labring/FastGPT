@@ -183,6 +183,13 @@ export type DispatchNodeResponseType = {
     inputTokens: number;
     outputTokens: number;
   };
+  // text2sql result
+  sqlResult?: {
+    sql: string;
+    data: any[];
+    columns: string[];
+    answer: string;
+  };
 
   // dataset concat
   concatLength?: number;
