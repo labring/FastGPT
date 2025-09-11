@@ -26,7 +26,7 @@ function OrgTags({ orgs, type = 'simple' }: { orgs?: string[]; type?: 'simple' |
     >
       {type === 'simple' ? (
         <Box
-          className="textEllipsis"
+          noOfLines={1}
           fontSize="xs"
           fontWeight={400}
           maxW={'200px'}
