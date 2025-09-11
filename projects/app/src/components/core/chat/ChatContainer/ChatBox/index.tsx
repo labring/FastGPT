@@ -1126,7 +1126,8 @@ const ChatBox = ({
         >
           <Flex h={'100%'} flexDir={'column'} justifyContent={'center'} w={'100%'}>
             {HomeChatRenderBox}
-            {allVariableList.length > 0 ? (
+            {allVariableList.filter((item) => item.type !== VariableInputEnum.internal).length >
+            0 ? (
               <Box w={'100%'}>
                 <ChatHomeVariablesForm chatForm={chatForm} />
               </Box>
