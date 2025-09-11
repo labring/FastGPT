@@ -35,11 +35,7 @@ import ChatInput from './Input/ChatInput';
 import ChatBoxDivider from '../../Divider';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import {
-  ChatItemValueTypeEnum,
-  ChatRoleEnum,
-  ChatStatusEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import {
   checkIsInteractiveByHistories,
   formatChatValue2InputType,
@@ -221,159 +217,255 @@ const ChatBox = ({
       status,
       name,
       tool,
+      subAppId,
       interactive,
-      autoTTSResponse,
       variables,
       nodeResponse,
-      durationSeconds
+      durationSeconds,
+      autoTTSResponse
     }: generatingMessageProps & { autoTTSResponse?: boolean }) => {
       setChatRecords((state) =>
         state.map((item, index) => {
           if (index !== state.length - 1) return item;
           if (item.obj !== ChatRoleEnum.AI) return item;
 
-          autoTTSResponse && splitText2Audio(formatChatValue2InputType(item.value).text || '');
+          if (subAppId) {
+            let subAppValue = cloneDeep(item.subAppsValue?.[subAppId]);
+            if (!subAppValue) {
+              console.log("Can't find the sub app");
+              return item;
+            }
 
-          const updateIndex = (() => {
-            if (!responseValueId) return item.value.length - 1;
-            const index = item.value.findIndex((item) => item.id === responseValueId);
-            if (index !== -1) return index;
-            return item.value.length - 1;
-          })();
-          const updateValue: AIChatItemValueItemType = cloneDeep(item.value[updateIndex]);
+            const updateIndex = (() => {
+              if (!responseValueId) return subAppValue.length - 1;
+              const index = subAppValue.findIndex((item) => item.id === responseValueId);
+              if (index !== -1) return index;
+              return subAppValue.length - 1;
+            })();
+            const updateValue = subAppValue[updateIndex];
 
-          if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
+            if (
+              event === SseResponseEventEnum.answer ||
+              event === SseResponseEventEnum.fastAnswer
+            ) {
+              if (reasoningText) {
+                if (updateValue?.reasoning) {
+                  updateValue.reasoning.content += reasoningText;
+                } else {
+                  const val: AIChatItemValueItemType = {
+                    id: responseValueId,
+                    reasoning: {
+                      content: reasoningText
+                    }
+                  };
+                  subAppValue = [
+                    ...subAppValue.slice(0, updateIndex),
+                    val,
+                    ...subAppValue.slice(updateIndex + 1)
+                  ];
+                }
+              }
+              if (text) {
+                if (updateValue?.text) {
+                  updateValue.text.content += text;
+                } else {
+                  const val: AIChatItemValueItemType = {
+                    id: responseValueId,
+                    text: {
+                      content: text
+                    }
+                  };
+                  subAppValue = [
+                    ...subAppValue.slice(0, updateIndex),
+                    val,
+                    ...subAppValue.slice(updateIndex + 1)
+                  ];
+                }
+              }
+            }
+
+            if (event === SseResponseEventEnum.toolCall && tool) {
+              const val: AIChatItemValueItemType = {
+                id: responseValueId,
+                tool
+              };
+              subAppValue = [
+                ...subAppValue.slice(0, updateIndex),
+                val,
+                ...subAppValue.slice(updateIndex + 1)
+              ];
+            }
+            if (event === SseResponseEventEnum.toolParams && tool && updateValue?.tool) {
+              if (tool.params) {
+                updateValue.tool.params += tool.params;
+              }
+              return item;
+            }
+            if (event === SseResponseEventEnum.toolResponse && tool && updateValue?.tool) {
+              if (tool.response) {
+                updateValue.tool.response += tool.response;
+              }
+              return item;
+            }
+
             return {
               ...item,
-              responseData: item.responseData
-                ? [...item.responseData, nodeResponse]
-                : [nodeResponse]
+              subAppsValue: {
+                ...item.subAppsValue,
+                [subAppId]: subAppValue
+              }
             };
-          } else if (event === SseResponseEventEnum.flowNodeStatus && status) {
-            return {
-              ...item,
-              status,
-              moduleName: name
-            };
-          } else if (reasoningText) {
-            if (updateValue.type === ChatItemValueTypeEnum.reasoning && updateValue.reasoning) {
-              updateValue.reasoning.content += reasoningText;
+          } else {
+            autoTTSResponse && splitText2Audio(formatChatValue2InputType(item.value).text || '');
+
+            const updateIndex = (() => {
+              if (!responseValueId) return item.value.length - 1;
+              const index = item.value.findIndex((item) => item.id === responseValueId);
+              if (index !== -1) return index;
+              return item.value.length - 1;
+            })();
+            const updateValue: AIChatItemValueItemType = cloneDeep(item.value[updateIndex]);
+            updateValue.id = responseValueId;
+            console.log(event, tool, updateValue);
+            if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
               return {
                 ...item,
-                value: [
-                  ...item.value.slice(0, updateIndex),
-                  updateValue,
-                  ...item.value.slice(updateIndex + 1)
-                ]
+                responseData: item.responseData
+                  ? [...item.responseData, nodeResponse]
+                  : [nodeResponse]
               };
-            } else {
+            }
+            if (event === SseResponseEventEnum.flowNodeStatus && status) {
+              return {
+                ...item,
+                status,
+                moduleName: name
+              };
+            }
+            if (
+              event === SseResponseEventEnum.answer ||
+              event === SseResponseEventEnum.fastAnswer
+            ) {
+              if (reasoningText) {
+                if (updateValue?.reasoning) {
+                  updateValue.reasoning.content += reasoningText;
+                  return {
+                    ...item,
+                    value: [
+                      ...item.value.slice(0, updateIndex),
+                      updateValue,
+                      ...item.value.slice(updateIndex + 1)
+                    ]
+                  };
+                } else {
+                  const val: AIChatItemValueItemType = {
+                    id: responseValueId,
+                    reasoning: {
+                      content: reasoningText
+                    }
+                  };
+                  return {
+                    ...item,
+                    value: [...item.value, val]
+                  };
+                }
+              }
+              if (text) {
+                if (updateValue?.text) {
+                  updateValue.text.content += text;
+                  return {
+                    ...item,
+                    value: [
+                      ...item.value.slice(0, updateIndex),
+                      updateValue,
+                      ...item.value.slice(updateIndex + 1)
+                    ]
+                  };
+                } else {
+                  const newValue: AIChatItemValueItemType = {
+                    id: responseValueId,
+                    text: {
+                      content: text
+                    }
+                  };
+                  return {
+                    ...item,
+                    value: item.value.concat(newValue)
+                  };
+                }
+              }
+            }
+
+            // Tool call
+            if (event === SseResponseEventEnum.toolCall && tool) {
               const val: AIChatItemValueItemType = {
-                type: ChatItemValueTypeEnum.reasoning,
-                reasoning: {
-                  content: reasoningText
+                id: responseValueId,
+                tool: {
+                  ...tool,
+                  response: ''
                 }
               };
               return {
                 ...item,
+                subAppsValue: {
+                  ...item.subAppsValue,
+                  [tool.id]: []
+                },
                 value: [...item.value, val]
               };
             }
-          } else if (
-            (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) &&
-            text
-          ) {
-            if (!updateValue || !updateValue.text) {
-              const newValue: AIChatItemValueItemType = {
-                type: ChatItemValueTypeEnum.text,
-                text: {
-                  content: text
-                }
+            if (event === SseResponseEventEnum.toolParams && tool && updateValue?.tool) {
+              if (tool.params) {
+                updateValue.tool.params += tool.params;
+                return {
+                  ...item,
+                  value: [
+                    ...item.value.slice(0, updateIndex),
+                    updateValue,
+                    ...item.value.slice(updateIndex + 1)
+                  ]
+                };
+              }
+              return item;
+            }
+            if (event === SseResponseEventEnum.toolResponse && tool && updateValue?.tool) {
+              if (tool.response) {
+                // replace tool response
+                updateValue.tool.response += tool.response;
+
+                return {
+                  ...item,
+                  value: [
+                    ...item.value.slice(0, updateIndex),
+                    updateValue,
+                    ...item.value.slice(updateIndex + 1)
+                  ]
+                };
+              }
+              return item;
+            }
+
+            if (event === SseResponseEventEnum.updateVariables && variables) {
+              resetVariables({ variables });
+            }
+            if (event === SseResponseEventEnum.interactive && interactive) {
+              const val: AIChatItemValueItemType = {
+                interactive
               };
+
               return {
                 ...item,
-                value: item.value.concat(newValue)
-              };
-            } else {
-              updateValue.text.content += text;
-              return {
-                ...item,
-                value: [
-                  ...item.value.slice(0, updateIndex),
-                  updateValue,
-                  ...item.value.slice(updateIndex + 1)
-                ]
+                value: item.value.concat(val)
               };
             }
-          } else if (event === SseResponseEventEnum.toolCall && tool) {
-            const val: AIChatItemValueItemType = {
-              id: responseValueId,
-              type: ChatItemValueTypeEnum.tool,
-              tools: [tool]
-            };
-            return {
-              ...item,
-              value: item.value.concat(val)
-            };
-          } else if (
-            event === SseResponseEventEnum.toolParams &&
-            tool &&
-            updateValue.type === ChatItemValueTypeEnum.tool &&
-            updateValue?.tools
-          ) {
-            updateValue.tools = updateValue.tools.map((item) => {
-              if (item.id === tool.id) {
-                item.params += tool.params;
-              }
-              return item;
-            });
-            return {
-              ...item,
-              value: [
-                ...item.value.slice(0, updateIndex),
-                updateValue,
-                ...item.value.slice(updateIndex + 1)
-              ]
-            };
-          } else if (
-            event === SseResponseEventEnum.toolResponse &&
-            tool &&
-            updateValue.type === ChatItemValueTypeEnum.tool &&
-            updateValue?.tools
-          ) {
-            // replace tool response
-            updateValue.tools = updateValue.tools.map((item) => {
-              if (item.id === tool.id) {
-                item.response = item.response ? item.response + tool.response : tool.response;
-              }
-              return item;
-            });
-            return {
-              ...item,
-              value: [
-                ...item.value.slice(0, updateIndex),
-                updateValue,
-                ...item.value.slice(updateIndex + 1)
-              ]
-            };
-          } else if (event === SseResponseEventEnum.updateVariables && variables) {
-            resetVariables({ variables });
-          } else if (event === SseResponseEventEnum.interactive) {
-            const val: AIChatItemValueItemType = {
-              type: ChatItemValueTypeEnum.interactive,
-              interactive
-            };
-
-            return {
-              ...item,
-              value: item.value.concat(val)
-            };
-          } else if (event === SseResponseEventEnum.workflowDuration && durationSeconds) {
-            return {
-              ...item,
-              durationSeconds: item.durationSeconds
-                ? +(item.durationSeconds + durationSeconds).toFixed(2)
-                : durationSeconds
-            };
+            if (event === SseResponseEventEnum.workflowDuration && durationSeconds) {
+              return {
+                ...item,
+                durationSeconds: item.durationSeconds
+                  ? +(item.durationSeconds + durationSeconds).toFixed(2)
+                  : durationSeconds
+              };
+            }
           }
 
           return item;
@@ -499,7 +591,6 @@ const ChatBox = ({
               hideInUI,
               value: [
                 ...files.map((file) => ({
-                  type: ChatItemValueTypeEnum.file,
                   file: {
                     type: file.type,
                     name: file.name,
@@ -510,7 +601,6 @@ const ChatBox = ({
                 ...(text
                   ? [
                       {
-                        type: ChatItemValueTypeEnum.text,
                         text: {
                           content: text
                         }
@@ -525,7 +615,6 @@ const ChatBox = ({
               obj: ChatRoleEnum.AI,
               value: [
                 {
-                  type: ChatItemValueTypeEnum.text,
                   text: {
                     content: ''
                   }
@@ -1003,7 +1092,6 @@ const ChatBox = ({
             <Box py={item.hideInUI ? 0 : 6}>
               {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
                 <ChatItem
-                  type={item.obj}
                   avatar={userAvatar}
                   chat={item}
                   onRetry={retryInput(item.dataId)}
@@ -1013,7 +1101,6 @@ const ChatBox = ({
               )}
               {item.obj === ChatRoleEnum.AI && (
                 <ChatItem
-                  type={item.obj}
                   avatar={appAvatar}
                   chat={item}
                   isLastChild={index === chatRecords.length - 1}

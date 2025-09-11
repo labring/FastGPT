@@ -1,7 +1,7 @@
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { MongoApp } from '../app/schema';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { addLog } from '../../common/system/log';
@@ -267,11 +267,7 @@ export const updateInteractiveChat = async ({
   // Update interactive value
   const interactiveValue = chatItem.value[chatItem.value.length - 1];
 
-  if (
-    !interactiveValue ||
-    interactiveValue.type !== ChatItemValueTypeEnum.interactive ||
-    !interactiveValue.interactive?.params
-  ) {
+  if (!interactiveValue || !interactiveValue.interactive?.params) {
     return;
   }
 

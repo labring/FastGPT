@@ -10,11 +10,9 @@ import {
   Flex,
   HStack
 } from '@chakra-ui/react';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type {
   AIChatItemValueItemType,
-  ToolModuleResponseItemType,
-  UserChatItemValueItemType
+  ToolModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
 import React, { useState, useCallback, useMemo } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -127,75 +125,91 @@ const RenderText = React.memo(function RenderText({
 const RenderTool = React.memo(
   function RenderTool({
     showAnimation,
-    tools
+    tool,
+    subAppValue,
+
+    chatItemDataId,
+    isChatting,
+    onOpenCiteModal
   }: {
     showAnimation: boolean;
-    tools: ToolModuleResponseItemType[];
+    tool: ToolModuleResponseItemType;
+    subAppValue?: AIChatItemValueItemType[];
+
+    chatItemDataId: string;
+    isChatting: boolean;
+    onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
   }) {
     const { t } = useSafeTranslation();
     const [userOnchange, setUserOnchange] = useState(false);
+    const formatJson = (string: string) => {
+      try {
+        return JSON.stringify(JSON.parse(string), null, 2);
+      } catch (error) {
+        return string;
+      }
+    };
+    const params = formatJson(tool.params);
+    const response = formatJson(tool.response);
 
     return (
-      <Box>
-        {tools.map((tool) => {
-          const formatJson = (string: string) => {
-            try {
-              return JSON.stringify(JSON.parse(string), null, 2);
-            } catch (error) {
-              return string;
-            }
-          };
-          const toolParams = formatJson(tool.params);
-          const toolResponse = formatJson(tool.response);
-
-          return (
-            <Accordion
-              key={tool.id}
-              allowToggle
-              _notLast={{ mb: 2 }}
-              index={userOnchange ? undefined : showAnimation ? 0 : undefined}
-              onChange={() => {
-                setUserOnchange(true);
-              }}
-            >
-              <AccordionItem borderTop={'none'} borderBottom={'none'}>
-                <AccordionButton {...accordionButtonStyle}>
-                  <Avatar src={tool.toolAvatar} w={'1.25rem'} h={'1.25rem'} borderRadius={'sm'} />
-                  <Box mx={2} fontSize={'sm'} color={'myGray.900'}>
-                    {t(tool.toolName)}
-                  </Box>
-                  {showAnimation && !tool.response && <MyIcon name={'common/loading'} w={'14px'} />}
-                  <AccordionIcon color={'myGray.600'} ml={5} />
-                </AccordionButton>
-                <AccordionPanel
-                  py={0}
-                  px={0}
-                  mt={3}
-                  borderRadius={'md'}
-                  overflow={'hidden'}
-                  maxH={'500px'}
-                  overflowY={'auto'}
-                >
-                  {toolParams && toolParams !== '{}' && (
-                    <Box mb={3}>
-                      <Markdown
-                        source={`~~~json#Input
-${toolParams}`}
-                      />
-                    </Box>
-                  )}
-                  {toolResponse && (
-                    <Markdown
-                      source={`~~~json#Response
-${toolResponse}`}
-                    />
-                  )}
-                </AccordionPanel>
-              </AccordionItem>
-            </Accordion>
-          );
-        })}
-      </Box>
+      <Accordion
+        key={tool.id}
+        allowToggle
+        index={userOnchange ? undefined : showAnimation ? 0 : undefined}
+        onChange={() => {
+          setUserOnchange(true);
+        }}
+      >
+        <AccordionItem borderTop={'none'} borderBottom={'none'}>
+          <AccordionButton {...accordionButtonStyle}>
+            <Avatar src={tool.toolAvatar} w={'1.25rem'} h={'1.25rem'} borderRadius={'sm'} />
+            <Box mx={2} fontSize={'sm'} color={'myGray.900'}>
+              {t(tool.toolName)}
+            </Box>
+            {showAnimation && !tool.response && <MyIcon name={'common/loading'} w={'14px'} />}
+            <AccordionIcon color={'myGray.600'} ml={5} />
+          </AccordionButton>
+          <AccordionPanel
+            py={0}
+            px={0}
+            mt={3}
+            borderRadius={'md'}
+            overflow={'hidden'}
+            maxH={'500px'}
+            overflowY={'auto'}
+          >
+            {params && params !== '{}' && (
+              <Box mb={3}>
+                <Markdown
+                  source={`~~~json#Input
+${params}`}
+                />
+              </Box>
+            )}
+            {response && (
+              <Markdown
+                source={`~~~json#Response
+${response}`}
+              />
+            )}
+            {subAppValue && (
+              <Box bg={'white'} p={2}>
+                {subAppValue.map((value, index) => (
+                  <AIResponseBox
+                    key={index}
+                    chatItemDataId={chatItemDataId}
+                    isChatting={isChatting}
+                    onOpenCiteModal={onOpenCiteModal}
+                    isLastResponseValue={index === subAppValue.length - 1}
+                    value={value}
+                  />
+                ))}
+              </Box>
+            )}
+          </AccordionPanel>
+        </AccordionItem>
+      </Accordion>
     );
   },
   (prevProps, nextProps) => isEqual(prevProps, nextProps)
@@ -260,17 +274,19 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
 const AIResponseBox = ({
   chatItemDataId,
   value,
+  subAppValue,
   isLastResponseValue,
   isChatting,
   onOpenCiteModal
 }: {
   chatItemDataId: string;
-  value: UserChatItemValueItemType | AIChatItemValueItemType;
+  value: AIChatItemValueItemType;
+  subAppValue?: AIChatItemValueItemType[];
   isLastResponseValue: boolean;
   isChatting: boolean;
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
 }) => {
-  if (value.type === ChatItemValueTypeEnum.text && value.text) {
+  if ('text' in value && value.text) {
     return (
       <RenderText
         chatItemDataId={chatItemDataId}
@@ -280,7 +296,7 @@ const AIResponseBox = ({
       />
     );
   }
-  if (value.type === ChatItemValueTypeEnum.reasoning && value.reasoning) {
+  if ('reasoning' in value && value.reasoning) {
     return (
       <RenderResoningContent
         isChatting={isChatting}
@@ -289,10 +305,19 @@ const AIResponseBox = ({
       />
     );
   }
-  if (value.type === ChatItemValueTypeEnum.tool && value.tools) {
-    return <RenderTool showAnimation={isChatting} tools={value.tools} />;
+  if ('tool' in value && value.tool) {
+    return (
+      <RenderTool
+        showAnimation={isChatting}
+        tool={value.tool}
+        subAppValue={subAppValue}
+        chatItemDataId={chatItemDataId}
+        isChatting={isChatting}
+        onOpenCiteModal={onOpenCiteModal}
+      />
+    );
   }
-  if (value.type === ChatItemValueTypeEnum.interactive && value.interactive) {
+  if ('interactive' in value && value.interactive) {
     const finalInteractive = extractDeepestInteractive(value.interactive);
     if (finalInteractive.type === 'userSelect') {
       return <RenderUserSelectInteractive interactive={finalInteractive} />;
@@ -300,6 +325,22 @@ const AIResponseBox = ({
     if (finalInteractive.type === 'userInput') {
       return <RenderUserFormInteractive interactive={finalInteractive} />;
     }
+  }
+
+  // Abandon
+  if ('tools' in value && value.tools) {
+    return value.tools.map((tool) => (
+      <Box key={tool.id} _notLast={{ mb: 2 }}>
+        <RenderTool
+          showAnimation={isChatting}
+          tool={tool}
+          subAppValue={subAppValue}
+          chatItemDataId={chatItemDataId}
+          isChatting={isChatting}
+          onOpenCiteModal={onOpenCiteModal}
+        />
+      </Box>
+    ));
   }
   return null;
 };

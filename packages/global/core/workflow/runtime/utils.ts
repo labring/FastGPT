@@ -1,6 +1,6 @@
 import json5 from 'json5';
 import { replaceVariable, valToStr } from '../../../common/string/tools';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '../../../core/chat/constants';
+import { ChatRoleEnum } from '../../../core/chat/constants';
 import type { ChatItemType, NodeOutputItemType } from '../../../core/chat/type';
 import { ChatCompletionRequestMessageRoleEnum } from '../../ai/constants';
 import {
@@ -184,11 +184,7 @@ export const getLastInteractiveValue = (
   if (lastAIMessage) {
     const lastValue = lastAIMessage.value[lastAIMessage.value.length - 1];
 
-    if (
-      !lastValue ||
-      lastValue.type !== ChatItemValueTypeEnum.interactive ||
-      !lastValue.interactive
-    ) {
+    if (!lastValue || !lastValue.interactive) {
       return;
     }
 
