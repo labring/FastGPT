@@ -87,9 +87,6 @@ export enum EvaluationErrEnum {
   evaluatorInvalidResponse = 'evaluationEvaluatorInvalidResponse',
   evaluatorNetworkError = 'evaluationEvaluatorNetworkError',
 
-  // Eval common errors
-  evalIdRequired = 'evaluationEvalIdRequired',
-
   // Summary related errors
   summaryMetricsConfigError = 'evaluationSummaryMetricsConfigError',
   summaryThresholdValueRequired = 'evaluationSummaryThresholdValueRequired',
