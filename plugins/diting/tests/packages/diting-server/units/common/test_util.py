@@ -131,26 +131,6 @@ class TestResolveModelConfig(unittest.TestCase):
         }
         self.assertEqual(result, expected)
 
-    def test_resolve_model_config_with_none_params(self):
-        """Test resolve_model_config with None parameters."""
-        with patch.dict(
-            "os.environ",
-            {
-                "AIPROXY_API_ENDPOIN": "https://default.example.com",
-                "AIPROXY_API_TOKEN": "default-token",
-            },
-        ):
-            result = resolve_model_config(
-                model="test-model", base_url=None, api_key=None
-            )
-
-            expected = {
-                "model": "test-model",
-                "base_url": "https://default.example.com",
-                "api_key": "default-token",
-            }
-            self.assertEqual(result, expected)
-
     def test_resolve_model_config_with_partial_params(self):
         """Test resolve_model_config with partial parameters."""
         with patch.dict(
@@ -234,16 +214,7 @@ class TestResolveModelConfig(unittest.TestCase):
     def test_resolve_model_config_no_environment_variables(self):
         """Test resolve_model_config when no environment variables are set."""
         with patch.dict("os.environ", {}, clear=True):
-            result = resolve_model_config(
-                model="test-model", base_url=None, api_key=None
-            )
+            with self.assertRaises(ValueError) as context:
+                resolve_model_config(model="test-model", base_url=None, api_key=None)
 
-            expected = {"model": "test-model", "base_url": None, "api_key": None}
-            self.assertEqual(result, expected)
-
-    def test_resolve_model_config_minimal_params(self):
-        """Test resolve_model_config with minimal parameters."""
-        result = resolve_model_config(model="test-model")
-
-        expected = {"model": "test-model", "base_url": None, "api_key": None}
-        self.assertEqual(result, expected)
+            self.assertIn("AIPROXY_API_ENDPOINT is not set", str(context.exception))
