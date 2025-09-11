@@ -36,6 +36,8 @@ def embedding_factory(
         A LangChain-compatible embedding instance that supports both `.embed_*`
         and `.aembed_*` methods.
     """
-    async_client = openai.AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
+    async_client = openai.AsyncOpenAI(
+        api_key=api_key, base_url=base_url, timeout=timeout
+    )
     openai_embeddings = PrivateEmbeddings(model=model, async_client=async_client)
     return openai_embeddings

@@ -92,7 +92,7 @@ class EvaluationService:
             logger.error(
                 f"Failed to load metric {metric_config.metric_name}."
                 f"Original error: {error}",
-                exc_info=True
+                exc_info=True,
             )
             raise MetricNotFoundException(
                 f"Failed to load the metric {metric_config.metric_name}. "
@@ -128,7 +128,9 @@ class EvaluationService:
                 base_url=embedding_config.base_url,
                 api_key=embedding_config.api_key,
             )
-            embedding_model = embedding_factory(**embedding_config_resolved, timeout=embedding_config.timeout)
+            embedding_model = embedding_factory(
+                **embedding_config_resolved, timeout=embedding_config.timeout
+            )
             setattr(metric, "embedding_model", embedding_model)
             callbacks.append(get_embed_token)
         elif is_embedding_required and (not embedding_config):

@@ -243,4 +243,3 @@ class AnswerCorrectness(BaseMetric):
         )
 
         return metric_value
-
