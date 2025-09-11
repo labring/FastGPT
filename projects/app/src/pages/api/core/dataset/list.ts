@@ -1,5 +1,6 @@
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
@@ -23,10 +24,11 @@ export type GetDatasetListBody = {
   parentId: ParentIdType;
   type?: DatasetTypeEnum;
   searchKey?: string;
+  scene?: string;
 };
 
 async function handler(req: ApiRequestProps<GetDatasetListBody>) {
-  const { parentId, type, searchKey } = req.body;
+  const { parentId, type, searchKey, scene } = req.body;
 
   // Auth user permission
   const [{ tmbId, teamId, permission: teamPer }] = await Promise.all([
@@ -125,6 +127,25 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
     })
     .lean();
 
+  let dataCountMap: Map<string, number> | undefined;
+  if (scene !== undefined) {
+    // Count data that conforms to QA structure
+    // Only count data with q field
+    const dataCountsPromises = myDatasets.map((dataset) =>
+      MongoDatasetData.countDocuments({
+        teamId,
+        datasetId: dataset._id,
+        $or: [{ q: { $exists: true } }]
+      })
+    );
+
+    const dataCounts = await Promise.all(dataCountsPromises);
+    dataCountMap = new Map<string, number>();
+    myDatasets.forEach((dataset, index) => {
+      dataCountMap!.set(String(dataset._id), dataCounts[index]);
+    });
+  }
+
   const formatDatasets = myDatasets
     .map((dataset) => {
       const { Per, privateDataset } = (() => {
@@ -179,7 +200,9 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
         tmbId: dataset.tmbId,
         updateTime: dataset.updateTime,
         permission: Per,
-        private: privateDataset
+        private: privateDataset,
+        ...(scene !== undefined &&
+          dataCountMap && { dataCount: dataCountMap.get(String(dataset._id)) || 0 }) // dataCount used by evaluation scene
       };
     })
     .filter((app) => app.permission.hasReadPer);
