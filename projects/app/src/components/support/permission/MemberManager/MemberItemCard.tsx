@@ -7,6 +7,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import OrgTags from '../../user/team/OrgTags';
 import RoleSelect from './RoleSelect';
 import { ChevronDownIcon } from '@chakra-ui/icons';
+import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 function MemberItemCard({
   avatar,
@@ -34,19 +36,22 @@ function MemberItemCard({
   disabled?: boolean;
 }) {
   const showRoleSelect = onRoleChange !== undefined;
+  const { userInfo } = useUserStore();
   return (
     <Flex
       justifyContent="space-between"
-      alignItems="start"
+      alignItems="center"
       key={key}
-      px="3"
-      py="2"
-      gap="4"
+      px="1"
+      py="1"
+      gap="2"
       borderRadius="sm"
-      _hover={{
-        bgColor: 'myGray.50'
-      }}
-      cursor={disabled ? 'not-allowed' : 'pointer'}
+      {...(!showRoleSelect
+        ? {
+            _hover: { bgColor: 'myGray.50' },
+            cursor: 'pointer'
+          }
+        : {})}
       onClick={() => {
         if (disabled) return;
         onChange?.();
@@ -54,18 +59,22 @@ function MemberItemCard({
     >
       <Flex
         flexDirection={'row'}
-        h={showRoleSelect ? '50px' : 'unset'}
-        p="2"
+        h={showRoleSelect ? '36px' : 'unset'}
+        p="1"
         alignItems={'center'}
         gap="2"
         w="full"
       >
         {isChecked !== undefined && <Checkbox isChecked={isChecked} pointerEvents="none" />}
         <Avatar src={avatar} w="1.5rem" borderRadius={'50%'} />
-        <Box fontSize={'sm'} className="textEllipsis" maxW={'100px'}>
-          {name}
-        </Box>
-        <Box lineHeight={1}>{orgs && orgs.length > 0 && <OrgTags orgs={orgs} />}</Box>
+        <Flex justifyContent={'start'} flexDirection={'column'} w="full">
+          <Box fontSize={'sm'} className="textEllipsis" maxW={'100px'}>
+            {name === DefaultGroupName ? userInfo?.team.teamName : name}
+          </Box>
+          <Box lineHeight={1} maxW="100px">
+            {orgs && orgs.length > 0 && <OrgTags orgs={orgs} />}
+          </Box>
+        </Flex>
       </Flex>
       {showRoleSelect && (
         <RoleSelect
@@ -77,14 +86,14 @@ function MemberItemCard({
               border="base"
               fontSize={'sm'}
               borderRadius={'md'}
-              minH={'50px'}
-              w="250px"
-              p="2"
+              minH={'18px'}
+              w="300px"
+              p="1"
               alignItems={'end'}
               justifyContent={'space-between'}
             >
               <RoleTags permission={role} />
-              <Flex h="32px" alignItems={'center'} justifyContent={'center'}>
+              <Flex h="18px" alignItems={'center'} justifyContent={'center'}>
                 <ChevronDownIcon fontSize="lg" />
               </Flex>
             </Flex>
@@ -93,7 +102,7 @@ function MemberItemCard({
         />
       )}
       {onDelete !== undefined && (
-        <Flex flexDirection={'row'} h={showRoleSelect ? '50px' : 'unset'} alignItems={'center'}>
+        <Flex flexDirection={'row'} h={showRoleSelect ? '36px' : 'unset'} alignItems={'center'}>
           <MyIcon
             name="common/closeLight"
             w="1rem"

@@ -23,6 +23,8 @@ import type {
 import { MongoTeamMember } from '../../support/user/team/teamMemberSchema';
 import { MongoOrgModel } from './org/orgSchema';
 import { MongoMemberGroupModel } from './memberGroup/memberGroupSchema';
+import { DEFAULT_ORG_AVATAR, DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
+import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 
 /** get resource permission for a team member
  * If there is no permission for the team member, it will return undefined
@@ -172,8 +174,8 @@ export const getClbsInfo = async ({
       ...clb,
       teamId,
       permission: new Permission({ role: clb.permission, isOwner: ownerTmbId === clb.tmbId }),
-      name: info.name,
-      avatar: info.avatar
+      name: info?.name ?? 'Unknown name',
+      avatar: info.avatar ?? (clb.orgId ? DEFAULT_ORG_AVATAR : DEFAULT_TEAM_AVATAR)
     };
   });
 };
