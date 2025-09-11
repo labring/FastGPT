@@ -106,24 +106,6 @@ describe('useChatStore', () => {
     expect(useChatStore.getState().chatId).toBe('test');
   });
 
-  // SKIP: The test is inconsistent with the current implementation and should be skipped.
-  it.skip('should restore last chatId as id-part from lastChatId when it is "test-generated-id"', () => {
-    const store = useChatStore.getState();
-    const source = ChatSourceEnum.share;
-    const chatId = 'test-generated-id';
-
-    useChatStore.setState({
-      lastChatId: `${source}-${chatId}`,
-      source: undefined,
-      chatId: '',
-      lastChatAppId: 'test-app'
-    });
-
-    store.setSource(source);
-    // It should restore chatId to 'test-generated-id' from lastChatId
-    expect(useChatStore.getState().chatId).toBe('test-generated-id');
-  });
-
   it('should not restore last chat if lastChatId does not match source', () => {
     const store = useChatStore.getState();
     const source = ChatSourceEnum.share;
