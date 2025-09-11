@@ -5,7 +5,7 @@ import {
 } from '@fastgpt/global/core/chat/type';
 import { type ChatBoxInputType, type UserInputFileItemType } from './type';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
-import { ChatItemValueTypeEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 
 export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): ChatBoxInputType => {
@@ -25,7 +25,7 @@ export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): Chat
   const files =
     (value
       ?.map((item) =>
-        item.type === 'file' && item.file
+        'file' in item && item.file
           ? {
               id: item.file.url,
               type: item.file.type,
@@ -51,11 +51,7 @@ export const checkIsInteractiveByHistories = (chatHistories: ChatSiteItemType[])
     lastAIHistory.value.length - 1
   ] as AIChatItemValueItemType;
 
-  if (
-    lastMessageValue &&
-    lastMessageValue.type === ChatItemValueTypeEnum.interactive &&
-    !!lastMessageValue?.interactive?.params
-  ) {
+  if (lastMessageValue && !!lastMessageValue?.interactive?.params) {
     const params = lastMessageValue.interactive.params;
     // 如果用户选择了，则不认为是交互模式（可能是上一轮以交互结尾，发起的新的一轮对话）
     if ('userSelectOptions' in params) {
@@ -79,13 +75,10 @@ export const setUserSelectResultToHistories = (
     if (i !== histories.length - 1) return item;
 
     const value = item.value.map((val, i) => {
-      if (
-        i !== item.value.length - 1 ||
-        val.type !== ChatItemValueTypeEnum.interactive ||
-        !val.interactive
-      ) {
+      if (i !== item.value.length - 1) {
         return val;
       }
+      if (!('interactive' in val) || !val.interactive) return val;
 
       const finalInteractive = extractDeepestInteractive(val.interactive);
       if (finalInteractive.type === 'userSelect') {

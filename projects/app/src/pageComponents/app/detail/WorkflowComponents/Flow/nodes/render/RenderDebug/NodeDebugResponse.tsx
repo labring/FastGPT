@@ -11,14 +11,9 @@ import {
   SelectOptionsComponent
 } from '@/components/core/chat/components/Interactive/InteractiveComponents';
 import { type UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import {
-  getLastInteractiveValue,
-  storeEdges2RuntimeEdges
-} from '@fastgpt/global/core/workflow/runtime/utils';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 import { WorkflowDebugContext } from '../../../../context/workflowDebugContext';
 
@@ -107,7 +102,6 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
 
       const updatedQuery: UserChatItemValueItemType[] = [
         {
-          type: ChatItemValueTypeEnum.text,
           text: { content: userContent }
         }
       ];
@@ -117,7 +111,6 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
           obj: ChatRoleEnum.AI,
           value: [
             {
-              type: ChatItemValueTypeEnum.interactive,
               interactive: {
                 ...interactive,
                 memoryEdges: interactive.memoryEdges || [],
