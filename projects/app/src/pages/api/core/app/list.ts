@@ -207,9 +207,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
 
         return {
           Per: getPer(String(app._id)),
-          privateApp: AppFolderTypeList.includes(app.type)
-            ? getClbCount(String(app._id)) <= 1
-            : getClbCount(String(app._id)) === 0
+          privateApp: getClbCount(String(app._id)) <= 1
         };
       })();
 

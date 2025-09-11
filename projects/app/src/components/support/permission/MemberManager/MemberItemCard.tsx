@@ -103,8 +103,8 @@ function MemberItemCard({
           onChange={onRoleChange}
         />
       )}
-      {onDelete !== undefined && (
-        <Flex flexDirection={'row'} h={showRoleSelect ? '36px' : 'unset'} alignItems={'center'}>
+      <Flex flexDirection={'row'} h={showRoleSelect ? '36px' : 'unset'} alignItems={'center'}>
+        {onDelete !== undefined && !disabled ? (
           <MyIcon
             name="common/closeLight"
             w="1rem"
@@ -117,8 +117,10 @@ function MemberItemCard({
               onDelete?.();
             }}
           />
-        </Flex>
-      )}
+        ) : (
+          <Box minW="16px"></Box>
+        )}
+      </Flex>
       {!!rightSlot && rightSlot}
     </Flex>
   );
