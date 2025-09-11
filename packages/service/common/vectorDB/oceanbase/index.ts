@@ -4,6 +4,8 @@ import { delay, retryFn } from '@fastgpt/global/common/system/utils';
 import { ObClient } from './controller';
 import { type RowDataPacket } from 'mysql2/promise';
 import {
+  type DatabaseEmbeddingRecallCtrlProps,
+  type DatabaseEmbeddingRecallResponse,
   type DelDatasetVectorCtrlProps,
   type EmbeddingRecallCtrlProps,
   type EmbeddingRecallResponse,
@@ -159,6 +161,8 @@ export class ObVectorCtrl {
       }))
     };
   };
+  databaseEmbRecall = async (props: DatabaseEmbeddingRecallCtrlProps): Promise<DatabaseEmbeddingRecallResponse> => {return Promise.reject('TO-DO')}
+  
   getVectorDataByTime = async (start: Date, end: Date) => {
     const rows = await ObClient.query<
       ({

@@ -281,3 +281,42 @@ export const pushRerankUsage = ({
 
   return { totalPoints };
 };
+
+export const pushGenerateSqlUsage = ({
+  model,
+  inputTokens,
+  outputTokens,
+  teamId,
+  tmbId
+}: {
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  teamId: string;
+  tmbId: string;
+}) => {
+  const { totalPoints, modelName } = formatModelChars2Points({
+    inputTokens,
+    outputTokens,
+    model,
+    modelType: ModelTypeEnum.llm
+  });
+
+  createUsage({
+    teamId,
+    tmbId,
+    appName: 'core.app.Generate Sql',
+    totalPoints,
+    source: UsageSourceEnum.fastgpt,
+    list: [
+      {
+        moduleName: 'core.app.Generate Sql',
+        amount: totalPoints,
+        model: modelName,
+        inputTokens,
+        outputTokens
+      }
+    ]
+  });
+  return { totalPoints };
+};

@@ -12,7 +12,6 @@ export enum DatasetTypeEnum {
   yuque = 'yuque',
   database = 'database'
 }
-
 interface DatasetTypeConfig {
   icon: string;
   avatar: string;
@@ -34,6 +33,13 @@ interface DatasetTypeConfig {
     };
   };
 }
+/* ------------ database_dataset -------------- */
+export enum DatabaseType {
+  mysql = 'mysql',
+  postgresql = 'postgresql',
+  mssql = 'mssql',
+  sqlite = 'sqlite'
+};
 
 // @ts-ignore
 export const ApiDatasetTypeMap: Record<`${DatasetTypeEnum}`, DatasetTypeConfig> = {
@@ -137,7 +143,8 @@ export enum DatasetCollectionTypeEnum {
   link = 'link', // one link
   externalFile = 'externalFile',
   apiFile = 'apiFile',
-  images = 'images'
+  images = 'images',
+  table = 'table' // database table
 }
 export const DatasetCollectionTypeMap = {
   [DatasetCollectionTypeEnum.folder]: {
@@ -160,6 +167,9 @@ export const DatasetCollectionTypeMap = {
   },
   [DatasetCollectionTypeEnum.images]: {
     name: i18nT('dataset:core.dataset.Image collection')
+  },
+  [DatasetCollectionTypeEnum.table]: {
+    name: i18nT('common:core.dataset.table')
   }
 };
 
@@ -187,7 +197,7 @@ export enum DatasetCollectionDataProcessModeEnum {
 
   backup = 'backup',
   template = 'template',
-
+  databaseSchema = 'databaseSchema',
   auto = 'auto' // abandon
 }
 export const DatasetCollectionDataProcessModeMap = {
@@ -215,6 +225,10 @@ export const DatasetCollectionDataProcessModeMap = {
   [DatasetCollectionDataProcessModeEnum.template]: {
     label: i18nT('dataset:template_mode'),
     tooltip: i18nT('dataset:template_mode')
+  },
+  [DatasetCollectionDataProcessModeEnum.databaseSchema]: {
+    label: i18nT('common:core.dataset.training.databaseSchema mode'),
+    tooltip: i18nT('common:core.dataset.import.databaseSchema Tip')
   }
 };
 
@@ -259,14 +273,16 @@ export enum TrainingModeEnum {
   qa = 'qa',
   auto = 'auto',
   image = 'image',
-  imageParse = 'imageParse'
+  imageParse = 'imageParse',
+  databaseSchema = 'databaseSchema'
 }
 
 /* ------------ search -------------- */
 export enum DatasetSearchModeEnum {
   embedding = 'embedding',
   fullTextRecall = 'fullTextRecall',
-  mixedRecall = 'mixedRecall'
+  mixedRecall = 'mixedRecall',
+  database = 'database'
 }
 
 export const DatasetSearchModeMap = {
@@ -287,6 +303,12 @@ export const DatasetSearchModeMap = {
     title: i18nT('common:core.dataset.search.mode.mixedRecall'),
     desc: i18nT('common:core.dataset.search.mode.mixedRecall desc'),
     value: DatasetSearchModeEnum.mixedRecall
+  },
+  [DatasetSearchModeEnum.database]: {
+    icon: 'core/dataset/database',
+    title: i18nT('common:core.dataset.search.mode.database'),
+    desc: i18nT('common:core.dataset.search.mode.database desc'),
+    value: DatasetSearchModeEnum.database
   }
 };
 

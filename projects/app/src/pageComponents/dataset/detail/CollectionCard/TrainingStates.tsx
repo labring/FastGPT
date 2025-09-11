@@ -299,7 +299,8 @@ const ErrorView = ({
     [TrainingModeEnum.qa]: t('dataset:process.Get QA'),
     [TrainingModeEnum.imageParse]: t('dataset:process.Image_Index'),
     [TrainingModeEnum.image]: t('dataset:process.Image_Index'),
-    [TrainingModeEnum.auto]: t('dataset:process.Auto_Index')
+    [TrainingModeEnum.auto]: t('dataset:process.Auto_Index'),
+    [TrainingModeEnum.databaseSchema]: t('dataset:process.databaseSchema')
   };
 
   const [editChunk, setEditChunk] = useState<getTrainingDataDetailResponse>();

@@ -84,4 +84,11 @@ export type SearchTestResponse = {
   queryExtensionModel?: string;
 };
 
+export type DatabaseSearchTestResponse = {
+  answer: string;
+  sql_result: string;
+  duration: string;
+  limit: number;
+  searchMode: `${DatasetSearchModeEnum}`;
+};
 /* =========== training =========== */
