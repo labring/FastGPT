@@ -1,12 +1,6 @@
 import { ClassifyQuestionAgentItemType } from '../workflow/template/system/classifyQuestion/type';
 import type { SearchDataResponseItemType } from '../dataset/type';
-import type {
-  ChatFileTypeEnum,
-  ChatItemValueTypeEnum,
-  ChatRoleEnum,
-  ChatSourceEnum,
-  ChatStatusEnum
-} from './constants';
+import type { ChatFileTypeEnum, ChatRoleEnum, ChatSourceEnum, ChatStatusEnum } from './constants';
 import type { FlowNodeTypeEnum } from '../workflow/node/constant';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '../workflow/constants';
 import type { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
@@ -20,6 +14,7 @@ import type { WorkflowInteractiveResponseType } from '../workflow/template/syste
 import type { FlowNodeInputItemType } from '../workflow/type/io';
 import type { FlowNodeTemplateType } from '../workflow/type/node.d';
 import { ChatCompletionMessageParam } from '../ai/type';
+import type { RequireOnlyOne } from '../../common/type/utils';
 
 /* --------- chat ---------- */
 export type ChatSchemaType = {
@@ -53,7 +48,6 @@ export type ChatWithAppSchema = Omit<ChatSchemaType, 'appId'> & {
 
 /* --------- chat item ---------- */
 export type UserChatItemValueItemType = {
-  type: ChatItemValueTypeEnum.text | ChatItemValueTypeEnum.file;
   text?: {
     content: string;
   };
@@ -70,7 +64,6 @@ export type UserChatItemType = {
 };
 
 export type SystemChatItemValueItemType = {
-  type: ChatItemValueTypeEnum.text;
   text?: {
     content: string;
   };
@@ -81,12 +74,16 @@ export type SystemChatItemType = {
 };
 
 export type AIChatItemValueItemType = {
-  id?: string; // Client concat stream response
-  type:
-    | ChatItemValueTypeEnum.text
-    | ChatItemValueTypeEnum.reasoning
-    | ChatItemValueTypeEnum.tool
-    | ChatItemValueTypeEnum.interactive;
+  id?: string;
+} & RequireOnlyOne<{
+  text: {
+    content: string;
+  };
+  reasoning: {
+    content: string;
+  };
+  tool: ToolModuleResponseItemType;
+  interactive: WorkflowInteractiveResponseType;
 
   text?: {
     content: string;
@@ -94,12 +91,15 @@ export type AIChatItemValueItemType = {
   reasoning?: {
     content: string;
   };
-  tools?: ToolModuleResponseItemType[];
   interactive?: WorkflowInteractiveResponseType;
-};
+
+  // Abandon
+  tools?: ToolModuleResponseItemType[];
+}>;
 export type AIChatItemType = {
   obj: ChatRoleEnum.AI;
   value: AIChatItemValueItemType[];
+  subAppsValue?: Record<string, AIChatItemValueItemType[]>;
   memories?: Record<string, any>;
   userGoodFeedback?: string;
   userBadFeedback?: string;

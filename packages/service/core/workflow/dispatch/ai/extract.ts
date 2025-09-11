@@ -1,7 +1,7 @@
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { filterGPTMessageByMaxContext } from '../../../ai/llm/utils';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/template/system/contextExtract/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -196,7 +196,6 @@ const toolChoice = async (props: ActionProps) => {
       obj: ChatRoleEnum.System,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content: getExtractJsonToolPrompt({
               systemPrompt: description,
@@ -211,7 +210,6 @@ const toolChoice = async (props: ActionProps) => {
       obj: ChatRoleEnum.Human,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content
           }
@@ -300,7 +298,6 @@ const completions = async (props: ActionProps) => {
       obj: ChatRoleEnum.System,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content: getExtractJsonPrompt({
               systemPrompt: description,
@@ -316,7 +313,6 @@ const completions = async (props: ActionProps) => {
       obj: ChatRoleEnum.Human,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content
           }
