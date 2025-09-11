@@ -14,6 +14,7 @@ type ModelAgentConfig = {
 type DispatchModelAgentProps = ModelAgentConfig & {
   systemPrompt: string;
   task: string;
+  onReasoning: ResponseEvents['onReasoning'];
   onStreaming: ResponseEvents['onStreaming'];
 };
 
@@ -29,6 +30,7 @@ export async function dispatchModelAgent({
   stream,
   systemPrompt,
   task,
+  onReasoning,
   onStreaming
 }: DispatchModelAgentProps): Promise<DispatchPlanAgentResponse> {
   const modelData = getLLMModel(model);
@@ -56,6 +58,7 @@ export async function dispatchModelAgent({
       top_p,
       stream
     },
+    onReasoning,
     onStreaming
   });
 
