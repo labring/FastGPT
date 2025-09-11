@@ -65,16 +65,18 @@ function MemberItemCard({
         gap="2"
         w="full"
       >
-        {isChecked !== undefined && <Checkbox isChecked={isChecked} pointerEvents="none" />}
+        {isChecked !== undefined && (
+          <Checkbox isDisabled={disabled} isChecked={isChecked} pointerEvents="none" />
+        )}
         <Avatar src={avatar} w="1.5rem" borderRadius={'50%'} />
-        <Flex justifyContent={'start'} flexDirection={'column'} w="full">
-          <Box fontSize={'sm'} className="textEllipsis" maxW={'100px'}>
+        <Box flex={'1 0 0'} w={0}>
+          <Box fontSize={'sm'} w={'100%'} noOfLines={1}>
             {name === DefaultGroupName ? userInfo?.team.teamName : name}
           </Box>
-          <Box lineHeight={1} maxW="100px">
+          <Box lineHeight={1} w={'100%'}>
             {orgs && orgs.length > 0 && <OrgTags orgs={orgs} />}
           </Box>
-        </Flex>
+        </Box>
       </Flex>
       {showRoleSelect && (
         <RoleSelect
@@ -94,7 +96,7 @@ function MemberItemCard({
             >
               <RoleTags permission={role} />
               <Flex h="18px" alignItems={'center'} justifyContent={'center'}>
-                <ChevronDownIcon fontSize="lg" />
+                <ChevronDownIcon fontSize="md" />
               </Flex>
             </Flex>
           }
@@ -117,7 +119,7 @@ function MemberItemCard({
           />
         </Flex>
       )}
-      {rightSlot}
+      {!!rightSlot && rightSlot}
     </Flex>
   );
 }
