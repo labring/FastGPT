@@ -2,7 +2,8 @@ import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fe
 import type {
   EvalDatasetCollectionSchemaType,
   EvalDatasetDataSchemaType,
-  EvalDatasetCollectionStatus
+  EvalDatasetCollectionStatus,
+  EvalDatasetDataQualityStatus
 } from './type';
 import type { EvalDatasetDataKeyEnum } from './constants';
 
@@ -14,7 +15,8 @@ type EvalDatasetCollectionBase = {
 
 export type createEvalDatasetCollectionBody = EvalDatasetCollectionBase;
 
-export type updateEvalDatasetCollectionBody = EvalDatasetCollectionBase & {
+export type updateEvalDatasetCollectionBody = Omit<EvalDatasetCollectionBase, 'name'> & {
+  name?: string;
   collectionId: string;
 };
 
@@ -63,6 +65,7 @@ export type createEvalDatasetDataBody = EvalDatasetDataBase &
 export type listEvalDatasetDataBody = PaginationProps<{
   collectionId: string;
   searchKey?: string;
+  status?: EvalDatasetDataQualityStatus;
 }>;
 
 export type listEvalDatasetDataResponse = PaginationResponse<
@@ -109,7 +112,7 @@ export type deleteEvalDatasetDataQuery = {
 
 export type smartGenerateEvalDatasetBody = {
   collectionId: string;
-  datasetCollectionIds: string[];
+  kbDatasetIds: string[];
   count?: number;
   intelligentGenerationModel: string;
 };
