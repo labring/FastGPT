@@ -110,6 +110,27 @@ export type deleteEvalDatasetDataQuery = {
   dataId: string;
 };
 
+export type getEvalDatasetDataDetailQuery = {
+  dataId: string;
+};
+
+export type getEvalDatasetDataDetailResponse = Pick<
+  EvalDatasetDataSchemaType,
+  | '_id'
+  | 'teamId'
+  | 'tmbId'
+  | 'datasetId'
+  | EvalDatasetDataKeyEnum.UserInput
+  | EvalDatasetDataKeyEnum.ActualOutput
+  | EvalDatasetDataKeyEnum.ExpectedOutput
+  | EvalDatasetDataKeyEnum.Context
+  | EvalDatasetDataKeyEnum.RetrievalContext
+  | EvalDatasetDataKeyEnum.Metadata
+  | 'createFrom'
+  | 'createTime'
+  | 'updateTime'
+>;
+
 export type smartGenerateEvalDatasetBody = {
   collectionId: string;
   kbDatasetIds: string[];
