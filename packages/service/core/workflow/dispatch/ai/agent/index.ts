@@ -144,21 +144,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       histories: chatHistories
     });
 
-    const subAppList = getSubApps({
-      subApps: runtimeSubApps,
-      addReadFileTool: Object.keys(filesMap).length > 0
-    });
-
-    // Init tool params
-    const toolNodesMap = new Map(runtimeSubApps.map((item) => [item.nodeId, item]));
-    const getToolInfo = (id: string) => {
-      const toolNode = toolNodesMap.get(id) || systemSubInfo[id];
-      return {
-        name: toolNode?.name || '',
-        avatar: toolNode?.avatar || ''
-      };
-    };
-
     const systemMessages = chats2GPTMessages({
       messages: getSystemPrompt_ChatItemType(systemPrompt || getMasterAgentDefaultPrompt()),
       reserveId: false
@@ -186,12 +171,30 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
     const requestMessages = [...systemMessages, ...historyMessages, ...userMessages];
 
+    const hasPlan: boolean = hasPlanResponse(requestMessages);
+
+    const subAppList = getSubApps({
+      subApps: runtimeSubApps,
+      addReadFileTool: Object.keys(filesMap).length > 0,
+      hasPlan
+    });
+
+    // Init tool params
+    const toolNodesMap = new Map(runtimeSubApps.map((item) => [item.nodeId, item]));
+    const getToolInfo = (id: string) => {
+      const toolNode = toolNodesMap.get(id) || systemSubInfo[id];
+      return {
+        name: toolNode?.name || '',
+        avatar: toolNode?.avatar || ''
+      };
+    };
+
     // Check interactive entry
     props.node.isEntry = false;
 
     const dispatchFlowResponse: ChatHistoryItemResType[] = [];
 
-    if (checkIsEditPlan(query) && hasPlanResponse(requestMessages)) {
+    if (checkIsEditPlan(query) && hasPlan) {
       const callId = getPlanAgentToolCallId(requestMessages);
 
       // TODO: 需要修改替换掉旧 plan
