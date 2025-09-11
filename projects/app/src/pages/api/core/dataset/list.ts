@@ -161,10 +161,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
         }
         return {
           Per: getPer(String(dataset._id)),
-          privateDataset:
-            dataset.type === DatasetTypeEnum.folder
-              ? getClbCount(String(dataset._id)) <= 1
-              : getClbCount(String(dataset._id)) === 0
+          privateDataset: getClbCount(String(dataset._id)) <= 1
         };
       })();
 
