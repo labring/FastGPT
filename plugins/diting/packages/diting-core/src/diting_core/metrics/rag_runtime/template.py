@@ -68,8 +68,8 @@ class ProblemLocation:
 
 1. 已知指标  
    - 答案错误原因（reason）：{reason}  
-   - faithfulness_score：{faithfulness_score}%（回答对检索内容的依赖程度）  
-   - context_recall_score：{context_recall_score}%（检索文档对参考答案的覆盖程度）
+   - faithfulness_score：{faithfulness_score * 100}%（回答对检索内容的依赖程度）  
+   - context_recall_score：{context_recall_score * 100}%（检索文档对参考答案的覆盖程度）
 
 2. 当前背景  
    - 已确认模型答案错误，并已给出原因；  
@@ -119,8 +119,8 @@ class ProblemLocation:
 
 1. 评估指标（系统提供）：  
    - 答案错误原因（reason）：{reason}  
-   - faithfulness_score：{faithfulness_score}%（模型回答对检索内容的依赖程度）  
-   - context_recall_score：{context_recall_score}%（检索内容对参考答案的覆盖程度）
+   - faithfulness_score：{faithfulness_score * 100}%（模型回答对检索内容的依赖程度）  
+   - context_recall_score：{context_recall_score * 100}%（检索内容对参考答案的覆盖程度）
 
 2. 分析背景：  
    - 模型答案已确认错误，且给出初步错误原因；  
