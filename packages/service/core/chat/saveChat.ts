@@ -1,7 +1,7 @@
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { MongoApp } from '../app/schema';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { addLog } from '../../common/system/log';
@@ -44,7 +44,7 @@ type Props = {
 const beforProcess = (props: Props) => {
   // Remove url
   props.userContent.value.forEach((item) => {
-    if (item.type === ChatItemValueTypeEnum.file && item.file?.key) {
+    if (item.file?.key) {
       item.file.url = '';
     }
   });
@@ -61,7 +61,7 @@ const afterProcess = async ({
     .map((item) => {
       if (item.value && Array.isArray(item.value)) {
         return item.value.map((valueItem) => {
-          if (valueItem.type === ChatItemValueTypeEnum.file && valueItem.file?.key) {
+          if ('file' in valueItem && valueItem.file?.key) {
             return valueItem.file.key;
           }
         });
@@ -349,11 +349,7 @@ export const updateInteractiveChat = async (props: Props) => {
   // Update interactive value
   const interactiveValue = chatItem.value[chatItem.value.length - 1];
 
-  if (
-    !interactiveValue ||
-    interactiveValue.type !== ChatItemValueTypeEnum.interactive ||
-    !interactiveValue.interactive?.params
-  ) {
+  if (!interactiveValue || !interactiveValue.interactive?.params) {
     return;
   }
 

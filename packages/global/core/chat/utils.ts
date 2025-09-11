@@ -1,6 +1,6 @@
 import { type DispatchNodeResponseType } from '../workflow/runtime/type';
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
-import { ChatItemValueTypeEnum, ChatRoleEnum, ChatSourceEnum } from './constants';
+import { ChatRoleEnum, ChatSourceEnum } from './constants';
 import {
   type AIChatItemValueItemType,
   type ChatHistoryItemResType,
@@ -24,7 +24,7 @@ export const concatHistories = (histories1: ChatItemType[], histories2: ChatItem
 
 export const getChatTitleFromChatMessage = (message?: ChatItemType, defaultValue = '新对话') => {
   // @ts-ignore
-  const textMsg = message?.value.find((item) => item.type === ChatItemValueTypeEnum.text);
+  const textMsg = message?.value.find((item) => 'text' in item && item.text);
 
   if (textMsg?.text?.content) {
     return textMsg.text.content.slice(0, 20);
@@ -168,14 +168,14 @@ export const removeAIResponseCite = <T extends AIChatItemValueItemType[] | strin
 export const removeEmptyUserInput = (input?: UserChatItemValueItemType[]) => {
   return (
     input?.filter((item) => {
-      if (item.type === ChatItemValueTypeEnum.text && !item.text?.content?.trim()) {
-        return false;
+      if (item.text?.content?.trim()) {
+        return true;
       }
       // type 为 'file' 时 key 和 url 不能同时为空
-      if (item.type === ChatItemValueTypeEnum.file && !item.file?.key && !item.file?.url) {
+      if (!item.file?.key && !item.file?.url) {
         return false;
       }
-      return true;
+      return false;
     }) || []
   );
 };

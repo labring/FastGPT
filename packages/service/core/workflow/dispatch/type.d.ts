@@ -43,6 +43,7 @@ export type DispatchFlowResponse = {
 
 export type WorkflowResponseType = (e: {
   id?: string;
+  subAppId?: string;
   event: SseResponseEventEnum;
   data: Record<string, any>;
 }) => void;

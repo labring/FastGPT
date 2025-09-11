@@ -5,7 +5,7 @@ import {
 } from '@fastgpt/global/core/chat/type';
 import { type ChatBoxInputType, type UserInputFileItemType } from './type';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
-import { ChatItemValueTypeEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
@@ -26,7 +26,7 @@ export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): Chat
   const files =
     (value
       ?.map((item) =>
-        item.type === 'file' && item.file
+        'file' in item && item.file
           ? {
               id: item.file.url,
               type: item.file.type,
@@ -57,7 +57,7 @@ export const getInteractiveByHistories = (
 
   if (
     lastMessageValue &&
-    lastMessageValue.type === ChatItemValueTypeEnum.interactive &&
+    'interactive' in lastMessageValue &&
     !!lastMessageValue?.interactive?.params
   ) {
     const finalInteractive = extractDeepestInteractive(lastMessageValue.interactive);
@@ -88,13 +88,10 @@ export const setInteractiveResultToHistories = (
     if (i !== histories.length - 1) return item;
 
     const value = item.value.map((val, i) => {
-      if (
-        i !== item.value.length - 1 ||
-        val.type !== ChatItemValueTypeEnum.interactive ||
-        !val.interactive
-      ) {
+      if (i !== item.value.length - 1) {
         return val;
       }
+      if (!('interactive' in val) || !val.interactive) return val;
 
       const finalInteractive = extractDeepestInteractive(val.interactive);
       if (finalInteractive.type === 'userSelect') {

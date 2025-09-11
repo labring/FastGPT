@@ -24,7 +24,6 @@ import type {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type.d';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 import {
   checkNodeRunStatus,
@@ -136,7 +135,7 @@ export async function dispatchWorkFlow({
   // Add preview url to chat items
   await addPreviewUrlToChatItems(histories, 'chatFlow');
   for (const item of query) {
-    if (item.type !== ChatItemValueTypeEnum.file || !item.file?.key) continue;
+    if (!item.file?.key) continue;
     item.file.url = await getS3ChatSource().createGetChatFileURL({
       key: item.file.key,
       external: true
@@ -703,7 +702,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         } else {
           if (reasoningText) {
             this.chatAssistantResponse.push({
-              type: ChatItemValueTypeEnum.reasoning,
               reasoning: {
                 content: reasoningText
               }
@@ -711,7 +709,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           }
           if (answerText) {
             this.chatAssistantResponse.push({
-              type: ChatItemValueTypeEnum.text,
               text: {
                 content: answerText
               }
@@ -972,7 +969,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       }
 
       return {
-        type: ChatItemValueTypeEnum.interactive,
         interactive: interactiveResult
       };
     }
@@ -1120,10 +1116,10 @@ const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) =
   // 合并连续的text
   for (let i = 0; i < response.length; i++) {
     const item = response[i];
-    if (item.type === ChatItemValueTypeEnum.text) {
+    if (item.text) {
       let text = item.text?.content || '';
       const lastItem = result[result.length - 1];
-      if (lastItem && lastItem.type === ChatItemValueTypeEnum.text && lastItem.text?.content) {
+      if (lastItem && lastItem.text?.content) {
         lastItem.text.content += text;
         continue;
       }
@@ -1134,7 +1130,6 @@ const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) =
   // If result is empty, auto add a text message
   if (result.length === 0) {
     result.push({
-      type: ChatItemValueTypeEnum.text,
       text: { content: '' }
     });
   }
