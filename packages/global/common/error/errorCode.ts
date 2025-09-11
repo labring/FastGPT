@@ -8,6 +8,7 @@ import teamErr from './code/team';
 import userErr from './code/user';
 import commonErr from './code/common';
 import SystemErrEnum from './code/system';
+import databaseErr from './code/database';
 import evaluationErr from './code/evaluation';
 import { i18nT } from '../../../web/i18n/utils';
 
@@ -107,6 +108,7 @@ export const ERROR_RESPONSE: Record<
   ...outLinkErr,
   ...teamErr,
   ...userErr,
+  ...databaseErr,
   ...pluginErr,
   ...commonErr,
   ...SystemErrEnum,

@@ -15,7 +15,7 @@ import { removeDatasetSyncJobScheduler } from './datasetSync';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { removeImageByPath } from '../../common/file/image/controller';
 import { UserError } from '@fastgpt/global/common/error/utils';
-
+import { DBDatasetVectorTableName,DBDatasetValueVectorTableName,DatasetVectorTableName } from '../../common/vectorDB/constants';
 /* ============= dataset ========== */
 /* find all datasetId by top datasetId */
 export async function findDatasetAndAllChildren({
@@ -113,7 +113,9 @@ export async function delDatasetRelevantData({
       // Delete dataset Image
       clearDatasetImages(datasetIds),
       // Delete vector data
-      deleteDatasetDataVector({ teamId, datasetIds })
+      deleteDatasetDataVector({ teamId, datasetIds,tableName:DBDatasetVectorTableName}),
+      deleteDatasetDataVector({ teamId, datasetIds,tableName:DBDatasetValueVectorTableName}),
+      deleteDatasetDataVector({ teamId, datasetIds,tableName:DatasetVectorTableName})
     ]);
   });
 

@@ -6,6 +6,8 @@ import {
   MILVUS_TOKEN
 } from '../constants';
 import type {
+  DatabaseEmbeddingRecallCtrlProps,
+  DatabaseEmbeddingRecallResponse,
   DelDatasetVectorCtrlProps,
   EmbeddingRecallCtrlProps,
   EmbeddingRecallResponse,
@@ -256,6 +258,8 @@ export class MilvusCtrl {
       }))
     };
   };
+
+  databaseEmbRecall = async (props: DatabaseEmbeddingRecallCtrlProps): Promise<DatabaseEmbeddingRecallResponse> => {return Promise.reject('TO-DO')}
 
   getVectorCountByTeamId = async (teamId: string) => {
     const client = await this.getClient();

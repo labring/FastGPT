@@ -231,6 +231,9 @@ export const getTrainingModeByCollection = ({
   if (trainingType === DatasetCollectionDataProcessModeEnum.qa) {
     return TrainingModeEnum.qa;
   }
+  if (trainingType === DatasetCollectionDataProcessModeEnum.databaseSchema) {
+    return TrainingModeEnum.databaseSchema;
+  }
   if (
     trainingType === DatasetCollectionDataProcessModeEnum.chunk &&
     imageIndex &&

@@ -9,6 +9,7 @@ export type DeleteDatasetVectorProps = (
 };
 export type DelDatasetVectorCtrlProps = DeleteDatasetVectorProps & {
   retry?: number;
+  tableName?: string;
 };
 
 export type InsertVectorProps = {
@@ -18,6 +19,11 @@ export type InsertVectorProps = {
 };
 export type InsertVectorControllerProps = InsertVectorProps & {
   vectors: number[][];
+  tableName?: string;
+  table_des_index?: string;
+  column_des_index?: string,
+  column_val_index?: string,
+  retry?: number;
 };
 
 export type EmbeddingRecallProps = {
@@ -34,4 +40,21 @@ export type EmbeddingRecallCtrlProps = EmbeddingRecallProps & {
 };
 export type EmbeddingRecallResponse = {
   results: EmbeddingRecallItemType[];
+};
+
+export type DatabaseEmbeddingRecallCtrlProps = EmbeddingRecallProps &{
+  vector: number[];
+  limit: number;
+  tableName: string; // DBDatasetVectorTableName or DBDatasetValueVectorTableName
+  retry?: number;
+};
+
+export type DatabaseEmbeddingRecallResponse = {
+  results: Array<{
+    id: string;
+    collectionId: string;
+    score: number;
+    columnDesIndex?: string;
+    columnValIndex?: string;
+  }>;
 };
