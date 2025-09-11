@@ -40,12 +40,17 @@ describe('EvalDatasetCollection Update API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
+    // Initialize global.llmModelMap if it doesn't exist
+    if (!global.llmModelMap) {
+      global.llmModelMap = new Map();
+    }
+
     mockAuthEvaluationDatasetWrite.mockResolvedValue({
       teamId: validTeamId,
       tmbId: validTmbId
     });
 
-    // Default setup: collection exists, no name conflict
+    // Default setup: collection exists, no name conflict (for most tests)
     mockMongoEvalDatasetCollection.findOne
       .mockResolvedValueOnce(existingCollection as any) // First call: existence check
       .mockResolvedValueOnce(null); // Second call: name conflict check
@@ -98,14 +103,12 @@ describe('EvalDatasetCollection Update API', () => {
       );
     });
 
-    it('should reject when name is missing', async () => {
+    it('should succeed when name is missing (optional)', async () => {
       const req = {
         body: { collectionId: mockCollectionId, description: 'Updated description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'Name is required and must be a non-empty string'
-      );
+      await expect(handler_test(req as any)).resolves.toEqual('success');
     });
 
     it('should reject when name is empty string', async () => {
@@ -113,9 +116,7 @@ describe('EvalDatasetCollection Update API', () => {
         body: { collectionId: mockCollectionId, name: '', description: 'Updated description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'Name is required and must be a non-empty string'
-      );
+      await expect(handler_test(req as any)).rejects.toEqual('Name must be a non-empty string');
     });
 
     it('should reject when name is only whitespace', async () => {
@@ -123,9 +124,7 @@ describe('EvalDatasetCollection Update API', () => {
         body: { collectionId: mockCollectionId, name: '   ', description: 'Updated description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'Name is required and must be a non-empty string'
-      );
+      await expect(handler_test(req as any)).rejects.toEqual('Name must be a non-empty string');
     });
 
     it('should reject when name is not a string', async () => {
@@ -133,9 +132,7 @@ describe('EvalDatasetCollection Update API', () => {
         body: { collectionId: mockCollectionId, name: 123, description: 'Updated description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'Name is required and must be a non-empty string'
-      );
+      await expect(handler_test(req as any)).rejects.toEqual('Name must be a non-empty string');
     });
 
     it('should reject when name exceeds 100 characters', async () => {
@@ -213,6 +210,12 @@ describe('EvalDatasetCollection Update API', () => {
 
       // Mock global.llmModelMap.has to return true for valid model
       vi.spyOn(global.llmModelMap, 'has').mockReturnValue(true);
+
+      // Reset mock and setup mock to handle both existence check and name conflict check
+      mockMongoEvalDatasetCollection.findOne.mockReset();
+      mockMongoEvalDatasetCollection.findOne
+        .mockResolvedValueOnce(existingCollection as any) // First call: existence check
+        .mockResolvedValueOnce(null); // Second call: name conflict check (no conflict)
 
       const req = {
         body: { collectionId: mockCollectionId, name: 'Updated Name', evaluationModel: validModel }

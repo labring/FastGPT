@@ -25,12 +25,14 @@ async function handler(
     return Promise.reject('Collection ID is required and must be a non-empty string');
   }
 
-  if (!name || typeof name !== 'string' || name.trim().length === 0) {
-    return Promise.reject('Name is required and must be a non-empty string');
-  }
+  if (name !== undefined) {
+    if (typeof name !== 'string' || name.trim().length === 0) {
+      return Promise.reject('Name must be a non-empty string');
+    }
 
-  if (name.trim().length > 100) {
-    return Promise.reject('Name must be less than 100 characters');
+    if (name.trim().length > 100) {
+      return Promise.reject('Name must be less than 100 characters');
+    }
   }
 
   if (description && typeof description !== 'string') {
@@ -62,14 +64,16 @@ async function handler(
     return Promise.reject('Dataset collection not found');
   }
 
-  const nameConflict = await MongoEvalDatasetCollection.findOne({
-    teamId,
-    name: name.trim(),
-    _id: { $ne: collectionId }
-  });
+  if (name !== undefined) {
+    const nameConflict = await MongoEvalDatasetCollection.findOne({
+      teamId,
+      name: name.trim(),
+      _id: { $ne: collectionId }
+    });
 
-  if (nameConflict) {
-    return Promise.reject('A dataset with this name already exists');
+    if (nameConflict) {
+      return Promise.reject('A dataset with this name already exists');
+    }
   }
 
   try {
@@ -78,9 +82,9 @@ async function handler(
         { _id: collectionId, teamId, tmbId },
         {
           $set: {
-            name: name.trim(),
             description: description.trim(),
             updateTime: new Date(),
+            ...(name !== undefined && { name: name.trim() }),
             ...(evaluationModel !== undefined && { evaluationModel: evaluationModel.trim() })
           }
         },
@@ -94,7 +98,7 @@ async function handler(
         teamId,
         event: AuditEventEnum.UPDATE_EVALUATION_DATASET_COLLECTION,
         params: {
-          collectionName: name.trim()
+          collectionName: name !== undefined ? name.trim() : existingCollection.name
         }
       });
     })();
