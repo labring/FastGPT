@@ -3,9 +3,8 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
-  OwnerPermissionVal,
   PerResourceTypeEnum,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
@@ -13,9 +12,7 @@ import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/u
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { getResourceClbsAndGroups } from '@fastgpt/service/support/permission/controller';
-import { syncCollaborators } from '@fastgpt/service/support/permission/inheritPermission';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
@@ -50,39 +47,12 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
       type: AppTypeEnum.folder
     });
 
-    if (parentId) {
-      const parentClbsAndGroups = await getResourceClbsAndGroups({
-        teamId,
-        resourceId: parentId,
-        resourceType: PerResourceTypeEnum.app,
-        session
-      });
-
-      await syncCollaborators({
-        resourceType: PerResourceTypeEnum.app,
-        teamId,
-        resourceId: app._id,
-        collaborators: parentClbsAndGroups,
-        session
-      });
-    } else {
-      // Create default permission
-      await MongoResourcePermission.create(
-        [
-          {
-            resourceType: PerResourceTypeEnum.app,
-            teamId,
-            resourceId: app._id,
-            tmbId,
-            permission: OwnerPermissionVal
-          }
-        ],
-        {
-          session,
-          ordered: true
-        }
-      );
-    }
+    await createResourceDefaultCollaborators({
+      tmbId,
+      session,
+      resource: app,
+      resourceType: PerResourceTypeEnum.app
+    });
   });
   (async () => {
     addAuditLog({
