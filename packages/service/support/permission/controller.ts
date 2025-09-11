@@ -176,7 +176,7 @@ export const getClbsInfo = async ({
       teamId,
       permission: new Permission({
         role: clb.permission,
-        isOwner: !!ownerTmbId && !!clb.tmbId && ownerTmbId === clb.tmbId
+        isOwner: Boolean(ownerTmbId && clb.tmbId && ownerTmbId === clb.tmbId)
       }),
       name: info?.name ?? 'Unknown name',
       avatar: info?.avatar || (clb.orgId ? DEFAULT_ORG_AVATAR : DEFAULT_TEAM_AVATAR)
