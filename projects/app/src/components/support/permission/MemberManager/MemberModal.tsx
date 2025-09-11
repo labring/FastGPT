@@ -195,11 +195,13 @@ function MemberModal({ onClose }: { onClose: () => void }) {
               borderRight="1px solid"
               borderColor="myGray.200"
               p="2"
+              pr="0"
             >
               <SearchInput
                 placeholder={t('user:search_group_org_user')}
                 bgColor="myGray.50"
                 onChange={(e) => setSearchKey(e.target.value)}
+                mr="2"
               />
 
               <Flex flexDirection="column" mt="3" overflow={'auto'} flex={'1 0 0'} h={0}>
