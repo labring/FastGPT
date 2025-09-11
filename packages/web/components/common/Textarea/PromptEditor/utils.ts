@@ -6,22 +6,18 @@
  *
  */
 
-import type { DecoratorNode, Klass, LexicalEditor, LexicalNode } from 'lexical';
+import type { Klass, LexicalEditor, LexicalNode } from 'lexical';
 import type { EntityMatch } from '@lexical/text';
 import { $createTextNode, $isTextNode, TextNode } from 'lexical';
 import { useCallback } from 'react';
 import type { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
 import type { VariableNode } from './plugins/VariablePlugin/node';
 import type {
-  ChildEditorNode,
   ListItemEditorNode,
   ListEditorNode,
   ParagraphEditorNode,
-  RootEditorNode,
   EditorState,
-  ParsedTextLine,
-  ListItemInfo,
-  TextEditorNode
+  ListItemInfo
 } from './type';
 
 export function registerLexicalTextEntity<T extends TextNode | VariableLabelNode | VariableNode>(
@@ -186,147 +182,102 @@ export function registerLexicalTextEntity<T extends TextNode | VariableLabelNode
   return [removePlainTextTransform, removeReverseNodeTransform];
 }
 
-function parseTextLine(line: string): ParsedTextLine {
+// text to editor state
+const parseTextLine = (line: string) => {
   const trimmed = line.trimStart();
   const indentLevel = Math.floor((line.length - trimmed.length) / 2);
+
   const bulletMatch = trimmed.match(/^- (.*)$/);
   if (bulletMatch) {
     return { type: 'bullet', text: bulletMatch[1], indent: indentLevel };
   }
+
   const numberMatch = trimmed.match(/^(\d+)\. (.*)$/);
   if (numberMatch) {
     return {
       type: 'number',
       text: numberMatch[2],
       indent: indentLevel,
-      value: parseInt(numberMatch[1])
+      numberValue: parseInt(numberMatch[1])
     };
   }
-  return { type: 'paragraph', text: line, indent: 0 };
-}
-function createListItem(text: string, value: number): ListItemEditorNode {
-  return {
-    children: [
-      {
-        detail: 0,
-        format: 0,
-        mode: 'normal',
-        style: '',
-        text: text,
-        type: 'text',
-        version: 1
-      }
-    ],
-    direction: 'ltr',
-    format: '',
-    indent: 0,
-    type: 'listitem',
-    version: 1,
-    value: value
-  };
-}
-function createList(listType: 'bullet' | 'number', children: ListItemEditorNode[]): ListEditorNode {
-  return {
-    children: children,
-    direction: 'ltr',
-    format: '',
-    indent: 0,
-    type: 'list',
-    version: 1,
-    listType: listType,
-    start: 1,
-    tag: listType === 'bullet' ? 'ul' : 'ol'
-  };
-}
-/**
- * 构建嵌套列表结构
- *
- * 将扁平的列表项数组转换为带有正确嵌套关系的编辑器节点结构
- *
- * 主要功能：
- * 1. 按类型（bullet/number）和缩进级别分组连续的列表项
- * 2. 为每个分组创建对应的列表容器（<ul> 或 <ol>）
- * 3. 递归处理嵌套子项，构建多层级列表结构
- *
- * @param items 扁平的列表项数组
- * @param baseIndent 当前处理的基础缩进级别
- * @returns 结构化的列表节点数组
- */
-function buildListStructure(
-  items: ListItemInfo[],
-  baseIndent: number = 0
-): Array<ListEditorNode | ListItemEditorNode> {
-  const result: Array<ListEditorNode | ListItemEditorNode> = [];
+
+  return { type: 'paragraph', text: trimmed, indent: indentLevel };
+};
+
+const buildListStructure = (items: ListItemInfo[]) => {
+  const result: ListEditorNode[] = [];
+
   let i = 0;
-
   while (i < items.length) {
-    const currentType = items[i].type; // 当前项的类型（bullet 或 number）
-    const currentIndent = items[i].indent; // 当前项的缩进级别
+    const currentListType = items[i].type;
+    const currentIndent = items[i].indent;
+    const currentListItems: ListItemEditorNode[] = [];
 
-    // 如果缩进级别小于基础级别，说明回到了上层，停止当前层级的处理
-    if (currentIndent < baseIndent) {
-      break;
-    }
+    // Collect consecutive items of the same type
+    while (i < items.length && items[i].type === currentListType) {
+      const listItem: ListItemEditorNode = {
+        children: [
+          {
+            detail: 0,
+            format: 0,
+            mode: 'normal',
+            style: '',
+            text: items[i].text,
+            type: 'text' as const,
+            version: 1
+          }
+        ],
+        direction: 'ltr',
+        format: '',
+        indent: 0,
+        type: 'listitem' as const,
+        version: 1,
+        value: items[i].numberValue || 1
+      };
 
-    // 只处理与基础缩进相同的项（同级项）
-    if (currentIndent === baseIndent) {
-      // 收集连续的同类型、同缩进级别的项，它们将组成一个列表容器
-      const sameTypeItems: ListItemEditorNode[] = [];
-
-      // 遍历所有连续的同类型同缩进项
-      while (
-        i < items.length &&
-        items[i].type === currentType &&
-        items[i].indent === currentIndent
-      ) {
-        const item = items[i];
-        // 创建当前列表项节点
-        const listItem = createListItem(item.text, item.value || 1);
-
-        // 前瞻扫描：收集属于当前项的所有嵌套子项
-        // 这些子项的缩进级别会大于当前级别
-        const nestedItems: ListItemInfo[] = [];
-        let j = i + 1;
-
-        while (j < items.length && items[j].indent > currentIndent) {
-          nestedItems.push(items[j]);
-          j++;
-        }
-
-        // 如果有嵌套子项，递归处理它们并添加到当前项的 children 中
-        if (nestedItems.length > 0) {
-          const nestedLists = buildListStructure(
-            nestedItems,
-            currentIndent + 1
-          ) as ListEditorNode[];
-          listItem.children.push(...nestedLists);
-        }
-
-        sameTypeItems.push(listItem);
-        // 跳转到下一个未处理的项（跳过已处理的嵌套项）
-        i = j;
+      // Collect nested items
+      const nestedItems: ListItemInfo[] = [];
+      let j = i + 1;
+      while (j < items.length && items[j].indent > currentIndent) {
+        nestedItems.push(items[j]);
+        j++;
       }
 
-      // 为同类型的项创建列表容器（<ul> 或 <ol>）
-      if (sameTypeItems.length > 0) {
-        result.push(createList(currentType, sameTypeItems));
+      // recursively build nested lists and add them to the current item's children
+      if (nestedItems.length > 0) {
+        const nestedLists = buildListStructure(nestedItems);
+        listItem.children.push(...nestedLists);
       }
-    } else {
-      // 跳过缩进级别不匹配的项（理论上不应该发生）
-      i++;
+
+      currentListItems.push(listItem);
+      i = j;
     }
+
+    result.push({
+      children: currentListItems,
+      direction: 'ltr',
+      format: '',
+      indent: 0,
+      type: 'list' as const,
+      version: 1,
+      listType: currentListType,
+      start: 1,
+      tag: currentListType === 'bullet' ? 'ul' : ('ol' as const)
+    });
   }
 
   return result;
-}
+};
 
-export function textToEditorState(text = '') {
+export const textToEditorState = (text = '') => {
   const lines = text.split('\n');
   const children: Array<ParagraphEditorNode | ListEditorNode> = [];
 
   let i = 0;
   while (i < lines.length) {
     const parsed = parseTextLine(lines[i]);
+
     if (parsed.type === 'paragraph') {
       children.push({
         children: [
@@ -342,13 +293,12 @@ export function textToEditorState(text = '') {
         ],
         direction: 'ltr',
         format: '',
-        indent: 0,
+        indent: parsed.indent,
         type: 'paragraph',
         version: 1
       });
       i++;
     } else {
-      // Collect consecutive list items
       const listItems: ListItemInfo[] = [];
 
       while (i < lines.length) {
@@ -360,13 +310,13 @@ export function textToEditorState(text = '') {
           type: currentParsed.type as 'bullet' | 'number',
           text: currentParsed.text,
           indent: currentParsed.indent,
-          value: currentParsed.value
+          numberValue: currentParsed.numberValue
         });
         i++;
       }
 
-      // Group list items into nested structures
-      const lists = buildListStructure(listItems, 0) as ListEditorNode[];
+      // build nested lists and add to children
+      const lists = buildListStructure(listItems) as ListEditorNode[];
       children.push(...lists);
     }
   }
@@ -381,30 +331,9 @@ export function textToEditorState(text = '') {
       version: 1
     }
   });
-}
-
-const varRegex = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g;
-export const getVars = (value: string) => {
-  if (!value) return [];
-  const keys =
-    value
-      .match(varRegex)
-      ?.map((item) => {
-        return item.replace('{{', '').replace('}}', '');
-      })
-      .filter((key) => key.length <= 10) || [];
-  const keyObj: Record<string, boolean> = {};
-  // remove duplicate keys
-  const res: string[] = [];
-  keys.forEach((key) => {
-    if (keyObj[key]) return;
-
-    keyObj[key] = true;
-    res.push(key);
-  });
-  return res;
 };
 
+// menu text match
 export type MenuTextMatch = {
   leadOffset: number;
   matchingString: string;
@@ -440,7 +369,8 @@ export function useBasicTypeaheadTriggerMatch(
   );
 }
 
-function processListItem({
+// editor state to text
+const processListItem = ({
   listItem,
   listType,
   index,
@@ -450,17 +380,20 @@ function processListItem({
   listType: 'bullet' | 'number';
   index: number;
   indentLevel: number;
-}): string[] {
-  const results: string[] = [];
+}) => {
+  const results = [];
 
   const itemText: string[] = [];
   const nestedLists: ListEditorNode[] = [];
 
+  // Separate text and nested lists
   listItem.children.forEach((child) => {
     if (child.type === 'linebreak') {
       itemText.push('\n');
     } else if (child.type === 'text') {
       itemText.push(child.text);
+    } else if (child.type === 'tab') {
+      itemText.push('  ');
     } else if (child.type === 'variableLabel' || child.type === 'Variable') {
       itemText.push(child.variableKey);
     } else if (child.type === 'list') {
@@ -468,15 +401,13 @@ function processListItem({
     }
   });
 
+  // Add prefix and indent
   const itemTextString = itemText.join('').trim();
+  const indent = '    '.repeat(indentLevel);
+  const prefix = listType === 'bullet' ? '- ' : `${index + 1}. `;
+  results.push(indent + prefix + itemTextString);
 
-  if (itemTextString) {
-    const indent = '  '.repeat(indentLevel);
-    const prefix = listType === 'bullet' ? '- ' : `${index + 1}. `;
-
-    results.push(indent + prefix + itemTextString);
-  }
-
+  // Handle nested lists
   nestedLists.forEach((nestedList) => {
     const nestedResults = processList({
       list: nestedList,
@@ -486,15 +417,8 @@ function processListItem({
   });
 
   return results;
-}
-
-function processList({
-  list,
-  indentLevel = 0
-}: {
-  list: ListEditorNode;
-  indentLevel?: number;
-}): string[] {
+};
+const processList = ({ list, indentLevel = 0 }: { list: ListEditorNode; indentLevel?: number }) => {
   const results: string[] = [];
 
   list.children.forEach((listItem, index: number) => {
@@ -510,9 +434,8 @@ function processList({
   });
 
   return results;
-}
-
-export function editorStateToText(editor: LexicalEditor) {
+};
+export const editorStateToText = (editor: LexicalEditor) => {
   const editorStateTextString: string[] = [];
   const editorState = editor.getEditorState().toJSON() as EditorState;
   const paragraphs = editorState.root.children;
@@ -524,17 +447,24 @@ export function editorStateToText(editor: LexicalEditor) {
     } else if (paragraph.type === 'paragraph') {
       const children = paragraph.children;
       const paragraphText: string[] = [];
+
+      const indentSpaces = '  '.repeat(paragraph.indent || 0);
+
       children.forEach((child) => {
         if (child.type === 'linebreak') {
           paragraphText.push('\n');
         } else if (child.type === 'text') {
           paragraphText.push(child.text);
+        } else if (child.type === 'tab') {
+          paragraphText.push('  ');
         } else if (child.type === 'variableLabel' || child.type === 'Variable') {
           paragraphText.push(child.variableKey);
         }
       });
-      editorStateTextString.push(paragraphText.join(''));
+
+      const finalText = paragraphText.join('');
+      editorStateTextString.push(indentSpaces + finalText);
     }
   });
   return editorStateTextString.join('\n');
-}
+};
