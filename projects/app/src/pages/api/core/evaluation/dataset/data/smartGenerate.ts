@@ -17,11 +17,11 @@ export type SmartGenerateEvalDatasetResponse = string;
 async function handler(
   req: ApiRequestProps<SmartGenerateEvalDatasetBody, SmartGenerateEvalDatasetQuery>
 ): Promise<SmartGenerateEvalDatasetResponse> {
-  const { collectionId, datasetCollectionIds, count, intelligentGenerationModel } = req.body;
+  const { collectionId, kbDatasetIds, count, intelligentGenerationModel } = req.body;
 
   const { teamId, tmbId } = await authEvaluationDatasetGenFromKnowledgeBase(
     collectionId,
-    datasetCollectionIds,
+    kbDatasetIds,
     {
       req,
       authToken: true,
@@ -36,12 +36,8 @@ async function handler(
     return Promise.reject('collectionId is required and must be a string');
   }
 
-  if (
-    !datasetCollectionIds ||
-    !Array.isArray(datasetCollectionIds) ||
-    datasetCollectionIds.length === 0
-  ) {
-    return Promise.reject('datasetCollectionIds is required and must be a non-empty array');
+  if (!kbDatasetIds || !Array.isArray(kbDatasetIds) || kbDatasetIds.length === 0) {
+    return Promise.reject('datasetIds is required and must be a non-empty array');
   }
 
   if (!intelligentGenerationModel || typeof intelligentGenerationModel !== 'string') {
@@ -57,18 +53,24 @@ async function handler(
     return Promise.reject('No permission to access this evaluation dataset collection');
   }
 
+  // Find all collections that belong to the specified datasets
   const datasetCollections = await MongoDatasetCollection.find({
-    _id: { $in: datasetCollectionIds },
+    datasetId: { $in: kbDatasetIds },
     teamId
   });
 
-  if (datasetCollections.length !== datasetCollectionIds.length) {
-    return Promise.reject('One or more dataset collections not found or no permission');
+  const kbCollectionIds = datasetCollections.map((collection) => collection._id);
+  const foundDatasetIds = [
+    ...new Set(datasetCollections.map((collection) => String(collection.datasetId)))
+  ];
+  if (foundDatasetIds.length !== kbDatasetIds.length) {
+    return Promise.reject('One or more datasets not found or no permission');
   }
 
   const totalDataCount = await MongoDatasetData.countDocuments({
     teamId,
-    collectionId: { $in: datasetCollectionIds }
+    collectionId: { $in: kbCollectionIds },
+    $or: [{ q: { $exists: true } }]
   });
 
   if (totalDataCount === 0) {
@@ -90,7 +92,7 @@ async function handler(
 
   try {
     const job = await addEvalDatasetSmartGenerateJob({
-      datasetCollectionIds,
+      datasetCollectionIds: kbCollectionIds,
       count: finalCount,
       intelligentGenerationModel,
       evalDatasetCollectionId: collectionId

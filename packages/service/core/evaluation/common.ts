@@ -15,7 +15,7 @@ import type {
   EvaluationItemSchemaType
 } from '@fastgpt/global/core/evaluation/type';
 import { authApp } from '../../support/permission/app/auth';
-import { authDatasetCollection } from '../../support/permission/dataset/auth';
+import { authDataset } from '../../support/permission/dataset/auth';
 import { MongoEvalItem } from './task/schema';
 import { MongoEvalDatasetData } from './dataset/evalDatasetDataSchema';
 import { MongoResourcePermission } from '../../support/permission/schema';
@@ -309,20 +309,20 @@ export const authEvaluationDatasetWrite = async (
 };
 
 export const authEvaluationDatasetGenFromKnowledgeBase = async (
-  datasetId: string,
-  kbCollectionIds: string[],
+  collectionId: string,
+  kbDatasetIds: string[],
   auth: AuthModeType
 ): Promise<{
   teamId: string;
   tmbId: string;
 }> => {
-  const { teamId, tmbId } = await authEvaluationDatasetRead(datasetId, auth);
+  const { teamId, tmbId } = await authEvaluationDatasetRead(collectionId, auth);
 
   await Promise.all(
-    kbCollectionIds.map((collectionId) =>
-      authDatasetCollection({
+    kbDatasetIds.map((datasetId) =>
+      authDataset({
         ...auth,
-        collectionId,
+        datasetId,
         per: ReadPermissionVal
       })
     )

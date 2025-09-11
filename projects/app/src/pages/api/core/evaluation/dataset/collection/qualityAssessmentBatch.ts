@@ -38,23 +38,11 @@ async function handler(
   await checkTeamAIPoints(teamId);
 
   if (!collectionId || typeof collectionId !== 'string') {
-    return {
-      success: false,
-      message: 'collectionId is required and must be a string',
-      processedCount: 0,
-      skippedCount: 0,
-      errorCount: 0
-    };
+    return Promise.reject('collectionId is required and must be a string');
   }
 
   if (evaluationModel !== undefined && typeof evaluationModel !== 'string') {
-    return {
-      success: false,
-      message: 'evaluationModel must be a string if provided',
-      processedCount: 0,
-      skippedCount: 0,
-      errorCount: 0
-    };
+    return Promise.reject('evaluationModel must be a string if provided');
   }
 
   const collection = await MongoEvalDatasetCollection.findOne({
@@ -63,25 +51,15 @@ async function handler(
   });
 
   if (!collection) {
-    return {
-      success: false,
-      message: EvaluationErrCode[EvaluationErrEnum.evalDatasetCollectionNotFound].message,
-      processedCount: 0,
-      skippedCount: 0,
-      errorCount: 0
-    };
+    return Promise.reject(
+      EvaluationErrCode[EvaluationErrEnum.evalDatasetCollectionNotFound].message
+    );
   }
 
   const finalEvaluationModel = getEvaluationModel(evaluationModel || collection.evaluationModel);
 
   if (!finalEvaluationModel) {
-    return {
-      success: false,
-      message: EvaluationErrCode[EvaluationErrEnum.evaluatorLLmModelNotFound].message,
-      processedCount: 0,
-      skippedCount: 0,
-      errorCount: 0
-    };
+    return Promise.reject(EvaluationErrCode[EvaluationErrEnum.evaluatorLLmModelNotFound].message);
   }
 
   const evalModel = finalEvaluationModel.model;
@@ -92,13 +70,7 @@ async function handler(
   }).select('_id');
 
   if (dataItems.length === 0) {
-    return {
-      success: true,
-      message: 'No data items found in the collection',
-      processedCount: 0,
-      skippedCount: 0,
-      errorCount: 0
-    };
+    return Promise.reject('No data items found in the collection');
   }
 
   let processedCount = 0;

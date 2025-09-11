@@ -15,7 +15,8 @@ type EvalDatasetCollectionBase = {
 
 export type createEvalDatasetCollectionBody = EvalDatasetCollectionBase;
 
-export type updateEvalDatasetCollectionBody = EvalDatasetCollectionBase & {
+export type updateEvalDatasetCollectionBody = Omit<EvalDatasetCollectionBase, 'name'> & {
+  name?: string;
   collectionId: string;
 };
 
@@ -111,7 +112,7 @@ export type deleteEvalDatasetDataQuery = {
 
 export type smartGenerateEvalDatasetBody = {
   collectionId: string;
-  datasetCollectionIds: string[];
+  kbDatasetIds: string[];
   count?: number;
   intelligentGenerationModel: string;
 };
