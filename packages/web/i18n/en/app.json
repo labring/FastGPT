@@ -346,5 +346,10 @@
   "workflow.user_file_input": "File link",
   "workflow.user_file_input_desc": "File and image link uploaded",
   "workflow.user_select": "User selection",
-  "workflow.user_select_tip": "The module can be configured with multiple options and can be selected during the chat. Different options direct the chat to different workflow branches."
+  "workflow.user_select_tip": "The module can be configured with multiple options and can be selected during the chat. Different options direct the chat to different workflow branches.",
+  "files_cascader_no_knowledge_base": "不加入知识库",
+  "files_cascader_select_knowledge_base": "请选择知识库",
+  "files_cascader_select_first": "请先选择知识库",
+  "files_cascader_dataset_empty": "该知识库数据集为空",
+  "select_join_location": "选择加入位置"
 }
