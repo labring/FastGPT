@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Flex, useDisclosure, Box } from '@chakra-ui/react';
+import React, { useMemo, useState, useCallback } from 'react';
+import { Flex, useDisclosure, Box, useToast } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import dynamic from 'next/dynamic';
@@ -26,6 +26,68 @@ export type CitationRenderItem = {
 const ContextModal = dynamic(() => import('./ContextModal'));
 const WholeResponseModal = dynamic(() => import('../../../components/WholeResponseModal'));
 
+// 工具函数：从URL中提取参数
+const extractUrlParams = (url: string) => {
+  try {
+    const urlObj = new URL(url);
+    // 检查参数是否在hash中（#后面）
+    let searchParams: URLSearchParams;
+
+    if (urlObj.hash && urlObj.hash.includes('?')) {
+      // 参数在hash中，格式如：#/file?corpId=xxx&mediaId=yyy&traceId=zzz
+      const hashPart = urlObj.hash.substring(1); // 去掉#号
+      const queryStart = hashPart.indexOf('?');
+      if (queryStart !== -1) {
+        const queryString = hashPart.substring(queryStart + 1);
+        searchParams = new URLSearchParams(queryString);
+      } else {
+        searchParams = urlObj.searchParams;
+      }
+    } else {
+      // 参数在正常的query string中
+      searchParams = urlObj.searchParams;
+    }
+
+    const corpId = searchParams.get('corpId');
+    const traceId = searchParams.get('traceId');
+    const mediaId = searchParams.get('mediaId');
+
+    return { corpId, traceId, mediaId };
+  } catch (error) {
+    console.error('Failed to parse URL:', error);
+    return { corpId: null, traceId: null, mediaId: null };
+  }
+};
+
+// 工具函数：获取一次性token（通过服务端代理）
+const getOneTimeToken = async (params: { corpId: string; traceId: string; mediaId: string }) => {
+  try {
+    const response = await fetch('/api/v1/memo/getOneTimeToken', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(params)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Proxy API error: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+
+    // 检查代理API返回的数据结构
+    if (result.code !== 200) {
+      throw new Error(result.error || 'Proxy API returned error');
+    }
+
+    return result.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 const ResponseTags = ({
   showTags,
   historyItem,
@@ -43,6 +105,7 @@ const ResponseTags = ({
 }) => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
+  const toast = useToast();
   const quoteListRef = React.useRef<HTMLDivElement>(null);
   const dataId = historyItem.dataId;
 
@@ -76,6 +139,82 @@ const ResponseTags = ({
   const quoteIsOverflow = quoteListRef.current
     ? quoteListRef.current.scrollHeight > (isPc ? 50 : 55)
     : true;
+
+  // 处理链接点击的函数
+  const handleLinkClick = useCallback(
+    async (url: string) => {
+      try {
+        // 1. 提取URL中的参数
+        const { corpId, traceId, mediaId } = extractUrlParams(url);
+
+        // 检查必需的参数是否存在
+        if (!corpId || !traceId || !mediaId) {
+          toast({
+            title: '参数错误',
+            description: 'URL中缺少必需的参数（corpId、traceId、mediaId）',
+            status: 'error',
+            duration: 3000,
+            isClosable: true
+          });
+          return;
+        }
+
+        // 2. 调用代理API获取一次性token
+        const result = await getOneTimeToken({
+          corpId,
+          traceId,
+          mediaId
+        });
+
+        // 3. 处理API响应
+        if (result.success === true && result.result) {
+          // 4. 跳转到获取的URL
+          window.open(result.result, '_blank');
+        } else {
+          // 5. 根据错误码显示具体错误信息
+          let errorMessage = '无法获取有效的访问链接';
+
+          switch (result.errorCode) {
+            case '1010201001':
+              errorMessage = '企业ID不正确，请检查corpId参数';
+              break;
+            case '1010201002':
+              errorMessage = '系统访问密钥不正确，请检查配置';
+              break;
+            case '1010201004':
+              errorMessage = '应用ID不正确，请检查appId配置';
+              break;
+            case '1010201005':
+              errorMessage = '应用访问密钥不正确，请检查appAccessKey配置';
+              break;
+            default:
+              errorMessage = result.errorMsg || '获取文档预览链接失败';
+          }
+
+          toast({
+            title: '获取链接失败',
+            description: errorMessage,
+            status: 'error',
+            duration: 5000,
+            isClosable: true
+          });
+        }
+      } catch (error) {
+        console.error('处理链接点击时发生错误:', error);
+        toast({
+          title: '网络错误',
+          description: '无法连接到服务器，请稍后重试',
+          status: 'error',
+          duration: 3000,
+          isClosable: true
+        });
+
+        // 如果API调用失败，回退到直接打开原始URL
+        window.open(url, '_blank');
+      }
+    },
+    [toast]
+  );
 
   const citationRenderList: CitationRenderItem[] = useMemo(() => {
     // Dataset citations
@@ -111,12 +250,12 @@ const ResponseTags = ({
       key: `${r.url}-${index}`,
       displayText: r.name,
       onClick: () => {
-        window.open(r.url, '_blank');
+        handleLinkClick(r.url);
       }
     }));
 
     return [...datasetItems, ...linkItems];
-  }, [quoteList, toolCiteLinks, onOpenCiteModal]);
+  }, [quoteList, toolCiteLinks, onOpenCiteModal, handleLinkClick]);
 
   const notEmptyTags = notSharePage || quoteList.length > 0 || (isPc && durationSeconds > 0);
 
