@@ -1,16 +1,11 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
-import { syncChildrenPermission } from '@fastgpt/service/support/permission/inheritPermission';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { getResourceClbs } from '@fastgpt/service/support/permission/controller';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 
 export type SyncAppChatLogQuery = {};
 
@@ -31,10 +26,14 @@ async function handler(
   await authCert({ req, authRoot: true });
 
   // find all resources
-  const [apps, datasets] = await Promise.all([MongoApp.find().lean(), MongoDataset.find().lean()]);
+  const [apps, datasets, tmbs] = await Promise.all([
+    MongoApp.find({}, '_id teamId tmbId').lean(),
+    MongoDataset.find({}, '_id teamId tmbId').lean(),
+    MongoTeamMember.find({ role: 'owner' }, '_id teamId').lean()
+  ]);
 
-  await MongoResourcePermission.bulkWrite([
-    ...apps.map((app) => ({
+  await MongoResourcePermission.bulkWrite(
+    apps.map((app) => ({
       updateOne: {
         filter: {
           resourceId: app._id,
@@ -47,8 +46,11 @@ async function handler(
         },
         upsert: true
       }
-    })),
-    ...datasets.map((dataset) => ({
+    }))
+  );
+
+  await MongoResourcePermission.bulkWrite(
+    datasets.map((dataset) => ({
       updateOne: {
         filter: {
           resourceId: dataset._id,
@@ -62,10 +64,22 @@ async function handler(
         upsert: true
       }
     }))
-  ]);
+  );
+
+  await MongoResourcePermission.bulkWrite(
+    tmbs.map((team) => ({
+      deleteOne: {
+        filter: {
+          resourceType: PerResourceTypeEnum.team,
+          teamId: team.teamId,
+          tmbId: team._id
+        }
+      }
+    }))
+  );
 
   return {
-    message: 'App and Dataset owner collaborator create completed successfully'
+    message: 'App, Dataset, Team owner collaborator create/delete completed successfully'
   };
 }
 
