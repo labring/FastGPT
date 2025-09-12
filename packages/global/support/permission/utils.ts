@@ -26,11 +26,9 @@ export const sumPer = (...per: PermissionValueType[]) => {
  */
 export const checkRoleUpdateConflict = ({
   parentClbs,
-  oldRealClbs,
   newChildClbs
 }: {
   parentClbs: CollaboratorItemType[];
-  oldRealClbs: CollaboratorItemType[];
   newChildClbs: CollaboratorItemType[];
 }): boolean => {
   if (parentClbs.length === 0) {
