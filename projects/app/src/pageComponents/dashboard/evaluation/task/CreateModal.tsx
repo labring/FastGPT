@@ -17,12 +17,24 @@ import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import ManageDimension, { type Dimension } from './ManageDimension';
 import AppSelect from '@/components/Select/AppSelect';
+import { getAppVersionList } from '@/web/core/app/api/version';
+import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
+import { getEvaluationDatasetList } from '@/web/core/evaluation/dataset';
+import { postCreateEvaluation } from '@/web/core/evaluation/task';
+import type { CreateEvaluationRequest } from '@fastgpt/global/core/evaluation/api';
+import type { EvalTarget, EvaluatorSchema } from '@fastgpt/global/core/evaluation/type';
+import type { EvalMetricSchemaType } from '@fastgpt/global/core/evaluation/metric/type';
+import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getModelFromList } from '@fastgpt/global/core/ai/model';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import MyTag from '@fastgpt/web/components/common/Tag';
 
 // 表单数据类型定义
 export interface TaskFormData {
@@ -36,27 +48,8 @@ export interface TaskFormData {
 interface CreateModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: TaskFormData) => void;
+  onSubmit: (data: any) => void;
 }
-
-// Mock 数据 - TODO: 替换为真实 API
-const mockApps = [
-  { label: '智能客服助手', value: 'app1', icon: '/imgs/app/avatar/gpt.svg' },
-  { label: '文档问答系统', value: 'app2', icon: '/imgs/app/avatar/gpt.svg' },
-  { label: '代码助手', value: 'app3', icon: '/imgs/app/avatar/gpt.svg' }
-];
-
-const mockAppVersions = [
-  { label: 'v1.0.0', value: 'v1.0.0' },
-  { label: 'v1.1.0', value: 'v1.1.0' },
-  { label: 'v2.0.0', value: 'v2.0.0' }
-];
-
-const mockDatasets = [
-  { label: '客服问答数据集', value: 'dataset1', icon: '/imgs/dataset/avatar/dataset.svg' },
-  { label: '技术文档数据集', value: 'dataset2', icon: '/imgs/dataset/avatar/dataset.svg' },
-  { label: '产品介绍数据集', value: 'dataset3', icon: '/imgs/dataset/avatar/dataset.svg' }
-];
 
 const defaultForm: TaskFormData = {
   name: '',
@@ -70,6 +63,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
   const { t } = useTranslation();
   const [isManageDimensionOpen, setIsManageDimensionOpen] = useState(false);
   const { isOpen: isDimensionExpanded, onToggle: toggleDimensionExpanded } = useDisclosure();
+  const { llmModelList, embeddingModelList } = useSystemStore();
 
   const {
     register,
@@ -107,32 +101,123 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
     setIsManageDimensionOpen(true);
   }, []);
 
-  // TODO: 替换为真实的 API 调用
   const { runAsync: createTask, loading: isCreating } = useRequest2(
     async (data: TaskFormData) => {
-      // Mock API 调用
-      console.log('Creating task:', data);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      return data;
+      const target: EvalTarget = {
+        type: 'workflow',
+        config: {
+          appId: data.appId,
+          versionId: data.appVersion || undefined
+        }
+      };
+
+      const evaluators: EvaluatorSchema[] = data.selectedDimensions.map((dimension) => {
+        const metric: EvalMetricSchemaType = {
+          _id: dimension.id,
+          teamId: '',
+          tmbId: '',
+          name: dimension.name,
+          description: dimension.description,
+          type:
+            dimension.type === 'builtin' ? EvalMetricTypeEnum.Builtin : EvalMetricTypeEnum.Custom,
+          userInputRequired: true,
+          actualOutputRequired: true,
+          expectedOutputRequired: true,
+          contextRequired: false,
+          retrievalContextRequired: false,
+          embeddingRequired: dimension.embeddingRequired,
+          llmRequired: dimension.llmRequired,
+          createTime: new Date(),
+          updateTime: new Date()
+        };
+
+        return {
+          metric,
+          runtimeConfig: {
+            llm: dimension.evaluationModel,
+            embedding: dimension.indexModel
+          }
+        };
+      });
+
+      const createRequest: CreateEvaluationRequest = {
+        name: data.name,
+        datasetId: data.datasetId,
+        target,
+        evaluators
+      };
+
+      return await postCreateEvaluation(createRequest);
     },
     {
       manual: true,
       successToast: t('common:create_success'),
-      onSuccess: (data) => {
-        onSubmit(data);
+      errorToast: t('dashboard_evaluation:create_failed'),
+      onSuccess: (result) => {
+        onSubmit(result);
         onClose();
       }
     }
   );
 
   // 获取选中应用的版本列表
-  // TODO: 根据选中的应用 ID 获取对应的版本列表
+  const {
+    ScrollData: VersionScrollData,
+    data: appVersions,
+    isLoading: isLoadingVersions
+  } = useScrollPagination(getAppVersionList, {
+    pageSize: 20,
+    params: {
+      appId: watchedValues.appId
+    },
+    disabled: !watchedValues.appId,
+    refreshDeps: [watchedValues.appId]
+  });
+
+  // 转换版本数据为下拉选项格式
   const appVersionOptions = useMemo(() => {
-    if (!watchedValues.appId) return [];
-    return mockAppVersions;
-  }, [watchedValues.appId]);
+    return appVersions.map((version) => ({
+      label: version.versionName || formatTime2YMDHMS(version.time),
+      value: version._id,
+      description: formatTime2YMDHMS(version.time)
+    }));
+  }, [appVersions]);
+
+  // 获取评测数据集列表
+  const {
+    ScrollData: DatasetScrollData,
+    data: datasets,
+    isLoading: isLoadingDatasets
+  } = useScrollPagination(getEvaluationDatasetList, {
+    pageSize: 20,
+    params: {
+      searchKey: ''
+    }
+  });
+
+  // 转换数据集数据为下拉选项格式
+  const datasetOptions = useMemo(() => {
+    return datasets.map((dataset) => ({
+      label: dataset.name,
+      value: dataset._id
+    }));
+  }, [datasets]);
 
   const selectedDimensions = watchedValues.selectedDimensions || [];
+
+  // 获取所有模型列表用于查找模型信息
+  const allModelList = useMemo(() => {
+    return [...llmModelList, ...embeddingModelList];
+  }, [llmModelList, embeddingModelList]);
+
+  // 根据模型名称获取模型信息
+  const getModelInfo = useCallback(
+    (modelName: string) => {
+      if (!modelName) return null;
+      return getModelFromList(allModelList, modelName);
+    },
+    [allModelList]
+  );
 
   return (
     <>
@@ -153,11 +238,10 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
               </FormLabel>
               <Input
                 {...register('name', {
-                  required: t('dashboard_evaluation:task_name_input_placeholder')
+                  required: true
                 })}
-                placeholder="appointment/sql"
-                bg="myGray.50"
-                h={10}
+                placeholder={t('dashboard_evaluation:task_name_input_placeholder')}
+                h={8}
                 isInvalid={!!errors.name}
                 flex={1}
               />
@@ -173,11 +257,13 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
               </FormLabel>
               <Box flex={1}>
                 <AppSelect
+                  h={8}
+                  bg="white"
                   value={watchedValues.appId}
                   placeholder={t('dashboard_evaluation:evaluation_app_select_placeholder')}
                   onSelect={(id) => {
                     setValue('appId', id);
-                    setValue('appVersion', ''); // 重置版本选择
+                    setValue('appVersion', '');
                   }}
                 />
               </Box>
@@ -190,13 +276,14 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
               </FormLabel>
               <Box flex={1}>
                 <MySelect
-                  h={10}
+                  h={8}
                   placeholder={t('dashboard_evaluation:evaluation_app_version_select_placeholder')}
                   value={watchedValues.appVersion}
                   list={appVersionOptions}
                   onChange={(val) => setValue('appVersion', val)}
                   isDisabled={!watchedValues.appId}
-                  isInvalid={!!errors.appVersion}
+                  isLoading={isLoadingVersions}
+                  ScrollData={VersionScrollData}
                 />
               </Box>
             </Flex>
@@ -209,12 +296,13 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
               <HStack flex={1}>
                 <Box flex={1}>
                   <MySelect
-                    h={10}
+                    h={8}
                     placeholder={t('dashboard_evaluation:evaluation_dataset_select_placeholder')}
                     value={watchedValues.datasetId}
-                    list={mockDatasets}
+                    list={datasetOptions}
                     onChange={(val) => setValue('datasetId', val)}
-                    isInvalid={!!errors.datasetId}
+                    isLoading={isLoadingDatasets}
+                    ScrollData={DatasetScrollData}
                   />
                 </Box>
                 <Button
@@ -279,48 +367,61 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                 {selectedDimensions.length > 0 && (
                   <Collapse in={isDimensionExpanded}>
                     <VStack spacing={0} align="stretch">
-                      {selectedDimensions.map((dimension) => (
-                        <Flex
-                          key={dimension.id}
-                          align="center"
-                          justify="space-between"
-                          p={3}
-                          bg="myGray.50"
-                        >
-                          <HStack spacing={3}>
-                            <Text fontSize="sm" fontWeight="medium" color={'myGray.900'}>
-                              {dimension.name}
-                            </Text>
-                            <Text
-                              px={2}
-                              py={0.5}
-                              bg={dimension.type === 'builtin' ? 'blue.100' : 'green.100'}
-                              color={dimension.type === 'builtin' ? 'blue.600' : 'green.600'}
-                              borderRadius="sm"
-                              fontSize="xs"
-                            >
-                              {dimension.type === 'builtin'
-                                ? t('dashboard_evaluation:builtin_dimension')
-                                : t('dashboard_evaluation:custom_dimension')}
-                            </Text>
-                            <HStack spacing={2}>
-                              {/* <MyIcon name="core/ai/model" w="14px" color="myGray.500" /> */}
-                              <Text fontSize="xs" color="myGray.600">
-                                {dimension.defaultModel}
+                      {selectedDimensions.map((dimension) => {
+                        // 优先显示评测模型，没有评测模型则显示索引模型
+                        const displayModelName =
+                          dimension.evaluationModel || dimension.indexModel || '';
+                        const modelInfo = getModelInfo(displayModelName);
+
+                        return (
+                          <Flex
+                            key={dimension.id}
+                            align="center"
+                            justify="space-between"
+                            p={3}
+                            bg="myGray.50"
+                          >
+                            <HStack spacing={3}>
+                              <Text
+                                fontSize="sm"
+                                fontWeight="medium"
+                                color={'myGray.900'}
+                                noOfLines={1}
+                                maxW="200px"
+                              >
+                                {dimension.name}
                               </Text>
+                              {dimension.type === 'builtin' && (
+                                <MyTag colorSchema="gray" type="borderSolid" px={1.5}>
+                                  {t('dashboard_evaluation:builtin_dimension')}
+                                </MyTag>
+                              )}
+                              {displayModelName && (
+                                <HStack spacing={2}>
+                                  <Avatar
+                                    borderRadius={'0'}
+                                    src={modelInfo?.avatar}
+                                    w="14px"
+                                    h="14px"
+                                  />
+                                  <Text fontSize="xs" color="myGray.600" noOfLines={1} maxW="200px">
+                                    {modelInfo?.name || displayModelName}
+                                  </Text>
+                                </HStack>
+                              )}
                             </HStack>
-                          </HStack>
-                          <MyIcon
-                            name="delete"
-                            w="16px"
-                            h="16px"
-                            cursor="pointer"
-                            color="myGray.500"
-                            _hover={{ color: 'red.600' }}
-                            onClick={() => handleRemoveDimension(dimension.id)}
-                          />
-                        </Flex>
-                      ))}
+                            <MyIcon
+                              name="delete"
+                              w="16px"
+                              h="16px"
+                              cursor="pointer"
+                              color="myGray.500"
+                              _hover={{ color: 'red.600' }}
+                              onClick={() => handleRemoveDimension(dimension.id)}
+                            />
+                          </Flex>
+                        );
+                      })}
                     </VStack>
                   </Collapse>
                 )}
@@ -336,7 +437,12 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
           <Button
             variant="primary"
             isLoading={isCreating}
-            isDisabled={selectedDimensions.length === 0}
+            isDisabled={
+              !watchedValues.name ||
+              !watchedValues.appId ||
+              !watchedValues.datasetId ||
+              selectedDimensions.length === 0
+            }
             onClick={handleSubmit((data) => createTask(data))}
           >
             {t('common:Confirm')}

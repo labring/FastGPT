@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -7,22 +7,27 @@ import {
   HStack,
   ModalBody,
   ModalFooter,
-  ModalHeader,
-  Select,
   Text,
-  VStack,
-  useDisclosure
+  VStack
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useForm, useFieldArray } from 'react-hook-form';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import MyTag from '@fastgpt/web/components/common/Tag';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useMemo } from 'react';
+import { getMetricList } from '@/web/core/evaluation/dimension';
+import type { EvalMetricDisplayType } from '@fastgpt/global/core/evaluation/metric/type';
+import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import {
+  getWebDefaultEmbeddingModel,
+  getWebDefaultEvaluationModel
+} from '@/web/common/system/utils';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 // 维度类型定义
 export interface Dimension {
@@ -30,8 +35,10 @@ export interface Dimension {
   name: string;
   type: 'builtin' | 'custom';
   description: string;
-  defaultModel: string;
-  secondaryModel?: string;
+  evaluationModel: string; // 评测模型 (对应 llmRequired)
+  indexModel?: string; // 索引模型 (对应 embeddingRequired)
+  llmRequired: boolean; // 是否需要评测模型
+  embeddingRequired: boolean; // 是否需要索引模型
   isSelected: boolean;
 }
 
@@ -42,56 +49,23 @@ interface ManageDimensionProps {
   onConfirm: (dimensions: Dimension[]) => void;
 }
 
-// Mock 数据和函数
-const mockDimensions: Dimension[] = [
-  {
-    id: '1',
-    name: '回答准确度',
-    type: 'builtin',
-    description:
-      '对比实际回答和参考答案，判断答案是否正确，如答案为"8848米"，回答"8000米"则准确度低。',
-    defaultModel: 'DeepSeek-R1-Distill-Qwen-32B',
-    secondaryModel: 'bge-3',
-    isSelected: true
-  },
-  {
-    id: '2',
-    name: '语义相似度',
-    type: 'builtin',
-    description:
-      '对比实际回答和参考答案，判断语义是否匹配，如答案为"珠穆朗玛峰登难度高"，回答"珠穆朗玛峰最高"则相似度低。',
-    defaultModel: 'DeepSeek-R1-Distill-Qwen-32B',
-    secondaryModel: undefined,
+// 转换 API 数据为组件所需格式
+const transformMetricToDimension = (
+  metric: EvalMetricDisplayType,
+  defaultEmbeddingModel?: string,
+  defaultEvaluationModel?: string
+): Dimension => {
+  return {
+    id: metric._id,
+    name: metric.name,
+    type: metric.type === 'builtin_metric' ? 'builtin' : 'custom',
+    description: metric.description || '',
+    evaluationModel: metric.llmRequired ? defaultEvaluationModel || '' : '', // 使用默认评估模型
+    indexModel: metric.embeddingRequired ? defaultEmbeddingModel || '' : undefined, // 如果不需要索引模型则为 undefined
+    llmRequired: metric.llmRequired,
+    embeddingRequired: metric.embeddingRequired,
     isSelected: false
-  },
-  {
-    id: '3',
-    name: '问题相关度',
-    type: 'builtin',
-    description:
-      '判断实际回答和问题之间的相关程度，是否答非所问，如提问"世界最高峰是哪个"，回答登山注意事项，则相关度低。',
-    defaultModel: 'DeepSeek-R1-Distill-Qwen-32B',
-    secondaryModel: undefined,
-    isSelected: false
-  }
-];
-
-// TODO: 替换为真实的模型选项获取 hook
-const mockModelOptions = [
-  { label: 'DeepSeek-R1-Distill-Qwen-32B', value: 'DeepSeek-R1-Distill-Qwen-32B' },
-  { label: 'bge-3', value: 'bge-3' },
-  { label: 'gpt-4', value: 'gpt-4' },
-  { label: 'claude-3', value: 'claude-3' }
-];
-
-// Mock API 函数
-const mockGetDimensions = async (): Promise<Dimension[]> => {
-  // TODO: 替换为真实的 API 调用
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(mockDimensions);
-    }, 500);
-  });
+  };
 };
 
 // 维度项组件
@@ -100,17 +74,21 @@ const DimensionItem = ({
   isSelected,
   onToggle,
   onModelChange,
-  evalModelList
+  evalModelList,
+  filterNotHiddenVectorModelList,
+  isDisabled
 }: {
   dimension: Dimension;
   isSelected: boolean;
   onToggle: (dimension: Dimension, checked: boolean) => void;
   onModelChange: (
     dimensionId: string,
-    field: 'defaultModel' | 'secondaryModel',
+    field: 'evaluationModel' | 'indexModel',
     value: string
   ) => void;
   evalModelList: any[];
+  filterNotHiddenVectorModelList: any[];
+  isDisabled?: boolean;
 }) => {
   const { t } = useTranslation();
 
@@ -120,20 +98,24 @@ const DimensionItem = ({
       border="1px solid"
       borderColor={isSelected ? 'primary.500' : 'myGray.200'}
       borderRadius="md"
-      bg={isSelected ? 'primary.50' : 'white'}
+      bg={isSelected ? 'primary.50' : isDisabled ? 'myGray.50' : 'white'}
       mb={3}
-      cursor="pointer"
+      cursor={isDisabled ? 'not-allowed' : 'pointer'}
+      opacity={isDisabled ? 0.6 : 1}
       _hover={{
-        borderColor: isSelected ? 'primary.600' : 'myGray.300'
+        borderColor: isDisabled ? 'myGray.200' : isSelected ? 'primary.600' : 'myGray.300'
       }}
-      onClick={() => onToggle(dimension, !isSelected)}
+      onClick={() => !isDisabled && onToggle(dimension, !isSelected)}
     >
       <HStack align="center" spacing={3} mb={3}>
         <Checkbox
           isChecked={isSelected}
+          isDisabled={isDisabled}
           onChange={(e) => {
             e.stopPropagation();
-            onToggle(dimension, e.target.checked);
+            if (!isDisabled) {
+              onToggle(dimension, e.target.checked);
+            }
           }}
         />
         <VStack align="flex-start" flex={1} spacing={1}>
@@ -141,68 +123,71 @@ const DimensionItem = ({
             <Text fontWeight="medium" fontSize="sm">
               {dimension.name}
             </Text>
-            <Text
-              px={2}
-              py={0.5}
-              bg={dimension.type === 'builtin' ? 'blue.100' : 'green.100'}
-              color={dimension.type === 'builtin' ? 'blue.600' : 'green.600'}
-              borderRadius="sm"
-              fontSize="xs"
-            >
-              {dimension.type === 'builtin'
-                ? t('dashboard_evaluation:builtin')
-                : t('dashboard_evaluation:custom')}
-            </Text>
+            {dimension.type === 'builtin' && (
+              <MyTag colorSchema="gray">{t('dashboard_evaluation:builtin')}</MyTag>
+            )}
           </HStack>
           <Text fontSize="xs" color="myGray.600">
-            {dimension.description}
+            {dimension.description || '-'}
           </Text>
         </VStack>
       </HStack>
 
       <HStack spacing={2} w="full" px={8}>
-        <AIModelSelector
-          w="300px"
-          size="sm"
-          bg="myGray.50"
-          value={dimension.defaultModel}
-          list={evalModelList.map((item) => ({
-            label: item.name,
-            value: item.model
-          }))}
-          onChange={(e) => {
-            onModelChange(dimension.id, 'defaultModel', e);
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
-        />
-
-        {dimension.secondaryModel !== undefined && (
+        {/* 评测模型选择器 */}
+        {dimension.llmRequired && (
           <AIModelSelector
             w="300px"
-            size="sm"
-            bg="myGray.50"
-            value={dimension.secondaryModel || ''}
-            list={[
-              { label: t('dashboard_evaluation:select_model_placeholder'), value: '' },
-              ...evalModelList.map((item) => ({
-                label: item.name,
-                value: item.model
-              }))
-            ]}
+            h={7}
+            bg={isDisabled ? 'myGray.100' : 'white'}
+            value={dimension.evaluationModel}
+            list={evalModelList.map((item) => ({
+              label: item.name,
+              value: item.model
+            }))}
             onChange={(e) => {
-              onModelChange(dimension.id, 'secondaryModel', e);
+              if (!isDisabled) {
+                onModelChange(dimension.id, 'evaluationModel', e);
+              }
             }}
             onClick={(e) => {
               e.stopPropagation();
             }}
+            disableTip={
+              isDisabled ? t('dashboard_evaluation:please_select_dimension_first') : undefined
+            }
           />
         )}
 
-        {dimension.id === '1' && (
+        {/* 索引模型选择器 */}
+        {dimension.embeddingRequired && (
+          <AIModelSelector
+            w="300px"
+            h={7}
+            bg={isDisabled ? 'myGray.100' : 'white'}
+            value={dimension.indexModel || ''}
+            list={filterNotHiddenVectorModelList.map((item) => ({
+              label: item.name,
+              value: item.model
+            }))}
+            onChange={(e) => {
+              if (!isDisabled) {
+                onModelChange(dimension.id, 'indexModel', e);
+              }
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+            disableTip={
+              isDisabled ? t('dashboard_evaluation:please_select_dimension_first') : undefined
+            }
+          />
+        )}
+
+        {/* 只有两种模型都需要的卡片才显示questionTip */}
+        {dimension.llmRequired && dimension.embeddingRequired && (
           <Box onClick={(e) => e.stopPropagation()}>
-            <QuestionTip label={t('dashboard_evaluation:dimension_config_tip')} />
+            <QuestionTip label={t('dashboard_evaluation:model_evaluation_tip')} />
           </Box>
         )}
       </HStack>
@@ -217,12 +202,18 @@ const ManageDimension = ({
   onConfirm
 }: ManageDimensionProps) => {
   const { t } = useTranslation();
-  const [allDimensions, setAllDimensions] = useState<Dimension[]>([]);
-  const { llmModelList } = useSystemStore();
+  const { llmModelList, embeddingModelList } = useSystemStore();
+
+  // 最大选择数量限制
+  const MAX_SELECTION_COUNT = 10;
 
   const evalModelList = useMemo(() => {
     return llmModelList.filter((item) => item.useInEvaluation);
   }, [llmModelList]);
+
+  const filterNotHiddenVectorModelList = useMemo(() => {
+    return embeddingModelList.filter((item) => !item.hidden);
+  }, [embeddingModelList]);
 
   const { control, handleSubmit, setValue, watch } = useForm({
     defaultValues: {
@@ -237,33 +228,115 @@ const ManageDimension = ({
 
   const watchedDimensions = watch('dimensions');
 
-  // 获取维度列表
-  const { runAsync: fetchDimensions, loading: loadingDimensions } = useRequest2(mockGetDimensions, {
-    manual: true,
-    onSuccess: (data) => {
-      // 合并选中状态
-      const mergedDimensions = data.map((dimension) => {
-        const selectedDimension = selectedDimensions.find((s) => s.id === dimension.id);
-        return selectedDimension
-          ? { ...dimension, ...selectedDimension, isSelected: true }
-          : dimension;
+  // 空状态提示组件
+  const EmptyTipDom = useMemo(
+    () => <EmptyTip text={t('dashboard_evaluation:no_dimension_data')} />,
+    [t]
+  );
+
+  // API 适配器函数 - 转换参数格式
+  const getMetricListAdapter = useCallback(
+    async (data: PaginationProps): Promise<PaginationResponse<EvalMetricDisplayType>> => {
+      return getMetricList({
+        pageNum: Math.floor(Number(data.offset) / Number(data.pageSize)) + 1,
+        pageSize: Number(data.pageSize),
+        searchKey: ''
       });
-      setAllDimensions(mergedDimensions);
-      replace(mergedDimensions);
-    }
+    },
+    []
+  );
+
+  // 获取维度列表 - 使用滚动分页
+  const {
+    data: metricList,
+    ScrollData,
+    refreshList
+  } = useScrollPagination(getMetricListAdapter, {
+    pageSize: 10,
+    params: {},
+    refreshDeps: [isOpen],
+    EmptyTip: EmptyTipDom,
+    disabled: !isOpen
   });
 
-  // 初始化数据
+  // 转换并合并维度数据
+  const transformedDimensions = useMemo(() => {
+    if (!metricList.length) return [];
+
+    const defaultEmbeddingModel = getWebDefaultEmbeddingModel(embeddingModelList)?.model;
+    const defaultEvaluationModel = getWebDefaultEvaluationModel(evalModelList)?.model;
+
+    return metricList.map((metric) => {
+      const dimension = transformMetricToDimension(
+        metric,
+        defaultEmbeddingModel,
+        defaultEvaluationModel
+      );
+      const selectedDimension = selectedDimensions.find((s) => s.id === dimension.id);
+
+      if (selectedDimension) {
+        // 如果在选中列表中，保持选中状态并使用已配置的模型
+        return {
+          ...dimension,
+          evaluationModel: selectedDimension.evaluationModel || dimension.evaluationModel,
+          indexModel: selectedDimension.indexModel || dimension.indexModel,
+          isSelected: true
+        };
+      }
+      return dimension;
+    });
+  }, [metricList, selectedDimensions, embeddingModelList, evalModelList]);
+
+  // 同步转换后的维度数据到表单，保持已有的选择状态
   useEffect(() => {
-    if (isOpen) {
-      fetchDimensions();
+    if (transformedDimensions.length > 0) {
+      const currentDimensions = watchedDimensions;
+
+      // 如果当前表单为空，直接设置转换后的数据
+      if (currentDimensions.length === 0) {
+        replace(transformedDimensions);
+        return;
+      }
+
+      // 合并新数据和已有数据，保持已有的选择状态
+      const mergedDimensions = transformedDimensions.map((newDimension) => {
+        const existingDimension = currentDimensions.find((d) => d.id === newDimension.id);
+
+        if (existingDimension) {
+          // 如果维度已存在，保持其当前状态（选择状态和模型配置）
+          return existingDimension;
+        }
+
+        // 新维度，使用转换后的默认状态
+        return newDimension;
+      });
+
+      // 添加新加载的维度（在滚动加载时）
+      const existingIds = currentDimensions.map((d) => d.id);
+      const newDimensions = transformedDimensions.filter((d) => !existingIds.includes(d.id));
+
+      if (newDimensions.length > 0) {
+        // 有新维度，追加到现有列表
+        const finalDimensions = [...currentDimensions, ...newDimensions];
+        replace(finalDimensions);
+      } else if (mergedDimensions.length !== currentDimensions.length) {
+        // 维度数量发生变化，更新列表
+        replace(mergedDimensions);
+      }
     }
-  }, [isOpen, fetchDimensions]);
+  }, [transformedDimensions, replace, watchedDimensions]);
 
   // 处理维度选择
   const handleDimensionToggle = useCallback(
     (dimension: Dimension, checked: boolean) => {
       const currentDimensions = watchedDimensions;
+      const currentSelectedCount = currentDimensions.filter((d) => d.isSelected).length;
+
+      // 如果要选中且已达到最大限制，则不允许选中
+      if (checked && currentSelectedCount >= MAX_SELECTION_COUNT) {
+        return;
+      }
+
       const updatedDimensions = currentDimensions.map((d) =>
         d.id === dimension.id ? { ...d, isSelected: checked } : d
       );
@@ -274,7 +347,7 @@ const ManageDimension = ({
 
   // 处理模型变更
   const handleModelChange = useCallback(
-    (dimensionId: string, field: 'defaultModel' | 'secondaryModel', value: string) => {
+    (dimensionId: string, field: 'evaluationModel' | 'indexModel', value: string) => {
       const currentDimensions = watchedDimensions;
       const updatedDimensions = currentDimensions.map((d) =>
         d.id === dimensionId ? { ...d, [field]: value } : d
@@ -286,13 +359,13 @@ const ManageDimension = ({
 
   // 刷新维度列表
   const handleRefresh = useCallback(() => {
-    fetchDimensions();
-  }, [fetchDimensions]);
+    refreshList();
+  }, [refreshList]);
 
   // 新建维度
   const handleCreateDimension = useCallback(() => {
-    // TODO: 实现新建维度逻辑，打开新标签页
-    window.open('/dimension/create', '_blank');
+    // TODO:
+    window.open('/dashboard/evaluation/dimension/create', '_blank');
   }, []);
 
   // 确认选择
@@ -302,8 +375,17 @@ const ManageDimension = ({
     onClose();
   }, [watchedDimensions, onConfirm, onClose]);
 
-  const selectedCount = watchedDimensions.filter((d) => d.isSelected).length;
-  const totalCount = watchedDimensions.length;
+  // 计算真实的选中数量：包括表单中的选中维度和传入的已选维度（可能还未加载到表单中）
+  const selectedCount = useMemo(() => {
+    const formSelectedIds = watchedDimensions.filter((d) => d.isSelected).map((d) => d.id);
+    const propsSelectedIds = selectedDimensions.map((d) => d.id);
+
+    // 合并两个数组并去重，得到真实的选中维度数量
+    const allSelectedIds = new Set([...formSelectedIds, ...propsSelectedIds]);
+    return allSelectedIds.size;
+  }, [watchedDimensions, selectedDimensions]);
+
+  const isMaxSelected = selectedCount >= MAX_SELECTION_COUNT;
 
   return (
     <MyModal
@@ -316,35 +398,45 @@ const ManageDimension = ({
       h="100%"
       maxH="90vh"
       isCentered
-      isLoading={loadingDimensions}
+      overflow="hidden"
     >
-      <ModalBody flex={1}>
-        <Flex justify="space-between" align="center" mb={4}>
-          <Text fontSize="sm" color="myGray.600">
-            {t('dashboard_evaluation:selected_count')} {selectedCount}/{totalCount}
-          </Text>
-          <HStack spacing={2}>
-            <Button variant="whiteBase" size="md" onClick={handleCreateDimension}>
-              {t('dashboard_evaluation:create_dimension')}
-            </Button>
-            <Button variant="whiteBase" size="md" onClick={handleRefresh}>
-              <MyIcon name="common/refreshLight" w="14px" />
-            </Button>
-          </HStack>
-        </Flex>
-
-        <Box flex={1} overflow="auto">
-          {fields.map((field, index) => (
-            <DimensionItem
-              key={field.id}
-              dimension={watchedDimensions[index]}
-              isSelected={watchedDimensions[index]?.isSelected || false}
-              onToggle={handleDimensionToggle}
-              onModelChange={handleModelChange}
-              evalModelList={evalModelList}
-            />
-          ))}
+      <ModalBody flex={1} p={0} display="flex" flexDirection="column">
+        <Box p={6} pb={4}>
+          <Flex justify="space-between" align="center">
+            <Text fontSize="sm" color="myGray.600">
+              {t('dashboard_evaluation:selected_count')} {selectedCount}/{MAX_SELECTION_COUNT}
+            </Text>
+            <HStack spacing={2}>
+              <Button variant="whiteBase" size="md" onClick={handleCreateDimension}>
+                {t('dashboard_evaluation:create_new_dimension')}
+              </Button>
+              <Button variant="whiteBase" size="md" onClick={handleRefresh}>
+                <MyIcon name="common/refreshLight" w="14px" />
+              </Button>
+            </HStack>
+          </Flex>
         </Box>
+
+        <ScrollData flex={1} px={6}>
+          {fields.map((field, index) => {
+            const dimension = watchedDimensions[index];
+            const isSelected = dimension?.isSelected || false;
+            const isDisabled = !isSelected && isMaxSelected;
+
+            return (
+              <DimensionItem
+                key={field.id}
+                dimension={dimension}
+                isSelected={isSelected}
+                onToggle={handleDimensionToggle}
+                onModelChange={handleModelChange}
+                evalModelList={evalModelList}
+                filterNotHiddenVectorModelList={filterNotHiddenVectorModelList}
+                isDisabled={isDisabled}
+              />
+            );
+          })}
+        </ScrollData>
       </ModalBody>
 
       <ModalFooter>
