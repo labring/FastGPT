@@ -3,6 +3,7 @@ import type { EvalDatasetDataKeyEnum } from './dataset/constants';
 import type { EvalDatasetDataSchemaType } from './dataset/type';
 import type { MetricResult, EvalMetricSchemaType } from './metric/type';
 import type { EvaluationPermission } from '../../support/permission/evaluation/controller';
+import type { SourceMemberType } from '@fastgpt/global/support/user/type';
 
 // Evaluation target related types
 export interface WorkflowConfig {
@@ -128,14 +129,13 @@ export type EvaluationDisplayType = Pick<
 > & {
   _id: string;
   avgScore?: number;
-  executorAvatar?: string;
-  executorName?: string;
   datasetName?: string;
   targetName: string;
   metricNames: string[];
   completedCount: number;
   errorCount: number;
   totalCount: number;
+  sourceMember: SourceMemberType;
 };
 
 export type EvaluationItemDisplayType = EvaluationItemSchemaType & {

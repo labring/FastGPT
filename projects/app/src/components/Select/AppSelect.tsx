@@ -15,11 +15,15 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 const AppSelect = ({
   value,
   onSelect,
-  placeholder
+  placeholder,
+  h,
+  bg
 }: {
   value: string;
   onSelect: (id: string) => void;
   placeholder?: string;
+  h?: string | number;
+  bg?: string;
 }) => {
   const [currentApp, setCurrentApp] = useState<GetResourceListItemResponse | null>(null);
   const { t } = useTranslation();
@@ -51,15 +55,15 @@ const AppSelect = ({
       Trigger={
         <Button
           w={'full'}
-          bg={'myGray.50'}
+          bg={bg || 'myGray.50'}
           variant={'whitePrimaryOutline'}
-          size={'lg'}
+          size={h ? undefined : 'lg'}
           fontSize={'sm'}
           px={3}
           outline={'none'}
           rightIcon={<MyIcon name={'core/chat/chevronDown'} w="1rem" color={'myGray.500'} />}
           iconSpacing={2}
-          h={'auto'}
+          h={h || 'auto'}
           _active={{
             transform: 'none'
           }}

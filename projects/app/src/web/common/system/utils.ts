@@ -70,3 +70,14 @@ export const getWebDefaultEmbeddingModel = (embeddingList: EmbeddingModelItemTyp
     ? defaultModels.embedding
     : list[0];
 };
+
+export const getWebDefaultEvaluationModel = (llmList: any[] = []) => {
+  const list = llmList.length > 0 ? llmList : useSystemStore.getState().llmModelList;
+  const defaultModels = useSystemStore.getState().defaultModels;
+  const evalModelList = list.filter((item) => item.useInEvaluation);
+
+  return defaultModels.evaluation &&
+    evalModelList.find((item) => item.model === defaultModels.evaluation?.model)
+    ? defaultModels.evaluation
+    : evalModelList[0];
+};
