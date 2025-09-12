@@ -23,7 +23,7 @@ vi.mock('@fastgpt/service/support/user/audit/util', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/evaluation/utils', () => ({
-  validateEvaluationParamsForUpdate: vi.fn().mockResolvedValue({ success: true })
+  validateEvaluationParamsForUpdate: vi.fn().mockResolvedValue({ isValid: true, errors: [] })
 }));
 
 describe('Update Evaluation Task API Handler', () => {
@@ -85,8 +85,8 @@ describe('Update Evaluation Task API Handler', () => {
       '@fastgpt/service/core/evaluation/utils'
     );
     (validateEvaluationParamsForUpdate as any).mockResolvedValue({
-      success: false,
-      message: 'Invalid parameters'
+      isValid: false,
+      errors: [{ code: 'invalid_params', message: 'Invalid parameters' }]
     });
 
     const mockReq = {

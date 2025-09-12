@@ -1534,7 +1534,7 @@ describe('EvaluationTaskService', () => {
       };
 
       (createTargetInstance as any).mockReturnValue(mockTargetInstance);
-      (createEvaluatorInstance as any).mockReturnValue(mockEvaluatorInstance);
+      (createEvaluatorInstance as any).mockResolvedValue(mockEvaluatorInstance);
     });
 
     test('应该正确处理评估任务流程', async () => {
@@ -1746,7 +1746,7 @@ describe('EvaluationTaskService', () => {
         evaluate: vi.fn()
       };
       (createTargetInstance as any).mockReturnValue(mockTargetInstance);
-      (createEvaluatorInstance as any).mockReturnValue(mockEvaluatorInstance);
+      (createEvaluatorInstance as any).mockResolvedValue(mockEvaluatorInstance);
     });
 
     test('网络错误应该触发重试机制', async () => {
@@ -2167,7 +2167,7 @@ describe('EvaluationTaskService', () => {
       const mockEvaluatorInstance = {
         evaluate: vi.fn().mockRejectedValue(new Error('NETWORK_ERROR: Cleanup test'))
       };
-      (createEvaluatorInstance as any).mockReturnValue(mockEvaluatorInstance);
+      (createEvaluatorInstance as any).mockResolvedValue(mockEvaluatorInstance);
 
       const itemJobData: EvaluationItemJobData = {
         evalId: testEvaluationId.toString(),
