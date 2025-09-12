@@ -977,6 +977,7 @@
   "permission.change_owner_success": "成功转移所有权",
   "permission.change_owner_tip": "转移后您的权限不会保留",
   "permission.change_owner_to": "转移给",
+  "permission.common_member": "普通成员",
   "permission.manager": "管理员",
   "permission.read": "读权限",
   "permission.write": "写权限",

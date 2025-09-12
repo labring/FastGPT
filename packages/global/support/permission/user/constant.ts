@@ -31,6 +31,7 @@ export const TeamPerList: PermissionListType<TeamPerKeyEnum> = {
 export const TeamRoleList: RoleListType<TeamRoleKeyEnum> = {
   [CommonPerKeyEnum.read]: {
     ...CommonRoleList[CommonPerKeyEnum.read],
+    name: i18nT('common:permission.common_member'),
     value: 0b000100
   },
   [CommonPerKeyEnum.write]: {
