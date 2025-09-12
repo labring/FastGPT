@@ -6,6 +6,7 @@ import type {
   GenerateSummaryParams,
   GenerateSummaryResponse
 } from '@fastgpt/global/core/evaluation/type';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 import { authEvaluationTaskWrite } from '@fastgpt/service/core/evaluation/common';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 
@@ -16,8 +17,11 @@ async function handler(
     const { evalId, metricsIds } = req.body;
 
     // Validate parameters
-    if (!evalId || !metricsIds || !Array.isArray(metricsIds) || metricsIds.length === 0) {
-      return Promise.reject('Evaluation task ID and metrics ID array are required');
+    if (!evalId) {
+      return Promise.reject(EvaluationErrEnum.evalIdRequired);
+    }
+    if (!metricsIds || !Array.isArray(metricsIds) || metricsIds.length === 0) {
+      return Promise.reject(EvaluationErrEnum.summaryMetricsConfigError);
     }
 
     const { teamId, tmbId, evaluation } = await authEvaluationTaskWrite(evalId, {
@@ -55,3 +59,4 @@ async function handler(
 }
 
 export default NextAPI(handler);
+export { handler };
