@@ -22,14 +22,7 @@ import {
 } from '@fastgpt/global/core/chat/adapt';
 import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
-import {
-  filterMemoryMessages,
-  filterToolResponseToPreview,
-  formatToolResponse,
-  getToolNodesByIds,
-  initToolNodes,
-  parseToolArgs
-} from '../utils';
+import { filterMemoryMessages, filterToolResponseToPreview, parseToolArgs } from '../utils';
 import { SubAppIds, systemSubInfo } from './sub/constants';
 import {
   getReferenceVariableValue,
@@ -49,12 +42,7 @@ import { addFilePrompt2Input, getFileInputPrompt } from './sub/file/utils';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { dispatchFileRead } from './sub/file';
 import { dispatchApp, dispatchPlugin } from './sub/app';
-import {
-  checkIsEditPlan,
-  getPlanAgentToolCallId,
-  hasPlanResponse,
-  rewritePlanResponse
-} from './utils';
+import { getPlanAgentToolCallId, checkPlan, rewritePlanResponse } from './utils';
 import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
@@ -145,7 +133,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
 
     const systemMessages = chats2GPTMessages({
-      messages: getSystemPrompt_ChatItemType(systemPrompt || getMasterAgentDefaultPrompt()),
+      messages: getSystemPrompt_ChatItemType(getMasterAgentDefaultPrompt()),
       reserveId: false
     });
     const historyMessages: ChatCompletionMessageParam[] = (() => {
@@ -156,6 +144,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
       return chats2GPTMessages({ messages: chatHistories, reserveId: false });
     })();
+
+    // rewrite user message by interactive query
+    if (lastInteractive) {
+      const isUserConfirmedPlan = query.some((item) => item?.text?.content === '确认');
+      isUserConfirmedPlan
+        ? (userChatInput = 'Confirm the plan')
+        : (userChatInput = "I don't approve of the current plan");
+    }
 
     const userMessages = chats2GPTMessages({
       messages: [
@@ -171,7 +167,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
     const requestMessages = [...systemMessages, ...historyMessages, ...userMessages];
 
-    const hasPlan: boolean = hasPlanResponse(requestMessages);
+    const { hasPlan, hasConfirmedPlan } = checkPlan(requestMessages);
 
     const subAppList = getSubApps({
       subApps: runtimeSubApps,
@@ -194,7 +190,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     const dispatchFlowResponse: ChatHistoryItemResType[] = [];
 
-    if (checkIsEditPlan(query) && hasPlan) {
+    if (!hasConfirmedPlan && hasPlan) {
       const callId = getPlanAgentToolCallId(requestMessages);
 
       // TODO: 需要修改替换掉旧 plan
@@ -236,6 +232,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       });
       const modelUsage = externalProvider.openaiAccount?.key ? 0 : modelTotalPoints;
 
+      const interactive: InteractiveNodeResponseType = {
+        type: 'planCheck',
+        params: {
+          description: '是否确认使用当前的计划',
+          userSelectOptions: [{ value: '确认', key: 'option1' }]
+        }
+      };
+
       // TODO: return 正确的内容
       return {
         data: {
@@ -245,6 +249,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         [DispatchNodeResponseKeyEnum.memories]: {
           [memoryKey]: filterMemoryMessages(rewritedMessages)
         },
+
         [DispatchNodeResponseKeyEnum.assistantResponses]: [],
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
           // 展示的积分消耗
@@ -272,7 +277,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             outputTokens: usages[0].outputTokens
           }
         ],
-        [DispatchNodeResponseKeyEnum.interactive]: undefined
+        [DispatchNodeResponseKeyEnum.interactive]: interactive
       };
     }
 
@@ -384,6 +389,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               const { response, usages } = await dispatchPlanAgent({
                 messages,
                 tools: subAppList,
+                systemPrompt,
                 model,
                 temperature,
                 top_p: aiChatTopP,
@@ -392,13 +398,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 onStreaming
               });
               const interactive: InteractiveNodeResponseType = {
-                type: 'userSelect',
+                type: 'planCheck',
                 params: {
                   description: '是否确认使用当前的计划',
-                  userSelectOptions: [
-                    { value: '确认', key: 'option1' },
-                    { value: '更改', key: 'option2' }
-                  ]
+                  userSelectOptions: [{ value: '确认', key: 'option1' }]
                 }
               };
 

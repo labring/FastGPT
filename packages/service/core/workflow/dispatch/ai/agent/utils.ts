@@ -66,18 +66,19 @@ export const parseAgentSystem = ({
   return processedPrompt;
 };
 
-export const checkIsEditPlan = (query: UserChatItemValueItemType[]) => {
-  return query.some((item) => item?.text?.content === '更改');
-};
-
-export const hasPlanResponse = (messages: ChatCompletionMessageParam[]) => {
-  return messages.some(
+export const checkPlan = (messages: ChatCompletionMessageParam[]) => {
+  const hasPlan = messages.some(
     (m) =>
       m.role === 'assistant' &&
       'tool_calls' in m &&
       Array.isArray(m.tool_calls) &&
       m.tool_calls.some((t) => t.type === 'function' && t.function?.name === 'plan_agent')
   );
+  const hasConfirmedPlan = messages.some(
+    (m) => m.role === 'user' && m.content === 'Confirm the plan'
+  );
+
+  return { hasPlan, hasConfirmedPlan };
 };
 
 export const getPlanAgentToolCallId = (messages: ChatCompletionMessageParam[]) => {

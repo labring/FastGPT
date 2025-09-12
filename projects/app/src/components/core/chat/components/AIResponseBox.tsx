@@ -19,6 +19,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type {
   InteractiveBasicType,
+  PlanCheckInteractive,
   UserInputInteractive,
   UserSelectInteractive
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -270,6 +271,23 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
     </Flex>
   );
 });
+const RenderPlanCheckInteractive = React.memo(function RenderInteractive({
+  interactive
+}: {
+  interactive: InteractiveBasicType & PlanCheckInteractive;
+}) {
+  return (
+    <SelectOptionsComponent
+      interactiveParams={interactive.params}
+      onSelect={(value) => {
+        onSendPrompt({
+          text: value,
+          isInteractivePrompt: true
+        });
+      }}
+    />
+  );
+});
 
 const AIResponseBox = ({
   chatItemDataId,
@@ -324,6 +342,9 @@ const AIResponseBox = ({
     }
     if (finalInteractive.type === 'userInput') {
       return <RenderUserFormInteractive interactive={finalInteractive} />;
+    }
+    if (finalInteractive.type === 'planCheck') {
+      return <RenderPlanCheckInteractive interactive={finalInteractive} />;
     }
   }
 

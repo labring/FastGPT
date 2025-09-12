@@ -11,15 +11,6 @@ ${
     : ''
 }
 
-<task>
-根据用户提供的主题或目标，生成一份详细、可执行的项目计划，严格产出符合 JSON Schema 的结构化 JSON。
-</task>
-
-<inputs>
-- 用户输入：一个需要制定的主题、目标或任务描述。
-- 输入格式：自然语言描述，可能包含背景、目标、约束、优先级、本地化偏好。
-</inputs>
-
 <process>
 1. 解析用户输入，提取核心目标、关键要素、约束与本地化偏好。
 2. 评估任务复杂度, 据此确定阶段数量。
@@ -54,9 +45,13 @@ ${
             "type": "string",
             "description": "阶段标题"
           },
+          "description": {
+            "type": "string",
+            "description": "阶段描述, 并在末尾@对应任务所使用的工具/子智能体"
+          },
         },
-        "required": ["title"]
-      },
+        "required": ["title", "description"]
+      }
     }
   },
   "required": ["title", "description", "steps"]
@@ -78,9 +73,11 @@ ${
     "steps": [
       {
         "title": "[阶段名称]",
+        "description": "[阶段描述] @sub_agent"
       },
       {
         "title": "[阶段名称]",
+        "description": "[阶段描述] @sub_agent"
       }
     ]
   }

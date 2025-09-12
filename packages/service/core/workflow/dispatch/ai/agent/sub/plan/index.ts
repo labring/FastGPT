@@ -11,7 +11,7 @@ import { SubAppIds } from '../constants';
 
 type PlanAgentConfig = {
   model: string;
-  customSystemPrompt?: string;
+  systemPrompt?: string;
   temperature?: number;
   top_p?: number;
   stream?: boolean;
@@ -33,7 +33,7 @@ export const dispatchPlanAgent = async ({
   messages,
   tools,
   model,
-  customSystemPrompt,
+  systemPrompt,
   temperature,
   top_p,
   stream,
@@ -45,7 +45,7 @@ export const dispatchPlanAgent = async ({
   const requestMessages: ChatCompletionMessageParam[] = [
     {
       role: 'system',
-      content: getPlanAgentPrompt(customSystemPrompt)
+      content: getPlanAgentPrompt(systemPrompt)
     },
     ...messages.filter((item) => item.role !== 'system'),
     { role: 'user', content: 'Start plan' }

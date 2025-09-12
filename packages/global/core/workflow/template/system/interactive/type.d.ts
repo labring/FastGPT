@@ -78,10 +78,20 @@ type UserInputInteractive = InteractiveNodeType & {
   };
 };
 
+type PlanCheckInteractive = InteractiveNodeType & {
+  type: 'planCheck';
+  params: {
+    description: string;
+    userSelectOptions: UserSelectOptionItemType[];
+    userSelectedVal?: string;
+  };
+};
+
 export type InteractiveNodeResponseType =
   | UserSelectInteractive
   | UserInputInteractive
   | ChildrenInteractive
-  | LoopInteractive;
+  | LoopInteractive
+  | PlanCheckInteractive;
 
 export type WorkflowInteractiveResponseType = InteractiveBasicType & InteractiveNodeResponseType;
