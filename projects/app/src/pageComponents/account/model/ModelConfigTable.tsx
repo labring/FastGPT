@@ -735,6 +735,30 @@ const DefaultModelModal = ({
             />
           </Box>
         </Box>
+        <Box mt={4}>
+          <Flex {...labelStyles} alignItems={'center'}>
+            <Box mr={0.5}>{t('account_model:evaluation_model')}</Box>
+            <QuestionTip label={t('account_model:evaluation_model_tip')} />
+          </Flex>
+          <Box flex={1}>
+            <AIModelSelector
+              bg="myGray.50"
+              value={defaultData.evaluation?.model}
+              list={llmModelList
+                .filter((item) => item.useInEvaluation)
+                .map((item) => ({
+                  value: item.model,
+                  label: item.name
+                }))}
+              onChange={(e) => {
+                setDefaultData((state) => ({
+                  ...state,
+                  evaluationLLM: llmModelList.find((item) => item.model === e)
+                }));
+              }}
+            />
+          </Box>
+        </Box>
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} mr={4} onClick={onClose}>
@@ -750,7 +774,8 @@ const DefaultModelModal = ({
               [ModelTypeEnum.stt]: defaultData.stt?.model,
               [ModelTypeEnum.rerank]: defaultData.rerank?.model,
               datasetTextLLM: defaultData.datasetTextLLM?.model,
-              datasetImageLLM: defaultData.datasetImageLLM?.model
+              datasetImageLLM: defaultData.datasetImageLLM?.model,
+              evaluation: defaultData.evaluation?.model
             })
           }
         >

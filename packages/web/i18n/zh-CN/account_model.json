@@ -89,5 +89,7 @@
   "vlm_model": "图片理解模型",
   "vlm_model_tip": "用于知识库中对文档中的图片进行额外的索引生成",
   "volunme_of_failed_calls": "调用失败量",
-  "waiting_test": "等待测试"
+  "waiting_test": "等待测试",
+  "evaluation_model": "评测模型",
+  "evaluation_model_tip": "用于应用评测，及评测数据集中针对数据质量的评测。"
 }

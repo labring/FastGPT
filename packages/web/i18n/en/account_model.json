@@ -89,5 +89,7 @@
   "vlm_model": "Vlm",
   "vlm_model_tip": "Used to generate additional indexing of images in a document in the knowledge base",
   "volunme_of_failed_calls": "Error amount",
-  "waiting_test": "Waiting for testing"
+  "waiting_test": "Waiting for testing",
+  "evaluation_model": "评测模型",
+  "evaluation_model_tip": "用于应用评测，及评测数据集中针对数据质量的评测。"
 }
