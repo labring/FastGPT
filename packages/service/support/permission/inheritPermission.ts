@@ -10,7 +10,11 @@ import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getResourceOwnedClbs } from './controller';
 import { MongoResourcePermission } from './schema';
 import type { ClientSession, Model, AnyBulkWriteOperation } from '../../common/mongo';
-import { getCollaboratorId, sumPer } from '@fastgpt/global/support/permission/utils';
+import {
+  getCollaboratorId,
+  mergeCollaboratorList,
+  sumPer
+} from '@fastgpt/global/support/permission/utils';
 import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 import { pickCollaboratorIdFields } from './utils';
 
@@ -210,31 +214,39 @@ export async function resumeInheritPermission({
   session?: ClientSession;
 }) {
   const isFolder = folderTypeList.includes(resource.type);
-  const fn = async (session: ClientSession) => {
-    // update the resource permission
-    await resourceModel.updateOne(
-      {
-        _id: resource._id
-      },
-      {
-        inheritPermission: true
-      },
-      { session }
-    );
-
-    // Folder resource, need to sync children
-    const parentClbs = await getResourceOwnedClbs({
+  // Folder resource, need to sync children
+  const [parentClbs, oldMyClbs] = await Promise.all([
+    getResourceOwnedClbs({
       resourceId: resource.parentId,
       teamId: resource.teamId,
-      resourceType,
-      session
-    });
+      resourceType
+    }),
+    getResourceOwnedClbs({
+      resourceId: resource._id,
+      teamId: resource.teamId,
+      resourceType
+    })
+  ]);
 
+  const parentOwner = parentClbs.find((clb) => clb.permission === OwnerRoleVal);
+
+  const collaborators = mergeCollaboratorList({
+    parentClbs,
+    childClbs: oldMyClbs
+  });
+  const parentManage = collaborators.find(
+    (clb) => parentOwner?.tmbId && clb.tmbId && parentOwner?.tmbId === clb.tmbId
+  );
+  if (parentManage) parentManage.permission = ManageRoleVal;
+
+  console.log(collaborators);
+
+  const fn = async (session: ClientSession) => {
     if (isFolder) {
       // sync self
       await syncCollaborators({
         resourceType,
-        collaborators: parentClbs,
+        collaborators,
         teamId: resource.teamId,
         resourceId: resource._id,
         session
@@ -246,9 +258,19 @@ export async function resumeInheritPermission({
         folderTypeList,
         resourceType,
         session,
-        collaborators: parentClbs
+        collaborators
       });
     }
+
+    await resourceModel.updateOne(
+      {
+        _id: resource._id
+      },
+      {
+        inheritPermission: true
+      },
+      { session }
+    );
   };
 
   if (session) {

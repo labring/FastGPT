@@ -38,10 +38,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/training/utils';
-import {
-  getResourceClbs,
-  getResourceOwnedClbs
-} from '@fastgpt/service/support/permission/controller';
+import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
 
 export type DatasetUpdateQuery = {};
 export type DatasetUpdateResponse = any;

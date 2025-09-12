@@ -35,7 +35,8 @@ export const TeamRoleList: RoleListType<TeamRoleKeyEnum> = {
   },
   [CommonPerKeyEnum.write]: {
     ...CommonRoleList[CommonPerKeyEnum.write],
-    value: 0b000010
+    value: 0b000010,
+    checkBoxType: 'hidden'
   },
   [CommonPerKeyEnum.manage]: {
     ...CommonRoleList[CommonPerKeyEnum.manage],

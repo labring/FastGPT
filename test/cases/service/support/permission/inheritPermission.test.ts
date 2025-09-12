@@ -1,10 +1,10 @@
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
+  ManageRoleVal,
   OwnerRoleVal,
   PerResourceTypeEnum,
   ReadRoleVal
 } from '@fastgpt/global/support/permission/constant';
-import { Types } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
@@ -46,7 +46,7 @@ describe('syncChildrenPermission', () => {
       return app;
     });
 
-  it('create folders', async () => {
+  it('sync: add/update/delete clbs', async () => {
     const users = await getFakeUsers(5);
     const f1 = await createApp({
       user: users.owner,
@@ -159,5 +159,88 @@ describe('syncChildrenPermission', () => {
         resourceType: 'app'
       })
     ).eq(9);
+
+    // update
+    await mongoSessionRun(async (session) => {
+      const clbs = [
+        {
+          tmbId: String(users.owner.tmbId),
+          permission: OwnerRoleVal
+        },
+        {
+          tmbId: String(users.members[0].tmbId),
+          permission: ReadRoleVal
+        },
+        {
+          tmbId: String(users.members[1].tmbId),
+          permission: ManageRoleVal
+        }
+      ];
+      await syncChildrenPermission({
+        collaborators: clbs,
+        folderTypeList: AppFolderTypeList,
+        resource: f1,
+        resourceModel: MongoApp,
+        resourceType: PerResourceTypeEnum.app,
+        session
+      });
+
+      await MongoResourcePermission.updateOne(
+        {
+          resourceType: PerResourceTypeEnum.app,
+          resourceId: String(f1._id),
+          tmbId: String(users.members[1].tmbId)
+        },
+        {
+          permission: ManageRoleVal
+        }
+      );
+    });
+
+    // console.log(await MongoResourcePermission.find({ resourceType: 'app' }));
+
+    expect(
+      await MongoResourcePermission.countDocuments({
+        resourceType: 'app'
+      })
+    ).eq(9);
+
+    // delete
+    await mongoSessionRun(async (session) => {
+      const clbs = [
+        {
+          tmbId: String(users.owner.tmbId),
+          permission: OwnerRoleVal
+        },
+        {
+          tmbId: String(users.members[0].tmbId),
+          permission: ReadRoleVal
+        }
+      ];
+      await syncChildrenPermission({
+        collaborators: clbs,
+        folderTypeList: AppFolderTypeList,
+        resource: f1,
+        resourceModel: MongoApp,
+        resourceType: PerResourceTypeEnum.app,
+        session
+      });
+
+      await MongoResourcePermission.deleteOne(
+        {
+          resourceType: PerResourceTypeEnum.app,
+          resourceId: String(f1._id),
+          tmbId: String(users.members[1].tmbId),
+          team: String(users.members[1].teamId)
+        },
+        { session }
+      );
+    });
+
+    expect(
+      await MongoResourcePermission.countDocuments({
+        resourceType: 'app'
+      })
+    ).eq(8);
   });
 });
