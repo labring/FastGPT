@@ -2,6 +2,7 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { EvaluationTaskService } from '@fastgpt/service/core/evaluation/task';
 import type { EvalTarget } from '@fastgpt/global/core/evaluation/type';
+import { ValidationResultUtils } from '@fastgpt/global/core/evaluation/validate';
 import type {
   CreateEvaluationRequest,
   CreateEvaluationResponse
@@ -14,7 +15,6 @@ import {
   checkTeamEvaluationTaskLimit,
   checkTeamAIPoints
 } from '@fastgpt/service/support/permission/teamLimit';
-import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 async function handler(
   req: ApiRequestProps<CreateEvaluationRequest>
@@ -29,8 +29,8 @@ async function handler(
     target,
     evaluators
   });
-  if (!paramValidation.success) {
-    throw new Error(paramValidation.message);
+  if (!paramValidation.isValid) {
+    throw ValidationResultUtils.toError(paramValidation);
   }
 
   const { teamId, tmbId } = await authEvaluationTaskCreate(target as EvalTarget, {

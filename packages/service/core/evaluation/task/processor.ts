@@ -560,7 +560,7 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
     // 1. Call evaluation target (if not already done)
     if (!targetOutput || !targetOutput.actualOutput) {
       try {
-        const targetInstance = createTargetInstance(evalItem.target);
+        const targetInstance = await createTargetInstance(evalItem.target, { validate: false });
         targetOutput = await targetInstance.execute({
           userInput: evalItem.dataItem.userInput,
           context: evalItem.dataItem.context,
@@ -607,7 +607,9 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
 
     if (!evaluatorOutput || !evaluatorOutput.data?.score) {
       try {
-        const evaluatorInstance = createEvaluatorInstance(evalItem.evaluator);
+        const evaluatorInstance = await createEvaluatorInstance(evalItem.evaluator, {
+          validate: false
+        });
 
         evaluatorOutput = await evaluatorInstance.evaluate({
           userInput: evalItem.dataItem.userInput,
