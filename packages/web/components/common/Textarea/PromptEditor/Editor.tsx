@@ -45,7 +45,7 @@ import ListExitPlugin from './plugins/ListExitPlugin';
 import SkillPickerPlugin from './plugins/SkillPickerPlugin';
 import SkillPlugin from './plugins/SkillPlugin';
 import { SkillNode } from './plugins/SkillPlugin/node';
-import type { EditorSkillPickerType } from './plugins/SkillPickerPlugin';
+import type { EditorSkillPickerType, SkillSubItem } from './plugins/SkillPickerPlugin';
 
 const Placeholder = ({ children }: { children: React.ReactNode }) => (
   <Box
@@ -77,6 +77,7 @@ export type EditorProps = {
   variables?: EditorVariablePickerType[];
   variableLabels?: EditorVariableLabelPickerType[];
   skills?: EditorSkillPickerType[];
+  onLoadSubItems?: (toolId: string, toolType: string) => Promise<SkillSubItem[]>;
   value?: string;
   showOpenModal?: boolean;
   minH?: number;
@@ -101,6 +102,7 @@ export default function Editor({
   variables = [],
   variableLabels = [],
   skills = [],
+  onLoadSubItems,
   onChange,
   onChangeText,
   onBlur,
@@ -229,7 +231,7 @@ export default function Editor({
           {skills.length > 0 && (
             <>
               <SkillPlugin skills={skills} />
-              <SkillPickerPlugin skills={skills} isFocus={focus} />
+              <SkillPickerPlugin skills={skills} isFocus={focus} onLoadSubItems={onLoadSubItems} />
             </>
           )}
           <OnBlurPlugin onBlur={onBlur} />

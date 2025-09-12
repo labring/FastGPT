@@ -33,8 +33,11 @@ import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getSystemPlugTemplates, getPluginGroups } from '@/web/core/app/api/plugin';
-import type { EditorSkillPickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin';
+import { getSystemPlugTemplates, getPluginGroups, getMcpChildren } from '@/web/core/app/api/plugin';
+import type {
+  EditorSkillPickerType,
+  SkillSubItem
+} from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 
@@ -151,6 +154,11 @@ const EditForm = ({
                 name: string;
                 avatar: string;
                 canOpen?: boolean;
+                subItems?: {
+                  key: string;
+                  label: string;
+                  description: string;
+                }[];
               }>;
               label: string;
             }
@@ -165,11 +173,14 @@ const EditForm = ({
 
         systemPlugins.forEach((plugin) => {
           if (categoryMap[plugin.templateType]) {
+            const canOpen = plugin.flowNodeType === 'toolSet' || plugin.isFolder;
+
             categoryMap[plugin.templateType].list.push({
               key: plugin.id,
               name: t(parseI18nString(plugin.name, lang)),
               avatar: plugin.avatar || 'core/workflow/template/toolCall',
-              canOpen: plugin.flowNodeType === 'toolSet' || plugin.isFolder
+              canOpen
+              // subItems 将通过 onLoadSubItems 按需加载
             });
           }
         });
@@ -193,6 +204,37 @@ const EditForm = ({
   }, [systemPlugins, pluginGroups, t, i18n?.language]);
 
   console.log('skillTemplates', skillTemplates);
+
+  // 加载工具子项的函数
+  const handleLoadToolSubItems = useCallback(
+    async (toolId: string, toolType: string): Promise<SkillSubItem[]> => {
+      try {
+        const lang = i18n?.language as localeType;
+
+        if (toolType === 'mcp') {
+          // 处理 MCP 工具集
+          const mcpChildren = await getMcpChildren({ id: toolId });
+          return mcpChildren.map((child) => ({
+            key: child.id,
+            label: child.name,
+            description: child.description
+          }));
+        } else {
+          // 处理系统插件
+          const systemPlugins = await getSystemPlugTemplates({ parentId: toolId });
+          return systemPlugins.map((plugin) => ({
+            key: plugin.id,
+            label: t(parseI18nString(plugin.name, lang)),
+            description: t(parseI18nString(plugin.intro, lang))
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to load tool sub items:', error);
+        throw error;
+      }
+    },
+    [i18n?.language, t]
+  );
 
   const selectedModel = getWebLLMModel(appForm.aiSettings.model);
   const tokenLimit = useMemo(() => {
@@ -309,6 +351,7 @@ const EditForm = ({
                 variableLabels={formatVariables}
                 variables={formatVariables}
                 skills={skillTemplates}
+                onLoadSubItems={handleLoadToolSubItems}
                 placeholder={t('common:core.app.tip.systemPromptTip')}
                 title={t('common:core.ai.Prompt')}
                 ExtensionPopover={[OptimizerPopverComponent]}
