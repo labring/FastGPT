@@ -355,5 +355,10 @@
   "workflow.user_file_input": "文件链接",
   "workflow.user_file_input_desc": "用户上传的文档和图片链接",
   "workflow.user_select": "用户选择",
-  "workflow.user_select_tip": "该模块可配置多个选项，以供对话时选择。不同选项可导向不同工作流支线"
+  "workflow.user_select_tip": "该模块可配置多个选项，以供对话时选择。不同选项可导向不同工作流支线",
+  "files_cascader_no_knowledge_base": "不加入知识库",
+  "files_cascader_select_knowledge_base": "请选择知识库",
+  "files_cascader_select_first": "请先选择知识库",
+  "files_cascader_dataset_empty": "该知识库数据集为空",
+  "select_join_location": "选择加入位置"
 }
