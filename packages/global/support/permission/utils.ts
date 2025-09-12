@@ -1,4 +1,5 @@
 import type { CollaboratorIdType, CollaboratorItemType } from './collaborator';
+import { ManageRoleVal, OwnerRoleVal } from './constant';
 import type { RoleValueType } from './type';
 import { type PermissionValueType } from './type';
 /**
@@ -46,7 +47,7 @@ export const checkRoleUpdateConflict = ({
 
   for (const changedClb of changedClbs) {
     const parent = parentClbRoleMap.get(getCollaboratorId(changedClb));
-    if (parent && (changedClb.changedRole & parent.permission) !== 0) {
+    if (parent && ((changedClb.changedRole & parent.permission) !== 0 || changedClb.deleted)) {
       return true;
     }
   }
@@ -134,45 +135,38 @@ export const getChangedCollaborators = ({
 export const getCollaboratorId = (clb: CollaboratorIdType) =>
   (clb.tmbId || clb.groupId || clb.orgId)!;
 
-/**
- * merge collaboratorLists into one list
- * the intersection of the lists will calculate the sumPer.
- */
-export const mergeCollaboratorList = <T extends CollaboratorItemType>(...clbLists: T[][]): T[] => {
-  const merge = (list1: T[], list2: T[]): T[] => {
-    const idToClb = new Map<string, T>();
+export const mergeCollaboratorList = <T extends CollaboratorItemType>({
+  parentClbs,
+  childClbs
+}: {
+  parentClbs: T[];
+  childClbs: T[];
+}) => {
+  const idToClb = new Map<string, T>();
 
-    // Add all items from list1
-    for (const clb of list1) {
-      idToClb.set(getCollaboratorId(clb), { ...clb });
+  // Add all items from list1
+  for (const parentClb of parentClbs) {
+    if (parentClb.permission === OwnerRoleVal) {
+      idToClb.set(getCollaboratorId(parentClb), { ...parentClb, permission: ManageRoleVal });
+      continue;
     }
+    idToClb.set(getCollaboratorId(parentClb), { ...parentClb });
+  }
 
-    // Merge permissions from list2
-    for (const clb2 of list2) {
-      const id = getCollaboratorId(clb2);
-      if (idToClb.has(id)) {
-        // If already exists, merge permission bits
-        const original = idToClb.get(id)!;
-        idToClb.set(id, {
-          ...original,
-          permission: sumPer(original.permission, clb2.permission)!
-        });
-      } else {
-        idToClb.set(id, { ...clb2 });
-      }
+  // Merge permissions from list2
+  for (const childClb of childClbs) {
+    const id = getCollaboratorId(childClb);
+    if (idToClb.has(id)) {
+      // If already exists, merge permission bits
+      const original = idToClb.get(id)!;
+      idToClb.set(id, {
+        ...original,
+        permission: sumPer(original.permission, childClb.permission)!
+      });
+    } else {
+      idToClb.set(id, { ...childClb });
     }
+  }
 
-    return Array.from(idToClb.values());
-  };
-  if (clbLists.length === 0) {
-    return [];
-  }
-  if (clbLists.length === 1) {
-    return clbLists[0];
-  }
-  if (clbLists.length === 2) {
-    const [list1, list2] = clbLists;
-    return merge(list1, list2);
-  }
-  return mergeCollaboratorList(merge(clbLists[0], clbLists[1]), ...clbLists.slice(2));
+  return Array.from(idToClb.values());
 };

@@ -7,13 +7,8 @@ import { type PermissionValueType } from '@fastgpt/global/support/permission/typ
 import { getGroupsByTmbId } from './memberGroup/controllers';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getOrgIdSetWithParentByTmbId } from './org/controllers';
-import {
-  getCollaboratorId,
-  mergeCollaboratorList,
-  sumPer
-} from '@fastgpt/global/support/permission/utils';
+import { getCollaboratorId, sumPer } from '@fastgpt/global/support/permission/utils';
 import { type SyncChildrenPermissionResourceType } from './inheritPermission';
 import { pickCollaboratorIdFields } from './utils';
 import type {
@@ -24,7 +19,6 @@ import { MongoTeamMember } from '../../support/user/team/teamMemberSchema';
 import { MongoOrgModel } from './org/orgSchema';
 import { MongoMemberGroupModel } from './memberGroup/memberGroupSchema';
 import { DEFAULT_ORG_AVATAR, DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
-import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 
 /** get resource permission for a team member
  * If there is no permission for the team member, it will return undefined
@@ -182,86 +176,6 @@ export const getClbsInfo = async ({
       avatar: info?.avatar || (clb.orgId ? DEFAULT_ORG_AVATAR : DEFAULT_TEAM_AVATAR)
     };
   });
-};
-
-/**
- * Get Resource's Collaborators (owned and parent's if it is inherit)
- */
-export const getResourceClbs = async ({
-  resourceType,
-  teamId,
-  resourceId,
-  session,
-  inherit,
-  isFolder,
-  parentId
-}: {
-  teamId: string;
-  session?: ClientSession;
-  parentId: ParentIdType;
-  inherit?: boolean;
-  isFolder?: boolean;
-} & (
-  | {
-      resourceId: ParentIdType;
-      resourceType: Omit<`${PerResourceTypeEnum}`, 'team'>;
-    }
-  | {
-      resourceId: ParentIdType;
-      resourceType: 'team';
-    }
-)) => {
-  const ownedClbs = await getResourceOwnedClbs({
-    resourceType,
-    resourceId,
-    teamId,
-    session
-  });
-  if (inherit === false || isFolder || !parentId || resourceType === 'team') {
-    return ownedClbs;
-  }
-  // otherwise, we need the parent's clbs
-  const parentClbs = await getResourceOwnedClbs({
-    resourceType,
-    resourceId,
-    teamId
-  });
-
-  return mergeCollaboratorList(parentClbs, ownedClbs);
-};
-
-export const delResourcePermissionById = (id: string) => {
-  return MongoResourcePermission.findByIdAndDelete(id);
-};
-export const delResourcePermission = ({
-  session,
-  tmbId,
-  groupId,
-  orgId,
-  ...props
-}: {
-  resourceType: PerResourceTypeEnum;
-  teamId: string;
-  resourceId: string;
-  session?: ClientSession;
-  tmbId?: string;
-  groupId?: string;
-  orgId?: string;
-}) => {
-  // either tmbId or groupId or orgId must be provided
-  if (!tmbId && !groupId && !orgId) {
-    return Promise.reject(CommonErrEnum.missingParams);
-  }
-
-  return MongoResourcePermission.deleteOne(
-    {
-      ...(tmbId ? { tmbId } : {}),
-      ...(groupId ? { groupId } : {}),
-      ...(orgId ? { orgId } : {}),
-      ...props
-    },
-    { session }
-  );
 };
 
 export const createResourceDefaultCollaborators = async ({

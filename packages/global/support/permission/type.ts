@@ -23,7 +23,7 @@ export type RoleListType<T extends string | number | symbol = CommonRoleKeyEnum>
       name: string;
       description: string;
       value: RoleValueType;
-      checkBoxType: 'single' | 'multiple';
+      checkBoxType: 'single' | 'multiple' | 'hidden';
     }>
   >
 >;
