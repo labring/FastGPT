@@ -23,7 +23,7 @@ async function handler(
   const { collectionId } = req.query;
 
   if (!collectionId || typeof collectionId !== 'string' || collectionId.trim().length === 0) {
-    return Promise.reject('collectionId is required and must be a string');
+    return Promise.reject(EvaluationErrEnum.datasetCollectionIdRequired);
   }
 
   const { teamId, tmbId } = await authEvaluationDatasetWrite(collectionId, {
@@ -41,7 +41,7 @@ async function handler(
     }).session(session);
 
     if (!collection) {
-      return Promise.reject(EvaluationErrEnum.evalDatasetCollectionNotFound);
+      return Promise.reject(EvaluationErrEnum.datasetCollectionNotFound);
     }
 
     collectionName = collection.name;
