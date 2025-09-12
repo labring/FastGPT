@@ -34,136 +34,18 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import IntelligentGeneration from '@/pageComponents/dashboard/evaluation/dataset/IntelligentGeneration';
 import ErrorModal from './errorModal';
-
-// 数据集状态类型
-type DatasetStatus =
-  | 'queuing'
-  | 'parsing'
-  | 'generating'
-  | 'generateError'
-  | 'ready'
-  | 'parseError';
-
-// 数据集类型
-interface EvaluationDataset {
-  id: number;
-  name: string;
-  dataCount: number;
-  status: DatasetStatus;
-  createTime: Date | string;
-  updateTime: Date | string;
-  creator: {
-    name: string;
-    avatar: string;
-  };
-  errorMessage?: string; // 异常状态时的错误信息
-}
-
-// 模拟数据
-const mockDatasets: EvaluationDataset[] = [
-  {
-    id: 1,
-    name: '数据集1',
-    dataCount: 100,
-    status: 'queuing',
-    createTime: '2025-05-23T10:36:13.000Z',
-    updateTime: '2025-05-23T10:56:13.000Z',
-    creator: {
-      name: 'violetjam',
-      avatar: '/imgs/avatar/BlueAvatar.svg'
-    }
-  },
-  {
-    id: 2,
-    name: '数据集2',
-    dataCount: 100,
-    status: 'parsing',
-    createTime: '2025-05-23T10:36:13.000Z',
-    updateTime: '2025-05-23T10:56:13.000Z',
-    creator: {
-      name: 'violetjam',
-      avatar: '/imgs/avatar/BlueAvatar.svg'
-    }
-  },
-  {
-    id: 3,
-    name: '数据集3',
-    dataCount: 100,
-    status: 'generating',
-    createTime: '2025-05-23T10:36:13.000Z',
-    updateTime: '2025-05-23T10:56:13.000Z',
-    creator: {
-      name: 'violetjam',
-      avatar: '/imgs/avatar/BlueAvatar.svg'
-    }
-  },
-  {
-    id: 4,
-    name: '数据集4',
-    dataCount: 100,
-    status: 'generateError',
-    createTime: '2025-05-23T10:36:13.000Z',
-    updateTime: '2025-05-23T10:56:13.000Z',
-    creator: {
-      name: 'violetjam',
-      avatar: '/imgs/avatar/BlueAvatar.svg'
-    },
-    errorMessage: '数据生成失败：模型调用异常'
-  },
-  {
-    id: 5,
-    name: '数据集5',
-    dataCount: 100,
-    status: 'ready',
-    createTime: '2025-05-23T10:36:13.000Z',
-    updateTime: '2025-05-23T10:56:13.000Z',
-    creator: {
-      name: 'violetjam',
-      avatar: '/imgs/avatar/BlueAvatar.svg'
-    }
-  },
-  {
-    id: 6,
-    name: '数据集6',
-    dataCount: 0,
-    status: 'parseError',
-    createTime: '2025-05-23T10:36:13.000Z',
-    updateTime: '2025-05-23T10:56:13.000Z',
-    creator: {
-      name: 'violetjam',
-      avatar: '/imgs/avatar/BlueAvatar.svg'
-    },
-    errorMessage: '文件解析失败：格式不支持或文件损坏'
-  }
-];
-
-// 模拟API函数
-const getMockEvaluationDatasets = async (data: any) => {
-  await new Promise((resolve) => setTimeout(resolve, 300));
-
-  const { pageNum, pageSize, searchKey = '' } = data;
-
-  // 过滤数据
-  let filteredDatasets = mockDatasets.filter((dataset) => {
-    const matchesSearch = dataset.name.toLowerCase().includes(searchKey.toLowerCase());
-    return matchesSearch;
-  });
-
-  // 分页
-  const total = filteredDatasets.length;
-  const startIndex = (pageNum - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const list = filteredDatasets.slice(startIndex, endIndex);
-
-  return {
-    list,
-    total
-  };
-};
+import type { listEvalDatasetCollectionResponse } from '@fastgpt/global/core/evaluation/dataset/api';
+import {
+  getEvaluationDatasetList,
+  deleteEvaluationDataset,
+  updateEvaluationDataset
+} from '@/web/core/evaluation/dataset';
 
 const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
   const [searchValue, setSearchValue] = useState('');
-  const [selectedDataset, setSelectedDataset] = useState<EvaluationDataset | null>(null);
+  const [selectedDataset, setSelectedDataset] = useState<listEvalDatasetCollectionResponse | null>(
+    null
+  );
   const router = useRouter();
   const { t } = useTranslation();
   const {
@@ -187,7 +69,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
     data: datasets,
     Pagination,
     getData: fetchData
-  } = usePagination(getMockEvaluationDatasets, {
+  } = usePagination(getEvaluationDatasetList, {
     defaultPageSize: 10,
     params: {
       searchKey: searchValue
@@ -197,30 +79,22 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
   });
 
   // 状态配置
-  const statusConfig = {
+  const statusConfig: Record<listEvalDatasetCollectionResponse['status'], any> = {
     queuing: {
       label: t('dashboard_evaluation:status_queuing'),
       colorSchema: 'gray'
     },
-    parsing: {
-      label: t('dashboard_evaluation:status_parsing'),
-      colorSchema: 'blue'
-    },
-    generating: {
-      label: t('dashboard_evaluation:status_generating'),
-      colorSchema: 'blue'
-    },
-    generateError: {
-      label: t('dashboard_evaluation:status_generate_error'),
+    error: {
+      label: t('dashboard_evaluation:generation_error'),
       colorSchema: 'red'
     },
     ready: {
       label: t('dashboard_evaluation:status_ready'),
       colorSchema: 'green'
     },
-    parseError: {
-      label: t('dashboard_evaluation:status_parse_error'),
-      colorSchema: 'red'
+    processing: {
+      label: t('dashboard_evaluation:data_generating'),
+      colorSchema: 'primary.600'
     }
   };
 
@@ -232,19 +106,18 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
     title: t('dashboard_evaluation:rename')
   });
 
-  // 模拟更新数据集名称的请求
+  // 更新数据集名称的请求
   const { runAsync: onUpdateDatasetName, loading: isUpdating } = useRequest2(
-    (datasetId: number, newName: string) => {
-      console.log('updateDatasetName', datasetId, newName);
-      return Promise.resolve();
+    (collectionId: string, name: string) => {
+      return updateEvaluationDataset({ collectionId, name });
     },
     {
-      successToast: '更新成功'
+      successToast: t('common:update_success')
     }
   );
 
   // 渲染状态标签
-  const renderStatus = (dataset: EvaluationDataset) => {
+  const renderStatus = (dataset: listEvalDatasetCollectionResponse) => {
     const config = statusConfig[dataset.status];
 
     // 如果状态配置不存在，返回默认状态
@@ -252,7 +125,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
       return <Text>-</Text>;
     }
 
-    const isErrorStatus = dataset.status === 'generateError' || dataset.status === 'parseError';
+    const isErrorStatus = dataset.status === 'error';
 
     return (
       <MyTooltip
@@ -283,24 +156,22 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
     );
   };
 
-  const handleDeleteDataset = (datasetId: number) => {
-    console.log('deleteDataset:', datasetId);
-  };
+  const { runAsync: onDelDataset } = useRequest2(deleteEvaluationDataset, {
+    successToast: t('common:delete_success'),
+    errorToast: t('dashboard_evaluation:delete_dataset_error')
+  });
 
-  const handleRenameDataset = (dataset: EvaluationDataset) => {
+  const handleRenameDataset = (dataset: listEvalDatasetCollectionResponse) => {
     onOpenEditTitleModal({
       defaultVal: dataset.name,
       onSuccess: async (newName) => {
-        await onUpdateDatasetName(dataset.id, newName);
+        await onUpdateDatasetName(dataset._id, newName);
         fetchData();
       }
     });
   };
 
   const handleCreateDataset = (type: 'smart' | 'import') => {
-    console.log('createDataset:', type);
-    onCloseCreateModal();
-
     if (type === 'smart') {
       onOpenIntelligentModal();
     } else {
@@ -309,26 +180,18 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
     }
   };
 
-  const handleIntelligentGenerationConfirm = useCallback(
-    (data: any) => {
-      console.log('generateDataset:', data);
-      onCloseIntelligentModal();
-      // 这里应该调用API创建数据集
-    },
-    [onCloseIntelligentModal]
-  );
+  const handleIntelligentGenerationConfirm = useCallback(() => {
+    onCloseIntelligentModal();
+    fetchData();
+  }, [onCloseIntelligentModal, fetchData]);
 
   const handleRetryDataset = (id?: string) => {
-    console.log('retryDataset:', id);
     onCloseErrorModal();
-    // 这里应该调用API重试数据集
     fetchData();
   };
 
   const handleDeleteErrorDataset = (id: string) => {
-    console.log('deleteErrorDataset:', id);
     onCloseErrorModal();
-    // 这里应该调用API删除数据集
     fetchData();
   };
 
@@ -401,13 +264,15 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
             <Tbody>
               {datasets.map((dataset) => (
                 <Tr
-                  key={dataset.id}
+                  key={dataset._id}
+                  cursor={'pointer'}
                   _hover={{ bg: 'myGray.100' }}
                   onClick={() => {
                     router.push({
                       pathname: '/dashboard/evaluation/dataset/detail',
                       query: {
-                        datasetId: 'TODO-lyx'
+                        collectionId: dataset._id,
+                        collectionName: dataset.name
                       }
                     });
                   }}
@@ -422,8 +287,8 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
                   <Td>
                     <UserBox
                       sourceMember={{
-                        avatar: dataset.creator.avatar,
-                        name: dataset.creator.name,
+                        avatar: dataset.creatorAvatar,
+                        name: dataset.creatorName,
                         status: 'active'
                       }}
                       fontSize="sm"
@@ -439,7 +304,9 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
                             {
                               icon: 'edit',
                               label: t('dashboard_evaluation:rename'),
-                              onClick: () => handleRenameDataset(dataset)
+                              onClick: () => {
+                                handleRenameDataset(dataset);
+                              }
                             }
                           ]
                         },
@@ -452,7 +319,9 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
                               onClick: () =>
                                 openConfirm(
                                   async () => {
-                                    await handleDeleteDataset(dataset.id);
+                                    await onDelDataset({
+                                      collectionId: dataset._id
+                                    });
                                     fetchData();
                                   },
                                   undefined,
@@ -483,7 +352,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
           onClose={onCloseErrorModal}
           errorType="all"
           errorInfo={{
-            id: selectedDataset.id.toString(),
+            id: selectedDataset?.id?.toString(),
             title: selectedDataset.name,
             status: selectedDataset.status === 'parseError' ? 400 : 500,
             errorMessage: selectedDataset.errorMessage || t('dashboard_evaluation:error_details')
