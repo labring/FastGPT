@@ -459,3 +459,20 @@ export const authEvaluationDatasetDataUpdateById = async (
   const collectionId = String(dataItem.datasetId);
   return await authEvaluationDatasetDataUpdate(collectionId, auth);
 };
+
+export const authEvaluationDatasetDataReadById = async (
+  dataId: string,
+  auth: AuthModeType
+): Promise<{
+  teamId: string;
+  tmbId: string;
+  collectionId: string;
+}> => {
+  const dataItem = await MongoEvalDatasetData.findById(dataId).select('datasetId').lean();
+  if (!dataItem) {
+    throw new Error(EvaluationErrEnum.evalDatasetDataNotFound);
+  }
+
+  const collectionId = String(dataItem.datasetId);
+  return await authEvaluationDatasetDataRead(collectionId, auth);
+};
