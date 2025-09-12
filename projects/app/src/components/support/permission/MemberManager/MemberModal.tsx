@@ -152,7 +152,6 @@ function MemberModal({ onClose }: { onClose: () => void }) {
 
     const isConflict = checkRoleUpdateConflict({
       parentClbs: _parentClbs,
-      oldRealClbs,
       newChildClbs
     });
     if (isConflict && isInheritPermission) {
