@@ -976,6 +976,7 @@
   "permission.change_owner_success": "Ownership Transferred Successfully",
   "permission.change_owner_tip": "Your permissions will not be retained after the transfer",
   "permission.change_owner_to": "Transfer to",
+  "permission.common_member": "Common members",
   "permission.manager": "administrator",
   "permission.read": "Read permission",
   "permission.write": "write permission",
