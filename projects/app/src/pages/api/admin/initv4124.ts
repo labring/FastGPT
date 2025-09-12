@@ -79,7 +79,7 @@ async function handler(
   );
 
   return {
-    message: 'App, Dataset, Team owner collaborator create/delete completed successfully'
+    message: 'Success'
   };
 }
 
