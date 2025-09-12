@@ -44,6 +44,7 @@ export type CollaboratorContextType = MemberManagerInputPropsType & {
   refetchCollaboratorList: () => void;
   isFetchingCollaborator: boolean;
   getRoleLabelList: (role: RoleValueType) => string[];
+  isInheritPermission?: boolean;
 };
 
 export type ChildrenProps = {
@@ -73,7 +74,8 @@ export const CollaboratorContext = createContext<CollaboratorContextType>({
     throw new Error('Function not implemented.');
   },
   isFetchingCollaborator: false,
-  permission: new Permission()
+  permission: new Permission(),
+  isInheritPermission: false
 });
 
 const CollaboratorContextProvider = ({
@@ -85,7 +87,8 @@ const CollaboratorContextProvider = ({
   children,
   refetchResource,
   refreshDeps = [],
-  defaultRole
+  defaultRole,
+  isInheritPermission
 }: MemberManagerInputPropsType & {
   children: (props: ChildrenProps) => ReactNode;
   refetchResource?: () => void;
@@ -199,7 +202,8 @@ const CollaboratorContextProvider = ({
     getRoleLabelList,
     defaultRole,
     parentClbList,
-    myRole
+    myRole,
+    isInheritPermission
   };
 
   return (

@@ -18,7 +18,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { useTranslation } from 'next-i18next';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { CollaboratorContext } from './context';
 import MemberItemCard from './MemberItemCard';
@@ -35,7 +35,7 @@ import {
 } from '@fastgpt/global/support/permission/utils';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { ManageRoleVal, OwnerRoleVal } from '@fastgpt/global/support/permission/constant';
-import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
+import { isObjectIdOrHexString } from 'mongoose';
 
 const HoverBoxStyle = {
   bgColor: 'myGray.50',
@@ -46,6 +46,7 @@ function MemberModal({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
   const collaboratorDetailList = useContextSelector(CollaboratorContext, (v) => v.collaboratorList);
+  const isInheritPermission = useContextSelector(CollaboratorContext, (v) => v.isInheritPermission);
   const defaultRole = useContextSelector(CollaboratorContext, (v) => v.defaultRole);
   const [filterClass, setFilterClass] = useState<'member' | 'org' | 'group'>();
   const {
@@ -59,11 +60,7 @@ function MemberModal({ onClose }: { onClose: () => void }) {
     setSearchKey
   } = useOrg({ withPermission: false });
 
-  const {
-    data: members,
-    ScrollData: TeamMemberScrollData,
-    refreshList
-  } = useScrollPagination(getTeamMembers, {
+  const { data: members, ScrollData: TeamMemberScrollData } = useScrollPagination(getTeamMembers, {
     pageSize: 15,
     params: {
       withPermission: true,
@@ -76,11 +73,7 @@ function MemberModal({ onClose }: { onClose: () => void }) {
     refreshDeps: [searchKey]
   });
 
-  const {
-    data: groups = [],
-    loading: loadingGroupsAndOrgs,
-    runAsync: refreshGroups
-  } = useRequest2(
+  const { data: groups = [], loading: loadingGroupsAndOrgs } = useRequest2(
     async () => {
       if (!userInfo?.team?.teamId) return [];
       return getGroupList<false>({
@@ -129,7 +122,6 @@ function MemberModal({ onClose }: { onClose: () => void }) {
     }
   );
 
-  // TODO: I18n
   const { openConfirm: openConfirmDisableInheritPer, ConfirmModal: ConfirmDisableInheritPer } =
     useConfirm({
       content: t('common:permission.Remove InheritPermission Confirm')
@@ -146,28 +138,33 @@ function MemberModal({ onClose }: { onClose: () => void }) {
       permission: clb.permission.role
     }));
 
-    const oldRealClbs = mergeCollaboratorList({
-      childClbs: collaboratorDetailList.map((clb) => ({
-        ...clb,
-        permission: clb.permission.role
-      })),
-      parentClbs: _parentClbs
-    });
+    const childClbs = collaboratorDetailList.map((clb) => ({
+      ...clb,
+      permission: clb.permission.role
+    }));
+
+    const oldRealClbs = isInheritPermission
+      ? mergeCollaboratorList({
+          childClbs,
+          parentClbs: _parentClbs
+        })
+      : childClbs;
 
     const isConflict = checkRoleUpdateConflict({
       parentClbs: _parentClbs,
       oldRealClbs,
       newChildClbs
     });
-    if (!isConflict) {
-      return _onConfirm();
+    if (isConflict && isInheritPermission) {
+      return openConfirmDisableInheritPer(_onConfirm)();
     } else {
-      openConfirmDisableInheritPer(_onConfirm)();
+      return _onConfirm();
     }
   }, [
     _onConfirm,
     collaboratorDetailList,
     editCollaborators,
+    isInheritPermission,
     openConfirmDisableInheritPer,
     parentClbs
   ]);
@@ -177,6 +174,32 @@ function MemberModal({ onClose }: { onClose: () => void }) {
     { label: t('user:team.org.org'), icon: DEFAULT_ORG_AVATAR, value: 'org' },
     { label: t('user:team.group.group'), icon: DEFAULT_TEAM_AVATAR, value: 'group' }
   ]);
+
+  const memberWithPer = useMemo(() => {
+    const map = new Map(collaboratorDetailList.map((clb) => [getCollaboratorId(clb), { ...clb }]));
+    return members.map((member) => {
+      const clb = map.get(getCollaboratorId(member));
+      return {
+        ...member,
+        permission: new Permission({
+          role: clb?.permission.role
+        })
+      };
+    });
+  }, [collaboratorDetailList, members]);
+
+  const orgMembersWithPer = useMemo(() => {
+    const map = new Map(collaboratorDetailList.map((clb) => [getCollaboratorId(clb), { ...clb }]));
+    return orgMembers.map((member) => {
+      const clb = map.get(getCollaboratorId(member));
+      return {
+        ...member,
+        permission: new Permission({
+          role: clb?.permission.role
+        })
+      };
+    });
+  }, [collaboratorDetailList, orgMembers]);
 
   return (
     <>
@@ -281,7 +304,7 @@ function MemberModal({ onClose }: { onClose: () => void }) {
                   (() => {
                     const MemberList = (
                       <RenderMemberList
-                        members={members}
+                        members={memberWithPer}
                         setCollaboratorList={setCollaboratorList}
                         editCollaborators={editCollaborators}
                         defaultRole={defaultRole}
@@ -353,7 +376,7 @@ function MemberModal({ onClose }: { onClose: () => void }) {
                       <OrgMemberScrollData px={2}>
                         {Orgs}
                         <RenderMemberList
-                          members={orgMembers}
+                          members={orgMembersWithPer}
                           setCollaboratorList={setCollaboratorList}
                           editCollaborators={editCollaborators}
                           defaultRole={defaultRole}
@@ -471,7 +494,7 @@ const RenderMemberList = ({
   editCollaborators,
   defaultRole
 }: {
-  members: TeamMemberItemType[];
+  members: Array<Omit<TeamMemberItemType, 'permission'> & { permission: Permission }>;
   setCollaboratorList: React.Dispatch<React.SetStateAction<CollaboratorItemDetailType[]>>;
   editCollaborators: CollaboratorItemDetailType[];
   defaultRole: RoleValueType;
