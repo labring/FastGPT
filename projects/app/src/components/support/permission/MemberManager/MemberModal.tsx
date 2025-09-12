@@ -30,10 +30,12 @@ import type { RoleValueType } from '@fastgpt/global/support/permission/type';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 import {
   checkRoleUpdateConflict,
-  getCollaboratorId
+  getCollaboratorId,
+  mergeCollaboratorList
 } from '@fastgpt/global/support/permission/utils';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { OwnerRoleVal } from '@fastgpt/global/support/permission/constant';
+import { ManageRoleVal, OwnerRoleVal } from '@fastgpt/global/support/permission/constant';
+import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 
 const HoverBoxStyle = {
   bgColor: 'myGray.50',
@@ -134,19 +136,28 @@ function MemberModal({ onClose }: { onClose: () => void }) {
     });
 
   const onConfirm = useCallback(() => {
+    const _parentClbs = parentClbs.map((clb) => ({
+      ...clb,
+      permission: clb.permission.role === OwnerRoleVal ? ManageRoleVal : clb.permission.role
+    }));
+
+    const newChildClbs = editCollaborators.map((clb) => ({
+      ...clb,
+      permission: clb.permission.role
+    }));
+
+    const oldRealClbs = mergeCollaboratorList({
+      childClbs: collaboratorDetailList.map((clb) => ({
+        ...clb,
+        permission: clb.permission.role
+      })),
+      parentClbs: _parentClbs
+    });
+
     const isConflict = checkRoleUpdateConflict({
-      parentClbs: parentClbs.map((clb) => ({
-        ...clb,
-        permission: clb.permission.role
-      })),
-      oldRealClbs: collaboratorDetailList.map((clb) => ({
-        ...clb,
-        permission: clb.permission.role
-      })),
-      newChildClbs: editCollaborators.map((clb) => ({
-        ...clb,
-        permission: clb.permission.role
-      }))
+      parentClbs: _parentClbs,
+      oldRealClbs,
+      newChildClbs
     });
     if (!isConflict) {
       return _onConfirm();

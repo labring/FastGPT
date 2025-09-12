@@ -23,7 +23,6 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';

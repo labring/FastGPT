@@ -7,13 +7,8 @@ import { type PermissionValueType } from '@fastgpt/global/support/permission/typ
 import { getGroupsByTmbId } from './memberGroup/controllers';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getOrgIdSetWithParentByTmbId } from './org/controllers';
-import {
-  getCollaboratorId,
-  mergeCollaboratorList,
-  sumPer
-} from '@fastgpt/global/support/permission/utils';
+import { getCollaboratorId, sumPer } from '@fastgpt/global/support/permission/utils';
 import { type SyncChildrenPermissionResourceType } from './inheritPermission';
 import { pickCollaboratorIdFields } from './utils';
 import type {
@@ -24,7 +19,6 @@ import { MongoTeamMember } from '../../support/user/team/teamMemberSchema';
 import { MongoOrgModel } from './org/orgSchema';
 import { MongoMemberGroupModel } from './memberGroup/memberGroupSchema';
 import { DEFAULT_ORG_AVATAR, DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
-import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 
 /** get resource permission for a team member
  * If there is no permission for the team member, it will return undefined
