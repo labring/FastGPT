@@ -498,7 +498,7 @@ const InputTypeConfig = ({
                   .filter(Boolean) as { id: string; value: string }[];
                 removeEnums();
                 newSelectEnums.forEach((item) =>
-                  appendEnums({ label: item.value, value: item.value })
+                  appendEnums({ label: item.label, value: item.value })
                 );
 
                 // 防止最后一个元素被focus
