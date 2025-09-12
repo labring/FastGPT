@@ -17,6 +17,7 @@ import { useBasicTypeaheadTriggerMatch } from '../../utils';
 import Avatar from '../../../../Avatar';
 import MyIcon from '../../../../Icon';
 import { createKeyboardHandlers } from './utils';
+import type { OnAddToolFromEditor } from '../../type';
 export type SkillSubItem = {
   key: string;
   label: string;
@@ -55,11 +56,13 @@ export type EditorSkillPickerType = {
 export default function SkillPickerPlugin({
   skills,
   isFocus,
-  onLoadSubItems
+  onLoadSubItems,
+  onAddToolFromEditor
 }: {
   skills: EditorSkillPickerType[];
   isFocus: boolean;
   onLoadSubItems?: (toolId: string, toolType: string) => Promise<SkillSubItem[]>;
+  onAddToolFromEditor?: OnAddToolFromEditor;
 }) {
   const [editor] = useLexicalComposerContext();
 
@@ -106,18 +109,11 @@ export default function SkillPickerPlugin({
         [toolId]: { loading: true }
       }));
 
-      try {
-        const subItems = await onLoadSubItems(toolId, toolType);
-        setToolSubItemsCache((prev) => ({
-          ...prev,
-          [toolId]: { loading: false, data: subItems }
-        }));
-      } catch (error) {
-        // setToolSubItemsCache((prev) => ({
-        //   ...prev,
-        //   [toolId]: { loading: false, error: error?.message || '加载失败' }
-        // }));
-      }
+      const subItems = await onLoadSubItems(toolId, toolType);
+      setToolSubItemsCache((prev) => ({
+        ...prev,
+        [toolId]: { loading: false, data: subItems }
+      }));
     },
     [onLoadSubItems, toolSubItemsCache]
   );
@@ -205,7 +201,8 @@ export default function SkillPickerPlugin({
       setSecondaryIndex,
       setTertiaryIndex,
       resetMenuState,
-      toolSubItemsCache
+      toolSubItemsCache,
+      onAddToolFromEditor
     });
   }, [
     selectedSkillType,
@@ -216,7 +213,8 @@ export default function SkillPickerPlugin({
     setSecondaryIndex,
     setTertiaryIndex,
     resetMenuState,
-    toolSubItemsCache
+    toolSubItemsCache,
+    onAddToolFromEditor
   ]);
   useEffect(() => {
     if (!isFocus) return;

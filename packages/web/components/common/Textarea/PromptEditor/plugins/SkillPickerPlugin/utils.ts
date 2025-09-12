@@ -1,6 +1,7 @@
 import type { LexicalEditor } from 'lexical';
 import { $createTextNode, $getSelection, $isRangeSelection } from 'lexical';
 import type { SkillSubItem, SkillToolCategory, SkillToolItem } from './index';
+import type { OnAddToolFromEditor } from '../../type';
 
 /**
  * 技能选择器键盘导航工具函数
@@ -30,6 +31,7 @@ export type KeyboardHandlerParams = {
       error?: string;
     };
   };
+  onAddToolFromEditor?: OnAddToolFromEditor;
 };
 
 /**
@@ -289,9 +291,20 @@ export const handleEnter = (
       selectedSubItem = subItems?.[tertiaryIndex];
     }
 
-    if (selectedSubItem) {
+    if (selectedSubItem && currentItem && params.onAddToolFromEditor) {
       event?.preventDefault();
       event?.stopPropagation();
+
+      // 调用回调添加工具并获取instanceId
+      const instanceId = params.onAddToolFromEditor({
+        toolKey: currentItem.key,
+        toolName: currentItem.name,
+        toolAvatar: currentItem.avatar,
+        parentKey: currentItem.key,
+        subItemKey: selectedSubItem.key,
+        subItemLabel: selectedSubItem.label
+      });
+
       editor.update(() => {
         const selection = $getSelection();
         if (!$isRangeSelection(selection)) return;
@@ -313,8 +326,8 @@ export const handleEnter = (
           }
         }
 
-        // 插入技能标记（使用子项的key）
-        selection.insertNodes([$createTextNode(`{{@${selectedSubItem.key}@}}`)]);
+        // 插入工具实例ID
+        selection.insertNodes([$createTextNode(`{{@${instanceId}@}}`)]);
         // 插入完成后重置菜单状态
         resetMenuState();
       });
@@ -324,11 +337,18 @@ export const handleEnter = (
     // 选择二级菜单项
     const toolGroups = selectedSkillType ? getToolCategories(selectedSkillType) : [];
     const totalItems = getFlatItemsCount(toolGroups);
-    if (totalItems > 0) {
+    if (totalItems > 0 && params.onAddToolFromEditor) {
       event?.preventDefault();
       event?.stopPropagation();
       const selectedOption = getFlatItemByIndex(toolGroups, secondaryIndex);
       if (selectedOption) {
+        // 调用回调添加工具并获取instanceId
+        const instanceId = params.onAddToolFromEditor({
+          toolKey: selectedOption.key,
+          toolName: selectedOption.name,
+          toolAvatar: selectedOption.avatar
+        });
+
         editor.update(() => {
           const selection = $getSelection();
           if (!$isRangeSelection(selection)) return;
@@ -350,8 +370,8 @@ export const handleEnter = (
             }
           }
 
-          // 插入技能标记
-          selection.insertNodes([$createTextNode(`{{@${selectedOption.key}@}}`)]);
+          // 插入工具实例ID
+          selection.insertNodes([$createTextNode(`{{@${instanceId}@}}`)]);
           // 插入完成后重置菜单状态
           resetMenuState();
         });

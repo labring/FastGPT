@@ -28,7 +28,7 @@ import VariablePlugin from './plugins/VariablePlugin';
 import { VariableNode } from './plugins/VariablePlugin/node';
 import type { EditorState, LexicalEditor } from 'lexical';
 import OnBlurPlugin from './plugins/OnBlurPlugin';
-import type { FormPropsType } from './type';
+import type { FormPropsType, OnAddToolFromEditor } from './type';
 import { type EditorVariableLabelPickerType, type EditorVariablePickerType } from './type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import FocusPlugin from './plugins/FocusPlugin';
@@ -78,6 +78,8 @@ export type EditorProps = {
   variableLabels?: EditorVariableLabelPickerType[];
   skills?: EditorSkillPickerType[];
   onLoadSubItems?: (toolId: string, toolType: string) => Promise<SkillSubItem[]>;
+  onAddToolFromEditor?: OnAddToolFromEditor;
+  selectedTools?: any[];
   value?: string;
   showOpenModal?: boolean;
   minH?: number;
@@ -103,6 +105,8 @@ export default function Editor({
   variableLabels = [],
   skills = [],
   onLoadSubItems,
+  onAddToolFromEditor,
+  selectedTools = [],
   onChange,
   onChangeText,
   onBlur,
@@ -123,6 +127,8 @@ export default function Editor({
   const [_, startSts] = useTransition();
   const [focus, setFocus] = useState(false);
   const [scrollHeight, setScrollHeight] = useState(0);
+  console.log('Editor - skills======\n', skills);
+  console.log('Editor - selectedTools======\n', selectedTools);
 
   const initialConfig = {
     namespace: isRichText ? 'richPromptEditor' : 'promptEditor',
@@ -146,7 +152,7 @@ export default function Editor({
   useDeepCompareEffect(() => {
     if (focus) return;
     setKey(getNanoid(6));
-  }, [value, variables, variableLabels]);
+  }, [value, variables, variableLabels, selectedTools]);
 
   const showFullScreenIcon = useMemo(() => {
     return showOpenModal && scrollHeight > maxH;
@@ -230,8 +236,13 @@ export default function Editor({
           {variableLabels.length > 0 && <VariablePickerPlugin variables={variables} />}
           {skills.length > 0 && (
             <>
-              <SkillPlugin skills={skills} />
-              <SkillPickerPlugin skills={skills} isFocus={focus} onLoadSubItems={onLoadSubItems} />
+              <SkillPlugin skills={skills} selectedTools={selectedTools} />
+              <SkillPickerPlugin
+                skills={skills}
+                isFocus={focus}
+                onLoadSubItems={onLoadSubItems}
+                onAddToolFromEditor={onAddToolFromEditor}
+              />
             </>
           )}
           <OnBlurPlugin onBlur={onBlur} />
