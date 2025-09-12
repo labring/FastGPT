@@ -167,10 +167,7 @@ function RoleSelect({
               if (disabled) {
                 return;
               }
-              const per = new Permission({ role });
-              per.removeRole(selectedSingleValue);
-              per.addRole(item.value);
-              onSelectRole(per.role);
+              onSelectRole(item.value);
             };
 
             return (

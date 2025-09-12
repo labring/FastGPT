@@ -179,7 +179,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
           const tmbRole = myPerList.find(
             (item) => String(item.resourceId) === appId && !!item.tmbId
           )?.permission;
-          const groupRole = sumPer(
+          const groupAndOrgRole = sumPer(
             ...myPerList
               .filter(
                 (item) => String(item.resourceId) === appId && (!!item.groupId || !!item.orgId)
@@ -188,7 +188,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
           );
 
           return new AppPermission({
-            role: tmbRole ?? groupRole,
+            role: tmbRole ?? groupAndOrgRole,
             isOwner: String(app.tmbId) === String(tmbId) || teamPer.isOwner
           });
         };
@@ -197,10 +197,10 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
           return roleList.filter((item) => String(item.resourceId) === String(appId)).length;
         };
 
-        // Inherit app, check parent folder clb
+        // Inherit app, check parent folder clb and it's own clb
         if (!AppFolderTypeList.includes(app.type) && app.parentId && app.inheritPermission) {
           return {
-            Per: getPer(String(app.parentId)),
+            Per: getPer(String(app.parentId)).addRole(getPer(String(app._id)).role),
             privateApp: getClbCount(String(app.parentId)) <= 1
           };
         }

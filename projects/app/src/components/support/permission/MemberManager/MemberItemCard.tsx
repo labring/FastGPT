@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Checkbox, Flex, HStack, VStack } from '@chakra-ui/react';
+import { Box, Checkbox, Flex } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import RoleTags from './RoleTags';
 import type { RoleValueType } from '@fastgpt/global/support/permission/type';
