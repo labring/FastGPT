@@ -39,9 +39,5 @@ export const modifiableEvaluationStatusOptions = [
   {
     label: evaluationStatusMap[EvaluationStatus.NeedsImprovement],
     value: EvaluationStatus.NeedsImprovement
-  },
-  {
-    label: evaluationStatusMap[EvaluationStatus.Abnormal],
-    value: EvaluationStatus.Abnormal
   }
 ];

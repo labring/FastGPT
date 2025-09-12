@@ -14,6 +14,7 @@ import {
   PopoverArrow
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -34,6 +35,7 @@ import {
 // 内部组件，使用 Context
 const DataListContent = () => {
   const { t } = useTranslation();
+  const router = useRouter();
   const [searchKey, setSearchKey] = useState('');
   const [status, setStatus] = useState<EvaluationStatus>(EvaluationStatus.All);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
@@ -51,6 +53,8 @@ const DataListContent = () => {
     setEvaluationDataList,
     collectionId
   } = useDataListContext();
+
+  const collectionName = router.query.collectionName as string;
 
   // 删除数据的请求
   const { runAsync: onDeleteData, loading: isDeleting } = useRequest2(deleteEvaluationDatasetData, {
@@ -151,7 +155,9 @@ const DataListContent = () => {
         onIntelligentGenerationModalOpen();
         break;
       case 'file':
-        // 这里可以添加文件导入的逻辑
+        router.push(
+          `/dashboard/evaluation/dataset/fileImport?collectionId=${collectionId}&collectionName=${collectionName}&scene=evaluationDatasetDetail`
+        );
         break;
       case 'manual':
         onManualAddModalOpen();
