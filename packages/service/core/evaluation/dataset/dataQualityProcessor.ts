@@ -85,7 +85,7 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
       [EvalDatasetDataKeyEnum.RetrievalContext]: datasetData.retrievalContext
     };
 
-    const evaluator = createEvaluatorInstance(evaluatorConfig);
+    const evaluator = await createEvaluatorInstance(evaluatorConfig, { validate: false });
     const metricResult = await evaluator.evaluate(evalCase);
 
     if (metricResult.status === 'success' && metricResult.data) {

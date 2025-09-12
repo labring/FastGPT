@@ -1,11 +1,8 @@
 import { validateTargetConfig } from '../target';
+import { validateEvaluatorConfig } from '../evaluator';
 import type { CreateEvaluationParams } from '@fastgpt/global/core/evaluation/type';
+import type { ValidationResult } from '@fastgpt/global/core/evaluation/validate';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
-
-export interface ValidationResult {
-  success: boolean;
-  message?: string;
-}
 
 export type EvaluationValidationParams = Partial<CreateEvaluationParams>;
 
@@ -25,29 +22,53 @@ export async function validateEvaluationParams(
   if (isCreateMode) {
     if (!name || !name.trim()) {
       return {
-        success: false,
-        message: EvaluationErrEnum.evalNameRequired
+        isValid: false,
+        errors: [
+          {
+            code: EvaluationErrEnum.evalNameRequired,
+            message: 'Evaluation name is required',
+            field: 'name'
+          }
+        ]
       };
     }
 
     if (!datasetId) {
       return {
-        success: false,
-        message: EvaluationErrEnum.evalDatasetIdRequired
+        isValid: false,
+        errors: [
+          {
+            code: EvaluationErrEnum.evalDatasetIdRequired,
+            message: 'Dataset ID is required',
+            field: 'datasetId'
+          }
+        ]
       };
     }
 
     if (!target) {
       return {
-        success: false,
-        message: EvaluationErrEnum.evalTargetRequired
+        isValid: false,
+        errors: [
+          {
+            code: EvaluationErrEnum.evalTargetRequired,
+            message: 'Evaluation target is required',
+            field: 'target'
+          }
+        ]
       };
     }
 
     if (!evaluators || !Array.isArray(evaluators) || evaluators.length === 0) {
       return {
-        success: false,
-        message: EvaluationErrEnum.evalEvaluatorsRequired
+        isValid: false,
+        errors: [
+          {
+            code: EvaluationErrEnum.evalEvaluatorsRequired,
+            message: 'At least one evaluator is required',
+            field: 'evaluators'
+          }
+        ]
       };
     }
   }
@@ -56,71 +77,117 @@ export async function validateEvaluationParams(
   if (name !== undefined) {
     if (!name || !name.trim()) {
       return {
-        success: false,
-        message: EvaluationErrEnum.evalNameRequired
+        isValid: false,
+        errors: [
+          {
+            code: EvaluationErrEnum.evalNameRequired,
+            message: 'Evaluation name is required',
+            field: 'name'
+          }
+        ]
       };
     }
 
     if (name.length > 100) {
       return {
-        success: false,
-        message: EvaluationErrEnum.evalNameTooLong
+        isValid: false,
+        errors: [
+          {
+            code: EvaluationErrEnum.evalNameTooLong,
+            message: 'Evaluation name is too long (max 100 characters)',
+            field: 'name',
+            debugInfo: { currentLength: name.length, maxLength: 100 }
+          }
+        ]
       };
     }
   }
 
   if (description !== undefined && description && description.length > 100) {
     return {
-      success: false,
-      message: EvaluationErrEnum.evalDescriptionTooLong
+      isValid: false,
+      errors: [
+        {
+          code: EvaluationErrEnum.evalDescriptionTooLong,
+          message: 'Description is too long (max 100 characters)',
+          field: 'description',
+          debugInfo: { currentLength: description.length, maxLength: 100 }
+        }
+      ]
     };
   }
 
   if (datasetId !== undefined && !datasetId) {
     return {
-      success: false,
-      message: EvaluationErrEnum.evalDatasetIdRequired
+      isValid: false,
+      errors: [
+        {
+          code: EvaluationErrEnum.evalDatasetIdRequired,
+          message: 'Dataset ID is required',
+          field: 'datasetId'
+        }
+      ]
     };
   }
 
   if (target !== undefined) {
     if (!target) {
       return {
-        success: false,
-        message: EvaluationErrEnum.evalTargetRequired
+        isValid: false,
+        errors: [
+          {
+            code: EvaluationErrEnum.evalTargetRequired,
+            message: 'Evaluation target is required',
+            field: 'target'
+          }
+        ]
       };
     }
 
     // Validate target configuration using validateTargetConfig
     const targetValidation = await validateTargetConfig(target);
-    if (!targetValidation.success) {
-      return {
-        success: false,
-        message: EvaluationErrEnum.evalTargetInvalidConfig
-      };
+    if (!targetValidation.isValid) {
+      return targetValidation; // Return the detailed validation result directly
     }
   }
 
   if (evaluators !== undefined) {
     if (!evaluators || !Array.isArray(evaluators) || evaluators.length === 0) {
       return {
-        success: false,
-        message: EvaluationErrEnum.evalEvaluatorsRequired
+        isValid: false,
+        errors: [
+          {
+            code: EvaluationErrEnum.evalEvaluatorsRequired,
+            message: 'At least one evaluator is required',
+            field: 'evaluators'
+          }
+        ]
       };
     }
 
-    // Validate evaluators configuration
-    for (const evaluator of evaluators) {
-      if (!evaluator.metric || !evaluator.metric._id || !evaluator.metric.type) {
-        return {
-          success: false,
-          message: EvaluationErrEnum.evalEvaluatorInvalidConfig
-        };
+    // Validate evaluators configuration using validateEvaluatorConfig
+    for (let i = 0; i < evaluators.length; i++) {
+      const evaluator = evaluators[i];
+
+      // Detailed validation using validateEvaluatorConfig
+      const evaluatorValidation = await validateEvaluatorConfig(evaluator);
+      if (!evaluatorValidation.isValid) {
+        // Prefix error messages with evaluator index for clarity
+        const errors = evaluatorValidation.errors.map((err) => ({
+          ...err,
+          message: `Evaluator at index ${i}: ${err.message}`,
+          field: `evaluators[${i}].${err.field || 'unknown'}`,
+          debugInfo: {
+            evaluatorIndex: i,
+            ...err.debugInfo
+          }
+        }));
+        return { isValid: false, errors };
       }
     }
   }
 
-  return { success: true };
+  return { isValid: true, errors: [] };
 }
 
 export async function validateEvaluationParamsForCreate(

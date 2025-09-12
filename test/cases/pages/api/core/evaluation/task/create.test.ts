@@ -35,8 +35,8 @@ vi.mock('@fastgpt/service/support/user/audit/util', () => ({
 
 vi.mock('@fastgpt/service/core/evaluation/target', () => ({
   validateTargetConfig: vi.fn().mockResolvedValue({
-    success: false,
-    message: 'Target validation failed'
+    isValid: false,
+    errors: [{ code: 'target_validation_failed', message: 'Target validation failed' }]
   })
 }));
 
@@ -128,7 +128,7 @@ describe('Create Evaluation Task API Handler', () => {
     } as any;
 
     (checkTeamAIPoints as any).mockResolvedValue(undefined);
-    (validateTargetConfig as any).mockResolvedValue({ success: true, message: 'Valid' });
+    (validateTargetConfig as any).mockResolvedValue({ isValid: true, errors: [] });
     (EvaluationTaskService.createEvaluation as any).mockResolvedValue(mockEvaluation);
 
     const result = await createHandler(mockReq);
@@ -199,7 +199,7 @@ describe('Create Evaluation Task API Handler', () => {
 
     // 由于target验证在前，空的evaluators测试会被target验证拦截，这里改为测试有效target但空evaluators的情况
     // 需要mock validateTargetConfig返回成功
-    (validateTargetConfig as any).mockResolvedValue({ success: true, message: 'Valid' });
+    (validateTargetConfig as any).mockResolvedValue({ isValid: true, errors: [] });
 
     await expect(createHandler(mockReq)).rejects.toThrow('evaluationEvaluatorsRequired');
   });

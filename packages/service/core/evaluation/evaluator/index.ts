@@ -7,28 +7,154 @@ import type {
   EvalModelConfigType
 } from '@fastgpt/global/core/evaluation/metric/type';
 import type { EvaluatorSchema } from '@fastgpt/global/core/evaluation/type';
+import {
+  Validatable,
+  type ValidationResult,
+  type ValidationError
+} from '@fastgpt/global/core/evaluation/validate';
 import { getLLMModel, getEmbeddingModel } from '../../ai/model';
 import { createDitingClient } from './ditingClient';
 import { formatModelChars2Points } from '../../../support/wallet/usage/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
-export abstract class Evaluator {
+export abstract class Evaluator extends Validatable {
   protected metricConfig: MetricConfig;
   protected llmConfig?: EvalModelConfigType;
   protected embeddingConfig?: EvalModelConfigType;
+  protected evaluatorConfig?: EvaluatorSchema;
 
   constructor(
     metricConfig: MetricConfig,
     llmConfig?: EvalModelConfigType,
-    embeddingConfig?: EvalModelConfigType
+    embeddingConfig?: EvalModelConfigType,
+    evaluatorConfig?: EvaluatorSchema
   ) {
+    super();
     this.llmConfig = llmConfig;
     this.embeddingConfig = embeddingConfig;
     this.metricConfig = metricConfig;
+    this.evaluatorConfig = evaluatorConfig;
   }
 
   abstract evaluate(evalCase: EvalCase): Promise<MetricResult>;
+
+  async validate(): Promise<ValidationResult> {
+    const errors: ValidationError[] = [];
+    const warnings: ValidationError[] = [];
+
+    try {
+      // Validate metric configuration requirements based on evaluatorConfig
+      if (this.evaluatorConfig?.metric.llmRequired && !this.llmConfig) {
+        errors.push({
+          code: EvaluationErrEnum.evaluatorLLmConfigMissing,
+          message: 'LLM configuration is required for this metric',
+          field: 'llmConfig'
+        });
+      }
+
+      if (this.evaluatorConfig?.metric.embeddingRequired && !this.embeddingConfig) {
+        errors.push({
+          code: EvaluationErrEnum.evaluatorEmbeddingConfigMissing,
+          message: 'Embedding configuration is required for this metric',
+          field: 'embeddingConfig'
+        });
+      }
+
+      // Validate metric configuration
+      if (!this.metricConfig) {
+        errors.push({
+          code: EvaluationErrEnum.evaluatorConfigRequired,
+          message: 'Metric configuration is required',
+          field: 'metricConfig'
+        });
+        return { isValid: false, errors, warnings };
+      }
+
+      if (!this.metricConfig.metricName) {
+        errors.push({
+          code: EvaluationErrEnum.evalMetricNameRequired,
+          message: 'Metric name is required',
+          field: 'metricConfig.metricName'
+        });
+      }
+
+      if (!this.metricConfig.metricType) {
+        errors.push({
+          code: EvaluationErrEnum.evalMetricTypeRequired,
+          message: 'Metric type is required',
+          field: 'metricConfig.metricType'
+        });
+      }
+
+      // Validate LLM configuration if provided
+      if (this.llmConfig) {
+        if (!this.llmConfig.name) {
+          errors.push({
+            code: EvaluationErrEnum.evaluatorLLmModelNotFound,
+            message: 'LLM model name is required',
+            field: 'llmConfig.name'
+          });
+        } else {
+          try {
+            getLLMModel(this.llmConfig.name);
+          } catch (err) {
+            errors.push({
+              code: EvaluationErrEnum.evaluatorLLmModelNotFound,
+              message: `LLM model '${this.llmConfig.name}' not found or not accessible`,
+              field: 'llmConfig.name',
+              debugInfo: {
+                modelName: this.llmConfig.name,
+                error: err instanceof Error ? err.message : String(err)
+              }
+            });
+          }
+        }
+      }
+
+      // Validate embedding configuration if provided
+      if (this.embeddingConfig) {
+        if (!this.embeddingConfig.name) {
+          errors.push({
+            code: EvaluationErrEnum.evaluatorEmbeddingModelNotFound,
+            message: 'Embedding model name is required',
+            field: 'embeddingConfig.name'
+          });
+        } else {
+          try {
+            getEmbeddingModel(this.embeddingConfig.name);
+          } catch (err) {
+            errors.push({
+              code: EvaluationErrEnum.evaluatorEmbeddingModelNotFound,
+              message: `Embedding model '${this.embeddingConfig.name}' not found or not accessible`,
+              field: 'embeddingConfig.name',
+              debugInfo: {
+                modelName: this.embeddingConfig.name,
+                error: err instanceof Error ? err.message : String(err)
+              }
+            });
+          }
+        }
+      }
+
+      return {
+        isValid: errors.length === 0,
+        errors,
+        warnings: warnings.length > 0 ? warnings : undefined
+      };
+    } catch (error) {
+      errors.push({
+        code: EvaluationErrEnum.evaluatorConfigRequired,
+        message: `Evaluator validation failed: ${error instanceof Error ? error.message : String(error)}`,
+        debugInfo: {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        }
+      });
+
+      return { isValid: false, errors, warnings };
+    }
+  }
 }
 
 export class DitingEvaluator extends Evaluator {
@@ -37,9 +163,10 @@ export class DitingEvaluator extends Evaluator {
   constructor(
     metricConfig: MetricConfig,
     llmConfig?: EvalModelConfigType,
-    embeddingConfig?: EvalModelConfigType
+    embeddingConfig?: EvalModelConfigType,
+    evaluatorConfig?: EvaluatorSchema
   ) {
-    super(metricConfig, llmConfig, embeddingConfig);
+    super(metricConfig, llmConfig, embeddingConfig, evaluatorConfig);
     this.client = createDitingClient();
   }
 
@@ -87,15 +214,10 @@ export class DitingEvaluator extends Evaluator {
   }
 }
 
-export function createEvaluatorInstance(evaluatorConfig: EvaluatorSchema): Evaluator {
-  if (evaluatorConfig.metric.llmRequired && !evaluatorConfig.runtimeConfig?.llm) {
-    throw new Error(EvaluationErrEnum.evaluatorLLmConfigMissing);
-  }
-
-  if (evaluatorConfig.metric.embeddingRequired && !evaluatorConfig.runtimeConfig?.embedding) {
-    throw new Error(EvaluationErrEnum.evaluatorEmbeddingConfigMissing);
-  }
-
+export async function createEvaluatorInstance(
+  evaluatorConfig: EvaluatorSchema,
+  options: { validate?: boolean } = { validate: true }
+): Promise<Evaluator> {
   const metricConfig: MetricConfig = {
     metricName: evaluatorConfig.metric.name,
     metricType: evaluatorConfig.metric.type,
@@ -131,5 +253,48 @@ export function createEvaluatorInstance(evaluatorConfig: EvaluatorSchema): Evalu
     }
   }
 
-  return new DitingEvaluator(metricConfig, llmConfig, embeddingConfig);
+  const evaluatorInstance = new DitingEvaluator(
+    metricConfig,
+    llmConfig,
+    embeddingConfig,
+    evaluatorConfig
+  );
+
+  // Validate instance if requested (default behavior)
+  if (options.validate) {
+    const validationResult = await evaluatorInstance.validate();
+    if (!validationResult.isValid) {
+      const errorMessages = validationResult.errors
+        .map((err) => `${err.code}: ${err.message}`)
+        .join('; ');
+      throw new Error(`Evaluator instance validation failed: ${errorMessages}`);
+    }
+  }
+
+  return evaluatorInstance;
+}
+
+export async function validateEvaluatorConfig(
+  evaluatorConfig: EvaluatorSchema
+): Promise<ValidationResult> {
+  try {
+    const evaluatorInstance = await createEvaluatorInstance(evaluatorConfig, { validate: false });
+    return await evaluatorInstance.validate();
+  } catch (error) {
+    // If we can't even create the instance, return validation error
+    return {
+      isValid: false,
+      errors: [
+        {
+          code: EvaluationErrEnum.evalEvaluatorInvalidConfig,
+          message: `Failed to create evaluator instance: ${error instanceof Error ? error.message : String(error)}`,
+          debugInfo: {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            metricType: evaluatorConfig.metric?.type
+          }
+        }
+      ]
+    };
+  }
 }
