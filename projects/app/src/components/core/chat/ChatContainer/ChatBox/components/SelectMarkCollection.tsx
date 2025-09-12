@@ -1,21 +1,23 @@
-import React from 'react';
-import { ModalBody, useTheme, ModalFooter, Button, Box, Card, Flex, Grid } from '@chakra-ui/react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { ModalBody, ModalFooter, Button, Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import DatasetSelectModal, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import dynamic from 'next/dynamic';
 import { type AdminFbkType } from '@fastgpt/global/core/chat/type.d';
-import SelectCollections from '@/web/core/dataset/components/SelectCollections';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import FilesCascader from './FilesCascader';
+import type { FileSelection } from './FilesCascader';
 
 const InputDataModal = dynamic(() => import('@/pageComponents/dataset/detail/InputDataModal'));
 
 export type AdminMarkType = {
   feedbackDataId?: string;
   datasetId?: string;
+  datasetName?: string;
+  datasetAvatar?: string;
   collectionId?: string;
+  collectionName?: string;
+  collectionType?: string;
+  noKnowledgeBase?: boolean;
   q: string;
   a?: string;
 };
@@ -32,109 +34,78 @@ const SelectMarkCollection = ({
   onSuccess: (adminFeedback: AdminFbkType) => void;
 }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
-  const { paths, setParentId, datasets, isFetching } = useDatasetSelect();
+
+  // 级联选择器的值
+  const cascaderValue: FileSelection = useMemo(() => {
+    return {
+      datasetId: adminMarkData.datasetId,
+      datasetName: adminMarkData.datasetName,
+      datasetAvatar: adminMarkData.datasetAvatar,
+      collectionId: adminMarkData.collectionId,
+      collectionName: adminMarkData.collectionName,
+      collectionType: adminMarkData.collectionType,
+      noKnowledgeBase: adminMarkData.noKnowledgeBase
+    };
+  }, [adminMarkData]);
+
+  // 处理级联选择器变化
+  const handleCascaderChange = useCallback(
+    (selection: FileSelection) => {
+      setAdminMarkData({
+        ...adminMarkData,
+        ...selection
+      });
+    },
+    [adminMarkData, setAdminMarkData]
+  );
+
+  // 处理确认按钮点击
+  const handleConfirm = useCallback(() => {
+    if (adminMarkData.datasetId && adminMarkData.collectionId) {
+      // 打开输入数据模态框
+      setShowInputDataModal(true);
+    }
+  }, [adminMarkData.datasetId, adminMarkData.collectionId]);
+
+  // 控制是否显示输入数据模态框
+  const [showInputDataModal, setShowInputDataModal] = useState(false);
+
+  // 检查是否可以选择（需要同时选择了数据集和集合，且不是"不加入知识库"）
+  const canConfirm =
+    adminMarkData.datasetId && adminMarkData.collectionId && !adminMarkData.noKnowledgeBase;
 
   return (
     <>
       {/* select dataset */}
-      {!adminMarkData.datasetId && (
-        <DatasetSelectModal
-          isOpen
-          paths={paths}
-          onClose={onClose}
-          setParentId={setParentId}
-          isLoading={isFetching}
-          tips={t('common:core.chat.Select dataset Desc')}
-        >
-          <ModalBody flex={'1 0 0'} overflowY={'auto'}>
-            <Grid
-              display={'grid'}
-              gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']}
-              gridGap={3}
-              userSelect={'none'}
-            >
-              {datasets.map((item) =>
-                (() => {
-                  return (
-                    <Card
-                      key={item._id}
-                      p={3}
-                      border={theme.borders.base}
-                      boxShadow={'sm'}
-                      h={'80px'}
-                      cursor={'pointer'}
-                      _hover={{
-                        boxShadow: 'md'
-                      }}
-                      onClick={() => {
-                        if (item.type === DatasetTypeEnum.folder) {
-                          setParentId(item._id);
-                        } else {
-                          setAdminMarkData({ ...adminMarkData, datasetId: item._id });
-                        }
-                      }}
-                    >
-                      <Flex alignItems={'center'} h={'38px'}>
-                        <Avatar src={item.avatar} w={'2rem'} borderRadius={'sm'}></Avatar>
-                        <Box ml={3}>{item.name}</Box>
-                      </Flex>
-                      <Flex justifyContent={'flex-end'} alignItems={'center'} fontSize={'sm'}>
-                        <MyIcon mr={1} name="kbTest" w={'12px'} />
-                        <Box color={'myGray.500'}>{item.vectorModel.name}</Box>
-                      </Flex>
-                    </Card>
-                  );
-                })()
-              )}
-            </Grid>
-            {datasets.length === 0 && <EmptyTip text={t('chat:empty_directory')}></EmptyTip>}
-          </ModalBody>
-        </DatasetSelectModal>
-      )}
-
-      {/* select collection */}
-      {adminMarkData.datasetId && (
-        <SelectCollections
-          datasetId={adminMarkData.datasetId}
-          type={'collection'}
-          title={t('common:dataset.collections.Select One Collection To Store')}
-          onClose={onClose}
-          onChange={({ collectionIds }) => {
-            setAdminMarkData({
-              ...adminMarkData,
-              collectionId: collectionIds[0]
-            });
-          }}
-          CustomFooter={
-            <ModalFooter>
-              <Button
-                variant={'whiteBase'}
-                mr={2}
-                onClick={() => {
-                  setAdminMarkData({
-                    ...adminMarkData,
-                    datasetId: undefined
-                  });
-                }}
-              >
-                {t('common:last_step')}
-              </Button>
-            </ModalFooter>
-          }
-        />
-      )}
+      <MyModal
+        isOpen={!showInputDataModal}
+        onClose={onClose}
+        title={t('app:select_join_location')}
+        w={'600px'}
+        h={'400px'}
+      >
+        <ModalBody flex={'1 0 0'} overflowY={'auto'} p={6}>
+          <Box mb={4}>
+            <FilesCascader value={cascaderValue} onChange={handleCascaderChange} />
+          </Box>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant={'whiteBase'} mr={2} onClick={onClose}>
+            {t('common:Cancel')}
+          </Button>
+          <Button onClick={handleConfirm} isDisabled={!canConfirm}>
+            {t('common:Confirm')}
+          </Button>
+        </ModalFooter>
+      </MyModal>
 
       {/* input data */}
-      {adminMarkData.datasetId && adminMarkData.collectionId && (
+      {showInputDataModal && (
         <InputDataModal
           onClose={() => {
-            setAdminMarkData({
-              ...adminMarkData,
-              collectionId: undefined
-            });
+            setShowInputDataModal(false);
           }}
-          collectionId={adminMarkData.collectionId}
+          collectionId={adminMarkData.collectionId || ''}
           dataId={adminMarkData.feedbackDataId}
           defaultValue={{
             q: adminMarkData.q,

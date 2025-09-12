@@ -346,5 +346,10 @@
   "workflow.user_file_input": "檔案連結",
   "workflow.user_file_input_desc": "使用者上傳的檔案和圖片連結",
   "workflow.user_select": "使用者選擇",
-  "workflow.user_select_tip": "這個模組可以設定多個選項，供對話時選擇。不同選項可以導向不同的工作流程支線"
+  "workflow.user_select_tip": "這個模組可以設定多個選項，供對話時選擇。不同選項可以導向不同的工作流程支線",
+  "files_cascader_no_knowledge_base": "不加入知識庫",
+  "files_cascader_select_knowledge_base": "請選擇知識庫",
+  "files_cascader_select_first": "請先選擇知識庫",
+  "files_cascader_dataset_empty": "該知識庫資料集為空",
+  "select_join_location": "選擇加入位置"
 }
