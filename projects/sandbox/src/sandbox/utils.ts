@@ -191,7 +191,6 @@ async function createTempFile(tempFileDirPath: string, context: string) {
     return {
       path: tempFilePath,
       cleanup: () => {
-        rmSync(tempFilePath);
         rmSync(tempFileDirPath, {
           recursive: true,
           force: true

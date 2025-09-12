@@ -18,6 +18,7 @@ def extract_imports(code):
                 for alias in node.names:
                     imports.append(f"from {module} import {alias.name}")
     return imports
+
 seccomp_prefix = """
 import platform
 import sys
@@ -28,11 +29,11 @@ if platform.system() == 'Linux':
         from seccomp import *
         import errno
         allowed_syscalls = [
-            # File operations - minimal set
+            # File operations - READ ONLY (removed SYS_WRITE)
             "syscall.SYS_READ",
-            "syscall.SYS_WRITE", 
-            "syscall.SYS_OPEN",
-            "syscall.SYS_OPENAT",
+            # Removed "syscall.SYS_WRITE" - no general write access
+            "syscall.SYS_OPEN",      # Still needed for reading files
+            "syscall.SYS_OPENAT",   # Still needed for reading files
             "syscall.SYS_CLOSE",
             "syscall.SYS_FSTAT",
             "syscall.SYS_LSTAT",
@@ -109,11 +110,13 @@ if platform.system() == 'Linux':
         f = SyscallFilter(defaction=KILL)
         for item in L:
             f.add_rule(ALLOW, item)
+        # Only allow writing to stdout and stderr for output
         f.add_rule(ALLOW, "write", Arg(0, EQ, sys.stdout.fileno()))
         f.add_rule(ALLOW, "write", Arg(0, EQ, sys.stderr.fileno()))
-        f.add_rule(ALLOW, 307)
-        f.add_rule(ALLOW, 318)
-        f.add_rule(ALLOW, 334)
+        # Remove other write-related syscalls
+        # f.add_rule(ALLOW, 307)  # Removed - might be file creation
+        # f.add_rule(ALLOW, 318)  # Removed - might be file creation
+        # f.add_rule(ALLOW, 334)  # Removed - might be file creation
         f.load()
     except ImportError:
         # seccomp module not available, skip security restrictions
@@ -137,7 +140,13 @@ def remove_print_statements(code):
     return ast.unparse(modified_tree)
 
 def detect_dangerous_imports(code):
-    dangerous_modules = ["os", "sys", "subprocess", "shutil", "socket", "ctypes", "multiprocessing", "threading", "pickle"]
+    # Add file writing modules to the blacklist
+    dangerous_modules = [
+        "os", "sys", "subprocess", "shutil", "socket", "ctypes", 
+        "multiprocessing", "threading", "pickle",
+        # Additional modules that can write files
+        "tempfile", "pathlib", "io", "fileinput"
+    ]
     tree = ast.parse(code)
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -147,6 +156,19 @@ def detect_dangerous_imports(code):
         elif isinstance(node, ast.ImportFrom):
             if node.module in dangerous_modules:
                 return node.module
+    return None
+
+def detect_file_write_operations(code):
+    """Detect potential file writing operations in code"""
+    dangerous_patterns = [
+        'open(', 'file(', 'write(', 'writelines(',
+        'with open', 'f.write', '.write(', 
+        'create', 'mkdir', 'makedirs'
+    ]
+    
+    for pattern in dangerous_patterns:
+        if pattern in code:
+            return f"File write operation detected: {pattern}"
     return None
 
 def run_pythonCode(data:dict):
@@ -161,6 +183,11 @@ def run_pythonCode(data:dict):
     dangerous_import = detect_dangerous_imports(code)
     if dangerous_import:
         return {"error": f"Importing {dangerous_import} is not allowed."}
+    
+    # Check for file write operations
+    write_operation = detect_file_write_operations(code)
+    if write_operation:
+        return {"error": f"File write operations are not allowed: {write_operation}"}
     
     # Handle variables - default to empty dict if not provided or None
     variables = data.get("variables", {})
@@ -219,13 +246,16 @@ def run_pythonCode(data:dict):
         print({"error": f"Error calling main function: {str(e)}"})
 '''
     code = imports + "\\n" + seccomp_prefix + "\\n" + var_def + "\\n" + code + "\\n" + output_code
+    
+    # Note: We still need to create the subprocess file for execution,
+    # but user code cannot write additional files
     tmp_file = os.path.join(data["tempDir"], "subProcess.py")
     with open(tmp_file, "w", encoding="utf-8") as f:
         f.write(code)
     try:
         result = subprocess.run(["python3", tmp_file], capture_output=True, text=True, timeout=10)
         if result.returncode == -31:
-            return {"error": "Dangerous behavior detected."}
+            return {"error": "Dangerous behavior detected (likely file write attempt)."}
         if result.stderr != "":
             return {"error": result.stderr}
 
