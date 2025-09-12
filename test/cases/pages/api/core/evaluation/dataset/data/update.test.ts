@@ -9,6 +9,7 @@ import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dat
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
 import { addLog } from '@fastgpt/service/common/system/log';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 vi.mock('@fastgpt/service/support/permission/user/auth');
 // Mock the evaluation permissions
@@ -71,10 +72,27 @@ describe('EvalDatasetData Update API', () => {
   });
 
   // Helper function for validation test cases
-  const testValidation = (description: string, bodyOverrides: any, expectedError: string) => {
+  const testValidation = (
+    description: string,
+    bodyOverrides: any,
+    expectedError: EvaluationErrEnum
+  ) => {
     it(description, async () => {
       const req = createBaseRequest(bodyOverrides);
       await expect(handler_test(req as any)).rejects.toEqual(expectedError);
+    });
+  };
+
+  // Helper function for testing multiple validation cases
+  const testMultipleValidations = (
+    cases: Array<{
+      description: string;
+      bodyOverrides: any;
+      expectedError: EvaluationErrEnum;
+    }>
+  ) => {
+    cases.forEach(({ description, bodyOverrides, expectedError }) => {
+      testValidation(description, bodyOverrides, expectedError);
     });
   };
 
@@ -141,119 +159,113 @@ describe('EvalDatasetData Update API', () => {
 
   describe('Parameter Validation', () => {
     describe('dataId validation', () => {
-      testValidation(
-        'should reject when dataId is missing',
-        { dataId: undefined },
-        'dataId is required and must be a string'
-      );
-
-      testValidation(
-        'should reject when dataId is not a string',
-        { dataId: 123 },
-        'dataId is required and must be a string'
-      );
+      testMultipleValidations([
+        {
+          description: 'should reject when dataId is missing',
+          bodyOverrides: { dataId: undefined },
+          expectedError: EvaluationErrEnum.datasetDataIdRequired
+        },
+        {
+          description: 'should reject when dataId is not a string',
+          bodyOverrides: { dataId: 123 },
+          expectedError: EvaluationErrEnum.datasetDataIdRequired
+        }
+      ]);
     });
 
     describe('userInput validation', () => {
-      testValidation(
-        'should reject when userInput is missing',
-        { userInput: undefined },
-        'userInput is required and must be a non-empty string'
-      );
-
-      testValidation(
-        'should reject when userInput is empty string',
-        { userInput: '' },
-        'userInput is required and must be a non-empty string'
-      );
-
-      testValidation(
-        'should reject when userInput is only whitespace',
-        { userInput: '   ' },
-        'userInput is required and must be a non-empty string'
-      );
-
-      testValidation(
-        'should reject when userInput is not a string',
-        { userInput: 123 },
-        'userInput is required and must be a non-empty string'
-      );
+      testMultipleValidations([
+        {
+          description: 'should reject when userInput is missing',
+          bodyOverrides: { userInput: undefined },
+          expectedError: EvaluationErrEnum.datasetDataUserInputRequired
+        },
+        {
+          description: 'should reject when userInput is empty string',
+          bodyOverrides: { userInput: '' },
+          expectedError: EvaluationErrEnum.datasetDataUserInputRequired
+        },
+        {
+          description: 'should reject when userInput is only whitespace',
+          bodyOverrides: { userInput: '   ' },
+          expectedError: EvaluationErrEnum.datasetDataUserInputRequired
+        },
+        {
+          description: 'should reject when userInput is not a string',
+          bodyOverrides: { userInput: 123 },
+          expectedError: EvaluationErrEnum.datasetDataUserInputRequired
+        }
+      ]);
     });
 
     describe('expectedOutput validation', () => {
-      testValidation(
-        'should reject when expectedOutput is missing',
-        { expectedOutput: undefined },
-        'expectedOutput is required and must be a non-empty string'
-      );
-
-      testValidation(
-        'should reject when expectedOutput is empty string',
-        { expectedOutput: '' },
-        'expectedOutput is required and must be a non-empty string'
-      );
-
-      testValidation(
-        'should reject when expectedOutput is only whitespace',
-        { expectedOutput: '   ' },
-        'expectedOutput is required and must be a non-empty string'
-      );
-
-      testValidation(
-        'should reject when expectedOutput is not a string',
-        { expectedOutput: 123 },
-        'expectedOutput is required and must be a non-empty string'
-      );
+      testMultipleValidations([
+        {
+          description: 'should reject when expectedOutput is missing',
+          bodyOverrides: { expectedOutput: undefined },
+          expectedError: EvaluationErrEnum.datasetDataExpectedOutputRequired
+        },
+        {
+          description: 'should reject when expectedOutput is empty string',
+          bodyOverrides: { expectedOutput: '' },
+          expectedError: EvaluationErrEnum.datasetDataExpectedOutputRequired
+        },
+        {
+          description: 'should reject when expectedOutput is only whitespace',
+          bodyOverrides: { expectedOutput: '   ' },
+          expectedError: EvaluationErrEnum.datasetDataExpectedOutputRequired
+        },
+        {
+          description: 'should reject when expectedOutput is not a string',
+          bodyOverrides: { expectedOutput: 123 },
+          expectedError: EvaluationErrEnum.datasetDataExpectedOutputRequired
+        }
+      ]);
     });
 
     describe('Optional field validation', () => {
-      testValidation(
-        'should reject when actualOutput is not a string',
-        { actualOutput: 123 },
-        'actualOutput must be a string if provided'
-      );
-
-      testValidation(
-        'should reject when context is not an array',
-        { context: 'not an array' },
-        'context must be an array of strings if provided'
-      );
-
-      testValidation(
-        'should reject when context contains non-string items',
-        { context: ['valid', 123, 'also valid'] },
-        'context must be an array of strings if provided'
-      );
-
-      testValidation(
-        'should reject when retrievalContext is not an array',
-        { retrievalContext: 'not an array' },
-        'retrievalContext must be an array of strings if provided'
-      );
-
-      testValidation(
-        'should reject when retrievalContext contains non-string items',
-        { retrievalContext: ['valid', 123, 'also valid'] },
-        'retrievalContext must be an array of strings if provided'
-      );
-
-      testValidation(
-        'should reject when metadata is not an object',
-        { metadata: 'not an object' },
-        'metadata must be an object if provided'
-      );
-
-      testValidation(
-        'should reject when metadata is an array',
-        { metadata: ['array'] },
-        'metadata must be an object if provided'
-      );
-
-      testValidation(
-        'should reject when metadata is null',
-        { metadata: null },
-        'metadata must be an object if provided'
-      );
+      testMultipleValidations([
+        {
+          description: 'should reject when actualOutput is not a string',
+          bodyOverrides: { actualOutput: 123 },
+          expectedError: EvaluationErrEnum.datasetDataActualOutputMustBeString
+        },
+        {
+          description: 'should reject when context is not an array',
+          bodyOverrides: { context: 'not an array' },
+          expectedError: EvaluationErrEnum.datasetDataContextMustBeArrayOfStrings
+        },
+        {
+          description: 'should reject when context contains non-string items',
+          bodyOverrides: { context: ['valid', 123, 'also valid'] },
+          expectedError: EvaluationErrEnum.datasetDataContextMustBeArrayOfStrings
+        },
+        {
+          description: 'should reject when retrievalContext is not an array',
+          bodyOverrides: { retrievalContext: 'not an array' },
+          expectedError: EvaluationErrEnum.datasetDataRetrievalContextMustBeArrayOfStrings
+        },
+        {
+          description: 'should reject when retrievalContext contains non-string items',
+          bodyOverrides: { retrievalContext: ['valid', 123, 'also valid'] },
+          expectedError: EvaluationErrEnum.datasetDataRetrievalContextMustBeArrayOfStrings
+        },
+        {
+          description: 'should reject when metadata is not an object',
+          bodyOverrides: { metadata: 'not an object' },
+          expectedError: EvaluationErrEnum.datasetDataMetadataMustBeObject
+        },
+        {
+          description: 'should reject when metadata is an array',
+          bodyOverrides: { metadata: ['array'] },
+          expectedError: EvaluationErrEnum.datasetDataMetadataMustBeObject
+        },
+        {
+          description: 'should reject when metadata is null',
+          bodyOverrides: { metadata: null },
+          expectedError: EvaluationErrEnum.datasetDataMetadataMustBeObject
+        }
+      ]);
     });
   });
 
@@ -280,25 +292,31 @@ describe('EvalDatasetData Update API', () => {
 
   describe('Data Validation', () => {
     it('should reject when dataset data does not exist', async () => {
-      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue('evaluationDatasetDataNotFound');
+      mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(
+        EvaluationErrEnum.datasetDataNotFound
+      );
       const req = createBaseRequest();
-      await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetDataNotFound');
+      await expect(handler_test(req as any)).rejects.toEqual(EvaluationErrEnum.datasetDataNotFound);
     });
 
     it('should reject when collection does not exist', async () => {
       mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(
-        'evaluationDatasetCollectionNotFound'
+        EvaluationErrEnum.datasetCollectionNotFound
       );
       const req = createBaseRequest();
-      await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetCollectionNotFound');
+      await expect(handler_test(req as any)).rejects.toEqual(
+        EvaluationErrEnum.datasetCollectionNotFound
+      );
     });
 
     it('should reject when collection belongs to different team', async () => {
       mockAuthEvaluationDatasetDataUpdateById.mockRejectedValue(
-        'evaluationDatasetCollectionNotFound'
+        EvaluationErrEnum.datasetCollectionNotFound
       );
       const req = createBaseRequest();
-      await expect(handler_test(req as any)).rejects.toEqual('evaluationDatasetCollectionNotFound');
+      await expect(handler_test(req as any)).rejects.toEqual(
+        EvaluationErrEnum.datasetCollectionNotFound
+      );
     });
   });
 

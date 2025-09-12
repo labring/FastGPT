@@ -453,7 +453,7 @@ export const authEvaluationDatasetDataUpdateById = async (
 }> => {
   const dataItem = await MongoEvalDatasetData.findById(dataId).select('datasetId').lean();
   if (!dataItem) {
-    throw new Error(EvaluationErrEnum.evalDatasetDataNotFound);
+    throw new Error(EvaluationErrEnum.datasetDataNotFound);
   }
 
   const collectionId = String(dataItem.datasetId);
@@ -470,7 +470,7 @@ export const authEvaluationDatasetDataReadById = async (
 }> => {
   const dataItem = await MongoEvalDatasetData.findById(dataId).select('datasetId').lean();
   if (!dataItem) {
-    throw new Error(EvaluationErrEnum.evalDatasetDataNotFound);
+    throw new Error(EvaluationErrEnum.datasetDataNotFound);
   }
 
   const collectionId = String(dataItem.datasetId);

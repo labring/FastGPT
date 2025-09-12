@@ -8,6 +8,7 @@ import { removeEvalDatasetSmartGenerateJobsRobust } from '@fastgpt/service/core/
 import { removeEvalDatasetDataQualityJobsRobust } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import { removeEvalDatasetDataSynthesizeJobsRobust } from '@fastgpt/service/core/evaluation/dataset/dataSynthesizeMq';
 import { addLog } from '@fastgpt/service/common/system/log';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 vi.mock('@fastgpt/service/core/evaluation/common');
 vi.mock('@fastgpt/service/common/mongo/sessionRun');
@@ -120,7 +121,7 @@ describe('EvalDatasetCollection Delete API', () => {
       };
 
       await expect(handler_test(req as any)).rejects.toEqual(
-        'collectionId is required and must be a string'
+        EvaluationErrEnum.datasetCollectionIdRequired
       );
     });
 
@@ -130,7 +131,7 @@ describe('EvalDatasetCollection Delete API', () => {
       };
 
       await expect(handler_test(req as any)).rejects.toEqual(
-        'collectionId is required and must be a string'
+        EvaluationErrEnum.datasetCollectionIdRequired
       );
     });
 
@@ -140,7 +141,7 @@ describe('EvalDatasetCollection Delete API', () => {
       };
 
       await expect(handler_test(req as any)).rejects.toEqual(
-        'collectionId is required and must be a string'
+        EvaluationErrEnum.datasetCollectionIdRequired
       );
     });
 
@@ -150,7 +151,7 @@ describe('EvalDatasetCollection Delete API', () => {
       };
 
       await expect(handler_test(req as any)).rejects.toEqual(
-        'collectionId is required and must be a string'
+        EvaluationErrEnum.datasetCollectionIdRequired
       );
     });
 
@@ -160,7 +161,7 @@ describe('EvalDatasetCollection Delete API', () => {
       };
 
       await expect(handler_test(req as any)).rejects.toEqual(
-        'collectionId is required and must be a string'
+        EvaluationErrEnum.datasetCollectionIdRequired
       );
     });
 
@@ -170,7 +171,7 @@ describe('EvalDatasetCollection Delete API', () => {
       };
 
       await expect(handler_test(req as any)).rejects.toEqual(
-        'collectionId is required and must be a string'
+        EvaluationErrEnum.datasetCollectionIdRequired
       );
     });
   });

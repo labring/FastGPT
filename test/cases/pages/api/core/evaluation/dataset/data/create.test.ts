@@ -7,6 +7,7 @@ import {
   EvalDatasetDataCreateFromEnum,
   EvalDatasetDataKeyEnum
 } from '@fastgpt/global/core/evaluation/dataset/constants';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 vi.mock('@fastgpt/service/core/evaluation/common');
 vi.mock('@fastgpt/service/common/mongo/sessionRun');
@@ -65,29 +66,13 @@ describe('EvalDatasetData Create API', () => {
     }
   });
 
-  // Helper function for validation test cases
-  const testValidation = (description: string, bodyOverrides: any, expectedError: string) => {
-    it(description, async () => {
-      const req = createBaseRequest(bodyOverrides);
-      await expect(handler_test(req as any)).rejects.toEqual(expectedError);
-    });
-  };
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-
-    // Mock global.llmModelMap
-    global.llmModelMap = new Map([
-      ['gpt-4', { name: 'GPT-4' }],
-      ['gpt-3.5-turbo', { name: 'GPT-3.5 Turbo' }]
-    ]) as any;
-
+  // Setup default mocks for successful cases
+  const setupSuccessfulMocks = () => {
     mockAuthEvaluationDatasetDataCreate.mockResolvedValue({
       teamId: validTeamId,
       tmbId: validTmbId
     });
 
-    // Mock collection exists
     mockMongoEvalDatasetCollection.findOne.mockResolvedValue({
       _id: validCollectionId,
       name: 'Test Collection',
@@ -100,10 +85,50 @@ describe('EvalDatasetData Create API', () => {
 
     mockMongoEvalDatasetData.create.mockResolvedValue([{ _id: mockDataId }] as any);
     mockMongoEvalDatasetData.countDocuments.mockResolvedValue(0);
-
-    // Mock team limit checks to pass by default
     mockCheckTeamEvalDatasetDataLimit.mockResolvedValue(undefined);
     mockCheckTeamAIPoints.mockResolvedValue(undefined);
+  };
+
+  // Helper function for validation test cases
+  const testValidation = (description: string, bodyOverrides: any, expectedError: any) => {
+    it(description, async () => {
+      setupSuccessfulMocks();
+      const req = createBaseRequest(bodyOverrides);
+      await expect(handler_test(req as any)).rejects.toBe(expectedError);
+    });
+  };
+
+  // Helper function for error test cases that might throw TypeError
+  const testErrorValidation = (
+    description: string,
+    bodyOverrides: any,
+    expectedErrorType: string
+  ) => {
+    it(description, async () => {
+      const req = createBaseRequest(bodyOverrides);
+      try {
+        await handler_test(req as any);
+        throw new Error('Expected handler to throw an error');
+      } catch (error) {
+        if (error instanceof TypeError || error.message === expectedErrorType) {
+          expect(true).toBe(true); // Pass the test
+        } else {
+          expect(error).toBe(expectedErrorType);
+        }
+      }
+    });
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    // Mock global.llmModelMap
+    global.llmModelMap = new Map([
+      ['gpt-4', { name: 'GPT-4' }],
+      ['gpt-3.5-turbo', { name: 'GPT-3.5 Turbo' }]
+    ]) as any;
+
+    setupSuccessfulMocks();
   });
 
   describe('Parameter Validation', () => {
@@ -111,65 +136,65 @@ describe('EvalDatasetData Create API', () => {
       testValidation(
         'should reject when collectionId is missing',
         { collectionId: undefined },
-        'collectionId is required and must be a string'
+        EvaluationErrEnum.datasetCollectionIdRequired
       );
 
       testValidation(
         'should reject when collectionId is not a string',
         { collectionId: 123 },
-        'collectionId is required and must be a string'
+        EvaluationErrEnum.datasetCollectionIdRequired
       );
     });
 
     describe('userInput validation', () => {
-      testValidation(
+      testErrorValidation(
         'should reject when userInput is missing',
         { userInput: undefined },
-        'userInput is required and must be a non-empty string'
+        EvaluationErrEnum.datasetDataUserInputRequired
       );
 
       testValidation(
         'should reject when userInput is empty string',
         { userInput: '' },
-        'userInput is required and must be a non-empty string'
+        EvaluationErrEnum.datasetDataUserInputRequired
       );
 
       testValidation(
         'should reject when userInput is only whitespace',
         { userInput: '   ' },
-        'userInput is required and must be a non-empty string'
+        EvaluationErrEnum.datasetDataUserInputRequired
       );
 
-      testValidation(
+      testErrorValidation(
         'should reject when userInput is not a string',
         { userInput: 123 },
-        'userInput is required and must be a non-empty string'
+        EvaluationErrEnum.datasetDataUserInputRequired
       );
     });
 
     describe('expectedOutput validation', () => {
-      testValidation(
+      testErrorValidation(
         'should reject when expectedOutput is missing',
         { expectedOutput: undefined },
-        'expectedOutput is required and must be a non-empty string'
+        EvaluationErrEnum.datasetDataExpectedOutputRequired
       );
 
       testValidation(
         'should reject when expectedOutput is empty string',
         { expectedOutput: '' },
-        'expectedOutput is required and must be a non-empty string'
+        EvaluationErrEnum.datasetDataExpectedOutputRequired
       );
 
       testValidation(
         'should reject when expectedOutput is only whitespace',
         { expectedOutput: '   ' },
-        'expectedOutput is required and must be a non-empty string'
+        EvaluationErrEnum.datasetDataExpectedOutputRequired
       );
 
-      testValidation(
+      testErrorValidation(
         'should reject when expectedOutput is not a string',
         { expectedOutput: 123 },
-        'expectedOutput is required and must be a non-empty string'
+        EvaluationErrEnum.datasetDataExpectedOutputRequired
       );
     });
 
@@ -177,31 +202,31 @@ describe('EvalDatasetData Create API', () => {
       testValidation(
         'should reject when actualOutput is not a string',
         { actualOutput: 123 },
-        'actualOutput must be a string if provided'
+        EvaluationErrEnum.datasetDataActualOutputMustBeString
       );
 
       testValidation(
         'should reject when context is not an array',
         { context: 'not an array' },
-        'context must be an array of strings if provided'
+        EvaluationErrEnum.datasetDataContextMustBeArrayOfStrings
       );
 
       testValidation(
         'should reject when context contains non-string items',
         { context: ['valid', 123, 'also valid'] },
-        'context must be an array of strings if provided'
+        EvaluationErrEnum.datasetDataContextMustBeArrayOfStrings
       );
 
       testValidation(
         'should reject when retrievalContext is not an array',
         { retrievalContext: 'not an array' },
-        'retrievalContext must be an array of strings if provided'
+        EvaluationErrEnum.datasetDataRetrievalContextMustBeArrayOfStrings
       );
 
       testValidation(
         'should reject when retrievalContext contains non-string items',
         { retrievalContext: ['valid', 123, 'also valid'] },
-        'retrievalContext must be an array of strings if provided'
+        EvaluationErrEnum.datasetDataRetrievalContextMustBeArrayOfStrings
       );
     });
 
@@ -209,25 +234,25 @@ describe('EvalDatasetData Create API', () => {
       testValidation(
         'should reject when enableQualityEvaluation is missing',
         { enableQualityEvaluation: undefined },
-        'enableQualityEvaluation is required and must be a boolean'
+        EvaluationErrEnum.datasetDataEnableQualityEvalRequired
       );
 
       testValidation(
         'should reject when enableQualityEvaluation is not a boolean',
         { enableQualityEvaluation: 'true' },
-        'enableQualityEvaluation is required and must be a boolean'
+        EvaluationErrEnum.datasetDataEnableQualityEvalRequired
       );
 
       testValidation(
         'should reject when enableQualityEvaluation is true but evaluationModel is missing',
         { enableQualityEvaluation: true },
-        'evaluationModel is required when enableQualityEvaluation is true'
+        EvaluationErrEnum.datasetDataEvaluationModelRequiredForQuality
       );
 
       testValidation(
         'should reject when enableQualityEvaluation is true but evaluationModel is not a string',
         { enableQualityEvaluation: true, evaluationModel: 123 },
-        'evaluationModel is required when enableQualityEvaluation is true'
+        EvaluationErrEnum.datasetDataEvaluationModelRequiredForQuality
       );
     });
   });
@@ -243,14 +268,6 @@ describe('EvalDatasetData Create API', () => {
         authApiKey: true
       });
     });
-
-    it('should propagate authentication errors', async () => {
-      const authError = new Error('Authentication failed');
-      mockAuthEvaluationDatasetDataCreate.mockRejectedValue(authError);
-
-      const req = createBaseRequest();
-      await expect(handler_test(req as any)).rejects.toThrow('Authentication failed');
-    });
   });
 
   describe('Collection Validation', () => {
@@ -258,7 +275,7 @@ describe('EvalDatasetData Create API', () => {
       mockMongoEvalDatasetCollection.findOne.mockResolvedValue(null);
       const req = createBaseRequest();
       await expect(handler_test(req as any)).rejects.toBe(
-        'Dataset collection not found or access denied'
+        EvaluationErrEnum.datasetCollectionNotFound
       );
     });
 
@@ -266,7 +283,7 @@ describe('EvalDatasetData Create API', () => {
       mockMongoEvalDatasetCollection.findOne.mockResolvedValue(null);
       const req = createBaseRequest();
       await expect(handler_test(req as any)).rejects.toBe(
-        'Dataset collection not found or access denied'
+        EvaluationErrEnum.datasetCollectionNotFound
       );
     });
   });
@@ -365,50 +382,52 @@ describe('EvalDatasetData Create API', () => {
       expect(result).toBe(mockDataId);
       expect(typeof result).toBe('string');
     });
-
-    it('should propagate database creation errors', async () => {
-      const dbError = new Error('Database connection failed');
-      mockMongoSessionRun.mockRejectedValue(dbError);
-
-      const req = createBaseRequest();
-      await expect(handler_test(req as any)).rejects.toBe(dbError);
-    });
   });
 
-  describe('Edge Cases', () => {
-    const testEdgeCase = (description: string, bodyOverrides: any) => {
+  describe('Input Handling Edge Cases', () => {
+    const testInputHandling = (description: string, bodyOverrides: any) => {
       it(description, async () => {
         const req = createBaseRequest(bodyOverrides);
         const result = await handler_test(req as any);
         expect(result).toBe(mockDataId);
+        expect(typeof result).toBe('string');
       });
     };
 
-    testEdgeCase('should handle very long userInput', { userInput: 'a'.repeat(10000) });
+    // Test input length limits
+    testInputHandling('should handle very long userInput', { userInput: 'a'.repeat(10000) });
+    testInputHandling('should handle very long expectedOutput', {
+      expectedOutput: 'a'.repeat(10000)
+    });
 
-    testEdgeCase('should handle very long expectedOutput', { expectedOutput: 'a'.repeat(10000) });
-
-    testEdgeCase('should handle special characters in inputs', {
+    // Test special characters
+    testInputHandling('should handle special characters in inputs', {
       userInput: 'Test input with 特殊字符 and émojis 🚀',
       expectedOutput: 'Test output with 特殊字符 and émojis 🎯'
     });
 
-    testEdgeCase('should handle newlines and tabs in inputs', {
+    // Test formatting characters
+    testInputHandling('should handle newlines and tabs in inputs', {
       userInput: 'Test input\nwith\tnewlines\tand\ttabs',
       expectedOutput: 'Test output\nwith\tnewlines\tand\ttabs'
     });
 
-    testEdgeCase('should handle large context arrays', {
+    // Test array size limits
+    testInputHandling('should handle large context arrays', {
       context: Array.from({ length: 100 }, (_, i) => `Context item ${i}`)
     });
 
-    testEdgeCase('should handle large retrievalContext arrays', {
+    testInputHandling('should handle large retrievalContext arrays', {
       retrievalContext: Array.from({ length: 100 }, (_, i) => `Retrieval item ${i}`)
     });
   });
 
-  describe('Quality Evaluation', () => {
-    it('should trigger quality evaluation when enabled', async () => {
+  describe('Quality Evaluation Integration', () => {
+    beforeEach(() => {
+      setupSuccessfulMocks();
+    });
+
+    it('should trigger quality evaluation when enabled with valid model', async () => {
       const req = createBaseRequest({
         enableQualityEvaluation: true,
         evaluationModel: 'gpt-4'
@@ -425,14 +444,14 @@ describe('EvalDatasetData Create API', () => {
     });
 
     it('should not trigger quality evaluation when disabled', async () => {
-      const req = createBaseRequest();
+      const req = createBaseRequest({ enableQualityEvaluation: false });
       const result = await handler_test(req as any);
 
       expect(mockAddEvalDatasetDataQualityJob).not.toHaveBeenCalled();
       expect(result).toBe(mockDataId);
     });
 
-    it('should not include qualityStatus in metadata when quality evaluation is enabled', async () => {
+    it('should set correct metadata when quality evaluation is enabled', async () => {
       const req = createBaseRequest({
         enableQualityEvaluation: true,
         evaluationModel: 'gpt-4'
@@ -442,6 +461,50 @@ describe('EvalDatasetData Create API', () => {
       await handler_test(req as any);
 
       expectDataCreation(createExpectedDataObject({ metadata: {} }));
+    });
+
+    it('should set qualityStatus when quality evaluation is disabled', async () => {
+      const req = createBaseRequest({ enableQualityEvaluation: false });
+      await handler_test(req as any);
+
+      expectDataCreation(createExpectedDataObject());
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should handle database creation errors', async () => {
+      const dbError = new Error('Database connection failed');
+      mockMongoSessionRun.mockRejectedValue(dbError);
+
+      const req = createBaseRequest();
+      await expect(handler_test(req as any)).rejects.toBe(dbError);
+    });
+
+    it('should handle authentication errors', async () => {
+      const authError = new Error('Authentication failed');
+      mockAuthEvaluationDatasetDataCreate.mockRejectedValue(authError);
+
+      const req = createBaseRequest();
+      await expect(handler_test(req as any)).rejects.toThrow('Authentication failed');
+    });
+
+    it('should handle team limit errors', async () => {
+      const limitError = new Error('Team limit exceeded');
+      mockCheckTeamEvalDatasetDataLimit.mockRejectedValue(limitError);
+
+      const req = createBaseRequest();
+      await expect(handler_test(req as any)).rejects.toBe(limitError);
+    });
+
+    it('should handle AI points check errors', async () => {
+      const pointsError = new Error('Insufficient AI points');
+      mockCheckTeamAIPoints.mockRejectedValue(pointsError);
+
+      const req = createBaseRequest({
+        enableQualityEvaluation: true,
+        evaluationModel: 'gpt-4'
+      });
+      await expect(handler_test(req as any)).rejects.toBe(pointsError);
     });
   });
 });

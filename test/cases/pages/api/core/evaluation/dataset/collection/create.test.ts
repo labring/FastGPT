@@ -3,6 +3,7 @@ import { handler_test } from '@/pages/api/core/evaluation/dataset/collection/cre
 import { authEvaluationDatasetCreate } from '@fastgpt/service/core/evaluation/common';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 vi.mock('@fastgpt/service/core/evaluation/common');
 vi.mock('@fastgpt/service/common/mongo/sessionRun');
@@ -71,9 +72,7 @@ describe('EvalDatasetCollection Create API', () => {
         body: { description: 'Test description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'Name is required and must be a non-empty string'
-      );
+      await expect(handler_test(req as any)).rejects.toEqual(EvaluationErrEnum.evalNameRequired);
     });
 
     it('should reject when name is empty string', async () => {
@@ -81,9 +80,7 @@ describe('EvalDatasetCollection Create API', () => {
         body: { name: '', description: 'Test description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'Name is required and must be a non-empty string'
-      );
+      await expect(handler_test(req as any)).rejects.toEqual(EvaluationErrEnum.evalNameRequired);
     });
 
     it('should reject when name is only whitespace', async () => {
@@ -91,9 +88,7 @@ describe('EvalDatasetCollection Create API', () => {
         body: { name: '   ', description: 'Test description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'Name is required and must be a non-empty string'
-      );
+      await expect(handler_test(req as any)).rejects.toEqual(EvaluationErrEnum.evalNameRequired);
     });
 
     it('should reject when name is not a string', async () => {
@@ -101,9 +96,7 @@ describe('EvalDatasetCollection Create API', () => {
         body: { name: 123, description: 'Test description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'Name is required and must be a non-empty string'
-      );
+      await expect(handler_test(req as any)).rejects.toEqual(EvaluationErrEnum.evalNameRequired);
     });
 
     it('should reject when name exceeds 100 characters', async () => {
@@ -112,9 +105,7 @@ describe('EvalDatasetCollection Create API', () => {
         body: { name: longName, description: 'Test description' }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'Name must be less than 100 characters'
-      );
+      await expect(handler_test(req as any)).rejects.toEqual(EvaluationErrEnum.evalNameTooLong);
     });
 
     it('should reject when description is not a string', async () => {
@@ -122,7 +113,9 @@ describe('EvalDatasetCollection Create API', () => {
         body: { name: 'Test Dataset', description: 123 }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual('Description must be a string');
+      await expect(handler_test(req as any)).rejects.toEqual(
+        EvaluationErrEnum.evalDescriptionInvalidType
+      );
     });
 
     it('should reject when description exceeds 100 characters', async () => {
@@ -132,7 +125,7 @@ describe('EvalDatasetCollection Create API', () => {
       };
 
       await expect(handler_test(req as any)).rejects.toEqual(
-        'Description must be less than 100 characters'
+        EvaluationErrEnum.evalDescriptionTooLong
       );
     });
 
@@ -195,7 +188,7 @@ describe('EvalDatasetCollection Create API', () => {
       };
 
       await expect(handler_test(req as any)).rejects.toEqual(
-        'A dataset with this name already exists'
+        EvaluationErrEnum.evalDuplicateDatasetName
       );
 
       expect(mockMongoEvalDatasetCollection.findOne).toHaveBeenCalledWith({
@@ -379,7 +372,7 @@ describe('EvalDatasetCollection Create API', () => {
       };
 
       await expect(handler_test(req as any)).rejects.toEqual(
-        expect.stringContaining('Invalid evaluation model')
+        EvaluationErrEnum.datasetModelNotFound
       );
 
       expect(global.llmModelMap.has).toHaveBeenCalledWith(invalidModel);
@@ -535,7 +528,9 @@ describe('EvalDatasetCollection Create API', () => {
         body: { name: 'Test Dataset', evaluationModel: 123 }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual('Evaluation model must be a string');
+      await expect(handler_test(req as any)).rejects.toEqual(
+        EvaluationErrEnum.evalModelNameInvalid
+      );
     });
 
     it('should reject when evaluation model exceeds 100 characters', async () => {
@@ -545,7 +540,7 @@ describe('EvalDatasetCollection Create API', () => {
       };
 
       await expect(handler_test(req as any)).rejects.toEqual(
-        'Evaluation model must be less than 100 characters'
+        EvaluationErrEnum.evalModelNameTooLong
       );
     });
 

@@ -15,7 +15,7 @@ async function handler(
   const { dataId } = req.query;
 
   if (!dataId || typeof dataId !== 'string') {
-    return Promise.reject('dataId is required and must be a string');
+    return Promise.reject(EvaluationErrEnum.datasetDataIdRequired);
   }
 
   await authEvaluationDatasetDataReadById(dataId, {
@@ -27,7 +27,7 @@ async function handler(
   const dataItem = await MongoEvalDatasetData.findById(dataId).lean();
 
   if (!dataItem) {
-    return Promise.reject(EvaluationErrEnum.evalDatasetDataNotFound);
+    return Promise.reject(EvaluationErrEnum.datasetDataNotFound);
   }
 
   return {

@@ -8,9 +8,13 @@ import type {
   listEvalDatasetDataResponse
 } from '@fastgpt/global/core/evaluation/dataset/api';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
-import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
+import {
+  EvalDatasetDataKeyEnum,
+  EvalDatasetDataQualityStatusEnum
+} from '@fastgpt/global/core/evaluation/dataset/constants';
 import { authEvaluationDatasetDataRead } from '@fastgpt/service/core/evaluation/common';
 import { addLog } from '@fastgpt/service/common/system/log';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 async function handler(
   req: ApiRequestProps<listEvalDatasetDataBody, {}>
@@ -19,7 +23,15 @@ async function handler(
   const { collectionId, searchKey, status: qualityStatus } = req.body;
 
   if (!collectionId) {
-    throw new Error('Collection ID is required');
+    return Promise.reject(EvaluationErrEnum.datasetCollectionIdRequired);
+  }
+  if (
+    qualityStatus &&
+    !Object.values(EvalDatasetDataQualityStatusEnum).includes(
+      qualityStatus as EvalDatasetDataQualityStatusEnum
+    )
+  ) {
+    return Promise.reject(EvaluationErrEnum.evalDataQualityStatusInvalid);
   }
 
   await authEvaluationDatasetDataRead(collectionId, {
@@ -60,14 +72,14 @@ async function handler(
         [EvalDatasetDataKeyEnum.ExpectedOutput]: item.expectedOutput,
         [EvalDatasetDataKeyEnum.Context]: item.context || [],
         [EvalDatasetDataKeyEnum.RetrievalContext]: item.retrievalContext || [],
-        metadata: item.metadata || {},
+        [EvalDatasetDataKeyEnum.Metadata]: item.metadata || {},
         createFrom: item.createFrom,
         createTime: item.createTime,
         updateTime: item.updateTime
       }))
     };
   } catch (error) {
-    addLog.error('Database error in eval dataset data list', {
+    addLog.error('Failed to list evaluation dataset data', {
       collectionId,
       searchKey,
       qualityStatus,
@@ -75,7 +87,7 @@ async function handler(
       pageSize,
       error
     });
-    throw error;
+    return Promise.reject(EvaluationErrEnum.evalDatasetDataListError);
   }
 }
 

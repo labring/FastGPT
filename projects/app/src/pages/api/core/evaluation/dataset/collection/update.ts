@@ -6,10 +6,63 @@ import type { updateEvalDatasetCollectionBody } from '@fastgpt/global/core/evalu
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { authEvaluationDatasetWrite } from '@fastgpt/service/core/evaluation/common';
+import {
+  MAX_NAME_LENGTH,
+  MAX_DESCRIPTION_LENGTH,
+  MAX_MODEL_NAME_LENGTH
+} from '@fastgpt/global/core/evaluation/constants';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
+import { addLog } from '@fastgpt/service/common/system/log';
 
 export type EvalDatasetCollectionUpdateQuery = {};
 export type EvalDatasetCollectionUpdateBody = updateEvalDatasetCollectionBody;
 export type EvalDatasetCollectionUpdateResponse = string;
+
+function validateUpdateParams(params: {
+  collectionId?: string;
+  name?: string;
+  description?: string;
+  evaluationModel?: string;
+}) {
+  const { collectionId, name, description, evaluationModel } = params;
+
+  if (!collectionId || typeof collectionId !== 'string' || collectionId.trim().length === 0) {
+    throw EvaluationErrEnum.datasetCollectionIdRequired;
+  }
+
+  if (name !== undefined) {
+    if (typeof name !== 'string' || name.trim().length === 0) {
+      throw EvaluationErrEnum.evalNameRequired;
+    }
+
+    if (name.trim().length > MAX_NAME_LENGTH) {
+      throw EvaluationErrEnum.evalNameTooLong;
+    }
+  }
+
+  if (description && typeof description !== 'string') {
+    throw EvaluationErrEnum.evalDescriptionInvalidType;
+  }
+
+  if (description && description.length > MAX_DESCRIPTION_LENGTH) {
+    throw EvaluationErrEnum.evalDescriptionTooLong;
+  }
+
+  if (evaluationModel && typeof evaluationModel !== 'string') {
+    throw EvaluationErrEnum.evalModelNameInvalid;
+  }
+
+  if (evaluationModel && evaluationModel.length > MAX_MODEL_NAME_LENGTH) {
+    throw EvaluationErrEnum.evalModelNameTooLong;
+  }
+
+  if (evaluationModel) {
+    if (!global.llmModelMap.has(evaluationModel)) {
+      throw EvaluationErrEnum.datasetModelNotFound;
+    }
+  }
+}
+
 async function handler(
   req: ApiRequestProps<EvalDatasetCollectionUpdateBody, EvalDatasetCollectionUpdateQuery>
 ): Promise<EvalDatasetCollectionUpdateResponse> {
@@ -21,39 +74,7 @@ async function handler(
     authToken: true
   });
 
-  if (!collectionId || typeof collectionId !== 'string' || collectionId.trim().length === 0) {
-    return Promise.reject('Collection ID is required and must be a non-empty string');
-  }
-
-  if (name !== undefined) {
-    if (typeof name !== 'string' || name.trim().length === 0) {
-      return Promise.reject('Name must be a non-empty string');
-    }
-
-    if (name.trim().length > 100) {
-      return Promise.reject('Name must be less than 100 characters');
-    }
-  }
-
-  if (description && typeof description !== 'string') {
-    return Promise.reject('Description must be a string');
-  }
-
-  if (description && description.length > 100) {
-    return Promise.reject('Description must be less than 100 characters');
-  }
-
-  if (evaluationModel && typeof evaluationModel !== 'string') {
-    return Promise.reject('Evaluation model must be a string');
-  }
-
-  if (evaluationModel && evaluationModel.length > 100) {
-    return Promise.reject('Evaluation model must be less than 100 characters');
-  }
-
-  if (evaluationModel && !global.llmModelMap.has(evaluationModel)) {
-    return Promise.reject(`Invalid evaluation model: ${evaluationModel}`);
-  }
+  validateUpdateParams({ collectionId, name, description, evaluationModel });
 
   const existingCollection = await MongoEvalDatasetCollection.findOne({
     _id: collectionId,
@@ -61,7 +82,7 @@ async function handler(
   });
 
   if (!existingCollection) {
-    return Promise.reject('Dataset collection not found');
+    return Promise.reject(EvaluationErrEnum.datasetCollectionNotFound);
   }
 
   if (name !== undefined) {
@@ -72,7 +93,7 @@ async function handler(
     });
 
     if (nameConflict) {
-      return Promise.reject('A dataset with this name already exists');
+      return Promise.reject(EvaluationErrEnum.evalDuplicateDatasetName);
     }
   }
 
@@ -105,7 +126,8 @@ async function handler(
 
     return 'success';
   } catch (error) {
-    return Promise.reject('Failed to update dataset collection');
+    addLog.error('Update evaluation dataset collection failed', error);
+    return Promise.reject(EvaluationErrEnum.datasetCollectionUpdateFailed);
   }
 }
 

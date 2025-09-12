@@ -10,6 +10,12 @@ import { createEvaluationMetricDebugUsage } from '@fastgpt/service/support/walle
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 import { EvalMetricTypeValues } from '@fastgpt/global/core/evaluation/metric/constants';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
+import {
+  MAX_USER_INPUT_LENGTH,
+  MAX_NAME_LENGTH,
+  MAX_OUTPUT_LENGTH,
+  MAX_PROMPT_LENGTH
+} from '@fastgpt/global/core/evaluation/constants';
 
 async function handler(req: ApiRequestProps<DebugMetricBody, {}>, res: ApiResponseType<any>) {
   const { evalCase, llmConfig, metricConfig } = req.body;
@@ -33,7 +39,7 @@ async function handler(req: ApiRequestProps<DebugMetricBody, {}>, res: ApiRespon
     return Promise.reject(EvaluationErrEnum.evalCaseUserInputRequired);
   }
 
-  if (evalCase.userInput.trim().length > 1000) {
+  if (evalCase.userInput.trim().length > MAX_USER_INPUT_LENGTH) {
     return Promise.reject(EvaluationErrEnum.evalCaseUserInputTooLong);
   }
 
@@ -45,7 +51,7 @@ async function handler(req: ApiRequestProps<DebugMetricBody, {}>, res: ApiRespon
     return Promise.reject(EvaluationErrEnum.evalCaseActualOutputRequired);
   }
 
-  if (evalCase.actualOutput.trim().length > 4000) {
+  if (evalCase.actualOutput.trim().length > MAX_OUTPUT_LENGTH) {
     return Promise.reject(EvaluationErrEnum.evalCaseActualOutputTooLong);
   }
 
@@ -57,7 +63,7 @@ async function handler(req: ApiRequestProps<DebugMetricBody, {}>, res: ApiRespon
     return Promise.reject(EvaluationErrEnum.evalCaseExpectedOutputRequired);
   }
 
-  if (evalCase.expectedOutput.trim().length > 4000) {
+  if (evalCase.expectedOutput.trim().length > MAX_OUTPUT_LENGTH) {
     return Promise.reject(EvaluationErrEnum.evalCaseExpectedOutputTooLong);
   }
 
@@ -73,7 +79,7 @@ async function handler(req: ApiRequestProps<DebugMetricBody, {}>, res: ApiRespon
     return Promise.reject(EvaluationErrEnum.evalMetricNameRequired);
   }
 
-  if (metricConfig.metricName.trim().length > 100) {
+  if (metricConfig.metricName.trim().length > MAX_NAME_LENGTH) {
     return Promise.reject(EvaluationErrEnum.evalMetricNameTooLong);
   }
 
@@ -93,7 +99,7 @@ async function handler(req: ApiRequestProps<DebugMetricBody, {}>, res: ApiRespon
     return Promise.reject(EvaluationErrEnum.evalMetricPromptRequired);
   }
 
-  if (metricConfig.prompt.trim().length > 4000) {
+  if (metricConfig.prompt.trim().length > MAX_PROMPT_LENGTH) {
     return Promise.reject(EvaluationErrEnum.evalMetricPromptTooLong);
   }
 

@@ -142,7 +142,7 @@ export const authEvalDatasetByTmbId = async ({
 
   const dataset = await MongoEvalDatasetCollection.findOne({ _id: datasetId }).lean();
   if (!dataset) {
-    return Promise.reject(EvaluationErrEnum.evalDatasetCollectionNotFound);
+    return Promise.reject(EvaluationErrEnum.datasetCollectionNotFound);
   }
 
   // Root用户权限特殊处理
@@ -157,7 +157,7 @@ export const authEvalDatasetByTmbId = async ({
 
   // 团队权限验证
   if (String(dataset.teamId) !== teamId) {
-    return Promise.reject(EvaluationErrEnum.evalDatasetCollectionNotFound);
+    return Promise.reject(EvaluationErrEnum.datasetCollectionNotFound);
   }
 
   // 所有者检查
@@ -212,7 +212,7 @@ export const authEvalDataset = async ({
   const { tmbId } = result;
 
   if (!datasetId) {
-    return Promise.reject(EvaluationErrEnum.evalDatasetCollectionNotFound);
+    return Promise.reject(EvaluationErrEnum.datasetCollectionNotFound);
   }
 
   const { dataset } = await authEvalDatasetByTmbId({

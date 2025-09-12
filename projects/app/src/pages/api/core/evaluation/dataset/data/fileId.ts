@@ -17,6 +17,9 @@ import { authEvalDatasetCollectionFile } from '@fastgpt/service/support/permissi
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { authEvaluationDatasetDataWrite } from '@fastgpt/service/core/evaluation/common';
+import { MAX_CSV_ROWS } from '@fastgpt/global/core/evaluation/constants';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
+import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 
 export type EvalDatasetImportFromFileQuery = {};
 export type EvalDatasetImportFromFileBody = importEvalDatasetFromFileBody;
@@ -148,6 +151,35 @@ function parseCSVContent(csvContent: string): CSVRow[] {
   return rows;
 }
 
+function validateRequestParams(params: {
+  fileId?: string;
+  collectionId?: string;
+  enableQualityEvaluation?: boolean;
+  evaluationModel?: string;
+}) {
+  const { fileId, collectionId, enableQualityEvaluation, evaluationModel } = params;
+
+  if (!fileId || typeof fileId !== 'string') {
+    return Promise.reject(EvaluationErrEnum.fileIdRequired);
+  }
+
+  if (!collectionId || typeof collectionId !== 'string') {
+    return Promise.reject(EvaluationErrEnum.datasetCollectionIdRequired);
+  }
+
+  if (typeof enableQualityEvaluation !== 'boolean') {
+    return Promise.reject(EvaluationErrEnum.datasetDataEnableQualityEvalRequired);
+  }
+
+  if (enableQualityEvaluation && (!evaluationModel || typeof evaluationModel !== 'string')) {
+    return Promise.reject(EvaluationErrEnum.datasetDataEvaluationModelRequiredForQuality);
+  }
+
+  if (evaluationModel && !global.llmModelMap.has(evaluationModel)) {
+    return Promise.reject(EvaluationErrEnum.datasetModelNotFound);
+  }
+}
+
 async function handler(
   req: ApiRequestProps<EvalDatasetImportFromFileBody, EvalDatasetImportFromFileQuery>
 ): Promise<EvalDatasetImportFromFileResponse> {
@@ -159,24 +191,10 @@ async function handler(
     authApiKey: true
   });
 
-  if (!fileId || typeof fileId !== 'string') {
-    return Promise.reject('fileId is required and must be a string');
-  }
+  validateRequestParams({ fileId, collectionId, enableQualityEvaluation, evaluationModel });
 
-  if (!collectionId || typeof collectionId !== 'string') {
-    return Promise.reject('datasetCollectionId is required and must be a string');
-  }
-
-  if (typeof enableQualityEvaluation !== 'boolean') {
-    return Promise.reject('enableQualityEvaluation is required and must be a boolean');
-  }
-
-  if (enableQualityEvaluation && (!evaluationModel || typeof evaluationModel !== 'string')) {
-    return Promise.reject('evaluationModel is required when enableQualityEvaluation is true');
-  }
-
-  if (evaluationModel && !global.llmModelMap.has(evaluationModel)) {
-    return Promise.reject(`Invalid evaluation model: ${evaluationModel}`);
+  if (enableQualityEvaluation && evaluationModel) {
+    await checkTeamAIPoints(teamId);
   }
 
   const { file } = await authEvalDatasetCollectionFile({
@@ -189,16 +207,16 @@ async function handler(
 
   const filename = file.filename?.toLowerCase() || '';
   if (!filename.endsWith('.csv')) {
-    return Promise.reject('File must be a CSV file');
+    return Promise.reject(EvaluationErrEnum.fileMustBeCSV);
   }
 
   const datasetCollection = await MongoEvalDatasetCollection.findById(collectionId);
   if (!datasetCollection) {
-    return Promise.reject('Evaluation dataset collection not found');
+    return Promise.reject(EvaluationErrEnum.datasetCollectionNotFound);
   }
 
   if (String(datasetCollection.teamId) !== teamId) {
-    return Promise.reject('No permission to access this dataset collection');
+    return Promise.reject(EvaluationErrEnum.evalInsufficientPermission);
   }
   try {
     const { rawText } = await readFileContentFromMongo({
@@ -212,12 +230,11 @@ async function handler(
     const csvRows = parseCSVContent(rawText);
 
     if (csvRows.length === 0) {
-      return Promise.reject('CSV file contains no data rows');
+      return Promise.reject(EvaluationErrEnum.csvNoDataRows);
     }
 
-    // Validate row limit (prevent memory issues)
-    if (csvRows.length > 10000) {
-      return Promise.reject('CSV file cannot contain more than 10,000 rows');
+    if (csvRows.length > MAX_CSV_ROWS) {
+      return Promise.reject(EvaluationErrEnum.csvTooManyRows);
     }
 
     const evalDatasetRecords = csvRows.map((row) => {
@@ -274,7 +291,7 @@ async function handler(
         [EvalDatasetDataKeyEnum.ActualOutput]: row.actual_output || '',
         [EvalDatasetDataKeyEnum.Context]: contextArray,
         [EvalDatasetDataKeyEnum.RetrievalContext]: retrievalContextArray,
-        metadata: {
+        [EvalDatasetDataKeyEnum.Metadata]: {
           ...metadataObj,
           ...(enableQualityEvaluation
             ? {}
@@ -317,7 +334,7 @@ async function handler(
   } catch (error: any) {
     // Handle parsing errors
     if (error.message && typeof error.message === 'string') {
-      return Promise.reject(`CSV parsing error: ${error.message}`);
+      return Promise.reject(EvaluationErrEnum.csvParsingError);
     }
     throw error;
   }

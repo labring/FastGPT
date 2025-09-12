@@ -56,15 +56,12 @@ describe('QualityAssessment API', () => {
   const validCollectionId = '65f5b5b5b5b5b5b5b5b5b5b6';
   const validEvaluationModel = 'gpt-4';
 
-  // Mock global.llmModelMap
-  beforeEach(() => {
+  const setupMocks = () => {
     global.llmModelMap = new Map([
       ['gpt-4', { model: 'gpt-4' }],
       ['gpt-3.5-turbo', { model: 'gpt-3.5-turbo' }]
     ]) as any;
-  });
 
-  beforeEach(() => {
     vi.clearAllMocks();
 
     mockAuthEvaluationDatasetDataUpdateById.mockResolvedValue({
@@ -73,7 +70,6 @@ describe('QualityAssessment API', () => {
       collectionId: validCollectionId
     });
 
-    // Mock dataset data document
     const mockDatasetData = {
       _id: validDataId,
       datasetId: validCollectionId,
@@ -82,7 +78,6 @@ describe('QualityAssessment API', () => {
     };
     mockMongoEvalDatasetData.findById.mockResolvedValue(mockDatasetData as any);
 
-    // Mock collection document
     const mockCollection = {
       _id: validCollectionId,
       name: 'Test Collection',
@@ -95,7 +90,13 @@ describe('QualityAssessment API', () => {
     mockCheckTeamAIPoints.mockResolvedValue(undefined);
     mockAddEvalDatasetDataQualityJob.mockResolvedValue({} as any);
     mockMongoEvalDatasetData.findByIdAndUpdate.mockResolvedValue({} as any);
+  };
+
+  const createRequest = (dataId = validDataId, evaluationModel = validEvaluationModel) => ({
+    body: { dataId, evaluationModel }
   });
+
+  beforeEach(setupMocks);
 
   describe('Parameter Validation', () => {
     it('should return error when dataId is missing', async () => {
@@ -115,29 +116,15 @@ describe('QualityAssessment API', () => {
     });
 
     it('should return error when dataId is not a string', async () => {
-      const req = {
-        body: {
-          dataId: 123,
-          evaluationModel: validEvaluationModel
-        }
-      };
+      const req = createRequest(123 as any, validEvaluationModel);
 
-      await expect(handler_test(req as any)).rejects.toBe(
-        'dataId is required and must be a string'
-      );
+      await expect(handler_test(req as any)).rejects.toBe(EvaluationErrEnum.datasetDataIdRequired);
     });
 
     it('should return error when evaluationModel is invalid type', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          evaluationModel: 123
-        }
-      };
+      const req = createRequest(validDataId, 123 as any);
 
-      await expect(handler_test(req as any)).rejects.toBe(
-        'evaluationModel must be a string if provided'
-      );
+      await expect(handler_test(req as any)).rejects.toBe(EvaluationErrEnum.datasetModelNotFound);
     });
 
     it('should return error when no evaluation model available', async () => {
@@ -145,43 +132,27 @@ describe('QualityAssessment API', () => {
         _id: validCollectionId,
         name: 'Test Collection',
         teamId: validTeamId,
-        evaluationModel: undefined
+        evaluationModel: ''
       };
       mockMongoEvalDatasetCollection.findOne.mockResolvedValue(mockCollectionNoModel as any);
 
-      const req = {
-        body: {
-          dataId: validDataId
-        }
-      };
+      const req = createRequest(validDataId, '');
 
-      await expect(handler_test(req as any)).rejects.toBe('No evaluation model available');
+      await expect(handler_test(req as any)).rejects.toBe(EvaluationErrEnum.evalModelNameInvalid);
     });
 
     it('should return error when invalid evaluation model', async () => {
       global.llmModelMap.clear();
 
-      const req = {
-        body: {
-          dataId: validDataId,
-          evaluationModel: 'invalid-model'
-        }
-      };
+      const req = createRequest(validDataId, 'invalid-model');
 
-      await expect(handler_test(req as any)).rejects.toBe(
-        'Invalid evaluation model: invalid-model'
-      );
+      await expect(handler_test(req as any)).rejects.toBe(EvaluationErrEnum.datasetModelNotFound);
     });
   });
 
   describe('Authentication and Authorization', () => {
     it('should call authEvaluationDatasetDataUpdateById with correct parameters', async () => {
-      const req = {
-        body: {
-          dataId: validDataId,
-          evaluationModel: validEvaluationModel
-        }
-      };
+      const req = createRequest();
 
       await handler_test(req as any);
 
@@ -218,9 +189,7 @@ describe('QualityAssessment API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toEqual(
-        EvaluationErrEnum.evalDatasetDataNotFound
-      );
+      await expect(handler_test(req as any)).rejects.toEqual(EvaluationErrEnum.datasetDataNotFound);
     });
 
     it('should verify collection exists and belongs to team', async () => {
@@ -250,7 +219,7 @@ describe('QualityAssessment API', () => {
       };
 
       await expect(handler_test(req as any)).rejects.toEqual(
-        EvaluationErrEnum.evalDatasetCollectionNotFound
+        EvaluationErrEnum.datasetCollectionNotFound
       );
     });
 
@@ -265,7 +234,7 @@ describe('QualityAssessment API', () => {
       };
 
       await expect(handler_test(req as any)).rejects.toEqual(
-        EvaluationErrEnum.evalDatasetCollectionNotFound
+        EvaluationErrEnum.datasetCollectionNotFound
       );
     });
   });
@@ -366,79 +335,59 @@ describe('QualityAssessment API', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle job removal errors and return error message', async () => {
+    it('should handle job removal errors and reject with quality assessment failed', async () => {
       const jobError = new Error('Failed to remove job');
       mockCheckEvalDatasetDataQualityJobActive.mockResolvedValue(true);
       mockRemoveEvalDatasetDataQualityJobsRobust.mockRejectedValue(jobError);
 
-      const req = {
-        body: {
-          dataId: validDataId,
-          evaluationModel: validEvaluationModel
-        }
-      };
+      const req = createRequest();
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('Failed to remove job');
+      await expect(handler_test(req as any)).rejects.toBe(
+        EvaluationErrEnum.qualityAssessmentFailed
+      );
     });
 
-    it('should handle job addition errors and return error message', async () => {
+    it('should handle job addition errors and reject with quality assessment failed', async () => {
       const jobError = new Error('Failed to add job');
       mockAddEvalDatasetDataQualityJob.mockRejectedValue(jobError);
 
-      const req = {
-        body: {
-          dataId: validDataId,
-          evaluationModel: validEvaluationModel
-        }
-      };
+      const req = createRequest();
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('Failed to add job');
+      await expect(handler_test(req as any)).rejects.toBe(
+        EvaluationErrEnum.qualityAssessmentFailed
+      );
     });
 
-    it('should handle database update errors and return error message', async () => {
+    it('should handle database update errors and reject with quality assessment failed', async () => {
       const dbError = new Error('Database update failed');
       mockMongoEvalDatasetData.findByIdAndUpdate.mockRejectedValue(dbError);
 
-      const req = {
-        body: {
-          dataId: validDataId,
-          evaluationModel: validEvaluationModel
-        }
-      };
+      const req = createRequest();
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('Database update failed');
+      await expect(handler_test(req as any)).rejects.toBe(
+        EvaluationErrEnum.qualityAssessmentFailed
+      );
     });
 
-    it('should handle non-Error objects and return generic message', async () => {
+    it('should handle non-Error objects and reject with quality assessment failed', async () => {
       mockAddEvalDatasetDataQualityJob.mockRejectedValue('String error');
 
-      const req = {
-        body: {
-          dataId: validDataId,
-          evaluationModel: validEvaluationModel
-        }
-      };
+      const req = createRequest();
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('Failed to queue quality assessment job');
+      await expect(handler_test(req as any)).rejects.toBe(
+        EvaluationErrEnum.qualityAssessmentFailed
+      );
     });
 
-    it('should handle check job active errors and return error message', async () => {
+    it('should handle check job active errors and reject with quality assessment failed', async () => {
       const checkError = new Error('Failed to check job status');
       mockCheckEvalDatasetDataQualityJobActive.mockRejectedValue(checkError);
 
-      const req = {
-        body: {
-          dataId: validDataId,
-          evaluationModel: validEvaluationModel
-        }
-      };
+      const req = createRequest();
 
-      const result = await handler_test(req as any);
-      expect(result).toBe('Failed to check job status');
+      await expect(handler_test(req as any)).rejects.toBe(
+        EvaluationErrEnum.qualityAssessmentFailed
+      );
     });
   });
 
@@ -451,9 +400,7 @@ describe('QualityAssessment API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toBe(
-        'dataId is required and must be a string'
-      );
+      await expect(handler_test(req as any)).rejects.toBe(EvaluationErrEnum.datasetDataIdRequired);
     });
 
     it('should handle empty string evaluationModel', async () => {
@@ -472,7 +419,7 @@ describe('QualityAssessment API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toBe('No evaluation model available');
+      await expect(handler_test(req as any)).rejects.toBe(EvaluationErrEnum.evalModelNameInvalid);
     });
 
     it('should handle null dataId', async () => {
@@ -483,9 +430,7 @@ describe('QualityAssessment API', () => {
         }
       };
 
-      await expect(handler_test(req as any)).rejects.toBe(
-        'dataId is required and must be a string'
-      );
+      await expect(handler_test(req as any)).rejects.toBe(EvaluationErrEnum.datasetDataIdRequired);
     });
 
     it('should handle undefined evaluationModel with collection fallback', async () => {
@@ -557,46 +502,9 @@ describe('QualityAssessment API', () => {
 
   describe('Integration Workflow', () => {
     it('should execute complete workflow when job exists', async () => {
-      // Reset all mocks and set up specific behavior for this test
-      vi.clearAllMocks();
-
-      // Set up all necessary mocks for this test
-      mockAuthEvaluationDatasetDataUpdateById.mockResolvedValue({
-        teamId: validTeamId,
-        tmbId: validTmbId,
-        collectionId: validCollectionId
-      });
-
-      // Mock dataset data document
-      const mockDatasetData = {
-        _id: validDataId,
-        datasetId: validCollectionId,
-        userInput: 'test input',
-        expectedOutput: 'test output'
-      };
-      mockMongoEvalDatasetData.findById.mockResolvedValue(mockDatasetData as any);
-
-      // Mock collection document
-      const mockCollection = {
-        _id: validCollectionId,
-        name: 'Test Collection',
-        teamId: validTeamId,
-        evaluationModel: validEvaluationModel
-      };
-      mockMongoEvalDatasetCollection.findOne.mockResolvedValue(mockCollection as any);
-
-      mockCheckTeamAIPoints.mockResolvedValue(undefined);
       mockCheckEvalDatasetDataQualityJobActive.mockResolvedValue(true);
       mockRemoveEvalDatasetDataQualityJobsRobust.mockResolvedValue(undefined);
-      mockAddEvalDatasetDataQualityJob.mockResolvedValue({} as any);
-      mockMongoEvalDatasetData.findByIdAndUpdate.mockResolvedValue({} as any);
-
-      const req = {
-        body: {
-          dataId: validDataId,
-          evaluationModel: validEvaluationModel
-        }
-      };
+      const req = createRequest();
 
       const result = await handler_test(req as any);
 
@@ -626,13 +534,7 @@ describe('QualityAssessment API', () => {
 
     it('should execute complete workflow when no job exists', async () => {
       mockCheckEvalDatasetDataQualityJobActive.mockResolvedValue(false);
-
-      const req = {
-        body: {
-          dataId: validDataId,
-          evaluationModel: validEvaluationModel
-        }
-      };
+      const req = createRequest();
 
       const result = await handler_test(req as any);
 
