@@ -433,8 +433,8 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
                 {t('dashboard_evaluation:cancel')}
               </Button>
               <Button
-                colorScheme="blue"
                 isLoading={isLoading}
+                variant="outline"
                 onClick={(e) => {
                   e.preventDefault(); // 阻止默认行为
                   handleSubmit((data) => handleSaveClick(data, false))(e);
@@ -443,7 +443,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
                 {t('dashboard_evaluation:save')}
               </Button>
               <Button
-                variant="outline"
+                colorScheme="blue"
                 isLoading={isLoading}
                 onClick={(e) => {
                   e.preventDefault(); // 阻止默认行为
