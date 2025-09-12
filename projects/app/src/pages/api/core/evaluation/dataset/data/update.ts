@@ -14,39 +14,38 @@ export type EvalDatasetDataUpdateQuery = {};
 export type EvalDatasetDataUpdateBody = updateEvalDatasetDataBody;
 export type EvalDatasetDataUpdateResponse = string;
 
-async function handler(
-  req: ApiRequestProps<EvalDatasetDataUpdateBody, EvalDatasetDataUpdateQuery>
-): Promise<EvalDatasetDataUpdateResponse> {
+function validateRequestParams(params: {
+  dataId?: string;
+  userInput?: string;
+  actualOutput?: string;
+  expectedOutput?: string;
+  context?: string[];
+  retrievalContext?: string[];
+  metadata?: Record<string, any>;
+}) {
   const { dataId, userInput, actualOutput, expectedOutput, context, retrievalContext, metadata } =
-    req.body;
-
-  const { teamId, tmbId } = await authEvaluationDatasetDataUpdateById(dataId, {
-    req,
-    authToken: true,
-    authApiKey: true
-  });
-
+    params;
   if (!dataId || typeof dataId !== 'string') {
-    return Promise.reject('dataId is required and must be a string');
+    throw EvaluationErrEnum.datasetDataIdRequired;
   }
 
   if (!userInput || typeof userInput !== 'string' || userInput.trim().length === 0) {
-    return Promise.reject('userInput is required and must be a non-empty string');
+    throw EvaluationErrEnum.datasetDataUserInputRequired;
   }
 
   if (!expectedOutput || typeof expectedOutput !== 'string' || expectedOutput.trim().length === 0) {
-    return Promise.reject('expectedOutput is required and must be a non-empty string');
+    throw EvaluationErrEnum.datasetDataExpectedOutputRequired;
   }
 
   if (actualOutput !== undefined && typeof actualOutput !== 'string') {
-    return Promise.reject('actualOutput must be a string if provided');
+    throw EvaluationErrEnum.datasetDataActualOutputMustBeString;
   }
 
   if (
     context !== undefined &&
     (!Array.isArray(context) || !context.every((item) => typeof item === 'string'))
   ) {
-    return Promise.reject('context must be an array of strings if provided');
+    throw EvaluationErrEnum.datasetDataContextMustBeArrayOfStrings;
   }
 
   if (
@@ -54,15 +53,38 @@ async function handler(
     (!Array.isArray(retrievalContext) ||
       !retrievalContext.every((item) => typeof item === 'string'))
   ) {
-    return Promise.reject('retrievalContext must be an array of strings if provided');
+    throw EvaluationErrEnum.datasetDataRetrievalContextMustBeArrayOfStrings;
   }
 
   if (
     metadata !== undefined &&
     (typeof metadata !== 'object' || metadata === null || Array.isArray(metadata))
   ) {
-    return Promise.reject('metadata must be an object if provided');
+    throw EvaluationErrEnum.datasetDataMetadataMustBeObject;
   }
+}
+
+async function handler(
+  req: ApiRequestProps<EvalDatasetDataUpdateBody, EvalDatasetDataUpdateQuery>
+): Promise<EvalDatasetDataUpdateResponse> {
+  const { dataId, userInput, actualOutput, expectedOutput, context, retrievalContext, metadata } =
+    req.body;
+
+  validateRequestParams({
+    dataId,
+    userInput,
+    actualOutput,
+    expectedOutput,
+    context,
+    retrievalContext,
+    metadata
+  });
+
+  const { teamId, tmbId } = await authEvaluationDatasetDataUpdateById(dataId, {
+    req,
+    authToken: true,
+    authApiKey: true
+  });
 
   let collectionName = '';
 
@@ -70,7 +92,7 @@ async function handler(
     const existingData = await MongoEvalDatasetData.findById(dataId).session(session);
 
     if (!existingData) {
-      return Promise.reject(EvaluationErrEnum.evalDatasetDataNotFound);
+      return Promise.reject(EvaluationErrEnum.datasetDataNotFound);
     }
 
     const collection = await MongoEvalDatasetCollection.findOne({
@@ -79,7 +101,7 @@ async function handler(
     }).session(session);
 
     if (!collection) {
-      return Promise.reject(EvaluationErrEnum.evalDatasetCollectionNotFound);
+      return Promise.reject(EvaluationErrEnum.datasetCollectionNotFound);
     }
 
     collectionName = collection.name;

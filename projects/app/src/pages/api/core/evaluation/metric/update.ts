@@ -7,6 +7,11 @@ import { authEvaluationMetricWrite } from '@fastgpt/service/core/evaluation/comm
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
+import {
+  MAX_NAME_LENGTH,
+  MAX_DESCRIPTION_LENGTH,
+  MAX_PROMPT_LENGTH
+} from '@fastgpt/global/core/evaluation/constants';
 
 async function handler(req: ApiRequestProps<UpdateMetricBody, {}>, res: ApiResponseType<any>) {
   const { metricId, name, description, prompt } = req.body;
@@ -23,7 +28,7 @@ async function handler(req: ApiRequestProps<UpdateMetricBody, {}>, res: ApiRespo
     return Promise.reject(EvaluationErrEnum.evalMetricNameRequired);
   }
 
-  if (name && name.trim().length > 100) {
+  if (name && name.trim().length > MAX_NAME_LENGTH) {
     return Promise.reject(EvaluationErrEnum.evalMetricNameTooLong);
   }
 
@@ -31,7 +36,7 @@ async function handler(req: ApiRequestProps<UpdateMetricBody, {}>, res: ApiRespo
     return Promise.reject(EvaluationErrEnum.evalMetricDescriptionTooLong);
   }
 
-  if (description && description.length > 100) {
+  if (description && description.length > MAX_DESCRIPTION_LENGTH) {
     return Promise.reject(EvaluationErrEnum.evalMetricDescriptionTooLong);
   }
 
@@ -39,7 +44,7 @@ async function handler(req: ApiRequestProps<UpdateMetricBody, {}>, res: ApiRespo
     return Promise.reject(EvaluationErrEnum.evalMetricPromptRequired);
   }
 
-  if (prompt && prompt.length > 4000) {
+  if (prompt && prompt.length > MAX_PROMPT_LENGTH) {
     return Promise.reject(EvaluationErrEnum.evalMetricPromptTooLong);
   }
 

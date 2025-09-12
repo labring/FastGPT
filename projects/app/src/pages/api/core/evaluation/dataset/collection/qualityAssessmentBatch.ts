@@ -16,9 +16,9 @@ import { EvalDatasetDataQualityStatusEnum } from '@fastgpt/global/core/evaluatio
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { authEvaluationDatasetWrite } from '@fastgpt/service/core/evaluation/common';
-import EvaluationErrCode, { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 import { getEvaluationModel } from '@fastgpt/service/core/ai/model';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 export type QualityAssessmentBatchQuery = {};
 export type QualityAssessmentBatchBody = qualityAssessmentBatchBody;
@@ -34,16 +34,22 @@ async function handler(
     authToken: true
   });
 
-  // Check AI points availability
-  await checkTeamAIPoints(teamId);
-
   if (!collectionId || typeof collectionId !== 'string') {
-    return Promise.reject('collectionId is required and must be a string');
+    return Promise.reject(EvaluationErrEnum.datasetCollectionIdRequired);
   }
 
   if (evaluationModel !== undefined && typeof evaluationModel !== 'string') {
-    return Promise.reject('evaluationModel must be a string if provided');
+    return Promise.reject(EvaluationErrEnum.evalModelNameInvalid);
   }
+
+  if (evaluationModel) {
+    if (!global.llmModelMap.has(evaluationModel)) {
+      return Promise.reject(EvaluationErrEnum.datasetModelNotFound);
+    }
+  }
+
+  // Check AI points availability
+  await checkTeamAIPoints(teamId);
 
   const collection = await MongoEvalDatasetCollection.findOne({
     _id: collectionId,
@@ -51,15 +57,13 @@ async function handler(
   });
 
   if (!collection) {
-    return Promise.reject(
-      EvaluationErrCode[EvaluationErrEnum.evalDatasetCollectionNotFound].message
-    );
+    return Promise.reject(EvaluationErrEnum.datasetCollectionNotFound);
   }
 
   const finalEvaluationModel = getEvaluationModel(evaluationModel || collection.evaluationModel);
 
   if (!finalEvaluationModel) {
-    return Promise.reject(EvaluationErrCode[EvaluationErrEnum.evaluatorLLmModelNotFound].message);
+    return Promise.reject(EvaluationErrEnum.evaluatorLLmModelNotFound);
   }
 
   const evalModel = finalEvaluationModel.model;
@@ -70,7 +74,7 @@ async function handler(
   }).select('_id');
 
   if (dataItems.length === 0) {
-    return Promise.reject('No data items found in the collection');
+    return Promise.reject(EvaluationErrEnum.datasetNoData);
   }
 
   let processedCount = 0;

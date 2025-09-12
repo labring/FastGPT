@@ -3,14 +3,11 @@ import { i18nT } from '../../../../web/i18n/utils';
 
 /* evaluation: 510000 */
 export enum EvaluationErrEnum {
-  // Dataset related errors
-  evalDatasetCollectionNotFound = 'evaluationDatasetCollectionNotFound',
-  evalDatasetDataNotFound = 'evaluationDatasetDataNotFound',
-
-  // Validation errors (510002-510049)
+  // Validation errors
   evalNameRequired = 'evaluationNameRequired',
   evalNameTooLong = 'evaluationNameTooLong',
   evalDescriptionTooLong = 'evaluationDescriptionTooLong',
+  evalDescriptionInvalidType = 'evaluationDescriptionInvalidType',
   evalDatasetIdRequired = 'evaluationDatasetIdRequired',
   evalTargetRequired = 'evaluationTargetRequired',
   evalTargetInvalidConfig = 'evaluationTargetInvalidConfig',
@@ -22,13 +19,13 @@ export enum EvaluationErrEnum {
   evalItemIdRequired = 'evaluationItemIdRequired',
   evalDataItemIdRequired = 'evaluationDataItemIdRequired',
 
-  // Authentication errors (510050-510069)
+  // Authentication errors
   evalInsufficientPermission = 'evaluationInsufficientPermission',
   evalAppNotFound = 'evaluationAppNotFound',
   evalTaskNotFound = 'evaluationTaskNotFound',
   evalItemNotFound = 'evaluationItemNotFound',
 
-  // Business logic errors (510070-510099)
+  // Business logic errors
   evalInvalidStatus = 'evaluationInvalidStatus',
   evalInvalidStateTransition = 'evaluationInvalidStateTransition',
   evalOnlyRunningCanStop = 'evaluationOnlyRunningCanStop',
@@ -87,6 +84,54 @@ export enum EvaluationErrEnum {
   evaluatorInvalidResponse = 'evaluationEvaluatorInvalidResponse',
   evaluatorNetworkError = 'evaluationEvaluatorNetworkError',
 
+  // Dataset collection validation errors
+  datasetCollectionNotFound = 'evaluationDatasetCollectionNotFound',
+  datasetCollectionIdRequired = 'evaluationDatasetCollectionIdRequired',
+  datasetCollectionUpdateFailed = 'evaluationDatasetCollectionUpdateFailed',
+
+  // Dataset data validation errors
+  datasetDataNotFound = 'evaluationDatasetDataNotFound',
+  datasetModelNotFound = 'evaluationDatasetModelNotFound',
+  datasetNoData = 'evaluationDatasetNoData',
+  datasetDataIdRequired = 'evaluationDatasetDataIdRequired',
+  evalDataQualityStatusInvalid = 'evaluationDataQualityStatusInvalid',
+  evalDatasetDataListError = 'evaluationDatasetDataListError',
+  datasetDataUserInputRequired = 'evaluationDatasetDataUserInputRequired',
+  datasetDataExpectedOutputRequired = 'evaluationDatasetDataExpectedOutputRequired',
+  datasetDataActualOutputMustBeString = 'evaluationDatasetDataActualOutputMustBeString',
+  datasetDataContextMustBeArrayOfStrings = 'evaluationDatasetDataContextMustBeArrayOfStrings',
+  datasetDataRetrievalContextMustBeArrayOfStrings = 'evaluationDatasetDataRetrievalContextMustBeArrayOfStrings',
+  datasetDataEnableQualityEvalRequired = 'evaluationDatasetDataEnableQualityEvalRequired',
+  datasetDataEvaluationModelRequiredForQuality = 'evaluationDatasetDataEvaluationModelRequiredForQuality',
+  datasetDataMetadataMustBeObject = 'evaluationDatasetDataMetadataMustBeObject',
+  qualityAssessmentFailed = 'evaluationQualityAssessmentFailed',
+
+  // Task/Job related errors
+  datasetTaskNotRetryable = 'evaluationDatasetTaskNotRetryable',
+  datasetTaskJobNotFound = 'evaluationDatasetTaskJobNotFound',
+  datasetTaskJobMismatch = 'evaluationDatasetTaskJobMismatch',
+  datasetTaskOnlyFailedCanDelete = 'evaluationDatasetTaskOnlyFailedCanDelete',
+  datasetTaskOperationFailed = 'evaluationDatasetTaskOperationFailed',
+  datasetTaskDeleteFailed = 'evaluationDatasetTaskDeleteFailed',
+  fetchFailedTasksError = 'evaluationFetchFailedTasksError',
+
+  // File/Import related errors
+  fileIdRequired = 'evaluationFileIdRequired',
+  fileMustBeCSV = 'evaluationFileMustBeCSV',
+  csvInvalidStructure = 'evaluationCSVInvalidStructure',
+  csvTooManyRows = 'evaluationCSVTooManyRows',
+  csvParsingError = 'evaluationCSVParsingError',
+  csvNoDataRows = 'evaluationCSVNoDataRows',
+
+  // Count/Resource validation errors
+  countMustBeGreaterThanZero = 'evaluationCountMustBeGreaterThanZero',
+  countExceedsAvailableData = 'evaluationCountExceedsAvailableData',
+  selectedDatasetsContainNoData = 'evaluationSelectedDatasetsContainNoData',
+
+  // Model validation errors
+  evalModelNameInvalid = 'evaluationModelNameInvalid',
+  evalModelNameTooLong = 'evaluationModelNameTooLong',
+
   // Summary related errors
   summaryMetricsConfigError = 'evaluationSummaryMetricsConfigError',
   summaryThresholdValueRequired = 'evaluationSummaryThresholdValueRequired',
@@ -103,11 +148,11 @@ export enum EvaluationErrEnum {
 const evaluationErrList = [
   // Dataset related errors
   {
-    statusText: EvaluationErrEnum.evalDatasetCollectionNotFound,
+    statusText: EvaluationErrEnum.datasetCollectionNotFound,
     message: i18nT('evaluation:dataset_collection_not_found')
   },
   {
-    statusText: EvaluationErrEnum.evalDatasetDataNotFound,
+    statusText: EvaluationErrEnum.datasetDataNotFound,
     message: i18nT('evaluation:dataset_data_not_found')
   },
 
@@ -382,6 +427,144 @@ const evaluationErrList = [
     message: i18nT('evaluation:evaluator_network_error')
   },
 
+  // Dataset collection validation errors
+  {
+    statusText: EvaluationErrEnum.datasetCollectionIdRequired,
+    message: i18nT('evaluation:dataset_collection_id_required')
+  },
+  {
+    statusText: EvaluationErrEnum.datasetCollectionUpdateFailed,
+    message: i18nT('evaluation:dataset_collection_update_failed')
+  },
+  {
+    statusText: EvaluationErrEnum.datasetModelNotFound,
+    message: i18nT('evaluation:dataset_model_not_found')
+  },
+  {
+    statusText: EvaluationErrEnum.datasetNoData,
+    message: i18nT('evaluation:dataset_no_data')
+  },
+
+  // Dataset data validation errors
+  {
+    statusText: EvaluationErrEnum.datasetDataIdRequired,
+    message: i18nT('evaluation:dataset_data_id_required')
+  },
+  {
+    statusText: EvaluationErrEnum.evalDataQualityStatusInvalid,
+    message: i18nT('evaluation:data_quality_status_invalid')
+  },
+  {
+    statusText: EvaluationErrEnum.datasetDataUserInputRequired,
+    message: i18nT('evaluation:dataset_data_user_input_required')
+  },
+  {
+    statusText: EvaluationErrEnum.datasetDataExpectedOutputRequired,
+    message: i18nT('evaluation:dataset_data_expected_output_required')
+  },
+  {
+    statusText: EvaluationErrEnum.datasetDataActualOutputMustBeString,
+    message: i18nT('evaluation:dataset_data_actual_output_must_be_string')
+  },
+  {
+    statusText: EvaluationErrEnum.datasetDataContextMustBeArrayOfStrings,
+    message: i18nT('evaluation:dataset_data_context_must_be_array_of_strings')
+  },
+  {
+    statusText: EvaluationErrEnum.datasetDataRetrievalContextMustBeArrayOfStrings,
+    message: i18nT('evaluation:dataset_data_retrieval_context_must_be_array_of_strings')
+  },
+  {
+    statusText: EvaluationErrEnum.datasetDataEnableQualityEvalRequired,
+    message: i18nT('evaluation:dataset_data_enable_quality_eval_required')
+  },
+  {
+    statusText: EvaluationErrEnum.datasetDataEvaluationModelRequiredForQuality,
+    message: i18nT('evaluation:dataset_data_evaluation_model_required_for_quality')
+  },
+  {
+    statusText: EvaluationErrEnum.datasetDataMetadataMustBeObject,
+    message: i18nT('evaluation:dataset_data_metadata_must_be_object')
+  },
+  {
+    statusText: EvaluationErrEnum.evalDatasetDataListError,
+    message: i18nT('evaluation:dataset_data_list_error')
+  },
+  {
+    statusText: EvaluationErrEnum.qualityAssessmentFailed,
+    message: i18nT('evaluation:quality_assessment_failed')
+  },
+
+  // Task/Job related errors
+  {
+    statusText: EvaluationErrEnum.datasetTaskNotRetryable,
+    message: i18nT('evaluation:dataset_task_not_retryable')
+  },
+  {
+    statusText: EvaluationErrEnum.datasetTaskJobNotFound,
+    message: i18nT('evaluation:dataset_task_job_not_found')
+  },
+  {
+    statusText: EvaluationErrEnum.datasetTaskJobMismatch,
+    message: i18nT('evaluation:dataset_task_job_mismatch')
+  },
+  {
+    statusText: EvaluationErrEnum.datasetTaskOnlyFailedCanDelete,
+    message: i18nT('evaluation:dataset_task_only_failed_can_delete')
+  },
+  {
+    statusText: EvaluationErrEnum.datasetTaskOperationFailed,
+    message: i18nT('evaluation:dataset_task_operation_failed')
+  },
+  {
+    statusText: EvaluationErrEnum.datasetTaskDeleteFailed,
+    message: i18nT('evaluation:dataset_task_delete_failed')
+  },
+  {
+    statusText: EvaluationErrEnum.fetchFailedTasksError,
+    message: i18nT('evaluation:fetch_failed_tasks_error')
+  },
+
+  // File/Import related errors
+  {
+    statusText: EvaluationErrEnum.fileIdRequired,
+    message: i18nT('evaluation:file_id_required')
+  },
+  {
+    statusText: EvaluationErrEnum.fileMustBeCSV,
+    message: i18nT('evaluation:file_must_be_csv')
+  },
+  {
+    statusText: EvaluationErrEnum.csvInvalidStructure,
+    message: i18nT('evaluation:csv_invalid_structure')
+  },
+  {
+    statusText: EvaluationErrEnum.csvTooManyRows,
+    message: i18nT('evaluation:csv_too_many_rows')
+  },
+  {
+    statusText: EvaluationErrEnum.csvParsingError,
+    message: i18nT('evaluation:csv_parsing_error')
+  },
+  {
+    statusText: EvaluationErrEnum.csvNoDataRows,
+    message: i18nT('evaluation:csv_no_data_rows')
+  },
+
+  // Count/Resource validation errors
+  {
+    statusText: EvaluationErrEnum.countMustBeGreaterThanZero,
+    message: i18nT('evaluation:count_must_be_greater_than_zero')
+  },
+  {
+    statusText: EvaluationErrEnum.countExceedsAvailableData,
+    message: i18nT('evaluation:count_exceeds_available_data')
+  },
+  {
+    statusText: EvaluationErrEnum.selectedDatasetsContainNoData,
+    message: i18nT('evaluation:selected_datasets_contain_no_data')
+  },
+
   // Summary related errors
   {
     statusText: EvaluationErrEnum.summaryMetricsConfigError,
@@ -422,6 +605,20 @@ const evaluationErrList = [
   {
     statusText: EvaluationErrEnum.summaryWeightSumMustBe100,
     message: i18nT('evaluation:summary_weight_sum_must_be_100')
+  },
+
+  // Model validation errors
+  {
+    statusText: EvaluationErrEnum.evalModelNameInvalid,
+    message: i18nT('evaluation:model_name_invalid')
+  },
+  {
+    statusText: EvaluationErrEnum.evalModelNameTooLong,
+    message: i18nT('evaluation:model_name_too_long')
+  },
+  {
+    statusText: EvaluationErrEnum.evalDescriptionInvalidType,
+    message: i18nT('evaluation:description_invalid_type')
   }
 ];
 

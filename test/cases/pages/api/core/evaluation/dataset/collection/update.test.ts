@@ -4,6 +4,7 @@ import { authEvaluationDatasetWrite } from '@fastgpt/service/core/evaluation/com
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 vi.mock('@fastgpt/service/core/evaluation/common');
 vi.mock('@fastgpt/service/common/mongo/sessionRun');
@@ -37,10 +38,20 @@ describe('EvalDatasetCollection Update API', () => {
     description: 'Old description'
   };
 
+  // Helper function to create test request objects
+  const createRequest = (body: any) => ({ body });
+
+  // Helper function to setup successful collection existence and no name conflict
+  const setupSuccessfulUpdate = () => {
+    mockMongoEvalDatasetCollection.findOne.mockReset();
+    mockMongoEvalDatasetCollection.findOne
+      .mockResolvedValueOnce(existingCollection as any)
+      .mockResolvedValueOnce(null);
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Initialize global.llmModelMap if it doesn't exist
     if (!global.llmModelMap) {
       global.llmModelMap = new Map();
     }
@@ -50,10 +61,7 @@ describe('EvalDatasetCollection Update API', () => {
       tmbId: validTmbId
     });
 
-    // Default setup: collection exists, no name conflict (for most tests)
-    mockMongoEvalDatasetCollection.findOne
-      .mockResolvedValueOnce(existingCollection as any) // First call: existence check
-      .mockResolvedValueOnce(null); // Second call: name conflict check
+    setupSuccessfulUpdate();
 
     mockMongoSessionRun.mockImplementation(async (callback) => {
       return callback({} as any);
@@ -64,142 +72,161 @@ describe('EvalDatasetCollection Update API', () => {
 
   describe('Parameter Validation', () => {
     it('should reject when collectionId is missing', async () => {
-      const req = {
-        body: { name: 'Updated Name', description: 'Updated description' }
-      };
+      const req = createRequest({ name: 'Updated Name', description: 'Updated description' });
 
       await expect(handler_test(req as any)).rejects.toEqual(
-        'Collection ID is required and must be a non-empty string'
+        EvaluationErrEnum.datasetCollectionIdRequired
       );
     });
 
     it('should reject when collectionId is empty string', async () => {
-      const req = {
-        body: { collectionId: '', name: 'Updated Name', description: 'Updated description' }
-      };
+      const req = createRequest({
+        collectionId: '',
+        name: 'Updated Name',
+        description: 'Updated description'
+      });
 
       await expect(handler_test(req as any)).rejects.toEqual(
-        'Collection ID is required and must be a non-empty string'
+        EvaluationErrEnum.datasetCollectionIdRequired
       );
     });
 
     it('should reject when collectionId is only whitespace', async () => {
-      const req = {
-        body: { collectionId: '   ', name: 'Updated Name', description: 'Updated description' }
-      };
+      const req = createRequest({
+        collectionId: '   ',
+        name: 'Updated Name',
+        description: 'Updated description'
+      });
 
       await expect(handler_test(req as any)).rejects.toEqual(
-        'Collection ID is required and must be a non-empty string'
+        EvaluationErrEnum.datasetCollectionIdRequired
       );
     });
 
     it('should reject when collectionId is not a string', async () => {
-      const req = {
-        body: { collectionId: 123, name: 'Updated Name', description: 'Updated description' }
-      };
+      const req = createRequest({
+        collectionId: 123,
+        name: 'Updated Name',
+        description: 'Updated description'
+      });
 
       await expect(handler_test(req as any)).rejects.toEqual(
-        'Collection ID is required and must be a non-empty string'
+        EvaluationErrEnum.datasetCollectionIdRequired
       );
     });
 
     it('should succeed when name is missing (optional)', async () => {
-      const req = {
-        body: { collectionId: mockCollectionId, description: 'Updated description' }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        description: 'Updated description'
+      });
 
       await expect(handler_test(req as any)).resolves.toEqual('success');
     });
 
     it('should reject when name is empty string', async () => {
-      const req = {
-        body: { collectionId: mockCollectionId, name: '', description: 'Updated description' }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: '',
+        description: 'Updated description'
+      });
 
-      await expect(handler_test(req as any)).rejects.toEqual('Name must be a non-empty string');
+      await expect(handler_test(req as any)).rejects.toEqual(EvaluationErrEnum.evalNameRequired);
     });
 
     it('should reject when name is only whitespace', async () => {
-      const req = {
-        body: { collectionId: mockCollectionId, name: '   ', description: 'Updated description' }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: '   ',
+        description: 'Updated description'
+      });
 
-      await expect(handler_test(req as any)).rejects.toEqual('Name must be a non-empty string');
+      await expect(handler_test(req as any)).rejects.toEqual(EvaluationErrEnum.evalNameRequired);
     });
 
     it('should reject when name is not a string', async () => {
-      const req = {
-        body: { collectionId: mockCollectionId, name: 123, description: 'Updated description' }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 123,
+        description: 'Updated description'
+      });
 
-      await expect(handler_test(req as any)).rejects.toEqual('Name must be a non-empty string');
+      await expect(handler_test(req as any)).rejects.toEqual(EvaluationErrEnum.evalNameRequired);
     });
 
     it('should reject when name exceeds 100 characters', async () => {
       const longName = 'a'.repeat(101);
-      const req = {
-        body: { collectionId: mockCollectionId, name: longName, description: 'Updated description' }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: longName,
+        description: 'Updated description'
+      });
 
-      await expect(handler_test(req as any)).rejects.toEqual(
-        'Name must be less than 100 characters'
-      );
+      await expect(handler_test(req as any)).rejects.toEqual(EvaluationErrEnum.evalNameTooLong);
     });
 
     it('should reject when description is not a string', async () => {
-      const req = {
-        body: { collectionId: mockCollectionId, name: 'Updated Name', description: 123 }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 'Updated Name',
+        description: 123
+      });
 
-      await expect(handler_test(req as any)).rejects.toEqual('Description must be a string');
+      await expect(handler_test(req as any)).rejects.toEqual(
+        EvaluationErrEnum.evalDescriptionInvalidType
+      );
     });
 
     it('should reject when description exceeds 100 characters', async () => {
       const longDescription = 'a'.repeat(101);
-      const req = {
-        body: { collectionId: mockCollectionId, name: 'Updated Name', description: longDescription }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 'Updated Name',
+        description: longDescription
+      });
 
       await expect(handler_test(req as any)).rejects.toEqual(
-        'Description must be less than 100 characters'
+        EvaluationErrEnum.evalDescriptionTooLong
       );
     });
 
     it('should reject when evaluation model is not a string', async () => {
-      const req = {
-        body: { collectionId: mockCollectionId, name: 'Updated Name', evaluationModel: 123 }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 'Updated Name',
+        evaluationModel: 123
+      });
 
-      await expect(handler_test(req as any)).rejects.toEqual('Evaluation model must be a string');
+      await expect(handler_test(req as any)).rejects.toEqual(
+        EvaluationErrEnum.evalModelNameInvalid
+      );
     });
 
     it('should reject when evaluation model exceeds 100 characters', async () => {
       const longModel = 'a'.repeat(101);
-      const req = {
-        body: { collectionId: mockCollectionId, name: 'Updated Name', evaluationModel: longModel }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 'Updated Name',
+        evaluationModel: longModel
+      });
 
       await expect(handler_test(req as any)).rejects.toEqual(
-        'Evaluation model must be less than 100 characters'
+        EvaluationErrEnum.evalModelNameTooLong
       );
     });
 
     it('should reject invalid evaluation model', async () => {
       const invalidModel = 'invalid-model';
-
-      // Mock global.llmModelMap.has to return false for invalid model
       vi.spyOn(global.llmModelMap, 'has').mockReturnValue(false);
 
-      const req = {
-        body: {
-          collectionId: mockCollectionId,
-          name: 'Updated Name',
-          evaluationModel: invalidModel
-        }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 'Updated Name',
+        evaluationModel: invalidModel
+      });
 
       await expect(handler_test(req as any)).rejects.toEqual(
-        expect.stringContaining('Invalid evaluation model')
+        EvaluationErrEnum.datasetModelNotFound
       );
 
       expect(global.llmModelMap.has).toHaveBeenCalledWith(invalidModel);
@@ -207,19 +234,14 @@ describe('EvalDatasetCollection Update API', () => {
 
     it('should accept valid evaluation model', async () => {
       const validModel = 'gpt-4';
-
-      // Mock global.llmModelMap.has to return true for valid model
       vi.spyOn(global.llmModelMap, 'has').mockReturnValue(true);
+      setupSuccessfulUpdate();
 
-      // Reset mock and setup mock to handle both existence check and name conflict check
-      mockMongoEvalDatasetCollection.findOne.mockReset();
-      mockMongoEvalDatasetCollection.findOne
-        .mockResolvedValueOnce(existingCollection as any) // First call: existence check
-        .mockResolvedValueOnce(null); // Second call: name conflict check (no conflict)
-
-      const req = {
-        body: { collectionId: mockCollectionId, name: 'Updated Name', evaluationModel: validModel }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 'Updated Name',
+        evaluationModel: validModel
+      });
 
       const result = await handler_test(req as any);
       expect(result).toBe('success');
@@ -227,31 +249,29 @@ describe('EvalDatasetCollection Update API', () => {
     });
 
     it('should accept valid parameters', async () => {
-      const req = {
-        body: {
-          collectionId: mockCollectionId,
-          name: 'Updated Name',
-          description: 'Updated description'
-        }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 'Updated Name',
+        description: 'Updated description'
+      });
 
       const result = await handler_test(req as any);
       expect(result).toBe('success');
     });
 
     it('should accept valid name without description', async () => {
-      const req = {
-        body: { collectionId: mockCollectionId, name: 'Updated Name' }
-      };
+      const req = createRequest({ collectionId: mockCollectionId, name: 'Updated Name' });
 
       const result = await handler_test(req as any);
       expect(result).toBe('success');
     });
 
     it('should accept valid name with empty description', async () => {
-      const req = {
-        body: { collectionId: mockCollectionId, name: 'Updated Name', description: '' }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 'Updated Name',
+        description: ''
+      });
 
       const result = await handler_test(req as any);
       expect(result).toBe('success');
@@ -260,13 +280,11 @@ describe('EvalDatasetCollection Update API', () => {
 
   describe('Authentication and Authorization', () => {
     it('should call authUserPer with correct parameters', async () => {
-      const req = {
-        body: {
-          collectionId: mockCollectionId,
-          name: 'Updated Name',
-          description: 'Updated description'
-        }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 'Updated Name',
+        description: 'Updated description'
+      });
 
       await handler_test(req as any);
 
@@ -281,13 +299,11 @@ describe('EvalDatasetCollection Update API', () => {
       const authError = new Error('Authentication failed');
       mockAuthEvaluationDatasetWrite.mockRejectedValue(authError);
 
-      const req = {
-        body: {
-          collectionId: mockCollectionId,
-          name: 'Updated Name',
-          description: 'Updated description'
-        }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 'Updated Name',
+        description: 'Updated description'
+      });
 
       await expect(handler_test(req as any)).rejects.toThrow('Authentication failed');
     });
@@ -295,19 +311,18 @@ describe('EvalDatasetCollection Update API', () => {
 
   describe('Collection Existence Validation', () => {
     it('should reject when collection does not exist', async () => {
-      // Reset mock and set up for this specific test
       mockMongoEvalDatasetCollection.findOne.mockReset();
       mockMongoEvalDatasetCollection.findOne.mockResolvedValueOnce(null);
 
-      const req = {
-        body: {
-          collectionId: mockCollectionId,
-          name: 'Updated Name',
-          description: 'Updated description'
-        }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 'Updated Name',
+        description: 'Updated description'
+      });
 
-      await expect(handler_test(req as any)).rejects.toEqual('Dataset collection not found');
+      await expect(handler_test(req as any)).rejects.toEqual(
+        EvaluationErrEnum.datasetCollectionNotFound
+      );
 
       expect(mockMongoEvalDatasetCollection.findOne).toHaveBeenCalledWith({
         _id: mockCollectionId,
@@ -316,29 +331,26 @@ describe('EvalDatasetCollection Update API', () => {
     });
 
     it('should reject when collection belongs to different team', async () => {
-      // Reset mock and set up for this specific test
       mockMongoEvalDatasetCollection.findOne.mockReset();
       mockMongoEvalDatasetCollection.findOne.mockResolvedValueOnce(null);
 
-      const req = {
-        body: {
-          collectionId: mockCollectionId,
-          name: 'Updated Name',
-          description: 'Updated description'
-        }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 'Updated Name',
+        description: 'Updated description'
+      });
 
-      await expect(handler_test(req as any)).rejects.toEqual('Dataset collection not found');
+      await expect(handler_test(req as any)).rejects.toEqual(
+        EvaluationErrEnum.datasetCollectionNotFound
+      );
     });
 
     it('should proceed when collection exists and belongs to team', async () => {
-      const req = {
-        body: {
-          collectionId: mockCollectionId,
-          name: 'Updated Name',
-          description: 'Updated description'
-        }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 'Updated Name',
+        description: 'Updated description'
+      });
 
       const result = await handler_test(req as any);
       expect(result).toBe('success');
@@ -353,22 +365,19 @@ describe('EvalDatasetCollection Update API', () => {
         teamId: validTeamId
       };
 
-      // Reset mock and set up for this specific test
       mockMongoEvalDatasetCollection.findOne.mockReset();
       mockMongoEvalDatasetCollection.findOne
-        .mockResolvedValueOnce(existingCollection as any) // First call for existence check
-        .mockResolvedValueOnce(conflictingCollection as any); // Second call for name conflict check
+        .mockResolvedValueOnce(existingCollection as any)
+        .mockResolvedValueOnce(conflictingCollection as any);
 
-      const req = {
-        body: {
-          collectionId: mockCollectionId,
-          name: 'Updated Name',
-          description: 'Updated description'
-        }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 'Updated Name',
+        description: 'Updated description'
+      });
 
       await expect(handler_test(req as any)).rejects.toEqual(
-        'A dataset with this name already exists'
+        EvaluationErrEnum.evalDuplicateDatasetName
       );
 
       expect(mockMongoEvalDatasetCollection.findOne).toHaveBeenCalledWith({
@@ -379,38 +388,26 @@ describe('EvalDatasetCollection Update API', () => {
     });
 
     it('should allow keeping the same name for the same collection', async () => {
-      // Reset the mock to set up specific behavior for this test
-      mockMongoEvalDatasetCollection.findOne.mockReset();
-      mockMongoEvalDatasetCollection.findOne
-        .mockResolvedValueOnce(existingCollection as any) // First call for existence check
-        .mockResolvedValueOnce(null); // Second call for name conflict check returns null
+      setupSuccessfulUpdate();
 
-      const req = {
-        body: {
-          collectionId: mockCollectionId,
-          name: 'Old Dataset Name',
-          description: 'Updated description'
-        }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 'Old Dataset Name',
+        description: 'Updated description'
+      });
 
       const result = await handler_test(req as any);
       expect(result).toBe('success');
     });
 
     it('should check name with trimmed whitespace', async () => {
-      // Reset the mock to set up specific behavior for this test
-      mockMongoEvalDatasetCollection.findOne.mockReset();
-      mockMongoEvalDatasetCollection.findOne
-        .mockResolvedValueOnce(existingCollection as any)
-        .mockResolvedValueOnce(null);
+      setupSuccessfulUpdate();
 
-      const req = {
-        body: {
-          collectionId: mockCollectionId,
-          name: '  Updated Name  ',
-          description: 'Updated description'
-        }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: '  Updated Name  ',
+        description: 'Updated description'
+      });
 
       await handler_test(req as any);
 
@@ -424,13 +421,11 @@ describe('EvalDatasetCollection Update API', () => {
 
   describe('Collection Update', () => {
     it('should update collection with correct parameters', async () => {
-      const req = {
-        body: {
-          collectionId: mockCollectionId,
-          name: 'Updated Name',
-          description: 'Updated description'
-        }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 'Updated Name',
+        description: 'Updated description'
+      });
 
       const result = await handler_test(req as any);
 
@@ -450,13 +445,11 @@ describe('EvalDatasetCollection Update API', () => {
     });
 
     it('should trim name and description before saving', async () => {
-      const req = {
-        body: {
-          collectionId: mockCollectionId,
-          name: '  Updated Name  ',
-          description: '  Updated description  '
-        }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: '  Updated Name  ',
+        description: '  Updated description  '
+      });
 
       await handler_test(req as any);
 
@@ -474,9 +467,11 @@ describe('EvalDatasetCollection Update API', () => {
     });
 
     it('should handle empty description correctly', async () => {
-      const req = {
-        body: { collectionId: mockCollectionId, name: 'Updated Name', description: '' }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 'Updated Name',
+        description: ''
+      });
 
       await handler_test(req as any);
 
@@ -494,9 +489,7 @@ describe('EvalDatasetCollection Update API', () => {
     });
 
     it('should handle missing description correctly', async () => {
-      const req = {
-        body: { collectionId: mockCollectionId, name: 'Updated Name' }
-      };
+      const req = createRequest({ collectionId: mockCollectionId, name: 'Updated Name' });
 
       await handler_test(req as any);
 
@@ -514,13 +507,11 @@ describe('EvalDatasetCollection Update API', () => {
     });
 
     it('should return success string', async () => {
-      const req = {
-        body: {
-          collectionId: mockCollectionId,
-          name: 'Updated Name',
-          description: 'Updated description'
-        }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 'Updated Name',
+        description: 'Updated description'
+      });
 
       const result = await handler_test(req as any);
       expect(result).toBe('success');
@@ -528,37 +519,30 @@ describe('EvalDatasetCollection Update API', () => {
     });
 
     it('should propagate database update errors', async () => {
-      // Reset the mock to set up specific behavior for this test
-      mockMongoEvalDatasetCollection.findOne.mockReset();
-      mockMongoEvalDatasetCollection.findOne
-        .mockResolvedValueOnce(existingCollection as any) // First call: existence check
-        .mockResolvedValueOnce(null); // Second call: name conflict check
-
+      setupSuccessfulUpdate();
       const dbError = new Error('Database connection failed');
       mockMongoSessionRun.mockRejectedValue(dbError);
 
-      const req = {
-        body: {
-          collectionId: mockCollectionId,
-          name: 'Updated Name',
-          description: 'Updated description'
-        }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 'Updated Name',
+        description: 'Updated description'
+      });
 
-      await expect(handler_test(req as any)).rejects.toEqual('Failed to update dataset collection');
+      await expect(handler_test(req as any)).rejects.toEqual(
+        EvaluationErrEnum.datasetCollectionUpdateFailed
+      );
     });
   });
 
   describe('Edge Cases', () => {
     it('should handle exactly 100 character name', async () => {
       const exactName = 'a'.repeat(100);
-      const req = {
-        body: {
-          collectionId: mockCollectionId,
-          name: exactName,
-          description: 'Updated description'
-        }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: exactName,
+        description: 'Updated description'
+      });
 
       const result = await handler_test(req as any);
       expect(result).toBe('success');
@@ -566,13 +550,11 @@ describe('EvalDatasetCollection Update API', () => {
 
     it('should handle exactly 100 character description', async () => {
       const exactDescription = 'a'.repeat(100);
-      const req = {
-        body: {
-          collectionId: mockCollectionId,
-          name: 'Updated Name',
-          description: exactDescription
-        }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 'Updated Name',
+        description: exactDescription
+      });
 
       const result = await handler_test(req as any);
       expect(result).toBe('success');
@@ -580,13 +562,11 @@ describe('EvalDatasetCollection Update API', () => {
 
     it('should handle special characters in name', async () => {
       const specialName = 'Updated-Dataset_2024@Company!';
-      const req = {
-        body: {
-          collectionId: mockCollectionId,
-          name: specialName,
-          description: 'Updated description'
-        }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: specialName,
+        description: 'Updated description'
+      });
 
       const result = await handler_test(req as any);
       expect(result).toBe('success');
@@ -594,13 +574,11 @@ describe('EvalDatasetCollection Update API', () => {
 
     it('should handle ObjectId string format for collectionId', async () => {
       const objectIdString = '507f1f77bcf86cd799439011';
-      const req = {
-        body: {
-          collectionId: objectIdString,
-          name: 'Updated Name',
-          description: 'Updated description'
-        }
-      };
+      const req = createRequest({
+        collectionId: objectIdString,
+        name: 'Updated Name',
+        description: 'Updated description'
+      });
 
       const result = await handler_test(req as any);
       expect(result).toBe('success');
@@ -608,13 +586,11 @@ describe('EvalDatasetCollection Update API', () => {
 
     it('should handle very long valid ObjectId', async () => {
       const longValidId = '507f1f77bcf86cd799439011';
-      const req = {
-        body: {
-          collectionId: longValidId,
-          name: 'Updated Name',
-          description: 'Updated description'
-        }
-      };
+      const req = createRequest({
+        collectionId: longValidId,
+        name: 'Updated Name',
+        description: 'Updated description'
+      });
 
       const result = await handler_test(req as any);
       expect(result).toBe('success');
@@ -622,17 +598,13 @@ describe('EvalDatasetCollection Update API', () => {
 
     it('should handle exactly 100 character evaluation model', async () => {
       const exactModel = 'a'.repeat(100);
-
-      // Mock global.llmModelMap.has to return true for valid model
       vi.spyOn(global.llmModelMap, 'has').mockReturnValue(true);
 
-      const req = {
-        body: {
-          collectionId: mockCollectionId,
-          name: 'Updated Name',
-          evaluationModel: exactModel
-        }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 'Updated Name',
+        evaluationModel: exactModel
+      });
 
       const result = await handler_test(req as any);
       expect(result).toBe('success');
@@ -640,13 +612,11 @@ describe('EvalDatasetCollection Update API', () => {
     });
 
     it('should handle empty evaluation model string', async () => {
-      const req = {
-        body: {
-          collectionId: mockCollectionId,
-          name: 'Updated Name',
-          evaluationModel: ''
-        }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: 'Updated Name',
+        evaluationModel: ''
+      });
 
       const result = await handler_test(req as any);
       expect(result).toBe('success');
@@ -660,30 +630,25 @@ describe('EvalDatasetCollection Update API', () => {
         teamId: validTeamId,
         tmbId: validTmbId
       });
-      mockMongoEvalDatasetCollection.findOne
-        .mockResolvedValueOnce(existingCollection as any)
-        .mockResolvedValueOnce(null);
+      setupSuccessfulUpdate();
       mockMongoEvalDatasetCollection.updateOne.mockResolvedValue({ modifiedCount: 1 } as any);
     });
 
     it('should create audit log with correct parameters', async () => {
       const datasetName = 'Updated Dataset';
-      const req = {
-        body: {
-          collectionId: mockCollectionId,
-          name: datasetName,
-          description: 'Updated description'
-        }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: datasetName,
+        description: 'Updated description'
+      });
 
       const result = await handler_test(req as any);
       expect(result).toBe('success');
 
-      // Check that audit log was called with correct parameters
       expect(mockAddAuditLog).toHaveBeenCalledWith({
         tmbId: validTmbId,
         teamId: validTeamId,
-        event: expect.any(String), // AuditEventEnum.UPDATE_EVALUATION_DATASET_COLLECTION
+        event: expect.any(String),
         params: {
           collectionName: datasetName.trim()
         }
@@ -693,20 +658,18 @@ describe('EvalDatasetCollection Update API', () => {
     it('should NOT create audit log when update fails', async () => {
       const datasetName = 'Updated Dataset';
       const dbError = new Error('Database error');
-
       mockMongoSessionRun.mockRejectedValue(dbError);
 
-      const req = {
-        body: {
-          collectionId: mockCollectionId,
-          name: datasetName,
-          description: 'Updated description'
-        }
-      };
+      const req = createRequest({
+        collectionId: mockCollectionId,
+        name: datasetName,
+        description: 'Updated description'
+      });
 
-      await expect(handler_test(req as any)).rejects.toEqual('Failed to update dataset collection');
+      await expect(handler_test(req as any)).rejects.toEqual(
+        EvaluationErrEnum.datasetCollectionUpdateFailed
+      );
 
-      // Audit log should NOT be called if update fails
       expect(mockAddAuditLog).not.toHaveBeenCalled();
     });
   });

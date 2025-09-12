@@ -9,6 +9,8 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { authEvaluationDatasetGenFromKnowledgeBase } from '@fastgpt/service/core/evaluation/common';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
+import { addLog } from '@fastgpt/service/common/system/log';
 
 export type SmartGenerateEvalDatasetQuery = {};
 export type SmartGenerateEvalDatasetBody = smartGenerateEvalDatasetBody;
@@ -29,28 +31,28 @@ async function handler(
     }
   );
 
-  // Check AI points availability
-  await checkTeamAIPoints(teamId);
-
   if (!collectionId || typeof collectionId !== 'string') {
-    return Promise.reject('collectionId is required and must be a string');
+    return Promise.reject(EvaluationErrEnum.datasetCollectionIdRequired);
   }
 
   if (!kbDatasetIds || !Array.isArray(kbDatasetIds) || kbDatasetIds.length === 0) {
-    return Promise.reject('datasetIds is required and must be a non-empty array');
+    return Promise.reject(EvaluationErrEnum.evalInvalidFormat);
   }
 
   if (!intelligentGenerationModel || typeof intelligentGenerationModel !== 'string') {
-    return Promise.reject('intelligentGenerationModel is required and must be a string');
+    return Promise.reject(EvaluationErrEnum.datasetModelNotFound);
   }
+
+  // Check AI points availability
+  await checkTeamAIPoints(teamId);
 
   const evalDatasetCollection = await MongoEvalDatasetCollection.findById(collectionId);
   if (!evalDatasetCollection) {
-    return Promise.reject('Evaluation dataset collection not found');
+    return Promise.reject(EvaluationErrEnum.datasetCollectionNotFound);
   }
 
   if (String(evalDatasetCollection.teamId) !== teamId) {
-    return Promise.reject('No permission to access this evaluation dataset collection');
+    return Promise.reject(EvaluationErrEnum.evalInsufficientPermission);
   }
 
   // Find all collections that belong to the specified datasets
@@ -64,7 +66,7 @@ async function handler(
     ...new Set(datasetCollections.map((collection) => String(collection.datasetId)))
   ];
   if (foundDatasetIds.length !== kbDatasetIds.length) {
-    return Promise.reject('One or more datasets not found or no permission');
+    return Promise.reject(EvaluationErrEnum.evalInsufficientPermission);
   }
 
   const totalDataCount = await MongoDatasetData.countDocuments({
@@ -74,20 +76,18 @@ async function handler(
   });
 
   if (totalDataCount === 0) {
-    return Promise.reject('Selected dataset collections contain no data');
+    return Promise.reject(EvaluationErrEnum.selectedDatasetsContainNoData);
   }
 
   // Use totalDataCount as default when count is undefined
   const finalCount = count !== undefined ? count : totalDataCount;
 
   if (finalCount < 1) {
-    return Promise.reject('count must be greater than 0');
+    return Promise.reject(EvaluationErrEnum.countMustBeGreaterThanZero);
   }
 
   if (finalCount > totalDataCount) {
-    return Promise.reject(
-      `Requested count (${finalCount}) exceeds available data count (${totalDataCount}) in selected collections`
-    );
+    return Promise.reject(EvaluationErrEnum.countExceedsAvailableData);
   }
 
   try {
@@ -111,7 +111,12 @@ async function handler(
 
     return job.id || 'queued';
   } catch (error: any) {
-    return Promise.reject(`Failed to queue smart generation: ${error.message}`);
+    addLog.error('Failed to queue smart generate evaluation dataset job', {
+      collectionId,
+      kbDatasetIds,
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return Promise.reject(EvaluationErrEnum.datasetTaskOperationFailed);
   }
 }
 

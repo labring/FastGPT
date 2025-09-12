@@ -9,6 +9,7 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { authEvaluationDatasetWrite } from '@fastgpt/service/core/evaluation/common';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 async function handler(
   req: ApiRequestProps<retryTaskBody, {}>
@@ -30,31 +31,22 @@ async function handler(
   });
 
   if (!collection) {
-    throw new Error('Evaluation dataset not found or access denied');
+    return Promise.reject(EvaluationErrEnum.datasetCollectionNotFound);
   }
 
   try {
     const job = await evalDatasetDataSynthesizeQueue.getJob(jobId);
 
     if (!job) {
-      return {
-        success: false,
-        message: 'Task not found'
-      };
+      return Promise.reject(EvaluationErrEnum.datasetTaskJobNotFound);
     }
 
     if (job.data.evalDatasetCollectionId !== collectionId) {
-      return {
-        success: false,
-        message: 'Task does not belong to the specified dataset collection'
-      };
+      return Promise.reject(EvaluationErrEnum.datasetTaskJobMismatch);
     }
 
     if (!job.isFailed()) {
-      return {
-        success: false,
-        message: 'Only failed tasks can be retried'
-      };
+      return Promise.reject(EvaluationErrEnum.datasetTaskNotRetryable);
     }
 
     await job.retry();
@@ -88,10 +80,7 @@ async function handler(
       error
     });
 
-    return {
-      success: false,
-      message: 'Failed to retry task'
-    };
+    return Promise.reject(EvaluationErrEnum.datasetTaskOperationFailed);
   }
 }
 

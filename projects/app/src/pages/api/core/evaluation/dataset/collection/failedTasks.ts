@@ -8,6 +8,8 @@ import type {
 } from '@fastgpt/global/core/evaluation/dataset/api';
 import { evalDatasetDataSynthesizeQueue } from '@fastgpt/service/core/evaluation/dataset/dataSynthesizeMq';
 import { authEvaluationDatasetRead } from '@fastgpt/service/core/evaluation/common';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
+import { addLog } from '@fastgpt/service/common/system/log';
 
 async function handler(
   req: ApiRequestProps<listFailedTasksBody, {}>
@@ -26,7 +28,7 @@ async function handler(
   });
 
   if (!collection) {
-    throw new Error('Evaluation dataset not found or access denied');
+    return Promise.reject(EvaluationErrEnum.datasetCollectionNotFound);
   }
 
   try {
@@ -53,7 +55,8 @@ async function handler(
       tasks
     };
   } catch (error) {
-    throw new Error('Error occurred while fetching failed tasks list');
+    addLog.error('Fetch failed tasks list error', error);
+    return Promise.reject(EvaluationErrEnum.fetchFailedTasksError);
   }
 }
 

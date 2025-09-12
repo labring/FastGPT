@@ -17,10 +17,84 @@ import {
   checkTeamAIPoints
 } from '@fastgpt/service/support/permission/teamLimit';
 import { addEvalDatasetDataQualityJob } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 export type EvalDatasetDataCreateQuery = {};
 export type EvalDatasetDataCreateBody = createEvalDatasetDataBody;
 export type EvalDatasetDataCreateResponse = string;
+
+function validateRequestParams(params: {
+  collectionId?: string;
+  userInput?: string;
+  actualOutput?: string;
+  expectedOutput?: string;
+  context?: string[];
+  retrievalContext?: string[];
+  enableQualityEvaluation?: boolean;
+  evaluationModel?: string;
+}) {
+  const {
+    collectionId,
+    userInput,
+    actualOutput,
+    expectedOutput,
+    context,
+    retrievalContext,
+    enableQualityEvaluation,
+    evaluationModel
+  } = params;
+
+  if (!collectionId || typeof collectionId !== 'string') {
+    throw EvaluationErrEnum.datasetCollectionIdRequired;
+  }
+
+  if (!userInput || typeof userInput !== 'string') {
+    throw EvaluationErrEnum.datasetDataUserInputRequired;
+  }
+
+  if (typeof userInput === 'string' && userInput.trim().length === 0) {
+    throw EvaluationErrEnum.datasetDataUserInputRequired;
+  }
+
+  if (!expectedOutput || typeof expectedOutput !== 'string') {
+    throw EvaluationErrEnum.datasetDataExpectedOutputRequired;
+  }
+
+  if (typeof expectedOutput === 'string' && expectedOutput.trim().length === 0) {
+    throw EvaluationErrEnum.datasetDataExpectedOutputRequired;
+  }
+
+  if (actualOutput !== undefined && typeof actualOutput !== 'string') {
+    throw EvaluationErrEnum.datasetDataActualOutputMustBeString;
+  }
+
+  if (
+    context !== undefined &&
+    (!Array.isArray(context) || !context.every((item) => typeof item === 'string'))
+  ) {
+    throw EvaluationErrEnum.datasetDataContextMustBeArrayOfStrings;
+  }
+
+  if (
+    retrievalContext !== undefined &&
+    (!Array.isArray(retrievalContext) ||
+      !retrievalContext.every((item) => typeof item === 'string'))
+  ) {
+    throw EvaluationErrEnum.datasetDataRetrievalContextMustBeArrayOfStrings;
+  }
+
+  if (typeof enableQualityEvaluation !== 'boolean') {
+    throw EvaluationErrEnum.datasetDataEnableQualityEvalRequired;
+  }
+
+  if (enableQualityEvaluation && (!evaluationModel || typeof evaluationModel !== 'string')) {
+    throw EvaluationErrEnum.datasetDataEvaluationModelRequiredForQuality;
+  }
+
+  if (evaluationModel && !global.llmModelMap.has(evaluationModel)) {
+    throw EvaluationErrEnum.datasetModelNotFound;
+  }
+}
 
 async function handler(
   req: ApiRequestProps<EvalDatasetDataCreateBody, EvalDatasetDataCreateQuery>
@@ -36,54 +110,22 @@ async function handler(
     evaluationModel
   } = req.body;
 
+  validateRequestParams({
+    collectionId,
+    userInput,
+    actualOutput,
+    expectedOutput,
+    context,
+    retrievalContext,
+    enableQualityEvaluation,
+    evaluationModel
+  });
+
   const { teamId, tmbId } = await authEvaluationDatasetDataCreate(collectionId, {
     req,
     authToken: true,
     authApiKey: true
   });
-
-  if (!collectionId || typeof collectionId !== 'string') {
-    return Promise.reject('collectionId is required and must be a string');
-  }
-
-  if (!userInput || typeof userInput !== 'string' || userInput.trim().length === 0) {
-    return Promise.reject('userInput is required and must be a non-empty string');
-  }
-
-  if (!expectedOutput || typeof expectedOutput !== 'string' || expectedOutput.trim().length === 0) {
-    return Promise.reject('expectedOutput is required and must be a non-empty string');
-  }
-
-  if (actualOutput !== undefined && typeof actualOutput !== 'string') {
-    return Promise.reject('actualOutput must be a string if provided');
-  }
-
-  if (
-    context !== undefined &&
-    (!Array.isArray(context) || !context.every((item) => typeof item === 'string'))
-  ) {
-    return Promise.reject('context must be an array of strings if provided');
-  }
-
-  if (
-    retrievalContext !== undefined &&
-    (!Array.isArray(retrievalContext) ||
-      !retrievalContext.every((item) => typeof item === 'string'))
-  ) {
-    return Promise.reject('retrievalContext must be an array of strings if provided');
-  }
-
-  if (typeof enableQualityEvaluation !== 'boolean') {
-    return Promise.reject('enableQualityEvaluation is required and must be a boolean');
-  }
-
-  if (enableQualityEvaluation && (!evaluationModel || typeof evaluationModel !== 'string')) {
-    return Promise.reject('evaluationModel is required when enableQualityEvaluation is true');
-  }
-
-  if (evaluationModel && !global.llmModelMap.has(evaluationModel)) {
-    return Promise.reject(`Invalid evaluation model: ${evaluationModel}`);
-  }
 
   const collection = await MongoEvalDatasetCollection.findOne({
     _id: collectionId,
@@ -91,14 +133,16 @@ async function handler(
   });
 
   if (!collection) {
-    return Promise.reject('Dataset collection not found or access denied');
+    return Promise.reject(EvaluationErrEnum.datasetCollectionNotFound);
   }
 
   // Check evaluation data limit
   await checkTeamEvalDatasetDataLimit(teamId);
 
-  // Check AI points availability
-  await checkTeamAIPoints(teamId);
+  if (enableQualityEvaluation && evaluationModel) {
+    // Check AI points availability
+    await checkTeamAIPoints(teamId);
+  }
 
   const dataId = await mongoSessionRun(async (session) => {
     const [{ _id }] = await MongoEvalDatasetData.create(
@@ -108,7 +152,8 @@ async function handler(
           tmbId,
           datasetId: collectionId,
           [EvalDatasetDataKeyEnum.UserInput]: userInput.trim(),
-          [EvalDatasetDataKeyEnum.ActualOutput]: actualOutput?.trim() || '',
+          [EvalDatasetDataKeyEnum.ActualOutput]:
+            (typeof actualOutput === 'string' ? actualOutput.trim() : '') || '',
           [EvalDatasetDataKeyEnum.ExpectedOutput]: expectedOutput.trim(),
           [EvalDatasetDataKeyEnum.Context]: context || [],
           [EvalDatasetDataKeyEnum.RetrievalContext]: retrievalContext || [],

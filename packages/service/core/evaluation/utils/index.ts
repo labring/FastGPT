@@ -3,6 +3,7 @@ import { validateEvaluatorConfig } from '../evaluator';
 import type { CreateEvaluationParams } from '@fastgpt/global/core/evaluation/type';
 import type { ValidationResult } from '@fastgpt/global/core/evaluation/validate';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
+import { MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from '@fastgpt/global/core/evaluation/constants';
 
 export type EvaluationValidationParams = Partial<CreateEvaluationParams>;
 
@@ -88,7 +89,7 @@ export async function validateEvaluationParams(
       };
     }
 
-    if (name.length > 100) {
+    if (name.length > MAX_NAME_LENGTH) {
       return {
         isValid: false,
         errors: [
@@ -103,7 +104,7 @@ export async function validateEvaluationParams(
     }
   }
 
-  if (description !== undefined && description && description.length > 100) {
+  if (description !== undefined && description && description.length > MAX_DESCRIPTION_LENGTH) {
     return {
       isValid: false,
       errors: [

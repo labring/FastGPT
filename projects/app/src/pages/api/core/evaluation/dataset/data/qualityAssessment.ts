@@ -14,6 +14,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { authEvaluationDatasetDataUpdateById } from '@fastgpt/service/core/evaluation/common';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
+import { addLog } from '@fastgpt/service/common/system/log';
 
 export type QualityAssessmentQuery = {};
 export type QualityAssessmentBody = qualityAssessmentBody;
@@ -30,20 +31,20 @@ async function handler(
     authApiKey: true
   });
 
-  // Check AI points availability
-  await checkTeamAIPoints(teamId);
-
   if (!dataId || typeof dataId !== 'string') {
-    return Promise.reject('dataId is required and must be a string');
+    return Promise.reject(EvaluationErrEnum.datasetDataIdRequired);
   }
 
   if (evaluationModel !== undefined && typeof evaluationModel !== 'string') {
-    return Promise.reject('evaluationModel must be a string if provided');
+    return Promise.reject(EvaluationErrEnum.datasetModelNotFound);
   }
+
+  // Check AI points availability
+  await checkTeamAIPoints(teamId);
 
   const datasetData = await MongoEvalDatasetData.findById(dataId);
   if (!datasetData) {
-    return Promise.reject(EvaluationErrEnum.evalDatasetDataNotFound);
+    return Promise.reject(EvaluationErrEnum.datasetDataNotFound);
   }
 
   const collection = await MongoEvalDatasetCollection.findOne({
@@ -52,18 +53,17 @@ async function handler(
   });
 
   if (!collection) {
-    return Promise.reject(EvaluationErrEnum.evalDatasetCollectionNotFound);
+    return Promise.reject(EvaluationErrEnum.datasetCollectionNotFound);
   }
 
-  // Use provided evaluationModel or fallback to collection's evaluationModel
   const finalEvaluationModel = evaluationModel || collection.evaluationModel;
 
   if (!finalEvaluationModel || typeof finalEvaluationModel !== 'string') {
-    return Promise.reject('No evaluation model available');
+    return Promise.reject(EvaluationErrEnum.evalModelNameInvalid);
   }
 
   if (!global.llmModelMap.has(finalEvaluationModel)) {
-    return Promise.reject(`Invalid evaluation model: ${finalEvaluationModel}`);
+    return Promise.reject(EvaluationErrEnum.datasetModelNotFound);
   }
 
   try {
@@ -101,7 +101,8 @@ async function handler(
 
     return 'success';
   } catch (error) {
-    return error instanceof Error ? error.message : 'Failed to queue quality assessment job';
+    addLog.error('Failed to queue quality assessment job', { dataId, teamId, error });
+    return Promise.reject(EvaluationErrEnum.qualityAssessmentFailed);
   }
 }
 

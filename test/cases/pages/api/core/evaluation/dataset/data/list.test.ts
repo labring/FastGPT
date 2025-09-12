@@ -7,6 +7,7 @@ import {
   EvalDatasetDataKeyEnum,
   EvalDatasetDataQualityStatusEnum
 } from '@fastgpt/global/core/evaluation/dataset/constants';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 vi.mock('@fastgpt/service/core/evaluation/common');
 vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema', () => ({
@@ -65,36 +66,19 @@ describe('EvalDatasetData List API', () => {
   });
 
   describe('Parameter Validation', () => {
-    it('should reject when collectionId is missing', async () => {
+    it.each([
+      { collectionId: undefined, desc: 'missing' },
+      { collectionId: '', desc: 'empty string' },
+      { collectionId: null, desc: 'null' },
+      { collectionId: undefined, desc: 'undefined' }
+    ])('should reject when collectionId is $desc', async ({ collectionId }) => {
       const req = {
-        body: { pageNum: 1, pageSize: 10 }
+        body: { collectionId, pageNum: 1, pageSize: 10 }
       };
 
-      await expect(handler_test(req as any)).rejects.toThrow('Collection ID is required');
-    });
-
-    it('should reject when collectionId is empty string', async () => {
-      const req = {
-        body: { collectionId: '', pageNum: 1, pageSize: 10 }
-      };
-
-      await expect(handler_test(req as any)).rejects.toThrow('Collection ID is required');
-    });
-
-    it('should reject when collectionId is null', async () => {
-      const req = {
-        body: { collectionId: null, pageNum: 1, pageSize: 10 }
-      };
-
-      await expect(handler_test(req as any)).rejects.toThrow('Collection ID is required');
-    });
-
-    it('should reject when collectionId is undefined', async () => {
-      const req = {
-        body: { collectionId: undefined, pageNum: 1, pageSize: 10 }
-      };
-
-      await expect(handler_test(req as any)).rejects.toThrow('Collection ID is required');
+      await expect(handler_test(req as any)).rejects.toBe(
+        EvaluationErrEnum.datasetCollectionIdRequired
+      );
     });
   });
 
@@ -156,9 +140,20 @@ describe('EvalDatasetData List API', () => {
   });
 
   describe('Pagination', () => {
-    it('should handle default pagination parameters', async () => {
+    it.each([
+      {
+        pageNum: undefined,
+        pageSize: 20,
+        expectedSkip: 0,
+        expectedLimit: 20,
+        desc: 'default page number'
+      },
+      { pageNum: 2, pageSize: 5, expectedSkip: 5, expectedLimit: 5, desc: 'custom pagination' },
+      { pageNum: 10, pageSize: 10, expectedSkip: 90, expectedLimit: 10, desc: 'high page numbers' },
+      { pageNum: 1, pageSize: 100, expectedSkip: 0, expectedLimit: 100, desc: 'large page sizes' }
+    ])('should handle $desc', async ({ pageNum, pageSize, expectedSkip, expectedLimit }) => {
       const req = {
-        body: { collectionId: validCollectionId, pageSize: 20 }
+        body: { collectionId: validCollectionId, pageNum, pageSize }
       };
 
       const result = await handler_test(req as any);
@@ -167,72 +162,26 @@ describe('EvalDatasetData List API', () => {
         expect.arrayContaining([
           { $match: { datasetId: new Types.ObjectId(validCollectionId) } },
           { $sort: { createTime: -1 } },
-          { $skip: 0 },
-          { $limit: 20 }
+          { $skip: expectedSkip },
+          { $limit: expectedLimit }
         ])
       );
-      expect(result.total).toBe(2);
-      expect(result.list).toHaveLength(2);
-    });
 
-    it('should handle custom pagination parameters', async () => {
-      const req = {
-        body: { collectionId: validCollectionId, pageNum: 2, pageSize: 5 }
-      };
-
-      await handler_test(req as any);
-
-      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          { $match: { datasetId: new Types.ObjectId(validCollectionId) } },
-          { $sort: { createTime: -1 } },
-          { $skip: 5 },
-          { $limit: 5 }
-        ])
-      );
-    });
-
-    it('should handle page number 1', async () => {
-      const req = {
-        body: { collectionId: validCollectionId, pageNum: 1, pageSize: 10 }
-      };
-
-      await handler_test(req as any);
-
-      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $skip: 0 }, { $limit: 10 }])
-      );
-    });
-
-    it('should handle high page numbers', async () => {
-      const req = {
-        body: { collectionId: validCollectionId, pageNum: 10, pageSize: 10 }
-      };
-
-      await handler_test(req as any);
-
-      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $skip: 90 }, { $limit: 10 }])
-      );
-    });
-
-    it('should handle large page sizes', async () => {
-      const req = {
-        body: { collectionId: validCollectionId, pageNum: 1, pageSize: 100 }
-      };
-
-      await handler_test(req as any);
-
-      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $skip: 0 }, { $limit: 100 }])
-      );
+      if (pageNum === undefined) {
+        expect(result.total).toBe(2);
+        expect(result.list).toHaveLength(2);
+      }
     });
   });
 
   describe('Search Functionality', () => {
-    it('should handle empty search key', async () => {
+    it.each([
+      { searchKey: '', expectedHasOr: false, desc: 'empty' },
+      { searchKey: '   ', expectedHasOr: false, desc: 'whitespace-only' },
+      { searchKey: 123, expectedHasOr: false, desc: 'non-string' }
+    ])('should handle $desc search key without OR conditions', async ({ searchKey }) => {
       const req = {
-        body: { collectionId: validCollectionId, searchKey: '', pageNum: 1, pageSize: 10 }
+        body: { collectionId: validCollectionId, searchKey, pageNum: 1, pageSize: 10 }
       };
 
       await handler_test(req as any);
@@ -242,21 +191,12 @@ describe('EvalDatasetData List API', () => {
       );
     });
 
-    it('should handle whitespace-only search key', async () => {
+    it.each([
+      { searchKey: 'AI', expected: 'AI' },
+      { searchKey: '  ML  ', expected: 'ML' }
+    ])('should handle valid search key: $searchKey', async ({ searchKey, expected }) => {
       const req = {
-        body: { collectionId: validCollectionId, searchKey: '   ', pageNum: 1, pageSize: 10 }
-      };
-
-      await handler_test(req as any);
-
-      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $match: { datasetId: new Types.ObjectId(validCollectionId) } }])
-      );
-    });
-
-    it('should handle valid search key with OR conditions', async () => {
-      const req = {
-        body: { collectionId: validCollectionId, searchKey: 'AI', pageNum: 1, pageSize: 10 }
+        body: { collectionId: validCollectionId, searchKey, pageNum: 1, pageSize: 10 }
       };
 
       await handler_test(req as any);
@@ -264,9 +204,9 @@ describe('EvalDatasetData List API', () => {
       const expectedMatch = {
         datasetId: new Types.ObjectId(validCollectionId),
         $or: [
-          { [EvalDatasetDataKeyEnum.UserInput]: { $regex: new RegExp('AI', 'i') } },
-          { [EvalDatasetDataKeyEnum.ExpectedOutput]: { $regex: new RegExp('AI', 'i') } },
-          { [EvalDatasetDataKeyEnum.ActualOutput]: { $regex: new RegExp('AI', 'i') } }
+          { [EvalDatasetDataKeyEnum.UserInput]: { $regex: new RegExp(expected, 'i') } },
+          { [EvalDatasetDataKeyEnum.ExpectedOutput]: { $regex: new RegExp(expected, 'i') } },
+          { [EvalDatasetDataKeyEnum.ActualOutput]: { $regex: new RegExp(expected, 'i') } }
         ]
       };
 
@@ -275,27 +215,6 @@ describe('EvalDatasetData List API', () => {
       );
 
       expect(mockMongoEvalDatasetData.countDocuments).toHaveBeenCalledWith(expectedMatch);
-    });
-
-    it('should trim search key before processing', async () => {
-      const req = {
-        body: { collectionId: validCollectionId, searchKey: '  ML  ', pageNum: 1, pageSize: 10 }
-      };
-
-      await handler_test(req as any);
-
-      const expectedMatch = {
-        datasetId: new Types.ObjectId(validCollectionId),
-        $or: [
-          { [EvalDatasetDataKeyEnum.UserInput]: { $regex: new RegExp('ML', 'i') } },
-          { [EvalDatasetDataKeyEnum.ExpectedOutput]: { $regex: new RegExp('ML', 'i') } },
-          { [EvalDatasetDataKeyEnum.ActualOutput]: { $regex: new RegExp('ML', 'i') } }
-        ]
-      };
-
-      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $match: expectedMatch }])
-      );
     });
 
     it('should escape special regex characters in search key', async () => {
@@ -318,24 +237,16 @@ describe('EvalDatasetData List API', () => {
         expect.arrayContaining([{ $match: expectedMatch }])
       );
     });
-
-    it('should handle non-string search key', async () => {
-      const req = {
-        body: { collectionId: validCollectionId, searchKey: 123, pageNum: 1, pageSize: 10 }
-      };
-
-      await handler_test(req as any);
-
-      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $match: { datasetId: new Types.ObjectId(validCollectionId) } }])
-      );
-    });
   });
 
   describe('Quality Status Filtering', () => {
-    it('should handle empty status parameter', async () => {
+    it.each([
+      { status: '', desc: 'empty' },
+      { status: null, desc: 'null' },
+      { status: undefined, desc: 'undefined' }
+    ])('should handle $desc status parameter without filtering', async ({ status }) => {
       const req = {
-        body: { collectionId: validCollectionId, status: '', pageNum: 1, pageSize: 10 }
+        body: { collectionId: validCollectionId, status, pageNum: 1, pageSize: 10 }
       };
 
       await handler_test(req as any);
@@ -345,187 +256,47 @@ describe('EvalDatasetData List API', () => {
       );
     });
 
-    it('should handle whitespace-only status parameter', async () => {
+    it.each([
+      { status: '   ', desc: 'whitespace-only' },
+      { status: 123, desc: 'non-string' }
+    ])('should reject invalid $desc status parameter', async ({ status }) => {
       const req = {
-        body: { collectionId: validCollectionId, status: '   ', pageNum: 1, pageSize: 10 }
+        body: { collectionId: validCollectionId, status, pageNum: 1, pageSize: 10 }
       };
 
-      await handler_test(req as any);
-
-      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $match: { datasetId: new Types.ObjectId(validCollectionId) } }])
+      await expect(handler_test(req as any)).rejects.toBe(
+        EvaluationErrEnum.evalDataQualityStatusInvalid
       );
     });
 
-    it('should filter by quality status - unevaluated', async () => {
-      const req = {
-        body: {
-          collectionId: validCollectionId,
-          status: EvalDatasetDataQualityStatusEnum.unevaluated,
-          pageNum: 1,
-          pageSize: 10
-        }
-      };
+    it.each(Object.values(EvalDatasetDataQualityStatusEnum))(
+      'should filter by quality status - %s',
+      async (status) => {
+        const req = {
+          body: {
+            collectionId: validCollectionId,
+            status,
+            pageNum: 1,
+            pageSize: 10
+          }
+        };
 
-      await handler_test(req as any);
+        await handler_test(req as any);
 
-      const expectedMatch = {
-        datasetId: new Types.ObjectId(validCollectionId),
-        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.unevaluated
-      };
+        const expectedMatch = {
+          datasetId: new Types.ObjectId(validCollectionId),
+          'metadata.qualityStatus': status
+        };
 
-      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $match: expectedMatch }])
-      );
+        expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
+          expect.arrayContaining([{ $match: expectedMatch }])
+        );
 
-      expect(mockMongoEvalDatasetData.countDocuments).toHaveBeenCalledWith(expectedMatch);
-    });
+        expect(mockMongoEvalDatasetData.countDocuments).toHaveBeenCalledWith(expectedMatch);
+      }
+    );
 
-    it('should filter by quality status - highQuality', async () => {
-      const req = {
-        body: {
-          collectionId: validCollectionId,
-          status: EvalDatasetDataQualityStatusEnum.highQuality,
-          pageNum: 1,
-          pageSize: 10
-        }
-      };
-
-      await handler_test(req as any);
-
-      const expectedMatch = {
-        datasetId: new Types.ObjectId(validCollectionId),
-        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.highQuality
-      };
-
-      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $match: expectedMatch }])
-      );
-
-      expect(mockMongoEvalDatasetData.countDocuments).toHaveBeenCalledWith(expectedMatch);
-    });
-
-    it('should filter by quality status - needsOptimization', async () => {
-      const req = {
-        body: {
-          collectionId: validCollectionId,
-          status: EvalDatasetDataQualityStatusEnum.needsOptimization,
-          pageNum: 1,
-          pageSize: 10
-        }
-      };
-
-      await handler_test(req as any);
-
-      const expectedMatch = {
-        datasetId: new Types.ObjectId(validCollectionId),
-        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.needsOptimization
-      };
-
-      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $match: expectedMatch }])
-      );
-
-      expect(mockMongoEvalDatasetData.countDocuments).toHaveBeenCalledWith(expectedMatch);
-    });
-
-    it('should filter by quality status - completed', async () => {
-      const req = {
-        body: {
-          collectionId: validCollectionId,
-          status: EvalDatasetDataQualityStatusEnum.completed,
-          pageNum: 1,
-          pageSize: 10
-        }
-      };
-
-      await handler_test(req as any);
-
-      const expectedMatch = {
-        datasetId: new Types.ObjectId(validCollectionId),
-        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.completed
-      };
-
-      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $match: expectedMatch }])
-      );
-
-      expect(mockMongoEvalDatasetData.countDocuments).toHaveBeenCalledWith(expectedMatch);
-    });
-
-    it('should filter by quality status - evaluating', async () => {
-      const req = {
-        body: {
-          collectionId: validCollectionId,
-          status: EvalDatasetDataQualityStatusEnum.evaluating,
-          pageNum: 1,
-          pageSize: 10
-        }
-      };
-
-      await handler_test(req as any);
-
-      const expectedMatch = {
-        datasetId: new Types.ObjectId(validCollectionId),
-        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.evaluating
-      };
-
-      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $match: expectedMatch }])
-      );
-
-      expect(mockMongoEvalDatasetData.countDocuments).toHaveBeenCalledWith(expectedMatch);
-    });
-
-    it('should filter by quality status - queuing', async () => {
-      const req = {
-        body: {
-          collectionId: validCollectionId,
-          status: EvalDatasetDataQualityStatusEnum.queuing,
-          pageNum: 1,
-          pageSize: 10
-        }
-      };
-
-      await handler_test(req as any);
-
-      const expectedMatch = {
-        datasetId: new Types.ObjectId(validCollectionId),
-        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.queuing
-      };
-
-      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $match: expectedMatch }])
-      );
-
-      expect(mockMongoEvalDatasetData.countDocuments).toHaveBeenCalledWith(expectedMatch);
-    });
-
-    it('should filter by quality status - error', async () => {
-      const req = {
-        body: {
-          collectionId: validCollectionId,
-          status: EvalDatasetDataQualityStatusEnum.error,
-          pageNum: 1,
-          pageSize: 10
-        }
-      };
-
-      await handler_test(req as any);
-
-      const expectedMatch = {
-        datasetId: new Types.ObjectId(validCollectionId),
-        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.error
-      };
-
-      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $match: expectedMatch }])
-      );
-
-      expect(mockMongoEvalDatasetData.countDocuments).toHaveBeenCalledWith(expectedMatch);
-    });
-
-    it('should trim status parameter before filtering', async () => {
+    it('should reject invalid quality status with spaces', async () => {
       const req = {
         body: {
           collectionId: validCollectionId,
@@ -535,53 +306,8 @@ describe('EvalDatasetData List API', () => {
         }
       };
 
-      await handler_test(req as any);
-
-      const expectedMatch = {
-        datasetId: new Types.ObjectId(validCollectionId),
-        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.highQuality
-      };
-
-      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $match: expectedMatch }])
-      );
-
-      expect(mockMongoEvalDatasetData.countDocuments).toHaveBeenCalledWith(expectedMatch);
-    });
-
-    it('should handle non-string status parameter', async () => {
-      const req = {
-        body: { collectionId: validCollectionId, status: 123, pageNum: 1, pageSize: 10 }
-      };
-
-      await handler_test(req as any);
-
-      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $match: { datasetId: new Types.ObjectId(validCollectionId) } }])
-      );
-    });
-
-    it('should handle null status parameter', async () => {
-      const req = {
-        body: { collectionId: validCollectionId, status: null, pageNum: 1, pageSize: 10 }
-      };
-
-      await handler_test(req as any);
-
-      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $match: { datasetId: new Types.ObjectId(validCollectionId) } }])
-      );
-    });
-
-    it('should handle undefined status parameter', async () => {
-      const req = {
-        body: { collectionId: validCollectionId, status: undefined, pageNum: 1, pageSize: 10 }
-      };
-
-      await handler_test(req as any);
-
-      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $match: { datasetId: new Types.ObjectId(validCollectionId) } }])
+      await expect(handler_test(req as any)).rejects.toBe(
+        EvaluationErrEnum.evalDataQualityStatusInvalid
       );
     });
   });
@@ -1056,38 +782,37 @@ describe('EvalDatasetData List API', () => {
   });
 
   describe('Error Handling', () => {
-    it('should propagate database aggregate errors', async () => {
+    it.each([
+      {
+        scenario: 'aggregate errors',
+        setupMocks: (error: Error) => {
+          mockMongoEvalDatasetData.aggregate.mockRejectedValue(error);
+        }
+      },
+      {
+        scenario: 'count errors',
+        setupMocks: (error: Error) => {
+          mockMongoEvalDatasetData.countDocuments.mockRejectedValue(error);
+        }
+      },
+      {
+        scenario: 'Promise.all rejection',
+        setupMocks: (error: Error) => {
+          mockMongoEvalDatasetData.aggregate.mockResolvedValue(mockDataItems);
+          mockMongoEvalDatasetData.countDocuments.mockRejectedValue(error);
+        }
+      }
+    ])('should handle database $scenario', async ({ setupMocks }) => {
       const dbError = new Error('Database connection failed');
-      mockMongoEvalDatasetData.aggregate.mockRejectedValue(dbError);
+      setupMocks(dbError);
 
       const req = {
         body: { collectionId: validCollectionId, pageNum: 1, pageSize: 10 }
       };
 
-      await expect(handler_test(req as any)).rejects.toBe(dbError);
-    });
-
-    it('should propagate database count errors', async () => {
-      const dbError = new Error('Database connection failed');
-      mockMongoEvalDatasetData.countDocuments.mockRejectedValue(dbError);
-
-      const req = {
-        body: { collectionId: validCollectionId, pageNum: 1, pageSize: 10 }
-      };
-
-      await expect(handler_test(req as any)).rejects.toBe(dbError);
-    });
-
-    it('should handle Promise.all rejection', async () => {
-      const dbError = new Error('Database connection failed');
-      mockMongoEvalDatasetData.aggregate.mockResolvedValue(mockDataItems);
-      mockMongoEvalDatasetData.countDocuments.mockRejectedValue(dbError);
-
-      const req = {
-        body: { collectionId: validCollectionId, pageNum: 1, pageSize: 10 }
-      };
-
-      await expect(handler_test(req as any)).rejects.toBe(dbError);
+      await expect(handler_test(req as any)).rejects.toBe(
+        EvaluationErrEnum.evalDatasetDataListError
+      );
     });
 
     it('should handle collection access errors', async () => {
@@ -1101,11 +826,9 @@ describe('EvalDatasetData List API', () => {
       await expect(handler_test(req as any)).rejects.toThrow('Collection query failed');
     });
 
-    it('should log database errors with proper context including qualityStatus', async () => {
-      const dbError = new Error('Database connection failed');
-      mockMongoEvalDatasetData.aggregate.mockRejectedValue(dbError);
-
-      const req = {
+    it.each([
+      {
+        scenario: 'with qualityStatus',
         body: {
           collectionId: validCollectionId,
           searchKey: 'test search',
@@ -1113,30 +836,25 @@ describe('EvalDatasetData List API', () => {
           pageNum: 1,
           pageSize: 10
         }
-      };
-
-      await expect(handler_test(req as any)).rejects.toBe(dbError);
-
-      // The error should be logged with proper context including qualityStatus
-      // Note: We can't easily test the addLog.error call since it's imported directly
-      // and not mocked in this test file, but we verify the request parameters
-      // are properly extracted for logging
-    });
-
-    it('should log database errors with proper context when qualityStatus is empty', async () => {
-      const dbError = new Error('Database connection failed');
-      mockMongoEvalDatasetData.aggregate.mockRejectedValue(dbError);
-
-      const req = {
+      },
+      {
+        scenario: 'with empty status',
         body: {
           collectionId: validCollectionId,
-          status: '', // Empty status should still be logged
+          status: '',
           pageNum: 1,
           pageSize: 10
         }
-      };
+      }
+    ])('should log database errors with proper context $scenario', async ({ body }) => {
+      const dbError = new Error('Database connection failed');
+      mockMongoEvalDatasetData.aggregate.mockRejectedValue(dbError);
 
-      await expect(handler_test(req as any)).rejects.toBe(dbError);
+      const req = { body };
+
+      await expect(handler_test(req as any)).rejects.toBe(
+        EvaluationErrEnum.evalDatasetDataListError
+      );
     });
   });
 
@@ -1367,28 +1085,18 @@ describe('EvalDatasetData List API', () => {
       );
     });
 
-    it('should handle empty string collectionId', async () => {
+    it.each([
+      { collectionId: '', desc: 'empty string' },
+      { collectionId: null, desc: 'null' },
+      { collectionId: undefined, desc: 'undefined' }
+    ])('should handle $desc collectionId', async ({ collectionId }) => {
       const req = {
-        body: { collectionId: '', pageNum: 1, pageSize: 10 }
+        body: { collectionId, pageNum: 1, pageSize: 10 }
       };
 
-      await expect(handler_test(req as any)).rejects.toThrow('Collection ID is required');
-    });
-
-    it('should handle null collectionId', async () => {
-      const req = {
-        body: { collectionId: null, pageNum: 1, pageSize: 10 }
-      };
-
-      await expect(handler_test(req as any)).rejects.toThrow('Collection ID is required');
-    });
-
-    it('should handle undefined collectionId', async () => {
-      const req = {
-        body: { collectionId: undefined, pageNum: 1, pageSize: 10 }
-      };
-
-      await expect(handler_test(req as any)).rejects.toThrow('Collection ID is required');
+      await expect(handler_test(req as any)).rejects.toBe(
+        EvaluationErrEnum.datasetCollectionIdRequired
+      );
     });
   });
 });
