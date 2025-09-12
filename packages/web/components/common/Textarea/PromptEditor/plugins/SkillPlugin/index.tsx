@@ -9,7 +9,13 @@ import type { EditorSkillPickerType } from '../SkillPickerPlugin';
 
 const REGEX = new RegExp(getSkillRegexString(), 'i');
 
-export default function SkillPlugin({ skills = [] }: { skills?: EditorSkillPickerType[] }) {
+export default function SkillPlugin({
+  skills = [],
+  selectedTools = []
+}: {
+  skills?: EditorSkillPickerType[];
+  selectedTools?: any[];
+}) {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
@@ -19,30 +25,21 @@ export default function SkillPlugin({ skills = [] }: { skills?: EditorSkillPicke
 
   const createSkillPlugin = useCallback(
     (textNode: TextNode): SkillNode => {
-      // 从 {{@skillKey@}} 中提取 skillKey
-      const skillKey = textNode.getTextContent().slice(3, -3); // 去掉 {{@ 和 @}}
+      const textContent = textNode.getTextContent();
+      // 去掉 {{@ 和 @}}
+      const skillKey = textContent.slice(3, -3);
 
-      // 从 skills 数据中查找对应的工具信息
-      let skillName: string | undefined;
-      let skillAvatar: string | undefined;
-
-      for (const skill of skills) {
-        if (skill.toolCategories) {
-          for (const category of skill.toolCategories) {
-            const tool = category.list.find((item) => item.key === skillKey);
-            if (tool) {
-              skillName = tool.name;
-              skillAvatar = tool.avatar;
-              break;
-            }
-          }
+      // 首先从selectedTools中查找（优先级高）
+      if (selectedTools.length > 0) {
+        const tool = selectedTools.find((t) => t.id === skillKey);
+        if (tool) {
+          return $createSkillNode(skillKey, tool.name, tool.avatar);
         }
-        if (skillName) break;
       }
 
-      return $createSkillNode(skillKey, skillName, skillAvatar);
+      return $createSkillNode(skillKey);
     },
-    [skills]
+    [skills, selectedTools]
   );
 
   const getSkillMatch = useCallback((text: string) => {
@@ -60,10 +57,38 @@ export default function SkillPlugin({ skills = [] }: { skills?: EditorSkillPicke
   }, []);
 
   useEffect(() => {
-    mergeRegister(
+    const unregister = mergeRegister(
       ...registerLexicalTextEntity(editor, getSkillMatch, SkillNode, createSkillPlugin)
     );
-  }, [createSkillPlugin, editor, getSkillMatch]);
+    return unregister;
+  }, [createSkillPlugin, editor, getSkillMatch, selectedTools]);
+
+  // 当 selectedTools 变化时，更新所有现有的 SkillNode
+  useEffect(() => {
+    if (selectedTools.length === 0) return;
+
+    editor.update(() => {
+      const nodes = editor.getEditorState()._nodeMap;
+
+      nodes.forEach((node) => {
+        if (node instanceof SkillNode) {
+          const skillKey = node.getSkillKey();
+          const tool = selectedTools.find((t) => t.id === skillKey);
+
+          if (tool && (!node.__skillName || !node.__skillAvatar)) {
+            console.log('更新 SkillNode:', {
+              skillKey,
+              toolName: tool.name,
+              toolAvatar: tool.avatar
+            });
+            const writableNode = node.getWritable();
+            writableNode.__skillName = tool.name;
+            writableNode.__skillAvatar = tool.avatar;
+          }
+        }
+      });
+    });
+  }, [selectedTools, editor]);
 
   return null;
 }

@@ -34,12 +34,14 @@ import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getSystemPlugTemplates, getPluginGroups, getMcpChildren } from '@/web/core/app/api/plugin';
+import type { EditorToolAddData } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type {
   EditorSkillPickerType,
   SkillSubItem
 } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import type { localeType } from '@fastgpt/global/common/i18n/type';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -236,6 +238,57 @@ const EditForm = ({
     [i18n?.language, t]
   );
 
+  // 处理从编辑器添加工具的回调
+  const handleAddToolFromEditor = useCallback(
+    (toolData: EditorToolAddData): string => {
+      const instanceId = `tool_${getNanoid(6)}`;
+
+      console.log('handleAddToolFromEditor - 接收到工具数据:', toolData);
+      console.log('handleAddToolFromEditor - 生成的instanceId:', instanceId);
+
+      // 根据是否有子项来确定工具配置
+      const toolName = toolData.subItemLabel || toolData.toolName;
+      const toolKey = toolData.subItemKey || toolData.toolKey;
+
+      // 查找对应的插件模板来构建完整的工具配置
+      const pluginTemplate = systemPlugins.find(
+        (plugin) => plugin.id === (toolData.parentKey || toolData.toolKey)
+      );
+
+      if (pluginTemplate) {
+        const newTool = {
+          id: instanceId,
+          pluginId: pluginTemplate.id,
+          name: toolName,
+          avatar: toolData.toolAvatar,
+          intro: pluginTemplate.intro,
+          flowNodeType: pluginTemplate.flowNodeType,
+          inputs: [], // NodeTemplateListItemType 没有 inputs 字段，使用空数组
+          outputs: [], // NodeTemplateListItemType 没有 outputs 字段，使用空数组
+          version: '0.0.1', // NodeTemplateListItemType 没有 version 字段，使用默认值
+          isFolder: pluginTemplate.isFolder || false,
+          templateType: pluginTemplate.templateType,
+          // 如果是子项，记录相关信息
+          ...(toolData.subItemKey && {
+            subItemKey: toolData.subItemKey,
+            parentKey: toolData.parentKey
+          })
+        };
+
+        // 添加到selectedTools
+        setAppForm((state) => ({
+          ...state,
+          selectedTools: [...state.selectedTools, newTool]
+        }));
+
+        console.log('handleAddToolFromEditor - 创建的新工具:', newTool);
+      }
+
+      return instanceId;
+    },
+    [systemPlugins, setAppForm]
+  );
+
   const selectedModel = getWebLLMModel(appForm.aiSettings.model);
   const tokenLimit = useMemo(() => {
     return selectedModel?.quoteMaxToken || 3000;
@@ -348,6 +401,8 @@ const EditForm = ({
                     }));
                   });
                 }}
+                onAddToolFromEditor={handleAddToolFromEditor}
+                selectedTools={appForm.selectedTools}
                 variableLabels={formatVariables}
                 variables={formatVariables}
                 skills={skillTemplates}
