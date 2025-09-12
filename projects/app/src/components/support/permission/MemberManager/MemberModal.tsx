@@ -138,18 +138,6 @@ function MemberModal({ onClose }: { onClose: () => void }) {
       permission: clb.permission.role
     }));
 
-    const childClbs = collaboratorDetailList.map((clb) => ({
-      ...clb,
-      permission: clb.permission.role
-    }));
-
-    const oldRealClbs = isInheritPermission
-      ? mergeCollaboratorList({
-          childClbs,
-          parentClbs: _parentClbs
-        })
-      : childClbs;
-
     const isConflict = checkRoleUpdateConflict({
       parentClbs: _parentClbs,
       newChildClbs
@@ -161,7 +149,6 @@ function MemberModal({ onClose }: { onClose: () => void }) {
     }
   }, [
     _onConfirm,
-    collaboratorDetailList,
     editCollaborators,
     isInheritPermission,
     openConfirmDisableInheritPer,
