@@ -29,17 +29,15 @@ export const getWorkflowResponseWrite = ({
   detail,
   streamResponse,
   id = getNanoid(24),
-  showNodeStatus = true,
-  streamId
+  showNodeStatus = true
 }: {
   res?: NextApiResponse;
   detail: boolean;
   streamResponse: boolean;
   id?: string;
   showNodeStatus?: boolean;
-  streamId?: string;
 }) => {
-  return async ({
+  return ({
     write,
     event,
     data
