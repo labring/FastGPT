@@ -17,15 +17,24 @@ import { useBasicTypeaheadTriggerMatch } from '../../utils';
 import Avatar from '../../../../Avatar';
 import MyIcon from '../../../../Icon';
 import { createKeyboardHandlers } from './utils';
+export type SkillSubItem = {
+  key: string;
+  label: string;
+  description?: string;
+};
+
+export type SkillToolItem = {
+  key: string;
+  name: string;
+  avatar: string;
+  canOpen?: boolean;
+  subItems?: SkillSubItem[];
+};
+
 export type SkillToolCategory = {
   type: string;
   label: string;
-  list: {
-    key: string;
-    name: string;
-    avatar: string;
-    canOpen?: boolean;
-  }[];
+  list: SkillToolItem[];
 };
 
 export type EditorSkillPickerType = {
@@ -45,10 +54,12 @@ export type EditorSkillPickerType = {
  */
 export default function SkillPickerPlugin({
   skills,
-  isFocus
+  isFocus,
+  onLoadSubItems
 }: {
   skills: EditorSkillPickerType[];
   isFocus: boolean;
+  onLoadSubItems?: (toolId: string, toolType: string) => Promise<SkillSubItem[]>;
 }) {
   const [editor] = useLexicalComposerContext();
 
@@ -56,6 +67,16 @@ export default function SkillPickerPlugin({
   const [queryString, setQueryString] = useState<string | null>(null); // typeahead查询字符串
   const [primaryIndex, setPrimaryIndex] = useState<number>(0); // 一级菜单当前选中索引
   const [secondaryIndex, setSecondaryIndex] = useState<number>(-1); // 二级菜单索引：-1表示焦点在主菜单，>=0表示焦点在二级菜单
+  const [tertiaryIndex, setTertiaryIndex] = useState<number>(-1); // 三级菜单索引：-1表示焦点不在三级菜单，>=0表示焦点在三级菜单
+
+  // 子项缓存状态
+  const [toolSubItemsCache, setToolSubItemsCache] = useState<{
+    [toolKey: string]: {
+      loading: boolean;
+      data?: SkillSubItem[];
+      error?: string;
+    };
+  }>({});
 
   // 根据一级菜单索引计算当前选中的技能类型
   const selectedSkillType = skills[primaryIndex]?.key || null;
@@ -63,12 +84,43 @@ export default function SkillPickerPlugin({
   // 引用管理
   const highlightedItemRef = useRef<HTMLDivElement>(null); // 主菜单高亮项引用
   const secondaryHighlightedItemRef = useRef<HTMLDivElement>(null); // 二级菜单高亮项引用
+  const tertiaryHighlightedItemRef = useRef<HTMLDivElement>(null); // 三级菜单高亮项引用
 
   // 统一的重置状态函数
   const resetMenuState = useCallback(() => {
     setPrimaryIndex(0);
     setSecondaryIndex(-1);
+    setTertiaryIndex(-1);
   }, []);
+
+  // 加载工具子项的函数
+  const loadToolSubItems = useCallback(
+    async (toolId: string, toolType: string) => {
+      if (!onLoadSubItems || toolSubItemsCache[toolId]) {
+        return; // 已经有缓存或没有加载函数
+      }
+
+      // 设置加载状态
+      setToolSubItemsCache((prev) => ({
+        ...prev,
+        [toolId]: { loading: true }
+      }));
+
+      try {
+        const subItems = await onLoadSubItems(toolId, toolType);
+        setToolSubItemsCache((prev) => ({
+          ...prev,
+          [toolId]: { loading: false, data: subItems }
+        }));
+      } catch (error) {
+        // setToolSubItemsCache((prev) => ({
+        //   ...prev,
+        //   [toolId]: { loading: false, error: error?.message || '加载失败' }
+        // }));
+      }
+    },
+    [onLoadSubItems, toolSubItemsCache]
+  );
 
   // 配置@符号触发器
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('@', {
@@ -107,18 +159,65 @@ export default function SkillPickerPlugin({
     }
   }, [secondaryIndex]);
 
+  // 三级菜单高亮项滚动到视图
+  useEffect(() => {
+    // 滚动到当前高亮的三级菜单项
+    if (tertiaryHighlightedItemRef.current) {
+      tertiaryHighlightedItemRef.current.scrollIntoView({
+        behavior: 'auto',
+        block: 'nearest'
+      });
+    }
+  }, [tertiaryIndex]);
+
+  // 监听二级菜单索引变化，按需加载子项
+  useEffect(() => {
+    if (secondaryIndex >= 0 && selectedSkillType) {
+      const toolCategories =
+        skills.find((skill) => skill.key === selectedSkillType)?.toolCategories || [];
+
+      // 构建扁平的工具项列表
+      const flatItems: SkillToolItem[] = [];
+      toolCategories.forEach((category) => {
+        flatItems.push(...category.list);
+      });
+
+      const currentItem = flatItems[secondaryIndex];
+
+      // 如果该项 canOpen 且未加载过子项，则加载
+      if (currentItem?.canOpen && !toolSubItemsCache[currentItem.key]) {
+        // 根据工具的 flowNodeType 或其他特征判断类型
+        const toolType = currentItem.key.includes('mcp') ? 'mcp' : 'system';
+        loadToolSubItems(currentItem.key, toolType);
+      }
+    }
+  }, [secondaryIndex, selectedSkillType, skills, toolSubItemsCache, loadToolSubItems]);
+
   // 创建键盘事件处理器
   const keyboardHandlers = useMemo(() => {
     return createKeyboardHandlers({
       selectedSkillType,
       secondaryIndex,
+      tertiaryIndex,
       editor,
       getToolCategories: (skillTypeKey: string) =>
         skills.find((skill) => skill.key === skillTypeKey)?.toolCategories || [],
       setSecondaryIndex,
-      resetMenuState
+      setTertiaryIndex,
+      resetMenuState,
+      toolSubItemsCache
     });
-  }, [selectedSkillType, secondaryIndex, editor, skills, setSecondaryIndex, resetMenuState]);
+  }, [
+    selectedSkillType,
+    secondaryIndex,
+    tertiaryIndex,
+    editor,
+    skills,
+    setSecondaryIndex,
+    setTertiaryIndex,
+    resetMenuState,
+    toolSubItemsCache
+  ]);
   useEffect(() => {
     if (!isFocus) return;
     const removeUpCommand = editor.registerCommand(
@@ -186,7 +285,7 @@ export default function SkillPickerPlugin({
         // 只在有技能数据且获得焦点时渲染菜单
         return anchorElementRef.current && skills.length && isFocus
           ? ReactDOM.createPortal(
-              <Flex position="relative" align="flex-start">
+              <Flex position="relative" align="flex-start" zIndex={99999}>
                 {/* 主菜单 */}
                 <Box
                   p={1.5}
@@ -342,6 +441,121 @@ export default function SkillPickerPlugin({
                     </Flex>
                   )}
                 </Box>
+
+                {/* 第三级菜单 */}
+                {(() => {
+                  // 获取当前高亮的二级菜单项及其子项
+                  if (secondaryIndex >= 0 && toolCategories.length > 0) {
+                    // 构建扁平的工具项列表
+                    const flatItems: SkillToolItem[] = [];
+                    toolCategories.forEach((category) => {
+                      flatItems.push(...category.list);
+                    });
+
+                    const selectedItem = flatItems[secondaryIndex];
+                    const cachedSubItems = toolSubItemsCache[selectedItem?.key || ''];
+
+                    // 显示缓存中的数据、原有的 subItems 或加载状态
+                    const subItemsToShow = cachedSubItems?.data || selectedItem?.subItems;
+                    const isLoading = cachedSubItems?.loading;
+                    const hasError = cachedSubItems?.error;
+
+                    if (selectedItem?.canOpen && (subItemsToShow || isLoading || hasError)) {
+                      return (
+                        <Box
+                          ml={2}
+                          p={1.5}
+                          borderRadius={'sm'}
+                          w={'200px'}
+                          boxShadow={
+                            '0 4px 10px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.10)'
+                          }
+                          bg={'white'}
+                          flexShrink={0}
+                          maxH={'280px'}
+                          overflow={'auto'}
+                        >
+                          {isLoading ? (
+                            // 显示加载状态
+                            <Flex
+                              px={2}
+                              py={3}
+                              justifyContent={'center'}
+                              alignItems={'center'}
+                              gap={2}
+                            >
+                              <MyIcon name={'common/loading'} w={'14px'} />
+                              <Box color={'myGray.500'} fontSize={'12px'}>
+                                加载中...
+                              </Box>
+                            </Flex>
+                          ) : hasError ? (
+                            // 显示错误状态
+                            <Flex
+                              px={2}
+                              py={3}
+                              justifyContent={'center'}
+                              alignItems={'center'}
+                              flexDirection={'column'}
+                              gap={1}
+                            >
+                              <Box color={'red.500'} fontSize={'12px'} textAlign={'center'}>
+                                加载失败
+                              </Box>
+                              <Box color={'myGray.400'} fontSize={'10px'} textAlign={'center'}>
+                                {hasError}
+                              </Box>
+                            </Flex>
+                          ) : subItemsToShow ? (
+                            // 显示子项列表
+                            subItemsToShow.map((subItem, index) => (
+                              <Flex
+                                key={subItem.key}
+                                px={2}
+                                py={1.5}
+                                gap={2}
+                                borderRadius={'4px'}
+                                cursor={'pointer'}
+                                onClick={() => {}}
+                                ref={tertiaryIndex === index ? tertiaryHighlightedItemRef : null}
+                                {...(tertiaryIndex === index
+                                  ? {
+                                      bg: '#1118240D',
+                                      color: 'primary.700'
+                                    }
+                                  : {
+                                      bg: 'white',
+                                      color: 'myGray.600'
+                                    })}
+                                _hover={{
+                                  bg: '#1118240D',
+                                  color: 'primary.700'
+                                }}
+                              >
+                                <Box flex={1}>
+                                  <Box
+                                    color={'myGray.600'}
+                                    fontSize={'12px'}
+                                    fontWeight={'medium'}
+                                    letterSpacing={'0.5px'}
+                                  >
+                                    {subItem.label}
+                                  </Box>
+                                  {subItem.description && (
+                                    <Box color={'myGray.400'} fontSize={'10px'} mt={0.5}>
+                                      {subItem.description}
+                                    </Box>
+                                  )}
+                                </Box>
+                              </Flex>
+                            ))
+                          ) : null}
+                        </Box>
+                      );
+                    }
+                  }
+                  return null;
+                })()}
               </Flex>,
               anchorElementRef.current
             )

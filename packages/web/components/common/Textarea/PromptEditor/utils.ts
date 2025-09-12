@@ -401,6 +401,8 @@ const processListItem = ({
       itemText.push('  ');
     } else if (child.type === 'variableLabel' || child.type === 'Variable') {
       itemText.push(child.variableKey);
+    } else if (child.type === 'skill') {
+      itemText.push(`{{@${child.skillKey}@}}`);
     } else if (child.type === 'list') {
       nestedLists.push(child);
     }
@@ -464,6 +466,8 @@ export const editorStateToText = (editor: LexicalEditor) => {
           paragraphText.push('  ');
         } else if (child.type === 'variableLabel' || child.type === 'Variable') {
           paragraphText.push(child.variableKey);
+        } else if (child.type === 'skill') {
+          paragraphText.push(`{{@${child.skillKey}@}}`);
         }
       });
 
