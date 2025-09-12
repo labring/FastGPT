@@ -5,6 +5,7 @@ import type {
   UpdateEvaluationResponse,
   UpdateEvaluationRequest
 } from '@fastgpt/global/core/evaluation/api';
+import { ValidationResultUtils } from '@fastgpt/global/core/evaluation/validate';
 import { validateEvaluationParamsForUpdate } from '@fastgpt/service/core/evaluation/utils';
 import { authEvaluationTaskWrite } from '@fastgpt/service/core/evaluation/common';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
@@ -28,8 +29,8 @@ async function handler(
     target,
     evaluators
   });
-  if (!paramValidation.success) {
-    throw new Error(paramValidation.message);
+  if (!paramValidation.isValid) {
+    throw ValidationResultUtils.toError(paramValidation);
   }
 
   const { teamId, tmbId, evaluation } = await authEvaluationTaskWrite(evalId, {

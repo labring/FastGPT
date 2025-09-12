@@ -1,8 +1,8 @@
 import type { EvaluationStatusEnum, CalculateMethodEnum, SummaryStatusEnum } from './constants';
 import type { EvalDatasetDataKeyEnum } from './dataset/constants';
 import type { EvalDatasetDataSchemaType } from './dataset/type';
-import type { MetricResult, EvalMetricSchemaType, EvalModelConfigType } from './metric/type';
-import type { EvaluationPermission } from '../../../support/permission/evaluation/controller';
+import type { MetricResult, EvalMetricSchemaType } from './metric/type';
+import type { EvaluationPermission } from '../../support/permission/evaluation/controller';
 
 // Evaluation target related types
 export interface WorkflowConfig {
@@ -141,20 +141,6 @@ export type EvaluationDisplayType = Pick<
 export type EvaluationItemDisplayType = EvaluationItemSchemaType & {
   evalItemId: string;
 };
-
-// Validation result types
-export interface ValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
-}
-
-// Import result types
-export interface ImportResult {
-  success: boolean;
-  importedCount: number;
-  errors: string[];
-}
 
 export interface CreateEvaluationParams {
   name: string;

@@ -166,7 +166,7 @@ describe('WorkflowTarget - Workflow Only Support', () => {
 
     const result = await workflowTarget.validate();
     expect(result.isValid).toBe(true);
-    expect(result.message).toContain('Test App');
+    expect(result.errors).toHaveLength(0);
     expect(MongoApp.findById).toHaveBeenCalledWith('test-app-id');
   });
 
@@ -175,7 +175,9 @@ describe('WorkflowTarget - Workflow Only Support', () => {
 
     const result = await workflowTarget.validate();
     expect(result.isValid).toBe(false);
-    expect(result.message).toContain('not found or not accessible');
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].code).toBe(EvaluationErrEnum.evalAppNotFound);
+    expect(result.errors[0].message).toContain('not found or not accessible');
   });
 
   test('验证过程中的错误应该返回false', async () => {
@@ -183,7 +185,9 @@ describe('WorkflowTarget - Workflow Only Support', () => {
 
     const result = await workflowTarget.validate();
     expect(result.isValid).toBe(false);
-    expect(result.message).toContain('Database error');
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].code).toBe(EvaluationErrEnum.evalTargetConfigInvalid);
+    expect(result.errors[0].message).toContain('Database error');
   });
 
   test('应该验证指定版本的工作流配置', async () => {
@@ -204,7 +208,7 @@ describe('WorkflowTarget - Workflow Only Support', () => {
 
     const result = await workflowTargetWithVersion.validate();
     expect(result.isValid).toBe(true);
-    expect(result.message).toContain('Test App');
+    expect(result.errors).toHaveLength(0);
     expect(getAppVersionById).toHaveBeenCalledWith({
       appId: 'test-app-id',
       versionId: 'test-version-id',
@@ -230,13 +234,18 @@ describe('WorkflowTarget - Workflow Only Support', () => {
 
     const result = await workflowTargetWithVersion.validate();
     expect(result.isValid).toBe(false);
-    expect(result.message).toContain('invalid-version-id');
-    expect(result.message).toContain('not found');
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].code).toBe(EvaluationErrEnum.evalAppVersionNotFound);
+    expect(result.errors[0].message).toContain('invalid-version-id');
+    expect(result.errors[0].message).toContain('not found');
   });
 });
 
 describe('createTargetInstance', () => {
-  test('应该创建工作流目标实例', () => {
+  test('应该创建工作流目标实例', async () => {
+    // Mock successful validation
+    (MongoApp.findById as any).mockResolvedValue({ _id: 'test-app-id', name: 'Test App' });
+
     const targetConfig: EvalTarget = {
       type: 'workflow',
       config: {
@@ -245,11 +254,18 @@ describe('createTargetInstance', () => {
       }
     };
 
-    const instance = createTargetInstance(targetConfig);
+    const instance = await createTargetInstance(targetConfig);
     expect(instance).toBeInstanceOf(WorkflowTarget);
   });
 
-  test('应该创建带版本ID的工作流目标实例', () => {
+  test('应该创建带版本ID的工作流目标实例', async () => {
+    // Mock successful validation
+    (MongoApp.findById as any).mockResolvedValue({ _id: 'test-app-id', name: 'Test App' });
+    (getAppVersionById as any).mockResolvedValue({
+      versionId: 'test-version-id',
+      versionName: 'Test Version'
+    });
+
     const targetConfig: EvalTarget = {
       type: 'workflow',
       config: {
@@ -259,17 +275,17 @@ describe('createTargetInstance', () => {
       }
     };
 
-    const instance = createTargetInstance(targetConfig);
+    const instance = await createTargetInstance(targetConfig);
     expect(instance).toBeInstanceOf(WorkflowTarget);
   });
 
-  test('不支持的目标类型应该抛出错误', () => {
+  test('不支持的目标类型应该抛出错误', async () => {
     const invalidConfig = {
       type: 'unsupported_type',
       config: {}
     } as any;
 
-    expect(() => createTargetInstance(invalidConfig)).toThrow(
+    await expect(createTargetInstance(invalidConfig)).rejects.toThrow(
       EvaluationErrEnum.evalUnsupportedTargetType
     );
   });
@@ -288,8 +304,8 @@ describe('validateTargetConfig', () => {
     };
 
     const result = await validateTargetConfig(targetConfig);
-    expect(result.success).toBe(true);
-    expect(result.message).toContain('Test App');
+    expect(result.isValid).toBe(true);
+    expect(result.errors).toHaveLength(0);
   });
 
   test('应该验证带版本ID的有效工作流配置', async () => {
@@ -312,8 +328,8 @@ describe('validateTargetConfig', () => {
     };
 
     const result = await validateTargetConfig(targetConfig);
-    expect(result.success).toBe(true);
-    expect(result.message).toContain('Test App');
+    expect(result.isValid).toBe(true);
+    expect(result.errors).toHaveLength(0);
   });
 
   test('应该拒绝无效的工作流配置', async () => {
@@ -328,9 +344,11 @@ describe('validateTargetConfig', () => {
     };
 
     const result = await validateTargetConfig(targetConfig);
-    expect(result.success).toBe(false);
-    expect(result.message).toContain('invalid-app-id');
-    expect(result.message).toContain('not found');
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].code).toBe(EvaluationErrEnum.evalAppNotFound);
+    expect(result.errors[0].message).toContain('invalid-app-id');
+    expect(result.errors[0].message).toContain('not found');
   });
 
   test('应该处理验证错误', async () => {
@@ -340,7 +358,9 @@ describe('validateTargetConfig', () => {
     } as any;
 
     const result = await validateTargetConfig(invalidConfig);
-    expect(result.success).toBe(false);
-    expect(result.message).toContain(EvaluationErrEnum.evalUnsupportedTargetType);
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].code).toBe(EvaluationErrEnum.evalTargetConfigInvalid);
+    expect(result.errors[0].message).toContain(EvaluationErrEnum.evalUnsupportedTargetType);
   });
 });

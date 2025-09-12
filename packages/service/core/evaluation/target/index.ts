@@ -4,6 +4,12 @@ import type {
   WorkflowConfig,
   EvalTarget
 } from '@fastgpt/global/core/evaluation/type';
+import {
+  Validatable,
+  ValidationResultUtils,
+  type ValidationResult,
+  type ValidationError
+} from '@fastgpt/global/core/evaluation/validate';
 import { dispatchWorkFlow } from '../../workflow/dispatch';
 import { getAppVersionById } from '../../app/version/controller';
 import { MongoApp } from '../../app/schema';
@@ -60,9 +66,9 @@ function extractRetrievalContext(flowResponses: ChatHistoryItemResType[]): strin
 }
 
 // Evaluation target base class
-export abstract class EvaluationTarget {
+export abstract class EvaluationTarget extends Validatable {
   abstract execute(input: TargetInput): Promise<TargetOutput>;
-  abstract validate(): Promise<{ isValid: boolean; message?: string }>;
+  // validate() method is inherited from Validatable base class
 }
 
 // Workflow target implementation
@@ -209,76 +215,158 @@ export class WorkflowTarget extends EvaluationTarget {
     };
   }
 
-  async validate(): Promise<{ isValid: boolean; message?: string }> {
+  async validate(): Promise<ValidationResult> {
+    const errors: ValidationError[] = [];
+    const warnings: ValidationError[] = [];
+
     try {
+      // Validate basic configuration
+      if (!this.config.appId) {
+        errors.push({
+          code: EvaluationErrEnum.evalTargetAppIdMissing,
+          message: 'App ID is required for workflow target',
+          field: 'config.appId'
+        });
+        return { isValid: false, errors, warnings };
+      }
+
+      // Validate app existence and accessibility
       const appData = await MongoApp.findById(this.config.appId);
       if (!appData) {
-        return {
-          isValid: false,
-          message: `App with ID '${this.config.appId}' not found or not accessible`
-        };
+        errors.push({
+          code: EvaluationErrEnum.evalAppNotFound,
+          message: `App with ID '${this.config.appId}' not found or not accessible`,
+          field: 'config.appId',
+          debugInfo: { appId: this.config.appId }
+        });
+        return { isValid: false, errors, warnings };
       }
 
       // If versionId is specified, validate that the version exists and is accessible
       if (this.config.versionId) {
-        const versionData = await getAppVersionById({
-          appId: String(appData._id),
-          versionId: this.config.versionId,
-          app: appData
+        try {
+          const versionData = await getAppVersionById({
+            appId: String(appData._id),
+            versionId: this.config.versionId,
+            app: appData
+          });
+
+          // If versionId was specified but the returned version doesn't match (fell back to latest),
+          // it means the specified version doesn't exist
+          if (String(versionData.versionId).trim() !== String(this.config.versionId).trim()) {
+            errors.push({
+              code: EvaluationErrEnum.evalAppVersionNotFound,
+              message: `App version '${this.config.versionId}' not found for app '${appData.name}'`,
+              field: 'config.versionId',
+              debugInfo: {
+                appId: this.config.appId,
+                appName: appData.name,
+                requestedVersion: this.config.versionId,
+                availableVersion: versionData.versionId
+              }
+            });
+          }
+        } catch (versionError) {
+          errors.push({
+            code: EvaluationErrEnum.evalAppVersionNotFound,
+            message: `Failed to validate app version: ${versionError instanceof Error ? versionError.message : String(versionError)}`,
+            field: 'config.versionId',
+            debugInfo: {
+              appId: this.config.appId,
+              requestedVersion: this.config.versionId,
+              error: versionError instanceof Error ? versionError.message : String(versionError)
+            }
+          });
+        }
+      } else {
+        // Add warning if no version specified (will use latest)
+        warnings.push({
+          code: 'eval_target_no_version_specified',
+          message: 'No version specified, will use the latest version of the app',
+          field: 'config.versionId',
+          debugInfo: { appId: this.config.appId, appName: appData.name }
         });
-        // If versionId was specified but the returned version doesn't match (fell back to latest),
-        // it means the specified version doesn't exist
-        if (String(versionData.versionId).trim() !== String(this.config.versionId).trim()) {
-          return {
-            isValid: false,
-            message: `App version '${this.config.versionId}' not found for app '${appData.name}' (${this.config.appId}). Available version: ${versionData.versionId}`
-          };
+      }
+
+      // Validate chat config if present
+      if (this.config.chatConfig) {
+        // Add basic validation for chat config structure
+        if (typeof this.config.chatConfig !== 'object') {
+          errors.push({
+            code: EvaluationErrEnum.evalTargetInvalidConfig,
+            message: 'Chat config must be an object',
+            field: 'config.chatConfig',
+            debugInfo: { chatConfigType: typeof this.config.chatConfig }
+          });
         }
       }
 
       return {
-        isValid: true,
-        message: `App '${appData.name}' is valid and accessible`
+        isValid: errors.length === 0,
+        errors,
+        warnings: warnings.length > 0 ? warnings : undefined
       };
     } catch (error) {
-      return {
-        isValid: false,
-        message: `Validation failed: ${error instanceof Error ? error.message : String(error)}`
-      };
+      errors.push({
+        code: EvaluationErrEnum.evalTargetConfigInvalid,
+        message: `Validation failed: ${error instanceof Error ? error.message : String(error)}`,
+        debugInfo: {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        }
+      });
+
+      return { isValid: false, errors, warnings };
     }
   }
 }
 
-// Target factory - currently only supports workflow type
-export function createTargetInstance(targetConfig: EvalTarget): EvaluationTarget {
+// Target factory - creates and validates instance in one step
+export async function createTargetInstance(
+  targetConfig: EvalTarget,
+  options: { validate?: boolean } = { validate: true }
+): Promise<EvaluationTarget> {
+  let targetInstance: EvaluationTarget;
+
   switch (targetConfig.type) {
     case 'workflow':
-      return new WorkflowTarget(targetConfig.config as WorkflowConfig);
+      targetInstance = new WorkflowTarget(targetConfig.config as WorkflowConfig);
+      break;
     default:
       throw new Error(EvaluationErrEnum.evalUnsupportedTargetType);
   }
+
+  // Validate instance if requested (default behavior)
+  if (options.validate) {
+    const validationResult = await targetInstance.validate();
+    if (!validationResult.isValid) {
+      throw ValidationResultUtils.toError(validationResult);
+    }
+  }
+
+  return targetInstance;
 }
 
 // Utility function - test the validity of target configuration
-export async function validateTargetConfig(
-  targetConfig: EvalTarget
-): Promise<{ success: boolean; message: string }> {
+export async function validateTargetConfig(targetConfig: EvalTarget): Promise<ValidationResult> {
   try {
-    const targetInstance = createTargetInstance(targetConfig);
-    const validationResult = await targetInstance.validate();
-
-    return {
-      success: validationResult.isValid,
-      message:
-        validationResult.message ||
-        (validationResult.isValid
-          ? 'Target config is valid and accessible'
-          : 'Target config validation failed')
-    };
+    const targetInstance = await createTargetInstance(targetConfig, { validate: false });
+    return await targetInstance.validate();
   } catch (error) {
+    // If we can't even create the instance, return validation error
     return {
-      success: false,
-      message: error instanceof Error ? error.message : String(error)
+      isValid: false,
+      errors: [
+        {
+          code: EvaluationErrEnum.evalTargetConfigInvalid,
+          message: `Failed to create target instance: ${error instanceof Error ? error.message : String(error)}`,
+          debugInfo: {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            targetType: targetConfig.type
+          }
+        }
+      ]
     };
   }
 }

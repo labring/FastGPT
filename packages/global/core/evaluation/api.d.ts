@@ -1,17 +1,12 @@
-import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type { PaginationProps, PaginationResponse } from '../../../web/common/fetch/type';
 import type {
   CreateEvaluationParams,
   EvaluationSchemaType,
   EvaluationItemSchemaType,
-  EvaluationMetricSchemaType,
-  ImportResult,
   EvaluationDisplayType,
   EvaluationItemDisplayType,
-  TargetCallParams,
   EvaluationDataItemType
 } from './type';
-import type { EvalDatasetDataKeyEnum } from './dataset/constants';
-import type { EvalDatasetDataSchemaType } from './dataset/type';
 
 // ===== Common Types =====
 export type MessageResponse = { message: string };
