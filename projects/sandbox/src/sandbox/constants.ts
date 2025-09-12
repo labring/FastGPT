@@ -19,68 +19,64 @@ def extract_imports(code):
                     imports.append(f"from {module} import {alias.name}")
     return imports
 seccomp_prefix = """
-try:
-    from seccomp import *
-    import sys
-    import errno
-    allowed_syscalls = [
-        "syscall.SYS_NEWFSTATAT",
-        "syscall.SYS_LSEEK",
-        "syscall.SYS_GETDENTS64",
-        "syscall.SYS_CLOSE",
-        "syscall.SYS_FUTEX",
-        "syscall.SYS_MMAP",
-        "syscall.SYS_BRK",
-        "syscall.SYS_MPROTECT",
-        "syscall.SYS_MUNMAP",
-        "syscall.SYS_RT_SIGRETURN",
-        "syscall.SYS_MREMAP",
-        "syscall.SYS_SETUID",
-        "syscall.SYS_SETGID",
-        "syscall.SYS_GETUID",
-        "syscall.SYS_GETPID",
-        "syscall.SYS_GETPPID",
-        "syscall.SYS_GETTID",
-        "syscall.SYS_EXIT",
-        "syscall.SYS_EXIT_GROUP",
-        "syscall.SYS_TGKILL",
-        "syscall.SYS_RT_SIGACTION",
-        "syscall.SYS_SCHED_YIELD",
-        "syscall.SYS_SET_ROBUST_LIST",
-        "syscall.SYS_GET_ROBUST_LIST",
-        "syscall.SYS_RSEQ",
-        "syscall.SYS_CLOCK_GETTIME",
-        "syscall.SYS_GETTIMEOFDAY",
-        "syscall.SYS_NANOSLEEP",
-        "syscall.SYS_CLOCK_NANOSLEEP",
-        "syscall.SYS_TIME",
-        "syscall.SYS_RT_SIGPROCMASK",
-        "syscall.SYS_SIGALTSTACK",
-        "syscall.SYS_CLONE",
-        "syscall.SYS_MKDIRAT",
-        "syscall.SYS_MKDIR",
-        "syscall.SYS_FSTAT",
-        "syscall.SYS_FCNTL",
-        "syscall.SYS_FSTATFS",
-    ]
-    allowed_syscalls_tmp = allowed_syscalls
-    L = []
-    for item in allowed_syscalls_tmp:
-        item = item.strip()
-        parts = item.split(".")[1][4:].lower()
-        L.append(parts)
-    f = SyscallFilter(defaction=KILL)
-    for item in L:
-        f.add_rule(ALLOW, item)
-    f.add_rule(ALLOW, "write", Arg(0, EQ, sys.stdout.fileno()))
-    f.add_rule(ALLOW, "write", Arg(0, EQ, sys.stderr.fileno()))
-    f.add_rule(ALLOW, 307)
-    f.add_rule(ALLOW, 318)
-    f.add_rule(ALLOW, 334)
-    f.load()
-except ImportError:
-    # seccomp not available, continue without sandboxing
-    pass
+from seccomp import *
+import sys
+import errno
+allowed_syscalls = [
+    "syscall.SYS_NEWFSTATAT",
+    "syscall.SYS_LSEEK",
+    "syscall.SYS_GETDENTS64",
+    "syscall.SYS_CLOSE",
+    "syscall.SYS_FUTEX",
+    "syscall.SYS_MMAP",
+    "syscall.SYS_BRK",
+    "syscall.SYS_MPROTECT",
+    "syscall.SYS_MUNMAP",
+    "syscall.SYS_RT_SIGRETURN",
+    "syscall.SYS_MREMAP",
+    "syscall.SYS_SETUID",
+    "syscall.SYS_SETGID",
+    "syscall.SYS_GETUID",
+    "syscall.SYS_GETPID",
+    "syscall.SYS_GETPPID",
+    "syscall.SYS_GETTID",
+    "syscall.SYS_EXIT",
+    "syscall.SYS_EXIT_GROUP",
+    "syscall.SYS_TGKILL",
+    "syscall.SYS_RT_SIGACTION",
+    "syscall.SYS_SCHED_YIELD",
+    "syscall.SYS_SET_ROBUST_LIST",
+    "syscall.SYS_GET_ROBUST_LIST",
+    "syscall.SYS_RSEQ",
+    "syscall.SYS_CLOCK_GETTIME",
+    "syscall.SYS_GETTIMEOFDAY",
+    "syscall.SYS_NANOSLEEP",
+    "syscall.SYS_CLOCK_NANOSLEEP",
+    "syscall.SYS_TIME",
+    "syscall.SYS_RT_SIGPROCMASK",
+    "syscall.SYS_SIGALTSTACK",
+    "syscall.SYS_CLONE",
+    "syscall.SYS_MKDIRAT",
+    "syscall.SYS_MKDIR",
+    "syscall.SYS_FSTAT",
+    "syscall.SYS_FCNTL",
+    "syscall.SYS_FSTATFS",
+]
+allowed_syscalls_tmp = allowed_syscalls
+L = []
+for item in allowed_syscalls_tmp:
+    item = item.strip()
+    parts = item.split(".")[1][4:].lower()
+    L.append(parts)
+f = SyscallFilter(defaction=KILL)
+for item in L:
+    f.add_rule(ALLOW, item)
+f.add_rule(ALLOW, "write", Arg(0, EQ, sys.stdout.fileno()))
+f.add_rule(ALLOW, "write", Arg(0, EQ, sys.stderr.fileno()))
+f.add_rule(ALLOW, 307)
+f.add_rule(ALLOW, 318)
+f.add_rule(ALLOW, 334)
+f.load()
 """
 
 def remove_print_statements(code):
