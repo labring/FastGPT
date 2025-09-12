@@ -53,6 +53,13 @@ export const checkIsInteractiveByHistories = (chatHistories: ChatSiteItemType[])
 
   if (lastMessageValue && !!lastMessageValue?.interactive?.params) {
     const params = lastMessageValue.interactive.params;
+    const interactiveType = lastMessageValue.interactive.type;
+
+    // planCheck 类型不需要禁用聊天框
+    if (interactiveType === 'planCheck') {
+      return false;
+    }
+
     // 如果用户选择了，则不认为是交互模式（可能是上一轮以交互结尾，发起的新的一轮对话）
     if ('userSelectOptions' in params) {
       return !params.userSelectedVal;
@@ -104,6 +111,19 @@ export const setUserSelectResultToHistories = (
             params: {
               ...finalInteractive.params,
               submitted: true
+            }
+          }
+        };
+      }
+
+      if (finalInteractive.type === 'planCheck') {
+        return {
+          ...val,
+          interactive: {
+            ...finalInteractive,
+            params: {
+              ...finalInteractive.params,
+              userSelectedVal: interactiveVal
             }
           }
         };

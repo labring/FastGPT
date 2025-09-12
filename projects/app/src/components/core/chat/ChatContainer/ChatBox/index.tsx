@@ -576,6 +576,13 @@ const ChatBox = ({
 
           const responseChatId = getNanoid(24);
 
+          // Check if current has planCheck interactive and mark it as completed
+          const lastAIHistory = history[history.length - 1];
+          const hasPlanCheckInteractive =
+            lastAIHistory?.obj === ChatRoleEnum.AI &&
+            (lastAIHistory.value[lastAIHistory.value.length - 1] as AIChatItemValueItemType)
+              ?.interactive?.type === 'planCheck';
+
           // set auto audio playing
           if (autoTTSResponse) {
             await startSegmentedAudio();
@@ -626,8 +633,8 @@ const ChatBox = ({
 
           // Update histories(Interactive input does not require new session rounds)
           setChatRecords(
-            isInteractivePrompt
-              ? // 把交互的结果存储到对话记录中，交互模式下，不需要新的会话轮次
+            isInteractivePrompt || hasPlanCheckInteractive
+              ? // 把交互的结果存储到对话记录中，交互模式下或planCheck模式下，需要更新交互状态
                 setUserSelectResultToHistories(newChatList.slice(0, -2), text)
               : newChatList
           );

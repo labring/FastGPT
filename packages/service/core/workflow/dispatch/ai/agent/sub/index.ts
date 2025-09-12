@@ -65,14 +65,16 @@ export const rewriteSubAppsToolset = ({
 };
 export const getSubApps = ({
   subApps,
-  addReadFileTool
+  addReadFileTool,
+  hasPlan
 }: {
   subApps: RuntimeNodeItemType[];
+  hasPlan: boolean;
   addReadFileTool?: boolean;
 }): ChatCompletionTool[] => {
   // System Tools: Plan Agent, stop sign, model agent.
   const systemTools: ChatCompletionTool[] = [
-    PlanAgentTool,
+    ...(hasPlan ? [] : [PlanAgentTool]),
     ...(addReadFileTool ? [readFileTool] : [])
     // ModelAgentTool
     // StopAgentTool,

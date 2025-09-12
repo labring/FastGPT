@@ -207,6 +207,11 @@ export const getLastInteractiveValue = (
     if (lastValue.interactive.type === 'userInput' && !lastValue.interactive.params.submitted) {
       return lastValue.interactive;
     }
+
+    // Check is plan
+    if (lastValue.interactive.type === 'planCheck') {
+      return lastValue.interactive;
+    }
   }
 
   return;
