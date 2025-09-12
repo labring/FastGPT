@@ -89,5 +89,7 @@
   "vlm_model": "圖片理解模型",
   "vlm_model_tip": "用於知識庫中對文件中的圖片進行額外的索引生成",
   "volunme_of_failed_calls": "調用失敗量",
-  "waiting_test": "等待測試"
+  "waiting_test": "等待測試",
+  "evaluation_model": "評測模型",
+  "evaluation_model_tip": "用於應用評測，及評測數據集中針對數據質量的評測。"
 }
