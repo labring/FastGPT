@@ -28,7 +28,7 @@ import VariablePlugin from './plugins/VariablePlugin';
 import { VariableNode } from './plugins/VariablePlugin/node';
 import type { EditorState, LexicalEditor } from 'lexical';
 import OnBlurPlugin from './plugins/OnBlurPlugin';
-import type { FormPropsType, OnAddToolFromEditor } from './type';
+import type { EditorToolAddData, FormPropsType } from './type';
 import { type EditorVariableLabelPickerType, type EditorVariablePickerType } from './type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import FocusPlugin from './plugins/FocusPlugin';
@@ -40,12 +40,11 @@ import { useDeepCompareEffect } from 'ahooks';
 import VariablePickerPlugin from './plugins/VariablePickerPlugin';
 import MarkdownPlugin from './plugins/MarkdownPlugin';
 import MyIcon from '../../Icon';
-import TabToSpacesPlugin from './plugins/TabToSpacesPlugin';
 import ListExitPlugin from './plugins/ListExitPlugin';
 import SkillPickerPlugin from './plugins/SkillPickerPlugin';
 import SkillPlugin from './plugins/SkillPlugin';
 import { SkillNode } from './plugins/SkillPlugin/node';
-import type { EditorSkillPickerType, SkillSubItem } from './plugins/SkillPickerPlugin';
+import type { EditorSkillPickerType, SkillSubToolItem } from './plugins/SkillPickerPlugin/type';
 
 const Placeholder = ({ children }: { children: React.ReactNode }) => (
   <Box
@@ -77,8 +76,8 @@ export type EditorProps = {
   variables?: EditorVariablePickerType[];
   variableLabels?: EditorVariableLabelPickerType[];
   skills?: EditorSkillPickerType[];
-  onLoadSubItems?: (toolId: string, toolType: string) => Promise<SkillSubItem[]>;
-  onAddToolFromEditor?: OnAddToolFromEditor;
+  onLoadSubItems?: (toolId: string) => Promise<SkillSubToolItem[]>;
+  onAddToolFromEditor?: (toolKey: string) => Promise<string>;
   selectedTools?: any[];
   value?: string;
   showOpenModal?: boolean;
@@ -127,8 +126,6 @@ export default function Editor({
   const [_, startSts] = useTransition();
   const [focus, setFocus] = useState(false);
   const [scrollHeight, setScrollHeight] = useState(0);
-  console.log('Editor - skills======\n', skills);
-  console.log('Editor - selectedTools======\n', selectedTools);
 
   const initialConfig = {
     namespace: isRichText ? 'richPromptEditor' : 'promptEditor',

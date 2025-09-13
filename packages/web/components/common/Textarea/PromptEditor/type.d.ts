@@ -34,9 +34,6 @@ export type EditorToolAddData = {
   subItemLabel?: string; // 子项名称（仅三级菜单有）
 };
 
-// 工具添加回调函数类型
-export type OnAddToolFromEditor = (toolData: EditorToolAddData) => string;
-
 // Lexical editor node types
 export type BaseEditorNode = {
   type: string;

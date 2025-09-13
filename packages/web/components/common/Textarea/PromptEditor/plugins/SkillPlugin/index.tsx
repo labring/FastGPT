@@ -5,7 +5,7 @@ import type { TextNode } from 'lexical';
 import { getSkillRegexString } from './utils';
 import { mergeRegister } from '@lexical/utils';
 import { registerLexicalTextEntity } from '../../utils';
-import type { EditorSkillPickerType } from '../SkillPickerPlugin';
+import type { EditorSkillPickerType } from '../SkillPickerPlugin/type';
 
 const REGEX = new RegExp(getSkillRegexString(), 'i');
 
@@ -26,10 +26,8 @@ export default function SkillPlugin({
   const createSkillPlugin = useCallback(
     (textNode: TextNode): SkillNode => {
       const textContent = textNode.getTextContent();
-      // 去掉 {{@ 和 @}}
       const skillKey = textContent.slice(3, -3);
 
-      // 首先从selectedTools中查找（优先级高）
       if (selectedTools.length > 0) {
         const tool = selectedTools.find((t) => t.id === skillKey);
         if (tool) {
@@ -63,7 +61,6 @@ export default function SkillPlugin({
     return unregister;
   }, [createSkillPlugin, editor, getSkillMatch, selectedTools]);
 
-  // 当 selectedTools 变化时，更新所有现有的 SkillNode
   useEffect(() => {
     if (selectedTools.length === 0) return;
 
@@ -76,11 +73,6 @@ export default function SkillPlugin({
           const tool = selectedTools.find((t) => t.id === skillKey);
 
           if (tool && (!node.__skillName || !node.__skillAvatar)) {
-            console.log('更新 SkillNode:', {
-              skillKey,
-              toolName: tool.name,
-              toolAvatar: tool.avatar
-            });
             const writableNode = node.getWritable();
             writableNode.__skillName = tool.name;
             writableNode.__skillAvatar = tool.avatar;
