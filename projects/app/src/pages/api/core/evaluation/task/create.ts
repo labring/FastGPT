@@ -19,7 +19,7 @@ import {
 async function handler(
   req: ApiRequestProps<CreateEvaluationRequest>
 ): Promise<CreateEvaluationResponse> {
-  const { name, description, datasetId, target, evaluators } = req.body;
+  const { name, description, datasetId, target, evaluators, autoStart } = req.body;
 
   // Validate all evaluation parameters (includes target validation)
   const paramValidation = await validateEvaluationParamsForCreate({
@@ -51,6 +51,7 @@ async function handler(
     datasetId,
     target: target as EvalTarget,
     evaluators,
+    autoStart,
     teamId,
     tmbId
   });

@@ -104,6 +104,7 @@
   "dataset_data_metadata_must_be_object": "元數據必須是對象",
   "dataset_data_list_error": "數據集數據列表錯誤",
   "quality_assessment_failed": "質量評估失敗",
+  "data_quality_job_active_cannot_set_high_quality": "質量評估任務進行中，無法設置為高質量狀態",
   "dataset_task_not_retryable": "任務不可重試",
   "dataset_task_job_not_found": "未找到任務作業",
   "dataset_task_job_mismatch": "任務作業不屬於此集合",
