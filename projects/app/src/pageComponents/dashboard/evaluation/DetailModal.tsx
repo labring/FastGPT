@@ -281,7 +281,7 @@ const EvaluationDetailModal = ({
                     fontSize={14}
                     color={'myGray.900'}
                     fontWeight={'medium'}
-                  >{`${t('dashboard_evaluation:data_list')}: ${evalDetail?.totalCount}`}</Box>
+                    >{`${t('dashboard_evaluation:data_list')}: ${evalDetail?.totalCount}`}</Box>
                 </Flex>
 
                 <Button

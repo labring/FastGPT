@@ -67,6 +67,7 @@ describe('WorkflowTarget - Workflow Only Support', () => {
 
     const config: WorkflowConfig = {
       appId: 'test-app-id',
+      versionId: 'test-version-id',
       chatConfig: {}
     };
     workflowTarget = new WorkflowTarget(config);
@@ -239,6 +240,20 @@ describe('WorkflowTarget - Workflow Only Support', () => {
     expect(result.errors[0].message).toContain('invalid-version-id');
     expect(result.errors[0].message).toContain('not found');
   });
+
+  test('缺少版本ID时应该返回false', async () => {
+    const configWithoutVersion: WorkflowConfig = {
+      appId: 'test-app-id',
+      versionId: '' // Empty versionId should fail validation
+    };
+    const workflowTargetWithoutVersion = new WorkflowTarget(configWithoutVersion);
+
+    const result = await workflowTargetWithoutVersion.validate();
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].code).toBe(EvaluationErrEnum.evalTargetVersionIdMissing);
+    expect(result.errors[0].message).toContain('Version ID is required');
+  });
 });
 
 describe('createTargetInstance', () => {
@@ -250,6 +265,7 @@ describe('createTargetInstance', () => {
       type: 'workflow',
       config: {
         appId: 'test-app-id',
+        versionId: 'test-version-id',
         chatConfig: {}
       }
     };
@@ -299,6 +315,7 @@ describe('validateTargetConfig', () => {
       type: 'workflow',
       config: {
         appId: 'test-app-id',
+        versionId: 'test-version-id',
         chatConfig: {}
       }
     };
@@ -339,6 +356,7 @@ describe('validateTargetConfig', () => {
       type: 'workflow',
       config: {
         appId: 'invalid-app-id',
+        versionId: 'test-version-id',
         chatConfig: {}
       }
     };

@@ -11,7 +11,7 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import type {
   EvalTarget,
-  EvaluationDetailType,
+  EvaluationWithPerType,
   EvaluationItemSchemaType
 } from '@fastgpt/global/core/evaluation/type';
 import { authApp } from '../../support/permission/app/auth';
@@ -135,7 +135,7 @@ export const authEvaluationTaskRead = async (
   evaluationId: string,
   auth: AuthModeType
 ): Promise<{
-  evaluation: EvaluationDetailType;
+  evaluation: EvaluationWithPerType;
   teamId: string;
   tmbId: string;
 }> => {
@@ -152,7 +152,7 @@ export const authEvaluationTaskWrite = async (
   evaluationId: string,
   auth: AuthModeType
 ): Promise<{
-  evaluation: EvaluationDetailType;
+  evaluation: EvaluationWithPerType;
   teamId: string;
   tmbId: string;
 }> => {
@@ -169,7 +169,7 @@ export const authEvaluationTaskExecution = async (
   evaluationId: string,
   auth: AuthModeType
 ): Promise<{
-  evaluation: EvaluationDetailType;
+  evaluation: EvaluationWithPerType;
   teamId: string;
   tmbId: string;
 }> => {
@@ -203,7 +203,7 @@ export const authEvaluationItemRead = async (
   evalItemId: string,
   auth: AuthModeType
 ): Promise<{
-  evaluation: EvaluationDetailType;
+  evaluation: EvaluationWithPerType;
   evaluationItem: EvaluationItemSchemaType;
   teamId: string;
   tmbId: string;
@@ -227,7 +227,7 @@ export const authEvaluationItemWrite = async (
   evalItemId: string,
   auth: AuthModeType
 ): Promise<{
-  evaluation: EvaluationDetailType;
+  evaluation: EvaluationWithPerType;
   evaluationItem: EvaluationItemSchemaType;
   teamId: string;
   tmbId: string;
@@ -251,7 +251,7 @@ export const authEvaluationItemRetry = async (
   evalItemId: string,
   auth: AuthModeType
 ): Promise<{
-  evaluation: EvaluationDetailType;
+  evaluation: EvaluationWithPerType;
   evaluationItem: EvaluationItemSchemaType;
   teamId: string;
   tmbId: string;

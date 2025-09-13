@@ -3,13 +3,17 @@ import type { EvalDatasetDataKeyEnum } from './dataset/constants';
 import type { EvalDatasetDataSchemaType } from './dataset/type';
 import type { MetricResult, EvalMetricSchemaType } from './metric/type';
 import type { EvaluationPermission } from '../../support/permission/evaluation/controller';
-import type { SourceMemberType } from '@fastgpt/global/support/user/type';
+import type { SourceMemberType } from '../../support/user/type';
 
 // Evaluation target related types
 export interface WorkflowConfig {
   appId: string;
-  versionId?: string; // Optional app version ID, uses latest version if not specified
+  versionId: string; // Required app version ID
   chatConfig?: any;
+  // Extended fields populated by aggregation queries
+  appName?: string; // App name from apps collection
+  avatar?: string; // App avatar from apps collection
+  versionName?: string; // Version name from app_versions collection
 }
 
 export interface EvalTarget {
@@ -121,20 +125,29 @@ export interface TargetOutput {
   responseTime: number;
 }
 
+export type EvaluationWithPerType = EvaluationSchemaType & {
+  permission: EvaluationPermission;
+};
+
 // ===== Display Types =====
 
 export type EvaluationDisplayType = Pick<
-  EvaluationSchemaType,
-  'name' | 'createTime' | 'finishTime' | 'status' | 'errorMessage' | 'tmbId'
+  EvaluationWithPerType,
+  | 'name'
+  | 'createTime'
+  | 'finishTime'
+  | 'status'
+  | 'errorMessage'
+  | 'tmbId'
+  | 'permission'
+  | 'statistics'
 > & {
   _id: string;
   avgScore?: number;
   datasetName?: string;
-  targetName: string;
+  target: EvalTarget; // Complete target object with extended config
   metricNames: string[];
-  completedCount: number;
-  errorCount: number;
-  totalCount: number;
+  private: boolean;
   sourceMember: SourceMemberType;
 };
 
@@ -178,6 +191,3 @@ export interface SummaryGenerationTaskData {
   metricId: string;
   evaluatorIndex: number;
 }
-export type EvaluationDetailType = EvaluationSchemaType & {
-  permission: EvaluationPermission;
-};

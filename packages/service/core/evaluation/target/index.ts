@@ -230,6 +230,15 @@ export class WorkflowTarget extends EvaluationTarget {
         return { isValid: false, errors, warnings };
       }
 
+      if (!this.config.versionId) {
+        errors.push({
+          code: EvaluationErrEnum.evalTargetVersionIdMissing,
+          message: 'Version ID is required for workflow target',
+          field: 'config.versionId'
+        });
+        return { isValid: false, errors, warnings };
+      }
+
       // Validate app existence and accessibility
       const appData = await MongoApp.findById(this.config.appId);
       if (!appData) {
@@ -242,49 +251,39 @@ export class WorkflowTarget extends EvaluationTarget {
         return { isValid: false, errors, warnings };
       }
 
-      // If versionId is specified, validate that the version exists and is accessible
-      if (this.config.versionId) {
-        try {
-          const versionData = await getAppVersionById({
-            appId: String(appData._id),
-            versionId: this.config.versionId,
-            app: appData
-          });
+      // Validate that the version exists and is accessible
+      try {
+        const versionData = await getAppVersionById({
+          appId: String(appData._id),
+          versionId: this.config.versionId,
+          app: appData
+        });
 
-          // If versionId was specified but the returned version doesn't match (fell back to latest),
-          // it means the specified version doesn't exist
-          if (String(versionData.versionId).trim() !== String(this.config.versionId).trim()) {
-            errors.push({
-              code: EvaluationErrEnum.evalAppVersionNotFound,
-              message: `App version '${this.config.versionId}' not found for app '${appData.name}'`,
-              field: 'config.versionId',
-              debugInfo: {
-                appId: this.config.appId,
-                appName: appData.name,
-                requestedVersion: this.config.versionId,
-                availableVersion: versionData.versionId
-              }
-            });
-          }
-        } catch (versionError) {
+        // If versionId was specified but the returned version doesn't match (fell back to latest),
+        // it means the specified version doesn't exist
+        if (String(versionData.versionId).trim() !== String(this.config.versionId).trim()) {
           errors.push({
             code: EvaluationErrEnum.evalAppVersionNotFound,
-            message: `Failed to validate app version: ${versionError instanceof Error ? versionError.message : String(versionError)}`,
+            message: `App version '${this.config.versionId}' not found for app '${appData.name}'`,
             field: 'config.versionId',
             debugInfo: {
               appId: this.config.appId,
+              appName: appData.name,
               requestedVersion: this.config.versionId,
-              error: versionError instanceof Error ? versionError.message : String(versionError)
+              availableVersion: versionData.versionId
             }
           });
         }
-      } else {
-        // Add warning if no version specified (will use latest)
-        warnings.push({
-          code: 'eval_target_no_version_specified',
-          message: 'No version specified, will use the latest version of the app',
+      } catch (versionError) {
+        errors.push({
+          code: EvaluationErrEnum.evalAppVersionNotFound,
+          message: `Failed to validate app version: ${versionError instanceof Error ? versionError.message : String(versionError)}`,
           field: 'config.versionId',
-          debugInfo: { appId: this.config.appId, appName: appData.name }
+          debugInfo: {
+            appId: this.config.appId,
+            requestedVersion: this.config.versionId,
+            error: versionError instanceof Error ? versionError.message : String(versionError)
+          }
         });
       }
 
