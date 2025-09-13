@@ -17,13 +17,12 @@ import { useBasicTypeaheadTriggerMatch } from '../../utils';
 import Avatar from '../../../../Avatar';
 import MyIcon from '../../../../Icon';
 import { buildIndexedOptions, getLevel, getSkillDisplayState, getToolDisplayState } from './utils';
-import type { EditorSkillPickerType, SkillOptionType, SkillToolItem, SkillSubToolItem } from './type';
-
-export type SkillToolCategory = {
-  type: string;
-  label: string;
-  list: SkillToolItem[];
-};
+import type {
+  EditorSkillPickerType,
+  SkillOptionType,
+  SkillToolItem,
+  SkillSubToolItem
+} from './type';
 
 export default function SkillPickerPlugin({
   skills,
@@ -105,6 +104,7 @@ export default function SkillPickerPlugin({
     }
   }, [selectedIndex, skillOptions, toolSubItems, onLoadSubItems]);
 
+  // TODO: 没有list时，不覆盖操作
   useEffect(() => {
     if (!isFocus) return;
     const removeRightCommand = editor.registerCommand(

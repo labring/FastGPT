@@ -6,6 +6,12 @@ export type EditorSkillPickerType = {
   toolCategories?: SkillToolCategory[];
 };
 
+type SkillToolCategory = {
+  type: string;
+  label: string;
+  list: SkillToolItem[];
+};
+
 export type SkillToolItem = {
   key: string;
   name: string;
