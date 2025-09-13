@@ -106,6 +106,7 @@ export enum EvaluationErrEnum {
   datasetDataEvaluationModelRequiredForQuality = 'evaluationDatasetDataEvaluationModelRequiredForQuality',
   datasetDataMetadataMustBeObject = 'evaluationDatasetDataMetadataMustBeObject',
   qualityAssessmentFailed = 'evaluationQualityAssessmentFailed',
+  evalDataQualityJobActiveCannotSetHighQuality = 'evaluationDataQualityJobActiveCannotSetHighQuality',
 
   // Task/Job related errors
   datasetTaskNotRetryable = 'evaluationDatasetTaskNotRetryable',
@@ -498,6 +499,10 @@ const evaluationErrList = [
   {
     statusText: EvaluationErrEnum.qualityAssessmentFailed,
     message: i18nT('evaluation:quality_assessment_failed')
+  },
+  {
+    statusText: EvaluationErrEnum.evalDataQualityJobActiveCannotSetHighQuality,
+    message: i18nT('evaluation:data_quality_job_active_cannot_set_high_quality')
   },
 
   // Task/Job related errors
