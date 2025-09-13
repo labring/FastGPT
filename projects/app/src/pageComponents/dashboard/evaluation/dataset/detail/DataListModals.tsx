@@ -6,9 +6,9 @@ import {
   HStack,
   VStack,
   Alert,
-  AlertIcon,
   ModalBody,
-  ModalFooter
+  ModalFooter,
+  Flex
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -26,6 +26,7 @@ import {
   getEvaluationDatasetCollectionDetail
 } from '@/web/core/evaluation/dataset';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 interface DataListModalsProps {
   total: number;
@@ -179,8 +180,7 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total, refreshList }) =
       >
         <Box p={6}>
           <Text fontSize="14px" color="myGray.900" mb={6}>
-            {t('dashboard_evaluation:confirm_quality_evaluation')} ({total}){' '}
-            {t('dashboard_evaluation:quality_evaluation_question')}?
+            {t('dashboard_evaluation:confirm_quality_evaluation', { total })}
           </Text>
           <HStack spacing={3} justify="flex-end">
             <Button size="sm" variant="outline" onClick={onQualityEvaluationModalClose}>
@@ -219,7 +219,8 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total, refreshList }) =
       <MyModal
         isOpen={isSettingsModalOpen}
         onClose={onSettingsModalClose}
-        iconSrc="common/settingLight"
+        iconSrc="common/setting"
+        iconColor="primary.600"
         title={t('dashboard_evaluation:settings')}
         w="500px"
       >
@@ -232,30 +233,36 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total, refreshList }) =
               bg="blue.50"
               border="1px solid"
               borderColor="blue.200"
+              py={3}
+              px={6}
             >
-              <AlertIcon color="blue.500" />
-              <Text fontSize="14px" color="blue.700">
-                {t('dashboard_evaluation:model_change_notice')}
-              </Text>
+              <Flex alignItems={'center'}>
+                <MyIcon color={'primary.600'} name="common/info" w={4} h={4} mr={2}></MyIcon>
+                <Text fontSize="14px" color="myGray.600">
+                  {t('dashboard_evaluation:model_change_notice')}
+                </Text>
+              </Flex>
             </Alert>
             {/* 评测模型选择 */}
-            <Box>
+            <HStack w={'100%'}>
               <FormLabel required>
                 <Text fontSize="14px" fontWeight="medium" color="myGray.900" mb={2}>
                   {t('dashboard_evaluation:evaluation_model')}
                 </Text>
               </FormLabel>
-              <AIModelSelector
-                bg="myGray.50"
-                value={evaluationModel}
-                list={evalModelList.map((item) => ({
-                  value: item.model,
-                  label: item.name
-                }))}
-                onChange={(value) => setEvaluationModel(value)}
-                placeholder={t('dashboard_evaluation:select_evaluation_model')}
-              />
-            </Box>
+              <Box flex={1}>
+                <AIModelSelector
+                  bg="myGray.50"
+                  value={evaluationModel}
+                  list={evalModelList.map((item) => ({
+                    value: item.model,
+                    label: item.name
+                  }))}
+                  onChange={(value) => setEvaluationModel(value)}
+                  placeholder={t('dashboard_evaluation:select_evaluation_model')}
+                />
+              </Box>
+            </HStack>
           </VStack>
         </ModalBody>
         <ModalFooter>

@@ -26,6 +26,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 import FolderPath from '@/components/common/folder/Path';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 // Dataset selection modal component
 export const DatasetSelectModal = ({
@@ -65,7 +66,14 @@ export const DatasetSelectModal = ({
 
   // Check if a dataset is disabled (vector model mismatch)
   const isDatasetDisabled = (item: DatasetListItemType) => {
-    return !!activeVectorModel && activeVectorModel !== item.vectorModel.model;
+    return (
+      (!!activeVectorModel && activeVectorModel !== item.vectorModel.model) ||
+      (scene === 'smartGenerate' && !item.dataCount)
+    );
+  };
+
+  const getDisableTip = () => {
+    return scene === 'smartGenerate' ? t('app:no_data_for_smart_generate') : '';
   };
 
   // Cache compatible datasets by vector model to avoid repeated filtering
@@ -247,16 +255,18 @@ export const DatasetSelectModal = ({
                         onClick={(e) => e.stopPropagation()} // Prevent parent click when clicking checkbox
                       >
                         {item.type !== DatasetTypeEnum.folder && (
-                          <Checkbox
-                            isChecked={isDatasetSelected(item._id)}
-                            isDisabled={isDatasetDisabled(item)}
-                            onChange={(e) => {
-                              const checked = e.target.checked;
-                              onSelect(item, checked);
-                            }}
-                            colorScheme="blue"
-                            size="sm"
-                          />
+                          <MyTooltip label={getDisableTip()}>
+                            <Checkbox
+                              isChecked={isDatasetSelected(item._id)}
+                              isDisabled={isDatasetDisabled(item)}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                onSelect(item, checked);
+                              }}
+                              colorScheme="blue"
+                              size="sm"
+                            />
+                          </MyTooltip>
                         )}
                       </Box>
 

@@ -5,13 +5,14 @@ import {
   Textarea,
   Button,
   HStack,
-  ModalFooter
+  ModalFooter,
+  Box
 } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal/index';
 import React, { useState, useEffect } from 'react';
-import MySelect from '@fastgpt/web/components/common/MySelect';
 import { modifiableEvaluationStatusOptions, EvaluationStatus } from './const';
+import QualitySelect from './QualitySelect';
 
 interface ModifyEvaluationModalProps {
   isOpen: boolean;
@@ -80,20 +81,18 @@ const ModifyEvaluationModal = ({
           <FormLabel fontSize="14px" fontWeight="medium" color="myGray.900">
             {t('dashboard_evaluation:evaluation_result_label')}
           </FormLabel>
-          <MySelect
-            bg={'myGray.50'}
-            value={evaluationData.evaluationStatus}
-            onChange={(e) => {
-              setEvaluationData((pre) => ({
-                ...pre,
-                evaluationStatus: e
-              }));
-            }}
-            list={modifiableEvaluationStatusOptions.map((v) => ({
-              ...v,
-              label: t(v.label)
-            }))}
-          />
+          <Box w={'100%'}>
+            <QualitySelect
+              value={evaluationData.evaluationStatus}
+              onSelect={(status) => {
+                setEvaluationData((pre) => ({
+                  ...pre,
+                  evaluationStatus: status
+                }));
+              }}
+              w={'344px'}
+            />
+          </Box>
         </FormControl>
 
         <FormControl mb={6}>
@@ -103,7 +102,7 @@ const ModifyEvaluationModal = ({
           <Textarea
             placeholder={t('dashboard_evaluation:modify_reason_input_placeholder')}
             bg="myGray.50"
-            minH="120px"
+            minH="80px"
             resize="vertical"
             value={evaluationData.evaluationResult}
             onChange={(e) => {

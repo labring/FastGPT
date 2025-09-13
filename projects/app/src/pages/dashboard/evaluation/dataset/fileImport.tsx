@@ -2,7 +2,17 @@ import React, { useState, useCallback, useMemo } from 'react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import DashboardContainer from '../../../../pageComponents/dashboard/Container';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Flex, Input, VStack, IconButton, Switch, HStack } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Flex,
+  Input,
+  VStack,
+  IconButton,
+  Switch,
+  HStack,
+  Spinner
+} from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useForm } from 'react-hook-form';
@@ -198,8 +208,13 @@ const FileImport = () => {
         setCollectionId(currentCollectionId);
       }
 
-      // 串行导入文件到数据集
+      // 串行导入文件到数据集，跳过已成功的文件
       for (const file of data.files) {
+        // 跳过已经成功导入的文件
+        if (file.createStatus === 'success') {
+          continue;
+        }
+
         try {
           await postImportEvaluationDatasetFile({
             fileId: file.dbFileId!,
@@ -207,14 +222,28 @@ const FileImport = () => {
             enableQualityEvaluation: data.autoEvaluation,
             evaluationModel: data.autoEvaluation ? data.evaluationModel : undefined
           });
-        } catch (error) {
-          hasError = true;
-          // 将错误信息写入对应文件的errorMsg
+
+          // 导入成功，更新文件状态
           setSelectFiles((state) =>
             state.map((item) =>
               item.dbFileId === file.dbFileId
                 ? {
                     ...item,
+                    createStatus: 'success',
+                    errorMsg: undefined
+                  }
+                : item
+            )
+          );
+        } catch (error) {
+          hasError = true;
+          // 将错误信息写入对应文件的errorMsg，并设置状态为fail
+          setSelectFiles((state) =>
+            state.map((item) =>
+              item.dbFileId === file.dbFileId
+                ? {
+                    ...item,
+                    createStatus: 'fail',
                     errorMsg: getErrText(error)
                   }
                 : item
@@ -223,7 +252,14 @@ const FileImport = () => {
           // 继续处理下一个文件，不中断整个流程
         }
       }
-      if (!hasError) {
+
+      // 检查是否所有文件都成功导入
+      const allFilesSuccess = data.files.every((file) => {
+        const currentFile = selectFiles.find((item) => item.dbFileId === file.dbFileId);
+        return currentFile?.createStatus === 'success';
+      });
+
+      if (allFilesSuccess) {
         toast({
           title: t('dashboard_evaluation:file_import_success'),
           status: 'success'
@@ -356,6 +392,11 @@ const FileImport = () => {
                             <Box fontSize={'xs'} color={'myGray.500'} flex={1}>
                               {item.sourceSize}
                             </Box>
+                            {item.isUploading && (
+                              <HStack spacing={2}>
+                                <Spinner size="sm" color="blue.500" />
+                              </HStack>
+                            )}
                             <MyIconButton
                               icon="delete"
                               hoverColor="red.500"
