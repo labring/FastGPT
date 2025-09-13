@@ -38,8 +38,7 @@ describe('List DataItems Grouped API Handler', () => {
     summary: {
       totalItems: 2,
       completedItems: 1,
-      errorItems: 0,
-      avgScore: 85
+      errorItems: 0
     }
   };
 

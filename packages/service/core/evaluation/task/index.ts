@@ -49,7 +49,6 @@ export interface EvaluationStatsResponse {
   evaluating: number;
   queuing: number;
   error: number;
-  avgScore?: number;
 }
 
 // Result response for individual evaluation item
@@ -88,7 +87,6 @@ export interface DataItemGroupedType {
     totalItems: number;
     completedItems: number;
     errorItems: number;
-    avgScore?: number;
   };
 }
 
@@ -112,7 +110,7 @@ export class EvaluationTaskService {
       tmbId: string;
     }
   ): Promise<EvaluationSchemaType> {
-    const { teamId, tmbId, ...evaluationParams } = params;
+    const { teamId, tmbId, autoStart = true, ...evaluationParams } = params;
 
     // Create usage record
     const { billId } = await createEvaluationUsage({
@@ -124,17 +122,50 @@ export class EvaluationTaskService {
     // Apply default configuration to evaluators (weights, thresholds, etc.)
     const evaluatorsWithDefaultConfig = buildEvalDataConfig(evaluationParams.evaluators);
 
-    const evaluation = await MongoEvaluation.create({
-      ...evaluationParams,
-      evaluators: evaluatorsWithDefaultConfig,
-      teamId,
-      tmbId,
-      usageId: billId,
-      status: EvaluationStatusEnum.queuing,
-      createTime: new Date()
-    });
+    const createAndStart = async (session: ClientSession) => {
+      // Create evaluation within transaction
+      const evaluation = await MongoEvaluation.create(
+        [
+          {
+            ...evaluationParams,
+            evaluators: evaluatorsWithDefaultConfig,
+            teamId,
+            tmbId,
+            usageId: billId,
+            status: EvaluationStatusEnum.queuing,
+            createTime: new Date()
+          }
+        ],
+        { session }
+      );
 
-    return evaluation.toObject();
+      const evaluationObject = evaluation[0].toObject();
+
+      // Auto-start the evaluation if autoStart is true
+      if (autoStart) {
+        // Update status to evaluating within transaction
+        await MongoEvaluation.updateOne(
+          { _id: evaluationObject._id },
+          { $set: { status: EvaluationStatusEnum.evaluating } },
+          { session }
+        );
+
+        // Queue operation within transaction - if it fails, transaction will rollback
+        await evaluationTaskQueue.add(`eval_task_${evaluationObject._id}`, {
+          evalId: evaluationObject._id.toString()
+        });
+
+        // Update status in returned object
+        evaluationObject.status = EvaluationStatusEnum.evaluating;
+        addLog.debug(`[Evaluation] Task created and auto-started: ${evaluationObject._id}`);
+      } else {
+        addLog.debug(`[Evaluation] Task created: ${evaluationObject._id}`);
+      }
+
+      return evaluationObject;
+    };
+
+    return await mongoSessionRun(createAndStart);
   }
 
   static async getEvaluation(evalId: string, teamId: string): Promise<EvaluationSchemaType> {
@@ -275,6 +306,29 @@ export class EvaluationTaskService {
             as: 'appVersion'
           }
         },
+        // Add real-time statistics lookup
+        {
+          $lookup: {
+            from: 'evalitems',
+            localField: '_id',
+            foreignField: 'evalId',
+            pipeline: [
+              {
+                $group: {
+                  _id: null,
+                  totalItems: { $sum: 1 },
+                  completedItems: {
+                    $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.completed] }, 1, 0] }
+                  },
+                  errorItems: {
+                    $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.error] }, 1, 0] }
+                  }
+                }
+              }
+            ],
+            as: 'realTimeStats'
+          }
+        },
         {
           $addFields: {
             datasetName: { $arrayElemAt: ['$dataset.name', 0] },
@@ -288,6 +342,14 @@ export class EvaluationTaskService {
                 as: 'evaluator',
                 in: '$$evaluator.metric.name'
               }
+            },
+            // Use real-time statistics if available, otherwise fallback to stored statistics
+            statistics: {
+              $cond: {
+                if: { $gt: [{ $size: '$realTimeStats' }, 0] },
+                then: { $arrayElemAt: ['$realTimeStats', 0] },
+                else: '$statistics'
+              }
             }
           }
         },
@@ -299,7 +361,6 @@ export class EvaluationTaskService {
             finishTime: 1,
             status: 1,
             errorMessage: 1,
-            avgScore: 1,
             datasetName: 1,
             target: {
               type: '$target.type',
@@ -359,11 +420,42 @@ export class EvaluationTaskService {
           as: 'appVersion'
         }
       },
+      // Add real-time statistics lookup
+      {
+        $lookup: {
+          from: 'evalitems',
+          localField: '_id',
+          foreignField: 'evalId',
+          pipeline: [
+            {
+              $group: {
+                _id: null,
+                totalItems: { $sum: 1 },
+                completedItems: {
+                  $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.completed] }, 1, 0] }
+                },
+                errorItems: {
+                  $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.error] }, 1, 0] }
+                }
+              }
+            }
+          ],
+          as: 'realTimeStats'
+        }
+      },
       {
         $addFields: {
           'target.config.appName': { $arrayElemAt: ['$app.name', 0] },
           'target.config.avatar': { $arrayElemAt: ['$app.avatar', 0] },
-          'target.config.versionName': { $arrayElemAt: ['$appVersion.versionName', 0] }
+          'target.config.versionName': { $arrayElemAt: ['$appVersion.versionName', 0] },
+          // Use real-time statistics if available, otherwise fallback to stored statistics
+          statistics: {
+            $cond: {
+              if: { $gt: [{ $size: '$realTimeStats' }, 0] },
+              then: { $arrayElemAt: ['$realTimeStats', 0] },
+              else: '$statistics'
+            }
+          }
         }
       },
       {
@@ -572,20 +664,6 @@ export class EvaluationTaskService {
           },
           error: {
             $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.error] }, 1, 0] }
-          },
-          avgScore: {
-            $avg: {
-              $cond: [
-                {
-                  $and: [
-                    { $eq: ['$status', EvaluationStatusEnum.completed] },
-                    { $ne: ['$evaluatorOutput.data.score', null] }
-                  ]
-                },
-                '$evaluatorOutput.data.score',
-                null
-              ]
-            }
           }
         }
       }
@@ -597,8 +675,7 @@ export class EvaluationTaskService {
       completed: statsResult?.completed || 0,
       evaluating: statsResult?.evaluating || 0,
       queuing: statsResult?.queuing || 0,
-      error: statsResult?.error || 0,
-      avgScore: statsResult?.avgScore ? Math.round(statsResult.avgScore * 100) / 100 : undefined
+      error: statsResult?.error || 0
     };
 
     return result;
@@ -856,7 +933,9 @@ export class EvaluationTaskService {
       return itemsToRetry.length;
     };
 
-    return await mongoSessionRun(retryItems);
+    const retriedCount = await mongoSessionRun(retryItems);
+
+    return retriedCount;
   }
 
   static async getEvaluationItemResult(
@@ -1058,8 +1137,7 @@ export class EvaluationTaskService {
           },
           errorItems: {
             $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.error] }, 1, 0] }
-          },
-          avgScore: { $avg: '$evaluatorOutput.data.score' }
+          }
         }
       },
       {
@@ -1067,8 +1145,7 @@ export class EvaluationTaskService {
           dataItemId: '$_id',
           'summary.totalItems': '$totalItems',
           'summary.completedItems': '$completedItems',
-          'summary.errorItems': '$errorItems',
-          'summary.avgScore': { $round: ['$avgScore', 2] }
+          'summary.errorItems': '$errorItems'
         }
       },
       { $sort: { totalItems: -1 as const, _id: 1 as const } }
@@ -1097,8 +1174,7 @@ export class EvaluationTaskService {
             summary: {
               totalItems: '$totalItems',
               completedItems: '$completedItems',
-              errorItems: '$errorItems',
-              avgScore: '$summary.avgScore'
+              errorItems: '$errorItems'
             }
           }
         }
@@ -1124,7 +1200,7 @@ export class EvaluationTaskService {
     await this.getEvaluation(evalId, teamId);
 
     const filter: any = {
-      'dataItem._id': dataItemId,
+      'dataItem._id': new Types.ObjectId(dataItemId),
       evalId: new Types.ObjectId(evalId)
     };
 
@@ -1172,7 +1248,7 @@ export class EvaluationTaskService {
     await this.getEvaluation(evalId, teamId);
 
     const filter: any = {
-      'dataItem._id': dataItemId,
+      'dataItem._id': new Types.ObjectId(dataItemId),
       evalId: new Types.ObjectId(evalId),
       status: EvaluationStatusEnum.error
     };
@@ -1264,7 +1340,7 @@ export class EvaluationTaskService {
     }
 
     const filter: any = {
-      'dataItem._id': dataItemId,
+      'dataItem._id': new Types.ObjectId(dataItemId),
       evalId: new Types.ObjectId(evalId)
     };
 

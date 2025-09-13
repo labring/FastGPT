@@ -51,7 +51,6 @@ export type EvaluationStatsResponse = {
   evaluating: number;
   queuing: number;
   error: number;
-  avgScore?: number;
 };
 
 // Export Evaluation Items
@@ -116,7 +115,6 @@ export type DataItemGroupedItem = {
     totalItems: number;
     completedItems: number;
     errorItems: number;
-    avgScore?: number;
   };
 };
 export type DataItemListResponse = PaginationResponse<DataItemGroupedItem>;

@@ -104,6 +104,7 @@
   "dataset_data_metadata_must_be_object": "Metadata must be an object",
   "dataset_data_list_error": "Failed to list dataset data",
   "quality_assessment_failed": "Quality assessment failed",
+  "data_quality_job_active_cannot_set_high_quality": "Cannot set quality status to high quality while quality assessment job is active",
   "dataset_task_not_retryable": "Task is not retryable",
   "dataset_task_job_not_found": "Task job not found",
   "dataset_task_job_mismatch": "Task job does not belong to this collection",
