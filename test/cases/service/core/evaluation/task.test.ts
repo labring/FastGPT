@@ -141,7 +141,8 @@ describe('EvaluationTaskService', () => {
     target = {
       type: 'workflow',
       config: {
-        appId: 'test-app-id-for-task-testing',
+        appId: '507f1f77bcf86cd799439011',
+        versionId: '507f1f77bcf86cd799439012',
         chatConfig: {
           temperature: 0.7,
           maxToken: 2000
@@ -216,7 +217,8 @@ describe('EvaluationTaskService', () => {
         target: {
           type: 'workflow',
           config: {
-            appId: 'test-app-id',
+            appId: '507f1f77bcf86cd799439013',
+            versionId: '507f1f77bcf86cd799439014',
             chatConfig: {}
           }
         },
@@ -233,7 +235,8 @@ describe('EvaluationTaskService', () => {
       expect(evaluation.description).toBe(params.description);
       expect(evaluation.datasetId.toString()).toBe(datasetId);
       expect(evaluation.target.type).toBe('workflow');
-      expect(evaluation.target.config.appId).toBe('test-app-id');
+      expect(evaluation.target.config.appId).toBe('507f1f77bcf86cd799439013');
+      expect(evaluation.target.config.versionId).toBe('507f1f77bcf86cd799439014');
       expect(evaluation.evaluators).toHaveLength(1);
       expect(evaluation.evaluators[0].metric._id.toString()).toBe(metricId);
       expect(evaluation.evaluators[0].runtimeConfig.llm).toBe('gpt-3.5-turbo');

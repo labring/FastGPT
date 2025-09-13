@@ -6,20 +6,53 @@ import { EvaluationTaskService } from '@fastgpt/service/core/evaluation/task';
 // Mock dependencies
 vi.mock('@fastgpt/service/core/evaluation/task', () => ({
   EvaluationTaskService: {
-    getEvaluation: vi.fn()
+    getEvaluationDetail: vi.fn().mockResolvedValue({
+      _id: 'mock-eval-id',
+      name: 'Mock Evaluation',
+      status: 'completed',
+      tmbId: 'mock-tmb-id'
+    })
   }
 }));
 
 vi.mock('@fastgpt/service/core/evaluation/common', () => ({
-  authEvaluationTaskRead: vi.fn().mockResolvedValue({
+  getEvaluationPermissionAggregation: vi.fn().mockResolvedValue({
     teamId: 'mock-team-id',
     tmbId: 'mock-tmb-id',
-    evaluation: {
-      _id: 'mock-eval-id',
-      name: 'Mock Evaluation',
-      status: 'completed'
-    }
+    isOwner: false,
+    roleList: [
+      {
+        resourceId: 'mock-eval-id',
+        tmbId: 'mock-tmb-id',
+        permission: 15
+      }
+    ],
+    myGroupMap: new Map(),
+    myOrgSet: new Set()
   })
+}));
+
+vi.mock('@fastgpt/service/support/user/utils', () => ({
+  addSourceMember: vi.fn().mockImplementation(({ list }) =>
+    list.map((item: any) => ({
+      ...item,
+      sourceMember: {
+        name: 'Mock User',
+        avatar: 'mock-avatar.png',
+        status: 'active'
+      }
+    }))
+  )
+}));
+
+vi.mock('@fastgpt/global/support/permission/evaluation/controller', () => ({
+  EvaluationPermission: vi.fn().mockImplementation(({ role, isOwner }) => ({
+    hasReadPer: true,
+    hasWritePer: true,
+    hasManagePer: isOwner,
+    role,
+    isOwner
+  }))
 }));
 
 describe('Get Evaluation Task Detail API Handler', () => {
@@ -36,12 +69,19 @@ describe('Get Evaluation Task Detail API Handler', () => {
 
     const result = await detailHandler(mockReq);
 
-    // The detail handler no longer calls getEvaluation, it gets data from authEvaluationTaskRead
+    // Verify the result includes permission, private, and sourceMember fields
     expect(result).toEqual(
       expect.objectContaining({
         _id: 'mock-eval-id',
         name: 'Mock Evaluation',
-        status: 'completed'
+        status: 'completed',
+        permission: expect.any(Object),
+        private: expect.any(Boolean),
+        sourceMember: expect.objectContaining({
+          name: 'Mock User',
+          avatar: 'mock-avatar.png',
+          status: 'active'
+        })
       })
     );
   });

@@ -245,16 +245,16 @@ const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
                       <HStack spacing={1}>
                         <Box>
                           <Box as="span" color={'myGray.900'}>
-                            {task.completedCount}
+                            {task.statistics?.completedItems}
                           </Box>
                           <Box as="span" color={'myGray.600'}>
-                            /{task.totalCount}
+                            /{task.statistics?.totalItems}
                           </Box>
                         </Box>
-                        {task.errorCount && task.errorCount > 0 && (
+                        {task.statistics?.errorItems && task.statistics.errorItems > 0 && (
                           <MyTooltip
                             label={t('dashboard_evaluation:error_data_tooltip', {
-                              count: task.errorCount
+                              count: task.statistics.errorItems
                             })}
                           >
                             <MyIcon name={'common/error'} w={'14px'} color={'red.600'} />
@@ -270,7 +270,7 @@ const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
                   <Td>
                     <HStack>
                       <Avatar src={''} borderRadius={'sm'} w={'1.5rem'} />
-                      <Box flex={'1 0 0'}>{task.targetName}</Box>
+                      <Box flex={'1 0 0'}>{task.target.config.appName}</Box>
                     </HStack>
                   </Td>
                   <Td>-</Td>
@@ -301,7 +301,7 @@ const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
                         {
                           label: '',
                           children: [
-                            ...(task.errorCount && task.errorCount > 0
+                            ...(task.statistics?.errorItems && task.statistics.errorItems > 0
                               ? [
                                   {
                                     icon: 'common/retryLight',

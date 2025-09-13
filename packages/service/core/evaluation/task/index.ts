@@ -243,66 +243,50 @@ export class EvaluationTaskService {
         { $match: finalFilter },
         {
           $lookup: {
-            from: 'eval_datasets',
+            from: 'eval_dataset_collections',
             localField: 'datasetId',
             foreignField: '_id',
             as: 'dataset'
           }
         },
         {
-          $lookup: {
-            from: 'teammembers',
-            localField: 'tmbId',
-            foreignField: '_id',
-            as: 'executor'
+          $addFields: {
+            'target.config.appObjectId': { $toObjectId: '$target.config.appId' }
           }
         },
         {
           $lookup: {
-            from: 'eval_items',
-            localField: '_id',
-            foreignField: 'evalId',
-            as: 'evalItems'
+            from: 'apps',
+            localField: 'target.config.appObjectId',
+            foreignField: '_id',
+            as: 'app'
+          }
+        },
+        {
+          $addFields: {
+            'target.config.versionObjectId': { $toObjectId: '$target.config.versionId' }
+          }
+        },
+        {
+          $lookup: {
+            from: 'app_versions',
+            localField: 'target.config.versionObjectId',
+            foreignField: '_id',
+            as: 'appVersion'
           }
         },
         {
           $addFields: {
             datasetName: { $arrayElemAt: ['$dataset.name', 0] },
-            targetName: {
-              $switch: {
-                branches: [
-                  {
-                    case: { $eq: ['$target.type', 'workflow'] },
-                    then: { $concat: ['Workflow: ', { $toString: '$target.config.appId' }] }
-                  }
-                ],
-                default: 'Unknown Target'
-              }
-            },
+            // Add app name and avatar to target.config
+            'target.config.appName': { $arrayElemAt: ['$app.name', 0] },
+            'target.config.avatar': { $arrayElemAt: ['$app.avatar', 0] },
+            'target.config.versionName': { $arrayElemAt: ['$appVersion.versionName', 0] },
             metricNames: {
               $map: {
                 input: '$evaluators',
                 as: 'evaluator',
-                in: { $concat: ['Evaluator: ', { $toString: '$$evaluator.metricId' }] }
-              }
-            },
-            executorName: { $arrayElemAt: ['$executor.memberName', 0] },
-            executorAvatar: { $arrayElemAt: ['$executor.avatar', 0] },
-            totalCount: { $size: '$evalItems' },
-            completedCount: {
-              $size: {
-                $filter: {
-                  input: '$evalItems',
-                  cond: { $eq: ['$$this.status', EvaluationStatusEnum.completed] }
-                }
-              }
-            },
-            errorCount: {
-              $size: {
-                $filter: {
-                  input: '$evalItems',
-                  cond: { $eq: ['$$this.status', EvaluationStatusEnum.error] }
-                }
+                in: '$$evaluator.metric.name'
               }
             }
           }
@@ -317,13 +301,18 @@ export class EvaluationTaskService {
             errorMessage: 1,
             avgScore: 1,
             datasetName: 1,
-            targetName: 1,
+            target: {
+              type: '$target.type',
+              config: {
+                appId: '$target.config.appId',
+                versionId: '$target.config.versionId',
+                avatar: '$target.config.avatar',
+                appName: '$target.config.appName',
+                versionName: '$target.config.versionName'
+              }
+            },
             metricNames: 1,
-            executorName: 1,
-            executorAvatar: 1,
-            totalCount: 1,
-            completedCount: 1,
-            errorCount: 1,
+            statistics: 1,
             tmbId: 1
           }
         },
@@ -339,6 +328,79 @@ export class EvaluationTaskService {
       list: evaluations,
       total
     };
+  }
+
+  static async getEvaluationDetail(evalId: string, teamId: string): Promise<EvaluationDisplayType> {
+    const evaluationResult = await MongoEvaluation.aggregate([
+      { $match: { _id: new Types.ObjectId(evalId), teamId: new Types.ObjectId(teamId) } },
+      {
+        $addFields: {
+          'target.config.appObjectId': { $toObjectId: '$target.config.appId' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'apps',
+          localField: 'target.config.appObjectId',
+          foreignField: '_id',
+          as: 'app'
+        }
+      },
+      {
+        $addFields: {
+          'target.config.versionObjectId': { $toObjectId: '$target.config.versionId' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'app_versions',
+          localField: 'target.config.versionObjectId',
+          foreignField: '_id',
+          as: 'appVersion'
+        }
+      },
+      {
+        $addFields: {
+          'target.config.appName': { $arrayElemAt: ['$app.name', 0] },
+          'target.config.avatar': { $arrayElemAt: ['$app.avatar', 0] },
+          'target.config.versionName': { $arrayElemAt: ['$appVersion.versionName', 0] }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          teamId: 1,
+          tmbId: 1,
+          name: 1,
+          description: 1,
+          datasetId: 1,
+          target: {
+            type: '$target.type',
+            config: {
+              appId: '$target.config.appId',
+              versionId: '$target.config.versionId',
+              avatar: '$target.config.avatar',
+              appName: '$target.config.appName',
+              versionName: '$target.config.versionName'
+            }
+          },
+          evaluators: 1,
+          usageId: 1,
+          status: 1,
+          createTime: 1,
+          finishTime: 1,
+          errorMessage: 1,
+          statistics: 1
+        }
+      }
+    ]);
+
+    const evaluation = evaluationResult[0];
+    if (!evaluation) {
+      throw new Error('Evaluation not found');
+    }
+
+    return evaluation;
   }
 
   static async listEvaluationItems(
