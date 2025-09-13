@@ -1,6 +1,7 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { Types } from '@fastgpt/service/common/mongo';
 import type {
   listFailedTasksBody,
@@ -37,12 +38,29 @@ async function handler(
       (job) => job.data.evalDatasetCollectionId === collectionId
     );
 
+    const dataIds = collectionFailedJobs.map((job) => job.data.dataId).filter(Boolean);
+
+    const datasetDataMap = new Map();
+    if (dataIds.length > 0) {
+      const datasetDatas = await MongoDatasetData.find(
+        { _id: { $in: dataIds } },
+        '_id datasetId'
+      ).lean();
+
+      datasetDatas.forEach((data) => {
+        datasetDataMap.set(String(data._id), String(data.datasetId));
+      });
+    }
+
     const tasks = await Promise.all(
       collectionFailedJobs.map(async (job) => {
         const failureReason = job.failedReason || 'Unknown error';
+        const datasetId = datasetDataMap.get(job.data.dataId) || '';
+
         return {
           jobId: job.id || '',
           dataId: job.data.dataId,
+          datasetId: datasetId,
           errorMessage: failureReason,
           failedAt: job.finishedOn ? new Date(job.finishedOn) : new Date(),
           attemptsMade: job.attemptsMade,
