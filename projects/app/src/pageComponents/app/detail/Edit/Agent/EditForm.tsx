@@ -242,6 +242,13 @@ const EditForm = ({
     [appForm.selectedTools]
   );
 
+  const handleRemoveToolFromEditor = useCallback((toolId: string) => {
+    setAppForm((state) => ({
+      ...state,
+      selectedTools: state.selectedTools.filter((tool) => tool.id !== toolId)
+    }));
+  }, []);
+
   const onAddTool = useCallback(
     (tool: FlowNodeTemplateType) => {
       setAppForm((state) => ({
@@ -471,6 +478,7 @@ const EditForm = ({
                   });
                 }}
                 onAddToolFromEditor={handleAddToolFromEditor}
+                onRemoveToolFromEditor={handleRemoveToolFromEditor}
                 onConfigureTool={handleConfigureTool}
                 selectedTools={appForm.selectedTools}
                 variableLabels={formatVariables}

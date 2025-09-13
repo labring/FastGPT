@@ -79,6 +79,7 @@ export type EditorProps = {
   skills?: EditorSkillPickerType[];
   onLoadSubItems?: (toolId: string) => Promise<SkillSubToolItem[]>;
   onAddToolFromEditor?: (toolKey: string) => Promise<string>;
+  onRemoveToolFromEditor?: (toolId: string) => void;
   onConfigureTool?: (toolId: string) => void;
   selectedTools?: FlowNodeTemplateType[];
   value?: string;
@@ -107,6 +108,7 @@ export default function Editor({
   skills = [],
   onLoadSubItems,
   onAddToolFromEditor,
+  onRemoveToolFromEditor,
   onConfigureTool,
   selectedTools = [],
   onChange,
@@ -240,6 +242,7 @@ export default function Editor({
                 skills={skills}
                 selectedTools={selectedTools}
                 onConfigureTool={onConfigureTool}
+                onRemoveToolFromEditor={onRemoveToolFromEditor}
               />
               <SkillPickerPlugin
                 skills={skills}
