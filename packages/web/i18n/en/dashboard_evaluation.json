@@ -289,5 +289,7 @@
   "no_dimension_data": "暂无维度数据",
   "please_select_dimension_first": "请先选择该维度",
   "model_evaluation_tip": "语言模型可判断实际回答和参考答案中的文本内容是否匹配；\n索引模型可将实际回答和参考答案转成向量，进一步评估语义相似性。",
-  "create_new_dimension": "新建维度"
+  "create_new_dimension": "新建维度",
+    "retry_success": "重试成功",
+  "data_generation_error_count": "{{count}}条数据生成异常"
 }
