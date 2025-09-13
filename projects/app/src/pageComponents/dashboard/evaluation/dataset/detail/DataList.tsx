@@ -95,13 +95,13 @@ const DataListContent = () => {
       case EvaluationStatus.HighQuality:
         return 'green';
       case EvaluationStatus.NeedsImprovement:
-        return 'orange';
+        return 'yellow';
       case EvaluationStatus.Abnormal:
         return 'red';
       case EvaluationStatus.Evaluating:
         return 'blue';
       case EvaluationStatus.Queuing:
-        return 'purple';
+        return 'gray';
       case EvaluationStatus.NotEvaluated:
         return 'gray';
       default:
@@ -110,7 +110,7 @@ const DataListContent = () => {
   };
 
   const renderStatusTag = (item: any) => {
-    if (!item.metadata?.qualityStatus) return '-';
+    if (!item.metadata?.qualityStatus) return '';
 
     return (
       <Box>
@@ -249,12 +249,12 @@ const DataListContent = () => {
                     children: [
                       {
                         label: t('dashboard_evaluation:ai_generate'),
-                        icon: 'common/aiOutline',
+                        icon: 'core/app/aiLight',
                         onClick: () => handleAddDataMenuClick('ai')
                       },
                       {
                         label: t('dashboard_evaluation:file_import'),
-                        icon: 'common/csvOutline',
+                        icon: 'core/dataset/tableCollection',
                         onClick: () => handleAddDataMenuClick('file')
                       },
                       {

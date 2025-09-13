@@ -33,7 +33,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import IntelligentGeneration from '@/pageComponents/dashboard/evaluation/dataset/IntelligentGeneration';
-import ErrorModal from './errorModal';
+import ErrorModal from '@/pageComponents/dashboard/evaluation/dataset/errorModal';
 import type { listEvalDatasetCollectionResponse } from '@fastgpt/global/core/evaluation/dataset/api';
 import {
   getEvaluationDatasetList,
@@ -65,7 +65,8 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
     data: datasets,
     Pagination,
     getData: fetchData,
-    isLoading
+    isLoading,
+    total
   } = usePagination(getEvaluationDatasetList, {
     defaultPageSize: 10,
     params: {
@@ -218,7 +219,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
                   {
                     label: (
                       <Flex>
-                        <MyIcon name={'common/aiOutline'} w={'20px'} mr={2} />
+                        <MyIcon name={'core/app/aiLight'} w={'20px'} mr={2} />
                         {t('dashboard_evaluation:smart_generation')}
                       </Flex>
                     ),
@@ -330,6 +331,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
               ))}
             </Tbody>
           </Table>
+          {total === 0 && <EmptyTip text={t('dashboard_evaluation:no_data')} />}
         </TableContainer>
       </MyBox>
 
