@@ -146,6 +146,10 @@ export type listFailedTasksResponse = {
   tasks: Array<{
     jobId: string;
     dataId: string;
+    datasetId: string;
+    datasetName: string;
+    collectionId: string;
+    collectionName: string;
     errorMessage: string;
     failedAt: Date;
     attemptsMade: number;

@@ -4,7 +4,10 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import type { updateEvalDatasetDataBody } from '@fastgpt/global/core/evaluation/dataset/api';
-import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
+import {
+  EvalDatasetDataKeyEnum,
+  EvalDatasetDataQualityStatusEnum
+} from '@fastgpt/global/core/evaluation/dataset/constants';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { authEvaluationDatasetDataUpdateById } from '@fastgpt/service/core/evaluation/common';
@@ -118,6 +121,15 @@ async function handler(
     if (metadata !== undefined) {
       if (Object.keys(metadata).length > 0) {
         for (const [key, value] of Object.entries(metadata)) {
+          if (key == 'qualityStatus' && value == EvalDatasetDataQualityStatusEnum.highQuality) {
+            const currentQualityStatus = existingData.metadata?.qualityStatus;
+            if (
+              currentQualityStatus === EvalDatasetDataQualityStatusEnum.queuing ||
+              currentQualityStatus === EvalDatasetDataQualityStatusEnum.evaluating
+            ) {
+              return Promise.reject(EvaluationErrEnum.evalDataQualityJobActiveCannotSetHighQuality);
+            }
+          }
           updateFields[`metadata.${key}`] = value;
         }
       } else {
