@@ -19,6 +19,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import ManageDimension, { type Dimension } from './ManageDimension';
@@ -35,6 +36,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getModelFromList } from '@fastgpt/global/core/ai/model';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag';
+import IntelligentGeneration from '@/pageComponents/dashboard/evaluation/dataset/IntelligentGeneration';
 
 // 表单数据类型定义
 export interface TaskFormData {
@@ -63,6 +65,11 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
   const { t } = useTranslation();
   const [isManageDimensionOpen, setIsManageDimensionOpen] = useState(false);
   const { isOpen: isDimensionExpanded, onToggle: toggleDimensionExpanded } = useDisclosure();
+  const {
+    isOpen: isIntelligentModalOpen,
+    onOpen: onOpenIntelligentModal,
+    onClose: onCloseIntelligentModal
+  } = useDisclosure();
   const { llmModelList, embeddingModelList } = useSystemStore();
 
   const {
@@ -187,7 +194,8 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
   const {
     ScrollData: DatasetScrollData,
     data: datasets,
-    isLoading: isLoadingDatasets
+    isLoading: isLoadingDatasets,
+    refreshList: fetchDatasets
   } = useScrollPagination(getEvaluationDatasetList, {
     pageSize: 20,
     params: {
@@ -218,6 +226,28 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
     },
     [allModelList]
   );
+
+  // 处理创建数据集
+  const handleCreateDataset = useCallback(
+    (type: 'smart' | 'import') => {
+      if (type === 'smart') {
+        onOpenIntelligentModal();
+      } else {
+        // 在新标签页打开文件导入页面
+        window.open(
+          '/dashboard/evaluation/dataset/fileImport?scene=evaluationDatasetList',
+          '_blank'
+        );
+      }
+    },
+    [onOpenIntelligentModal]
+  );
+
+  // 智能生成数据集确认回调
+  const handleIntelligentGenerationConfirm = useCallback(() => {
+    onCloseIntelligentModal();
+    fetchDatasets();
+  }, [onCloseIntelligentModal, fetchDatasets]);
 
   return (
     <>
@@ -305,18 +335,43 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                     ScrollData={DatasetScrollData}
                   />
                 </Box>
-                <Button
-                  variant="whiteBase"
-                  size="md"
-                  leftIcon={<MyIcon name="common/importLight" w="14px" />}
-                  onClick={() => {
-                    // TODO: 实现新建/导入数据集功能
-                    console.log('Import dataset');
-                  }}
-                  flexShrink={0}
-                >
-                  {t('dashboard_evaluation:create_import_dataset')}
-                </Button>
+                <MyMenu
+                  offset={[0, 5]}
+                  Button={
+                    <Button
+                      variant="whiteBase"
+                      size="md"
+                      leftIcon={<MyIcon name="common/importLight" w="14px" />}
+                      flexShrink={0}
+                    >
+                      {t('dashboard_evaluation:create_import_dataset')}
+                    </Button>
+                  }
+                  menuList={[
+                    {
+                      children: [
+                        {
+                          label: (
+                            <Flex>
+                              <MyIcon name={'common/aiOutline'} w={'20px'} mr={2} />
+                              {t('dashboard_evaluation:smart_generation')}
+                            </Flex>
+                          ),
+                          onClick: () => handleCreateDataset('smart')
+                        },
+                        {
+                          label: (
+                            <Flex>
+                              <MyIcon name={'core/dataset/tableCollection'} mr={2} w={'20px'} />
+                              {t('dashboard_evaluation:file_import')}
+                            </Flex>
+                          ),
+                          onClick: () => handleCreateDataset('import')
+                        }
+                      ]
+                    }
+                  ]}
+                />
               </HStack>
             </Flex>
 
@@ -457,6 +512,15 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
           onClose={() => setIsManageDimensionOpen(false)}
           selectedDimensions={selectedDimensions}
           onConfirm={handleDimensionsChange}
+        />
+      )}
+
+      {/* 智能生成数据集弹窗 */}
+      {isIntelligentModalOpen && (
+        <IntelligentGeneration
+          isOpen={isIntelligentModalOpen}
+          onClose={onCloseIntelligentModal}
+          onConfirm={handleIntelligentGenerationConfirm}
         />
       )}
     </>
