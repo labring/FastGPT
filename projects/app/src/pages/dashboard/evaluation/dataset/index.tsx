@@ -176,7 +176,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
       onOpenIntelligentModal();
     } else {
       // 跳转到文件导入页面
-      router.push('/dashboard/evaluation/dataset/fileImport');
+      router.push('/dashboard/evaluation/dataset/fileImport?scene=evaluationDatasetList');
     }
   };
 
