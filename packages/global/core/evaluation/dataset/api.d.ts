@@ -162,3 +162,37 @@ export type deleteTaskBody = {
   collectionId: string;
   jobId: string;
 };
+
+export type retryAllTaskBody = {
+  collectionId: string;
+};
+
+export type retryAllTaskResponse = {
+  success: boolean;
+  message: string;
+  totalFailedTasks: number;
+  retriedTasks: number;
+  failedRetries: number;
+};
+
+export type getEvalDatasetCollectionDetailQuery = {
+  collectionId: string;
+};
+
+export type getEvalDatasetCollectionDetailResponse = Pick<
+  EvalDatasetCollectionSchemaType,
+  | '_id'
+  | 'teamId'
+  | 'tmbId'
+  | 'name'
+  | 'description'
+  | 'createTime'
+  | 'updateTime'
+  | 'evaluationModel'
+  | 'metadata'
+> & {
+  creatorAvatar?: string;
+  creatorName?: string;
+  status: EvalDatasetCollectionStatus;
+  dataItemsCount: number;
+};
