@@ -269,11 +269,11 @@ const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
                   </Td>
                   <Td>
                     <HStack>
-                      <Avatar src={''} borderRadius={'sm'} w={'1.5rem'} />
+                      <Avatar src={task.target.config.avatar} borderRadius={'sm'} w={'1.5rem'} />
                       <Box flex={'1 0 0'}>{task.target.config.appName}</Box>
                     </HStack>
                   </Td>
-                  <Td>-</Td>
+                  <Td>{task.target.config.versionName || '-'}</Td>
                   <Td>{renderEvaluationResult(task)}</Td>
                   <Td>
                     <Box>{format(new Date(task.createTime), 'yyyy-MM-dd HH:mm:ss')}</Box>
