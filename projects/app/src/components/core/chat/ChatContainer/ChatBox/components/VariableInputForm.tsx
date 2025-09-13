@@ -124,19 +124,21 @@ const VariableInput = ({
             bg={'white'}
             boxShadow={'0 0 8px rgba(0,0,0,0.15)'}
           >
-            <Flex
-              color={'primary.600'}
-              bg={'primary.100'}
-              mb={3}
-              px={3}
-              py={1.5}
-              gap={1}
-              fontSize={'mini'}
-              rounded={'sm'}
-            >
-              <MyIcon name={'common/info'} color={'primary.600'} w={4} />
-              {t('chat:variable_invisable_in_share')}
-            </Flex>
+            {chatType !== ChatTypeEnum.chat && (
+              <Flex
+                color={'primary.600'}
+                bg={'primary.100'}
+                mb={3}
+                px={3}
+                py={1.5}
+                gap={1}
+                fontSize={'mini'}
+                rounded={'sm'}
+              >
+                <MyIcon name={'common/info'} color={'primary.600'} w={4} />
+                {t('chat:variable_invisable_in_share')}
+              </Flex>
+            )}
             {externalVariableList.map((item) => {
               return (
                 <LabelAndFormRender

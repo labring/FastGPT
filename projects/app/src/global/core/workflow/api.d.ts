@@ -1,4 +1,4 @@
-import { AppSchema } from '@fastgpt/global/core/app/type';
+import type { AppSchema } from '@fastgpt/global/core/app/type';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -15,6 +15,7 @@ export type PostWorkflowDebugProps = {
   appId: string;
   query?: UserChatItemValueItemType[];
   history?: ChatItemType[];
+  chatConfig?: AppSchema['chatConfig'];
 };
 
 export type PostWorkflowDebugResponse = WorkflowDebugResponse & {

@@ -1,22 +1,24 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { getCouponCode, removeCouponCode } from '@/web/support/marketing/utils';
-import type { UserType } from '@fastgpt/global/support/user/type.d';
 import { redeemCoupon } from '@/web/support/user/team/api';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
-export const useCheckCoupon = (userInfo: UserType | null) => {
-  const hasCheckedCouponRef = useRef(false);
+export const useCheckCoupon = () => {
+  const { userInfo } = useUserStore();
 
   useEffect(() => {
-    if (!userInfo || hasCheckedCouponRef.current) return;
+    if (!userInfo) return;
 
     const couponCode = getCouponCode();
     if (!couponCode) return;
 
-    hasCheckedCouponRef.current = true;
-
     redeemCoupon(couponCode)
-      .catch(() => {})
-      .finally(removeCouponCode);
+      .then(removeCouponCode)
+      .catch((err) => {
+        if (err?.message === 'Invalid coupon') {
+          removeCouponCode();
+        }
+      });
   }, [userInfo]);
 };
 

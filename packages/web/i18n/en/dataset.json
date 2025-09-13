@@ -133,7 +133,7 @@
   "llm_paragraph_mode_force_desc": "Force the use of the model to automatically identify paragraphs and ignore paragraphs in the original text (if any)",
   "loading": "Loading...",
   "max_chunk_size": "Maximum chunk size",
-  "move.hint": "After moving, the selected knowledge base/folder will inherit the permission settings of the new folder, and the original permission settings will become invalid.",
+  "move.hint": "After moving, the selected knowledge base/folder will inherit the permission settings for the new folder.",
   "noChildren": "No subdirectories",
   "noSelectedFolder": "No selected folder",
   "noSelectedId": "No selected ID",

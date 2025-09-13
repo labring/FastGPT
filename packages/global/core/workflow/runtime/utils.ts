@@ -109,7 +109,7 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
     return typeof value === 'object' ? JSON.stringify(value) : String(value);
   }
   if (valueType === WorkflowIOValueTypeEnum.number) {
-    if (value === '') return undefined;
+    if (value === '') return null;
     return Number(value);
   }
   if (valueType === WorkflowIOValueTypeEnum.boolean) {

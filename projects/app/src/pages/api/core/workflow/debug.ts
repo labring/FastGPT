@@ -9,7 +9,6 @@ import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/ut
 import type { PostWorkflowDebugProps, PostWorkflowDebugResponse } from '@/global/core/workflow/api';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { defaultApp } from '@/web/core/app/constants';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
@@ -25,7 +24,8 @@ async function handler(
     variables = {},
     appId,
     query = [],
-    history = []
+    history = [],
+    chatConfig
   } = req.body as PostWorkflowDebugProps;
   if (!nodes) {
     return Promise.reject('Prams Error');
@@ -71,7 +71,7 @@ async function handler(
     lastInteractive: interactive,
     variables,
     query: query,
-    chatConfig: defaultApp.chatConfig,
+    chatConfig: chatConfig || app.chatConfig,
     histories: history,
     stream: false,
     maxRunTimes: WORKFLOW_MAX_RUN_TIMES

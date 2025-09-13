@@ -111,7 +111,7 @@ async function handler(
       .lean(),
     MongoDatasetCollection.countDocuments(match, { ...readFromSecondary })
   ]);
-  const collectionIds = collections.map((item) => item._id);
+  const collectionIds = collections.map((item) => new Types.ObjectId(item._id));
 
   // Compute data amount
   const [trainingAmount, dataAmount]: [
@@ -122,8 +122,8 @@ async function handler(
       [
         {
           $match: {
-            teamId: match.teamId,
-            datasetId: match.datasetId,
+            teamId: new Types.ObjectId(teamId),
+            datasetId: new Types.ObjectId(datasetId),
             collectionId: { $in: collectionIds }
           }
         },
@@ -143,8 +143,8 @@ async function handler(
       [
         {
           $match: {
-            teamId: match.teamId,
-            datasetId: match.datasetId,
+            teamId: new Types.ObjectId(teamId),
+            datasetId: new Types.ObjectId(datasetId),
             collectionId: { $in: collectionIds }
           }
         },

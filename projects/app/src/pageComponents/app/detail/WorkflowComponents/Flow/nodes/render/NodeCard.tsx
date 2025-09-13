@@ -2,7 +2,10 @@ import React, { useCallback, useMemo } from 'react';
 import { Box, Button, Flex, useDisclosure, type FlexProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import type {
+  FlowNodeItemType,
+  StoreNodeItemType
+} from '@fastgpt/global/core/workflow/type/node.d';
 import { useTranslation } from 'next-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -458,7 +461,9 @@ const MenuRender = React.memo(function MenuRender({
       setNodes((state) => {
         const node = state.find((node) => node.id === nodeId);
         if (!node) return state;
-        const template = {
+        const template: Omit<StoreNodeItemType, 'nodeId'> = {
+          flowNodeType: node.data.flowNodeType,
+          parentNodeId: node.data.parentNodeId,
           avatar: node.data.avatar,
           name: computedNewNodeName({
             templateName: node.data.name,
@@ -466,15 +471,27 @@ const MenuRender = React.memo(function MenuRender({
             pluginId: node.data.pluginId
           }),
           intro: node.data.intro,
-          flowNodeType: node.data.flowNodeType,
-          inputs: node.data.inputs,
-          outputs: node.data.outputs,
+          toolDescription: node.data.toolDescription,
           showStatus: node.data.showStatus,
-          pluginId: node.data.pluginId,
+
           version: node.data.version,
           versionLabel: node.data.versionLabel,
           isLatestVersion: node.data.isLatestVersion,
-          toolConfig: node.data.toolConfig
+
+          catchError: node.data.catchError,
+          inputs: node.data.inputs,
+          outputs: node.data.outputs,
+
+          pluginId: node.data.pluginId,
+          isFolder: node.data.isFolder,
+          pluginData: node.data.pluginData,
+
+          toolConfig: node.data.toolConfig,
+
+          currentCost: node.data.currentCost,
+          systemKeyCost: node.data.systemKeyCost,
+          hasTokenFee: node.data.hasTokenFee,
+          hasSystemSecret: node.data.hasSystemSecret
         };
 
         return [

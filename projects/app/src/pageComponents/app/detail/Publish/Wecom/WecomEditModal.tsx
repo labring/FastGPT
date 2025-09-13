@@ -138,7 +138,7 @@ const WecomEditModal = ({
             </FormLabel>
             <Input
               placeholder="AES Key"
-              {...(register('app.CallbackEncodingAesKey'), { required: true })}
+              {...register('app.CallbackEncodingAesKey', { required: true })}
             />
           </Flex>
 

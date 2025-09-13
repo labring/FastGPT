@@ -5,7 +5,7 @@ import {
   requestFinish,
   checkRes,
   responseError
-} from '../../../../../projects/app/src/web/common/api/request';
+} from '../../../../src/web/common/api/request';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { TOKEN_ERROR_CODE } from '@fastgpt/global/common/error/errorCode';
 
