@@ -39,6 +39,8 @@ import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { getModelProvider } from '@fastgpt/global/core/ai/provider';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { SANGFOR_LOGO_ICON } from '@fastgpt/global/common/system/constants';
+import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 
 const EditChannelModal = dynamic(() => import('./EditChannelModal'), { ssr: false });
 const ModelTest = dynamic(() => import('./ModelTest'), { ssr: false });
@@ -130,6 +132,9 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                   provider: 'Other'
                 };
                 const provider = getModelProvider(providerData?.provider);
+                const isAicp = (providerData?.avatar || provider?.avatar)
+                  ?.toLowerCase()
+                  ?.includes('aicp');
 
                 return (
                   <Tr key={item.id} _hover={{ bg: 'myGray.100' }}>
@@ -137,10 +142,20 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                     <Td>{item.name}</Td>
                     <Td>
                       <HStack>
-                        <MyIcon
-                          name={(providerData?.avatar || provider?.avatar) as any}
-                          w={'1rem'}
-                        />
+                        {!isAicp ? (
+                          <MyIcon
+                            name={(providerData?.avatar || provider?.avatar) as any}
+                            w={'1rem'}
+                          />
+                        ) : (
+                          <MyImage
+                            fallbackStrategy={'onError'}
+                            objectFit={'contain'}
+                            alt=""
+                            w={'1rem'}
+                            src={SANGFOR_LOGO_ICON}
+                          />
+                        )}
                         <Box>{t(providerData?.label as any)}</Box>
                       </HStack>
                     </Td>
