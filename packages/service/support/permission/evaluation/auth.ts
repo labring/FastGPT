@@ -8,7 +8,7 @@ import {
   ReadRoleVal
 } from '@fastgpt/global/support/permission/constant';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
-import type { EvaluationDetailType } from '@fastgpt/global/core/evaluation/type';
+import type { EvaluationWithPerType } from '@fastgpt/global/core/evaluation/type';
 import type { AuthModeType, AuthResponseType } from '../type';
 import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { MongoEvaluation } from '../../../core/evaluation/task';
@@ -31,7 +31,7 @@ export const authEvaluationByTmbId = async ({
   evaluationId: string;
   per: PermissionValueType;
   isRoot?: boolean;
-}): Promise<{ evaluation: EvaluationDetailType }> => {
+}): Promise<{ evaluation: EvaluationWithPerType }> => {
   const { teamId, permission: tmbPer } = await getTmbInfoByTmbId({ tmbId });
 
   const evaluation = await MongoEvaluation.findOne({ _id: evaluationId }).lean();
@@ -96,7 +96,7 @@ export const authEvaluation = async ({
   per?: PermissionValueType;
 }): Promise<
   AuthResponseType & {
-    evaluation: EvaluationDetailType;
+    evaluation: EvaluationWithPerType;
   }
 > => {
   const result = await parseHeaderCert({
