@@ -283,7 +283,8 @@ export function usePagination<DataT, ResT = {}>(
       // Watch scroll position
       useThrottleEffect(
         () => {
-          if (!ref?.current || type !== 'scroll' || noMore || isLoading) return;
+          if (!ref?.current || type !== 'scroll' || noMore || isLoading || data.length === 0)
+            return;
           const { scrollTop, scrollHeight, clientHeight } = ref.current;
 
           if (
