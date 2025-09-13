@@ -12,11 +12,13 @@ const REGEX = new RegExp(getSkillRegexString(), 'i');
 export default function SkillPlugin({
   skills = [],
   selectedTools = [],
-  onConfigureTool
+  onConfigureTool,
+  onRemoveToolFromEditor
 }: {
   skills?: EditorSkillPickerType[];
   selectedTools?: any[];
   onConfigureTool?: (toolId: string) => void;
+  onRemoveToolFromEditor?: (toolId: string) => void;
 }) {
   const [editor] = useLexicalComposerContext();
 
@@ -106,6 +108,37 @@ export default function SkillPlugin({
       });
     });
   }, [selectedTools, editor]);
+
+  useEffect(() => {
+    if (!onRemoveToolFromEditor) return;
+
+    const checkRemovedTools = () => {
+      if (selectedTools.length === 0) return;
+
+      const editorState = editor.getEditorState();
+      const nodes = editorState._nodeMap;
+      const skillKeysInEditor = new Set<string>();
+
+      nodes.forEach((node) => {
+        if (node instanceof SkillNode) {
+          skillKeysInEditor.add(node.getSkillKey());
+        }
+      });
+
+      // Check for removed tools
+      selectedTools.forEach((tool) => {
+        if (!skillKeysInEditor.has(tool.id)) {
+          onRemoveToolFromEditor(tool.id);
+        }
+      });
+    };
+
+    const unregister = editor.registerUpdateListener(({ editorState }) => {
+      setTimeout(checkRemovedTools, 50);
+    });
+
+    return unregister;
+  }, [selectedTools, editor, onRemoveToolFromEditor]);
 
   return null;
 }
