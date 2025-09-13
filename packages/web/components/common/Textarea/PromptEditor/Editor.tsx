@@ -15,6 +15,7 @@ import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import { ListPlugin } from '@lexical/react/LexicalListPlugin';
 import { CheckListPlugin } from '@lexical/react/LexicalCheckListPlugin';
+import { TabIndentationPlugin } from '@lexical/react/LexicalTabIndentationPlugin';
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListItemNode, ListNode } from '@lexical/list';
@@ -39,8 +40,12 @@ import { useDeepCompareEffect } from 'ahooks';
 import VariablePickerPlugin from './plugins/VariablePickerPlugin';
 import MarkdownPlugin from './plugins/MarkdownPlugin';
 import MyIcon from '../../Icon';
-import TabToSpacesPlugin from './plugins/TabToSpacesPlugin';
 import ListExitPlugin from './plugins/ListExitPlugin';
+import SkillPickerPlugin from './plugins/SkillPickerPlugin';
+import SkillPlugin from './plugins/SkillPlugin';
+import { SkillNode } from './plugins/SkillPlugin/node';
+import type { EditorSkillPickerType, SkillSubToolItem } from './plugins/SkillPickerPlugin/type';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 
 const Placeholder = ({ children }: { children: React.ReactNode }) => (
   <Box
@@ -71,6 +76,12 @@ export type EditorProps = {
   isRichText?: boolean;
   variables?: EditorVariablePickerType[];
   variableLabels?: EditorVariableLabelPickerType[];
+  skills?: EditorSkillPickerType[];
+  onLoadSubItems?: (toolId: string) => Promise<SkillSubToolItem[]>;
+  onAddToolFromEditor?: (toolKey: string) => Promise<string>;
+  onRemoveToolFromEditor?: (toolId: string) => void;
+  onConfigureTool?: (toolId: string) => void;
+  selectedTools?: FlowNodeTemplateType[];
   value?: string;
   showOpenModal?: boolean;
   minH?: number;
@@ -94,6 +105,12 @@ export default function Editor({
   onOpenModal,
   variables = [],
   variableLabels = [],
+  skills = [],
+  onLoadSubItems,
+  onAddToolFromEditor,
+  onRemoveToolFromEditor,
+  onConfigureTool,
+  selectedTools = [],
   onChange,
   onChangeText,
   onBlur,
@@ -120,6 +137,7 @@ export default function Editor({
     nodes: [
       VariableNode,
       VariableLabelNode,
+      SkillNode,
       HeadingNode,
       ListNode,
       ListItemNode,
@@ -136,7 +154,7 @@ export default function Editor({
   useDeepCompareEffect(() => {
     if (focus) return;
     setKey(getNanoid(6));
-  }, [value, variables, variableLabels]);
+  }, [value, variables, variableLabels, selectedTools]);
 
   const showFullScreenIcon = useMemo(() => {
     return showOpenModal && scrollHeight > maxH;
@@ -218,8 +236,23 @@ export default function Editor({
             </>
           )}
           {variableLabels.length > 0 && <VariablePickerPlugin variables={variables} />}
+          {skills.length > 0 && (
+            <>
+              <SkillPlugin
+                skills={skills}
+                selectedTools={selectedTools}
+                onConfigureTool={onConfigureTool}
+                onRemoveToolFromEditor={onRemoveToolFromEditor}
+              />
+              <SkillPickerPlugin
+                skills={skills}
+                isFocus={focus}
+                onLoadSubItems={onLoadSubItems}
+                onAddToolFromEditor={onAddToolFromEditor}
+              />
+            </>
+          )}
           <OnBlurPlugin onBlur={onBlur} />
-          <ListDisplayFixPlugin />
           <OnChangePlugin
             onChange={(editorState, editor) => {
               const rootElement = editor.getRootElement();
@@ -232,11 +265,12 @@ export default function Editor({
 
           {isRichText && (
             <>
-              {/* <ListPlugin />
+              <ListDisplayFixPlugin />
+              <TabIndentationPlugin />
+              <ListPlugin />
               <CheckListPlugin />
-              <ListExitPlugin /> */}
-              <TabToSpacesPlugin />
-              {/* <MarkdownPlugin /> */}
+              <ListExitPlugin />
+              <MarkdownPlugin />
             </>
           )}
         </>

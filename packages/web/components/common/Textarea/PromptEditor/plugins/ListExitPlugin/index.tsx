@@ -70,7 +70,7 @@ export default function ListExitPlugin(): JSX.Element | null {
       }
 
       const anchorNode = selection.anchor.getNode();
-      const listItemNode = anchorNode.getParent();
+      const listItemNode = $isListItemNode(anchorNode) ? anchorNode : anchorNode.getParent();
 
       if ($isListItemNode(listItemNode)) {
         // Check if cursor is at the beginning of an empty list item
