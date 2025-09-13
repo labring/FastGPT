@@ -41,6 +41,7 @@ export default function SkillPickerPlugin({
   const [selectedKey, setSelectedKey] = useState<string>('');
 
   const highlightedRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const nextIndexRef = useRef<number | null>(null);
 
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('@', {
     minLength: 0
@@ -123,6 +124,8 @@ export default function SkillPickerPlugin({
         );
         if (firstChildOption) {
           setSelectedKey(firstChildOption.key);
+          nextIndexRef.current = 0;
+
           e.preventDefault();
           e.stopPropagation();
           return true;
@@ -140,6 +143,15 @@ export default function SkillPickerPlugin({
         if (currentOption.parentKey) {
           const parentOption = skillOptionList.find((item) => item.key === currentOption.parentKey);
           if (parentOption) {
+            const parentLevel = parentOption.level;
+            const parentSiblings = skillOptionList.filter(
+              (item) => item.level === parentLevel && item.parentKey === parentOption.parentKey
+            );
+            const parentIndexInSiblings = parentSiblings.findIndex(
+              (item) => item.key === parentOption.key
+            );
+            nextIndexRef.current = parentIndexInSiblings >= 0 ? parentIndexInSiblings : 0;
+
             setSelectedKey(parentOption.key);
             e.preventDefault();
             e.stopPropagation();
@@ -206,9 +218,14 @@ export default function SkillPickerPlugin({
           return null;
         }
 
-        // TODO: 优化溢出长度，currentSelectedIndex和selectedKey的转换
+        if (nextIndexRef.current !== null) {
+          setHighlightedIndex(nextIndexRef.current);
+          nextIndexRef.current = null;
+        }
+
         const currentOption = currentOptions[currentSelectedIndex || 0] || currentOptions[0];
-        if (currentOption) {
+
+        if (currentOption && currentOption.key !== selectedKey) {
           setSelectedKey(currentOption.key);
         }
 
