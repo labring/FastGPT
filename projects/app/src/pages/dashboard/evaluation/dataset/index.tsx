@@ -53,11 +53,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
     onOpen: onOpenErrorModal,
     onClose: onCloseErrorModal
   } = useDisclosure();
-  const {
-    isOpen: isCreateModalOpen,
-    onOpen: onOpenCreateModal,
-    onClose: onCloseCreateModal
-  } = useDisclosure();
+
   const {
     isOpen: isIntelligentModalOpen,
     onOpen: onOpenIntelligentModal,
@@ -68,7 +64,8 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
   const {
     data: datasets,
     Pagination,
-    getData: fetchData
+    getData: fetchData,
+    isLoading
   } = usePagination(getEvaluationDatasetList, {
     defaultPageSize: 10,
     params: {
@@ -107,7 +104,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
   });
 
   // 更新数据集名称的请求
-  const { runAsync: onUpdateDatasetName, loading: isUpdating } = useRequest2(
+  const { runAsync: onUpdateDatasetName } = useRequest2(
     (collectionId: string, name: string) => {
       return updateEvaluationDataset({ collectionId, name });
     },
@@ -185,14 +182,9 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
     fetchData();
   }, [onCloseIntelligentModal, fetchData]);
 
-  const handleRetryDataset = (id?: string) => {
+  const handleCloseErrorModal = (isUpdateList: boolean) => {
     onCloseErrorModal();
-    fetchData();
-  };
-
-  const handleDeleteErrorDataset = (id: string) => {
-    onCloseErrorModal();
-    fetchData();
+    isUpdateList && fetchData();
   };
 
   return (
@@ -248,7 +240,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
         </HStack>
       </Flex>
 
-      <MyBox flex={'1 0 0'} h={0}>
+      <MyBox flex={'1 0 0'} h={0} isLoading={isLoading}>
         <TableContainer h={'100%'} overflowY={'auto'} fontSize={'sm'}>
           <Table>
             <Thead>
@@ -278,7 +270,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
                   }}
                 >
                   <Td>{dataset.name}</Td>
-                  <Td>{dataset.dataCount}</Td>
+                  <Td>{dataset.dataItemsCount || 0}</Td>
                   <Td color={'myGray.900'}>
                     <Box>{format(new Date(dataset.createTime), 'yyyy-MM-dd HH:mm:ss')}</Box>
                     <Box>{format(new Date(dataset.updateTime), 'yyyy-MM-dd HH:mm:ss')}</Box>
@@ -349,16 +341,8 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
       {selectedDataset && (
         <ErrorModal
           isOpen={isErrorModalOpen}
-          onClose={onCloseErrorModal}
-          errorType="all"
-          errorInfo={{
-            id: selectedDataset?.id?.toString(),
-            title: selectedDataset.name,
-            status: selectedDataset.status === 'parseError' ? 400 : 500,
-            errorMessage: selectedDataset.errorMessage || t('dashboard_evaluation:error_details')
-          }}
-          onRetry={handleRetryDataset}
-          onDelete={handleDeleteErrorDataset}
+          onClose={handleCloseErrorModal}
+          collectionId={selectedDataset._id}
         />
       )}
 
