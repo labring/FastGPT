@@ -9,7 +9,7 @@ import MyImage from '../Image/MyImage';
 const Avatar = ({ w = '30px', src, ...props }: ImageProps) => {
   // @ts-ignore
   const isIcon = !!iconPaths[src as any];
-  const isAicp = src?.includes('aicp');
+  const isAicp = src?.toLowerCase()?.includes('aicp');
 
   return isIcon ? (
     <Box display={'inline-flex'} {...props}>

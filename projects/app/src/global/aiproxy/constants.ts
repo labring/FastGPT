@@ -190,5 +190,10 @@ export const aiproxyIdMap: Record<
     label: 'Coze',
     provider: 'Other',
     avatar: 'model/coze'
+  },
+  50: {
+    label: 'Sangfor AICP',
+    provider: 'Sangfor AICP',
+    avatar: 'model/sangforaicp'
   }
 };
