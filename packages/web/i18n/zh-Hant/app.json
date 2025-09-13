@@ -351,5 +351,7 @@
   "files_cascader_select_knowledge_base": "請選擇知識庫",
   "files_cascader_select_first": "請先選擇知識庫",
   "files_cascader_dataset_empty": "該知識庫資料集為空",
-  "select_join_location": "選擇加入位置"
+  "select_join_location": "選擇加入位置",
+  "no_data_for_smart_generate": "該知識庫中沒有可用於智能生成的數據"
+
 }

@@ -27,6 +27,7 @@ import {
 } from '@/web/core/evaluation/dataset';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import type { listEvalDatasetDataResponse } from '@fastgpt/global/core/evaluation/dataset/api';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
 
 interface EditDataFormData {
   question: string;
@@ -72,6 +73,8 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
     formData?.metadata?.qualityReason
   );
 
+  const [errorMsg, setErrorMsg] = useState(formData.metadata?.qualityError || '');
+
   const [reviewBtns, setReviewBtns] = useState<ReviewBtnType[]>([
     {
       label: t('dashboard_evaluation:start_evaluation'),
@@ -92,32 +95,38 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
 
   // 根据评测状态更新按钮显示的公共函数
   const updateButtonsByStatus = (status: EvaluationStatus) => {
-    if (status === EvaluationStatus.NotEvaluated) {
-      setReviewBtns((prev) =>
-        prev.map((btn) => ({
-          ...btn,
-          isShow: btn.key === 'startReview'
-        }))
-      );
-    } else if (
-      status === EvaluationStatus.HighQuality ||
-      status === EvaluationStatus.NeedsImprovement ||
-      status === EvaluationStatus.Abnormal
-    ) {
-      setReviewBtns((prev) =>
-        prev.map((btn) => ({
-          ...btn,
-          isShow: btn.key === 'modifyRes' || btn.key === 'reStart'
-        }))
-      );
-    } else if (status === EvaluationStatus.Evaluating || status === EvaluationStatus.Queuing) {
-      setReviewBtns((prev) =>
-        prev.map((btn) => ({
-          ...btn,
-          isShow: false
-        }))
-      );
-    }
+    setReviewBtns((prev) =>
+      prev.map((btn) => {
+        switch (btn.key) {
+          case 'startReview':
+            // 开始测评：只有状态为未测评时才显示
+            return { ...btn, isShow: status === EvaluationStatus.NotEvaluated };
+
+          case 'reStart':
+            // 重新测评：异常、质量高、待优化才显示
+            return {
+              ...btn,
+              isShow:
+                status === EvaluationStatus.Abnormal ||
+                status === EvaluationStatus.HighQuality ||
+                status === EvaluationStatus.NeedsImprovement
+            };
+
+          case 'modifyRes':
+            // 修改结果：异常、质量高、待优化才显示
+            return {
+              ...btn,
+              isShow:
+                status === EvaluationStatus.HighQuality ||
+                status === EvaluationStatus.NeedsImprovement
+            };
+
+          default:
+            // 评测中、排队中不显示任何按钮
+            return { ...btn, isShow: false };
+        }
+      })
+    );
   };
 
   const { runAsync: simulateEvaluation, loading: isEvaluating } = useRequest2(
@@ -130,18 +139,22 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
     }
   );
 
-  // 轮询获取数据详情 - 只有在评测中时才轮询
+  // 轮询获取数据详情 - 在评测中或排队中时才轮询
   useRequest2(() => getEvaluationDatasetDataDetail(formData._id), {
     pollingInterval: 3000,
     pollingWhenHidden: false,
-    manual: !isOpen || currentEvaluationStatus !== EvaluationStatus.Evaluating,
-    ready: isOpen && !!formData._id && currentEvaluationStatus === EvaluationStatus.Evaluating,
+    manual:
+      !isOpen ||
+      (currentEvaluationStatus !== EvaluationStatus.Evaluating &&
+        currentEvaluationStatus !== EvaluationStatus.Queuing),
+    ready: isOpen,
     onSuccess: (data: any) => {
       if (data?.metadata?.qualityStatus !== currentEvaluationStatus) {
         const newStatus = data?.metadata.qualityStatus || EvaluationStatus.NotEvaluated;
         setCurrentEvaluationStatus(newStatus);
         setCurrentEvaluationResult(data?.metadata.qualityReason || '');
         updateButtonsByStatus(newStatus);
+        newStatus === EvaluationStatus.Abnormal && setErrorMsg(data?.metadata?.qualityError);
       }
     }
   });
@@ -216,9 +229,9 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
         return (
           <Box>
             <HStack spacing={2} mb={4}>
-              <Badge colorScheme="orange" variant="subtle" px={2} py={1}>
+              <MyTag colorSchema="yellow" type={'fill'} fontWeight={500}>
                 {t(evaluationStatusMap[EvaluationStatus.NeedsImprovement])}
-              </Badge>
+              </MyTag>
             </HStack>
             <Text fontSize="14px" lineHeight="1.6" color="gray.700">
               {currentEvaluationResult}
@@ -230,9 +243,9 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
         return (
           <Box>
             <HStack spacing={2} mb={4}>
-              <Badge colorScheme="green" variant="subtle" px={2} py={1}>
+              <MyTag colorSchema="green" type={'fill'} fontWeight={500}>
                 {t(evaluationStatusMap[EvaluationStatus.HighQuality])}
-              </Badge>
+              </MyTag>
             </HStack>
             <Text fontSize="14px" lineHeight="1.6" color="gray.700">
               {currentEvaluationResult}
@@ -254,7 +267,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
                 {t('dashboard_evaluation:error_message')}:
               </Text>
               <Text fontSize="14px" color="myGray.900" lineHeight="1.5">
-                {formData.metadata?.qualityError}
+                {errorMsg}
               </Text>
             </Box>
           </VStack>
@@ -267,7 +280,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
             <Box borderRadius="full" display="flex" alignItems="center" justifyContent="center">
               <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
             </Box>
-            <Flex fontSize={'14px'} gap={1}>
+            <Flex fontSize={'14px'}>
               <Text color="gray.500">{t('dashboard_evaluation:no_evaluation_result_click')}</Text>
               <Text as="ins" color="gray.500" cursor={'pointer'}>
                 {t('dashboard_evaluation:start_evaluation_action')}
@@ -356,6 +369,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
                   <Textarea
                     placeholder={t('dashboard_evaluation:enter_question')}
                     bg="gray.50"
+                    maxLength={1000}
                     minH="234px"
                     {...register('question', {
                       required: t('dashboard_evaluation:question_required')
@@ -370,6 +384,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
                   <Textarea
                     placeholder={t('dashboard_evaluation:enter_reference_answer')}
                     bg="gray.50"
+                    maxLength={1000}
                     minH="234px"
                     {...register('referenceAnswer', {
                       required: t('dashboard_evaluation:reference_answer_required')
@@ -381,7 +396,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
 
             {/* 右侧评测结果区域 */}
             <VStack flex={1} alignItems={'flex-start'}>
-              <Flex width={'100%'} alignItems={'center'} mb={2}>
+              <Flex width={'100%'} alignItems={'center'}>
                 <Text fontSize={'14px'} color="myGray.900">
                   {t('dashboard_evaluation:quality_evaluation')}
                 </Text>
@@ -461,7 +476,10 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
         onClose={handleCloseModal}
         onConfirm={handleConfirm}
         defaultValues={{
-          evaluationStatus: currentEvaluationStatus,
+          evaluationStatus:
+            currentEvaluationStatus === EvaluationStatus.HighQuality
+              ? EvaluationStatus.NeedsImprovement
+              : EvaluationStatus.HighQuality,
           evaluationResult: currentEvaluationResult
         }}
       />

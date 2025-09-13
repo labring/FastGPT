@@ -14,8 +14,8 @@ export enum EvaluationStatus {
 // 评测列表状态映射（含任务状态和结果）
 export const evaluationStatusMap: Record<EvaluationStatus, string> = {
   [EvaluationStatus.All]: i18nT('dashboard_evaluation:all'),
-  [EvaluationStatus.HighQuality]: i18nT('dashboard_evaluation:high_quality'),
   [EvaluationStatus.NeedsImprovement]: i18nT('dashboard_evaluation:needs_improvement'),
+  [EvaluationStatus.HighQuality]: i18nT('dashboard_evaluation:high_quality'),
   [EvaluationStatus.Abnormal]: i18nT('dashboard_evaluation:abnormal'),
   [EvaluationStatus.NotEvaluated]: i18nT('dashboard_evaluation:not_evaluated'),
   [EvaluationStatus.Evaluating]: i18nT('dashboard_evaluation:detail_evaluating'),
@@ -34,10 +34,12 @@ export const evaluationStatusOptions = Object.entries(evaluationStatusMap).map((
 export const modifiableEvaluationStatusOptions = [
   {
     label: evaluationStatusMap[EvaluationStatus.HighQuality],
-    value: EvaluationStatus.HighQuality
+    value: EvaluationStatus.HighQuality,
+    colorSchema: 'green'
   },
   {
     label: evaluationStatusMap[EvaluationStatus.NeedsImprovement],
-    value: EvaluationStatus.NeedsImprovement
+    value: EvaluationStatus.NeedsImprovement,
+    colorSchema: 'yellow'
   }
 ];

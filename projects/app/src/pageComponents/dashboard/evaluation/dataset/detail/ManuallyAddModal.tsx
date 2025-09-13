@@ -113,6 +113,7 @@ const ManuallyAddModal = ({
       isOpen={isOpen}
       onClose={onClose}
       iconSrc="common/addLight"
+      iconColor="primary.600"
       title={t('dashboard_evaluation:manually_add_data_modal')}
       w={'100%'}
       maxW={['90vw', '600px']}

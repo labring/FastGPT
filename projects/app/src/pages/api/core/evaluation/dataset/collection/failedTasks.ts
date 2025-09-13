@@ -111,7 +111,7 @@ async function handler(
           errorMessage: failureReason,
           failedAt: job.finishedOn ? new Date(job.finishedOn) : new Date(),
           attemptsMade: job.attemptsMade,
-          maxAttempts: job.opts.attempts || 3,
+          maxAttempts: job.opts.attempts || 3
         };
       })
     );

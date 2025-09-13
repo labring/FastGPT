@@ -353,7 +353,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                         {
                           label: (
                             <Flex>
-                              <MyIcon name={'common/aiOutline'} w={'20px'} mr={2} />
+                              <MyIcon name={'core/app/aiLight'} w={'20px'} mr={2} />
                               {t('dashboard_evaluation:smart_generation')}
                             </Flex>
                           ),
