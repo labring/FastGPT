@@ -11,10 +11,48 @@ import {
   checkTeamAIPoints
 } from '@fastgpt/service/support/permission/teamLimit';
 import { getDefaultEvaluationModel } from '@fastgpt/service/core/ai/model';
+import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
+import {
+  MAX_NAME_LENGTH,
+  MAX_DESCRIPTION_LENGTH,
+  MAX_MODEL_NAME_LENGTH
+} from '@fastgpt/global/core/evaluation/constants';
 
 export type EvalDatasetCollectionCreateQuery = {};
 export type EvalDatasetCollectionCreateBody = createEvalDatasetCollectionBody;
 export type EvalDatasetCollectionCreateResponse = string;
+
+function validateRequestParams(params: {
+  name?: string;
+  description?: string;
+  evaluationModel?: string;
+}) {
+  const { name, description, evaluationModel } = params;
+
+  if (!name || typeof name !== 'string' || name.trim().length === 0) {
+    throw EvaluationErrEnum.evalNameRequired;
+  }
+
+  if (name.trim().length > MAX_NAME_LENGTH) {
+    throw EvaluationErrEnum.evalNameTooLong;
+  }
+
+  if (description && typeof description !== 'string') {
+    throw EvaluationErrEnum.evalDescriptionInvalidType;
+  }
+
+  if (description && description.length > MAX_DESCRIPTION_LENGTH) {
+    throw EvaluationErrEnum.evalDescriptionTooLong;
+  }
+
+  if (evaluationModel && typeof evaluationModel !== 'string') {
+    throw EvaluationErrEnum.evalModelNameInvalid;
+  }
+
+  if (evaluationModel && evaluationModel.length > MAX_MODEL_NAME_LENGTH) {
+    throw EvaluationErrEnum.evalModelNameTooLong;
+  }
+}
 
 async function handler(
   req: ApiRequestProps<EvalDatasetCollectionCreateBody, EvalDatasetCollectionCreateQuery>
@@ -27,33 +65,11 @@ async function handler(
     authToken: true
   });
 
-  if (!name || typeof name !== 'string' || name.trim().length === 0) {
-    return Promise.reject('Name is required and must be a non-empty string');
-  }
-
-  if (name.trim().length > 100) {
-    return Promise.reject('Name must be less than 100 characters');
-  }
-
-  if (description && typeof description !== 'string') {
-    return Promise.reject('Description must be a string');
-  }
-
-  if (description && description.length > 100) {
-    return Promise.reject('Description must be less than 100 characters');
-  }
-
-  if (evaluationModel && typeof evaluationModel !== 'string') {
-    return Promise.reject('Evaluation model must be a string');
-  }
-
-  if (evaluationModel && evaluationModel.length > 100) {
-    return Promise.reject('Evaluation model must be less than 100 characters');
-  }
+  validateRequestParams({ name, description, evaluationModel });
 
   if (evaluationModel) {
     if (!global.llmModelMap.has(evaluationModel)) {
-      return Promise.reject(`Invalid evaluation model: ${evaluationModel}`);
+      return Promise.reject(EvaluationErrEnum.datasetModelNotFound);
     }
   }
 
@@ -63,7 +79,7 @@ async function handler(
   });
 
   if (existingDataset) {
-    return Promise.reject('A dataset with this name already exists');
+    return Promise.reject(EvaluationErrEnum.evalDuplicateDatasetName);
   }
 
   // Check evaluation dataset limit
@@ -72,7 +88,6 @@ async function handler(
   // Check AI points availability
   await checkTeamAIPoints(teamId);
 
-  // Get the evaluation model to use (provided or default)
   const defaultEvaluationModel = getDefaultEvaluationModel();
   const modelToUse = evaluationModel || defaultEvaluationModel?.model;
 

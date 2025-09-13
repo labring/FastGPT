@@ -30,7 +30,7 @@ async function handler(
   });
 
   if (!dataId || typeof dataId !== 'string' || dataId.trim().length === 0) {
-    return Promise.reject('dataId is required and must be a string');
+    return Promise.reject(EvaluationErrEnum.datasetDataIdRequired);
   }
 
   let collectionName = '';
@@ -39,7 +39,7 @@ async function handler(
     const existingData = await MongoEvalDatasetData.findById(dataId).session(session);
 
     if (!existingData) {
-      return Promise.reject(EvaluationErrEnum.evalDatasetDataNotFound);
+      return Promise.reject(EvaluationErrEnum.datasetDataNotFound);
     }
 
     const collection = await MongoEvalDatasetCollection.findOne({
@@ -48,7 +48,7 @@ async function handler(
     }).session(session);
 
     if (!collection) {
-      return Promise.reject(EvaluationErrEnum.evalDatasetCollectionNotFound);
+      return Promise.reject(EvaluationErrEnum.datasetCollectionNotFound);
     }
 
     collectionName = collection.name;
