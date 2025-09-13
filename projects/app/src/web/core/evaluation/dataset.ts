@@ -16,7 +16,8 @@ import type {
   retryTaskBody,
   deleteTaskBody,
   listFailedTasksBody,
-  listFailedTasksResponse
+  listFailedTasksResponse,
+  getEvalDatasetCollectionDetailResponse
 } from '@fastgpt/global/core/evaluation/dataset/api';
 import type { PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
@@ -88,10 +89,7 @@ export const postEvaluationDatasetQualityAssessmentBatch = (data: qualityAssessm
 
 // 获取异常任务详情
 export const getEvaluationDatasetFailedTasks = (data: listFailedTasksBody) =>
-  POST<PaginationResponse<listFailedTasksResponse>>(
-    '/core/evaluation/dataset/collection/failedTasks',
-    data
-  );
+  POST<listFailedTasksResponse>('/core/evaluation/dataset/collection/failedTasks', data);
 
 // 重试单个任务
 export const postRetryEvaluationDatasetTask = (data: retryTaskBody) =>
@@ -101,6 +99,16 @@ export const postRetryEvaluationDatasetTask = (data: retryTaskBody) =>
 export const deleteEvaluationDatasetTask = (data: deleteTaskBody) =>
   POST('/core/evaluation/dataset/collection/deleteTask', data);
 
+// 获取评测数据集详情
+export const getEvaluationDatasetCollectionDetail = (collectionId: string) =>
+  GET<getEvalDatasetCollectionDetailResponse>(
+    `/core/evaluation/dataset/collection/detail?collectionId=${collectionId}`
+  );
+
 // 获取评测数据集数据详情
 export const getEvaluationDatasetDataDetail = (dataId: string) =>
   GET(`/core/evaluation/dataset/data/detail?dataId=${dataId}`);
+
+// 批量重试所有任务
+export const postRetryAllEvaluationDatasetTasks = (data: { collectionId: string }) =>
+  POST('/core/evaluation/dataset/collection/retryAllTask', data);
