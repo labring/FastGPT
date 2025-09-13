@@ -17,6 +17,7 @@ export type SerializedSkillNode = Spread<
     skillKey: string;
     skillName?: string;
     skillAvatar?: string;
+    isUnconfigured?: boolean;
     format: number | TextFormatType;
   },
   SerializedLexicalNode
@@ -27,25 +28,32 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
   __skillKey: string;
   __skillName?: string;
   __skillAvatar?: string;
+  __isUnconfigured?: boolean;
+  __onConfigureClick?: () => void;
 
   static getType(): string {
     return 'skill';
   }
 
   static clone(node: SkillNode): SkillNode {
-    return new SkillNode(
+    const newNode = new SkillNode(
       node.__skillKey,
       node.__skillName,
       node.__skillAvatar,
+      node.__isUnconfigured,
+      node.__onConfigureClick,
       node.__format,
       node.__key
     );
+    return newNode;
   }
 
   constructor(
     skillKey: string,
     skillName?: string,
     skillAvatar?: string,
+    isUnconfigured?: boolean,
+    onConfigureClick?: () => void,
     format?: number | TextFormatType,
     key?: NodeKey
   ) {
@@ -53,6 +61,8 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
     this.__skillKey = skillKey;
     this.__skillName = skillName;
     this.__skillAvatar = skillAvatar;
+    this.__isUnconfigured = isUnconfigured;
+    this.__onConfigureClick = onConfigureClick;
     this.__format = format || 0;
   }
 
@@ -60,7 +70,8 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
     const node = $createSkillNode(
       serializedNode.skillKey,
       serializedNode.skillName,
-      serializedNode.skillAvatar
+      serializedNode.skillAvatar,
+      serializedNode.isUnconfigured
     );
     node.setFormat(serializedNode.format);
     return node;
@@ -82,7 +93,8 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
       version: 1,
       skillKey: this.getSkillKey(),
       skillName: this.__skillName,
-      skillAvatar: this.__skillAvatar
+      skillAvatar: this.__skillAvatar,
+      isUnconfigured: this.__isUnconfigured
     };
   }
 
@@ -121,6 +133,8 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
         skillKey={this.__skillKey}
         skillName={this.__skillName}
         skillAvatar={this.__skillAvatar}
+        isUnconfigured={this.__isUnconfigured}
+        onConfigureClick={this.__onConfigureClick}
       />
     );
   }
@@ -129,9 +143,11 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
 export function $createSkillNode(
   skillKey: string,
   skillName?: string,
-  skillAvatar?: string
+  skillAvatar?: string,
+  isUnconfigured?: boolean,
+  onConfigureClick?: () => void
 ): SkillNode {
-  return new SkillNode(skillKey, skillName, skillAvatar);
+  return new SkillNode(skillKey, skillName, skillAvatar, isUnconfigured, onConfigureClick);
 }
 
 export function $isSkillNode(node: SkillNode | LexicalNode | null | undefined): node is SkillNode {

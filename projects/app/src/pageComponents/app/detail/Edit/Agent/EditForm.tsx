@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useTransition } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import {
   Box,
   Flex,
@@ -10,7 +10,7 @@ import {
   HStack
 } from '@chakra-ui/react';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/type.d';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useRouter } from 'next/router';
 import { i18n, useTranslation } from 'next-i18next';
 
@@ -23,7 +23,7 @@ import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
-import { TTSTypeEnum } from '@/web/core/app/constants';
+import { TTSTypeEnum, workflowStartNodeId } from '@/web/core/app/constants';
 import { workflowSystemVariables } from '@/web/core/app/utils';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -34,6 +34,7 @@ import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   getSystemPlugTemplates,
   getPluginGroups,
@@ -47,6 +48,13 @@ import type {
   EditorSkillPickerType,
   SkillSubToolItem
 } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin/type';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
+
+// Extended tool type with unconfigured state
+type ExtendedToolType = FlowNodeTemplateType & {
+  isUnconfigured?: boolean;
+};
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -55,6 +63,7 @@ const QGConfig = dynamic(() => import('@/components/core/app/QGConfig'));
 const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'));
 const InputGuideConfig = dynamic(() => import('@/components/core/app/InputGuideConfig'));
 const WelcomeTextConfig = dynamic(() => import('@/components/core/app/WelcomeTextConfig'));
+const ConfigToolModal = dynamic(() => import('../component/ConfigToolModal'));
 const FileSelectConfig = dynamic(() => import('@/components/core/app/FileSelect'));
 
 const BoxStyles: BoxProps = {
@@ -85,6 +94,8 @@ const EditForm = ({
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
+  const [configTool, setConfigTool] = useState<ExtendedToolType>();
+  const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -218,6 +229,36 @@ const EditForm = ({
     },
     [i18n?.language, t]
   );
+  const { toast } = useToast();
+
+  const handleConfigureTool = useCallback(
+    (toolId: string) => {
+      const tool = appForm.selectedTools.find((tool) => tool.id === toolId) as ExtendedToolType;
+      if (tool && tool.isUnconfigured) {
+        // 打开配置模态框
+        setConfigTool(tool);
+      }
+    },
+    [appForm.selectedTools]
+  );
+
+  const onAddTool = useCallback(
+    (tool: FlowNodeTemplateType) => {
+      setAppForm((state) => ({
+        ...state,
+        selectedTools: state.selectedTools.map((t) =>
+          t.id === tool.id ? { ...tool, isUnconfigured: false } : t
+        )
+      }));
+      setConfigTool(undefined);
+      toast({
+        title: 'Tool configured successfully',
+        status: 'success'
+      });
+    },
+    [setAppForm, toast]
+  );
+
   const handleAddToolFromEditor = useCallback(
     async (toolKey: string): Promise<string> => {
       const toolId = `tool_${getNanoid(6)}`;
@@ -225,19 +266,96 @@ const EditForm = ({
         appId: toolKey
       });
 
-      const tool = {
+      /* Invalid plugin check
+        1. Reference type. but not tool description;
+        2. Has dataset select
+        3. Has dynamic external data
+      */
+      const oneFileInput =
+        toolTemplate.inputs.filter((input) =>
+          input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
+        ).length === 1;
+      const canUploadFile =
+        appForm.chatConfig?.fileSelectConfig?.canSelectFile ||
+        appForm.chatConfig?.fileSelectConfig?.canSelectImg;
+      const invalidFileInput = oneFileInput && !!canUploadFile;
+      if (
+        toolTemplate.inputs.some(
+          (input) =>
+            (input.renderTypeList.length === 1 &&
+              input.renderTypeList[0] === FlowNodeInputTypeEnum.reference &&
+              !input.toolDescription) ||
+            input.renderTypeList.includes(FlowNodeInputTypeEnum.selectDataset) ||
+            input.renderTypeList.includes(FlowNodeInputTypeEnum.addInputParam) ||
+            (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) && !invalidFileInput)
+        )
+      ) {
+        toast({
+          title: t('app:simple_tool_tips'),
+          status: 'warning'
+        });
+        throw new Error('Invalid plugin configuration');
+      }
+
+      // 判断是否可以直接添加工具,满足以下任一条件:
+      // 1. 有工具描述
+      // 2. 是模型选择类型
+      // 3. 是文件上传类型且:已开启文件上传、非必填、只有一个文件上传输入
+      const hasInputForm =
+        toolTemplate.inputs.length > 0 &&
+        toolTemplate.inputs.some((input) => {
+          if (input.toolDescription) {
+            return false;
+          }
+          if (input.key === NodeInputKeyEnum.forbidStream) {
+            return false;
+          }
+          if (input.key === NodeInputKeyEnum.systemInputConfig) {
+            return true;
+          }
+
+          // Check if input has any of the form render types
+          const formRenderTypes = [
+            FlowNodeInputTypeEnum.input,
+            FlowNodeInputTypeEnum.textarea,
+            FlowNodeInputTypeEnum.numberInput,
+            FlowNodeInputTypeEnum.switch,
+            FlowNodeInputTypeEnum.select,
+            FlowNodeInputTypeEnum.JSONEditor
+          ];
+
+          return formRenderTypes.some((type) => input.renderTypeList.includes(type));
+        });
+
+      // 构建默认表单数据
+      const defaultForm = {
         ...toolTemplate,
-        id: toolId
+        id: toolId,
+        inputs: toolTemplate.inputs.map((input) => {
+          // 如果是文件上传类型,设置为从工作流开始节点获取用户文件
+          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
+            return {
+              ...input,
+              value: [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]]
+            };
+          }
+          return input;
+        })
+      };
+
+      const toolWithConfig: ExtendedToolType = {
+        ...defaultForm,
+        isUnconfigured: hasInputForm
       };
 
       setAppForm((state) => ({
         ...state,
-        selectedTools: state.selectedTools.concat(tool)
+        selectedTools: [...state.selectedTools, toolWithConfig]
       }));
 
       return toolId;
     },
-    [systemPlugins, setAppForm]
+    [appForm.chatConfig, setAppForm, toast, t]
   );
 
   const selectedModel = getWebLLMModel(appForm.aiSettings.model);
@@ -353,6 +471,7 @@ const EditForm = ({
                   });
                 }}
                 onAddToolFromEditor={handleAddToolFromEditor}
+                onConfigureTool={handleConfigureTool}
                 selectedTools={appForm.selectedTools}
                 variableLabels={formatVariables}
                 variables={formatVariables}
@@ -601,6 +720,13 @@ const EditForm = ({
               }
             }));
           }}
+        />
+      )}
+      {!!configTool && (
+        <ConfigToolModal
+          configTool={configTool}
+          onCloseConfigTool={onCloseConfigTool}
+          onAddTool={onAddTool}
         />
       )}
     </>

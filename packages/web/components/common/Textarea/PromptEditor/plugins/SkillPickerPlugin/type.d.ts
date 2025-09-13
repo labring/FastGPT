@@ -31,8 +31,7 @@ export type SkillOptionType = {
   label: string;
   level: 'primary' | 'secondary' | 'tertiary';
 
-  index: number;
-  parentIndex?: number;
+  parentKey?: string;
 
   skillType?: EditorSkillPickerType;
   toolItem?: SkillToolItem;

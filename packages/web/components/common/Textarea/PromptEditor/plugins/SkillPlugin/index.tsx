@@ -11,10 +11,12 @@ const REGEX = new RegExp(getSkillRegexString(), 'i');
 
 export default function SkillPlugin({
   skills = [],
-  selectedTools = []
+  selectedTools = [],
+  onConfigureTool
 }: {
   skills?: EditorSkillPickerType[];
   selectedTools?: any[];
+  onConfigureTool?: (toolId: string) => void;
 }) {
   const [editor] = useLexicalComposerContext();
 
@@ -31,13 +33,24 @@ export default function SkillPlugin({
       if (selectedTools.length > 0) {
         const tool = selectedTools.find((t) => t.id === skillKey);
         if (tool) {
-          return $createSkillNode(skillKey, tool.name, tool.avatar);
+          const extendedTool = tool;
+          const onConfigureClick =
+            extendedTool.isUnconfigured && onConfigureTool
+              ? () => onConfigureTool(skillKey)
+              : undefined;
+          return $createSkillNode(
+            skillKey,
+            tool.name,
+            tool.avatar,
+            extendedTool.isUnconfigured,
+            onConfigureClick
+          );
         }
       }
 
       return $createSkillNode(skillKey);
     },
-    [skills, selectedTools]
+    [skills, selectedTools, onConfigureTool]
   );
 
   const getSkillMatch = useCallback((text: string) => {
@@ -72,10 +85,22 @@ export default function SkillPlugin({
           const skillKey = node.getSkillKey();
           const tool = selectedTools.find((t) => t.id === skillKey);
 
-          if (tool && (!node.__skillName || !node.__skillAvatar)) {
-            const writableNode = node.getWritable();
-            writableNode.__skillName = tool.name;
-            writableNode.__skillAvatar = tool.avatar;
+          if (tool) {
+            const extendedTool = tool;
+            if (
+              !node.__skillName ||
+              !node.__skillAvatar ||
+              node.__isUnconfigured !== extendedTool.isUnconfigured
+            ) {
+              const writableNode = node.getWritable();
+              writableNode.__skillName = tool.name;
+              writableNode.__skillAvatar = tool.avatar;
+              writableNode.__isUnconfigured = extendedTool.isUnconfigured;
+              writableNode.__onConfigureClick =
+                extendedTool.isUnconfigured && onConfigureTool
+                  ? () => onConfigureTool(skillKey)
+                  : undefined;
+            }
           }
         }
       });
