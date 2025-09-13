@@ -309,7 +309,7 @@ const TestRun = ({
                 {testResult.status === 'success' && (
                   <Box mb={4}>
                     <Text fontSize="lg" fontWeight="bold" color="myGray.800">
-                      {testResult.score} {t('dashboard_evaluation:score_unit')}
+                      {Number(testResult.score) * 100} {t('dashboard_evaluation:score_unit')}
                     </Text>
                   </Box>
                 )}
