@@ -75,7 +75,7 @@ async function handler(
           [
             {
               $match: {
-                _id: { $lt: minId },
+                _id: { $lt: new Types.ObjectId(minId) },
                 retryCount: { $gt: 0 },
                 lockTime: { $lt: new Date('2050/1/1') }
               }
