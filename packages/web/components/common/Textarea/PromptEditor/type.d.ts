@@ -24,16 +24,6 @@ export type EditorVariableLabelPickerType = {
 
 export type FormPropsType = Omit<BoxProps, 'onChange' | 'onBlur'>;
 
-// 编辑器中工具添加的数据类型
-export type EditorToolAddData = {
-  toolKey: string; // 原始工具key
-  toolName: string; // 工具名称
-  toolAvatar: string; // 工具头像
-  parentKey?: string; // 父级工具key（仅三级菜单有）
-  subItemKey?: string; // 子项key（仅三级菜单有）
-  subItemLabel?: string; // 子项名称（仅三级菜单有）
-};
-
 // Lexical editor node types
 export type BaseEditorNode = {
   type: string;

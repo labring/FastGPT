@@ -40,7 +40,6 @@ import {
   getMcpChildren,
   getPreviewPluginNode
 } from '@/web/core/app/api/plugin';
-import type { EditorToolAddData } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
@@ -145,12 +144,9 @@ const EditForm = ({
       manual: false
     }
   );
-
-  // Build skill templates with categorized secondary options
   const skillTemplates: EditorSkillPickerType[] = useMemo(() => {
     const lang = i18n?.language as localeType;
 
-    // 构建分类后的系统工具
     const categorizedTools = pluginGroups
       .map((group) => {
         const categoryMap = group.groupTypes.reduce<
@@ -188,7 +184,6 @@ const EditForm = ({
               name: t(parseI18nString(plugin.name, lang)),
               avatar: plugin.avatar || 'core/workflow/template/toolCall',
               canOpen
-              // subItems 将通过 onLoadSubItems 按需加载
             });
           }
         });
@@ -210,10 +205,6 @@ const EditForm = ({
 
     return categorizedTools;
   }, [systemPlugins, pluginGroups, t, i18n?.language]);
-
-  console.log('skillTemplates', skillTemplates);
-
-  // 加载工具子项的函数
   const handleLoadToolSubItems = useCallback(
     async (toolId: string): Promise<SkillSubToolItem[]> => {
       const lang = i18n?.language as localeType;
@@ -227,7 +218,6 @@ const EditForm = ({
     },
     [i18n?.language, t]
   );
-
   const handleAddToolFromEditor = useCallback(
     async (toolKey: string): Promise<string> => {
       const toolId = `tool_${getNanoid(6)}`;

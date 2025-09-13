@@ -28,7 +28,7 @@ import VariablePlugin from './plugins/VariablePlugin';
 import { VariableNode } from './plugins/VariablePlugin/node';
 import type { EditorState, LexicalEditor } from 'lexical';
 import OnBlurPlugin from './plugins/OnBlurPlugin';
-import type { EditorToolAddData, FormPropsType } from './type';
+import type { FormPropsType } from './type';
 import { type EditorVariableLabelPickerType, type EditorVariablePickerType } from './type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import FocusPlugin from './plugins/FocusPlugin';
@@ -45,6 +45,7 @@ import SkillPickerPlugin from './plugins/SkillPickerPlugin';
 import SkillPlugin from './plugins/SkillPlugin';
 import { SkillNode } from './plugins/SkillPlugin/node';
 import type { EditorSkillPickerType, SkillSubToolItem } from './plugins/SkillPickerPlugin/type';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 
 const Placeholder = ({ children }: { children: React.ReactNode }) => (
   <Box
@@ -78,7 +79,7 @@ export type EditorProps = {
   skills?: EditorSkillPickerType[];
   onLoadSubItems?: (toolId: string) => Promise<SkillSubToolItem[]>;
   onAddToolFromEditor?: (toolKey: string) => Promise<string>;
-  selectedTools?: any[];
+  selectedTools?: FlowNodeTemplateType[];
   value?: string;
   showOpenModal?: boolean;
   minH?: number;

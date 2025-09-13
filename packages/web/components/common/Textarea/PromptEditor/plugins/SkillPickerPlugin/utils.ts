@@ -1,4 +1,9 @@
-import type { EditorSkillPickerType, SkillOptionType, SkillToolItem, SkillSubToolItem } from './type';
+import type {
+  EditorSkillPickerType,
+  SkillOptionType,
+  SkillToolItem,
+  SkillSubToolItem
+} from './type';
 
 export const getLevel = (
   index: number,
@@ -7,7 +12,7 @@ export const getLevel = (
     secondary: { start: number; end: number };
     tertiary: { start: number; end: number };
   }
-): 'primary' | 'secondary' | 'tertiary' | null => {
+) => {
   if (index >= levelRanges.primary.start && index <= levelRanges.primary.end) {
     return 'primary';
   } else if (index >= levelRanges.secondary.start && index <= levelRanges.secondary.end) {
