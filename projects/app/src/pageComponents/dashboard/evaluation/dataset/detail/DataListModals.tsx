@@ -21,12 +21,10 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import {
   postEvaluationDatasetQualityAssessmentBatch,
-  postSmartGenerateEvaluationDatasetData,
-  postCreateEvaluationDatasetData,
   updateEvaluationDatasetData,
-  updateEvaluationDataset
+  updateEvaluationDataset,
+  getEvaluationDatasetCollectionDetail
 } from '@/web/core/evaluation/dataset';
-import type { updateEvalDatasetDataBody } from '@fastgpt/global/core/evaluation/dataset/api';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 interface DataListModalsProps {
@@ -74,14 +72,6 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total, refreshList }) =
     }
   );
 
-  // 智能生成数据请求
-  const { runAsync: runSmartGenerate, loading: isSmartGenerateLoading } = useRequest2(
-    postSmartGenerateEvaluationDatasetData,
-    {
-      successToast: t('common:submit_success')
-    }
-  );
-
   // 修改测评数据
   const { runAsync: updateDataFn } = useRequest2(updateEvaluationDatasetData, {
     successToast: t('common:update_success')
@@ -98,11 +88,25 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total, refreshList }) =
   const evalModelList = useMemo(() => {
     return llmModelList.filter((item) => item.useInEvaluation);
   }, [llmModelList]);
-  const [evaluationModel, setEvaluationModel] = useState<string>(evalModelList[0]?.model || '');
+  const [evaluationModel, setEvaluationModel] = useState<string>('');
+
+  // 获取数据集详情
+  const { runAsync: getCollectionDetail } = useRequest2(getEvaluationDatasetCollectionDetail);
+
+  // 初始化评测模型
+  useEffect(() => {
+    const initEvaluationModel = async () => {
+      const detail = await getCollectionDetail(collectionId);
+      setEvaluationModel(detail.evaluationModel || evalModelList[0]?.model || '');
+    };
+
+    if (collectionId && evalModelList.length > 0) {
+      initEvaluationModel();
+    }
+  }, [collectionId, evalModelList, getCollectionDetail, isSettingsModalOpen]);
 
   const handleSettingsConfirm = async () => {
-    // TODO-lyx name可删除临时规避待后台修改
-    await updateModelSettingFn({ collectionId, evaluationModel, name: collectionName });
+    await updateModelSettingFn({ collectionId, evaluationModel });
     onSettingsModalClose();
   };
 
