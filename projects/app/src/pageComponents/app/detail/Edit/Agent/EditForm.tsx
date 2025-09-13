@@ -46,8 +46,8 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type {
   EditorSkillPickerType,
-  SkillSubItem
-} from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin';
+  SkillSubToolItem
+} from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin/type';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -215,149 +215,37 @@ const EditForm = ({
 
   // 加载工具子项的函数
   const handleLoadToolSubItems = useCallback(
-    async (toolId: string, toolType: string): Promise<SkillSubItem[]> => {
-      try {
-        const lang = i18n?.language as localeType;
+    async (toolId: string): Promise<SkillSubToolItem[]> => {
+      const lang = i18n?.language as localeType;
 
-        if (toolType === 'mcp') {
-          // 处理 MCP 工具集
-          const mcpChildren = await getMcpChildren({ id: toolId });
-          return mcpChildren.map((child) => ({
-            key: child.id,
-            label: child.name,
-            description: child.description
-          }));
-        } else {
-          // 处理系统插件
-          const systemPlugins = await getSystemPlugTemplates({ parentId: toolId });
-          return systemPlugins.map((plugin) => ({
-            key: plugin.id,
-            label: t(parseI18nString(plugin.name, lang)),
-            description: t(parseI18nString(plugin.intro, lang))
-          }));
-        }
-      } catch (error) {
-        console.error('Failed to load tool sub items:', error);
-        throw error;
-      }
+      const systemPlugins = await getSystemPlugTemplates({ parentId: toolId });
+      return systemPlugins.map((plugin) => ({
+        key: plugin.id,
+        label: t(parseI18nString(plugin.name, lang)),
+        description: t(parseI18nString(plugin.intro, lang))
+      }));
     },
     [i18n?.language, t]
   );
 
-  // 处理从编辑器添加工具的回调
   const handleAddToolFromEditor = useCallback(
-    (toolData: EditorToolAddData): string => {
-      const instanceId = `tool_${getNanoid(6)}`;
+    async (toolKey: string): Promise<string> => {
+      const toolId = `tool_${getNanoid(6)}`;
+      const toolTemplate = await getPreviewPluginNode({
+        appId: toolKey
+      });
 
-      console.log('handleAddToolFromEditor - 接收到工具数据:', toolData);
-      console.log('handleAddToolFromEditor - 生成的instanceId:', instanceId);
-
-      // 根据是否有子项来确定工具配置
-      const toolName = toolData.subItemLabel || toolData.toolName;
-      const toolKey = toolData.subItemKey || toolData.toolKey;
-
-      // 先创建一个临时的工具对象
-      const tempTool = {
-        id: instanceId,
-        pluginId: toolData.parentKey || toolData.toolKey,
-        templateType: 'tools' as const,
-        flowNodeType: FlowNodeTypeEnum.tool,
-        avatar: toolData.toolAvatar,
-        name: toolName,
-        intro: '',
-        showStatus: true,
-        isTool: true,
-        catchError: false,
-        version: '',
-        versionLabel: '',
-        isLatestVersion: true,
-        showSourceHandle: true,
-        showTargetHandle: true,
-        currentCost: 0,
-        systemKeyCost: 0,
-        hasTokenFee: false,
-        hasSystemSecret: false,
-        isFolder: false,
-        inputs: [],
-        outputs: [],
-        toolConfig: {},
-        // 如果是子项，记录相关信息
-        ...(toolData.subItemKey && {
-          subItemKey: toolData.subItemKey,
-          parentKey: toolData.parentKey
-        })
+      const tool = {
+        ...toolTemplate,
+        id: toolId
       };
 
       setAppForm((state) => ({
         ...state,
-        selectedTools: [...state.selectedTools, tempTool]
+        selectedTools: state.selectedTools.concat(tool)
       }));
 
-      (async () => {
-        try {
-          const fullTemplate = await getPreviewPluginNode({
-            appId: toolData.parentKey || toolData.toolKey
-          });
-
-          const completeTool = {
-            ...tempTool,
-            pluginId: fullTemplate.pluginId || tempTool.pluginId,
-            templateType: fullTemplate.templateType || tempTool.templateType,
-            flowNodeType: fullTemplate.flowNodeType || tempTool.flowNodeType,
-            intro: fullTemplate.intro || tempTool.intro,
-            showStatus: fullTemplate.showStatus ?? tempTool.showStatus,
-            catchError: fullTemplate.catchError ?? tempTool.catchError,
-            version: fullTemplate.version || tempTool.version,
-            versionLabel: fullTemplate.versionLabel || tempTool.versionLabel,
-            isLatestVersion: fullTemplate.isLatestVersion ?? tempTool.isLatestVersion,
-            currentCost: fullTemplate.currentCost ?? tempTool.currentCost,
-            systemKeyCost: fullTemplate.systemKeyCost ?? tempTool.systemKeyCost,
-            hasTokenFee: fullTemplate.hasTokenFee ?? tempTool.hasTokenFee,
-            hasSystemSecret: fullTemplate.hasSystemSecret ?? tempTool.hasSystemSecret,
-            isFolder: fullTemplate.isFolder ?? tempTool.isFolder,
-            inputs: fullTemplate.inputs || tempTool.inputs,
-            outputs: fullTemplate.outputs || tempTool.outputs,
-            toolConfig: fullTemplate.toolConfig || tempTool.toolConfig
-          };
-
-          // 更新selectedTools中的工具信息
-          setAppForm((state) => ({
-            ...state,
-            selectedTools: state.selectedTools.map((tool) =>
-              tool.id === instanceId ? completeTool : tool
-            )
-          }));
-
-          console.log('handleAddToolFromEditor - 更新后的完整工具:', completeTool);
-        } catch (error) {
-          console.error('Failed to get full template:', error);
-          // 如果获取失败，尝试从基础模板获取信息
-          const pluginTemplate = systemPlugins.find(
-            (plugin) => plugin.id === (toolData.parentKey || toolData.toolKey)
-          );
-
-          if (pluginTemplate) {
-            const fallbackTool = {
-              ...tempTool,
-              templateType: pluginTemplate.templateType || tempTool.templateType,
-              flowNodeType: pluginTemplate.flowNodeType || tempTool.flowNodeType,
-              intro: pluginTemplate.intro || tempTool.intro,
-              isFolder: pluginTemplate.isFolder ?? tempTool.isFolder
-            };
-
-            setAppForm((state) => ({
-              ...state,
-              selectedTools: state.selectedTools.map((tool) =>
-                tool.id === instanceId ? fallbackTool : tool
-              )
-            }));
-
-            console.log('handleAddToolFromEditor - 回退更新的工具:', fallbackTool);
-          }
-        }
-      })();
-
-      return instanceId;
+      return toolId;
     },
     [systemPlugins, setAppForm]
   );

@@ -6,7 +6,7 @@ import Editor from './Editor';
 import MyModal from '../../MyModal';
 import { useTranslation } from 'next-i18next';
 import type { EditorState, LexicalEditor } from 'lexical';
-import type { FormPropsType, OnAddToolFromEditor } from './type';
+import type { FormPropsType } from './type';
 
 const PromptEditor = ({
   showOpenModal = true,
@@ -15,8 +15,6 @@ const PromptEditor = ({
   onBlur,
   title,
   isDisabled,
-  onAddToolFromEditor,
-  selectedTools,
   ...props
 }: FormPropsType &
   EditorProps & {
@@ -24,8 +22,6 @@ const PromptEditor = ({
     isDisabled?: boolean;
     onChange?: (text: string) => void;
     onBlur?: (text: string) => void;
-    onAddToolFromEditor?: OnAddToolFromEditor;
-    selectedTools?: any[];
   }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { t } = useTranslation();
@@ -71,8 +67,6 @@ const PromptEditor = ({
           onChange={onChangeInput}
           onChangeText={onChange}
           onBlur={onBlurInput}
-          onAddToolFromEditor={onAddToolFromEditor}
-          selectedTools={selectedTools}
         />
         {isDisabled && (
           <Box
@@ -106,8 +100,6 @@ const PromptEditor = ({
             onChange={onChangeInput}
             onChangeText={onChange}
             onBlur={onBlurInput}
-            onAddToolFromEditor={onAddToolFromEditor}
-            selectedTools={selectedTools}
           />
         </ModalBody>
         <ModalFooter>
