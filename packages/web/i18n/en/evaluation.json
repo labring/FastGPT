@@ -8,6 +8,7 @@
   "target_required": "Evaluation target is required",
   "target_invalid_config": "Evaluation target configuration is invalid",
   "target_app_id_missing": "Application ID is missing",
+  "target_version_id_missing": "Application version ID is missing",
   "evaluators_required": "Evaluators are required",
   "evaluator_invalid_config": "Evaluator configuration is invalid",
   "user_input_required": "User input is required",

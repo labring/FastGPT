@@ -23,7 +23,7 @@ export type UpdateEvaluationResponse = MessageResponse;
 
 // Get Evaluation Detail
 export type EvaluationDetailRequest = EvalIdQuery;
-export type EvaluationDetailResponse = EvaluationSchemaType;
+export type EvaluationDetailResponse = EvaluationDisplayType;
 
 // Delete Evaluation
 export type DeleteEvaluationRequest = EvalIdQuery;

@@ -34,11 +34,17 @@ export const EvaluationTargetSchema = new Schema(
         validator: function (config: any) {
           const targetType = (this as any).target?.type || (this as any).type;
           if (targetType === 'workflow') {
-            return config && typeof config === 'object' && config.appId != null;
+            return (
+              config &&
+              typeof config === 'object' &&
+              config.appId != null &&
+              config.versionId != null
+            );
           }
           return false;
         },
-        message: 'Target config must match the target type. Only workflow targets are supported.'
+        message:
+          'Target config must match the target type. Workflow targets require appId and versionId.'
       }
     }
   },

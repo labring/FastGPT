@@ -12,6 +12,7 @@ export enum EvaluationErrEnum {
   evalTargetRequired = 'evaluationTargetRequired',
   evalTargetInvalidConfig = 'evaluationTargetInvalidConfig',
   evalTargetAppIdMissing = 'evaluationTargetAppIdMissing',
+  evalTargetVersionIdMissing = 'evaluationTargetVersionIdMissing',
   evalEvaluatorsRequired = 'evaluationEvaluatorsRequired',
   evalEvaluatorInvalidConfig = 'evaluationEvaluatorInvalidConfig',
   evalInvalidFormat = 'evaluationInvalidFormat',
@@ -184,6 +185,10 @@ const evaluationErrList = [
   {
     statusText: EvaluationErrEnum.evalTargetAppIdMissing,
     message: i18nT('evaluation:target_app_id_missing')
+  },
+  {
+    statusText: EvaluationErrEnum.evalTargetVersionIdMissing,
+    message: i18nT('evaluation:target_version_id_missing')
   },
   {
     statusText: EvaluationErrEnum.evalEvaluatorsRequired,

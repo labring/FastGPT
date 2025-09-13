@@ -107,7 +107,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
         type: 'workflow',
         config: {
           appId: data.appId,
-          versionId: data.appVersion || undefined
+          versionId: data.appVersion
         }
       };
 
