@@ -6,9 +6,17 @@ interface SkillLabelProps {
   skillKey: string;
   skillName?: string;
   skillAvatar?: string;
+  isUnconfigured?: boolean;
+  onConfigureClick?: () => void;
 }
 
-export default function SkillLabel({ skillKey, skillName, skillAvatar }: SkillLabelProps) {
+export default function SkillLabel({
+  skillKey,
+  skillName,
+  skillAvatar,
+  isUnconfigured = false,
+  onConfigureClick
+}: SkillLabelProps) {
   return (
     <Box
       as="span"
@@ -21,10 +29,12 @@ export default function SkillLabel({ skillKey, skillName, skillAvatar }: SkillLa
       borderRadius="4px"
       fontSize="sm"
       cursor="pointer"
+      position="relative"
       _hover={{
         bg: 'yellow.100',
         borderColor: 'yellow.300'
       }}
+      onClick={isUnconfigured ? onConfigureClick : undefined}
     >
       <Flex alignItems="center" gap={1}>
         <Avatar
@@ -34,6 +44,7 @@ export default function SkillLabel({ skillKey, skillName, skillAvatar }: SkillLa
           borderRadius={'2px'}
         />
         <Box>{skillName || skillKey}</Box>
+        {isUnconfigured && <Box w="6px" h="6px" bg="primary.600" borderRadius="50%" ml={1} />}
       </Flex>
     </Box>
   );

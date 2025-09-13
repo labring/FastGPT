@@ -79,6 +79,7 @@ export type EditorProps = {
   skills?: EditorSkillPickerType[];
   onLoadSubItems?: (toolId: string) => Promise<SkillSubToolItem[]>;
   onAddToolFromEditor?: (toolKey: string) => Promise<string>;
+  onConfigureTool?: (toolId: string) => void;
   selectedTools?: FlowNodeTemplateType[];
   value?: string;
   showOpenModal?: boolean;
@@ -106,6 +107,7 @@ export default function Editor({
   skills = [],
   onLoadSubItems,
   onAddToolFromEditor,
+  onConfigureTool,
   selectedTools = [],
   onChange,
   onChangeText,
@@ -234,7 +236,11 @@ export default function Editor({
           {variableLabels.length > 0 && <VariablePickerPlugin variables={variables} />}
           {skills.length > 0 && (
             <>
-              <SkillPlugin skills={skills} selectedTools={selectedTools} />
+              <SkillPlugin
+                skills={skills}
+                selectedTools={selectedTools}
+                onConfigureTool={onConfigureTool}
+              />
               <SkillPickerPlugin
                 skills={skills}
                 isFocus={focus}
