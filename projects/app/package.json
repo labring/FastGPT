@@ -26,7 +26,7 @@
     "@node-rs/jieba": "2.0.1",
     "@tanstack/react-query": "^4.24.10",
     "ahooks": "^3.7.11",
-    "axios": "^1.8.2",
+    "axios": "^1.12.0",
     "date-fns": "2.30.0",
     "dayjs": "^1.11.7",
     "echarts": "5.4.1",
