@@ -75,8 +75,8 @@ importers:
         specifier: ^0.1.16
         version: 0.1.16(@types/node@20.14.0)
       axios:
-        specifier: ^1.8.2
-        version: 1.8.4
+        specifier: ^1.12.1
+        version: 1.12.1
       cron-parser:
         specifier: ^4.9.0
         version: 4.9.0
@@ -163,8 +163,8 @@ importers:
         specifier: 2.4.10
         version: 2.4.10
       axios:
-        specifier: ^1.8.2
-        version: 1.8.4
+        specifier: ^1.12.1
+        version: 1.12.1
       bullmq:
         specifier: ^5.52.2
         version: 5.52.2
@@ -504,8 +504,8 @@ importers:
         specifier: ^3.7.11
         version: 3.8.4(react@18.3.1)
       axios:
-        specifier: ^1.8.2
-        version: 1.8.4
+        specifier: ^1.12.1
+        version: 1.12.1
       date-fns:
         specifier: 2.30.0
         version: 2.30.0
@@ -4108,8 +4108,8 @@ packages:
     resolution: {integrity: sha512-Xm7bpRXnDSX2YE2YFfBk2FnF0ep6tmG7xPh8iHee8MIcrgq762Nkce856dYtJYLkuIoYZvGfTs/PbZhideTcEg==}
     engines: {node: '>=4'}
 
-  axios@1.8.4:
-    resolution: {integrity: sha512-eBSYY4Y68NNlHbHBMdeDmKNtDgXWhQsJcGqzO3iLUM0GraQFSS9cVgPX5I9b3lbdFKyYoAEGAZF1DwhTaljNAw==}
+  axios@1.12.1:
+    resolution: {integrity: sha512-Kn4kbSXpkFHCGE6rBFNwIv0GQs4AvDT80jlveJDKFxjbTYMUeB4QtsdPCv6H8Cm19Je7IU6VFtRl2zWZI0rudQ==}
 
   axobject-query@4.1.0:
     resolution: {integrity: sha512-qIj0G9wZbMGNLjLmg1PT6v2mE9AH2zlnADJD/2tC6E00hgmhUOfEB6greHPAfLRSufHqROIUTkw6E+M3lH0PTQ==}
@@ -5666,10 +5666,6 @@ packages:
   form-data-encoder@2.1.4:
     resolution: {integrity: sha512-yDYSgNMraqvnxiEXO4hi88+YZxaHC6QKzb5N84iRCTDeRO7ZALpir/lVmf/uXUhnwUr2O4HU8s/n6x+yNjQkHw==}
     engines: {node: '>= 14.17'}
-
-  form-data@4.0.2:
-    resolution: {integrity: sha512-hGfm/slu0ZabnNt4oaRZ6uREyfCj6P4fT/n6A1rGV+Z0VdGXjfOhVUpkn6qVQONHGIFwmveGXyDs75+nr6FM8w==}
-    engines: {node: '>= 6'}
 
   form-data@4.0.4:
     resolution: {integrity: sha512-KrGhL9Q4zjj0kiUt5OO4Mr/A/jlI2jDYs5eHBpYHPcBEVSiipAvn2Ko2HnPe20rmcuuvMHNdZFp+4IlGTMF0Ow==}
@@ -13702,10 +13698,10 @@ snapshots:
 
   axe-core@4.10.3: {}
 
-  axios@1.8.4:
+  axios@1.12.1:
     dependencies:
       follow-redirects: 1.15.9(debug@4.4.0)
-      form-data: 4.0.2
+      form-data: 4.0.4
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
       - debug
@@ -15819,13 +15815,6 @@ snapshots:
   form-data-encoder@1.7.2: {}
 
   form-data-encoder@2.1.4: {}
-
-  form-data@4.0.2:
-    dependencies:
-      asynckit: 0.4.0
-      combined-stream: 1.0.8
-      es-set-tostringtag: 2.1.0
-      mime-types: 2.1.35
 
   form-data@4.0.4:
     dependencies:
