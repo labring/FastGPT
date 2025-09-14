@@ -2,6 +2,8 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { TeamEvaluationCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
@@ -18,7 +20,7 @@ async function handler(req: ApiRequestProps<ListMetricsBody, {}>) {
     req,
     authToken: true,
     authApiKey: true,
-    per: ReadPermissionVal
+    per: TeamEvaluationCreatePermissionVal
   });
 
   const { offset, pageSize } = parsePaginationRequest(req);
@@ -58,14 +60,23 @@ async function handler(req: ApiRequestProps<ListMetricsBody, {}>) {
     const limit = pageSize;
     const sort = { createTime: -1 as const };
 
-    // If not owner, filter by accessible resources
+    // Build query to include both accessible metrics and builtin metrics
     let finalFilter = filter;
-    if (!isOwner && accessibleIds) {
+    if (!isOwner) {
       finalFilter = {
         ...filter,
         $or: [
           { _id: { $in: accessibleIds.map((id) => new Types.ObjectId(id)) } },
-          ...(tmbId ? [{ tmbId: new Types.ObjectId(tmbId) }] : []) // Own metrics
+          ...(tmbId ? [{ tmbId: new Types.ObjectId(tmbId) }] : []), // Own metrics
+          { type: EvalMetricTypeEnum.Builtin } // Builtin metrics for all evaluation users
+        ]
+      };
+    } else {
+      // Owner用户也需要包含内置metrics（跨team访问）
+      finalFilter = {
+        $or: [
+          filter, // 当前team的metrics
+          { type: EvalMetricTypeEnum.Builtin } // 内置metrics（跨team）
         ]
       };
     }
@@ -78,6 +89,11 @@ async function handler(req: ApiRequestProps<ListMetricsBody, {}>) {
     const formatMetrics = metrics
       .map((metric: any) => {
         const getPer = (metricId: string) => {
+          // 内置metric特殊处理：允许有evaluation权限的用户访问
+          if (metric.type === EvalMetricTypeEnum.Builtin) {
+            return new EvaluationPermission({ role: ReadPermissionVal, isOwner: false });
+          }
+
           const tmbRole = myRoles.find(
             (item) => String(item.resourceId) === metricId && !!item.tmbId
           )?.permission;

@@ -19,6 +19,8 @@ import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
+import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
+import { TeamEvaluationCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 
 // ================ Authentication and Authorization for eval task ================
 export const authEvaluationByTmbId = async ({
@@ -299,8 +301,8 @@ export const authEvalMetricByTmbId = async ({
     };
   }
 
-  // 团队权限验证
-  if (String(metric.teamId) !== teamId) {
+  // 团队权限验证 - 内置metric允许跨团队访问
+  if (String(metric.teamId) !== teamId && metric.type !== EvalMetricTypeEnum.Builtin) {
     return Promise.reject(EvaluationErrEnum.evalMetricNotFound);
   }
 
@@ -311,6 +313,11 @@ export const authEvalMetricByTmbId = async ({
   const { Per } = await (async () => {
     if (isOwner) {
       return { Per: new EvaluationPermission({ isOwner: true }) };
+    }
+
+    // 内置metric特殊处理：允许有evaluation权限的用户访问
+    if (metric.type === EvalMetricTypeEnum.Builtin && String(metric.teamId) !== teamId) {
+      return { Per: new EvaluationPermission({ role: ReadPermissionVal, isOwner: false }) };
     }
 
     // 获取evaluation资源的权限（evalMetric复用evaluation权限）
