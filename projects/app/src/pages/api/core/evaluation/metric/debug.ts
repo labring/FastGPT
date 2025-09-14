@@ -3,13 +3,17 @@ import type { DebugMetricBody } from '@fastgpt/global/core/evaluation/metric/api
 import { NextAPI } from '@/service/middleware/entry';
 import { DitingEvaluator } from '@fastgpt/service/core/evaluation/evaluator';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { TeamEvaluationCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { createEvaluationMetricDebugUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
-import { EvalMetricTypeValues } from '@fastgpt/global/core/evaluation/metric/constants';
+import {
+  EvalMetricTypeValues,
+  EvaluationStatusEnum
+} from '@fastgpt/global/core/evaluation/metric/constants';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
+import { addLog } from '@fastgpt/service/common/system/log';
 import {
   MAX_USER_INPUT_LENGTH,
   MAX_NAME_LENGTH,
@@ -24,7 +28,7 @@ async function handler(req: ApiRequestProps<DebugMetricBody, {}>, res: ApiRespon
     req,
     authToken: true,
     authApiKey: true,
-    per: ReadPermissionVal
+    per: TeamEvaluationCreatePermissionVal
   });
 
   if (!evalCase) {
@@ -125,6 +129,7 @@ async function handler(req: ApiRequestProps<DebugMetricBody, {}>, res: ApiRespon
   try {
     const result = await ditingEvaluator.evaluate(evalCase);
 
+    // Always create usage record for token consumption (even for failed evaluations)
     if (result.totalPoints && result.totalPoints > 0) {
       await createEvaluationMetricDebugUsage({
         teamId,
@@ -147,6 +152,17 @@ async function handler(req: ApiRequestProps<DebugMetricBody, {}>, res: ApiRespon
         }
       });
     })();
+
+    // Check if diting evaluation was successful based on status
+    if (result.status !== EvaluationStatusEnum.Success) {
+      addLog.error('[Evaluation Debug] Diting evaluation failed', {
+        metricName: metricConfig.metricName,
+        status: result.status,
+        error: result.error,
+        totalPoints: result.totalPoints
+      });
+      return Promise.reject(result.error);
+    }
 
     return {
       score: result.data?.score,
