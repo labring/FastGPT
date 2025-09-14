@@ -63,7 +63,7 @@ describe('toolList', () => {
       ];
 
       const schema = pluginNodes2InputSchema(nodes);
-      console.log(schema);
+
       expect(schema).toEqual({
         type: 'object',
         properties: {
