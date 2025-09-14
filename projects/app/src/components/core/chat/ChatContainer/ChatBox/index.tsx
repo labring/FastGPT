@@ -326,7 +326,6 @@ const ChatBox = ({
             })();
             const updateValue: AIChatItemValueItemType = cloneDeep(item.value[updateIndex]);
             updateValue.id = responseValueId;
-            console.log(event, tool, updateValue);
             if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
               return {
                 ...item,

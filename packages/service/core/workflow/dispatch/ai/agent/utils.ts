@@ -92,10 +92,16 @@ export const rewritePlanResponse = (
   messages: ChatCompletionMessageParam[],
   response: string
 ): ChatCompletionMessageParam[] => {
-  return messages.map((m) => {
-    if (m.role === 'tool' && 'tool_call_id' in m) {
-      return { ...m, content: response };
-    }
-    return m;
-  });
+  const planMsg = messages.find(
+    (m) => m.role === 'assistant' && m.tool_calls?.some((t) => t.function.name === 'plan_agent')
+  );
+
+  if (planMsg?.role === 'assistant') {
+    const callId = planMsg?.tool_calls?.[0]?.id;
+    return messages.map((m) =>
+      m.role === 'tool' && m.tool_call_id === callId ? { ...m, content: response } : m
+    );
+  }
+
+  return messages;
 };

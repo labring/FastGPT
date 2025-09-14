@@ -1,6 +1,18 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import { SubAppIds } from '../constants';
 
+export type AskAgentToolParamsType = Partial<{
+  mode: 'userSelect' | 'formInput';
+  prompt: string;
+  options: string[];
+  form: {
+    field: string;
+    type: 'textInput' | 'numberInput' | 'singleSelect' | 'multiSelect';
+    required: boolean;
+    options: string[];
+  }[];
+}>;
+
 export const AskAgentTool: ChatCompletionTool = {
   type: 'function',
   function: {
@@ -11,7 +23,7 @@ export const AskAgentTool: ChatCompletionTool = {
       properties: {
         mode: {
           type: 'string',
-          enum: ['userSelect', 'formInput', 'userInput'],
+          enum: ['userSelect'],
           description: '交互模式'
         },
         prompt: {
@@ -24,36 +36,32 @@ export const AskAgentTool: ChatCompletionTool = {
           items: {
             type: 'string'
           }
-        },
-        form: {
-          type: 'array',
-          description: '当 mode=formInput 时需要填写的表单字段列表',
-          items: {
-            type: 'object',
-            properties: {
-              field: {
-                type: 'string',
-                description: '字段名，如 name, age, 同时会展示给用户一样的label'
-              },
-              type: {
-                type: 'string',
-                enum: ['textInput', 'numberInput', 'singleSelect', 'multiSelect'],
-                description: '字段输入类型'
-              },
-              required: { type: 'boolean', description: '该字段是否必填', default: false },
-              options: {
-                type: 'array',
-                description: '当 type 为 singleSelect 或 multiSelect 时的可选项',
-                items: { type: 'string' }
-              }
-            },
-            required: ['field', 'type']
-          }
-        },
-        userInput: {
-          type: 'string',
-          description: '当 mode=userInput 时用户自由输入的内容'
         }
+        // form: {
+        //   type: 'array',
+        //   description: '当 mode=formInput 时需要填写的表单字段列表',
+        //   items: {
+        //     type: 'object',
+        //     properties: {
+        //       field: {
+        //         type: 'string',
+        //         description: '字段名，如 name, age, 同时会展示给用户一样的label'
+        //       },
+        //       type: {
+        //         type: 'string',
+        //         enum: ['textInput', 'numberInput', 'singleSelect', 'multiSelect'],
+        //         description: '字段输入类型'
+        //       },
+        //       required: { type: 'boolean', description: '该字段是否必填', default: false },
+        //       options: {
+        //         type: 'array',
+        //         description: '当 type 为 singleSelect 或 multiSelect 时的可选项',
+        //         items: { type: 'string' }
+        //       }
+        //     },
+        //     required: ['field', 'type']
+        //   }
+        // },
       },
       required: ['mode', 'prompt']
     }

@@ -49,7 +49,7 @@ type RunAgentCallProps = {
 type RunAgentResponse = {
   completeMessages: ChatCompletionMessageParam[];
   assistantResponses: AIChatItemValueItemType[];
-  interactiveResponse?: WorkflowInteractiveResponseType;
+  interactiveResponse?: InteractiveNodeResponseType;
 
   // Usage
   inputTokens: number;
@@ -75,7 +75,7 @@ export const runAgentCall = async ({
   let runTimes = 0;
 
   const assistantResponses: AIChatItemValueItemType[] = [];
-  let interactiveResponse: WorkflowInteractiveResponseType | undefined;
+  let interactiveResponse: InteractiveNodeResponseType | undefined;
 
   let requestMessages = messages;
 
@@ -148,24 +148,19 @@ export const runAgentCall = async ({
       subAppUsages.push(...usages);
 
       if (interactive) {
-        interactiveResponse = {
-          ...interactive,
-          entryNodeIds: [],
-          memoryEdges: [],
-          nodeOutputs: [],
-          toolParams: {
-            entryNodeIds: [],
-            memoryMessages: requestMessages.slice(requestMessagesLength),
-            toolCallId: tool.id
-          }
-        } as WorkflowInteractiveResponseType;
+        interactiveResponse = interactive;
         isEndSign = true;
       }
     }
 
+    const gptMessages =
+      toolCalls.length === 0
+        ? requestMessages.slice(requestMessagesLength - 1).filter((msg) => msg.role !== 'user')
+        : requestMessages.slice(requestMessagesLength);
+
     // TODO: 移动到工作流里 assistantResponses concat
     const currentAssistantResponses = GPTMessages2Chats({
-      messages: requestMessages.slice(requestMessagesLength),
+      messages: gptMessages,
       getToolInfo
     })[0] as AIChatItemType;
 

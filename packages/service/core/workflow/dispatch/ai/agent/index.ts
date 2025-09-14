@@ -92,7 +92,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       planAgentConfig
     }
   } = props;
-  const memoryKey = `${runningAppInfo.id}-${nodeId}`;
+  const topMemoryKey = `${runningAppInfo.id}-${nodeId}`;
+  const planMemoryKey = `${runningAppInfo.id}-${nodeId}-plan`;
 
   const runtimeSubApps = await rewriteSubAppsToolset({
     subApps: subApps.map<RuntimeNodeItemType>((node) => {
@@ -136,21 +137,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       messages: getSystemPrompt_ChatItemType(getMasterAgentDefaultPrompt()),
       reserveId: false
     });
-    const historyMessages: ChatCompletionMessageParam[] = (() => {
-      const lastHistory = chatHistories[chatHistories.length - 1];
-      if (lastHistory && lastHistory.obj === ChatRoleEnum.AI && lastHistory.memories?.[memoryKey]) {
-        return lastHistory.memories?.[memoryKey];
-      }
-
-      return chats2GPTMessages({ messages: chatHistories, reserveId: false });
-    })();
 
     // rewrite user message by interactive query
     if (lastInteractive) {
-      const isUserConfirmedPlan = query.some((item) => item?.text?.content === '确认');
-      isUserConfirmedPlan
+      query.some((item) => item?.text?.content === '确认')
         ? (userChatInput = 'Confirm the plan')
-        : (userChatInput = "I don't approve of the current plan");
+        : (userChatInput = query[0].text?.content ?? userChatInput);
     }
 
     const userMessages = chats2GPTMessages({
@@ -165,8 +157,20 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       ],
       reserveId: false
     });
-    const requestMessages = [...systemMessages, ...historyMessages, ...userMessages];
 
+    const historyMessages: ChatCompletionMessageParam[] = (() => {
+      const lastHistory = chatHistories[chatHistories.length - 1];
+      if (
+        lastHistory &&
+        lastHistory.obj === ChatRoleEnum.AI &&
+        lastHistory.memories?.[topMemoryKey]
+      ) {
+        return lastHistory.memories[topMemoryKey];
+      }
+      return chats2GPTMessages({ messages: chatHistories, reserveId: false });
+    })();
+
+    const requestMessages = [...systemMessages, ...historyMessages, ...userMessages];
     const { hasPlan, hasConfirmedPlan } = checkPlan(requestMessages);
 
     const subAppList = getSubApps({
@@ -191,7 +195,21 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const dispatchFlowResponse: ChatHistoryItemResType[] = [];
 
     if (!hasConfirmedPlan && hasPlan) {
-      const callId = getPlanAgentToolCallId(requestMessages);
+      // Build requestMessages for plan branch using planMemoryKey
+      const planHistoryMessages: ChatCompletionMessageParam[] = (() => {
+        const lastHistory = chatHistories[chatHistories.length - 1];
+        if (
+          lastHistory &&
+          lastHistory.obj === ChatRoleEnum.AI &&
+          lastHistory.memories?.[planMemoryKey]
+        ) {
+          return lastHistory.memories[planMemoryKey];
+        }
+        return chats2GPTMessages({ messages: chatHistories, reserveId: false });
+      })();
+
+      const planRequestMessages = [...systemMessages, ...planHistoryMessages, ...userMessages];
+      const callId = getPlanAgentToolCallId(planRequestMessages);
 
       // TODO: 需要修改替换掉旧 plan
       const childWorkflowStreamResponse = getWorkflowChildResponseWrite({
@@ -199,31 +217,39 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         id: callId ?? '',
         fn: workflowStreamResponse
       });
-      const { response, usages } = await dispatchPlanAgent({
-        messages: requestMessages,
-        tools: subAppList,
-        model,
-        temperature,
-        top_p: aiChatTopP,
-        stream,
-        onReasoning: ({ text }: { text: string }) => {
-          childWorkflowStreamResponse?.({
-            event: SseResponseEventEnum.answer,
-            data: textAdaptGptResponse({
-              reasoning_content: text
-            })
-          });
-        },
-        onStreaming: ({ text }: { text: string }) => {
-          childWorkflowStreamResponse?.({
-            event: SseResponseEventEnum.answer,
-            data: textAdaptGptResponse({
-              text
-            })
-          });
+      const { response, usages, assistantResponses, interactiveResponse } = await dispatchPlanAgent(
+        {
+          messages: planRequestMessages,
+          tools: subAppList,
+          model,
+          temperature,
+          top_p: aiChatTopP,
+          stream,
+          getToolInfo,
+          onReasoning: ({ text }: { text: string }) => {
+            childWorkflowStreamResponse?.({
+              event: SseResponseEventEnum.answer,
+              data: textAdaptGptResponse({
+                reasoning_content: text
+              })
+            });
+          },
+          onStreaming: ({ text }: { text: string }) => {
+            childWorkflowStreamResponse?.({
+              event: SseResponseEventEnum.answer,
+              data: textAdaptGptResponse({
+                text
+              })
+            });
+          }
         }
-      });
+      );
       const rewritedMessages = rewritePlanResponse(requestMessages, response);
+
+      planRequestMessages.push({ role: 'assistant', content: response });
+
+      // console.log('planRequestMessages-----------');
+      // console.dir(planRequestMessages, { depth: null });
 
       const { totalPoints: modelTotalPoints, modelName } = formatModelChars2Points({
         model: usages[0].model,
@@ -247,23 +273,24 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         },
         // TODO: 需要对 memoryMessages 单独建表存储
         [DispatchNodeResponseKeyEnum.memories]: {
-          [memoryKey]: filterMemoryMessages(rewritedMessages)
+          [topMemoryKey]: filterMemoryMessages(rewritedMessages),
+          [planMemoryKey]: filterMemoryMessages(planRequestMessages)
         },
 
-        [DispatchNodeResponseKeyEnum.assistantResponses]: [],
+        [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
           // 展示的积分消耗
           // totalPoints: totalPointsUsage,
-          toolCallInputTokens: usages[0].inputTokens,
-          toolCallOutputTokens: usages[0].outputTokens,
+          // toolCallInputTokens: usages[0].inputTokens,
+          // toolCallOutputTokens: usages[0].outputTokens,
           // childTotalPoints: toolTotalPoints,
           model: modelName,
           query: userChatInput,
-          // historyPreview: getHistoryPreview(
-          //   GPTMessages2Chats({ messages: completeMessages, reserveTool: false }),
-          //   10000,
-          //   true
-          // ),
+          historyPreview: getHistoryPreview(
+            GPTMessages2Chats({ messages: rewritedMessages, reserveTool: false }),
+            10000,
+            true
+          ),
           toolDetail: dispatchFlowResponse,
           mergeSignId: nodeId
         },
@@ -277,9 +304,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             outputTokens: usages[0].outputTokens
           }
         ],
-        [DispatchNodeResponseKeyEnum.interactive]: interactive
+        [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
+          ? interactiveResponse
+          : interactive
       };
     }
+
+    // console.log('requestMessages-----------');
+    // console.dir(requestMessages, { depth: null });
 
     const {
       completeMessages,
@@ -386,7 +418,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 isEnd: true
               };
             } else if (toolId === SubAppIds.plan) {
-              const { response, usages } = await dispatchPlanAgent({
+              const { response, usages, interactiveResponse } = await dispatchPlanAgent({
                 messages,
                 tools: subAppList,
                 systemPrompt,
@@ -394,10 +426,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 temperature,
                 top_p: aiChatTopP,
                 stream,
+                getToolInfo,
                 onReasoning,
                 onStreaming
               });
-              const interactive: InteractiveNodeResponseType = {
+
+              const planCheckInteractive: InteractiveNodeResponseType = {
                 type: 'planCheck',
                 params: {
                   description: '是否确认使用当前的计划',
@@ -409,7 +443,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 response,
                 usages,
                 isEnd: false,
-                interactive
+                interactive: interactiveResponse ?? planCheckInteractive
               };
             } else if (toolId === SubAppIds.model) {
               const { systemPrompt, task } = parseToolArgs<{
@@ -610,7 +644,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       },
       // TODO: 需要对 memoryMessages 单独建表存储
       [DispatchNodeResponseKeyEnum.memories]: {
-        [memoryKey]: filterMemoryMessages(completeMessages)
+        [topMemoryKey]: filterMemoryMessages(completeMessages)
       },
       [DispatchNodeResponseKeyEnum.assistantResponses]: previewAssistantResponses,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {

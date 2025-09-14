@@ -2,7 +2,8 @@ import type { ChatNodeUsageType } from '../../../support/wallet/bill/type';
 import type {
   ChatItemType,
   ToolRunResponseItemType,
-  AIChatItemValueItemType
+  AIChatItemValueItemType,
+  UserChatItemValueItemType
 } from '../../chat/type';
 import { NodeOutputItemType } from '../../chat/type';
 import type { FlowNodeInputItemType, FlowNodeOutputItemType } from '../type/io.d';

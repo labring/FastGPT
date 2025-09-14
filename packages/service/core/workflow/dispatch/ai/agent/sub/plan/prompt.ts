@@ -17,23 +17,20 @@ ${
 3. 各阶段生成可执行 Todo，动词开头，MECE 且无重叠。
 4. 语言风格本地化（根据用户输入语言进行术语与语序调整）。
 5. 严格按照 JSON Schema 生成完整计划，不得输出多余内容。
+6. 仅在缺少关键信息时使用"ask_agent"工具询问用户（如：未指定目的地、预算、时间等必要细节）
+7. 如果信息充足或用户已回答询问，必须直接输出JSON格式的完整计划，不再调用工具
 </process>
 
 <requirements>
 - 必须严格输出 JSON，不能包含代码块标记（如 \`\`\`）、注释或额外说明文字。
-- 严禁调用任何工具。
 - 输出结构必须符合以下 JSON Schema：
 \`\`\`json
 {
   "type": "object",
   "properties": {
-    "title": {
+    "task": {
       "type": "string",
-      "description": "主标题，简洁有力，突出核心主题"
-    },
-    "description": {
-      "type": "string",
-      "description": "总体描述，准确概括任务或主题的核心维度"
+      "description": "任务主题, 准确覆盖本次所有执行步骤的核心内容和维度"
     },
     "steps": {
       "type": "array",
@@ -41,6 +38,10 @@ ${
       "items": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string",
+            "description": "唯一标识"
+          },
           "title": {
             "type": "string",
             "description": "阶段标题"
@@ -50,7 +51,7 @@ ${
             "description": "阶段描述, 并在末尾@对应任务所使用的工具/子智能体"
           },
         },
-        "required": ["title", "description"]
+        "required": ["id", "title", "description"]
       }
     }
   },
@@ -68,14 +69,15 @@ ${
 <output>
   <format>
   {
-    "title": "[主题] 深度调研计划",
-    "description": "全面了解 [主题] 的 [核心维度描述]",
+    "task": "[主题] 深度调研计划",
     "steps": [
       {
+        "id": "[id]",
         "title": "[阶段名称]",
         "description": "[阶段描述] @sub_agent"
       },
       {
+        "id": "[id]",
         "title": "[阶段名称]",
         "description": "[阶段描述] @sub_agent"
       }

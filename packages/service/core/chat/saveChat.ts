@@ -306,6 +306,13 @@ export const updateInteractiveChat = async ({
     chatItem.value = chatItem.value ? [...chatItem.value, ...aiResponse.value] : aiResponse.value;
   }
 
+  if (aiResponse.memories) {
+    chatItem.memories = {
+      ...chatItem.memories,
+      ...aiResponse.memories
+    };
+  }
+
   chatItem.durationSeconds = chatItem.durationSeconds
     ? +(chatItem.durationSeconds + durationSeconds).toFixed(2)
     : durationSeconds;
