@@ -31,31 +31,104 @@ type Props = {
   sourceName?: string;
   shareId?: string;
   outLinkUid?: string;
-  content: [UserChatItemType & { dataId?: string }, AIChatItemType & { dataId?: string }];
+  userContent: UserChatItemType & { dataId?: string };
+  aiContent: AIChatItemType & { dataId?: string };
   metadata?: Record<string, any>;
   durationSeconds: number; //s
   errorMsg?: string;
 };
 
-export async function saveChat({
+const updateChatLog = async ({
   chatId,
   appId,
   teamId,
   tmbId,
-  nodes,
-  appChatConfig,
-  variables,
-  isUpdateUseTime,
-  newTitle,
   source,
   sourceName,
-  shareId,
   outLinkUid,
-  content,
-  durationSeconds,
-  errorMsg,
-  metadata = {}
-}: Props) {
+  aiContent,
+  durationSeconds
+}: Props) => {
+  try {
+    const userId = String(outLinkUid || tmbId);
+    const now = new Date();
+    const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
+
+    const errorCount = aiContent?.responseData?.some((item) => item.errorText) ? 1 : 0;
+    const totalPoints =
+      aiContent?.responseData?.reduce(
+        (sum: number, item: any) => sum + (item.totalPoints || 0),
+        0
+      ) || 0;
+
+    const hasHistoryChat = await MongoAppChatLog.exists({
+      teamId,
+      appId,
+      userId,
+      createTime: { $lt: now }
+    });
+
+    await MongoAppChatLog.updateOne(
+      {
+        teamId,
+        appId,
+        chatId,
+        updateTime: { $gte: fifteenMinutesAgo }
+      },
+      {
+        $inc: {
+          chatItemCount: 1,
+          errorCount,
+          totalPoints,
+          totalResponseTime: durationSeconds
+        },
+        $set: {
+          updateTime: now,
+          sourceName
+        },
+        $setOnInsert: {
+          appId,
+          teamId,
+          chatId,
+          userId,
+          source,
+          createTime: now,
+          goodFeedbackCount: 0,
+          badFeedbackCount: 0,
+          isFirstChat: !hasHistoryChat
+        }
+      },
+      {
+        upsert: true
+      }
+    );
+  } catch (error) {
+    addLog.error('update chat log error', error);
+  }
+};
+
+export async function saveChat(props: Props) {
+  const {
+    chatId,
+    appId,
+    teamId,
+    tmbId,
+    nodes,
+    appChatConfig,
+    variables,
+    isUpdateUseTime,
+    newTitle,
+    source,
+    sourceName,
+    shareId,
+    outLinkUid,
+    userContent,
+    aiContent,
+    durationSeconds,
+    errorMsg,
+    metadata = {}
+  } = props;
+
   if (!chatId || chatId === 'NO_RECORD_HISTORIES') return;
 
   try {
@@ -81,9 +154,10 @@ export async function saveChat({
     )?.inputs;
 
     // Format save chat content: Remove quote q/a
-    const processedContent = content.map((item) => {
-      if (item.obj === ChatRoleEnum.AI) {
-        const nodeResponse = item[DispatchNodeResponseKeyEnum.nodeResponse]?.map((responseItem) => {
+    const formatAiContent = (() => {
+      const nodeResponse = aiContent[DispatchNodeResponseKeyEnum.nodeResponse]?.map(
+        (responseItem) => {
+          // Filter quote raw textx
           if (
             responseItem.moduleType === FlowNodeTypeEnum.datasetSearchNode &&
             responseItem.quoteList
@@ -103,17 +177,17 @@ export async function saveChat({
             };
           }
           return responseItem;
-        });
+        }
+      );
 
-        return {
-          ...item,
-          [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
-          durationSeconds,
-          errorMsg
-        };
-      }
-      return item;
-    });
+      return {
+        ...aiContent,
+        [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
+        durationSeconds,
+        errorMsg
+      };
+    })();
+    const processedContent = [userContent, formatAiContent];
 
     await mongoSessionRun(async (session) => {
       const [{ _id: chatItemIdHuman }, { _id: chatItemIdAi }] = await MongoChatItem.create(
@@ -166,64 +240,8 @@ export async function saveChat({
       });
     });
 
-    try {
-      const userId = String(outLinkUid || tmbId);
-      const now = new Date();
-      const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
-
-      const aiResponse = processedContent.find((item) => item.obj === ChatRoleEnum.AI);
-      const errorCount = aiResponse?.responseData?.some((item) => item.errorText) ? 1 : 0;
-      const totalPoints =
-        aiResponse?.responseData?.reduce(
-          (sum: number, item: any) => sum + (item.totalPoints || 0),
-          0
-        ) || 0;
-
-      const hasHistoryChat = await MongoAppChatLog.exists({
-        teamId,
-        appId,
-        userId,
-        createTime: { $lt: now }
-      });
-
-      await MongoAppChatLog.updateOne(
-        {
-          teamId,
-          appId,
-          chatId,
-          updateTime: { $gte: fifteenMinutesAgo }
-        },
-        {
-          $inc: {
-            chatItemCount: 1,
-            errorCount,
-            totalPoints,
-            totalResponseTime: durationSeconds
-          },
-          $set: {
-            updateTime: now,
-            sourceName
-          },
-          $setOnInsert: {
-            appId,
-            teamId,
-            chatId,
-            userId,
-            source,
-            createTime: now,
-            goodFeedbackCount: 0,
-            badFeedbackCount: 0,
-            isFirstChat: !hasHistoryChat
-          }
-        },
-        {
-          upsert: true,
-          ...writePrimary
-        }
-      );
-    } catch (error) {
-      addLog.error('update chat log error', error);
-    }
+    // Update chat log
+    await updateChatLog(props);
 
     if (isUpdateUseTime) {
       await MongoApp.updateOne(
@@ -267,10 +285,12 @@ export const updateInteractiveChat = async ({
   // Update interactive value
   const interactiveValue = chatItem.value[chatItem.value.length - 1];
 
-  if (!interactiveValue || !interactiveValue.interactive?.params) {
+  if (!interactiveValue || !interactiveValue.interactive) {
     return;
   }
+  interactiveValue.interactive.params = interactiveValue.interactive.params || {};
 
+  // Update interactive value
   const parsedUserInteractiveVal = (() => {
     try {
       return JSON.parse(userInteractiveVal);
@@ -278,13 +298,15 @@ export const updateInteractiveChat = async ({
       return userInteractiveVal;
     }
   })();
+  const finalInteractive = extractDeepestInteractive(interactiveValue.interactive);
 
-  let finalInteractive = extractDeepestInteractive(interactiveValue.interactive);
-
-  if (finalInteractive.type === 'userSelect') {
+  if (
+    finalInteractive.type === 'userSelect' ||
+    finalInteractive.type === 'agentPlanAskUserSelect'
+  ) {
     finalInteractive.params.userSelectedVal = userInteractiveVal;
   } else if (
-    finalInteractive.type === 'userInput' &&
+    (finalInteractive.type === 'userInput' || finalInteractive.type === 'agentPlanAskUserForm') &&
     typeof parsedUserInteractiveVal === 'object'
   ) {
     finalInteractive.params.inputForm = finalInteractive.params.inputForm.map((item) => {
@@ -297,6 +319,8 @@ export const updateInteractiveChat = async ({
         : item;
     });
     finalInteractive.params.submitted = true;
+  } else if (finalInteractive.type === 'agentPlanCheck') {
+    finalInteractive.params.confirmed = true;
   }
 
   if (aiResponse.customFeedbacks) {
@@ -336,5 +360,22 @@ export const updateInteractiveChat = async ({
         session
       }
     );
+
+    // TODO: 特殊的交互需要推送 chat item，不能只修改
+    // if (
+    //   finalInteractive.type === 'agentPlanAskQuery' ||
+    //   finalInteractive.type === 'agentPlanCheck'
+    // ) {
+    //   const [{ _id: chatItemIdHuman }, { _id: chatItemIdAi }] = await MongoChatItem.insertMany(
+    //     processedContent.map((item) => ({
+    //       chatId,
+    //       teamId,
+    //       tmbId,
+    //       appId,
+    //       ...item
+    //     })),
+    //     { session }
+    //   );
+    // }
   });
 };

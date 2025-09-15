@@ -19,19 +19,25 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type {
   InteractiveBasicType,
+  InteractiveNodeResponseType,
   UserInputInteractive,
   UserSelectInteractive
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { isEqual } from 'lodash';
 import { useTranslation } from 'next-i18next';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
-import { SelectOptionsComponent, FormInputComponent } from './Interactive/InteractiveComponents';
+import {
+  SelectOptionsComponent,
+  FormInputComponent,
+  AgentPlanCheckComponent
+} from './Interactive/InteractiveComponents';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import { useContextSelector } from 'use-context-selector';
 import { type OnOpenCiteModalProps } from '@/web/core/chat/context/chatItemContext';
 import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
 import { useCreation } from 'ahooks';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { ConfirmPlanAgentText } from '@fastgpt/global/core/workflow/runtime/constants';
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -215,21 +221,21 @@ ${response}`}
   (prevProps, nextProps) => isEqual(prevProps, nextProps)
 );
 
-const onSendPrompt = (e: { text: string; isInteractivePrompt: boolean }) =>
-  eventBus.emit(EventNameEnum.sendQuestion, e);
+const onSendPrompt = (text: string) =>
+  eventBus.emit(EventNameEnum.sendQuestion, {
+    text,
+    focus: true
+  });
 const RenderUserSelectInteractive = React.memo(function RenderInteractive({
   interactive
 }: {
-  interactive: InteractiveBasicType & UserSelectInteractive;
+  interactive: UserSelectInteractive;
 }) {
   return (
     <SelectOptionsComponent
       interactiveParams={interactive.params}
       onSelect={(value) => {
-        onSendPrompt({
-          text: value,
-          isInteractivePrompt: true
-        });
+        onSendPrompt(value);
       }}
     />
   );
@@ -237,25 +243,19 @@ const RenderUserSelectInteractive = React.memo(function RenderInteractive({
 const RenderUserFormInteractive = React.memo(function RenderFormInput({
   interactive
 }: {
-  interactive: InteractiveBasicType & UserInputInteractive;
+  interactive: UserInputInteractive;
 }) {
   const { t } = useTranslation();
 
   const defaultValues = useMemo(() => {
-    if (interactive.type === 'userInput') {
-      return interactive.params.inputForm?.reduce((acc: Record<string, any>, item) => {
-        acc[item.label] = !!item.value ? item.value : item.defaultValue;
-        return acc;
-      }, {});
-    }
-    return {};
+    return interactive.params.inputForm?.reduce((acc: Record<string, any>, item) => {
+      acc[item.label] = !!item.value ? item.value : item.defaultValue;
+      return acc;
+    }, {});
   }, [interactive]);
 
   const handleFormSubmit = useCallback((data: Record<string, any>) => {
-    onSendPrompt({
-      text: JSON.stringify(data),
-      isInteractivePrompt: true
-    });
+    onSendPrompt(JSON.stringify(data));
   }, []);
 
   return (
@@ -318,12 +318,25 @@ const AIResponseBox = ({
     );
   }
   if ('interactive' in value && value.interactive) {
-    const finalInteractive = extractDeepestInteractive(value.interactive);
-    if (finalInteractive.type === 'userSelect') {
-      return <RenderUserSelectInteractive interactive={finalInteractive} />;
+    const interactive = extractDeepestInteractive(value.interactive);
+    if (interactive.type === 'userSelect' || interactive.type === 'agentPlanAskUserSelect') {
+      return <RenderUserSelectInteractive interactive={interactive} />;
     }
-    if (finalInteractive.type === 'userInput') {
-      return <RenderUserFormInteractive interactive={finalInteractive} />;
+    if (interactive.type === 'userInput' || interactive.type === 'agentPlanAskUserForm') {
+      return <RenderUserFormInteractive interactive={interactive} />;
+    }
+    if (interactive.type === 'agentPlanCheck') {
+      return (
+        <AgentPlanCheckComponent
+          interactiveParams={interactive.params}
+          onConfirm={() => {
+            onSendPrompt(ConfirmPlanAgentText);
+          }}
+        />
+      );
+    }
+    if (interactive.type === 'agentPlanAskQuery') {
+      return <Box>{interactive.params.content}</Box>;
     }
   }
 

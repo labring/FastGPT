@@ -326,9 +326,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return ChatSourceEnum.online;
     })();
 
-    const isInteractiveRequest = !!getLastInteractiveValue(histories);
-    const { text: userInteractiveVal } = chatValue2RuntimePrompt(userQuestion.value);
-
     const newTitle = isPlugin
       ? variables.cTime ?? getSystemTime(timezone)
       : getChatTitleFromChatMessage(userQuestion);
@@ -341,12 +338,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       memories: system_memories
     };
 
+    const isInteractiveRequest = !!getLastInteractiveValue(histories);
     const saveChatId = chatId || getNanoid(24);
     if (isInteractiveRequest) {
       await updateInteractiveChat({
         chatId: saveChatId,
         appId: app._id,
-        userInteractiveVal,
+        userInteractiveVal: chatValue2RuntimePrompt(userQuestion.value).text,
         aiResponse,
         newVariables,
         durationSeconds
@@ -366,7 +364,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         outLinkUid: outLinkUserId,
         source,
         sourceName: sourceName || '',
-        content: [userQuestion, aiResponse],
+        userContent: userQuestion,
+        aiContent: aiResponse,
         metadata: {
           originIp,
           ...metadata

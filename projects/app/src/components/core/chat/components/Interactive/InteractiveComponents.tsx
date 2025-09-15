@@ -3,16 +3,18 @@ import { Box, Button, Flex } from '@chakra-ui/react';
 import { Controller, useForm, type UseFormHandleSubmit } from 'react-hook-form';
 import Markdown from '@/components/Markdown';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import {
-  type UserInputFormItemType,
-  type UserInputInteractive,
-  type UserSelectInteractive,
-  type UserSelectOptionItemType
+import type {
+  AgentPlanCheckInteractive,
+  UserInputFormItemType,
+  UserInputInteractive,
+  UserSelectInteractive,
+  UserSelectOptionItemType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import InputRender from '@/components/core/app/formRender';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
+import { useTranslation } from 'next-i18next';
 
 const DescriptionBox = React.memo(function DescriptionBox({
   description
@@ -131,6 +133,26 @@ export const FormInputComponent = React.memo(function FormInputComponent({
           <SubmitButton onSubmit={handleSubmit} />
         </Flex>
       )}
+    </Box>
+  );
+});
+
+// Agent interactive
+export const AgentPlanCheckComponent = React.memo(function AgentPlanCheckComponent({
+  interactiveParams,
+  onConfirm
+}: {
+  interactiveParams: AgentPlanCheckInteractive['params'];
+  onConfirm: () => void;
+}) {
+  const { t } = useTranslation();
+  return interactiveParams?.confirmed ? (
+    // TODO：临时 UI
+    <Box>已确认计划</Box>
+  ) : (
+    <Box>
+      <Box>{t('chat:confirm_plan_agent')}</Box>
+      <Button onClick={onConfirm}>{t('common:Confirm')}</Button>
     </Box>
   );
 });
