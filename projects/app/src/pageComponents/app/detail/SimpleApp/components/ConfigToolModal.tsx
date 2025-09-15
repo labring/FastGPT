@@ -94,13 +94,19 @@ const ConfigToolModal = ({
                   <Controller
                     control={control}
                     name={input.key}
-                    render={({ field: { onChange, value } }) => (
+                    rules={{
+                      required: true
+                    }}
+                    render={({ field: { onChange, value }, fieldState: { error } }) => (
                       <Box>
-                        <FormLabel mb={1}>{t('common:secret_key')}</FormLabel>
+                        <FormLabel mb={1} required>
+                          {t('common:secret_key')}
+                        </FormLabel>
                         <Button
                           variant={'whiteBase'}
                           border={'base'}
                           borderRadius={'md'}
+                          borderColor={error ? 'red.500' : 'borderColor.low'}
                           leftIcon={
                             <Box w={'6px'} h={'6px'} bg={'primary.600'} borderRadius={'md'} />
                           }
