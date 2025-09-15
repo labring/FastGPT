@@ -7,7 +7,6 @@ import {
   checkTeamEvaluationTaskLimit
 } from '@fastgpt/service/support/permission/teamLimit';
 import { validateTargetConfig } from '@fastgpt/service/core/evaluation/target';
-import { addLog } from '@fastgpt/service/common/system/log';
 import { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 
 // Mock dependencies
@@ -140,11 +139,147 @@ describe('Create Evaluation Task API Handler', () => {
         datasetId: mockReq.body.datasetId,
         target: mockReq.body.target,
         evaluators: mockReq.body.evaluators,
+        autoStart: undefined, // 用户未传递 autoStart 参数时应该是 undefined，服务层会设置默认值
         teamId: mockTeamId,
         tmbId: mockTmbId
       })
     );
     expect(result).toEqual(mockEvaluation);
+  });
+
+  test('应该成功创建评估任务并自动启动', async () => {
+    const mockTeamId = new Types.ObjectId().toString();
+    const mockTmbId = new Types.ObjectId().toString();
+
+    // Update mock to return consistent IDs
+    const { authEvaluationTaskCreate } = await import('@fastgpt/service/core/evaluation/common');
+    (authEvaluationTaskCreate as any).mockResolvedValue({
+      teamId: mockTeamId,
+      tmbId: mockTmbId
+    });
+
+    const mockAutoStartEvaluation = {
+      ...mockEvaluation,
+      status: EvaluationStatusEnum.evaluating // 自动启动后状态应该是 evaluating
+    };
+
+    const mockReq = {
+      method: 'POST',
+      body: {
+        name: 'Test Evaluation',
+        description: 'Test Description',
+        datasetId: new Types.ObjectId().toString(),
+        target: {
+          type: 'workflow',
+          config: {
+            appId: new Types.ObjectId().toString()
+          }
+        },
+        evaluators: [
+          {
+            metric: {
+              _id: new Types.ObjectId().toString(),
+              name: 'Test Metric',
+              type: 'ai_model',
+              config: { llm: 'gpt-4', prompt: 'test' },
+              dependencies: ['llm'],
+              teamId: new Types.ObjectId().toString(),
+              tmbId: new Types.ObjectId().toString(),
+              createTime: new Date(),
+              updateTime: new Date()
+            },
+            runtimeConfig: { llm: 'gpt-4' }
+          }
+        ],
+        autoStart: true // 测试自动启动
+      }
+    } as any;
+
+    (checkTeamAIPoints as any).mockResolvedValue(undefined);
+    (validateTargetConfig as any).mockResolvedValue({ isValid: true, errors: [] });
+    (EvaluationTaskService.createEvaluation as any).mockResolvedValue(mockAutoStartEvaluation);
+
+    const result = await createHandler(mockReq);
+
+    expect(EvaluationTaskService.createEvaluation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Test Evaluation',
+        description: 'Test Description',
+        datasetId: mockReq.body.datasetId,
+        target: mockReq.body.target,
+        evaluators: mockReq.body.evaluators,
+        autoStart: true,
+        teamId: mockTeamId,
+        tmbId: mockTmbId
+      })
+    );
+    expect(result).toEqual(mockAutoStartEvaluation);
+    expect(result.status).toBe(EvaluationStatusEnum.evaluating);
+  });
+
+  test('应该支持显式关闭自动启动', async () => {
+    const mockTeamId = new Types.ObjectId().toString();
+    const mockTmbId = new Types.ObjectId().toString();
+
+    // Update mock to return consistent IDs
+    const { authEvaluationTaskCreate } = await import('@fastgpt/service/core/evaluation/common');
+    (authEvaluationTaskCreate as any).mockResolvedValue({
+      teamId: mockTeamId,
+      tmbId: mockTmbId
+    });
+
+    const mockReq = {
+      method: 'POST',
+      body: {
+        name: 'Test Evaluation',
+        description: 'Test Description',
+        datasetId: new Types.ObjectId().toString(),
+        target: {
+          type: 'workflow',
+          config: {
+            appId: new Types.ObjectId().toString()
+          }
+        },
+        evaluators: [
+          {
+            metric: {
+              _id: new Types.ObjectId().toString(),
+              name: 'Test Metric',
+              type: 'ai_model',
+              config: { llm: 'gpt-4', prompt: 'test' },
+              dependencies: ['llm'],
+              teamId: new Types.ObjectId().toString(),
+              tmbId: new Types.ObjectId().toString(),
+              createTime: new Date(),
+              updateTime: new Date()
+            },
+            runtimeConfig: { llm: 'gpt-4' }
+          }
+        ],
+        autoStart: false // 显式关闭自动启动
+      }
+    } as any;
+
+    (checkTeamAIPoints as any).mockResolvedValue(undefined);
+    (validateTargetConfig as any).mockResolvedValue({ isValid: true, errors: [] });
+    (EvaluationTaskService.createEvaluation as any).mockResolvedValue(mockEvaluation); // 状态仍然是 queuing
+
+    const result = await createHandler(mockReq);
+
+    expect(EvaluationTaskService.createEvaluation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Test Evaluation',
+        description: 'Test Description',
+        datasetId: mockReq.body.datasetId,
+        target: mockReq.body.target,
+        evaluators: mockReq.body.evaluators,
+        autoStart: false,
+        teamId: mockTeamId,
+        tmbId: mockTmbId
+      })
+    );
+    expect(result).toEqual(mockEvaluation);
+    expect(result.status).toBe(EvaluationStatusEnum.queuing); // 未自动启动，状态保持为 queuing
   });
 
   test('应该拒绝空名称', async () => {

@@ -143,7 +143,6 @@ export type EvaluationDisplayType = Pick<
   | 'statistics'
 > & {
   _id: string;
-  avgScore?: number;
   datasetName?: string;
   target: EvalTarget; // Complete target object with extended config
   metricNames: string[];
@@ -161,6 +160,7 @@ export interface CreateEvaluationParams {
   datasetId: string;
   target: EvalTarget; // Only supports workflow type target configuration
   evaluators: EvaluatorSchema[]; // Replace metricIds with evaluators
+  autoStart?: boolean; // Whether to automatically start the evaluation task after creation (default: true)
 }
 
 // Queue job data types

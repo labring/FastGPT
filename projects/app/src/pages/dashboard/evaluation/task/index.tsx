@@ -122,10 +122,11 @@ const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
       return <Box color={'myGray.600'}>{t('dashboard_evaluation:evaluating_status')}</Box>;
     }
 
-    if (task.status === EvaluationStatusEnum.completed && task.avgScore !== undefined) {
+    //todo replace by summary get api result
+    if (task.status === EvaluationStatusEnum.completed) {
       return (
         <Box color={'myGray.900'} fontWeight={'500'}>
-          {task.avgScore.toFixed(1)}
+          {100}
         </Box>
       );
     }

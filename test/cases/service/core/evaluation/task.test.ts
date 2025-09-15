@@ -242,7 +242,7 @@ describe('EvaluationTaskService', () => {
       expect(evaluation.evaluators[0].runtimeConfig.llm).toBe('gpt-3.5-turbo');
       expect(evaluation.teamId.toString()).toBe(teamId);
       expect(evaluation.tmbId.toString()).toBe(tmbId);
-      expect(evaluation.status).toBe(EvaluationStatusEnum.queuing);
+      expect(evaluation.status).toBe(EvaluationStatusEnum.evaluating);
       expect(Types.ObjectId.isValid(evaluation.usageId)).toBe(true);
 
       // 验证创建用量记录被调用
@@ -260,6 +260,73 @@ describe('EvaluationTaskService', () => {
       };
 
       await expect(EvaluationTaskService.createEvaluation(invalidParams as any)).rejects.toThrow();
+    });
+
+    test('应该支持自动启动功能（默认值）', async () => {
+      const params: CreateEvaluationParams = {
+        name: 'Auto Start Test Evaluation',
+        description: 'Test evaluation with auto start',
+        datasetId,
+        target,
+        evaluators: evaluators
+        // autoStart 未指定，应使用默认值 true
+      };
+
+      const evaluation = await EvaluationTaskService.createEvaluation({
+        ...params,
+        teamId: teamId,
+        tmbId: tmbId
+      });
+
+      // 验证评估任务被创建且自动启动（状态应为 evaluating）
+      expect(evaluation.status).toBe(EvaluationStatusEnum.evaluating);
+      expect(evaluationTaskQueue.add).toHaveBeenCalledWith(`eval_task_${evaluation._id}`, {
+        evalId: evaluation._id.toString()
+      });
+    });
+
+    test('应该支持显式启用自动启动', async () => {
+      const params: CreateEvaluationParams = {
+        name: 'Explicit Auto Start Test',
+        description: 'Test evaluation with explicit auto start',
+        datasetId,
+        target,
+        evaluators: evaluators,
+        autoStart: true
+      };
+
+      const evaluation = await EvaluationTaskService.createEvaluation({
+        ...params,
+        teamId: teamId,
+        tmbId: tmbId
+      });
+
+      // 验证评估任务被创建且自动启动
+      expect(evaluation.status).toBe(EvaluationStatusEnum.evaluating);
+      expect(evaluationTaskQueue.add).toHaveBeenCalledWith(`eval_task_${evaluation._id}`, {
+        evalId: evaluation._id.toString()
+      });
+    });
+
+    test('应该支持关闭自动启动', async () => {
+      const params: CreateEvaluationParams = {
+        name: 'No Auto Start Test',
+        description: 'Test evaluation without auto start',
+        datasetId,
+        target,
+        evaluators: evaluators,
+        autoStart: false
+      };
+
+      const evaluation = await EvaluationTaskService.createEvaluation({
+        ...params,
+        teamId: teamId,
+        tmbId: tmbId
+      });
+
+      // 验证评估任务被创建但未自动启动（状态应为 queuing）
+      expect(evaluation.status).toBe(EvaluationStatusEnum.queuing);
+      expect(evaluationTaskQueue.add).not.toHaveBeenCalled();
     });
   });
 
@@ -283,7 +350,7 @@ describe('EvaluationTaskService', () => {
 
       expect(evaluation._id.toString()).toBe(created._id.toString());
       expect(evaluation.name).toBe('Get Test Evaluation');
-      expect(evaluation.status).toBe(EvaluationStatusEnum.queuing);
+      expect(evaluation.status).toBe(EvaluationStatusEnum.evaluating);
     });
 
     test('评估任务不存在时应该抛出错误', async () => {
@@ -401,7 +468,8 @@ describe('EvaluationTaskService', () => {
         description: 'Test evaluation for start operation',
         datasetId,
         target,
-        evaluators: evaluators
+        evaluators: evaluators,
+        autoStart: false
       };
       const created = await EvaluationTaskService.createEvaluation({
         ...params,
@@ -454,7 +522,8 @@ describe('EvaluationTaskService', () => {
         description: 'Test evaluation for restart operation',
         datasetId,
         target,
-        evaluators: evaluators
+        evaluators: evaluators,
+        autoStart: false
       };
       const created = await EvaluationTaskService.createEvaluation({
         ...params,
@@ -528,7 +597,8 @@ describe('EvaluationTaskService', () => {
         description: 'Test multiple restart operations',
         datasetId,
         target,
-        evaluators: evaluators
+        evaluators: evaluators,
+        autoStart: false
       };
       const created = await EvaluationTaskService.createEvaluation({
         ...params,
@@ -621,7 +691,8 @@ describe('EvaluationTaskService', () => {
         description: 'Test field cleanup during restart',
         datasetId,
         target,
-        evaluators: evaluators
+        evaluators: evaluators,
+        autoStart: false
       };
       const created = await EvaluationTaskService.createEvaluation({
         ...params,
@@ -670,8 +741,7 @@ describe('EvaluationTaskService', () => {
         {
           $set: {
             status: EvaluationStatusEnum.completed,
-            finishTime: new Date(),
-            avgScore: 85
+            finishTime: new Date()
           }
         }
       );
@@ -689,7 +759,8 @@ describe('EvaluationTaskService', () => {
         description: 'Test restarting running task',
         datasetId,
         target,
-        evaluators: evaluators
+        evaluators: evaluators,
+        autoStart: false
       };
       const created = await EvaluationTaskService.createEvaluation({
         ...params,
@@ -2256,7 +2327,8 @@ describe('EvaluationTaskService', () => {
         description: 'A test evaluation for data item operations',
         datasetId,
         target,
-        evaluators: evaluators
+        evaluators: evaluators,
+        autoStart: false
       };
       const evaluation = await EvaluationTaskService.createEvaluation({
         ...params,
@@ -2271,7 +2343,7 @@ describe('EvaluationTaskService', () => {
         {
           evalId: testEvaluationId,
           dataItem: {
-            _id: testDataItemId,
+            _id: new Types.ObjectId(testDataItemId),
             userInput: 'What is JavaScript?',
             expectedOutput: 'JavaScript is a programming language'
           },
@@ -2286,7 +2358,7 @@ describe('EvaluationTaskService', () => {
         {
           evalId: testEvaluationId,
           dataItem: {
-            _id: testDataItemId,
+            _id: new Types.ObjectId(testDataItemId),
             userInput: 'What is JavaScript?',
             expectedOutput: 'JavaScript is a programming language'
           },
@@ -2328,10 +2400,10 @@ describe('EvaluationTaskService', () => {
         expect(firstGroup.dataItemId).toBeDefined();
         expect(firstGroup.dataItem).toBeDefined();
         expect(firstGroup.items).toBeDefined();
-        expect(firstGroup.summary).toBeDefined();
-        expect(firstGroup.summary.totalItems).toBeGreaterThan(0);
-        expect(firstGroup.summary.completedItems).toBeGreaterThanOrEqual(0);
-        expect(firstGroup.summary.errorItems).toBeGreaterThanOrEqual(0);
+        expect(firstGroup.statistics).toBeDefined();
+        expect(firstGroup.statistics!.totalItems).toBeGreaterThan(0);
+        expect(firstGroup.statistics!.completedItems).toBeGreaterThanOrEqual(0);
+        expect(firstGroup.statistics!.errorItems).toBeGreaterThanOrEqual(0);
       });
 
       test('应该支持状态过滤', async () => {
@@ -2429,7 +2501,7 @@ describe('EvaluationTaskService', () => {
         // 验证失败的项目状态被重置
         const retriedItems = await MongoEvalItem.find({
           evalId: testEvaluationId,
-          'dataItem._id': testDataItemId,
+          'dataItem._id': new Types.ObjectId(testDataItemId),
           status: EvaluationStatusEnum.queuing
         });
         expect(retriedItems).toHaveLength(1);
@@ -2437,7 +2509,7 @@ describe('EvaluationTaskService', () => {
         // 验证成功的项目未受影响
         const completedItems = await MongoEvalItem.find({
           evalId: testEvaluationId,
-          'dataItem._id': testDataItemId,
+          'dataItem._id': new Types.ObjectId(testDataItemId),
           status: EvaluationStatusEnum.completed
         });
         expect(completedItems).toHaveLength(1);
@@ -2446,7 +2518,7 @@ describe('EvaluationTaskService', () => {
       test('没有失败项目时应该返回0', async () => {
         // 先将所有项目设为完成状态
         await MongoEvalItem.updateMany(
-          { evalId: testEvaluationId, 'dataItem._id': testDataItemId },
+          { evalId: testEvaluationId, 'dataItem._id': new Types.ObjectId(testDataItemId) },
           { $set: { status: EvaluationStatusEnum.completed } }
         );
 

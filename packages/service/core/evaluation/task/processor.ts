@@ -214,16 +214,6 @@ const finishEvaluationTask = async (evalId: string) => {
           },
           queuingCount: {
             $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.queuing] }, 1, 0] }
-          },
-          // Calculate average score only for successfully completed items
-          avgScore: {
-            $avg: {
-              $cond: [
-                { $eq: ['$status', EvaluationStatusEnum.completed] },
-                '$evaluatorOutput?.data?.score',
-                null
-              ]
-            }
           }
         }
       }
@@ -240,43 +230,42 @@ const finishEvaluationTask = async (evalId: string) => {
       completedCount = 0,
       errorCount = 0,
       evaluatingCount = 0,
-      queuingCount = 0,
-      avgScore = 0
+      queuingCount = 0
     } = statsResult;
 
     // Check if truly completed
     const pendingCount = evaluatingCount + queuingCount;
+
+    // Task status is always completed when all items are finished
+    let taskStatus: EvaluationStatusEnum = EvaluationStatusEnum.completed;
     if (pendingCount > 0) {
       addLog.debug(
         `[Evaluation] Task not yet completed: ${evalId}, pending items: ${pendingCount}`
       );
-      return; // Still have incomplete items, do not update task status
+      taskStatus = EvaluationStatusEnum.evaluating;
     }
 
-    // Task status is always completed when all items are finished
-    const taskStatus = EvaluationStatusEnum.completed;
-
     // Update task status with statistical fields
-    await MongoEvaluation.updateOne(
-      { _id: new Types.ObjectId(evalId) },
-      {
-        $set: {
-          finishTime: new Date(),
-          avgScore: avgScore != null ? Math.round(avgScore * 100) / 100 : undefined,
-          status: taskStatus,
-          // Use statistics object to store execution statistics
-          statistics: {
-            totalItems: totalCount,
-            completedItems: completedCount,
-            errorItems: errorCount
-          }
-        }
+    const updateFields: any = {
+      status: taskStatus,
+      // Use statistics object to store execution statistics
+      statistics: {
+        totalItems: totalCount,
+        completedItems: completedCount,
+        errorItems: errorCount
       }
-    );
+    };
+
+    // Only set finishTime if the task is actually completed
+    if (taskStatus === EvaluationStatusEnum.completed) {
+      updateFields.finishTime = new Date();
+    }
+
+    await MongoEvaluation.updateOne({ _id: new Types.ObjectId(evalId) }, { $set: updateFields });
 
     addLog.debug(
       `[Evaluation] Task completed: ${evalId}, status: ${taskStatus}, total: ${totalCount}, ` +
-        `success: ${completedCount}, failed: ${errorCount}, avg score: ${avgScore ? avgScore.toFixed(2) : 'N/A'}`
+        `success: ${completedCount}, failed: ${errorCount}`
     );
   } catch (error) {
     addLog.error(`[Evaluation] Error occurred while completing task: ${evalId}`, error);
@@ -672,14 +661,7 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
 
   // After try-catch, check if all evaluation items are completed
   try {
-    const pendingCount = await MongoEvalItem.countDocuments({
-      evalId: new Types.ObjectId(evalId),
-      status: { $in: [EvaluationStatusEnum.queuing, EvaluationStatusEnum.evaluating] }
-    });
-
-    if (pendingCount === 0) {
-      await finishEvaluationTask(evalId);
-    }
+    await finishEvaluationTask(evalId);
   } catch (finishError) {
     addLog.error(
       `[Evaluation] Error occurred while checking task completion status: ${evalId}`,

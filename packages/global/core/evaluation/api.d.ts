@@ -5,7 +5,8 @@ import type {
   EvaluationItemSchemaType,
   EvaluationDisplayType,
   EvaluationItemDisplayType,
-  EvaluationDataItemType
+  EvaluationDataItemType,
+  EvaluationStatistics
 } from './type';
 
 // ===== Common Types =====
@@ -51,7 +52,6 @@ export type EvaluationStatsResponse = {
   evaluating: number;
   queuing: number;
   error: number;
-  avgScore?: number;
 };
 
 // Export Evaluation Items
@@ -112,12 +112,7 @@ export type DataItemGroupedItem = {
   dataItemId: string;
   dataItem: EvaluationDataItemType;
   items: EvaluationItemDisplayType[];
-  summary: {
-    totalItems: number;
-    completedItems: number;
-    errorItems: number;
-    avgScore?: number;
-  };
+  statistics?: EvaluationStatistics;
 };
 export type DataItemListResponse = PaginationResponse<DataItemGroupedItem>;
 
