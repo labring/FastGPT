@@ -20,19 +20,25 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import type {
   InteractiveBasicType,
   PaymentPauseInteractive,
+  InteractiveNodeResponseType,
   UserInputInteractive,
   UserSelectInteractive
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { isEqual } from 'lodash';
 import { useTranslation } from 'next-i18next';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
-import { SelectOptionsComponent, FormInputComponent } from './Interactive/InteractiveComponents';
+import {
+  SelectOptionsComponent,
+  FormInputComponent,
+  AgentPlanCheckComponent
+} from './Interactive/InteractiveComponents';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import { useContextSelector } from 'use-context-selector';
 import { type OnOpenCiteModalProps } from '@/web/core/chat/context/chatItemContext';
 import { WorkflowAuthContext } from '../ChatContainer/context/workflowAuthContext';
 import { useCreation } from 'ahooks';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { ConfirmPlanAgentText } from '@fastgpt/global/core/workflow/runtime/constants';
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -216,21 +222,21 @@ ${response}`}
   (prevProps, nextProps) => isEqual(prevProps, nextProps)
 );
 
-const onSendPrompt = (e: { text: string; isInteractivePrompt: boolean }) =>
-  eventBus.emit(EventNameEnum.sendQuestion, e);
+const onSendPrompt = (text: string) =>
+  eventBus.emit(EventNameEnum.sendQuestion, {
+    text,
+    focus: true
+  });
 const RenderUserSelectInteractive = React.memo(function RenderInteractive({
   interactive
 }: {
-  interactive: InteractiveBasicType & UserSelectInteractive;
+  interactive: UserSelectInteractive;
 }) {
   return (
     <SelectOptionsComponent
       interactiveParams={interactive.params}
       onSelect={(value) => {
-        onSendPrompt({
-          text: value,
-          isInteractivePrompt: true
-        });
+        onSendPrompt(value);
       }}
     />
   );
@@ -238,7 +244,7 @@ const RenderUserSelectInteractive = React.memo(function RenderInteractive({
 const RenderUserFormInteractive = React.memo(function RenderFormInput({
   interactive
 }: {
-  interactive: InteractiveBasicType & UserInputInteractive;
+  interactive: UserInputInteractive;
 }) {
   const { t } = useTranslation();
 
@@ -261,10 +267,7 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
         }
       });
 
-      onSendPrompt({
-        text: JSON.stringify(finalData),
-        isInteractivePrompt: true
-      });
+      onSendPrompt(JSON.stringify(finalData));
     },
     [interactive.params.inputForm]
   );
@@ -296,10 +299,7 @@ const RenderPaymentPauseInteractive = React.memo(function RenderPaymentPauseInte
       <Button
         maxW={'250px'}
         onClick={() => {
-          onSendPrompt({
-            text: 'Continue',
-            isInteractivePrompt: true
-          });
+          onSendPrompt('Continue');
         }}
       >
         {t('chat:continue_run')}
@@ -355,15 +355,28 @@ const AIResponseBox = ({
     );
   }
   if ('interactive' in value && value.interactive) {
-    const finalInteractive = extractDeepestInteractive(value.interactive);
-    if (finalInteractive.type === 'userSelect') {
-      return <RenderUserSelectInteractive interactive={finalInteractive} />;
+    const interactive = extractDeepestInteractive(value.interactive);
+    if (interactive.type === 'userSelect' || interactive.type === 'agentPlanAskUserSelect') {
+      return <RenderUserSelectInteractive interactive={interactive} />;
     }
-    if (finalInteractive.type === 'userInput') {
-      return <RenderUserFormInteractive interactive={finalInteractive} />;
+    if (interactive.type === 'userInput' || interactive.type === 'agentPlanAskUserForm') {
+      return <RenderUserFormInteractive interactive={interactive} />;
     }
-    if (finalInteractive.type === 'paymentPause') {
-      return <RenderPaymentPauseInteractive interactive={finalInteractive} />;
+    if (interactive.type === 'agentPlanCheck') {
+      return (
+        <AgentPlanCheckComponent
+          interactiveParams={interactive.params}
+          onConfirm={() => {
+            onSendPrompt(ConfirmPlanAgentText);
+          }}
+        />
+      );
+    }
+    if (interactive.type === 'agentPlanAskQuery') {
+      return <Box>{interactive.params.content}</Box>;
+    }
+    if (interactive.type === 'paymentPause') {
+      return <RenderPaymentPauseInteractive interactive={interactive} />;
     }
   }
 

@@ -28,6 +28,7 @@
   "config_input_guide_lexicon_title": "配置词库",
   "confirm_clear_input_value": "确认清空表单内容？将会恢复默认值！",
   "confirm_to_clear_share_chat_history": "确认清空所有聊天记录？",
+  "confirm_plan_agent": "请确认改计划是否符合预期，如需修改，可在底部输入框中发送修改要求。",
   "content_empty": "内容为空",
   "contextual": "{{num}}条上下文",
   "contextual_preview": "上下文预览 {{num}} 条",

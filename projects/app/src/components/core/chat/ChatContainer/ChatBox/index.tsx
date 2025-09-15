@@ -39,7 +39,7 @@ import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constant
 import {
   getInteractiveByHistories,
   formatChatValue2InputType,
-  setInteractiveResultToHistories
+  rewriteHistoriesByInteractiveResponse
 } from './utils';
 import { ChatTypeEnum, textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -155,7 +155,10 @@ const ChatBox = ({
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
 
   // Workflow running, there are user input or selection
-  const lastInteractive = useMemo(() => getInteractiveByHistories(chatRecords), [chatRecords]);
+  const { interactive: lastInteractive, canSendQuery } = useMemo(
+    () => getInteractiveByHistories(chatRecords),
+    [chatRecords]
+  );
 
   const showExternalVariable = useMemo(() => {
     const map: Record<string, boolean> = {
@@ -344,7 +347,7 @@ const ChatBox = ({
             })();
             const updateValue: AIChatItemValueItemType = cloneDeep(item.value[updateIndex]);
             updateValue.id = responseValueId;
-            console.log(event, tool, updateValue);
+
             if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
               return {
                 ...item,
@@ -550,8 +553,8 @@ const ChatBox = ({
       text = '',
       files = [],
       history = chatRecords,
+      interactive,
       autoTTSResponse = false,
-      isInteractivePrompt = false,
       hideInUI = false
     }) => {
       variablesForm.handleSubmit(
@@ -652,9 +655,13 @@ const ChatBox = ({
 
           // Update histories(Interactive input does not require new session rounds)
           setChatRecords(
-            isInteractivePrompt
+            interactive
               ? // 把交互的结果存储到对话记录中，交互模式下，不需要新的会话轮次
-                setInteractiveResultToHistories(newChatList.slice(0, -2), text)
+                rewriteHistoriesByInteractiveResponse({
+                  histories: newChatList,
+                  interactive: interactive,
+                  interactiveVal: text
+                })
               : newChatList
           );
 
@@ -716,7 +723,7 @@ const ChatBox = ({
                 };
               });
 
-              const lastInteractive = getInteractiveByHistories(state);
+              const { interactive: lastInteractive } = getInteractiveByHistories(state);
               if (lastInteractive?.type === 'paymentPause' && !lastInteractive.params.continue) {
                 setNotSufficientModalType(TeamErrEnum.aiPointsNotEnough);
               }
@@ -726,7 +733,7 @@ const ChatBox = ({
 
             setTimeout(() => {
               // If there is no interactive mode, create a question guide
-              if (!getInteractiveByHistories(newChatHistories)) {
+              if (!getInteractiveByHistories(newChatHistories).interactive) {
                 createQuestionGuide();
               }
 
@@ -1011,7 +1018,7 @@ const ChatBox = ({
     abortRequest('leave');
   }, [chatId, appId, abortRequest, setValue]);
 
-  const canSendPrompt = onStartChat && chatStarted && active && !lastInteractive;
+  const canSendPrompt = onStartChat && chatStarted && active && canSendQuery;
 
   // Add listener
   useEffect(() => {
@@ -1024,9 +1031,12 @@ const ChatBox = ({
     };
     window.addEventListener('message', windowMessage);
 
-    const fn: SendPromptFnType = (e) => {
-      if (canSendPrompt || e.isInteractivePrompt) {
-        sendPrompt(e);
+    const fn = ({ focus = false, ...e }: ChatBoxInputType & { focus?: boolean }) => {
+      if (canSendPrompt || focus) {
+        sendPrompt({
+          ...e,
+          interactive: lastInteractive
+        });
       }
     };
     eventBus.on(EventNameEnum.sendQuestion, fn);
@@ -1040,7 +1050,7 @@ const ChatBox = ({
       eventBus.off(EventNameEnum.sendQuestion);
       eventBus.off(EventNameEnum.editQuestion);
     };
-  }, [isReady, resetInputVal, sendPrompt, canSendPrompt]);
+  }, [isReady, resetInputVal, sendPrompt, canSendPrompt, lastInteractive]);
 
   // Auto send prompt
   useDebounceEffect(

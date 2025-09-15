@@ -120,9 +120,9 @@ export type ChatItemValueItemType =
   | UserChatItemValueItemType
   | SystemChatItemValueItemType
   | AIChatItemValueItemType;
-export type ChatItemMergeType = UserChatItemType | SystemChatItemType | AIChatItemType;
+export type ChatItemObjItemType = UserChatItemType | SystemChatItemType | AIChatItemType;
 
-export type ChatItemSchema = ChatItemMergeType & {
+export type ChatItemSchema = ChatItemObjItemType & {
   dataId: string;
   chatId: string;
   userId: string;
@@ -147,12 +147,12 @@ export type ResponseTagItemType = {
   toolCiteLinks?: ToolCiteLinksType[];
 };
 
-export type ChatItemType = ChatItemMergeType & {
+export type ChatItemType = ChatItemObjItemType & {
   dataId?: string;
 } & ResponseTagItemType;
 
 // Frontend type
-export type ChatSiteItemType = ChatItemMergeType & {
+export type ChatSiteItemType = ChatItemObjItemType & {
   _id?: string;
   dataId: string;
   status: `${ChatStatusEnum}`;
