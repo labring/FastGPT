@@ -1528,12 +1528,14 @@ describe('EvaluationTaskService', () => {
           actualOutput: 'Test response',
           responseTime: 1000
         },
-        evaluatorOutput: {
-          metricName: 'Test Metric',
-          data: {
-            score: 85
+        evaluatorOutputs: [
+          {
+            metricName: 'Test Metric',
+            data: {
+              score: 85
+            }
           }
-        }
+        ]
       });
 
       const { results: buffer } = await EvaluationTaskService.exportEvaluationResults(
@@ -1579,12 +1581,14 @@ describe('EvaluationTaskService', () => {
           actualOutput: 'JavaScript response',
           responseTime: 1000
         },
-        evaluatorOutput: {
-          metricName: 'Test Metric',
-          data: {
-            score: 85
+        evaluatorOutputs: [
+          {
+            metricName: 'Test Metric',
+            data: {
+              score: 85
+            }
           }
-        }
+        ]
       });
 
       const { results: buffer } = await EvaluationTaskService.exportEvaluationResults(
