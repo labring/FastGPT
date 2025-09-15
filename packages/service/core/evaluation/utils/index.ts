@@ -63,7 +63,7 @@ export async function validateEvaluationParams(
   params: EvaluationValidationParams,
   options?: EvaluationValidationOptions
 ): Promise<ValidationResult> {
-  const { name, description, datasetId: evalDatasetCollectionId, target, evaluators } = params;
+  const { name, description, datasetId, target, evaluators } = params;
   const mode = options?.mode || 'create';
   const isCreateMode = mode === 'create';
 
@@ -82,14 +82,14 @@ export async function validateEvaluationParams(
       };
     }
 
-    if (!evalDatasetCollectionId) {
+    if (!datasetId) {
       return {
         isValid: false,
         errors: [
           {
             code: EvaluationErrEnum.evalDatasetIdRequired,
-            message: 'Evaluation dataset collection ID is required',
-            field: 'evalDatasetCollectionId'
+            message: 'Dataset ID is required',
+            field: 'datasetId'
           }
         ]
       };
@@ -166,107 +166,107 @@ export async function validateEvaluationParams(
     };
   }
 
-  if (evalDatasetCollectionId !== undefined) {
-    if (!evalDatasetCollectionId) {
+  if (datasetId !== undefined) {
+    if (!datasetId) {
       return {
         isValid: false,
         errors: [
           {
             code: EvaluationErrEnum.evalDatasetIdRequired,
-            message: 'Evaluation dataset collection ID is required',
-            field: 'evalDatasetCollectionId'
+            message: 'Dataset ID is required',
+            field: 'datasetId'
           }
         ]
       };
     }
 
     // Validate dataset exists and is accessible
-    const datasetValidation = await validateDatasetExists(evalDatasetCollectionId, options?.teamId);
+    const datasetValidation = await validateDatasetExists(datasetId, options?.teamId);
     if (!datasetValidation.isValid) {
       return datasetValidation;
     }
-
-    if (target !== undefined) {
-      if (!target) {
-        return {
-          isValid: false,
-          errors: [
-            {
-              code: EvaluationErrEnum.evalTargetRequired,
-              message: 'Evaluation target is required',
-              field: 'target'
-            }
-          ]
-        };
-      }
-
-      // Validate target configuration using validateTargetConfig
-      const targetValidation = await validateTargetConfig(target);
-      if (!targetValidation.isValid) {
-        return targetValidation; // Return the detailed validation result directly
-      }
-    }
-
-    if (evaluators !== undefined) {
-      if (!evaluators || !Array.isArray(evaluators) || evaluators.length === 0) {
-        return {
-          isValid: false,
-          errors: [
-            {
-              code: EvaluationErrEnum.evalEvaluatorsRequired,
-              message: 'At least one evaluator is required',
-              field: 'evaluators'
-            }
-          ]
-        };
-      }
-
-      // Validate evaluators configuration using validateEvaluatorConfig
-      for (let i = 0; i < evaluators.length; i++) {
-        const evaluator = evaluators[i];
-
-        // Detailed validation using validateEvaluatorConfig
-        const evaluatorValidation = await validateEvaluatorConfig(evaluator);
-        if (!evaluatorValidation.isValid) {
-          // Prefix error messages with evaluator index for clarity
-          const errors = evaluatorValidation.errors.map((err) => ({
-            ...err,
-            message: `Evaluator at index ${i}: ${err.message}`,
-            field: `evaluators[${i}].${err.field || 'unknown'}`,
-            debugInfo: {
-              evaluatorIndex: i,
-              ...err.debugInfo
-            }
-          }));
-          return { isValid: false, errors };
-        }
-
-        // Validate scoreScaling if provided
-        if (evaluator.scoreScaling !== undefined) {
-          if (
-            typeof evaluator.scoreScaling !== 'number' ||
-            isNaN(evaluator.scoreScaling) ||
-            !isFinite(evaluator.scoreScaling) ||
-            evaluator.scoreScaling <= 0 ||
-            evaluator.scoreScaling > 10000
-          ) {
-            return {
-              isValid: false,
-              errors: [
-                {
-                  code: EvaluationErrEnum.evalEvaluatorInvalidScoreScaling,
-                  message: 'Evaluator scoreScaling invalid',
-                  field: 'scoreScaling'
-                }
-              ]
-            };
-          }
-        }
-      }
-    }
-
-    return { isValid: true, errors: [] };
   }
+
+  if (target !== undefined) {
+    if (!target) {
+      return {
+        isValid: false,
+        errors: [
+          {
+            code: EvaluationErrEnum.evalTargetRequired,
+            message: 'Evaluation target is required',
+            field: 'target'
+          }
+        ]
+      };
+    }
+
+    // Validate target configuration using validateTargetConfig
+    const targetValidation = await validateTargetConfig(target);
+    if (!targetValidation.isValid) {
+      return targetValidation; // Return the detailed validation result directly
+    }
+  }
+
+  if (evaluators !== undefined) {
+    if (!evaluators || !Array.isArray(evaluators) || evaluators.length === 0) {
+      return {
+        isValid: false,
+        errors: [
+          {
+            code: EvaluationErrEnum.evalEvaluatorsRequired,
+            message: 'At least one evaluator is required',
+            field: 'evaluators'
+          }
+        ]
+      };
+    }
+
+    // Validate evaluators configuration using validateEvaluatorConfig
+    for (let i = 0; i < evaluators.length; i++) {
+      const evaluator = evaluators[i];
+
+      // Detailed validation using validateEvaluatorConfig
+      const evaluatorValidation = await validateEvaluatorConfig(evaluator);
+      if (!evaluatorValidation.isValid) {
+        // Prefix error messages with evaluator index for clarity
+        const errors = evaluatorValidation.errors.map((err) => ({
+          ...err,
+          message: `Evaluator at index ${i}: ${err.message}`,
+          field: `evaluators[${i}].${err.field || 'unknown'}`,
+          debugInfo: {
+            evaluatorIndex: i,
+            ...err.debugInfo
+          }
+        }));
+        return { isValid: false, errors };
+      }
+
+      // Validate scoreScaling if provided
+      if (evaluator.scoreScaling !== undefined) {
+        if (
+          typeof evaluator.scoreScaling !== 'number' ||
+          isNaN(evaluator.scoreScaling) ||
+          !isFinite(evaluator.scoreScaling) ||
+          evaluator.scoreScaling <= 0 ||
+          evaluator.scoreScaling > 10000
+        ) {
+          return {
+            isValid: false,
+            errors: [
+              {
+                code: EvaluationErrEnum.evalEvaluatorInvalidScoreScaling,
+                message: 'Evaluator scoreScaling invalid',
+                field: 'scoreScaling'
+              }
+            ]
+          };
+        }
+      }
+    }
+  }
+
+  return { isValid: true, errors: [] };
 }
 
 export async function validateEvaluationParamsForCreate(
