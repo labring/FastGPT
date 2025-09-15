@@ -38,7 +38,6 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   getSystemPlugTemplates,
   getPluginGroups,
-  getMcpChildren,
   getPreviewPluginNode
 } from '@/web/core/app/api/plugin';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -90,6 +89,7 @@ const EditForm = ({
   const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
+  const { toast } = useToast();
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
@@ -229,26 +229,21 @@ const EditForm = ({
     },
     [i18n?.language, t]
   );
-  const { toast } = useToast();
-
   const handleConfigureTool = useCallback(
     (toolId: string) => {
       const tool = appForm.selectedTools.find((tool) => tool.id === toolId) as ExtendedToolType;
       if (tool && tool.isUnconfigured) {
-        // 打开配置模态框
         setConfigTool(tool);
       }
     },
     [appForm.selectedTools]
   );
-
   const handleRemoveToolFromEditor = useCallback((toolId: string) => {
     setAppForm((state) => ({
       ...state,
       selectedTools: state.selectedTools.filter((tool) => tool.id !== toolId)
     }));
   }, []);
-
   const onAddTool = useCallback(
     (tool: FlowNodeTemplateType) => {
       setAppForm((state) => ({
@@ -258,14 +253,9 @@ const EditForm = ({
         )
       }));
       setConfigTool(undefined);
-      toast({
-        title: 'Tool configured successfully',
-        status: 'success'
-      });
     },
-    [setAppForm, toast]
+    [setAppForm]
   );
-
   const handleAddToolFromEditor = useCallback(
     async (toolKey: string): Promise<string> => {
       const toolId = `tool_${getNanoid(6)}`;
