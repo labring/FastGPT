@@ -72,8 +72,10 @@ export const DatasetSelectModal = ({
     );
   };
 
-  const getDisableTip = () => {
-    return scene === 'smartGenerate' ? t('app:no_data_for_smart_generate') : '';
+  const getDisableTip = (item: DatasetListItemType) => {
+    return scene === 'smartGenerate' && isDatasetDisabled(item)
+      ? t('app:no_data_for_smart_generate')
+      : '';
   };
 
   // Cache compatible datasets by vector model to avoid repeated filtering
@@ -255,7 +257,7 @@ export const DatasetSelectModal = ({
                         onClick={(e) => e.stopPropagation()} // Prevent parent click when clicking checkbox
                       >
                         {item.type !== DatasetTypeEnum.folder && (
-                          <MyTooltip label={getDisableTip()}>
+                          <MyTooltip label={getDisableTip(item)}>
                             <Checkbox
                               isChecked={isDatasetSelected(item._id)}
                               isDisabled={isDatasetDisabled(item)}
