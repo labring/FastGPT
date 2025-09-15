@@ -236,9 +236,13 @@ export class EvaluationTaskService {
         {
           $lookup: {
             from: 'eval_items',
-            localField: '_id',
-            foreignField: 'evalId',
+            let: { evalId: '$_id' },
             pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ['$evalId', '$evalId'] }
+                }
+              },
               {
                 $group: {
                   _id: null,
@@ -359,9 +363,13 @@ export class EvaluationTaskService {
       {
         $lookup: {
           from: 'eval_items',
-          localField: '_id',
-          foreignField: 'evalId',
+          let: { evalId: '$_id' },
           pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ['$evalId', '$evalId'] }
+              }
+            },
             {
               $group: {
                 _id: null,

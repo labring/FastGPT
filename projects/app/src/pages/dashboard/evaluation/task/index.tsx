@@ -66,7 +66,8 @@ const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
     data: tasks,
     Pagination,
     getData: fetchData,
-    isLoading
+    isLoading,
+    total
   } = usePagination<{ searchKey: string; appFilter: string }, EvaluationDisplayType>(
     getEvaluationListAdapter,
     {
@@ -343,6 +344,7 @@ const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
               ))}
             </Tbody>
           </Table>
+          {total === 0 && <EmptyTip text={t('dashboard_evaluation:no_data')} pt={'30vh'} />}
         </TableContainer>
       </MyBox>
 

@@ -52,7 +52,8 @@ const EvaluationDimensions = ({ Tab }: { Tab: React.ReactNode }) => {
     data: dimensions,
     Pagination,
     getData: fetchData,
-    isLoading
+    isLoading,
+    total
   } = usePagination<{ searchKey: string }, EvalMetricDisplayType>(getMetricListAdapter, {
     defaultPageSize: 10,
     params: {
@@ -187,6 +188,7 @@ const EvaluationDimensions = ({ Tab }: { Tab: React.ReactNode }) => {
               ))}
             </Tbody>
           </Table>
+          {total === 0 && <EmptyTip text={t('dashboard_evaluation:no_data')} pt={'30vh'} />}
         </TableContainer>
       </MyBox>
 
