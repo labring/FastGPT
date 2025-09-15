@@ -314,10 +314,12 @@ export const updateInteractiveChat = async ({
   // Update interactive value
   const interactiveValue = chatItem.value[chatItem.value.length - 1];
 
-  if (!interactiveValue || !interactiveValue.interactive?.params) {
+  if (!interactiveValue || !interactiveValue.interactive) {
     return;
   }
+  interactiveValue.interactive.params = interactiveValue.interactive.params || {};
 
+  // Update interactive value
   const parsedUserInteractiveVal = (() => {
     const { text: userInteractiveVal } = chatValue2RuntimePrompt(userContent.value);
     try {
@@ -337,7 +339,7 @@ export const updateInteractiveChat = async ({
   if (finalInteractive.type === 'userSelect') {
     finalInteractive.params.userSelectedVal = parsedUserInteractiveVal;
   } else if (
-    finalInteractive.type === 'userInput' &&
+    (finalInteractive.type === 'userInput' || finalInteractive.type === 'agentPlanAskUserForm') &&
     typeof parsedUserInteractiveVal === 'object'
   ) {
     finalInteractive.params.inputForm = finalInteractive.params.inputForm.map((item) => {
@@ -350,6 +352,8 @@ export const updateInteractiveChat = async ({
         : item;
     });
     finalInteractive.params.submitted = true;
+  } else if (finalInteractive.type === 'agentPlanCheck') {
+    finalInteractive.params.confirmed = true;
   }
 
   if (aiResponse.customFeedbacks) {

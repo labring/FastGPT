@@ -41,3 +41,6 @@ export const needReplaceReferenceInputTypeList = [
   FlowNodeInputTypeEnum.addInputParam,
   FlowNodeInputTypeEnum.custom
 ] as string[];
+
+// Interactive
+export const ConfirmPlanAgentText = 'CONFIRM';

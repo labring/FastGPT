@@ -23,6 +23,7 @@
   "config_input_guide": "Set Up Input Guide",
   "config_input_guide_lexicon": "Set Up Lexicon",
   "config_input_guide_lexicon_title": "Set Up Lexicon",
+  "confirm_plan_agent": "Please confirm whether the change plan meets expectations. If you need to modify it, you can send the modification requirements in the input box at the bottom.",
   "content_empty": "No Content",
   "contextual": "{{num}} Contexts",
   "contextual_preview": "Contextual Preview {{num}} Items",
