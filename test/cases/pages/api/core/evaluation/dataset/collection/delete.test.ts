@@ -83,7 +83,7 @@ describe('EvalDatasetCollection Delete API', () => {
     mockAuthEvaluationDatasetWrite.mockResolvedValue({
       teamId: validTeamId,
       tmbId: validTmbId,
-      datasetId: validCollectionId
+      evalDatasetCollectionId: validCollectionId
     });
 
     mockMongoSessionRun.mockImplementation(async (callback) => {
@@ -291,7 +291,7 @@ describe('EvalDatasetCollection Delete API', () => {
       await handler_test(req as any);
 
       expect(mockMongoEvalDatasetData.find).toHaveBeenCalledWith(
-        { datasetId: validCollectionId },
+        { evalDatasetCollectionId: validCollectionId },
         { _id: 1 }
       );
       expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalledWith(
@@ -395,7 +395,7 @@ describe('EvalDatasetCollection Delete API', () => {
       await handler_test(req as any);
 
       expect(mockMongoEvalDatasetData.deleteMany).toHaveBeenCalledWith(
-        { datasetId: validCollectionId },
+        { evalDatasetCollectionId: validCollectionId },
         { session: mockSession }
       );
       expect(mockAddLog.info).toHaveBeenCalledWith('Evaluation dataset data deleted', {
@@ -468,7 +468,7 @@ describe('EvalDatasetCollection Delete API', () => {
       expect(mockMongoEvalDatasetCollection.findOne().session).toHaveBeenCalledWith(mockSession);
       expect(mockMongoEvalDatasetData.find().session).toHaveBeenCalledWith(mockSession);
       expect(mockMongoEvalDatasetData.deleteMany).toHaveBeenCalledWith(
-        { datasetId: validCollectionId },
+        { evalDatasetCollectionId: validCollectionId },
         { session: mockSession }
       );
       expect(mockMongoEvalDatasetCollection.deleteOne).toHaveBeenCalledWith(

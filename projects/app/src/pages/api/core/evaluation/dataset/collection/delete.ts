@@ -71,7 +71,7 @@ async function handler(
     addLog.info('Cleaning up quality assessment queue tasks', { collectionId });
     try {
       const datasetDataIds = await MongoEvalDatasetData.find(
-        { datasetId: collectionId },
+        { evalDatasetCollectionId: collectionId },
         { _id: 1 }
       ).session(session);
 
@@ -111,7 +111,7 @@ async function handler(
     }
 
     const deletedDataResult = await MongoEvalDatasetData.deleteMany(
-      { datasetId: collectionId },
+      { evalDatasetCollectionId: collectionId },
       { session }
     );
 

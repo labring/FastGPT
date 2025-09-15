@@ -27,7 +27,7 @@ const EvalDatasetDataSchema = new Schema({
     ref: TeamMemberCollectionName,
     required: true
   },
-  datasetId: {
+  evalDatasetCollectionId: {
     type: Schema.Types.ObjectId,
     ref: EvalDatasetCollectionName,
     required: true,
@@ -93,8 +93,8 @@ const EvalDatasetDataSchema = new Schema({
 });
 
 // Indexes for efficient queries
-EvalDatasetDataSchema.index({ datasetId: 1, createTime: -1 });
-EvalDatasetDataSchema.index({ datasetId: 1, updateTime: -1 });
+EvalDatasetDataSchema.index({ evalDatasetCollectionId: 1, createTime: -1 });
+EvalDatasetDataSchema.index({ evalDatasetCollectionId: 1, updateTime: -1 });
 
 // Text search index for searching within inputs and outputs
 EvalDatasetDataSchema.index({

@@ -451,12 +451,14 @@ export const authEvaluationDatasetDataUpdateById = async (
   tmbId: string;
   collectionId: string;
 }> => {
-  const dataItem = await MongoEvalDatasetData.findById(dataId).select('datasetId').lean();
+  const dataItem = await MongoEvalDatasetData.findById(dataId)
+    .select('evalDatasetCollectionId')
+    .lean();
   if (!dataItem) {
     throw new Error(EvaluationErrEnum.datasetDataNotFound);
   }
 
-  const collectionId = String(dataItem.datasetId);
+  const collectionId = String(dataItem.evalDatasetCollectionId);
   return await authEvaluationDatasetDataUpdate(collectionId, auth);
 };
 
@@ -468,11 +470,13 @@ export const authEvaluationDatasetDataReadById = async (
   tmbId: string;
   collectionId: string;
 }> => {
-  const dataItem = await MongoEvalDatasetData.findById(dataId).select('datasetId').lean();
+  const dataItem = await MongoEvalDatasetData.findById(dataId)
+    .select('evalDatasetCollectionId')
+    .lean();
   if (!dataItem) {
     throw new Error(EvaluationErrEnum.datasetDataNotFound);
   }
 
-  const collectionId = String(dataItem.datasetId);
+  const collectionId = String(dataItem.evalDatasetCollectionId);
   return await authEvaluationDatasetDataRead(collectionId, auth);
 };

@@ -160,7 +160,7 @@ describe('EvalDatasetData List API', () => {
 
       expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
         expect.arrayContaining([
-          { $match: { datasetId: new Types.ObjectId(validCollectionId) } },
+          { $match: { evalDatasetCollectionId: new Types.ObjectId(validCollectionId) } },
           { $sort: { createTime: -1 } },
           { $skip: expectedSkip },
           { $limit: expectedLimit }
@@ -187,7 +187,9 @@ describe('EvalDatasetData List API', () => {
       await handler_test(req as any);
 
       expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $match: { datasetId: new Types.ObjectId(validCollectionId) } }])
+        expect.arrayContaining([
+          { $match: { evalDatasetCollectionId: new Types.ObjectId(validCollectionId) } }
+        ])
       );
     });
 
@@ -202,7 +204,7 @@ describe('EvalDatasetData List API', () => {
       await handler_test(req as any);
 
       const expectedMatch = {
-        datasetId: new Types.ObjectId(validCollectionId),
+        evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
         $or: [
           { [EvalDatasetDataKeyEnum.UserInput]: { $regex: new RegExp(expected, 'i') } },
           { [EvalDatasetDataKeyEnum.ExpectedOutput]: { $regex: new RegExp(expected, 'i') } },
@@ -225,7 +227,7 @@ describe('EvalDatasetData List API', () => {
       await handler_test(req as any);
 
       const expectedMatch = {
-        datasetId: new Types.ObjectId(validCollectionId),
+        evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
         $or: [
           { [EvalDatasetDataKeyEnum.UserInput]: { $regex: new RegExp('What\\[\\?\\]', 'i') } },
           { [EvalDatasetDataKeyEnum.ExpectedOutput]: { $regex: new RegExp('What\\[\\?\\]', 'i') } },
@@ -252,7 +254,9 @@ describe('EvalDatasetData List API', () => {
       await handler_test(req as any);
 
       expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $match: { datasetId: new Types.ObjectId(validCollectionId) } }])
+        expect.arrayContaining([
+          { $match: { evalDatasetCollectionId: new Types.ObjectId(validCollectionId) } }
+        ])
       );
     });
 
@@ -284,7 +288,7 @@ describe('EvalDatasetData List API', () => {
         await handler_test(req as any);
 
         const expectedMatch = {
-          datasetId: new Types.ObjectId(validCollectionId),
+          evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
           'metadata.qualityStatus': status
         };
 
@@ -327,7 +331,7 @@ describe('EvalDatasetData List API', () => {
       await handler_test(req as any);
 
       const expectedMatch = {
-        datasetId: new Types.ObjectId(validCollectionId),
+        evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
         'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.highQuality,
         $or: [
           { [EvalDatasetDataKeyEnum.UserInput]: { $regex: new RegExp('AI', 'i') } },
@@ -357,7 +361,7 @@ describe('EvalDatasetData List API', () => {
       await handler_test(req as any);
 
       const expectedMatch = {
-        datasetId: new Types.ObjectId(validCollectionId),
+        evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
         'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.needsOptimization
       };
 
@@ -382,7 +386,7 @@ describe('EvalDatasetData List API', () => {
       await handler_test(req as any);
 
       const expectedMatch = {
-        datasetId: new Types.ObjectId(validCollectionId),
+        evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
         $or: [
           { [EvalDatasetDataKeyEnum.UserInput]: { $regex: new RegExp('machine learning', 'i') } },
           {
@@ -416,7 +420,7 @@ describe('EvalDatasetData List API', () => {
       await handler_test(req1 as any);
 
       const expectedMatch1 = {
-        datasetId: new Types.ObjectId(validCollectionId),
+        evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
         'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.highQuality,
         $or: expect.arrayContaining([
           { [EvalDatasetDataKeyEnum.UserInput]: { $regex: expect.any(RegExp) } },
@@ -447,7 +451,7 @@ describe('EvalDatasetData List API', () => {
       await handler_test(req2 as any);
 
       const expectedMatch2 = {
-        datasetId: new Types.ObjectId(validCollectionId),
+        evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
         'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.needsOptimization,
         $or: expect.arrayContaining([
           { [EvalDatasetDataKeyEnum.UserInput]: { $regex: expect.any(RegExp) } },
@@ -471,7 +475,7 @@ describe('EvalDatasetData List API', () => {
       await handler_test(req as any);
 
       expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith([
-        { $match: { datasetId: new Types.ObjectId(validCollectionId) } },
+        { $match: { evalDatasetCollectionId: new Types.ObjectId(validCollectionId) } },
         { $sort: { createTime: -1 } },
         { $skip: 0 },
         { $limit: 10 },
@@ -503,7 +507,7 @@ describe('EvalDatasetData List API', () => {
         expect.arrayContaining([
           {
             $match: {
-              datasetId: new Types.ObjectId(validCollectionId),
+              evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
               $or: [
                 { [EvalDatasetDataKeyEnum.UserInput]: { $regex: new RegExp('test', 'i') } },
                 { [EvalDatasetDataKeyEnum.ExpectedOutput]: { $regex: new RegExp('test', 'i') } },
@@ -531,7 +535,7 @@ describe('EvalDatasetData List API', () => {
         expect.arrayContaining([
           {
             $match: {
-              datasetId: new Types.ObjectId(validCollectionId),
+              evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
               'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.highQuality
             }
           }
@@ -556,7 +560,7 @@ describe('EvalDatasetData List API', () => {
         expect.arrayContaining([
           {
             $match: {
-              datasetId: new Types.ObjectId(validCollectionId),
+              evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
               'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.needsOptimization,
               $or: [
                 { [EvalDatasetDataKeyEnum.UserInput]: { $regex: new RegExp('AI', 'i') } },
@@ -866,12 +870,29 @@ describe('EvalDatasetData List API', () => {
 
       await handler_test(req as any);
 
-      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $match: { datasetId: new Types.ObjectId(validCollectionId) } }])
-      );
+      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith([
+        { $match: { evalDatasetCollectionId: new Types.ObjectId(validCollectionId) } },
+        { $sort: { createTime: -1 } },
+        { $skip: 0 },
+        { $limit: 10 },
+        {
+          $project: {
+            _id: 1,
+            [EvalDatasetDataKeyEnum.UserInput]: 1,
+            [EvalDatasetDataKeyEnum.ActualOutput]: 1,
+            [EvalDatasetDataKeyEnum.ExpectedOutput]: 1,
+            [EvalDatasetDataKeyEnum.Context]: 1,
+            [EvalDatasetDataKeyEnum.RetrievalContext]: 1,
+            metadata: 1,
+            createFrom: 1,
+            createTime: 1,
+            updateTime: 1
+          }
+        }
+      ]);
 
       expect(mockMongoEvalDatasetData.countDocuments).toHaveBeenCalledWith({
-        datasetId: new Types.ObjectId(validCollectionId)
+        evalDatasetCollectionId: new Types.ObjectId(validCollectionId)
       });
     });
 
@@ -883,7 +904,7 @@ describe('EvalDatasetData List API', () => {
       await handler_test(req as any);
 
       const expectedMatch = {
-        datasetId: new Types.ObjectId(validCollectionId),
+        evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
         $or: [
           { [EvalDatasetDataKeyEnum.UserInput]: { $regex: new RegExp('test', 'i') } },
           { [EvalDatasetDataKeyEnum.ExpectedOutput]: { $regex: new RegExp('test', 'i') } },
@@ -911,7 +932,7 @@ describe('EvalDatasetData List API', () => {
       await handler_test(req as any);
 
       const expectedMatch = {
-        datasetId: new Types.ObjectId(validCollectionId),
+        evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
         'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.highQuality
       };
 
@@ -936,7 +957,7 @@ describe('EvalDatasetData List API', () => {
       await handler_test(req as any);
 
       const expectedMatch = {
-        datasetId: new Types.ObjectId(validCollectionId),
+        evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
         'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.completed,
         $or: [
           { [EvalDatasetDataKeyEnum.UserInput]: { $regex: new RegExp('AI model', 'i') } },
@@ -995,7 +1016,7 @@ describe('EvalDatasetData List API', () => {
         expect.arrayContaining([
           {
             $match: {
-              datasetId: new Types.ObjectId(validCollectionId),
+              evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
               $or: expect.arrayContaining([
                 { [EvalDatasetDataKeyEnum.UserInput]: { $regex: expect.any(RegExp) } },
                 { [EvalDatasetDataKeyEnum.ExpectedOutput]: { $regex: expect.any(RegExp) } },
@@ -1024,7 +1045,7 @@ describe('EvalDatasetData List API', () => {
         expect.arrayContaining([
           {
             $match: {
-              datasetId: new Types.ObjectId(validCollectionId),
+              evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
               $or: expect.arrayContaining([
                 { [EvalDatasetDataKeyEnum.UserInput]: { $regex: expect.any(RegExp) } }
               ])
