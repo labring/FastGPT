@@ -3,7 +3,7 @@ import {
   DatasetSearchModeMap,
   SearchScoreTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { recallFromVectorStore } from '../../../common/vectorDB/controller';
+import { recallFromVectorStore,databaseEmbeddingRecall } from '../../../common/vectorDB/controller';
 import { getVectorsByText } from '../../ai/embedding';
 import { getEmbeddingModel, getDefaultRerankModel, getLLMModel } from '../../ai/model';
 import { MongoDatasetData } from '../data/schema';
@@ -32,6 +32,9 @@ import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { datasetSearchQueryExtension } from './utils';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { formatDatasetDataValue } from '../data/controller';
+import { DBDatasetValueVectorTableName, DBDatasetVectorTableName } from '../../../common/vectorDB/constants';
+import { MongoDataset } from '../schema';
+import { addLog } from '../../../common/system/log';
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
@@ -65,6 +68,15 @@ export type SearchDatasetDataProps = {
   collectionFilterMatch?: string;
 };
 
+export type SearchDatabaseDataProps = {
+  histories?: ChatItemType[];
+  teamId: string;
+  model: string;
+  datasetIds: string[];
+  queries: string[];
+  [NodeInputKeyEnum.datasetMaxTokens]: number; // max Token limit
+};
+
 export type SearchDatasetDataResponse = {
   searchRes: SearchDataResponseItemType[];
   embeddingTokens: number;
@@ -82,6 +94,15 @@ export type SearchDatasetDataResponse = {
     query: string;
   };
   deepSearchResult?: { model: string; inputTokens: number; outputTokens: number };
+};
+
+export type SearchDatabaseDataResponse = {
+  schema: Record<string, {
+    collectionId: string;
+    datasetId: string;
+    score: number;
+  }>;
+  tokens: number;
 };
 
 export const datasetDataReRank = async ({
@@ -971,3 +992,452 @@ export type DeepRagSearchProps = SearchDatasetDataProps & {
   [NodeInputKeyEnum.datasetDeepSearchBg]?: string;
 };
 export const deepRagSearch = (data: DeepRagSearchProps) => global.deepRagHandler(data);
+
+/**
+ * Database Embedding Recall Function
+ *
+ * Supports multiple vector databases (PG, Milvus, OceanBase) for database schema retrieval.
+ * Automatically detects the vector database type based on environment configuration.
+ *
+ * @param teamId - Team identifier
+ * @param datasetIds - Array of dataset identifiers
+ * @param query - Search query for finding relevant database tables
+ * @param limit - Maximum number of results to return (default: 10)
+ * @returns DatabaseEmbedRecallResult containing schema mapping and token usage
+ */
+export const SearchDatabaseData = async (
+  props:SearchDatabaseDataProps
+): Promise<SearchDatabaseDataResponse> => {
+  let {
+    histories,
+    teamId,
+    model,
+    datasetIds,
+    queries,
+    limit: maxTokens
+  } = props;
+  try {
+
+    // Get forbid collection list for database search
+    const forbidCollections = await MongoDatasetCollection.find(
+      {
+        teamId,
+        datasetId: { $in: datasetIds },
+        forbid: true
+      },
+      '_id'
+    );
+    // Step 1: Get embedding model from dataset configuration
+    const vectorModel = getEmbeddingModel(model);
+    let totalTokens = 0;
+    // Step 2: Generate embedding vector for the query
+    const columnDescriptionRecallResList: any[] = [];
+    const columnValueRecallResultList: any[] = [];
+
+    const forbidCollectionIdList = forbidCollections.map((item: any) => String(item._id));
+    await Promise.all(
+      queries.map(async (query:string) => {
+        const {tokens, vectors}  = await getVectorsByText({
+          model: vectorModel,
+          input: query,
+          type: 'query'
+        });
+
+        totalTokens += tokens;
+        const q_vector = vectors[0];
+
+        // Step 3: Column description search using unified interface
+        const columnDescriptionResults = await columnDescriptionRecall({
+          teamId,
+          datasetIds,
+          vector: q_vector,
+          limit: maxTokens,
+          forbidCollectionIdList
+        });
+
+        // Step 4: Column value search using unified interface
+        const columnValueResults = await columnValueRecall({
+          teamId,
+          datasetIds,
+          vector: q_vector,
+          limit: maxTokens,
+          forbidCollectionIdList
+        });
+
+        columnDescriptionRecallResList.push(...columnDescriptionResults)
+        columnValueRecallResultList.push(...columnValueResults)
+      })
+    )
+
+    // Step 5: Merge and integrate results
+    const schema = await mergeAndGetSchema({
+      columnDescriptionRecallResList,
+      columnValueRecallResultList,
+      teamId
+    });
+
+    addLog.info(`Database embed recall completed. Found ${Object.keys(schema).length} tables.`);
+    addLog.debug('Schema results:', schema);
+
+    return {
+      schema,
+      tokens: totalTokens
+    };
+  } catch (error) {
+    addLog.error('Database embed recall error', error);
+    return {
+      schema: {},
+      tokens: 0
+    };
+  }
+};
+
+// Helper function for column description recall
+const columnDescriptionRecall = async ({
+  teamId,
+  datasetIds,
+  vector,
+  limit,
+  forbidCollectionIdList
+}: {
+  teamId: string;
+  datasetIds: string[];
+  vector: number[];
+  limit: number;
+  forbidCollectionIdList: string[];
+}) => {
+  try {
+    // Use universal database embedding recall interface
+    const { results } = await databaseEmbeddingRecall({
+      teamId,
+      datasetIds,
+      vector,
+      limit,
+      tableName: DBDatasetVectorTableName,
+      forbidCollectionIdList
+    });
+
+    return results.map((result: any) => ({
+      id: result.id,
+      collectionId: result.collectionId,
+      score: result.score,
+      columnDesIndex: result.columnDesIndex
+    }));
+  } catch (error) {
+    addLog.error('Column description recall error', error);
+    return [];
+  }
+};
+
+// Helper function for column value recall
+const columnValueRecall = async ({
+  teamId,
+  datasetIds,
+  vector,
+  limit,
+  forbidCollectionIdList
+}: {
+  teamId: string;
+  datasetIds: string[];
+  vector: number[];
+  limit: number;
+  forbidCollectionIdList: string[];
+}) => {
+  try {
+    // Use universal database embedding recall interface
+    const { results } = await databaseEmbeddingRecall({
+      teamId,
+      datasetIds,
+      vector,
+      limit,
+      tableName: DBDatasetValueVectorTableName,
+      forbidCollectionIdList
+    });
+
+    return results.map((result: any) => ({
+      id: result.id,
+      collectionId: result.collectionId,
+      score: result.score,
+      columnValIndex: result.columnValIndex
+    }));
+  } catch (error) {
+    addLog.error('Column value recall error', error);
+    return [];
+  }
+};
+
+// Helper function to merge results and get schema
+const mergeAndGetSchema = async ({
+  columnDescriptionRecallResList,
+  columnValueRecallResultList,
+  teamId
+}: {
+  columnDescriptionRecallResList: any[];
+  columnValueRecallResultList: any[];
+  teamId: string;
+}) => {
+  const schema: Record<string, { collectionId: string; datasetId: string; score: number }> = {};
+  const collectionIds = new Set<string>();
+
+  // Collect all collection IDs from both results
+  [...columnDescriptionRecallResList, ...columnValueRecallResultList].forEach(result => {
+    if (result.collectionId) {
+      collectionIds.add(result.collectionId);
+    }
+  });
+
+  // Batch fetch all collections
+  const collections = await MongoDatasetCollection.find({
+    _id: { $in: Array.from(collectionIds) },
+    teamId
+  })
+    .select('_id datasetId name')
+    .lean();
+
+  const collectionMap = new Map(collections.map(col => [String(col._id), col]));
+
+  // Process column description results
+  for (const result of columnDescriptionRecallResList) {
+    try {
+      const collection = collectionMap.get(result.collectionId);
+      if (collection && collection.name) {
+        const tableName = collection.name;
+        if (!schema[tableName] || result.score > schema[tableName].score) {
+          schema[tableName] = {
+            collectionId: String(result.collectionId),
+            datasetId: String(collection.datasetId),
+            score: result.score
+          };
+        }
+      }
+    } catch (error) {
+      addLog.error('Error processing column description result', error);
+    }
+  }
+
+  // Process column value results
+  for (const result of columnValueRecallResultList) {
+    try {
+      const collection = collectionMap.get(result.collectionId);
+      if (collection && collection.name) {
+        const tableName = collection.name;
+        if (!schema[tableName] || result.score > schema[tableName].score) {
+          schema[tableName] = {
+            collectionId: String(result.collectionId),
+            datasetId: String(collection.datasetId),
+            score: result.score
+          };
+        }
+      }
+    } catch (error) {
+      addLog.error('Error processing column value result', error);
+    }
+  }
+
+  return schema;
+};
+
+
+// SQL Generation types
+export type SqlGenerationRequest = {
+  source_config: {
+    type : string,
+    host: string,  
+    port: number,
+    username: string,
+    password: string,
+    db_name: string
+  }
+  generate_sql_llm: {
+    model: string,
+    api_key?: string,
+    base_url?: string
+  };
+  evaluate_sql_llm: {
+    model: string,
+    api_key?: string,
+    base_url?: string
+  };
+  query: string;
+  result_num_limit: number;
+  retrieved_metadata: {
+    name: string;
+    columns: Record<string, {
+      name: string;
+      type: string;
+      description: string;
+    }>;
+  };
+  evidence?: string;
+};
+
+export type SqlGenerationResponse = {
+  answer: string;
+  sql: string;
+  sql_res: {
+    data: any[];
+    columns: string[];
+  };
+  input_tokens: number;
+  output_tokens: number;
+};
+
+
+/**
+ * Generate SQL and execute query using Python service
+ */
+export const generateAndExecuteSQL = async ({
+  datasetId,
+  query,
+  schema,
+  teamId,
+  limit = 50,
+  generate_sql_llm,
+  evaluate_sql_llm
+}: {
+  datasetId: string;
+  query: string;
+  schema: Record<string, { collectionId: string; datasetId: string; score: number }>;
+  teamId: string;
+  limit?: number;
+  generate_sql_llm: {model: string,api_key?: string,base_url?: string};
+  evaluate_sql_llm: {model: string,api_key?: string,base_url?: string};
+  externalProvider?: {
+    openaiAccount?: {
+      key: string;
+      baseUrl: string;
+    };
+  };
+}): Promise<SqlGenerationResponse | null> => {
+  try {
+    // Get dataset and database config
+    const dataset = await MongoDataset.findById(datasetId).lean();
+    if (!dataset?.databaseConfig) {
+      addLog.warn('No database config found for dataset', { datasetId });
+      return null;
+    }
+
+    const dbConfig: any = dataset.databaseConfig;
+
+    // Get table schema from collections
+    const tableNames = Object.keys(schema);
+    if (tableNames.length === 0) {
+      addLog.warn('No tables found in schema');
+      return null;
+    }
+
+    // Get all table schemas from MongoDB collections
+    const collections = await MongoDatasetCollection.find({
+      datasetId,
+      name: { $in: tableNames },
+      teamId
+    }).lean();
+
+    if (!collections || collections.length === 0) {
+      addLog.warn('No collections found for tables', { tableNames });
+      return null;
+    }
+
+    // Build table schemas for Python service
+    const retrievedMetadata = collections
+      .filter(collection => collection.tableSchema?.columns)
+      .map(collection => {
+        const columns: Record<string, { name: string; type: string; description: string }> = {};
+        if (collection.tableSchema?.columns) {
+          Object.entries(collection.tableSchema.columns).forEach((col: any) => {
+            columns[col.tableName] = {
+              name: col.colName,
+              type: col.type || 'varchar',
+              description: col.description || ''
+            };
+          });
+        }
+
+        return {
+          name: collection.name,
+          columns,
+          score: schema[collection.name]?.score || 0
+        };
+      });
+
+    if (retrievedMetadata.length === 0) {
+      addLog.warn('No valid table schemas found');
+      return null;
+    }
+
+    // Sort by score (highest first) for better SQL generation
+    retrievedMetadata.sort((a, b) => b.score - a.score);
+
+    // Get Python service URL from environment
+    const dativeUrl = process.env.DATIVE_BASE_URL;
+
+    // Get LLM config from model
+    const llmModelData = getLLMModel(generate_sql_llm.model);
+    if (!llmModelData) {
+      addLog.error(`Invalid LLM model specified for SQL generation ${generate_sql_llm.model}`);
+      return null;
+    }
+    // Update request payload to include all table schemas
+    const requestPayload: SqlGenerationRequest = {
+      source_config: {
+        type: dbConfig.client,
+        host: dbConfig.host,
+        port: dbConfig.port || 3306,
+        username: dbConfig.user,
+        password: dbConfig.password,
+        db_name: dbConfig.database
+      },
+      generate_sql_llm,
+      evaluate_sql_llm,
+      query,
+      result_num_limit: limit,
+      retrieved_metadata: {
+        name: retrievedMetadata[0].name, // Primary table name
+        columns: retrievedMetadata.reduce((acc, table) => {
+          // Merge all table columns with table prefix to avoid conflicts
+          Object.entries(table.columns).forEach(([colName, colInfo]) => {
+            acc[`${table.name}.${colName}`] = {
+              name: colName,
+              type: colInfo.type,
+              description: `${table.name}表 - ${colInfo.description}`
+            };
+          });
+          return acc;
+        }, {} as Record<string, { name: string; type: string; description: string }>)
+      }
+    };
+
+    addLog.info('Calling Python SQL generation service', {
+      url: `${dativeUrl}/api/v1/data_source/query_by_nl`,
+      tables: retrievedMetadata.map(t => t.name),
+      primaryTable: retrievedMetadata[0].name,
+      query
+    });
+
+    // Call Python service
+    const response = await fetch(`${dativeUrl}/api/v1/data_source/query_by_nl`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestPayload)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      addLog.error('Python SQL service error', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText
+      });
+      return null;
+    }
+
+    const result: SqlGenerationResponse = await response.json();
+    return result;
+
+  } catch (error) {
+    addLog.error('SQL generation failed', error);
+    return null;
+  }
+};

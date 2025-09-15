@@ -1,5 +1,9 @@
 /* pg vector crud */
-import { DatasetVectorTableName } from '../constants';
+import {
+  DatasetVectorTableName,
+  DBDatasetVectorTableName,
+  DBDatasetValueVectorTableName
+} from '../constants';
 import { delay, retryFn } from '@fastgpt/global/common/system/utils';
 import { PgClient, connectPg } from './controller';
 import { type PgSearchRawType } from '@fastgpt/global/core/dataset/api';
@@ -7,7 +11,9 @@ import type {
   DelDatasetVectorCtrlProps,
   EmbeddingRecallCtrlProps,
   EmbeddingRecallResponse,
-  InsertVectorControllerProps
+  InsertVectorControllerProps,
+  DatabaseEmbeddingRecallCtrlProps,
+  DatabaseEmbeddingRecallResponse
 } from '../controller.d';
 import dayjs from 'dayjs';
 import { addLog } from '../../system/log';
@@ -28,6 +34,32 @@ export class PgVectorCtrl {
             createtime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `);
+      // Create Table `ColumnDescriptionIndex` to Record the description of the table (Text2sql)
+      await PgClient.query(`
+        CREATE TABLE IF NOT EXISTS ${DBDatasetVectorTableName} (
+            id BIGSERIAL PRIMARY KEY,
+            vector VECTOR(1536) NOT NULL,
+            dataset_id VARCHAR(50) NOT NULL,
+            collection_id VARCHAR(50) NOT NULL,
+            column_des_index VARCHAR(100) NOT NULL,
+            team_id VARCHAR(50) NOT NULL,
+            createtime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // Create Table `ColumnValueIndex` to Record the example value of the table (Text2sql)
+      // foreign key: (table_val_index, LENGTH(table_des_index)) = table_des_index
+      await PgClient.query(`
+        CREATE TABLE IF NOT EXISTS ${DBDatasetValueVectorTableName} (
+            id BIGSERIAL PRIMARY KEY,
+            vector VECTOR(1536) NOT NULL,
+            team_id VARCHAR(50) NOT NULL,
+            dataset_id VARCHAR(50) NOT NULL,
+            collection_id VARCHAR(50) NOT NULL,
+            column_val_index VARCHAR(100) NOT NULL,
+            createtime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
 
       await PgClient.query(
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${DatasetVectorTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 128);`
@@ -37,6 +69,28 @@ export class PgVectorCtrl {
       );
       await PgClient.query(
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS create_time_index ON ${DatasetVectorTableName} USING btree(createtime);`
+      );
+
+      // ColumnDescriptionIndex
+      await PgClient.query(
+        `CREATE INDEX CONCURRENTLY IF NOT EXISTS table_des_vector_index ON ${DBDatasetVectorTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 128);`
+      );
+      await PgClient.query(
+        `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_dataset_collection_index ON ${DBDatasetVectorTableName} USING btree(team_id, dataset_id, collection_id);`
+      );
+      await PgClient.query(
+        `CREATE INDEX CONCURRENTLY IF NOT EXISTS table_des_team_index ON ${DBDatasetVectorTableName} USING btree(team_id);`
+      );
+
+      // ColumnValueIndex
+      await PgClient.query(
+        `CREATE INDEX CONCURRENTLY IF NOT EXISTS table_val_vector_index ON ${DBDatasetValueVectorTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 128);`
+      );
+      await PgClient.query(
+        `CREATE INDEX CONCURRENTLY IF NOT EXISTS table_val_team_dataset_collection_index ON ${DBDatasetValueVectorTableName} USING btree(team_id, dataset_id, collection_id);`
+      );
+      await PgClient.query(
+        `CREATE INDEX CONCURRENTLY IF NOT EXISTS table_val_create_time_index ON ${DBDatasetValueVectorTableName} USING btree(createtime);`
       );
       // 10w rows
       // await PgClient.query(`
@@ -66,7 +120,17 @@ export class PgVectorCtrl {
     }
   };
   insert = async (props: InsertVectorControllerProps): Promise<{ insertIds: string[] }> => {
-    const { teamId, datasetId, collectionId, vectors } = props;
+    const {
+      teamId,
+      datasetId,
+      collectionId,
+      vectors,
+      retry = 3,
+      tableName = DatasetVectorTableName,
+      table_des_index,
+      column_des_index,
+      column_val_index
+    } = props;
 
     const values = vectors.map((vector) => [
       { key: 'vector', value: `[${vector}]` },
@@ -75,7 +139,14 @@ export class PgVectorCtrl {
       { key: 'collection_id', value: String(collectionId) }
     ]);
 
-    const { rowCount, rows } = await PgClient.insert(DatasetVectorTableName, {
+    // Add db schema special fields
+    if (column_des_index) {
+      values.map((item) => item.push({ key: 'column_des_index', value: column_des_index }));
+    }
+    if (column_val_index) {
+      values.map((item) => item.push({ key: 'column_val_index', value: column_val_index }));
+    }
+    const { rowCount, rows } = await PgClient.insert(tableName || DatasetVectorTableName, {
       values
     });
 
@@ -84,11 +155,11 @@ export class PgVectorCtrl {
     }
 
     return {
-      insertIds: rows.map((row) => row.id)
+      insertIds: rows.map((row: any) => row.id)
     };
   };
   delete = async (props: DelDatasetVectorCtrlProps): Promise<any> => {
-    const { teamId } = props;
+    const { teamId, tableName = DatasetVectorTableName } = props;
 
     const teamIdWhere = `team_id='${String(teamId)}' AND`;
 
@@ -118,7 +189,7 @@ export class PgVectorCtrl {
 
     if (!where) return;
 
-    await PgClient.delete(DatasetVectorTableName, {
+    await PgClient.delete(tableName || DatasetVectorTableName, {
       where: [where]
     });
   };
@@ -185,6 +256,67 @@ export class PgVectorCtrl {
         score: item.score * -1
       }))
     };
+  };
+  databaseEmbRecall = async (
+    props: DatabaseEmbeddingRecallCtrlProps
+  ): Promise<DatabaseEmbeddingRecallResponse> => {
+    const {
+      teamId,
+      datasetIds,
+      vector,
+      limit,
+      tableName,
+      retry = 2,
+      forbidCollectionIdList
+    } = props;
+    let index: string = '';
+    if (tableName == DBDatasetVectorTableName) index = 'column_des_index';
+    if (tableName == DBDatasetValueVectorTableName) index = 'column_value_index';
+
+    try {
+      // Build forbid collection filter
+      const forbidCollectionFilter =
+        forbidCollectionIdList.length > 0
+          ? `AND collection_id NOT IN (${forbidCollectionIdList.map((id: string) => `'${String(id)}'`).join(',')})`
+          : '';
+      const results: any = await PgClient.query(`
+        BEGIN;
+          SET LOCAL hnsw.ef_search = ${global.systemEnv?.hnswEfSearch || 100};
+          SET LOCAL hnsw.max_scan_tuples = ${global.systemEnv?.hnswMaxScanTuples || 100000};
+          SET LOCAL hnsw.iterative_scan = relaxed_order;
+          WITH relaxed_results AS MATERIALIZED (
+            SELECT id, collection_id,
+                   ${tableName === DBDatasetVectorTableName ? 'column_des_index' : 'column_val_index'} as index_field,
+                   vector <#> '[${vector}]' AS score
+              FROM ${tableName}
+              WHERE team_id = '${teamId}'
+                AND dataset_id IN (${datasetIds.map((id: string) => `'${String(id)}'`).join(',')})
+                ${forbidCollectionFilter}
+              ORDER BY score LIMIT ${limit}
+          ) SELECT id, collection_id, index_field, score FROM relaxed_results ORDER BY score;
+        COMMIT;
+      `);
+
+      const rows = results?.[results.length - 2]?.rows || [];
+      return {
+        results: rows.map((row: any) => ({
+          id: String(row.id),
+          collectionId: row.collection_id,
+          score: row.score * -1, // Convert cosine distance to similarity score
+          ...(tableName === DBDatasetVectorTableName
+            ? { columnDesIndex: row.index_field }
+            : { columnValIndex: row.index_field })
+        }))
+      };
+    } catch (error) {
+      if (retry <= 0) {
+        return Promise.reject(error);
+      }
+      return this.databaseEmbRecall({
+        ...props,
+        retry: retry - 1
+      });
+    }
   };
   getVectorDataByTime = async (start: Date, end: Date) => {
     const { rows } = await PgClient.query<{
