@@ -26,17 +26,23 @@ export interface RuntimeConfig {
   embedding?: string; // Embedding model selection
 }
 
+// Summary configuration type
+export interface SummaryConfig {
+  metricId: string; // Metric ID for mapping relationship
+  metricName: string; // Metric name for display
+  weight: number;
+  calculateType: CalculateMethodEnum;
+  summary: string;
+  summaryStatus: SummaryStatusEnum;
+  errorReason: string;
+}
+
 // Evaluator configuration type
 export interface EvaluatorSchema {
   metric: EvalMetricSchemaType; // Contains complete metric configuration
   runtimeConfig: RuntimeConfig; // Runtime configuration including LLM model
-  weight?: number;
   thresholdValue?: number;
-  calculateType?: CalculateMethodEnum;
-  metricsScore?: number;
-  summary?: string;
-  summaryStatus?: SummaryStatusEnum;
-  errorReason?: string;
+  scoreScaling?: number; // Score scaling factor, default is 100
 }
 
 // Statistics information for evaluation task
@@ -56,6 +62,7 @@ export type EvaluationSchemaType = {
   datasetId: string; // Associated dataset
   target: EvalTarget; // Embedded evaluation target
   evaluators: EvaluatorSchema[]; // Array of evaluator configurations
+  summaryConfigs: SummaryConfig[]; // Array of summary configs, one for each metric
   usageId: string;
   status: EvaluationStatusEnum;
   createTime: Date;
@@ -177,7 +184,7 @@ export interface EvaluationItemJobData {
 
 export interface GenerateSummaryParams {
   evalId: string;
-  metricsIds: string[];
+  metricIds: string[];
 }
 
 export interface GenerateSummaryResponse {

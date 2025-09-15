@@ -46,8 +46,9 @@ export class EvaluationTaskService {
     });
 
     // Apply default configuration to evaluators (weights, thresholds, etc.)
-    const evaluatorsWithDefaultConfig = buildEvalDataConfig(evaluationParams.evaluators);
-
+    const { evaluators: evaluatorsWithDefaultConfig, summaryConfigs } = buildEvalDataConfig(
+          evaluationParams.evaluators
+        );
     const createAndStart = async (session: ClientSession) => {
       // Create evaluation within transaction
       const evaluation = await MongoEvaluation.create(
@@ -55,6 +56,7 @@ export class EvaluationTaskService {
           {
             ...evaluationParams,
             evaluators: evaluatorsWithDefaultConfig,
+            summaryConfigs,
             teamId,
             tmbId,
             usageId: billId,

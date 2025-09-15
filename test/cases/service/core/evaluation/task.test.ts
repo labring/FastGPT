@@ -174,9 +174,7 @@ describe('EvaluationTaskService', () => {
         runtimeConfig: {
           llm: 'gpt-3.5-turbo'
         },
-        weight: 1.0,
-        thresholdValue: 0.8,
-        calculateType: 0
+        thresholdValue: 0.8
       }
     ];
   });

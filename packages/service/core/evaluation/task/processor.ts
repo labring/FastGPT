@@ -16,6 +16,7 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { createMergedEvaluationUsage } from '../utils/usage';
+import { EvaluationSummaryService } from '../summary';
 
 // Sleep utility function
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -267,6 +268,59 @@ const finishEvaluationTask = async (evalId: string) => {
       `[Evaluation] Task completed: ${evalId}, status: ${taskStatus}, total: ${totalCount}, ` +
         `success: ${completedCount}, failed: ${errorCount}`
     );
+
+    // Trigger async summary generation only for metrics with empty summaries if task completed successfully
+    if (taskStatus === EvaluationStatusEnum.completed && completedCount > 0) {
+      try {
+        // Get current evaluation to extract metric IDs and check summary status
+        const currentEvaluation = await MongoEvaluation.findById(
+          evalId,
+          'evaluators summaryConfigs'
+        ).lean();
+
+        if (currentEvaluation?.evaluators && currentEvaluation.evaluators.length > 0) {
+          // Filter metrics that have empty summaries
+          const metricsNeedingSummary: string[] = [];
+
+          currentEvaluation.evaluators.forEach((evaluator: any, index: number) => {
+            const metricId = evaluator.metric._id.toString();
+            const summaryConfig = currentEvaluation.summaryConfigs[index];
+
+            // Check if summary is empty or null
+            if (!summaryConfig?.summary || summaryConfig.summary.trim() === '') {
+              metricsNeedingSummary.push(metricId);
+            }
+          });
+
+          if (metricsNeedingSummary.length > 0) {
+            // Trigger async summary generation only for metrics with empty summaries (fire and forget)
+            setImmediate(() => {
+              EvaluationSummaryService.generateSummaryReports(evalId, metricsNeedingSummary).catch(
+                (error) => {
+                  addLog.error(
+                    `[Evaluation] Failed to trigger async summary generation: ${evalId}`,
+                    error
+                  );
+                }
+              );
+            });
+
+            addLog.debug(
+              `[Evaluation] Triggered async summary generation for ${metricsNeedingSummary.length} metrics with empty summaries: ${evalId}`
+            );
+          } else {
+            addLog.debug(
+              `[Evaluation] All metrics already have summaries, skipping summary generation: ${evalId}`
+            );
+          }
+        }
+      } catch (summaryError) {
+        // Don't affect main task completion flow, just log the error
+        addLog.warn(`[Evaluation] Failed to trigger summary generation: ${evalId}`, {
+          error: summaryError instanceof Error ? summaryError.message : String(summaryError)
+        });
+      }
+    }
   } catch (error) {
     addLog.error(`[Evaluation] Error occurred while completing task: ${evalId}`, error);
 
