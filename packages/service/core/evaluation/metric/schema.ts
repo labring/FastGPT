@@ -23,8 +23,7 @@ const EvalMetricSchema = new Schema({
   },
   name: {
     type: String,
-    required: true,
-    unique: true
+    required: true
   },
   description: {
     type: String,
@@ -84,7 +83,7 @@ const EvalMetricSchema = new Schema({
   }
 });
 
-EvalMetricSchema.index({ teamId: 1, name: 1 });
+EvalMetricSchema.index({ teamId: 1, name: 1 }, { unique: true });
 EvalMetricSchema.index({ createTime: -1 });
 
 EvalMetricSchema.pre('save', function (next) {
