@@ -1,8 +1,7 @@
 export type EditorSkillPickerType = {
   key: string;
   label: string;
-  description?: string;
-  icon?: string;
+  icon: string;
   toolCategories?: SkillToolCategory[];
 };
 

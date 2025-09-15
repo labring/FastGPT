@@ -1,16 +1,6 @@
-import type {
-  EditorSkillPickerType,
-  SkillOptionType,
-  SkillToolItem,
-  SkillSubToolItem
-} from './type';
+import type { EditorSkillPickerType, SkillOptionType, SkillToolItem } from './type';
 
-export const buildSkillOptions = (
-  skills: EditorSkillPickerType[],
-  toolSubItemsCache: {
-    [toolKey: string]: SkillSubToolItem[];
-  }
-): SkillOptionType[] => {
+export const buildSkillOptions = (skills: EditorSkillPickerType[]): SkillOptionType[] => {
   const skillOptions: SkillOptionType[] = [];
 
   skills.forEach((skill) => {
@@ -41,10 +31,8 @@ export const buildSkillOptions = (
   skills.forEach((skill) => {
     skill.toolCategories?.forEach((category) => {
       category.list.forEach((toolItem: SkillToolItem) => {
-        const subItems = toolSubItemsCache[toolItem.key];
-
-        if (subItems && subItems.length > 0) {
-          subItems.forEach((subItem) => {
+        if (toolItem.subItems && toolItem.subItems.length > 0) {
+          toolItem.subItems.forEach((subItem) => {
             const subOption: SkillOptionType = {
               key: subItem.key,
               label: subItem.label,
