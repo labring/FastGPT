@@ -72,7 +72,7 @@ describe('QualityAssessment API', () => {
 
     const mockDatasetData = {
       _id: validDataId,
-      datasetId: validCollectionId,
+      evalDatasetCollectionId: validCollectionId,
       userInput: 'test input',
       expectedOutput: 'test output'
     };

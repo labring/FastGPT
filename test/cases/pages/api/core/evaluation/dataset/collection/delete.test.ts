@@ -4,7 +4,6 @@ import { authEvaluationDatasetWrite } from '@fastgpt/service/core/evaluation/com
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
-import { removeEvalDatasetSmartGenerateJobsRobust } from '@fastgpt/service/core/evaluation/dataset/smartGenerateMq';
 import { removeEvalDatasetDataQualityJobsRobust } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import { removeEvalDatasetDataSynthesizeJobsRobust } from '@fastgpt/service/core/evaluation/dataset/dataSynthesizeMq';
 import { addLog } from '@fastgpt/service/common/system/log';
@@ -24,9 +23,6 @@ vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema', () => 
     find: vi.fn(),
     deleteMany: vi.fn()
   }
-}));
-vi.mock('@fastgpt/service/core/evaluation/dataset/smartGenerateMq', () => ({
-  removeEvalDatasetSmartGenerateJobsRobust: vi.fn()
 }));
 vi.mock('@fastgpt/service/core/evaluation/dataset/dataQualityMq', () => ({
   removeEvalDatasetDataQualityJobsRobust: vi.fn()
@@ -48,9 +44,6 @@ const mockAuthEvaluationDatasetWrite = vi.mocked(authEvaluationDatasetWrite);
 const mockMongoSessionRun = vi.mocked(mongoSessionRun);
 const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
 const mockMongoEvalDatasetData = vi.mocked(MongoEvalDatasetData);
-const mockRemoveEvalDatasetSmartGenerateJobsRobust = vi.mocked(
-  removeEvalDatasetSmartGenerateJobsRobust
-);
 const mockRemoveEvalDatasetDataQualityJobsRobust = vi.mocked(
   removeEvalDatasetDataQualityJobsRobust
 );
@@ -106,7 +99,6 @@ describe('EvalDatasetCollection Delete API', () => {
       deletedCount: 1
     } as any);
 
-    mockRemoveEvalDatasetSmartGenerateJobsRobust.mockResolvedValue(undefined as any);
     mockRemoveEvalDatasetDataQualityJobsRobust.mockResolvedValue(undefined as any);
     mockRemoveEvalDatasetDataSynthesizeJobsRobust.mockResolvedValue(undefined as any);
 
@@ -243,46 +235,6 @@ describe('EvalDatasetCollection Delete API', () => {
   });
 
   describe('Queue Cleanup', () => {
-    it('should clean up smart generation queue tasks', async () => {
-      const req = {
-        query: { collectionId: validCollectionId }
-      };
-
-      await handler_test(req as any);
-
-      expect(mockRemoveEvalDatasetSmartGenerateJobsRobust).toHaveBeenCalledWith(
-        [validCollectionId],
-        {
-          forceCleanActiveJobs: true,
-          retryAttempts: 3,
-          retryDelay: 200
-        }
-      );
-      expect(mockAddLog.info).toHaveBeenCalledWith('Cleaning up smart generation queue tasks', {
-        collectionId: validCollectionId
-      });
-      expect(mockAddLog.info).toHaveBeenCalledWith('Smart generation queue cleanup completed', {
-        collectionId: validCollectionId
-      });
-    });
-
-    it('should handle smart generation queue cleanup errors gracefully', async () => {
-      const queueError = new Error('Smart generation cleanup failed');
-      mockRemoveEvalDatasetSmartGenerateJobsRobust.mockRejectedValue(queueError);
-
-      const req = {
-        query: { collectionId: validCollectionId }
-      };
-
-      const result = await handler_test(req as any);
-
-      expect(mockAddLog.error).toHaveBeenCalledWith('Failed to clean up smart generation queue', {
-        collectionId: validCollectionId,
-        error: queueError
-      });
-      expect(result).toBe('success');
-    });
-
     it('should clean up quality assessment queue tasks for all dataset data', async () => {
       const req = {
         query: { collectionId: validCollectionId }
@@ -657,7 +609,6 @@ describe('EvalDatasetCollection Delete API', () => {
       // Verify complete flow
       expect(mockAuthEvaluationDatasetWrite).toHaveBeenCalled();
       expect(mockMongoEvalDatasetCollection.findOne).toHaveBeenCalled();
-      expect(mockRemoveEvalDatasetSmartGenerateJobsRobust).toHaveBeenCalled();
       expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalled();
       expect(mockRemoveEvalDatasetDataSynthesizeJobsRobust).toHaveBeenCalled();
       expect(mockMongoEvalDatasetData.deleteMany).toHaveBeenCalled();
@@ -680,11 +631,8 @@ describe('EvalDatasetCollection Delete API', () => {
     });
 
     it('should continue deletion even when all queue cleanups fail', async () => {
-      const smartGenError = new Error('Smart generation cleanup failed');
       const qualityError = new Error('Quality assessment cleanup failed');
       const synthesizeError = new Error('Data synthesis cleanup failed');
-
-      mockRemoveEvalDatasetSmartGenerateJobsRobust.mockRejectedValue(smartGenError);
       mockMongoEvalDatasetData.find.mockReturnValue({
         session: vi.fn().mockRejectedValue(qualityError)
       } as any);
@@ -696,10 +644,6 @@ describe('EvalDatasetCollection Delete API', () => {
 
       const result = await handler_test(req as any);
 
-      expect(mockAddLog.error).toHaveBeenCalledWith('Failed to clean up smart generation queue', {
-        collectionId: validCollectionId,
-        error: smartGenError
-      });
       expect(mockAddLog.error).toHaveBeenCalledWith('Failed to clean up quality assessment queue', {
         collectionId: validCollectionId,
         error: qualityError

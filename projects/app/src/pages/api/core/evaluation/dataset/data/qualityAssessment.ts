@@ -48,7 +48,7 @@ async function handler(
   }
 
   const collection = await MongoEvalDatasetCollection.findOne({
-    _id: datasetData.datasetId,
+    _id: datasetData.evalDatasetCollectionId,
     teamId
   });
 
