@@ -232,10 +232,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           ]
         },
         // Mock：返回 plan check
-        // [DispatchNodeResponseKeyEnum.interactive]: {
-        //   type: 'agentPlanCheck',
-        //   params: {}
-        // }
+        [DispatchNodeResponseKeyEnum.interactive]: {
+          type: 'agentPlanCheck',
+          params: {}
+        }
 
         // Mock: 返回 plan user select
         // [DispatchNodeResponseKeyEnum.interactive]: {
@@ -272,12 +272,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         //   }
         // }
         // Mock: 返回 plan user query
-        [DispatchNodeResponseKeyEnum.interactive]: {
-          type: 'agentPlanAskQuery',
-          params: {
-            content: '请提供 xxxxx'
-          }
-        }
+        // [DispatchNodeResponseKeyEnum.interactive]: {
+        //   type: 'agentPlanAskQuery',
+        //   params: {
+        //     content: '请提供 xxxxx'
+        //   }
+        // }
       };
     }
 

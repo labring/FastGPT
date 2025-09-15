@@ -339,38 +339,32 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     };
 
     const saveChatId = chatId || getNanoid(24);
+    const props = {
+      chatId: saveChatId,
+      appId: app._id,
+      teamId,
+      tmbId: tmbId,
+      nodes,
+      appChatConfig: chatConfig,
+      variables: newVariables,
+      isUpdateUseTime: isOwnerUse && source === ChatSourceEnum.online, // owner update use time
+      newTitle,
+      shareId,
+      outLinkUid: outLinkUserId,
+      source,
+      sourceName: sourceName || '',
+      userContent: userQuestion,
+      aiContent: aiResponse,
+      metadata: {
+        originIp,
+        ...metadata
+      },
+      durationSeconds
+    };
     if (isInteractiveRequest) {
-      await updateInteractiveChat({
-        chatId: saveChatId,
-        appId: app._id,
-        userInteractiveVal,
-        aiResponse,
-        newVariables,
-        durationSeconds
-      });
+      await updateInteractiveChat(props);
     } else {
-      await saveChat({
-        chatId: saveChatId,
-        appId: app._id,
-        teamId,
-        tmbId: tmbId,
-        nodes,
-        appChatConfig: chatConfig,
-        variables: newVariables,
-        isUpdateUseTime: isOwnerUse && source === ChatSourceEnum.online, // owner update use time
-        newTitle,
-        shareId,
-        outLinkUid: outLinkUserId,
-        source,
-        sourceName: sourceName || '',
-        userContent: userQuestion,
-        aiContent: aiResponse,
-        metadata: {
-          originIp,
-          ...metadata
-        },
-        durationSeconds
-      });
+      await saveChat(props);
     }
 
     addLog.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);

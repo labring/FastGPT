@@ -15,12 +15,8 @@ import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import type {
-  AIChatItemType,
-  UserChatItemValueItemType} from '@fastgpt/global/core/chat/type';
-import {
-  type AIChatItemValueItemType
-} from '@fastgpt/global/core/chat/type';
+import type { AIChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { CodeClassNameEnum } from '@/components/Markdown/utils';
 import { isEqual } from 'lodash';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
