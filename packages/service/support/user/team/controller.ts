@@ -8,7 +8,7 @@ import {
 import { MongoTeamMember } from './teamMemberSchema';
 import { MongoTeam } from './teamSchema';
 import { type UpdateTeamProps } from '@fastgpt/global/support/user/team/controller';
-import { getResourcePermission } from '../../permission/controller';
+import { getTmbPermission } from '../../permission/controller';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import { TeamDefaultRoleVal } from '@fastgpt/global/support/permission/user/constant';
@@ -26,7 +26,7 @@ async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemTyp
   }
 
   const role =
-    (await getResourcePermission({
+    (await getTmbPermission({
       resourceType: PerResourceTypeEnum.team,
       teamId: tmb.teamId,
       tmbId: tmb._id

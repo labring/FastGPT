@@ -64,10 +64,11 @@ const BillTable = () => {
     pageSize
   } = usePagination(getBills, {
     defaultPageSize: 20,
+    storeToQuery: true,
     params: {
       type: billType
     },
-    defaultRequest: false
+    refreshDeps: [billType]
   });
 
   const { runAsync: handleRefreshPayOrder, loading: isRefreshing } = useRequest2(
@@ -90,10 +91,6 @@ const BillTable = () => {
       }
     }
   );
-
-  useEffect(() => {
-    getData(1);
-  }, [billType]);
 
   return (
     <MyBox isLoading={isLoading} display={'flex'} flexDir={'column'} h={'100%'}>

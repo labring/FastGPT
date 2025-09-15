@@ -33,19 +33,6 @@ const ChatHomeVariablesForm = ({ chatForm }: Props) => {
         {/* custom variables */}
         {allVariableList.filter((i) => i.type === VariableInputEnum.custom).length > 0 && (
           <>
-            <Flex
-              color={'primary.600'}
-              bg={'primary.100'}
-              mb={3}
-              px={3}
-              py={1.5}
-              gap={1}
-              fontSize={'mini'}
-              rounded={'sm'}
-            >
-              <MyIcon name={'common/info'} color={'primary.600'} w={4} />
-              {t('chat:variable_invisable_in_share')}
-            </Flex>
             {allVariableList
               .filter((i) => i.type === VariableInputEnum.custom)
               .map((item) => (
