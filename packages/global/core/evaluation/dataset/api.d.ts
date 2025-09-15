@@ -132,10 +132,13 @@ export type getEvalDatasetDataDetailResponse = Pick<
 >;
 
 export type smartGenerateEvalDatasetBody = {
-  collectionId: string;
+  collectionId?: string;
   kbDatasetIds: string[];
   count?: number;
   intelligentGenerationModel: string;
+  // Optional fields for creating new collection
+  name?: string;
+  description?: string;
 };
 
 export type listFailedTasksBody = {
