@@ -372,7 +372,7 @@ export class EvaluationTaskService {
           tmbId: 1,
           name: 1,
           description: 1,
-          datasetId: 1,
+          evalDatasetCollectionId: 1,
           target: {
             type: '$target.type',
             config: {

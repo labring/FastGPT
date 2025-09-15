@@ -59,7 +59,7 @@ export type EvaluationSchemaType = {
   tmbId: string;
   name: string;
   description?: string;
-  datasetId: string; // Associated dataset
+  evalDatasetCollectionId: string; // Associated evaluation dataset collection
   target: EvalTarget; // Embedded evaluation target
   evaluators: EvaluatorSchema[]; // Array of evaluator configurations
   summaryConfigs: SummaryConfig[]; // Array of summary configs, one for each metric

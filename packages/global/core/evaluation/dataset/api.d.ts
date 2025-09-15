@@ -119,7 +119,7 @@ export type getEvalDatasetDataDetailResponse = Pick<
   | '_id'
   | 'teamId'
   | 'tmbId'
-  | 'datasetId'
+  | 'evalDatasetCollectionId'
   | EvalDatasetDataKeyEnum.UserInput
   | EvalDatasetDataKeyEnum.ActualOutput
   | EvalDatasetDataKeyEnum.ExpectedOutput
@@ -145,6 +145,7 @@ export type listFailedTasksBody = {
 export type listFailedTasksResponse = {
   tasks: Array<{
     jobId: string;
+    // all about dataset
     dataId: string;
     datasetId: string;
     datasetName: string;

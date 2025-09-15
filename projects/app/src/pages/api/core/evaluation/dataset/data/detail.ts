@@ -34,7 +34,7 @@ async function handler(
     _id: String(dataItem._id),
     teamId: String(dataItem.teamId),
     tmbId: String(dataItem.tmbId),
-    datasetId: String(dataItem.datasetId),
+    evalDatasetCollectionId: String(dataItem.evalDatasetCollectionId),
     [EvalDatasetDataKeyEnum.UserInput]: dataItem.userInput,
     [EvalDatasetDataKeyEnum.ActualOutput]: dataItem.actualOutput || '',
     [EvalDatasetDataKeyEnum.ExpectedOutput]: dataItem.expectedOutput,

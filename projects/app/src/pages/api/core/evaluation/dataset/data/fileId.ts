@@ -285,7 +285,7 @@ async function handler(
       return {
         teamId,
         tmbId,
-        datasetId: collectionId,
+        evalDatasetCollectionId: collectionId,
         [EvalDatasetDataKeyEnum.UserInput]: row.user_input,
         [EvalDatasetDataKeyEnum.ExpectedOutput]: row.expected_output,
         [EvalDatasetDataKeyEnum.ActualOutput]: row.actual_output || '',

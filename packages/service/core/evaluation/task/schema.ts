@@ -118,7 +118,7 @@ export const EvaluationTaskSchema = new Schema({
     trim: true,
     maxlength: 100
   },
-  datasetId: {
+  evalDatasetCollectionId: {
     type: Schema.Types.ObjectId,
     ref: EvalDatasetCollectionName,
     required: true

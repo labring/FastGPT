@@ -25,7 +25,7 @@ export type EvalDatasetDataSchemaType = {
   _id: string;
   teamId: string;
   tmbId: string;
-  datasetId: string;
+  evalDatasetCollectionId: string;
   [EvalDatasetDataKeyEnum.UserInput]: string;
   [EvalDatasetDataKeyEnum.ActualOutput]: string;
   [EvalDatasetDataKeyEnum.ExpectedOutput]: string;

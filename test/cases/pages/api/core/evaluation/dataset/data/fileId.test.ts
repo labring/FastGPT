@@ -382,7 +382,7 @@ describe('EvalDatasetData FileId Import API', () => {
           expect.objectContaining({
             teamId: validTeamId,
             tmbId: validTmbId,
-            datasetId: validCollectionId,
+            evalDatasetCollectionId: validCollectionId,
             [EvalDatasetDataKeyEnum.UserInput]: 'What is AI?',
             [EvalDatasetDataKeyEnum.ExpectedOutput]: 'Artificial Intelligence',
             [EvalDatasetDataKeyEnum.ActualOutput]: 'AI is...',
@@ -394,7 +394,7 @@ describe('EvalDatasetData FileId Import API', () => {
           expect.objectContaining({
             teamId: validTeamId,
             tmbId: validTmbId,
-            datasetId: validCollectionId,
+            evalDatasetCollectionId: validCollectionId,
             [EvalDatasetDataKeyEnum.UserInput]: 'Define ML',
             [EvalDatasetDataKeyEnum.ExpectedOutput]: 'Machine Learning',
             [EvalDatasetDataKeyEnum.ActualOutput]: '',
