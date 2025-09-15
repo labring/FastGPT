@@ -9,3 +9,9 @@ export enum ModelTypeEnum {
   EMBED = 'embed'
 }
 export const ModelTypeValues = Object.values(ModelTypeEnum);
+
+export enum EvaluationStatusEnum {
+  Success = 'success',
+  Failed = 'failed',
+}
+export const EvaluationStatusValues = Object.values(EvaluationStatusEnum);

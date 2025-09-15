@@ -169,6 +169,9 @@ describe('/api/core/evaluation/metric/list', () => {
         },
         {
           tmbId: new Types.ObjectId(mockTmbId)
+        },
+        {
+          type: 'builtin_metric'
         }
       ],
       teamId: new Types.ObjectId(mockTeamId)
@@ -187,6 +190,9 @@ describe('/api/core/evaluation/metric/list', () => {
         },
         {
           tmbId: new Types.ObjectId(mockTmbId)
+        },
+        {
+          type: 'builtin_metric'
         }
       ],
       teamId: new Types.ObjectId(mockTeamId)
@@ -349,6 +355,9 @@ describe('/api/core/evaluation/metric/list', () => {
         },
         {
           tmbId: new Types.ObjectId(mockTmbId)
+        },
+        {
+          type: 'builtin_metric'
         }
       ],
       teamId: new Types.ObjectId(mockTeamId)
