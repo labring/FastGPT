@@ -1,31 +1,33 @@
+import type { UpdateAppCollaboratorBody } from 'core/app/collaborator';
 import type { RequireOnlyOne } from '../../common/type/utils';
 import { RequireAtLeastOne } from '../../common/type/utils';
 import type { Permission } from './controller';
-import type { PermissionValueType } from './type';
+import type { PermissionValueType, RoleValueType } from './type';
 
-export type CollaboratorItemType = {
-  teamId: string;
-  permission: Permission;
-  name: string;
-  avatar: string;
-} & RequireOnlyOne<{
+export type CollaboratorIdType = RequireOnlyOne<{
   tmbId: string;
   groupId: string;
   orgId: string;
 }>;
 
-export type UpdateClbPermissionProps<addOnly = false> = {
-  members?: string[];
-  groups?: string[];
-  orgs?: string[];
-} & (addOnly extends true
-  ? {}
-  : {
-      permission: PermissionValueType;
-    });
+export type CollaboratorItemDetailType = {
+  teamId: string;
+  permission: Permission;
+  name: string;
+  avatar: string;
+} & CollaboratorIdType;
 
-export type DeletePermissionQuery = RequireOnlyOne<{
-  tmbId?: string;
-  groupId?: string;
-  orgId?: string;
-}>;
+export type CollaboratorItemType = {
+  permission: PermissionValueType;
+} & CollaboratorIdType;
+
+export type UpdateClbPermissionProps = {
+  collaborators: CollaboratorItemType[];
+};
+
+export type DeletePermissionQuery = CollaboratorIdType;
+
+export type CollaboratorListType = {
+  clbs: CollaboratorItemDetailType[];
+  parentClbs?: CollaboratorItemDetailType[];
+};

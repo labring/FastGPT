@@ -223,14 +223,14 @@ export const useDebug = () => {
 
     const onCheckRunError = useCallback((e: FieldErrors<Record<string, any>>) => {
       const hasRequiredNodeVar =
-        e.nodeVariables && Object.values(e.nodeVariables).some((item) => item.type === 'required');
+        e.nodeVariables && Object.values(e.nodeVariables).some((item) => item.type === 'validate');
 
       if (hasRequiredNodeVar) {
         return setCurrentTab(TabEnum.node);
       }
 
       const hasRequiredGlobalVar =
-        e.variables && Object.values(e.variables).some((item) => item.type === 'required');
+        e.variables && Object.values(e.variables).some((item) => item.type === 'validate');
 
       if (hasRequiredGlobalVar) {
         setCurrentTab(TabEnum.global);
