@@ -104,7 +104,7 @@ async function processor(job: Job<EvalDatasetSmartGenerateData>) {
         const evalData: Partial<EvalDatasetDataSchemaType> = {
           teamId: evalDatasetCollection.teamId,
           tmbId: evalDatasetCollection.tmbId,
-          datasetId: evalDatasetCollectionId,
+          evalDatasetCollectionId: evalDatasetCollectionId,
           [EvalDatasetDataKeyEnum.UserInput]: sample.q,
           [EvalDatasetDataKeyEnum.ExpectedOutput]: sample.a,
           [EvalDatasetDataKeyEnum.ActualOutput]: '',

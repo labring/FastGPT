@@ -300,7 +300,7 @@ describe('EvalDatasetData Create API', () => {
   const createExpectedDataObject = (overrides = {}) => ({
     teamId: validTeamId,
     tmbId: validTmbId,
-    datasetId: validCollectionId,
+    evalDatasetCollectionId: validCollectionId,
     [EvalDatasetDataKeyEnum.UserInput]: 'Test input',
     [EvalDatasetDataKeyEnum.ActualOutput]: '',
     [EvalDatasetDataKeyEnum.ExpectedOutput]: 'Test output',

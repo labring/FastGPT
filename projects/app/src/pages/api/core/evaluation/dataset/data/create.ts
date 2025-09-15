@@ -150,7 +150,7 @@ async function handler(
         {
           teamId,
           tmbId,
-          datasetId: collectionId,
+          evalDatasetCollectionId: collectionId,
           [EvalDatasetDataKeyEnum.UserInput]: userInput.trim(),
           [EvalDatasetDataKeyEnum.ActualOutput]:
             (typeof actualOutput === 'string' ? actualOutput.trim() : '') || '',

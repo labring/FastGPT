@@ -41,7 +41,7 @@ async function handler(
   });
 
   const match: Record<string, any> = {
-    datasetId: new Types.ObjectId(collectionId)
+    evalDatasetCollectionId: new Types.ObjectId(collectionId)
   };
 
   if (searchKey && typeof searchKey === 'string' && searchKey.trim().length > 0) {
@@ -72,7 +72,7 @@ async function handler(
         [EvalDatasetDataKeyEnum.ExpectedOutput]: item.expectedOutput,
         [EvalDatasetDataKeyEnum.Context]: item.context || [],
         [EvalDatasetDataKeyEnum.RetrievalContext]: item.retrievalContext || [],
-        [EvalDatasetDataKeyEnum.Metadata]: item.metadata || {},
+        metadata: item.metadata || {},
         createFrom: item.createFrom,
         createTime: item.createTime,
         updateTime: item.updateTime

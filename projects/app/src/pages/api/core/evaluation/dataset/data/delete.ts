@@ -43,7 +43,7 @@ async function handler(
     }
 
     const collection = await MongoEvalDatasetCollection.findOne({
-      _id: existingData.datasetId,
+      _id: existingData.evalDatasetCollectionId,
       teamId
     }).session(session);
 
@@ -84,7 +84,7 @@ async function handler(
 
     addLog.info('Evaluation dataset data deleted successfully', {
       dataId,
-      datasetId: collectionId,
+      evalDatasetCollectionId: collectionId,
       teamId
     });
   });

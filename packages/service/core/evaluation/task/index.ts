@@ -47,8 +47,8 @@ export class EvaluationTaskService {
 
     // Apply default configuration to evaluators (weights, thresholds, etc.)
     const { evaluators: evaluatorsWithDefaultConfig, summaryConfigs } = buildEvalDataConfig(
-          evaluationParams.evaluators
-        );
+      evaluationParams.evaluators
+    );
     const createAndStart = async (session: ClientSession) => {
       // Create evaluation within transaction
       const evaluation = await MongoEvaluation.create(
@@ -206,7 +206,7 @@ export class EvaluationTaskService {
       {
         $lookup: {
           from: 'eval_dataset_collections',
-          localField: 'datasetId',
+          localField: 'evalDatasetCollectionId',
           foreignField: '_id',
           as: 'dataset'
         }
@@ -452,7 +452,7 @@ export class EvaluationTaskService {
           tmbId: 1,
           name: 1,
           description: 1,
-          datasetId: 1,
+          evalDatasetCollectionId: 1,
           target: {
             type: '$target.type',
             config: {
