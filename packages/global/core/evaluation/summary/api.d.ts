@@ -3,7 +3,7 @@ import type { CalculateMethodEnum } from '../constants';
 // ===== Common Types =====
 
 export interface MetricConfigItem {
-  metricsId: string;
+  metricId: string;
   thresholdValue?: number;
   weight?: number;
   calculateType?: CalculateMethodEnum;
@@ -11,11 +11,11 @@ export interface MetricConfigItem {
 
 export interface MetricConfigItemWithName extends Omit<MetricConfigItem, 'calculateType'> {
   weight: number; // Required in config responses
-  metricsName: string; // Metric name for display
+  metricName: string; // Metric name for display
 }
 
 export interface UpdateMetricConfigItem extends Omit<MetricConfigItem, 'calculateType'> {
-  metricsId: string;
+  metricId: string;
   thresholdValue?: number;
   weight?: number;
 }
@@ -52,9 +52,9 @@ export interface GetEvaluationSummaryQuery {
 
 export interface EvaluationSummaryResponse {
   data: Array<{
-    metricsId: string;
-    metricsName: string;
-    metricsScore: number;
+    metricId: string;
+    metricName: string;
+    metricScore: number;
     summary: string;
     summaryStatus: string;
     errorReason?: string;

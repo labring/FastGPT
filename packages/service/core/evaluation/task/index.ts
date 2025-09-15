@@ -122,19 +122,54 @@ export class EvaluationTaskService {
     });
 
     // Apply default configuration to evaluators (weights, thresholds, etc.)
-    const evaluatorsWithDefaultConfig = buildEvalDataConfig(evaluationParams.evaluators);
+    const { evaluators: evaluatorsWithDefaultConfig, summaryConfigs } = buildEvalDataConfig(
+          evaluationParams.evaluators
+        );
+    const createAndStart = async (session: ClientSession) => {
+      // Create evaluation within transaction
+      const evaluation = await MongoEvaluation.create(
+        [
+          {
+            ...evaluationParams,
+            evaluators: evaluatorsWithDefaultConfig,
+            summaryConfigs,
+            teamId,
+            tmbId,
+            usageId: billId,
+            status: EvaluationStatusEnum.queuing,
+            createTime: new Date()
+          }
+        ],
+        { session }
+      );
 
-    const evaluation = await MongoEvaluation.create({
-      ...evaluationParams,
-      evaluators: evaluatorsWithDefaultConfig,
-      teamId,
-      tmbId,
-      usageId: billId,
-      status: EvaluationStatusEnum.queuing,
-      createTime: new Date()
-    });
+      const evaluationObject = evaluation[0].toObject();
 
-    return evaluation.toObject();
+      // Auto-start the evaluation if autoStart is true
+      if (autoStart) {
+        // Update status to evaluating within transaction
+        await MongoEvaluation.updateOne(
+          { _id: evaluationObject._id },
+          { $set: { status: EvaluationStatusEnum.evaluating } },
+          { session }
+        );
+
+        // Queue operation within transaction - if it fails, transaction will rollback
+        await evaluationTaskQueue.add(`eval_task_${evaluationObject._id}`, {
+          evalId: evaluationObject._id.toString()
+        });
+
+        // Update status in returned object
+        evaluationObject.status = EvaluationStatusEnum.evaluating;
+        addLog.debug(`[Evaluation] Task created and auto-started: ${evaluationObject._id}`);
+      } else {
+        addLog.debug(`[Evaluation] Task created: ${evaluationObject._id}`);
+      }
+
+      return evaluationObject;
+    };
+
+    return await mongoSessionRun(createAndStart);
   }
 
   static async getEvaluation(evalId: string, teamId: string): Promise<EvaluationSchemaType> {

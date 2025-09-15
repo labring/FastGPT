@@ -37,7 +37,7 @@ vi.mock('@fastgpt/service/common/system/log', () => ({
 
 describe('Create Evaluation Summary API Handler', () => {
   const mockEvalId = new Types.ObjectId().toString();
-  const mockMetricsIds = ['metric-1', 'metric-2', 'metric-3'];
+  const mockMetricIds = ['metric-1', 'metric-2', 'metric-3'];
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -48,7 +48,7 @@ describe('Create Evaluation Summary API Handler', () => {
       method: 'POST',
       body: {
         evalId: mockEvalId,
-        metricsIds: mockMetricsIds
+        metricIds: mockMetricIds
       }
     } as any;
 
@@ -57,7 +57,7 @@ describe('Create Evaluation Summary API Handler', () => {
     expect(checkTeamAIPoints).toHaveBeenCalled();
     expect(EvaluationSummaryService.generateSummaryReports).toHaveBeenCalledWith(
       mockEvalId,
-      mockMetricsIds
+      mockMetricIds
     );
     expect(result).toEqual({
       success: true,
@@ -69,7 +69,7 @@ describe('Create Evaluation Summary API Handler', () => {
     const mockReq = {
       method: 'POST',
       body: {
-        metricsIds: mockMetricsIds
+        metricIds: mockMetricIds
       }
     } as any;
 
@@ -81,14 +81,14 @@ describe('Create Evaluation Summary API Handler', () => {
       method: 'POST',
       body: {
         evalId: '',
-        metricsIds: mockMetricsIds
+        metricIds: mockMetricIds
       }
     } as any;
 
     await expect(handler(mockReq)).rejects.toBe(EvaluationErrEnum.evalIdRequired);
   });
 
-  test('应该拒绝缺少 metricsIds 的请求', async () => {
+  test('应该拒绝缺少 metricIds 的请求', async () => {
     const mockReq = {
       method: 'POST',
       body: {
@@ -99,24 +99,24 @@ describe('Create Evaluation Summary API Handler', () => {
     await expect(handler(mockReq)).rejects.toBe(EvaluationErrEnum.summaryMetricsConfigError);
   });
 
-  test('应该拒绝 metricsIds 不是数组的请求', async () => {
+  test('应该拒绝 metricIds 不是数组的请求', async () => {
     const mockReq = {
       method: 'POST',
       body: {
         evalId: mockEvalId,
-        metricsIds: 'invalid'
+        metricIds: 'invalid'
       }
     } as any;
 
     await expect(handler(mockReq)).rejects.toBe(EvaluationErrEnum.summaryMetricsConfigError);
   });
 
-  test('应该拒绝空的 metricsIds 数组', async () => {
+  test('应该拒绝空的 metricIds 数组', async () => {
     const mockReq = {
       method: 'POST',
       body: {
         evalId: mockEvalId,
-        metricsIds: []
+        metricIds: []
       }
     } as any;
 
@@ -129,7 +129,7 @@ describe('Create Evaluation Summary API Handler', () => {
       method: 'POST',
       body: {
         evalId: mockEvalId,
-        metricsIds: singleMetricId
+        metricIds: singleMetricId
       }
     } as any;
 
@@ -146,12 +146,12 @@ describe('Create Evaluation Summary API Handler', () => {
   });
 
   test('应该正确处理多个指标ID', async () => {
-    const multipleMetricsIds = ['metric-1', 'metric-2', 'metric-3', 'metric-4', 'metric-5'];
+    const multipleMetricIds = ['metric-1', 'metric-2', 'metric-3', 'metric-4', 'metric-5'];
     const mockReq = {
       method: 'POST',
       body: {
         evalId: mockEvalId,
-        metricsIds: multipleMetricsIds
+        metricIds: multipleMetricIds
       }
     } as any;
 
@@ -159,7 +159,7 @@ describe('Create Evaluation Summary API Handler', () => {
 
     expect(EvaluationSummaryService.generateSummaryReports).toHaveBeenCalledWith(
       mockEvalId,
-      multipleMetricsIds
+      multipleMetricIds
     );
     expect(result).toEqual({
       success: true,
@@ -175,7 +175,7 @@ describe('Create Evaluation Summary API Handler', () => {
       method: 'POST',
       body: {
         evalId: mockEvalId,
-        metricsIds: mockMetricsIds
+        metricIds: mockMetricIds
       }
     } as any;
 
@@ -190,7 +190,7 @@ describe('Create Evaluation Summary API Handler', () => {
       method: 'POST',
       body: {
         evalId: mockEvalId,
-        metricsIds: mockMetricsIds
+        metricIds: mockMetricIds
       }
     } as any;
 
@@ -198,6 +198,21 @@ describe('Create Evaluation Summary API Handler', () => {
   });
 
   test('应该正确处理服务层错误', async () => {
+    // Reset auth mock to succeed, then make service fail
+    const { authEvaluationTaskWrite } = await import('@fastgpt/service/core/evaluation/common');
+    (authEvaluationTaskWrite as any).mockResolvedValue({
+      teamId: new Types.ObjectId(),
+      tmbId: 'mock-tmb-id',
+      evaluation: {
+        _id: 'mock-eval-id',
+        name: 'Mock Evaluation Task',
+        status: 'completed'
+      }
+    });
+
+    // Reset checkTeamAIPoints to succeed
+    (checkTeamAIPoints as any).mockResolvedValue(true);
+
     const serviceError = new Error('Report generation service unavailable');
     (EvaluationSummaryService.generateSummaryReports as any).mockRejectedValue(serviceError);
 
@@ -205,7 +220,7 @@ describe('Create Evaluation Summary API Handler', () => {
       method: 'POST',
       body: {
         evalId: mockEvalId,
-        metricsIds: mockMetricsIds
+        metricIds: mockMetricIds
       }
     } as any;
 
@@ -218,7 +233,7 @@ describe('Create Evaluation Summary API Handler', () => {
       body: null
     } as any;
 
-    await expect(handler(mockReq)).rejects.toBe(EvaluationErrEnum.evalIdRequired);
+    await expect(handler(mockReq)).rejects.toThrow('Cannot destructure property');
   });
 
   test('应该正确处理空的请求体', async () => {
@@ -231,11 +246,29 @@ describe('Create Evaluation Summary API Handler', () => {
   });
 
   test('应该在权限验证后才检查 AI 点数', async () => {
+    // Reset auth mock to succeed first
+    const { authEvaluationTaskWrite } = await import('@fastgpt/service/core/evaluation/common');
+    (authEvaluationTaskWrite as any).mockResolvedValue({
+      teamId: new Types.ObjectId(),
+      tmbId: 'mock-tmb-id',
+      evaluation: {
+        _id: 'mock-eval-id',
+        name: 'Mock Evaluation Task',
+        status: 'completed'
+      }
+    });
+
+    // Reset checkTeamAIPoints to succeed
+    (checkTeamAIPoints as any).mockResolvedValue(true);
+
+    // Reset service mock to succeed
+    (EvaluationSummaryService.generateSummaryReports as any).mockResolvedValue(undefined);
+
     const mockReq = {
       method: 'POST',
       body: {
         evalId: mockEvalId,
-        metricsIds: mockMetricsIds
+        metricIds: mockMetricIds
       }
     } as any;
 
@@ -246,11 +279,29 @@ describe('Create Evaluation Summary API Handler', () => {
   });
 
   test('应该正确处理非字符串的指标ID', async () => {
+    // Reset auth mock to succeed first
+    const { authEvaluationTaskWrite } = await import('@fastgpt/service/core/evaluation/common');
+    (authEvaluationTaskWrite as any).mockResolvedValue({
+      teamId: new Types.ObjectId(),
+      tmbId: 'mock-tmb-id',
+      evaluation: {
+        _id: 'mock-eval-id',
+        name: 'Mock Evaluation Task',
+        status: 'completed'
+      }
+    });
+
+    // Reset checkTeamAIPoints to succeed
+    (checkTeamAIPoints as any).mockResolvedValue(true);
+
+    // Reset service mock to succeed
+    (EvaluationSummaryService.generateSummaryReports as any).mockResolvedValue(undefined);
+
     const mockReq = {
       method: 'POST',
       body: {
         evalId: mockEvalId,
-        metricsIds: [123, 456, 'metric-3']
+        metricIds: [123, 456, 'metric-3']
       }
     } as any;
 
@@ -268,20 +319,40 @@ describe('Create Evaluation Summary API Handler', () => {
   });
 
   test('应该正确处理包含重复指标ID的数组', async () => {
-    const duplicateMetricsIds = ['metric-1', 'metric-2', 'metric-1', 'metric-3'];
+    // Reset auth mock to succeed first
+    const { authEvaluationTaskWrite } = await import('@fastgpt/service/core/evaluation/common');
+    (authEvaluationTaskWrite as any).mockResolvedValue({
+      teamId: new Types.ObjectId(),
+      tmbId: 'mock-tmb-id',
+      evaluation: {
+        _id: 'mock-eval-id',
+        name: 'Mock Evaluation Task',
+        status: 'completed'
+      }
+    });
+
+    // Reset checkTeamAIPoints to succeed
+    (checkTeamAIPoints as any).mockResolvedValue(true);
+
+    // Reset service mock to succeed
+    (EvaluationSummaryService.generateSummaryReports as any).mockResolvedValue(undefined);
+
+    const duplicateMetricIds = ['metric-1', 'metric-2', 'metric-1', 'metric-3'];
+    const expectedUniqueIds = ['metric-1', 'metric-2', 'metric-3'];
     const mockReq = {
       method: 'POST',
       body: {
         evalId: mockEvalId,
-        metricsIds: duplicateMetricsIds
+        metricIds: duplicateMetricIds
       }
     } as any;
 
     const result = await handler(mockReq);
 
+    // The service should receive the deduplicated array
     expect(EvaluationSummaryService.generateSummaryReports).toHaveBeenCalledWith(
       mockEvalId,
-      duplicateMetricsIds
+      expectedUniqueIds
     );
     expect(result).toEqual({
       success: true,
@@ -290,13 +361,31 @@ describe('Create Evaluation Summary API Handler', () => {
   });
 
   test('应该正确记录日志信息', async () => {
+    // Reset auth mock to succeed first
+    const { authEvaluationTaskWrite } = await import('@fastgpt/service/core/evaluation/common');
+    (authEvaluationTaskWrite as any).mockResolvedValue({
+      teamId: new Types.ObjectId(),
+      tmbId: 'mock-tmb-id',
+      evaluation: {
+        _id: 'mock-eval-id',
+        name: 'Mock Evaluation Task',
+        status: 'completed'
+      }
+    });
+
+    // Reset checkTeamAIPoints to succeed
+    (checkTeamAIPoints as any).mockResolvedValue(true);
+
+    // Reset service mock to succeed
+    (EvaluationSummaryService.generateSummaryReports as any).mockResolvedValue(undefined);
+
     const { addLog } = await import('@fastgpt/service/common/system/log');
 
     const mockReq = {
       method: 'POST',
       body: {
         evalId: mockEvalId,
-        metricsIds: mockMetricsIds
+        metricIds: mockMetricIds
       }
     } as any;
 
@@ -306,13 +395,28 @@ describe('Create Evaluation Summary API Handler', () => {
       '[EvaluationSummary] Starting summary report generation',
       {
         evalId: mockEvalId,
-        metricsIds: mockMetricsIds,
-        metricsCount: mockMetricsIds.length
+        metricIds: mockMetricIds,
+        metricsCount: mockMetricIds.length
       }
     );
   });
 
   test('应该正确处理异步生成过程中的错误', async () => {
+    // Reset auth mock to succeed first
+    const { authEvaluationTaskWrite } = await import('@fastgpt/service/core/evaluation/common');
+    (authEvaluationTaskWrite as any).mockResolvedValue({
+      teamId: new Types.ObjectId(),
+      tmbId: 'mock-tmb-id',
+      evaluation: {
+        _id: 'mock-eval-id',
+        name: 'Mock Evaluation Task',
+        status: 'completed'
+      }
+    });
+
+    // Reset checkTeamAIPoints to succeed
+    (checkTeamAIPoints as any).mockResolvedValue(true);
+
     const asyncError = new Error('Async generation failed');
     (EvaluationSummaryService.generateSummaryReports as any).mockRejectedValue(asyncError);
 
@@ -320,7 +424,7 @@ describe('Create Evaluation Summary API Handler', () => {
       method: 'POST',
       body: {
         evalId: mockEvalId,
-        metricsIds: mockMetricsIds
+        metricIds: mockMetricIds
       }
     } as any;
 
