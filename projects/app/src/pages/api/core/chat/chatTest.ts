@@ -206,7 +206,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // save chat
     const isInteractiveRequest = !!getLastInteractiveValue(histories);
-    const { text: userInteractiveVal } = chatValue2RuntimePrompt(userQuestion.value);
 
     const newTitle = isPlugin
       ? variables.cTime ?? formatTime2YMDHM()
