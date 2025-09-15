@@ -43,7 +43,7 @@ export const SelectOptionsComponent = React.memo(function SelectOptionsComponent
         <LeftRadio<string>
           py={3.5}
           gridGap={3}
-          align={'flex-top'}
+          align={'center'}
           list={userSelectOptions.map((option: UserSelectOptionItemType) => ({
             title: (
               <Box fontSize={'sm'} whiteSpace={'pre-wrap'} wordBreak={'break-word'}>
