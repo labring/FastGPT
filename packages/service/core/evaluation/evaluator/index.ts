@@ -159,15 +159,18 @@ export abstract class Evaluator extends Validatable {
 
 export class DitingEvaluator extends Evaluator {
   private client: ReturnType<typeof createDitingClient>;
+  private scoreScaling: number;
 
   constructor(
     metricConfig: MetricConfig,
     llmConfig?: EvalModelConfigType,
     embeddingConfig?: EvalModelConfigType,
-    evaluatorConfig?: EvaluatorSchema
+    evaluatorConfig?: EvaluatorSchema,
+    scoreScaling: number = 100
   ) {
     super(metricConfig, llmConfig, embeddingConfig, evaluatorConfig);
     this.client = createDitingClient();
+    this.scoreScaling = scoreScaling;
   }
 
   async evaluate(evalCase: EvalCase): Promise<MetricResult> {
@@ -203,10 +206,20 @@ export class DitingEvaluator extends Evaluator {
       }
     }
 
+    // Apply score scaling if data.score exists
+    // scoreScaling directly multiplies the original score (e.g., 100 means 100x amplification)
+    let scaledData = response.data;
+    if (response.data?.score !== undefined && response.data?.score !== null) {
+      scaledData = {
+        ...response.data,
+        score: response.data.score * this.scoreScaling
+      };
+    }
+
     return {
       metricName: this.metricConfig.metricName,
       status: response.status,
-      data: response.data,
+      data: scaledData,
       usages: response.usages,
       error: response.error,
       totalPoints
@@ -253,11 +266,13 @@ export async function createEvaluatorInstance(
     }
   }
 
+  const scoreScaling = evaluatorConfig.scoreScaling ?? 100;
   const evaluatorInstance = new DitingEvaluator(
     metricConfig,
     llmConfig,
     embeddingConfig,
-    evaluatorConfig
+    evaluatorConfig,
+    scoreScaling
   );
 
   // Validate instance if requested (default behavior)

@@ -48,7 +48,7 @@ async function handler(
 
     // For full update, validate all required fields strictly
     for (const item of metricsConfig) {
-      if (!item.metricsId || typeof item.metricsId !== 'string') {
+      if (!item.metricId || typeof item.metricId !== 'string') {
         return Promise.reject(EvaluationErrEnum.evalMetricIdRequired);
       }
 
@@ -81,7 +81,7 @@ async function handler(
 
     // Add calculateType to each metric configuration
     const metricsConfigWithCalculateType = metricsConfig.map((metric) => ({
-      metricsId: metric.metricsId,
+      metricId: metric.metricId,
       thresholdValue: metric.thresholdValue as number,
       weight: metric.weight,
       calculateType: calculateType
