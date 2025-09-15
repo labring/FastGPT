@@ -331,7 +331,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
               ))}
             </Tbody>
           </Table>
-          {total === 0 && <EmptyTip text={t('dashboard_evaluation:no_data')} />}
+          {total === 0 && <EmptyTip text={t('dashboard_evaluation:no_data')} pt={'30vh'} />}
         </TableContainer>
       </MyBox>
 

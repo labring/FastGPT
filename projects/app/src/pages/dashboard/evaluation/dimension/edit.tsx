@@ -202,7 +202,7 @@ export default DimensionEdit;
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content))
+      ...(await serviceSideProps(content, ['dashboard_evaluation']))
     }
   };
 }

@@ -10,7 +10,8 @@ import {
   Text,
   VStack,
   Collapse,
-  useDisclosure
+  useDisclosure,
+  Link
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
@@ -37,6 +38,9 @@ import { getModelFromList } from '@fastgpt/global/core/ai/model';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag';
 import IntelligentGeneration from '@/pageComponents/dashboard/evaluation/dataset/IntelligentGeneration';
+import { getAppDetailById } from '@/web/core/app/api';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 // 表单数据类型定义
 export interface TaskFormData {
@@ -64,6 +68,8 @@ const defaultForm: TaskFormData = {
 const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
   const { t } = useTranslation();
   const [isManageDimensionOpen, setIsManageDimensionOpen] = useState(false);
+  const [recommendedDimensionText, setRecommendedDimensionText] = useState('');
+  const [shouldAutoExpand, setShouldAutoExpand] = useState(false);
   const { isOpen: isDimensionExpanded, onToggle: toggleDimensionExpanded } = useDisclosure();
   const {
     isOpen: isIntelligentModalOpen,
@@ -101,6 +107,86 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
       setValue('selectedDimensions', updatedDimensions);
     },
     [watchedValues.selectedDimensions, setValue]
+  );
+
+  // 获取推荐维度的函数
+  const getRecommendedDimensions = useCallback(
+    (hasDatasetSearch: boolean, hasChatNode: boolean): Dimension[] => {
+      // TODO: 根据节点类型返回具体的推荐维度列表
+      // 这里需要根据实际的维度数据结构来定义推荐的维度
+      if (hasDatasetSearch && hasChatNode) {
+        // TODO: 返回包含知识库搜索和AI对话的3个推荐维度
+        return [
+          // 示例结构，需要根据实际维度定义来替换
+          // { id: 'dimension1', name: '相关性', type: 'builtin', ... },
+          // { id: 'dimension2', name: '准确性', type: 'builtin', ... },
+          // { id: 'dimension3', name: '完整性', type: 'builtin', ... }
+        ];
+      } else if (hasChatNode) {
+        // TODO: 返回AI对话的1个推荐维度
+        return [
+          // 示例结构，需要根据实际维度定义来替换
+          // { id: 'dimension1', name: '回答质量', type: 'builtin', ... }
+        ];
+      } else if (hasDatasetSearch) {
+        // TODO: 返回知识库搜索的2个推荐维度
+        return [
+          // 示例结构，需要根据实际维度定义来替换
+          // { id: 'dimension1', name: '检索相关性', type: 'builtin', ... },
+          // { id: 'dimension2', name: '检索准确性', type: 'builtin', ... }
+        ];
+      }
+      return [];
+    },
+    []
+  );
+
+  // 获取应用详情并分析节点类型
+  const { runAsync: getAppDetail } = useRequest2(
+    async (appId: string) => {
+      if (!appId) return null;
+      return await getAppDetailById(appId);
+    },
+    {
+      manual: true,
+      onSuccess: (appDetail) => {
+        if (!appDetail?.modules) {
+          setRecommendedDimensionText('');
+          // 清空推荐维度
+          setValue('selectedDimensions', []);
+          return;
+        }
+
+        const hasDatasetSearch = appDetail.modules.some(
+          (module: any) => module.flowNodeType === FlowNodeTypeEnum.datasetSearchNode
+        );
+        const hasChatNode = appDetail.modules.some(
+          (module: any) => module.flowNodeType === FlowNodeTypeEnum.chatNode
+        );
+
+        // 获取推荐的维度列表
+        const recommendedDimensions = getRecommendedDimensions(hasDatasetSearch, hasChatNode);
+
+        // 更新已选择的维度列表为推荐维度
+        setValue('selectedDimensions', recommendedDimensions);
+
+        if (hasDatasetSearch && hasChatNode) {
+          setRecommendedDimensionText(
+            t('评测应用包含知识库搜索和AI对话环节，已推荐使用 3 个维度进行评估')
+          );
+          setShouldAutoExpand(false);
+        } else if (hasChatNode) {
+          setRecommendedDimensionText(t('评测应用包含AI对话环节，已推荐使用 1 个维度进行评估'));
+          setShouldAutoExpand(false);
+        } else if (hasDatasetSearch) {
+          setRecommendedDimensionText(t('评测应用包含知识库搜索环节，已推荐使用 2 个维度进行评估'));
+          setShouldAutoExpand(false);
+        } else {
+          setRecommendedDimensionText('');
+          setShouldAutoExpand(true);
+        }
+      }
+    }
   );
 
   // 打开管理维度弹窗
@@ -181,6 +267,20 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
     refreshDeps: [watchedValues.appId]
   });
 
+  // 当应用版本列表加载完成后，自动选择最新版本
+  React.useEffect(() => {
+    if (appVersions.length > 0 && watchedValues.appId) {
+      const latestVersion = appVersions[0];
+      // 如果当前没有选中版本，或者当前选中的版本不在新的版本列表中，则自动选择最新版本
+      const currentVersionExists = appVersions.some(
+        (version) => version._id === watchedValues.appVersion
+      );
+      if (!watchedValues.appVersion || !currentVersionExists) {
+        setValue('appVersion', latestVersion._id);
+      }
+    }
+  }, [appVersions, watchedValues.appId, watchedValues.appVersion, setValue]);
+
   // 转换版本数据为下拉选项格式
   const appVersionOptions = useMemo(() => {
     return appVersions.map((version) => ({
@@ -213,6 +313,13 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
 
   const selectedDimensions = watchedValues.selectedDimensions || [];
 
+  // 当需要自动展开且没有选中维度时，自动展开折叠块
+  React.useEffect(() => {
+    if (shouldAutoExpand && selectedDimensions.length === 0 && !isDimensionExpanded) {
+      toggleDimensionExpanded();
+    }
+  }, [shouldAutoExpand, selectedDimensions.length, isDimensionExpanded, toggleDimensionExpanded]);
+
   // 获取所有模型列表用于查找模型信息
   const allModelList = useMemo(() => {
     return [...llmModelList, ...embeddingModelList];
@@ -244,15 +351,23 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
   );
 
   // 智能生成数据集确认回调
-  const handleIntelligentGenerationConfirm = useCallback(() => {
-    onCloseIntelligentModal();
-    fetchDatasets();
-  }, [onCloseIntelligentModal, fetchDatasets]);
+  const handleIntelligentGenerationConfirm = useCallback(
+    (data: any, datasetId?: string) => {
+      onCloseIntelligentModal();
+      fetchDatasets();
+      // 如果返回了数据集ID，自动选择新创建的数据集
+      if (datasetId) {
+        setValue('datasetId', datasetId);
+      }
+    },
+    [onCloseIntelligentModal, fetchDatasets, setValue]
+  );
 
   return (
     <>
       <MyModal
-        iconSrc="modal/edit"
+        iconSrc="common/resultLight"
+        iconColor="blue.600"
         title={t('dashboard_evaluation:create_new_task_modal')}
         w="100%"
         maxW={['90vw', '600px']}
@@ -294,6 +409,8 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                   onSelect={(id) => {
                     setValue('appId', id);
                     setValue('appVersion', '');
+                    // 获取应用详情并分析节点类型
+                    getAppDetail(id);
                   }}
                 />
               </Box>
@@ -341,7 +458,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                     <Button
                       variant="whiteBase"
                       size="md"
-                      leftIcon={<MyIcon name="common/importLight" w="14px" />}
+                      leftIcon={<MyIcon name="common/folderImport" w="14px" />}
                       flexShrink={0}
                     >
                       {t('dashboard_evaluation:create_import_dataset')}
@@ -353,7 +470,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                         {
                           label: (
                             <Flex>
-                              <MyIcon name={'core/app/aiLight'} w={'20px'} mr={2} />
+                              <MyIcon name={'core/app/aiLightSmall'} w={'16px'} mr={2} />
                               {t('dashboard_evaluation:smart_generation')}
                             </Flex>
                           ),
@@ -362,7 +479,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                         {
                           label: (
                             <Flex>
-                              <MyIcon name={'core/dataset/tableCollection'} mr={2} w={'20px'} />
+                              <MyIcon name={'core/dataset/tableCollection'} mr={2} w={'16px'} />
                               {t('dashboard_evaluation:file_import')}
                             </Flex>
                           ),
@@ -372,6 +489,9 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                     }
                   ]}
                 />
+                <Button variant="whiteBase" size="md" flexShrink={0} onClick={fetchDatasets}>
+                  <MyIcon name="common/refreshLight" w="14px" />
+                </Button>
               </HStack>
             </Flex>
 
@@ -401,7 +521,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
               >
                 <Flex align="center" justify="space-between" p={4}>
                   <Text fontSize="sm" color="myGray.600">
-                    {t('dashboard_evaluation:evaluation_dimensions_recommendation', { num: 3 })}
+                    {recommendedDimensionText || ''}
                   </Text>
                   <Box
                     cursor="pointer"
@@ -419,8 +539,8 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                   </Box>
                 </Flex>
 
-                {selectedDimensions.length > 0 && (
-                  <Collapse in={isDimensionExpanded}>
+                <Collapse in={isDimensionExpanded}>
+                  {selectedDimensions.length > 0 ? (
                     <VStack spacing={0} align="stretch">
                       {selectedDimensions.map((dimension) => {
                         // 优先显示评测模型，没有评测模型则显示索引模型
@@ -478,8 +598,27 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                         );
                       })}
                     </VStack>
-                  </Collapse>
-                )}
+                  ) : (
+                    <Box bg="myGray.50" pb={4}>
+                      <EmptyTip
+                        py={4}
+                        iconSize="48px"
+                        text={
+                          <Text fontSize="sm" color="myGray.500">
+                            {t('还没有添加评测维度，')}
+                            <Link
+                              color="primary.600"
+                              _hover={{ color: 'primary.700' }}
+                              onClick={handleOpenManageDimension}
+                            >
+                              {t('点击添加')}
+                            </Link>
+                          </Text>
+                        }
+                      />
+                    </Box>
+                  )}
+                </Collapse>
               </VStack>
             </Box>
           </VStack>
@@ -521,6 +660,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
           isOpen={isIntelligentModalOpen}
           onClose={onCloseIntelligentModal}
           onConfirm={handleIntelligentGenerationConfirm}
+          returnDatasetId={true}
         />
       )}
     </>
