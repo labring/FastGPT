@@ -363,7 +363,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         outLinkUid: outLinkUserId,
         source,
         sourceName: sourceName || '',
-        content: [userQuestion, aiResponse],
+        userContent: userQuestion,
+        aiContent: aiResponse,
         metadata: {
           originIp,
           ...metadata

@@ -141,7 +141,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     const newHistories = concatHistories(histories, chatMessages);
-    const interactive = getLastInteractiveValue(newHistories) || undefined;
+    const interactive = getLastInteractiveValue(newHistories);
     // Get runtimeNodes
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, interactive));
     if (isPlugin) {

@@ -72,7 +72,7 @@ export const getSubApps = ({
 }): ChatCompletionTool[] => {
   // System Tools: Plan Agent, stop sign, model agent.
   const systemTools: ChatCompletionTool[] = [
-    PlanAgentTool,
+    // PlanAgentTool,
     ...(addReadFileTool ? [readFileTool] : [])
     // ModelAgentTool
     // StopAgentTool,

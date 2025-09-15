@@ -1,4 +1,8 @@
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
@@ -41,7 +45,10 @@ import { dispatchPlanAgent } from './sub/plan';
 import { dispatchModelAgent } from './sub/model';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { getSubApps, rewriteSubAppsToolset } from './sub';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { dispatchTool } from './sub/tool';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getMasterAgentDefaultPrompt } from './constants';
@@ -97,34 +104,33 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       planAgentConfig
     }
   } = props;
-  const memoryKey = `${runningAppInfo.id}-${nodeId}`;
+  const agentModel = getLLMModel(model);
+  const chatHistories = getHistories(history, histories);
 
-  const runtimeSubApps = await rewriteSubAppsToolset({
-    subApps: subApps.map<RuntimeNodeItemType>((node) => {
+  const masterMessagesKey = `masterMessages-${nodeId}`;
+  const planMessagesKey = `planMessages-${nodeId}`;
+
+  // Get history messages
+  const { masterHistoryMessages, planHistoryMessages } = (() => {
+    const lastHistory = chatHistories[chatHistories.length - 1];
+    if (lastHistory && lastHistory.obj === ChatRoleEnum.AI) {
       return {
-        nodeId: node.id,
-        name: node.name,
-        avatar: node.avatar,
-        intro: node.intro,
-        toolDescription: node.toolDescription,
-        flowNodeType: node.flowNodeType,
-        showStatus: node.showStatus,
-        isEntry: false,
-        inputs: node.inputs,
-        outputs: node.outputs,
-        pluginId: node.pluginId,
-        version: node.version,
-        toolConfig: node.toolConfig,
-        catchError: node.catchError
+        masterHistoryMessages: (lastHistory.memories?.[masterMessagesKey] ||
+          []) as ChatCompletionMessageParam[],
+        planHistoryMessages: (lastHistory.memories?.[planMessagesKey] ||
+          []) as ChatCompletionMessageParam[]
       };
-    }),
-    lang
-  });
+    }
+    return {
+      masterHistoryMessages: [],
+      planHistoryMessages: []
+    };
+  })();
+
+  // Check interactive entry
+  props.node.isEntry = false;
 
   try {
-    const agentModel = getLLMModel(model);
-    const chatHistories = getHistories(history, histories);
-
     // Get files
     const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
     if (!fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0) {
@@ -137,34 +143,55 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       histories: chatHistories
     });
 
+    // Get sub apps
+    const runtimeSubApps = await rewriteSubAppsToolset({
+      subApps: subApps.map<RuntimeNodeItemType>((node) => {
+        return {
+          nodeId: node.id,
+          name: node.name,
+          avatar: node.avatar,
+          intro: node.intro,
+          toolDescription: node.toolDescription,
+          flowNodeType: node.flowNodeType,
+          showStatus: node.showStatus,
+          isEntry: false,
+          inputs: node.inputs,
+          outputs: node.outputs,
+          pluginId: node.pluginId,
+          version: node.version,
+          toolConfig: node.toolConfig,
+          catchError: node.catchError
+        };
+      }),
+      lang
+    });
+
     const subAppList = getSubApps({
       subApps: runtimeSubApps,
       addReadFileTool: Object.keys(filesMap).length > 0
     });
 
-    // Init tool params
-    const toolNodesMap = new Map(runtimeSubApps.map((item) => [item.nodeId, item]));
-    const getToolInfo = (id: string) => {
-      const toolNode = toolNodesMap.get(id) || systemSubInfo[id];
+    const subAppsMap = new Map(runtimeSubApps.map((item) => [item.nodeId, item]));
+    const getSubAppInfo = (id: string) => {
+      const toolNode = subAppsMap.get(id) || systemSubInfo[id];
       return {
         name: toolNode?.name || '',
         avatar: toolNode?.avatar || ''
       };
     };
 
+    // Get master request messages
     const systemMessages = chats2GPTMessages({
       messages: getSystemPrompt_ChatItemType(systemPrompt || getMasterAgentDefaultPrompt()),
       reserveId: false
     });
     const historyMessages: ChatCompletionMessageParam[] = (() => {
-      const lastHistory = chatHistories[chatHistories.length - 1];
-      if (lastHistory && lastHistory.obj === ChatRoleEnum.AI && lastHistory.memories?.[memoryKey]) {
-        return lastHistory.memories?.[memoryKey];
+      if (masterHistoryMessages && masterHistoryMessages.length > 0) {
+        return masterHistoryMessages;
       }
 
       return chats2GPTMessages({ messages: chatHistories, reserveId: false });
     })();
-
     const userMessages = chats2GPTMessages({
       messages: [
         {
@@ -179,8 +206,80 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
     const requestMessages = [...systemMessages, ...historyMessages, ...userMessages];
 
-    // Check interactive entry
-    props.node.isEntry = false;
+    // TODO: 执行 plan function(只有lastInteractive userselect/userInput 时候，才不需要进入 plan)
+    if (lastInteractive?.type !== 'userSelect' && lastInteractive?.type !== 'userInput') {
+      // const planResponse = xxxx
+      // requestMessages.push(一组 toolcall)
+
+      workflowStreamResponse?.({
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          text: '这是 plan'
+        })
+      });
+
+      return {
+        [DispatchNodeResponseKeyEnum.memories]: {
+          [planMessagesKey]: [
+            {
+              role: 'user',
+              content: '测试'
+            },
+            {
+              role: 'assistant',
+              content: '测试'
+            }
+          ]
+        },
+        // Mock：返回 plan check
+        // [DispatchNodeResponseKeyEnum.interactive]: {
+        //   type: 'agentPlanCheck',
+        //   params: {}
+        // }
+
+        // Mock: 返回 plan user select
+        // [DispatchNodeResponseKeyEnum.interactive]: {
+        //   type: 'agentPlanAskUserSelect',
+        //   params: {
+        //     description: '测试',
+        //     userSelectOptions: [
+        //       {
+        //         key: 'test',
+        //         value: '测试'
+        //       },
+        //       {
+        //         key: 'test2',
+        //         value: '测试2'
+        //       }
+        //     ]
+        //   }
+        // },
+        // Mock: 返回 plan user input
+        // [DispatchNodeResponseKeyEnum.interactive]: {
+        //   type: 'agentPlanAskUserForm',
+        //   params: {
+        //     description: '测试',
+        //     inputForm: [
+        //       {
+        //         type: FlowNodeInputTypeEnum.input,
+        //         key: 'test1',
+        //         label: '测试1',
+        //         value: '',
+        //         valueType: WorkflowIOValueTypeEnum.string,
+        //         required: true
+        //       }
+        //     ]
+        //   }
+        // }
+        // Mock: 返回 plan user query
+        [DispatchNodeResponseKeyEnum.interactive]: {
+          type: 'agentPlanAskQuery',
+          params: {
+            content: '请提供 xxxxx'
+          }
+        }
+      };
+    }
 
     const dispatchFlowResponse: ChatHistoryItemResType[] = [];
     // console.log(JSON.stringify(requestMessages, null, 2));
@@ -199,7 +298,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
         userKey: externalProvider.openaiAccount,
         isAborted: res ? () => res.closed : undefined,
-        getToolInfo,
+        getToolInfo: getSubAppInfo,
 
         onReasoning({ text }) {
           workflowStreamResponse?.({
@@ -218,15 +317,15 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           });
         },
         onToolCall({ call }) {
-          const toolNode = getToolInfo(call.function.name);
+          const subApp = getSubAppInfo(call.function.name);
           workflowStreamResponse?.({
             id: call.id,
             event: SseResponseEventEnum.toolCall,
             data: {
               tool: {
                 id: `${nodeId}/${call.function.name}`,
-                toolName: toolNode?.name || call.function.name,
-                toolAvatar: toolNode?.avatar || '',
+                toolName: subApp?.name || call.function.name,
+                toolAvatar: subApp?.avatar || '',
                 functionName: call.function.name,
                 params: call.function.arguments ?? ''
               }
@@ -349,7 +448,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               }
               // User Sub App
               else {
-                const node = toolNodesMap.get(toolId);
+                const node = subAppsMap.get(toolId);
                 if (!node) {
                   return {
                     response: 'Can not find the tool',
@@ -496,7 +595,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       },
       // TODO: 需要对 memoryMessages 单独建表存储
       [DispatchNodeResponseKeyEnum.memories]: {
-        [memoryKey]: filterMemoryMessages(completeMessages)
+        [masterMessagesKey]: filterMemoryMessages(completeMessages),
+        [planMessagesKey]: [] // TODO: plan messages 需要记录
       },
       [DispatchNodeResponseKeyEnum.assistantResponses]: previewAssistantResponses,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {

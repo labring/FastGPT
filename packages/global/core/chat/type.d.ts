@@ -101,8 +101,9 @@ export type ChatItemValueItemType =
   | UserChatItemValueItemType
   | SystemChatItemValueItemType
   | AIChatItemValueItemType;
+export type ChatItemObjItemType = UserChatItemType | SystemChatItemType | AIChatItemType;
 
-export type ChatItemSchema = ChatItemValueItemType & {
+export type ChatItemSchema = ChatItemObjItemType & {
   dataId: string;
   chatId: string;
   userId: string;
@@ -130,12 +131,12 @@ export type ResponseTagItemType = {
   toolCiteLinks?: ToolCiteLinksType[];
 };
 
-export type ChatItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
+export type ChatItemType = ChatItemObjItemType & {
   dataId?: string;
 } & ResponseTagItemType;
 
 // Frontend type
-export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
+export type ChatSiteItemType = ChatItemObjItemType & {
   _id?: string;
   dataId: string;
   status: `${ChatStatusEnum}`;
