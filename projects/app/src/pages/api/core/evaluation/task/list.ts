@@ -25,7 +25,7 @@ async function handler(
   req: ApiRequestProps<ListEvaluationsRequest>
 ): Promise<ListEvaluationsResponse> {
   const { offset, pageSize } = parsePaginationRequest(req);
-  const { searchKey } = req.body;
+  const { searchKey, appName, appId, versionId } = req.body;
 
   const { teamId, tmbId, isOwner, roleList, myGroupMap, myOrgSet } =
     await getEvaluationPermissionAggregation({
@@ -49,7 +49,10 @@ async function handler(
     searchKey?.trim(),
     accessibleIds,
     tmbId,
-    isOwner
+    isOwner,
+    appName?.trim(),
+    appId?.trim(),
+    versionId?.trim()
   );
 
   const formatEvaluations = result.list

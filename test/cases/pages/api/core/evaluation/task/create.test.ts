@@ -8,6 +8,7 @@ import {
 } from '@fastgpt/service/support/permission/teamLimit';
 import { validateTargetConfig } from '@fastgpt/service/core/evaluation/target';
 import { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
+import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 
 // Mock dependencies
 vi.mock('@fastgpt/service/core/evaluation/task', () => ({
@@ -47,6 +48,12 @@ vi.mock('@fastgpt/service/common/system/log', () => ({
   }
 }));
 
+vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
+  MongoEvalDatasetCollection: {
+    findOne: vi.fn()
+  }
+}));
+
 describe('Create Evaluation Task API Handler', () => {
   const mockEvaluation = {
     _id: new Types.ObjectId(),
@@ -82,6 +89,15 @@ describe('Create Evaluation Task API Handler', () => {
     // Setup mocks
     vi.mocked(checkTeamAIPoints).mockResolvedValue(undefined);
     vi.mocked(checkTeamEvaluationTaskLimit).mockResolvedValue(undefined);
+
+    // Mock dataset exists for all tests
+    (MongoEvalDatasetCollection.findOne as any).mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        _id: new Types.ObjectId(),
+        teamId: new Types.ObjectId(),
+        name: 'Test Dataset'
+      })
+    });
   });
 
   test('应该成功创建评估任务', async () => {

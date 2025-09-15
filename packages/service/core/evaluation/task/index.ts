@@ -171,7 +171,10 @@ export class EvaluationTaskService {
     searchKey?: string,
     accessibleIds?: string[],
     tmbId?: string,
-    isOwner: boolean = false
+    isOwner: boolean = false,
+    appName?: string,
+    appId?: string,
+    versionId?: string
   ): Promise<{ list: EvaluationDisplayType[]; total: number }> {
     // Build basic filter and pagination
     const filter: any = { teamId: new Types.ObjectId(teamId) };
@@ -197,43 +200,74 @@ export class EvaluationTaskService {
       };
     }
 
+    // Build aggregation pipeline with target filtering
+    const aggregationPipeline = [
+      { $match: finalFilter },
+      {
+        $lookup: {
+          from: 'eval_dataset_collections',
+          localField: 'datasetId',
+          foreignField: '_id',
+          as: 'dataset'
+        }
+      },
+      {
+        $addFields: {
+          'target.config.appObjectId': { $toObjectId: '$target.config.appId' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'apps',
+          localField: 'target.config.appObjectId',
+          foreignField: '_id',
+          as: 'app'
+        }
+      },
+      {
+        $addFields: {
+          'target.config.versionObjectId': { $toObjectId: '$target.config.versionId' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'app_versions',
+          localField: 'target.config.versionObjectId',
+          foreignField: '_id',
+          as: 'appVersion'
+        }
+      },
+      {
+        $addFields: {
+          'target.config.appName': { $arrayElemAt: ['$app.name', 0] },
+          'target.config.avatar': { $arrayElemAt: ['$app.avatar', 0] },
+          'target.config.versionName': { $arrayElemAt: ['$appVersion.versionName', 0] }
+        }
+      }
+    ];
+
+    // Add target filtering stage if any target filters are provided
+    if (appName || appId || versionId) {
+      const targetFilter: any = {};
+
+      if (appName) {
+        targetFilter['target.config.appName'] = { $regex: appName, $options: 'i' };
+      }
+
+      if (appId) {
+        targetFilter['target.config.appId'] = appId;
+      }
+
+      if (versionId) {
+        targetFilter['target.config.versionId'] = versionId;
+      }
+
+      aggregationPipeline.push({ $match: targetFilter });
+    }
+
     const [evaluations, total] = await Promise.all([
       MongoEvaluation.aggregate([
-        { $match: finalFilter },
-        {
-          $lookup: {
-            from: 'eval_dataset_collections',
-            localField: 'datasetId',
-            foreignField: '_id',
-            as: 'dataset'
-          }
-        },
-        {
-          $addFields: {
-            'target.config.appObjectId': { $toObjectId: '$target.config.appId' }
-          }
-        },
-        {
-          $lookup: {
-            from: 'apps',
-            localField: 'target.config.appObjectId',
-            foreignField: '_id',
-            as: 'app'
-          }
-        },
-        {
-          $addFields: {
-            'target.config.versionObjectId': { $toObjectId: '$target.config.versionId' }
-          }
-        },
-        {
-          $lookup: {
-            from: 'app_versions',
-            localField: 'target.config.versionObjectId',
-            foreignField: '_id',
-            as: 'appVersion'
-          }
-        },
+        ...aggregationPipeline,
         // Add real-time statistics lookup
         {
           $lookup: {
@@ -264,10 +298,6 @@ export class EvaluationTaskService {
         {
           $addFields: {
             datasetName: { $arrayElemAt: ['$dataset.name', 0] },
-            // Add app name and avatar to target.config
-            'target.config.appName': { $arrayElemAt: ['$app.name', 0] },
-            'target.config.avatar': { $arrayElemAt: ['$app.avatar', 0] },
-            'target.config.versionName': { $arrayElemAt: ['$appVersion.versionName', 0] },
             metricNames: {
               $map: {
                 input: '$evaluators',
@@ -322,7 +352,10 @@ export class EvaluationTaskService {
         { $skip: skip },
         { $limit: limit }
       ]),
-      MongoEvaluation.countDocuments(finalFilter)
+      // Get total count using the same aggregation pipeline (without pagination)
+      MongoEvaluation.aggregate([...aggregationPipeline, { $count: 'total' }]).then(
+        (result) => result[0]?.total || 0
+      )
     ]);
 
     // Return raw data - permissions will be handled in API layer

@@ -4,11 +4,59 @@ import type { CreateEvaluationParams } from '@fastgpt/global/core/evaluation/typ
 import type { ValidationResult } from '@fastgpt/global/core/evaluation/validate';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 import { MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from '@fastgpt/global/core/evaluation/constants';
+import { MongoEvalDatasetCollection } from '../dataset/evalDatasetCollectionSchema';
+import { Types } from 'mongoose';
 
 export type EvaluationValidationParams = Partial<CreateEvaluationParams>;
 
 export interface EvaluationValidationOptions {
   mode?: 'create' | 'update'; // validation mode
+  teamId?: string; // required for dataset existence validation
+}
+
+/**
+ * Validate if a dataset exists and is accessible by the team
+ */
+async function validateDatasetExists(
+  datasetId: string,
+  teamId?: string
+): Promise<ValidationResult> {
+  // Validate datasetId format
+  if (!Types.ObjectId.isValid(datasetId)) {
+    return {
+      isValid: false,
+      errors: [
+        {
+          code: EvaluationErrEnum.evalDatasetIdRequired,
+          message: 'Invalid dataset ID format',
+          field: 'datasetId'
+        }
+      ]
+    };
+  }
+
+  // Check if dataset exists
+  const filter: any = { _id: new Types.ObjectId(datasetId) };
+  if (teamId) {
+    filter.teamId = new Types.ObjectId(teamId);
+  }
+
+  const dataset = await MongoEvalDatasetCollection.findOne(filter).lean();
+
+  if (!dataset) {
+    return {
+      isValid: false,
+      errors: [
+        {
+          code: EvaluationErrEnum.datasetCollectionNotFound,
+          message: 'Dataset not found or access denied',
+          field: 'datasetId'
+        }
+      ]
+    };
+  }
+
+  return { isValid: true, errors: [] };
 }
 
 export async function validateEvaluationParams(
@@ -118,17 +166,25 @@ export async function validateEvaluationParams(
     };
   }
 
-  if (datasetId !== undefined && !datasetId) {
-    return {
-      isValid: false,
-      errors: [
-        {
-          code: EvaluationErrEnum.evalDatasetIdRequired,
-          message: 'Dataset ID is required',
-          field: 'datasetId'
-        }
-      ]
-    };
+  if (datasetId !== undefined) {
+    if (!datasetId) {
+      return {
+        isValid: false,
+        errors: [
+          {
+            code: EvaluationErrEnum.evalDatasetIdRequired,
+            message: 'Dataset ID is required',
+            field: 'datasetId'
+          }
+        ]
+      };
+    }
+
+    // Validate dataset exists and is accessible
+    const datasetValidation = await validateDatasetExists(datasetId, options?.teamId);
+    if (!datasetValidation.isValid) {
+      return datasetValidation;
+    }
   }
 
   if (target !== undefined) {
@@ -214,13 +270,15 @@ export async function validateEvaluationParams(
 }
 
 export async function validateEvaluationParamsForCreate(
-  params: EvaluationValidationParams
+  params: EvaluationValidationParams,
+  teamId?: string
 ): Promise<ValidationResult> {
-  return validateEvaluationParams(params, { mode: 'create' });
+  return validateEvaluationParams(params, { mode: 'create', teamId });
 }
 
 export async function validateEvaluationParamsForUpdate(
-  params: EvaluationValidationParams
+  params: EvaluationValidationParams,
+  teamId?: string
 ): Promise<ValidationResult> {
-  return validateEvaluationParams(params, { mode: 'update' });
+  return validateEvaluationParams(params, { mode: 'update', teamId });
 }
