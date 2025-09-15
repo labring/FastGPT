@@ -21,7 +21,6 @@ const defaultWorkerOpts: Omit<ConnectionOptions, 'connection'> = {
 export enum QueueNames {
   datasetSync = 'datasetSync',
   evalDatasetDataQuality = 'evalDatasetDataQuality',
-  evalDatasetSmartGenerate = 'evalDatasetSmartGenerate',
   evalDatasetDataSynthesize = 'evalDatasetDataSynthesize',
   evalTask = 'evalTask',
   evalTaskItem = 'evalTaskitem',

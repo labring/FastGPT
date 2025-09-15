@@ -69,7 +69,7 @@ async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
     const evalData: Partial<EvalDatasetDataSchemaType> = {
       teamId: evalDatasetCollection.teamId,
       tmbId: evalDatasetCollection.tmbId,
-      datasetId: evalDatasetCollectionId,
+      evalDatasetCollectionId: evalDatasetCollectionId,
       [EvalDatasetDataKeyEnum.UserInput]: synthesisResult.data?.qaPair.question,
       [EvalDatasetDataKeyEnum.ExpectedOutput]: synthesisResult.data?.qaPair.answer,
       [EvalDatasetDataKeyEnum.ActualOutput]: '',
