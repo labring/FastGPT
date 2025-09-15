@@ -52,13 +52,17 @@ export default function SkillPickerPlugin({
   });
 
   useEffect(() => {
-    const currentRef = highlightedRefs.current[selectedKey];
-    if (currentRef) {
-      currentRef.scrollIntoView({
-        behavior: 'auto',
-        block: 'nearest'
-      });
-    }
+    const timer = setTimeout(() => {
+      const currentRef = highlightedRefs.current[selectedKey];
+      if (currentRef) {
+        currentRef.scrollIntoView({
+          behavior: 'auto',
+          block: 'nearest'
+        });
+      }
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [selectedKey]);
 
   const { runAsync: addTool, loading: isAddToolLoading } = useRequest2(
@@ -348,8 +352,7 @@ export default function SkillPickerPlugin({
                                 bg: 'white'
                               })}
                         _hover={{
-                          bg: '#1118240D',
-                          color: 'primary.700'
+                          bg: '#1118240D'
                         }}
                       >
                         <Avatar src={skillOption.skillType?.icon} w={'16px'} borderRadius={'3px'} />
