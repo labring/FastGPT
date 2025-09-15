@@ -19,6 +19,7 @@ import { MongoChatItemResponse } from './chatItemResponseSchema';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { MongoS3TTL } from '../../common/s3/schema';
 import type { ClientSession } from '../../common/mongo';
+import { ConfirmPlanAgentText } from '@fastgpt/global/core/workflow/runtime/constants';
 
 type Props = {
   chatId: string;
@@ -329,10 +330,15 @@ export async function saveChat(props: Props) {
       ).catch();
     }
   } catch (error) {
-    addLog.error(`update chat history error`, error);
+    addLog.error(`Save chat history error`, error);
   }
 }
 
+/* 
+  更新交互节点，包含两种情况：
+  1. 更新当前的 items，并把 value 追加到当前 items
+  2. 新增 items, 次数只需要改当前的 items 里的交互节点值即可，其他属性追加在新增的 items 里
+*/
 export const updateInteractiveChat = async (props: Props) => {
   beforProcess(props);
 
@@ -354,7 +360,8 @@ export const updateInteractiveChat = async (props: Props) => {
   }
   interactiveValue.interactive.params = interactiveValue.interactive.params || {};
 
-  // Update interactive value
+  // Get interactive value
+  const { text: userInteractiveVal } = chatValue2RuntimePrompt(userContent.value);
   const parsedUserInteractiveVal = (() => {
     const { text: userInteractiveVal } = chatValue2RuntimePrompt(userContent.value);
     try {
@@ -369,10 +376,18 @@ export const updateInteractiveChat = async (props: Props) => {
     errorMsg
   });
 
-  let finalInteractive = extractDeepestInteractive(interactiveValue.interactive);
+  // 拿到的是实参
+  const finalInteractive = extractDeepestInteractive(interactiveValue.interactive);
+  const pushNewItems =
+    finalInteractive.type === 'agentPlanAskQuery' ||
+    (finalInteractive.type === 'agentPlanCheck' && userInteractiveVal !== ConfirmPlanAgentText);
 
-  if (finalInteractive.type === 'userSelect') {
-    finalInteractive.params.userSelectedVal = parsedUserInteractiveVal;
+  // Update interactive value
+  if (
+    finalInteractive.type === 'userSelect' ||
+    finalInteractive.type === 'agentPlanAskUserSelect'
+  ) {
+    finalInteractive.params.userSelectedVal = userInteractiveVal;
   } else if (
     (finalInteractive.type === 'userInput' || finalInteractive.type === 'agentPlanAskUserForm') &&
     typeof parsedUserInteractiveVal === 'object'
@@ -391,23 +406,27 @@ export const updateInteractiveChat = async (props: Props) => {
     finalInteractive.params.confirmed = true;
   }
 
-  if (aiResponse.customFeedbacks) {
-    chatItem.customFeedbacks = chatItem.customFeedbacks
-      ? [...chatItem.customFeedbacks, ...aiResponse.customFeedbacks]
-      : aiResponse.customFeedbacks;
-  }
-  if (aiResponse.value) {
-    chatItem.value = chatItem.value ? [...chatItem.value, ...aiResponse.value] : aiResponse.value;
-  }
-  if (aiResponse.citeCollectionIds) {
-    chatItem.citeCollectionIds = chatItem.citeCollectionIds
-      ? [...chatItem.citeCollectionIds, ...aiResponse.citeCollectionIds]
-      : aiResponse.citeCollectionIds;
-  }
+  // Update current items
+  if (!pushNewItems) {
+    if (aiContent.customFeedbacks) {
+      chatItem.customFeedbacks = chatItem.customFeedbacks
+        ? [...chatItem.customFeedbacks, ...aiContent.customFeedbacks]
+        : aiContent.customFeedbacks;
+    }
+    if (aiContent.value) {
+      chatItem.value = chatItem.value ? [...chatItem.value, ...aiContent.value] : aiContent.value;
+    }
+    if (aiResponse.citeCollectionIds) {
+      chatItem.citeCollectionIds = chatItem.citeCollectionIds
+        ? [...chatItem.citeCollectionIds, ...aiResponse.citeCollectionIds]
+        : aiResponse.citeCollectionIds;
+    }
 
-  chatItem.durationSeconds = chatItem.durationSeconds
-    ? +(chatItem.durationSeconds + durationSeconds).toFixed(2)
-    : durationSeconds;
+    chatItem.durationSeconds = chatItem.durationSeconds
+      ? +(chatItem.durationSeconds + durationSeconds).toFixed(2)
+      : durationSeconds;
+  }
+  chatItem.markModified('value');
 
   await mongoSessionRun(async (session) => {
     await chatItem.save({ session });
