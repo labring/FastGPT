@@ -38,7 +38,8 @@ export async function getRootUser(): Promise<parseHeaderCertRet> {
     isRoot: true,
     sourceName: undefined,
     teamId: tmb?.teamId,
-    tmbId: tmb?._id
+    tmbId: tmb?._id,
+    sessionId: ''
   };
 }
 
@@ -78,14 +79,15 @@ export async function getUser(username: string, teamId?: string): Promise<parseH
   })();
 
   return {
-    userId: user._id,
+    userId: String(user._id),
     apikey: '',
     appId: '',
     authType: AuthUserTypeEnum.token,
     isRoot: false,
     sourceName: undefined,
-    teamId: tmb?.teamId,
-    tmbId: tmb?._id
+    teamId: String(tmb?.teamId),
+    tmbId: String(tmb?._id),
+    sessionId: ''
   };
 }
 

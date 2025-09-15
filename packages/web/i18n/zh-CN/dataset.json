@@ -133,7 +133,7 @@
   "llm_paragraph_mode_force_desc": "强制使用模型自动识别段落，并忽略原文本的段落（如有）",
   "loading": "加载中...",
   "max_chunk_size": "最大分块大小",
-  "move.hint": "移动后，所选知识库/文件夹将继承新文件夹的权限设置，原先的权限设置失效。",
+  "move.hint": "移动后，所选知识库/文件夹将继承新文件夹的权限设置。",
   "noChildren": "无子目录",
   "noSelectedFolder": "没有选择文件夹",
   "noSelectedId": "没有选择 ID",
