@@ -98,7 +98,8 @@ const CitationTemplate = ({ isOpen, onClose, onConfirm }: CitationTemplateProps)
     <MyModal
       isOpen={isOpen}
       onClose={onClose}
-      iconSrc="modal/edit"
+      iconSrc="common/templateMarket"
+      iconColor="blue.600"
       title={t('dashboard_evaluation:citation_template')}
       w={'100%'}
       maxW={['90vw', '800px']}
