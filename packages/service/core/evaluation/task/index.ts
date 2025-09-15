@@ -275,6 +275,33 @@ export class EvaluationTaskService {
             as: 'appVersion'
           }
         },
+        // Add real-time statistics lookup
+        {
+          $lookup: {
+            from: 'eval_items',
+            let: { evalId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ['$evalId', '$evalId'] }
+                }
+              },
+              {
+                $group: {
+                  _id: null,
+                  totalItems: { $sum: 1 },
+                  completedItems: {
+                    $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.completed] }, 1, 0] }
+                  },
+                  errorItems: {
+                    $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.error] }, 1, 0] }
+                  }
+                }
+              }
+            ],
+            as: 'realTimeStats'
+          }
+        },
         {
           $addFields: {
             datasetName: { $arrayElemAt: ['$dataset.name', 0] },
@@ -357,6 +384,33 @@ export class EvaluationTaskService {
           localField: 'target.config.versionObjectId',
           foreignField: '_id',
           as: 'appVersion'
+        }
+      },
+      // Add real-time statistics lookup
+      {
+        $lookup: {
+          from: 'eval_items',
+          let: { evalId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ['$evalId', '$evalId'] }
+              }
+            },
+            {
+              $group: {
+                _id: null,
+                totalItems: { $sum: 1 },
+                completedItems: {
+                  $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.completed] }, 1, 0] }
+                },
+                errorItems: {
+                  $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.error] }, 1, 0] }
+                }
+              }
+            }
+          ],
+          as: 'realTimeStats'
         }
       },
       {

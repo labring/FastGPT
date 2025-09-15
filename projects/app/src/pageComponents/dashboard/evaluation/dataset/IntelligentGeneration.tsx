@@ -48,9 +48,10 @@ export interface IntelligentGenerationForm {
 interface IntelligentGenerationProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (data: IntelligentGenerationForm) => void;
+  onConfirm: (data: IntelligentGenerationForm, datasetId?: string) => void;
   defaultValues?: Partial<IntelligentGenerationForm>;
   scene?: 'dataset' | 'data'; // 场景：数据集或数据
+  returnDatasetId?: boolean; // 是否返回数据集ID，用于自动选择场景
 }
 
 const formatSubmitData = (
@@ -73,7 +74,8 @@ const IntelligentGeneration = ({
   onClose,
   onConfirm,
   defaultValues,
-  scene = 'dataset'
+  scene = 'dataset',
+  returnDatasetId = false
 }: IntelligentGenerationProps) => {
   const { t } = useTranslation();
   const { llmModelList } = useSystemStore();
@@ -128,7 +130,9 @@ const IntelligentGeneration = ({
         collectionId: targetCollectionId
       });
 
-      return postSmartGenerateEvaluationDataset(params);
+      await postSmartGenerateEvaluationDataset(params);
+
+      return { datasetId: targetCollectionId };
     },
     {
       successToast: t('common:create_success')
@@ -179,8 +183,12 @@ const IntelligentGeneration = ({
 
   // 处理表单提交
   const handleFormSubmit = async (data: IntelligentGenerationForm) => {
-    await onclickCreate(data);
-    onConfirm(data);
+    const result = await onclickCreate(data);
+    if (returnDatasetId) {
+      onConfirm(data, result?.datasetId);
+    } else {
+      onConfirm(data);
+    }
   };
 
   return (
