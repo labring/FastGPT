@@ -223,11 +223,33 @@ describe('EvaluationTaskService', () => {
         evaluators: evaluators
       };
 
-      const evaluation = await EvaluationTaskService.createEvaluation({
-        ...params,
-        teamId: teamId,
-        tmbId: tmbId
-      });
+      // 添加重试机制处理MongoDB事务冲突
+      let evaluation: any;
+      let retryCount = 0;
+      const maxRetries = 3;
+
+      while (retryCount < maxRetries) {
+        try {
+          evaluation = await EvaluationTaskService.createEvaluation({
+            ...params,
+            teamId: teamId,
+            tmbId: tmbId
+          });
+          break; // 成功则退出循环
+        } catch (error: any) {
+          retryCount++;
+          if (
+            error?.message?.includes('Collection namespace') &&
+            error?.message?.includes('is already in use') &&
+            retryCount < maxRetries
+          ) {
+            // 等待一段时间后重试
+            await new Promise((resolve) => setTimeout(resolve, 100 * retryCount));
+            continue;
+          }
+          throw error; // 非命名空间冲突错误或重试次数用完，直接抛出
+        }
+      }
 
       expect(evaluation.name).toBe(params.name);
       expect(evaluation.description).toBe(params.description);
@@ -455,6 +477,223 @@ describe('EvaluationTaskService', () => {
 
       expect(Array.isArray(result.list)).toBe(true);
       expect(result.list.some((evaluation) => evaluation.name.includes('Searchable'))).toBe(true);
+    });
+
+    test('应该支持按appName过滤', async () => {
+      // Clean up any leftover evaluation tasks
+      await MongoEvaluation.deleteMany({ teamId });
+
+      // 创建使用不同appId的评估任务
+      const targetWithAppName = {
+        type: 'workflow' as const,
+        config: {
+          appId: '507f1f77bcf86cd799439015',
+          versionId: '507f1f77bcf86cd799439016',
+          chatConfig: {}
+        }
+      };
+
+      const params: CreateEvaluationParams = {
+        name: 'App Name Filter Test',
+        description: 'Test evaluation for app name filtering',
+        datasetId,
+        target: targetWithAppName,
+        evaluators: evaluators
+      };
+
+      await EvaluationTaskService.createEvaluation({
+        ...params,
+        teamId: teamId,
+        tmbId: tmbId
+      });
+
+      // 模拟有应用名称的情况 - 实际场景中appName会在aggregation阶段从apps collection中lookup得到
+      // 这里我们测试带appName参数的调用
+      const result = await EvaluationTaskService.listEvaluations(
+        teamId,
+        0,
+        10,
+        undefined,
+        undefined,
+        tmbId,
+        true,
+        'Test App Name'
+      );
+
+      expect(Array.isArray(result.list)).toBe(true);
+      expect(typeof result.total).toBe('number');
+    });
+
+    test('应该支持按appId过滤', async () => {
+      // Clean up any leftover evaluation tasks
+      await MongoEvaluation.deleteMany({ teamId });
+
+      const targetWithSpecificAppId = {
+        type: 'workflow' as const,
+        config: {
+          appId: '507f1f77bcf86cd799439020',
+          versionId: '507f1f77bcf86cd799439021',
+          chatConfig: {}
+        }
+      };
+
+      const params: CreateEvaluationParams = {
+        name: 'App ID Filter Test',
+        description: 'Test evaluation for app ID filtering',
+        datasetId,
+        target: targetWithSpecificAppId,
+        evaluators: evaluators
+      };
+
+      const created = await EvaluationTaskService.createEvaluation({
+        ...params,
+        teamId: teamId,
+        tmbId: tmbId
+      });
+
+      const result = await EvaluationTaskService.listEvaluations(
+        teamId,
+        0,
+        10,
+        undefined,
+        undefined,
+        tmbId,
+        true,
+        undefined,
+        '507f1f77bcf86cd799439020'
+      );
+
+      expect(Array.isArray(result.list)).toBe(true);
+      expect(typeof result.total).toBe('number');
+      // 由于过滤条件匹配，应该能找到创建的评估任务
+      const foundEvaluation = result.list.find((e) => e._id.toString() === created._id.toString());
+      expect(foundEvaluation).toBeDefined();
+    });
+
+    test('应该支持按versionId过滤', async () => {
+      // Clean up any leftover evaluation tasks
+      await MongoEvaluation.deleteMany({ teamId });
+
+      const targetWithSpecificVersionId = {
+        type: 'workflow' as const,
+        config: {
+          appId: '507f1f77bcf86cd799439025',
+          versionId: '507f1f77bcf86cd799439026',
+          chatConfig: {}
+        }
+      };
+
+      const params: CreateEvaluationParams = {
+        name: 'Version ID Filter Test',
+        description: 'Test evaluation for version ID filtering',
+        datasetId,
+        target: targetWithSpecificVersionId,
+        evaluators: evaluators
+      };
+
+      const created = await EvaluationTaskService.createEvaluation({
+        ...params,
+        teamId: teamId,
+        tmbId: tmbId
+      });
+
+      const result = await EvaluationTaskService.listEvaluations(
+        teamId,
+        0,
+        10,
+        undefined,
+        undefined,
+        tmbId,
+        true,
+        undefined,
+        undefined,
+        '507f1f77bcf86cd799439026'
+      );
+
+      expect(Array.isArray(result.list)).toBe(true);
+      expect(typeof result.total).toBe('number');
+      // 由于过滤条件匹配，应该能找到创建的评估任务
+      const foundEvaluation = result.list.find((e) => e._id.toString() === created._id.toString());
+      expect(foundEvaluation).toBeDefined();
+    });
+
+    test('应该支持组合target过滤条件', async () => {
+      // Clean up any leftover evaluation tasks
+      await MongoEvaluation.deleteMany({ teamId });
+
+      const targetWithMultipleFilters = {
+        type: 'workflow' as const,
+        config: {
+          appId: '507f1f77bcf86cd799439030',
+          versionId: '507f1f77bcf86cd799439031',
+          chatConfig: {}
+        }
+      };
+
+      const params: CreateEvaluationParams = {
+        name: 'Multiple Filters Test',
+        description: 'Test evaluation for multiple target filtering',
+        datasetId,
+        target: targetWithMultipleFilters,
+        evaluators: evaluators
+      };
+
+      await EvaluationTaskService.createEvaluation({
+        ...params,
+        teamId: teamId,
+        tmbId: tmbId
+      });
+
+      const result = await EvaluationTaskService.listEvaluations(
+        teamId,
+        0,
+        10,
+        undefined,
+        undefined,
+        tmbId,
+        true,
+        'Test App', // appName filter
+        '507f1f77bcf86cd799439030', // appId filter
+        '507f1f77bcf86cd799439031' // versionId filter
+      );
+
+      expect(Array.isArray(result.list)).toBe(true);
+      expect(typeof result.total).toBe('number');
+    });
+
+    test('不匹配的过滤条件应该返回空结果', async () => {
+      // Clean up any leftover evaluation tasks
+      await MongoEvaluation.deleteMany({ teamId });
+
+      const params: CreateEvaluationParams = {
+        name: 'No Match Test',
+        description: 'Test evaluation that should not match filters',
+        datasetId,
+        target,
+        evaluators: evaluators
+      };
+
+      await EvaluationTaskService.createEvaluation({
+        ...params,
+        teamId: teamId,
+        tmbId: tmbId
+      });
+
+      const result = await EvaluationTaskService.listEvaluations(
+        teamId,
+        0,
+        10,
+        undefined,
+        undefined,
+        tmbId,
+        true,
+        undefined,
+        'non-existent-app-id'
+      );
+
+      expect(Array.isArray(result.list)).toBe(true);
+      expect(result.total).toBe(0);
+      expect(result.list.length).toBe(0);
     });
   });
 

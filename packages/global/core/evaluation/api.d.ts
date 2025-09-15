@@ -33,6 +33,9 @@ export type DeleteEvaluationResponse = MessageResponse;
 // List Evaluations
 export type ListEvaluationsRequest = PaginationProps<{
   searchKey?: string;
+  appName?: string;
+  appId?: string;
+  versionId?: string;
 }>;
 export type ListEvaluationsResponse = PaginationResponse<EvaluationDisplayType>;
 

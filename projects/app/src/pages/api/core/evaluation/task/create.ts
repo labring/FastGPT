@@ -21,23 +21,27 @@ async function handler(
 ): Promise<CreateEvaluationResponse> {
   const { name, description, datasetId, target, evaluators, autoStart } = req.body;
 
-  // Validate all evaluation parameters (includes target validation)
-  const paramValidation = await validateEvaluationParamsForCreate({
-    name,
-    description,
-    datasetId,
-    target,
-    evaluators
-  });
-  if (!paramValidation.isValid) {
-    throw ValidationResultUtils.toError(paramValidation);
-  }
-
+  // First perform auth to get teamId
   const { teamId, tmbId } = await authEvaluationTaskCreate(target as EvalTarget, {
     req,
     authApiKey: true,
     authToken: true
   });
+
+  // Now validate all evaluation parameters with teamId (includes target and dataset validation)
+  const paramValidation = await validateEvaluationParamsForCreate(
+    {
+      name,
+      description,
+      datasetId,
+      target,
+      evaluators
+    },
+    teamId
+  );
+  if (!paramValidation.isValid) {
+    throw ValidationResultUtils.toError(paramValidation);
+  }
 
   // Check evaluation task limit
   await checkTeamEvaluationTaskLimit(teamId);
