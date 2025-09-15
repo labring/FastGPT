@@ -7,6 +7,8 @@ import { type ChatBoxInputType, type UserInputFileItemType } from './type';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { ConfirmPlanAgentText } from '@fastgpt/global/core/workflow/runtime/constants';
 
 export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): ChatBoxInputType => {
   if (!value) {
@@ -43,36 +45,83 @@ export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): Chat
   };
 };
 
-export const checkIsInteractiveByHistories = (chatHistories: ChatSiteItemType[]) => {
+export const getInteractiveStatus = (
+  chatHistories: ChatSiteItemType[]
+): {
+  interactiveType: InteractiveNodeResponseType['type'] | undefined;
+  canSendQuery: boolean;
+} => {
   const lastAIHistory = chatHistories[chatHistories.length - 1];
-  if (!lastAIHistory) return false;
+  if (!lastAIHistory)
+    return {
+      interactiveType: undefined,
+      canSendQuery: true
+    };
 
   const lastMessageValue = lastAIHistory.value[
     lastAIHistory.value.length - 1
   ] as AIChatItemValueItemType;
 
-  if (lastMessageValue && !!lastMessageValue?.interactive?.params) {
-    const params = lastMessageValue.interactive.params;
-    // 如果用户选择了，则不认为是交互模式（可能是上一轮以交互结尾，发起的新的一轮对话）
-    if ('userSelectOptions' in params) {
-      return !params.userSelectedVal;
-    } else if ('inputForm' in params) {
-      return !params.submitted;
+  if (!lastMessageValue || !lastMessageValue.interactive) {
+    return {
+      interactiveType: undefined,
+      canSendQuery: true
+    };
+  }
+
+  const interactive = lastMessageValue.interactive;
+
+  if (interactive.params) {
+    if (interactive.type === 'userSelect' || interactive.type === 'agentPlanAskUserSelect') {
+      return {
+        interactiveType: !!interactive.params.userSelectedVal ? undefined : 'userSelect',
+        canSendQuery: !!interactive.params.userSelectedVal
+      };
+    }
+    if (interactive.type === 'userInput' || interactive.type === 'agentPlanAskUserForm') {
+      return {
+        interactiveType: !!interactive.params.submitted ? undefined : 'userInput',
+        canSendQuery: !!interactive.params.submitted
+      };
+    }
+    if (interactive.type === 'agentPlanCheck') {
+      return {
+        interactiveType: !!interactive.params.confirmed ? undefined : 'agentPlanCheck',
+        canSendQuery: true
+      };
+    }
+    if (interactive.type === 'agentPlanAskQuery') {
+      return {
+        interactiveType: 'agentPlanAskQuery',
+        canSendQuery: true
+      };
     }
   }
 
-  return false;
+  return {
+    interactiveType: undefined,
+    canSendQuery: true
+  };
 };
 
-export const setUserSelectResultToHistories = (
-  histories: ChatSiteItemType[],
-  interactiveVal: string
-): ChatSiteItemType[] => {
-  if (histories.length === 0) return histories;
+export const rewriteHistoriesByInteractiveResponse = ({
+  histories,
+  interactiveVal,
+  interactiveType
+}: {
+  histories: ChatSiteItemType[];
+  interactiveVal: string;
+  interactiveType: InteractiveNodeResponseType['type'];
+}): ChatSiteItemType[] => {
+  const formatHistories = (() => {
+    if (interactiveType === 'agentPlanCheck' && interactiveVal !== ConfirmPlanAgentText) {
+      return histories;
+    }
+    return histories.slice(0, -2);
+  })();
 
-  // @ts-ignore
-  return histories.map((item, i) => {
-    if (i !== histories.length - 1) return item;
+  const newHistories = formatHistories.map((item, i) => {
+    if (i !== formatHistories.length - 1) return item;
 
     const value = item.value.map((val, i) => {
       if (i !== item.value.length - 1) {
@@ -81,7 +130,10 @@ export const setUserSelectResultToHistories = (
       if (!('interactive' in val) || !val.interactive) return val;
 
       const finalInteractive = extractDeepestInteractive(val.interactive);
-      if (finalInteractive.type === 'userSelect') {
+      if (
+        finalInteractive.type === 'userSelect' ||
+        finalInteractive.type === 'agentPlanAskUserSelect'
+      ) {
         return {
           ...val,
           interactive: {
@@ -96,7 +148,10 @@ export const setUserSelectResultToHistories = (
         };
       }
 
-      if (finalInteractive.type === 'userInput') {
+      if (
+        finalInteractive.type === 'userInput' ||
+        finalInteractive.type === 'agentPlanAskUserForm'
+      ) {
         return {
           ...val,
           interactive: {
@@ -108,12 +163,28 @@ export const setUserSelectResultToHistories = (
           }
         };
       }
+
+      if (finalInteractive.type === 'agentPlanCheck') {
+        return {
+          ...val,
+          interactive: {
+            ...finalInteractive,
+            params: {
+              confirmed: true
+            }
+          }
+        };
+      }
+
+      return val;
     });
 
     return {
       ...item,
       status: ChatStatusEnum.loading,
       value
-    };
+    } as ChatSiteItemType;
   });
+
+  return newHistories;
 };

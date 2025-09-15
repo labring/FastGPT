@@ -197,14 +197,32 @@ export const getLastInteractiveValue = (
 
     // Check is user select
     if (
-      lastValue.interactive.type === 'userSelect' &&
-      !lastValue.interactive.params.userSelectedVal
+      (lastValue.interactive.type === 'userSelect' ||
+        lastValue.interactive.type === 'agentPlanAskUserSelect') &&
+      !lastValue.interactive?.params?.userSelectedVal
     ) {
       return lastValue.interactive;
     }
 
     // Check is user input
-    if (lastValue.interactive.type === 'userInput' && !lastValue.interactive.params.submitted) {
+    if (
+      (lastValue.interactive.type === 'userInput' ||
+        lastValue.interactive.type === 'agentPlanAskUserForm') &&
+      !lastValue.interactive?.params?.submitted
+    ) {
+      return lastValue.interactive;
+    }
+
+    // Agent plan check
+    if (
+      lastValue.interactive.type === 'agentPlanCheck' &&
+      !lastValue.interactive?.params?.confirmed
+    ) {
+      return lastValue.interactive;
+    }
+
+    // Agent plan ask query
+    if (lastValue.interactive.type === 'agentPlanAskQuery') {
       return lastValue.interactive;
     }
   }
