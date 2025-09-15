@@ -42,7 +42,13 @@ export async function getServerSideProps(context: any) {
     props: {
       collectionId,
       collectionName,
-      ...(await serviceSideProps(context, ['dashboard_evaluation', 'file', 'user']))
+      ...(await serviceSideProps(context, [
+        'dashboard_evaluation',
+        'evaluation',
+        'file',
+        'user',
+        'dataset'
+      ]))
     }
   };
 }

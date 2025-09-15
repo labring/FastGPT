@@ -219,7 +219,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
                   {
                     label: (
                       <Flex>
-                        <MyIcon name={'core/app/aiLight'} w={'20px'} mr={2} />
+                        <MyIcon name={'core/app/aiLightSmall'} w={'20px'} mr={2} />
                         {t('dashboard_evaluation:smart_generation')}
                       </Flex>
                     ),

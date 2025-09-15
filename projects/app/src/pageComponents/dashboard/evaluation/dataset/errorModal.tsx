@@ -122,9 +122,9 @@ const ErrorModal = ({ isOpen, onClose, collectionId }: ErrorModalProps) => {
           <Table variant="simple">
             <Thead>
               <Tr>
-                <Th>{t('dashboard_evaluation:source_knowledge_base')}</Th>
+                <Th w={'120px'}>{t('dashboard_evaluation:source_knowledge_base')}</Th>
                 <Th w={'90px'}>{t('dashboard_evaluation:source_chunk')}</Th>
-                <Th w={'50px'}>{t('dashboard_evaluation:error_message')}</Th>
+                <Th>{t('dashboard_evaluation:error_message')}</Th>
                 <Th w={'110px'}>{t('dashboard_evaluation:operations')}</Th>
               </Tr>
             </Thead>
@@ -149,7 +149,7 @@ const ErrorModal = ({ isOpen, onClose, collectionId }: ErrorModalProps) => {
                       {t(error.dataId)}
                     </MyTooltip>
                   </Td>
-                  <Td maxW={'50px'}>
+                  <Td>
                     <MyTooltip
                       shouldWrapChildren={false}
                       placement={'auto'}
