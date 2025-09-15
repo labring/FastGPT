@@ -19,11 +19,12 @@ import type {
   listFailedTasksResponse,
   getEvalDatasetCollectionDetailResponse
 } from '@fastgpt/global/core/evaluation/dataset/api';
+import type { SmartGenerateEvalDatasetResponse } from '@/pages/api/core/evaluation/dataset/data/smartGenerate';
 import type { PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
 // 智能生成评测数据集
 export const postSmartGenerateEvaluationDataset = (data: smartGenerateEvalDatasetBody) =>
-  POST('/core/evaluation/dataset/data/smartGenerate', data);
+  POST<SmartGenerateEvalDatasetResponse>('/core/evaluation/dataset/data/smartGenerate', data);
 
 // 创建评测数据集
 export const postCreateEvaluationDataset = (data: createEvalDatasetCollectionBody) =>

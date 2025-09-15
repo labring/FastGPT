@@ -55,14 +55,28 @@ interface IntelligentGenerationProps {
 }
 
 const formatSubmitData = (
-  params: IntelligentGenerationForm & { collectionId: string }
+  params: IntelligentGenerationForm & { collectionId?: string }
 ): smartGenerateEvalDatasetBody => {
-  return {
+  const baseData = {
     count: params.dataAmount,
     kbDatasetIds: params.selectedDatasets.map((v) => v.datasetId),
-    intelligentGenerationModel: params.generationModel,
-    collectionId: params.collectionId
+    intelligentGenerationModel: params.generationModel
   };
+
+  if (params.collectionId) {
+    // Use existing collection
+    return {
+      ...baseData,
+      collectionId: params.collectionId
+    };
+  } else {
+    // Create new collection
+    return {
+      ...baseData,
+      name: params.name,
+      description: ''
+    };
+  }
 };
 
 /**
@@ -117,22 +131,19 @@ const IntelligentGeneration = ({
 
   const { runAsync: onclickCreate, loading: creating } = useRequest2(
     async (data: IntelligentGenerationForm) => {
-      let targetCollectionId = collectionId;
-
-      // 只有当collectionId不存在时，才需要创建新的数据集
-      if (!targetCollectionId) {
-        targetCollectionId = await postCreateEvaluationDataset({ name: data.name });
-        setCollectionId(targetCollectionId);
-      }
-
       const params = formatSubmitData({
         ...data,
-        collectionId: targetCollectionId
+        collectionId: collectionId || undefined
       });
 
-      await postSmartGenerateEvaluationDataset(params);
+      const result = await postSmartGenerateEvaluationDataset(params);
 
-      return { datasetId: targetCollectionId };
+      // If we created a new collection, update our state with the returned collectionId
+      if (!collectionId && result?.collectionId) {
+        setCollectionId(result.collectionId);
+      }
+
+      return result;
     },
     {
       successToast: t('common:create_success')
@@ -185,7 +196,7 @@ const IntelligentGeneration = ({
   const handleFormSubmit = async (data: IntelligentGenerationForm) => {
     const result = await onclickCreate(data);
     if (returnDatasetId) {
-      onConfirm(data, result?.datasetId);
+      onConfirm(data, result?.collectionId);
     } else {
       onConfirm(data);
     }
