@@ -1,21 +1,20 @@
-// 已使用 json5 进行解析，会自动去掉注释，无需手动去除
 {
   "feConfigs": {
-    "lafEnv": "https://laf.dev", // laf环境。 https://laf.run （杭州阿里云） ,或者私有化的laf环境。如果使用 Laf openapi 功能，需要最新版的 laf 。
-    "mcpServerProxyEndpoint": "http://localhost:3000" // mcp server 代理地址，例如： http://localhost:3005
+    "lafEnv": "https://laf.dev",
+    "mcpServerProxyEndpoint": "http://localhost:3000"
   },
   "systemEnv": {
-    "vectorMaxProcess": 10, // 向量处理线程数量
-    "qaMaxProcess": 3, // 问答拆分线程数量
-    "vlmMaxProcess": 1, // 图片理解模型最大处理进程
-    "tokenWorkers": 30, // Token 计算线程保持数，会持续占用内存，不能设置太大。
-    "hnswEfSearch": 64, // 向量搜索参数，仅对 PG 和 OB 生效。越大，搜索越精确，但是速度越慢。设置为100，有99%+精度。
-    "hnswMaxScanTuples": 100000, // 向量搜索最大扫描数据量，仅对 PG生效。
+    "vectorMaxProcess": 10,
+    "qaMaxProcess": 3,
+    "vlmMaxProcess": 1,
+    "tokenWorkers": 30,
+    "hnswEfSearch": 64,
+    "hnswMaxScanTuples": 100000,
     "customPdfParse": {
-      "url": "https://aiproxy.hzh.sealos.run/v1/parse/pdf?model=parse-pdf", // 自定义 PDF 解析服务地址
-      "key": "sk-iCVZhBBa8nRWa8FzVt0Je0vDMRHlwrKUXNJeltgadJmgw4g3", // 自定义 PDF 解析服务密钥
-      "doc2xKey": "sk-ukz9yxvtq2jirp5mtne86hfcn7dokfw2", // doc2x 服务密钥
-      "price": 0 // PDF 解析服务价格
+      "url": "https://aiproxy.hzh.sealos.run/v1/parse/pdf?model=parse-pdf",
+      "key": "sk-iCVZhBBa8nRWa8FzVt0Je0vDMRHlwrKUXNJeltgadJmgw4g3",
+      "doc2xKey": "sk-ukz9yxvtq2jirp5mtne86hfcn7dokfw2",
+      "price": 0
     }
   }
 }

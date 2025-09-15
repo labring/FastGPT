@@ -1,0 +1,8 @@
+rs.initiate({ _id:"rs0", members:[{_id:0,host:"mongo:20717"}] })
+rs.status()
+rs.status()
+docker exec -it fastgpt ping mongo
+use admin;
+db.getUsers();
+docker exec -it fastgpt mongo mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin exit
+rs.status()

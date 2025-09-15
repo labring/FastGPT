@@ -52,6 +52,8 @@ const ChatHeader = ({
       borderBottom={'sm'}
       color={'myGray.900'}
       fontSize={'sm'}
+      position="relative"
+      bg="#e6f0fa" // 浅蓝色背景
     >
       {isPc ? (
         <>
@@ -60,7 +62,21 @@ const ChatHeader = ({
             title={chatData.title || t('common:core.chat.New Chat')}
             chatModels={chatData.app.chatModels}
           />
-          <Box flex={1} />
+          {/* 顶部栏右上角Logo */}
+          <img
+            src="/logo.jpg" // 如用外链可替换为外链地址
+            alt="Logo"
+            style={{
+              position: 'absolute',
+              top: '50%',
+              right: 0,
+              transform: 'translateY(-50%)',
+              width: 100,
+              height: 80,
+              objectFit: 'contain',
+              zIndex: 1000
+            }}
+          />
         </>
       ) : (
         <MobileHeader

@@ -13,13 +13,29 @@ const ChatQuoteList = ({
   metadata: GetQuoteProps;
   onClose: () => void;
 }) => {
-  if ('collectionId' in metadata) {
-    return <CollectionQuoteReader rawSearch={rawSearch} metadata={metadata} onClose={onClose} />;
-  } else if ('collectionIdList' in metadata) {
-    return <QuoteReader rawSearch={rawSearch} metadata={metadata} onClose={onClose} />;
-  }
-
-  return null;
+  return (
+    <div style={{ position: 'relative' }}>
+      {/* 右上角 Logo */}
+      <img
+        src="/logo.jpg"
+        alt="Logo"
+        style={{
+          position: 'absolute',
+          top: 16,
+          right: 16,
+          width: 40,
+          height: 40,
+          zIndex: 10
+        }}
+      />
+      {/* 原有内容 */}
+      {'collectionId' in metadata ? (
+        <CollectionQuoteReader rawSearch={rawSearch} metadata={metadata} onClose={onClose} />
+      ) : 'collectionIdList' in metadata ? (
+        <QuoteReader rawSearch={rawSearch} metadata={metadata} onClose={onClose} />
+      ) : null}
+    </div>
+  );
 };
 
 export default ChatQuoteList;

@@ -1,0 +1,178 @@
+version: '3.3'
+services:
+  pg:
+    image: pgvector/pgvector:0.8.0-pg15
+    container_name: pg
+    restart: always
+    networks:
+      - fastgpt
+    environment:
+      - POSTGRES_USER=username
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgres
+    volumes:
+      - ./pg/data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'username', '-d', 'postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mongo:
+    image: mongo:4.4.24
+    container_name: mongo
+    restart: always
+    networks:
+      - fastgpt
+    command: mongod --keyFile /data/mongodb.key --replSet rs0
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=myusername
+      - MONGO_INITDB_ROOT_PASSWORD=mypassword
+    volumes:
+      - ./mongo/data:/data/db
+    entrypoint:
+      - bash
+      - -c
+      - |
+        openssl rand -base64 128 > /data/mongodb.key
+        chmod 400 /data/mongodb.key
+        chown 999:999 /data/mongodb.key
+        echo 'const isInited = rs.status().ok === 1
+        if(!isInited){
+          rs.initiate({
+              _id: "rs0",
+              members: [
+                  { _id: 0, host: "mongo:27017" }
+              ]
+          })
+        }' > /data/initReplicaSet.js
+        exec docker-entrypoint.sh "$$@" &
+
+        until mongo -u myusername -p mypassword --authenticationDatabase admin --eval "print('waited for connection')"; do
+          echo "Waiting for MongoDB to start..."
+          sleep 2
+        done
+
+        mongo -u myusername -p mypassword --authenticationDatabase admin /data/initReplicaSet.js
+        wait $$!
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: redis
+    networks:
+      - fastgpt
+    restart: always
+    command: |
+      redis-server --requirepass mypassword --loglevel warning --maxclients 10000 --appendonly yes --save 60 10 --maxmemory 4gb --maxmemory-policy noeviction
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', 'mypassword', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    volumes:
+      - ./redis/data:/data
+
+  fastgpt-minio:
+    image: minio/minio:latest
+    container_name: fastgpt-minio
+    restart: always
+    networks:
+      - fastgpt
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - ./fastgpt-minio:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # 修改后的 fastgpt 服务：开发模式
+  fastgpt:
+    image: node:20
+    container_name: fastgpt
+    working_dir: /app
+    # 挂载本地 FastGPT 源码（你先在宿主机 clone FastGPT 到 ./FastGPT 目录）
+    volumes:
+      - ./FastGPT:/app
+      - ./config.json:/app/projects/app/data/config.local.json
+      - ./public:/app/projects/app/public
+    command: sh -c "npm install -g pnpm && pnpm install && cd projects/app && pnpm dev"
+    ports:
+      - "3000:3000"
+    networks:
+      - fastgpt
+    depends_on:
+      - mongo
+      - sandbox
+      - pg
+    restart: always
+    environment:
+      - FE_DOMAIN=http://10.14.53.120:3000           # 替换成你服务器公网IP或域名
+      - DEFAULT_ROOT_PSW=1234
+      - TOKEN_KEY=any
+      - ROOT_KEY=root_key
+      - FILE_TOKEN_KEY=filetoken
+      - AES256_SECRET_KEY=fastgptkey
+      - PLUGIN_BASE_URL=http://10.14.53.120:3001
+      - PLUGIN_TOKEN=xxxxxx
+      - SANDBOX_URL=http://10.14.53.120:3002
+      - OPENAI_BASE_URL=https://oa.api2d.net
+      - OPENAI_API_KEY=fk234054-0hQ880DLf9qmjYER6NJq9FuJEhXDegQJ
+      - CHAT_API_KEY=fk234054-0hQ880DLf9qmjYER6NJq9FuJEhXDegQJ
+      - DB_MAX_LINK=30
+      - MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
+      - REDIS_URL=redis://default:mypassword@redis:6379
+      - PG_URL=postgresql://username:password@pg:5432/postgres
+      - LOG_LEVEL=info
+      - STORE_LOG_LEVEL=warn
+      - WORKFLOW_MAX_RUN_TIMES=1000
+      - WORKFLOW_MAX_LOOP_TIMES=100
+      - CHAT_FILE_EXPIRE_TIME=7
+
+  sandbox:
+    container_name: sandbox
+    image: ghcr.io/labring/fastgpt-sandbox:v4.10.0-fix
+    networks:
+      - fastgpt
+    restart: always
+
+  fastgpt-mcp-server:
+    container_name: fastgpt-mcp-server
+    image: ghcr.io/labring/fastgpt-mcp_server:v4.10.0-fix
+    ports:
+      - 3005:3000
+    networks:
+      - fastgpt
+    restart: always
+    environment:
+      - FASTGPT_ENDPOINT=http://10.14.53.120:3000     # 替换成你的服务器公网IP
+
+  fastgpt-plugin:
+    image: ghcr.io/labring/fastgpt-plugin:v0.1.2
+    container_name: fastgpt-plugin
+    restart: always
+    networks:
+      - fastgpt
+    environment:
+      - AUTH_TOKEN=xxxxxx
+      - MINIO_CUSTOM_ENDPOINT=http://10.14.53.120:9000   # 替换成你的服务器公网IP
+      - MINIO_ENDPOINT=fastgpt-minio
+      - MINIO_PORT=9000
+      - MINIO_USE_SSL=false
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=fastgpt-plugins
+    depends_on:
+      fastgpt-minio:
+        condition: service_healthy
+
+networks:
+  fastgpt:
