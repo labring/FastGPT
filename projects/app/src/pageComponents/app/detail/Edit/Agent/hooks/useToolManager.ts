@@ -79,7 +79,10 @@ export const useToolManager = ({
   const requestParentId = useMemo(() => {
     if (
       toolSkills.some(
-        (skill) => skill.key && (!skill.toolCategories || skill.toolCategories.length === 0)
+        (skill) =>
+          skill.key &&
+          (!skill.toolCategories || skill.toolCategories.length === 0) &&
+          skill.key === selectedSkillKey
       )
     ) {
       return '';
@@ -88,7 +91,9 @@ export const useToolManager = ({
     for (const skill of toolSkills) {
       for (const category of skill.toolCategories || []) {
         const tool = category.list.find(
-          (item) => item.key === selectedSkillKey && item.canOpen && !item.subItems
+          (item) =>
+            item.key === selectedSkillKey &&
+            item.subItems?.some((subItem) => subItem.key === 'loading')
         );
         if (tool) {
           return selectedSkillKey;
@@ -110,6 +115,7 @@ export const useToolManager = ({
                 name: string;
                 avatar: string;
                 canOpen?: boolean;
+                subItems?: { key: string; label: string }[];
               }>;
               label: string;
             }
@@ -124,12 +130,14 @@ export const useToolManager = ({
         systemPlugins.forEach((plugin) => {
           if (categoryMap[plugin.templateType]) {
             const canOpen = plugin.flowNodeType === 'toolSet' || plugin.isFolder;
+            const subItems = canOpen ? [{ key: 'loading', label: 'Loading... ' }] : undefined;
 
             categoryMap[plugin.templateType].list.push({
               key: plugin.id,
               name: t(parseI18nString(plugin.name, lang)),
               avatar: plugin.avatar || 'core/workflow/template/toolCall',
-              canOpen
+              canOpen,
+              subItems
             });
           }
         });

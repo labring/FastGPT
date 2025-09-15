@@ -169,11 +169,7 @@ export default function SkillPickerPlugin({
   }, [editor, isFocus, queryString, selectedKey, skillOptionList]);
 
   const onSelectOption = useCallback(
-    async (
-      selectedOption: SkillOptionType,
-      nodeToRemove: TextNode | null,
-      closeMenu: () => void
-    ) => {
+    async (selectedOption: SkillOptionType, closeMenu: () => void) => {
       const skillId = await addTool(selectedOption);
       if (!skillId) {
         return;
@@ -202,12 +198,25 @@ export default function SkillPickerPlugin({
     [editor, onAddToolFromEditor]
   );
 
+  const menuOptions = useMemo(() => {
+    return currentOptions.map((option) => ({
+      ...option,
+      setRefElement: () => {}
+    }));
+  }, [currentOptions]);
+
   return (
     <LexicalTypeaheadMenuPlugin
       onQueryChange={setQueryString}
-      onSelectOption={onSelectOption as any}
+      onSelectOption={(
+        selectedOption: SkillOptionType & { setRefElement: () => void },
+        nodeToRemove,
+        closeMenu
+      ) => {
+        onSelectOption(selectedOption, closeMenu);
+      }}
       triggerFn={checkForTriggerMatch}
-      options={currentOptions as any}
+      options={menuOptions}
       menuRenderFn={(
         anchorElementRef,
         { selectedIndex: currentSelectedIndex, selectOptionAndCleanUp, setHighlightedIndex }
@@ -281,7 +290,8 @@ export default function SkillPickerPlugin({
                     highlightedRefs.current[option.key] = el;
                   }}
                   onMouseDown={(e) => {
-                    selectOptionAndCleanUp(option as any);
+                    const menuOption = menuOptions.find((m) => m.key === option.key);
+                    if (menuOption) selectOptionAndCleanUp(menuOption);
                   }}
                   {...(selectedKey === option.key
                     ? {
@@ -442,7 +452,8 @@ export default function SkillPickerPlugin({
                                 highlightedRefs.current[option.key] = el;
                               }}
                               onMouseDown={() => {
-                                selectOptionAndCleanUp(option as any);
+                                const menuOption = menuOptions.find((m) => m.key === option.key);
+                                if (menuOption) selectOptionAndCleanUp(menuOption);
                               }}
                               {...(toolDisplayState.isCurrentFocus
                                 ? {
@@ -526,7 +537,8 @@ export default function SkillPickerPlugin({
                               highlightedRefs.current[option.key] = el;
                             }}
                             onMouseDown={() => {
-                              selectOptionAndCleanUp(option as any);
+                              const menuOption = menuOptions.find((m) => m.key === option.key);
+                              if (menuOption) selectOptionAndCleanUp(menuOption);
                             }}
                             {...(selectedKey === option.key
                               ? {
