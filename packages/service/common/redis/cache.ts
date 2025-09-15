@@ -56,3 +56,24 @@ export const delRedisCache = async (key: string) => {
   const redis = getGlobalRedisConnection();
   await retryFn(() => redis.del(getCacheKey(key)));
 };
+
+export const appendRedisCache = async (
+  key: string,
+  value: string | Buffer | number,
+  expireSeconds?: number
+) => {
+  return await retryFn(async () => {
+    try {
+      const redis = getGlobalRedisConnection();
+      if (expireSeconds) {
+        await redis.append(getCacheKey(key), value);
+        await redis.expire(getCacheKey(key), expireSeconds);
+      } else {
+        await redis.append(getCacheKey(key), value);
+      }
+    } catch (error) {
+      addLog.error('Append cache error:', error);
+      return Promise.reject(error);
+    }
+  });
+};
