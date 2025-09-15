@@ -278,10 +278,6 @@ export class EvaluationTaskService {
         {
           $addFields: {
             datasetName: { $arrayElemAt: ['$dataset.name', 0] },
-            // Add app name and avatar to target.config
-            'target.config.appName': { $arrayElemAt: ['$app.name', 0] },
-            'target.config.avatar': { $arrayElemAt: ['$app.avatar', 0] },
-            'target.config.versionName': { $arrayElemAt: ['$appVersion.versionName', 0] },
             metricNames: {
               $map: {
                 input: '$evaluators',
@@ -320,7 +316,10 @@ export class EvaluationTaskService {
         { $skip: skip },
         { $limit: limit }
       ]),
-      MongoEvaluation.countDocuments(finalFilter)
+      // Get total count using the same aggregation pipeline (without pagination)
+      MongoEvaluation.aggregate([...aggregationPipeline, { $count: 'total' }]).then(
+        (result) => result[0]?.total || 0
+      )
     ]);
 
     // Return raw data - permissions will be handled in API layer

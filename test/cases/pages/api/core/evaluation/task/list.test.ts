@@ -77,7 +77,10 @@ describe('List Evaluation Tasks API Handler', () => {
       undefined,
       [],
       'mock-tmb-id',
-      true
+      true,
+      undefined,
+      undefined,
+      undefined
     );
     expect(result).toEqual({
       list: mockResult.list.map((item) => ({
@@ -110,7 +113,10 @@ describe('List Evaluation Tasks API Handler', () => {
       'test search',
       [],
       'mock-tmb-id',
-      true
+      true,
+      undefined,
+      undefined,
+      undefined
     );
   });
 
@@ -132,7 +138,98 @@ describe('List Evaluation Tasks API Handler', () => {
       undefined,
       [],
       'mock-tmb-id',
-      true
+      true,
+      undefined,
+      undefined,
+      undefined
+    );
+  });
+
+  test('应该处理target过滤参数', async () => {
+    const mockReq = {
+      body: {
+        pageNum: 1,
+        pageSize: 10,
+        appName: 'Test App',
+        appId: '507f1f77bcf86cd799439011',
+        versionId: '507f1f77bcf86cd799439012'
+      }
+    } as any;
+
+    const mockResult = { list: [], total: 0 };
+    (EvaluationTaskService.listEvaluations as any).mockResolvedValue(mockResult);
+
+    await listHandler(mockReq);
+
+    expect(EvaluationTaskService.listEvaluations).toHaveBeenCalledWith(
+      'mock-team-id',
+      0,
+      10,
+      undefined,
+      [],
+      'mock-tmb-id',
+      true,
+      'Test App',
+      '507f1f77bcf86cd799439011',
+      '507f1f77bcf86cd799439012'
+    );
+  });
+
+  test('应该处理部分target过滤参数', async () => {
+    const mockReq = {
+      body: {
+        pageNum: 1,
+        pageSize: 10,
+        appName: 'Partial App'
+      }
+    } as any;
+
+    const mockResult = { list: [], total: 0 };
+    (EvaluationTaskService.listEvaluations as any).mockResolvedValue(mockResult);
+
+    await listHandler(mockReq);
+
+    expect(EvaluationTaskService.listEvaluations).toHaveBeenCalledWith(
+      'mock-team-id',
+      0,
+      10,
+      undefined,
+      [],
+      'mock-tmb-id',
+      true,
+      'Partial App',
+      undefined,
+      undefined
+    );
+  });
+
+  test('应该处理包含空白字符的target过滤参数', async () => {
+    const mockReq = {
+      body: {
+        pageNum: 1,
+        pageSize: 10,
+        appName: '  Test App  ',
+        appId: '  507f1f77bcf86cd799439011  ',
+        versionId: '  507f1f77bcf86cd799439012  '
+      }
+    } as any;
+
+    const mockResult = { list: [], total: 0 };
+    (EvaluationTaskService.listEvaluations as any).mockResolvedValue(mockResult);
+
+    await listHandler(mockReq);
+
+    expect(EvaluationTaskService.listEvaluations).toHaveBeenCalledWith(
+      'mock-team-id',
+      0,
+      10,
+      undefined,
+      [],
+      'mock-tmb-id',
+      true,
+      'Test App',
+      '507f1f77bcf86cd799439011',
+      '507f1f77bcf86cd799439012'
     );
   });
 });

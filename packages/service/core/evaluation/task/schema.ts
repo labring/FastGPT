@@ -109,7 +109,6 @@ export const EvaluationTaskSchema = new Schema({
   name: {
     type: String,
     required: true,
-    unique: true,
     trim: true,
     maxlength: 100
   },
@@ -199,7 +198,7 @@ export const EvaluationTaskSchema = new Schema({
 // Optimized indexes for EvaluationTaskSchema
 EvaluationTaskSchema.index({ teamId: 1, createTime: -1 }); // Main query: team filtering + time sorting
 EvaluationTaskSchema.index({ teamId: 1, status: 1, createTime: -1 }); // Status filtering + time sorting
-EvaluationTaskSchema.index({ teamId: 1, name: 1 }); // Name uniqueness check
+EvaluationTaskSchema.index({ teamId: 1, name: 1 }, { unique: true }); // Name uniqueness check
 EvaluationTaskSchema.index({ tmbId: 1, createTime: -1 }); // Query by creator
 EvaluationTaskSchema.index({ status: 1 }); // Status-based queue processing
 

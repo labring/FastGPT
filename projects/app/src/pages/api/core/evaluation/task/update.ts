@@ -21,23 +21,26 @@ async function handler(
     throw new Error(EvaluationErrEnum.evalIdRequired);
   }
 
-  // Validate all evaluation parameters with common validation utility
-  const paramValidation = await validateEvaluationParamsForUpdate({
-    name,
-    description,
-    datasetId,
-    target,
-    evaluators
-  });
-  if (!paramValidation.isValid) {
-    throw ValidationResultUtils.toError(paramValidation);
-  }
-
   const { teamId, tmbId, evaluation } = await authEvaluationTaskWrite(evalId, {
     req,
     authApiKey: true,
     authToken: true
   });
+
+  // Validate all evaluation parameters with common validation utility
+  const paramValidation = await validateEvaluationParamsForUpdate(
+    {
+      name,
+      description,
+      datasetId,
+      target,
+      evaluators
+    },
+    teamId
+  );
+  if (!paramValidation.isValid) {
+    throw ValidationResultUtils.toError(paramValidation);
+  }
 
   const taskName = name?.trim() || evaluation.name;
 
