@@ -60,6 +60,9 @@ export interface EvaluationSummaryResponse {
     errorReason?: string;
     completedItemCount: number;
     overThresholdItemCount: number;
+    thresholdPassRate: number;
+    threshold: number;
+    customSummary: string;
   }>;
   aggregateScore: number;
 }

@@ -173,16 +173,20 @@ export const EvaluationTaskSchema = new Schema({
         required: true
       },
       calculateType: {
-        type: Number,
+        type: String,
         enum: CaculateMethodValues,
         required: true
+      },
+      score: {
+        type: Number,
+        default: 0
       },
       summary: {
         type: String,
         default: ''
       },
       summaryStatus: {
-        type: Number,
+        type: String,
         enum: SummaryStatusValues,
         default: SummaryStatusEnum.pending
       },
@@ -190,9 +194,26 @@ export const EvaluationTaskSchema = new Schema({
         type: String,
         default: ''
       },
+      completedItemCount: {
+        type: Number,
+        default: 0
+      },
+      overThresholdItemCount: {
+        type: Number,
+        default: 0
+      },
+      thresholdPassRate: {
+        type: Number,
+        default: 0
+      },
       _id: false
     }
-  ]
+  ],
+  // Weighted aggregate score calculated from multiple metrics
+  aggregateScore: {
+    type: Number,
+    default: 0
+  }
 });
 
 // Optimized indexes for EvaluationTaskSchema
@@ -244,6 +265,8 @@ EvaluationItemSchema.index({ evalId: 1, status: 1, createTime: -1 }); // Status 
 EvaluationItemSchema.index({ status: 1, retry: 1 }); // Queue processing with retry logic
 EvaluationItemSchema.index({ evalId: 1, 'dataItem._id': 1 }); // DataItem aggregation queries
 EvaluationItemSchema.index({ evalId: 1, status: 1, retry: 1 }); // Retry operations optimization
+// Chat linking index moved to use targetOutput fields if needed
+// EvaluationItemSchema.index({ 'targetOutput.chatId': 1, 'targetOutput.aiChatItemDataId': 1 });
 
 // Optimized text search for content filtering (removed evalId for flexibility)
 EvaluationItemSchema.index({
